@@ -250,12 +250,14 @@ contains
       real, intent(out) :: taug (nlay,ngptsw,pncol)
       real, intent(out) :: taur (nlay,ngptsw,pncol)
 
-      integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
+      integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray, strrat1
 
       strrat1 = 252.131 
-      layreffr = 18
+
+!     layreffr = 18  ! not actually needed but preserve these lines
+!     (was an upper atmosphere loop with default laysolfr = nlay)
 
       ! Compute the optical depth by interpolating in ln(pressure), 
       ! temperature, and appropriate species. Below LAYTROP, the water
@@ -299,7 +301,7 @@ contains
                taur(lay,ig,icol) = tauray
             enddo
          enddo
-     enddo
+      enddo
 
       ! Upper atmosphere tau loop
       do icol = 1,ncol
@@ -318,50 +320,31 @@ contains
          enddo
       enddo
 
-      ! Upper atmosphere ssi loop
-      do icol = 1,ncol
-         laysolfr = nlay
-         do lay = laytrop(icol)+1,nlay
-
-            ! An explanation of the setting of laysolfr, ...
-            ! i.e., the level at which to evaluate solar irradiance. For some bands
-            ! (not this one, but e.g., taumol17) this depends on the mix of absorbing
-            ! species, which changes with level. Say the following IF evaluates true
-            ! at layer k, i.e., jp(k-1) < layreffr <= jp(k), so jp jumps between k-1
-            ! and k. Then on the next iteration (lay=k+1), the test becomes
-            ! jp(k) < layreffr <= jp(k+1), which cannot be true since we already know
-            ! layreffr <= jp(k). In fact, for any lay=k+n, n >= 1, above k, the test
-            ! jp(k-1+n) < layreffr <= jp(k+n) fails since jp(k-1+n) >= jp(k) >= layreffr,
-            ! because jp(lay) is monotonically non-decreasing (see setcoef). So, we
-            ! conclude that if the following test is met for some lay, thereby setting
-            ! laysolfr, then laysolfr will remain at that value. So the solar irradiance
-            ! will be set for that lay and never reset. Conversely, if this test is
-            ! never met, laysolfr will remain at its default value of nlay and ssi
-            ! will be set for that top-of-model layer.
-
-            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) laysolfr = lay
-            if (lay == laysolfr) then
-               if (isolvar < 0) then
-                  do ig = 1,ng16
-                     sfluxzen(ig,icol) = sfluxref(ig) 
-                  enddo
-               elseif (isolvar >= 0 .and. isolvar <= 2) then
-                  do ig = 1,ng16
-                     ssi(ig,icol) = svar_f * facbrght(ig) + &
-                                    svar_s * snsptdrk(ig) + &
-                                    svar_i * irradnce(ig)
-                  enddo
-               elseif (isolvar == 3) then
-                  do ig = 1,ng16
-                     ssi(ig,icol) = svar_f_bnd(ngb(ig)) * facbrght(ig) + &
-                                    svar_s_bnd(ngb(ig)) * snsptdrk(ig) + &
-                                    svar_i_bnd(ngb(ig)) * irradnce(ig)
-                  enddo
-               endif
-               exit  ! added per above comment
-            endif
+      ! Simple case where solar source does not depend on concentrations
+      ! at a particular level. See taumol17 for the complex case.
+      if (isolvar < 0) then
+         do icol = 1,ncol
+            do ig = 1,ng16 
+               sfluxzen(ig,icol) = sfluxref(ig) 
+            enddo
          enddo
-      enddo
+      elseif (isolvar >= 0 .and. isolvar <= 2) then
+         do icol = 1,ncol
+            do ig = 1,ng16 
+               ssi(ig,icol) = svar_f * facbrght(ig) + &
+                              svar_s * snsptdrk(ig) + &
+                              svar_i * irradnce(ig)
+            enddo
+         enddo
+      elseif (isolvar == 3) then
+         do icol = 1,ncol
+            do ig = 1,ng16 
+               ssi(ig,icol) = svar_f_bnd(ngb(ig)) * facbrght(ig) + &
+                              svar_s_bnd(ngb(ig)) * snsptdrk(ig) + &
+                              svar_i_bnd(ngb(ig)) * irradnce(ig)
+            enddo
+         enddo
+      endif
 
    end subroutine taumol16
 
@@ -492,6 +475,24 @@ contains
       do icol = 1,ncol      
          laysolfr = nlay 
          do lay = laytrop(icol)+1,nlay
+
+            ! An explanation of the setting of laysolfr, ... i.e., the level at
+            ! which to evaluate solar irradiance. For some bands (such as this
+            ! one) this depends on the mix of absorbing species, which changes
+            ! with level. Say the following IF evaluates true at layer k, i.e.,
+            ! jp(k-1) < layreffr <= jp(k), so jp jumps between k-1 and k. Then
+            ! on the next iteration (lay=k+1), the test becomes
+            ! jp(k) < layreffr <= jp(k+1), which cannot be true since we
+            ! already know layreffr <= jp(k). In fact, for any lay=k+n, n>=1,
+            ! above k, the test jp(k-1+n) < layreffr <= jp(k+n) fails since
+            ! jp(k-1+n) >= jp(k) >= layreffr, because jp(lay) is monotonically
+            ! non-decreasing (see setcoef). So, we conclude that if the following
+            ! test is met for some lay, thereby setting laysolfr, then laysolfr
+            ! will remain at that value. So the solar irradiance will be set
+            ! for that lay and never reset. Conversely, if this test is never
+            ! met, laysolfr will remain at its default value of nlay and ssi
+            ! will be set for that top-of-model layer.
+
             if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) laysolfr = lay
             if (lay == laysolfr) then
                speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
@@ -578,7 +579,7 @@ contains
          laysolfr = laytrop(icol)
          do lay = 1,laytrop(icol)
 
-            ! This laysolfr / ssi evaluation differs from e.g. taumol16 in that it
+            ! This laysolfr / ssi evaluation differs from e.g. taumol17 in that it
             ! looks for a level in the troposphere (not stratosphere) for this band.
             ! Hence the search for laysolfr over lay in [1,laytrop], and the default
             ! of laytrop ... Say the following IF evaluates true at layer k, i.e.,
@@ -868,39 +869,12 @@ contains
       real, intent(out) :: taug (nlay,ngptsw,pncol)
       real, intent(out) :: taur (nlay,ngptsw,pncol)
 
-      integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
+      integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray
 
-      layreffr = 3
-
-      do icol = 1,ncol
-         laysolfr = laytrop(icol)
-         do lay = 1,laytrop(icol)
-            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol))
-            if (lay == laysolfr) then 
-               if (isolvar < 0) then
-                  do ig = 1,ng20 
-                     sfluxzen(ngs19+ig,icol) = sfluxref(ig) 
-                  end do
-               elseif (isolvar >= 0 .and. isolvar <= 2) then
-                  do ig = 1,ng20 
-                     ssi(ngs19+ig,icol) = svar_f * facbrght(ig) + &
-                                          svar_s * snsptdrk(ig) + &
-                                          svar_i * irradnce(ig)
-                  end do
-               elseif (isolvar == 3) then
-                  do ig = 1,ng20 
-                     ssi(ngs19+ig,icol) = svar_f_bnd(ngb(ngs19+ig)) * facbrght(ig) + &
-                                          svar_s_bnd(ngb(ngs19+ig)) * snsptdrk(ig) + &
-                                          svar_i_bnd(ngb(ngs19+ig)) * irradnce(ig)
-                  end do
-               endif
-               exit
-            endif
-         end do
-      end do
+!     layreffr = 3  ! not actually needed but preserve these lines
+!     (was a lower atmosphere loop with default laysolfr = laytrop(icol))
 
       do icol = 1,ncol
          do lay = 1,laytrop(icol)
@@ -941,6 +915,30 @@ contains
             enddo
          enddo
       enddo
+
+      if (isolvar < 0) then
+         do icol = 1,ncol
+            do ig = 1,ng20
+               sfluxzen(ngs19+ig,icol) = sfluxref(ig)
+            enddo
+         enddo
+      elseif (isolvar >= 0 .and. isolvar <= 2) then
+         do icol = 1,ncol
+            do ig = 1,ng20
+               ssi(ngs19+ig,icol) = svar_f * facbrght(ig) + &
+                                    svar_s * snsptdrk(ig) + &
+                                    svar_i * irradnce(ig)
+            enddo
+         enddo
+      elseif (isolvar == 3) then
+         do icol = 1,ncol
+            do ig = 1,ng20
+               ssi(ngs19+ig,icol) = svar_f_bnd(ngb(ngs19+ig)) * facbrght(ig) + &
+                                    svar_s_bnd(ngb(ngs19+ig)) * snsptdrk(ig) + &
+                                    svar_i_bnd(ngb(ngs19+ig)) * irradnce(ig)
+            enddo
+         enddo
+      endif
 
    end subroutine taumol20
 
@@ -1297,42 +1295,15 @@ contains
       real, intent(out) :: taug (nlay,ngptsw,pncol)
       real, intent(out) :: taur (nlay,ngptsw,pncol)
 
-      integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
+      integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray, givfac
 
       ! Average Giver et al. correction factor for this band.
       givfac = 1.029
 
-      layreffr = 6
-      
-      do icol = 1,ncol
-         laysolfr = laytrop(icol) 
-         do lay = 1,laytrop(icol) 
-            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol))
-            if (lay == laysolfr) then 
-               if (isolvar < 0) then
-                  do ig = 1,ng23
-                     sfluxzen(ngs22+ig,icol) = sfluxref(ig) 
-                  end do
-               elseif (isolvar >= 0 .and. isolvar <= 2) then
-                  do ig = 1,ng23
-                     ssi(ngs22+ig,icol) = svar_f * facbrght(ig) + &
-                                          svar_s * snsptdrk(ig) + &
-                                          svar_i * irradnce(ig)
-                  end do
-               elseif (isolvar == 3) then
-                  do ig = 1,ng23
-                     ssi(ngs22+ig,icol) = svar_f_bnd(ngb(ngs22+ig)) * facbrght(ig) + &
-                                          svar_s_bnd(ngb(ngs22+ig)) * snsptdrk(ig) + &
-                                          svar_i_bnd(ngb(ngs22+ig)) * irradnce(ig)
-                  end do
-               endif
-               exit
-            endif
-         end do
-      end do      
+!     layreffr = 6  ! not actually needed but preserve these lines
+!     (was a lower atmosphere loop with default laysolfr = laytrop(icol))
       
       do icol = 1,ncol
          do lay = 1,laytrop(icol)
@@ -1362,6 +1333,30 @@ contains
             enddo
          enddo
       enddo
+
+      if (isolvar < 0) then
+         do icol = 1,ncol
+            do ig = 1,ng23 
+               sfluxzen(ngs22+ig,icol) = sfluxref(ig)
+            enddo      
+         enddo         
+      elseif (isolvar >= 0 .and. isolvar <= 2) then
+         do icol = 1,ncol
+            do ig = 1,ng23
+               ssi(ngs22+ig,icol) = svar_f * facbrght(ig) + &
+                                    svar_s * snsptdrk(ig) + &
+                                    svar_i * irradnce(ig)
+            enddo
+         enddo
+      elseif (isolvar == 3) then
+         do icol = 1,ncol
+            do ig = 1,ng23
+               ssi(ngs22+ig,icol) = svar_f_bnd(ngb(ngs22+ig)) * facbrght(ig) + &
+                                    svar_s_bnd(ngb(ngs22+ig)) * snsptdrk(ig) + &
+                                    svar_i_bnd(ngb(ngs22+ig)) * irradnce(ig)
+            enddo
+         enddo
+      endif
 
    end subroutine taumol23
 
@@ -1549,39 +1544,12 @@ contains
       real, intent(out) :: taug (nlay,ngptsw,pncol)
       real, intent(out) :: taur (nlay,ngptsw,pncol)
 
-      integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
+      integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray
 
-      layreffr = 2
-
-      do icol = 1,ncol
-         laysolfr = laytrop(icol) 
-         do lay = 1,laytrop(icol) 
-            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol))
-            if (lay == laysolfr) then
-               if (isolvar < 0) then
-                  do ig = 1,ng25
-                     sfluxzen(ngs24+ig,icol) = sfluxref(ig) 
-                  enddo
-               elseif (isolvar >= 0 .and. isolvar <= 2) then
-                  do ig = 1,ng25
-                     ssi(ngs24+ig,icol) = svar_f * facbrght(ig) + &
-                                          svar_s * snsptdrk(ig) + &
-                                          svar_i * irradnce(ig)
-                  enddo
-               elseif (isolvar == 3) then
-                  do ig = 1,ng25
-                     ssi(ngs24+ig,icol) = svar_f_bnd(ngb(ngs24+ig)) * facbrght(ig) + &
-                                          svar_s_bnd(ngb(ngs24+ig)) * snsptdrk(ig) + &
-                                          svar_i_bnd(ngb(ngs24+ig)) * irradnce(ig)
-                  enddo
-               endif
-               exit
-            endif
-         enddo
-      enddo
+!     layreffr = 2  ! not actually needed but preserve these lines
+!     (was a lower atmosphere loop with default laysolfr = laytrop(icol))
 
       do icol = 1,ncol
          do lay = 1,laytrop(icol) 
@@ -1609,6 +1577,30 @@ contains
             enddo
          enddo
       enddo
+
+      if (isolvar < 0) then
+         do icol = 1,ncol
+            do ig = 1,ng25
+               sfluxzen(ngs24+ig,icol) = sfluxref(ig)
+            enddo
+         enddo
+      elseif (isolvar >= 0 .and. isolvar <= 2) then
+         do icol = 1,ncol
+            do ig = 1,ng25
+               ssi(ngs24+ig,icol) = svar_f * facbrght(ig) + &
+                                    svar_s * snsptdrk(ig) + &
+                                    svar_i * irradnce(ig)
+            enddo
+         enddo
+      elseif (isolvar == 3) then
+         do icol = 1,ncol
+            do ig = 1,ng25
+               ssi(ngs24+ig,icol) = svar_f_bnd(ngb(ngs24+ig)) * facbrght(ig) + &
+                                    svar_s_bnd(ngb(ngs24+ig)) * snsptdrk(ig) + &
+                                    svar_i_bnd(ngb(ngs24+ig)) * irradnce(ig)
+            enddo
+         enddo
+      endif
 
    end subroutine taumol25
 
@@ -1652,11 +1644,21 @@ contains
       real, intent(out) :: taug (nlay,ngptsw,pncol)
       real, intent(out) :: taur (nlay,ngptsw,pncol)
 
-      integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr
+      integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray
 
-      ! simple case
+!     never had layreffr or laysolfr
+
+      do icol = 1,ncol
+         do lay = 1,nlay
+            do ig = 1,ng26 
+               taug(lay,ngs25+ig,icol) = 0. 
+               taur(lay,ngs25+ig,icol) = colmol(lay,icol) * rayl(ig) 
+            enddo
+         enddo
+      enddo
+
       if (isolvar < 0) then
          do icol = 1,ncol
             do ig = 1,ng26 
@@ -1680,15 +1682,6 @@ contains
             enddo
          enddo
       endif
-
-      do icol = 1,ncol
-         do lay = 1,nlay
-            do ig = 1,ng26 
-               taug(lay,ngs25+ig,icol) = 0. 
-               taur(lay,ngs25+ig,icol) = colmol(lay,icol) * rayl(ig) 
-            enddo
-         enddo
-      enddo
 
    end subroutine taumol26
 
@@ -1732,7 +1725,7 @@ contains
       real, intent(out) :: taug (nlay,ngptsw,pncol)
       real, intent(out) :: taur (nlay,ngptsw,pncol)
 
-      integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
+      integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray, scalekur
 
@@ -1745,7 +1738,8 @@ contains
 
       scalekur = 50.15/48.37
 
-      layreffr = 32
+!     layreffr = 32  ! not actually needed but preserve these lines
+!     (was an upper atmosphere loop with default laysolfr = nlay)
 
       do icol = 1,ncol
          do lay = 1,laytrop(icol) 
@@ -1779,34 +1773,29 @@ contains
          enddo
       enddo
 
-      do icol = 1,ncol
-         laysolfr = nlay
-         do lay = laytrop(icol)+1,nlay
-            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
-               laysolfr = lay
-            if (lay == laysolfr) then
-               if (isolvar < 0) then
-                  do ig = 1,ng27
-                     sfluxzen(ngs26+ig,icol) = scalekur * sfluxref(ig) 
-                  enddo
-               elseif (isolvar >= 0 .and. isolvar <= 2) then
-                  do ig = 1,ng27
-                     ssi(ngs26+ig,icol) = svar_f * facbrght(ig) + &
-                                          svar_s * snsptdrk(ig) + &
-                                          svar_i * irradnce(ig)
-                  enddo
-               elseif (isolvar == 3) then
-                  do ig = 1,ng27
-                     ssi(ngs26+ig,icol) = svar_f_bnd(ngb(ngs26+ig)) * facbrght(ig) + &
-                                          svar_s_bnd(ngb(ngs26+ig)) * snsptdrk(ig) + &
-                                          svar_i_bnd(ngb(ngs26+ig)) * irradnce(ig)
-                  enddo
-               endif
-               exit
-            endif
+      if (isolvar < 0) then
+         do icol = 1,ncol
+            do ig = 1,ng27
+               sfluxzen(ngs26+ig,icol) = sfluxref(ig)
+            enddo
          enddo
-      enddo
-!pmn: no lay dependence so remove lay loop? check this and other cases
+      elseif (isolvar >= 0 .and. isolvar <= 2) then
+         do icol = 1,ncol
+            do ig = 1,ng27
+               ssi(ngs26+ig,icol) = svar_f * facbrght(ig) + &
+                                    svar_s * snsptdrk(ig) + &
+                                    svar_i * irradnce(ig)
+            enddo
+         enddo
+      elseif (isolvar == 3) then
+         do icol = 1,ncol
+            do ig = 1,ng27
+               ssi(ngs26+ig,icol) = svar_f_bnd(ngb(ngs26+ig)) * facbrght(ig) + &
+                                    svar_s_bnd(ngb(ngs26+ig)) * snsptdrk(ig) + &
+                                    svar_i_bnd(ngb(ngs26+ig)) * irradnce(ig)
+            enddo
+         enddo
+      endif
 
    end subroutine taumol27
 
@@ -2023,11 +2012,12 @@ contains
       real, intent(out) :: taug (nlay,ngptsw,pncol)
       real, intent(out) :: taur (nlay,ngptsw,pncol)
 
-      integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
+      integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray
 
-      layreffr = 49  
+!     layreffr = 49  ! not actually needed but preserve these lines
+!     (was an upper atmosphere loop with default laysolfr = nlay)
         
       do icol = 1,ncol
          do lay = 1,laytrop(icol)
@@ -2067,33 +2057,29 @@ contains
          enddo
       enddo
 
-      do icol = 1,ncol
-         laysolfr = nlay
-         do lay = laytrop(icol)+1,nlay
-            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
-               laysolfr = lay
-            if (lay == laysolfr) then 
-               if (isolvar < 0) then
-                  do ig = 1,ng29
-                     sfluxzen(ngs28+ig,icol) = sfluxref(ig) 
-                  end do
-               elseif (isolvar >= 0 .and. isolvar <= 2) then
-                  do ig = 1,ng29
-                     ssi(ngs28+ig,icol) = svar_f * facbrght(ig) + &
-                                          svar_s * snsptdrk(ig) + &
-                                          svar_i * irradnce(ig)
-                  end do
-               elseif (isolvar == 3) then
-                  do ig = 1,ng29
-                     ssi(ngs28+ig,icol) = svar_f_bnd(ngb(ngs28+ig)) * facbrght(ig) + &
-                                          svar_s_bnd(ngb(ngs28+ig)) * snsptdrk(ig) + &
-                                          svar_i_bnd(ngb(ngs28+ig)) * irradnce(ig)
-                  end do
-               endif
-               exit
-            end if
-         end do
-      end do
+      if (isolvar < 0) then
+         do icol = 1,ncol
+            do ig = 1,ng29
+               sfluxzen(ngs28+ig,icol) = sfluxref(ig)
+            enddo
+         enddo
+      elseif (isolvar >= 0 .and. isolvar <= 2) then
+         do icol = 1,ncol
+            do ig = 1,ng29
+               ssi(ngs28+ig,icol) = svar_f * facbrght(ig) + &
+                                    svar_s * snsptdrk(ig) + &
+                                    svar_i * irradnce(ig)
+            enddo
+         enddo
+      elseif (isolvar == 3) then
+         do icol = 1,ncol
+            do ig = 1,ng29
+               ssi(ngs28+ig,icol) = svar_f_bnd(ngb(ngs28+ig)) * facbrght(ig) + &
+                                    svar_s_bnd(ngb(ngs28+ig)) * snsptdrk(ig) + &
+                                    svar_i_bnd(ngb(ngs28+ig)) * irradnce(ig)
+            enddo
+         enddo
+      endif
 
    end subroutine taumol29
 
