@@ -145,7 +145,7 @@ contains
                                 __RC__ )
 
 !ALT: For now restrict usage only for single column mode
-    _ASSERT(IM==1 .and. JM == 1, 'Only single column supported')
+!    _ASSERT(IM==1 .and. JM == 1, 'Only single column supported')
 
     call MAPL_LocStreamGet(LocStream, NT_LOCAL=NT, __RC__)
 
@@ -181,7 +181,7 @@ contains
 
     ! get qvar
 
-    _ASSERT(all(tiletypes == MAPL_Land), 'Currently supporting cells exclusively covered by land')
+!    _ASSERT(all(tiletypes == MAPL_Land), 'Currently supporting cells exclusively covered by land')
     totalArea = sum(norm_tile_area)
     norm_tile_area = norm_tile_area / totalArea
 

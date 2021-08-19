@@ -98,7 +98,7 @@ module GEOS_SurfaceGridCompMod
   integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
-  logical :: DO_HETER_PRECIP
+!  logical :: DO_HETER_PRECIP
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
@@ -1088,6 +1088,15 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPSURF'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_temperature_of_land_incl_snow',&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TPSURFTILE'                ,&
+    DIMS               = MAPL_DimsHorzVert           ,&
+    VLOCATION          = MAPL_VLocationCenter        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -3138,14 +3147,14 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 #endif
 
-    call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
-    if (DO_HETER_PRECIP) then
-       !ALT replace MOM with HPRECIP
-       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_HetPrecip:", DEFAULT="libGEOShetprecip_GridComp.so", __RC__ )
-       HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
-    else
-       HPRECIP = 0
-    end if
+!    call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
+!    if (DO_HETER_PRECIP) then
+!       !ALT replace MOM with HPRECIP
+!       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_HetPrecip:", DEFAULT="libGEOShetprecip_GridComp.so", __RC__ )
+!       HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
+!    else
+!       HPRECIP = 0
+!    end if
 
 
 
@@ -3157,11 +3166,11 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_Get(MAPL, GCNAMES = GCNames, RC=STATUS)
     VERIFY_(STATUS)
-    if (.not. do_heter_precip) then
+!    if (.not. do_heter_precip) then
        _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
-    else
-       _ASSERT(NUM_CHILDREN == size(GCNames)-1,'needs informative message')
-    end if
+!    else
+!       _ASSERT(NUM_CHILDREN == size(GCNames)-1,'needs informative message')
+!    end if
 
     CHILD_MASK(OCEAN  ) = MAPL_OCEAN
 #ifndef AQUA_PLANET
@@ -3415,13 +3424,13 @@ module GEOS_SurfaceGridCompMod
 
     end do
 
-    if (DO_HETER_PRECIP) then
-       I = HPRECIP
-       call MAPL_GetObjectFromGC ( GCS(I) ,   CHILD_MAPL,   RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
-       VERIFY_(STATUS)
-    end if
+!    if (DO_HETER_PRECIP) then
+!       I = HPRECIP
+!       call MAPL_GetObjectFromGC ( GCS(I) ,   CHILD_MAPL,   RC=STATUS )
+!       VERIFY_(STATUS)
+!       call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+!       VERIFY_(STATUS)
+!    end if
 
     call MAPL_TimerOff(MAPL,"LocStreamCreate")
 
@@ -4485,6 +4494,7 @@ module GEOS_SurfaceGridCompMod
 !    print *,'assigning tile values'
 !    QTILE(1,1,1:NT) = QHTILE
 !    TTILE(1,1,1:NT) = THTILE
+if (DOCLASP/=0.) then
     do I = 1,IM
       do J = 1,JM
  !        do N = 1,NT
@@ -4525,6 +4535,7 @@ module GEOS_SurfaceGridCompMod
 
       end do
     end do
+end if ! DOCLASP condition
 
     alphaW = 0.572
 
@@ -5241,6 +5252,7 @@ module GEOS_SurfaceGridCompMod
 
 ! Pointers to exports
 
+    real, pointer, dimension(:,:,:) :: TPSURFTILEx=> NULL()
     real, pointer, dimension(:,:) :: LST       => NULL()
     real, pointer, dimension(:,:) :: FRI       => NULL()
     real, pointer, dimension(:,:) :: EMISS     => NULL()
@@ -5796,7 +5808,7 @@ module GEOS_SurfaceGridCompMod
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
 
-    real, pointer :: het_precip_fac(:) => NULL()
+!    real, pointer :: het_precip_fac(:) => NULL()
     
 !=============================================================================
 
@@ -6134,6 +6146,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
 
+
 ! These exports are the rainfalls and total snowfall that
 !  the children of surface see. They can be the exports of
 !  moist or can be read from a file.
@@ -6395,6 +6408,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , TAUTW   , 'TAUTW'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , ZETA_W  , 'ZETA_W' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TWMTF,    'TWMTF'  , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TPSURFTILEx, 'TPSURFTILE',  RC=STATUS); VERIFY_(STATUS)
 
 
 ! if we are running Louis sfc layer, get these exports from the gridded Louis fluxes
@@ -6826,22 +6840,22 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM, DTSDTTILE, DTSDT,   RC=STATUS); VERIFY_(STATUS)
 
 
-    if(do_heter_precip) then
-       I = HPRECIP
-       call ESMF_GridCompRun(GCS(I), &
-            importState=GIM(I), exportState=GEX(I), &
-            clock=CLOCK, userRC=STATUS )
-       VERIFY_(STATUS)
-       !get export WEIGHT, i.e. the heterogeneous precipitation factor
-       call MAPL_GetPointer(GEX(I), het_precip_fac, 'WEIGHT', RC=status)
-       VERIFY_(STATUS)
-       !apply weight to the 5 precips
-       pcutile = pcutile * het_precip_fac
-       plstile = plstile * het_precip_fac
-       snofltile = snofltile * het_precip_fac
-       icefltile = icefltile * het_precip_fac
-       frzrfltile = frzrfltile * het_precip_fac
-    end if
+!    if(do_heter_precip) then
+!       I = HPRECIP
+!       call ESMF_GridCompRun(GCS(I), &
+!            importState=GIM(I), exportState=GEX(I), &
+!            clock=CLOCK, userRC=STATUS )
+!       VERIFY_(STATUS)
+!       !get export WEIGHT, i.e. the heterogeneous precipitation factor
+!       call MAPL_GetPointer(GEX(I), het_precip_fac, 'WEIGHT', RC=status)
+!       VERIFY_(STATUS)
+!       !apply weight to the 5 precips
+!       pcutile = pcutile * het_precip_fac
+!       plstile = plstile * het_precip_fac
+!       snofltile = snofltile * het_precip_fac
+!       icefltile = icefltile * het_precip_fac
+!       frzrfltile = frzrfltile * het_precip_fac
+!    end if
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
@@ -8159,6 +8173,10 @@ module GEOS_SurfaceGridCompMod
           where ( LWI==0 .and. TS<271.40            ) LWI = 2.0  ! Ice
       endif
 
+
+! Fill Tile-level diags - TEMPORARY
+
+     if (associated(TPSURFTILEx)) TPSURFTILEx(1,1,1:NT) = TPSURFTILE
 
 ! Fill WET1 over non-land points
 !-------------------------------

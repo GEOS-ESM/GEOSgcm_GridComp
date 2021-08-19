@@ -1606,6 +1606,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CLDBASEHGT',                                &
+         LONG_NAME = 'Height_of_cloud_base',                       &
+         UNITS     = 'm',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME= 'SHLW_PRC3 ',                                   &
          LONG_NAME = 'shallow_convective_rain',           &
@@ -5532,7 +5541,7 @@ contains
                                          PREL_SC, PBUP_SC
       real, pointer, dimension(:,:  ) :: WLCL_SC, QTSRC_SC, THLSRC_SC, &
                                          THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, CUSH
-      real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC
+      real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC, CLDBASEHGT
 
 ! Diagnostic output from ADG PDF
     real, dimension(:,:,:),pointer     :: PDF_A,      &
@@ -5783,7 +5792,7 @@ contains
                                                  CNV_NDROP_X, CNV_NICE_X, CNV_MFD_X, CNV_DQLDT_X, &
                                                  CNV_PRC3_X ,  CNV_UPDF_X  
        
-              
+      real, dimension(IM,JM) :: CLDBASEx
       real, dimension(IM,JM)  :: ZPBL
       integer, dimension(IM,JM)  :: KMIN_TROP
       real, parameter :: r_air = 3.47d-3 !m3 Pa kg-1K-1
@@ -6786,6 +6795,7 @@ contains
       call MAPL_GetPointer(EXPORT, CLDREFFG, 'RG'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CLDNCCN,  'CLDNCCN' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,DTDTFRIC, 'DTDTFRIC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CLDBASEHGT,'CLDBASEHGT', RC=STATUS); VERIFY_(STATUS)
 
 !!! DG PDF diagnostics
      call MAPL_GetPointer(EXPORT, PDF_AX,     'PDF_A',   RC=STATUS)
@@ -12910,6 +12920,21 @@ do K= 1, LM
          DQIDT   = DQIDT / DT_MOIST
       endif
          
+      if (associated(CLDBASEHGT)) then
+         CLDBASEx = MAPL_UNDEF
+         do i = 1,IM
+           do j = 1,JM
+             do k =  LM, 1, -1
+               if (ZLE(i,j,k).gt.20000.) exit
+               if ( ( RAD_CF(i,j,k) .ge. 1e-2 ) ) then
+                 CLDBASEx(i,j)  = ZLE(i,j,k)
+                 exit
+               end if
+             end do
+           end do
+         end do
+         CLDBASEHGT = CLDBASEx
+      end if
          
       CFX =100.*PLO*r_air/TEMP
 

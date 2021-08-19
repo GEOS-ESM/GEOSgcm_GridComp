@@ -1534,7 +1534,6 @@ endif
                              SH,      &  ! in
                              EVAP,    &  ! in
                              ZL,      &  ! in
-                             ZLE,     &  ! in
                              KH,      &  ! in
                              TKE,     &  ! in
                              ISOTROPY, &  ! in
@@ -1571,8 +1570,7 @@ endif
     real,    intent(in   ) :: SH   (IM,JM)     ! surface sensible heat flux
     real,    intent(in   ) :: EVAP (IM,JM)     ! surface evaporation
     real,    intent(in   ) :: ZL   (IM,JM,LM)  ! heights [m]
-    real,    intent(in   ) :: ZLE  (IM,JM,LM+1)  ! edge heights [m]
-    real,    intent(in   ) :: KH   (IM,JM,LM+1)  ! diffusivity
+    real,    intent(in   ) :: KH   (IM,JM,0:LM)  ! diffusivity
     real,    intent(in   ) :: TKE  (IM,JM,LM)  ! turbulent kinetic energy
     real,    intent(in   ) :: ISOTROPY(IM,JM,LM)  ! isotropy timescale
     real,    intent(in   ) :: QT   (IM,JM,LM)  ! total water
@@ -1609,7 +1607,7 @@ endif
     integer :: k, kd, ku
     real, dimension(IM,JM) :: wrk1, wrk2, wrk3
     real, dimension(IM,JM) :: sm, onemmf
-    real, dimension(IM,JM,LM+1) :: qt2_edge, &
+    real, dimension(IM,JM,0:LM) :: qt2_edge, &
                                    hl2_edge, &
                                    wqt_edge, &
                                    whl_edge, &

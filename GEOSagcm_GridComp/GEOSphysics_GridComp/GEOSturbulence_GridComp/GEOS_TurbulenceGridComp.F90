@@ -1006,15 +1006,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'edmf_mf',                                            &
-       UNITS      = 'kg m-2 s-1',                                            &
-       SHORT_NAME = 'edmf_mf'    ,                                        &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_qt_flux',                                          &
        UNITS      = 'kg m-2 s-1',                                            &
        SHORT_NAME = 'edmf_wqt'    ,                                          &
@@ -1257,6 +1248,15 @@ contains
        SHORT_NAME = 'EDMF_ENTR',                                             &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_mass_flux',                                        &
+       UNITS      = 'kg m s-1',                                              &
+       SHORT_NAME = 'EDMF_MF',                                               &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -2683,14 +2683,9 @@ contains
     real, pointer, dimension(:,:)   :: LATS
 
 ! SHOC-related variables
-    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,LSHOC,LSHOC_CLR, &
-                                           LSHOC_CLD,BRUNTSHOC,ISOTROPY, &
-                                           LSHOC1,LSHOC2,LSHOC3, & 
-                                           SHEARSHOC,WTHV2,&
-                                           TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
-                                           QT3, HL3, W2, W3, WQT, WHL, QT2, HLQT
+    real, dimension(:,:,:), pointer     :: TKESHOC,QT2,QT3,WTHV2,TKH
 
-    real, dimension(:,:), pointer   :: EVAP, SH, TKE_SURF, HL2_SURF, QT2_SURF, HLQT_SURF
+    real, dimension(:,:), pointer   :: EVAP, SH
 
 ! Begin... 
 !---------
@@ -2757,12 +2752,6 @@ contains
 
 ! Get pointers from internal state
 !---------------------------------
-
-       call MAPL_GetPointer(INTERNAL, QT3,          'QT3',       RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, QT2,          'QT2',       RC=STATUS)
-       VERIFY_(STATUS)
-
     call MAPL_GetPointer(INTERNAL, AKS,   'AKS',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, BKS,   'BKS',     RC=STATUS)
@@ -2799,8 +2788,13 @@ contains
     VERIFY_(STATUS)
 
 !----- SHOC-related variables -----
-    call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC',    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC', RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QT3,    'QT3',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QT2,    'QT2',     RC=STATUS)
+    VERIFY_(STATUS)
+
     call MAPL_GetPointer(INTERNAL, TKH,   'TKH',    RC=STATUS)
     VERIFY_(STATUS)
 !
@@ -2992,6 +2986,13 @@ contains
      real, dimension(:,:,:), pointer     :: AKQODT, CKQODT
      real, dimension(:,:,:), pointer     :: AKVODT, CKVODT
 
+    real, dimension(:,:,:), pointer     :: LSHOC,LSHOC_CLR, &
+                                           LSHOC_CLD,BRUNTSHOC,ISOTROPY, &
+                                           LSHOC1,LSHOC2,LSHOC3, & 
+                                           SHEARSHOC,&
+                                           TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
+                                           HL2, HL3, W2, W3, WQT, WHL, HLQT
+
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
                                             edmf_dry_qt,edmf_moist_qt, &
@@ -3003,7 +3004,6 @@ contains
                                             edmf_w3, edmf_wqt, edmf_hlqt, & 
                                             edmf_whl, edmf_qt3, edmf_hl3, &
                                             hle, qte, entx, &
-                                            w2, w3, hl2, hl3, wqt, whl, &
                                             edmf_wqtavg, edmf_whlavg
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
    real, dimension(IM,JM,0:LM)          ::  ae3_test, aw3_test, aws3_test, awqv3_test, awql3_test, awqi3_test, awu3_test, awv3_test
@@ -3353,14 +3353,12 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w3,  'edmf_w3',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  hlqt,  'HLQT', ALLOC=.TRUE.,   RC=STATUS)
-     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_qt3,  'edmf_qt3',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_hl3,  'edmf_hl3',   RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  w3_canuto, 'w3_canuto',ALLOC=.TRUE.,   RC=STATUS)
-!     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  hlqt,  'HLQT', ALLOC=.TRUE.,   RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  w3, 'W3', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  w2, 'W2', ALLOC=.TRUE.,   RC=STATUS)
@@ -3375,13 +3373,13 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_wqt,'edmf_wqt', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_wqtavg,'edmf_wqtavg', RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_wqtavg,'edmf_wqtavg', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_whlavg,'edmf_whlavg', RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_whlavg,'edmf_whlavg', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_whl,'edmf_whl', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_mf,  'edmf_mf',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_mf,  'EDMF_MF', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'edmf_dry_a',       RC=STATUS)
      VERIFY_(STATUS)
@@ -3491,11 +3489,11 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC,   'LSHOC',    RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LSHOC1,  'LSHOC1', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LSHOC1,  'LSHOC1',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LSHOC2,  'LSHOC2', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LSHOC2,  'LSHOC2',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC_CLR,'LSHOC_CLR', RC=STATUS)
      VERIFY_(STATUS)
@@ -3522,6 +3520,7 @@ contains
 
      call MAPL_GetPointer(EXPORT,  entx,  'EDMF_ENTR', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
+
 
 ! Initialize some arrays
 
@@ -3661,7 +3660,7 @@ contains
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
 
-    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
+    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
 
 
      call MAPL_TimerOn(MAPL,"---MASSFLUX")
@@ -3683,7 +3682,7 @@ edmf_hl2 = 0.0
 edmf_qt2 = 0.0
 edmf_hlqt = 0.0
 
-IF(DoMF .eq. 1.) then
+IF(DoMF /= 0.) then
     
    aw3 = 0.0
      
@@ -3715,7 +3714,7 @@ IF(DoMF .eq. 1.) then
               buoyf,&                      ! diag
               mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, & ! for ADG PDF
               iras,jras, &
-              au, Mu, E, D, hle, qte, entx, &  ! for MYNN
+              au, Mu, E, D, hle, qte, entx, edmf_mf, &  ! for MYNN
 #ifdef EDMF_DIAG
               w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
               w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -3826,7 +3825,6 @@ IF(DoMF .eq. 1.) then
      if (associated(edmf_wqt)) edmf_wqt=mfwqt
      if (associated(edmf_hlqt)) edmf_hlqt=mfhlqt
      if (associated(edmf_whl)) edmf_whl=mfwhl
-     if (associated(edmf_mf)) edmf_mf=edmfmoista*edmfmoistw+edmfdrya*edmfdryw 
      aavg = edmfmoista+edmfdrya
      where (aavg.gt.0.001) 
       wavg = (edmfmoista*edmfmoistw+edmfdrya*edmfdryw)/aavg
@@ -3969,7 +3967,6 @@ ENDIF
         QPI = 0.
         QPL = 0.
         PRANDTLSHOC = 0.9
-!        w3_canuto  = 0.0
 
         call RUN_SHOC( IM, JM, LM, LM+1, DT, &
                        !== Inputs ==
@@ -3982,7 +3979,6 @@ ENDIF
                        OMEGA(:,:,1:LM),       &
                        SH(:,:),               &
                        EVAP(:,:),             &
-!                       BUOYF(:,:,1:LM),       &
                        T(:,:,1:LM),           &
                        Q(:,:,1:LM),           &
                        QI(:,:,1:LM),          &
@@ -3997,7 +3993,6 @@ ENDIF
                        TKH(:,:,1:LM),         &
                        !== Outputs ==
                        ISOTROPY(:,:,1:LM),    &
-!                       W3_CANUTO(:,:,1:LM),   &
                        !== Diagnostics ==  ! not used elsewhere
                        TKEDISS,               &
                        TKEBUOY,               &
@@ -4026,10 +4021,9 @@ ENDIF
                        SHC_USE_MF_PDF,        &
                        SHC_USE_MF_BUOY,       &
                        SHC_USE_SUS12LEN,      &
-                       SHC_BUOY_OPTION  )
+                       SHC_BUOY_OPTION )
 
         TKH = max(0.,TKH)
-        if (any(isnan(TKH))) print *,'TKH NaN after SHOC'
 
         KH(:,:,1:LM) = TKH(:,:,1:LM)
         KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
@@ -4038,8 +4032,6 @@ ENDIF
         VERIFY_(STATUS)
 
       end if  ! DOSHOC condition
-
-
 
 !   Refresh diffusivities: First compute Louis...
 !   ---------------------------------------------
@@ -4512,7 +4504,7 @@ ENDIF
         end if
       end if ! TKE
 
-
+!      print *,'before update_moments'
       ! Update the higher order moments required for the ADG PDF
       if (PDFSHAPE.eq.5) then
       HL = T + (mapl_grav*Z - mapl_alhl*QLLS)/mapl_cp
@@ -4520,7 +4512,6 @@ ENDIF
                           SH,             &  ! in
                           EVAP,           &
                           Z,              &
-                          ZLE,            &
                           KH,             &
                           TKESHOC,        &
                           ISOTROPY,       &
@@ -6054,15 +6045,15 @@ end subroutine RUN1
          end if
 
        if( name=='Q' .or. name=='QLLS' .or. name=='QLCN') then
-          if(associated(QTFLXTRB)) QT = QT + SX
+          if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
        endif
 
        if( name=='S' ) then
-           if(associated(SLFLXTRB)) SL = SL + SX
+           if(associated(SLFLXTRB).or.associated(SLX)) SL = SL + SX
        end if
 
        if( name=='QLLS' .or. name=='QLCN' ) then
-          if(associated(SLFLXTRB)) SL = SL - MAPL_ALHL*SX
+          if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHL*SX
        endif
 
        if( name=='U' ) then
@@ -6708,7 +6699,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L0,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
-             au, Mu, E, D, hle, qte, entx, &
+             au, Mu, E, D, hle, qte, entx, edmfmf, &
 #ifdef EDMF_DIAG
              w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
              w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -6790,6 +6781,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
    ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
          REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfwqt,mfhl2,&
                                                          mfhlqt,mfwhl, hle, qte, E, D, entx     
+      REAL, DIMENSION(ITS:ITE,KTS-1:KTE) :: edmfmf
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
  ! entrainment variables     
@@ -7078,7 +7070,7 @@ if (L0(IH) .gt. 0. ) then
      enddo
     enddo
   end if
-  print *,'ent=',ent(1:3,1:10)
+!  print *,'ent=',ent(1:3,1:10)
 
 ! increase entrainment if local minimum of THV
 
@@ -7138,12 +7130,12 @@ end do
      wmax=sigmaW*pwmax
    end if    
 
-  if (any(MFW(IH,1:NUP2).lt.0.)) print *,'MFW < 0 !!!'
-  if (any(MFSRCQT(IH,1:NUP2).lt.0.)) print *,'MFSRCQT < 0 !!!'
-  if (any(MFSRCTHL(IH,1:NUP2).lt.0.)) print *,'MFSRCTHL < 0 !!!'
-  if (any(isnan(MFW(IH,1:NUP2)))) print *,'MFWSTAR UNDEF !!!'
-  if (any(isnan(MFSRCQT(IH,1:NUP2)))) print *,'MFSRCQT UNDEF !!!'
-  if (any(isnan(MFSRCTHL(IH,1:NUP2)))) print *,'MFSRCTHL UNDEF !!!'
+!  if (any(MFW(IH,1:NUP2).lt.0.)) print *,'MFW < 0 !!!'
+!  if (any(MFSRCQT(IH,1:NUP2).lt.0.)) print *,'MFSRCQT < 0 !!!'
+!  if (any(MFSRCTHL(IH,1:NUP2).lt.0.)) print *,'MFSRCTHL < 0 !!!'
+!  if (any(isnan(MFW(IH,1:NUP2)))) print *,'MFWSTAR UNDEF !!!'
+!  if (any(isnan(MFSRCQT(IH,1:NUP2)))) print *,'MFSRCQT UNDEF !!!'
+!  if (any(isnan(MFSRCTHL(IH,1:NUP2)))) print *,'MFSRCTHL UNDEF !!!'
 
        ! define surface conditions   
        DO I=1,NUP2
@@ -7154,7 +7146,7 @@ end do
 
 !        UPW(kts-1,I)=0.5*(wlv+wtv) 
         if (doclasp/=0) then
-          UPW(kts-1,I) = MFW(IH,I)  
+          UPW(kts-1,I) = MFW(IH,I) 
           UPA(kts-1,I)=MFAREA(IH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now       
         else
           UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)  ! npa
@@ -7271,7 +7263,8 @@ end do
             end if
          ENDDO
          UPA = factor*UPA   
-          
+
+         edmfmf(IH,:) = rhoe*SUM(upa*upw,DIM=2)
        
   !     
   ! writing updraft properties for output
