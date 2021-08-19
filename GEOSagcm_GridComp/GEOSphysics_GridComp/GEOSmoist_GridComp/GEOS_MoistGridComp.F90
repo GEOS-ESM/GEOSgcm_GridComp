@@ -6005,6 +6005,7 @@ contains
 
       !==================================================
 
+      character(len=ESMF_MAXSTR)          :: ERRSTR
 
 
       !Outputs for downdraft
@@ -9751,6 +9752,17 @@ contains
          if (associated(QRTOT)) QRTOT = QRAIN
          if (associated(QSTOT)) QSTOT = QSNOW
          if (associated(QGTOT)) QGTOT = QGRAUPEL
+     ! Check TEMP ramge
+        do K=1,LM
+          do J=1,JM
+            do I=1,IM
+               write(ERRSTR,'(A,I3)') "TEMP too cold after GFDL-MP at level: ", k
+               _ASSERT(TEMP(I,J,K) >= 150.0, ERRSTR)
+               write(ERRSTR,'(A,I3)') "TEMP too warm after GFDL-MP at level: ", k
+               _ASSERT(TEMP(I,J,K) <= 333.0, ERRSTR)
+            end do
+          end do
+        end do
      ! Convert back to PT
          TH1 = TEMP/PK
      ! Radiation Coupling
