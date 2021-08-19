@@ -14,7 +14,7 @@ module rrtmg_sw_setcoef
 
 ! ------- Modules -------
 
-   use parrrsw, only : mxmol
+   use parrrsw, only : nmol
    use rrsw_ref, only : pref, preflog, tref
    use iso_fortran_env, only : error_unit
 
@@ -50,7 +50,7 @@ contains
       real, intent(in) :: pavel     (nlayers,pncol)  ! layer pressures (mb) 
       real, intent(in) :: tavel     (nlayers,pncol)  ! layer temperatures (K)
       real, intent(in) :: coldry    (nlayers,pncol)  ! dry air column density (mol/cm2)
-      real, intent(in) :: wkl (mxmol,nlayers,pncol)  ! molecular amounts (mol/cm-2)
+      real, intent(in) :: wkl  (nmol,nlayers,pncol)  ! molecular amounts (mol/cm-2)
 
       ! ----- Output -----
 
@@ -182,8 +182,8 @@ contains
                colh2o(lay,icol) = 1.e-20 * wkl(1,lay,icol) 
                colco2(lay,icol) = 1.e-20 * wkl(2,lay,icol) 
                colo3 (lay,icol) = 1.e-20 * wkl(3,lay,icol) 
-               colch4(lay,icol) = 1.e-20 * wkl(6,lay,icol) 
-               colo2 (lay,icol) = 1.e-20 * wkl(7,lay,icol) 
+               colch4(lay,icol) = 1.e-20 * wkl(4,lay,icol) 
+               colo2 (lay,icol) = 1.e-20 * wkl(5,lay,icol) 
                colmol(lay,icol) = 1.e-20 * coldry(lay,icol) + colh2o(lay,icol) 
                if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * coldry(lay,icol) 
                if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * coldry(lay,icol) 
@@ -216,8 +216,8 @@ contains
                colh2o(lay,icol) = 1.e-20 * wkl(1,lay,icol) 
                colco2(lay,icol) = 1.e-20 * wkl(2,lay,icol) 
                colo3 (lay,icol) = 1.e-20 * wkl(3,lay,icol) 
-               colch4(lay,icol) = 1.e-20 * wkl(6,lay,icol) 
-               colo2 (lay,icol) = 1.e-20 * wkl(7,lay,icol) 
+               colch4(lay,icol) = 1.e-20 * wkl(4,lay,icol) 
+               colo2 (lay,icol) = 1.e-20 * wkl(5,lay,icol) 
                colmol(lay,icol) = 1.e-20 * coldry(lay,icol) + colh2o(lay,icol) 
                if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * coldry(lay,icol) 
                if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * coldry(lay,icol) 

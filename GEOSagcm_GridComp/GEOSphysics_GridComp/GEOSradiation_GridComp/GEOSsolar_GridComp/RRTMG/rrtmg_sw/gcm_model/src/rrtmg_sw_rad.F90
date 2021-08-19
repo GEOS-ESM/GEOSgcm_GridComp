@@ -399,7 +399,7 @@ contains
 
 
      ! ----- Modules -----
-      use parrrsw, only : nbndsw, ngptsw, nmol, mxmol, &
+      use parrrsw, only : nbndsw, ngptsw, nmol, &
                           jpband, jpb1, jpb2, rrsw_scon
       use rrsw_con, only : heatfac, oneminus, pi, grav, avogad
       use NRLSSI2, only : initialize_NRLSSI2, &
@@ -502,9 +502,9 @@ contains
       integer :: ibnd, icol, ilay, ilev  ! various indices
 
       ! Atmosphere
-      real :: coldry    (nlay,pncol)     ! dry air column amount
-      real :: wkl (mxmol,nlay,pncol)     ! molecular amounts (mol/cm-2)
-!?pmn abbreviate mxmol and get rid of wkl altogether even better
+      real :: coldry   (nlay,pncol)      ! dry air column amount
+      real :: wkl (nmol,nlay,pncol)      ! molecular amounts (mol/cm-2)
+!?pmn get rid of wkl altogether?
 
       ! solar input
       real :: coszen (pncol)             ! Cosine of solar zenith angle
@@ -1050,10 +1050,8 @@ contains
                   wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
                   wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
                   wkl(3,:,icol) = go3vmr (gicol,1:nlay)
-                  wkl(4,:,icol) = 0.
-                  wkl(5,:,icol) = 0.
-                  wkl(6,:,icol) = gch4vmr(gicol,1:nlay)
-                  wkl(7,:,icol) = go2vmr (gicol,1:nlay)   
+                  wkl(4,:,icol) = gch4vmr(gicol,1:nlay)
+                  wkl(5,:,icol) = go2vmr (gicol,1:nlay)   
                 end do
 
             else
@@ -1126,10 +1124,8 @@ contains
                   wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
                   wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
                   wkl(3,:,icol) = go3vmr (gicol,1:nlay)
-                  wkl(4,:,icol) = 0.
-                  wkl(5,:,icol) = 0.
-                  wkl(6,:,icol) = gch4vmr(gicol,1:nlay)
-                  wkl(7,:,icol) = go2vmr (gicol,1:nlay)  
+                  wkl(4,:,icol) = gch4vmr(gicol,1:nlay)
+                  wkl(5,:,icol) = go2vmr (gicol,1:nlay)  
                enddo
 
             end if  ! clear or cloudy columns
