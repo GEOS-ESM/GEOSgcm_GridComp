@@ -245,10 +245,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -384,10 +384,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -563,10 +563,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -721,10 +721,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -864,10 +864,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -978,10 +978,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1140,10 +1140,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1290,10 +1290,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1396,10 +1396,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1539,10 +1539,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1639,10 +1639,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1720,10 +1720,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1834,10 +1834,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -2007,10 +2007,10 @@ contains
       real,    intent(in), dimension (jpband) :: &
          svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      real, intent(out) :: ssi       (ngptsw,pncol)
-      real, intent(out) :: sfluxzen  (ngptsw,pncol)
-      real, intent(out) :: taug (nlay,ngptsw,pncol)
-      real, intent(out) :: taur (nlay,ngptsw,pncol)
+      real, intent(inout) :: ssi       (ngptsw,pncol)
+      real, intent(inout) :: sfluxzen  (ngptsw,pncol)
+      real, intent(inout) :: taug (nlay,ngptsw,pncol)
+      real, intent(inout) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
