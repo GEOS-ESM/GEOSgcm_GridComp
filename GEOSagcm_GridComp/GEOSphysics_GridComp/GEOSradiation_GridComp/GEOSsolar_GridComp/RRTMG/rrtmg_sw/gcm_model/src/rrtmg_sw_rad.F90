@@ -399,7 +399,7 @@ contains
 
 
      ! ----- Modules -----
-      use parrrsw, only : nbndsw, ngptsw, nmol, &
+      use parrrsw, only : nbndsw, ngptsw, &
                           jpband, jpb1, jpb2, rrsw_scon
       use rrsw_con, only : heatfac, oneminus, pi, grav, avogad
       use NRLSSI2, only : initialize_NRLSSI2, &
@@ -502,9 +502,7 @@ contains
       integer :: ibnd, icol, ilay, ilev  ! various indices
 
       ! Atmosphere
-      real :: coldry   (nlay,pncol)      ! dry air column amount
-      real :: wkl (nmol,nlay,pncol)      ! molecular amounts (mol/cm-2)
-!?pmn get rid of wkl altogether?
+      real :: coldry (nlay,pncol)        ! dry air column amount
 
       ! solar input
       real :: coszen (pncol)             ! Cosine of solar zenith angle
@@ -528,7 +526,7 @@ contains
       real :: colo3   (nlay,pncol)         ! column amount (o3)
       real :: colch4  (nlay,pncol)         ! column amount (ch4)
       real :: colo2   (nlay,pncol)         ! column amount (o2)
-      real :: colmol  (nlay,pncol)         ! column amount
+      real :: colmol  (nlay,pncol)         ! column amount (Rayleigh)
 
       ! continuum interpolation coefficients
       integer :: indself (nlay,pncol) 
@@ -1047,11 +1045,11 @@ contains
                ! copy in partition (gases)
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
-                  wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
-                  wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
-                  wkl(3,:,icol) = go3vmr (gicol,1:nlay)
-                  wkl(4,:,icol) = gch4vmr(gicol,1:nlay)
-                  wkl(5,:,icol) = go2vmr (gicol,1:nlay)   
+                  colh2o(:,icol) = gh2ovmr(gicol,1:nlay)
+                  colco2(:,icol) = gco2vmr(gicol,1:nlay)
+                  colo3 (:,icol) = go3vmr (gicol,1:nlay)
+                  colch4(:,icol) = gch4vmr(gicol,1:nlay)
+                  colo2 (:,icol) = go2vmr (gicol,1:nlay)   
                 end do
 
             else
@@ -1121,11 +1119,11 @@ contains
                ! copy in partition (gases)
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
-                  wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
-                  wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
-                  wkl(3,:,icol) = go3vmr (gicol,1:nlay)
-                  wkl(4,:,icol) = gch4vmr(gicol,1:nlay)
-                  wkl(5,:,icol) = go2vmr (gicol,1:nlay)  
+                  colh2o(:,icol) = gh2ovmr(gicol,1:nlay)
+                  colco2(:,icol) = gco2vmr(gicol,1:nlay)
+                  colo3 (:,icol) = go3vmr (gicol,1:nlay)
+                  colch4(:,icol) = gch4vmr(gicol,1:nlay)
+                  colo2 (:,icol) = go2vmr (gicol,1:nlay)  
                enddo
 
             end if  ! clear or cloudy columns
@@ -1140,17 +1138,19 @@ contains
             do icol = 1,ncol
                do ilay = 1,nlay
                   coldry(ilay,icol) = (plev(ilay,icol)-plev(ilay+1,icol)) * 1.e3 * avogad / &
-                     (1.e2 * grav * ((1.-wkl(1,ilay,icol)) * amd + wkl(1,ilay,icol) * amw) * &
-                     (1. + wkl(1,ilay,icol)))
+                     (1.e2 * grav * ((1.-colh2o(ilay,icol)) * amd + colh2o(ilay,icol) * amw) * &
+                     (1. + colh2o(ilay,icol)))
                enddo
             enddo
 
             ! gases also to molecules/cm^2
             do icol = 1,ncol
                do ilay = 1,nlay
-                  do imol = 1,nmol
-                     wkl(imol,ilay,icol) = coldry(ilay,icol) * wkl(imol,ilay,icol)
-                  end do
+                  colh2o(ilay,icol) = coldry(ilay,icol) * colh2o(ilay,icol)
+                  colco2(ilay,icol) = coldry(ilay,icol) * colco2(ilay,icol)
+                  colo3 (ilay,icol) = coldry(ilay,icol) * colo3 (ilay,icol)
+                  colch4(ilay,icol) = coldry(ilay,icol) * colch4(ilay,icol)
+                  colo2 (ilay,icol) = coldry(ilay,icol) * colo2 (ilay,icol)
                end do
             end do
 
@@ -1178,10 +1178,9 @@ contains
             ! by interpolating data from stored reference atmospheres.
 
             call setcoef_sw( &
-               pncol, ncol, nlay, play, tlay, coldry, wkl, &
-               laytrop, jp, jt, jt1, &
+               pncol, ncol, nlay, play, tlay, coldry, &
                colch4, colco2, colh2o, colmol, colo2, colo3, &
-               fac00, fac01, fac10, fac11, &
+               laytrop, jp, jt, jt1, fac00, fac01, fac10, fac11, &
                selffac, selffrac, indself, forfac, forfrac, indfor)
 
             ! compute sw radiative fluxes

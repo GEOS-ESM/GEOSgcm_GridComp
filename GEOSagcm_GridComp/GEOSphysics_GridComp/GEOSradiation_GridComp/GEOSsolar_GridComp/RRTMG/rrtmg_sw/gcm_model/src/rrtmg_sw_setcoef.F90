@@ -1,5 +1,3 @@
-!? pmn size of mxmol ?
-
 module rrtmg_sw_setcoef
 
 !  --------------------------------------------------------------------------
@@ -14,7 +12,6 @@ module rrtmg_sw_setcoef
 
 ! ------- Modules -------
 
-   use parrrsw, only : nmol
    use rrsw_ref, only : pref, preflog, tref
    use iso_fortran_env, only : error_unit
 
@@ -24,10 +21,9 @@ contains
 
    !----------------------------------------------------------------------------
    subroutine setcoef_sw( &
-      pncol, ncol, nlayers, pavel, tavel, coldry, wkl, &
-      laytrop, jp, jt, jt1, &
+      pncol, ncol, nlay, pavel, tavel, coldry, &
       colch4, colco2, colh2o, colmol, colo2, colo3, &
-      fac00, fac01, fac10, fac11, &
+      laytrop, jp, jt, jt1, fac00, fac01, fac10, fac11, &
       selffac, selffrac, indself, forfac, forfrac, indfor)
    !----------------------------------------------------------------------------
    !
@@ -43,39 +39,40 @@ contains
 
       ! ----- Input -----
 
-      integer, intent(in) :: pncol    ! dimensioned num of gridcols
-      integer, intent(in) :: ncol     ! actual number of gridcols
-      integer, intent(in) :: nlayers  ! number of layers
+      integer, intent(in) :: pncol  ! dimensioned num of gridcols
+      integer, intent(in) :: ncol   ! actual number of gridcols
+      integer, intent(in) :: nlay   ! number of layers
       
-      real, intent(in) :: pavel     (nlayers,pncol)  ! layer pressures (mb) 
-      real, intent(in) :: tavel     (nlayers,pncol)  ! layer temperatures (K)
-      real, intent(in) :: coldry    (nlayers,pncol)  ! dry air column density (mol/cm2)
-      real, intent(in) :: wkl  (nmol,nlayers,pncol)  ! molecular amounts (mol/cm-2)
+      real, intent(in) :: pavel     (nlay,pncol)  ! layer pressures (mb) 
+      real, intent(in) :: tavel     (nlay,pncol)  ! layer temperatures (K)
+      real, intent(in) :: coldry    (nlay,pncol)  ! dry air column density (mol/cm2)
+
+      ! ----- Input and Output -----
+      ! (molecular amounts, in [mol/cm-2], scaled on output)
+      real, intent(inout) :: colh2o (nlay,pncol)  ! column amount (h2o)
+      real, intent(inout) :: colco2 (nlay,pncol)  ! column amount (co2)
+      real, intent(inout) :: colo3  (nlay,pncol)  ! column amount (o3)
+      real, intent(inout) :: colch4 (nlay,pncol)  ! column amount (ch4)
+      real, intent(inout) :: colo2  (nlay,pncol)  ! column amount (o2)
+      real, intent(inout) :: colmol (nlay,pncol)  ! for Rayleight scatt
 
       ! ----- Output -----
 
-      integer, intent(out) :: laytrop     (pncol)    ! tropopause layer index
-      integer, intent(out) :: jp  (nlayers,pncol)
-      integer, intent(out) :: jt  (nlayers,pncol)
-      integer, intent(out) :: jt1 (nlayers,pncol)
-
-      real, intent(out) :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real, intent(out) :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real, intent(out) :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real, intent(out) :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real, intent(out) :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real, intent(out) :: colmol (nlayers,pncol)    ! 
+      integer, intent(out) :: laytrop  (pncol)    ! tropopause layer index
+      integer, intent(out) :: jp  (nlay,pncol)
+      integer, intent(out) :: jt  (nlay,pncol)
+      integer, intent(out) :: jt1 (nlay,pncol)
 
       ! continuum interpolation coefficients
-      integer, intent(out) :: indself  (nlayers,pncol) 
-      integer, intent(out) :: indfor   (nlayers,pncol) 
-      real,    intent(out) :: selffac  (nlayers,pncol) 
-      real,    intent(out) :: selffrac (nlayers,pncol) 
-      real,    intent(out) :: forfac   (nlayers,pncol) 
-      real,    intent(out) :: forfrac  (nlayers,pncol) 
+      integer, intent(out) :: indself  (nlay,pncol) 
+      integer, intent(out) :: indfor   (nlay,pncol) 
+      real,    intent(out) :: selffac  (nlay,pncol) 
+      real,    intent(out) :: selffrac (nlay,pncol) 
+      real,    intent(out) :: forfac   (nlay,pncol) 
+      real,    intent(out) :: forfrac  (nlay,pncol) 
 
       ! pressure and temperature interpolation coefficients
-      real,    intent(out),  dimension (nlayers,pncol) &
+      real,    intent(out),  dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
 
       ! ----- Local -----
@@ -86,23 +83,23 @@ contains
       ! Initializations
       real, parameter :: stpfac = 296. / 1013. 
 
-      ! Locate tropopause: laytrop in [1,nlayers-1] required.
-      ! Layer 1 is lowest, layer nlayers is at top of model atmos.
+      ! Locate tropopause: laytrop in [1,nlay-1] required.
+      ! Layer 1 is lowest, layer nlay is at top of model atmos.
       ! Note: plog(laytrop) >= 4.56, but plog(laytrop+1) < 4.56.
       laytrop = 0
       do icol = 1,ncol
-         do lay = 1,nlayers
+         do lay = 1,nlay
             plog = log(pavel(lay,icol))
             if (plog >= 4.56) laytrop(icol) = laytrop(icol) + 1
          end do
-         if (laytrop(icol) == 0 .or. laytrop(icol) == nlayers) then
+         if (laytrop(icol) == 0 .or. laytrop(icol) == nlay) then
             write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
             write(error_unit,*) 'tropopause not found at icol:', icol
          endif
       end do
 
       do icol = 1, ncol
-         do lay = 1, nlayers
+         do lay = 1, nlay
 
             ! Find the two reference pressures on either side of the
             ! layer pressure. Store them in JP and JP1. Store in FP the
@@ -164,7 +161,7 @@ contains
             endif
             ft1 = ((tavel(lay,icol)-tref(jp1))/15.) - float(jt1(lay,icol)-3)
 
-            water = wkl(1,lay,icol) / coldry(lay,icol) 
+            water = colh2o(lay,icol) / coldry(lay,icol) 
             scalefac = pavel(lay,icol)  * stpfac / tavel(lay,icol) 
 
             ! If the pressure is less than ~100mb, perform a different
@@ -179,11 +176,11 @@ contains
 
                ! Calculate needed column amounts.
 
-               colh2o(lay,icol) = 1.e-20 * wkl(1,lay,icol) 
-               colco2(lay,icol) = 1.e-20 * wkl(2,lay,icol) 
-               colo3 (lay,icol) = 1.e-20 * wkl(3,lay,icol) 
-               colch4(lay,icol) = 1.e-20 * wkl(4,lay,icol) 
-               colo2 (lay,icol) = 1.e-20 * wkl(5,lay,icol) 
+               colh2o(lay,icol) = 1.e-20 * colh2o(lay,icol) 
+               colco2(lay,icol) = 1.e-20 * colco2(lay,icol) 
+               colo3 (lay,icol) = 1.e-20 * colo3 (lay,icol) 
+               colch4(lay,icol) = 1.e-20 * colch4(lay,icol) 
+               colo2 (lay,icol) = 1.e-20 * colo2 (lay,icol) 
                colmol(lay,icol) = 1.e-20 * coldry(lay,icol) + colh2o(lay,icol) 
                if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * coldry(lay,icol) 
                if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * coldry(lay,icol) 
@@ -213,11 +210,11 @@ contains
 
                ! Calculate needed column amounts.
 
-               colh2o(lay,icol) = 1.e-20 * wkl(1,lay,icol) 
-               colco2(lay,icol) = 1.e-20 * wkl(2,lay,icol) 
-               colo3 (lay,icol) = 1.e-20 * wkl(3,lay,icol) 
-               colch4(lay,icol) = 1.e-20 * wkl(4,lay,icol) 
-               colo2 (lay,icol) = 1.e-20 * wkl(5,lay,icol) 
+               colh2o(lay,icol) = 1.e-20 * colh2o(lay,icol) 
+               colco2(lay,icol) = 1.e-20 * colco2(lay,icol) 
+               colo3 (lay,icol) = 1.e-20 * colo3 (lay,icol) 
+               colch4(lay,icol) = 1.e-20 * colch4(lay,icol) 
+               colo2 (lay,icol) = 1.e-20 * colo2 (lay,icol) 
                colmol(lay,icol) = 1.e-20 * coldry(lay,icol) + colh2o(lay,icol) 
                if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * coldry(lay,icol) 
                if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * coldry(lay,icol) 

@@ -28,7 +28,6 @@
       integer , parameter :: nbndsw = 14     !jpsw, ksw
       integer , parameter :: naerec  = 6     !jpaer
       integer , parameter :: nstr   = 2
-      integer , parameter :: nmol   = 5
 ! Use for 112 g-point model   
       integer , parameter :: ngptsw = 112    !jpgpt
 ! Use for 224 g-point model   
