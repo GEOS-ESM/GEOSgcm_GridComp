@@ -1,4 +1,3 @@
-!pmn? fix for binary cldymc
 module rrtmg_sw_spcvmc
 
 !  --------------------------------------------------------------------------
@@ -281,20 +280,21 @@ contains
 
       ! Band integration for clear cases      
       do icol = 1,ncol
-         do ikl = 1,nlay+1
-            jk = nlay+2-ikl
-            do iw = 1,ngptsw
-               jb = ngb(iw)
-               ibm = jb-15
+         do iw = 1,ngptsw
+            jb = ngb(iw)
+            ibm = jb-15
 
-               ! Adjust incoming flux for Earth/Sun distance and zenith angle
-               if (isolvar < 0) then
-                  ! No solar variability and no solar cycle
-                  zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
-               else
-                  ! Solar variability with averaged or specified solar cycle
-                  zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
-               endif
+            ! Adjust incoming flux for Earth/Sun distance and zenith angle
+            if (isolvar < 0) then
+               ! No solar variability and no solar cycle
+               zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
+            else
+               ! Solar variability with averaged or specified solar cycle
+               zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
+            endif
+
+            do ikl = 1,nlay+1
+               jk = nlay+2-ikl
 
                ! Accumulate spectral fluxes over whole spectrum  
                pbbcu   (ikl,icol) = pbbcu   (ikl,icol) + zincflx * zfu  (jk,iw,icol)  
@@ -312,8 +312,8 @@ contains
                   pnicddir(ikl,icol) = pnicddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
                endif 
 
-            enddo  ! spectral loop
-         enddo  ! layer loop
+            enddo  ! layer loop
+         enddo  ! spectral loop
       enddo  ! column loop
 
       !!!!!!!!!!!!!!!!
@@ -381,20 +381,21 @@ contains
          !   layer indexing is reversed to go bottom to top for output arrays
 
          do icol = 1,ncol
-            do ikl = 1,nlay+1
-               jk = nlay+2-ikl
-               do iw = 1,ngptsw
-                  jb = ngb(iw)
-                  ibm = jb-15
+            do iw = 1,ngptsw
+               jb = ngb(iw)
+               ibm = jb-15
 
-                  ! Adjust incoming flux for Earth/Sun distance and zenith angle
-                  if (isolvar < 0) then
-                     ! No solar variability and no solar cycle
-                     zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
-                  else
-                     ! Solar variability with averaged or specified solar cycle
-                     zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
-                  endif
+               ! Adjust incoming flux for Earth/Sun distance and zenith angle
+               if (isolvar < 0) then
+                  ! No solar variability and no solar cycle
+                  zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
+               else
+                  ! Solar variability with averaged or specified solar cycle
+                  zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
+               endif
+
+               do ikl = 1,nlay+1
+                  jk = nlay+2-ikl
 
                   ! Accumulate spectral fluxes over whole spectrum  
                   pbbfu   (ikl,icol)  = pbbfu   (ikl,icol) + zincflx * zfu  (jk,iw,icol)  
@@ -412,8 +413,8 @@ contains
                      pnifddir(ikl,icol) = pnifddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
                   endif
 
-               enddo  ! spectral loop
-            enddo  ! layer loop
+               enddo  ! layer loop
+            enddo  ! spectral loop
          enddo  ! column loop
 
       else
@@ -514,8 +515,6 @@ contains
    ! Revised for F90 reformatting: MJIacono, AER, Jul 2006
    ! Revised to add exponential lookup table: MJIacono, AER, Aug 2007
    ! Cleaned up and nodified as per above note: PMNorris, GMAO, Aug 2021
-!?pmn: suspect tble lookup was taken out to GPU-ize ... put back??
-!?pmn: I think LW has table lookup
    !
    ! ------------------------------------------------------------------
 
@@ -685,6 +684,8 @@ contains
 !?pmn no LUT!
 !pmn: this comment is out-of-date
 !pmn: and if we are using exp() I dont think the low tau branch is necessary anymore
+!pmn: search lookup ... consider removing LW lookup too
+!pmn: lookup creates cache issues cf cost of fn evalauation
                      ! Use exponential lookup table for transmittance, or expansion of 
                      ! exponential for low tau
                      if (ze1 <= od_lo) then 
