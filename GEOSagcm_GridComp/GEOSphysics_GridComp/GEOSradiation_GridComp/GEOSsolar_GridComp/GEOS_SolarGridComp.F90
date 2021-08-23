@@ -2297,7 +2297,7 @@ contains
       real, allocatable, dimension(:,:,:) :: TAUAER, SSAAER, ASMAER
       real, allocatable, dimension(:,:)   :: DPR, PL_R, T_R, Q_R, O2_R, O3_R, ZL_R
       real, allocatable, dimension(:,:)   :: CO2_R, CH4_R
-      real, allocatable, dimension(:,:)   :: SWUFLX, SWDFLX, SWHR, SWUFLXC, SWDFLXC, SWHRC 
+      real, allocatable, dimension(:,:)   :: SWUFLX, SWDFLX, SWUFLXC, SWDFLXC
       real, allocatable, dimension(:)     :: NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R
 
       ! pmn: should we update these?
@@ -3722,13 +3722,11 @@ contains
       allocate(O3_R  (size(Q,1),size(Q,2)),__STAT__)
       allocate(CO2_R (size(Q,1),size(Q,2)),__STAT__)
       allocate(CH4_R (size(Q,1),size(Q,2)),__STAT__)
-      ! output fluxes and heating rates
+      ! output fluxes
       allocate(SWUFLX (size(Q,1),size(Q,2)+1),__STAT__)
       allocate(SWDFLX (size(Q,1),size(Q,2)+1),__STAT__)
-      allocate(SWHR   (size(Q,1),size(Q,2)  ),__STAT__)
       allocate(SWUFLXC(size(Q,1),size(Q,2)+1),__STAT__)
       allocate(SWDFLXC(size(Q,1),size(Q,2)+1),__STAT__)
-      allocate(SWHRC  (size(Q,1),size(Q,2)  ),__STAT__)
       ! un-flipped outputs
       allocate(SWUFLXR (size(Q,1),size(Q,2)+1),__STAT__)
       allocate(SWDFLXR (size(Q,1),size(Q,2)+1),__STAT__)
@@ -3857,9 +3855,7 @@ contains
       call MAPL_TimerOn (MAPL,"--RRTMG_INIT")
 
       ! initialize RRTMG SW
-      ! pmn: Is CP argument necessary? ... it was removed for LW because it was
-      ! only used in heating rates, which were externally calculated for LW
-      call RRTMG_SW_INI(MAPL_CP)
+      call RRTMG_SW_INI
 
       call MAPL_TimerOff(MAPL,"--RRTMG_INIT")
       call MAPL_TimerOn (MAPL,"--RRTMG_RUN")
@@ -3979,7 +3975,7 @@ contains
          IAER, TAUAER, SSAAER, ASMAER, &
          ALBVR, ALBVF, ALBNR, ALBNF, &
          NORMFLX, CoresPerNode, &
-         SWUFLX, SWDFLX, SWHR, SWUFLXC, SWDFLXC, SWHRC, &
+         SWUFLX, SWDFLX, SWUFLXC, SWDFLXC, &
          NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R,&
          BNDSOLVAR, INDSOLVAR, SOLCYCFRAC)
 
@@ -4043,10 +4039,8 @@ contains
 
       deallocate(SWUFLX ,__STAT__)
       deallocate(SWDFLX ,__STAT__)
-      deallocate(SWHR   ,__STAT__)
       deallocate(SWUFLXC,__STAT__)
       deallocate(SWDFLXC,__STAT__)
-      deallocate(SWHRC  ,__STAT__)
 
       deallocate(SWUFLXR ,__STAT__)
       deallocate(SWDFLXR ,__STAT__)

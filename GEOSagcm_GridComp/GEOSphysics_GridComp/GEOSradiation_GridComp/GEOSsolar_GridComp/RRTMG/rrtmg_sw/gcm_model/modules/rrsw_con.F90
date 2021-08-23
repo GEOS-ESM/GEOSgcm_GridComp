@@ -1,6 +1,4 @@
-      module rrsw_con
-
-      !use parkind, only : im => kind , rb => kind 
+module rrsw_con
 
       implicit none
       save
@@ -14,8 +12,6 @@
 
 !  name     type     purpose
 ! -----  :  ----   : ----------------------------------------------
-! fluxfac:  real   : radiance to flux conversion factor 
-! heatfac:  real   : flux to heating rate conversion factor
 !oneminus:  real   : 1.-1.e-6
 ! pi     :  real   : pi
 ! grav   :  real   : acceleration of gravity
@@ -28,15 +24,13 @@
 ! radcn1 :  real   : first radiation constant
 ! radcn2 :  real   : second radiation constant
 ! sbcnst :  real   : stefan-boltzmann constant
-!  secdy :  real   : seconds per day
 !------------------------------------------------------------------
 
-      real  :: fluxfac, heatfac
       real  :: oneminus, pi, grav
       real  :: planck, boltz, clight
       real  :: avogad, alosmt, gascon
       real  :: radcn1, radcn2
-      real  :: sbcnst, secdy
+      real  :: sbcnst
 
-      end module rrsw_con
+end module rrsw_con
 

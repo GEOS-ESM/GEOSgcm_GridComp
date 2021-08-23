@@ -74,15 +74,13 @@ contains
       iaer, tauaer, ssaaer, asmaer, &
       asdir, asdif, aldir, aldif, &
       normFlx, numCPUs, &
-      swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
+      swuflx, swdflx, swuflxc, swdflxc, &
       nirr, nirf, parr, parf, uvrr, uvrf, &
 
       ! optional inputs
       bndscl, indsolvar, solcycfrac)
 
-!pmn: put heating rates outside??
-
-      use parrrsw,  only : nbndsw
+      use parrrsw, only : nbndsw
 
       ! ----- Inputs -----
 
@@ -236,8 +234,6 @@ contains
       real, intent(out) :: swdflx  (ncol,nlay+1)     ! Total sky SW down flux (W/m2)
       real, intent(out) :: swuflxc (ncol,nlay+1)     ! Clear sky SW up   flux (W/m2)
       real, intent(out) :: swdflxc (ncol,nlay+1)     ! Clear sky SW down flux (W/m2)
-      real, intent(out) :: swhr    (ncol,nlay)       ! Total sky SW heating rate (K/d)
-      real, intent(out) :: swhrc   (ncol,nlay)       ! Clear sky SW heating rate (K/d)
 
       ! Output added for Land/Surface process
       real, intent(out) :: nirr    (ncol)            ! Near-IR direct  down SW flux (W/m2)
@@ -350,8 +346,8 @@ contains
       end if
 
       ! set up condensate inhomogeneity tables
+      ! pmn: put in GCM init eventually
       call initialize_inhomogeneity(1)
-! pmn: put in GCM init eventually
 
       ! set column partition size pncol
       if (rpart > 0) then
@@ -371,7 +367,7 @@ contains
          dyofyr, zm, alat, &
          iaer, tauaer, ssaaer, asmaer, &
          asdir, asdif, aldir, aldif, &
-         normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
+         normFlx, swuflx, swdflx, swuflxc, swdflxc, &
          nirr, nirf, parr, parf, uvrr, uvrf, &
          ! optional inputs
          bndscl, indsolvar, solcycfrac)
@@ -392,7 +388,7 @@ contains
       dyofyr, gzm, galat, &
       iaer, gtauaer, gssaaer, gasmaer, &
       gasdir, gasdif, galdir, galdif, &
-      normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
+      normFlx, swuflx, swdflx, swuflxc, swdflxc, &
       nirr, nirf, parr, parf, uvrr, uvrf, &
       ! optional inputs
       bndscl, indsolvar, solcycfrac)
@@ -401,7 +397,7 @@ contains
      ! ----- Modules -----
       use parrrsw, only : nbndsw, ngptsw, &
                           jpband, jpb1, jpb2, rrsw_scon
-      use rrsw_con, only : heatfac, oneminus, pi, grav, avogad
+      use rrsw_con, only : oneminus, pi, grav, avogad
       use NRLSSI2, only : initialize_NRLSSI2, &
                           adjust_solcyc_amplitudes, &
                           interpolate_indices, &
@@ -478,8 +474,6 @@ contains
       real, intent(out) :: swdflx  (gncol,nlay+1)      ! Total sky SW down flux (W/m2)
       real, intent(out) :: swuflxc (gncol,nlay+1)      ! Clear sky SW up   flux (W/m2)
       real, intent(out) :: swdflxc (gncol,nlay+1)      ! Clear sky SW down flux (W/m2)
-      real, intent(out) :: swhr    (gncol,nlay)        ! Total sky SW heating rate (K/d)
-      real, intent(out) :: swhrc   (gncol,nlay)        ! Clear sky SW heating rate (K/d)
 
       ! Output added for Land/Surface process
       real, intent(out) :: nirr   (gncol)             ! Near-IR direct  down SW flux (w/m2)
@@ -491,13 +485,8 @@ contains
 
       ! ----- Locals -----
 
-!? pmn review all used
-     
       ! Control
-      integer :: istart                  ! beginning band of calculation
-      integer :: iend                    ! ending band of calculation
       real :: zepsec, zepzen             ! epsilon
-      real :: zdpgcp                     ! flux to heating conversion ratio
 
       integer :: ibnd, icol, ilay, ilev  ! various indices
 
@@ -597,8 +586,6 @@ contains
       ! Output fields 
       ! -------------
 
-      real :: swnflx   (pncol,nlay+2)         ! Total sky SW net flux (W/m2)
-      real :: swnflxc  (pncol,nlay+2)         ! Clear sky SW net flux (W/m2)
       real :: dirdflux (pncol,nlay+2)         ! Direct down SW surface flux
       real :: difdflux (pncol,nlay+2)         ! Diffuse down SW surface flux
       real :: uvdflx   (pncol,nlay+2)         ! Total sky down SW flux, UV/vis  
@@ -634,8 +621,6 @@ contains
       real, parameter :: amdn  = 0.658090  ! Molecular weight of dry air / nitrous oxide
       real, parameter :: amdo2 = 0.905140  ! Molecular weight of dry air / oxygen
 
-      real, parameter :: sbc = 5.67e-08    ! Stefan-Boltzmann constant (W/m2K4)
-
       integer :: n, imol, gicol            ! Loop indices
       real :: adjflx                       ! flux adjustment for Earth/Sun distance
       
@@ -663,10 +648,6 @@ contains
       zepzen = 1.e-10
       oneminus = 1.0 - zepsec
       pi = 2. * asin(1.)	! pmn NZD as per LW in module as parameter
-
-!? pmn
-      istart = jpb1
-      iend = jpb2
 
       ! solar variability: default values
       solvar(:) = 1.
@@ -1185,7 +1166,7 @@ contains
 
             ! compute sw radiative fluxes
             call spcvmc_sw( &
-               cc, pncol, ncol, nlay, istart, iend, &
+               cc, pncol, ncol, nlay, &
                albdif, albdir, &
                cldymcl, taucmc, asmcmc, ssacmc, taormc, &
                taua, asya, omga, cossza, adjflux, &
@@ -1215,21 +1196,6 @@ contains
                      swdflx (gicol,ilev) = zbbfd(ilev,icol) 
                   enddo
 
-                  ! net fluxes
-                  do ilev = 1,nlay+1
-                     swnflxc(icol,ilev)  = swdflxc(gicol,ilev) - swuflxc(gicol,ilev)
-                     swnflx (icol,ilev)  = swdflx (gicol,ilev) - swuflx (gicol,ilev)
-                  enddo
-
-                  ! heating rates
-                  do ilay = 1,nlay
-                     zdpgcp = heatfac / (plev(ilay,icol) - plev(ilay+1,icol))
-                     swhrc(gicol,ilay) = (swnflxc(icol,ilay+1) - swnflxc(icol,ilay) ) * zdpgcp
-                     swhr (gicol,ilay) = (swnflx (icol,ilay+1) - swnflx (icol,ilay) ) * zdpgcp
-                  enddo
-                  swhrc(gicol,nlay) = 0. 
-                  swhr (gicol,nlay) = 0. 
-
                enddo
 
                ! surface broadband fluxes
@@ -1253,19 +1219,6 @@ contains
                      swuflx (gicol,ilev) = zbbfu(ilev,icol) 
                      swdflx (gicol,ilev) = zbbfd(ilev,icol) 
                   enddo
-
-                  do ilev = 1,nlay+1
-                     swnflxc(icol,ilev)  = swdflxc(gicol,ilev) - swuflxc(gicol,ilev)
-                     swnflx (icol,ilev)  = swdflx (gicol,ilev) - swuflx (gicol,ilev)
-                  enddo
-
-                  do ilay = 1,nlay
-                     zdpgcp = heatfac / (plev(ilay,icol) - plev(ilay+1,icol))
-                     swhrc(gicol,ilay) = (swnflxc(icol,ilay+1) - swnflxc(icol,ilay)) * zdpgcp
-                     swhr (gicol,ilay) = (swnflx (icol,ilay+1) - swnflx (icol,ilay)) * zdpgcp
-                  enddo
-                  swhrc(gicol,nlay) = 0. 
-                  swhr (gicol,nlay) = 0. 
 
                enddo
 

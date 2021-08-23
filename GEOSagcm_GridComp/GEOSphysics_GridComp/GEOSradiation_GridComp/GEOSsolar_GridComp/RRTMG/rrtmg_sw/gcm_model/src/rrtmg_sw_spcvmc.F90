@@ -27,7 +27,7 @@ contains
 
    ! ---------------------------------------------------------------------------
    subroutine spcvmc_sw ( &
-      cc, pncol, ncol, nlay, istart, iend, &
+      cc, pncol, ncol, nlay, &
       palbd, palbp, &
       pcldymc, ptaucmc, pasycmc, pomgcmc, ptaormc, &
       ptaua, pasya, pomga, prmu0, adjflux, &
@@ -76,8 +76,6 @@ contains
 
       integer, intent(in) :: pncol, ncol, cc
       integer, intent(in) :: nlay
-      integer, intent(in) :: istart
-      integer, intent(in) :: iend
       integer, intent(in) :: laytrop (pncol)
 
       integer, intent(in) :: jp  (nlay,pncol) 
