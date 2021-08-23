@@ -602,8 +602,8 @@ subroutine gw_beres_ifc( band, &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax, &
-          tau_adjust=pint_adj)
+          lapply_effgw_in=gw_apply_tndmax)
+!         tau_adjust=pint_adj)
 
 
      ! For orographic waves, don't bother with taucd, since there are no
