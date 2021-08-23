@@ -3294,36 +3294,19 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vti (k) = vf_min
             else
                 tc (k) = tk (k) - tice ! deg C
+                IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
                ! -----------------------------------------------------------------------
                ! Combine 'large-scale' Deng and Mace (2008, grl)
                ! -----------------------------------------------------------------------
-                IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
                 viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                ! -----------------------------------------------------------------------
-               ! With 'convective' Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
-               !                               midlatitude cirrus: Results from SPartICus'
+               ! With 'convective' Deng and Mace (2008, grl)
                ! -----------------------------------------------------------------------
-                IWC    = IWC * 1.e3 ! Units are mg/m3
-                viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC) + 68.85))
+                viCNV   = anv_icefall*10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
                ! Combine 
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                ! Update units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
-               ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-               !------ice cloud effective radius ----- [klaus wyser, 1998]
-                if(tk(k)>273.15) then
-                 rBB  = -2.
-                else
-                 IWC  = qi (k) * den (k)
-                 rBB  = -2. + log10(1.e3*IWC/50.)*(1.e-3*(273.15-tk(k))**1.5)
-                endif
-                rBB   = MIN((MAX(rBB,-6.)),-2.)
-                DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-                lnP   = log(MAX(1.0,pl(k)/100.0))
-                C0    = -1.04 + 0.298*lnP
-                C1    =  0.67 - 0.097*lnP
-               ! apply pressure scaling
-                vti (k) = vti (k) * (C0 + C1*log(DIAM))
                ! Limits
                 vti (k) = min (vi_max, max (vf_min, vti (k)))
             endif

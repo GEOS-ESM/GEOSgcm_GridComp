@@ -548,7 +548,7 @@ subroutine gw_beres_ifc( band, &
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
-   logical  :: gw_apply_tndmax  	!- default .TRUE. for Anisotropic: "Sean" limiters
+   logical, parameter :: gw_apply_tndmax = .TRUE.!- default .TRUE. for Anisotropic: "Sean" limiters
 
    character(len=1) :: cn
    character(len=9) :: fname(4)
@@ -562,9 +562,6 @@ subroutine gw_beres_ifc( band, &
    allocate(tau(ncol,-band%ngwv:band%ngwv,pver+1))
    allocate(gwut(ncol,pver,-band%ngwv:band%ngwv))
    allocate(c(ncol,-band%ngwv:band%ngwv))
-
-     gw_apply_tndmax  = .FALSE.
-
 
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
@@ -587,9 +584,9 @@ subroutine gw_beres_ifc( band, &
 
 
      pint_adj = 1.0
-!WMP pressure scaling from GEOS top to 0.4mb
-     where (pint < 40.0)
-       pint_adj = (pint/40.0)**3
+!WMP pressure scaling from GEOS top to 0.1mb
+     where (pint < 10.0)
+       pint_adj = (pint/10.0)**3
      endwhere
 !WMP pressure scaling from GEOS
 
@@ -602,9 +599,7 @@ subroutine gw_beres_ifc( band, &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax)
-!         tau_adjust=pint_adj)
-
+          lapply_effgw_in=gw_apply_tndmax, tau_adjust=pint_adj)
 
      ! For orographic waves, don't bother with taucd, since there are no
      ! momentum conservation routines or directional diagnostics.
