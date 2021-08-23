@@ -1,3 +1,7 @@
+!pmn: table lookup creates cache issues cf cost of fn evaluation
+!pmn: and must have at some point been removed ... consider
+!pmn: removing LW table lookup as well.
+
 module rrtmg_sw_spcvmc
 
 !  --------------------------------------------------------------------------
@@ -207,8 +211,6 @@ contains
          selffac, selffrac, indself, forfac, forfrac, indfor, &
          isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
          ssi, zsflxzen, ztaug, ztaur)
-
-!pmn? combine icol loops and remove icol dimension from temporaries
 
       ! Set fixed boundary values.
       ! The sfc (jk=nlay+1) zref[d] & ztra[d] never change from these.
@@ -470,8 +472,6 @@ contains
       enddo                    
 
    end subroutine spcvmc_sw
-!?pmn: TODO outer ncol loop?
-!?pmn: TODO improve routines below
 
    ! --------------------------------------------------------------------
    subroutine reftra_sw(pncol, ncol, nlay, &
@@ -681,27 +681,22 @@ contains
                      ze1 = min(zrk * zto1, 5.)
                      ze2 = min(zto1 / prmuz, 5.)
 
-!?pmn no LUT!
-!pmn: this comment is out-of-date
-!pmn: and if we are using exp() I dont think the low tau branch is necessary anymore
-!pmn: search lookup ... consider removing LW lookup too
-!pmn: lookup creates cache issues cf cost of fn evalauation
-                     ! Use exponential lookup table for transmittance, or expansion of 
-                     ! exponential for low tau
+                     ! exponential transmittance (or expansion of exp()for low tau)
+                     ! pmn: run with od_lo approx commented out was a little slower,
+                     !      so have kept it, even though pure exp() is more accurate
+                     !      and avoids a discontinuity.
                      if (ze1 <= od_lo) then 
                         zem1 = 1. - ze1 + 0.5 * ze1 * ze1
-                        zep1 = 1. / zem1
                      else
                         zem1 = exp(-ze1)
-                        zep1 = 1. / zem1
                      endif
+                     zep1 = 1. / zem1
                      if (ze2 <= od_lo) then 
                         zem2 = 1. - ze2 + 0.5 * ze2 * ze2
-                        zep2 = 1. / zem2
                      else
                         zem2 = exp(-ze2)
-                        zep2 = 1. / zem2
                      endif
+                     zep2 = 1. / zem2
 
                      zdenr = zr4*zep1 + zr5*zem1
                      zdent = zt4*zep1 + zt5*zem1
