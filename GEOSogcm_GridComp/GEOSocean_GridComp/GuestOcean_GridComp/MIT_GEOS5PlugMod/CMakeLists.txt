@@ -34,21 +34,21 @@ file(COPY ${MITGCM_CONFIG_DIR}/code
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES MAPL mitgcmuv mitgcmuv_driver
-  INCLUDES ${MITGCM_BUILD_DIR}/code_split_driver
+  DEPENDENCIES MAPL $<BUILD_INTERFACE:mitgcmuv> $<BUILD_INTERFACE:mitgcmuv_driver>
+  INCLUDES $<BUILD_INTERFACE:${MITGCM_BUILD_DIR}/code_split_driver>
   )
 
 target_link_libraries(${this} PUBLIC
-  libmitgcmuv_driver.a
+  $<BUILD_INTERFACE:mitgcmuv_driver>
 )
 
 target_link_libraries(${this} PUBLIC
-  libmitgcmuv.a
+  $<BUILD_INTERFACE:mitgcmuv>
 )
 
 target_link_directories(${this} PUBLIC
-  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver
-  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/build
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/build>
 )
 
 add_custom_target(
