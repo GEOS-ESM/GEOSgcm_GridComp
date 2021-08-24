@@ -1,3 +1,5 @@
+esma_set_this ()
+
 if ( NOT BUILD_MIT_OCEAN )
   esma_add_subdirectories(
     GEOSdataseaice_GridComp

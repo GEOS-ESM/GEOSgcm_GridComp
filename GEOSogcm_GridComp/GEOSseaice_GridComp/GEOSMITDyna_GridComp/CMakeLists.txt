@@ -2,10 +2,10 @@ esma_set_this ()
 
 esma_add_library (${this} 
    SRCS GEOS_MITDynaGridComp.F90 
-   DEPENDENCIES MAPL LANL_cice
-   INCLUDES ${INC_ESMF} ${INC_NETCDF})
+   DEPENDENCIES MAPL
+)
 
-target_compile_definitions(${this} PRIVATE DIAGOUT MODIFY_TOPOGRAPHY USE_R8)
+target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 
 

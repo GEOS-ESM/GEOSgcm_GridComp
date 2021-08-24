@@ -11,5 +11,7 @@ endif()
 esma_add_library (${this}
   SRCS GuestOcean_GridComp.F90
   DEPENDENCIES GEOSdatasea_GridComp MAPL
-  INCLUDES ${INC_ESMF})
+)
+
+target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 

@@ -25,9 +25,9 @@ module GEOS_MITDynaGridCompMod
 
   use ESMF
   use MAPL
-  use ice_domain_size,    only: init_domain_size
-  use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
-  use ice_work,           only: init_work
+!@@  use ice_domain_size,    only: init_domain_size
+!@@  use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
+!@@  use ice_work,           only: init_work
 
   implicit none
   private
@@ -1458,14 +1458,14 @@ module GEOS_MITDynaGridCompMod
     ! Do some necessary CICE initialization
     !--------------------------------------
 
-    call init_domain_size(OGCM_IM, OGCM_JM, OGCM_NX, OGCM_NY, NPES)
+!@@    call init_domain_size(OGCM_IM, OGCM_JM, OGCM_NX, OGCM_NY, NPES)
 
-    call alloc_dyna_arrays( MAPL_AM_I_Root(), Iam )
-    call init_work            ! work arrays
+!@@    call alloc_dyna_arrays( MAPL_AM_I_Root(), Iam )
+!@@    call init_work            ! work arrays
 
-    if(MAPL_AM_I_ROOT()) then
-       print*, 'CICE work array initialized'
-    endif
+!@@    if(MAPL_AM_I_ROOT()) then
+!@@       print*, 'CICE work array initialized'
+!@@    endif
  
 
 ! All Done
