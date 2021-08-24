@@ -394,30 +394,6 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DTDT_RDG',                                  &
-        LONG_NAME  = 'air_temperature_tendency_due_to_orographic_GWD', &
-        UNITS      = 'K s-1',                                  &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DUDT_RDG',                                  &
-        LONG_NAME  = 'tendency_of_eastward_wind_due_to_orographic_GWD',               &
-        UNITS      = 'm s-2',                                     &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DVDT_RDG',                                  &
-        LONG_NAME  = 'tendency_of_northward_wind_due_to_orographic_GWD',              &
-        UNITS      = 'm s-2',                                     &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DTDT_BKG',                                  &
         LONG_NAME  = 'air_temperature_tendency_due_to_background_GWD', &
         UNITS      = 'K s-1',                                     &
@@ -659,23 +635,23 @@ contains
         VERIFY_(STATUS)      
         call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'GBXAR', &
-             LONG_NAME  = 'NA', &
+             LONG_NAME  = 'grid box area', &
              UNITS      = 'NA', &
              DIMS       = MAPL_DimsHorzOnly,                    &
              VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
         VERIFY_(STATUS)      
         call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'HWDTH', &
-             LONG_NAME  = 'NA', &
-             UNITS      = 'NA', &
+             LONG_NAME  = 'width of mountain ridges', &
+             UNITS      = 'km', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
              VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
         VERIFY_(STATUS)      
         call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'CLNGT', &
-             LONG_NAME  = 'NA', &
-             UNITS      = 'NA', &
+             LONG_NAME  = 'width of mountain ridges', &
+             UNITS      = 'km', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
              VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
@@ -1236,7 +1212,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:)    :: PEGWD, PEORO,  PERAY,  PEBKG, BKGERR
 
       real, pointer, dimension(:,:,:)  :: DTDT, DUDT, DVDT, TTMGW
-      real, pointer, dimension(:,:,:)  :: DTDT_RDG, DUDT_RDG, DVDT_RDG
       real, pointer, dimension(:,:,:)  :: DTDT_ORO, DUDT_ORO, DVDT_ORO
       real, pointer, dimension(:,:,:)  :: DTDT_BKG, DUDT_BKG, DVDT_BKG
       real, pointer, dimension(:,:,:)  :: DTDT_RAY, DUDT_RAY, DVDT_RAY
@@ -1268,7 +1243,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD_NCAR , DVDT_GWD_NCAR , DTDT_GWD_NCAR
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG_NCAR , DVDT_ORG_NCAR , DTDT_ORG_NCAR
-      real,              dimension(IM,JM,LM  ) :: DUDT_RDG_NCAR , DVDT_RDG_NCAR , DTDT_RDG_NCAR
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
@@ -1350,9 +1324,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(EXPORT,  SGH_EXP, 'SGH'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PREF_EXP, 'PREF'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,    TTMGW, 'TTMGW'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DTDT_RDG, 'DTDT_RDG', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DUDT_RDG, 'DUDT_RDG', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DVDT_RDG, 'DVDT_RDG', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DTDT_ORO, 'DTDT_ORO', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DUDT_ORO, 'DUDT_ORO', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DVDT_ORO, 'DVDT_ORO', RC=STATUS); VERIFY_(STATUS)
@@ -1824,6 +1795,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          VERIFY_(STATUS)
          call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', RC=STATUS )
          VERIFY_(STATUS)
+         GBXAR = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
 
      ! MXDIS(1,1,1)=1000.
      ! ANGLL(1,1,1)=45.
@@ -1837,7 +1809,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        END WHERE
        if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
         IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-        call Write_Profile( 1.e-6*AREA , AREA, ESMFGRID, 'AREA' )
+       !call Write_Profile( 1.e-6*AREA , AREA, ESMFGRID, 'AREA' )
         call Write_Profile(       GBXAR, AREA, ESMFGRID, 'GBXAR')
         do nrdg = 1, NCAR_NRDG
            IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
@@ -1855,11 +1827,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               beres_desc, beres_band, oro_band,                       &
               PLE,       T,          U,          V,      HT_dpc,      &
               SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
-              ANIXY,     AREA*1.e-6, PREF,                            &
+              ANIXY,     GBXAR,      PREF,                            &
               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
               DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
               DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
-              DUDT_RDG_NCAR,  DVDT_RDG_NCAR,   DTDT_RDG_NCAR,         &
               TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
               TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
               NCAR_EFFGWORO, &
@@ -2125,10 +2096,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !! Tendency diagnostics
 !!---------------------
-
-    if(associated(DUDT_RDG)) DUDT_RDG = DUDT_RDG_NCAR
-    if(associated(DVDT_RDG)) DVDT_RDG = DVDT_RDG_NCAR
-    if(associated(DTDT_RDG)) DTDT_RDG = DTDT_RDG_NCAR
 
     if(associated(DUDT_ORO)) DUDT_ORO = DUDT_ORG
     if(associated(DVDT_ORO)) DVDT_ORO = DVDT_ORG

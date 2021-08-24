@@ -70,7 +70,6 @@ contains
           pmid_dev,     pdel_dev,     rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
           dudt_gwd_dev, dvdt_gwd_dev, dtdt_gwd_dev,                                &
           dudt_org_dev, dvdt_org_dev, dtdt_org_dev,                                &
-          dudt_rdg_dev, dvdt_rdg_dev, dtdt_rdg_dev,                                &
           taugwdx_dev,  taugwdy_dev,  &
           taubkgx_dev,  taubkgy_dev,  &
           effgworo,     effgwbkg,     rc            )
@@ -119,9 +118,6 @@ contains
     real,    intent(  out) :: dudt_org_dev(pcols,pver) ! zonal wind tendency at layer due to orography GWD
     real,    intent(  out) :: dvdt_org_dev(pcols,pver) ! meridional wind tendency at layer  due to orography GWD
     real,    intent(  out) :: dtdt_org_dev(pcols,pver) ! temperature tendency at layer  due to orography GWD
-    real,    intent(  out) :: dudt_rdg_dev(pcols,pver) ! zonal wind tendency at layer due to orography GWD
-    real,    intent(  out) :: dvdt_rdg_dev(pcols,pver) ! meridional wind tendency at layer  due to orography GWD
-    real,    intent(  out) :: dtdt_rdg_dev(pcols,pver) ! temperature tendency at layer  due to orography GWD
     real,    intent(  out) :: taugwdx_dev(pcols)       ! zonal      gravity wave surface    stress
     real,    intent(  out) :: taugwdy_dev(pcols)       ! meridional gravity wave surface    stress
     real,    intent(  out) :: taubkgx_dev(pcols)       ! zonal      gravity wave background stress
@@ -330,9 +326,6 @@ contains
          rdg_cd_llb, trpd_leewv, &
          flx_heat, &
          u_gwt_org_ff, v_gwt_org_ff, t_gwt_org_ff )
-       dudt_rdg_dev(1:pcols,1:pver) = REAL( u_gwt_org_ff(1:pcols,1:pver))  !zonal wind tendency at layer due to orography GWD
-       dvdt_rdg_dev(1:pcols,1:pver) = REAL( v_gwt_org_ff(1:pcols,1:pver))  !meridional wind tendency at layer  due to orography GWD
-       dtdt_rdg_dev(1:pcols,1:pver) = REAL( t_gwt_org_ff(1:pcols,1:pver))  !temperature tendency at layer  due to orography GWD
        u_gwt_ff = u_gwt_ff + u_gwt_org_ff
        v_gwt_ff = v_gwt_ff + v_gwt_org_ff
        t_gwt_ff = t_gwt_ff + t_gwt_org_ff
