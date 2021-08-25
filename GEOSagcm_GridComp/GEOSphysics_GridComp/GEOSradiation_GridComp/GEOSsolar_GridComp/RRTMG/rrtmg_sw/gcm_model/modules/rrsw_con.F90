@@ -12,8 +12,6 @@ module rrsw_con
 
 !  name     type     purpose
 ! -----  :  ----   : ----------------------------------------------
-!oneminus:  real   : 1.-1.e-6
-! pi     :  real   : pi
 ! grav   :  real   : acceleration of gravity
 ! planck :  real   : planck constant
 ! boltz  :  real   : boltzmann constant
@@ -26,11 +24,14 @@ module rrsw_con
 ! sbcnst :  real   : stefan-boltzmann constant
 !------------------------------------------------------------------
 
-      real  :: oneminus, pi, grav
-      real  :: planck, boltz, clight
-      real  :: avogad, alosmt, gascon
-      real  :: radcn1, radcn2
-      real  :: sbcnst
+      real, parameter :: pi = 3.14159265358979323846d0
+      real, parameter :: oneminus = 1. - 1.e-06
+
+      real :: grav
+      real :: planck, boltz, clight
+      real :: avogad, alosmt, gascon
+      real :: radcn1, radcn2
+      real :: sbcnst
 
 end module rrsw_con
 

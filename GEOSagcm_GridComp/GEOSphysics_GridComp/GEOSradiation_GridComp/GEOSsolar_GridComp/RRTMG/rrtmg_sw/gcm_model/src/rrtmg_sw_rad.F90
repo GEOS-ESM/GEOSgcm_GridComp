@@ -1,4 +1,3 @@
-!?pmn: usage of pi from modules only? (as per earth_sun but later: want to keep zero diff for now)
 !  --------------------------------------------------------------------------
 ! |                                                                          |
 ! |  Copyright 2002-2009, Atmospheric & Environmental Research, Inc. (AER).  |
@@ -397,7 +396,7 @@ contains
      ! ----- Modules -----
       use parrrsw, only : nbndsw, ngptsw, &
                           jpband, jpb1, jpb2, rrsw_scon
-      use rrsw_con, only : oneminus, pi, grav, avogad
+      use rrsw_con, only : grav, avogad
       use NRLSSI2, only : initialize_NRLSSI2, &
                           adjust_solcyc_amplitudes, &
                           interpolate_indices, &
@@ -486,7 +485,7 @@ contains
       ! ----- Locals -----
 
       ! Control
-      real :: zepsec, zepzen             ! epsilon
+      real, parameter :: zepzen = 1.e-10                    ! very small cossza
 
       integer :: ibnd, icol, ilay, ilev  ! various indices
 
@@ -642,12 +641,6 @@ contains
 
       ! Initializations
       ! ---------------
-
-!? pmn
-      zepsec = 1.e-06	! pmn later incrp directly in oneminus ... may be NZD (non zero diff)
-      zepzen = 1.e-10
-      oneminus = 1.0 - zepsec
-      pi = 2. * asin(1.)	! pmn NZD as per LW in module as parameter
 
       ! solar variability: default values
       solvar(:) = 1.
@@ -892,8 +885,15 @@ contains
          adjflux(jpb1:jpb2) = adjflux(jpb1:jpb2) * solvar(jpb1:jpb2)
       endif
       
-      ! build profile separation based on cloudiness
-      ! i.e., count and index clear/cloudy grid columns
+      ! Build profile separation based on cloudiness, i.e., count and index
+      ! clear/cloudy gridcolumns. The separation is based on whether the grid-
+      ! column has cloud fraction in any layer (or not). This is based on the
+      ! gridcolumn state, not on the later generated McICA subcolumn ensemble.
+      ! If all layers have zero cld fraction then so will all McICA subcolumns,
+      ! but the converse in not true ... can easily get a clear subcolumn for a
+      ! cloudy gridcolumn. So, the gicol_clr can be assumed to yield all clear
+      ! subcolumns, while the gicol_cld will yield both clear and cloudy sub-
+      ! columns. 
       ncol_clr = 0
       ncol_cld = 0
       do gicol = 1,gncol
@@ -905,16 +905,13 @@ contains
             gicol_clr(ncol_clr) = gicol
          end if
       end do
-!?pmn: note this is built on gridcol cldfrac not mcica
-!but if all layers have zero cld fraction then so will all mcica subcolumns (as long as kiss rand in [0,1) ???)
-!but reverse is not true ... can get a clear subcolumn even for cloudy column
 
       ! num of length pncol partitions needed for clear/cloudy profiles
       npart_clr = ceiling( real(ncol_clr) / real(pncol) )
       npart_cld = ceiling( real(ncol_cld) / real(pncol) )
 
 !? but arent these overwritten by multiple partitions both clear and cloudy?? error ???
-! all clear cases come first so works, and all could cases probably completely overwrite so ok.
+! all clear cases come first so works, and all cloud cases probably completely overwrite so ok.
 ! but I dont like this probably better to deal with more transperantly inside loop.
       ! zero McICA cloud physical props
       cldymcl = .false.
@@ -964,7 +961,7 @@ contains
             ! copy inputs into partition
             ! --------------------------
 
-!? pmn looks to me like some unnec repetition over twio cc cases and could combine
+!? pmn looks to me like some unnec repetition over two cc cases and could combine ??
             if (cc==1) then    
 
                ! -------------

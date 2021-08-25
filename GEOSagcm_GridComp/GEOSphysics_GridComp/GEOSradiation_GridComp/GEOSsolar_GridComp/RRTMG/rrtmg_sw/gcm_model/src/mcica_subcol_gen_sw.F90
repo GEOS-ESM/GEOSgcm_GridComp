@@ -118,7 +118,6 @@ contains
       ! compute decorrelation length scales
       ! -----------------------------------
 
-!pmn y
       ! cloud presence decorrelation length scale
       am1 = 1.4315
       am2 = 2.1219
@@ -133,7 +132,6 @@ contains
          adl(icol) = (am1+am2*exp(-(alat(icol)*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
       end do
 
-!pmn y
       ! condensate decorrelation length scale
       am1 = 0.72192
       am2 = 0.78996
@@ -230,7 +228,11 @@ contains
             do ilay = 1,nlay
 
                if (cond_inhomo .and. cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
-!?pmn: if cld=0. cannot get rand [0,1) >= 1. so clear triggered --- good
+
+                  ! a cloudy subcolumn/layer with inhomogeneous condensate assignment
+                  ! note: cdf1 from rand_num in (0,1) so:
+                  !       cld == 0. can never get here;
+                  !       cld == 1. always comes here (or the homo cloudy branch below).
 
                   cldy_stoch(ilay,isubcol,icol) = .true. 
                   
@@ -250,11 +252,21 @@ contains
                 
                elseif (cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
 
+                  ! a cloudy subcolumn/layer with homogeneous condensate assignment
+                  ! note: cdf1 from rand_num in (0,1) so:
+                  !       cld == 0. can never get here;
+                  !       cld == 1. always comes here (or the inhomo cloudy branch above).
+
                   cldy_stoch(ilay,isubcol,icol) = .true. 
                   clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
                   ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
 
                else
+
+                  ! a clear subcolumn/layer
+                  ! note: per comments above:
+                  !       cld == 0. always comes here;
+                  !       cld == 1. never comes here.
 
                   ! a clear subcolumn
                   cldy_stoch(ilay,isubcol,icol) = .false. 
@@ -271,24 +283,21 @@ contains
    !-------------------------------------------------------
    subroutine rng_kiss(seed1, seed2, seed3, seed4, ran_num)
    !-------------------------------------------------------
+   ! See note below: get ran_num in (0,1)
 
-      real, intent(inout) :: ran_num
+      real, intent(out) :: ran_num
       integer, intent(inout) :: seed1, seed2, seed3, seed4
-!     integer :: m, k, n, kiss
-      integer :: kiss
+      integer :: m, k, n, kiss
 
-!     ! inline function
-!     m(k, n) = ieor (k, ishft (k, n) )
+      ! inline function
+      m(k,n) = ieor(k,ishft(k,n))
 
-     !seed1 = 69069 * seed1 + 1327217885 ! in LW
-      seed1 = 69069 * seed1 + 132721785  ! in SW
-     !seed2 = m (m (m (seed2, 13), - 17), 5)                    ! in LW
-      seed2 = 11002 * iand (seed2, 65535) + ishft (seed2, -16)  ! in SW
-      seed3 = 18000 * iand (seed3, 65535) + ishft (seed3, -16)
-      seed4 = 30903 * iand (seed4, 65535) + ishft (seed4, -16)
-      kiss = seed1 + seed2 + ishft (seed3, 16) + seed4
+      seed1 = 69069 * seed1 + 1327217885
+      seed2 = m(m(m(seed2,13),-17),5)
+      seed3 = 18000 * iand(seed3,65535) + ishft(seed3,-16)
+      seed4 = 30903 * iand(seed4,65535) + ishft(seed4,-16)
+      kiss = seed1 + seed2 + ishft(seed3,16) + seed4
       ran_num = kiss * 2.328306e-10 + 0.5
-!?pmn: explicit force [0,1) ?????
 
    end subroutine rng_kiss
 
