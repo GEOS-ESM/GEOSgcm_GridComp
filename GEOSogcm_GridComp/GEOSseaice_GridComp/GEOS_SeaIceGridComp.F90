@@ -11,10 +11,10 @@ module GEOS_SeaIceGridCompMod
 
   use ESMF
   use MAPL
-#ifndef BUILD_MIT_OCEAN
-  use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices  => SetServices
+#ifdef BUILD_MIT_OCEAN
+  use GEOS_MITDynaGridCompMod,          only : GEOSMITSeaIceSetServices  => SetServices
 #else
-  use GEOSMITDyna_GridCompMod,          only : GEOSMITSeaIceSetServices  => SetServices
+  use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices  => SetServices
 #endif
   use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices   => SetServices
   use ice_prescribed_mod,                only : ice_nudging
@@ -111,20 +111,19 @@ contains
        SEAICE_NAME="DATASEAICE"
        ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, __RC__)
     else
+#ifdef BUILD_MIT_OCEAN
+       ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=GEOSMITSeaIceSetServices, __RC__)
+#else             
        call MAPL_GetResource ( MAPL, SEAICE_NAME, Label="SEAICE_NAME:", DEFAULT="CICE4", __RC__ )
        select case (trim(SEAICE_NAME))
-#ifndef BUILD_MIT_OCEAN
           case ("CICE4")
              ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE4SeaIceSetServices, __RC__)
-#else             
-          case ("MIT")
-             ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=GEOSMITSeaIceSetServices, __RC__)
-#endif             
           case default
              charbuf_ = "SEAICE_NAME: " // trim(SEAICE_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)
              VERIFY_(999)
        end select
+#endif             
     endif
 
     call MAPL_GetResource( MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, __RC__ )

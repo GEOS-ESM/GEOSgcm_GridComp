@@ -39,11 +39,11 @@ esma_add_library (${this}
   )
 
 target_link_libraries(${this} PUBLIC
-  $<BUILD_INTERFACE:mitgcmuv_driver>
+  libmitgcmuv_driver.a
 )
 
 target_link_libraries(${this} PUBLIC
-  $<BUILD_INTERFACE:mitgcmuv>
+  libmitgcmuv.a
 )
 
 target_link_directories(${this} PUBLIC

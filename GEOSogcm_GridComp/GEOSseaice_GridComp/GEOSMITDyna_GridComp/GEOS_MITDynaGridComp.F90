@@ -1522,7 +1522,7 @@ module GEOS_MITDynaGridCompMod
     call MAPL_TimerOn(MAPL,"TOTAL"   )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-    call dealloc_dyna_arrays( MAPL_AM_I_ROOT(), Iam )
+!@@    call dealloc_dyna_arrays( MAPL_AM_I_ROOT(), Iam )
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
