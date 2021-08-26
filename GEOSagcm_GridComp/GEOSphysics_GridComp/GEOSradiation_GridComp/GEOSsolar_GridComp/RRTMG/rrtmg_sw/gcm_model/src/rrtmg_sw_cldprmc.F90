@@ -74,7 +74,7 @@ contains
 
       ! ------- Local -------
 
-      real, parameter :: eps = 1.e-06      ! small number cf 1.
+      real, parameter :: epsg = 1.e-06     ! small number cf 1. for gice limit
       real, parameter :: cldmin = 1.e-20   ! minimum value for cloud quantities
 
       integer :: ib, lay, istr, ig, icol
@@ -89,21 +89,9 @@ contains
       real :: tauliqorig, scatliq, ssaliq, tauliq
       real :: fdelta
 
-      logical :: cloudy (nlay,ngptsw,pncol)
-
       real, dimension (nlay,ngptsw,pncol) :: &
          extcoice, gice, ssacoice, forwice, &
          extcoliq, gliq, ssacoliq, forwliq
-
-      ! --------------------------------
-      ! Locations where do cloud optics.
-      ! --------------------------------
-
-      do icol = 1,ncol
-         cloudy(:,:,icol) = cldymc(:,:,icol) .and. &
-            (ciwpmc(:,:,icol) + clwpmc(:,:,icol)) >= cldmin
-      end do
-!?pmn: perhaps update cldymc here and make intent(inout)
 
       ! ---------------------------------------------------------
       ! Calculation of absorption coefficients due to ice clouds.
@@ -119,7 +107,7 @@ contains
             do ig = 1,ngptsw 
                ib = icxa(ngb(ig))
                do lay = 1,nlay
-                  if (cloudy(lay,ig,icol)) then
+                  if (cldymc(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
                         extcoice(lay,ig,icol) = 0.
@@ -132,8 +120,8 @@ contains
                         ssacoice(lay,ig,icol) = 1. - cbari(ib) - dbari(ib) * radice
                         gice    (lay,ig,icol) = ebari(ib) + fbari(ib) * radice
                         ! Ensure gice within physical limits for large particles
-                        if (gice(lay,ig,icol) >= 1.) gice(lay,ig,icol) = 1. - eps
-!?pmn change to max (..., 1.-eps) when NZD
+                        ! pmn: this was slighly changed to make continuous with radice
+                        gice(lay,ig,icol) = min(gice(lay,ig,icol),1.-epsg)
                         forwice (lay,ig,icol) = gice(lay,ig,icol) * gice(lay,ig,icol)
                      endif
 
@@ -150,7 +138,7 @@ contains
             do ig = 1,ngptsw 
                ib = ngb(ig)
                do lay = 1,nlay
-                  if (cloudy(lay,ig,icol)) then
+                  if (cldymc(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
                         extcoice(lay,ig,icol) = 0.
@@ -182,7 +170,7 @@ contains
             do ig = 1,ngptsw 
                ib = ngb(ig)
                do lay = 1,nlay
-                  if (cloudy(lay,ig,icol)) then
+                  if (cldymc(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
                         extcoice(lay,ig,icol) = 0.
@@ -218,7 +206,7 @@ contains
             do ig = 1,ngptsw 
                ib = ngb(ig)
                do lay = 1,nlay
-                  if (cloudy(lay,ig,icol)) then
+                  if (cldymc(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
                         extcoice(lay,ig,icol) = 0.
@@ -253,7 +241,7 @@ contains
             do ig = 1,ngptsw 
                ib = ngb(ig)
                do lay = 1,nlay
-                  if (cloudy(lay,ig,icol)) then
+                  if (cldymc(lay,ig,icol)) then
 
                      if (clwpmc(lay,ig,icol) == 0.) then
                         extcoliq(lay,ig,icol) = 0.
@@ -288,7 +276,7 @@ contains
       do icol = 1,ncol
          do ig = 1,ngptsw 
             do lay = 1,nlay
-               if (cloudy(lay,ig,icol)) then
+               if (cldymc(lay,ig,icol)) then
 
                   tauliqorig = clwpmc(lay,ig,icol) * extcoliq(lay,ig,icol)
                   tauiceorig = ciwpmc(lay,ig,icol) * extcoice(lay,ig,icol)
@@ -338,7 +326,7 @@ contains
                           / (scatliq + scatice)
                   endif 
 
-               else  ! not cloudy(lay,ig,icol)
+               else  ! not cldymc(lay,ig,icol)
 
                   taormc(lay,ig,icol) = 0.
                   taucmc(lay,ig,icol) = 0.

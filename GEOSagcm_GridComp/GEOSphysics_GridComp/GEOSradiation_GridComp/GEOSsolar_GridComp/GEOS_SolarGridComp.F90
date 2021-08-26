@@ -2263,7 +2263,6 @@ contains
 
 !  DAYTIME ONLY COPY OF VARIABLES
 
-!? pmn: tidy up
       real, pointer, dimension(:  )   :: ALBNR,ALBNF,ALBVR,ALBVF,ZT,SLR1D, &
                                          UVRR,UVRF,PARR,PARF,NIRR,NIRF,    &
                                          Ig1D, Jg1D
@@ -2418,7 +2417,6 @@ contains
 
       character(len=ESMF_MAXSTR)      :: NAME
 
-!? pmn: tidy up
       integer :: DIMS
       integer :: NumVars
       integer :: L, L1, LN, J, J1, JN, NA, K
@@ -3740,10 +3738,9 @@ contains
       allocate(UVRR_R (size(Q,1)),__STAT__)
       allocate(UVRF_R (size(Q,1)),__STAT__)
 
-      ! Set flags related to cloud properties
-      ! -------------------------------------
+      ! Set flags related to cloud properties (see RRTMG_SW)
+      ! ----------------------------------------------------
 
-!? pmn: describe meanings 
       ICEFLGSW = 3
       LIQFLGSW = 1
 

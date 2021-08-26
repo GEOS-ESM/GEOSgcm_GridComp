@@ -917,10 +917,10 @@ contains
          omga = 1.
       end if
 
-      ! partitioning over clear (cc=1) and cloudy (cc=2) columns
-      ! --------------------------------------------------------
+      ! partitioning over clear (cc=1) and cloudy (cc=2) gridcolumns
+      ! ------------------------------------------------------------
 
-      do cc = 1,2  ! outer loop over clear then cloudy columns
+      do cc = 1,2  ! outer loop over clear then cloudy gridcolumns
 
          if (cc == 1) then 
             ! clear
@@ -944,12 +944,11 @@ contains
             ! copy inputs into partition
             ! --------------------------
 
-!? pmn looks to me like some unnec repetition over two cc cases and could combine ??
-            if (cc==1) then    
+            if (cc == 1) then    
 
-               ! -------------
-               ! Clear columns
-               ! -------------
+               ! -----------------
+               ! Clear gridcolumns
+               ! -----------------
 
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
@@ -1015,9 +1014,9 @@ contains
 
             else
 
-               ! --------------
-               ! Cloudy columns
-               ! --------------
+               ! ------------------
+               ! Cloudy gridcolumns
+               ! ------------------
           
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
@@ -1087,7 +1086,7 @@ contains
                   colo2 (:,icol) = go2vmr (gicol,1:nlay)  
                enddo
 
-            end if  ! clear or cloudy columns
+            end if  ! clear or cloudy gridcolumns
 
             ! limit tiny cosine zenith angles
             do icol = 1,ncol
@@ -1117,7 +1116,7 @@ contains
 
 !pmn needs working on and the replacing by abstract as per LW
             ! cloudy gridcolumns
-            if (cc==2) then
+            if (cc == 2) then
 
                ! McICA subcolumn generation
                call mcica_sw( &
@@ -1163,7 +1162,7 @@ contains
             ! Copy out up and down, clear and total sky fluxes to output arrays.
             ! Vertical indexing goes from bottom to top; reverse here for GCM if necessary.
 
-            if (cc==1) then  ! clear columns
+            if (cc == 1) then  ! clear gridcolumns
 
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)

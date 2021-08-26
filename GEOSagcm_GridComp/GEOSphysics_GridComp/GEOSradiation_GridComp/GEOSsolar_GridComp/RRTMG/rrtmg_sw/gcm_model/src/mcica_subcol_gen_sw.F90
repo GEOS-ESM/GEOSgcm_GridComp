@@ -10,8 +10,17 @@ module mcica_subcol_gen_sw
    implicit none
    private
 
+   ! tiny threshold value for cloud water path, at or below which each of
+   ! ice and liquid water parths are separately reset to zero. If both are
+   ! thus reset, then the subcolumn gridcell is reset to .not.cloudy. The
+   ! idea here is mainly efficiency, since external processing of cloudy
+   ! cells usually takes longer.
+   real, parameter :: cwp_tiny = 1.e-20
+!pmn? units
+
    public :: mcica_sw      
-      
+   public :: cwp_tiny
+
 contains
 
    !---------------------------------------------------------------------------------------
@@ -99,8 +108,8 @@ contains
          cdf3     ! for cloud condensate
 
       ! other locals
-      real :: sigma_qcw, zcw !? cfs
-      logical :: cond_inhomo !?, ciwp_negligible, clwp_negligible
+      real :: cfs, sigma_qcw, zcw
+      logical :: cond_inhomo, ciwp_negligible, clwp_negligible
 
       ! indices
       integer :: icol, isubcol, ilay
@@ -222,44 +231,54 @@ contains
       ! where there is a cloud, define the subcolumn cloud properties,
       ! otherwise set these to zero
 
-!pmn refactor of cond_inhomo
       do icol = 1,ncol
          do isubcol = 1,nsubcol
             do ilay = 1,nlay
+               cfs = cld(ilay,icol)
 
-               if (cond_inhomo .and. cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
+               if (cdf1(ilay,isubcol,icol) >= 1. - cfs) then
 
                   ! a cloudy subcolumn/layer with inhomogeneous condensate assignment
                   ! note: cdf1 from rand_num in (0,1) so:
                   !       cld == 0. can never get here;
-                  !       cld == 1. always comes here (or the homo cloudy branch below).
+                  !       cld == 1. always comes here.
 
                   cldy_stoch(ilay,isubcol,icol) = .true. 
+
+                  if (cond_inhomo) then
                   
-                  ! Cloud fraction sets level of inhomogeneity
-                  if (cld(ilay,icol) > 0.99) then
-                     sigma_qcw = 0.5
-                  elseif (cld(ilay,icol) > 0.9) then
-                     sigma_qcw = 0.71
-                  else  
-                     sigma_qcw = 1.0
-                  endif
+! pmn put this sigma calc outside after cfs, still with inhomo ?
+                     ! Cloud fraction sets level of inhomogeneity
+                     if (cfs > 0.99) then
+                        sigma_qcw = 0.5
+                     elseif (cfs > 0.9) then
+                        sigma_qcw = 0.71
+                     else  
+                        sigma_qcw = 1.0
+                     endif
                   
-                  ! horizontally variable clouds
-                  zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
-                  clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
-                  ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
+                     ! horizontally variable clouds
+                     zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
+                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
+                     ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
+
+                  else
+
+                     ! horizontally homogeneous clouds
+                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
+                     ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
+
+                  end if
                 
-               elseif (cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
+                  ! reset negligible water paths to zero (see comment in introduction)
+                  ciwp_negligible = (ciwp_stoch(ilay,isubcol,icol) <= cwp_tiny)
+                  if (ciwp_negligible) ciwp_stoch(ilay,isubcol,icol) = 0.
+                  clwp_negligible = (clwp_stoch(ilay,isubcol,icol) <= cwp_tiny)
+                  if (clwp_negligible) clwp_stoch(ilay,isubcol,icol) = 0.
 
-                  ! a cloudy subcolumn/layer with homogeneous condensate assignment
-                  ! note: cdf1 from rand_num in (0,1) so:
-                  !       cld == 0. can never get here;
-                  !       cld == 1. always comes here (or the inhomo cloudy branch above).
-
-                  cldy_stoch(ilay,isubcol,icol) = .true. 
-                  clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
-                  ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
+                  ! reset cloudy status if both negligible
+                  if (ciwp_negligible .and. clwp_negligible) &
+                     cldy_stoch(ilay,isubcol,icol) = .false.
 
                else
 
