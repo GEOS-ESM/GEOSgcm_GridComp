@@ -33,7 +33,7 @@ module rrtmg_sw_cldprmc
 contains
 
    ! ----------------------------------------------------------------------
-   subroutine cldprmc_sw(pncol, ncol, nlayers, iceflag, liqflag, &
+   subroutine cldprmc_sw(pncol, ncol, nlay, iceflag, liqflag, &
                          cldymc, ciwpmc, clwpmc, reicmc, relqmc, &
                          taormc, taucmc, ssacmc, asmcmc)
    ! ----------------------------------------------------------------------
@@ -47,15 +47,15 @@ contains
 
       integer, intent(in) :: pncol           ! Dimensioned num of gridcols
       integer, intent(in) :: ncol            ! Actual number of gridcols
-      integer, intent(in) :: nlayers         ! number of layers
+      integer, intent(in) :: nlay            ! number of layers
       integer, intent(in) :: iceflag         ! see definitions
       integer, intent(in) :: liqflag         ! see definitions
 
-      logical, intent(in) :: cldymc (nlayers,ngptsw,pncol)  ! cloudy or not? [mcica]
-      real,    intent(in) :: ciwpmc (nlayers,ngptsw,pncol)  ! cloud ice water path [mcica]
-      real,    intent(in) :: clwpmc (nlayers,ngptsw,pncol)  ! cloud liq water path [mcica]
-      real,    intent(in) :: relqmc (nlayers,pncol)         ! cloud liq ptle eff radius (um)
-      real,    intent(in) :: reicmc (nlayers,pncol)         ! cloud ice ptle eff radius (um)
+      logical, intent(in) :: cldymc (nlay,ngptsw,pncol)  ! cloudy or not? [mcica]
+      real,    intent(in) :: ciwpmc (nlay,ngptsw,pncol)  ! cloud ice water path [mcica]
+      real,    intent(in) :: clwpmc (nlay,ngptsw,pncol)  ! cloud liq water path [mcica]
+      real,    intent(in) :: relqmc (nlay,pncol)         ! cloud liq ptle eff radius (um)
+      real,    intent(in) :: reicmc (nlay,pncol)         ! cloud ice ptle eff radius (um)
 
       ! Specific definition of reicmc depends on iceflag:
       ! iceflag = 1: ice effective radius, r_ec, (Ebert and Curry, 1992),
@@ -68,10 +68,10 @@ contains
       ! ------- Output -------
 
       ! Note: inout because ASSUMED that clear values already set by default externally.
-      real, intent(inout) :: taucmc (nlayers,ngptsw,pncol)  ! cloud opt depth (delta scaled)
-      real, intent(inout) :: ssacmc (nlayers,ngptsw,pncol)  ! single scat albedo (delta scaled)
-      real, intent(inout) :: asmcmc (nlayers,ngptsw,pncol)  ! asymmetry param (delta scaled)
-      real, intent(inout) :: taormc (nlayers,ngptsw,pncol)  ! cloud opt depth (non-delta scaled)
+      real, intent(inout) :: taucmc (nlay,ngptsw,pncol)  ! cloud opt depth (delta scaled)
+      real, intent(inout) :: ssacmc (nlay,ngptsw,pncol)  ! single scat albedo (delta scaled)
+      real, intent(inout) :: asmcmc (nlay,ngptsw,pncol)  ! asymmetry param (delta scaled)
+      real, intent(inout) :: taormc (nlay,ngptsw,pncol)  ! cloud opt depth (non-delta scaled)
 
       ! ------- Local -------
 
@@ -90,9 +90,9 @@ contains
       real :: tauliqorig, scatliq, ssaliq, tauliq
       real :: fdelta
 
-      logical :: cloudy (nlayers,ngptsw,pncol)
+      logical :: cloudy (nlay,ngptsw,pncol)
 
-      real, dimension (nlayers,ngptsw,pncol) :: &
+      real, dimension (nlay,ngptsw,pncol) :: &
          extcoice, gice, ssacoice, forwice, &
          extcoliq, gliq, ssacoliq, forwliq
 
@@ -100,7 +100,7 @@ contains
       ! Locations where do cloud optics.
       ! --------------------------------
 
-      do icol = 1, ncol
+      do icol = 1,ncol
          cloudy(:,:,icol) = cldymc(:,:,icol) .and. &
             (ciwpmc(:,:,icol) + clwpmc(:,:,icol)) >= cldmin
       end do
@@ -116,10 +116,10 @@ contains
          ! similar to CAM3 implementation, though this is somewhat unjustified for
          ! large ice particles
 
-         do icol = 1, ncol
-            do ig = 1, ngptsw 
+         do icol = 1,ncol
+            do ig = 1,ngptsw 
                ib = icxa(ngb(ig))
-               do lay = 1, nlayers
+               do lay = 1,nlay
                   if (cloudy(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
@@ -147,10 +147,10 @@ contains
 
          ! Ice particle effective radius is limited to 5.0 to 131.0 um.
 
-         do icol = 1, ncol
-            do ig = 1, ngptsw 
+         do icol = 1,ncol
+            do ig = 1,ngptsw 
                ib = ngb(ig)
-               do lay = 1, nlayers
+               do lay = 1,nlay
                   if (cloudy(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
@@ -179,10 +179,10 @@ contains
                     
          ! Ice particle generalized effective size is limited to 5. to 140. um.
 
-         do icol = 1, ncol
-            do ig = 1, ngptsw 
+         do icol = 1,ncol
+            do ig = 1,ngptsw 
                ib = ngb(ig)
-               do lay = 1, nlayers
+               do lay = 1,nlay
                   if (cloudy(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
@@ -215,10 +215,10 @@ contains
 
          ! ice particle effective diameter is limited to 1. to 200. um.
 
-         do icol = 1, ncol
-            do ig = 1, ngptsw 
+         do icol = 1,ncol
+            do ig = 1,ngptsw 
                ib = ngb(ig)
-               do lay = 1, nlayers
+               do lay = 1,nlay
                   if (cloudy(lay,ig,icol)) then
 
                      if (ciwpmc(lay,ig,icol) == 0.) then
@@ -250,10 +250,10 @@ contains
 
       if (liqflag == 1) then
 
-         do icol = 1, ncol
-            do ig = 1, ngptsw 
+         do icol = 1,ncol
+            do ig = 1,ngptsw 
                ib = ngb(ig)
-               do lay = 1, nlayers
+               do lay = 1,nlay
                   if (cloudy(lay,ig,icol)) then
 
                      if (clwpmc(lay,ig,icol) == 0.) then
@@ -286,9 +286,9 @@ contains
       ! Perform delta-scaling and Combine ice and liquid optical properties.
       ! --------------------------------------------------------------------
 
-      do icol = 1, ncol
-         do ig = 1, ngptsw 
-            do lay = 1, nlayers
+      do icol = 1,ncol
+         do ig = 1,ngptsw 
+            do lay = 1,nlay
                if (cloudy(lay,ig,icol)) then
 
                   tauliqorig = clwpmc(lay,ig,icol) * extcoliq(lay,ig,icol)

@@ -258,6 +258,8 @@ contains
       end do
 
       ! Clear-sky reflectivities / transmissivities
+      ! note: pcldymc may not be defined here but the
+      !       last arg .false. means it is not used anyway.
       call reftra_sw (pncol, ncol, nlay, &
                       pcldymc, zgco, prmu0, ztauo, zomco, &
                       zref, zrefd, ztra, ztrad, .false.)
@@ -351,6 +353,7 @@ contains
          end do
 
          ! Update reflectivities / transmissivities for cloudy cells only
+         ! note: since cc==2 here pcldymc is defined
          call reftra_sw (pncol, ncol, nlay, &
                          pcldymc, zgco, prmu0, ztauo, zomco, &
                          zref, zrefd, ztra, ztrad, .true.)
@@ -493,14 +496,16 @@ contains
    !      ptra    : collimated beam transmissivity
    !      ptrad   : diffuse beam transmissivity
    !
-   ! note:
-   !      This routine is intended to be run twice. First with clear-only
+   ! notes:
+   !   1. This routine is intended to be run twice. First with clear-only
    !      optical parameters and update_cloudy_cells_only false. This gives
    !      the clear-sky reflectivities/transmissivities for every cell.
    !      The second time through, it is run with cloud-adjusted optical
    !      parameters and update_cloudy_cells_only true, which only updates
    !      cells that actually have clouds. The clear-cells retain their
    !      former clear outputs via the intent(inout) "outputs".
+   !   2. The cloudy flag is only used if update_cloudy_cells_only true,
+   !      so only necessary to define it in that case.
    !
    ! Method:
    !      standard delta-eddington, p.i.f.m., or d.o.m. layer calculations.
@@ -543,6 +548,7 @@ contains
 
       integer :: jk, kmodts
       integer :: icol, iw
+      logical :: update
 
       real :: za, za1, za2
       real :: zbeta, zdend, zdenr, zdent
@@ -574,8 +580,12 @@ contains
          do iw = 1,ngptsw
             do jk = 1,nlay
 
-               if (.not. update_cloudy_cells_only &
-                   .or. cloudy(nlay+1-jk,iw,icol)) then
+               if (update_cloudy_cells_only) then
+                  update = cloudy(nlay+1-jk,iw,icol)
+               else
+                  update = .true.
+               end if
+               if (update) then
 
                   zto1 = ptau(jk,iw,icol)  
                   zw   = pw  (jk,iw,icol)  

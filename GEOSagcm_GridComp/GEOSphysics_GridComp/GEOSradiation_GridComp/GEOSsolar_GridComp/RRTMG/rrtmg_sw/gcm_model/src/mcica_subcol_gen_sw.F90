@@ -32,7 +32,7 @@ contains
    !   Keep only exponential (generalized) overlap.
    !   Abstract and reorder indices for CPU efficiency.
    !   Aug-2021 Make binary clouds explicit using cldy_stoch logical rather
-   !     than cld_stoch = {0,1}. This may improve efficiency in caller.
+   !     than cld_stoch = {0.,1.}. This may improve efficiency in caller.
    !
    !   Given a profile of cloud fraction, cloud water and cloud ice, produce a set of
    ! subcolumns. Each subcolumn has cloud fraction in {0,1} at each level.
@@ -68,7 +68,7 @@ contains
       ! output subcolumns
       ! (units of water paths are the same as for inputs ciwp and clwp)
       ! (cldy_stoch logical makes binary clouds explicit rather than
-      ! previous cld_stoch = {0,1}. This may improve efficiency in caller.
+      ! previous cld_stoch = {0.,1.}. This may improve efficiency in caller.
       logical, intent(out) :: cldy_stoch (nlay,nsubcol,pncol)  ! Cloudy or not?
       real,    intent(out) :: ciwp_stoch (nlay,nsubcol,pncol)  ! In-cloud ice water path
       real,    intent(out) :: clwp_stoch (nlay,nsubcol,pncol)  ! In-cloud liq water path
@@ -246,6 +246,7 @@ contains
                   endif
                   
                   ! horizontally variable clouds
+!pmn: cdf3 (0,1) ok ??? can we gert negative zcw etc. ???
                   zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
                   clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
                   ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw

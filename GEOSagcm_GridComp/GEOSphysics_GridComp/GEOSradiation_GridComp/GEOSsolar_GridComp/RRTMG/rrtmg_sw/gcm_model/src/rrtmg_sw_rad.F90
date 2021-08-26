@@ -910,16 +910,7 @@ contains
       npart_clr = ceiling( real(ncol_clr) / real(pncol) )
       npart_cld = ceiling( real(ncol_cld) / real(pncol) )
 
-!? but arent these overwritten by multiple partitions both clear and cloudy?? error ???
-! all clear cases come first so works, and all cloud cases probably completely overwrite so ok.
-! but I dont like this probably better to deal with more transperantly inside loop.
-      ! zero McICA cloud physical props
-      cldymcl = .false.
-      ciwpmcl = 0.
-      clwpmcl = 0.     
-  
-!? but arent these overwritten by multiple partitions both cler and cloudy?? error ???
-!? pmn if aaer==10 completely overwritten so ok
+!? pmn if iaer==10 completely overwritten so ok
 !? pmn if not never overwritten so ok
 !? but pron better to go do_aer and make more exp[licit
       ! zero aerosols
@@ -951,6 +942,7 @@ contains
             if (cole > col_last) cole = col_last
             ncol = cole - cols + 1
 
+!pmn? needed?
             ! zero McICA cloud optical props
             ! these defaults remain for clear columns
             taormc = 0.
@@ -1133,17 +1125,17 @@ contains
             end do
 
 !pmn needs working on and the replacing by abstract as per LW
-            ! McICA subcolumn generation
+            ! cloudy gridcolumns
             if (cc==2) then
+
+               ! McICA subcolumn generation
                call mcica_sw( &
                   pncol, ncol, ngptsw, nlay, &
                   zm, alat, dyofyr, &
                   play, cld, ciwp, clwp, &
                   cldymcl, ciwpmcl, clwpmcl) 
-            end if   
 
-            ! cloud optical property generation
-            if (cc==2) then
+               ! cloud optical property generation
                call cldprmc_sw( &
                   pncol, ncol, nlay, iceflgsw, liqflgsw,  &
                   cldymcl, ciwpmcl, clwpmcl, rei, rel, &
