@@ -67,11 +67,10 @@ contains
 
       ! ------- Output -------
 
-      ! Note: inout because ASSUMED that clear values already set by default externally.
-      real, intent(inout) :: taucmc (nlay,ngptsw,pncol)  ! cloud opt depth (delta scaled)
-      real, intent(inout) :: ssacmc (nlay,ngptsw,pncol)  ! single scat albedo (delta scaled)
-      real, intent(inout) :: asmcmc (nlay,ngptsw,pncol)  ! asymmetry param (delta scaled)
-      real, intent(inout) :: taormc (nlay,ngptsw,pncol)  ! cloud opt depth (non-delta scaled)
+      real, intent(out) :: taucmc (nlay,ngptsw,pncol)  ! cloud opt depth (delta scaled)
+      real, intent(out) :: ssacmc (nlay,ngptsw,pncol)  ! single scat albedo (delta scaled)
+      real, intent(out) :: asmcmc (nlay,ngptsw,pncol)  ! asymmetry param (delta scaled)
+      real, intent(out) :: taormc (nlay,ngptsw,pncol)  ! cloud opt depth (non-delta scaled)
 
       ! ------- Local -------
 
@@ -338,6 +337,13 @@ contains
                                      / (1. - forwice(lay,ig,icol)))  &
                           / (scatliq + scatice)
                   endif 
+
+               else  ! not cloudy(lay,ig,icol)
+
+                  taormc(lay,ig,icol) = 0.
+                  taucmc(lay,ig,icol) = 0.
+                  ssacmc(lay,ig,icol) = 1.
+                  asmcmc(lay,ig,icol) = 0.
 
                endif  ! cloud present
             enddo  ! layers

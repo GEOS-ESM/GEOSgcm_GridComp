@@ -246,7 +246,6 @@ contains
                   endif
                   
                   ! horizontally variable clouds
-!pmn: cdf3 (0,1) ok ??? can we gert negative zcw etc. ???
                   zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
                   clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
                   ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw

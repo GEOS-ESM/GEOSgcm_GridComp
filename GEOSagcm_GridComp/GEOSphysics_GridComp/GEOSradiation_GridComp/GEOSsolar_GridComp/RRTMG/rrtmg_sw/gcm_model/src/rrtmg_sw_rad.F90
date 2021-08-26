@@ -942,14 +942,6 @@ contains
             if (cole > col_last) cole = col_last
             ncol = cole - cols + 1
 
-!pmn? needed?
-            ! zero McICA cloud optical props
-            ! these defaults remain for clear columns
-            taormc = 0.
-            taucmc = 0.
-            ssacmc = 1.
-            asmcmc = 0.
-
             ! copy inputs into partition
             ! --------------------------
 
@@ -1001,7 +993,7 @@ contains
                enddo
 
                ! copy in partition (aerosols)
-               if (iaer==10) then
+               if (iaer == 10) then
                   do icol = 1,ncol
                      gicol = gicol_clr(icol + cols - 1)
                      do ibnd = 1,nbndsw
@@ -1075,7 +1067,7 @@ contains
                enddo
 
                ! copy in partition (aerosols)
-               if (iaer==10) then
+               if (iaer == 10) then
                   do icol = 1,ncol
                      gicol = gicol_cld(icol + cols - 1)
                      do ibnd = 1,nbndsw

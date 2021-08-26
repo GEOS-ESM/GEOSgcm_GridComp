@@ -97,6 +97,9 @@ contains
       real, intent(in) :: palbp (nbndsw,pncol)        ! surface albedo (direct)
       real, intent(in) :: prmu0        (pncol)        ! cosine of solar zenith angle
 
+      ! McICA cloud presence and optical properties:
+      ! These are only used, and therefore only need to be defined, for cloudy gridcolumns
+      ! (and hence potentially cloudy subcolumns) (cc==2) not for clear gridcolumns (cc==1)
       logical, intent(in) :: pcldymc (nlay,ngptsw,pncol)  ! cloudy or not? [mcica]
       real,    intent(in) :: ptaucmc (nlay,ngptsw,pncol)  ! cloud optical depth [mcica]
       real,    intent(in) :: pasycmc (nlay,ngptsw,pncol)  ! cloud asymmetry parameter [mcica]
