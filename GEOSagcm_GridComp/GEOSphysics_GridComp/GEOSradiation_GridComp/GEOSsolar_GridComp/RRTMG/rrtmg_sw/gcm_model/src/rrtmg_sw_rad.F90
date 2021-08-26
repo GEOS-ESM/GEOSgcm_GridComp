@@ -910,13 +910,12 @@ contains
       npart_clr = ceiling( real(ncol_clr) / real(pncol) )
       npart_cld = ceiling( real(ncol_cld) / real(pncol) )
 
-!? pmn if iaer==10 completely overwritten so ok
-!? pmn if not never overwritten so ok
-!? but pron better to go do_aer and make more exp[licit
-      ! zero aerosols
-      taua = 0.
-      asya = 0.
-      omga = 1.
+      ! "zero" aerosols if dont want them included
+      if (iaer /= 10) then
+         taua = 0.
+         asya = 0.
+         omga = 1.
+      end if
 
       ! partitioning over clear (cc=1) and cloudy (cc=2) columns
       ! --------------------------------------------------------
