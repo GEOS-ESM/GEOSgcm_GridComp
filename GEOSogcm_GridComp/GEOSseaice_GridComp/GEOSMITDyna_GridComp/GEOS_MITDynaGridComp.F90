@@ -25,9 +25,10 @@ module GEOS_MITDynaGridCompMod
 
   use ESMF
   use MAPL
-!@@  use ice_domain_size,    only: init_domain_size
-!@@  use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
-!@@  use ice_work,           only: init_work
+
+  use ice_domain_size,    only: init_domain_size
+  use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
+  use ice_work,           only: init_work
 
   implicit none
   private
@@ -1458,14 +1459,14 @@ module GEOS_MITDynaGridCompMod
     ! Do some necessary CICE initialization
     !--------------------------------------
 
-!@@    call init_domain_size(OGCM_IM, OGCM_JM, OGCM_NX, OGCM_NY, NPES)
+    call init_domain_size(OGCM_IM, OGCM_JM, OGCM_NX, OGCM_NY, NPES)
 
-!@@    call alloc_dyna_arrays( MAPL_AM_I_Root(), Iam )
-!@@    call init_work            ! work arrays
+    call alloc_dyna_arrays( MAPL_AM_I_Root(), Iam )
+    call init_work            ! work arrays
 
-!@@    if(MAPL_AM_I_ROOT()) then
-!@@       print*, 'CICE work array initialized'
-!@@    endif
+    if(MAPL_AM_I_ROOT()) then
+       print*, 'CICE work array initialized'
+    endif
  
 
 ! All Done
@@ -1522,7 +1523,7 @@ module GEOS_MITDynaGridCompMod
     call MAPL_TimerOn(MAPL,"TOTAL"   )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-!@@    call dealloc_dyna_arrays( MAPL_AM_I_ROOT(), Iam )
+    call dealloc_dyna_arrays( MAPL_AM_I_ROOT(), Iam )
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
