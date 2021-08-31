@@ -9407,7 +9407,7 @@ contains
 
       call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.    )
       if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.8   )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0   )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.8   )
       else
         SELECT CASE ( LM )
@@ -9742,7 +9742,7 @@ contains
          LS_PRC2 = PRCP_RAIN
          LS_SNR  = PRCP_SNOW + PRCP_ICE + PRCP_GRAUPEL
      ! cleanup suspended precipitation condensates
-         call FIX_UP_PRECIP(RAD_QR, RAD_QS, RAD_QG, RAD_QV, TEMP)
+         call FIX_NEGATIVE_PRECIP(RAD_QR, RAD_QS, RAD_QG, RAD_QV, TEMP)
      ! Fill vapor/rain/snow/graupel state
          Q1       = RAD_QV
          QRAIN    = RAD_QR
@@ -9752,29 +9752,18 @@ contains
          if (associated(QRTOT)) QRTOT = QRAIN
          if (associated(QSTOT)) QSTOT = QSNOW
          if (associated(QGTOT)) QGTOT = QGRAUPEL
-     ! Check TEMP ramge
-        do K=1,LM
-          do J=1,JM
-            do I=1,IM
-               write(ERRSTR,'(A,I3)') "TEMP too cold after GFDL-MP at level: ", k
-               _ASSERT(TEMP(I,J,K) >= 150.0, ERRSTR)
-               write(ERRSTR,'(A,I3)') "TEMP too warm after GFDL-MP at level: ", k
-               _ASSERT(TEMP(I,J,K) <= 333.0, ERRSTR)
-            end do
-          end do
-        end do
      ! Convert back to PT
          TH1 = TEMP/PK
      ! Radiation Coupling
       if (CLDPARAMS%DISABLE_RAD==1) then
-               RAD_QL     = 0.
-               RAD_QI     = 0.
-               RAD_QR     = 0.
-               RAD_QS     = 0.
-               RAD_QG     = 0.
-               RAD_CF     = 0.
-               CLDREFFL   = 0.
-               CLDREFFI   = 0.
+         RAD_QL     = 0.
+         RAD_QI     = 0.
+         RAD_QR     = 0.
+         RAD_QS     = 0.
+         RAD_QG     = 0.
+         RAD_CF     = 0.
+         CLDREFFL   = 0.
+         CLDREFFI   = 0.
       else
          do K = 1, LM
            do J = 1, JM
@@ -14490,28 +14479,22 @@ END SUBROUTINE Get_hemcoFlashrate
    end subroutine FIX_UP_RAD_CLOUDS
 
 
-   subroutine FIX_UP_PRECIP(QRAIN, QSNOW, QGRAUPEL, QV, TE)
+   subroutine FIX_NEGATIVE_PRECIP(QRAIN, QSNOW, QGRAUPEL, QV, TE)
       real, dimension(:,:,:), intent(inout) :: QRAIN, QSNOW, QGRAUPEL, QV, TE
 
       WHERE (QRAIN < 1.e-8)
-        QV    = QV + QRAIN
-        TE    = TE - (MAPL_ALHL/MAPL_CP)*QRAIN
         QRAIN = 0.0
       END WHERE
 
       WHERE (QSNOW < 1.e-8)
-        QV    = QV + QSNOW
-        TE    = TE - (MAPL_ALHS/MAPL_CP)*QSNOW
         QSNOW = 0.0
       END WHERE
 
       WHERE (QGRAUPEL < 1.e-8)
-        QV    = QV + QGRAUPEL
-        TE    = TE - (MAPL_ALHS/MAPL_CP)*QGRAUPEL
         QGRAUPEL = 0.0
       END WHERE
 
-   end subroutine FIX_UP_PRECIP
+   end subroutine FIX_NEGATIVE_PRECIP
 
    subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
       real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
