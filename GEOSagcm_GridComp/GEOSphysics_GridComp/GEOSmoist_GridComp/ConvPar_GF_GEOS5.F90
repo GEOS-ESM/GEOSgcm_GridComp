@@ -16,6 +16,7 @@ USE MAPL
 !USE MAPL_ConstantsMod ! - only for GATE soundings
 !
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
+!USE cldmacro, ONLY: make_DropletNumber, make_IceNumber
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
 
  IMPLICIT NONE
