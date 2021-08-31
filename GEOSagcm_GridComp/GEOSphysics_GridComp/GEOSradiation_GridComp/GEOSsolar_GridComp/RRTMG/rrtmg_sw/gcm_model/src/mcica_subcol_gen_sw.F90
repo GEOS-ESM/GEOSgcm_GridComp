@@ -138,27 +138,36 @@ contains
       end do
 
       ! condensate decorrelation length scale
-      am1 = 0.72192
-      am2 = 0.78996
-      am4 = 40.404
-      amr = 8.5
-      if (doy > 181) then
-         am3 = -4.*amr/365*(doy-272)
-      else
-         am3 = 4.*amr/365.*(doy-91)
+      if (cond_inhomo) then
+         am1 = 0.72192
+         am2 = 0.78996
+         am4 = 40.404
+         amr = 8.5
+         if (doy > 181) then
+            am3 = -4.*amr/365*(doy-272)
+         else
+            am3 = 4.*amr/365.*(doy-91)
+         endif
+         do icol = 1,ncol
+            rdl(icol) = (am1+am2*exp(-(alat(icol)*r2d-am3)**2/am4**2))*1.e3  ! [m]
+         end do
       endif
-      do icol = 1,ncol
-         rdl(icol) = (am1+am2*exp(-(alat(icol)*r2d-am3)**2/am4**2))*1.e3  ! [m]
-      end do
    
+      ! --------------------------
+      ! outer loop over gridcolumn
+      ! --------------------------
+
       do icol = 1,ncol
-         alpha(1,icol) = 0.
+
+         ! ------------------------------------
+         ! exponential inter-layer correlations
+         ! ------------------------------------
+
+         alpha(1,icol) = 0.  ! never used
          do ilay = 2,nlay
             alpha(ilay,icol) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / adl(icol))
          end do
-      end do
      
-      do icol = 1,ncol
          do isubcol = 1,nsubcol
 
             seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
@@ -173,9 +182,7 @@ contains
                cdf2(ilay,isubcol,icol) = rand_num 
             end do
          end do
-      end do
     
-      do icol = 1,ncol
          do isubcol = 1,nsubcol
             do ilay = 2,nlay
                if (cdf2(ilay,isubcol,icol) < alpha(ilay,icol)) then
@@ -183,18 +190,18 @@ contains
                end if
             end do
          end do
+
       end do
     
       if (cond_inhomo) then
         
          do icol = 1,ncol
+
             rcorr(1,icol) = 0.
             do ilay = 2,nlay
                rcorr(ilay,icol) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / rdl(icol))
             end do
-         end do
         
-         do icol = 1,ncol
             do isubcol = 1,nsubcol
                seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
                seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
@@ -207,9 +214,7 @@ contains
                   cdf3(ilay,isubcol,icol) = rand_num 
                end do
             end do
-         end do
 
-         do icol = 1,ncol
             do isubcol = 1,nsubcol
                do ilay = 2,nlay
                   if (cdf2(ilay,isubcol,icol) < rcorr(ilay,icol)) then
@@ -217,10 +222,14 @@ contains
                   end if
                end do
             end do
+
          end do
+
       end if
 
-      ! generate clear or cloudy cells of subcolumns
+      ! -------------------
+      ! generate subcolumns
+      ! -------------------
 
       do icol = 1,ncol
          do isubcol = 1,nsubcol
@@ -249,14 +258,14 @@ contains
                   
                      ! horizontally variable clouds
                      zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
-                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
                      ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
+                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
 
                   else
 
                      ! horizontally homogeneous clouds
-                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
                      ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
+                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
 
                   end if
                 
@@ -279,8 +288,8 @@ contains
 
                   ! a clear subcolumn
                   cldy_stoch(ilay,isubcol,icol) = .false. 
-                  clwp_stoch(ilay,isubcol,icol) = 0. 
                   ciwp_stoch(ilay,isubcol,icol) = 0. 
+                  clwp_stoch(ilay,isubcol,icol) = 0. 
 
                endif
             enddo
