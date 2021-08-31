@@ -208,6 +208,15 @@ contains
 
 !  !EXPORT STATE:
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'FRZMLT',                            &
+         LONG_NAME          = 'freeze_melt_potential',             &
+         UNITS              = 'W m-2',                             &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! Run1 exports
 
 
