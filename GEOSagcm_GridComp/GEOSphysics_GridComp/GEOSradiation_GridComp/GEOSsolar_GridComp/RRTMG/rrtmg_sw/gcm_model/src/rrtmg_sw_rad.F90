@@ -203,7 +203,7 @@ contains
       ! ---------------------------
       integer, intent(in) :: dyofyr                  ! Day of the year
       real, intent(in) :: zm     (ncol,nlay)         ! Heights of level midpoints
-      real, intent(in) :: alat   (ncol)              ! Latitude of column
+      real, intent(in) :: alat   (ncol)              ! Latitude of column [radians]
 
       ! aerosols (optical props, non-delta-scaled)
       ! ------------------------------------------
@@ -451,7 +451,7 @@ contains
       ! cloud overlap
       integer, intent(in) :: dyofyr                    ! Day of the year
       real, intent(in) :: gzm     (gncol,nlay)         ! Heights of level midpoints
-      real, intent(in) :: galat   (gncol)              ! Latitudes of columns
+      real, intent(in) :: galat   (gncol)              ! Latitudes of columns [radians]
                                               
       ! aerosols (optical props, non-delta-scaled)
       integer, intent(in) :: iaer                      ! aerosol flag (0=off, 10=on)

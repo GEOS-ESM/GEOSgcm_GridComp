@@ -4,9 +4,13 @@ module mcica_subcol_gen_sw
    ! Input gridcolumn cloud profiles: cloud fraction and in-cloud ice and liquid
    ! water paths. Output will be stochastic subcolumn arrays of these variables.
 
+   ! PMN 2021/08: This version makes the binary (cldf_stoch in {0,1}) nature of
+   ! cloud output explicit by changing to a logical cldy_stoch in {true,false},
+   ! which may permit some exterior efficiency improvements.
+
    use cloud_condensate_inhomogeneity, only: &
       condensate_inhomogeneous, zcw_lookup
-    
+
    implicit none
    private
 
@@ -18,7 +22,9 @@ module mcica_subcol_gen_sw
    real, parameter :: cwp_tiny = 1.e-20
 !pmn? units
 
-   public :: mcica_sw      
+   real, parameter :: r2d = 180.d0 / 3.14159265358979323846d0
+
+   public :: mcica_sw
    public :: cwp_tiny
 
 contains
@@ -27,7 +33,7 @@ contains
    subroutine mcica_sw( &
       pncol, ncol, nsubcol, nlay, &
       zmid, alat, doy, &
-      play, cld, ciwp, clwp, &
+      play, cldfrac, ciwp, clwp, &
       cldy_stoch, ciwp_stoch, clwp_stoch)
    !---------------------------------------------------------------------------------------
    !
@@ -36,12 +42,10 @@ contains
    !
    ! Modifications:
    ! ...
-   ! Peter Norris, GMAO, Apr-May 2021:
+   ! Peter Norris, GMAO, Apr-Aug 2021:
    !   Tidy up code and comments
    !   Keep only exponential (generalized) overlap.
    !   Abstract and reorder indices for CPU efficiency.
-   !   Aug-2021 Make binary clouds explicit using cldy_stoch logical rather
-   !     than cld_stoch = {0.,1.}. This may improve efficiency in caller.
    !
    !   Given a profile of cloud fraction, cloud water and cloud ice, produce a set of
    ! subcolumns. Each subcolumn has cloud fraction in {0,1} at each level.
@@ -61,32 +65,26 @@ contains
    !
    !---------------------------------------------------------------------------------------
 
-      integer, intent(in) :: pncol              ! Dimensioned number of gridcols
-      integer, intent(in) :: ncol               ! Actual number of gridcols
-      integer, intent(in) :: nsubcol            ! #Subcols to generate / gridcol
-      integer, intent(in) :: nlay               ! Number of model layers
-      real,    intent(in) :: zmid (nlay,pncol)  ! Hgt of midpoints [m]
-      real,    intent(in) :: alat      (pncol)  ! Latitude of gridcolumn
-      integer, intent(in) :: doy                ! Day of year
-      real,    intent(in) :: play (nlay,pncol)  ! Layer pressures [Pa]
-!pmn: these seem to be passed in as hPa!!!!!
-      real,    intent(in) :: cld  (nlay,pncol)  ! Layer cloud fraction 
-      real,    intent(in) :: ciwp (nlay,pncol)  ! In-cloud ice water path (g/m2)?
-      real,    intent(in) :: clwp (nlay,pncol)  ! In-cloud liquid water path (g/m2)?
+      integer, intent(in) :: pncol                 ! Dimensioned number of gridcols
+      integer, intent(in) :: ncol                  ! Actual number of gridcols
+      integer, intent(in) :: nsubcol               ! #Subcols to generate / gridcol
+      integer, intent(in) :: nlay                  ! Number of model layers
+      real,    intent(in) :: zmid    (nlay,pncol)  ! Hgt of midpoints [m]
+      real,    intent(in) :: alat         (pncol)  ! Latitude of gridcolumn [radians]
+      integer, intent(in) :: doy                   ! Day of year
+      real,    intent(in) :: play    (nlay,pncol)  ! Layer pressures [hPa]
+!pmn: original comment had [Pa] but [hPa] is being passed in !!!
+      real,    intent(in) :: cldfrac (nlay,pncol)  ! Layer cloud fraction 
+      real,    intent(in) :: ciwp    (nlay,pncol)  ! In-cloud ice water path (g/m2)?
+      real,    intent(in) :: clwp    (nlay,pncol)  ! In-cloud liquid water path (g/m2)?
 
       ! output subcolumns
       ! (units of water paths are the same as for inputs ciwp and clwp)
-      ! (cldy_stoch logical makes binary clouds explicit rather than
-      ! previous cld_stoch = {0.,1.}. This may improve efficiency in caller.
       logical, intent(out) :: cldy_stoch (nlay,nsubcol,pncol)  ! Cloudy or not?
       real,    intent(out) :: ciwp_stoch (nlay,nsubcol,pncol)  ! In-cloud ice water path
       real,    intent(out) :: clwp_stoch (nlay,nsubcol,pncol)  ! In-cloud liq water path
-      
-      ! ----- Locals -----
 
-!pmn?  units and use cf LW
-      ! Constants (min value for cloud fraction and cloud water and ice)
-      real, parameter :: cldmin = 1.0e-20    ! min cloud fraction
+      ! ----- Locals -----
 
       ! decorrelation length scales for cldfrac and condensate
       real, dimension(pncol) :: adl, rdl
@@ -138,7 +136,7 @@ contains
          am3 = 4.*amr/365.*(doy-91)
       endif
       do icol = 1,ncol
-         adl(icol) = (am1+am2*exp(-(alat(icol)*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
+         adl(icol) = (am1+am2*exp(-(alat(icol)*r2d-am3)**2/am4**2))*1.e3  ! [m]
       end do
 
       ! condensate decorrelation length scale
@@ -152,7 +150,7 @@ contains
          am3 = 4.*amr/365.*(doy-91)
       endif
       do icol = 1,ncol
-         rdl(icol) = (am1+am2*exp(-(alat(icol)*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
+         rdl(icol) = (am1+am2*exp(-(alat(icol)*r2d-am3)**2/am4**2))*1.e3  ! [m]
       end do
    
       do icol = 1,ncol
@@ -165,14 +163,27 @@ contains
 ! pmn eventually reorder but not now cos will break zero-diff
 ! preserve zero-diff as long as possible so work on other parts of code first
 
-      do ilay = 1,nlay
-         do icol = 1,ncol
-            seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
-            seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
-            seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
-            seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
+      do icol = 1,ncol
+         do isubcol = 1,nsubcol
+
+!        do ilay = 1,nlay
+! play here is actually in hPa, so ~ 950-1050 at sfc.
+! difference clearly [0,1) (a fractional hPa).
+! so after mult [0,100000000) cf range of i4: [-2147483648,2147483647],
+! which is well within range --- have 10 digits use only 9
+!           seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
+!           seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
+!           seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
+!           seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
 !pmn: 8 zeros here cf 9 for LW!!!
-            do isubcol = 1,nsubcol
+
+            seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
+            seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
+            seed2 = seed1 + isubcol
+            seed4 = seed3 - isubcol
+
+!           do isubcol = 1,nsubcol
+            do ilay = 1,nlay
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
                cdf1(ilay,isubcol,icol) = rand_num 
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
@@ -200,13 +211,19 @@ contains
             end do
          end do
         
-         do ilay = 1,nlay
-            do icol = 1,ncol
-               seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
-               seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
-               seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
-               seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
-               do isubcol = 1,nsubcol
+         do icol = 1,ncol
+            do isubcol = 1,nsubcol
+!           do ilay = 1,nlay
+!              seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
+!              seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
+!              seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
+!              seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
+               seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
+               seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
+               seed2 = seed1 + isubcol
+               seed4 = seed3 - isubcol
+!              do isubcol = 1,nsubcol
+               do ilay = 1,nlay
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
                   cdf2(ilay,isubcol,icol) = rand_num 
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
@@ -226,28 +243,24 @@ contains
          end do
       end if
 
-      ! where the subcolumn is cloudy, the subcolumn cloud fraction is 1;
-      ! where the subcolumn is not cloudy, the subcolumn cloud fraction is 0;
-      ! where there is a cloud, define the subcolumn cloud properties,
-      ! otherwise set these to zero
+      ! generate clear or cloudy cells of subcolumns
 
       do icol = 1,ncol
          do isubcol = 1,nsubcol
             do ilay = 1,nlay
-               cfs = cld(ilay,icol)
+               cfs = cldfrac(ilay,icol)
 
                if (cdf1(ilay,isubcol,icol) >= 1. - cfs) then
 
                   ! a cloudy subcolumn/layer with inhomogeneous condensate assignment
                   ! note: cdf1 from rand_num in (0,1) so:
-                  !       cld == 0. can never get here;
-                  !       cld == 1. always comes here.
+                  !       cldfrac == 0. can never get here;
+                  !       cldfrac == 1. always comes here.
 
                   cldy_stoch(ilay,isubcol,icol) = .true. 
 
                   if (cond_inhomo) then
                   
-! pmn put this sigma calc outside after cfs, still with inhomo ?
                      ! Cloud fraction sets level of inhomogeneity
                      if (cfs > 0.99) then
                         sigma_qcw = 0.5
@@ -284,8 +297,8 @@ contains
 
                   ! a clear subcolumn/layer
                   ! note: per comments above:
-                  !       cld == 0. always comes here;
-                  !       cld == 1. never comes here.
+                  !       cldfrac == 0. always comes here;
+                  !       cldfrac == 1. never comes here.
 
                   ! a clear subcolumn
                   cldy_stoch(ilay,isubcol,icol) = .false. 
