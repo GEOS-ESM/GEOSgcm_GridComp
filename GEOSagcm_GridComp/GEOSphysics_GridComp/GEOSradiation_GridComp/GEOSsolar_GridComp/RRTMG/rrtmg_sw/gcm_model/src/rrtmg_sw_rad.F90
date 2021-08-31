@@ -1122,7 +1122,7 @@ contains
                call mcica_sw( &
                   pncol, ncol, ngptsw, nlay, &
                   zm, alat, dyofyr, &
-                  play, cld, ciwp, clwp, &
+                  play, cld, ciwp, clwp, 1.e-20, &
                   cldymcl, ciwpmcl, clwpmcl) 
 
                ! cloud optical property generation

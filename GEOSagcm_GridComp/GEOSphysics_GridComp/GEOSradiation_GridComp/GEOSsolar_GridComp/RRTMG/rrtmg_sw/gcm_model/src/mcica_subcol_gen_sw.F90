@@ -14,18 +14,9 @@ module mcica_subcol_gen_sw
    implicit none
    private
 
-   ! tiny threshold value for cloud water path, at or below which each of
-   ! ice and liquid water parths are separately reset to zero. If both are
-   ! thus reset, then the subcolumn gridcell is reset to .not.cloudy. The
-   ! idea here is mainly efficiency, since external processing of cloudy
-   ! cells usually takes longer.
-   real, parameter :: cwp_tiny = 1.e-20
-!pmn? units
-
    real, parameter :: r2d = 180.d0 / 3.14159265358979323846d0
 
    public :: mcica_sw
-   public :: cwp_tiny
 
 contains
 
@@ -33,7 +24,7 @@ contains
    subroutine mcica_sw( &
       pncol, ncol, nsubcol, nlay, &
       zmid, alat, doy, &
-      play, cldfrac, ciwp, clwp, &
+      play, cldfrac, ciwp, clwp, cwp_tiny, &
       cldy_stoch, ciwp_stoch, clwp_stoch)
    !---------------------------------------------------------------------------------------
    !
@@ -69,14 +60,27 @@ contains
       integer, intent(in) :: ncol                  ! Actual number of gridcols
       integer, intent(in) :: nsubcol               ! #Subcols to generate / gridcol
       integer, intent(in) :: nlay                  ! Number of model layers
-      real,    intent(in) :: zmid    (nlay,pncol)  ! Hgt of midpoints [m]
+
+      real,    intent(in) :: zmid    (nlay,pncol)  ! Height of midpoints [m]
       real,    intent(in) :: alat         (pncol)  ! Latitude of gridcolumn [radians]
       integer, intent(in) :: doy                   ! Day of year
       real,    intent(in) :: play    (nlay,pncol)  ! Layer pressures [hPa]
-!pmn: original comment had [Pa] but [hPa] is being passed in !!!
-      real,    intent(in) :: cldfrac (nlay,pncol)  ! Layer cloud fraction 
-      real,    intent(in) :: ciwp    (nlay,pncol)  ! In-cloud ice water path (g/m2)?
-      real,    intent(in) :: clwp    (nlay,pncol)  ! In-cloud liquid water path (g/m2)?
+      real,    intent(in) :: cldfrac (nlay,pncol)  ! Layer cloud fraction [0., 1.]
+
+      ! The units of these in-cloud water paths are not specified, but they should
+      ! be the same for both liquid water and ice. cwp_tiny below is assumed to be
+      ! in those isame units and the output stochastic water paths as well.
+
+      real,    intent(in) :: ciwp    (nlay,pncol)  ! In-cloud ice water path
+      real,    intent(in) :: clwp    (nlay,pncol)  ! In-cloud liquid water path
+
+      ! Tiny threshold value for cloud water path, at or below which each of
+      ! ice and liquid water parths are separately reset to zero. If both are
+      ! thus reset, then the subcolumn gridcell is reset to .not.cloudy. The
+      ! idea here is mainly efficiency, since external processing of cloudy
+      ! cells usually takes longer. Units are assumed same as ciwp and clwp.
+
+      real,    intent(in) :: cwp_tiny
 
       ! output subcolumns
       ! (units of water paths are the same as for inputs ciwp and clwp)
@@ -114,12 +118,6 @@ contains
 
       ! save for speed
       cond_inhomo = condensate_inhomogeneous()
-
-      cdf1 = 0.
-      cdf2 = 0.
-      cdf3 = 0.
-      alpha = 0.
-      rcorr = 0.
 
       ! -----------------------------------
       ! compute decorrelation length scales
@@ -160,29 +158,14 @@ contains
          end do
       end do
      
-! pmn eventually reorder but not now cos will break zero-diff
-! preserve zero-diff as long as possible so work on other parts of code first
-
       do icol = 1,ncol
          do isubcol = 1,nsubcol
-
-!        do ilay = 1,nlay
-! play here is actually in hPa, so ~ 950-1050 at sfc.
-! difference clearly [0,1) (a fractional hPa).
-! so after mult [0,100000000) cf range of i4: [-2147483648,2147483647],
-! which is well within range --- have 10 digits use only 9
-!           seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
-!           seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
-!           seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
-!           seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
-!pmn: 8 zeros here cf 9 for LW!!!
 
             seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
             seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
             seed2 = seed1 + isubcol
             seed4 = seed3 - isubcol
 
-!           do isubcol = 1,nsubcol
             do ilay = 1,nlay
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
                cdf1(ilay,isubcol,icol) = rand_num 
@@ -213,16 +196,10 @@ contains
         
          do icol = 1,ncol
             do isubcol = 1,nsubcol
-!           do ilay = 1,nlay
-!              seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
-!              seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
-!              seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
-!              seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
                seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
                seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
                seed2 = seed1 + isubcol
                seed4 = seed3 - isubcol
-!              do isubcol = 1,nsubcol
                do ilay = 1,nlay
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
                   cdf2(ilay,isubcol,icol) = rand_num 
