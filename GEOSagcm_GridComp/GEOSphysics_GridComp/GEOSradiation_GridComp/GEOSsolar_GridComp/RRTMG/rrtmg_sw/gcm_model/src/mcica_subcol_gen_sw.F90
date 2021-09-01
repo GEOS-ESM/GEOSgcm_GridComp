@@ -14,15 +14,13 @@ module mcica_subcol_gen_sw
    implicit none
    private
 
-   real, parameter :: r2d = 180.d0 / 3.14159265358979323846d0
-
    public :: mcica_sw
 
 contains
 
    !---------------------------------------------------------------------------------------
    subroutine mcica_sw( &
-      pncol, ncol, nsubcol, nlay, &
+      dncol, ncol, nsubcol, nlay, &
       zmid, alat, doy, &
       play, cldfrac, ciwp, clwp, cwp_tiny, &
       cldy_stoch, ciwp_stoch, clwp_stoch)
@@ -56,23 +54,23 @@ contains
    !
    !---------------------------------------------------------------------------------------
 
-      integer, intent(in) :: pncol                 ! Dimensioned number of gridcols
+      integer, intent(in) :: dncol                 ! Dimensioned number of gridcols
       integer, intent(in) :: ncol                  ! Actual number of gridcols
       integer, intent(in) :: nsubcol               ! #Subcols to generate / gridcol
       integer, intent(in) :: nlay                  ! Number of model layers
 
-      real,    intent(in) :: zmid    (nlay,pncol)  ! Height of midpoints [m]
-      real,    intent(in) :: alat         (pncol)  ! Latitude of gridcolumn [radians]
+      real,    intent(in) :: zmid    (nlay,dncol)  ! Height of midpoints [m]
+      real,    intent(in) :: alat         (dncol)  ! Latitude of gridcolumn [radians]
       integer, intent(in) :: doy                   ! Day of year
-      real,    intent(in) :: play    (nlay,pncol)  ! Layer pressures [hPa]
-      real,    intent(in) :: cldfrac (nlay,pncol)  ! Layer cloud fraction [0., 1.]
+      real,    intent(in) :: play    (nlay,dncol)  ! Layer pressures [hPa]
+      real,    intent(in) :: cldfrac (nlay,dncol)  ! Layer cloud fraction [0., 1.]
 
       ! The units of these in-cloud water paths are not specified, but they should
       ! be the same for both liquid water and ice. cwp_tiny below is assumed to be
       ! in those isame units and the output stochastic water paths as well.
 
-      real,    intent(in) :: ciwp    (nlay,pncol)  ! In-cloud ice water path
-      real,    intent(in) :: clwp    (nlay,pncol)  ! In-cloud liquid water path
+      real,    intent(in) :: ciwp    (nlay,dncol)  ! In-cloud ice water path
+      real,    intent(in) :: clwp    (nlay,dncol)  ! In-cloud liquid water path
 
       ! Tiny threshold value for cloud water path, at or below which each of
       ! ice and liquid water parths are separately reset to zero. If both are
@@ -84,27 +82,24 @@ contains
 
       ! output subcolumns
       ! (units of water paths are the same as for inputs ciwp and clwp)
-      logical, intent(out) :: cldy_stoch (nlay,nsubcol,pncol)  ! Cloudy or not?
-      real,    intent(out) :: ciwp_stoch (nlay,nsubcol,pncol)  ! In-cloud ice water path
-      real,    intent(out) :: clwp_stoch (nlay,nsubcol,pncol)  ! In-cloud liq water path
+      logical, intent(out) :: cldy_stoch (nlay,nsubcol,dncol)  ! Cloudy or not?
+      real,    intent(out) :: ciwp_stoch (nlay,nsubcol,dncol)  ! In-cloud ice water path
+      real,    intent(out) :: clwp_stoch (nlay,nsubcol,dncol)  ! In-cloud liq water path
 
       ! ----- Locals -----
 
       ! decorrelation length scales for cldfrac and condensate
-      real, dimension(pncol) :: adl, rdl
+      real, dimension(dncol) :: adl, rdl
 
       ! inter-layer correlations for cldfrac and condensate
-      real, dimension(nlay,pncol) :: alpha, rcorr
+      real, dimension(nlay,dncol) :: alpha, rcorr
 
-      ! related to decorrelation lengths
-      real :: am1, am2, am3, am4, amr
-
-      ! related to random number and seed 
-      integer :: seed1, seed2, seed3, seed4  ! seed (rng_kiss)
-      real :: rand_num                       ! random number (rng_kiss)
+      ! seeds and random number (rng_kiss)
+      integer :: seed1, seed2, seed3, seed4
+      real :: rand_num
 
       ! random number arrays used for overlap
-      real, dimension(nlay,nsubcol,pncol) :: &
+      real, dimension(nlay,nsubcol,dncol) :: &
          cdf1, &  ! for cloud presence
          cdf2, &  ! auxilliary
          cdf3     ! for cloud condensate
@@ -123,51 +118,33 @@ contains
       ! compute decorrelation length scales
       ! -----------------------------------
 
-      ! cloud presence decorrelation length scale
-      am1 = 1.4315
-      am2 = 2.1219
-      am4 = -25.584
-      amr = 7.
-      if (doy > 181) then
-         am3 = -4.*amr/365*(doy-272)
-      else
-         am3 = 4.*amr/365.*(doy-91)
-      endif
-      do icol = 1,ncol
-         adl(icol) = (am1+am2*exp(-(alat(icol)*r2d-am3)**2/am4**2))*1.e3  ! [m]
-      end do
+      ! for cloud presence
+      call correlation_length(dncol, ncol, &
+         1.4315, 2.1219, -25.584, 7., doy, alat, adl)
 
-      ! condensate decorrelation length scale
+      ! for condensate
       if (cond_inhomo) then
-         am1 = 0.72192
-         am2 = 0.78996
-         am4 = 40.404
-         amr = 8.5
-         if (doy > 181) then
-            am3 = -4.*amr/365*(doy-272)
-         else
-            am3 = 4.*amr/365.*(doy-91)
-         endif
-         do icol = 1,ncol
-            rdl(icol) = (am1+am2*exp(-(alat(icol)*r2d-am3)**2/am4**2))*1.e3  ! [m]
-         end do
+         call correlation_length(dncol, ncol, &
+            0.72192, 0.78996, 40.404, 8.5, doy, alat, rdl)
       endif
-   
+
       ! --------------------------
       ! outer loop over gridcolumn
       ! --------------------------
-
       do icol = 1,ncol
 
          ! ------------------------------------
          ! exponential inter-layer correlations
          ! ------------------------------------
-
-         alpha(1,icol) = 0.  ! never used
          do ilay = 2,nlay
-            alpha(ilay,icol) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / adl(icol))
-         end do
-     
+            alpha(ilay,icol) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / adl(icol) )
+         enddo
+         if (cond_inhomo) then
+            do ilay = 2,nlay
+               rcorr(ilay,icol) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / rdl(icol) )
+            enddo
+         endif
+
          do isubcol = 1,nsubcol
 
             seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
@@ -177,31 +154,24 @@ contains
 
             do ilay = 1,nlay
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf1(ilay,isubcol,icol) = rand_num 
+               cdf1(ilay,isubcol,icol) = rand_num
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf2(ilay,isubcol,icol) = rand_num 
-            end do
-         end do
-    
-         do isubcol = 1,nsubcol
+               cdf2(ilay,isubcol,icol) = rand_num
+            enddo
+
             do ilay = 2,nlay
                if (cdf2(ilay,isubcol,icol) < alpha(ilay,icol)) then
                   cdf1(ilay,isubcol,icol) = cdf1(ilay-1,isubcol,icol) 
-               end if
-            end do
-         end do
+               endif
+            enddo
+         enddo
 
-      end do
+      enddo
     
       if (cond_inhomo) then
         
          do icol = 1,ncol
 
-            rcorr(1,icol) = 0.
-            do ilay = 2,nlay
-               rcorr(ilay,icol) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / rdl(icol))
-            end do
-        
             do isubcol = 1,nsubcol
                seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
                seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
@@ -209,23 +179,21 @@ contains
                seed4 = seed3 - isubcol
                do ilay = 1,nlay
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf2(ilay,isubcol,icol) = rand_num 
+                  cdf2(ilay,isubcol,icol) = rand_num
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf3(ilay,isubcol,icol) = rand_num 
-               end do
-            end do
+                  cdf3(ilay,isubcol,icol) = rand_num
+               enddo
 
-            do isubcol = 1,nsubcol
                do ilay = 2,nlay
                   if (cdf2(ilay,isubcol,icol) < rcorr(ilay,icol)) then
                      cdf3(ilay,isubcol,icol) = cdf3(ilay-1,isubcol,icol)
-                  end if
-               end do
-            end do
+                  endif
+               enddo
+            enddo
 
-         end do
+         enddo
 
-      end if
+      endif
 
       ! -------------------
       ! generate subcolumns
@@ -243,19 +211,19 @@ contains
                   !       cldfrac == 0. can never get here;
                   !       cldfrac == 1. always comes here.
 
-                  cldy_stoch(ilay,isubcol,icol) = .true. 
+                  cldy_stoch(ilay,isubcol,icol) = .true.
 
                   if (cond_inhomo) then
-                  
+
                      ! Cloud fraction sets level of inhomogeneity
                      if (cfs > 0.99) then
                         sigma_qcw = 0.5
                      elseif (cfs > 0.9) then
                         sigma_qcw = 0.71
-                     else  
+                     else
                         sigma_qcw = 1.0
                      endif
-                  
+
                      ! horizontally variable clouds
                      zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
                      ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
@@ -267,8 +235,8 @@ contains
                      ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
                      clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
 
-                  end if
-                
+                  endif
+
                   ! reset negligible water paths to zero (see comment in introduction)
                   ciwp_negligible = (ciwp_stoch(ilay,isubcol,icol) <= cwp_tiny)
                   if (ciwp_negligible) ciwp_stoch(ilay,isubcol,icol) = 0.
@@ -287,9 +255,9 @@ contains
                   !       cldfrac == 1. never comes here.
 
                   ! a clear subcolumn
-                  cldy_stoch(ilay,isubcol,icol) = .false. 
-                  ciwp_stoch(ilay,isubcol,icol) = 0. 
-                  clwp_stoch(ilay,isubcol,icol) = 0. 
+                  cldy_stoch(ilay,isubcol,icol) = .false.
+                  ciwp_stoch(ilay,isubcol,icol) = 0.
+                  clwp_stoch(ilay,isubcol,icol) = 0.
 
                endif
             enddo
@@ -297,6 +265,35 @@ contains
       enddo
 
    end subroutine mcica_sw
+
+   !-------------------------------------------
+   subroutine correlation_length(dncol, ncol, &
+      am1, am2, am4, amr, doy, alat, clength)
+   !-------------------------------------------
+      integer, intent(in)  :: dncol               ! Dimensioned number of gridcols
+      integer, intent(in)  :: ncol                ! Actual number of gridcols
+      real,    intent(in)  :: am1, am2, am4, amr  ! input parameters
+      integer, intent(in)  :: doy                 ! Day of year
+      real,    intent(in)  :: alat    (dncol)     ! Latitude of gridcolumn [radians]
+      real,    intent(out) :: clength (dncol)     ! Correlation length [m]
+
+      real, parameter :: r2d = 180.d0 / 3.14159265358979323846d0
+
+      integer :: icol
+      real :: am3
+
+      if (doy > 181) then
+         am3 = -4.*amr/365.*(doy-272)
+      else
+         am3 =  4.*amr/365.*(doy- 91)
+      endif
+
+      do icol = 1,ncol
+         clength(icol) = (am1+am2*exp(-(alat(icol)*r2d-am3)**2/am4**2))*1.e3
+      enddo
+
+   end subroutine correlation_length
+
 
    !-------------------------------------------------------
    subroutine rng_kiss(seed1, seed2, seed3, seed4, ran_num)
