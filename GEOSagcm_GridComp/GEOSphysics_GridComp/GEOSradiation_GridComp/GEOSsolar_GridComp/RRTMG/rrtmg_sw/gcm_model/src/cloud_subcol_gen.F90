@@ -1,10 +1,20 @@
-module mcica_subcol_gen_sw
+!  --------------------------------------------------------------------------
+! |                                                                          |
+! |  Copyright 2006-2009, Atmospheric & Environmental Research, Inc. (AER).  |
+! |  This software may be used, copied, or redistributed as long as it is    |
+! |  not sold and this copyright notice is reproduced on each copy made.     |
+! |  This model is provided as is without any express or implied warranties. |
+! |                       (http://www.rtweb.aer.com/)                        |
+! |                                                                          |
+!  --------------------------------------------------------------------------
+
+module cloud_subcol_gen
 
    ! Purpose: Create stochastic arrays for cloud physical properties.
    ! Input gridcolumn cloud profiles: cloud fraction and in-cloud ice and liquid
    ! water paths. Output will be stochastic subcolumn arrays of these variables.
 
-   ! PMN 2021/08: This version makes the binary (cldf_stoch in {0,1}) nature of
+   ! PMN 2021/06: This version makes the binary (cldf_stoch in {0,1}) nature of
    ! cloud output explicit by changing to a logical cldy_stoch in {true,false},
    ! which may permit some exterior efficiency improvements.
 
@@ -14,12 +24,13 @@ module mcica_subcol_gen_sw
    implicit none
    private
 
-   public :: mcica_sw
+   public :: generate_stochastic_clouds
+   public :: clearCounts_threeBand
 
 contains
 
    !---------------------------------------------------------------------------------------
-   subroutine mcica_sw( &
+   subroutine generate_stochastic_clouds( &
       dncol, ncol, nsubcol, nlay, &
       zmid, alat, doy, &
       play, cldfrac, ciwp, clwp, cwp_tiny, &
@@ -92,14 +103,14 @@ contains
       real, dimension(dncol) :: adl, rdl
 
       ! inter-layer correlations for cldfrac and condensate
-      real, dimension(nlay,dncol) :: alpha, rcorr
+      real, dimension(nlay) :: alpha, rcorr
 
       ! seeds and random number (rng_kiss)
       integer :: seed1, seed2, seed3, seed4
       real :: rand_num
 
       ! random number arrays used for overlap
-      real, dimension(nlay,nsubcol,dncol) :: &
+      real, dimension(nlay) :: &
          cdf1, &  ! for cloud presence
          cdf2, &  ! auxilliary
          cdf3     ! for cloud condensate
@@ -137,66 +148,83 @@ contains
          ! exponential inter-layer correlations
          ! ------------------------------------
          do ilay = 2,nlay
-            alpha(ilay,icol) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / adl(icol) )
+            alpha(ilay) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / adl(icol) )
          enddo
          if (cond_inhomo) then
             do ilay = 2,nlay
-               rcorr(ilay,icol) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / rdl(icol) )
+               rcorr(ilay) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / rdl(icol) )
             enddo
          endif
 
+         ! -----------------------
+         ! generate each subcolumn
+         ! -----------------------
          do isubcol = 1,nsubcol
 
-            seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
-            seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
+            ! -----------
+            ! create seed
+            ! -----------
+            ! For rng_kiss, create a seed that depends on the state of the columns.
+            ! Maybe not the best way, but it works.
+            ! pmn ... why do we have to reset seed at beginning of every subcol?
+            ! pmn ... no real harm and allowed parallel generation in old gpu code
+            ! notes: play*100 is in Pa, so approx 95000--105000 near the surface.
+            ! The difference below is clearly [0,1) (a fractional Pa), so after
+            ! multiplication [0,1000000000) cf. range of i4: [-2147483648,2147483647],
+            ! which is well within range: have 10 digits, use 10 but not exceeding
+            ! maximum positive i4.
+      
+            seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11 
+            seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13 
             seed2 = seed1 + isubcol
             seed4 = seed3 - isubcol
+  
+            ! ------------------------
+            ! apply overlap assumption
+            ! ------------------------
 
             do ilay = 1,nlay
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf1(ilay,isubcol,icol) = rand_num
+               cdf1(ilay) = rand_num
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf2(ilay,isubcol,icol) = rand_num
+               cdf2(ilay) = rand_num
             enddo
 
+            ! exponential overlap in cloud fraction
             do ilay = 2,nlay
-               if (cdf2(ilay,isubcol,icol) < alpha(ilay,icol)) then
-                  cdf1(ilay,isubcol,icol) = cdf1(ilay-1,isubcol,icol) 
+               if (cdf2(ilay) < alpha(ilay)) then
+                  cdf1(ilay) = cdf1(ilay-1)
                endif
             enddo
 
+            ! exponential overlap in condensate
             if (cond_inhomo) then
 
                do ilay = 1,nlay
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf2(ilay,isubcol,icol) = rand_num
+                  cdf2(ilay) = rand_num
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf3(ilay,isubcol,icol) = rand_num
+                  cdf3(ilay) = rand_num
                enddo
 
                do ilay = 2,nlay
-                  if (cdf2(ilay,isubcol,icol) < rcorr(ilay,icol)) then
-                     cdf3(ilay,isubcol,icol) = cdf3(ilay-1,isubcol,icol)
+                  if (cdf2(ilay) < rcorr(ilay)) then
+                     cdf3(ilay) = cdf3(ilay-1)
                   endif
                enddo
 
             endif
 
-         enddo  ! subcolumns
-      enddo  ! gridcolumn
+            ! -------------------
+            ! generate subcolumns
+            ! -------------------
 
-      ! -------------------
-      ! generate subcolumns
-      ! -------------------
-
-      do icol = 1,ncol
-         do isubcol = 1,nsubcol
             do ilay = 1,nlay
                cfs = cldfrac(ilay,icol)
 
-               if (cdf1(ilay,isubcol,icol) >= 1. - cfs) then
+               if (cdf1(ilay) >= 1. - cfs) then
 
-                  ! a cloudy subcolumn/layer with inhomogeneous condensate assignment
+                  ! a cloudy subcolumn/layer
                   ! note: cdf1 from rand_num in (0,1) so:
                   !       cldfrac == 0. can never get here;
                   !       cldfrac == 1. always comes here.
@@ -215,7 +243,7 @@ contains
                      endif
 
                      ! horizontally variable clouds
-                     zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
+                     zcw = zcw_lookup(cdf3(ilay),sigma_qcw)
                      ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
                      clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
 
@@ -244,17 +272,19 @@ contains
                   !       cldfrac == 0. always comes here;
                   !       cldfrac == 1. never comes here.
 
-                  ! a clear subcolumn
                   cldy_stoch(ilay,isubcol,icol) = .false.
                   ciwp_stoch(ilay,isubcol,icol) = 0.
                   clwp_stoch(ilay,isubcol,icol) = 0.
 
                endif
-            enddo
-         enddo
-      enddo
+           
+            enddo  ! layer
 
-   end subroutine mcica_sw
+         enddo  ! subcolumn
+      enddo  ! gridcolumn
+
+   end subroutine generate_stochastic_clouds
+
 
    !-------------------------------------------
    subroutine correlation_length(dncol, ncol, &
@@ -289,12 +319,25 @@ contains
    subroutine rng_kiss(seed1, seed2, seed3, seed4, ran_num)
    !-------------------------------------------------------
    ! See note below: get ran_num in (0,1)
+   !
+   ! public domain code.
+   ! made available from http://www.fortran.com/.
+   ! downloaded by pjr on 03/16/04 for NCAR CAM.
+   ! converted to vector form, functions inlined by pjr,mvr on 05/10/2004.
+   ! devectorized by pmn 08/24/2021.
+   !
+   ! The KISS (Keep It Simple Stupid) random number generator. Combines:
+   ! (1) The congruential generator x(n)=69069*x(n-1)+1327217885, period 2^32.
+   ! (2) A 3-shift shift-register generator, period 2^32-1,
+   ! (3) Two 16-bit multiply-with-carry generators, period 597273182964842497>2^59
+   ! Overall period>2^123; 
+   !-------------------------------------------------------
 
       real, intent(out) :: ran_num
       integer, intent(inout) :: seed1, seed2, seed3, seed4
       integer :: m, k, n, kiss
 
-      ! inline function
+      ! inline function 
       m(k,n) = ieor(k,ishft(k,n))
 
       seed1 = 69069 * seed1 + 1327217885
@@ -302,8 +345,125 @@ contains
       seed3 = 18000 * iand(seed3,65535) + ishft(seed3,-16)
       seed4 = 30903 * iand(seed4,65535) + ishft(seed4,-16)
       kiss = seed1 + seed2 + ishft(seed3,16) + seed4
-      ran_num = kiss * 2.328306e-10 + 0.5
+      ran_num = kiss * 2.328306e-10 + 0.5 
+    
+   !-------------------------------------------------------
+   ! pmn notes:
+   ! kiss is a random 32-bit signed integer in [-(2**31),2**31-1],
+   ! and 2.328306e-10 is an approx to 2**-32 =~ 2.32830644e-10.
+   ! Based on the tests below, the result ran_num will be
+   !    [8.9406967E-08,0.9999999] ~ (0,1).
+   ! 
+   ! rng_test.f90:
+   ! program rng_test
+   !    integer, parameter :: mini = -2**31
+   !    integer, parameter :: maxi = 2**31 - 1
+   !    real :: rng
+   !    write(*,*) mini
+   !    write(*,*) maxi
+   !    rng = mini * 2.328306e-10 + 0.5
+   !    write(*,*) rng
+   !    rng = maxi * 2.328306e-10 + 0.5
+   !    write(*,*) rng
+   ! end program rng_test
+   ! 
+   ! Results:
+   !  $ module load comp/intel/19.1.3.304
+   !  $ ifort rng_test.f90
+   !  $ a.out
+   !  -2147483648
+   !   2147483647
+   !   8.9406967E-08
+   !   0.9999999
+   !-------------------------------------------------------
 
    end subroutine rng_kiss
 
-end module mcica_subcol_gen_sw
+
+   ! ----------------------------------------------------------------
+   subroutine clearCounts_threeBand( &
+                 dncol, ncol, nsubcol, nlay, &
+                 cloudLM, cloudMH, cldy_stoch, &
+                 clearCnts)
+   ! ----------------------------------------------------------------
+   ! Count clear subcolumns per gridcolumn for whole column
+   !   and for three pressure bands.
+   ! layers [1,         cloudLM] are in low  pressure band
+   ! layers [cloudLM+1, cloudMH] are in mid  pressure band
+   ! layers [cloudMH+1, nlay   ] are in high pressure band
+   ! ----------------------------------------------------------------
+
+      integer, intent(in)  :: dncol              ! Dimensioned number of gridcols
+      integer, intent(in)  :: ncol               ! Actual number of gridcols
+      integer, intent(in)  :: nsubcol            ! number of subcols per gridcol
+      integer, intent(in)  :: nlay               ! number of layers
+      integer, intent(in)  :: cloudLM, cloudMH   ! layer indices as above
+
+      logical, intent(in)  :: cldy_stoch(nlay,nsubcol,dncol)  ! cloudy or not?
+
+      integer, intent(out) :: clearCnts(4,dncol) ! counts of clear subcolumns
+                                                 ! (1,) whole column
+                                                 ! (2,) high pressure band only
+                                                 ! (3,) mid  pressure band only
+                                                 ! (4,) low  pressure band only
+                                          
+      ! locals
+      integer :: icol, isubcol, ilay
+      logical :: cloud_found
+
+      ! zero counters
+      clearCnts = 0
+ 
+      do icol = 1,ncol
+         do isubcol = 1,nsubcol
+
+            ! whole subcolumn
+            cloud_found = .false.
+            do ilay = 1, nlay
+               if (cldy_stoch(ilay,isubcol,icol)) then 
+                  cloud_found = .true.
+                  exit
+               endif
+            enddo
+            if (.not. cloud_found) &
+               clearCnts(1,icol) = clearCnts(1,icol) + 1
+
+            ! high pressure band
+            cloud_found = .false.
+            do ilay = cloudMH+1, nlay
+               if (cldy_stoch(ilay,isubcol,icol)) then 
+                  cloud_found = .true.
+                  exit
+               endif
+            enddo
+            if (.not. cloud_found) &
+               clearCnts(2,icol) = clearCnts(2,icol) + 1
+
+            ! mid pressure band
+            cloud_found = .false.
+            do ilay = cloudLM+1, cloudMH
+               if (cldy_stoch(ilay,isubcol,icol)) then 
+                  cloud_found = .true.
+                  exit
+               endif
+            enddo
+            if (.not. cloud_found) &
+               clearCnts(3,icol) = clearCnts(3,icol) + 1
+
+            ! low pressure band
+            cloud_found = .false.
+            do ilay = 1, cloudLM
+               if (cldy_stoch(ilay,isubcol,icol)) then 
+                  cloud_found = .true.
+                  exit
+               endif
+            enddo
+            if (.not. cloud_found) &
+               clearCnts(4,icol) = clearCnts(4,icol) + 1
+
+         enddo  ! isubcol
+      enddo  ! icol
+   
+   end subroutine clearCounts_threeBand
+
+end module cloud_subcol_gen

@@ -48,7 +48,7 @@
 module rrtmg_sw_rad
 
    use rrsw_vsn
-   use mcica_subcol_gen_sw, only: mcica_sw
+   use cloud_subcol_gen, only: generate_stochastic_clouds
    use cloud_condensate_inhomogeneity, only: &
       initialize_inhomogeneity, release_inhomogeneity
    use rrtmg_sw_cldprmc, only: cldprmc_sw
@@ -1119,7 +1119,7 @@ contains
             if (cc == 2) then
 
                ! McICA subcolumn generation
-               call mcica_sw( &
+               call generate_stochastic_clouds( &
                   pncol, ncol, ngptsw, nlay, &
                   zm, alat, dyofyr, &
                   play, cld, ciwp, clwp, 1.e-20, &
