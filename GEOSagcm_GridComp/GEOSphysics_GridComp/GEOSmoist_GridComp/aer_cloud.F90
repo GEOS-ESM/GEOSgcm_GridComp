@@ -606,7 +606,7 @@
        ! 3- Barahona (2009) Asumme a maximum freezing fraction then scales it according to CNT
        ! 4- PDA08, using fixed size distributions.
        ! 5- Phillips 2013. Assumes monodisperse for bc and organics 
-       ! 6 - Ulrich 2017 (default) 
+       ! 6 - Ullrich 2017 (default) 
        purehet_ice= .FALSE.  !True supresses homogeneous nucleation      
        purehom_ice= .FALSE.   ! True supresses heterogeneous nucleation   
 

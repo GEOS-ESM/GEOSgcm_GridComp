@@ -95,14 +95,22 @@ module GEOS_MoistGridCompMod
   use RASPARAMS
   use CLDPARAMS
   use SHLWPARAMS
-  use micro_mg3_0
+  !use micro_mg3_0
  
 !-srf-gf-scheme
-  USE ConvPar_GF_GEOS5, only: gf_geos5_interface &
-      ,maxiens, icumulus_gf, closure_choice, deep, shal, mid&
-      ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts&
-      ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
-      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
+  USE ConvPar_GF_GEOS5, only: GF_GEOS5_INTERFACE, MAXIENS, ICUMULUS_GF, CLOSURE_CHOICE, DEEP, SHAL, MID &
+                             ,USE_SCALE_DEP,DICYCLE,TAU_DEEP,TAU_MID,HCTS                               &
+                             ,USE_TRACER_TRANSP, USE_TRACER_SCAVEN,USE_MEMORY,CONVECTION_TRACER         &
+	                     ,USE_FLUX_FORM,USE_TRACER_EVAP,DOWNDRAFT,USE_FCT                           &
+			     ,USE_REBCB, VERT_DISCR, SATUR_CALC, CLEV_GRID, APPLY_SUB_MP, ALP1          &
+			     ,SGS_W_TIMESCALE, LIGHTNING_DIAG,AUTOCONV, BC_METH,OVERSHOOT,USE_WETBULB   &
+                             ,C1,C0_DEEP, QRC_CRIT,LAMBAU_DEEP,LAMBAU_SHDN,C0_MID                       &
+	                     ,CUM_MAX_EDT_LAND,CUM_MAX_EDT_OCEAN, CUM_HEI_DOWN_LAND, CUM_HEI_DOWN_OCEAN &
+                             ,CUM_HEI_UPDF_LAND,CUM_HEI_UPDF_OCEAN,USE_MOMENTUM_TRANSP,CUM_ENTR_RATE    &
+                             ,ZERO_DIFF,MOIST_TRIGGER,FRAC_MODIS,MAX_TQ_TEND,CUM_FADJ_MASSFLX           &
+			     ,CUM_USE_EXCESS,CUM_AVE_LAYER,ADV_TRIGGER,EVAP_FIX,USE_SMOOTH_PROF         &
+			     ,OUTPUT_SOUND,TAU_OCEA_CP,TAU_LAND_CP,USE_CLOUD_DISSIPATION,USE_SMOOTH_TEND&
+			     ,BETA_SH,C0_SHAL,USE_LINEAR_SUBCL_MF,CAP_MAXS
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -133,10 +141,12 @@ module GEOS_MoistGridCompMod
   character(len=ESMF_MAXSTR) :: DIAGNOSE_PRECIP_TYPE ! TRUE or FALSE
   logical                    :: LDIAGNOSE_PRECIP_TYPE
 
+  integer :: USE_GF2020
   integer :: DOSHLW
   real    :: MGVERSION
   integer :: DOGRAUPEL
 
+  integer :: JASON_TUNING
   private
 
   ! !PUBLIC MEMBER FUNCTIONS:
@@ -228,9 +238,7 @@ contains
 
     call ESMF_ConfigGetAttribute( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', RC=STATUS) ! Note: Default set in GEOS_GcmGridComp.F90
     VERIFY_(STATUS)
-    !~ call ESMF_ConfigGetAttribute( CF, DEBUG_GF, Label='DEBUG_GF:', default=0,RC=STATUS)
-    !~ VERIFY_(STATUS)
-    !ALT
+    
 
     call ESMF_ConfigGetAttribute( CF, AERO_PROVIDER, Label='AERO_PROVIDER:', RC=STATUS) ! Note: Default set in GEOS_GcmGridComp.F90
     VERIFY_(STATUS)
@@ -260,6 +268,8 @@ contains
     call ESMF_ConfigGetAttribute( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
     VERIFY_(STATUS)
 
+    call ESMF_ConfigGetAttribute( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:',default= 0,  RC=STATUS )
+    VERIFY_(STATUS)
     ! Inititialize cloud microphysics (Options: 1MOMENT, 2MOMENT or GFDL)
     !--------------------------------------------------------------
     call ESMF_ConfigGetAttribute( CF, CLDMICRO, Label="CLDMICRO:",  default="1MOMENT", RC=STATUS)
@@ -268,9 +278,8 @@ contains
                 adjustl(CLDMICRO)=="2MOMENT" .or. &
                 adjustl(CLDMICRO)=="GFDL"
     _ASSERT( LCLDMICRO, 'needs informative message' )
-    if (adjustl(CLDMICRO)=="2MOMENT") then
-      call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
-    endif
+    
+    call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
     call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
 
     call ESMF_ConfigGetAttribute( CF, HYDROSTATIC, Label="HYDROSTATIC:",  default="TRUE", RC=STATUS)
@@ -298,31 +307,23 @@ contains
     FRIENDLIES_QGRAUPEL = trim(COMP_NAME)
    
     if(adjustl(CLDMICRO)=="2MOMENT") then
-      if (MGVERSION==0) then    
-        FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'      
-        FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
-      endif
-      if(MGVERSION==2) then
-        call ESMF_ConfigGetAttribute( CF, DOGRAUPEL, Label="DOGRAUPEL:",  default=0, RC=STATUS)
-        if (DOGRAUPEL == 0) then
-          FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
+    
+      FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'      
+      FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
+      
+      if (MGVERSION .gt. 1.0) then
           FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
-        else
-          FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
+      end if
+      
+       if (MGVERSION .gt. 2.0) then                       
           FRIENDLIES_NGRAUPEL = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_QGRAUPEL = 'DYNAMICS:TURBULENCE'
-        endif
       endif
-    endif
+    end if 
+    
     if(adjustl(CLDMICRO)=="GFDL") then
       FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
       FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
@@ -516,6 +517,21 @@ contains
     
   end if 
   
+  !srf-- convective memory/cold pool  --->
+  if ( ADJUSTL(CONVPAR_OPTION) == 'GF' .and. CONVECTION_TRACER == 1) then
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME ='CNV_TR',                                     &
+         LONG_NAME  ='convection_tracer',                          &
+         UNITS      ='1',                                          &
+!        FRIENDLYTO = 'DYNAMICS:TURBULENCE',                       &
+         FRIENDLYTO = 'DYNAMICS',                                  &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+	 RESTART = MAPL_RestartSkip,                               &
+         DEFAULT    = 0.0,   RC=STATUS  )  
+         VERIFY_(STATUS)                                                   
+  end if
+  !srf-----------------------------------<
     ! !IMPORT STATE:
 
     call MAPL_AddImportSpec(GC,                              &
@@ -1319,6 +1335,42 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'QTFLX_SC',                                  &
+         LONG_NAME  = 'shallow_cumulus_total_water_flux',          &
+         UNITS      = 'kg kg-1 m s-1',                             &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'SLFLX_SC',                                  &
+         LONG_NAME  = 'shallow_cumulus_liquid_static_energy_flux', &
+         UNITS      = 'K m s-1',                                  &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'UFLX_SC',                                   &
+         LONG_NAME  = 'shallow_cumulus_u_wind_flux',               &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'VFLX_SC',                                   &
+         LONG_NAME  = 'shallow_cumulus_v_wind_flux',               &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CUFRC_SC',                                  &
          LONG_NAME  = 'shallow_cumulus_cloud_fraction',            &
@@ -1358,6 +1410,15 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DTHDT_SC',                                  &
          LONG_NAME  = 'Potential_temperature_tendency_from_shallow_convection',            &
+         UNITS      = 'K s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DTDT_SC',                                  &
+         LONG_NAME  = 'Temperature_tendency_from_shallow_convection',            &
          UNITS      = 'K s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
@@ -1662,6 +1723,16 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DCM_SC',                                      &
+         LONG_NAME = 'Shallow_convection_detrained_cloud_mass', &
+         UNITS     = 'kg m-2 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CIN_SC',                                      &
          LONG_NAME = 'Convective_inhibition_for_shallow_convection', &
@@ -1720,6 +1791,15 @@ contains
          SHORT_NAME = 'CBMF_SC',                                      &
          LONG_NAME = 'cloud_base_mass_flux_due_to_shallow_convection',&
          UNITS     = 'kg s-1 m-2',                                 &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CUSH_SC',                                      &
+         LONG_NAME = 'cumulus_scale_height_for_shallow_convection',&
+         UNITS     = 'm',                                          &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                         &
          RC=STATUS  )
@@ -1978,6 +2058,22 @@ contains
          SHORT_NAME = 'ER_PRCP',                                     & 
          LONG_NAME = 'spurious_rain_from_RH_cleanup',          &
          UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='SC_MSE',                                    & 
+         LONG_NAME ='shallow_convective_column_MSE_tendency',      &
+         UNITS     ='W m-2',                                       &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='SC_QT',                                       & 
+         LONG_NAME ='shallow_convective_column_QT_tendency',      &
+         UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
@@ -4163,6 +4259,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME='TPERT_SC',                                          & 
+         LONG_NAME ='Shallow_convection_source_air_temperature_perturbation', &
+         UNITS     ='K',                                             &
+         DIMS      = MAPL_DimsHorzOnly,                                  &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME='QPERT_SC',                                          & 
+         LONG_NAME ='Shallow_convection_source_air_humidity_perturbation', &
+         UNITS     ='kg kg-1',                                             &
+         DIMS      = MAPL_DimsHorzOnly,                                  &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='RHCmicro',                                          & 
          LONG_NAME ='Corrected RHc after micro', &
          UNITS     ='1',                                             &
@@ -4580,7 +4692,7 @@ contains
     VERIFY_(STATUS)
     
 !-srf-gf-scheme
-    IF(DEBUG_GF==1 .and. (CONVPAR_OPTION=='GF' .or. CONVPAR_OPTION=='BOTH')) THEN
+    IF(CONVPAR_OPTION=='GF' .or. CONVPAR_OPTION=='BOTH') THEN
 
        call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'DTRDT_GF',                                    &
@@ -4605,7 +4717,14 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'MUPDP',                                    &
-         LONG_NAME  = 'Mass_flux_deep_GF',        &
+         LONG_NAME  = 'Mass_flux_deep_GF_updraft',        &
+         UNITS      = 'kg m-2 s-1',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'MDNDP',                                    &
+         LONG_NAME  = 'Mass_flux_deep_GF_downdraft',        &
          UNITS      = 'kg m-2 s-1',                                  &
          DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -4621,6 +4740,34 @@ contains
          SHORT_NAME = 'MUPMD',                                    &
          LONG_NAME  = 'Mass_flux_congestus_GF',        &
          UNITS      = 'kg m-2 s-1',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'VAR3d_a',                                    &
+         LONG_NAME  = 'dummy_array_for_output_GF',        &
+         UNITS      = 'unknown',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'VAR3d_b',                                  &
+         LONG_NAME  = 'dummy_array_for_output_GF',                &
+         UNITS      = 'unknown',                                  &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'VAR3d_c',                                    &
+         LONG_NAME  = 'dummy_array_for_output_GF',        &
+         UNITS      = 'unknown',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'VAR3d_d',                                    &
+         LONG_NAME  = 'dummy_array_for_output_GF',        &
+         UNITS      = 'unknown',                                  &
          DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
        VERIFY_(STATUS)
@@ -4743,6 +4890,30 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
+        VERIFY_(STATUS)
+
+	call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='TPWI',                                        & 
+         LONG_NAME ='initial_total_precipitable_water',            &
+         UNITS     ='kg m-2'  ,                                    &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+         VERIFY_(STATUS)
+        
+	call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='TPWI_star',                                   & 
+         LONG_NAME ='saturation_initial_total_precipitable_water', &
+         UNITS     ='kg m-2'  ,                                    &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+         VERIFY_(STATUS)
+
+	call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='LFR_GF',                                 & 
+         LONG_NAME ='lightning_flash_density ',                    &
+         UNITS     ='km-2 day-1'  ,                                &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
         VERIFY_(STATUS)
 
     ENDIF
@@ -4897,11 +5068,11 @@ contains
 
     integer  unit
 
-    real DCS, QCVAR_, WBFFACTOR, NC_CST, NI_CST, NG_CST
+    real DCS, QCVAR_, WBFFACTOR, NC_CST, NI_CST, NG_CST, MUI_CST
     logical  :: nccons, nicons, ngcons, do_graupel
     integer  :: LM
  
-    real(ESMF_KIND_R8)  Dcsr8, qcvarr8,  micro_mg_berg_eff_factor_in, ncnstr8, ninstr8, ngnstr8
+    real(ESMF_KIND_R8)  Dcsr8, qcvarr8,  micro_mg_berg_eff_factor_in, ncnstr8, ninstr8, ngnstr8, mui_cnstr8
     !=============================================================================
 
     ! Begin... 
@@ -4939,9 +5110,8 @@ contains
                 adjustl(CLDMICRO)=="2MOMENT" .or. &
                 adjustl(CLDMICRO)=="GFDL"
     _ASSERT( LCLDMICRO, 'needs informative message' )
-    if (adjustl(CLDMICRO)=="2MOMENT") then
-      call MAPL_GetResource( MAPL, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
-    endif
+    
+    call MAPL_GetResource( MAPL, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
     call MAPL_GetResource( MAPL, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
  
     ! Inititialize QW Passive Tracer
@@ -4963,12 +5133,12 @@ contains
        call gfdl_cloud_microphys_init()
        call WRITE_PARALLEL ("INITIALIZED GFDL microphysics in non-generic GC INIT")
     end if
+    
+    do_graupel = .false.
 
     if(adjustl(CLDMICRO)=="2MOMENT") then
 
-       call MAPL_GetResource( MAPL, DOGRAUPEL, Label="DOGRAUPEL:",  default=0, RC=STATUS)
-                         do_graupel = .false.
-       if (DOGRAUPEL/=0) do_graupel = .true.
+       if (MGVERSION .gt. 2.0) do_graupel = .true.
 
        call MAPL_GetResource(MAPL, DCS, 'DCS:', default=350.0e-6, RC=STATUS )
        VERIFY_(STATUS)    
@@ -4984,6 +5154,9 @@ contains
        call MAPL_GetResource(MAPL, NI_CST,  'NI_CST:', DEFAULT= 0.0 ,RC=STATUS) !constant nd (set if greather than zero) 
        call MAPL_GetResource(MAPL, NG_CST,  'NG_CST:', DEFAULT= 0.0 ,RC=STATUS) !constant ng (set if greather than zero) 
        
+       call MAPL_GetResource(MAPL, MUI_CST,  'MUI_CST:', DEFAULT= -1.0 ,RC=STATUS) !constant ng (set if greather than zero) 
+       mui_cnstr8 =  MUI_CST
+       
        ncnstr8 = NC_CST
        if  (NC_CST .gt. 0.0)  nccons =.true.       
        ninstr8 = NC_CST
@@ -4992,8 +5165,8 @@ contains
        if  (NG_CST .gt. 0.0)  ngcons =.true.
          
        if  (MGVERSION .gt. 1.0) then 
-          call micro_mg_init(Dcsr8, do_graupel,  micro_mg_berg_eff_factor_in, &
-                         nccons, nicons, ncnstr8, ninstr8, ngcons, ngnstr8)       
+         ! call micro_mg_init(Dcsr8, do_graupel,  micro_mg_berg_eff_factor_in, &
+          !               nccons, nicons, ncnstr8, ninstr8, ngcons, ngnstr8, mui_cnstr8)       
        else     
            call ini_micro(Dcsr8, micro_mg_berg_eff_factor_in, &
                           nccons, nicons, ncnstr8, ninstr8, qcvarr8)
@@ -5021,36 +5194,166 @@ contains
 !-srf-gf-scheme
     ! Inititialize configuration parameters for GF convection scheme 
     IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
-        ! Inititialize parameters of convection scheme GF
-        call MAPL_GetResource(MAPL, icumulus_gf(deep), 'DEEP:'     , default=1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, icumulus_gf(shal), 'SHALLOW:'  , default=1, RC=STATUS )
-        VERIFY_(STATUS) 
-        call MAPL_GetResource(MAPL, icumulus_gf(mid) , 'CONGESTUS:', default=1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, closure_choice(deep), 'CLOSURE_DEEP:'     , default= 0, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, closure_choice(shal), 'CLOSURE_SHALLOW:'  , default= 7, RC=STATUS )
-        VERIFY_(STATUS) 
-        call MAPL_GetResource(MAPL, closure_choice(mid) , 'CLOSURE_CONGESTUS:', default= 3, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 2, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,DICYCLE             ,'DICYCLE:'          ,default= 1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,TAU_DEEP   ,'TAU_DEEP:',default= 5400.0, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,TAU_MID    ,'TAU_MID:' ,default= 3600.0, RC=STATUS )
-        VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)	        ,'DEEP:'	          ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)	        ,'SHALLOW:'	          ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)	        ,'CONGESTUS:'	          ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)        ,'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)        ,'CLOSURE_SHALLOW:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)         ,'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)         ,'ENTR_DP:'               ,default= 1.e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)         ,'ENTR_SH:'               ,default= 2.e-3,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)          ,'ENTR_MD:'               ,default= 5.e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)      ,'FADJ_MASSFLX_DP:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)      ,'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)       ,'FADJ_MASSFLX_MD:'       ,default= 0.5,  RC=STATUS );VERIFY_(STATUS)
+       
+        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)        ,'USE_EXCESS_DP:'         ,default= 2,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)        ,'USE_EXCESS_SH:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)         ,'USE_EXCESS_MD:'         ,default= 2,    RC=STATUS );VERIFY_(STATUS)
 
-        call MAPL_GetResource(MAPL, USE_FLUX_FORM   ,'USE_FLUX_FORM:'   ,default= 1,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, USE_FCT         ,'USE_FCT:'	        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, USE_TRACER_EVAP ,'USE_TRACER_EVAP:' ,default= 1,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, ALP1            ,'ALP1:'            ,default= 1., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_TRACER_TRANSP           ,'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN           ,'USE_TRACER_SCAVEN:'     ,default= 2,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_SCALE_DEP               ,'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP         ,'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, DICYCLE                     ,'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+
+        call MAPL_GetResource(MAPL, OUTPUT_SOUND                ,'OUTPUT_SOUND:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_MEMORY                  ,'USE_MEMORY:'            ,default=-1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CONVECTION_TRACER           ,'CONVECTION_TRACER:'     ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, TAU_OCEA_CP                 ,'TAU_OCEA_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, TAU_LAND_CP                 ,'TAU_LAND_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
+
+        call MAPL_GetResource(MAPL, DOWNDRAFT                   , 'DOWNDRAFT:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_FLUX_FORM               , 'USE_FLUX_FORM:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_TRACER_EVAP             , 'USE_TRACER_EVAP:'      ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, APPLY_SUB_MP                , 'APPLY_SUB_MP:'         ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ALP1                        , 'ALP1:'                 ,default= 1.,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, LIGHTNING_DIAG              , 'LIGHTNING_DIAG:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, OVERSHOOT	                , 'OVERSHOOT:'            ,default= 0.,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_WETBULB                 , 'USE_WETBULB:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, LAMBAU_SHDN                 , 'LAMBAU_SHDN:'          ,default= 2.,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MAX_TQ_TEND                 , 'MAX_TQ_TEND:'          ,default= 100., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_CLOUD_DISSIPATION       , 'USE_CLOUD_DISSIPATION:',default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND             , 'USE_SMOOTH_TEND:'      ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, BETA_SH                     , 'BETA_SH:'              ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF         , 'USE_LINEAR_SUBCL_MF:'  ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CAP_MAXS                    , 'CAP_MAXS:'             ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
+
+        call MAPL_GetResource(MAPL, USE_GF2020                  , 'USE_GF2020:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        
+        IF(USE_GF2020==1) THEN
+
+          call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'	         ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'	         ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'	         ,default= 5,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'         ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF           , 'USE_SMOOTH_PROF:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+         
+	  call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'        ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'        ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'        ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+
+	  if(AUTOCONV == 1) then 
+	     call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'	         ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
+             call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:' 	         ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
+             call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:' 	         ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
+             call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'	         ,default= 2.e-4, RC=STATUS );VERIFY_(STATUS)
+          else        
+	     call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'	         ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
+             call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:' 	         ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+             call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:' 	         ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+             call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'	         ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+	  endif
+	  call MAPL_GetResource(MAPL, C1                        , 'C1:'		         ,default= 0.,    RC=STATUS );VERIFY_(STATUS)
+
+
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'   ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'   ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'   ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'    ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'    ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'    ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'   ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'     ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'     ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'     ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+          
+        ELSE
+	
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       ,'AVE_LAYER_DP:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       ,'AVE_LAYER_SH:'         ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        ,'AVE_LAYER_MD:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'             ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'             ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'             ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'              ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:' 	         ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, QRC_CRIT                  , 'QRC_CRIT:'            ,default= 2.e-4, RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C1                        , 'C1:'                  ,default= 1.e-3, RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'         ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
+          
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'   ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'   ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'    ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'   ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE   	, 'SGS_W_TIMESCALE:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,FRAC_MODIS        	, 'FRAC_MODIS:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, ZERO_DIFF         	, 'ZERO_DIFF:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF   	, 'USE_SMOOTH_PROF:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,EVAP_FIX          	, 'EVAP_FIX:'	         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+
+
+        ENDIF
 
        ! IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
        !    call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
@@ -5070,6 +5373,7 @@ contains
        !END IF
 
     ENDIF
+
 !-srf-gf-scheme
     call MAPL_GetResource(MAPL,USE_TRACER_TRANSP_UW,'USE_TRACER_TRANSP_UW:',default= 1, RC=STATUS )
     VERIFY_(STATUS)
@@ -5213,16 +5517,17 @@ contains
       real, pointer, dimension(:,:,:) :: DQDTCN, DTHDTCN,DQCDTCN,DTDTFRIC
 
       integer :: DOCLDMACRO
-      real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, WUP_SC, QTUP_SC, &
+      real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC, WUP_SC, QTUP_SC, &
                                          THLUP_SC, THVUP_SC, UUP_SC, VUP_SC 
       real, pointer, dimension(:,:,:) :: QCU_SC, QLU_SC, QIU_SC
-      real, pointer, dimension(:,:,:) :: DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
+      real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
+      real, pointer, dimension(:,:,:) :: DTDT_SC, DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
                                          DQIDT_SC, DQLDT_SC, DQCDT_SC, CUFRC_SC
       real, pointer, dimension(:,:,:) :: DUDT_SC, DVDT_SC, &
                                          ENTR_SC, DETR_SC, XC_SC,QLDET_SC, &
                                          QIDET_SC, QLENT_SC, QIENT_SC, &
                                          QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
-      real, pointer, dimension(:,:  ) :: CBMF_SC
+      real, pointer, dimension(:,:  ) :: CBMF_SC, CUSH_SC, TPERT_SC, QPERT_SC
       real, pointer, dimension(:,:  ) :: CIN_SC, PINV_SC, PLCL_SC, PLFC_SC, &
                                          PREL_SC, PBUP_SC
       real, pointer, dimension(:,:  ) :: WLCL_SC, QTSRC_SC, THLSRC_SC, &
@@ -5266,6 +5571,7 @@ contains
 
       real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
       real, pointer, dimension(:,:  ) :: LS_PRCP,CN_PRCP,AN_PRCP,SC_PRCP,TT_PRCP,ER_PRCP,FILLNQV
+      real, pointer, dimension(:,:  ) :: SC_MSE, SC_QT
       real, pointer, dimension(:,:  ) :: HOURNORAIN
       integer                         :: YEAR, MONTH, DAY, HR, SE, MN
       type (ESMF_Time)                :: CurrentTime
@@ -5401,11 +5707,14 @@ contains
       real, pointer, dimension(:,:,:)       :: PLE_DYN_IN
       real, pointer, dimension(:,:,:)       :: DTDT_BL
       real, pointer, dimension(:,:,:)       :: DQDT_BL
-      real, pointer, dimension(:,:,:)       :: DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD,DTRDT_GF
+      real, pointer, dimension(:,:,:)       :: DQDT_GF,DTDT_GF,MUPDP,MDNDP,MUPSH,MUPMD,DTRDT_GF
+      real, pointer, dimension(:,:,:)       :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d
       real, pointer, dimension(:,:  )       :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
       real, pointer, dimension(:,:  )       :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
       real, pointer, dimension(:,:  )       :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+      real, pointer, dimension(:,:  )       :: TPWI,TPWI_star,LFR_GF
       real, pointer, dimension(:,:,:)       :: RSU_CN_GF,REV_CN_GF,PFL_CN_GF,PFI_CN_GF
+      real, pointer, dimension(:,:,:)       :: CNV_TR ! tracer memory
 !-srf-gf-scheme    
 !--kml--- activation for single-moment uphysics
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
@@ -5470,7 +5779,7 @@ contains
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgr8,                          ngr8,                         &
-                             relvarr8,                      accre_enhanr8,                  &
+                             relvarr8,                 accre_enhanr8, accre_enhan_icer8,                      &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -5539,7 +5848,8 @@ contains
       real(ESMF_KIND_R8), dimension(1,LM+1)  :: rflxr8, sflxr8, lflxr8, iflxr8, gflxr8                
       real(ESMF_KIND_R8), dimension(1)       :: prectr8, precir8
       real(ESMF_KIND_R8)                     :: disp_liu, ui_scale, & 
-           dcrit, tfreez, qcvar8, ts_autice, dcsr8, qcvarr8, scale_ri, mtimesc, urscale
+           autscx, tfreez, qcvar8, ts_autice, dcsr8, qcvarr8, scale_ri, mtimesc, urscale 
+           
           
 
        integer :: num_steps_micro,  pcnst, n_modes, kbmin, kcldtop, kcldbot , NAUX, kcldtopcvn, nbincontactdust, index    
@@ -5599,7 +5909,7 @@ contains
                                    frachet_bc, frachet_org, frachet_ss
       logical                   :: ismarine, is_stable, use_average_v                  
       real                      :: Nct, Wct, DX, ksa1, Xscale
-
+      real, dimension(IM,JM)    :: dum2d
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -5626,16 +5936,13 @@ contains
       real                            :: PMIN_DET,AUTOC_CN_LAND,AUTOC_CN_OCN, LCCIRRUS, & 
            UISCALE, AUTO_CNV, SS_SCALE, REEVAP_MICRO, LIU_MU, TFRZ, & 
            NPRE_FRAC, QCVAR, ZPBLMAXLL, TMAXLL,  &
-           LTS_LOW, LTS_UP, MIN_EXP, BKGTAU, DCRIT_, USE_AV_V, TS_AUTO_ICE, CCN_PARAM, IN_PARAM, &
+           LTS_LOW, LTS_UP, MIN_EXP, BKGTAU, AUTSC, USE_AV_V, TS_AUTO_ICE, CCN_PARAM, IN_PARAM, &
 	   FDROP_DUST, FDROP_SOOT,  USE_NATURE_WSUB, SIGMA_NUC,  MIN_ALH, DCS, HMOIST_950, & 
        HSMOIST_500, SINST, MAX_EXP, MAX_CAPE, MIN_CAPE, DUST_INFAC, ORG_INFAC, BC_INFAC, SS_INFAC, &
         MAPL, RRTMG_IRRAD, RRTMG_SORAD, SCWST, MTIME, SWCIRRUS, MINCDNC, TMAXBASELQ, TMAXCFCORR, Immersion_param, &
-        DT_MICRO, DT_AUX, UR_SCALE    
+        DT_MICRO, DT_AUX, UR_SCALE, ACC_ENH, ACC_ENH_ICE    
         
     
-!!! MODIFIED : remove when done testing shallow
-      real                            :: THLSRC_PERT, QTSRC_PERT
-      real                            :: UWTOLS
       real                            :: PMIN_CBL
 
       real                            :: CBL_TPERTi, CBL_TPERT, CBL_QPERT, RASAL1, RASAL2
@@ -5807,6 +6114,7 @@ contains
 
       logical :: ALLOC_UMF
       logical :: ALLOC_MFD
+      logical :: ALLOC_DCM
       logical :: ALLOC_DQVDT
       logical :: ALLOC_DQLDT
       logical :: ALLOC_DQIDT
@@ -5820,6 +6128,7 @@ contains
       logical :: ALLOC_QLU
       logical :: ALLOC_QIU
       logical :: ALLOC_CBMF
+      logical :: ALLOC_CUSH
       logical :: ALLOC_DQCDT
       logical :: ALLOC_CNT
       logical :: ALLOC_CNB
@@ -5852,6 +6161,12 @@ contains
       logical :: ALLOC_QISUB
       logical :: ALLOC_NDROP
       logical :: ALLOC_NICE
+      logical :: ALLOC_TPERT
+      logical :: ALLOC_QPERT
+      logical :: ALLOC_QTFLX
+      logical :: ALLOC_SLFLX
+      logical :: ALLOC_UFLX
+      logical :: ALLOC_VFLX
 
       !---------------------------------------------------
 
@@ -5865,7 +6180,7 @@ contains
       real                       :: PA2, PA, NA, TH_TOP, TH_BOT, TL_MEAN, Z_LAYER, ZTHICK
 
       integer                    :: levs925, levs600
-      real, dimension(IM,JM   )  :: tempor2d, GF_AREA
+      real, dimension(IM,JM   )  :: tempor2d, GF_AREA, FRC_RASN_2D
 
       ! Manage diagnostic outputs for re-evaporation
       !---------------------------------------------------
@@ -6100,39 +6415,42 @@ contains
       call MAPL_GetResource(STATE, CLDPARAMS%MIN_LTS,'LTS_LOW:',      DEFAULT= 20.0,   RC=STATUS) !lower LTS for morphology correction
       call MAPL_GetResource(STATE, LTS_UP,         'LTS_UP:',         DEFAULT= 22.0,   RC=STATUS) !Upper LTS for morphology correction
       call MAPL_GetResource(STATE, MIN_EXP,        'MIN_EXP:',        DEFAULT= 0.5,   RC=STATUS) !Exponent of the relation CFA=CFV^n
-       call MAPL_GetResource(STATE, MAX_EXP,        'MAX_EXP:',       DEFAULT= 1.0,   RC=STATUS) !Exponent of the relation CFA=CFV^n
-      call MAPL_GetResource(STATE, DCRIT_,         'DCRIT_DRIZZLE:',  DEFAULT= 0.6,    RC=STATUS) !scale factor for critical size for drizzle
+      call MAPL_GetResource(STATE, MAX_EXP,        'MAX_EXP:',        DEFAULT= 1.0,   RC=STATUS) !Exponent of the relation CFA=CFV^n
       call MAPL_GetResource(STATE, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    RC=STATUS) !Set to > 0 to use an average velocity for activation
+      call MAPL_GetResource(STATE, AUTSC,          'AUT_SCALE:',      DEFAULT= 0.5,    RC=STATUS) !scale factor for critical size for drizzle      call MAPL_GetResource(STATE, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    RC=STATUS) !Set to > 0 to use an average velocity for activation
       call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 4.0, RC=STATUS) !Ice autoconversion time scale
       call MAPL_GetResource(STATE, TMAXLL,         'TMAXLL:',         DEFAULT= 250.0,  RC=STATUS) !Liquid clouds min T
       call MAPL_GetResource(STATE, CCN_PARAM,      'CCNPARAM:',       DEFAULT= 2.0,    RC=STATUS) !CCN activation param
       call MAPL_GetResource(STATE, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    RC=STATUS) !IN param
       call MAPL_GetResource(STATE, Immersion_param,'ImmersionPARAM:', DEFAULT= 6.0,    RC=STATUS) !Immersion param
-      
-      call MAPL_GetResource(STATE, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.04,    RC=STATUS) !Fraction of dust within droplets for immersion freezing
-      call MAPL_GetResource(STATE, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.01,   RC=STATUS) !Fraction of soot within droplets for immersion freezing	
+      call MAPL_GetResource(STATE, ACC_ENH,        'ACC_ENH:',        DEFAULT= 1.0,    RC=STATUS) !accretion rain-liquid scaling for MG2
+      call MAPL_GetResource(STATE, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 1.0,    RC=STATUS) !accretion snow-ice scaling for MG2
+  
+  
+      call MAPL_GetResource(STATE, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    RC=STATUS) !Fraction of dust within droplets for immersion freezing
+      call MAPL_GetResource(STATE, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.05,   RC=STATUS) !Fraction of soot within droplets for immersion freezing	
       call MAPL_GetResource(STATE, SIGMA_NUC,      'SIGMA_NUC:',      DEFAULT= 1.0,   RC=STATUS) !Widht of the in-cloud distribution of relative humidity in cirrus
-      call MAPL_GetResource(STATE, MIN_ALH,            'MIN_ALH:',      DEFAULT= 5.0,  RC=STATUS) !scale factor for vertical velocity in sttratocumulus
-      call MAPL_GetResource(STATE, SCWST,            'SCWST:',      DEFAULT= 5.0,  RC=STATUS) !scale factor for vertical velocity in sttratocumulus
+      call MAPL_GetResource(STATE, MIN_ALH,        'MIN_ALH:',        DEFAULT= 5.0,  RC=STATUS) !scale factor for vertical velocity in sttratocumulus
+      call MAPL_GetResource(STATE, SCWST,          'SCWST:',          DEFAULT= 3.0,  RC=STATUS) !scale factor for vertical velocity in sttratocumulus
      
       call MAPL_GetResource(STATE, MINCDNC,          'MINCDNC:',      DEFAULT= 0.0,  RC=STATUS) !min nucleated droplet conc. cm-3
 
       call MAPL_GetResource(STATE, TMAXCFCORR,         'TMAXCFCORR:',     DEFAULT= 285.0,  RC=STATUS) !Minimum T for CF correction
       call MAPL_GetResource(STATE, MTIME,         'MTIME:',  DEFAULT= -1.0,    RC=STATUS) !Mixing time scale for aerosol within the cloud. Default is time step
-      call MAPL_GetResource(STATE, SWCIRRUS, 'SWCIRRUS:', DEFAULT= 1.0, RC=STATUS) !Tunes vertical velocity in cirrus
+      call MAPL_GetResource(STATE, SWCIRRUS, 'SWCIRRUS:', DEFAULT= 3.0, RC=STATUS) !Tunes vertical velocity in cirrus
       
-      call MAPL_GetResource(STATE, DUST_INFAC,    'DUST_INFAC:',        DEFAULT= 0.5,   RC=STATUS)  !work on this
+      call MAPL_GetResource(STATE, DUST_INFAC,    'DUST_INFAC:',        DEFAULT= 1.0,   RC=STATUS)  !work on this
       call MAPL_GetResource(STATE, BC_INFAC,        'BC_INFAC:',        DEFAULT= 0.1,   RC=STATUS) 
       call MAPL_GetResource(STATE, ORG_INFAC,     'ORG_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
-	 call MAPL_GetResource(STATE, SS_INFAC,          'SS_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
+	  call MAPL_GetResource(STATE, SS_INFAC,          'SS_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
      	  
-      call MAPL_GetResource(STATE, DT_MICRO,          'DT_MICRO:',        DEFAULT= HEARTBEAT,   RC=STATUS)    ! time step of the microphysics substepping (s) (MG2) (5 min)
+      call MAPL_GetResource(STATE, DT_MICRO,          'DT_MICRO:',        DEFAULT= 300.0,   RC=STATUS)    ! time step of the microphysics substepping (s) (MG2) (5 min)
       call MAPL_GetResource(STATE, UR_SCALE,        'URSCALE:',        DEFAULT= 1.0,    RC=STATUS) !Scaling factor for sed vel of rain    
           
       call MAPL_GetResource(STATE, USE_NATURE_WSUB,     'USE_NAT_WSUB:',     DEFAULT= 1.0  ,RC=STATUS) !greater than zero reads wsub from nature run	             
       call MAPL_GetResource(STATE, DCS, 'DCS:', default=350.0e-6, RC=STATUS )
-      call MAPL_GetResource(STATE, CLDPARAMS%DISP_FACTOR_LIQ,         'DISP_FACTOR_LIQ:',     DEFAULT= 20.0,   RC=STATUS) ! Scales the droplet/ice crystal number in convective detrainment 
-      call MAPL_GetResource(STATE, CLDPARAMS%DISP_FACTOR_ICE,         'DISP_FACTOR_ICE:',     DEFAULT= 10.0,   RC=STATUS) ! Scales the droplet/ice crystal number in convective detrainment 
+      call MAPL_GetResource(STATE, CLDPARAMS%DISP_FACTOR_LIQ,         'DISP_FACTOR_LIQ:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the droplet/ice crystal number in convective detrainment 
+      call MAPL_GetResource(STATE, CLDPARAMS%DISP_FACTOR_ICE,         'DISP_FACTOR_ICE:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the droplet/ice crystal number in convective detrainment 
       
       call MAPL_GetResource( STATE, RRTMG_IRRAD ,'USE_RRTMG_IRRAD:', DEFAULT=0.0, RC=STATUS)
       VERIFY_(STATUS)
@@ -6200,10 +6518,6 @@ contains
       call MAPL_GetResource(STATE,CBL_TPERT_MXOCN, 'CBL_TPERT_MXOCN:',     DEFAULT= 2.0   , RC=STATUS)
       call MAPL_GetResource(STATE,CBL_TPERT_MXLND, 'CBL_TPERT_MXLND:',     DEFAULT= 0.0   , RC=STATUS)
 
-     !!! MODIFIED by npa: remove when done testing shallow
-      call MAPL_GetResource(STATE,THLSRC_PERT, 'THLSRC_PERT:',     DEFAULT= 0.0   , RC=STATUS)     
-      call MAPL_GetResource(STATE,QTSRC_PERT, 'QTSRC_PERT:',     DEFAULT= 1.0   , RC=STATUS)     
-      call MAPL_GetResource(STATE,UWTOLS, 'UWTOLS:',     DEFAULT= 0.0   , RC=STATUS)     
 
       KSTRAP = INT( RASPARAMS%STRAPPING )
 
@@ -6219,30 +6533,36 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%NITER_XC,         'NITER_XC:'       ,DEFAULT=2, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'       ,DEFAULT=2, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'     ,DEFAULT=1, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%CRIDIST_OPT,      'CRIDIST_OPT:'    ,DEFAULT=0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_SELF_DETRAIN, 'USE_SELF_DETRAIN:',DEFAULT=0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_MOMENFLX,     'USE_MOMENFLX:'   ,DEFAULT=1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'   ,DEFAULT=1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:',      DEFAULT=0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,    'RPEN:'    ,DEFAULT=3.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RLE,     'RLE:'     ,DEFAULT=0.1, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RKM,     'RKM:'     ,DEFAULT=12.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,'RMAXFRAC:',DEFAULT=0.1,  RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,  'MUMIN1:'  ,DEFAULT=0.906, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,   'RBUOY:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RDRAG,   'RDRAG:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW, 'EPSVARW:' ,DEFAULT=5.e-4, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,    'PGFC:'    ,DEFAULT=0.7, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,   'CRIQC:'   ,DEFAULT=1.0e-3, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,    'KEVP:'    ,DEFAULT=2.e-6,    RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,   'SHLW_RDROP:',DEFAULT=8.e-6,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'     ,DEFAULT=3.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'      ,DEFAULT=0.1,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'      ,DEFAULT=8.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,     'RKFRE:'    ,DEFAULT=1.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:' ,DEFAULT=0.1,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,    'MUMIN1:'   ,DEFAULT=0.906,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,     'RBUOY:'    ,DEFAULT=1.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RDRAG,     'RDRAG:'    ,DEFAULT=1.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW,   'EPSVARW:'  ,DEFAULT=5.e-4,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,      'PGFC:'     ,DEFAULT=0.7,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'    ,DEFAULT=0.9e-3, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,      'KEVP:'     ,DEFAULT=2.e-6,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,     'SHLW_RDROP:',DEFAULT=8.e-6, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT=2.0,   RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:',DEFAULT=0.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:' ,DEFAULT=40.0,   RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'  ,DEFAULT=1800.0, RC=STATUS)
+
 
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0  , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0, RC=STATUS)
       else
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1  , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0, RC=STATUS)
       endif
 
       ! Get the time step from the alarm
@@ -6277,6 +6597,11 @@ contains
       if (DOSHLW /= 0) then
        call MAPL_GetPointer(INTERNAL, CUSH,  'CUSH'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
       end if
+!srf-- convective memory/cold pool  --->
+      if(ADJUSTL(CONVPAR_OPTION) == 'GF' .and. CONVECTION_TRACER == 1) then
+       call MAPL_GetPointer(INTERNAL, CNV_TR,'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
+      endif
+!srf-----------------------------------<
       ! Pointers to imports
       !--------------------
       !==AER_CLOUD===
@@ -6426,8 +6751,10 @@ contains
 
 !!! shallow vars
       call MAPL_GetPointer(EXPORT, CBMF_SC,  'CBMF_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CUSH_SC,  'CUSH_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, UMF_SC,  'UMF_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, MFD_SC,  'MFD_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DCM_SC,  'DCM_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CUFRC_SC,'CUFRC_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PLCL_SC,'PLCL_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PLFC_SC,'PLFC_SC' , RC=STATUS); VERIFY_(STATUS)
@@ -6440,11 +6767,16 @@ contains
       call MAPL_GetPointer(EXPORT, CNB_SC,  'CNB_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQRDT_SC,  'DQRDT_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQSDT_SC,  'DQSDT_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DTDT_SC,   'DTDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DTHDT_SC,  'DTHDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQVDT_SC,  'DQVDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQIDT_SC,  'DQIDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQLDT_SC,  'DQLDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQCDT_SC,  'DQCDT_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTFLX_SC,  'QTFLX_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLFLX_SC,  'SLFLX_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, UFLX_SC,   'UFLX_SC'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, VFLX_SC,   'VFLX_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DUDT_SC,   'DUDT_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DVDT_SC,   'DVDT_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , RC=STATUS); VERIFY_(STATUS)
@@ -6474,6 +6806,10 @@ contains
       call MAPL_GetPointer(EXPORT, SC_NDROP, 'SC_NDROP' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SC_NICE,  'SC_NICE' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SC_PRCP,  'SC_PRCP'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, TPERT_SC, 'TPERT_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QPERT_SC, 'QPERT_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SC_MSE,   'SC_MSE'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SC_QT,    'SC_QT'    , RC=STATUS); VERIFY_(STATUS)
 
 
 !      call MAPL_GetPointer(EXPORT, LIQANMOVE, 'LIQANMOVE' , RC=STATUS); VERIFY_(STATUS)
@@ -6571,6 +6907,8 @@ contains
 
       call MAPL_GetPointer(EXPORT, SIGMA_DEEP,  'SIGMA_DEEP' , ALLOC=.TRUE., RC=STATUS); _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT, SIGMA_MID,  'SIGMA_MID' , ALLOC=.TRUE., RC=STATUS); _VERIFY(STATUS)
+      SIGMA_DEEP = MAPL_UNDEF
+      SIGMA_MID  = MAPL_UNDEF
 
       call MAPL_GetPointer(EXPORT, RAS_TIME,  'RAS_TIME' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, RAS_TRG,   'RAS_TRG'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -6865,7 +7203,7 @@ contains
               !.. if (MAPL_AM_I_ROOT()) then
                  !.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
                  !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
-                 !.. flush(6)
+                 !.. call flush(6)
               !.. ENDIF
               Hcts(k)%hstar = Vect_Hcts(1)
               Hcts(k)%dhr   = Vect_Hcts(2)
@@ -7267,6 +7605,7 @@ contains
 
       ALLOC_UMF    = .not.associated(UMF_SC    )
       ALLOC_MFD    = .not.associated(MFD_SC    )
+      ALLOC_DCM    = .not.associated(DCM_SC    )
       ALLOC_DQVDT  = .not.associated(DQVDT_SC  )
       ALLOC_DQLDT  = .not.associated(DQLDT_SC  )
       ALLOC_DQIDT  = .not.associated(DQIDT_SC  )
@@ -7280,6 +7619,7 @@ contains
       ALLOC_QLU    = .not.associated(QLU_SC    )
       ALLOC_QIU    = .not.associated(QIU_SC    )
       ALLOC_CBMF   = .not.associated(CBMF_SC   )
+      ALLOC_CUSH   = .not.associated(CUSH_SC   )
       ALLOC_DQCDT  = .not.associated(DQCDT_SC  )
       ALLOC_CNT    = .not.associated(CNT_SC    )
       ALLOC_CNB    = .not.associated(CNB_SC    )
@@ -7312,9 +7652,16 @@ contains
       ALLOC_QISUB  = .not.associated(QISUB_SC   )
       ALLOC_NDROP  = .not.associated(SC_NDROP   )
       ALLOC_NICE   = .not.associated(SC_NICE    )
+      ALLOC_TPERT  = .not.associated(TPERT_SC   )
+      ALLOC_QPERT  = .not.associated(QPERT_SC   )
+      ALLOC_QTFLX  = .not.associated(QTFLX_SC   )
+      ALLOC_SLFLX  = .not.associated(SLFLX_SC   )
+      ALLOC_UFLX   = .not.associated(UFLX_SC    )
+      ALLOC_VFLX   = .not.associated(VFLX_SC    )
 
       if(ALLOC_UMF)    allocate( UMF_SC(IM,JM,0:LM) )
       if(ALLOC_MFD)    allocate( MFD_SC(IM,JM,LM) )
+      if(ALLOC_DCM)    allocate( DCM_SC(IM,JM,LM) )
       if(ALLOC_DQVDT)  allocate( DQVDT_SC(IM,JM,LM) )
       if(ALLOC_DQLDT)  allocate( DQLDT_SC(IM,JM,LM) )
       if(ALLOC_DQIDT)  allocate( DQIDT_SC(IM,JM,LM) )
@@ -7328,6 +7675,7 @@ contains
       if(ALLOC_QLU)    allocate( QLU_SC(IM,JM,LM)   )
       if(ALLOC_QIU)    allocate( QIU_SC(IM,JM,LM)   )
       if(ALLOC_CBMF)   allocate( CBMF_SC(IM,JM)     )
+      if(ALLOC_CUSH)   allocate( CUSH_SC(IM,JM)     )
       if(ALLOC_DQCDT)  allocate( DQCDT_SC(IM,JM,LM) )
       if(ALLOC_CNT)    allocate( CNT_SC(IM,JM)      )
       if(ALLOC_CNB)    allocate( CNB_SC(IM,JM)      )
@@ -7360,6 +7708,13 @@ contains
       if(ALLOC_QISUB)  allocate( QISUB_SC(IM,JM,LM) )
       if(ALLOC_NDROP)  allocate( SC_NDROP(IM,JM,LM) )
       if(ALLOC_NICE)   allocate( SC_NICE(IM,JM,LM)  )
+      if(ALLOC_TPERT)  allocate( TPERT_SC(IM,JM)  )
+      if(ALLOC_QPERT)  allocate( QPERT_SC(IM,JM)  )
+      if(ALLOC_QTFLX)  allocate( QTFLX_SC(IM,JM,0:LM) )
+      if(ALLOC_SLFLX)  allocate( SLFLX_SC(IM,JM,0:LM) )
+      if(ALLOC_UFLX)   allocate( UFLX_SC(IM,JM,0:LM)  )
+      if(ALLOC_VFLX)   allocate( VFLX_SC(IM,JM,0:LM)  )
+
 
       IDIM = IM*JM
       IRUN = IM*JM
@@ -7543,6 +7898,7 @@ contains
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
       if(associated(Q600    )) Q600     = QV600
       if(associated(RH600   )) RH600    = RHat600
+          FRC_RASN_2D = SHLWPARAMS%FRC_RASN
 
       K0 = LM
       ICMIN    = max(1,count(PREF < PMIN_DET))
@@ -7570,29 +7926,7 @@ contains
          END DO
       END DO
 
-#ifdef DONT_SKIP_cloud_ptr_stubs
-    if (.false.) then 
-       call cloud_ptr_stubs (SMAXL, SMAXI, WSUB, CCN01, CCN04, CCN1, &
-            NHET_NUC, NLIM_NUC, SO4, ORG, BCARBON, &
-            DUST, SEASALT, NCPL_VOL, NCPI_VOL, NRAIN, NSNOW, &
-            CDNC_NUC, INC_NUC, SAT_RAT, QSTOT, QRTOT, CLDREFFS, CLDREFFR, & 
-            DQVDT_micro,DQIDT_micro, DQLDT_micro, DTDT_micro, RL_MASK, RI_MASK, &
-            KAPPA, SC_ICE, CFICE, CFLIQ, RHICE, RHLIQ,  &
-            RAD_CF, RAD_QL, RAD_QI, RAD_QS, RAD_QR, RAD_QV, &
-            CLDREFFI, CLDREFFL, NHET_IMM, NHET_DEP, & 
-            DUST_IMM, DUST_DEP,  SCF, SCF_ALL, &
-            SIGW_GW, SIGW_CNV, &
-            SIGW_TURB, SIGW_RC, RHCmicro, DNHET_IMM, &
-            BERG, BERGS, MELT, DNHET_CT, DTDT_macro, QCRES, DT_RASP, FRZPP_LS, &
-            SNOWMELT_LS, QIRES, AUTICE, PFRZ,  DNCNUC, DNCHMSPLIT, DNCSUBL, &
-            DNCAUTICE, DNCACRIS, DNDCCN, DNDACRLS, DNDEVAPC, DNDACRLR, DNDAUTLIQ, &
-            DNDCNV, DNCCNV) 
-    end if 
-#endif
-
-!--kml
       if(adjustl(CLDMICRO)=="2MOMENT" .or. USE_AEROSOL_NN) then
-!--kml
 
       call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN1")
 
@@ -8102,7 +8436,13 @@ contains
 !=====================================================================================
 !-srf-gf-scheme
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF' .or. ADJUSTL(CONVPAR_OPTION) == 'BOTH') THEN
-     
+    
+         !if(associated(DTDT_DC)) DTDT_DC=TH1*PK
+         !if(associated(DQVDT_DC)) DQVDT_DC=Q1
+         !if(associated(DQLDT_DC)) DQLDT_DC=QLLS+QLCN
+         !if(associated(DQIDT_DC)) DQIDT_DC=QILS+QICN
+         !if(associated(DQADT_DC)) DQADT_DC=CLLS+CLCN
+ 
          call MAPL_TimerOn (STATE,"-GF")
 	 !- block shallow plume if UWShallow scheme is being applied
 	 if(DOSHLW==1 .and.  icumulus_gf(shal)==1) print*,"Moist is running with UWshallow and GFshallow"
@@ -8134,67 +8474,76 @@ contains
          call MAPL_GetPointer(IMPORT, PLE_DYN_IN,'PLE_DYN_IN',RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(IMPORT, DTDT_BL  ,'DTDT_BL'  ,RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(IMPORT, DQDT_BL  ,'DQDT_BL'  ,RC=STATUS); VERIFY_(STATUS)
-         
-         IF(DEBUG_GF==1) THEN
-          call MAPL_GetPointer(EXPORT, DTRDT_GF,'DTRDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTRDT_GF=0.0
-          call MAPL_GetPointer(EXPORT, DQDT_GF,'DQDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DQDT_GF=0.0
-          call MAPL_GetPointer(EXPORT, DTDT_GF,'DTDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTDT_GF=0.0
-          call MAPL_GetPointer(EXPORT, MUPDP  ,'MUPDP'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPDP=0.0
-          call MAPL_GetPointer(EXPORT, MUPSH  ,'MUPSH'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPSH=0.0
-          call MAPL_GetPointer(EXPORT, MUPMD  ,'MUPMD'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPMD=0.0
-          call MAPL_GetPointer(EXPORT, MFDP   ,'MFDP'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFDP=0.0
-          call MAPL_GetPointer(EXPORT, MFSH   ,'MFSH'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFSH=0.0
-          call MAPL_GetPointer(EXPORT, MFMD   ,'MFMD'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFMD=0.0
-          call MAPL_GetPointer(EXPORT, ERRDP  ,'ERRDP'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRDP=0.0
-          call MAPL_GetPointer(EXPORT, ERRSH  ,'ERRSH'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRSH=0.0
-          call MAPL_GetPointer(EXPORT, ERRMD  ,'ERRMD'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRMD=0.0
-    
-          call MAPL_GetPointer(EXPORT, RSU_CN_GF  ,'RSU_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);RSU_CN_GF=0.0
-          call MAPL_GetPointer(EXPORT, REV_CN_GF  ,'REV_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);REV_CN_GF=0.0
-          call MAPL_GetPointer(EXPORT, PFI_CN_GF  ,'PFI_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFI_CN_GF=0.0
-          call MAPL_GetPointer(EXPORT, PFL_CN_GF  ,'PFL_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFL_CN_GF=0.0
+	 call MAPL_GetPointer(EXPORT, TPWI,     'TPWI'      ,ALLOC = .TRUE. , RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TPWI_star,'TPWI_star' ,ALLOC = .TRUE. , RC=STATUS); VERIFY_(STATUS)
+         TPWI       = SUM( Q1*MASS, 3 )
+         TPWI_star  = SUM( GEOS_QSAT(TH1*PK, PLO)*MASS, 3 )
 
-          call MAPL_GetPointer(EXPORT, AA0      ,'AA0'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA0=0.0
-          call MAPL_GetPointer(EXPORT, AA1      ,'AA1'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1=0.0
-          call MAPL_GetPointer(EXPORT, AA2      ,'AA2'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA2=0.0
-          call MAPL_GetPointer(EXPORT, AA3      ,'AA3'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA3=0.0
-          call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_BL =0.0
-          call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_CIN=0.0
-          call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_BL =0.0
-          call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_EC =0.0
-          !print*,"sizes=",size(ERRMD),size(MUPMD);flush(6)
-         ENDIF
+         call MAPL_GetPointer(EXPORT, LFR_GF   ,'LFR_GF'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);LFR_GF=0.0
+         call MAPL_GetPointer(EXPORT, DTRDT_GF,'DTRDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTRDT_GF=0.0
+         call MAPL_GetPointer(EXPORT, DQDT_GF,'DQDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DQDT_GF=0.0
+         call MAPL_GetPointer(EXPORT, DTDT_GF,'DTDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTDT_GF=0.0
+         call MAPL_GetPointer(EXPORT, MUPDP  ,'MUPDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPDP=0.0
+         call MAPL_GetPointer(EXPORT, MDNDP  ,'MDNDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MDNDP=0.0
+         call MAPL_GetPointer(EXPORT, MUPSH  ,'MUPSH'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPSH=0.0
+         call MAPL_GetPointer(EXPORT, MUPMD  ,'MUPMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPMD=0.0
+         call MAPL_GetPointer(EXPORT, VAR3d_a,'VAR3d_a'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_a=0.0
+         call MAPL_GetPointer(EXPORT, VAR3d_b,'VAR3d_b'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_b=0.0
+         call MAPL_GetPointer(EXPORT, VAR3d_c,'VAR3d_c'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_c=0.0
+         call MAPL_GetPointer(EXPORT, VAR3d_d,'VAR3d_d'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_d=0.0
+         call MAPL_GetPointer(EXPORT, MFDP   ,'MFDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFDP=0.0
+         call MAPL_GetPointer(EXPORT, MFSH   ,'MFSH'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFSH=0.0
+         call MAPL_GetPointer(EXPORT, MFMD   ,'MFMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFMD=0.0
+         call MAPL_GetPointer(EXPORT, ERRDP  ,'ERRDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRDP=0.0
+         call MAPL_GetPointer(EXPORT, ERRSH  ,'ERRSH'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRSH=0.0
+         call MAPL_GetPointer(EXPORT, ERRMD  ,'ERRMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRMD=0.0
+    
+         call MAPL_GetPointer(EXPORT, RSU_CN_GF  ,'RSU_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);RSU_CN_GF=0.0
+         call MAPL_GetPointer(EXPORT, REV_CN_GF  ,'REV_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);REV_CN_GF=0.0
+         call MAPL_GetPointer(EXPORT, PFI_CN_GF  ,'PFI_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFI_CN_GF=0.0
+         call MAPL_GetPointer(EXPORT, PFL_CN_GF  ,'PFL_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFL_CN_GF=0.0
+
+         call MAPL_GetPointer(EXPORT, AA0      ,'AA0'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA0=0.0
+         call MAPL_GetPointer(EXPORT, AA1      ,'AA1'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1=0.0
+         call MAPL_GetPointer(EXPORT, AA2      ,'AA2'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA2=0.0
+         call MAPL_GetPointer(EXPORT, AA3      ,'AA3'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA3=0.0
+         call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_BL =0.0
+         call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_CIN=0.0
+         call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_BL =0.0
+         call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_EC =0.0
+        
 
 ! WMP
+! SRF not yet using this approach for S2S
 ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRACTION dependence
-         if (GF_MIN_AREA > 0) then
-           GF_AREA = GF_MIN_AREA*CNV_FRACTION + AREA*(1.0-CNV_FRACTION)
-         else
+!         if (GF_MIN_AREA > 0) then
+!           GF_AREA = GF_MIN_AREA*CNV_FRACTION + AREA*(1.0-CNV_FRACTION)
+!         else
            GF_AREA = AREA
-         endif
+!         endif
 ! WMP
          
          !- call GF/GEOS5 interface routine
-         call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST                       &
-                                 ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA            & 
+         call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST              &  
+                                 ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA, KH        & 
                                  ,TH1, Q1, U1, V1, QLCN, QICN,QLLS,QILS, RASPRCP    &
                                  ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQLDT,ENTLAM      &
-                                 ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN         &                           
+                                 ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN,CLLS    &                           
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, GF_AREA,USTAR,TSTAR,QSTAR,T2M             &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
-                                 ,KPBLIN    &
-                                 ,MAPL_GRAV &
+                                 ,KPBLIN                                            &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
-                                 ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD                 &
+                                 ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD,MDNDP           &
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE, CLDMICRO &
-                                 ,RASPARAMS%QC_CRIT_CN, AUTOC_CN_OCN                &
                                  ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF                  &
-				 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF)
+                                 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF         &
+                                 ,TPWI,TPWI_star,LFR_GF                             &
+				 ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d)!,CNV_TR)
                                                                    
          HHO      =  0.0
          HSO      =  0.0    
@@ -8204,6 +8553,7 @@ contains
              
          call MAPL_TimerOff(STATE,"-GF")
       ENDIF
+
 !-srf-gf-scheme 
 !=====================================================================================
 
@@ -8431,13 +8781,14 @@ contains
       call compute_uwshcu_inv(IDIM, K0, ITRCR, DT_MOIST,  & ! IN
             PLO*100., ZLO, PK, PLE, ZLE, PKE, DP,         &
             U1, V1, Q1, QLLS, QILS, TH1, TKE, KPBLSC,     &
-            THLSRC_PERT,                                  &
+            SH, EVAP, RASPRCP, FRLAND,                     &
             CUSH, XHO,                                    & ! INOUT
-            UMF_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC,         & ! OUT
+            UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
             DTHDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,         &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
-            SC_NDROP, SC_NICE,                            &
+            SC_NDROP, SC_NICE, TPERT_SC, QPERT_SC,        &
+            QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
 #ifdef UWDIAG 
             QCU_SC, QLU_SC,                               & ! DIAG ONLY 
             QIU_SC, CBMF_SC, DQCDT_SC, CNT_SC, CNB_SC,    &
@@ -8447,7 +8798,7 @@ contains
             QTUP_SC, THLUP_SC, THVUP_SC, UUP_SC, VUP_SC,  &
             XC_SC,                                        &
 #endif 
-            USE_TRACER_TRANSP_UW, SHLWPARAMS )
+            FRC_RASN_2D, USE_TRACER_TRANSP_UW, SHLWPARAMS )
 
 
       !  Apply tendencies
@@ -8456,6 +8807,8 @@ contains
       TH1 = TH1 + DTHDT_SC * DT_MOIST    !  tendencies calculated below
       U1  = U1  + DUDT_SC * DT_MOIST
       V1  = V1  + DVDT_SC * DT_MOIST
+
+      if (associated(DTDT_SC)) DTDT_SC = DTHDT_SC*PK
 
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
@@ -8501,9 +8854,31 @@ contains
       SHLW_PRC3 = DQRDT_SC    ! [kg/kg/s]
       SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
 
+      if (associated(SC_QT)) then
+        ! column integral of UW total water tendency, for checking conservation
+        SC_QT = 0.
+        DO K = 1,LM
+           SC_QT = SC_QT + (DQSDT_SC(:,:,k)+DQRDT_SC(:,:,k)+DQVDT_SC(:,:,k) &
+                         + QLENT_SC(:,:,k)+QLSUB_SC(:,:,k)+QIENT_SC(:,:,k)  &
+                         + QISUB_SC(:,:,k))*MASS(:,:,k)+QLDET_SC(:,:,k)     &
+                         + QIDET_SC(:,:,k)
+        END DO
+      end if
+
+      if (associated(SC_MSE)) then
+        ! column integral of UW moist static energy tendency
+        SC_MSE = 0.
+        DO K = 1,LM
+           SC_MSE = SC_MSE + (MAPL_CP*DTHDT_SC(:,:,k)*PK(:,:,k) &
+                         + MAPL_ALHL*DQVDT_SC(:,:,k)          &
+                         - MAPL_ALHF*DQIDT_SC(:,:,k))*MASS(:,:,k)
+        END DO
+      end if
+
+      if (associated(CUSH_SC)) CUSH_SC = CUSH
+
       else   ! if UW shallow scheme not called
 
-        UMF_SC    = 0.
         MFD_SC    = 0.
         SHLW_PRC3 = 0.
         SHLW_SNO3 = 0.      
@@ -8514,6 +8889,8 @@ contains
         QIDET_SC  = 0.
         QLSUB_SC  = 0.
         QISUB_SC  = 0.
+	DCM_SC    = 0.
+        UMF_SC    = 0.
 
       end if
 
@@ -8675,12 +9052,6 @@ contains
         enddo
        ! add DeepCu Clouds to Convective
         CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
-        if (UWTOLS/=0) then
-       ! add ShallowCu CL/QL/QI tendencies to Large-Scale
-          CLLS = CLLS +   MFD_SC*iMASS*DT_MOIST
-          QLLS = QLLS + QLDET_SC*iMASS*DT_MOIST
-          QILS = QILS + QIDET_SC*iMASS*DT_MOIST
-        else
           CLCN = CLCN +   MFD_SC*iMASS*DT_MOIST
 !          CLCN = CLCN +   DCM_SC*iMASS*DT_MOIST
           QLCN = QLCN + QLDET_SC*iMASS*DT_MOIST
@@ -8732,7 +9103,6 @@ contains
             end do ! JM loop
           end do ! LM loop
         
-        endif
        ! add ShallowCu rain/snow tendencies
         QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
         QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
@@ -10452,6 +10822,19 @@ contains
                      tausurf_gw   =tausurf_gw  + min(0.5*SQRT(TAUX(I , J)**2+TAUY(I , J)**2), 5.0)*BKGTAU !adds a minimum value from unresolved sources (rewritten 04/01/15)
                      end if 
                      
+                     
+                     
+                      aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q1(i,j,LM)))) ! air_dens (kg m^-3)
+                      hfs = -SH  (i,j) ! W m^-2
+                      hfl = -EVAP(i,j) ! kg m^-2 s^-1
+                      aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
+                       aux3= ZLE(I, J,  nint(KPBLIN(I, J)))           ! pbl height (m)
+                       !-convective velocity scale W* (m/s)
+                       ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
+                       ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s      
+             
+             
+                     
                      pi_gw(1, 0:LM)        = 100.0*CNV_PLE(I,J,0:LM)                     
                      theta_tr(1, 1:LM)     = TH1(I,J,1:LM)
 		             rhoi_gw = 0.0  
@@ -10599,34 +10982,35 @@ contains
                       CCN01(I, J, K) = max(ccn_diag(1), 0.0)
                       CCN04(I, J, K) = max(ccn_diag(2), 0.0)
                       CCN1 (I, J, K) = max(ccn_diag(3), 0.0)
-                      if (K .ge. kbmin) npccninr8(1, K) =max(npccninr8(1, K), MINCDNC*1.e6)
+                      
+                      if (K .ge. kbmin-6) npccninr8(1, K) = max(npccninr8(1, K), (1.0-CNV_FRACTION(I, J))*MINCDNC*1.e6)
                        
                end do
 
-               SMAXL(I, J, 1:LM) = smaxliq(1, 1:LM)*100.0         
-               SMAXI(I, J, 1:LM) = smaxicer8(1, 1:LM)*100.0
-               NHET_NUC(I, J, 1:LM)  = nheticer8(1, 1:LM)
-               NLIM_NUC(I, J, 1:LM) =  nlimicer8(1, 1:LM)            
-               SC_ICE(I, J, 1:LM) = sc_icer8(1, 1:LM)                  
-               CDNC_NUC(I,J,1:LM)    = npccninr8(1, 1:LM)
-               INC_NUC (I,J,1:LM)    = naair8(1, 1:LM)         
-               NHET_IMM(I, J, 1:LM)  = max(nhet_immr8(1, 1:LM), 0.0)
-               DNHET_IMM(I, J, 1:LM)  = max(dnhet_immr8(1, 1:LM), 0.0)
-               NHET_DEP(I, J, 1:LM)  = nhet_depr8(1, 1:LM)
-               DUST_IMM(I, J, 1:LM)  = max(dust_immr8(1, 1:LM), 0.0)
-               DUST_DEP(I, J, 1:LM)  = max(dust_depr8(1, 1:LM), 0.0)
-               WSUB (I, J, 1:LM) =  wparc_ls(1, 1:LM)+swparc(1, 1:LM)*0.8        
-               SIGW_GW (I, J, 1:LM)   =  wparc_gw(1, 1:LM)
-               SIGW_CNV (I, J, 1:LM)   =  wparc_cgw(1, 1:LM)
-               SIGW_TURB (I, J, 1:LM) = wparc_turb(1, 1:LM)
-               SIGW_RC (I, J, 1:LM)   =  wparc_ls(1, 1:LM)
-	           PFRZ (I, J, 1:LM)   =  pfrz_inc_r8(1, 1:LM)
+               SMAXL(I, J, 1:LM) = real(smaxliq(1, 1:LM)*100.0)         
+               SMAXI(I, J, 1:LM) = real(smaxicer8(1, 1:LM)*100.0)
+               NHET_NUC(I, J, 1:LM)  = real(nheticer8(1, 1:LM))
+               NLIM_NUC(I, J, 1:LM) =  real(nlimicer8(1, 1:LM))            
+               SC_ICE(I, J, 1:LM) = real(sc_icer8(1, 1:LM))                  
+               CDNC_NUC(I,J,1:LM)    = real(npccninr8(1, 1:LM))
+               INC_NUC (I,J,1:LM)    = real(naair8(1, 1:LM)  )       
+               NHET_IMM(I, J, 1:LM)  = real(max(nhet_immr8(1, 1:LM), 0.0))
+               DNHET_IMM(I, J, 1:LM)  = real(max(dnhet_immr8(1, 1:LM), 0.0))
+               NHET_DEP(I, J, 1:LM)  = real(nhet_depr8(1, 1:LM))
+               DUST_IMM(I, J, 1:LM)  = real(max(dust_immr8(1, 1:LM), 0.0))
+               DUST_DEP(I, J, 1:LM)  = real(max(dust_depr8(1, 1:LM), 0.0))
+               WSUB (I, J, 1:LM) =  real(wparc_ls(1, 1:LM)+swparc(1, 1:LM)*0.8)        
+               SIGW_GW (I, J, 1:LM)   = real( wparc_gw(1, 1:LM))
+               SIGW_CNV (I, J, 1:LM)   =  real(wparc_cgw(1, 1:LM))
+               SIGW_TURB (I, J, 1:LM) = real(wparc_turb(1, 1:LM))
+               SIGW_RC (I, J, 1:LM)   =  real(wparc_ls(1, 1:LM))
+	           PFRZ (I, J, 1:LM)   =  real(pfrz_inc_r8(1, 1:LM))
                 
-               SO4(I, J, 1:LM)=so4x(1, 1:LM)
-   	           DUST(I, J, 1:LM)=dustx(1, 1:LM)
-               BCARBON(I, J, 1:LM)=bcx(1, 1:LM)
-	           ORG(I, J, 1:LM)=orgx(1, 1:LM)
-	           SEASALT(I, J, 1:LM)=seasaltx(1, 1:LM)
+               SO4(I, J, 1:LM)=real(so4x(1, 1:LM))
+   	           DUST(I, J, 1:LM)=real(dustx(1, 1:LM))
+               BCARBON(I, J, 1:LM)=real(bcx(1, 1:LM))
+	           ORG(I, J, 1:LM)=real(orgx(1, 1:LM))
+	           SEASALT(I, J, 1:LM)=real(seasaltx(1, 1:LM))
 
 
 	       
@@ -10682,45 +11066,28 @@ contains
     ! if(associated(TVQX1))  TVQX1     = SUM( (  Q1 +  QLLS + QLCN + QILS + QICN + CNV_PRC3)*DM + CNV_DQLDT*DT_MOIST , 3 )
     
          
-              CNV_MFD_X    =  CNV_MFD     ! needed for cloud fraction
+              CNV_MFD_X      =  CNV_MFD     ! needed for cloud fraction
               CNV_DQLDT_X    =  CNV_DQLDT
               CNV_PRC3_X     = CNV_PRC3
               CNV_UPDF_X     = CNV_UPDF 
-              CNV_NICE_X =    CNV_NICE_X +  SC_NICE
-              CNV_NDROP_X =   CNV_NDROP_X +  SC_NDROP
-  
-    IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN    
+      
+     IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN    ! GF updates the state internally so we don't need to do that here
               CNV_PRC3_X     = 0.0
+              CNV_MFD_X    =  0.0     
+              CNV_DQLDT_X    =  0.0
+              CNV_NICE_X =  0.0
+              CNV_NICE_X  =  0.0
      END IF 
         
-        
-        if (MGVERSION .gt. 1.0) then 
-        
-        
-              if(associated(TVQX1))  TVQX1     =  SUM( (  Q1 +  QLLS + QLCN + QILS + QICN + QRAIN + QSNOW + QGRAUPEL + SHLW_PRC3 + SHLW_SNO3)*MASS &
-        
       
-                 + (CNV_DQLDT)*DT_MOIST &
-                 
-                 + (QLDET_SC  + QIDET_SC)*DT_MOIST &
-                  
+              if(associated(TVQX1))  TVQX1     =  SUM( (  Q1 +  QLLS + QLCN + QILS + QICN + QRAIN + QSNOW + QGRAUPEL + SHLW_PRC3 + SHLW_SNO3)*MASS &    
+                 + (CNV_DQLDT)*DT_MOIST &            
+                 + (QLDET_SC  + QIDET_SC)*DT_MOIST &                  
                  , 3 ) + RASPRCP*DT_MOIST - TVQ0 ! up to here water is conserved Donif 01/2020
                  
-        else
-        
-          if(associated(TVQX1))  TVQX1     =  SUM( (  Q1 +  QLLS + QLCN + QILS + QICN +  SHLW_PRC3 + SHLW_SNO3)*MASS &
-        
-      
-                 + (CNV_DQLDT)*DT_MOIST &
-                 
-                 + (QLDET_SC  + QIDET_SC)*DT_MOIST &
-                  
-                 , 3 ) + RASPRCP*DT_MOIST - TVQ0 ! up to here water is conserved Donif 01/2020
- 
-         end if     
+           
  
                        
-  if (DOCLDMACRO/=0) then   
   call  macro_cloud (                    &
               IM*JM, LM         , &
               DT_MOIST          , &
@@ -10790,25 +11157,14 @@ contains
               QRAIN_CN, & !grid av
               QSNOW_CN, &
               KCBL, LTS,  CONVPAR_OPTION)
-       endif ! DOCLDMACRO
 
 
-       IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN   
-            where (CNV_MFD .gt. 0.0) 
-              CNV_NICE = CNV_NICE_X/CNV_MFD
-              CNV_NDROP = CNV_NDROP_X/CNV_MFD
-            end where
-       END IF     
+      
 
        TPREC = CN_PRC2 + LS_PRC2 + AN_PRC2 + SC_PRC2 + &
               CN_SNR  + LS_SNR  + AN_SNR + SC_SNR
       
-if (MGVERSION .gt. 1.0) then 
       if(associated(TVQX2)) TVQX2    = SUM( ( Q1 +  QLLS + QLCN + QILS + QICN +  QRAIN +  QSNOW + QGRAUPEL)*MASS , 3 )  + TPREC*DT_MOIST -TVQ0
-else
-
-      if(associated(TVQX2)) TVQX2    = SUM( ( Q1 +  QLLS + QLCN + QILS + QICN)*MASS , 3 )  + TPREC*DT_MOIST -TVQ0
-end if 
 
 
          TEMP    = TH1*PK
@@ -10831,7 +11187,36 @@ end if
               NCPL         , &
               NCPI          )
 
-
+         
+        call fix_up_clouds_2M( &
+         Q1, &
+         TEMP, &
+         QLLS,&
+         QILS,&
+         CLLS, &
+         QLCN,&
+         QICN,&
+         CLCN, &
+         NCPL, &
+         NCPI, & 
+         QRAIN, &
+         QSNOW, &
+         QGRAUPEL, &
+         NRAIN, &
+         NSNOW, &
+         NGRAUPEL)
+         
+         
+         ! need to clean up small negative values. MG does can't handle them
+          call FILLQ2ZERO2( Q1, MASS, FILLQ) 
+          call FILLQ2ZERO2( QGRAUPEL, MASS, FILLQ) 
+          call FILLQ2ZERO2( QRAIN, MASS, FILLQ) 
+          call FILLQ2ZERO2( QSNOW, MASS, FILLQ) 
+          call FILLQ2ZERO2( QLLS, MASS, FILLQ)
+          call FILLQ2ZERO2( QLCN, MASS, FILLQ)  
+          call FILLQ2ZERO2( QILS, MASS, FILLQ)
+          call FILLQ2ZERO2( QICN, MASS, FILLQ)
+         
          !=============================================End cloud macrophysics=====================================
          !======================================================================================================================
          !
@@ -10967,13 +11352,18 @@ end if
          qgtendr8 =  0.0_r8
          ngtendr8 =  0.0_r8
      
-         accre_enhanr8= 1.0_r8 
+         !accre_enhanr8= 1.0_r8 
+         
+         accre_enhanr8= ACC_ENH
+         accre_enhan_icer8= ACC_ENH_ICE
          AN_PRC2     = 0. !prectr8(1)
          AN_SNR      = 0. !precir8(1)
          AN_ARFX     = 0. !maxval( cldfr8(1,1:LM) )    
          PFL_LS_X = 0.0
          PFI_LS_X= 0.0
          QCVAR_EXP = 2.0
+         autscx = 1.0
+         
          do J=1,JM
             do I=1,IM
 
@@ -10987,17 +11377,10 @@ end if
 
                cldfr8(1,1:LM)      = RAD_CF(I,J,1:LM) !Assume minimum overlap 
              
-              ! liqcldfr8(1, 1:LM)  = cldfr8(1,1:LM) 
-              ! icecldfr8(1, 1:LM)  = cldfr8(1,1:LM) 
-
-
-                  
-             
-               liqcldfr8(1, 1:LM)  = cldfr8(1,1:LM) 
-               icecldfr8(1, 1:LM)  = cldfr8(1,1:LM)  ! this is better to avoid removing liq clouds in the high lats
-             !  liqcldfr8(1, 1:LM)  = CFLIQ(I, J,1:LM) 
-             !  icecldfr8(1, 1:LM)  = CFICE(I, J,1:LM) 
-	           cldor8           = cldfr8  
+               liqcldfr8(1, 1:LM)  = CFLIQ(I, J,1:LM) 
+               icecldfr8(1, 1:LM)  = CFICE(I, J,1:LM) 
+	         
+               cldor8           = cldfr8  
                ter8(1,1:LM)        = TEMP(I,J,1:LM)
                qvr8(1,1:LM)        = Q1(I,J,1:LM)
 
@@ -11006,11 +11389,11 @@ end if
                ncr8(1,1:LM)        = MAX(NCPL(I,J,1:LM), 0.0) 
                nir8(1,1:LM)        = MAX(NCPI(I,J,1:LM), 0.0) 
 
-               ! Nucleation variables 
-               naair8(1, 1:LM)     = INC_NUC(I, J, 1:LM)
-               npccninr8(1, 1:LM)  = CDNC_NUC(I, J, 1:LM)
-
-               where  ((naair8-ncr8  .gt. 1.0e3)) ! add cloud fraction if nucleation is happening 2018
+               ! Nucleation  tendencies 
+               naair8(1, 1:LM)     = max((INC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - nir8(1,1:LM))/DT_MOIST, 0.0) 
+               npccninr8(1, 1:LM)  = max((CDNC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - ncr8(1,1:LM))/DT_MOIST, 0.0)
+               
+               where  ((naair8 .gt. 1.0e3)) ! add cloud fraction if nucleation is happening 2018
                    icecldfr8 = max(0.05,  icecldfr8)
                end where 
              
@@ -11060,7 +11443,15 @@ end if
                ui_scale = UISCALE
                urscale  = URSCALE
                ts_autice = DT_R8*TS_AUTO_ICE 
-               dcrit = DCRIT_
+               
+               
+               if (AUTSC .gt. 0.0) then 
+                  autscx = AUTSC
+               else
+                autscx =  min(max(0., (300.0 - TEMP(I,J,LM))/ABS(AUTSC)), 1.0)
+                autscx  =  1.0 - 0.995*autscx
+               end if
+               
                if (MTIME .le. 0.0) then 
                    mtimesc  = DT_MOIST
                else               
@@ -11117,24 +11508,8 @@ end if
                         SCICE_tmp(1, 1:LM)  =  SC_ICE(I, J, 1:LM)
                         FQA_tmp(1, 1:LM)  = FQA(I, J, 1:LM) 
                         ALPH_tmp(1, 1:LM)  = ALPHT_X(I, J, 1:LM)
-                        
-    !                     if (0) then 
-   ! print *, '=========before mG=========='
-  
-                      DO NAUX = 1, LM
-                       
-                         if (TEMP(I,J,NAUX) .lt. 150.0) then 
-                          print *, '========beforemg========'
-                          print *,  I, J, NAUX, TEMP(I,J,NAUX)
-                        end if 
-                        
-                        if (isnan(TEMP (I,J,NAUX))) then 
-                          print *, '========beforemg========'
-                          print *,  I, J, NAUX, 'tnan'
-                        end if 
-                        
-                     end do 
-
+                   
+                   
 
  
      
@@ -11147,12 +11522,12 @@ end if
 !!!Call to MG microphysics. Lives in cldwat2m_micro.F90
 
                
-   if (MGVERSION < 2.0)  then          
+   if (MGVERSION .lt. 2.0)  then          
                
                call set_qcvar (qcvarr8)
                
                call mmicro_pcond (                           &
-                    ncolmicro, ncolmicro, dt_r8, ter8, ttendr8,                   &
+                    ncolmicro, ncolmicro, dt_r8, DT_MICRO, ter8, ttendr8,                   &
                     ncolmicro, LM ,                                      &
                     qvr8, qtendr8, cwtendr8, qcr8, qir8,          &
                     ncr8, nir8, plevr8, pdelr8, cldfr8,           &
@@ -11181,91 +11556,93 @@ end if
                     mnuccror8,pracsor8, &
                     meltsdtr8,frzrdtr8, ncalr8, ncair8, mnuccdor8, nnucctor8, &
                     nsoutr8, nroutr8, nimmr8, disp_liu, &
-                    nsootr8, rnsootr8, ui_scale, dcrit, mtimesc, &
+                    nsootr8, rnsootr8, ui_scale, autscx, mtimesc, &
                     nnuccdor8, nnucccor8, nsacwior8, nsubior8, nprcior8, &
                     npraior8, npccnor8, npsacwsor8, nsubcor8, npraor8, nprc1or8,  nbincontactdust, &
-                    ts_autice, rflxr8, sflxr8)
+                    ts_autice, rflxr8, sflxr8, accre_enhanr8, accre_enhan_icer8)
 
     else ! MG2/3
         
-         call  micro_mg_tend_interface ( DT_MICRO, INT(CLDPARAMS%PDFSHAPE), ALPH_tmp, SCICE_tmp, FQA_tmp, &
-                                        CNV_FRACTION(I, J), SNOMAS(I, J), FRLANDICE(I, J), FRLAND(I, J), & 
-                             ncolmicro,             LM,               dt_r8,       & 
-                             ter8,                            qvr8,                              &
-                             qcr8,                          qir8,                          &
-                             ncr8,                          nir8,                          &
-                             qrr8,                          qsr8,                          &
-                             nrr8,                          nsr8,                          &
-                             qgr8,                          ngr8,                         &
-                             relvarr8,                     accre_enhanr8,                  &
-                             plevr8,                       pdelr8,                         &
-                             cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
-                             qcsinksum_rate1ordr8,                                         &
-                             naair8,                         npccninr8,                        &
-                             rndstr8,                        naconr8,                        &
-                             tlatr8,                         qvlatr8,                        &
-                             qctendr8,                       qitendr8,                       &
-                             nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   qgtendr8,                     &
-                             nrtendr8,                       nstendr8,   ngtendr8,                   &
-                             effcr8,               effc_fnr8,            effir8,               &
-                             sadicer8,                       sadsnowr8,                      &
-                             prectr8,                        precir8,                        &
-                             nevaprr8,                       evapsnowr8,                     &
-                             am_evp_str8,                                                  &
-                             prainr8,                        prodsnowr8,                     &
-                             cmeoutr8,                       deffir8,                        &
-                             pgamradr8,                      lamcradr8,                      &
-                             qsoutr8,                        dsoutr8,                        &
-                             qgoutr8,     ngoutr8,           dgoutr8,                        &
-                             lflxr8,               iflxr8,   gflxr8,                           &
-                             rflxr8,               sflxr8,    qroutr8,          &
-                             reff_rainr8,                    reff_snowr8, reff_graur8,        &
-                             qcsevapr8,            qisevapr8,            qvresr8,              &
-                             cmeioutr8,            vtrmcr8,              vtrmir8,              &
-                             umrr8,                          umsr8,                          &
-                             umgr8,                          qgsedtendr8,                    &    
-                             qcsedtenr8,                     qisedtenr8,                     &
-                             qrsedtenr8,                     qssedtenr8,                     &
-                             praor8,                       prcor8,                       &
-                             mnucccor8,          mnucctor8,          msacwior8,          &
-                             psacwsor8,          bergsor8,           bergor8,            &
-                             meltor8,                      homoor8,                      &
-                             qcresor8,           prcior8,            praior8,            &
-                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &                           
-                             meltsdtr8,         frzrdtr8,          mnuccdor8,          &
-                             pracgtotr8,           psacwgtotr8,          pgsacwtotr8,          &
-                             pgracstotr8,          prdgtotr8,           &
-                             qmultgtotr8,          qmultrgtotr8,         psacrtotr8,           &
-                             npracgtotr8,          nscngtotr8,           ngracstotr8,          &
-                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         & 
-                             nroutr8,                            nsoutr8,                        &
-                             reflr8,               areflr8,              areflzr8,             &
-                             freflr8,              csrflr8,              acsrflr8,             &
-                             fcsrflr8,                       rercldr8,                       &
-                             ncair8,                         ncalr8,                         &
-                             qrout2r8,                       qsout2r8,                       &
-                             nrout2r8,                       nsout2r8,                       &
-                             drout2r8,                       dsout2r8,                       &
-                             qgout2r8,     ngout2r8,         dgout2r8,   freqgr8,                     &
-                             freqsr8,                        freqrr8,                        &
-                             nficer8,                        qcratr8,                        &
-!                             errstring, & ! Below arguments are "optional" (pass null pointers to omit).
-                             tnd_qsnow,          tnd_nsnow,          re_ice,    &
-                             prer_evap, &
-                             frzimmr8,             frzcntr8,              frzdepr8,  & ! contact is not passed since it depends on the droplet size dist
-                             nsootr8, rnsootr8,  & ! soot for contact IN
-                             npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
-                             npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
-                             ts_autice, ui_scale, dcrit, disp_liu, nbincontactdust, urscale)
+       !  call  micro_mg_tend_interface ( DT_MICRO, INT(CLDPARAMS%PDFSHAPE), ALPH_tmp, SCICE_tmp, FQA_tmp, &
+        !                                CNV_FRACTION(I, J), SNOMAS(I, J), FRLANDICE(I, J), FRLAND(I, J), & 
+        !                     ncolmicro,             LM,               dt_r8,       & 
+        !                     ter8,                            qvr8,                              &
+        !                     qcr8,                          qir8,                          &
+        !                     ncr8,                          nir8,                          &
+        !                     qrr8,                          qsr8,                          &
+        !                     nrr8,                          nsr8,                          &
+        !                     qgr8,                          ngr8,                          &
+        !                     relvarr8,                      accre_enhanr8,   accre_enhan_icer8,  &
+        !                     plevr8,                        pdelr8,                        &
+        !                     cldfr8, liqcldfr8, icecldfr8,  qsatfacr8,                     &
+        !                     qcsinksum_rate1ordr8,                                         &
+        !                     naair8,                         npccninr8,                      &
+        !                     rndstr8,                        naconr8,                        &
+        !                     tlatr8,                         qvlatr8,                        &
+        !                     qctendr8,                       qitendr8,                       &
+        !                     nctendr8,                       nitendr8,                       &
+        !                     qrtendr8,                       qstendr8,                       &
+         !                    nrtendr8,                       nstendr8,                       & 
+         !                    qgtendr8,                       ngtendr8,                       &
+         !                    effcr8,               effc_fnr8,            effir8,              &
+         !                    sadicer8,                       sadsnowr8,                      &
+         !                    prectr8,                        precir8,                        &
+         !                    nevaprr8,                       evapsnowr8,                     &
+         !                    am_evp_str8,                                                  &
+         !                    prainr8,                        prodsnowr8,                     &
+         !                    cmeoutr8,                       deffir8,                        &
+         !                    pgamradr8,                      lamcradr8,                      &
+         !                    qsoutr8,                        dsoutr8,                        &
+         !                    qgoutr8,     ngoutr8,           dgoutr8,                        &
+         !                    lflxr8,               iflxr8,   & 
+         !                    gflxr8,                           &
+         !                    rflxr8,           sflxr8,    qroutr8,          &
+         !                    reff_rainr8,      reff_snowr8, reff_graur8,        &
+         !                    qcsevapr8,            qisevapr8,            qvresr8,              &
+         !                    cmeioutr8,            vtrmcr8,              vtrmir8,              &
+         !                    umrr8,                          umsr8,                          &
+         !                    umgr8,                          qgsedtendr8,                    &    
+         !                    qcsedtenr8,                     qisedtenr8,                     &
+         !                    qrsedtenr8,                     qssedtenr8,                     &
+         !                    praor8,                       prcor8,                       &
+         !                    mnucccor8,          mnucctor8,          msacwior8,          &
+         !                    psacwsor8,          bergsor8,           bergor8,            &
+         !                    meltor8,                      homoor8,                      &
+         !                    qcresor8,           prcior8,            praior8,            &
+         !                    qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &                           
+         !                    meltsdtr8,         frzrdtr8,          mnuccdor8,          &
+         !                    pracgtotr8,           psacwgtotr8,          pgsacwtotr8,          &
+         !                    pgracstotr8,          prdgtotr8,           &
+         !                    qmultgtotr8,          qmultrgtotr8,         psacrtotr8,           &
+         !                    npracgtotr8,          nscngtotr8,           ngracstotr8,          &
+         !                    nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         & 
+         !                    nroutr8,                            nsoutr8,                        &
+         !                    reflr8,               areflr8,              areflzr8,             &
+         !                    freflr8,              csrflr8,              acsrflr8,             &
+         !                    fcsrflr8,                       rercldr8,                       &
+         !                    ncair8,                         ncalr8,                         &
+         !                    qrout2r8,                       qsout2r8,                       &
+         !                    nrout2r8,                       nsout2r8,                       &
+         !                    drout2r8,                       dsout2r8,                       &
+         !                    qgout2r8,     ngout2r8,         dgout2r8,   freqgr8,                     &
+         !                    freqsr8,                        freqrr8,                        &
+         !                    nficer8,                        qcratr8,                        &
+!        !                     errstring, & ! Below arguments are "optional" (pass null pointers to omit).
+         !             !       tnd_qsnow,          tnd_nsnow,          re_ice,    &
+         !                    prer_evap, &
+         !                    frzimmr8,             frzcntr8,              frzdepr8,  & ! contact is not passed since it depends on the droplet size dist
+         !                    nsootr8, rnsootr8,  & ! soot for contact IN
+         !                    npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
+         !                    npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
+         !                    ts_autice, ui_scale, autscx , disp_liu, nbincontactdust, urscale)
 
 
 
     end if 
 
-        IF (MGVERSION > 1.0) then 
+      IF (MGVERSION .gt. 1.0) then 
 
-#ifdef FAILS 
+!#ifdef FAILS 
                   QRAIN(I,J,1:LM)  = max(QRAIN(I,J,1:LM) + REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
                   QSNOW(I,J,1:LM)  = max(QSNOW(I,J,1:LM) + REAL(qstendr8(1, 1:LM)*DT_R8), 0.0) ! grid average                     
                   NRAIN(I,J,1:LM)  = max(NRAIN(I,J,1:LM) + REAL(nrtendr8(1, 1:LM)*DT_R8), 0.0)
@@ -11275,25 +11652,14 @@ end if
                   CLDREFFG(I,J,1:LM) = REAL(reff_graur8(1, 1:LM))/scale_ri  
                   DQRL_X(I,J,1:LM)   = REAL(   qrtendr8(1, 1:LM)) !rain mixing ratio tendency from micro
                   
-              if (adjustl(CLDMICRO)=="MG3") then                   
+               IF (MGVERSION .gt. 2.0) then                   
                   QGRAUPEL(I,J,1:LM)  = max(QGRAUPEL(I,J,1:LM) + REAL(qgtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
                   NGRAUPEL(I,J,1:LM)  = max(NGRAUPEL(I,J,1:LM) + REAL(ngtendr8(1, 1:LM)*DT_R8), 0.0)
                else
-                  QGRAUPEL(I,J,1:LM)  = qgout2r8(1, 1:LM) ! grid average                    
-                  NGRAUPEL(I,J,1:LM)  = ngout2r8(1, 1:LM) ! grid average 
+                  QGRAUPEL(I,J,1:LM)  = 0.0 ! grid average                    
+                  NGRAUPEL(I,J,1:LM)  = 0.0 ! grid average 
                end if                         
-#else
-                   QRAIN   (I,J,1:LM)  = max(REAL(qroutr8(1, 1:LM)), 0.0)
-                   QSNOW   (I,J,1:LM)  = max(REAL(qsoutr8(1, 1:LM)), 0.0)
-                   QGRAUPEL(I,J,1:LM)  = max(REAL(qgoutr8(1, 1:LM)), 0.0)
-                   NRAIN   (I,J,1:LM)  = max(REAL(nroutr8(1, 1:LM)), 0.0)
-                   NSNOW   (I,J,1:LM)  = max(REAL(nsoutr8(1, 1:LM)), 0.0)
-                   NGRAUPEL(I,J,1:LM)  = max(REAL(ngoutr8(1, 1:LM)), 0.0)
-                   CLDREFFR(I,J,1:LM)  = REAL(reff_rainr8(1, 1:LM))
-                   CLDREFFS(I,J,1:LM)  = REAL(reff_snowr8(1, 1:LM))/scale_ri
-                   CLDREFFG(I,J,1:LM)  = REAL(reff_graur8(1, 1:LM))/scale_ri
-                   DQRL_X(I,J,1:LM)    = REAL(qroutr8(1, 1:LM)/DT_R8) !rain mixing ratio tendency from micro
-#endif
+
             
         else
                     
@@ -11306,6 +11672,7 @@ end if
                    DQRL_X(I,J,1:LM)   = REAL(qrout2r8(1, 1:LM)/DT_R8) !rain mixing ratio tendency from micro
                  
          end if          
+         
          
          
   
@@ -11323,88 +11690,6 @@ end if
                NCPI(I,J,1:LM) = MAX(NCPI(I,J,1:LM)   + REAL(nitendr8(1,1:LM)) * DT_R8, 0.0)  
 	                   
                        
-                        DO NAUX = 1, LM
-                       
-                        
-                         if (TEMP(I,J,NAUX) .lt. 150.0) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, TEMP(I,J,NAUX)
-                        end if 
-                        
-                        
-                        if (isnan(TEMP (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'tnan'
-                        end if 
-                        
-                        if (isnan(Q1 (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                         
-                        if (isnan(QLLS (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                         
-                        if (isnan(QLCN (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                         
-                        if (isnan(CLLS (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                          if (isnan(CLCN (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                          if (isnan(QRAIN (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                          if (isnan(QSNOW (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                          if (isnan(QGRAUPEL (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                         
-                        if (isnan(NCPL (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                          if (isnan(NCPI (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                          if (isnan(NRAIN (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                          if (isnan(NSNOW (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                          if (isnan(NGRAUPEL (I,J,NAUX))) then 
-                          print *, '========aftermg========'
-                          print *,  I, J, NAUX, 'qnan'
-                        end if 
-                        
-                        
-                        
-                     end do 
                        
 
                LS_ARFX(I,J)     = maxval( REAL(cldfr8(1,1:LM)) )
@@ -11490,11 +11775,8 @@ end if
 
 
    
-         !============ Recalculate cloud fraction back in contact with the PDF and create new condensate if neccesary (Barahona et al., GMD, 2014)============
-   !IF (MGVERSION <= 1.0) then
-
+  
          !============ Put cloud fraction back in contact with the PDF and create new condensate if neccesary (Barahona et al., GMD, 2014)============
-
 
  DLPDF_X=  QLLS +QLCN
  DIPDF_X =  QILS +QICN
@@ -11521,7 +11803,7 @@ do K= 1, LM
 			 NCPL(I, J, K)           , &
 			 INC_NUC(I, J, K)        , &
 			 RHCmicro(I, J, K), &
-             CNV_FRACTION(I, J), SNOMAS(I, J), FRLANDICE(I, J), FRLAND(I, J))
+             CNV_FRACTION(I, J), SNOMAS(I, J), FRLANDICE(I, J), FRLAND(I, J), .TRUE.)
 	      
            end do 
 	end do
@@ -11586,31 +11868,36 @@ do K= 1, LM
          where (QI_TOT .le. 0.0)
             CFICE =0.0
             NCPI=0.0
-            CLDREFFI = 36.0e-6
+            CLDREFFI = MAPL_UNDEF
          end where
 
          where (QL_TOT .le. 0.0)
             CFLIQ =0.0
             NCPL  =0.0
-            CLDREFFL = 14.0e-6
+            CLDREFFL = MAPL_UNDEF
          end where
 
-         WHERE  (RAD_CF > 1e-4)
-            RAD_QL = min((QLLS+QLCN)/RAD_CF, 1.0e-3)
-            RAD_QI = min((QILS+QICN)/RAD_CF, 1.0e-3) !
-            RAD_QR =  QRAIN/RAD_CF  
-            RAD_QS =  QSNOW/RAD_CF
-            RAD_QG =  QGRAUPEL/RAD_CF
-         ELSEWHERE 
-            RAD_QL = 0.0         
-            RAD_QI = 0.0
-            RAD_QR = 0.0
-            RAD_QS = 0.0
-            RAD_QG = 0.0
-         end where
+           
 
-
-         
+             WHERE  (RAD_CF > 1e-4)
+                RAD_QL = min((QLLS+QLCN)/RAD_CF, 1.0e-3)
+                RAD_QI = min((QILS+QICN)/RAD_CF, 1.0e-3) 
+                RAD_QG =  QGRAUPEL/RAD_CF
+                
+               where (TEMP < MAPL_TICE) !SNOW
+                 RAD_QS = (QSNOW + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
+               else where ! RAIN
+                 RAD_QR = (QRAIN + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
+               end where
+                                        
+             ELSEWHERE 
+                RAD_QL = 0.0         
+                RAD_QI = 0.0
+                RAD_QR = 0.0
+                RAD_QS = 0.0
+                RAD_QG = 0.0
+             end where
+             
           
        
          !Everything in-cloud for radiation============== 
@@ -11733,7 +12020,7 @@ do K= 1, LM
                else
 
                   CLDREFFL_TOP_X (I, J)  = CLDREFFL(I, J,  kbmin) 
-                  NCPL_TOP_X (I, J)  = NCPL_VOL(I, J,  kbmin)*CFX(I, J, kbmin) 
+                  NCPL_TOP_X (I, J)  = NCPL_VOL(I, J,  kbmin) 
                end if
 
 
@@ -11750,7 +12037,7 @@ do K= 1, LM
                   NCPI_TOP_X (I, J)  = 0.0
                else       
                   CLDREFFI_TOP_X (I, J)  = CLDREFFI(I, J,  kbmin) 
-                  NCPI_TOP_X (I, J)  = NCPI_VOL(I, J,  kbmin)*CFX(I, J, kbmin)
+                  NCPI_TOP_X (I, J)  = NCPI_VOL(I, J,  kbmin)
                end if
 
             END DO
@@ -12213,19 +12500,20 @@ do K= 1, LM
 
 ! For 2 moment, move some LS precip/flux into the CN precip/flux category for use by chemistry
 ! --------------------------------------------------------------------------------------------
-      if(adjustl(CLDMICRO)=="2MOMENT") then
+      ! if(adjustl(CLDMICRO)=="2MOMENT") then
 
+     if(.false.) then
       call MAPL_GetPointer(EXPORT, CU2DRAINMOVE,'CU2DRAINMOVE', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CU2DSNOWMOVE,'CU2DSNOWMOVE', RC=STATUS); VERIFY_(STATUS)
 
       if(associated(CU2DRAINMOVE)) cu2drainmove = cn_prc2
       if(associated(CU2DSNOWMOVE)) cu2dsnowmove = cn_snr
 
-       CN_PRC2 = CN_PRC2 + LS_PRC2*cnv_fraction
-       LS_PRC2 = LS_PRC2 - LS_PRC2*cnv_fraction
+      !CN_PRC2 = CN_PRC2 + LS_PRC2*cnv_fraction
+      !LS_PRC2 = LS_PRC2 - LS_PRC2*cnv_fraction
 
-       CN_SNR = CN_SNR + LS_SNR*cnv_fraction
-       LS_SNR = LS_SNR - LS_SNR*cnv_fraction
+      !CN_SNR = CN_SNR + LS_SNR*cnv_fraction
+      !LS_SNR = LS_SNR - LS_SNR*cnv_fraction
 
       if(associated(CU2DRAINMOVE)) cu2drainmove = cn_prc2 - cu2drainmove
       if(associated(CU2DSNOWMOVE)) cu2dsnowmove = cn_snr - cu2dsnowmove
@@ -12237,17 +12525,17 @@ do K= 1, LM
       if(associated(PFLCNMOVE)) pflcnmove = pfl_cn
       if(associated(PFICNMOVE)) pficnmove = pfi_cn
 
-       do l=1,lm
+      !do l=1,lm
 
-       pfl_cn  (:,:,L) = pfl_cn  (:,:,L) + pfl_ls(:,:,L)*cnv_fraction
-       pfl_lsan(:,:,L) = pfl_lsan(:,:,L) - pfl_ls(:,:,L)*cnv_fraction
-       pfl_ls  (:,:,L) = pfl_ls  (:,:,L) - pfl_ls(:,:,L)*cnv_fraction
+      !pfl_cn  (:,:,L) = pfl_cn  (:,:,L) + pfl_ls(:,:,L)*cnv_fraction
+      !pfl_lsan(:,:,L) = pfl_lsan(:,:,L) - pfl_ls(:,:,L)*cnv_fraction
+      !pfl_ls  (:,:,L) = pfl_ls  (:,:,L) - pfl_ls(:,:,L)*cnv_fraction
 
-       pfi_cn  (:,:,L) = pfi_cn  (:,:,L) + pfi_ls(:,:,L)*cnv_fraction
-       pfi_lsan(:,:,L) = pfi_lsan(:,:,L) - pfi_ls(:,:,L)*cnv_fraction
-       pfi_ls  (:,:,L) = pfi_ls  (:,:,L) - pfi_ls(:,:,L)*cnv_fraction
+      !pfi_cn  (:,:,L) = pfi_cn  (:,:,L) + pfi_ls(:,:,L)*cnv_fraction
+      !pfi_lsan(:,:,L) = pfi_lsan(:,:,L) - pfi_ls(:,:,L)*cnv_fraction
+      !pfi_ls  (:,:,L) = pfi_ls  (:,:,L) - pfi_ls(:,:,L)*cnv_fraction
 
-       enddo
+      !enddo
 
       if(associated(PFLCNMOVE)) pflcnmove = pfl_cn - pflcnmove
       if(associated(PFICNMOVE)) pficnmove = pfi_cn - pficnmove
@@ -12677,6 +12965,7 @@ do K= 1, LM
 
       if(ALLOC_UMF)    deallocate( UMF_SC )
       if(ALLOC_MFD)    deallocate( MFD_SC )
+      if(ALLOC_DCM)    deallocate( DCM_SC )
       if(ALLOC_DQVDT)  deallocate( DQVDT_SC )
       if(ALLOC_DQLDT)  deallocate( DQLDT_SC )
       if(ALLOC_DQIDT)  deallocate( DQIDT_SC )
@@ -12705,6 +12994,10 @@ do K= 1, LM
       if(ALLOC_THVLSRC)deallocate( THVLSRC_SC )
       if(ALLOC_TKEAVG) deallocate( TKEAVG_SC )
       if(ALLOC_CLDTOP) deallocate( CLDTOP_SC )
+      if(ALLOC_QTFLX)  deallocate( QTFLX_SC )
+      if(ALLOC_SLFLX)  deallocate( SLFLX_SC )
+      if(ALLOC_UFLX)   deallocate( UFLX_SC  )
+      if(ALLOC_VFLX)   deallocate( VFLX_SC  )
 
       if(ALLOC_WUP)    deallocate( WUP_SC )
       if(ALLOC_QTUP)   deallocate( QTUP_SC )
@@ -12723,6 +13016,8 @@ do K= 1, LM
       if(ALLOC_QISUB)  deallocate( QISUB_SC )
       if(ALLOC_NDROP)  deallocate( SC_NDROP )
       if(ALLOC_NICE)   deallocate( SC_NICE )
+      if(ALLOC_TPERT)  deallocate( TPERT_SC )
+      if(ALLOC_QPERT)  deallocate( QPERT_SC )
 
       if(adjustl(CLDMICRO)=="GFDL") then
          if(ALLOC_PRCP_RAIN  )  deallocate(PRCP_RAIN  )
