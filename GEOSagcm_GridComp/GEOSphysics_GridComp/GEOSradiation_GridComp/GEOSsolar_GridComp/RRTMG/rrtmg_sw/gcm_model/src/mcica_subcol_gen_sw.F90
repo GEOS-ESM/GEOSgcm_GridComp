@@ -164,19 +164,9 @@ contains
                   cdf1(ilay,isubcol,icol) = cdf1(ilay-1,isubcol,icol) 
                endif
             enddo
-         enddo
 
-      enddo
-    
-      if (cond_inhomo) then
-        
-         do icol = 1,ncol
+            if (cond_inhomo) then
 
-            do isubcol = 1,nsubcol
-               seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11
-               seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13
-               seed2 = seed1 + isubcol
-               seed4 = seed3 - isubcol
                do ilay = 1,nlay
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
                   cdf2(ilay,isubcol,icol) = rand_num
@@ -189,11 +179,11 @@ contains
                      cdf3(ilay,isubcol,icol) = cdf3(ilay-1,isubcol,icol)
                   endif
                enddo
-            enddo
 
-         enddo
+            endif
 
-      endif
+         enddo  ! subcolumns
+      enddo  ! gridcolumn
 
       ! -------------------
       ! generate subcolumns
