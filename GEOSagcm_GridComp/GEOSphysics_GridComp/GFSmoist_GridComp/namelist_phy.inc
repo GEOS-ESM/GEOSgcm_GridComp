@@ -2,7 +2,7 @@
     real(kind=kind_phys) :: fhzero         = 0.0             !< hours between clearing of diagnostic buckets
     logical              :: ldiag3d        = .true.          !< flag for 3d diagnostic fields
     logical              :: qdiag3d        = .true.          !< flag for 3d tracer diagnostic fields
-    logical              :: lssav          = .false.         !< logical flag for storing diagnostics
+    logical              :: lssav          = .true.         !< logical flag for storing diagnostics
     integer              :: naux2d         = 0               !< number of auxiliary 2d arrays to output (for debugging)
     integer              :: naux3d         = 0               !< number of auxiliary 3d arrays to output (for debugging)
     logical              :: aux2d_time_avg(1:20) = .false. !< flags for time averaging of auxiliary 2d arrays
@@ -113,7 +113,7 @@
     real(kind=kind_phys) :: tf              = 258.16d0
     real(kind=kind_phys) :: tcr             = 273.16d0
 !
-    logical              :: effr_in         = .false.              !< flag to use effective radii of cloud species in radiation
+    logical              :: effr_in         = .true.              !< flag to use effective radii of cloud species in radiation
     logical              :: microp_uniform  = .true.
     logical              :: do_cldliq       = .true.
     logical              :: do_cldice       = .true.

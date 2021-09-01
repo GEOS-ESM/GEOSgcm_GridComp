@@ -187,6 +187,14 @@
   
     ! !IMPORT STATE:
 
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'ZLE',                                       &
+         LONG_NAME  = 'geopotential_height',                       &
+         UNITS      = 'm',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+                                                        RC=STATUS  )
+
     call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME = 'PLE',                                         &
          LONG_NAME  = 'air_pressure',                                &
@@ -361,6 +369,15 @@
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
          RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                   &
+       SHORT_NAME = 'ZPBL',                                       &
+       LONG_NAME  = 'planetary_boundary_layer_height',            &
+       UNITS      = 'm',                                          &
+       DIMS       = MAPL_DimsHorzOnly,                            &
+       VLOCATION  = MAPL_VLocationNone,                           &
+       RC=STATUS  )
     VERIFY_(STATUS)
 
     ! These bundles should be changed when we merge w/ the head.
@@ -4224,6 +4241,15 @@
          RC=STATUS  )
     VERIFY_(STATUS)
     
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_air_temperature',                               &
+       UNITS      = 'K',                                                     &
+       SHORT_NAME = 'TA',                                                    &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
 !-srf-gf-scheme
     !IF(DEBUG_GF==1 .and. (CONVPAR_OPTION=='GF' .or. CONVPAR_OPTION=='BOTH')) THEN
 

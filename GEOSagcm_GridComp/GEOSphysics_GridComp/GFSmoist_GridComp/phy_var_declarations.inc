@@ -1,5 +1,29 @@
+      real(kind=kind_phys), dimension(:), pointer  :: cnvprcp=>Null()
+      real(kind=kind_phys), dimension(:), pointer  :: cnvprcpb=>Null()
+      real(kind=kind_phys), dimension(:), pointer  :: totprcp   => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: totice    => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: totsnw    => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: totgrp    => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: totprcpb  => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: toticeb   => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: totsnwb   => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: totgrpb   => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: tdomr   => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: tdomzr   => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: tdomip   => Null()
+      real(kind=kind_phys), dimension(:), pointer  :: tdoms   => Null()
+
+      real(kind=kind_phys), dimension(:), pointer  ::  cldwrk => Null()
+      ! dt3dt, dq3dt, du3dt, dv3dt upd_mf, dwn_mf, det_mf only allocated if ldiag3d == .true.
+      real(kind=kind_phys), dimension(:,:,:), pointer  :: du3dt => Null()
+      real(kind=kind_phys), dimension(:,:,:), pointer  :: dv3dt => Null()
+      real(kind=kind_phys), dimension(:,:,:), pointer  :: dt3dt => Null()
+      real(kind=kind_phys), dimension(:,:,:), pointer  :: dq3dt => Null()
+
+      real(kind=kind_phys), dimension(IMJM)  :: rainc
+
       integer, parameter    :: ntrac=9, nn=ntrac-2
-      integer, parameter    :: ncld=5, nncl=ncld
+      integer    :: nncl
       integer, parameter    :: ntk=4, nsamftrac=2, nrcm=2, tracers_total=2
       integer, parameter    :: itc=0, ntchm=0
       integer, parameter    :: ntqv=1, ntcw=2, ntiw=3, ntclamt=8, ntrw=5, ntsw=6, & 
@@ -15,8 +39,10 @@
                                imp_physics_wsm6=6,  imp_physics_fer_hires=15
       logical, parameter  :: flag_for_dcnv_generic_tend = .true.
       logical, parameter  :: flag_for_scnv_generic_tend = .true.
-      real(kind=kind_phys)  :: tem
-      real(kind=kind_phys), save  :: dxmin, dxmax, dxinv
+      integer, parameter    :: lsm_noah=1, lsm_noahmp=2, lsm_ruc=3, lsm_noah_wrfv4=4
+      integer, parameter  :: imfshalcnv_samf=2, imfshalcnv_sas=1
+      !real(kind=kind_phys)  :: tem
+      !real(kind=kind_phys), save  :: dxmin, dxmax, dxinv
       real(kind=kind_phys), dimension(IMJM) :: pgr
 
       integer             , dimension(IMJM) :: islmsk
@@ -24,7 +50,7 @@
       real(kind=kind_phys), dimension(IMJM,LM) :: dudt, dvdt, dtdt, dtdtc
       real(kind=kind_phys), dimension(IMJM,LM,ntrac) ::  dqdt
       real(kind=kind_phys), parameter   :: zero = 0.0_kind_phys, one = 1.0_kind_phys
-      character(len=ESMF_MAXSTR)      :: errmsg
+      !character(len=ESMF_MAXSTR)      :: errmsg
       integer               :: errflg
 
       integer, dimension(IMJM)  :: kpbl, kinver
@@ -33,8 +59,8 @@
       real(kind=kind_phys), dimension(IMJM, LM)         :: prsl, prslk
       real(kind=kind_phys), dimension(IMJM, LM+1)       :: prsi
       !real(kind=kind_phys), dimension(IMJM)               :: xlon, xlat
-      !real(kind=kind_phys), dimension(IMJM, LM)         :: gt0
-      !real(kind=kind_phys), dimension(IMJM, LM, ntrac)  :: gq0
+      real(kind=kind_phys), dimension(IMJM, LM)         :: gt0
+      real(kind=kind_phys), dimension(IMJM, LM, ntrac)  :: gq0
 
       real(kind=kind_phys), dimension(IMJM, LM)       :: rhc !, save_qc
       ! save_qi is not allocated for Zhao-Carr MP
@@ -49,17 +75,12 @@
       ! dqdti only allocated if cplchm is .true.
       real(kind=kind_phys), dimension(IMJM,LM)      :: dqdti
 
-      logical  :: lssav
+      !logical  :: lssav
 
-      real(kind=kind_phys)  :: frain
+      !real(kind=kind_phys)  :: frain
       real(kind=kind_phys), dimension(IMJM)  :: rain1, cld1d
       real(kind=kind_phys), dimension(IMJM,LM)  :: ud_mf, dd_mf, dt_mf
 
-      real(kind=kind_phys), dimension(IMJM)  :: rainc, cldwrk
-      ! dt3dt, dq3dt, du3dt, dv3dt upd_mf, dwn_mf, det_mf only allocated if ldiag3d == .true.
-      real(kind=kind_phys), dimension(IMJM,LM,8)  :: du3dt, dv3dt
-      real(kind=kind_phys), dimension(IMJM,LM,11)  :: dt3dt
-      real(kind=kind_phys), dimension(IMJM,LM,13)  :: dq3dt
       real(kind=kind_phys), dimension(IMJM,LM)  :: upd_mf, dwn_mf, det_mf
       real(kind=kind_phys), dimension(IMJM,LM)  :: cnvw, cnvc
       ! The following arrays may not be allocated, depending on certain flags and microphysics schemes.
@@ -74,19 +95,20 @@
      !&   con_fvirt, con_g, con_hvap, con_rd, con_rv, con_t0c
       real(kind=kind_phys)  ::  delt
       real(kind=kind_phys)  :: delp(IMJM,LM),         &
-     &   phil(IMJM,LM)
+     &   phil(IMJM,LM), dot(IMJM,LM)
      !&   garea(IMJM), dot(IMJM,LM), phil(IMJM,LM)
       real(kind=kind_phys), dimension(ntchm)  :: fscav
       !logical   :: hwrf_samfdeep
-      real(kind=kind_phys)  :: nthresh
+      !real(kind=kind_phys)  :: nthresh
       real(kind=kind_phys), dimension(IMJM)   :: ca_deep
       real(kind=kind_phys), dimension(IMJM)  :: condition
-      logical   :: do_ca,ca_closure,ca_entr,ca_trigger
+      !logical   :: do_ca,ca_closure,ca_entr,ca_trigger
 
       integer   :: kcnv(IMJM)
       ! DH* TODO - check dimensions of qtr, ntr+2 correct?  *DH
       !real(kind=kind_phys)  ::   qtr(IMJM,LM,ntr+2),        &
      !&   q1(IMJM,LM), t1(IMJM,LM),   u1(IMJM,LM), v1(IMJM,LM)
+      !real(kind=kind_phys)  ::   t1(IMJM,LM),   u1(IMJM,LM), v1(IMJM,LM)
 
       integer  :: kbot(IMJM), ktop(IMJM)
       real(kind=kind_phys)  :: raincd(IMJM), raincs(IMJM)
@@ -106,13 +128,11 @@
 
 
       ! Post code for SAS/SAMF
-      logical  :: shcnvcw
-      real(kind=kind_phys), dimension(IMJM)  :: cnvprcp, cnvprcpb
+      !logical  :: shcnvcw
       ! The following arrays may not be allocated, depending on certain flags and microphysics schemes.
       ! Since Intel 15 crashes when passing unallocated arrays to arrays defined with explicit shape,
       ! use assumed-shape arrays. Note that Intel 18 and GNU 6.2.0-8.1.0 tolerate explicit-shape arrays
       ! as long as these do not get used when not allocated.
-      integer  :: imfshalcnv, imfshalcnv_sas, imfshalcnv_samf
 
 
       real(kind=kind_phys)  :: hpbl(IMJM)
@@ -131,8 +151,8 @@
       real(kind=kind_phys), dimension(IMJM,LM,ntrac)  :: save_q
 
 
-      integer  :: kdt
-      logical  :: cal_pre, cplflx
+      !integer  :: kdt
+      !logical  :: cal_pre, cplflx
 
       real(kind=kind_phys), dimension(IMJM)                :: tsfc
       real(kind=kind_phys), dimension(IMJM)             :: ice, snow, graupel
@@ -142,19 +162,16 @@
       real(kind=kind_phys), dimension(IMJM,LM+1)         :: phii
 
       real(kind=kind_phys), dimension(IMJM)       :: sr
-      real(kind=kind_phys), dimension(IMJM)       :: tdomr, tdomzr, tdomip, tdoms
-      real(kind=kind_phys), dimension(IMJM)       :: rain, tprcp,  &
-                                                     srflag, totprcp, totice, totsnw, totgrp, &
-                                                     totprcpb, toticeb, totsnwb, totgrpb, pwat
+      real(kind=kind_phys), dimension(IMJM)       :: rain, tprcp, srflag, pwat
       real(kind=kind_phys), dimension(IMJM)        :: rain_cpl, rainc_cpl, snow_cpl
 
       ! Stochastic physics / surface perturbations
-      logical  :: do_sppt, ca_global
+      !logical  :: do_sppt, ca_global
       real(kind=kind_phys), dimension(IMJM,LM)      :: dtdtr
       real(kind=kind_phys), dimension(IMJM)        :: drain_cpl, dsnow_cpl
 
       ! Rainfall variables previous time step
-      integer  :: lsm, lsm_ruc, lsm_noahmp
+      !integer  :: lsm, lsm_ruc, lsm_noahmp
       real(kind=kind_phys), dimension(IMJM)        :: raincprv
       real(kind=kind_phys), dimension(IMJM)        :: rainncprv
       real(kind=kind_phys), dimension(IMJM)        :: iceprv
@@ -184,7 +201,7 @@
 
       !logical  :: lradar
       real(kind=kind_phys), dimension(1:IMJM,1:LM) :: refl_10cm
-      logical  :: reset !, effr_in
+      !logical  :: reset !, effr_in
       real(kind=kind_phys), dimension(1:IMJM,1:LM) :: rew, rei, rer, res, reg
 
        !real(kind=kind_phys)  :: du3dt_pbl(IMJM,LM)

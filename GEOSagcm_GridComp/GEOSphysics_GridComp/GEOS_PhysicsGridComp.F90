@@ -149,7 +149,6 @@ contains
     call MAPL_GetResource ( MAPL, USE_GFS_MOIST, Label="USE_GFS_MOIST:",DEFAULT='FALSE', RC=STATUS)
     VERIFY_(STATUS)
     if (trim(USE_GFS_MOIST) == 'TRUE') LUSE_GFS_MOIST=.true.
-    print *, LUSE_GFS_MOIST, USE_GFS_MOIST
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
 
@@ -1277,7 +1276,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'KH     ','KPBL   ','KPBL_SC',            &
-                         'TKE    '/),                              &
+                         'TKE    ','ZPBL   '/),           &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
