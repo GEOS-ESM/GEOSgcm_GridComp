@@ -99,15 +99,17 @@ contains
 
       ! ----- Locals -----
 
-      ! decorrelation length scales for cldfrac and condensate
+      ! correlation length for cloud presence and condensate
       real, dimension(dncol) :: adl, rdl
 
-      ! inter-layer correlations for cldfrac and condensate
+      ! inter-layer correlations for cloud presence and condensate
       real, dimension(nlay) :: alpha, rcorr
 
-      ! seeds and random number (rng_kiss)
+      ! condensate inhomogeneity
+      real :: sigma_qcw(nlay)
+
+      ! seeds for rng_kiss
       integer :: seed1, seed2, seed3, seed4
-      real :: rand_num
 
       ! random number arrays used for overlap
       real, dimension(nlay) :: &
@@ -116,7 +118,7 @@ contains
          cdf3     ! for cloud condensate
 
       ! other locals
-      real :: cfs, sigma_qcw, zcw
+      real :: zcw
       logical :: cond_inhomo, ciwp_negligible, clwp_negligible
 
       ! indices
@@ -125,9 +127,7 @@ contains
       ! save for speed
       cond_inhomo = condensate_inhomogeneous()
 
-      ! -----------------------------------
-      ! compute decorrelation length scales
-      ! -----------------------------------
+      ! Compute decorrelation length scales ...
 
       ! for cloud presence
       call correlation_length(dncol, ncol, &
@@ -138,15 +138,11 @@ contains
          call correlation_length(dncol, ncol, &
             0.72192, 0.78996, 40.404, 8.5, doy, alat, rdl)
       endif
-
-      ! --------------------------
+      
       ! outer loop over gridcolumn
-      ! --------------------------
       do icol = 1,ncol
 
-         ! ------------------------------------
-         ! exponential inter-layer correlations
-         ! ------------------------------------
+         ! exponential inter-layer correlations ...
          do ilay = 2,nlay
             alpha(ilay) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / adl(icol) )
          enddo
@@ -156,14 +152,22 @@ contains
             enddo
          endif
 
-         ! -----------------------
-         ! generate each subcolumn
-         ! -----------------------
+         ! precalculate level of condensate inhomogeneity based on cldfrac.
+         ! put outside of subcol loop for speed but only needed for cloudy cells
+         if (cond_inhomo) then
+            where (cldfrac(:,icol) > 0.99)
+               sigma_qcw = 0.5
+            elsewhere (cldfrac(:,icol) > 0.9)
+               sigma_qcw = 0.71
+            elsewhere
+               sigma_qcw = 1.0
+            endwhere
+         endif
+
+         ! Generate each subcolumn ...
          do isubcol = 1,nsubcol
 
-            ! -----------
-            ! create seed
-            ! -----------
+            ! create seed for subcolumn ...
             ! For rng_kiss, create a seed that depends on the state of the columns.
             ! Maybe not the best way, but it works.
             ! pmn ... why do we have to reset seed at beginning of every subcol?
@@ -179,34 +183,24 @@ contains
             seed2 = seed1 + isubcol
             seed4 = seed3 - isubcol
   
-            ! ------------------------
-            ! apply overlap assumption
-            ! ------------------------
-
+            ! exponential overlap for cloud presence ...
             do ilay = 1,nlay
-               call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf1(ilay) = rand_num
-               call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf2(ilay) = rand_num
+               call rng_kiss(seed1,seed2,seed3,seed4,cdf1(ilay))
+               call rng_kiss(seed1,seed2,seed3,seed4,cdf2(ilay))
             enddo
-
-            ! exponential overlap in cloud fraction
             do ilay = 2,nlay
                if (cdf2(ilay) < alpha(ilay)) then
                   cdf1(ilay) = cdf1(ilay-1)
                endif
             enddo
 
-            ! exponential overlap in condensate
             if (cond_inhomo) then
 
+               ! exponential overlap for condensate ...
                do ilay = 1,nlay
-                  call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf2(ilay) = rand_num
-                  call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf3(ilay) = rand_num
+                  call rng_kiss(seed1,seed2,seed3,seed4,cdf2(ilay))
+                  call rng_kiss(seed1,seed2,seed3,seed4,cdf3(ilay))
                enddo
-
                do ilay = 2,nlay
                   if (cdf2(ilay) < rcorr(ilay)) then
                      cdf3(ilay) = cdf3(ilay-1)
@@ -215,17 +209,13 @@ contains
 
             endif
 
-            ! -------------------
-            ! generate subcolumns
-            ! -------------------
-
+            ! generate layers of subcolumn ...
             do ilay = 1,nlay
-               cfs = cldfrac(ilay,icol)
 
-               if (cdf1(ilay) >= 1. - cfs) then
+               if (cdf1(ilay) >= 1. - cldfrac(ilay,icol)) then
 
                   ! a cloudy subcolumn/layer
-                  ! note: cdf1 from rand_num in (0,1) so:
+                  ! note: cdf1 from random num in (0,1) so:
                   !       cldfrac == 0. can never get here;
                   !       cldfrac == 1. always comes here.
 
@@ -233,17 +223,8 @@ contains
 
                   if (cond_inhomo) then
 
-                     ! Cloud fraction sets level of inhomogeneity
-                     if (cfs > 0.99) then
-                        sigma_qcw = 0.5
-                     elseif (cfs > 0.9) then
-                        sigma_qcw = 0.71
-                     else
-                        sigma_qcw = 1.0
-                     endif
-
                      ! horizontally variable clouds
-                     zcw = zcw_lookup(cdf3(ilay),sigma_qcw)
+                     zcw = zcw_lookup(cdf3(ilay),sigma_qcw(ilay))
                      ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
                      clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
 
@@ -255,7 +236,7 @@ contains
 
                   endif
 
-                  ! reset negligible water paths to zero (see comment in introduction)
+                  ! reset negligible water paths to zero (see comment in intro)
                   ciwp_negligible = (ciwp_stoch(ilay,isubcol,icol) <= cwp_tiny)
                   if (ciwp_negligible) ciwp_stoch(ilay,isubcol,icol) = 0.
                   clwp_negligible = (clwp_stoch(ilay,isubcol,icol) <= cwp_tiny)
