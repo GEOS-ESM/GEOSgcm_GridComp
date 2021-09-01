@@ -21,7 +21,7 @@ module GEOS_PhysicsGridCompMod
 
   use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
   use GEOS_MoistGridCompMod,      only : MoistSetServices     => SetServices
-  use GFS_MoistGridCompMod,       only : GFSMoistSetServices  => SetServices
+  use CCPP_GFS_MoistGridCompMod,       only : CCPP_GFSMoistSetServices  => SetServices
   use GEOS_TurbulenceGridCompMod, only : TurblSetServices     => SetServices
   use GEOS_RadiationGridCompMod,  only : RadiationSetServices => SetServices
   use GEOS_ChemGridCompMod,       only : AChemSetServices     => SetServices
@@ -118,8 +118,8 @@ contains
     character(len=ESMF_MAXSTR)              :: TendUnits
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
-    character(len=ESMF_MAXSTR)              :: USE_GFS_MOIST
-    logical                                 :: LUSE_GFS_MOIST = .false.
+    character(len=ESMF_MAXSTR)              :: CCPP_GFS_MOIST
+    logical                                 :: LCCPP_GFS_MOIST = .false.
 
 !=============================================================================
 
@@ -146,9 +146,9 @@ contains
     VERIFY_(STATUS)
 
 ! Decide which moist to us
-    call MAPL_GetResource ( MAPL, USE_GFS_MOIST, Label="USE_GFS_MOIST:",DEFAULT='FALSE', RC=STATUS)
+    call MAPL_GetResource ( MAPL, CCPP_GFS_MOIST, Label="CCPP_GFS_MOIST:",DEFAULT='FALSE', RC=STATUS)
     VERIFY_(STATUS)
-    if (trim(USE_GFS_MOIST) == 'TRUE') LUSE_GFS_MOIST=.true.
+    if (trim(CCPP_GFS_MOIST) == 'TRUE') LCCPP_GFS_MOIST=.true.
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
 
@@ -158,8 +158,8 @@ contains
 ! not be properly restarted
     GWD = MAPL_AddChild(GC, NAME='GWD', SS=GwdSetServices, RC=STATUS)
     VERIFY_(STATUS)
-    if (LUSE_GFS_MOIST) then
-       MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=GFSMoistSetServices, RC=STATUS)
+    if (LCCPP_GFS_MOIST) then
+       MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=CCPP_GFSMoistSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
        MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=MoistSetServices, RC=STATUS)

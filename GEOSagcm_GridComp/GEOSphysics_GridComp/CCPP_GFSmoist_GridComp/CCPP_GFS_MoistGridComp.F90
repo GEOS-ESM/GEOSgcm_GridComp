@@ -13,7 +13,7 @@
 
 ! !INTERFACE:
 
-module GFS_MoistGridCompMod
+module CCPP_GFS_MoistGridCompMod
 
   ! !USES:
   use ESMF
@@ -1246,4 +1246,4 @@ contains
 
    end subroutine Finalize
 
-end module GFS_MoistGridCompMod
+end module CCPP_GFS_MoistGridCompMod
