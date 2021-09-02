@@ -1,7 +1,7 @@
 esma_set_this()
 
 set (srcs
-  GFS_MoistGridComp.F90
+  CCPP_GFS_MoistGridComp.F90
   GFS_typedefs_stubs.F90
   @ccpp-physics/physics/machine.F
   @ccpp-physics/physics/gfdl_cloud_microphys.F90

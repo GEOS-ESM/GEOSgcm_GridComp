@@ -3,7 +3,7 @@ esma_set_this ()
 set (alldirs
   @GEOSchem_GridComp
   GEOSmoist_GridComp
-  GFSmoist_GridComp
+  CCPP_GFSmoist_GridComp
   GEOSsurface_GridComp
   GEOSturbulence_GridComp
   GEOSgwd_GridComp

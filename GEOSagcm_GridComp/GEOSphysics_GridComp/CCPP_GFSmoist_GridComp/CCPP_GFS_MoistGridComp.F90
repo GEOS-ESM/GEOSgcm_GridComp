@@ -1029,7 +1029,7 @@ contains
       rann = SPREAD(randomn, 2, nrcm)
       !if (me == 0) print *, "TS  ..", me, TS
 
-      print *, __FILE__, __LINE__, "cal_pre", cal_pre
+      !print *, __FILE__, __LINE__, "cal_pre", cal_pre
       call GFS_MP_generic_post_run(               &
                   !intent(in)
                   im=IMJM,levs=LM,kdt=kdt, &
