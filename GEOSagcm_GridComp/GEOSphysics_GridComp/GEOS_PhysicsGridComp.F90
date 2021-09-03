@@ -2862,7 +2862,7 @@ contains
 
    !  Modify P and Q such that Pdry is conserved
    !  ------------------------------------------
-#define ORIGDRY
+!#define ORIGDRY
 #ifdef ORIGDRY
              ple_new = ple*1.0_8
                sumdq = 0.0

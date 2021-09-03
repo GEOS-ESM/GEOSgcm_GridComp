@@ -3872,6 +3872,15 @@ contains
       O2_R  (:,1:LM  ) = O2
       FCLD_R(:,1:LM  ) = CL (:,LM:1:-1)
 
+! Clean up negatives
+      WHERE (Q_R < 0.) Q_R = 0.
+      WHERE (O3_R < 0.) O3_R = 0.
+      WHERE (CH4_R < 0.) CH4_R = 0.
+      WHERE (N2O_R < 0.) N2O_R = 0.
+      WHERE (CO2_R < 0.) CO2_R = 0.
+      WHERE (O2_R < 0.) O2_R = 0.
+      WHERE (FCLD_R < 0.) FCLD_R = 0.
+
 ! Adjustment for Earth/Sun distance, from MAPL_SunGetInsolation
       ADJES  = DIST
 

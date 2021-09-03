@@ -299,8 +299,8 @@ subroutine gw_rdg_ifc( &
   
       kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
       isoflag = 0   
-      effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / gbxar(1:ncol)
-      effgw   = min( effgw_rdg_max , effgw )
+      effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / 729.0 !gbxar(1:ncol)
+ !    effgw   = min( effgw_rdg_max , effgw )
 
     call gw_rdg_src(ncol, pver, pint, pmid, delp, &
          u, v, t, mxdis(:,nn), angll(:,nn), anixy(:,nn), kwvrdg, isoflag, zi, nm, &
@@ -334,10 +334,13 @@ subroutine gw_rdg_ifc( &
 #endif
 
      pint_adj = 1.0
-!WMP pressure scaling from GEOS to 0.1mb
-     where (pint < 10.0)
-       pint_adj = (pint/10.0)**3
-     endwhere
+!WMP pressure scaling from GEOS top 0.01mb to 0.5mb
+!     where (pint < 50.0)
+!      !pint_adj = (pint/50.0)**3
+!       pint_adj = 1./19. * &
+!                  ((atan( (2.*(pint-1.0)/(50-1.0)-1.) * &
+!                  tan(20.*PII/21.-0.5*PII) ) + 0.5*PII) * 21./PII - 1.)
+!     endwhere
 !WMP pressure scaling from GEOS
 
 ! GEOS call

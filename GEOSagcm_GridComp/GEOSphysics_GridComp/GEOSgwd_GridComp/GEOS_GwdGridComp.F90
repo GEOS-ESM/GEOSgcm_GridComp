@@ -298,6 +298,49 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'RDG1_MXDIS',                                &
+        LONG_NAME  = 'ridge1_mxdis',                              &
+        UNITS      = '1',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'RDG1_HWDTH',                                &      
+        LONG_NAME  = 'ridge1_hwdth',                              &
+        UNITS      = '1',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'RDG1_CLNGT',                                &      
+        LONG_NAME  = 'ridge1_clngt',                              &
+        UNITS      = '1',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'RDG1_ANGLL',                                &      
+        LONG_NAME  = 'ridge1_angll',                              &
+        UNITS      = '1',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'RDG1_ANIXY',                                &      
+        LONG_NAME  = 'ridge1_anixy',                              &
+        UNITS      = '1',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'RDG1_GBXAR',                                &      
+        LONG_NAME  = 'ridge1_gridbox_area',                       &
+        UNITS      = 'km^2',                                      &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'SGH',                                       &
         LONG_NAME  = 'standard_deviation_of_topography',          &
         UNITS      = 'm',                                         &
@@ -1218,6 +1261,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:,:)  :: DTGENBKG, DUGENBKG, DVGENBKG
      
       real, pointer, dimension(:,:,:)  :: TMP3D
+      real, pointer, dimension(:,:)    :: TMP2D
  
 ! local variables
 
@@ -1821,6 +1865,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         enddo
         FIRST_RUN = .false.
        endif
+
+       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', RC=STATUS); VERIFY_(STATUS)
+       if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
+       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', RC=STATUS); VERIFY_(STATUS)
+       if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
+       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', RC=STATUS); VERIFY_(STATUS)
+       if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
+       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', RC=STATUS); VERIFY_(STATUS)
+       if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
+       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', RC=STATUS); VERIFY_(STATUS)
+       if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
+       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', RC=STATUS); VERIFY_(STATUS)
+       if(associated(TMP2D)) TMP2D = GBXAR
 
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
          call gw_intr_ncar(IM*JM,    LM,         DT,     NCAR_NRDG,   &

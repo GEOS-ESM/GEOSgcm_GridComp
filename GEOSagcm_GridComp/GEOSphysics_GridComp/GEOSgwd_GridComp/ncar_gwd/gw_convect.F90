@@ -584,10 +584,13 @@ subroutine gw_beres_ifc( band, &
 
 
      pint_adj = 1.0
-!WMP pressure scaling from GEOS top to 0.1mb
-     where (pint < 10.0)
-       pint_adj = (pint/10.0)**3
-     endwhere
+!WMP pressure scaling from GEOS top 0.01mb to 0.5mb
+!    where (pint < 50.0)
+!     !pint_adj = (pint/50.0)**3
+!      pint_adj = 1./19. * &
+!                 ((atan( (2.*(pint-1.0)/(50-1.0)-1.) * &
+!                 tan(20.*PI/21.-0.5*PI) ) + 0.5*PI) * 21./PI - 1.)
+!    endwhere
 !WMP pressure scaling from GEOS
 
      ! satfac_in is 2 by default for CAM5
