@@ -1887,6 +1887,9 @@ CONTAINS
            call WRITE_PARALLEL( trim(STRING)   )
            RETURN_(ESMF_FAILURE)
         endif
+        if (.not.L_REPLAY_O3) then
+           o3_rep = 0.0
+        endif
 
 ! ANA Pressure Variables
 ! ----------------------
