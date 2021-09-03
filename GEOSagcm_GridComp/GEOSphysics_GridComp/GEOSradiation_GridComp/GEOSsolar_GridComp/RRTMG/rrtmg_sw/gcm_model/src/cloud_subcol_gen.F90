@@ -110,6 +110,7 @@ contains
 
       ! seeds for rng_kiss
       integer :: seed1, seed2, seed3, seed4
+      integer, parameter :: maximo = huge(seed1) - 1
       real :: pseed(4)
 
       ! random number arrays used for overlap
@@ -207,12 +208,12 @@ contains
          ! Scaling to integer seeds ...
          ! The 32-bit integer range is [-2147483648,2147483647] and we wish
          ! to avoid zero seeds, so we scale the seeds to [1,2147483647] with
-         ! the following:
+         ! the following (made more general with maximo = huge(integer)-1):
          pseed = play(1:4,icol) * 100.  ! [Pa]
-         seed1 = (pseed(1) - int(pseed(1))) * 2147483646 + 1
-         seed2 = (pseed(2) - int(pseed(2))) * 2147483646 + 1
-         seed3 = (pseed(3) - int(pseed(3))) * 2147483646 + 1
-         seed4 = (pseed(4) - int(pseed(4))) * 2147483646 + 1
+         seed1 = (pseed(1) - int(pseed(1))) * maximo + 1
+         seed2 = (pseed(2) - int(pseed(2))) * maximo + 1
+         seed3 = (pseed(3) - int(pseed(3))) * maximo + 1
+         seed4 = (pseed(4) - int(pseed(4))) * maximo + 1
 
          ! Generate each subcolumn ...
          do isubcol = 1,nsubcol
