@@ -110,6 +110,7 @@ contains
 
       ! seeds for rng_kiss
       integer :: seed1, seed2, seed3, seed4
+      real :: pseed(4)
 
       ! random number arrays used for overlap
       real, dimension(nlay) :: &
@@ -153,7 +154,8 @@ contains
          endif
 
          ! precalculate level of condensate inhomogeneity based on cldfrac.
-         ! put outside of subcol loop for speed but only needed for cloudy cells
+         ! put outside of subcol loop for speed even though only needed for
+         ! cloudy subcolumn cells. sigma_qcw is dimensioned nlay.
          if (cond_inhomo) then
             where (cldfrac(:,icol) > 0.99)
                sigma_qcw = 0.5
@@ -164,25 +166,57 @@ contains
             endwhere
          endif
 
+         ! Choose four i4 (32-bit) seeds fore the KISS PRNG ...
+         !   (a) To ensure reproducibility, choose seeds based on the model state,
+         ! in this case based on gridcolumn near surface pressure (this is to be
+         ! contrasted with seeds based on, e.g., the system clock, which will give
+         ! non-reproducible runs). This state-based reproducibility will regress
+         ! with changes to the domain decomposition among processors (so long as
+         ! the rest of the model regresses to such changes) or with changes to
+         ! the RRTMG gridcolumn partitioning, etc.
+         !   (b) If two gridcolumns (or one gridcolumn at two times) have exactly
+         ! the same seed, they will produce the same KISS pseudo-random number
+         ! sequence. But even if the seeds are different at all, they will still
+         ! produce different random sequences. The geostrophic pressure gradient
+         ! is ~ rho f u, where f is the coriolis parameter, about 10^-4 s^-1 at
+         ! mid-latitudes and u is the wind speed along the isobars. So for u ~ 10
+         ! m/s, the pressure gradient is about 1 Pa / km. Of course this varies
+         ! with latitude and will not apply in the Tropics (where geostrophy does
+         ! not hold). Still it gives us a rough estimate. Now for the high-resol-
+         ! ution runs beginning to run, the grid spacing is approaching 1 km, or
+         ! about 1 Pa difference! And if two neighboring gridcolumns fall along
+         ! an isobar, the pressure difference could be much less. This is why we
+         ! would not use the integer portion of the surface pressure in Pa. But
+         ! the fractional part of this pressure (scaled to a 32-bit integer) will
+         ! yield different seeds.
+         !   (c) Having seeds local to each gridcolumn allows potential parallel-
+         ! ism. And because the seed is based on pressure differences, not cloud
+         ! differences, two gridcolumns adjacent in space or time that have very
+         ! similar cloud properties will still generate different subcolumn cloud
+         ! ensembles because of their different seeds. This will help beat down
+         ! the sampling errors due to finite nsubcol (i.e., subcolumn / g-point
+         ! number) when averaging over time and/or space.
+         !   (d) Concerning the pressures for the lowest four layers used to
+         ! produce the four required KISS seeds: dp ~ rho g dz ~ 10 dz, so a 1 Pa
+         ! difference occurs in only 10 cm, which is way smaller than our layer
+         ! spacing. In fact, the lowest layers are spaced by about 15 hPa or 1500
+         ! Pa for 72L and 2-3 hPa or 200-300 Pa for 181L, both well in excess of
+         ! 1 Pa. So we dont need to worry about vertical correlations among the
+         ! pseed.
+
+         ! Scaling to integer seeds ...
+         ! The 32-bit integer range is [-2147483648,2147483647] and we wish
+         ! to avoid zero seeds, so we scale the seeds to [1,2147483647] with
+         ! the following:
+         pseed = play(1:4,icol) * 100.  ! [Pa]
+         seed1 = (pseed(1) - int(pseed(1))) * 2147483646 + 1
+         seed2 = (pseed(2) - int(pseed(2))) * 2147483646 + 1
+         seed3 = (pseed(3) - int(pseed(3))) * 2147483646 + 1
+         seed4 = (pseed(4) - int(pseed(4))) * 2147483646 + 1
+
          ! Generate each subcolumn ...
          do isubcol = 1,nsubcol
 
-            ! create seed for subcolumn ...
-            ! For rng_kiss, create a seed that depends on the state of the columns.
-            ! Maybe not the best way, but it works.
-            ! pmn ... why do we have to reset seed at beginning of every subcol?
-            ! pmn ... no real harm and allowed parallel generation in old gpu code
-            ! notes: play*100 is in Pa, so approx 95000--105000 near the surface.
-            ! The difference below is clearly [0,1) (a fractional Pa), so after
-            ! multiplication [0,1000000000) cf. range of i4: [-2147483648,2147483647],
-            ! which is well within range: have 10 digits, use 10 but not exceeding
-            ! maximum positive i4.
-      
-            seed1 = (play(1,icol)*100. - int(play(1,icol)*100.)) * 1000000000 + isubcol * 11 
-            seed3 = (play(3,icol)*100. - int(play(3,icol)*100.)) * 1000000000 + isubcol * 13 
-            seed2 = seed1 + isubcol
-            seed4 = seed3 - isubcol
-  
             ! exponential overlap for cloud presence ...
             do ilay = 1,nlay
                call rng_kiss(seed1,seed2,seed3,seed4,cdf1(ilay))
