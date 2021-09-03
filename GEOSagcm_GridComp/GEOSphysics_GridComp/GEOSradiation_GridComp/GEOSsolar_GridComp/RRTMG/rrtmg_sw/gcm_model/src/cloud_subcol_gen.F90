@@ -167,7 +167,7 @@ contains
             endwhere
          endif
 
-         ! Choose four i4 (32-bit) seeds fore the KISS PRNG ...
+         ! Choose four i4 (32-bit) seeds for the KISS PRNG ...
          !   (a) To ensure reproducibility, choose seeds based on the model state,
          ! in this case based on gridcolumn near surface pressure (this is to be
          ! contrasted with seeds based on, e.g., the system clock, which will give
