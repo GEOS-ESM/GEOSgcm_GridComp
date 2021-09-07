@@ -334,6 +334,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                 &
+         SHORT_NAME = 'ZPBL_ANA',                                 &
+         LONG_NAME  = 'fake_observed_pbl_height',                 &
+         UNITS      = 'm',                                        &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec ( gc,                                 &
          SHORT_NAME = 'PLE_DYN_IN',                                 &
          LONG_NAME  = 'edge_pressure_at_begin_of_time_step',       &
          UNITS      = 'Pa',                                   &
@@ -1715,6 +1723,20 @@ contains
     VERIFY_(STATUS)
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
+
+!    call ESMF_StateGet    (GEX(TURBL),  'QT2'   , FIELD,    RC=STATUS )
+!    VERIFY_(STATUS)
+!    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+!    VERIFY_(STATUS)
+!    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+!    VERIFY_(STATUS)
+
+!    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
+!    VERIFY_(STATUS)
+!    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+!    VERIFY_(STATUS)
+!    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+!    VERIFY_(STATUS)
 
 ! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
 

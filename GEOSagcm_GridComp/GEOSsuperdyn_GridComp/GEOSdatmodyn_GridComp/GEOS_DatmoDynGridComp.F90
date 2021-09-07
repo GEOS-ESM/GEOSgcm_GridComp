@@ -262,6 +262,13 @@ contains
          UNITS      = 'm+2 sec-2',                                 &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               __RC__  )
+
+!    call MAPL_AddImportSpec ( gc,                             &
+!         SHORT_NAME = 'ZPBL',                                     &
+!         LONG_NAME  = 'turbulent_length_scale_for_shoc',           &
+!         UNITS      = 'm',                                         &
+!         DIMS       = MAPL_DimsHorzOnly,                           &
+!         VLOCATION  = MAPL_VLocationNone,               __RC__  )
     
 !!This bundle should come from PHYSICS(MOIST)
     call MAPL_AddImportSpec( gc,                              &
@@ -673,6 +680,14 @@ contains
 !         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
 !     VERIFY_(STATUS)
 !-srf-gf-scheme
+    call MAPL_AddExportSpec ( gc,                                 &
+         SHORT_NAME = 'ZPBL_ANA',                                 &
+         LONG_NAME  = 'fake_observed_pbl_depth',                  &
+         UNITS      = 'm',                                        &
+         DIMS       = MAPL_DimsHorzOnly,                          &
+         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'QV_DYN_IN',                                 &
          LONG_NAME  = 'spec_humidity_at_begin_of_time_step',       &
@@ -1161,6 +1176,7 @@ contains
     real, pointer, dimension(:,:)   :: TSAIROBS
     real, pointer, dimension(:,:)   :: TGSOILOBS
     real, pointer, dimension(:,:)   :: PS, SGH, PHIS, PHISOU
+    real, pointer, dimension(:,:)   :: ZPBL
     real, pointer, dimension(:,:)   :: DZ
     real, pointer, dimension(:,:)   :: TA
     real, pointer, dimension(:,:)   :: SPEED
@@ -1247,7 +1263,7 @@ contains
 
       LOGICAL :: DAmix
       integer :: DAstrt, DAstop, DAlev1, DAlev2 
-      real :: DAtmag, DAqmag
+      real :: DAtmag, DAqmag, DAlmag
 
       LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, CFMIP3, isPresent
       LOGICAL, SAVE :: ALREADY_HAVE_DATA
@@ -1334,6 +1350,9 @@ contains
 
     call ESMF_ConfigGetAttribute( cf, DAqmag, label ='DA_QMAG:', &
                                     DEFAULT=0., rc = status )
+
+    call ESMF_ConfigGetAttribute( cf, DAlmag, label ='DA_LMAG:', &
+                                    DEFAULT=-999., rc = status )
 
     call ESMF_ConfigGetAttribute( cf, DAstrt, label ='DA_STRT:', &
                                     DEFAULT=1, rc = status )
@@ -1577,6 +1596,7 @@ contains
       call MAPL_GetPointer(EXPORT, TDYN,  'T_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, UDYN,  'U_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, VDYN,  'V_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, ZPBL, 'ZPBL_ANA' , __RC__)
       call MAPL_GetPointer(EXPORT, PLEDYN,  'PLE_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDXC,  'DXC' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDYC,  'DYC' , __RC__)
@@ -1882,6 +1902,12 @@ contains
             T(:,:,DAlev2+1:) = T(:,:,DAlev2+1:) - DAtmag * DT * SUM(DELTAP(:,:,DAlev1:DAlev2))/SUM(DELTAP(:,:,DAlev2+1:))
             Q(:,:,DAlev2+1:) = Q(:,:,DAlev2+1:) - DAqmag * DT * SUM(DELTAP(:,:,DAlev1:DAlev2))/SUM(DELTAP(:,:,DAlev2+1:))
           end if
+        end if
+      end if
+      ZPBL = -999.
+      if (abs(DALmag).gt.0.) then
+        if (I_time_step .ge. DAstrt .and. I_time_step.le.DAstop) then
+          ZPBL = DALmag 
         end if
       end if
 

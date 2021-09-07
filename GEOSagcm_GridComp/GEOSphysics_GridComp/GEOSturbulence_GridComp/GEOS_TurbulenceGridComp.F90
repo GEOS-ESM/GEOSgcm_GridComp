@@ -251,6 +251,16 @@ contains
 ! !IMPORT STATE:
 
      call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'ZPBL_ANA',                                  &
+        LONG_NAME  = 'fake_observed_pbl_height',                  &
+        UNITS      = 'm',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'PLE',                                       &
         LONG_NAME  = 'air_pressure',                              &
         UNITS      = 'Pa',                                        &
@@ -2958,7 +2968,7 @@ contains
      integer                             :: STATUS
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
-     real, dimension(:,:  ), pointer     :: VARFLT
+     real, dimension(:,:  ), pointer     :: VARFLT,ZPBL_ANA
      real, dimension(:,:,:), pointer     :: KH, KM, QLLS, QILS, CLLS, QLCN, QICN, CLCN
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
@@ -3139,6 +3149,7 @@ contains
 ! Get Sounding from the import state
 !-----------------------------------
 
+     call MAPL_GetPointer(IMPORT,ZPBL_ANA,'ZPBL_ANA',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     T,       'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     Q,      'QV', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,    TH,      'TH', RC=STATUS); VERIFY_(STATUS)
@@ -3744,7 +3755,7 @@ IF(DoMF /= 0.) then
  ! compute the L0 assuming reasonable limits
           DO I=1,IM
             DO J=1,JM
-              L02(I,J)=max(min(edmfZCLD(I,J),5000.),500.)/L0fac
+              L02(I,J)=max(min(edmfZCLD(I,J),2000.),500.)/L0fac
             ENDDO
           ENDDO 
  
@@ -4038,6 +4049,10 @@ ENDIF
 
       call MAPL_TimerOn (MAPL,name="---LOUIS" ,RC=STATUS)
       VERIFY_(STATUS)
+
+      where (ZPBL_ANA.gt.0.) 
+         ZPBL = ZPBL_ANA
+      end where
 
       if (DO_SHOC == 0) then
         call LOUIS_KS(                      &
@@ -4410,6 +4425,7 @@ ENDIF
 
          CALL ENTRAIN(IM,JM,LM,                 &
                       ! Inputs
+                      ZPBL_ANA,                 &
                       RADLW,                    &
                       USTAR,                    &
                       BSTAR,                    &
@@ -7053,7 +7069,8 @@ if (L0(IH) .gt. 0. ) then
     call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)    
     do i=1,Nup   
      do k=kts,kte
-       ENT(k,i)=real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1)) 
+!       ENT(k,i)=(0.2+real(ENTi(k,i))*Ent0)/(ZW(k)-ZW(k-1)) 
+       ENT(k,i)=(real(ENTi(k,i))*Ent0)/(ZW(k)-ZW(k-1)) 
      enddo
     enddo
   else if (stochent==2.) then   ! uniform random
