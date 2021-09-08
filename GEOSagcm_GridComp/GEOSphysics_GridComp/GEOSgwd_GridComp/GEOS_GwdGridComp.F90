@@ -1839,7 +1839,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          VERIFY_(STATUS)
          call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', RC=STATUS )
          VERIFY_(STATUS)
-         GBXAR = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
 
      ! MXDIS(1,1,1)=1000.
      ! ANGLL(1,1,1)=45.
@@ -1852,6 +1851,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          ANGLL = 0.0
        END WHERE
        if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
+        GBXAR = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
         IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
        !call Write_Profile( 1.e-6*AREA , AREA, ESMFGRID, 'AREA' )
         call Write_Profile(       GBXAR, AREA, ESMFGRID, 'GBXAR')
