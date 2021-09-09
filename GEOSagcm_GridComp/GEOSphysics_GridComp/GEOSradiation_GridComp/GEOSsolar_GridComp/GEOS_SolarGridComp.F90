@@ -1078,7 +1078,8 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    VERIFY_(STATUS) 
+!? PMN ... add a CLDHISW etc to use actual cloud generator for RRTMG like LW?
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'total_cloud_area_fraction',                             &
@@ -1115,6 +1116,7 @@ contains
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
+!? PMN ditto CLDHISW comment
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds',              &
@@ -1124,6 +1126,7 @@ contains
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
+!? PMN ... implement the approx fix as another variable ... this one is broken
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_for_ice_clouds',             &
@@ -1532,9 +1535,9 @@ contains
 !   current interval in the Clock. If MAPL's RunAlarm is ringing,
 !   it also refreshes the normalized fluxes kept in the internal state by doing
 !   a full transfer calculation valid for solar positions over a ``future interval''
-!   extebnding to the next anticipated
+!   extending to the next anticipated
 !   ringing of the RunAlarm. Whether this is done before or after the
-!   Exports are updated and the excat definition of the ``future interval'' is
+!   Exports are updated and the exact definition of the ``future interval'' is
 !   controlled by a flag in the configuration. \newline
 !
 !   A simple load balancing scheme is used that evens work between antipodal
@@ -1819,7 +1822,7 @@ contains
          write (*,*) "    IRRAD RRTMG: ", USE_RRTMGP_IRRAD, USE_RRTMG_IRRAD, USE_CHOU_IRRAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      _ASSERT(.FALSE.,'needs informative message')
+      _ASSERT(.FALSE.,'Total number of radiatiuon bands is inconsistent!')
    end if
 
 ! Decide how to do solar forcing
@@ -1906,8 +1909,8 @@ contains
 ! Determine the model level seperating high-middle and low-middle clouds
 !-----------------------------------------------------------------------
 
-    _ASSERT(PRS_LOW_MID >  PRS_MID_HIGH,'needs informative message')
-    _ASSERT(PRS_LOW_MID <  PREF(LM)    ,'needs informative message')
+    _ASSERT(PRS_LOW_MID >  PRS_MID_HIGH,'pressure band misordering!')
+    _ASSERT(PRS_LOW_MID <  PREF(LM)    ,'low-mid pressure band boundary too low!')
     
     K = 1
     do while ( PREF(K) < PRS_MID_HIGH )
@@ -1923,7 +1926,7 @@ contains
 
 ! Determine calling sequence
 ! This getresource is a kludge for now and needs to be fixed 
-! in the spec, because GG needs thins info to 
+! in the spec, because GC needs this info to 
 ! know when to set the alarm, last or first step of interval
 ! right now it is always the last, which is only correct for called_last=1.
 !---------------------------
@@ -1956,11 +1959,19 @@ contains
        call ESMF_AlarmRingerOff(ALARM,                 RC=STATUS); VERIFY_(STATUS)
        call ESMF_ClockGet(CLOCK, currTIME=CURRENTTIME, RC=STATUS); VERIFY_(STATUS)
 
+       ! Set offset INTDT from current time for beginning of refresh period.
        if(UPDATE_FIRST) then
+          ! The update is already done, so the refresh interval should start one
+          ! timestep beyond current time so it is constent with the NEXT update.
           call ESMF_ClockGet(CLOCK, timeSTEP=INTDT,    RC=STATUS); VERIFY_(STATUS)
        else
+          ! The update will occur after the refresh, so both update and refresh
+          ! periods should begin at the current time.
           call ESMF_TimeIntervalSet(INTDT, s=0,        RC=STATUS); VERIFY_(STATUS)
        end if
+
+! Get optical properties of radiatively active aerosols.
+! ------------------------------------------------------
 
        call MAPL_TimerOn (MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
 
@@ -2081,8 +2092,8 @@ contains
 
        call MAPL_TimerOff(MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
 
-! No aerosol diagnostics
-!-----------------------
+! No-aerosol calculations if requested.
+!--------------------------------------
 
        call MAPL_GetPointer(EXPORT, FSWNA,     'FSWNA',      __RC__)
        call MAPL_GetPointer(EXPORT, FSCNA,     'FSCNA',      __RC__)
@@ -2119,6 +2130,8 @@ contains
                 LoadBalance = LoadBalance,     &
                 __RC__)
        else
+          ! no aerosol exports not requested, so set no aerosol
+          ! normalized internals to zero.
           call MAPL_GetPointer(INTERNAL, FSWNA,     'FSWNAN',      __RC__)
           call MAPL_GetPointer(INTERNAL, FSWUNA,    'FSWUNAN',     __RC__)
           call MAPL_GetPointer(INTERNAL, FSCNA,     'FSCNAN',      __RC__)
@@ -2131,6 +2144,9 @@ contains
           FSWBANDNA = 0.0
        end if
 
+! Regular with-aerosol calculations
+! ---------------------------------
+
        call SORADCORE(IM,JM,LM,                    &
                       NO_AERO  = .false.,          &
                       CURRTIME = CURRENTTIME+INTDT,&
@@ -2138,11 +2154,15 @@ contains
                       __RC__)
        VERIFY_(STATUS)
 
+       ! Clean up aerosol optical properties.
+
        if (implements_aerosol_optics) then
            deallocate(AEROSOL_EXT, __STAT__)
            deallocate(AEROSOL_SSA, __STAT__)
            deallocate(AEROSOL_ASY, __STAT__)
        end if
+
+       ! Export normalized internals if requested.
 
        call MAPL_GetPointer(INTERNAL, DRUVRN, 'DRUVRN', __RC__)
        call MAPL_GetPointer(INTERNAL, DFUVRN, 'DFUVRN', __RC__)
@@ -2262,10 +2282,8 @@ contains
       real, pointer, dimension(:,:)   :: FSWBAND ! Flux shortwave surface per band
       real, pointer, dimension(:,:)   :: FSWBANDA ! Flux shortwave surface per band no aerosol
                                          
-      integer :: INFLGSW         ! Flag for cloud optical properties
       integer :: ICEFLGSW        ! Flag for ice particle specification
       integer :: LIQFLGSW        ! Flag for liquid droplet specification
-      integer :: ICLD            ! Flag for cloud overlap
 
       real, pointer, dimension(:  )       :: ALAT
       real, pointer, dimension(:  )       :: TS
@@ -2274,12 +2292,11 @@ contains
 
       real, allocatable, dimension(:,:)   :: TLEV, TLEV_R, PLE_R
       real, allocatable, dimension(:,:)   :: FCLD_R, CLIQWP, CICEWP, RELIQ, REICE
-      real, allocatable, dimension(:,:,:) :: TAUCLD, SSACLD, ASMCLD, FSFCLD
 
-      real, allocatable, dimension(:,:,:) :: TAUAER, SSAAER, ASMAER, ECAER
-      real, allocatable, dimension(:,:)   :: DPR, PL_R, T_R,  Q_R, O2_R, O3_R, ZL_R
-      real, allocatable, dimension(:,:)   :: CO2_R, CH4_R, N2O_R
-      real, allocatable, dimension(:,:)   :: SWUFLX, SWDFLX, SWHR, SWUFLXC, SWDFLXC, SWHRC 
+      real, allocatable, dimension(:,:,:) :: TAUAER, SSAAER, ASMAER
+      real, allocatable, dimension(:,:)   :: DPR, PL_R, T_R, Q_R, O2_R, O3_R, ZL_R
+      real, allocatable, dimension(:,:)   :: CO2_R, CH4_R
+      real, allocatable, dimension(:,:)   :: SWUFLX, SWDFLX, SWUFLXC, SWDFLXC
       real, allocatable, dimension(:)     :: NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R
 
       ! pmn: should we update these?
@@ -2405,7 +2422,7 @@ contains
       integer :: L, L1, LN, J, J1, JN, NA, K
       integer :: NUMLIT, NUM2DO
 
-      real, pointer :: QQ3(:,:,:), RR3(:,:,:),  PTR3(:,:,:)
+      real, pointer :: QQ3(:,:,:), RR3(:,:,:), PTR3(:,:,:)
       real, pointer :: PTR2(:,:), RH(:,:), PL(:,:), O3(:,:), PLTMP(:,:)
 
       character(len=ESMF_MAXSTR), allocatable :: NAMESimp(:), NAMESint(:)
@@ -2578,6 +2595,8 @@ contains
 
             if (NAMESimp(K)=="AERO") then
 
+               ! Aerosol import.
+
                if(NO_AERO) then ! This is a no aerosol call done for "clean" diagnostics
                   NA = 0
                else
@@ -2589,7 +2608,10 @@ contains
                end if
 
                SLICESimp(K) = LM*NA*NUM_BANDS_SOLAR
-            else  ! Import is not the aerosol bundle
+
+            else
+
+               ! Non-aerosol import.
 
                select case(DIMS)               
                case(MAPL_DIMSHORZVERT) ! We currently assume this case is 3D
@@ -2600,10 +2622,10 @@ contains
                   SLICESimp(K) = 1
 
                case default
-                  _ASSERT(.false.,'needs informative message')
+                  _ASSERT(.false.,'unknown DIMS for SOLAR import')
                end select
 
-            end if  ! Special treatment for AERO Import Bundle
+            end if
          end if
 
          BUFLEN = BUFLEN + NUMMAX*SLICESimp(K)
@@ -2611,7 +2633,7 @@ contains
       enddo INPUT_VARS_1
 
 !  Allocate the buffer that will hold all balanced variables. The "inner"
-!   dimension of its 2D representation must ne NUMMAX---the larger of the
+!   dimension of its 2D representation must be NUMMAX---the larger of the
 !   balanced and unbalanced runs.
 !------------------------------------------------------------------------
 
@@ -2633,9 +2655,9 @@ contains
 
             if (NAMESimp(K)=="AERO") then
 
-               _ASSERT(size(AEROSOL_EXT,3)==LM,'needs informative message')
-               _ASSERT(size(AEROSOL_SSA,3)==LM,'needs informative message')
-               _ASSERT(size(AEROSOL_ASY,3)==LM,'needs informative message')
+               _ASSERT(size(AEROSOL_EXT,3)==LM,'mal-dimensioned AEROSOL_EXT')
+               _ASSERT(size(AEROSOL_SSA,3)==LM,'mal-dimensioned AEROSOL_SSA')
+               _ASSERT(size(AEROSOL_ASY,3)==LM,'mal-dimensioned AEROSOL_ASY')
 
                allocate(BUF_AEROSOL(size(AEROSOL_EXT,1), &
                                     size(AEROSOL_EXT,2), &
@@ -2687,8 +2709,11 @@ contains
 
                deallocate(BUF_AEROSOL, stat=STATUS)
                VERIFY_(STATUS)
-            else
+
+            else  ! Non-aerosol imports.
+
                if (SLICESimp(K) /= 1) then
+
                   call ESMFL_StateGetPointerToData(IMPORT, PTR3, NAMESimp(K), RC=STATUS)
                   VERIFY_(STATUS)
                   call ReOrder(BUFIMP(L1),Ptr3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),PACKIT)
@@ -2696,6 +2721,7 @@ contains
                   LN = L1 + NUMMAX*size(PTR3,3) - 1
 
                else  ! case(MAPL_DIMSHORZONLY)
+
                   if (trim(NAMESimp(K)) == 'Ig') then
                      call ReOrder(BUFIMP(L1),real(Ig),DAYTIME,NUMMAX,HorzDims,1,PACKIT)
                   else if (trim(NAMESimp(K)) == 'Jg') then
@@ -2800,6 +2826,7 @@ contains
          call MAPL_VarSpecGet(INTERNALspec(K),DIMS=DIMS,SHORT_NAME=NAMESint(K),RC=STATUS)
          VERIFY_(STATUS)
 
+         ! Exclude unused internals.
          if(        NO_AERO .and.                                           &
                  ( 'FSWN'      ==trim(NAMESint(K)) .or.    'FSCN'==trim(NAMESint(K)) .or. &       
                    'FSWUN'     ==trim(NAMESint(K)) .or.   'FSCUN'==trim(NAMESint(K)) .or. &
@@ -2825,10 +2852,12 @@ contains
             SLICESint(K) = size(PTR3,3)
 
          elseif(DIMS==MAPL_DIMSHORZONLY) then
+
             SLICESint(K) = 1            
 
          else
-            _ASSERT(.false.,'needs informative message')
+
+            _ASSERT(.false.,'unknown DIMS for SOLAR internal')
 
          end if
 
@@ -2899,6 +2928,9 @@ contains
 
       call MAPL_TimerOn(MAPL,"-MISC")
 
+      ! Point to correct outputs
+      ! ------------------------
+
       if(NO_AERO) then
          FSW  => FSWA
          FSC  => FSCA
@@ -2907,60 +2939,47 @@ contains
       FSWBAND => FSWBANDA
       end if
 
-      allocate(QQ3(size(Q,1),size(Q,2),4),STAT=STATUS)
-      VERIFY_(STATUS)
+      ! Prepare auxilliary variables
+      ! ----------------------------
 
-      allocate(RR3(size(Q,1),size(Q,2),4),STAT=STATUS)
-      VERIFY_(STATUS)
-
-      allocate(RH (size(Q,1),size(Q,2)  ),STAT=STATUS)
-      VERIFY_(STATUS)
-
-      allocate(PL (size(Q,1),size(Q,2)  ),STAT=STATUS)
-      VERIFY_(STATUS)
-
-      allocate(O3 (size(Q,1),size(Q,2)  ),STAT=STATUS)
-      VERIFY_(STATUS)
+      allocate(RH (size(Q,1),size(Q,2)),__STAT__)
+      allocate(PL (size(Q,1),size(Q,2)),__STAT__)
+      allocate(PLTMP (size(PLE,1),size(PLE,2)),__STAT__)
 
       PL = 0.5*(PLE(:,:UBOUND(PLE,2)-1)+PLE(:,LBOUND(PLE,2)+1:))
       RH = Q/MAPL_EQSAT(T,PL=PL)
+      PLTMP = PLE * 0.01  ! hPa version for shrtwave
 
-! Water ammounts and effective radii are in arrays indexed by species
-!--------------------------------------------------------------------
+      ! Water amounts and effective radii are in arrays indexed by species
+      !-------------------------------------------------------------------
+
+      allocate(QQ3 (size(Q,1),size(Q,2),4),__STAT__)
+      allocate(RR3 (size(Q,1),size(Q,2),4),__STAT__)
 
       QQ3(:,:,1) = QI
       QQ3(:,:,2) = QL
       QQ3(:,:,3) = QR
       QQ3(:,:,4) = QS
-      RR3(:,:,1) = RI*1.e6
+      RR3(:,:,1) = RI*1.e6  ! microns
       RR3(:,:,2) = RL*1.e6
       RR3(:,:,3) = RR*1.e6
       RR3(:,:,4) = RS*1.e6
 
-! Convert odd oxygen, which is the model prognostic, to ozone
-!--------------------------------------------------------------
+      ! Convert odd oxygen, which is the model prognostic, to ozone
+      !------------------------------------------------------------
+
+      allocate(O3 (size(Q,1),size(Q,2)),__STAT__)
 
       O3 = OX
       WHERE(PL < 100.)
-         O3 = O3*EXP(-1.5*(LOG10(PL)-2.)**2)
+         O3 = O3 * EXP(-1.5*(LOG10(PL)-2.)**2)
       ENDWHERE
 
-! SORAD expects ozone fraction by MASS
-!-------------------------------------
+      ! SORAD expects non-negative ozone fraction by MASS
+      !--------------------------------------------------
 
-      O3 = O3*(MAPL_O3MW / MAPL_AIRMW)
-
-! Assure positive ozone before doing shortwave
-! --------------------------------------------
-
+      O3 = O3 * (MAPL_O3MW / MAPL_AIRMW)
       O3 = MAX(O3, 0.00)
-
-      ! Prepare for aerosol calculations
-      ! --------------------------------
-
-      allocate(PLTMP(size(PLE,1),size(PLE,2)),__STAT__)
-
-      PLTMP = PLE * 0.01  !convert Pa to mb for Sorad and aerosol opt props
 
       ! ------------------
       ! Begin aerosol code
@@ -2980,8 +2999,8 @@ contains
       SSAA = 0.0
       ASYA = 0.0
 
-      ! If we have aerosols, accumulate the arrays
-      ! ------------------------------------------
+      ! If we have aerosols, load them
+      ! ------------------------------
 
       if (NA > 0) then
          TAUA = BUFIMP_AEROSOL_EXT
@@ -2990,6 +3009,9 @@ contains
       end if
 
       call MAPL_TimerOff(MAPL,"-MISC")
+
+      ! Call the requested Shortwave scheme
+      ! -----------------------------------
 
    SCHEME: if (USE_CHOU) then
       call shrtwave(                                          &
@@ -3667,118 +3689,71 @@ contains
 
    else if (USE_RRTMG) then
 
-      ! regular RRTMG
       call MAPL_TimerOn(MAPL,"-RRTMG")
 
-      allocate(TLEV  (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(TLEV_R(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(PLE_R (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(FCLD_R(size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(CLIQWP(size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(CICEWP(size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(RELIQ (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(REICE (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(TAUCLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SSACLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(ASMCLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(FSFCLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      NCOL = size(Q,1)
 
-      allocate(TAUAER(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SSAAER(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(ASMAER(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate( ECAER(size(Q,1),size(Q,2),6),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(DPR   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(PL_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(ZL_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(T_R   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(Q_R   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(O2_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(O3_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(CO2_R (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(CH4_R (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(N2O_R (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      ! reversed (flipped) vertical dimension arrays and other RRTMG arrays
+      ! -------------------------------------------------------------------
 
-      allocate(SWUFLX (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWDFLX (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWHR   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWUFLXC(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWDFLXC(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWHRC  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      ! interface (between layer) variables
+      allocate(TLEV  (size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(TLEV_R(size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(PLE_R (size(Q,1),size(Q,2)+1),__STAT__)
+      ! cloud physical properties
+      allocate(FCLD_R(size(Q,1),size(Q,2)),__STAT__)
+      allocate(CLIQWP(size(Q,1),size(Q,2)),__STAT__)
+      allocate(CICEWP(size(Q,1),size(Q,2)),__STAT__)
+      allocate(RELIQ (size(Q,1),size(Q,2)),__STAT__)
+      allocate(REICE (size(Q,1),size(Q,2)),__STAT__)
+      ! aerosol optical properties
+      allocate(TAUAER(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
+      allocate(SSAAER(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
+      allocate(ASMAER(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
+      ! layer variables
+      allocate(DPR   (size(Q,1),size(Q,2)),__STAT__)
+      allocate(PL_R  (size(Q,1),size(Q,2)),__STAT__)
+      allocate(ZL_R  (size(Q,1),size(Q,2)),__STAT__)
+      allocate(T_R   (size(Q,1),size(Q,2)),__STAT__)
+      allocate(Q_R   (size(Q,1),size(Q,2)),__STAT__)
+      allocate(O2_R  (size(Q,1),size(Q,2)),__STAT__)
+      allocate(O3_R  (size(Q,1),size(Q,2)),__STAT__)
+      allocate(CO2_R (size(Q,1),size(Q,2)),__STAT__)
+      allocate(CH4_R (size(Q,1),size(Q,2)),__STAT__)
+      ! output fluxes
+      allocate(SWUFLX (size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(SWDFLX (size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(SWUFLXC(size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(SWDFLXC(size(Q,1),size(Q,2)+1),__STAT__)
+      ! un-flipped outputs
+      allocate(SWUFLXR (size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(SWDFLXR (size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(SWUFLXCR(size(Q,1),size(Q,2)+1),__STAT__)
+      allocate(SWDFLXCR(size(Q,1),size(Q,2)+1),__STAT__)
+      ! surface broadband fluxes
+      allocate(NIRR_R (size(Q,1)),__STAT__)
+      allocate(NIRF_R (size(Q,1)),__STAT__)
+      allocate(PARR_R (size(Q,1)),__STAT__)
+      allocate(PARF_R (size(Q,1)),__STAT__)
+      allocate(UVRR_R (size(Q,1)),__STAT__)
+      allocate(UVRF_R (size(Q,1)),__STAT__)
 
-      allocate(SWUFLXR (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWDFLXR (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWUFLXCR(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(SWDFLXCR(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      ! Set flags related to cloud properties (see RRTMG_SW)
+      ! ----------------------------------------------------
 
-      allocate(NIRR_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(NIRF_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(PARR_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(PARF_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(UVRR_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(UVRF_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
-
-! Code to convert units, flip, and interpolate T, etc.
-! Prepare Input for RRTMG
-
-! Set flags related to cloud properties
-      ICLD = 4
-      INFLGSW = 2
       ICEFLGSW = 3
       LIQFLGSW = 1
-
-      NCOL = size(Q,1)
 
       ! Get number of cores per node for RRTMG GPU
       ! ------------------------------------------
 
       ! Reuse the COMM from above
-
       CoresPerNode = MAPL_CoresPerNodeGet(COMM, RC=STATUS)
 
-      if (NA > 0) then
+      ! Normalize aerosol inputs
+      ! ------------------------
 
+      if (NA > 0) then
          where (TAUA > 0.0 .and. SSAA > 0.0 )
             ASYA = ASYA/SSAA
             SSAA = SSAA/TAUA
@@ -3787,16 +3762,21 @@ contains
             SSAA = 0.0
             ASYA = 0.0
          end where
-
       end if
+
+      ! Flip in vertical, Convert units, and interpolate T, etc.
+      ! --------------------------------------------------------
+      ! RRTMG index convention is that indices increase from bottom to top
 
       call MAPL_TimerOn (MAPL,"--RRTMG_FLIP")
 
-         DPR(:,1:LM) = (PLE(:,2:LM+1)-PLE(:,1:LM))
+      DPR(:,1:LM) = (PLE(:,2:LM+1)-PLE(:,1:LM))
 
-      CICEWP(:,1:LM) = (1.02*100*DPR(:,LM:1:-1))*QQ3(:,LM:1:-1,1)                  ! g/g -> g/m^2
+      ! cloud water paths converted from g/g to g/m^2
+      CICEWP(:,1:LM) = (1.02*100*DPR(:,LM:1:-1))*QQ3(:,LM:1:-1,1)
       CLIQWP(:,1:LM) = (1.02*100*DPR(:,LM:1:-1))*QQ3(:,LM:1:-1,2)
 
+      ! cloud effective radii with limits imposed as assumed by RRTMG
       REICE (:,1:LM) = RR3(:,LM:1:-1,1)
       RELIQ (:,1:LM) = RR3(:,LM:1:-1,2)
 
@@ -3826,44 +3806,44 @@ contains
          WHERE (RELIQ > 60.)  RELIQ = 60.
       END IF
 
-      ECAER = 0.0
-      TAUCLD = 0.0
-      SSACLD = 0.0
-      ASMCLD = 0.0
-      FSFCLD = 0.0
-
+      ! regular (non-flipped) interface temperatures
       TLEV(:,2:LM)=(T(:,1:LM-1)* DPR(:,2:LM) + T(:,2:LM) * DPR(:,1:LM-1)) &
             /(DPR(:,1:LM-1) + DPR(:,2:LM))
-
       TLEV(:,LM+1) = TS(:)
       TLEV(:,   1) = TLEV(:,2)
 
-!  RRTMG index convention is that indices increase from bottom to top
-!  Reverse input. Cloud WP and effective particle size have already been reversed.
+      ! flip in vertical ...
 
-      PLE_R (:,1:LM+1) = PLE(:,LM+1:1:-1)/100.
+      PLE_R (:,1:LM+1) = PLE (:,LM+1:1:-1) / 100.  ! hPa
       TLEV_R(:,1:LM+1) = TLEV(:,LM+1:1:-1)
 
-      PL_R  (:,1:LM  ) = PL (:,LM:1:-1) / 100.
-      T_R   (:,1:LM  ) = T  (:,LM:1:-1)
-      Q_R   (:,1:LM  ) = Q  (:,LM:1:-1) / (1.-Q(:,LM:1:-1)) * (MAPL_AIRMW/MAPL_H2OMW)     ! Convert Specific humidity to Volume Mixing Ratio
-      O3_R  (:,1:LM  ) = O3 (:,LM:1:-1) * (MAPL_AIRMW/MAPL_O3MW)     ! Convert Mass Mixing Ratio to Volume Mixing Ratio
+      PL_R  (:,1:LM  ) = PL  (:,LM:1:-1)   / 100.  ! hPa
+      T_R   (:,1:LM  ) = T   (:,LM:1:-1)
+
+      ! Specific humidity is converted to Volume Mixing Ratio
+      Q_R   (:,1:LM  ) = Q  (:,LM:1:-1) / (1.-Q(:,LM:1:-1)) * (MAPL_AIRMW/MAPL_H2OMW) 
+
+      ! Ozone is converted Mass Mixing Ratio to Volume Mixing Ratio
+      O3_R  (:,1:LM  ) = O3 (:,LM:1:-1) * (MAPL_AIRMW/MAPL_O3MW)
+
+      ! chemistry and cloud fraction
+      ! (cloud water paths and effective radii flipped already)
       CH4_R (:,1:LM  ) = CH4(:,LM:1:-1)
-      N2O_R (:,1:LM  ) = N2O(:,LM:1:-1)
       CO2_R (:,1:LM  ) = CO2
       O2_R  (:,1:LM  ) = O2
       FCLD_R(:,1:LM  ) = CL (:,LM:1:-1)
 
-! Adjustment for Earth/Sun distance, from MAPL_SunGetInsolation
-      ADJES  = DIST
+      ! Adjustment for Earth/Sun distance, from MAPL_SunGetInsolation
+      ADJES = DIST
 
-      ZL_R(:,1) = 0. ! Assume surface ZL_R = 0.
+      ! Layer mid-point heights relative to zero at index 1
+      ZL_R(:,1) = 0.
       do k=2,LM
          ! dz = RT/g x dp/p
          ZL_R(:,k) = ZL_R(:,k-1) + MAPL_RGAS*TLEV_R(:,k)/MAPL_GRAV*(PL_R(:,k-1)-PL_R(:,k))/PLE_R(:,k)
       enddo
 
-! Flip the aerosols from above
+      ! aerosols
       TAUAER(:,1:LM,:) = TAUA(:,LM:1:-1,:)
       SSAAER(:,1:LM,:) = SSAA(:,LM:1:-1,:)
       ASMAER(:,1:LM,:) = ASYA(:,LM:1:-1,:)
@@ -3871,13 +3851,17 @@ contains
       call MAPL_TimerOff(MAPL,"--RRTMG_FLIP")
       call MAPL_TimerOn (MAPL,"--RRTMG_INIT")
 
-      call RRTMG_SW_INI(MAPL_CP)
+      ! initialize RRTMG SW
+      call RRTMG_SW_INI
 
       call MAPL_TimerOff(MAPL,"--RRTMG_INIT")
       call MAPL_TimerOn (MAPL,"--RRTMG_RUN")
 
+      ! partition size for columns (profiles) used to improve efficiency
       call MAPL_GetResource( MAPL, RPART, 'RRTMGSW_PARTITION_SIZE:',  DEFAULT=0, RC=STATUS)
       VERIFY_(STATUS)
+
+      ! various RRTMG configuration options ...
 
       IAER = 10    ! Per AER: 
                    !  0: Turns off aerosols
@@ -3886,10 +3870,7 @@ contains
       NORMFLX = 1  ! 0: Do not normalize fluxes
                    ! 1: Normalize fluxes
 
-      DYOFYR = DOY ! Above this is set to 0, but that might only
-                   ! be valid if you can use ICLD = 4. That scheme
-                   ! is not implemented at present, so we must pass
-                   ! in the current day of year.
+      DYOFYR = DOY ! Day of year
 
       call MAPL_GetResource( MAPL, ISOLVAR ,'ISOLVAR:', DEFAULT=0, RC=STATUS)
       VERIFY_(STATUS)
@@ -3940,26 +3921,24 @@ contains
             write (*,*) "ISOLVAR==1 is currently unsupported as we have no"
             write (*,*) "way of correctly setting solcycfrac."
          end if
-         _ASSERT(.FALSE.,'needs informative message')
+         _ASSERT(.FALSE.,'RRTMG SW: ISOLVAR==1 currently unsupported')
       end if
 
-      !INDSOLVAR =  Facular and sunspot amplitude 
-      !             scale factors (isolvar=1), or
-      !             Mg and SB indices (isolvar=2)
-      !                Dimensions: (2)
+      ! INDSOLVAR =  Facular and sunspot amplitude 
+      !              scale factors (isolvar=1), or
+      !              Mg and SB indices (isolvar=2)
+      !                 Dimensions: (2)
 
       if (ISOLVAR == 2) then
-         ! Here we have the indices from our file
 
+         ! Solar indices from our file
          INDSOLVAR(1) = MG
          INDSOLVAR(2) = SB
 
       else
 
-         call MAPL_GetResource( MAPL, INDSOLVAR(1) ,'INDSOLVAR_1:', DEFAULT=1.0, RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, INDSOLVAR(2) ,'INDSOLVAR_2:', DEFAULT=1.0, RC=STATUS)
-         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, INDSOLVAR(1) ,'INDSOLVAR_1:', DEFAULT=1.0, __RC__)
+         call MAPL_GetResource( MAPL, INDSOLVAR(2) ,'INDSOLVAR_2:', DEFAULT=1.0, __RC__)
 
       end if
 
@@ -3968,10 +3947,10 @@ contains
                       ! for each shortwave band
                       !    Dimensions: (nbndsw=14)
 
-      !SOLCYCFRAC: Fraction of averaged 11-year solar cycle (0-1)
-      !               at current time (isolvar=1)
-      !               0.0 represents the first day of year 1
-      !               1.0 represents the last day of year 11
+      ! SOLCYCFRAC: Fraction of averaged 11-year solar cycle (0-1)
+      !                at current time (isolvar=1)
+      !                0.0 represents the first day of year 1
+      !                1.0 represents the last day of year 11
 
       ! MAT: Note while we don't currently use SOLCYCFRAC, we set it to something
       !      to avoid an optional variable on GPUs
@@ -3979,27 +3958,29 @@ contains
       call MAPL_GetResource( MAPL, SOLCYCFRAC ,'SOLCYCFRAC:', DEFAULT=1.0, RC=STATUS)
       VERIFY_(STATUS)
 
-      call RRTMG_SW (                                           &
-            RPART   ,NCOL    ,LM      ,ICLD    ,IAER    ,       &
-            PL_R    ,PLE_R   ,T_R     ,TLEV_R  ,TS      ,       &
-            Q_R     ,O3_R    ,CO2_R   ,CH4_R   ,N2O_R   ,O2_R , &
-            ALBVR   ,ALBVF   ,ALBNR   ,ALBNF   ,                &
-            ZT      ,ADJES   ,DYOFYR  ,SC      ,ISOLVAR ,       &
-            INFLGSW ,ICEFLGSW,LIQFLGSW,FCLD_R  ,                &
-            TAUCLD  ,SSACLD  ,ASMCLD  ,FSFCLD  ,                &
-            CICEWP  ,CLIQWP  ,REICE   ,RELIQ   ,                &
-            TAUAER  ,SSAAER  ,ASMAER  ,ECAER   ,                &
-            SWUFLX  ,SWDFLX  ,SWHR    ,SWUFLXC ,SWDFLXC ,SWHRC, &
-            NIRR_R  ,NIRF_R  ,PARR_R  ,PARF_R  ,UVRR_R  ,UVRF_R,&
-            NORMFLX ,ZL_R    ,ALAT    ,CoresPerNode,            &
-            BNDSOLVAR,       INDSOLVAR,        SOLCYCFRAC       )
+      ! call RRTMG SW!
+      ! --------------
+
+      call RRTMG_SW ( &
+         RPART, NCOL, LM, &
+         SC, ADJES, ZT, ISOLVAR, &
+         PL_R, PLE_R, T_R, &
+         Q_R, O3_R, CO2_R, CH4_R, O2_R, &
+         ICEFLGSW, LIQFLGSW, &
+         FCLD_R, CICEWP, CLIQWP, REICE, RELIQ, &
+         DYOFYR, ZL_R, ALAT, &
+         IAER, TAUAER, SSAAER, ASMAER, &
+         ALBVR, ALBVF, ALBNR, ALBNF, &
+         NORMFLX, CoresPerNode, &
+         SWUFLX, SWDFLX, SWUFLXC, SWDFLXC, &
+         NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R,&
+         BNDSOLVAR, INDSOLVAR, SOLCYCFRAC)
 
       call MAPL_TimerOff(MAPL,"--RRTMG_RUN")
       call MAPL_TimerOn (MAPL,"--RRTMG_FLIP")
 
-      ! MAT The fluxes coming from RRTMG are, like the inputs,
-      !     flipped. So, we must flip the outputs to match our
-      !     level layout.
+      ! unflip the outputs in the vertical
+      ! ----------------------------------
 
       SWUFLXR (:,1:LM+1) = SWUFLX (:,LM+1:1:-1)
       SWDFLXR (:,1:LM+1) = SWDFLX (:,LM+1:1:-1)
@@ -4007,6 +3988,9 @@ contains
       SWDFLXCR(:,1:LM+1) = SWDFLXC(:,LM+1:1:-1)
 
       call MAPL_TimerOff(MAPL,"--RRTMG_FLIP")
+
+      ! required outputs
+      ! ----------------
 
       FSW  = SWDFLXR  - SWUFLXR 
       FSC  = SWDFLXCR - SWUFLXCR
@@ -4026,8 +4010,8 @@ contains
       UVRR(:) = UVRR_R(:)
       UVRF(:) = UVRF_R(:)
 
-! Deallocate the working inputs
-!------------------------------
+      ! Deallocate the working inputs
+      !------------------------------
       deallocate(TLEV  ,__STAT__)
       deallocate(TLEV_R,__STAT__)
       deallocate(PLE_R ,__STAT__)
@@ -4036,15 +4020,10 @@ contains
       deallocate(CICEWP,__STAT__)
       deallocate(RELIQ ,__STAT__)
       deallocate(REICE ,__STAT__)
-      deallocate(TAUCLD,__STAT__)
-      deallocate(SSACLD,__STAT__)
-      deallocate(ASMCLD,__STAT__)
-      deallocate(FSFCLD,__STAT__)
 
       deallocate(TAUAER,__STAT__)
       deallocate(SSAAER,__STAT__)
       deallocate(ASMAER,__STAT__)
-      deallocate( ECAER,__STAT__)
       deallocate(DPR   ,__STAT__)
       deallocate(PL_R  ,__STAT__)
       deallocate(ZL_R  ,__STAT__)
@@ -4054,14 +4033,11 @@ contains
       deallocate(O3_R  ,__STAT__)
       deallocate(CO2_R ,__STAT__)
       deallocate(CH4_R ,__STAT__)
-      deallocate(N2O_R ,__STAT__)
 
       deallocate(SWUFLX ,__STAT__)
       deallocate(SWDFLX ,__STAT__)
-      deallocate(SWHR   ,__STAT__)
       deallocate(SWUFLXC,__STAT__)
       deallocate(SWDFLXC,__STAT__)
-      deallocate(SWHRC  ,__STAT__)
 
       deallocate(SWUFLXR ,__STAT__)
       deallocate(SWDFLXR ,__STAT__)
@@ -4079,22 +4055,17 @@ contains
 
    else
 
-      ! Something is wrong. We've selected neither Chou nor RRTMG
-      _ASSERT(.FALSE.,'needs informative message')
+      _ASSERT(.FALSE.,'unknown SW radiation scheme!')
 
    end if SCHEME
 
-! Deallocate the working inputs
-!------------------------------
+      ! Deallocate the working inputs
+      !------------------------------
 
+      deallocate (PL, RH, PLTMP)
       deallocate (QQ3, RR3)
-      deallocate ( RH,  PL)
       deallocate (O3)
-      deallocate (PLTMP)
-
-      deallocate (TAUA)
-      deallocate (SSAA)
-      deallocate (ASYA)
+      deallocate (TAUA, SSAA, ASYA)
 
       call MAPL_TimerOn(MAPL,"-BALANCE")
 
