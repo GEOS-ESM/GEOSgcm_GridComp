@@ -1108,7 +1108,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'in_cloud_optical_thickness_of_high_clouds(EXPORT)',     &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_high_clouds',             &
        UNITS      = '1' ,                                                    &
        SHORT_NAME = 'TAUHI',                                                 &
        DIMS       = MAPL_DimsHorzOnly,                                       &
