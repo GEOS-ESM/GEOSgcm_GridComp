@@ -19,6 +19,7 @@ module GEOS_TurbulenceGridCompMod
   use MAPL
   use LockEntrain
   use shoc
+  use sl3, only : run_sl3
 
 #ifdef _CUDA
   use cudafor
@@ -576,6 +577,33 @@ contains
        LONG_NAME  = 'Buoyancy_flux_for_SHOC_TKE',                  &
        UNITS      = '1',                                           &
        DEFAULT    = 0.0,                                           &
+       DIMS       = MAPL_DimsHorzVert,                             &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+! SL3-related imports
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'S',                                         &
+         LONG_NAME  = 'dry_static_energy',                         &
+         UNITS      = 'm+2 s-2',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationCenter,                       &
+         RESTART    = MAPL_RestartSkip,                            &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'A_SL3',                                      &
+       LONG_NAME  = 'A-coefficient_for_moist_turbulence',          &
+       UNITS      = '1',                                           &
+       DIMS       = MAPL_DimsHorzVert,                             &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'B_SL3',                                       &
+       LONG_NAME  = 'B-coefficient_for_moist_turbulence',          &
+       UNITS      = '1',                                           &
        DIMS       = MAPL_DimsHorzVert,                             &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -2150,9 +2178,102 @@ contains
 ! !INTERNAL STATE:
 
 !
-! new internals needed because of the MF
+! Internals needed for SL3
 !
 
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'HL2_SL3',                                   &
+       LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
+       UNITS      = 'K+2',                                       &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'HLQT_SL3',                                  &
+       LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity_from_SHOC', &
+       UNITS      = 'K',                                         &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'matrix_diagonal_ahat_for_tke',                          &
+       SHORT_NAME = 'AKTKE',                                                 &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                            &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'matrix_diagonal_bhat_for_tke',                          &
+       SHORT_NAME = 'BKTKE',                                                 &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                            &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'matrix_diagonal_chat_for_tke',                          &
+       SHORT_NAME = 'CKTKE',                                                 &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                            &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'rhs_for_tke',                                           &
+       SHORT_NAME = 'YTKE',                                                  &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                                        &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'rhs_for_qt2',                                           &
+       SHORT_NAME = 'YQT2',                                                  &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                                        &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'rhs_for_hl2',                                           &
+       SHORT_NAME = 'YHL2',                                                  &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                                        &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'rhs_for_hlqt',                                          &
+       SHORT_NAME = 'YHLQT',                                                 &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                                        &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+!
+! new internals needed because of the MF
+!
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'matrix_diagonal_ahat_for_s',                      &
@@ -2548,7 +2669,6 @@ contains
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
-
 !EOS
 
 ! Set the Profiling timers
@@ -2687,6 +2807,10 @@ contains
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
+! SL3-related variables
+    real, dimension(:,:,:), pointer :: hl2_sl3, hlqt_sl3, A_sl3, B_sl3
+    real, dimension(:,:,:), pointer :: AKTKE, BKTKE, CKTKE, YTKE, YQT2, YHL2, YHLQT
+
 ! Begin... 
 !---------
 
@@ -2796,6 +2920,26 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_GetPointer(INTERNAL, TKH,   'TKH',    RC=STATUS)
+    VERIFY_(STATUS)
+
+! SL3-related variables
+    call MAPL_GetPointer(INTERNAL, hl2_sl3, 'HL2_SL3', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, hlqt_sl3, 'HLQT_SL3', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, AKTKE,   'AKTKE',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, BKTKE,   'BKTKE',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CKTKE,   'CKTKE',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, YTKE,   'YTKE',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, YQT2,   'YQT2',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, YHL2,   'YHL2',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, YHLQT,  'YHLQT',    RC=STATUS)
     VERIFY_(STATUS)
 !
 ! edmf variables
@@ -2966,6 +3110,11 @@ contains
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
      real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA
      real, dimension(IM,JM,0:LM)         :: PKE
+
+     ! SL3-related variables
+     real, dimension(:,:,:), pointer :: S
+     real, dimension(IM,JM,LM)       :: itau, tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
+     real, dimension(IM,JM,0:LM)     :: ws_explicit, wq_explicit, wql_explicit
 
      real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
@@ -3159,10 +3308,17 @@ contains
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
+     ! For SL3
+     call MAPL_GetPointer(IMPORT, S, 'S', RC=STATUS); VERIFY_(STATUS)
+
      call MAPL_GetPointer(IMPORT,MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,MFQTSRC, 'MFQTSRC',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,MFW, 'MFW',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,MFAREA, 'MFAREA',RC=STATUS); VERIFY_(STATUS)
+
+     ! SL3-related imports
+     call MAPL_GetPointer(IMPORT,    A_sl3,    'A_SL3', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,    B_sl3,    'B_SL3', RC=STATUS); VERIFY_(STATUS)
 
 !     print *,'TurbGC: MFTHSRC(:,:,1:10)=',MFTHSRC(:,:,1:10)
 !     print *,'TurbGC: MFQTSRC(:,:,1:10)=',MFQTSRC(:,:,1:10)
@@ -3963,70 +4119,88 @@ ENDIF
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-        ! for now just use fixed values
-        QPI = 0.
-        QPL = 0.
-        PRANDTLSHOC = 0.9
+        write(*,*) 'foo1'
 
-        call RUN_SHOC( IM, JM, LM, LM+1, DT, &
-                       !== Inputs ==
-                       DT/DMI(:,:,1:LM),      &
-                       PLO(:,:,1:LM),         &
-                       ZLE(:,:,0:LM),         &
-                       Z(:,:,1:LM),           &
-                       U(:,:,1:LM),           &
-                       V(:,:,1:LM),           &
-                       OMEGA(:,:,1:LM),       &
-                       SH(:,:),               &
-                       EVAP(:,:),             &
-                       T(:,:,1:LM),           &
-                       Q(:,:,1:LM),           &
-                       QI(:,:,1:LM),          &
-                       QL(:,:,1:LM),          &
-                       QPI(:,:,1:LM),         &
-                       QPL(:,:,1:LM),         &
-                       QA(:,:,1:LM),          &
-                       WTHV2(:,:,1:LM),       &
-                       PRANDTLSHOC(:,:,1:LM), &
-                       !== Input-Outputs ==
-                       TKESHOC(:,:,1:LM),     &
-                       TKH(:,:,1:LM),         &
-                       !== Outputs ==
-                       ISOTROPY(:,:,1:LM),    &
-                       !== Diagnostics ==  ! not used elsewhere
-                       TKEDISS,               &
-                       TKEBUOY,               &
-                       TKESHEAR,              &
-                       TKETRANS,              &
-                       LSHOC,                 &
-                       LSHOC_CLR,             &
-                       LSHOC_CLD,             &
-                       LSHOC1,                &
-                       LSHOC2,                &
-                       LSHOC3,                &
-                       BRUNTSHOC,             &
-                       SHEARSHOC,             &
-                       !== Tuning params ==
-                       SHC_LAMBDA,            &
-                       SHC_TSCALE,            &
-                       SHC_VONK,              &
-                       SHC_CK,                &
-                       SHC_CEFAC,             &
-                       SHC_CESFAC,            &
-                       SHC_THL2TUNE,          &
-                       SHC_QW2TUNE,           &
-                       SHC_QWTHL2TUNE,        &
-                       SHC_DO_TRANS,          &
-                       SHC_DO_CLDLEN,         &
-                       SHC_USE_MF_PDF,        &
-                       SHC_USE_MF_BUOY,       &
-                       SHC_USE_SUS12LEN,      &
-                       SHC_BUOY_OPTION )
+        call run_sl3(IM, JM, LM, &
+                     plo, z, zle, &
+                     A_sl3, B_sl3, &
+                     u, v, s, qa, q, ql, qi, &
+                     tkeshoc, qt2, hl2_sl3, hlqt_sl3, &
+                     itau, km, kh, ws_explicit, wq_explicit, wql_explicit, &
+                     tkeshear, tkebuoy, qt2t_M, hl2t_M, hlqtt_M)
 
-        TKH = max(0.,TKH)
+        write(*,*) 'foo2'
 
-        KH(:,:,1:LM) = TKH(:,:,1:LM)
-        KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
+        ! Set SHOC exports equal to SL3 internals
+        hl2  = hl2_sl3
+        hlqt = hlqt_sl3
+
+        write(*,*) 'foo3'
+
+!!$        ! for now just use fixed values
+!!$        QPI = 0.
+!!$        QPL = 0.
+!!$        PRANDTLSHOC = 0.9
+!!$
+!!$        call RUN_SHOC( IM, JM, LM, LM+1, DT, &
+!!$                       !== Inputs ==
+!!$                       DT/DMI(:,:,1:LM),      &
+!!$                       PLO(:,:,1:LM),         &
+!!$                       ZLE(:,:,0:LM),         &
+!!$                       Z(:,:,1:LM),           &
+!!$                       U(:,:,1:LM),           &
+!!$                       V(:,:,1:LM),           &
+!!$                       OMEGA(:,:,1:LM),       &
+!!$                       SH(:,:),               &
+!!$                       EVAP(:,:),             &
+!!$                       T(:,:,1:LM),           &
+!!$                       Q(:,:,1:LM),           &
+!!$                       QI(:,:,1:LM),          &
+!!$                       QL(:,:,1:LM),          &
+!!$                       QPI(:,:,1:LM),         &
+!!$                       QPL(:,:,1:LM),         &
+!!$                       QA(:,:,1:LM),          &
+!!$                       WTHV2(:,:,1:LM),       &
+!!$                       PRANDTLSHOC(:,:,1:LM), &
+!!$                       !== Input-Outputs ==
+!!$                       TKESHOC(:,:,1:LM),     &
+!!$                       TKH(:,:,1:LM),         &
+!!$                       !== Outputs ==
+!!$                       ISOTROPY(:,:,1:LM),    &
+!!$                       !== Diagnostics ==  ! not used elsewhere
+!!$                       TKEDISS,               &
+!!$                       TKEBUOY,               &
+!!$                       TKESHEAR,              &
+!!$                       TKETRANS,              &
+!!$                       LSHOC,                 &
+!!$                       LSHOC_CLR,             &
+!!$                       LSHOC_CLD,             &
+!!$                       LSHOC1,                &
+!!$                       LSHOC2,                &
+!!$                       LSHOC3,                &
+!!$                       BRUNTSHOC,             &
+!!$                       SHEARSHOC,             &
+!!$                       !== Tuning params ==
+!!$                       SHC_LAMBDA,            &
+!!$                       SHC_TSCALE,            &
+!!$                       SHC_VONK,              &
+!!$                       SHC_CK,                &
+!!$                       SHC_CEFAC,             &
+!!$                       SHC_CESFAC,            &
+!!$                       SHC_THL2TUNE,          &
+!!$                       SHC_QW2TUNE,           &
+!!$                       SHC_QWTHL2TUNE,        &
+!!$                       SHC_DO_TRANS,          &
+!!$                       SHC_DO_CLDLEN,         &
+!!$                       SHC_USE_MF_PDF,        &
+!!$                       SHC_USE_MF_BUOY,       &
+!!$                       SHC_USE_SUS12LEN,      &
+!!$                       SHC_BUOY_OPTION )
+!!$
+!!$        TKH = max(0.,TKH)
+!!$
+!!$        KH(:,:,1:LM) = TKH(:,:,1:LM)
+!!$        KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
@@ -4832,6 +5006,27 @@ ENDIF
       BKQ = 1.00 - (AKQ+CKQ)
       BKV = 1.00 - (AKV+CKV)
 
+!
+! A,B,C,D-s for SL3
+!
+      write(*,*) 'foo4'
+
+      AKTKE(:,:,1) = 0.
+      
+      AKTKE(:,:,2:LM)   = -KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM)
+
+      CKTKE(:,:,1:LM-1) = -KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1)
+      CKTKE(:,:,LM)     = -0.*DMI(:,:,LM)
+
+      BKTKE(:,:,:) = 1. + DT*( itau ) - ( CKTKE + AKTKE )
+      
+      YTKE  = DT*( TKESHEAR + TKEBUOY )
+      YHL2  = DT*hl2t_M
+      YQT2  = DT*qt2t_M
+      YHLQT = DT*hlqtt_M
+
+        write(*,*) 'foo5'
+
     !
     ! A,B,C,D-s for mass flux
     !
@@ -5273,6 +5468,26 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
          DX => DKUU
          AK => AKUU; BK => BKUU; CK => CKUU
          SX=S+YV        
+ elseif (trim(name)=='TKESHOC') then       
+         CX => CU
+         DX => DKUU
+         AK => AKTKE; BK => BKTKE; CK => CKTKE
+         SX=S+YTKE        
+ elseif (trim(name)=='QT2') then       
+         CX => CU
+         DX => DKUU
+         AK => AKTKE; BK => BKTKE; CK => CKTKE
+         SX=S+YQT2        
+ elseif (trim(name)=='HL2_SL3') then       
+         CX => CU
+         DX => DKUU
+         AK => AKTKE; BK => BKTKE; CK => CKTKE
+         SX=S+YHL2        
+ elseif (trim(name)=='HLQT_SL3') then       
+         CX => CU
+         DX => DKUU
+         AK => AKTKE; BK => BKTKE; CK => CKTKE
+         SX=S+YHLQT        
  end if
 
 if (any(isnan(SX))) print *,'SX has NaN in DIFFUSE'

@@ -5080,6 +5080,23 @@ contains
         VERIFY_(STATUS)
 !--kml--- activation for single-moment uphysics
 
+! SL3-related variable
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'A_SL3',                            &
+         LONG_NAME          = 'A-coefficient_for_moist_turbulence', &
+         UNITS              = 'later',                              &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'B_SL3',                            &
+         LONG_NAME          = 'B-coefficient_for_moist_turbulence', &
+         UNITS              = 'later',                              &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
 !========================================================================================             
 
 
@@ -5577,7 +5594,6 @@ contains
 
     real, dimension(:,:,:),pointer     :: WTHV2,WTHV2_RAD
 
-
       real, pointer, dimension(:,:,:) :: CNV_DQLDT            , &
            CNV_MF0              , &
            CNV_MFD              , &
@@ -5759,6 +5775,9 @@ contains
 !--kml--- activation for single-moment uphysics
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
 !--kml--- activation for single-moment uphysics
+
+! SL3-related variables
+      real, pointer, dimension(:,:,:) :: A_SL3, B_SL3
 
       ! Aerosol-Cloud interactions
 
@@ -6688,8 +6707,6 @@ contains
       call MAPL_GetPointer(IMPORT, edmf_wqtavg, 'edmf_wqtavg', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_whlavg, 'edmf_whlavg', RC=STATUS); VERIFY_(STATUS)
 
-
-
       ! Pointers to exports
       !--------------------
 
@@ -7175,6 +7192,10 @@ contains
         call MAPL_GetPointer(EXPORT, NACTI,'NACTI' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);NACTI=0.0
 !!!      endif
 !--kml-----------------------------------------------------------------------------
+
+! SL3-related variables
+        call MAPL_GetPointer(EXPORT, A_SL3, 'A_SL3', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, B_SL3, 'B_SL3', alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
       ! Count the fields in TR...
       !--------------------------
@@ -10645,6 +10666,7 @@ contains
               PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
               PDF_RQTTH, PDF_RWTH, PDF_RWQT,            &
               WTHV2, WQL, &
+              A_SL3, B_SL3, & ! SL3
               TEMPOR2D, &
               DOSHLW,   &
               NACTL,    &
