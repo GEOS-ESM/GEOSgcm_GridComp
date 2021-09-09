@@ -299,8 +299,8 @@ subroutine gw_rdg_ifc( &
   
       kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
       isoflag = 0   
-      effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / 729.0 !gbxar(1:ncol)
- !    effgw   = min( effgw_rdg_max , effgw )
+      effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / gbxar(1:ncol)
+      effgw   = min( effgw_rdg_max , effgw )
 
     call gw_rdg_src(ncol, pver, pint, pmid, delp, &
          u, v, t, mxdis(:,nn), angll(:,nn), anixy(:,nn), kwvrdg, isoflag, zi, nm, &
