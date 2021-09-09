@@ -29,6 +29,16 @@ module shoc
 
  public run_shoc, update_moments
 
+ type SHOCPARAM_TYPE
+    real   :: USE_SUS12LEN
+    real   :: LAMBDA
+    real   :: TSCALE
+    real   :: VONK
+    real   :: CKVAL
+    real   :: CEFAC
+    real   :: CESFAC
+ endtype SHOCPARAM_TYPE
+
  contains
 
  subroutine run_shoc( nx, ny, nzm, nz, dtn, dm_inv,              &  ! in
@@ -46,7 +56,7 @@ module shoc
                  brunt_inv,shear_inv,                            &  ! out
                  LAM, TSCL, VON, CKVAL, CEFAC, CESFAC,           &  ! tuning param in
                  THLTUN, QWTUN, QWTHLTUN, DO_TRANS, DO_CLDLEN,   &
-                 USE_MF_PDF, USE_MF_BUOY, USE_SUS12LEN, BUOY_OPTION )                 
+                 USE_SUS12LEN, BUOY_OPTION )                 
 
 
   real, parameter :: lsub = lcond+lfus,         &
@@ -76,8 +86,6 @@ module shoc
   integer, intent(in) :: nz    ! Number of layer interfaces  (= nzm + 1)   
   integer, intent(in) :: DO_TRANS     ! TKE transport term on/off
   integer, intent(in) :: DO_CLDLEN    ! TKE transport term on/off
-  integer, intent(in) :: USE_MF_PDF   ! Use mass flux contrib to PDF
-  integer, intent(in) :: USE_MF_BUOY  ! Explicitly add mass flux contribution to buoyancy
   integer, intent(in) :: USE_SUS12LEN ! Use Suselj et al 2012 length scale
   integer, intent(in) :: BUOY_OPTION  ! choose source of TKE buoyancy term
                                       ! 0=local stability
@@ -287,12 +295,9 @@ module shoc
         cld_sgs(i,j,kinv)  = cld_sgs_inv(i,j,k)
         tke(i,j,kinv)      = tke_inv(i,j,k)
         wthv_sec(i,j,kinv) = wthv_sec_inv(i,j,k)
-!        buoy_mf(i,j,kinv)  = USE_MF_BUOY*buoy_mf_inv(i,j,k)
       enddo
     enddo
   enddo
-!  if (BUOY_OPTION==2 .and. USE_MF_PDF==1) buoy_mf = 0.0
-
            
   do k=1,nzm
     do j=1,ny
@@ -494,10 +499,6 @@ contains
 
     call tke_shear_prod(def2)   ! Calculate shear production of TKE
 
-!    print *,'def2=',sqrt(def2(20,20,:))
-
-! Ensure values of TKE are reasonable
-
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -512,48 +513,6 @@ contains
 
     call eddy_length()   ! Find turbulent mixing length
     call check_eddy()    ! Make sure it's reasonable
-
-!---------------------------------------------------------------
-! UWMT-style estimate of TKE transport within convective layers
-!---------------------------------------------------------------
-
-    if (DO_TRANS/=0) then
-    cnvl = 0
-    do i=1,nx
-     do j=1,ny
-      fnsh=0
-      do k=1,nzm
-        if (wthv_sec(i,j,k) .ge.0.01 .and. cnvl.eq.0) then ! if bot of conv layer
-!        if (mf(i,j,k).ge.0.001 .and. cnvl.eq.0) then ! if bot of conv layer
-          cnvl = 1
-          strt = k
-        end if        
-
-        ! if top of conv layer, relax tke within conv layer to
-        ! pressure-weighted mean tke
-        if (cnvl.eq.1 .and. wthv_sec(i,j,k).lt.0.01) then
-!        if (cnvl.eq.1 .and. mf(i,j,k).lt.0.001) then
-          fnsh = k-1
-          if (strt<fnsh) then
-             tkeavg = sum(tke(i,j,strt:fnsh)*dm(i,j,strt:fnsh))/sum(dm(i,j,strt:fnsh))
-             tscale1 = sqrt(tkeavg)*(fnsh-strt+1.)/max(sum(smixt(i,j,strt:fnsh)),10.)
-             tkesbtrans(i,j,strt:fnsh) = (tkeavg-tke(i,j,strt:fnsh))*tscale1
-          end if
-
-          ! check above unstable layer for tkh>0
-          do while(tkh(i,j,fnsh+1).gt.0.05*maxval(tkh(i,j,strt:fnsh)) .and. fnsh.lt.nzm-2)
-            fnsh=fnsh+1
-          end do
-          ! fnsh is index of last interface with tkh>5% of max
-          ! but is index of layer above that interface
-          fnsh = fnsh-1
-
-          cnvl = 0
-        end if ! if top of conv layer
-      end do ! k loop
-     end do ! j loop
-    end do ! i loop
-    end if ! do_transport
 
 
     do k=1,nzm      
@@ -577,33 +536,21 @@ contains
         do i=1,nx
           grd = adzl(i,j,k)             !  adzl(k) = zi(k+1)-zi(k)
 
-!         wrk = zl(i,j,k) / grd + 1.5
-!         cek = 1.0 + 2.0 / (wrk*wrk -3.3)
-
 ! TKE boyancy production term. wthv_sec (buoyancy flux) is calculated in
 ! Moist GridComp. The value used here is from the previous time step
 
 !         a_prod_bu = bet(i,j,k)*wthv_sec(i,j,k)
           a_prod_bu = (ggr / thv(i,j,k)) * wthv_sec(i,j,k)
 
-! If wthv_sec from subgrid PDF is not available use Brunt-Vaisalla frequency from eddy_length()
-!         wrk  = (0.5*ck)  * (tkh(i,j,ku)+tkh(i,j,kd))
           wrk  = 0.5 * (tkh(i,j,ku)+tkh(i,j,kd))
 
-!Obtain Brunt-Vaisalla frequency from diagnosed SGS buoyancy flux
-!Presumably it is more precise than BV freq. calculated in  eddy_length()?
-          
           buoy_sgs = brunt(i,j,k)
 !          buoy_sgs = - a_prod_bu / (wrk + 0.0001)   ! tkh is eddy thermal diffussivity
-!          buoy_sgs = - a_prod_bu / (prnum*wrk + 0.0001)   ! tk is eddy viscosity
 
 !Compute $c_k$ (variable Cee) for the TKE dissipation term following Deardorff (1980)
-
           if (buoy_sgs <= 0.0) then
             smix = grd
           else
-!           smix = min(grd,max(0.1*grd, sqrt(0.76*wrk/sqrt(buoy_sgs+1.e-10))))
-!           smix = min(grd,max(0.1*grd, sqrt(0.76*wrk/(Ck*sqrt(buoy_sgs+1.e-10)))))
             smix = min(grd,max(0.1*grd, 0.76*sqrt(tke(i,j,k)/(buoy_sgs+1.e-10))))
           end if
 
@@ -614,17 +561,11 @@ contains
           wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
           a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.001)    ! TKE shear production term
 
-! smixt (turb. mixing lenght) is calculated in eddy_length() 
-! Explicitly integrate TKE equation forward in time
-!         a_diss     = Cee/smixt(i,j,k)*tke(i,j,k)**1.5 ! TKE dissipation term
-!         tke(i,j,k) = max(0.,tke(i,j,k)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
-
 ! Semi-implicitly integrate TKE equation forward in time
-
           wtke = tke(i,j,k)
           wtk2 = wtke
           wrk  = (dtn*Cee)/smixt(i,j,k)
-          wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu+tkesbtrans(i,j,k))
+          wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
 
           do itr=1,nitr                        ! iterate for implicit solution
             wtke   = min(max(min_tke, wtke), max_tke)
@@ -645,9 +586,7 @@ contains
 
           a_diss     = (a_diss/dtn)*tke(i,j,k)    ! TKE dissipation term, epsilon
 
-
 ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
-
           if (buoy_sgs <= 0.0) then
             isotropy(i,j,k) = min(max_eddy_dissipation_time_scale,tscale1)
           else
@@ -655,20 +594,15 @@ contains
                              tscale1/(1.0+lambda*buoy_sgs*tscale1*tscale1))
           endif
 
-
 ! TKE budget terms
-
           tkesbdiss(i,j,k)       = -a_diss
           tkesbshear(i,j,k)      = a_prod_sh
           tkesbbuoy(i,j,k)       = a_prod_bu
-!          tkesbtrans(i,j,k)      = a_prod_tr
-!         tkesbbuoy_debug(i,j,k) = a_prod_bu_debug
-!         tkebuoy_sgs(i,j,k)     = buoy_sgs
 
         end do ! i loop
       end do   ! j loop
     end do     ! k
-!
+
     wrk = 0.5 * ck
     do k=2,nzm
       do j=1,ny
