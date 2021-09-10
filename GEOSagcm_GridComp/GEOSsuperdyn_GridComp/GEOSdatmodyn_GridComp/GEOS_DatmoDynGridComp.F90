@@ -407,12 +407,25 @@ contains
          VLOCATION = MAPL_VLocationEdge,                __RC__  )
     
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='UOBS',                                        &
+         LONG_NAME ='Obs. Eastward Wind',                          &
+         UNITS     ='m s-1',                                       &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                __RC__  )
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='VOBS',                                        &
+         LONG_NAME ='Obs. Northward Wind',                          &
+         UNITS     ='m s-1',                                       &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                __RC__  )
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QOBS',                                        &
          LONG_NAME ='Obs. Spec. Humidity',                         &
          UNITS     ='1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TOBS',                                        &
@@ -927,6 +940,19 @@ contains
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
      
+    call MAPL_AddExportSpec ( gc,                                    &
+         SHORT_NAME = 'DUDTDYN',                                     &
+         LONG_NAME  = 'tendency_of_eastward_wind_speed_due_to_dynamics', &
+         UNITS      = 'm s-2',                                       &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationCenter,             __RC__    )
+
+    call MAPL_AddExportSpec ( gc,                                    &
+         SHORT_NAME = 'DVDTDYN',                                     &
+         LONG_NAME  = 'tendency_of_northward_wind_speed_due_to_dynamics', &
+         UNITS      = 'm s-2',                                       &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationCenter,             __RC__    )
 
     call MAPL_AddExportSpec ( gc,                                    &
          SHORT_NAME = 'DTDTDYN',                                     &
@@ -935,7 +961,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             __RC__    )
      
-
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'HDQDTDYN',                                      &
          LONG_NAME  = 'horiz_tendency_of_specific_humidity_due_to_dynamics', &
@@ -943,7 +968,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
      
-
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'VDQDTDYN',                                      &
          LONG_NAME  = 'vertical_tendency_of_specific_humidity_due_to_dynamics', &
@@ -1151,6 +1175,8 @@ contains
 
     real    :: DT,Fac0,Fac1,DTXX,RELAX_TO_OBS
     real    :: OROGSGH 
+    
+    logical :: INTERACTIVE_WIND
 
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
 
@@ -1163,6 +1189,7 @@ contains
     real, pointer, dimension(:,:,:) :: TH,PL
     real, pointer, dimension(:,:,:) :: U,UE,UOUT
     real, pointer, dimension(:,:,:) :: V,VOUT
+    real, pointer, dimension(:,:,:) :: UOBS, VOBS, DUDTDYN, DVDTDYN
     real, pointer, dimension(:,:,:) :: TTPHYS,QTEST,OM,OMOUT,div
     real, pointer, dimension(:,:,:) :: DUDT,DVDT,DTDT,PV,EPV
     real, pointer, dimension(:,:,:) :: DQVDTDYN,DTDTDYN
@@ -1213,7 +1240,9 @@ contains
     end type three_d_ptr
 
     real, allocatable, dimension(:,:,:) :: PKE,ZLO,PLO,QTDYN,TTDYN,OMOBS,THOBS
+    real, allocatable, dimension(:,:,:) :: UTDYN, VTDYN
     real, allocatable, dimension(:,:,:) :: UdQdx,VdQdy,UdTdx,VdTdy, CFMIPRLX,CFMIPRLX1
+    real, allocatable, dimension(:,:,:) :: CFMIPRLX_WIND
     type(three_d_ptr), allocatable :: TRCarr(:)
     real, pointer , dimension(:,:,:) :: qdum
             real,allocatable, dimension(:) :: WF, XXX
@@ -1305,6 +1334,8 @@ contains
 
     call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
     
+    call ESMF_ConfigGetAttribute ( CF, INTERACTIVE_WIND,  Label="INTERACTIVE_WIND:", & 
+                                         DEFAULT=.false.,  __RC__)
 
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
                                          DEFAULT=0.00,  __RC__)
@@ -1573,6 +1604,8 @@ contains
       call MAPL_GetPointer(EXPORT, OMOUT,  'OMEGA' , __RC__)
       call MAPL_GetPointer(EXPORT, DIV,    'DIV' , ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, PL ,    'PL' , __RC__)
+      call MAPL_GetPointer(EXPORT, DUDTDYN,   'DUDTDYN'  , __RC__)
+      call MAPL_GetPointer(EXPORT, DVDTDYN,   'DVDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, DTDTDYN,   'DTDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, HDTDTDYN,   'HDTDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, VDTDTDYN,   'VDTDTDYN'  , __RC__)
@@ -1691,6 +1724,10 @@ contains
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, TSKINOBS,    'TSKINOBS'    , &
                            ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, UOBS,  'UOBS' , &
+                           ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, VOBS,  'VOBS' , &
+                           ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, TOBS,  'TOBS' , &
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, QOBS,  'QOBS' , &
@@ -1718,9 +1755,12 @@ contains
       ALLOCATE( UdQdx(IM,JM,1:LM), __STAT__ )
 
       ALLOCATE( CFMIPRLX(IM,JM,1:LM), __STAT__ )
-      ALLOCATE( CFMIPRLX1(IM,JM,1:LM), __STAT__ )
-     
+      ALLOCATE( CFMIPRLX1(IM,JM,1:LM), __STAT__ )     
+      ALLOCATE( CFMIPRLX_WIND(IM,JM,1:LM), __STAT__ )
+
       ALLOCATE( THOBS(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( UTDYN(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( VTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( QTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( TTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( OMOBS(IM,JM,0:LM), __STAT__ )
@@ -1778,6 +1818,13 @@ contains
       do l=1,lm
         QOBS(:,:,l)=( Fac0*QQ(ii,l) + Fac1*QQ(iip1,l) )/1000.
         TOBS(:,:,l)=( Fac0*TT(ii,l) + Fac1*TT(iip1,l) )
+        if ( .not. INTERACTIVE_WIND ) then
+           U(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
+           V(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
+        else
+           UOBS(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
+           VOBS(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
+        end if
         U(:,:,l)   =( Fac0*UU(ii,l) + Fac1*UU(iip1,l) )
         V(:,:,l)   =( Fac0*VV(ii,l) + Fac1*VV(iip1,l) )
         QLOBS(:,:,l)=( Fac0*QLQL(ii,l) + Fac1*QLQL(iip1,l) ) 
@@ -1793,15 +1840,17 @@ contains
       SHOBS(:,:)     = ( Fac0*SHF(ii)   + Fac1*SHF(iip1) ) 
       QSKINOBS(:,:)  = ( Fac0*QSKIN(ii)   + Fac1*QSKIN(iip1) )/1000.
       TSKINOBS(:,:)  = ( Fac0*TSKIN(ii)   + Fac1*TSKIN(iip1) )
-      SPEED(:,:)  =   SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 ) 
-      US(:,:) = U(:,:,LM)
-      VS(:,:) = V(:,:,LM)
+!      SPEED(:,:)  =   SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 ) 
+!      US(:,:) = U(:,:,LM)
+!      VS(:,:) = V(:,:,LM)
 
       do l=0,lm
         OMOBS(:,:,L) = ( Fac0*OMEGA(ii,l)    + Fac1*OMEGA(iip1,l) )
       end do
 
        do l=1,lm
+        UTDYN(:,:,l) = 0. ! temporary
+        VTDYN(:,:,l) = 0. ! temporary
         QTDYN(:,:,l) = &
          Fac0*( vc(1)*Q_H_ADV(ii,l)  + vc(2)*Q_V_ADV(ii,l)   + vc(3)*Q_t_DYN(ii,l) + vc(4)*Q_ana(ii,l) ) & 
       +  Fac1*( vc(1)*Q_H_ADV(iip1,l)+ vc(2)*Q_V_ADV(iip1,l) + vc(3)*Q_t_DYN(iip1,l) + vc(4)*Q_ana(iip1,l) ) 
@@ -1835,6 +1884,10 @@ contains
        else
         blendwgt = 1.
        endif
+!       if ( INTERACTIVE_WIND ) then
+!          UOBS(i,j,L) = UOBS(i,j,L) * blendwgt + U(i,j,L) * ( 1. - blendwgt )
+!          VOBS(i,j,L) = VOBS(i,j,L) * blendwgt + V(i,j,L) * ( 1. - blendwgt )
+!       end if
        TOBS(i,j,L) = TOBS(i,j,L) * blendwgt + T(i,j,L) * (1.-blendwgt)
        QOBS(i,j,L) = QOBS(i,j,L) * blendwgt + Q(i,j,L) * (1.-blendwgt)
       enddo
@@ -1842,6 +1895,10 @@ contains
       enddo
      endif
       if ( AT_START ) then
+        if ( INTERACTIVE_WIND ) then
+           U = UOBS
+           V = VOBS
+        end if
         Q  = QOBS
         T  = TOBS
         OM = OMOBS
@@ -1850,6 +1907,10 @@ contains
       endif     
       TH = T * ( ( MAPL_P00 / PLO )**MAPL_KAPPA )
       OM = OMOBS
+
+      SPEED(:,:) = SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 )
+      US(:,:)    = U(:,:,LM)
+      VS(:,:)    = V(:,:,LM)
 
       if (associated(QVDYN))  QVDYN = Q
       if (associated(TDYN))   TDYN = T
@@ -1875,6 +1936,10 @@ contains
 
 ! Load tendency diagnostics with 'before' values
 
+      if ( INTERACTIVE_WIND ) then 
+         if ( associated(DUDTDYN) ) DUDTDYN  = U
+         if ( associated(DVDTDYN) ) DVDTDYN  = V
+      end if
       if (associated(DTDTDYN))   DTDTDYN  = T
       if (associated(DQVDTDYN))  DQVDTDYN = Q
       if (associated(DQVDTDYNINT))  then
@@ -1889,6 +1954,10 @@ contains
 
 ! Increment T and Q with  tendencies from dataset that we are using
       if ( .NOT. AT_START ) then
+        if ( INTERACTIVE_WIND ) then
+           U = U + ( 1.0 - RELAX_TO_OBS ) * DT * UTDYN + RELAX_TO_OBS*( UOBS - U )
+           V = V + ( 1.0 - RELAX_TO_OBS ) * DT * VTDYN + RELAX_TO_OBS*( VOBS - V )
+        end if
         Q = Q +  (1.0-RELAX_TO_OBS) * DT * QTDYN +  RELAX_TO_OBS*( QOBS - Q) 
         T = T +  (1.0-RELAX_TO_OBS) * DT * TTDYN +  RELAX_TO_OBS*( TOBS - T)                             
       endif     
@@ -1933,6 +2002,13 @@ contains
       endif
       T  = TH * ( ( PLO / MAPL_P00 )**MAPL_KAPPA )
 
+      if ( INTERACTIVE_WIND ) then 
+         if ( associated(DUDTDYN) ) DUDTDYN = ( U - DUDTDYN  ) / DT
+         if ( associated(DVDTDYN) ) DVDTDYN = ( V - DVDTDYN  ) / DT
+      else
+         if ( associated(DUDTDYN) ) DUDTDYN = 0.
+         if ( associated(DVDTDYN) ) DVDTDYN = 0.
+      end if
       if (associated(DTDTDYN))   DTDTDYN  = ( T - DTDTDYN  ) / DT
       if (associated(DQVDTDYN))  DQVDTDYN = ( Q - DQVDTDYN ) / DT
       if (associated(DQVDTDYNINT))  then
@@ -1960,6 +2036,7 @@ contains
    end if
 
       CFMIPRLX = 0.00
+      CFMIPRLX_WIND = 1./600.
 
 !    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
       if ( CFMIP3 ) then  
@@ -1997,8 +2074,16 @@ contains
            CFMIPRLX1=1./3600.
            endwhere
 
+         if ( INTERACTIVE_WIND ) then
+            U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
+            V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
+         end if
          T = T - CFMIPRLX * ( T - TOBS ) * DT 
          Q = Q - CFMIPRLX * ( Q - QOBS ) * DT-CFMIPRLX1*(Q-qfloor)*DT  
+         if ( INTERACTIVE_WIND ) then
+            if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
+            if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
+         end if
          if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )-CFMIPRLX1*(Q-qfloor)*DT
 
@@ -2020,8 +2105,16 @@ contains
          where( CFMIPRLX > 0.000 )
              CFMIPRLX = 1./ CFMIPRLX 
          endwhere
+         if ( INTERACTIVE_WIND ) then
+            U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
+            V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
+         end if
          T = T - CFMIPRLX * ( T - TOBS ) * DT 
          Q = Q - CFMIPRLX * ( Q - QOBS ) * DT  
+         if ( INTERACTIVE_WIND ) then
+            if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
+            if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
+         end if
          if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )
       end if
@@ -2060,9 +2153,12 @@ contains
       DEALLOCATE(THOBS)
       DEALLOCATE(PKE)
       DEALLOCATE(PLO)
+      DEALLOCATE(UTDYN)
+      DEALLOCATE(VTDYN)
       DEALLOCATE(TTDYN)
       DEALLOCATE(QTDYN)
       DEALLOCATE(CFMIPRLX)
+      DEALLOCATE(CFMIPRLX_WIND)
 
       DEALLOCATE(OMOBS)
       DEALLOCATE(SGH)
