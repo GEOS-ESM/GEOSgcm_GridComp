@@ -112,7 +112,7 @@ contains
        ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, __RC__)
     else
 #ifdef BUILD_MIT_OCEAN
-       ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=GEOSMITSeaIceSetServices, __RC__)
+       ICE = MAPL_AddChild(GC, NAME="MITSEAICEDYNA", SS=GEOSMITSeaIceSetServices, __RC__)
 #else             
        call MAPL_GetResource ( MAPL, SEAICE_NAME, Label="SEAICE_NAME:", DEFAULT="CICE4", __RC__ )
        select case (trim(SEAICE_NAME))

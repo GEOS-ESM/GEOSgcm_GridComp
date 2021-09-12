@@ -47,6 +47,7 @@ ecbuild_add_executable (TARGET mkLandRaster.x SOURCES mkLandRaster.F90 LIBS MAPL
 ecbuild_add_executable (TARGET mkLatLonRaster.x SOURCES mkLatLonRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkLISTilesPara.x SOURCES mkLISTilesPara.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkMITAquaRaster.x SOURCES mkMITAquaRaster.F90 LIBS MAPL ${this})
+set_target_properties( mkMITAquaRaster.x PROPERTIES COMPILE_FLAGS "${BYTERECLEN}" )
 ecbuild_add_executable (TARGET mkMOMAquaRaster.x SOURCES mkMOMAquaRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkSMAPTilesPara.x SOURCES mkSMAPTilesPara.F90 LIBS MAPL ${this})
