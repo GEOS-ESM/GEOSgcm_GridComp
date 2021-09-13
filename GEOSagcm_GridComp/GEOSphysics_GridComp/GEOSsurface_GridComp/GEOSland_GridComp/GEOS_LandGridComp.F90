@@ -1200,6 +1200,8 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFROOTC' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNNPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNGPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
