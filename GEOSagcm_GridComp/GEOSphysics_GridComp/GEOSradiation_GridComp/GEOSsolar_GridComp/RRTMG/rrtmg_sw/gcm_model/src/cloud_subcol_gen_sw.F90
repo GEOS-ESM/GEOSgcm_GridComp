@@ -8,7 +8,7 @@
 ! |                                                                          |
 !  --------------------------------------------------------------------------
 
-module cloud_subcol_gen
+module cloud_subcol_gen_sw
 
    ! Purpose: Create stochastic arrays for cloud physical properties.
    ! Input gridcolumn cloud profiles: cloud fraction and in-cloud ice and liquid
@@ -18,7 +18,7 @@ module cloud_subcol_gen
    ! cloud output explicit by changing to a logical cldy_stoch in {true,false},
    ! which may permit some exterior efficiency improvements.
 
-   use cloud_condensate_inhomogeneity, only: &
+   use cloud_condensate_inhomogeneity_sw, only: &
       condensate_inhomogeneous, zcw_lookup
 
    implicit none
@@ -78,7 +78,7 @@ contains
 
       ! The units of these in-cloud water paths are not specified, but they should
       ! be the same for both liquid water and ice. cwp_tiny below is assumed to be
-      ! in those isame units and the output stochastic water paths as well.
+      ! in those same units and the output stochastic water paths as well.
 
       real,    intent(in) :: ciwp    (nlay,dncol)  ! In-cloud ice water path
       real,    intent(in) :: clwp    (nlay,dncol)  ! In-cloud liquid water path
@@ -87,7 +87,7 @@ contains
       ! ice and liquid water parths are separately reset to zero. If both are
       ! thus reset, then the subcolumn gridcell is reset to .not.cloudy. The
       ! idea here is mainly efficiency, since external processing of cloudy
-      ! cells usually takes longer. Units are assumed same as ciwp and clwp.
+      ! cells usually takes longer.
 
       real,    intent(in) :: cwp_tiny
 
@@ -140,7 +140,7 @@ contains
          call correlation_length(dncol, ncol, &
             0.72192, 0.78996, 40.404, 8.5, doy, alat, rdl)
       endif
-      
+
       ! outer loop over gridcolumn
       do icol = 1,ncol
 
@@ -218,7 +218,7 @@ contains
          ! Generate each subcolumn ...
          do isubcol = 1,nsubcol
 
-            ! exponential overlap for cloud presence ...
+            ! exponential overlap in cloud presence
             do ilay = 1,nlay
                call rng_kiss(seed1,seed2,seed3,seed4,cdf1(ilay))
                call rng_kiss(seed1,seed2,seed3,seed4,cdf2(ilay))
@@ -231,7 +231,7 @@ contains
 
             if (cond_inhomo) then
 
-               ! exponential overlap for condensate ...
+               ! exponential overlap in condensate
                do ilay = 1,nlay
                   call rng_kiss(seed1,seed2,seed3,seed4,cdf2(ilay))
                   call rng_kiss(seed1,seed2,seed3,seed4,cdf3(ilay))
@@ -245,6 +245,7 @@ contains
             endif
 
             ! generate layers of subcolumn ...
+
             do ilay = 1,nlay
 
                if (cdf1(ilay) >= 1. - cldfrac(ilay,icol)) then
@@ -334,7 +335,7 @@ contains
    !-------------------------------------------------------
    subroutine rng_kiss(seed1, seed2, seed3, seed4, ran_num)
    !-------------------------------------------------------
-   ! See note below: get ran_num in (0,1)
+   ! See note below: get ran_num in (0,1).
    !
    ! public domain code.
    ! made available from http://www.fortran.com/.
@@ -346,11 +347,11 @@ contains
    ! (1) The congruential generator x(n)=69069*x(n-1)+1327217885, period 2^32.
    ! (2) A 3-shift shift-register generator, period 2^32-1,
    ! (3) Two 16-bit multiply-with-carry generators, period 597273182964842497>2^59
-   ! Overall period>2^123; 
+   ! Overall period>2^123.
    !-------------------------------------------------------
 
-      real, intent(out) :: ran_num
       integer, intent(inout) :: seed1, seed2, seed3, seed4
+      real, intent(out) :: ran_num
       integer :: m, k, n, kiss
 
       ! inline function 
@@ -369,7 +370,7 @@ contains
    ! and 2.328306e-10 is an approx to 2**-32 =~ 2.32830644e-10.
    ! Based on the tests below, the result ran_num will be
    !    [8.9406967E-08,0.9999999] ~ (0,1).
-   ! 
+   !
    ! rng_test.f90:
    ! program rng_test
    !    integer, parameter :: mini = -2**31
@@ -382,7 +383,7 @@ contains
    !    rng = maxi * 2.328306e-10 + 0.5
    !    write(*,*) rng
    ! end program rng_test
-   ! 
+   !
    ! Results:
    !  $ module load comp/intel/19.1.3.304
    !  $ ifort rng_test.f90
@@ -477,9 +478,9 @@ contains
             if (.not. cloud_found) &
                clearCnts(4,icol) = clearCnts(4,icol) + 1
 
-         enddo  ! isubcol
-      enddo  ! icol
+         enddo  ! subcolumns
+      enddo  ! gridcolumns
    
    end subroutine clearCounts_threeBand
 
-end module cloud_subcol_gen
+end module cloud_subcol_gen_sw

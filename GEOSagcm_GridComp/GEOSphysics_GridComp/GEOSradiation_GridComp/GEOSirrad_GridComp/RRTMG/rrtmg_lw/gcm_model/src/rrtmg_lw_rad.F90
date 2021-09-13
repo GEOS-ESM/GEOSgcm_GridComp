@@ -1,6 +1,6 @@
 module rrtmg_lw_rad
 
-   use cloud_condensate_inhomogeneity, only: &
+   use cloud_condensate_inhomogeneity_lw, only: &
       initialize_inhomogeneity, release_inhomogeneity
    use rrtmg_lw_cldprmc, only : cldprmc
    use rrtmg_lw_setcoef, only : setcoef, setcoef_free
@@ -366,7 +366,7 @@ contains
    ! ------------------------------------------------------------------
 
       use parrrtm, only : nbndlw, ngptlw
-      use cloud_subcol_gen, only: &
+      use cloud_subcol_gen_lw, only: &
          generate_stochastic_clouds, clearCounts_threeBand
 
       ! ----- Input -----
@@ -548,15 +548,15 @@ contains
       ! Generate stochastic subcolumns of cloud physical properties
 
       call generate_stochastic_clouds( &
-         pncol, ngptlw, nlay, &
+         pncol, pncol, ngptlw, nlay, &
          p_zm, p_alat, dyofyr, &
-         p_play, p_cldf, p_ciwp, p_clwp, &
+         p_play, p_cldf, p_ciwp, p_clwp, 1.e-20, &
          cldymc, ciwpmc, clwpmc)
 
       ! for super-band cloud fractions
 
       call clearCounts_threeBand( &
-         pncol, ngptlw, nlay, cloudLM, cloudMH, cldymc, &
+         pncol, pncol, ngptlw, nlay, cloudLM, cloudMH, cldymc, &
          p_clearCounts)
       do n = 1,4
          clearCounts (colstart:(colstart+pncol-1),n) = p_clearCounts(n,:)

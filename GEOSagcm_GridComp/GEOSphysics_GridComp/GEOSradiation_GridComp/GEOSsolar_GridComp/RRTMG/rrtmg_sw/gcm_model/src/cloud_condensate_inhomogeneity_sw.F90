@@ -1,4 +1,4 @@
-module cloud_condensate_inhomogeneity
+module cloud_condensate_inhomogeneity_sw
 
    use iso_fortran_env, only : error_unit
 
@@ -98,10 +98,10 @@ contains
       ! Take care that the definition of RIND2 is consistent with
       !   subroutines TABULATE_XCW
 
-      rind1 = cdf * (n1 - 1) + 1.0
+      rind1 = cdf * (n1 - 1) + 1.
       ind1  = max(1, min(int(rind1), n1-1))
       rind1 = rind1 - ind1
-      rind2 = 40.0 * sigma_qcw - 3.0
+      rind2 = 40. * sigma_qcw - 3.
       ind2  = max(1, min(int(rind2), n2-1))
       rind2 = rind2 - ind2
 
@@ -70409,4 +70409,4 @@ contains
 
    end subroutine tabulate_xcw_gamma
 
-end module cloud_condensate_inhomogeneity
+end module cloud_condensate_inhomogeneity_sw

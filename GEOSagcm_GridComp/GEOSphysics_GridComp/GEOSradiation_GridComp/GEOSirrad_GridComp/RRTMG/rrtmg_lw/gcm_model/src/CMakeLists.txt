@@ -4,7 +4,7 @@ set (srcs
   rrtmg_lw_init.F90
   rrtmg_lw_rad.F90
   rrtmg_lw_setcoef.F90
-  cloud_condensate_inhomogeneity.F90 cloud_subcol_gen.F90
+  cloud_condensate_inhomogeneity_lw.F90 cloud_subcol_gen_lw.F90
   rrtmg_lw_rtrnmc.F90
   rrtmg_lw_setcoef.F90 rrtmg_lw_taumol.F90
   rrtmg_lw_cldprmc.F90

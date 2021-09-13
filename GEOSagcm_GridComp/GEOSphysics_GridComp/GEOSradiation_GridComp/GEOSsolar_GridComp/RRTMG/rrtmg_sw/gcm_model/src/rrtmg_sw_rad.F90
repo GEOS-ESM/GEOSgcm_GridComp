@@ -48,8 +48,8 @@
 module rrtmg_sw_rad
 
    use rrsw_vsn
-   use cloud_subcol_gen, only: generate_stochastic_clouds
-   use cloud_condensate_inhomogeneity, only: &
+   use cloud_subcol_gen_sw, only: generate_stochastic_clouds
+   use cloud_condensate_inhomogeneity_sw, only: &
       initialize_inhomogeneity, release_inhomogeneity
    use rrtmg_sw_cldprmc, only: cldprmc_sw
    use rrtmg_sw_setcoef, only: setcoef_sw
