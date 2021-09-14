@@ -2,12 +2,11 @@ esma_set_this(OVERRIDE RRTMG)
 
 set (srcs
   rrtmg_lw_init.F90
-  rrtmg_lw_rad.F90
-  rrtmg_lw_setcoef.F90
-  rrtmg_lw_rtrnmc.F90
+  rrtmg_lw_cldprmc.F90
   rrtmg_lw_setcoef.F90
   rrtmg_lw_taumol.F90
-  rrtmg_lw_cldprmc.F90
+  rrtmg_lw_rtrnmc.F90
+  rrtmg_lw_rad.F90
   )
 
 set (k_g_srcs

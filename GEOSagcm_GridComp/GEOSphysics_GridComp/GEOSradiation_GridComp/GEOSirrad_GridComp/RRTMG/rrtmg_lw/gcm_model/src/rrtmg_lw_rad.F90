@@ -611,7 +611,7 @@ contains
          end if
       end do
 
-      ! free internal stae of setcoef
+      ! free internal state of setcoef
       call setcoef_free
 
    end subroutine rrtmg_lw_part
