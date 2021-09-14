@@ -894,6 +894,10 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
+    if (LSM_CHOICE == 3) then
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFROOTC' ,  CHILD_ID = CATCHCN, RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNNPP'  ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNGPP'  ,  CHILD_ID = CATCHCN, RC=STATUS  )
