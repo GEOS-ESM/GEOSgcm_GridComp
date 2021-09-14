@@ -1,6 +1,6 @@
 module rrtmg_lw_rad
 
-   use cloud_condensate_inhomogeneity_lw, only: &
+   use cloud_condensate_inhomogeneity, only: &
       initialize_inhomogeneity, release_inhomogeneity
    use rrtmg_lw_cldprmc, only : cldprmc
    use rrtmg_lw_setcoef, only : setcoef, setcoef_free
@@ -326,7 +326,6 @@ contains
 
       ! set up condensate inhomogeneity tables
       call initialize_inhomogeneity(1)
-! pmn: put in GCM init eventually
 
       ! ---------------------------------
       ! partition columns for performance
@@ -366,7 +365,7 @@ contains
    ! ------------------------------------------------------------------
 
       use parrrtm, only : nbndlw, ngptlw
-      use cloud_subcol_gen_lw, only: &
+      use cloud_subcol_gen, only: &
          generate_stochastic_clouds, clearCounts_threeBand
 
       ! ----- Input -----

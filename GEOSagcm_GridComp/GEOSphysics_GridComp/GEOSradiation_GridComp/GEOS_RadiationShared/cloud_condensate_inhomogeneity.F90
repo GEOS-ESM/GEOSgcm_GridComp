@@ -1,4 +1,4 @@
-module cloud_condensate_inhomogeneity_sw
+module cloud_condensate_inhomogeneity
 
    use iso_fortran_env, only : error_unit
 
@@ -22,12 +22,17 @@ module cloud_condensate_inhomogeneity_sw
    logical :: initialized = .false.
 
    ! public interface
+   public :: inhomogeneity_initialized  ! check if initialized
    public :: initialize_inhomogeneity   ! get resources
    public :: release_inhomogeneity      ! release resources
    public :: condensate_inhomogeneous   ! test if inhomogeneous or not
    public :: zcw_lookup                 ! lookup zcw if inhomogeneous
 
 contains
+
+   logical function inhomogeneity_initialized()
+     inhomogeneity_initialized = initialized
+   end function inhomogeneity_initialized
 
    subroutine initialize_inhomogeneity (ih)
 
@@ -70409,4 +70414,4 @@ contains
 
    end subroutine tabulate_xcw_gamma
 
-end module cloud_condensate_inhomogeneity_sw
+end module cloud_condensate_inhomogeneity

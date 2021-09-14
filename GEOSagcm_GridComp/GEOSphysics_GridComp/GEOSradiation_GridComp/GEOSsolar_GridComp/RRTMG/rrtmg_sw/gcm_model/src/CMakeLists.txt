@@ -2,7 +2,7 @@
 esma_set_this (OVERRIDE RRTMG_SW)
 set (srcs
   NRLSSI2.F90
-  cloud_condensate_inhomogeneity_sw.F90 cloud_subcol_gen_sw.F90 rrtmg_sw_cldprmc.F90
+  rrtmg_sw_cldprmc.F90
   rrtmg_sw_init.F90 rrtmg_sw_rad.F90 rrtmg_sw_setcoef.F90 rrtmg_sw_spcvmc.F90
   rrtmg_sw_taumol.F90
   )
@@ -37,7 +37,7 @@ foreach (file ${k_g_srcs})
 endforeach ()
 
 esma_add_library (${this} SRCS ${srcs} ${k_g_srcs}
-   DEPENDENCIES GEOS_Shared MAPL RRTMG_SW_mods)
+   DEPENDENCIES GEOS_Shared MAPL RRTMG_SW_mods GEOS_RadiationShared)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 

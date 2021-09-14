@@ -8,7 +8,7 @@
 ! |                                                                          |
 !  --------------------------------------------------------------------------
 
-module cloud_subcol_gen_sw
+module cloud_subcol_gen
 
    ! Purpose: Create stochastic arrays for cloud physical properties.
    ! Input gridcolumn cloud profiles: cloud fraction and in-cloud ice and liquid
@@ -18,7 +18,7 @@ module cloud_subcol_gen_sw
    ! cloud output explicit by changing to a logical cldy_stoch in {true,false},
    ! which may permit some exterior efficiency improvements.
 
-   use cloud_condensate_inhomogeneity_sw, only: &
+   use cloud_condensate_inhomogeneity, only: &
       condensate_inhomogeneous, zcw_lookup
 
    implicit none
@@ -483,4 +483,4 @@ contains
    
    end subroutine clearCounts_threeBand
 
-end module cloud_subcol_gen_sw
+end module cloud_subcol_gen
