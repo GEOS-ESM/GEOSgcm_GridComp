@@ -3840,6 +3840,8 @@ contains
       ZL_R(:,1) = 0.
       do k=2,LM
          ! dz = RT/g x dp/p
+         ! Note: This is correct even though its different from LW.
+         ! Its because SW uses LE[V]_R 1:LM+1 while LW uses 0:LM.
          ZL_R(:,k) = ZL_R(:,k-1) + MAPL_RGAS*TLEV_R(:,k)/MAPL_GRAV*(PL_R(:,k-1)-PL_R(:,k))/PLE_R(:,k)
       enddo
 
