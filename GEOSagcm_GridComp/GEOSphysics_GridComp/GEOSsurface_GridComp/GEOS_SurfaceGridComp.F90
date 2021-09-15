@@ -2752,15 +2752,17 @@ module GEOS_SurfaceGridCompMod
           RC=STATUS  ) 
      VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC                         ,&
+     if (LSM_CHOICE == 3) then
+        call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_fine_root_carbon'       ,&
           UNITS              = 'kg m-2'                    ,&
           SHORT_NAME         = 'CNFROOTC'                  ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  )
-     VERIFY_(STATUS)
-     
+        VERIFY_(STATUS)
+     endif
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_net_primary_production' ,&
           UNITS              = 'kg m-2 s-1'                ,&
