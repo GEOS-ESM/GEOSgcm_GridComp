@@ -5078,7 +5078,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: CNTOTC      => NULL()
     real, pointer, dimension(:,:) :: CNVEGC      => NULL()
     real, pointer, dimension(:,:) :: CNROOT      => NULL()
+    if (LSM_CHOICE == 3) then
     real, pointer, dimension(:,:) :: CNFROOTC    => NULL()
+    endif
     real, pointer, dimension(:,:) :: CNNPP       => NULL()
     real, pointer, dimension(:,:) :: CNGPP       => NULL()
     real, pointer, dimension(:,:) :: CNSR        => NULL()
@@ -5336,7 +5338,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: CNTOTCTILE       => NULL()
     real, pointer, dimension(:) :: CNVEGCTILE       => NULL()
     real, pointer, dimension(:) :: CNROOTTILE       => NULL()
-    real, pointer, dimension(:) :: CNFROOTCTILE     => NULL()
+    if (LSM_CHOICE == 3) then
+       real, pointer, dimension(:) :: CNFROOTCTILE     => NULL()
+    endif
     real, pointer, dimension(:) :: CNNPPTILE        => NULL()
     real, pointer, dimension(:) :: CNGPPTILE        => NULL()
     real, pointer, dimension(:) :: CNSRTILE         => NULL()
@@ -6149,7 +6153,9 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , CNTOTC  , 'CNTOTC' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNVEGC  , 'CNVEGC' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNROOT  , 'CNROOT' ,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT  , CNFROOTC, 'CNFROOTC' ,RC=STATUS); VERIFY_(STATUS)
+       if (LSM_CHOICE == 3) then
+           call MAPL_GetPointer(EXPORT  , CNFROOTC, 'CNFROOTC' ,RC=STATUS); VERIFY_(STATUS)
+       endif
        call MAPL_GetPointer(EXPORT  , CNNPP   , 'CNNPP'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNGPP   , 'CNGPP'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNSR    , 'CNSR'   ,  RC=STATUS); VERIFY_(STATUS)
@@ -6720,7 +6726,9 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(CNTOTC  ,CNTOTCTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNVEGC  ,CNVEGCTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNROOT  ,CNROOTTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
-       call MKTILE(CNFROOTC,CNFROOTCTILE  ,NT,RC=STATUS);VERIFY_(STATUS)
+       if (LSM_CHOICE == 3) then
+          call MKTILE(CNFROOTC,CNFROOTCTILE  ,NT,RC=STATUS);VERIFY_(STATUS)
+       endif
        call MKTILE(CNNPP   ,CNNPPTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNGPP   ,CNGPPTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNSR    ,CNSRTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -8419,7 +8427,9 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'CNROOT'  , ALLOC=associated(CNROOTTILE  ), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
-	 call MAPL_GetPointer(GEX(type), dum, 'CNFROOTC' , ALLOC=associated(CNFROOTCTILE), notFoundOK=.true., RC=STATUS)
+         if (LSM_CHOICE == 3) then
+	    call MAPL_GetPointer(GEX(type), dum, 'CNFROOTC' , ALLOC=associated(CNFROOTCTILE), notFoundOK=.true., RC=STATUS)
+         endif
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'CNNPP'   , ALLOC=associated(CNNPPTILE   ), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
