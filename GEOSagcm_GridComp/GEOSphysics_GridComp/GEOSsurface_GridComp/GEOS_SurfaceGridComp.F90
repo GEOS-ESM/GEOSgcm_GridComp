@@ -5078,9 +5078,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: CNTOTC      => NULL()
     real, pointer, dimension(:,:) :: CNVEGC      => NULL()
     real, pointer, dimension(:,:) :: CNROOT      => NULL()
-    if (LSM_CHOICE == 3) then
     real, pointer, dimension(:,:) :: CNFROOTC    => NULL()
-    endif
     real, pointer, dimension(:,:) :: CNNPP       => NULL()
     real, pointer, dimension(:,:) :: CNGPP       => NULL()
     real, pointer, dimension(:,:) :: CNSR        => NULL()
@@ -5338,9 +5336,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: CNTOTCTILE       => NULL()
     real, pointer, dimension(:) :: CNVEGCTILE       => NULL()
     real, pointer, dimension(:) :: CNROOTTILE       => NULL()
-    if (LSM_CHOICE == 3) then
-       real, pointer, dimension(:) :: CNFROOTCTILE     => NULL()
-    endif
+    real, pointer, dimension(:) :: CNFROOTCTILE     => NULL()
     real, pointer, dimension(:) :: CNNPPTILE        => NULL()
     real, pointer, dimension(:) :: CNGPPTILE        => NULL()
     real, pointer, dimension(:) :: CNSRTILE         => NULL()
