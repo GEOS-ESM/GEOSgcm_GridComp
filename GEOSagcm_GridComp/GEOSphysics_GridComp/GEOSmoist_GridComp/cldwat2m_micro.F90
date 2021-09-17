@@ -1096,7 +1096,7 @@ contains
             cldm(i,k)=max(cldn(i,k),mincld)
             if (qc(i,k).ge.qsmall) then                
               ! npccn(k)=(cldm(i,k)*npccnin(i,k)-nc(i,k))/max(deltat, 150.0)   !use cldm to avoid cleaning up clouds at low T      
-               npccn(k) = max(0._r8,npccn(k))         
+               npccn(k) = max(0._r8,npccnin(i, k))         
                ! hm update with activation tendency, keep old nc for later
                ncold(i,k)=nc(i,k)              
                nc(i,k)=nc(i,k)+npccn(k)*deltat                        ! *****************DONIF19*******************
