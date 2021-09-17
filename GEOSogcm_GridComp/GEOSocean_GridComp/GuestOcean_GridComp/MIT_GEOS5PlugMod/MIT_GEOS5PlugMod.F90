@@ -561,7 +561,7 @@ contains
 !   Variables for holding and setting run directory
     character(len=ESMF_MAXSTR)            :: ocean_dir
     integer*1, pointer                    :: iarr(:)
-    integer                               :: passive_ocean
+    integer                               :: active_ocean
     REAL*8                                :: Av
 
 ! Begin
@@ -680,11 +680,11 @@ contains
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'LONS',   LONS )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'WGHT',   WGHT )
 
-    call MAPL_GetResource( MAPL, passive_ocean, label='STEADY_STATE_OCEAN:', &
+    call MAPL_GetResource( MAPL, active_ocean, label='ACTIVE_OCEAN:', &
          default=1, rc=status ) ; VERIFY_(STATUS)
 
     call mysetdir(iarr)
-    if (passive_ocean /= 0) CALL DRIVER_RUN( PrivateState%ptr, 1 )
+    if (active_ocean /= 0) CALL DRIVER_RUN( PrivateState%ptr, 1 )
     deallocate(iarr)
     call popdir
 
