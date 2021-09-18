@@ -1840,13 +1840,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', RC=STATUS )
          VERIFY_(STATUS)
 
-     ! MXDIS(1,1,1)=1000.
-     ! ANGLL(1,1,1)=45.
-     ! ANIXY(1,1,1)=0.9
-     ! CLNGT(1,1,1)=150.
-     ! HWDTH(1,1,1)=100.
-     ! GBXAR(1,1)  =100.**2
-
        WHERE (ANGLL < -180)
          ANGLL = 0.0
        END WHERE
