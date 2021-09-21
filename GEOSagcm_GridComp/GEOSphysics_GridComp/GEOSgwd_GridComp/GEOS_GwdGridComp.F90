@@ -928,6 +928,7 @@ contains
     real(MAPL_R8) :: NCAR_GW_DC
     real(MAPL_R8) :: NCAR_WAVELENGTH
     real(MAPL_R8) :: NCAR_SOUTH_FAC
+    real(MAPL_R8) :: NCAR_HR_CF
 
 !=============================================================================
 
@@ -961,12 +962,14 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=1.00_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=20.0_MAPL_R8, RC=STATUS)
+         VERIFY_(STATUS)
 
          call gw_common_init( .FALSE. , 1 , & 
                               1.0_MAPL_R8 * MAPL_GRAV , &
                               1.0_MAPL_R8 * MAPL_RGAS , &
                               1.0_MAPL_R8 * MAPL_CP , &
-                              NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, ERRstring )
+                              NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, NCAR_HR_CF, ERRstring )
 
          ! Beres Scheme File
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &

@@ -22,6 +22,7 @@ public :: gw_common_init
 public :: gw_prof
 public :: gw_drag_prof
 public :: qbo_hdepth_scaling
+public :: hr_cf
 
 !++jtb 
 !  These go away for now (3/26/20)
@@ -68,7 +69,8 @@ real(r8), protected :: qbo_hdepth_scaling
 logical :: tau_0_ubc = .false.
 ! Inverse Prandtl number.
 real(r8) :: prndl
-
+! Heating rate conversion factor
+real(r8), protected :: hr_cf
 
 
 !
@@ -162,7 +164,7 @@ end function new_GWBand
 
 subroutine gw_common_init(   &
      tau_0_ubc_in, ktop_in, gravit_in, rair_in, cpair_in, & 
-     prndl_in, qbo_hdepth_scaling_in, errstring)
+     prndl_in, qbo_hdepth_scaling_in, hr_cf_in, errstring)
 
   logical,  intent(in) :: tau_0_ubc_in
   integer,  intent(in) :: ktop_in
@@ -171,6 +173,7 @@ subroutine gw_common_init(   &
   real(r8), intent(in) :: cpair_in      ! Heat cap. for dry air (J kg-1 K-1)
   real(r8), intent(in) :: prndl_in
   real(r8), intent(in) :: qbo_hdepth_scaling_in
+  real(r8), intent(in) :: hr_cf_in
   ! Report any errors from this routine.
   character(len=*), intent(out) :: errstring
 
@@ -186,6 +189,7 @@ subroutine gw_common_init(   &
   cpair  = cpair_in
   prndl  = prndl_in
   qbo_hdepth_scaling = qbo_hdepth_scaling_in
+  hr_cf = hr_cf_in
 
   rog = rair/gravit
 

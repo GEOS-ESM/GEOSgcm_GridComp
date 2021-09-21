@@ -6,7 +6,7 @@ module gw_convect
 !
 
   use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
-  use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof 
+  use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof, hr_cf 
 
 
 implicit none
@@ -234,8 +234,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   ! Index to shift spectra relative to ground.
   integer :: shift
 
-  ! Heating rate conversion factor.
-  real(r8), parameter :: CF = 20._r8
+! ! Heating rate conversion factor.
+! real(r8), parameter :: CF = 20._r8
   ! Averaging length.
   real(r8), parameter :: AL = 1.0e5_r8
 
@@ -330,7 +330,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   maxq0 = q0*24._r8*3600._r8
 
   ! Multipy by conversion factor
-  q0 = q0 * CF
+  q0 = q0 * hr_cf
 
   if (desc%storm_shift) then
 
