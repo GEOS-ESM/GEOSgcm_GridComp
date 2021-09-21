@@ -8952,6 +8952,7 @@ contains
 
       else   ! if UW shallow scheme not called
 
+        UMF_SC    = 0.
         MFD_SC    = 0.
         SHLW_PRC3 = 0.
         SHLW_SNO3 = 0.      
