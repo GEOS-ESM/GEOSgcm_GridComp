@@ -4844,8 +4844,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS) ; VERIFY_(STATUS)
            call MAPL_TileMaskGet(tilegrid,  mask, rc=status)               ; VERIFY_(STATUS)
           !! Hard coded - must choose right resolution ( 720/360/180) !!
-           unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0720x6C_DE1440xPE0720_nel_2496746_Global.bin", &
-          ! unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0360x6C_DE1440xPE0720_nel_1188020_Global.bin", &
+          ! unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0720x6C_DE1440xPE0720_nel_2496746_Global.bin", &
+           unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0360x6C_DE1440xPE0720_nel_1188020_Global.bin", &
           ! unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0180x6C_DE1440xPE0720_nel_686448_Global.bin", &
                 form="unformatted", RC=STATUS ) ; VERIFY_(STATUS)
            call MAPL_VarRead (unit_s, tilegrid,MODIS_SNOW_ALBEDO, mask=mask, rc=status) ; VERIFY_(STATUS)
