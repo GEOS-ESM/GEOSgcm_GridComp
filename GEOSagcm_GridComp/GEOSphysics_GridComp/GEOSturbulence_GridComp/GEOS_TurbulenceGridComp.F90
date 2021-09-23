@@ -252,15 +252,15 @@ contains
 
 ! !IMPORT STATE:
 
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'ZPBL_ANA',                                  &
-        LONG_NAME  = 'fake_observed_pbl_height',                  &
-        UNITS      = 'm',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                          &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+!     call MAPL_AddImportSpec(GC,                                  &
+!        SHORT_NAME = 'ZPBL_ANA',                                  &
+!        LONG_NAME  = 'fake_observed_pbl_height',                  &
+!        UNITS      = 'm',                                         &
+!        DIMS       = MAPL_DimsHorzOnly,                           &
+!        VLOCATION  = MAPL_VLocationNone,                          &
+!        RESTART    = MAPL_RestartSkip,                            &
+!                                                       RC=STATUS  )
+!     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'PLE',                                       &
@@ -2958,7 +2958,7 @@ contains
      integer                             :: STATUS
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
-     real, dimension(:,:  ), pointer     :: VARFLT,ZPBL_ANA
+     real, dimension(:,:  ), pointer     :: VARFLT!,ZPBL_ANA
      real, dimension(:,:,:), pointer     :: KH, KM, QLLS, QILS, CLLS, QLCN, QICN, CLCN
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
@@ -3153,7 +3153,7 @@ contains
 ! Get Sounding from the import state
 !-----------------------------------
 
-     call MAPL_GetPointer(IMPORT,ZPBL_ANA,'ZPBL_ANA',RC=STATUS); VERIFY_(STATUS)
+!     call MAPL_GetPointer(IMPORT,ZPBL_ANA,'ZPBL_ANA',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     T,       'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     Q,      'QV', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,    TH,      'TH', RC=STATUS); VERIFY_(STATUS)
@@ -4099,9 +4099,9 @@ ENDIF
       call MAPL_TimerOn (MAPL,name="---LOUIS" ,RC=STATUS)
       VERIFY_(STATUS)
 
-      where (ZPBL_ANA.gt.0.) 
-         ZPBL = ZPBL_ANA
-      end where
+!      where (ZPBL_ANA.gt.0.) 
+!         ZPBL = ZPBL_ANA
+!      end where
 
       if (DO_SHOC == 0) then
         call LOUIS_KS(                      &
@@ -4474,7 +4474,7 @@ ENDIF
 
          CALL ENTRAIN(IM,JM,LM,                 &
                       ! Inputs
-                      ZPBL_ANA,                 &
+!                      ZPBL_ANA,                 &
                       RADLW,                    &
                       USTAR,                    &
                       BSTAR,                    &
