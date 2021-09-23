@@ -23,27 +23,31 @@ module shoc
 
  use MAPL_SatVaporMod,  only: MAPL_EQsat 
 
+ use shocparams
+
  implicit none
 
  private
 
  public run_shoc, update_moments
 
- type SHOCPARAM_TYPE
-    real   :: USE_SUS12LEN
-    real   :: LAMBDA
-    real   :: TSCALE
-    real   :: VONK
-    real   :: CKVAL
-    real   :: CEFAC
-    real   :: CESFAC
- endtype SHOCPARAM_TYPE
+! type SHOCPARAMS_TYPE
+!    real   :: CLDLEN
+!    real   :: SUS12LEN
+!    real   :: BUOYOPT
+!    real   :: LAMBDA
+!    real   :: TSCALE
+!    real   :: VONK
+!    real   :: CKVAL
+!    real   :: CEFAC
+!    real   :: CESFAC
+! endtype SHOCPARAMS_TYPE
 
  contains
 
  subroutine run_shoc( nx, ny, nzm, nz, dtn, dm_inv,              &  ! in
                  prsl_inv, phii_inv, phil_inv, u_inv, v_inv,     &  ! in
-                 omega_inv, hflx, evap, & ! buoy_mf_inv,             &  ! in
+                 omega_inv, & !hflx, evap, buoy_mf_inv,             &  ! in
                  tabs_inv, qwv_inv, qi_inv, qc_inv, qpi_inv,     &  ! in 
                  qpl_inv, cld_sgs_inv, wthv_sec_inv, prnum,      &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
@@ -54,9 +58,10 @@ module shoc
                  smixt_inv,smixt_oc_inv,smixt_ic_inv,            &  ! out
                  smixt1_inv,smixt2_inv,smixt3_inv,               &  ! out
                  brunt_inv,shear_inv,                            &  ! out
-                 LAM, TSCL, VON, CKVAL, CEFAC, CESFAC,           &  ! tuning param in
-                 THLTUN, QWTUN, QWTHLTUN, DO_TRANS, DO_CLDLEN,   &
-                 USE_SUS12LEN, BUOY_OPTION )                 
+                 shocparams )
+!                 LAM, TSCL, VON, CKVAL, CEFAC, CESFAC,           &  ! tuning param in
+!                 THLTUN, QWTUN, QWTHLTUN, DO_TRANS, DO_CLDLEN,   &
+!                 USE_SUS12LEN, BUOY_OPTION )                 
 
 
   real, parameter :: lsub = lcond+lfus,         &
@@ -84,16 +89,17 @@ module shoc
 
   integer, intent(in) :: nzm   ! Number of vertical layers
   integer, intent(in) :: nz    ! Number of layer interfaces  (= nzm + 1)   
-  integer, intent(in) :: DO_TRANS     ! TKE transport term on/off
-  integer, intent(in) :: DO_CLDLEN    ! TKE transport term on/off
-  integer, intent(in) :: USE_SUS12LEN ! Use Suselj et al 2012 length scale
-  integer, intent(in) :: BUOY_OPTION  ! choose source of TKE buoyancy term
+  type(shocparams_type), intent(in) :: shocparams
+!  integer, intent(in) :: DO_TRANS     ! TKE transport term on/off
+!  integer, intent(in) :: DO_CLDLEN    ! TKE transport term on/off
+!  integer, intent(in) :: USE_SUS12LEN ! Use Suselj et al 2012 length scale
+!  integer, intent(in) :: BUOY_OPTION  ! choose source of TKE buoyancy term
                                       ! 0=local stability
                                       ! 1=single-gaussian PDF,
                                       ! 2=double-gaussian PDF (MoistGridComp)
   real, intent(in   ) :: dtn          ! Physics time step, s 
-  real, intent(in   ) :: hflx(nx,ny)  ! Surface sensible heat flux
-  real, intent(in   ) :: evap(nx,ny)  ! Surface evaporation
+!  real, intent(in   ) :: hflx(nx,ny)  ! Surface sensible heat flux
+!  real, intent(in   ) :: evap(nx,ny)  ! Surface evaporation
 
   real, intent(in   ) :: dm_inv   (nx,ny,nzm) ! mean layer mass   
   real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure   
@@ -133,8 +139,8 @@ module shoc
   real, dimension(:,:,:), pointer :: brunt_inv    ! Brunt vaisala frequency
   real, dimension(:,:,:), pointer :: shear_inv    ! squared shear diagnostic
 
-  real, intent(in   ) :: LAM, TSCL, VON, CKVAL, CEFAC,   &  ! tuning param
-                         CESFAC, THLTUN, QWTUN, QWTHLTUN                 
+!  real, intent(in   ) :: LAM, TSCL, VON, CKVAL, CEFAC,   &  ! tuning param
+!                         CESFAC, THLTUN, QWTUN, QWTHLTUN                 
 
 ! SHOC tunable parameters
 
@@ -215,14 +221,14 @@ module shoc
 ! Moments of the trivariate double Gaussian PDF for the SGS total water mixing ratio
 ! SGS liquid/ice static energy, and vertical velocity
 
-  real qw_sec   (nx,ny,nzm) ! Second moment total water mixing ratio, kg^2/kg^2
-  real thl_sec  (nx,ny,nzm) ! Second moment liquid/ice static energy, K^2
-  real qwthl_sec(nx,ny,nzm) ! Covariance tot. wat. mix. ratio and static energy, K*kg/kg
-  real wqw_sec  (nx,ny,nzm) ! Turbulent flux of tot. wat. mix., kg/kg*m/s
-  real wthl_sec (nx,ny,nzm) ! Turbulent flux of liquid/ice static energy, K*m/s
-  real w_sec    (nx,ny,nzm) ! Second moment of vertical velocity, m**2/s**2
-!  real w3       (nx,ny,nzm) ! Third moment of vertical velocity, m**3/s**3
-  real wqp_sec  (nx,ny,nzm) ! Turbulent flux of precipitation, kg/kg*m/s
+!  real qw_sec   (nx,ny,nzm) ! Second moment total water mixing ratio, kg^2/kg^2
+!  real thl_sec  (nx,ny,nzm) ! Second moment liquid/ice static energy, K^2
+!  real qwthl_sec(nx,ny,nzm) ! Covariance tot. wat. mix. ratio and static energy, K*kg/kg
+!  real wqw_sec  (nx,ny,nzm) ! Turbulent flux of tot. wat. mix., kg/kg*m/s
+!  real wthl_sec (nx,ny,nzm) ! Turbulent flux of liquid/ice static energy, K*m/s
+!  real w_sec    (nx,ny,nzm) ! Second moment of vertical velocity, m**2/s**2
+!!  real w3       (nx,ny,nzm) ! Third moment of vertical velocity, m**3/s**3
+!  real wqp_sec  (nx,ny,nzm) ! Turbulent flux of precipitation, kg/kg*m/s
 
 ! Eddy length formulation 
   real smixt    (nx,ny,nzm) ! Turbulent length scale, m
@@ -239,7 +245,7 @@ module shoc
 
 ! Local variables
 
-  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv
+  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth
 
   real, dimension(nx,ny)     :: denom, numer, l_inf, cldarr
 
@@ -253,18 +259,18 @@ module shoc
   integer i,j,k,km1,ku,kd,ka,kb,kinv,strt,fnsh,cnvl
 
 ! set parameter values
-  lambda  = LAM  ! used in return-to-isotropy timescale
-  Ck  = CKVAL     ! Coeff in the eddy diffusivity - TKE relationship, see Eq. 7 in BK13 
-  Ce  = CEFAC*Ck**3/Cs**4   ! diss ~= Ce * sqrt(tke)
-  Ces = CESFAC*Ce
-  vonk = VON     ! Von Karman constant Moorthi - as in GFS
-  tscale = TSCL  ! time scale set based off of similarity results of BK13, s
-  thl2tune = THLTUN
-  qw2tune = QWTUN
-  qwthl2tune = QWTHLTUN
+  lambda  = shocparams%LAMBDA  ! used in return-to-isotropy timescale
+  Ck  = shocparams%CKVAL     ! Coeff in the eddy diffusivity - TKE relationship, see Eq. 7 in BK13 
+  Ce  = shocparams%CEFAC*Ck**3/Cs**4   ! diss ~= Ce * sqrt(tke)
+  Ces = shocparams%CESFAC*Ce
+  vonk = shocparams%VONK     ! Von Karman constant Moorthi - as in GFS
+  tscale = shocparams%TSCALE  ! time scale set based off of similarity results of BK13, s
+!  thl2tune = THLTUN
+!  qw2tune = QWTUN
+!  qwthl2tune = QWTHLTUN
 
 
-  wthl_sec = 0.
+!  wthl_sec = 0.
 
 ! Map GEOS variables to those of SHOC
 
@@ -357,7 +363,7 @@ module shoc
 ! If using single-gaussian PDF for buoyancy flux,
 ! this will overwrite wthv_sec
 
-!if (BUOY_OPTION==1) then
+!if (shocparams%BUOYOPT==1) then
 !  call buoyancy_single_gaussian()
 !end if
 
@@ -447,7 +453,7 @@ contains
 !         a_prod_bu = bet(i,j,k)*wthv_sec(i,j,k)
           a_prod_bu = (ggr / thv(i,j,k)) * wthv_sec(i,j,k)
 
-          wrk  = 0.5 * (tkh(i,j,ku)+tkh(i,j,kd))
+!          wrk  = 0.5 * (tkh(i,j,ku)+tkh(i,j,kd))
 
           buoy_sgs = brunt(i,j,k)
 !          buoy_sgs = - a_prod_bu / (wrk + 0.0001)   ! tkh is eddy thermal diffussivity
@@ -610,7 +616,7 @@ contains
 ! formulation described in BK13
 
 ! Local variables
-    real    wrk, wrk1, wrk2, wrk3
+    real    wrk, wrk1, wrk2, wrk3, zdecay
     integer i, j, k, kk, kl, ku, kb, kc, kli, kui
     
     do j=1,ny
@@ -624,9 +630,27 @@ contains
 ! Find the length scale outside of clouds, that includes boundary layers.
     
     do k=1,nzm
+      kb = k-1
+      kc = k+1
+
       do j=1,ny
         do i=1,nx
-             
+
+          if (k == 1) then
+            kb = 1
+            kc = 2
+            thedz = adzi(i,j,kc)
+          elseif (k == nzm) then
+            kb = nzm-1
+            kc = nzm
+            thedz = adzi(i,j,k)
+          else
+            thedz = (adzi(i,j,kc)+adzi(i,j,k)) !  = (z(k+1)-z(k-1))
+          endif
+          betdz = bet(i,j,k) / thedz
+
+          brunt_smooth(i,j,k) = max(1e-5, betdz*(thv(i,j,kc)-thv(i,j,kb)) )  !g/thv/dz *(thv-thv)
+
 ! Reinitialize the mixing length related arrays to zero
           smixt(i,j,k)    = 1.0   ! shoc_mod module variable smixt
           brunt(i,j,k)    = 0.0
@@ -719,6 +743,10 @@ contains
 
 ! Calculate Brunt-Vaisalla frequency using centered differences in the vertical
 
+             if (k.gt.3) then
+               brunt_smooth(i,j,k) = SUM( brunt_smooth(i,j,k-2:k) ) / 3.
+             end if
+
              brunt(i,j,k) = cld_sgs(i,j,k)*betdz*(bbb*(hl(i,j,kc)-hl(i,j,kb))               &
                           + (bbb*lstarn - (1.+lstarn*dqsat)*tabs(i,j,k))     &
                           * (total_water(i,j,kc)-total_water(i,j,kb))        & 
@@ -748,7 +776,20 @@ contains
             else
               brunt2(i,j,k) = 1e-5
             endif
-             
+ 
+!            kk = 2
+!            do while (brunt2(i,j,kk).le.1e-5 .and. zl(i,j,kk).lt.1500.)
+!              kk = kk+1
+!            end do
+!            zdecay = zl(i,j,kk)
+            zdecay = 750.
+
+!            if (brunt_simple(i,j,k) >= 1e-5) then
+!              brunt2(i,j,k) = brunt_simple(i,j,k)
+!            else
+!              brunt2(i,j,k) = 1e-5
+!            end if
+            
 ! Calculate turbulent length scale in the boundary layer.
 ! See Eq. 10 in BK13 (Eq. 4.12 in Pete's dissertation)
 
@@ -780,7 +821,8 @@ contains
              wrk2 = 1.5/(400.*tkes)
              wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
              wrk1 = 1.0/(wrk2+wrk3)
-             smixt(i,j,k) = 9.4*exp(-zl(i,j,k)/1500.)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+             smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+!             smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
              smixt1(i,j,k) = 9.4/wrk2
              smixt2(i,j,k) = 9.4/wrk3
              smixt3(i,j,k) = 9.4*vonk*zl(i,j,k)
@@ -814,8 +856,8 @@ contains
 ! See Eq. 13 in BK13 (Eq. 4.18 in Pete's disseration)
     
 !======== Buoyancy flux from local stability ======!
-if (BUOY_OPTION==0) then
-   wthv_sec = -1.0*(thv/ggr)*brunt*tkh
+if (shocparams%BUOYOPT==0) then
+!   wthv_sec = -1.0*(thv/ggr)*brunt*tkh
 !!! Han and Bretherton 2019
 !   a1 = ggr/(thv*MAPL_CP)
 !   delt = 0.608
@@ -904,7 +946,7 @@ endif
                   smixt_incld(i,j,kk) = 3.3/sqrt(wrk)
                   
 ! npa modify, weight in-cloud length scale by local cloud fraction
-                  if (DO_CLDLEN/=0) then
+                  if (shocparams%CLDLEN/=0) then
                     smixt(i,j,kk) = (1.-cld_sgs(i,j,kk))*smixt(i,j,kk) + cld_sgs(i,j,kk)*smixt_incld(i,j,kk)
                     smixt(i,j,kk) = min(max_eddy_length_scale, smixt(i,j,kk))
                   end if

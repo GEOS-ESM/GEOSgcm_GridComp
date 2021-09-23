@@ -18,6 +18,7 @@ module GEOS_TurbulenceGridCompMod
   use GEOS_Mod
   use MAPL
   use LockEntrain
+  use shocparams
   use shoc
   use edmf_mod, only: run_edmf
 
@@ -2998,11 +2999,11 @@ contains
                                             edmf_dry_thl,edmf_moist_thl, &
                                             edmf_dry_u,edmf_moist_u,  &
                                             edmf_dry_v,edmf_moist_v,  &
-                                            edmf_moist_qc,edmf_buoyf,edmf_mf, &
+                                            edmf_moist_qc,edmf_buoyf,edmf_mfx, &
                                             edmf_w2, edmf_qt2, edmf_hl2, & 
                                             edmf_w3, edmf_wqt, edmf_hlqt, & 
                                             edmf_whl, edmf_qt3, edmf_hl3, &
-                                            hle, qte, entx, &
+                                            hle, qte, edmf_entx, &
                                             edmf_wqtavg, edmf_whlavg
 !   real, dimension(:,:,:), pointer      :: uu, vu 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
@@ -3057,7 +3058,9 @@ contains
                                      ! 0: explicit
      integer :: EDMF_DISCRETE        ! 0 (default): centered mass flux discretization in solver
                                      ! 1: upwind discretization 
-     integer :: EDMF_STOCHASTIC      ! 
+     integer :: EDMF_ENTRAIN         ! 1 (default): stochastic variable entrainment
+                                     ! 2: Gregory (2001) entrainment based on vertical velocity
+     real    :: EDMF_STOCHASTIC      ! Fraction of entrainment governed by Poisson distribution 
                                      ! 
      integer :: EDMF_THERMAL_PLUME   ! 0 (default): JPL mass flux scheme
                                      ! 1: Thermal plume model
@@ -3086,8 +3089,8 @@ contains
      real, dimension(im,jm)    :: rhodz,edmfZCLD
      real, dimension(im,jm,0:lm) :: RHOE,RHOAW3
      real, dimension(im,jm) :: ZPBLmf,KPBLmf,wu0, dthv0   
-     real, dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl
-     real, dimension(im,jm,0:lm) :: aavg,qavg,wavg,hlavg
+     real, dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,edmf_ent
+     real, dimension(im,jm,0:lm) :: aavg,qavg,wavg,hlavg,edmf_mf
      real, dimension(im,jm,lm) :: au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full
      real, dimension(im,jm,lm) :: whl_edmf, wqt_edmf, wthv_edmf
      real, dimension(im,jm,lm) :: tke_mf, qt2_mf, qt2t_M_mf, qt2t_T_mf
@@ -3140,6 +3143,8 @@ contains
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
 
+     type (SHOCPARAMS_TYPE) :: SHOCPARAMS
+
 #ifdef _CUDA
      type(dim3) :: Grid, Block
      integer :: blocksize_x, blocksize_y
@@ -3174,8 +3179,6 @@ contains
      call MAPL_GetPointer(IMPORT,MFW, 'MFW',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,MFAREA, 'MFAREA',RC=STATUS); VERIFY_(STATUS)
 
-!     print *,'TurbGC: MFTHSRC(:,:,1:10)=',MFTHSRC(:,:,1:10)
-!     print *,'TurbGC: MFQTSRC(:,:,1:10)=',MFQTSRC(:,:,1:10)
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
@@ -3224,19 +3227,15 @@ contains
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHC_LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",   default=0.04,       RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",   default=400.,       RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_VONK,     trim(COMP_NAME)//"_SHC_VONK:",     default=0.4,        RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_CK,       trim(COMP_NAME)//"_SHC_CK:",       default=0.1,        RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",    default=1.,         RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",   default=4.,        RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_THL2TUNE, trim(COMP_NAME)//"_SHC_THL2TUNE:", default=1.,         RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_QW2TUNE,  trim(COMP_NAME)//"_SHC_QW2TUNE:",  default=1.,         RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_QWTHL2TUNE, trim(COMP_NAME)//"_SHC_QWTHL2TUNE:", default=1.,     RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_DO_TRANS, trim(COMP_NAME)//"_SHC_DO_TRANS:", default=0,     RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_DO_CLDLEN, trim(COMP_NAME)//"_SHC_DO_CLDLEN:", default=0,     RC=STATUS)
-       call MAPL_GetResource (MAPL, SHC_USE_SUS12LEN, trim(COMP_NAME)//"_SHC_USE_SUS12LEN:", default=1,     RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHC_BUOY_OPTION, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,     RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",   default=0.04,       RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",   default=400.,       RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%VONK,     trim(COMP_NAME)//"_SHC_VONK:",     default=0.4,        RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",       default=0.1,        RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",    default=1.,         RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",   default=4.,        RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CLDLEN,   trim(COMP_NAME)//"_SHC_DO_CLDLEN:", default=0,     RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%SUS12LEN, trim(COMP_NAME)//"_SHC_USE_SUS12LEN:", default=1,     RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,     RC=STATUS)
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,  'PDFSHAPE:',   DEFAULT = 1.0    )
@@ -3351,11 +3350,11 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_buoyf,  'edmf_buoyf',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_hl2,  'edmf_hl2', ALLOC=.TRUE.,  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_hl2,  'edmf_hl2',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_hlqt, 'edmf_qthl', ALLOC=.TRUE.,  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_hlqt, 'edmf_qthl',  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'edmf_qt2', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'edmf_qt2',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w2,  'edmf_w2',   RC=STATUS)
      VERIFY_(STATUS)
@@ -3387,7 +3386,7 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_whl,'edmf_whl', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_mf,  'EDMF_MF', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_mfx, 'EDMF_MF', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'edmf_dry_a',       RC=STATUS)
      VERIFY_(STATUS)
@@ -3530,7 +3529,7 @@ contains
      call MAPL_GetPointer(EXPORT,  qte,   'qte',  ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
 
-     call MAPL_GetPointer(EXPORT,  entx,  'EDMF_ENTR', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_entx,  'EDMF_ENTR',  RC=STATUS)
      VERIFY_(STATUS)
 
 
@@ -3668,7 +3667,8 @@ contains
   ! if true then 
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL, DOCLASP, "DOCLASP:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_STOCHASTIC, "EDMF_STOCHASTIC:", default=1,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_ENTRAIN, "EDMF_ENTRAIN:", default=1,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_STOCHASTIC, "EDMF_STOCHASTIC:", default=1.,  RC=STATUS)
     call MAPL_GetResource (MAPL,EntWFac,"EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
@@ -3784,7 +3784,7 @@ IF(DoMF /= 0.) then
                buoyf,&                      ! diag
                mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, & ! for ADG PDF
                iras,jras, &
-               au, Mu, E, D, hle, qte, entx, edmf_mf, &  ! for MYNN
+               au, Mu, E, D, hle, qte, edmf_ent, edmf_mf, &  ! for MYNN
 #ifdef EDMF_DIAG
                w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -3793,7 +3793,7 @@ IF(DoMF /= 0.) then
                thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-              EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC, DOCLASP)
+              EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC, DOCLASP, EDMF_ENTRAIN)
            end if
 
        if (ETr.eq.1.) then
@@ -3886,16 +3886,17 @@ IF(DoMF /= 0.) then
 !     mfw2 = 0.
 !     mfw3 = 0.
 !     mfwqt = 0.
-
-     if (associated(edmf_hl2)) edmf_hl2=mfhl2 
-     if (associated(edmf_qt2)) edmf_qt2=mfqt2 
-     if (associated(edmf_w2)) edmf_w2=mfw2
-     if (associated(edmf_w3)) edmf_w3=mfw3
-     if (associated(edmf_qt3)) edmf_qt3=mfqt3
-     if (associated(edmf_hl3)) edmf_hl3=mfhl3
-     if (associated(edmf_wqt)) edmf_wqt=mfwqt
+     if (associated(edmf_entx)) edmf_entx =edmf_ent
+     if (associated(edmf_mfx))  edmf_mfx =edmf_mf
+     if (associated(edmf_hl2))  edmf_hl2=mfhl2 
+     if (associated(edmf_qt2))  edmf_qt2=mfqt2 
+     if (associated(edmf_w2))   edmf_w2=mfw2
+     if (associated(edmf_w3))   edmf_w3=mfw3
+     if (associated(edmf_qt3))  edmf_qt3=mfqt3
+     if (associated(edmf_hl3))  edmf_hl3=mfhl3
+     if (associated(edmf_wqt))  edmf_wqt=mfwqt
      if (associated(edmf_hlqt)) edmf_hlqt=mfhlqt
-     if (associated(edmf_whl)) edmf_whl=mfwhl
+     if (associated(edmf_whl))  edmf_whl=mfwhl
      aavg = edmfmoista+edmfdrya
      where (aavg.gt.0.001) 
       wavg = (edmfmoista*edmfmoistw+edmfdrya*edmfdryw)/aavg
@@ -3917,13 +3918,6 @@ IF(DoMF /= 0.) then
      if (associated(edmf_wqtavg)) edmf_wqtavg = aavg*wavg*(qavg-(qti-aavg*qavg)/(1.-aavg))
      if (associated(edmf_whlavg)) edmf_whlavg = aavg*wavg*(hlavg-(hli-aavg*hlavg)/(1.-aavg))
      
-!     print *,'aavg=',aavg(:,:,LM-15:LM)
-!     print *,'wavg=',wavg(:,:,LM-15:LM)
-!     print *,'qavg=',qavg(:,:,LM-15:LM)
-!     print *,'edmf_wqtavg=',edmf_wqtavg(:,:,LM-15:LM)
-
-!     call ComputeZPBL(IM*JM,LM,ZLE,aw3,ZPBLmf,KPBLmf)
-
 ELSE
 ! if there is no mass-flux
 !
@@ -3991,7 +3985,8 @@ ELSE
     if (associated(edmf_moist_v))   edmf_moist_v  =mapl_undef 
     if (associated(edmf_moist_qc))  edmf_moist_qc =mapl_undef 
     if (associated(edmf_buoyf))     edmf_buoyf    =0.0
-    if (associated(edmf_mf))        edmf_mf       =0.0 
+    if (associated(edmf_entx))      edmf_entx     = mapl_undef
+    if (associated(edmf_mfx))       edmf_mfx      =0.0 
     if (associated(edmf_hl2))       edmf_hl2      =mfhl2 
     if (associated(edmf_qt2))       edmf_qt2      =mfqt2 
     if (associated(edmf_w2))        edmf_w2       =mfw2
@@ -4027,8 +4022,6 @@ ENDIF
 
       if ( DO_SHOC /= 0 ) then
 
-!        print *,'DO_SHOC=1'
-
         LOCK_ON = 0
 
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
@@ -4048,8 +4041,8 @@ ENDIF
                        U(:,:,1:LM),           &
                        V(:,:,1:LM),           &
                        OMEGA(:,:,1:LM),       &
-                       SH(:,:),               &
-                       EVAP(:,:),             &
+!                       SH(:,:),               &
+!                       EVAP(:,:),             &
                        T(:,:,1:LM),           &
                        Q(:,:,1:LM),           &
                        QI(:,:,1:LM),          &
@@ -4078,19 +4071,20 @@ ENDIF
                        BRUNTSHOC,             &
                        SHEARSHOC,             &
                        !== Tuning params ==
-                       SHC_LAMBDA,            &
-                       SHC_TSCALE,            &
-                       SHC_VONK,              &
-                       SHC_CK,                &
-                       SHC_CEFAC,             &
-                       SHC_CESFAC,            &
-                       SHC_THL2TUNE,          &
-                       SHC_QW2TUNE,           &
-                       SHC_QWTHL2TUNE,        &
-                       SHC_DO_TRANS,          &
-                       SHC_DO_CLDLEN,         &
-                       SHC_USE_SUS12LEN,      &
-                       SHC_BUOY_OPTION )
+                       SHOCPARAMS )
+!                       SHC_LAMBDA,            &
+!                       SHC_TSCALE,            &
+!                       SHC_VONK,              &
+!                       SHC_CK,                &
+!                       SHC_CEFAC,             &
+!                       SHC_CESFAC,            &
+!                       SHC_THL2TUNE,          &
+!                       SHC_QW2TUNE,           &
+!                       SHC_QWTHL2TUNE,        &
+!                       SHC_DO_TRANS,          &
+!                       SHC_DO_CLDLEN,         &
+!                       SHC_USE_SUS12LEN,      &
+!                       SHC_BUOY_OPTION )
 
         KM(:,:,1:LM) = KH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
@@ -6777,7 +6771,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
              thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-             edmf_discrete_type, edmf_implicit, stochent, doclasp)
+             edmf_discrete_type, edmf_implicit, stochent, doclasp, entrainopt)
 
 
 
@@ -6819,8 +6813,8 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: mfsrcqt,mfsrcthl,mfw,mfarea
        REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2
-       INTEGER, INTENT(IN) :: edmf_discrete_type, edmf_implicit
-       INTEGER, INTENT(IN) :: stochent
+       INTEGER, INTENT(IN) :: edmf_discrete_type, edmf_implicit, entrainopt
+       REAL, INTENT(IN) :: stochent
        REAL, INTENT(IN)                     :: ICE_RAMP  
        REAL :: DT,EntWFac
        INTEGER :: NUP2
@@ -6850,7 +6844,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
    ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
          REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfwqt,mfhl2,&
                                                          mfhlqt,mfwhl, hle, qte, E, D, entx     
-      REAL, DIMENSION(ITS:ITE,KTS-1:KTE) :: edmfmf
+      REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
  ! entrainment variables     
@@ -6942,6 +6936,8 @@ real, dimension(its:ite) :: L0
       mfhl2 =0.
       mfhlqt=0.
       mfwhl =0.
+      entx = 0.
+      edmfmf=0.
 
    ! this is the environmental area - by default 1.
 
@@ -7118,28 +7114,28 @@ if(THE_SEED(2) == 0) THE_SEED(2) = -5
 if (L0(IH) .gt. 0. ) then
 
    ! entrainent: Ent=Ent0/dz*P(dz/L0)
-  if (stochent==1) then        ! poisson random
+!  if (entrainopt==1) then        ! poisson random
     call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)    
     do i=1,Nup   
      do k=kts,kte
 !       ENT(k,i)=(0.2+real(ENTi(k,i))*Ent0)/(ZW(k)-ZW(k-1)) 
-       ENT(k,i)=(real(ENTi(k,i))*Ent0)/(ZW(k)-ZW(k-1)) 
+       ENT(k,i)=(1.-stochent)*Ent0/L0(IH) + stochent*real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1)) 
      enddo
     enddo
-  else if (stochent==2) then   ! uniform random
-    call random_number(entf)
-    do i=1,Nup   
-     do k=kts,kte
-       ENT(k,i)=(0.2+2.*ENTf(k,i)*Ent0)/L0(IH)
-     enddo
-    enddo
-  else                          ! 
-    do i=1,Nup   
-     do k=kts,kte
-       ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1)) ! test
-     enddo
-    enddo
-  end if
+!  else if (entrainopt==2) then   
+!    call random_number(entf)
+!    do i=1,Nup   
+!     do k=kts,kte
+!       ENT(k,i)=(0.2+2.*ENTf(k,i)*Ent0)/L0(IH)
+!     enddo
+!    enddo
+!  else                          ! 
+!    do i=1,Nup   
+!     do k=kts,kte
+!       ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1)) ! test
+!     enddo
+!    enddo
+!  end if
 !  print *,'ent=',ent(1:3,1:10)
 
 ! increase entrainment if local minimum of THV
@@ -7151,23 +7147,20 @@ if (L0(IH) .gt. 0. ) then
      endif
   enddo
 
+!  if (entrainopt==2) ENT(kts+1:,:) = MAPL_UNDEF
+
 else
 ! negative L0 means 0 entrainment
    ENT=0.
 end if       
 
-do k=kts,kte
-  entx(ih,k) = sum(ENT(k,:))/Nup
-end do
+
 
 ! exner function
  exfh=(p/mapl_p00)**mapl_kappa
  exf=(0.5*(p(1:kte)+p(0:kte-1))/mapl_p00)**mapl_kappa 
 
-
-
-
-  
+ 
  !
  ! surface conditions
  !      
@@ -7303,8 +7296,7 @@ end do
               END IF
 
               IF (Wn2>0.) THEN
-!                 UPW(K,I)=sqrt(Wn2)   
-                 UPW(K,I)=min( sqrt(Wn2), 5. ) ! npa
+                 UPW(K,I)=min( sqrt(Wn2), 10. ) ! npa
                  UPTHV(K,I)=THVn
                  UPTHL(K,I)=THLn
                  UPQT(K,I)=QTn
@@ -7313,12 +7305,23 @@ end do
                  UPU(K,I)=Un
                  UPV(K,I)=Vn
                  UPA(K,I)=UPA(K-1,I)
+
+               if (entrainopt==2 .and. L0(IH)>0.) then
+                 ENT(K+1,I) = ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
+ !                print *,'ENT=',ENT(K+1,I),'  UPW=',UPW(K,I),'  B=',B
+               end if
               ELSE
+!                  ENT(K+1:KTE,I) = MAPL_UNDEF
                   EXIT vertint
               END IF
              ! loop over vertical 
             ENDDO vertint
          ENDDO   ! loop over updrafts
+
+         do k=kts,kte
+           entx(ih,k) = sum(ENT(k,:))/Nup
+         end do
+!         print *,'ENTx=',entx(ih,1:20)
          
 
   ! Check that mass flux does not exceed 2x of layer mass at any level

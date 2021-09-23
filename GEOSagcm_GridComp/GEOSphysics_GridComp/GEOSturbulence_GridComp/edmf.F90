@@ -55,7 +55,8 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
   
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, nup, mup, discrete_type, implicit_flag, &
-                                             stochastic_flag, plume_type, ET, test_flag, debug_flag
+                                             plume_type, ET, test_flag, debug_flag
+  real, intent(in)                        :: stochastic_flag
   integer, dimension(IM,JM), intent(in)   :: iras, jras
   real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, ui, vi, thli, qti, qvi, qli, qii, thvi
@@ -635,7 +636,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
               
               ! Compute fractional entrainment rate
               if ( L0(i,j) > 0. ) then
-                 if ( stochastic_flag /= 0 ) then
+                 if ( stochastic_flag /= 0. ) then
                     ent(iup,i,j,k) = entf(iup,i,j,k)*ent0*idzle
                  else
                     call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
