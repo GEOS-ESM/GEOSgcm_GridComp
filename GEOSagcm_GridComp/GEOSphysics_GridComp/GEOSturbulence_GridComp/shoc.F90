@@ -817,7 +817,7 @@ contains
 !              smixt(i,j,k) = min(max_eddy_length_scale,  3.3*sqrt(wrk1))
            endif
            
-           if (USE_SUS12LEN/=0.) then
+           if (shocparams%SUS12LEN/=0.) then
              wrk2 = 1.5/(400.*tkes)
              wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
              wrk1 = 1.0/(wrk2+wrk3)
