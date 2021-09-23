@@ -287,13 +287,6 @@ subroutine SetServices ( GC, RC )
     ! 4: import AGCM model CO2 (AGCM only)
     call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=2  , __RC__ )   
 
-    ! PRESCRIBE_DVG: Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
-    ! 0--NO Run CN Model interactively
-    ! 1--YES Prescribe interannually varying LAI and SAI
-    ! 2--YES Prescribe climatological LAI and SAI
-    ! 3--Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
-    call MAPL_GetResource (SCF, PRESCRIBE_DVG, label='PRESCRIBE_DVG:', DEFAULT=0  , __RC__ )
-
     ! SCALE_ALBFPAR: Scale CATCHCN ALBEDO and FPAR
     ! 0-- NO scaling is performed
     ! 1-- Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
