@@ -3012,7 +3012,7 @@ contains
     integer  :: ncolumns
 
     character(len=ESMF_MAXSTR) :: GRIDNAME
-    character(len=4)           :: imchar
+    character(len=5)           :: imchar
     character(len=2)           :: dateline
     integer                    :: imsize,nn
 
