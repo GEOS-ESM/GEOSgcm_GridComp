@@ -1886,11 +1886,6 @@ contains
       TTDYN = -1.0 * TTDYN 
       QTDYN = -1.0 * QTDYN / 1000.
 
-      ! Test
-      do L = 1,LM
-         write(*,*) '*', DT*UTDYN(:,:,L), U(:,:,L), U(:,:,L) + DT*UTDYN(:,:,L)
-      end do
-
 ! diagnostics for tracers that are friendly to dynamics (and advected)
    if ( SIZE(qnamearr) > 0 ) then
     ntracs = SIZE(qnamearr)
@@ -2503,10 +2498,6 @@ contains
 
     ! This needs to be protected against having
     ! RELAX_TO_OBS=1 when USE_ASCII_DATA=.F.
-
-    do L = 1,LM
-       write(*,*) '**', UTPHYS(:,:,L), U(:,:,L), U(:,:,L) + DT*UTPHYS(:,:,L)
-    end do
 
     U = U + ( 1. - RELAX_TO_OBS ) * DT * UTPHYS / DELTAP 
     V = V + ( 1. - RELAX_TO_OBS ) * DT * VTPHYS / DELTAP 
