@@ -694,13 +694,13 @@ contains
 !         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
 !     VERIFY_(STATUS)
 !-srf-gf-scheme
-    call MAPL_AddExportSpec ( gc,                                 &
-         SHORT_NAME = 'ZPBL_ANA',                                 &
-         LONG_NAME  = 'fake_observed_pbl_depth',                  &
-         UNITS      = 'm',                                        &
-         DIMS       = MAPL_DimsHorzOnly,                          &
-         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
-    VERIFY_(STATUS)
+!    call MAPL_AddExportSpec ( gc,                                 &
+!         SHORT_NAME = 'ZPBL_ANA',                                 &
+!         LONG_NAME  = 'fake_observed_pbl_depth',                  &
+!         UNITS      = 'm',                                        &
+!         DIMS       = MAPL_DimsHorzOnly,                          &
+!         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
+!    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'QV_DYN_IN',                                 &
@@ -1209,7 +1209,7 @@ contains
     real, pointer, dimension(:,:)   :: TSAIROBS
     real, pointer, dimension(:,:)   :: TGSOILOBS
     real, pointer, dimension(:,:)   :: PS, SGH, PHIS, PHISOU
-    real, pointer, dimension(:,:)   :: ZPBL
+!    real, pointer, dimension(:,:)   :: ZPBL
     real, pointer, dimension(:,:)   :: DZ
     real, pointer, dimension(:,:)   :: TA
     real, pointer, dimension(:,:)   :: SPEED
@@ -1642,7 +1642,7 @@ contains
       call MAPL_GetPointer(EXPORT, TDYN,  'T_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, UDYN,  'U_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, VDYN,  'V_DYN_IN' , __RC__)
-      call MAPL_GetPointer(EXPORT, ZPBL, 'ZPBL_ANA' , __RC__)
+!      call MAPL_GetPointer(EXPORT, ZPBL, 'ZPBL_ANA' , __RC__)
       call MAPL_GetPointer(EXPORT, PLEDYN,  'PLE_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDXC,  'DXC' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDYC,  'DYC' , __RC__)
@@ -2001,12 +2001,12 @@ contains
           end if
         end if
       end if
-      ZPBL = -999.
-      if (abs(DALmag).gt.0.) then
-        if (I_time_step .ge. DAstrt .and. I_time_step.le.DAstop) then
-          ZPBL = DALmag 
-        end if
-      end if
+!      ZPBL = -999.
+!      if (abs(DALmag).gt.0.) then
+!        if (I_time_step .ge. DAstrt .and. I_time_step.le.DAstop) then
+!          ZPBL = DALmag 
+!        end if
+!      end if
 
       call MAPL_GetPointer(EXPORT  , STATICEN  , 'S'  , __RC__)
       STATICEN  = MAPL_GRAV * ( ZLE(:,:,1:LM) + ZLE(:,:,0:LM-1) ) * 0.5 + MAPL_CP * T

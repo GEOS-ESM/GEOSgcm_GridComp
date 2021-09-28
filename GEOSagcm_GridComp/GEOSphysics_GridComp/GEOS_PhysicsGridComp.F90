@@ -333,13 +333,13 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec ( gc,                                 &
-         SHORT_NAME = 'ZPBL_ANA',                                 &
-         LONG_NAME  = 'fake_observed_pbl_height',                 &
-         UNITS      = 'm',                                        &
-         DIMS       = MAPL_DimsHorzOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
-    VERIFY_(STATUS)
+!    call MAPL_AddImportSpec ( gc,                                 &
+!         SHORT_NAME = 'ZPBL_ANA',                                 &
+!         LONG_NAME  = 'fake_observed_pbl_height',                 &
+!         UNITS      = 'm',                                        &
+!         DIMS       = MAPL_DimsHorzOnly,                           &
+!         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
+!    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                 &
          SHORT_NAME = 'PLE_DYN_IN',                                 &
