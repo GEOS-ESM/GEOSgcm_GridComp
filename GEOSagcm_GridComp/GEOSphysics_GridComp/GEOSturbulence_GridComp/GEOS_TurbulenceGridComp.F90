@@ -20,6 +20,7 @@ module GEOS_TurbulenceGridCompMod
   use LockEntrain
   use shoc
   use edmf_mod, only: run_edmf
+  use toy_surface, only : surface_layer, surface
 
 #ifdef _CUDA
   use cudafor
@@ -2350,6 +2351,53 @@ contains
 ! end of new internal states for the mass-flux
 !
 
+!
+! Start internal states for idealized SCM surface layer
+!
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'cu_scm',                                    &
+       LONG_NAME  = 'scm_surface_momentum_exchange_coefficient', &
+       UNITS      = 'ms-1',                                      &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DEFAULT    = 0.,                                          &
+       DIMS       = MAPL_DimsHorzOnly,                           &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'ct_scm',                                   &
+       LONG_NAME  = 'scm_surface_heat_exchange_coefficient',     &
+       UNITS      = 'ms-1',                                      &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DEFAULT    = 0.,                                          &
+       DIMS       = MAPL_DimsHorzOnly,                           &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'ssurf_scm',                                 &
+       LONG_NAME  = 'scm_surface_temperature',                   &
+       UNITS      = 'K',                                         &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DEFAULT    = 0.,                                          &
+       DIMS       = MAPL_DimsHorzOnly,                           &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'qsurf_scm',                                   &
+       LONG_NAME  = 'scm_surface_specific_humidity',             &
+       UNITS      = 'kgkg-1',                                    &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DEFAULT    = 0.,                                          &
+       DIMS       = MAPL_DimsHorzOnly,                           &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+!
+! End internal states for idealized SCM surface layer
+!
+
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'matrix_diagonal_ahat_for_scalars',                      &
        SHORT_NAME = 'AKS',                                                   &
@@ -2557,6 +2605,8 @@ contains
 
     call MAPL_TimerAdd(GC,   name="-RUN1"       ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,   name="---SURFACE" ,RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="---MASSFLUX" ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="--DIFFUSE"   ,RC=STATUS)
@@ -2688,6 +2738,9 @@ contains
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
+! Idealized SCM surface layer variables
+    real, dimension(:,:), pointer :: cu_scm, ct_scm, ssurf_scm, qsurf_scm
+
 ! Begin... 
 !---------
 
@@ -2749,6 +2802,16 @@ contains
     call MAPL_GetPointer(IMPORT, EVAP, 'EVAP',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WTHV2, 'WTHV2',    RC=STATUS)
+    VERIFY_(STATUS)
+
+!----- Variables for idealized SCM surface layer ------
+    call MAPL_GetPointer(INTERNAL, cu_scm,    'cu_scm', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, ct_scm,    'ct_scm', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, ssurf_scm, 'ssurf_scm', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, qsurf_scm, 'qsurf_scm', RC=STATUS)
     VERIFY_(STATUS)
 
 ! Get pointers from internal state
@@ -3008,8 +3071,6 @@ contains
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
    real, dimension(IM,JM,0:LM)          ::  ae3_test, aw3_test, aws3_test, awqv3_test, awql3_test, awqi3_test, awu3_test, awv3_test
 
-   real, dimension(IM,JM) :: zpbl_test
-
 #ifdef EDMF_DIAG
    real, dimension(:,:,:), pointer      :: edmf_w_plume1,edmf_w_plume2,edmf_w_plume3,edmf_w_plume4, &
                                            edmf_w_plume5,edmf_w_plume6,edmf_w_plume7, &
@@ -3064,6 +3125,30 @@ contains
      integer :: EDMF_TEST
      integer :: EDMF_DEBUG
 
+     ! SCM idealized surface layer parameters
+     integer :: SCM_SL          ! 0:    use exchange coefficients from surface grid comp
+                                ! else: idealized surface layer specified in AGCM.rc
+     integer :: SCM_SL_FLUX     ! 0: prescribed roughness length and surface relative humidity,
+                                !    all fluxes from surface layer theory
+                                ! 1: prescribed thermodynamic fluxes,
+                                !    along with roughness length roughness length and surface relative humidity
+                                !    momentum fluxes from surface layer theory
+                                ! 2: prescribed Monin-Obhkov length,
+                                !    along with roughness length and surface relative humidity,
+                                !    all fluxes from surface layer theory
+                                ! else: use prescribed surface exchange coefficients
+     real    :: SCM_SH          ! prescribed surface sensible heat flux (Wm-1) (for SCM_SL_FLUX == 1)
+     real    :: SCM_EVAP        ! prescribed surface latent heat flux (Wm-1) (for SCM_SL_FLUX == 1)
+     real    :: SCM_Z0          ! surface roughness length (m)
+     real    :: SCM_ZETA        ! Monin-Obkhov length scale (m) (for SCM_SL_FLUX == 2)
+     real    :: SCM_RH_SURF     ! Surface relative humidity
+     real    :: SCM_TSURF       ! Sea surface temperature (K)
+     
+     ! SCM idealized surface parameters
+     integer :: SCM_SURF      ! 0:    native surface from GEOS
+                              ! else: idealized surface with prescribed cooling
+     real    :: SCM_DTDT_SURF ! Surface heating rate (Ks-1)
+
      real :: edmf_wa, edmf_wb, edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb, c_kh_mf
 
      real,dimension(IM,JM) :: L02
@@ -3071,6 +3156,9 @@ contains
 
      real,dimension(IM,JM,LM)           :: QT,THL,HL,EXF
      real    :: alfac
+
+! Variables for idealized surface layer     
+     real, dimension(IM,JM), target :: ustar_data, sh_data, evap_data, wstar, zeta
 
 ! local mass-flux variables
      real, dimension(im,jm,0:lm)     :: edmfdrya,edmfmoista, edmfdryw,edmfmoistw, &
@@ -3686,8 +3774,60 @@ contains
 
     call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
 
+    call MAPL_GetResource(MAPL, SCM_SURF,      'SCM_SURF:', DEFAULT=0 )
+    call MAPL_GetResource(MAPL, SCM_DTDT_SURF, 'SCM_DTDT_SURF:', DEFAULT=0. )
 
-     call MAPL_TimerOn(MAPL,"---MASSFLUX")
+    call MAPL_GetResource(MAPL, SCM_SL,        'SCM_SL:',        DEFAULT=0 )
+    call MAPL_GetResource(MAPL, SCM_SL_FLUX,   'SCM_SL_FLUX:', DEFAULT=0 )
+    call MAPL_GetResource(MAPL, SCM_SH,        'SCM_SH:',      DEFAULT=0. )
+    call MAPL_GetResource(MAPL, SCM_EVAP,      'SCM_EVAP:',    DEFAULT=0. )
+    call MAPL_GetResource(MAPL, SCM_Z0,        'SCM_Z0:',      DEFAULT=1.E-4 )
+    call MAPL_GetResource(MAPL, SCM_RH_SURF,   'SCM_RH_SURF:', DEFAULT=0.98 )
+    call MAPL_GetResource(MAPL, SCM_TSURF,     'SCM_TSURF:',   DEFAULT=298.76 ) ! S6
+!    call MAPL_GetResource(MAPL, SCM_TSURF,    'SCM_TSURF:',    DEFAULT=292.46 ) ! S11
+!    call MAPL_GetResource(MAPL, SCM_TSURF,    'SCM_TSURF:',    DEFAULT=290.96 ) ! S12
+    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.012957419628129 ) ! S6
+!    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.013215659785478 ) ! S11
+!    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.007700882024895 ) ! S12
+
+    ! Idealized surface layer
+    th00 = 300.
+
+    if ( SCM_SL /= 0 ) then
+       call MAPL_TimerOn(MAPL,"---SURFACE")
+
+       if ( SCM_SL_FLUX == 1 ) then
+          sh_data(:,:)   = scm_sh
+          evap_data(:,:) = scm_evap/mapl_alhl
+       elseif ( SCM_SL_FLUX == 2 ) then
+          zeta(:,:) = scm_zeta
+       end if
+
+       call surface(IM, JM, LM, &                                         ! in
+                    SCM_SL_FLUX, SCM_TSURF, SCM_RH_SURF, SCM_DTDT_SURF, & ! in
+                    dt, ple, &                                            ! in
+                    ssurf_scm, &                                          ! inout
+                    qsurf_scm)                                            ! out
+
+       call surface_layer(IM, JM, LM, &
+                          SCM_SL_FLUX, SCM_Z0, &
+                          th00, zpbl, ssurf_scm, qsurf_scm, &
+                          z, zle, ple, rhoe, u, v, T, q, &
+                          sh_data, evap_data, zeta, &
+                          ustar_data, cu_scm, ct_scm)
+
+       cu => cu_scm
+       ct => ct_scm
+       cq => ct_scm
+       
+       ustar => ustar_data
+       sh    => sh_data
+       evap  => evap_data
+
+       call MAPL_TimerOff(MAPL,"---SURFACE")
+    end if
+
+    call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
 
     ! Interpolate EDMF profiles to half levels 
@@ -3717,7 +3857,7 @@ edmf_hlqt = 0.0
 IF(DoMF /= 0.) then
     
    aw3 = 0.0
-   th00 = 300.
+!   th00 = 300.
      
    IRAS       = nint(LONS*100)
    JRAS       = nint(LATS*100)
@@ -4991,6 +5131,11 @@ ENDIF
    YU(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( AWU3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWU3(:,:,0:LM-2) )
    YV(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( AWV3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2) )
 
+   ! Add prescribed surface fluxes
+   if ( SCM_SL /= 0 .and. SCM_SL_FLUX == 1 ) then
+      YS(:,:,LM)  = YS(:,:,LM)  + DMI(:,:,LM)*SH(:,:)/RHOE(:,:,LM)
+      YQV(:,:,LM) = YQV(:,:,LM) + DMI(:,:,LM)*EVAP(:,:)/RHOE(:,:,LM)
+   end if
 
       ! Add the topographic roughness term
       ! ----------------------------------
@@ -5173,8 +5318,29 @@ ENDIF
 
     integer :: i, j, ll
 
-! AMM pointer to export of S after diffuse
+    ! Parameters for idealized SCM surface layer
+    integer :: SCM_SL, SCM_SL_FLUX
+    real    :: SCM_SH, SCM_EVAP
+
+    ! AMM pointer to export of S after diffuse
     real, dimension(:,:,:), pointer     :: SAFDIFFUSE
+
+    ! Get info for idealized SCM surface layer
+    call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCM_SL_FLUX, 'SCM_SL_FLUX:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCM_SH,   'SCM_SH:',   default=0., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCM_EVAP, 'SCM_EVAP:', default=0., RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! Prescribed surface exchange coefficients
+    if ( SCM_SL /= 0 ) then
+       CU => cu_scm
+       CT => ct_scm
+       CQ => ct_scm
+    end if
 
 ! Get the bundles containing the quantities to be diffused, 
 !     their tendencies, their surface values, their surface
@@ -5284,9 +5450,19 @@ ENDIF
           VERIFY_(STATUS)
        end if
 
+       ! Add presribed fluxes
+       if ( SCM_SL /= 0 .and. SCM_SL_FLUX /= 1 ) then
+          if ( trim(name) == 'S' ) then
+             SG => ssurf_scm
+          end if
+          if ( trim(name) == 'Q' ) then
+             SG => qsurf_scm
+          end if
+       end if
+
 ! Pick the right exchange coefficients
 !-------------------------------------
-
+       
 if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') & 
      .and. (trim(name) /= 'QILS') .and.  (trim(name) /= 'U') .and. (trim(name) /= 'V')) then
     
@@ -5308,8 +5484,8 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        endif
 
 ! Copy diffused quantity to temp buffer
-! ------------------------------------------
-       
+! ------------------------------------------      
+
        SX = S
 
  elseif (trim(name) =='S') then
@@ -5356,10 +5532,18 @@ if (any(isnan(SX))) print *,'SX has NaN in DIFFUSE'
 !---------------------------
 
        if(associated(SF)) then
-          if(size(SG)>0) then
-             SF = CX*(SG - SX(:,:,LM))
+          if ( SCM_SL /= 0 .and. SCM_SL_FLUX == 1 ) then
+             if ( trim(name) == 'S' ) then
+                SF(:,:) = scm_sh
+             elseif ( trim(name) == 'Q' ) then
+                SF(:,:) = scm_evap/mapl_alhl
+             end if
           else
-             SF = 0.0
+             if(size(SG)>0) then
+                SF = CX*(SG - SX(:,:,LM))
+             else
+                SF = 0.0
+             end if
           end if
        end if
 

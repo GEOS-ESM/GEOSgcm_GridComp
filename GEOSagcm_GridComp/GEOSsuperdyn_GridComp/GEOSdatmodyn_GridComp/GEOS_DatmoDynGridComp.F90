@@ -17,6 +17,7 @@ module GEOS_DatmoDynGridCompMod
   use MAPL
   use PPM
   use cfmip_data_mod
+  use MAPL_PhysicalConstantsMod, only : MAPL_OMEGA
   
   implicit none
   private
@@ -137,19 +138,19 @@ contains
                                                         __RC__  )
     
     call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME='U  ',                                      &
-         LONG_NAME ='Zonal wind ',        &
-         UNITS     ='m/s',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
+         SHORT_NAME ='U  ',                                     &
+         LONG_NAME  ='Zonal wind ',                             &
+         UNITS      ='m/s',                                     &
+         DIMS       = MAPL_DimsHorzVert,                        &
+         VLOCATION  = MAPL_VLocationCenter,                     &
                                                         __RC__  )
     
     call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME='V  ',                                      &
-         LONG_NAME ='meridional wind',        &
-         UNITS     ='m/s',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
+         SHORT_NAME = 'V  ',                                      &
+         LONG_NAME  = 'meridional wind',                          &
+         UNITS      = 'm/s',                                      &
+         DIMS       = MAPL_DimsHorzVert,                         &
+         VLOCATION  = MAPL_VLocationCenter,                      &
                                                         __RC__  )
     
     call MAPL_AddInternalSpec(GC,                               &
@@ -1176,7 +1177,12 @@ contains
     real    :: DT,Fac0,Fac1,DTXX,RELAX_TO_OBS
     real    :: OROGSGH 
     
-    logical :: INTERACTIVE_WIND
+    real, dimension(:,:), allocatable :: F0
+    real :: SCM_UG, SCM_VG
+    integer :: SCM_CORIOLIS ! 0:    Coriolis acceleration off
+                            ! else: Coriolis acceleration on
+    integer :: SCM_WIND ! 0:    use observed winds
+                        ! else: use interactive winds
 
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
 
@@ -1334,8 +1340,15 @@ contains
 
     call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
     
-    call ESMF_ConfigGetAttribute ( CF, INTERACTIVE_WIND,  Label="INTERACTIVE_WIND:", & 
-                                         DEFAULT=.false.,  __RC__)
+    ! Idealized SCM parameters
+    call ESMF_ConfigGetAttribute ( CF, SCM_WIND, Label="SCM_WIND:", & 
+                                         DEFAULT=0,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_CORIOLIS, Label="SCM_CORIOLIS:", & 
+                                         DEFAULT=0,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_UG,  Label="SCM_UG:", & 
+                                         DEFAULT=0.,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_VG,  Label="SCM_VG:", & 
+                                         DEFAULT=0.,  __RC__)
 
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
                                          DEFAULT=0.00,  __RC__)
@@ -1805,7 +1818,6 @@ contains
      ALLOCATE( PLO(IM,JM,1:LM), __STAT__ )
    ALLOCATE( ZLO(IM,JM,1:LM), __STAT__ )    
 
- 
      do l=0,lm
         PLE(:,:,l)   = ( Fac0*PLE_DATA(ii,l) + Fac1*PLE_DATA(iip1,l) )
      end do
@@ -1816,17 +1828,15 @@ contains
       DELTAP = ( PLE(:,:,1:LM) - PLE(:,:,0:LM-1) )
       
       do l=1,lm
-        QOBS(:,:,l)=( Fac0*QQ(ii,l) + Fac1*QQ(iip1,l) )/1000.
-        TOBS(:,:,l)=( Fac0*TT(ii,l) + Fac1*TT(iip1,l) )
-        if ( .not. INTERACTIVE_WIND ) then
-           U(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
-           V(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
-        else
+        if ( SCM_WIND /= 0 ) then
            UOBS(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
            VOBS(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
+        else
+           U(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
+           V(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
         end if
-        U(:,:,l)   =( Fac0*UU(ii,l) + Fac1*UU(iip1,l) )
-        V(:,:,l)   =( Fac0*VV(ii,l) + Fac1*VV(iip1,l) )
+        QOBS(:,:,l)=( Fac0*QQ(ii,l) + Fac1*QQ(iip1,l) )/1000.
+        TOBS(:,:,l)=( Fac0*TT(ii,l) + Fac1*TT(iip1,l) )
         QLOBS(:,:,l)=( Fac0*QLQL(ii,l) + Fac1*QLQL(iip1,l) ) 
         QIOBS(:,:,l)=( Fac0*QiQi(ii,l) + Fac1*QiQi(iip1,l) )
       end do
@@ -1848,9 +1858,19 @@ contains
         OMOBS(:,:,L) = ( Fac0*OMEGA(ii,l)    + Fac1*OMEGA(iip1,l) )
       end do
 
+      if ( SCM_CORIOLIS /= 0 ) then
+         allocate(F0(IM,JM))
+         F0(:,:) = 2.*MAPL_OMEGA*sin( LATS(:,:) )
+      end if
+
        do l=1,lm
-        UTDYN(:,:,l) = 0. ! temporary
-        VTDYN(:,:,l) = 0. ! temporary
+          if ( SCM_CORIOLIS == 0 ) then
+             UTDYN(:,:,l) = 0.
+             VTDYN(:,:,l) = 0.
+          else
+             UTDYN(:,:,l) = F0*( V(:,:,l) - SCM_VG )
+             VTDYN(:,:,l) = -F0*( U(:,:,l) - SCM_UG )
+          end if         
         QTDYN(:,:,l) = &
          Fac0*( vc(1)*Q_H_ADV(ii,l)  + vc(2)*Q_V_ADV(ii,l)   + vc(3)*Q_t_DYN(ii,l) + vc(4)*Q_ana(ii,l) ) & 
       +  Fac1*( vc(1)*Q_H_ADV(iip1,l)+ vc(2)*Q_V_ADV(iip1,l) + vc(3)*Q_t_DYN(iip1,l) + vc(4)*Q_ana(iip1,l) ) 
@@ -1859,8 +1879,17 @@ contains
      +   Fac1*( vc(1)*T_H_ADV(iip1,l)+ vc(2)*T_V_ADV(iip1,l) + vc(3)*T_t_DYN(iip1,l) + vc(4)*T_ana(iip1,l) ) 
       enddo!
 
+      if ( SCM_CORIOLIS /= 0 ) then
+         deallocate(F0)
+      end if
+
       TTDYN = -1.0 * TTDYN 
       QTDYN = -1.0 * QTDYN / 1000.
+
+      ! Test
+      do L = 1,LM
+         write(*,*) '*', DT*UTDYN(:,:,L), U(:,:,L), U(:,:,L) + DT*UTDYN(:,:,L)
+      end do
 
 ! diagnostics for tracers that are friendly to dynamics (and advected)
    if ( SIZE(qnamearr) > 0 ) then
@@ -1884,7 +1913,7 @@ contains
        else
         blendwgt = 1.
        endif
-!       if ( INTERACTIVE_WIND ) then
+!       if ( SCM_WIND /= 0 ) then
 !          UOBS(i,j,L) = UOBS(i,j,L) * blendwgt + U(i,j,L) * ( 1. - blendwgt )
 !          VOBS(i,j,L) = VOBS(i,j,L) * blendwgt + V(i,j,L) * ( 1. - blendwgt )
 !       end if
@@ -1895,7 +1924,7 @@ contains
       enddo
      endif
       if ( AT_START ) then
-        if ( INTERACTIVE_WIND ) then
+        if ( SCM_WIND /= 0 ) then
            U = UOBS
            V = VOBS
         end if
@@ -1927,7 +1956,6 @@ contains
 
      ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
 
-
         ! These quantities are special. Used in SFC to calculate CDs 
         ! In 3D GEOS5 they are just set == values_at_LM
       QA(:,:)     = (1.0-RELAX_TO_OBS)*Q(:,:,LM) + RELAX_TO_OBS*     &
@@ -1936,7 +1964,7 @@ contains
 
 ! Load tendency diagnostics with 'before' values
 
-      if ( INTERACTIVE_WIND ) then 
+      if ( SCM_WIND /= 0 ) then 
          if ( associated(DUDTDYN) ) DUDTDYN  = U
          if ( associated(DVDTDYN) ) DVDTDYN  = V
       end if
@@ -1954,7 +1982,7 @@ contains
 
 ! Increment T and Q with  tendencies from dataset that we are using
       if ( .NOT. AT_START ) then
-        if ( INTERACTIVE_WIND ) then
+        if ( SCM_WIND /= 0 ) then
            U = U + ( 1.0 - RELAX_TO_OBS ) * DT * UTDYN + RELAX_TO_OBS*( UOBS - U )
            V = V + ( 1.0 - RELAX_TO_OBS ) * DT * VTDYN + RELAX_TO_OBS*( VOBS - V )
         end if
@@ -2002,7 +2030,7 @@ contains
       endif
       T  = TH * ( ( PLO / MAPL_P00 )**MAPL_KAPPA )
 
-      if ( INTERACTIVE_WIND ) then 
+      if ( SCM_WIND /= 0 ) then 
          if ( associated(DUDTDYN) ) DUDTDYN = ( U - DUDTDYN  ) / DT
          if ( associated(DVDTDYN) ) DVDTDYN = ( V - DVDTDYN  ) / DT
       else
@@ -2074,13 +2102,13 @@ contains
            CFMIPRLX1=1./3600.
            endwhere
 
-         if ( INTERACTIVE_WIND ) then
+         if ( SCM_WIND /= 0 ) then
             U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
             V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
          end if
          T = T - CFMIPRLX * ( T - TOBS ) * DT 
          Q = Q - CFMIPRLX * ( Q - QOBS ) * DT-CFMIPRLX1*(Q-qfloor)*DT  
-         if ( INTERACTIVE_WIND ) then
+         if ( SCM_WIND /= 0 ) then
             if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
             if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
          end if
@@ -2105,13 +2133,13 @@ contains
          where( CFMIPRLX > 0.000 )
              CFMIPRLX = 1./ CFMIPRLX 
          endwhere
-         if ( INTERACTIVE_WIND ) then
+         if ( SCM_WIND /= 0 ) then
             U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
             V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
          end if
          T = T - CFMIPRLX * ( T - TOBS ) * DT 
          Q = Q - CFMIPRLX * ( Q - QOBS ) * DT  
-         if ( INTERACTIVE_WIND ) then
+         if ( SCM_WIND /= 0 ) then
             if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
             if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
          end if
@@ -2420,11 +2448,13 @@ contains
    character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 
-  real, pointer, dimension(:,:,:) :: T, TTPHYS,PLE,ZLE,S
+  real, pointer, dimension(:,:,:) :: U, V, T, UTPHYS, VTPHYS, TTPHYS, PLE, ZLE, S
   integer :: IM,JM,LM
 
   real    :: RELAX_TO_OBS,DTXX,DT
   real, allocatable, dimension(:,:,:) :: DELTAP,ZLO
+
+  integer :: L
 
 !=============================================================================
 
@@ -2450,14 +2480,17 @@ contains
                    CF       = CF,                &
                    INTERNAL_ESMF_STATE=INTERNAL, &
                     __RC__ )
-    
-    call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
+        call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
                                    DEFAULT=0.00,  __RC__)
     DT=DTXX
 
     call MAPL_GetPointer(INTERNAL, PLE, 'PLE', __RC__)
+    call MAPL_GetPointer(INTERNAL, U,   'U'  , __RC__)
+    call MAPL_GetPointer(INTERNAL, V,   'V'  , __RC__)
     call MAPL_GetPointer(INTERNAL, T,   'T'  , __RC__)
+    call MAPL_GetPointer(IMPORT  , UTPHYS, 'DUDT', __RC__)
+    call MAPL_GetPointer(IMPORT  , VTPHYS, 'DVDT', __RC__)
     call MAPL_GetPointer(IMPORT  , TTPHYS, 'DTDT', __RC__)
     call MAPL_GetPointer(EXPORT  , ZLE, 'ZLE', __RC__)
     call MAPL_GetPointer(EXPORT  , S  , 'S'  , __RC__)
@@ -2471,7 +2504,13 @@ contains
     ! This needs to be protected against having
     ! RELAX_TO_OBS=1 when USE_ASCII_DATA=.F.
 
-    T = T +  (1.0-RELAX_TO_OBS) * DT * TTPHYS / DELTAP 
+    do L = 1,LM
+       write(*,*) '**', UTPHYS(:,:,L), U(:,:,L), U(:,:,L) + DT*UTPHYS(:,:,L)
+    end do
+
+    U = U + ( 1. - RELAX_TO_OBS ) * DT * UTPHYS / DELTAP 
+    V = V + ( 1. - RELAX_TO_OBS ) * DT * VTPHYS / DELTAP 
+    T = T + ( 1. - RELAX_TO_OBS ) * DT * TTPHYS / DELTAP 
 
     S  = MAPL_GRAV * ZLO + MAPL_CP * T
 
