@@ -2869,14 +2869,12 @@ contains
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
-<<<<<<< HEAD
 ! SL3-related variables
     real, dimension(:,:,:), pointer :: hl2_sl3, hlqt_sl3, A_sl3, B_sl3
     real, dimension(:,:,:), pointer :: AKTKE, BKTKE, BKTPE, CKTKE, YTKE, YQT2, YHL2, YHLQT
-=======
+
 ! Idealized SCM surface layer variables
     real, dimension(:,:), pointer :: cu_scm, ct_scm, ssurf_scm, qsurf_scm
->>>>>>> feature/davidandrewnew/#461-shoc-update
 
 ! Begin... 
 !---------
@@ -2996,10 +2994,6 @@ contains
     call MAPL_GetPointer(INTERNAL, QT2,    'QT2',     RC=STATUS)
     VERIFY_(STATUS)
 
-<<<<<<< HEAD
-    call MAPL_GetPointer(INTERNAL, TKH,   'TKH',    RC=STATUS)
-    VERIFY_(STATUS)
-
 ! SL3-related variables
     call MAPL_GetPointer(INTERNAL, hl2_sl3, 'HL2_SL3', RC=STATUS)
     VERIFY_(STATUS)
@@ -3021,8 +3015,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, YHLQT,  'YHLQT',    RC=STATUS)
     VERIFY_(STATUS)
-=======
->>>>>>> feature/davidandrewnew/#461-shoc-update
+
 !
 ! edmf variables
 !
@@ -3438,15 +3431,12 @@ contains
      call MAPL_GetPointer(IMPORT,MFW, 'MFW',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,MFAREA, 'MFAREA',RC=STATUS); VERIFY_(STATUS)
 
-<<<<<<< HEAD
      ! SL3-related imports
      call MAPL_GetPointer(IMPORT,    A_sl3,    'A_SL3', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,    B_sl3,    'B_SL3', RC=STATUS); VERIFY_(STATUS)
 
 !     print *,'TurbGC: MFTHSRC(:,:,1:10)=',MFTHSRC(:,:,1:10)
 !     print *,'TurbGC: MFQTSRC(:,:,1:10)=',MFQTSRC(:,:,1:10)
-=======
->>>>>>> feature/davidandrewnew/#461-shoc-update
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
@@ -4347,7 +4337,6 @@ ENDIF
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-<<<<<<< HEAD
         call run_sl3(IM, JM, LM, &
                      plo, z, zle, &
                      A_sl3, B_sl3, &
@@ -4376,8 +4365,8 @@ ENDIF
 !!$                       U(:,:,1:LM),           &
 !!$                       V(:,:,1:LM),           &
 !!$                       OMEGA(:,:,1:LM),       &
-!!$                       SH(:,:),               &
-!!$                       EVAP(:,:),             &
+!!$!                       SH(:,:),               &
+!!$!                       EVAP(:,:),             &
 !!$                       T(:,:,1:LM),           &
 !!$                       Q(:,:,1:LM),           &
 !!$                       QI(:,:,1:LM),          &
@@ -4389,7 +4378,7 @@ ENDIF
 !!$                       PRANDTLSHOC(:,:,1:LM), &
 !!$                       !== Input-Outputs ==
 !!$                       TKESHOC(:,:,1:LM),     &
-!!$                       TKH(:,:,1:LM),         &
+!!$                       KH(:,:,1:LM),          &
 !!$                       !== Outputs ==
 !!$                       ISOTROPY(:,:,1:LM),    &
 !!$                       !== Diagnostics ==  ! not used elsewhere
@@ -4406,88 +4395,22 @@ ENDIF
 !!$                       BRUNTSHOC,             &
 !!$                       SHEARSHOC,             &
 !!$                       !== Tuning params ==
-!!$                       SHC_LAMBDA,            &
-!!$                       SHC_TSCALE,            &
-!!$                       SHC_VONK,              &
-!!$                       SHC_CK,                &
-!!$                       SHC_CEFAC,             &
-!!$                       SHC_CESFAC,            &
-!!$                       SHC_THL2TUNE,          &
-!!$                       SHC_QW2TUNE,           &
-!!$                       SHC_QWTHL2TUNE,        &
-!!$                       SHC_DO_TRANS,          &
-!!$                       SHC_DO_CLDLEN,         &
-!!$                       SHC_USE_MF_PDF,        &
-!!$                       SHC_USE_MF_BUOY,       &
-!!$                       SHC_USE_SUS12LEN,      &
-!!$                       SHC_BUOY_OPTION )
+!!$                       SHOCPARAMS )
+!!$!                       SHC_LAMBDA,            &
+!!$!                       SHC_TSCALE,            &
+!!$!                       SHC_VONK,              &
+!!$!                       SHC_CK,                &
+!!$!                       SHC_CEFAC,             &
+!!$!                       SHC_CESFAC,            &
+!!$!                       SHC_THL2TUNE,          &
+!!$!                       SHC_QW2TUNE,           &
+!!$!                       SHC_QWTHL2TUNE,        &
+!!$!                       SHC_DO_TRANS,          &
+!!$!                       SHC_DO_CLDLEN,         &
+!!$!                       SHC_USE_SUS12LEN,      &
+!!$!                       SHC_BUOY_OPTION )
 !!$
-!!$        TKH = max(0.,TKH)
-!!$
-!!$        KH(:,:,1:LM) = TKH(:,:,1:LM)
-!!$        KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
-=======
-        ! for now just use fixed values
-        QPI = 0.
-        QPL = 0.
-        PRANDTLSHOC = 0.9
-
-        call RUN_SHOC( IM, JM, LM, LM+1, DT, &
-                       !== Inputs ==
-                       DT/DMI(:,:,1:LM),      &
-                       PLO(:,:,1:LM),         &
-                       ZLE(:,:,0:LM),         &
-                       Z(:,:,1:LM),           &
-                       U(:,:,1:LM),           &
-                       V(:,:,1:LM),           &
-                       OMEGA(:,:,1:LM),       &
-!                       SH(:,:),               &
-!                       EVAP(:,:),             &
-                       T(:,:,1:LM),           &
-                       Q(:,:,1:LM),           &
-                       QI(:,:,1:LM),          &
-                       QL(:,:,1:LM),          &
-                       QPI(:,:,1:LM),         &
-                       QPL(:,:,1:LM),         &
-                       QA(:,:,1:LM),          &
-                       WTHV2(:,:,1:LM),       &
-                       PRANDTLSHOC(:,:,1:LM), &
-                       !== Input-Outputs ==
-                       TKESHOC(:,:,1:LM),     &
-                       KH(:,:,1:LM),          &
-                       !== Outputs ==
-                       ISOTROPY(:,:,1:LM),    &
-                       !== Diagnostics ==  ! not used elsewhere
-                       TKEDISS,               &
-                       TKEBUOY,               &
-                       TKESHEAR,              &
-                       TKETRANS,              &
-                       LSHOC,                 &
-                       LSHOC_CLR,             &
-                       LSHOC_CLD,             &
-                       LSHOC1,                &
-                       LSHOC2,                &
-                       LSHOC3,                &
-                       BRUNTSHOC,             &
-                       SHEARSHOC,             &
-                       !== Tuning params ==
-                       SHOCPARAMS )
-!                       SHC_LAMBDA,            &
-!                       SHC_TSCALE,            &
-!                       SHC_VONK,              &
-!                       SHC_CK,                &
-!                       SHC_CEFAC,             &
-!                       SHC_CESFAC,            &
-!                       SHC_THL2TUNE,          &
-!                       SHC_QW2TUNE,           &
-!                       SHC_QWTHL2TUNE,        &
-!                       SHC_DO_TRANS,          &
-!                       SHC_DO_CLDLEN,         &
-!                       SHC_USE_SUS12LEN,      &
-!                       SHC_BUOY_OPTION )
-
-        KM(:,:,1:LM) = KH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
->>>>>>> feature/davidandrewnew/#461-shoc-update
+!!$        KM(:,:,1:LM) = KH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
