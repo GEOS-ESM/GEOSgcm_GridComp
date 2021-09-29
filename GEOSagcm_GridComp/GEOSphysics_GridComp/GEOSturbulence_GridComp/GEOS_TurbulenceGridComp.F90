@@ -19,7 +19,7 @@ module GEOS_TurbulenceGridCompMod
   use MAPL
   use LockEntrain
   use shoc
-  use sl3, only : run_sl3
+  use sl3, only : run_sl3, B1_sl3, B2_sl3
 
 #ifdef _CUDA
   use cudafor
@@ -2222,6 +2222,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'matrix_diagonal_bhat_for_tpe',                          &
+       SHORT_NAME = 'BKTPE',                                                 &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+       RESTART    = MAPL_RestartSkip,                            &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'matrix_diagonal_chat_for_tke',                          &
        SHORT_NAME = 'CKTKE',                                                 &
        UNITS      = '1',                                                     &
@@ -2809,7 +2819,7 @@ contains
 
 ! SL3-related variables
     real, dimension(:,:,:), pointer :: hl2_sl3, hlqt_sl3, A_sl3, B_sl3
-    real, dimension(:,:,:), pointer :: AKTKE, BKTKE, CKTKE, YTKE, YQT2, YHL2, YHLQT
+    real, dimension(:,:,:), pointer :: AKTKE, BKTKE, BKTPE, CKTKE, YTKE, YQT2, YHL2, YHLQT
 
 ! Begin... 
 !---------
@@ -2930,6 +2940,8 @@ contains
     call MAPL_GetPointer(INTERNAL, AKTKE,   'AKTKE',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, BKTKE,   'BKTKE',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, BKTPE,   'BKTPE',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CKTKE,   'CKTKE',     RC=STATUS)
     VERIFY_(STATUS)
@@ -4119,23 +4131,19 @@ ENDIF
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-        write(*,*) 'foo1'
-
         call run_sl3(IM, JM, LM, &
                      plo, z, zle, &
                      A_sl3, B_sl3, &
                      u, v, s, qa, q, ql, qi, &
                      tkeshoc, qt2, hl2_sl3, hlqt_sl3, &
                      itau, km, kh, ws_explicit, wq_explicit, wql_explicit, &
-                     tkeshear, tkebuoy, qt2t_M, hl2t_M, hlqtt_M)
-
-        write(*,*) 'foo2'
+                     tket_M, tket_B, qt2t_M, hl2t_M, hlqtt_M)
 
         ! Set SHOC exports equal to SL3 internals
+        if ( associated(TKESHEAR) ) TKESHEAR = tket_M
+        if ( associated(TKEBUOY) )  TKEBUOY  = tket_B
         hl2  = hl2_sl3
         hlqt = hlqt_sl3
-
-        write(*,*) 'foo3'
 
 !!$        ! for now just use fixed values
 !!$        QPI = 0.
@@ -5009,7 +5017,6 @@ ENDIF
 !
 ! A,B,C,D-s for SL3
 !
-      write(*,*) 'foo4'
 
       AKTKE(:,:,1) = 0.
       
@@ -5018,14 +5025,13 @@ ENDIF
       CKTKE(:,:,1:LM-1) = -KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1)
       CKTKE(:,:,LM)     = -0.*DMI(:,:,LM)
 
-      BKTKE(:,:,:) = 1. + DT*( itau ) - ( CKTKE + AKTKE )
+      BKTKE(:,:,:) = 1. + DT*( itau/B1_SL3 ) - ( CKTKE + AKTKE )
+      BKTPE(:,:,:) = 1. + DT*( itau/B2_SL3 ) - ( CKTKE + AKTKE )
       
-      YTKE  = DT*( TKESHEAR + TKEBUOY )
+      YTKE  = DT*( tket_M + tket_B )
       YHL2  = DT*hl2t_M
       YQT2  = DT*qt2t_M
       YHLQT = DT*hlqtt_M
-
-        write(*,*) 'foo5'
 
     !
     ! A,B,C,D-s for mass flux
@@ -5476,17 +5482,17 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
  elseif (trim(name)=='QT2') then       
          CX => CU
          DX => DKUU
-         AK => AKTKE; BK => BKTKE; CK => CKTKE
+         AK => AKTKE; BK => BKTPE; CK => CKTKE
          SX=S+YQT2        
  elseif (trim(name)=='HL2_SL3') then       
          CX => CU
          DX => DKUU
-         AK => AKTKE; BK => BKTKE; CK => CKTKE
+         AK => AKTKE; BK => BKTPE; CK => CKTKE
          SX=S+YHL2        
  elseif (trim(name)=='HLQT_SL3') then       
          CX => CU
          DX => DKUU
-         AK => AKTKE; BK => BKTKE; CK => CKTKE
+         AK => AKTKE; BK => BKTPE; CK => CKTKE
          SX=S+YHLQT        
  end if
 
