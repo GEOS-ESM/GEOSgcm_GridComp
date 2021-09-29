@@ -295,6 +295,7 @@ contains
          jcol,           &
          nlev,           &
 ! Inputs
+!         zpbl_ana,       &
          tdtlw_in,       &
          u_star,         &
          b_star,         &
@@ -486,7 +487,7 @@ contains
       integer, intent(in)                                    :: icol,jcol,nlev
 
       real,    intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland
+      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland!,zpbl_ana
       real,    intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf ! 0:72 in GC, 1:73 here.
@@ -712,6 +713,13 @@ contains
                   u_star,           &
                   ipbl,zsml         )
 
+!             if (zpbl_ana(i,j).gt.0.) then
+!               zsml(i,j) = 0.5*(zsml(i,j)+zpbl_ana(i,j))
+!               ipbl = nlev
+!               do while (zfull(i,j,ipbl).lt.zsml(i,j))
+!                 ipbl = ipbl - 1
+!               end do
+!             end if
 !------------------------------------------------------
 ! Define velocity scales vsurf and vshear
 !           

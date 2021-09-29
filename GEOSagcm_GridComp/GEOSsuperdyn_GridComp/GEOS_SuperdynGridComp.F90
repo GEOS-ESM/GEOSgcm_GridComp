@@ -467,6 +467,12 @@ integer ::          ADV = -1
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
+!    call MAPL_AddExportSpec ( GC   ,                               &
+!         SHORT_NAME = 'ZPBL_ANA',                                  &
+!         CHILD_ID   = DYN,                                         &
+!                                                        RC=STATUS  )
+!    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PLE_DYN_IN',                                 &
          CHILD_ID   = DYN,                                         &

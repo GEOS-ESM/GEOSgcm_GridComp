@@ -935,11 +935,11 @@ contains
     call MAPL_AddConnectivity ( GC,                                         &
           SRC_NAME  = (/'DTDTDYN      ','DQVDTDYN     ','PLE_DYN_IN   ',    &
                         'U_DYN_IN     ','V_DYN_IN     ','QV_DYN_IN    ',    &
-                        'T_DYN_IN     '                                     &
+                        'T_DYN_IN     '&!,'ZPBL_ANA     '                     &
                       /),                                                   &
           DST_NAME  = (/'DTDTDYN      ','DQVDTDYN     ','PLE_DYN_IN   ',    &
                         'U_DYN_IN     ','V_DYN_IN     ','QV_DYN_IN    ',    &
-                        'T_DYN_IN     '                                     &
+                        'T_DYN_IN     '&!,'ZPBL_ANA     '                     &
                       /),                                                   &
           SRC_ID = SDYN,                                                    &
           DST_ID = PHYS,                                                    &

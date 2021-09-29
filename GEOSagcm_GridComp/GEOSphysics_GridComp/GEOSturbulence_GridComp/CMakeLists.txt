@@ -5,6 +5,9 @@ set (srcs
   LockEntrain.F90
   shoc.F90
   sl3.F90
+  edmf.F90
+  toy_surface.F90
+  shocparams.F90
   )
 
 esma_add_library (${this}
