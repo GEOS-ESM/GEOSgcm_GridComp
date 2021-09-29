@@ -24,6 +24,11 @@ elseif(CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
      set (CC icc)
 endif()
 
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+     SET (MITGCM_EXTRA_BUILD_OPTIONS "-ieee")
+elseif()
+     SET (MITGCM_EXTRA_BUILD_OPTIONS "")
+endif()
 
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/mitgcm_setup
@@ -65,6 +70,7 @@ add_custom_target(
                  -rootdir ${MITGCM_ROOTDIR}
                  -mods ../code -mpi
 		 -of ../${MITGCM_BUILD_OPTIONS}
+		 ${MITGCM_EXTRA_BUILD_OPTIONS}
 	COMMAND make depend
 	DEPENDS make_local_build_dir
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/local_build

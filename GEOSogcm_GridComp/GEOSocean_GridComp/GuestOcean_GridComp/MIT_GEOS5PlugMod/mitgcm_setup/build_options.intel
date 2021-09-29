@@ -38,7 +38,7 @@ if test "x$IEEE" = x ; then     #- with optimisation:
     NOOPTFILES='seaice_growth.F calc_oce_mxlayer.F fizhi_lsm.F fizhi_clockstuff.F ini_parms.F'
     NOOPTFILES="$NOOPTFILES obcs_init_fixed.F"
 else
-  if test "x$DEVEL" = x ; then  #- no optimisation + IEEE :
+  if test "x$DEVEL" = xdevel ; then  #- no optimisation + IEEE :
     FOPTIM='-O0 -noalign'
   else                          #- development/check options:
    #FFLAGS="$FFLAGS -debug all -debug-parameters all -fp-model strict"
