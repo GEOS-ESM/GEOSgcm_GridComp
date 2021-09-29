@@ -485,6 +485,7 @@ contains
          PDF_SIGQT1_dev, PDF_SIGQT2_dev, PDF_QT1_dev, PDF_QT2_dev, &
          PDF_RQTTH_dev, PDF_RWTH_dev, PDF_RWQT_dev, &
          WTHV2_dev, wql_dev, &
+         A_SL3_dev, B_SL3_dev, &
          TEMPOR_dev, DOSHLW, &
          NACTL_dev,    &
          NACTI_dev,    &
@@ -646,7 +647,9 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: PDF_RWTH_dev
       real, intent(  out), dimension(IRUN,  LM) :: PDF_RWQT_dev
       real, intent(  out), dimension(IRUN,  LM) :: WTHV2_dev
-      real, intent(  out), dimension(IRUN,  LM) :: wql_dev
+      real, intent(  out), dimension(IRUN,  LM) :: wql_dev 
+      real, intent(  out), dimension(IRUN,  LM) :: A_SL3_dev                                         
+      real, intent(  out), dimension(IRUN,  LM) :: B_SL3_dev
       real, intent(in   ), dimension(IRUN,  LM) :: NACTL_dev  ! NACTL
       real, intent(in   ), dimension(IRUN,  LM) :: NACTI_dev  ! NACTI
 
@@ -1093,6 +1096,8 @@ contains
                   qt3_dev(I,K),        &
                   hl3_dev(I,K),        &
                   mf_frc_dev(I,K),     &
+                  A_SL3_dev(I,K),      &
+                  B_SL3_dev(I,K),      &
                   PDF_A_dev(I,K),      &  ! can remove these after development
                   PDF_SIGW1_dev(I,K),  &
                   PDF_SIGW2_dev(I,K),  &
@@ -2086,6 +2091,8 @@ contains
          MFQT3       , &
          MFHL3       , &
          MF_FRC      , &
+         A_SL3,      &
+         B_SL3,      &
          PDF_A,      &  ! can remove these after development
          PDF_SIGW1,  &
          PDF_SIGW2,  &
@@ -2111,6 +2118,7 @@ contains
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
       real, intent(in)    :: NL,NI,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
       real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3,wqtfac,whlfac
+      real, intent(out)   :: A_SL3, B_SL3
       real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
                              PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
                              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
@@ -2252,6 +2260,17 @@ contains
 
            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
 
+         elseif ( pdfflag .eq. 6 ) then
+            ALHX = ( 1. - fQi )*MAPL_ALHL + fQi*MAPL_ALHS
+
+            hl = TEn + (mapl_grav/mapl_cp)*zl - (ALHX/MAPL_CP)*QCn
+            qt = QVn + QCn
+
+            call single_gaussian(zl, 100.*pl, hl, qt, hl2, qt2, hlqt, &
+                                 TEn, QCn, CFn, &
+                                 A_sl3, B_sl3)
+
+            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
 
 !         if (abs(QVn+QCn-QVp-QCp)>1e-6*(QVp+QCp) .and. QVp>0.0001) print *,'total water not conserved!'
@@ -2408,6 +2427,49 @@ contains
 
    end subroutine hystpdf_new
 
+   !
+   ! single_gaussian
+   !
+   subroutine single_gaussian(z, p, hl, qt, hl2, qt2, hlqt, &
+                              T, ql, ac, &
+                              A, B)
+
+     use MAPL_SatVaporMod,  only: MAPL_EQsat
+     use MAPL_ConstantsMod, only: mapl_cp, mapl_alhl, mapl_grav, mapl_rdry, mapl_rvap, mapl_pi
+
+     real, intent(in)            :: z, p, hl, qt, hl2, qt2, hlqt
+     real, intent(inout)         :: T, ql, ac
+     real, intent(out), optional :: A, B
+
+     real :: dqs, Tl, s, sigma_s, exner, Q, lvocp, gocp, ep2, qs
+
+     lvocp = mapl_alhl/mapl_cp
+     gocp  = mapl_grav/mapl_cp
+     ep2   = mapl_rvap/mapl_rgas - 1.
+
+     exner  = (p*1.E-5)**(mapl_rdry/mapl_cp) ! Exner function                                                                                 
+
+     Tl = hl - gocp*z
+     qs = MAPL_EQsat(Tl, p, dqs) ! saturation specific humidity                                                                             
+     s  = qt - qs                ! saturation excess/deficit                                                                                
+     A = 1./( 1. + lvocp*dqs )
+     B = a*exner*dqs
+
+     sigma_s = sqrt( A**2.*qt2 - 2*A*B*(hlqt/exner) + B**2.*(hl2/exner**2.) )
+
+     ! Diagnose cloud properties                                                                                                   
+     if ( sigma_s > 0. ) then
+        Q = A*(qt - qs)/sigma_s
+        ac = 0.5*( 1. + erf( Q/sqrt(2.) ) )
+        ql = sigma_s*( ac*Q + exp(-0.5*Q**2.)/sqrt(2.*mapl_pi) )
+     else
+        ac = 0.
+        ql = 0.
+     end if
+
+     T = hl + lvocp*ql - gocp*z ! Update temperature                                                                                               
+
+   end subroutine single_gaussian
 
 #ifdef _CUDA
    attributes(device) &

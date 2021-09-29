@@ -1071,7 +1071,8 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'QV  ','QLLS','QILS','QLCN',              &
-                         'QICN','CLLS','CLCN','WTHV2'/),           &
+                         'QICN','CLLS','CLCN','WTHV2',             &
+                         'A_SL3', 'B_SL3' /),                      & ! SL3
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1718,6 +1719,28 @@ contains
     VERIFY_(STATUS)
 
     call ESMF_StateGet    (GEX(TURBL),  'TKESHOC'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+! SL3-related variables
+    call ESMF_StateGet    (GEX(TURBL),  'QT2'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'HL2_SL3'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'HLQT_SL3'   , FIELD,    RC=STATUS )
     VERIFY_(STATUS)
     call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
     VERIFY_(STATUS)
