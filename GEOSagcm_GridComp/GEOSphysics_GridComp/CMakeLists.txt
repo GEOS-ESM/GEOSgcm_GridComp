@@ -6,6 +6,7 @@ set (alldirs
   GEOSsurface_GridComp
   GEOSturbulence_GridComp
   GEOSgwd_GridComp
+  GEOS_GwdGridComp_3G
   GEOSradiation_GridComp
   )
 

@@ -1,0 +1,62 @@
+Leaf components
+
+1. Use a StateSpecs config file to specify import/export quantities.
+   - much easier to maintain
+   - reduced huge amounts of tedious boiler plate in the source code
+   - tool will be created to convert to yaml for interaction with other
+     layers
+
+2. Use CF standard names
+   - important for future interoperability with NUOPC
+   - long names are not the same as standard names, but can be similar
+
+3. Use the new timers.  No need to initialize in set services.  Just
+   add start/stop around surrounding code.
+   - note that timers for init/run/finalize are automatic
+
+4. Use `_RC` macro:
+```
+   call foo(..., _RC)
+```
+instead of
+```
+   call foo(..., rc=status)
+   _VERIFY(status)
+```
+
+5. Review inline documentation
+   - check that it is correct
+   - delete comments that do not add any real value
+
+6. Avoid REAL*4 and REAL*8 - these are nonstandard.
+
+   - `realk(kind=4)` and `real(kind=8)` are stndard conforming but
+      make non portable assumptions.  Best to use named constants
+      derived from KIND(1.) and KIND(1.d0).
+
+
+Minor/miscellaneous
+===================
+1. GridComp directory is  GEOS_GwdGridComp rather than GEOSgwd_GridComp.
+   The older form was a mistake that got propagated early on.  Time to fix.
+2. Consider droppig "Mod" suffix from both file name and module name.
+   - pretty much redundant information
+3. Do not reference low-level MAPL modules directly.   using the MAPL module \
+   is the best way to insulate code against internal structural changes in MAPL.
+   - Do we want to make an exception for Contsants?
+   - Do we want to start having users get the constants via procedures (prep for
+     using dictionary)?
+4. Consider introducing derived types to simplify internal interfaces.
+   - Are structs preferable to long argument lists?
+5. Consider using lower case variable names.  Esp. for local variables.  No shouting.
+
+
+
+
+Parent components
+=================
+
+1. Use a ConnectivitySpecs file to specify:
+   - child components (DSO)
+   - connectivities
+   - re-export

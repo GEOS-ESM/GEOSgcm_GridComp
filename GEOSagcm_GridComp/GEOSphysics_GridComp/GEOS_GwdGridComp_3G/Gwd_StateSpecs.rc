@@ -1,0 +1,108 @@
+schema_version: 2.0.0
+component: Gwd
+
+category: IMPORT
+#----------------------------------------------------------------------------------------
+#  VARIABLE           | DIMENSIONS|          Additional Metadata
+#----------------------------------------------------------------------------------------
+     NAME   | UNITS   | DIMS | VLOC| RESTART | LONG NAME
+                               
+#----------------------------------------------------------------------------------------
+PLE         | Pa      | xyz  | E   | skip    | air_pressure
+T           | K       | xyz  | C   | skip    | air_temperature
+Q           | kg kg-1 | xyz  | C   | skip    | specific_humidity
+U           | m s-1   | xyz  | C   | skip    | eastward_wind
+V           | m s-1   | xyz  | C   | skip    | northward_wind
+SGH         | m       | xy   | N   | skip    | standard_deviation_of_topography
+PREF        | K s-1   | xyz  | C   | skip    | reference_air_pressure
+DTDTCN      | K s-1   | xyz  | C   |         | T tendency due to convection
+
+category: EXPORT
+#----------------------------------------------------------------------------------------
+#  VARIABLE              | DIMENSIONS |          Additional Metadata
+#----------------------------------------------------------------------------------------
+ NAME       | UNITS      | DIMS| VLOC | LONG NAME
+#----------------------------------------------------------------------------------------
+PLE         | Pa         | xyz  | E   | air_pressure
+T           | K          | xyz  | C   | air_temperature
+Q           | kg kg-1    | xyz  | C   | specific_humidity
+U           | m s-1      | xyz  | C   | eastward_wind
+V           | m s-1      | xyz  | C   | northward_wind
+SGH         | m          | xy   | N   | standard_deviation_of_topography
+PREF        | K s-1      | xyz  | C   | reference_air_pressure
+#...............................................................................
+DTDT        | Pa K s-1   | xyz  | C   | mass_weighted_air_temperature_tendency_due_to_GWD
+TTMGW       | K s-1      | xyz  | C   | air_temperature_tendency_due_to_GWD
+DUDT        | m s-2      | xyz  | C   | tendency_of_eastward_wind_due_to_GWD
+DVDT        | m s-2      | xyz  | C   | tendency_of_northward_wind_due_to_GWD
+DTDT_ORO    | K s-1      | xyz  | C   | air_temperature_tendency_due_to_orographic_GWD
+DUDT_ORO    | m s-2      | xyz  | C   | tendency_of_eastward_wind_due_to_orographic_GWD
+DVDT_ORO    | m s-2      | xyz  | C   | tendency_of_northward_wind_due_to_orographic_GWD
+DTDT_BKG    | K s-1      | xyz  | C   | air_temperature_tendency_due_to_background_GWD
+DUDT_BKG    | m s-2      | xyz  | C   | tendency_of_eastward_wind_due_to_background_GWD
+DVDT_BKG    | m s-2      | xyz  | C   | tendency_of_northward_wind_due_to_background_GWD
+DTDT_RAY    | K s-1      | xyz  | C   | air_temperature_tendency_due_to_Rayleigh_friction
+DUDT_RAY    | m s-2      | xyz  | C   | tendency_of_eastward_wind_due_to_Rayleigh_friction
+DVDT_RAY    | m s-2      | xyz  | C   | tendency_of_northward_wind_due_to_Rayleigh_friction
+TAUGWX      | N m-2      | xy   | N   | surface_eastward_gravity_wave_stress
+TAUGWY      | N m-2      | xy   | N   | surface_northward_gravity_wave_stress
+TAUOROX     | N m-2      | xy   | N   | surface_eastward_orographic_gravity_wave_stress
+TAUOROY     | N m-2      | xy   | N   | surface_northward_orographic_gravity_wave_stress
+TAUBKGX     | N m-2      | xy   | N   | surface_eastward_background_gravity_wave_stress
+TAUBKGX     | N m-2      | xy   | N   | surface_northward_background_gravity_wave_stress
+TAUMSTX     | N m-2      | xy   | N   | surface_eastward_gravity_wave_stress_due_to_Moist_Processes
+TAUMSTY     | N m-2      | xy   | N   | surface_northward_gravity_wave_stress_due_to_Moist_Processes
+CLDSTD	    | m          | xy   | N   | gravity_wave_drag_standard_deviation_due_to_clouds
+UBASE       | m s-1      | xy   | N   | eastward_component_of_base_level_wind
+VBASE       | m s-1      | xy   | N   | northward_component_of_base_level_wind
+UBAR        | m s-1      | xy   | N   | eastward_component_of_mean_level_wind
+VBAR        | m s-1      | xy   | N   | northward_component_of_mean_level_wind
+PEGWD       | W m-2      | xy   | N   | vertically_integrated_potential_energy_tendency_across_gwd
+PEORO       | W m-2      | xy   | N   | vertically_integrated_potential_energy_tendency_due_to_orographic_gravity_waves
+PEBKG       | W m-2      | xy   | N   | vertically_integrated_potential_energy_tendency_due_to_gravity_wave_background
+PERAY       | W m-2      | xy   | N   | vertically_integrated_potential_energy_tendency_due_to_Rayleigh_friction
+KEGWD       | W m-2      | xy   | N   | vertically_integrated_kinetic_energy_dissipation_across_gwd
+KEORO       | W m-2      | xy   | N   | vertically_integrated_kinetic_energy_dissipation_due_to_orographic_gravity_waves
+KEBKG       | W m-2      | xy   | N   | vertically_integrated_kinetic_energy_dissipation_due_to_gravity_wave_background
+KERAY       | W m-2      | xy   | N   | vertically_integrated_kinetic_energy_dissipation_due_to_Rayleigh_friction
+KERES       | W m-2      | xy   | N   | vertically_integrated_kinetic_energy_residual_for_total_energy_conservation
+BKGERR      | W m-2      | xy   | N   | vertically_integrated_kinetic_energy_residual_for_BKG_energy_conservation
+
+
+category: INTERNAL
+#----------------------------------------------------------------------------------------
+#  VARIABLE                | DIMENSION        |          Additional Metadata
+#----------------------------------------------------------------------------------------
+  NAME | UNITS | DIMS | VLOC | UNGRIDDED | RESTART | ADD2EXPORT | FRIENDLYTO | LONG NAME
+#----------------------------------------------------------------------------------------
+
+
+#********************************************************
+#
+# Legend
+#
+#------------------------------------------------------------------
+# Column label | MAPL keyword/interpretation |  Default
+#--------------|---------------------------------------------------
+# NAME         | short_name                  |
+# UNITS        | units                       |
+# DIMS         | dims                        |
+# VLOC         | VLocation                   | MAPL_VLocationNone
+# LONG NAME    | long_name                   |
+# COND         | if (<logical-expr>) then    |  .FALSE.
+# NUM_SUBTILES | num_subtiles
+# ...
+#------------------------------------------------------------------
+#
+#--------------------------------------------
+# Entry alias  | Column | MAPL keyword/interpretation
+#--------------|-----------------------------
+# xyz          | DIMS   | MAPL_HorzVert
+# xy           | DIMS   | MAPL_HorzOnly
+# z            | DIMS   | MAPL_VertOnly  (plus ungridded)
+# C            | VLOC   | MAPL_VlocationCenter
+# E            | VLOC   | MAPL_VlocationEdge
+# N            | VLOC   | MAPL_VlocationNone
+#--------------------------------------------
+
+
