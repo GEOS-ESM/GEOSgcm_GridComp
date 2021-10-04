@@ -247,7 +247,7 @@ module shoc
 
   real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth
 
-  real, dimension(nx,ny)     :: denom, numer, l_inf, cldarr
+  real, dimension(nx,ny)     :: denom, numer, l_inf, cldarr, zcb
 
   real lstarn,    depth,    omn,      betdz,    bbb,        &
        term,      qsatt,    dqsat,    thedz,    conv_var,   &  
@@ -617,7 +617,7 @@ contains
 
 ! Local variables
     real    wrk, wrk1, wrk2, wrk3, zdecay
-    integer i, j, k, kk, kl, ku, kb, kc, kli, kui
+    integer i, j, k, kk, ktop, kl, ku, kb, kc, kli, kui
     
     do j=1,ny
       do i=1,nx
@@ -664,6 +664,7 @@ contains
             tkes       = sqrt(tke(i,j,k)) * adzl(i,j,k)
             numer(i,j) = numer(i,j) + tkes*zl(i,j,k) ! Numerator in Eq. 11 in BK13
             denom(i,j) = denom(i,j) + tkes           ! Denominator in Eq. 11 in BK13
+            
           else
             cldarr(i,j) = 1.0   ! Take note of columns containing cloud.
           endif
@@ -675,10 +676,17 @@ contains
     do j=1,ny
       do i=1,nx
         if (denom(i,j) >  0.0 .and. numer(i,j) > 0.0) then
-          l_inf(i,j) = max(min(0.1 * (numer(i,j)/denom(i,j)),300.),10.)
+!          l_inf(i,j) = max(min(0.1 * (numer(i,j)/denom(i,j)),300.),10.)
+          l_inf(i,j) = max(min( (numer(i,j)/denom(i,j)),1000.),10.)
         else
           l_inf(i,j) = 100.
         endif
+        kk = 2
+        do while (zl(i,j,kk).lt.1200. .and. qcl(i,j,kk)+qci(i,j,kk)<=1e-6)
+          kk = kk+1
+        end do
+!        zcb(i,j) = max(200.,0.8*zl(i,j,kk))
+        zcb(i,j) = max(200.,zl(i,j,kk))
       enddo
     enddo
     
@@ -777,12 +785,29 @@ contains
               brunt2(i,j,k) = 1e-5
             endif
  
-!            kk = 2
-!            do while (brunt2(i,j,kk).le.1e-5 .and. zl(i,j,kk).lt.1500.)
-!              kk = kk+1
-!            end do
-!            zdecay = zl(i,j,kk)
-            zdecay = 750.
+            kk=k
+            if (brunt_smooth(i,j,k).le.1e-5) then
+              do while (brunt_smooth(i,j,kk).le.1e-5 .and. kk.lt.nzm)
+                kk=kk+1
+              end do
+              ktop=kk
+              kk=k
+              do while (brunt_smooth(i,j,kk).le.1e-5 .and. kk.gt.1)
+                kk=kk-1
+              end do
+              l_inf(i,j) = max(100.,min(1500.,zl(i,j,ktop)-zl(i,j,kk) ))
+            else
+              l_inf(i,j) = 100.
+            end if
+
+
+            kk = 2
+            do while (brunt_smooth(i,j,kk).le.1e-5 .and. zl(i,j,kk).lt.1500.)
+              kk = kk+1
+            end do
+            zdecay = max(300.,zl(i,j,kk))
+!            print *,'zdecay=',zdecay
+!            zdecay = 750.
 
 !            if (brunt_simple(i,j,k) >= 1e-5) then
 !              brunt2(i,j,k) = brunt_simple(i,j,k)
@@ -806,33 +831,37 @@ contains
 
             if (tkes > 0.0 .and. l_inf(i,j) > 0.0) then
               wrk1 = (tscale*tkes*vonk*zl(i,j,k))
-              wrk2 = (tscale*tkes*l_inf(i,j))
-              wrk3 = tke(i,j,k) /(0.01 * brunt2(i,j,k))
-              smixt1(i,j,k) = sqrt(wrk1)*9.4
-              smixt2(i,j,k) = sqrt(wrk2)*9.4
-              smixt3(i,j,k) = sqrt(wrk3)*9.4
-              wrk1 = 1.0 / (1./wrk1 + 1./wrk2 + 1./wrk3)
-              smixt(i,j,k) = min(max_eddy_length_scale, 9.4*sqrt(wrk1))
+              wrk2 = (tscale*tkes*0.1*l_inf(i,j))
+              wrk3 = tke(i,j,k) /(1.0 * brunt2(i,j,k))
+              smixt1(i,j,k) = sqrt(wrk1)*3.3
+              smixt2(i,j,k) = sqrt(wrk2)*3.3
+              smixt3(i,j,k) = sqrt(wrk3)*3.3
+              if (brunt2(i,j,k).gt.1e-5) then
+                 wrk1 = 1.0 / (1./wrk1 + 1./wrk2 + 1./wrk3)
+              else
+                 wrk1 = 1.0 / (1./wrk1 + 1./wrk2)
+              end if
+       
+              smixt(i,j,k) = min(max_eddy_length_scale, 3.3*sqrt(wrk1))
 !              if (zl(i,j,k).gt.1500.) smixt(i,j,k) = 10.
 !              smixt(i,j,k) = min(max_eddy_length_scale,  3.3*sqrt(wrk1))
            endif
            
+!           zdecay = l_inf(i,j)
+!           zcb(i,j) = 750.
            if (shocparams%SUS12LEN/=0.) then
              wrk2 = 1.5/(400.*tkes)
+!             wrk2 = 10.0/(zcb(i,j)*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j)))
              wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
              wrk1 = 1.0/(wrk2+wrk3)
-             smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+             smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k))/1500.)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+!             smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
              smixt1(i,j,k) = 9.4/wrk2
              smixt2(i,j,k) = 9.4/wrk3
              smixt3(i,j,k) = 9.4*vonk*zl(i,j,k)
            end if
 
-!           if (zl(i,j,k)<1500.) then
-!              smixt(i,j,k) = 1500.
-!           else
-!              smixt(i,j,k) = 100.
-!           end if
 
 !         end if  ! not k=1
 
