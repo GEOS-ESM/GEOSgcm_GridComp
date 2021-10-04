@@ -3768,7 +3768,7 @@ IF(DoMF /= 0.) then
 
        else if (EDMF_OPTION.eq.0) then
        call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
-               U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
+               U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,frland,zpbl,ice_ramp, &
                MFTHSRC, MFQTSRC, MFW, MFAREA, &  ! CLASP imports
                edmfdrya,edmfmoista, &   ! for ADG PDF
                edmfdryw,edmfmoistw, &   ! diag
@@ -6744,7 +6744,7 @@ end subroutine ComputeZPBL
 
 SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
               u3,v3,thl3,thv3,qt3,qv3,ql3,qi3,&
-              ust2,wthl2,wqt2,pblh2,ice_ramp, &
+              ust2,wthl2,wqt2,frland,pblh2,ice_ramp, &
               mfsrcthl, mfsrcqt, mfw, mfarea, &
             ! outputs - tendencies
            !  &dth,dqv,dqc,du,dv,&
@@ -7122,6 +7122,8 @@ if (L0(IH) .gt. 0. ) then
        ENT(k,i)=(1.-stochent)*Ent0/L0(IH) + stochent*real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1)) 
      enddo
     enddo
+    ENT = (1.+frland(IH))*ENT  ! double entrainment over land
+
 !  else if (entrainopt==2) then   
 !    call random_number(entf)
 !    do i=1,Nup   
@@ -7247,7 +7249,7 @@ end if
    ! change surface THV so that the fluxes from the mass flux equal prescribed values
         UPTHV(kts-1,:)=(UPTHV(kts-1,:)-THV(kts))*wthv/THVsrfF+THV(kts)
          print *,'adjusting surface THV perturbation by a factor',wthv/THVsrfF
-  endif     
+   endif     
       
    IF ( (QTsrfF .gt. wqt) .and. (wqt .gt. 0.) )  then
    ! change surface QT so that the fluxes from the mass flux equal prescribed values
