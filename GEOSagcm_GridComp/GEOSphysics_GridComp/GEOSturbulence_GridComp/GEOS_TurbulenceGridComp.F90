@@ -21,7 +21,7 @@ module GEOS_TurbulenceGridCompMod
   use shocparams
   use shoc
   use edmf_mod, only: run_edmf
-  use toy_surface, only : surface_layer, surface
+  use scm_surface, only : surface_layer, surface
 
 #ifdef _CUDA
   use cudafor
@@ -5763,6 +5763,9 @@ end subroutine RUN1
       logical                             :: DO_SHVC
       integer                             :: KS
 
+      ! For idealized SCM surface layer
+      integer :: SCM_SL
+
       character(len=ESMF_MAXSTR) :: GRIDNAME
       character(len=4)           :: imchar
       character(len=2)           :: dateline
@@ -5836,6 +5839,11 @@ end subroutine RUN1
              imsize.le.1600      ) scaling = 7.0  !  0.500-deg > Resolution >= 0.250-deg
          if( imsize.gt.1600      ) scaling = 7.0  !  0.250-deg > Resolution 
       end if
+
+! Determine whether running idealized SCM surface layer
+!------------------------------------------------------
+
+      call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', DEFAULT=0)
 
 ! Get imports
 !------------
@@ -6089,7 +6097,7 @@ end subroutine RUN1
 
          SX = S
 
-         if(associated(DSG)) then
+         if( associated(DSG) .and. SCM_SL == 0 ) then
             do L=1,LM 
                SX(:,:,L) = SX(:,:,L) + DKX(:,:,L)*DSG 
             end do
@@ -6164,7 +6172,7 @@ end subroutine RUN1
 ! Update tendencies
 ! -----------------
 
-         if(associated(SOI).and.associated(DSG)) then
+         if( associated(SOI) .and. associated(DSG) .and. SCM_SL == 0 ) then
             if( WEIGHTED ) then
                do L=1,LM
                   SOI(:,:,L) = SOI(:,:,L) +  (DKX(:,:,L)*DSG/DT)*DP(:,:,L)
@@ -6186,7 +6194,7 @@ end subroutine RUN1
 
             S_or_Q: if (NAME=='S') then
 
-               if(associated(DSG)) then
+               if( associated(DSG) .and. SCM_SL == 0 ) then
                   do L=1,LM
                      SINC(:,:,L) = SINC(:,:,L) +  (DKX(:,:,L)*DSG/DT)
                   end do
@@ -6280,7 +6288,7 @@ end subroutine RUN1
 ! Update surface fluxes
 ! ---------------------
 
-         if(associated(SF).and.associated(DSG)) then
+         if( associated(SF) .and. associated(DSG) .and. SCM_SL == 0 ) then
             SF = SF + DSG*SDF
          end if
 
