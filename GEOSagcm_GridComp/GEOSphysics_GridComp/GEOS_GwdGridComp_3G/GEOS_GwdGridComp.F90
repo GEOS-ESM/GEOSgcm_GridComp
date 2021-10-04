@@ -91,8 +91,8 @@ contains
 ! Set the state variable specs.
 ! -----------------------------
 !BOS
-#include "DU2G_Export___.h"
-#include "DU2G_Import___.h"
+#include "Gwd_Export___.h"
+#include "Gwd_Import___.h"
 !EOS
 
 ! Set generic init and final methods
