@@ -6797,9 +6797,15 @@ contains
       call MAPL_GetPointer(EXPORT,DTDTFRIC, 'DTDTFRIC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CLDBASEHGT,'CLDBASEHGT', RC=STATUS); VERIFY_(STATUS)
 
-!!! DG PDF diagnostics
+
      call MAPL_GetPointer(EXPORT, PDF_AX,     'PDF_A',   RC=STATUS)
      VERIFY_(STATUS) 
+     call MAPL_GetPointer(EXPORT,  WTHV2,      'WTHV2',     ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS) 
+     call MAPL_GetPointer(EXPORT, WQL,        'WQL',        ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+
+!============ DG PDF diagnostics ==============
      call MAPL_GetPointer(EXPORT, PDF_SIGW1,  'PDF_SIGW1', ALLOC=.TRUE.,  RC=STATUS)
      VERIFY_(STATUS) 
      call MAPL_GetPointer(EXPORT, PDF_SIGW2,  'PDF_SIGW2', ALLOC=.TRUE.,  RC=STATUS)
@@ -6830,10 +6836,6 @@ contains
      VERIFY_(STATUS) 
      call MAPL_GetPointer(EXPORT, PDF_RWQT,   'PDF_RWQT',   ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS) 
-     call MAPL_GetPointer(EXPORT,  WTHV2,      'WTHV2',     ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS) 
-     call MAPL_GetPointer(EXPORT, WQL,        'WQL',        ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
 
 
 !!! shallow vars
@@ -10654,7 +10656,6 @@ contains
          VERIFY_(STATUS)
 
          if (associated(PDF_AX)) PDF_AX = PDF_A
-!         if (associated(WQL)) WQL = wqlsec
 
          call MAPL_TimerOff(STATE,"--CLOUD_RUN",RC=STATUS)
          VERIFY_(STATUS)

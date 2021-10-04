@@ -1,6 +1,6 @@
 !   $Id$
 
-#define EDMF_DIAG 1
+!#define EDMF_DIAG 1
 
 #include "MAPL_Generic.h"
 
@@ -3681,7 +3681,7 @@ contains
     call MAPL_GetResource (MAPL, EDMF_CTH1, "EDMF_CTH1:", default=7.2,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_CTH2, "EDMF_CTH2:", default=1.1,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_RHO_QB, "EDMF_RHO_QB:", default=0.5,  RC=STATUS)
-    call MAPL_GetResource (MAPL, C_KH_MF, "C_KH_MF:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, C_KH_MF, "C_KH_MF:", default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_OPTION, "EDMF_OPTION:", default = 0, RC=STATUS)
 
     call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
@@ -6812,7 +6812,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
       ! REAL,DIMENSION(ITS:ITE,KTS:KTE+1), INTENT(IN) :: ZW
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: mfsrcqt,mfsrcthl,mfw,mfarea
-       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2
+       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND
        INTEGER, INTENT(IN) :: edmf_discrete_type, edmf_implicit, entrainopt
        REAL, INTENT(IN) :: stochent
        REAL, INTENT(IN)                     :: ICE_RAMP  
