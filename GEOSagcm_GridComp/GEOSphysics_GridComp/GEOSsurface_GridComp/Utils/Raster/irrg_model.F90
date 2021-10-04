@@ -31,7 +31,7 @@ PROGRAM irrg_model
      var_in = -9999.
 
 !     open ( 10, file = '/gpfsm/dnb43/projects/p03/LS_PARAMETERS/irrigation/global_gripc/irrigtype_salmon2013.flt', &
-     open ( 10, file = '/discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/irrigtype_salmon2013.flt', &
+     open ( 10, file = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/irrigtype_salmon2013.flt', &
           form = 'unformatted', access='direct', recl=(ncols))
 
      !- Read input file::
