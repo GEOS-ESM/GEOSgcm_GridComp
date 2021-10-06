@@ -3123,10 +3123,10 @@ contains
                                      ! 2: Gregory (2001) entrainment based on vertical velocity
      real    :: EDMF_STOCHASTIC      ! Fraction of entrainment governed by Poisson distribution 
                                      ! 
-     integer :: EDMF_THERMAL_PLUME   ! 0 (default): JPL mass flux scheme
+     integer :: EDMF_PLUME   ! 0 (default): JPL mass flux scheme
                                      ! 1: Thermal plume model
-     integer :: EDMF_TEST
-     integer :: EDMF_DEBUG
+     integer :: EDMF_DEBUG           ! 0: (default): do nothing
+                                     ! 1: print debugging output in run_edmf subroutine
 
      ! SCM idealized surface layer parameters
      integer :: SCM_SL          ! 0:    use exchange coefficients from surface grid comp
@@ -3152,7 +3152,7 @@ contains
                               ! else: idealized surface with prescribed cooling
      real    :: SCM_DTDT_SURF ! Surface heating rate (Ks-1)
 
-     real :: edmf_wa, edmf_wb, edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb, c_kh_mf
+     real :: edmf_wa, edmf_wb, edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb
 
      real,dimension(IM,JM) :: L02
      
@@ -3171,18 +3171,14 @@ contains
                                         edmfdryv,edmfmoistv,  &
                                         edmfmoistqc,    &
                                         WHL_tmp,WQT_tmp,WTHV_tmp,qti,hli 
-     real, dimension(im,jm,0:lm) :: ui, vi, thli, qvi, qli, qii, thvi
      real, dimension(im,jm,lm) :: sdry,sdrya,sdryb,sdryc,MFFRC
      real, dimension(im,jm,lm) :: zlo,zlot,pk,rho
      real, dimension(im,jm)    :: rhodz,edmfZCLD
      real, dimension(im,jm,0:lm) :: RHOE,RHOAW3
-     real, dimension(im,jm) :: ZPBLmf,KPBLmf,wu0, dthv0   
+     real, dimension(im,jm) :: ZPBLmf,KPBLmf, wu0, dthv0
      real, dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,edmf_ent
      real, dimension(im,jm,0:lm) :: aavg,qavg,wavg,hlavg,edmf_mf
-     real, dimension(im,jm,lm) :: au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full
      real, dimension(im,jm,lm) :: whl_edmf, wqt_edmf, wthv_edmf
-     real, dimension(im,jm,lm) :: tke_mf, qt2_mf, qt2t_M_mf, qt2t_T_mf
-     real, dimension(im,jm,0:lm) :: kh_mf, kh_t, kh_q, itau_E, wu, udet, vdet, wdet, uu, vu
 
 #ifdef EDMF_DIAG
      real,dimension(im,jm,0:lm) :: w_plume1,w_plume2,w_plume3,w_plume4, &
@@ -3760,8 +3756,7 @@ contains
     call MAPL_GetResource (MAPL,EntWFac,"EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_TEST,  "EDMF_TEST:" , default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_PLUME, "EDMF_PLUME:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_DEBUG, "EDMF_DEBUG:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_WA, "EDMF_WA:", default=1.,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_WB, "EDMF_WB:", default=1.5,  RC=STATUS)
@@ -3769,7 +3764,6 @@ contains
     call MAPL_GetResource (MAPL, EDMF_CTH1, "EDMF_CTH1:", default=7.2,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_CTH2, "EDMF_CTH2:", default=1.1,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_RHO_QB, "EDMF_RHO_QB:", default=0.5,  RC=STATUS)
-    call MAPL_GetResource (MAPL, C_KH_MF, "C_KH_MF:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_OPTION, "EDMF_OPTION:", default = 0, RC=STATUS)
 
     call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
@@ -3829,14 +3823,6 @@ contains
 
     call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
-
-    ! Interpolate EDMF profiles to half levels 
-    call interp_edmf(IM, JM, LM, &                           ! in
-                     edmf_discrete, edmf_implicit, &         ! in
-                     zle, z, &                               ! in
-                     u, v, thl, qt, q, ql, qi, thv, &        ! in
-                     ui, vi, thli, qti, qvi, qli, qii, thvi) ! out 
-
 mfhl2 = 0.0
 mfhlqt = 0.0
 mfqt2 = 0.0
@@ -3871,30 +3857,25 @@ IF(DoMF /= 0.) then
    do iter = 1,2
 
       if (EDMF_OPTION.eq.1) then
-       call run_edmf(IM, JM, LM, numup, NumUpQ, iras, jras, &                       ! in
-                     edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
-                     edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in 
-                     th00, dt, z, zle, ple, rho, rhoe, exf, &                        ! in
-                     u, v, thl, qt, q, ql, qi, thv, &                                ! in 
-                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
-                     ustar, sh, evap, ice_ramp, &                                    ! in 
-                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in
-                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in 
-                     edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb, &                  ! in
-                     zpbl, &                                                         ! inout 
-                     edmfdrya, edmfmoista, &                                         ! out
-                     edmfdryw, edmfmoistw, &                                         ! out 
-                     edmfdryqt, edmfmoistqt, &                                       ! out
-                     edmfdrythl, edmfmoistthl, &                                     ! out 
-                     edmfdryu, edmfmoistu,  &                                        ! out
-                     edmfdryv, edmfmoistv,  &                                        ! out 
-                     edmfmoistqc, &                                                  ! out
-                     tke_mf, &                                                       ! out (diagnostics) 
-                     qt2_mf, qt2t_M_mf, qt2t_T_mf, &                                 ! out (diagnostics)
-                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, itau_E, & ! out (for solver)
-                     whl_edmf, wqt_edmf, wthv_edmf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)
-                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST) 
+       call run_edmf(IM, JM, LM, numup, NumUpQ, iras, jras, &                                 ! in
+                     edmf_discrete, edmf_implicit, edmf_stochastic, edmf_plume, edmf_debug, & ! in 
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                                 ! in
+                     u, v, thl, qt, q, ql, qi, thv, &                                         ! in 
+                     ustar, sh, evap, ice_ramp, &                                             ! in 
+                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                                ! in
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &                       ! in 
+                     edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb, &                           ! in
+                     zpbl, &                                                                  ! inout 
+                     edmfdrya, edmfmoista, &                                                  ! out
+                     edmfdryw, edmfmoistw, &                                                  ! out 
+                     edmfdryqt, edmfmoistqt, &                                                ! out
+                     edmfdrythl, edmfmoistthl, &                                              ! out 
+                     edmfdryu, edmfmoistu,  &                                                 ! out
+                     edmfdryv, edmfmoistv,  &                                                 ! out 
+                     edmfmoistqc, &                                                           ! out
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &                       ! out (for solver)
+                     whl_edmf, wqt_edmf, wthv_edmf, &                                         ! out (for inconsistent partitioning)
+                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, &          ! out (for SHOC)
 #ifdef EDMF_DIAG
                      w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                      w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -3903,8 +3884,8 @@ IF(DoMF /= 0.) then
                      thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                      thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-                     wu0, dthv0, &
-                     au, uu, vu, wu, Mu, E, D, udet, vdet, wdet)                     ! out (for MYNN-EDMF consistent partitioning)  
+                     wu0, dthv0)                                                              ! out (diagnostic)
+
 
        else if (EDMF_OPTION.eq.0) then
        call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
@@ -7820,160 +7801,6 @@ ENDDO ! loop over horizontal area
 
 
 END SUBROUTINE edmf
-
-
-      !
-      ! interp_edmf
-      !
-      subroutine interp_edmf(IM, JM, LM, &                           ! in
-                             discrete_type, implicit_flag, &         ! in
-                             zle, zl, &                              ! in
-                             u, v, thl, qt, qv, ql, qi, thv, &       ! in
-                             ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
-
-        implicit none
-
-        integer, intent(in)         :: IM, JM, LM, discrete_type, implicit_flag
-        real, dimension(IM,JM,LM)   :: zl, u, v, thl, qt, qv, ql, qi, thv
-        real, dimension(IM,JM,0:LM) :: zle, ui, vi, thli, qti, qvi, qli, qii, thvi
-
-        integer :: i, j, k, kp1
-        real    :: ifac
-
-        do k = 1,LM-1
-           kp1 = k + 1
-           
-           do j = 1,JM
-           do i = 1,IM
-              if ( discrete_type == 0 ) then ! centered
-                 ! This is temporary until I fix the interplation for implicit mass flux discretization
-                 if ( implicit_flag == 0 ) then
-                    ifac = ( zle(i,j,k) - zl(i,j,kp1) )/( zl(i,j,k) - zl(i,j,kp1) )
-                    
-                    ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
-                    vi(i,j,k)   = v(i,j,kp1)   + ifac*( v(i,j,k)   - v(i,j,kp1) )
-                    thli(i,j,k) = thl(i,j,kp1) + ifac*( thl(i,j,k) - thl(i,j,kp1) )
-                    qti(i,j,k)  = qt(i,j,kp1)  + ifac*( qt(i,j,k)  - qt(i,j,kp1) )
-                    qvi(i,j,k)  = qv(i,j,kp1)  + ifac*( qv(i,j,k)  - qv(i,j,kp1) )
-                    qli(i,j,k)  = ql(i,j,kp1)  + ifac*( ql(i,j,k)  - ql(i,j,kp1) )
-                    qii(i,j,k)  = qi(i,j,kp1)  + ifac*( qi(i,j,k)  - qi(i,j,kp1) )
-                    thvi(i,j,k) = thv(i,j,kp1) + ifac*( thv(i,j,k) - thv(i,j,kp1) )
-                 else
-                    ui(i,j,k)   = 0.5*( u(i,j,kp1)   + u(i,j,k) )
-                    vi(i,j,k)   = 0.5*( v(i,j,kp1)   + v(i,j,k) )
-                    thli(i,j,k) = 0.5*( thl(i,j,kp1) + thl(i,j,k) )
-                    qti(i,j,k)  = 0.5*( qt(i,j,kp1)  + qt(i,j,k) )
-                    qvi(i,j,k)  = 0.5*( qv(i,j,kp1)  + qv(i,j,k) )
-                    qli(i,j,k)  = 0.5*( ql(i,j,kp1)  + ql(i,j,k) )
-                    qii(i,j,k)  = 0.5*( qi(i,j,kp1)  + qi(i,j,k) )
-                    thvi(i,j,k) = 0.5*( thv(i,j,kp1) + thv(i,j,k) )
-                 end if
-              elseif ( discrete_type == 1 ) then ! upwind
-                 ui(i,j,k)   = u(i,j,k)
-                 vi(i,j,k)   = v(i,j,k)
-                 thli(i,j,k) = thl(i,j,k)
-                 qti(i,j,k)  = qt(i,j,k)
-                 qvi(i,j,k)  = qv(i,j,k)
-                 qli(i,j,k)  = ql(i,j,k)
-                 qii(i,j,k)  = qi(i,j,k)
-                 thvi(i,j,k) = thv(i,j,k)
-              elseif ( discrete_type == 2 ) then ! upwind (Carpeneter et al. 1990)
-                 ui(i,j,k)   = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, u)
-                 vi(i,j,k)   = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, v)
-                 thli(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, thl)
-                 qti(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, qt)
-                 qvi(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, qv)
-                 qli(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, ql)
-                 qii(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, qi)
-                 thvi(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, thv)
-              end if
-           end do
-           end do
-        end do
-
-        do j = 1,JM
-        do i = 1,IM
-           ui(i,j,0)   = u(i,j,1)
-           vi(i,j,0)   = v(i,j,1)
-           thli(i,j,0) = thl(i,j,1)
-           qti(i,j,0)  = qt(i,j,1)
-           qvi(i,j,0)  = qv(i,j,1)
-           qli(i,j,0)  = ql(i,j,1)
-           qii(i,j,0)  = qi(i,j,1)
-           thvi(i,j,0) = thv(i,j,1)
-
-           ui(i,j,LM)   = u(i,j,LM)
-           vi(i,j,LM)   = v(i,j,LM)
-           thli(i,j,LM) = thl(i,j,LM)
-           qti(i,j,LM)  = qt(i,j,LM)
-           qvi(i,j,LM)  = qv(i,j,LM)
-           qli(i,j,LM)  = ql(i,j,LM)
-           qii(i,j,LM)  = qi(i,j,LM)
-           thvi(i,j,LM) = thv(i,j,LM)
-        end do
-        end do
-      end subroutine interp_edmf
-
-      !
-      !
-      !
-      real function interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, var)
-
-        implicit none
-
-        integer, intent(in)         :: IM, JM, LM, i, j, k
-        real, dimension(IM,JM,LM)   :: zl, var
-        real, dimension(IM,JM,0:LM) :: zle 
-        
-        real :: s_up, s_down, s
-
-        if ( k /= 1 ) then 
-           s_up   = ( var(i,j,k-1) - var(i,j,k) )/( zl(i,j,k-1) - zl(i,j,k) )
-           s_down = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
-           
-           if ( sign(s_up,s_down) /= s_up ) then
-              s = 0.
-           else
-              s = sign( min(abs(s_up),abs(s_down)), s_up )
-           end if
-           
-           interp_carpenter1990_up = var(i,j,k) + s*( zle(i,j,k) - zl(i,j,k) )
-        else
-           interp_carpenter1990_up = var(i,j,k)
-        end if
-
-      end function interp_carpenter1990_up
-
-      !
-      !
-      !
-      real function interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, var)
-
-        implicit none
-
-        integer, intent(in)         :: IM, JM, LM, i, j, k
-        real, dimension(IM,JM,LM)   :: zl, var
-        real, dimension(IM,JM,0:LM) :: zle 
-        
-        real :: s_up, s_down, s
-
-        if ( k /= LM - 1 ) then
-           s_up   = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
-           s_down = ( var(i,j,k+1) - var(i,j,k+2) )/( zl(i,j,k+1) - zl(i,j,k+2) )
-        
-           if ( sign(s_up,s_down) /= s_up ) then
-              s = 0.
-           else
-              s = sign( min(abs(s_up),abs(s_down)), s_up )
-           end if
-           
-           interp_carpenter1990_down = var(i,j,k+1) + s*( zle(i,j,k) - zl(i,j,k+1) )
-        else
-           interp_carpenter1990_down = var(i,j,k+1)
-        end if
-
-      end function interp_carpenter1990_down
-
 
 subroutine condensation_edmf(QT,THL,P,THV,QC,wf,ice_ramp)
 !
