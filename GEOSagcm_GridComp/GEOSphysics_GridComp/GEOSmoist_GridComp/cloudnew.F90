@@ -947,6 +947,18 @@ contains
 
             FRZ_PP_dev(I,K) = 0.00
 
+            ! Buoyancy calculation for SHOC, if not using ADG PDF
+!            if (PDFFLAG .ne. 5) then
+!              wthv2_dev(I,K) = -1.0*(TH_dev(I,K)*(1.+ESFAC*Q_dev(I,K))/MAPL_GRAV)*KH_dev(I,K)
+!              if (K.lt.LM .and. K.gt.1) then
+!                wthv2_dev(I,K) = wthv2_dev(I,K)*(TH_dev(I,K-1)-TH_dev(I,K+1))/(ZZ_dev(I,K-1)-ZZ_dev(I,K+1))
+!              else if (K.eq.LM)
+!                wthv2_dev(I,K) = wthv2_dev(I,K)*(TH_dev(I,K-1)-TH_dev(I,K))/(ZZ_dev(I,K-1)-ZZ_dev(I,K))
+!              else if (K.eq.1)
+!                wthv2_dev(I,K) = wthv2_dev(I,K)*(TH_dev(I,K)-TH_dev(I,K+1))/(ZZ_dev(I,K)-ZZ_dev(I,K+1))
+!              end if
+!            end if
+
             !!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! Total Condensate Source
             !!!!!!!!!!!!!!!!!!!!!!!!!!!

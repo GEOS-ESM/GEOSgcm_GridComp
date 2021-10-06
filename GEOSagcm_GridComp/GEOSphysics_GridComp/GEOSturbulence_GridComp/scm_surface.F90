@@ -1,4 +1,4 @@
-module toy_surface
+module scm_surface
 
 use MAPL_ConstantsMod, only: mapl_grav, mapl_cp, mapl_karman, mapl_rdry, mapl_pi, mapl_p00
 use MAPL_SatVaporMod, only: MAPL_EQsat
@@ -227,4 +227,4 @@ real function DPsi_H(zeta)
 
 end function DPsi_H
 
-end module toy_surface
+end module scm_surface

@@ -6,7 +6,7 @@ set (srcs
   shoc.F90
   sl3.F90
   edmf.F90
-  toy_surface.F90
+  scm_surface.F90
   shocparams.F90
   )
 
