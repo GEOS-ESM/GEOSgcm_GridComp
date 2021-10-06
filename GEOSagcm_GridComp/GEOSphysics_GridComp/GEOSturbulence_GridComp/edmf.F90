@@ -1,4 +1,4 @@
-#define EDMF_DIAG 1
+!#define EDMF_DIAG 1
 
 module edmf_mod
 
