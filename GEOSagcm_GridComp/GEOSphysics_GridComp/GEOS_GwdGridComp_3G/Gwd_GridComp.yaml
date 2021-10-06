@@ -1,4 +1,13 @@
-EFFGWORO:  
-EFFGWBKG:
-BGSTRESSMAX:
-BGSTRESSMAX:
+# Configuration file for GWD
+
+# Gravity wave drag
+EFFGWORO:    0.1
+EFFGWBKG:    0.1
+BGSTRESSMAX: 0.1
+BGSTRESSMAX: 0.1
+
+# Rayleigh friction
+RAYLEIGH_Z1:   75000.
+RAYLEIGH_TAU1: 1200.
+RAYLEIGH_H0:   1.2
+RAYLEIGH_H1:   1.2
