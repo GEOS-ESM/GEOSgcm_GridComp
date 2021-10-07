@@ -1213,7 +1213,7 @@ contains
     !    STATUS = NF_OPEN_PAR   (trim(InCNRestart),IOR(NF_NOWRITE,NF_MPIIO),MPI_COMM_WORLD, info,NCFID)
     !    STATUS = NF_OPEN_PAR   (trim(OutFileName),IOR(NF_WRITE  ,NF_MPIIO),MPI_COMM_WORLD, info,OUTID)
     
-    STATUS = NF_OPEN_PAR   (trim(OutFileName),IOR(NF_NOWRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID)
+    STATUS = NF_OPEN_PAR   (trim(OutFileName),IOR(NF_NOWRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID) ; VERIFY_(STATUS)
  !   if(root_proc) then
  !      STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID)
  !      
@@ -1323,8 +1323,7 @@ contains
 
      if(root_proc) then
         
-        STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID)
-        IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS, 'open '// trim(OutFileName)//'  FAILED')   
+        STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID) ; VERIFY_(STATUS)
         allocate (CLMC_pf1(NTILES))
         allocate (CLMC_pf2(NTILES))
         allocate (CLMC_sf1(NTILES))

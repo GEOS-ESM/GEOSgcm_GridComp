@@ -1182,8 +1182,7 @@ contains
        allocate (latg   (ntiles))
        allocate (ld_reorder(ntiles_smap)) 
 
-       call ReadTileFile_RealLatLon ('InData/OutTileFile', i, long, latg)
-       _ASSERT(i==ntiles, " tile number should be the same") 
+       call ReadTileFile_RealLatLon ('InData/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
        ! ---------------------------------------------
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
