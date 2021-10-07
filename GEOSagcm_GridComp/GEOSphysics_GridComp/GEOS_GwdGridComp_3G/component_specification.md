@@ -11,6 +11,10 @@ Specification of a _leaf_ gridded component involves the following actions:
   
 - Specification of entry points:  init/run/finalize/... with optional phases
 
+- Specification of grid
+  - inherit from parent (usual case)
+  - define local grid
+
 Parent (non-leaf) components have the actions above as well as the
 following additional configuration actions:
 

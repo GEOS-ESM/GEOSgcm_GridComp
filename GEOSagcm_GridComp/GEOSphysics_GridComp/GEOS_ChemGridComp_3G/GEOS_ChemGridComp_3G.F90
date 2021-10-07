@@ -5,15 +5,16 @@ module GEOS_ChemGridComp
 
    public :: get_specification
 
-   type, extends(MaplComponent) :: ChemGridComp
+   type, extends(MaplLeafComponent) :: ChemGridComp
       private
       logical :: enable_PCHEM
       logical :: enable_ACHEM
       ...
    contains
-      procedure :: get_state_specifications
-      !      procedure :: get_children
-      procedure :: get_connections
+      procedure :: get_state_specs
+      procedure :: get_child_specs
+      procedure :: get_connection_specs
+      procedure :: get_grid_specs
    end type ChemGridComp
 
 contains
@@ -30,7 +31,8 @@ contains
       call config%get(comp%enable_ACHEM, "ENABLE_ACHEM", default=.false., _RC)
 
       ...
-      
+
+      ! mandatory final step
       call comp%set_valid()
 
    end function new_ChemGridComp

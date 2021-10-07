@@ -27,45 +27,64 @@ module GEOS_GwdComponent
       real :: h0
       real :: hh
    contains
-      procedure :: get_state_specifications
+      procedure :: get_state_specs
       procedure :: get_entry_points
-      ! procedure :: get_children
-      ! procedure :: get_connections
+      ! procedure :: get_child_specs
+      ! procedure :: get_connection_specs
    end type GwdComponent
 
    interface GwdComponent
       module procedure new_GwdComponent
    end interface GwdComponent
 
+   interface ComponentSpecification
+      module procedure :: create_ComponentSpecification
+   end interface ComponentSpecification
+
 contains
 
-   ! Load parameter values from config
-#define _RC_SPECIAL rc=status); if (MAPL_Verify(status,__FILE__,__LINE__) return
-
+   ! Constructor - errors not permitted!!
    function new_GwdComponent(config) result(gwd)
       type(GwdComponent) :: gwd
       type(Configuration), intent(in) :: config
+
+      gwd%config = config
+
+   end function new_GwdComponent
+
+   ! Factory
+   function create_ComponentSpecification(config) result(spec)
+      type(ComponentSpecification) :: spec
+      type(Configuration), intent(in) :: config ! yaml
+
+      type(FallibleComponent) :: comp
+
+      spec = ComponentSpecification( FallibleComponent(GwdComponent(config) )
+
+   end function create_ComponentSpecification
+
+
+   subroutine fill_private_state(this, rc)
+      class(GwdComponent), intent(inout) :: this
       integer, optional, intent(out) :: rc
 
       integer :: status
 
       ! Gravity wave drag
       ! -----------------
-      call config%get(gwd%effgworo,    "EFFGWORO",    default=0.250,           _RC_SPECIAL)
-      call config%get(gwd%effgwbkg,    "EFFGWBKG",    default=0.125,           _RC_SPECIAL)
-      call config%get(gwd%pgwv,        "PGWV",        default=nint(4*lm/72.0), _RC_SPECIAL)
-      call config%get(gwd%bgstressmax, "BGSTRESSMAX", default=0.9,             _RC_SPECIAL)
+      call this%config%get(this%effgworo,    "EFFGWORO",    default=0.250,           _RC)
+      call this%config%get(this%effgwbkg,    "EFFGWBKG",    default=0.125,           _RC)
+      call this%config%get(this%pgwv,        "PGWV",        default=nint(4*lm/72.0), _RC)
+      call this%config%get(this%bgstressmax, "BGSTRESSMAX", default=0.9,             _RC)
 
       ! Rayleigh friction
       ! -----------------
-      call config%get(gwd%Z1,   "RAYLEIGH_Z1:",   default=75000.,  _RC_SPECIAL)
-      call config%get(gwd%TAU1, "RAYLEIGH_TAU1:", default=172800., _RC_SPECIAL)
-      call config%get(gwd%H0,   "RAYLEIGH_H0:",   default=7000.,   _RC_SPECIAL)
-      call config%get(gwd%HH,   "RAYLEIGH_HH:",   default=7500.,   _RC_SPECIAL)
+      call this%config%get(this%Z1,   "RAYLEIGH_Z1:",   default=75000.,  _RC)
+      call this%config%get(this%TAU1, "RAYLEIGH_TAU1:", default=172800., _RC)
+      call this%config%get(this%H0,   "RAYLEIGH_H0:",   default=7000.,   _RC)
+      call this%config%get(this%HH,   "RAYLEIGH_HH:",   default=7500.,   _RC)
 
-      call gwd%set_valid()
-
-   end function new_GwdComp
+   end subroutine fill_private_state
 
    !---------------
    ! Return a MAPL ComponentSpecification object that contains
@@ -77,40 +96,33 @@ contains
    ! 3. Entry points: init, run, finalize, ...
    ! 4. Child components (non-leaf)
    ! 5. Connections (non-leaf)
+   ! 6. Grid
    !---------------
 
-   function get_specification(config) result(spec)
-      type(ComponentSpecification) :: spec
-      type(Configuration), intent(in) :: config ! yaml
-
-      spec = ComponentSpecification( GwdComponent(config) )
-
-   end function get_specification
-
-
-   ! Uses ACG to produce spec files to include.
-   ! Entire function could become a macro.
-   function get_state_specification(this) result(state_specifications)
+   ! Uses automatic code generator to produce spec include files.
+   ! Entire function could become a macro. (boiler plate)
+   ! Note:  objects propagate any failures rather than the interface.
+   function get_state_specs(this) result(state_specifications)
       class(GwdComponent), intent(in) :: this
       type(StateSpecifications) :: state_specifications
-
 #include "import_specs.h"
 #include "export_specs.h"
-
-   end function get_state_specification
+   end function get_state_specs
 
 
    ! GWD is simple - only has a single method with a single phase
    function get_entry_points(this) result(entry_points)
       type(EntryPoint), allocatable :: entry_points(:)
       class(GwdComponent), intent(inout) :: this
-
       entry_points = [ EntryPoint(run, ESMF_METHOD_RUN) ]
-
    end function get_entry_points
 
-   subroutine run(this)
-      type(GwdGridComp), intent(in) :: run
+
+   ! Traditional grided component method:  run()
+
+   subroutine run(this, rc)
+      type(GwdGridComp), intent(in) :: run ! _not_ CLASS
+      integer, intent(out) :: rc           ! not optional (unfortunate)
 
       integer :: status
       type (ESMF_Alarm) :: alarm
