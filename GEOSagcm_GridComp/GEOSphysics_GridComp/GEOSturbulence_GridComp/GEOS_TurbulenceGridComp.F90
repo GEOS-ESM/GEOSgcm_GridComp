@@ -1264,25 +1264,6 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'sub-environmental_hl',                                  &
-       UNITS      = 'K',                                                     &
-       SHORT_NAME = 'hle',                                                   &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'sub-environmental_qt',                                  &
-       UNITS      = 'kg+1kg-1',                                              &
-       SHORT_NAME = 'qte',                                                   &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'EDMF_entrainment_rate',                                 &
        UNITS      = 'm-1',                                                   &
@@ -3227,7 +3208,7 @@ contains
                                             edmf_w2, edmf_qt2, edmf_hl2, & 
                                             edmf_w3, edmf_wqt, edmf_hlqt, & 
                                             edmf_whl, edmf_qt3, edmf_hl3, &
-                                            hle, qte, edmf_entx, &
+                                            edmf_entx, &
                                             edmf_wqtavg, edmf_whlavg
 !   real, dimension(:,:,:), pointer      :: uu, vu 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
@@ -3766,22 +3747,18 @@ contains
      VERIFY_(STATUS)
 
 
-     call MAPL_GetPointer(EXPORT,        au,        'au', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
+!     call MAPL_GetPointer(EXPORT,        au,        'au', ALLOC=.TRUE., RC=STATUS)
+!     VERIFY_(STATUS)
 !     call MAPL_GetPointer(EXPORT,        uu,        'uu', ALLOC=.TRUE., RC=STATUS)
 !     VERIFY_(STATUS)
 !     call MAPL_GetPointer(EXPORT,        vu,        'vu', ALLOC=.TRUE., RC=STATUS)
 !     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,        Mu,        'Mu', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,         E,         'E', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,         D,         'D', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  hle,   'hle', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  qte,   'qte',  ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
+!     call MAPL_GetPointer(EXPORT,        Mu,        'Mu', ALLOC=.TRUE., RC=STATUS)
+!     VERIFY_(STATUS)
+!     call MAPL_GetPointer(EXPORT,         E,         'E', ALLOC=.TRUE., RC=STATUS)
+!     VERIFY_(STATUS)
+!     call MAPL_GetPointer(EXPORT,         D,         'D', ALLOC=.TRUE., RC=STATUS)
+!     VERIFY_(STATUS)
 
      call MAPL_GetPointer(EXPORT,  edmf_entx,  'EDMF_ENTR',  RC=STATUS)
      VERIFY_(STATUS)
@@ -4075,7 +4052,6 @@ IF(DoMF /= 0.) then
                buoyf,&                      ! diag
                mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, & ! for ADG PDF
                iras,jras, &
-               au, Mu, E, D, hle, qte, edmf_ent, edmf_mf, &  ! for MYNN
 #ifdef EDMF_DIAG
                w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -7158,7 +7134,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L0,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
-             au, Mu, E, D, hle, qte, entx, edmfmf, &
+             entx, edmfmf, &
 #ifdef EDMF_DIAG
              w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
              w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -7236,10 +7212,9 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
   ! outputs - variables needed for solver (s_aw - sum ai*wi, s_awphi - sum ai*wi*phii)
         REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
         REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: awhl3, awqt3, awthv3
-        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: au, Mu
    ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
          REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfwqt,mfhl2,&
-                                                         mfhlqt,mfwhl, hle, qte, E, D, entx     
+                                                         mfhlqt,mfwhl, entx     
       REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
@@ -7994,8 +7969,8 @@ end if
       awthv3(IH,K)=s_awthv(KTE+KTS-K-1)
 
       !
-      au(IH,K) = au_flip(KTE+KTS-K-1)
-      Mu(IH,K) = Mu_flip(KTE+KTS-K-1)
+!      au(IH,K) = au_flip(KTE+KTS-K-1)
+!      Mu(IH,K) = Mu_flip(KTE+KTS-K-1)
     ENDDO
     
 ! buoyancy is defined on full levels    
@@ -8012,10 +7987,8 @@ end if
       mfhlqt(IH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
       mfwhl(IH,K)=0.5*(s_awhl(KTE+KTS-K-1)+s_awhl(KTE+KTS-K))
 
-      E(IH,K)   = E_flip(KTE+KTS-K)
-      D(IH,K)   = D_flip(KTE+KTS-K)
-      hle(IH,K) = hle_flip(KTE+KTS-K)
-      qte(IH,K) = qte_flip(KTE+KTS-K)
+!      E(IH,K)   = E_flip(KTE+KTS-K)
+!      D(IH,K)   = D_flip(KTE+KTS-K)
   ENDDO  
     
 !   print *,'buoyf',buoyf 
