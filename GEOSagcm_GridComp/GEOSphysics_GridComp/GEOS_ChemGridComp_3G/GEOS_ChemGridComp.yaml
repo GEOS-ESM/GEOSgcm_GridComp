@@ -1,0 +1,195 @@
+doing_SU
+doing_OCS
+doing_BC
+doing_DU
+doing_OC
+doing_SS
+
+doMEGATemission
+doMEGANviHEMCO
+
+
+
+
+enable_PCHEM:        False
+enable_ACHEM:        False
+enable_GOCART:       False
+enable_GOCART_DATA:  False
+enable_GAAS:         False
+enable_H2O:          False
+enable_STRATCHEM:    False
+enable_GMICHEM:      False
+enable_CARMA:        False
+enable_GEOSCHEM:     False
+enable_MATRIX:       False
+enable_MAM:          False
+enable_MAM_DATA:     False
+enable_TR:           False
+enable_DNA:          False
+enable_HEMCO:        False
+
+CHILDREN:
+  - NAME: CHEMENV,
+    DSO:  chemenv,
+    HANDLE: get_specification
+  - NAME: HEMCO
+    DSO:  hemco,
+    HANDLE: get_specification,
+    CONDITION: enable_HEMCO
+  - NAME: PCHEM
+    DSO:  pchem,
+    HANDLE: get_specification,
+    CONDITION: enable_PCHEM
+  - NAME: ACHEM
+    DSO:  achem,
+    HANDLE: get_specification,
+    CONDITION: enable_ACHEM
+  - NAME: GOCART
+    DSO:  gocart,
+    HANDLE: get_specification,
+    CONDITION: enable_GOCART
+  - NAME: GOCART.DATA
+    DSO:  GOCART_data,
+    HANDLE: get_specification,
+    CONDITION: enable_GOCARTdata
+  - NAME: GAAS
+    DSO:  gaas,
+    HANDLE: get_specification,
+    CONDITION: enable_GAAS
+  - NAME: H2O
+    DSO:  h2o,
+    HANDLE: get_specification,
+    CONDITION: enable_H2O
+  - NAME: STRATCHEM
+    DSO:  stratchem,
+    HANDLE: get_specification,
+    CONDITION: enable_STRATCHEM
+  - NAME: GMICHEM
+    DSO:  gmichem,
+    HANDLE: get_specification,
+    CONDITION: enable_GMICHEM
+   - NAME: CARMA
+    DSO:  carma,
+    HANDLE: get_specification,
+    CONDITION: enable_CARMA
+   - NAME: GEOSCHEMCHEM
+    DSO:  geoschemchem,
+    HANDLE: get_specification,
+    CONDITION: enable_GEOSCHEM
+  - NAME: MATRIX
+    DSO:  matrix,
+    HANDLE: get_specification,
+    CONDITION: enable_MATRIX
+  - NAME: MAM
+    DSO:  MAM,
+    HANDLE: get_specification,
+    CONDITION: enable_MAM
+  - NAME: MAM.data
+    DSO:  mam_data
+    HANDLE: get_specification,
+    CONDITION: enable_MAMdata
+  - NAME: TR
+    DSO:  tr,
+    HANDLE: get_specification,
+    CONDITION: enable_TR
+  - NAME: DNA
+    DSO:  dna,
+    HANDLE: get_specification,
+    CONDITION: enable_DNA
+
+CONNECTIONS:
+
+  - SOURCE: CHEMENV
+    DEST:   GOCART
+    FIELDS: [AIRDENS, AIRDENS_DRYP, DELP, TPREC, CN_PRCP, NCN_PRCP]
+    CONDITION: enable_GOCART,
+
+  - SOURCE: CHEMENV
+    DEST:   GOCART.data
+    FIELDS: [DELP]
+    CONDITION: enable_GOCART_DATA
+
+  - SOURCE: CHEMENV
+    DEST:   GAAS
+    FIELDS: [AIRDENS, DELP]
+    CONDITION: enable_GAAS
+
+  - SOURCE: CHEMENV
+    DEST:   GAAS
+    FIELDS: [AIRDENS, DELP]
+    CONDITION: enable_GAAS
+    
+  - SOURCE: GOCART
+    DEST: GAAS
+    FIELDS: [
+             du001: GOCART::du001, du002: GOCART::du002, du003: GOCART::du001, du003: GOCART::du003, du004: GOCART::du004, du005: GOCART:: du005,
+             ss001: GOCART::ss001, ss002: GOCART::ss002, ss003: GOCART::ss001, ss003: GOCART::ss003, ss004: GOCART::ss004, ss005: GOCART:: ss005,
+             NO3an1: GOCART::NO3an1, NO3an2: GOCART::NO3an3, NO3an3: GOCART::NO3an3,
+             BRCphobic: GOCART::BRCphobic, BRCphilic: GOCART::BRCphilic,
+             OCphobic: GOCART::OCphobic, OCphilic: GOCART::OCphilic,
+             BCphobic: GOCART::BCphobic, BCphilic: GOCART::BCphilic,
+             SO4: GOCART::SO4]
+    CONDITION: {AND: [enable_GAAS, enable_GOCART]}
+
+  - SOURCE: CHEMENV
+    DEST:   CARMA
+    FIELDS: [AIRDENS, TPREC, CN_PRCP, NCN_PRCP]
+    CONDITION: enable_CARMA
+
+  - SOURCE: GOCART
+    DEST:   CARMA
+    FIELDS: [PSO4TOT]
+    CONDITION: {AND: [enable_CARMA, enabel_GOCART, doing_SU]}
+
+  - SOURCE: CHEMENV
+    DEST:   STRATCHEM
+    FIELDS: [AIRDENS, AIRDENS_DRYP, DELP, TPREC, CN_PRCP, NCN_PRCP]
+    CONDITION: enable_STRATCHEM
+
+  - SOURCE: CHEMENV
+    DEST:   GMICHHEM
+    FIELDS: [AIRDENS, DELP]
+    CONDITION: enable_GMICHEM
+
+  - SOURCE: CHEMENV
+    DEST:   MATRIX
+    FIELDS: [AIRDENS, DELP]
+    CONDITION: enable_MATRIX
+            
+  - SOURCE: CHEMENV
+    DEST:   MAM
+    FIELDS: [AIRDENS, DELP, TPREC, CN_PRCP, NCN_PRCP]
+    CONDITION: enable_MAM
+
+  - SOURCE: CHEMENV
+    DEST:   ACHEM
+    FIELDS: [AIRDENS, DELP, TPREC, CN_PRCP, NCN_PRCP]
+    CONDITION: enable_ACHEM
+
+  - SOURCE: CHEMENV
+    DEST:   TR
+    FIELDS: [AIRDENS, AIRDENS_DRYP, DELP, TPREC, CN_PRCP, NCN_PRCP]
+    CONDITION: enable_TR
+
+  - SOURCE: GMICHEM
+    DEST:   TR
+    FIELDS: [OX, QQK007, QQK027 QQK028, DD_OX, QQK005, QQK235, QQK170, QQK216, QQK179, QQK150]
+    CONDITION: {AND: [enable_TR, enable_GMICHEM]}
+
+  - SOURCE: CHEMENV
+    DEST:   GEOSCHEM
+    FIELDS: [AIRDENS, DELP]
+    CONDITION: enable_GEOSCHEM
+
+-    ...
+
+# problem case
+     Search_SO4v: DO n = chemReg%i_SU, chemReg%j_SU
+
+      IF( TRIM(chemReg%vname(n)) == "SO4v" )  THEN
+        CALL MAPL_AddConnectivity ( GC, &
+          SHORT_NAME  = (/ "GOCART::SO4v" /), &
+          DST_ID=GMICHEM, SRC_ID=GOCART, __RC__)
+      END IF
+
+     END DO Search_SO4v

@@ -65,7 +65,7 @@ contains
 
       call gwd%set_valid()
 
-   end function new_GwdComponent
+   end function new_GwdComp
 
    !---------------
    ! Return a MAPL ComponentSpecification object that contains
@@ -90,14 +90,14 @@ contains
 
    ! Uses ACG to produce spec files to include.
    ! Entire function could become a macro.
-   function make_state_specification(this) result(state_specifications)
+   function get_state_specification(this) result(state_specifications)
       class(GwdComponent), intent(in) :: this
       type(StateSpecifications) :: state_specifications
 
 #include "import_specs.h"
 #include "export_specs.h"
 
-   end function make_state_specification
+   end function get_state_specification
 
 
    ! GWD is simple - only has a single method with a single phase
@@ -110,7 +110,7 @@ contains
    end function get_entry_points
 
    subroutine run(this)
-      type(GwdGridComp), intent(inout) :: run
+      type(GwdGridComp), intent(in) :: run
 
       integer :: status
       type (ESMF_Alarm) :: alarm
