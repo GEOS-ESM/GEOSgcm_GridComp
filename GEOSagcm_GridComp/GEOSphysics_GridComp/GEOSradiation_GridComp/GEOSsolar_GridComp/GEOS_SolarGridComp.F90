@@ -3754,8 +3754,11 @@ contains
 
       ! Set flags related to cloud properties (see RRTMG_SW)
       ! ----------------------------------------------------
+      call MAPL_GetResource(MAPL,ICEFLGSW,'RRTMG_ICEFLG:',DEFAULT=3,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,LIQFLGSW,'RRTMG_LIQFLG:',DEFAULT=1,RC=STATUS)
+      VERIFY_(STATUS)
 
-      ICEFLGSW = 3
       LIQFLGSW = 1
 
       ! Get number of cores per node for RRTMG GPU
@@ -3847,8 +3850,16 @@ contains
       O2_R  (:,1:LM  ) = O2
       FCLD_R(:,1:LM  ) = CL (:,LM:1:-1)
 
-      ! Adjustment for Earth/Sun distance, from MAPL_SunGetInsolation
-      ADJES = DIST
+! Clean up negatives
+      WHERE (Q_R < 0.) Q_R = 0.
+      WHERE (O3_R < 0.) O3_R = 0.
+      WHERE (CH4_R < 0.) CH4_R = 0.
+      WHERE (CO2_R < 0.) CO2_R = 0.
+      WHERE (O2_R < 0.) O2_R = 0.
+      WHERE (FCLD_R < 0.) FCLD_R = 0.
+
+! Adjustment for Earth/Sun distance, from MAPL_SunGetInsolation
+      ADJES  = DIST
 
       ! Layer mid-point heights relative to zero at index 1
       ZL_R(:,1) = 0.
