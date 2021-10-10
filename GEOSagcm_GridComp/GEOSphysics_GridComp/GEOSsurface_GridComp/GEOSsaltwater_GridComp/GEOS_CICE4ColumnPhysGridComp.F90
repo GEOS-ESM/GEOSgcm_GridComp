@@ -71,7 +71,11 @@ module GEOS_CICE4ColumnPhysGridComp
   logical ::      DUAL_OCEAN
 
   type cice_state
-       integer:: CHOOSEMOSFC
+       integer :: CHOOSEMOSFC
+       logical :: retrievedRootGC = .false.
+       type (MAPL_LocStreamXform) :: XFORM_A2O
+       type (MAPL_LocStreamXform) :: XFORM_O2A
+       type (MAPL_LocStream) :: locStreamO
   end type cice_state
 
   type cice_state_wrap
@@ -2031,8 +2035,6 @@ module GEOS_CICE4ColumnPhysGridComp
     integer                             :: PRES_ICE
 
     !*CALLBACK*
-    type(ESMF_Field)                    :: fld
-    type(ESMF_Grid)                     :: tilegrid
     type(ESMF_State)                    :: SURFST
 
 !=============================================================================
@@ -2139,17 +2141,6 @@ module GEOS_CICE4ColumnPhysGridComp
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
 
-    !*CALLBACK*
-    !==============================================================================================
-    call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! *** need to have a MAPL_get for tilegrid ***
-
-    fld = MAPL_FieldCreateEmpty(trim('surface_ice_temperature', tilegrid, __RC__)
-    call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsTileOnly, location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0, ungrid=(/NUM_ICE_CATEGORIES/),   __RC__)
-    call MAPL_StateAdd(SURFST, fld, __RC__)
-    !==============================================================================================
  
 ! All Done
 !---------
@@ -3050,6 +3041,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   real, pointer, dimension(:)         :: AREA => null()     ! needed to calculate TILEAREA in SaltWaterCore
 
+  type(cice_state_wrap) :: wrap
+  type(cice_state), pointer :: mystate
+
 !=============================================================================
 
 ! Begin... 
@@ -3061,6 +3055,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
+
+    call ESMF_UserCompGetInternalState(gc,'cice_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -3120,6 +3118,7 @@ contains
 
    character(len=ESMF_MAXSTR)     :: IAm
    integer                        :: STATUS
+   integer                        :: AS_STATUS
 
 
 ! pointers to export
@@ -3298,9 +3297,12 @@ contains
    real, pointer, dimension(:)    :: FRZMLT    => null() 
 
    !*CALLBACK*
-   real, pointer, dimension(:)    :: AS_PTR_2D  => null() 
+   real, pointer, dimension(:)    :: ptr0  => null() 
+   real, pointer, dimension(:,:)  :: AS_PTR_2D  => null() 
    type(ESMF_State)               :: SURFST
-   
+   type(MAPL_LocStream) :: locStreamO
+   type(MAPL_LocStreamXform) :: xform_A2O
+   type(MAPL_LocStreamXform) :: xform_O2A
 
    real, pointer, dimension(:,:)       :: TS  => null()
    real,    dimension(NT)              :: SHF
@@ -4069,12 +4071,37 @@ contains
 
     !*CALLBACK*
     !==============================================================================================
-    call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, RC=STATUS)
-    VERIFY_(STATUS)
 
-    call MAPL_GetPointer(SURFST, AS_PTR_2D, 'surface_ice_temperature', RC=STATUS)
-    VERIFY_(STATUS)
-    AS_PTR_2D = TS !*** pass ice/snow surface temperature
+! retrieve the regridding from the "private" wrapped state 
+
+    if (.not. mystate%retrievedRootGC) then
+       block
+         type(ESMF_GridComp) :: rootGC
+
+         rootGC = MAPL_RootGcRetrieve(MAPL)
+!??         ASSERT_(associated(rootGC%ptr))
+
+         call ESMF_UserCompSetInternalState ( rootGC, 'GCM_XFORM_A2O', &
+              mystate%XFORM_A2O,status )
+         VERIFY_(STATUS)
+         call ESMF_UserCompSetInternalState ( rootGC, 'GCM_XFORM_O2A', &
+              mystate%XFORM_O2A,status )
+         VERIFY_(STATUS)
+         call ESMF_UserCompSetInternalState ( rootGC, 'GCM_LOCSTREAM_OCEAN', &
+              mystate%locStreamO,status )
+         VERIFY_(STATUS)
+       end block
+       mystate%retrievedRootGC = .true.
+    end if
+    XFORM_A2O = mystate%XFORM_A2O
+    XFORM_O2A = mystate%XFORM_O2A
+    locStreamO = mystate%locStreamO
+
+    call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, __RC__)
+
+    call RegridA2O_2d(TS, SURFST, 'surface_ice_temperature', &
+         XFORM_A2O, locstreamO, __RC__)
+
     !       
     !    .....            !*** more fields to be passed
     !
@@ -4082,6 +4109,10 @@ contains
     call ESMF_MethodExecute(SURFST, label="thermo_couling", userRC=AS_STATUS, RC=STATUS)
     VERIFY_(AS_STATUS)
     VERIFY_(STATUS)
+
+    call RegridO2A_2d(AS_PTR_2D, SURFST, 'surface_ice_temperature', &
+         XFORM_O2A, locstreamO, __RC__)
+
     !
     !************************************************************************************************
     !
@@ -4699,8 +4730,74 @@ contains
 !-----------
 
     RETURN_(ESMF_SUCCESS)
-             
+
   end subroutine CICECORE
+!=========CALLBACK==============    
+
+  subroutine RegridA2O_2d(ptr_2d, state, name, xform, locstream, rc)
+    real :: ptr_2d(:,:)
+    type (ESMF_State) :: state
+    character(len=*) :: name
+    type (MAPL_LocStreamXform), intent(IN) :: xform
+    type (MAPL_LocStream), intent(IN) :: locstream
+    integer, optional, intent(OUT) :: rc
+    
+    real, pointer, dimension(:,:,:) :: PTR_3D  => null() 
+    real, pointer, dimension(:) :: ptrO  => null() 
+    integer :: status
+    integer :: k, nc, nt
+    
+    NT = size(ptr_2d, 1)
+    NC = size(ptr_2d, 2)
+    call MAPL_GetPointer(state, ptr_3d, name, __RC__)
+    ASSERT_(NC == size(ptr_3d,3)) ! make sure the ungridded dims match
+
+    allocate(ptrO(NT), __STAT__)
+    do k = 1, nc
+    !
+    !   !perform locstreamTrans_T2T+T2G(ts) => tsg (tile)
+    !
+       call MAPL_LocStreamTransform( ptrO, XFORM, PTR_2D(:,k), __RC__ ) 
+       call MAPL_LocStreamTransform( locStream, PTR_3D(:,:,k), ptrO, __RC__) 
+    end do
+    deallocate (ptrO)
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine RegridA2O_2d
+
+  subroutine RegridO2A_2d(ptr_2d, state, name, xform, locstream, rc)
+    real :: ptr_2d(:,:)
+    type (ESMF_State) :: state
+    character(len=*) :: name
+    type (MAPL_LocStreamXform), intent(IN) :: xform
+    type (MAPL_LocStream), intent(IN) :: locstream
+    integer, optional, intent(OUT) :: rc
+      
+    real, pointer, dimension(:,:,:) :: PTR_3D  => null() 
+    real, pointer, dimension(:)    :: ptrO  => null() 
+    integer :: status
+    integer :: k, nc, nt
+
+    NT = size(ptr_2d, 1)
+    NC = size(ptr_2d, 2)
+    call MAPL_GetPointer(state, ptr_3d, name, __RC__)
+    ASSERT_(NC == size(ptr_3d,3)) ! make sure the ungridded dims match
+
+    allocate(ptrO(NT), __STAT__)
+    do k = 1, nc
+    
+       !
+       !   !perform locstreamTrans_G2T+T2T(ts) => tsg (tile)
+       !
+       call MAPL_LocStreamTransform( locStream, ptrO, ptr_3d(:,:,k), __RC__) 
+       call MAPL_LocStreamTransform( ptr_2d(:,k), XFORM,  ptrO, __RC__ ) 
+    end do
+    deallocate (ptrO)
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine RegridO2A_2d
+
+!===============================
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

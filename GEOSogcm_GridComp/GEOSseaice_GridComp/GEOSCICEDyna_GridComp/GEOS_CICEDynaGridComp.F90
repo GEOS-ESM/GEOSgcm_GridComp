@@ -1435,7 +1435,7 @@ module GEOS_CICEDynaGridCompMod
     integer                                :: CPLS 
 
     !*CALLBACK*
-    type(ESMF_State)                       : SURFST
+    type(ESMF_State)                       :: SURFST
 
 
 #ifdef MODIFY_TOPOGRAPHY
@@ -1780,6 +1780,20 @@ module GEOS_CICEDynaGridCompMod
     !!attach the thermo coupling method
     !
     call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
+
+    ! create and add some fields to the callback state (i.e. SURFSTATE)
+    block
+      type(ESMF_Field) :: fld
+      type (ESMF_Grid) :: grid
+
+      call ESMF_GridCompGet(gc, grid=grid, __RC__)
+      fld = MAPL_FieldCreateEmpty('surface_ice_temperature', grid, __RC__)
+      call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsHorzOnly, &
+           location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0, &
+           ungrid=[NUM_ICE_CATEGORIES], __RC__)
+      call MAPL_StateAdd(SURFST, fld, __RC__)
+    end block
+    
     !=====================================================================================
 
 ! All Done
@@ -2931,17 +2945,15 @@ end subroutine RUN
      type(ESMF_State)     :: state
      integer, intent(out) :: rc
   !
+     integer :: status
+     character(len=ESMF_MAXSTR), parameter :: Iam=' thermo_coupling'
+
      real, dimension(:,:), pointer         :: ts 
   !
      call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
-  !
-  !   !perform locstreamTrans_T2T+T2G(ts) -> tsg (grid variable)
-  !
-  !   ! update tsg 
-  !   tsg = tsg + 1.0  ! true updates will be a call to CICE6 thermo update routine 
-  !
-  !   !perform locstreamTrans_G2T+T2T(tsg)  -> ts (tile variable)
-  !
+  !   ! update ts 
+     ts = ts + 1.0  ! true updates will be a call to CICE6 thermo update routine
+     RETURN_(ESMF_SUCCESS)
   end subroutine thermo_coupling
 
   !=====================================================================================

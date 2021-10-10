@@ -1235,6 +1235,17 @@ contains
                                     NAME='XFORM_O2A', &
                                     RC=STATUS )
    VERIFY_(STATUS)
+   !========CICE CALLBACK RELATED======
+   call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_A2O', &
+        GCM_INTERNAL_STATE%XFORM_A2O,status )
+   VERIFY_(STATUS)
+   call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_O2A', &
+        GCM_INTERNAL_STATE%XFORM_O2A,status )
+   VERIFY_(STATUS)
+   call ESMF_UserCompSetInternalState ( GC, 'GCM_LOCSTREAM_OCEAN', &
+        exchO,status )
+   VERIFY_(STATUS)
+   !===================================
    end if
 
 ! This part has some explicit hierarchy built in...
