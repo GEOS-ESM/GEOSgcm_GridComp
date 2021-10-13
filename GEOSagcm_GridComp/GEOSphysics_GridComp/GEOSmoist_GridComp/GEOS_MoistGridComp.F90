@@ -3,6 +3,7 @@
 ! VERIFY_ and RETURN_ macros for error handling.
 
 !#define UWDIAG 1
+!#define PDFDIAG 1
 
 #include "MAPL_Generic.h"
 
@@ -593,27 +594,27 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                                     &
-         SHORT_NAME = 'edmf_wqtavg',                                &
-         LONG_NAME  = 'edmf_qt_flux_from_plume_mean',               &
-         UNITS      = 'kg kg-1 m s-1',                              &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationEdge,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+!    call MAPL_AddImportSpec(GC,                                     &
+!         SHORT_NAME = 'edmf_wqtavg',                                &
+!         LONG_NAME  = 'edmf_qt_flux_from_plume_mean',               &
+!         UNITS      = 'kg kg-1 m s-1',                              &
+!         DIMS       = MAPL_DimsHorzVert,                            &
+!         VLOCATION  = MAPL_VLocationEdge,                           &
+!         AVERAGING_INTERVAL = AVRGNINT,                             &
+!         REFRESH_INTERVAL   = RFRSHINT,                             &
+!         RC=STATUS  )
+!    VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                                     &
-         SHORT_NAME = 'edmf_whlavg',                                &
-         LONG_NAME  = 'edmf_hl_flux_from_plume_mean',               &
-         UNITS      = 'K',                                          &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationEdge,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+!    call MAPL_AddImportSpec(GC,                                     &
+!         SHORT_NAME = 'edmf_whlavg',                                &
+!         LONG_NAME  = 'edmf_hl_flux_from_plume_mean',               &
+!         UNITS      = 'K',                                          &
+!         DIMS       = MAPL_DimsHorzVert,                            &
+!         VLOCATION  = MAPL_VLocationEdge,                           &
+!         AVERAGING_INTERVAL = AVRGNINT,                             &
+!         REFRESH_INTERVAL   = RFRSHINT,                             &
+!         RC=STATUS  )
+!    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
          SHORT_NAME = 'WQT',                                                   &
@@ -1182,6 +1183,7 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+#ifdef PDFDIAG
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_vertical_velocity_standard_deviation_first_plume', &
        UNITS      = '1',                                                     &
@@ -1316,6 +1318,7 @@ contains
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
+#endif
 
     call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'WTHV2',                                                 &
@@ -5545,8 +5548,9 @@ contains
 
 ! Diagnostic output from ADG PDF
     real, dimension(:,:,:),pointer     :: PDF_A,      &
-                                          PDF_AX,     &
-                                          PDF_SIGW1,  &
+                                          PDF_AX
+#ifdef PDFDIAG
+    real, dimension(:,:,:),pointer     :: PDF_SIGW1,  &
                                           PDF_SIGW2,  &
                                           PDF_W1,     &
                                           PDF_W2,     &
@@ -5561,6 +5565,8 @@ contains
                                           PDF_RQTTH,  &
                                           PDF_RWTH,   &
                                           PDF_RWQT
+#endif
+
 ! Inputs for ADG PDF
     real, dimension(:,:,:),pointer     :: HL2,       &
                                           HL3,       &
@@ -5573,7 +5579,7 @@ contains
                                           WQL,       &
                                           WHL,       &
                                           EDMF_FRC
-    real, pointer, dimension(:,:,:) :: edmf_wqtavg,edmf_whlavg
+!    real, pointer, dimension(:,:,:) :: edmf_wqtavg,edmf_whlavg
 
     real, dimension(:,:,:),pointer     :: WTHV2,WTHV2_RAD
 
@@ -6685,8 +6691,8 @@ contains
       call MAPL_GetPointer(IMPORT, QT2  ,  'QT2',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QT3  ,  'QT3',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, HLQT,   'HLQT',   RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, edmf_wqtavg, 'edmf_wqtavg', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, edmf_whlavg, 'edmf_whlavg', RC=STATUS); VERIFY_(STATUS)
+!      call MAPL_GetPointer(IMPORT, edmf_wqtavg, 'edmf_wqtavg', RC=STATUS); VERIFY_(STATUS)
+!      call MAPL_GetPointer(IMPORT, edmf_whlavg, 'edmf_whlavg', RC=STATUS); VERIFY_(STATUS)
 
 
 
@@ -6806,6 +6812,7 @@ contains
      VERIFY_(STATUS)
 
 !============ DG PDF diagnostics ==============
+#ifdef PDFDIAG
      call MAPL_GetPointer(EXPORT, PDF_SIGW1,  'PDF_SIGW1', ALLOC=.TRUE.,  RC=STATUS)
      VERIFY_(STATUS) 
      call MAPL_GetPointer(EXPORT, PDF_SIGW2,  'PDF_SIGW2', ALLOC=.TRUE.,  RC=STATUS)
@@ -6836,7 +6843,7 @@ contains
      VERIFY_(STATUS) 
      call MAPL_GetPointer(EXPORT, PDF_RWQT,   'PDF_RWQT',   ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS) 
-
+#endif
 
 !!! shallow vars
       call MAPL_GetPointer(EXPORT, CBMF_SC,  'CBMF_SC' , RC=STATUS); VERIFY_(STATUS)
@@ -10554,8 +10561,8 @@ contains
               FRLAND            , &   ! <- surf
               KH                , &   ! <- turb
               EDMF_FRC          , &   ! <- turb
-              edmf_wqtavg       , &   ! <- turb
-              edmf_whlavg       , &   ! <- turb
+!              edmf_wqtavg       , &   ! <- turb
+!              edmf_whlavg       , &   ! <- turb
               WQT               , &   ! <- turb
               WHL               , &   ! <- turb
               QT2               , &   ! <- turb
@@ -10642,10 +10649,13 @@ contains
               VFALLWAT_AN_X,VFALLWAT_LS_X,    &
               VFALLSN_AN_X,VFALLSN_LS_X,VFALLSN_CN_X,VFALLSN_SC_X,  &
               VFALLRN_AN_X,VFALLRN_LS_X,VFALLRN_CN_X,VFALLRN_SC_X,  &
-              PDF_A, PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, & 
+              PDF_A, &
+#ifdef PDFDIAG
+              PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, & 
               PDF_SIGTH1, PDF_SIGTH2, PDF_TH1, PDF_TH2, &
               PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
               PDF_RQTTH, PDF_RWTH, PDF_RWQT,            &
+#endif
               WTHV2, WQL, &
               TEMPOR2D, &
               DOSHLW,   &

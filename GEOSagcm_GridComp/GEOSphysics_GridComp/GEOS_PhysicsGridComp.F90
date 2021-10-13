@@ -1273,11 +1273,10 @@ contains
     call MAPL_AddConnectivity ( GC,                                          &
          SHORT_NAME  = (/'KH           ', 'KPBL         ', 'KPBL_SC      ',     &
                          'TKE          ', 'TKESHOC      ', 'EDMF_FRC     ',     &
-                         'edmf_wqtavg  ', 'edmf_whlavg  ',                      &
+!                         'edmf_wqtavg  ', 'edmf_whlavg  ',                      &
                          'HL2          ', 'HL3          ', 'W2           ',     &
                          'W3           ', 'HLQT         ', 'WQT          ',     &
-                         'WHL          ', 'QT2          ', 'QT3          ',     &
-                         'au           ', 'hle          ', 'qte          '/),    &
+                         'WHL          ', 'QT2          ', 'QT3          '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )

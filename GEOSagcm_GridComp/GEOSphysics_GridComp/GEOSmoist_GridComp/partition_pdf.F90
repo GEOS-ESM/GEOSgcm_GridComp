@@ -1,5 +1,7 @@
 module partition_pdf
 
+!#define PDFDIAG 1
+
 ! Total water partitioning based on SHOC double gaussian PDF
 !
 ! Implemented in GEOS by N Arnold, based on SHOC assumed_pdf code
@@ -49,8 +51,8 @@ module partition_pdf
                               thl_first,    &
                               wthlsec,      &
                               wqwsec,       &
-                              wqtfac,       & ! inter-gaussian qt flux
-                              whlfac,       & ! inter-gaussian hl flux
+!                              wqtfac,       & ! inter-gaussian qt flux
+!                              whlfac,       & ! inter-gaussian hl flux
                               thlsec,       &
                               qwsec,        &
                               qwthlsec,     &
@@ -60,6 +62,7 @@ module partition_pdf
                               hl3,          &
                               mffrc,        &
                               PDF_A,        &  ! INOUT
+#ifdef PDFDIAG
                               PDF_SIGW1,    &  ! OUT - diagnostic only
                               PDF_SIGW2,    &
                               PDF_W1,       &
@@ -75,6 +78,7 @@ module partition_pdf
                               PDF_RQTTH,    &
                               PDF_RWTH,     &
                               PDF_RWQT,     &
+#endif
                               wthv_sec,     &  ! OUT - needed elsewhere
                               wqls,         &
                               cld_sgs)
@@ -90,8 +94,8 @@ module partition_pdf
    real, intent(in   )  :: thl_first   ! liquid water potential temperature [K]
    real, intent(in   )  :: wthlsec     ! thl flux [K m s-1]
    real, intent(in   )  :: wqwsec      ! total water flux [kg kg-1 m s-1]
-   real, intent(in   )  :: wqtfac      !
-   real, intent(in   )  :: whlfac      !
+!   real, intent(in   )  :: wqtfac      !
+!   real, intent(in   )  :: whlfac      !
    real, intent(in   )  :: thlsec
    real, intent(in   )  :: qwsec
    real, intent(in   )  :: qwthlsec
@@ -103,6 +107,7 @@ module partition_pdf
 !   real, intent(inout)  :: qi         ! ice condensate [kg kg-1]
    real, intent(  out)  :: cld_sgs     ! cloud fraction
    real, intent(inout)  ::    PDF_A           ! fractional area of 1st gaussian
+#ifdef PDFDIAG
    real, intent(  out)  ::    PDF_SIGW1,    & ! std dev w of 1st gaussian [m s-1]
                               PDF_SIGW2,    & ! std dev w of 2nd gaussian
                               PDF_W1,       & ! mean vertical velocity of 1st gaussian [m s-1]
@@ -118,6 +123,7 @@ module partition_pdf
                               PDF_RQTTH,    & ! QT-TH correlation coeff
                               PDF_RWTH,     & ! W-TH correlation
                               PDF_RWQT        ! W-QT correlation
+#endif
    real, intent(  out)  :: wthv_sec
    real, intent(  out)  :: wqls
 
@@ -289,7 +295,7 @@ module partition_pdf
 !  Find parameters of the PDF of liquid/ice static energy
 
           ! inter-gaussian flux limited to 2x total flux
-          whlntrgs = max(min(whlfac,2.*abs(wthlsec)),-2.*abs(wthlsec))
+!          whlntrgs = max(min(whlfac,2.*abs(wthlsec)),-2.*abs(wthlsec))
 
           IF (thlsec <= thl_tol*thl_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN
             thl1_1     = thl_first
@@ -334,14 +340,16 @@ module partition_pdf
           ENDIF
 
           ! implied correlation coefficient
+#ifdef PDFDIAG
           PDF_RWTH = max(-1.,min(1.,( wthlsec/sqrtw2-aterm*(thl1_1-thl_first)*(w1_1-w_first) &
                      -onema*(thl1_2-thl_first)*(w1_2-w_first) )               &
                      / (aterm*sqrt(thl2_1*w2_1)+onema*sqrt(thl2_2*w2_2)) ))
+#endif
 
 !  FIND PARAMETERS FOR TOTAL WATER MIXING RATIO
 
           ! inter-gaussian flux, limited to 2x total flux
-          wqtntrgs = max(min(wqtfac,2.*abs(wqwsec)),-2.*abs(wqwsec))
+!          wqtntrgs = max(min(wqtfac,2.*abs(wqwsec)),-2.*abs(wqwsec))
 
           IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
@@ -401,9 +409,11 @@ module partition_pdf
           ENDIF   ! if qwsec small
 
           ! implied correlation coefficient
+#ifdef PDFDIAG
           PDF_RWQT = max(-1.,min(1.,( wqwsec/sqrtw2-aterm*(qw1_1-total_water)*(w1_1-w_first) &
                      -onema*(qw1_2-total_water)*(w1_2-w_first) )              &
                      / (aterm*sqrt(qw2_1*w2_1)+onema*sqrt(qw2_2*w2_2)) ))
+#endif
 
 !  CONVERT FROM TILDA VARIABLES TO "REAL" VARIABLES
 
@@ -415,6 +425,7 @@ module partition_pdf
 
           pdf_a = aterm
 
+#ifdef PDFDIAG
           pdf_th1 = thl1_1
           pdf_th2 = thl1_2
           pdf_sigth1 = sqrtthl2_1
@@ -434,6 +445,7 @@ module partition_pdf
             pdf_sigw1 = 0.0
             pdf_sigw2 = 0.0
           end if
+#endif
 
 !==============================!
 
@@ -448,7 +460,9 @@ module partition_pdf
             r_qwthl_1 = max(-1.0,min(1.0,(qwthlsec-aterm*(qw1_1-total_water)*(thl1_1-thl_first)-onema*(qw1_2-total_water)*(thl1_2-thl_first))/testvar)) ! A.12
           ENDIF
 
+#ifdef PDFDIAG
           pdf_rqtth = r_qwthl_1
+#endif
 
 
 !  BEGIN TO COMPUTE CLOUD PROPERTY STATISTICS
