@@ -639,8 +639,8 @@
 			       nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
                   
 
-   	        	  !call IceParam (sigwparc,  &
-                	!	     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+   	        	  call IceParam (sigwparc,  &
+                		     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
 		  end if 
 		   
 		  sc_ice = 1.0
@@ -1025,6 +1025,70 @@
       RETURN
 !
  END SUBROUTINE AerConversion
+
+
+
+!=======================================================================
+!============================creates normalized input for the Wnet Neural Network==========
+
+subroutine Wnet_input(Wnet_in, T, DENS, U, V, W, KMN, RI, QV, QI, QL)
+
+real, dimension (:), intent(in) ::  T, DENS, U, V, W, KMN, RI, QV, QI, QL
+real, dimension(480), intent(out) :: Wnet_in
+real, dimension(10) :: means, stds
+integer :: i1, i2
+
+ means= (/243.9, 0.6, 6.3, 0.013, 0.0002, 5.04, 21.8, 0.002, 9.75e-7, 7.87e-6/) !hardcoded from G5NR
+ stds = (/30.3, 0.42, 16.1, 7.9, 0.05, 20.6, 20.8, 0.0036, 7.09e-6, 2.7e-5/)
+  
+! one by one we standardize and add to the concat array
+!===T  
+ i1 =  1
+ i2 = 48 
+ Wnet_in(i1:i2) = (T(23:71) - means(1))/stds(1) 
+!===DENS  
+ i1 = 49
+ i2 = 96 
+ Wnet_in(i1:i2) = (DENS(23:71) - means(2))/stds(2) 
+!===U  
+ i1 = 97
+ i2 = 144 
+ Wnet_in(i1:i2) = (U(23:71) - means(3))/stds(3) 
+!===V  
+ i1 = 145
+ i2 = 192 
+ Wnet_in(i1:i2) = (V(23:71) - means(4))/stds(4) 
+
+!===W  
+ i1 = 193
+ i2 = 240 
+ Wnet_in(i1:i2) = (W(23:71) - means(5))/stds(5) 
+
+!===KMN 
+ i1 = 241
+ i2 = 288 
+ Wnet_in(i1:i2) = (KMN(23:71) - means(6))/stds(6) 
+!===RI 
+ i1 = 289
+ i2 = 336 
+ Wnet_in(i1:i2) = (RI(23:71) - means(7))/stds(7) 
+
+!===Qv
+ i1 = 337
+ i2 = 384
+ Wnet_in(i1:i2) = (QV(23:71) - means(8))/stds(8) 
+
+!===QI 
+ i1 = 385
+ i2 = 432 
+ Wnet_in(i1:i2) = (QI(23:71) - means(9))/stds(9) 
+
+!===Ql 
+ i1 = 433
+ i2 = 480 
+ Wnet_in(i1:i2) = (QL(23:71) - means(10))/stds(10) 
+   
+end subroutine  Wnet_input
 
 !=======================================================================
 !=======================================================================
@@ -2294,8 +2358,8 @@ END
 	  DSH =0.d0
 	  FDS=1.d0
       ! here we need to decide what the supersaturation level inside an ice cloud  must be to nucleate ice.      
-        sc_ice = 1.d0
-        	 ! sc_ice = shom_ice + 1.d0
+        !sc_ice = 1.d0
+        	  sc_ice = shom_ice + 1.d0
        
       !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
       
@@ -3452,7 +3516,7 @@ if (.false.) then
                        nsdust= max(exp(-0.517*T_ice + 150.577)-min_ns_dust, 0.0)
                        dnsd  = max(0.517*nsdust, 0.0)
 
-                       nssoot= 7.463*max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) 
+                       nssoot= 7.463*max(exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !bug 2021 
                        dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
                        
 

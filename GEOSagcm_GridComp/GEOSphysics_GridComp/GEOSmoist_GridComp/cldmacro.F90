@@ -33,6 +33,8 @@ module cldmacro
    public meltfrz_inst
    public fix_up_clouds_2M
    public Bergeron_iter
+   public  make_IceNumber
+   public make_DropletNumber
    
    
    !! Some parameters set by CLDPARAMS 
@@ -88,7 +90,7 @@ module cldmacro
    real :: min_lts
    real :: disp_factor_liq
    real :: disp_factor_ice
-   real :: sclm_shw
+   real :: sclm_shw, sclm_deep
 
    real, parameter :: T_ICE_MAX    = MAPL_TICE  ! -7.0+MAPL_TICE
    real, parameter :: RHO_W        = 1.0e3      ! Density of liquid water in kg/m^3
@@ -372,7 +374,7 @@ contains
       DISP_FACTOR_LIQ   = CLDPARAMS%DISP_FACTOR_LIQ
       DISP_FACTOR_ICE   = CLDPARAMS%DISP_FACTOR_ICE
       sclm_shw =  CLDPARAMS%SCLM_SHW
-      
+      sclm_deep =  sclmfdfr
       turnrhcrit_upper = CLDPARAMS%TURNRHCRIT_UP
       sloperhcrit= CLDPARAMS%SLOPERHCRIT
       min_lts = CLDPARAMS%MIN_LTS
@@ -467,7 +469,8 @@ contains
 
             CALL cnvsrc (DT             , &
                   CNVICEPARAM    , &
-                  SCLMFDFR       , &
+                  SCLM_DEEP      , &
+                  SCLM_SHW   , &
                   MASS           , & 
                   iMASS          , &
                   PP_dev(I,K)    , &
@@ -608,11 +611,15 @@ contains
 
 
 
+            QTMP1 = QLW_LS_dev(I,K) + QLW_AN_dev(I,K)
+            QTMP2 = QIW_LS_dev(I,K) + QIW_AN_dev(I,K)
+
+
             EVAPC_dev(I,K) = QLW_LS_dev(I,K)+QLW_AN_dev(I,K)
             SUBLC_dev(I,K) = QIW_LS_dev(I,K)+QIW_AN_dev(I,K)
 
              ! 'Anvil' partition from RAS/Parameterized not done in hystpdf
-
+           
             call evap3(            &
                   DT             , &
                   RHCRIT         , &
@@ -644,7 +651,7 @@ contains
             EVAPC_dev(I,K) = ( EVAPC_dev(I,K) - (QLW_LS_dev(I,K)+QLW_AN_dev(I,K)) ) / DT
             SUBLC_dev(I,K) = ( SUBLC_dev(I,K) - (QIW_LS_dev(I,K)+QIW_AN_dev(I,K)) ) / DT
 
-
+   ! end if 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             !  Add in convective rain 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -977,121 +984,104 @@ contains
          AF, &
          NL, &
          NI, & 
-         QRN_SX, &
-         QSN_SX  )
+         QR, &
+         QS, &
+         QG, &
+         NR, &
+         NS, &
+         NG)
 
-      real, intent(inout) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, NL, NI
-      real, intent(out) :: QSN_SX, QRN_SX
-      real, parameter  :: qmin  = 1.0e-11
+      real, intent(inout), dimension(:,:,:) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, QR, QS, QG 
+      real, intent(inout), dimension(:,:,:) :: NI, NL, NS, NR, NG
+    
+      real, parameter  :: qmin  = 1.0e-12
       real, parameter :: cfmin  = 1.0e-4
       real, parameter :: nmin  = 100.0
-      real, parameter :: RL_cub  = 1.0e-15
-      real, parameter :: RI_cub  = 1.0e-12
-      real, parameter :: nlmax  = 500.0e6
-      real, parameter :: nimax  = 1.0e5
+  
 
 
-      QRN_SX =  0.0
-      QSN_SX = 0.0
+    
       ! Fix if Anvil cloud fraction too small
-      if (AF < cfmin) then
+      where (AF < cfmin) 
          QV  = QV + QLA + QIA
          TE  = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
          AF  = 0.
          QLA = 0.
          QIA = 0.
-      end if
+      end where
 
       ! Fix if LS cloud fraction too small
-      if ( CF < cfmin) then
+      where ( CF < cfmin) 
          QV = QV + QLC + QIC
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
          CF  = 0.
          QLC = 0.
          QIC = 0.
-      end if
+      end where
 
       ! LS LIQUID too small
-      if ( QLC  < qmin ) then
+      where ( QLC  < qmin )
          QV = QV + QLC 
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLC
          QLC = 0.
-      end if
+      end where
       ! LS ICE too small
-      if ( QIC  < qmin) then
+      where ( QIC  < qmin)
          QV = QV + QIC 
          TE = TE - (MAPL_ALHS/MAPL_CP)*QIC
          QIC = 0.
-      end if
+      end where
 
       ! Anvil LIQUID too small
-      if ( QLA  < qmin ) then
+      where ( QLA  < qmin )
          QV = QV + QLA 
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLA
          QLA = 0.
-      end if
+      end where
       ! Anvil ICE too small
-      if ( QIA  < qmin) then
+      where ( QIA  < qmin) 
          QV = QV + QIA 
          TE = TE - (MAPL_ALHS/MAPL_CP)*QIA
          QIA = 0.
-      end if
+      end where
 
       ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-      if ( ( QLA + QIA ) < qmin) then
+      where ( ( QLA + QIA ) < qmin) 
          QV = QV + QLA + QIA
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
          AF  = 0.
          QLA = 0.
          QIA = 0.
-      end if
+      end where
       ! Ditto if LS cloud LIQUID+ICE too small
-      if ( ( QLC + QIC ) < qmin ) then
+      where ( ( QLC + QIC ) < qmin )
          QV = QV + QLC + QIC
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
          CF  = 0.
          QLC = 0.
          QIC = 0.
-      end if
+      end where
+      
+      
+      
+      !make sure no negative number concentrations are passed 
+      !and that N goes to minimum defaults in the microphysics when mass is too small 
+      
+      NL =  max(NL, 0.)
+      NI =  max(NI, 0.)
+      NR =  max(NR, 0.)
+      NS =  max(NS, 0.)
+      NG =  max(NG, 0.)
+      
+      where ((QLA+QLC) .le. qmin) NL = 0.0
 
-      if ((QLA+QLC) .le. qmin) then 
-         NL = 0.0
-      end if
+      where ((QIA+QIC) .le. qmin) NI = 0.0
 
-      if ((QIA+QIC) .le. qmin) then 
-         NI = 0.0
-      end if
-
-    !  ! make sure N > 0 if Q >0!
-
-!      if (((QLA+QLC) .gt. qmin) .and. (NL .le. nmin)) then    
-!         NL =  max((QLA+QLC)/( 1.333 * MAPL_PI *RL_cub*997.0), nmin)             
-!         NL=min(NL, nlmax)
-!      end if
-!
- !     if (((QIA+QIC) .gt. qmin) .and. (NI .le. nmin)) then    
- !        NI =  max((QIA+QIC)/( 1.333 * MAPL_PI *RI_cub*500.0), nmin)             
- !        NI=min(NI, nimax)
- !     end if
-
-
-    ! if Q > 0 and N ~0 this is probably falling (also helps eliminating ice if using initial conditons from single moment).
-   
-            if (((QLA+QLC) .gt. qmin) .and. (NL .le. nmin)) then    
-                 NL = 0.0
-                 QRN_SX =  QLA+QLC
-                 QLA = 0.0
-                 QLC = 0.0
-              
-              end if    
-
-              if (((QIA+QIC) .gt. qmin) .and. (NI .le. nmin)) then    
-                 NI = 0.0
-                 QSN_SX = QIA+QIC
-                 QIA = 0.0
-                 QIC = 0.0                 
-              end if
-   
+      where (QR .le. qmin) NR = 0.
+      
+      where (QS .le. qmin) NS = 0.
+      
+      where (QG .le. qmin) NG = 0.
 
    end subroutine fix_up_clouds_2M
 
@@ -1190,7 +1180,7 @@ contains
          NL           , &
          NCnuc   , &
          RHcmicro, &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, DO_HYSTPDF)
 
       real, intent(in)    :: DT,ALPHA,PL,  NCnuc,  CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
       integer, intent(in) :: pdfshape
@@ -1214,7 +1204,7 @@ contains
       real :: ALHX, DQCALL, SHOM, maxalpha
       ! internal scalars
       integer :: N
-
+      logical :: DO_HYSTPDF
 
       pdfflag = PDFSHAPE
       maxalpha=1.0-minrhcrit 
@@ -1292,7 +1282,7 @@ contains
       AF=CFALL*FQA
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! return 
+      if (.NOT. DO_HYSTPDF) return 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
 
       !if ((TE .le. T_ICE_ALL))  return !don't do anything else for cirrus
@@ -1714,7 +1704,8 @@ subroutine hystpdf_new( &
    subroutine cnvsrc( & 
          DT      , &
          ICEPARAM, &
-         SCLMFDFR, &
+         SCLM_DEEP, &
+         SCLM_SHALLOW, &
          MASS    , &
          iMASS   , &
          PL      , &
@@ -1743,11 +1734,11 @@ subroutine hystpdf_new( &
       !                 1 means partitioning follows ice_fraction(TE,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND). 0 means all new condensate is
       !                 liquid 
       !
-      !       SCLMFDFR: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
+      !       SCLM_*: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
       !                 by fuzziness of cloud boundaries and existence of PDF of condensates (for choices
       !                 0.-1.0) or by subgrid layering (for choices >1.0) 
 
-      real, intent(in)    :: DT,ICEPARAM,SCLMFDFR
+      real, intent(in)    :: DT,ICEPARAM,SCLM_DEEP,SCLM_SHALLOW
       real, intent(in)    :: MASS,iMASS,QS
       real, intent(in)    :: DMF,PL
       real, intent(in)    :: DCF,CF,DCIFshlw,DCLFshlw,DMFshlw
@@ -1761,7 +1752,7 @@ subroutine hystpdf_new( &
       
       character(LEN=*), INTENT(IN) :: CONVPAR_OPTION
 
-      real :: TEND,QVx,QCA,fQi, fqi_gf
+      real :: TEND,QVx,QCA,fQi, fqi_gf, dNi, dNl, dQi, dQl
 
       ! real, parameter :: RL  = 12.0e-6
       ! real, parameter :: RI  = 50.0e-6
@@ -1783,26 +1774,29 @@ subroutine hystpdf_new( &
       TEND = DCF*iMASS
       
             
-      IF(ADJUSTL(CONVPAR_OPTION) .eq. 'GF') THEN
+      IF(ADJUSTL(CONVPAR_OPTION) .eq. 'GF') THEN 
+      ! since GF updates number and mass of convective condensate, this is only used for UW. i.e., TEND=0
         
         ! repartition liquid and ice from GF
-        fQi  = 0.0 + ICEPARAM*ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-        fqi_gf = icefraction_gf(Te)
-        
-            RL =   10.0  + (12.0*(283.0- Te)/40.0)             
-            RL =   min(max(RL, 10.0), 18.0)*1.e-6     
-   
-            RI =   100.0 + (80.0*(Te- 253.0)/40.0)
-            RI =   min(max(RI, 20.0), 250.0)*1.e-6
-        
-            TE   = TE +   (MAPL_ALHS-MAPL_ALHL) * (fQi-fqi_gf) * DCF*imass*DT/MAPL_CP
-        
-            CNVFICE  = fQi
-               
-            CNVNDROP =   ((1.0-fQi)*TEND+ DCLFshlw*iMASS)/(1.333 * MAPL_PI *RL*RL*RL*997.0*disp_factor_liq)  
-            CNVNICE =   (fQi*TEND+ DCIFshlw*iMASS)/( 1.333 * MAPL_PI *RI*RI*RI*800.0*disp_factor_ice)                    
-            NL = NL + CNVNDROP*DT  
-            NI = NI + CNVNICE *DT
+            fQi  = 0.0 + ICEPARAM*ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+       
+            dQi = fQi * TEND +  DCIFshlw*iMASS
+            dQl = (1.-fQi) * TEND + DCLFshlw*iMASS
+           
+            dNi = make_IceNumber (dQi, TE)
+            dNl = make_DropletNumber (dQl, 0.0, FRLAND) 
+             
+            NL = NL + dNl*DT  
+            NI = NI + dNi*DT
+            
+            if ((DMF  + DMFshlw) .gt. 1.0e-16) then ! Concentration of droplets and ice crystals in the detrainment 
+              
+               CNVNDROP = dNL/iMASS/(DMF  + DMFshlw)
+               CNVNICE =  dNi/iMASS/(DMF  + DMFshlw)
+            else
+                CNVNDROP =  0.0
+                CNVNICE = 0.0
+            end if 
       else
       
           fQi =  CNVFICE  
@@ -1826,7 +1820,7 @@ subroutine hystpdf_new( &
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Tiedtke-style anvil fraction !!
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      TEND=(DMF*SCLMFDFR+DMFshlw*SCLM_SHW)*iMASS    
+      TEND=(DMF*SCLM_DEEP + DMFshlw*SCLM_SHALLOW)*iMASS    
       AF = AF + TEND*DT
       AF = MIN( AF , 0.99 ) 
 
@@ -1905,7 +1899,7 @@ subroutine hystpdf_new( &
       real, intent(inout) :: QL,QI
       real, intent(inout) :: F
       real, intent(in   ) :: XF
-      real, intent(in   ) :: NL,NI
+      real, intent(inout   ) :: NL,NI
       real, intent(in   ) :: QS
 
       real :: ES,NN,RADIUS,K1,K2,TEFF,QCm,EVAP,RHx,QC  !,QS
@@ -1965,8 +1959,9 @@ subroutine hystpdf_new( &
       EVAP = MIN( EVAP , QL  )
 
       QC=QL+QI
+   
       if (QC > 0.) then
-         F    = F * ( QC - EVAP ) / QC
+         F    = F * ( QC - EVAP ) / QC    
       end if
 
       QV   = QV   + EVAP
@@ -2003,7 +1998,7 @@ subroutine hystpdf_new( &
       real, intent(inout) :: QL,QI
       real, intent(inout) :: F
       real, intent(in   ) :: XF
-      real, intent(in   ) :: NL,NI
+      real, intent(inout   ) :: NL,NI
       real, intent(in   ) :: QS
 
       real :: ES,NN,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC !, QS
@@ -2063,8 +2058,10 @@ subroutine hystpdf_new( &
       SUBL = MIN( SUBL , QI  )
 
       QC=QL+QI
+      
+      
       if (QC > 0.) then
-         F    = F * ( QC - SUBL ) / QC
+         F    = F * ( QC - SUBL ) / QC      
       end if
 
       QV   = QV   + SUBL
@@ -2183,7 +2180,7 @@ subroutine hystpdf_new( &
              BB     = -2. + log10(iwl/50.)*(1.e-3*(273.15-max(210.15,TE))**1.5)
              RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
              RADIUS =RADIUS * 1.e-6 !- convert to meter
-             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);flush(6)
+             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);call flush(6)
             endif
 
         ENDIF ! CLDMICRO
@@ -3223,4 +3220,141 @@ function  icefraction_gf(tn) result(p_liq_ice)
    END FUNCTION erf_app
 
 
+!- Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
+!-----------------------------------------------------------------------
+!      Q_ice              is cloud ice mixing ratio, units of kg/m3
+!      Q_cloud            is cloud water mixing ratio, units of kg/m3
+!      Q_rain             is rain mixing ratio, units of kg/m3
+!      temp               is air temperature in Kelvin
+!      make_IceNumber     is cloud droplet number mixing ratio, units of number per m3
+!      make_DropletNumber is rain number mixing ratio, units of number per kg of m3
+!      make_RainNumber    is rain number mixing ratio, units of number per kg of m3
+!      qnwfa              is number of water-friendly aerosols in number per kg
+
+!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+ 
+      real function make_IceNumber (Q_ice, temp)
+
+      implicit none
+      real, parameter:: ice_density = 890.0
+      real, parameter:: pi = 3.1415926536
+      real, intent(in):: q_ice, temp
+      integer idx_rei
+      real corr, reice, deice
+      double precision lambda
+!+---+-----------------------------------------------------------------+ 
+!..Table of lookup values of radiative effective radius of ice crystals
+!.. as a function of Temperature from -94C to 0C.  Taken from WRF RRTMG
+!.. radiation code where it is attributed to Jon Egill Kristjansson
+!.. and coauthors.
+!+---+-----------------------------------------------------------------+ 
+      real, dimension(95), parameter:: retab = (/                       &
+         5.92779, 6.26422, 6.61973, 6.99539, 7.39234,                   &
+         7.81177, 8.25496, 8.72323, 9.21800, 9.74075, 10.2930,          &
+         10.8765, 11.4929, 12.1440, 12.8317, 13.5581, 14.2319,          &
+         15.0351, 15.8799, 16.7674, 17.6986, 18.6744, 19.6955,          &
+         20.7623, 21.8757, 23.0364, 24.2452, 25.5034, 26.8125,          &
+         27.7895, 28.6450, 29.4167, 30.1088, 30.7306, 31.2943,          &
+         31.8151, 32.3077, 32.7870, 33.2657, 33.7540, 34.2601,          &
+         34.7892, 35.3442, 35.9255, 36.5316, 37.1602, 37.8078,          &
+         38.4720, 39.1508, 39.8442, 40.5552, 41.2912, 42.0635,          &
+         42.8876, 43.7863, 44.7853, 45.9170, 47.2165, 48.7221,          &
+         50.4710, 52.4980, 54.8315, 57.4898, 60.4785, 63.7898,          &
+         65.5604, 71.2885, 75.4113, 79.7368, 84.2351, 88.8833,          &
+         93.6658, 98.5739, 103.603, 108.752, 114.025, 119.424,          &
+         124.954, 130.630, 136.457, 142.446, 148.608, 154.956,          &
+         161.503, 168.262, 175.248, 182.473, 189.952, 197.699,          &
+         205.728, 214.055, 222.694, 231.661, 240.971, 250.639 /)
+
+      if (Q_ice == 0) then
+         make_IceNumber = 0
+         return
+      end if
+
+!+---+-----------------------------------------------------------------+ 
+!..From the model 3D temperature field, subtract 179K for which
+!.. index value of retab as a start.  Value of corr is for
+!.. interpolating between neighboring values in the table.
+!+---+-----------------------------------------------------------------+ 
+
+      idx_rei = int(temp-179.)
+      idx_rei = min(max(idx_rei,1),94)
+      corr = temp - int(temp)
+      reice = retab(idx_rei)*(1.-corr) + retab(idx_rei+1)*corr
+      deice = 2.*reice * 1.E-6
+
+!+---+-----------------------------------------------------------------+ 
+!..Now we have the final radiative effective size of ice (as function
+!.. of temperature only).  This size represents 3rd moment divided by
+!.. second moment of the ice size distribution, so we can compute a
+!.. number concentration from the mean size and mass mixing ratio.
+!.. The mean (radiative effective) diameter is 3./Slope for an inverse
+!.. exponential size distribution.  So, starting with slope, work
+!.. backwords to get number concentration.
+!+---+-----------------------------------------------------------------+ 
+
+      lambda = 3.0 / deice
+      make_IceNumber = Q_ice * lambda*lambda*lambda / (PI*Ice_density*disp_factor_ice)
+!+---+-----------------------------------------------------------------+ 
+!..Example1: Common ice size coming from Thompson scheme is about 30 microns.
+!.. An example ice mixing ratio could be 0.001 g/kg for a temperature of -50C.
+!.. Remember to convert both into MKS units.  This gives N_ice=357652 per kg.
+!..Example2: Lower in atmosphere at T=-10C matching ~162 microns in retab,
+!.. and assuming we have 0.1 g/kg mixing ratio, then N_ice=28122 per kg, 
+!.. which is 28 crystals per liter of air if the air density is 1.0.
+!+---+-----------------------------------------------------------------+ 
+
+      return
+      end function make_IceNumber
+      
+      
+      !+---+-----------------------------------------------------------------+
+!+---+-----------------------------------------------------------------+
+
+      real function make_DropletNumber (Q_cloud, qnwfa, xland)
+
+      IMPLICIT NONE
+
+      real:: Q_cloud, qnwfa, xland
+
+      real, parameter:: PI = 3.1415926536
+      real, parameter:: am_r = PI*1000./6.
+      real, dimension(15), parameter:: g_ratio = (/24,60,120,210,336,   &
+     &                504,720,990,1320,1716,2184,2730,3360,4080,4896/)
+      double precision:: lambda, qnc
+      real:: q_nwfa, x1, xDc
+      integer:: nu_c
+
+!+---+
+
+      if (qnwfa .le. 0.0) then
+
+         if ((xland .lt. 0.1)) then                                     !--- Ocean
+            xDc = 17.E-6
+            nu_c = 12
+         else                                                            !--- Land
+            xDc = 11.E-6
+            nu_c = 4
+         endif
+
+      else
+         q_nwfa = MAX(99.E6, MIN(qnwfa,5.E10))
+         nu_c = MAX(2, MIN(NINT(2.5E10/q_nwfa), 15))
+
+         x1 = MAX(1., MIN(q_nwfa*1.E-9, 10.)) - 1.
+         xDc = (30. - x1*20./9.) * 1.E-6
+      endif
+
+      lambda = (4.0D0 + nu_c) / xDc
+      qnc = Q_cloud / g_ratio(nu_c) * lambda*lambda*lambda / am_r
+      
+      make_DropletNumber = SNGL(qnc)/disp_factor_liq !DONIF needs to be tuned. 
+      !This conversion does not take into account the very efficient removal of CCN and droplets in the convective tower
+      ! how to fix it: calculate CCN at cloud base -> get droplets at cldbase -> scale them up proportional to the condenaste at each level
+      ! we could probably get CCN at each level as well.  
+
+      return
+      end function make_DropletNumber
+
+      
 end module cldmacro
