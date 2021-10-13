@@ -1,5 +1,18 @@
 esma_set_this (OVERRIDE mom6)
 
+# This is for selecting the MOM6 infrastructure interface
+## We default to FMS1 and look if something is passed in...
+set (DEFAULT_MOM6_INFRA "FMS1")
+if (NOT MOM6_INFRA)
+  set (MOM6_INFRA ${DEFAULT_MOM6_INFRA})
+endif ()
+
+## ... and make sure it is allowed
+set (ALLOWED_MOM6_INFRA "FMS1" "FMS2")
+if (NOT MOM6_INFRA IN_LIST ALLOWED_MOM6_INFRA)
+  message (FATAL_ERROR "The only allowed values for MOM6_INFRA are ${ALLOWED_MOM6_INFRA}")
+endif ()
+
 list( APPEND MOM6_SRCS
    src/ALE/coord_adapt.F90
    src/ALE/coord_hycom.F90
@@ -132,6 +145,7 @@ list( APPEND MOM6_SRCS
    src/initialization/MOM_state_initialization.F90
    src/initialization/MOM_tracer_initialization_from_Z.F90
    src/ocean_data_assim/MOM_oda_driver.F90
+   src/ocean_data_assim/MOM_oda_incupd.F90
    src/parameterizations/lateral/MOM_hor_visc.F90
    src/parameterizations/lateral/MOM_internal_tides.F90
    src/parameterizations/lateral/MOM_lateral_mixing_coeffs.F90
@@ -170,6 +184,7 @@ list( APPEND MOM6_SRCS
    src/tracer/dye_example.F90
    src/tracer/ideal_age_example.F90
    src/tracer/ISOMIP_tracer.F90
+   src/tracer/MOM_CFC_cap.F90
    src/tracer/MOM_generic_tracer.F90
    src/tracer/MOM_lateral_boundary_diffusion.F90
    src/tracer/MOM_neutral_diffusion.F90
@@ -182,6 +197,7 @@ list( APPEND MOM6_SRCS
    src/tracer/MOM_tracer_hor_diff.F90
    src/tracer/MOM_tracer_registry.F90
    src/tracer/MOM_tracer_Z_init.F90
+   src/tracer/nw2_tracers.F90
    src/tracer/oil_tracer.F90
    src/tracer/pseudo_salt_tracer.F90
    src/tracer/RGC_tracer.F90
@@ -223,6 +239,7 @@ list( APPEND MOM6_SRCS
    src/user/user_revise_forcing.F90
 #  pkg/CVMix-src/src/cvmix_driver.F90
    pkg/CVMix-src/src/cvmix_io.F90
+#  pkg/CVMix-src/src/dummy.F90
    pkg/CVMix-src/src/drivers/cvmix_bgrnd_BL.F90
    pkg/CVMix-src/src/drivers/cvmix_ddiff_drv.F90
    pkg/CVMix-src/src/drivers/cvmix_kpp_drv.F90
@@ -430,19 +447,19 @@ list( APPEND MOM6_SRCS
    pkg/GSW-Fortran/toolbox/gsw_util_sort_real.f90
    pkg/GSW-Fortran/toolbox/gsw_util_xinterp1.f90
    pkg/GSW-Fortran/toolbox/gsw_z_from_p.f90
-#  choose FMS1 interface
-   config_src/infra/FMS1/MOM_coms_infra.F90
-   config_src/infra/FMS1/MOM_constants.F90
-   config_src/infra/FMS1/MOM_couplertype_infra.F90
-   config_src/infra/FMS1/MOM_cpu_clock_infra.F90
-   config_src/infra/FMS1/MOM_data_override_infra.F90
-   config_src/infra/FMS1/MOM_diag_manager_infra.F90
-   config_src/infra/FMS1/MOM_domain_infra.F90
-   config_src/infra/FMS1/MOM_ensemble_manager_infra.F90
-   config_src/infra/FMS1/MOM_error_infra.F90
-   config_src/infra/FMS1/MOM_interp_infra.F90
-   config_src/infra/FMS1/MOM_io_infra.F90
-   config_src/infra/FMS1/MOM_time_manager.F90
+#  choose above set MOM6_INFRA interface
+   config_src/infra/${MOM6_INFRA}/MOM_coms_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_constants.F90
+   config_src/infra/${MOM6_INFRA}/MOM_couplertype_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_cpu_clock_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_data_override_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_diag_manager_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_domain_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_ensemble_manager_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_error_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_interp_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_io_infra.F90
+   config_src/infra/${MOM6_INFRA}/MOM_time_manager.F90
 )
 
 list( APPEND MOM6_SRCS
@@ -457,6 +474,9 @@ list( APPEND MOM6_SRCS
    config_src/external/GFDL_ocean_BGC/FMS_coupler_util.F90
    config_src/external/GFDL_ocean_BGC/generic_tracer.F90
    config_src/external/GFDL_ocean_BGC/generic_tracer_utils.F90
+   # drifters-particles
+   config_src/external/drifters/MOM_particles.F90
+   config_src/external/drifters/MOM_particles_types.F90
 )
 
 
@@ -473,8 +493,8 @@ esma_add_library (${this}
   DEPENDENCIES fms_r8
   INCLUDES
   $<BUILD_INTERFACE:${MOM6_path}/config_src/memory/dynamic_nonsymmetric> 
-#  choose FMS1 interface
-  $<BUILD_INTERFACE:${MOM6_path}/config_src/infra/FMS1>
+#  choose above set MOM6_infra interface
+  $<BUILD_INTERFACE:${MOM6_path}/config_src/infra/${MOM6_INFRA}>
   $<BUILD_INTERFACE:${MOM6_path}/src/framework>
   TYPE SHARED
 )
