@@ -13,6 +13,10 @@ if (NOT MOM6_INFRA IN_LIST ALLOWED_MOM6_INFRA)
   message (FATAL_ERROR "The only allowed values for MOM6_INFRA are ${ALLOWED_MOM6_INFRA}")
 endif ()
 
+# got below list from following two commands:
+# 1. find src/ -print | grep .F90 | sort -d
+# 2. ls -1 pkg/CVMix-src/src/*0 ; ls -1 pkg/CVMix-src/src/drivers/*0 ; ls -1 pkg/CVMix-src/src/shared/*0 ; ls -1 pkg/GSW-Fortran/modules/*0 ; ls -1 pkg/GSW-Fortran/toolbox/*0
+#
 list( APPEND MOM6_SRCS
    src/ALE/coord_adapt.F90
    src/ALE/coord_hycom.F90
