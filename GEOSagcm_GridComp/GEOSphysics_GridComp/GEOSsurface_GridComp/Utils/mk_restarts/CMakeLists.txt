@@ -14,13 +14,8 @@ set (exe_srcs
   mk_CatchCNRestarts.F90		    
   mk_CatchRestarts.F90		    
   mk_LakeLandiceSaltRestarts.F90	    
-  mk_RouteRestarts.F90		    
-#  mk_catch_restart.F90		    
-#  mk_vegdyn_restart.F90		    
-  newcatch.F90			    
-#  newvegdyn.f90			    
-#  replace_params.F90		    
-  strip_vegdyn.F90                    
+  mk_RouteRestarts.F90
+  mk_GEOSldasRestarts.F90
 )  
 
 include_directories(${INC_ESMF})

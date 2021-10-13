@@ -199,7 +199,7 @@ module GEOS_SurfaceGridCompMod
     type (MAPL_MetaComp    ), pointer       :: MAPL
     INTEGER                                 :: LSM_CHOICE
     character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)                       :: SCF 
+    type(ESMF_Config)                       :: SCF        ! info from Surface Config File 
 
 !=============================================================================
 
@@ -219,21 +219,33 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-! Create Land Config
+! Create Surface Config
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=2, __RC__ ) 
+    ! Get CHOICE OF Land Surface Model (1:Catch, 2:Catch-CN4.0, 3:Catch-CN4.5)
+    ! -------------------------------------------------------
+    call MAPL_GetResource    (MAPL, LSM_CHOICE,    label="LSM_CHOICE:",             DEFAULT=1, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource    (MAPL, DO_OBIO,       label="USE_OCEANOBIOGEOCHEM:",   DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource (SCF, catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,        __RC__ )
-    call MAPL_GetResource (SCF, landicegoswim, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0,        __RC__ )
-    call MAPL_GetResource (SCF, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2", __RC__ )
-    call MAPL_GetResource (SCF, CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,        __RC__ )
-    call ESMF_ConfigDestroy      (SCF, __RC__)
+    call MAPL_GetResource    (SCF,  ATM_CO2,       label='ATM_CO2:',                DEFAULT=2,          __RC__ ) 
+    call MAPL_GetResource    (SCF,  catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,          __RC__ )
+    call MAPL_GetResource    (SCF,  landicegoswim, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0,          __RC__ )
+    if     (LSM_CHOICE.eq.1) then
+       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2",   __RC__ )
+    elseif (LSM_CHOICE.eq.2) then                                                                                             
+       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM40",  __RC__ )           
+    elseif (LSM_CHOICE.eq.3) then                                                                                         
+       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )          
+    else
+       _ASSERT(.FALSE.,'unknown LSM_CHOICE')
+    end if
+    call MAPL_GetResource    (SCF,  CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,          __RC__ )
 
-    if ( (catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
+    call ESMF_ConfigDestroy(SCF, __RC__ )
+    
+    if ((catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
        do_goswim=.true.
     else
        do_goswim=.false.
@@ -263,12 +275,6 @@ module GEOS_SurfaceGridCompMod
     call ESMF_UserCompSetInternalState ( GC, 'SURF_state',wrap,status )
     VERIFY_(STATUS)
 
-! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
-! and Runoff Routing Model (0: OFF, 1: ON)
-! -------------------------------------------------------
-
-    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -2691,7 +2697,7 @@ module GEOS_SurfaceGridCompMod
        RC=STATUS  ) 
      VERIFY_(STATUS)
 
-  IF(LSM_CHOICE==2) THEN     
+  IF(LSM_CHOICE > 1) THEN     
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_exposed_leaf-area_index',&
           UNITS              = '1'                         ,&
@@ -2745,7 +2751,18 @@ module GEOS_SurfaceGridCompMod
           VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  ) 
      VERIFY_(STATUS)
-     
+
+     if (LSM_CHOICE == 3) then
+        call MAPL_AddExportSpec(GC                         ,&
+          LONG_NAME          = 'CN_fine_root_carbon'       ,&
+          UNITS              = 'kg m-2'                    ,&
+          SHORT_NAME         = 'CNFROOTC'                  ,&
+          DIMS               = MAPL_DimsHorzOnly           ,&
+          VLOCATION          = MAPL_VLocationNone          ,&
+          RC=STATUS  )
+        VERIFY_(STATUS)
+     endif
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_net_primary_production' ,&
           UNITS              = 'kg m-2 s-1'                ,&
@@ -5061,6 +5078,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: CNTOTC      => NULL()
     real, pointer, dimension(:,:) :: CNVEGC      => NULL()
     real, pointer, dimension(:,:) :: CNROOT      => NULL()
+    real, pointer, dimension(:,:) :: CNFROOTC    => NULL()
     real, pointer, dimension(:,:) :: CNNPP       => NULL()
     real, pointer, dimension(:,:) :: CNGPP       => NULL()
     real, pointer, dimension(:,:) :: CNSR        => NULL()
@@ -5318,6 +5336,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: CNTOTCTILE       => NULL()
     real, pointer, dimension(:) :: CNVEGCTILE       => NULL()
     real, pointer, dimension(:) :: CNROOTTILE       => NULL()
+    real, pointer, dimension(:) :: CNFROOTCTILE     => NULL()
     real, pointer, dimension(:) :: CNNPPTILE        => NULL()
     real, pointer, dimension(:) :: CNGPPTILE        => NULL()
     real, pointer, dimension(:) :: CNSRTILE         => NULL()
@@ -6123,13 +6142,16 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , RMELTOC001 , 'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RMELTOC002 , 'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
 
-    IF(LSM_CHOICE==2) THEN
+    IF(LSM_CHOICE > 1) THEN
        call MAPL_GetPointer(EXPORT  , CNLAI   , 'CNLAI'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNTLAI  , 'CNTLAI' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNSAI   , 'CNSAI'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNTOTC  , 'CNTOTC' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNVEGC  , 'CNVEGC' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNROOT  , 'CNROOT' ,  RC=STATUS); VERIFY_(STATUS)
+       if (LSM_CHOICE == 3) then
+           call MAPL_GetPointer(EXPORT  , CNFROOTC, 'CNFROOTC' ,RC=STATUS); VERIFY_(STATUS)
+       endif
        call MAPL_GetPointer(EXPORT  , CNNPP   , 'CNNPP'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNGPP   , 'CNGPP'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNSR    , 'CNSR'   ,  RC=STATUS); VERIFY_(STATUS)
@@ -6693,13 +6715,16 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(RMELTOC001 ,RMELTOC001TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RMELTOC002 ,RMELTOC002TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     
-    IF (LSM_CHOICE ==2) THEN
+    IF (LSM_CHOICE > 1) THEN
        call MKTILE(CNLAI   ,CNLAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNTLAI  ,CNTLAITILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNSAI   ,CNSAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNTOTC  ,CNTOTCTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNVEGC  ,CNVEGCTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNROOT  ,CNROOTTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
+       if (LSM_CHOICE == 3) then
+          call MKTILE(CNFROOTC,CNFROOTCTILE  ,NT,RC=STATUS);VERIFY_(STATUS)
+       endif
        call MKTILE(CNNPP   ,CNNPPTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNGPP   ,CNGPPTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNSR    ,CNSRTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7541,6 +7566,10 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM,CNROOT,CNROOTTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
+    if(associated(CNFROOTC)) then
+       call MAPL_LocStreamTransform( LOCSTREAM,CNFROOTC,CNFROOTCTILE, RC=STATUS)
+       VERIFY_(STATUS)
+    endif    
     if(associated(CNNPP)) then
        call MAPL_LocStreamTransform( LOCSTREAM,CNNPP ,CNNPPTILE , RC=STATUS) 
        VERIFY_(STATUS)
@@ -8051,6 +8080,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(CNTOTCTILE  )) deallocate(CNTOTCTILE  )
     if(associated(CNVEGCTILE  )) deallocate(CNVEGCTILE  )
     if(associated(CNROOTTILE  )) deallocate(CNROOTTILE  )
+    if(associated(CNFROOTCTILE  )) deallocate(CNFROOTCTILE  )
     if(associated(CNNPPTILE   )) deallocate(CNNPPTILE   )
     if(associated(CNGPPTILE   )) deallocate(CNGPPTILE   )
     if(associated(CNSRTILE    )) deallocate(CNSRTILE    )
@@ -8380,7 +8410,7 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'RMELTOC002' , ALLOC=associated(RMELTOC002TILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
-      IF (LSM_CHOICE ==2) THEN
+      IF (LSM_CHOICE > 1) THEN
          call MAPL_GetPointer(GEX(type), dum, 'CNLAI'   , ALLOC=associated(CNLAITILE   ), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'CNTLAI'  , ALLOC=associated(CNTLAITILE  ), notFoundOK=.true., RC=STATUS)
@@ -8392,6 +8422,10 @@ module GEOS_SurfaceGridCompMod
          call MAPL_GetPointer(GEX(type), dum, 'CNVEGC'  , ALLOC=associated(CNVEGCTILE  ), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'CNROOT'  , ALLOC=associated(CNROOTTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         if (LSM_CHOICE == 3) then
+	    call MAPL_GetPointer(GEX(type), dum, 'CNFROOTC' , ALLOC=associated(CNFROOTCTILE), notFoundOK=.true., RC=STATUS)
+         endif
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'CNNPP'   , ALLOC=associated(CNNPPTILE   ), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
@@ -8968,6 +9002,10 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'CNROOT',   CNROOTTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
+      if(associated(CNFROOTCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'CNFROOTC', CNFROOTCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if      
       if(associated(CNNPPTILE)) then
          call FILLOUT_TILE(GEX(type), 'CNNPP' ,   CNNPPTILE , XFORM, RC=STATUS)
          VERIFY_(STATUS)
