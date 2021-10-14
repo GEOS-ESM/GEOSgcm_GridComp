@@ -2540,13 +2540,13 @@ contains
 
     call MAPL_TimerAdd(GC,   name="-RUN1"       ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,   name="---MASSFLUX" ,RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="--DIFFUSE"   ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="--REFRESHKS" ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="---PRELIMS"  ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,   name="---MASSFLUX" ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="---SHOC"    ,RC=STATUS)
     VERIFY_(STATUS)
@@ -3691,6 +3691,10 @@ IF(DoMF /= 0.) then
 
    call calc_mf_depth(IM,JM,LM,T,Z,Q,PLO,edmfZCLD)
 
+   print *,'edmfZCLD=',edmfZCLD
+
+   edmfZCLD = 3000.
+
  ! compute the L0 assuming reasonable limits
    if (ETr .eq. 2.) then
      DO I=1,IM
@@ -3744,19 +3748,18 @@ IF(DoMF /= 0.) then
        call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
                U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,frland,zpbl,ice_ramp, &
                MFTHSRC, MFQTSRC, MFW, MFAREA, &  ! CLASP imports
-               edmfdrya,edmfmoista, &   ! for ADG PDF
-               edmfdryw,edmfmoistw, &   ! diag
-               edmfdryqt,edmfmoistqt, & ! diag
-               edmfdrythl,edmfmoistthl, & ! diag
-               edmfdryu,edmfmoistu,  & ! diag
-               edmfdryv,edmfmoistv,  & ! diag
-               edmfmoistqc,             & ! diag
-               ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, & ! for trisolver
-               pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &  ! parameters
-               ET,L02,ENT0,EDfac,EntWFac, & ! parameters
-               buoyf,&                      ! diag
+               edmfdrya,edmfmoista,      & ! diag
+               edmfdryw,edmfmoistw,      & ! diag
+               edmfdryqt,edmfmoistqt,    & ! diag
+               edmfdrythl,edmfmoistthl,  & ! diag
+               edmfdryu,edmfmoistu,      & ! diag
+               edmfdryv,edmfmoistv,      & ! diag
+               edmfmoistqc,              & ! diag
+               ae3, aw3, aws3, awqv3,    & ! for trisolver 
+               awql3, awqi3, awu3, awv3, & ! for trisolver
                mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, & ! for ADG PDF
-               au, Mu, E, D, hle, qte, edmf_ent, edmf_mf, &  ! for MYNN
+!               au, Mu, E, D, hle, qte, 
+               buoyf, edmf_ent, edmf_mf, &  
 #ifdef EDMF_DIAG
                w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -3765,7 +3768,9 @@ IF(DoMF /= 0.) then
                thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-              EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC, DOCLASP, EDMF_ENTRAIN)
+               pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &  ! parameters
+               ET,L02,ENT0,EDfac,EntWFac, & ! parameters
+               EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC, DOCLASP, EDMF_ENTRAIN)
 !           end if
 
 !       if (ETr.eq.1.) then
@@ -6617,12 +6622,15 @@ subroutine calc_mf_depth(im,jm,nlev,t,z,q,p,ztop)
   real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp
   integer  :: i,j,k
 
+  do i = 1,IM
+  do j = 1,JM
 
   tep  = t(i,j,nlev)+0.4
   qp   = q(i,j,nlev)
   
   t1   = t(i,j,nlev)
-  ztop(i,j) = z1
+  z1   = z(i,j,nlev)
+  ztop(i,j) = z(i,j,nlev)
   
   do k = nlev-1 , 2, -1
     z2 = z(i,j,k)
@@ -6644,7 +6652,10 @@ subroutine calc_mf_depth(im,jm,nlev,t,z,q,p,ztop)
 
     z1 = z2
     t1 = t2
-  enddo
+  enddo  ! LM
+
+  enddo  ! IM
+  enddo  ! JM
 
   return
 
@@ -6667,10 +6678,9 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              moist_qc3, &
             ! outputs - variables needed for solver 
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L0,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, &
-             au, Mu, E, D, hle, qte, entx, edmfmf, &
+!             au, Mu, E, D, hle, qte, & 
+             buoyf, entx, edmfmf, &
 #ifdef EDMF_DIAG
              w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
              w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -6679,6 +6689,8 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
              thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
+             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
+             ET,L0,ENT0,EDfac,EntWFac,&
              edmf_discrete_type, edmf_implicit, stochent, doclasp, entrainopt)
 
 
@@ -6746,10 +6758,10 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
 
   ! outputs - variables needed for solver (s_aw - sum ai*wi, s_awphi - sum ai*wi*phii)
         REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
-        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: au, Mu
+!        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: au, Mu
    ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
          REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfwqt,mfhl2,&
-                                                         mfhlqt,mfwhl, hle, qte, E, D, entx     
+                                                         mfhlqt,mfwhl,entx !, hle, qte, E, D
       REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
@@ -6766,7 +6778,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
 
        REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO
        REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
-       REAL,DIMENSION(KTS-1:KTE) :: UI, VI, THVI, QVI, QLI, QII ! for MYNN               
+       REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
 
 ! internal surface cont
       REAL :: UST,WTHL,WQT,PBLH
@@ -6775,14 +6787,14 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
         REAL,DIMENSION(KTS-1:KTE) :: s_aw,s_aws,s_awqv,s_awql,s_awqi,s_awu,s_awv
         REAL,DIMENSION(KTS:KTE) ::  s_buoyf
         REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,s_ahlqt,s_awqt,s_ahl2,s_awhl
-        REAL,DIMENSION(KTS-1:KTE) :: s_awthv ! for MYNN
+!        REAL,DIMENSION(KTS-1:KTE) :: s_awthv ! for MYNN
 ! exner function
         REAL,DIMENSION(KTS:KTE) :: exf,dp 
         REAL,DIMENSION(KTS-1:KTE) :: exfh
 
-        real                      :: au_full, thlu_full, qtu_full
-        REAL,DIMENSION(KTS-1:KTE) :: rhoe, au_flip, wu_flip, Mu_flip, thlu, qtu
-        REAL,DIMENSION(KTS:KTE)   :: E_flip, D_flip, hle_flip, qte_flip
+!        real                      :: au_full, thlu_full, qtu_full
+        REAL,DIMENSION(KTS-1:KTE) :: rhoe!, au_flip, wu_flip, Mu_flip, thlu, qtu
+!        REAL,DIMENSION(KTS:KTE)   :: E_flip, D_flip, hle_flip, qte_flip
 !  
         REAL :: stmp,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor
         INTEGER, DIMENSION(2) :: seedmf,the_seed
@@ -6933,7 +6945,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
             qvi(k)  = 0.5*( qv3(IH,kte-k+kts)  + qv3(IH,kte-k+kts-1) )
             qli(k)  = 0.5*( ql3(IH,kte-k+kts)  + ql3(IH,kte-k+kts-1) )
             qii(k)  = 0.5*( qi3(IH,kte-k+kts)  + qi3(IH,kte-k+kts-1) )
-            thvi(k) = 0.5*( thv3(IH,kte-k+kts) + thv3(IH,kte-k+kts-1) )
+!            thvi(k) = 0.5*( thv3(IH,kte-k+kts) + thv3(IH,kte-k+kts-1) )
          else
             ui(k)   = u3(IH,kte-k+kts-1)
             vi(k)   = v3(IH,kte-k+kts-1)
@@ -6942,7 +6954,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
             qvi(k)  = qv3(IH,kte-k+kts-1)
             qli(k)  = ql3(IH,kte-k+kts-1)
             qii(k)  = qi3(IH,kte-k+kts-1)
-            thvi(k) = thv3(IH,kte-k+kts-1)
+!            thvi(k) = thv3(IH,kte-k+kts-1)
          end if
 !        thli(k) = 0.5*( thl(k) + thl(k+1) )  ! avg neighboring levels
 !        qti(k)  = 0.5*( qt(k)  + qt(k+1)  )
@@ -6955,7 +6967,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
   qvi(kte)    = qv(kte)
   qli(kte)    = ql(kte)
   qii(kte)    = qi(kte)
-  thvi(kte)   = thv(kte)
+!  thvi(kte)   = thv(kte)
   ui(kts-1)   = u(kts)
   vi(kts-1)   = v(kts)
   thli(kts-1) = thl(kts)  ! approximate
@@ -6963,7 +6975,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
   qvi(kts-1)  = qv(kts)
   qli(kts-1)  = ql(kts)
   qii(kts-1)  = qi(kts)
-  thvi(kts-1) = thv(kts)
+!  thvi(kts-1) = thv(kts)
 
 DO k=kts-1,kte
    rhoe(k) = rhoe3(IH,kte-k+kts-1)
@@ -6973,10 +6985,10 @@ ENDDO
 
 dp = p(kts-1:kte-1)-p(kts:kte)
 
-au_flip = 0.
-Mu_flip = 0.
-E_flip  = 0.
-D_flip  = 0.
+!au_flip = 0.
+!Mu_flip = 0.
+!E_flip  = 0.
+!D_flip  = 0.
 
   !
   ! compute entrainment coefficient
@@ -7319,9 +7331,9 @@ end if
                dry_v(K)=dry_v(K)+UPA(K,I)*UPV(K,I) 
             ENDIF
 
-            if ( k >= KTS ) then
-               E_flip(k) = E_flip(k) + rhoe(k-1)*UPA(K-1,I)*UPW(K-1,I)*Ent(K,I)
-            end if
+!            if ( k >= KTS ) then
+!               E_flip(k) = E_flip(k) + rhoe(k-1)*UPA(K-1,I)*UPW(K-1,I)*Ent(K,I)
+!            end if
          ENDDO  ! first sum over all i-updrafts
          
          IF (dry_a(k)>0.) THEN
@@ -7355,45 +7367,45 @@ end if
          ENDIF
 
          ! Save updraft conserved properties
-         au_flip(k) = dry_a(k) + moist_a(k)
-         if ( au_flip(k) > 0. ) then            
-            if ( moist_a(k) > 0. ) then
-               wu_flip(k) = ( dry_a(k)*dry_w(k)   + moist_a(k)*moist_w(k)  )/au_flip(k)
-               thlu(k)    = ( dry_a(k)*dry_thl(k) + moist_a(k)*moist_thl(k) )/au_flip(k)
-               qtu(k)     = ( dry_a(k)*dry_qt(k)  + moist_a(k)*moist_qt(k)  )/au_flip(k)
-            else
-               wu_flip(k) = dry_w(k)
-               thlu(k)    = dry_thl(k)
-               qtu(k)     = dry_qt(k)
-            end if
+!         au_flip(k) = dry_a(k) + moist_a(k)
+!         if ( au_flip(k) > 0. ) then            
+!            if ( moist_a(k) > 0. ) then
+!               wu_flip(k) = ( dry_a(k)*dry_w(k)   + moist_a(k)*moist_w(k)  )/au_flip(k)
+!               thlu(k)    = ( dry_a(k)*dry_thl(k) + moist_a(k)*moist_thl(k) )/au_flip(k)
+!               qtu(k)     = ( dry_a(k)*dry_qt(k)  + moist_a(k)*moist_qt(k)  )/au_flip(k)
+!            else
+!               wu_flip(k) = dry_w(k)
+!               thlu(k)    = dry_thl(k)
+!               qtu(k)     = dry_qt(k)
+!            end if
 
-            Mu_flip(k) = rhoe(k)*au_flip(k)*wu_flip(k)
-         else
-            wu_flip(k) = 0.
-            thlu(k)    = thli(k)
-            qtu(k)     = qti(k)
-         end if
+!            Mu_flip(k) = rhoe(k)*au_flip(k)*wu_flip(k)
+!         else
+!            wu_flip(k) = 0.
+!            thlu(k)    = thli(k)
+!            qtu(k)     = qti(k)
+!         end if
    
    ENDDO     ! loop in vertical   
 
-   do k = kts,kte
-      !
-      D_flip(k) = E_flip(k) - ( Mu_flip(k) - Mu_flip(k-1) )/( zw(k) - zw(k-1) )
+!   do k = kts,kte
+!      !
+!      D_flip(k) = E_flip(k) - ( Mu_flip(k) - Mu_flip(k-1) )/( zw(k) - zw(k-1) )
 
       !
-      au_full   = 0.5*( au_flip(k-1) + au_flip(k) )
-      thlu_full = 0.5*( thlu(k-1)    + thlu(k) )
-      qtu_full  = 0.5*( qtu(k-1)     + qtu(k) )
+!      au_full   = 0.5*( au_flip(k-1) + au_flip(k) )
+!      thlu_full = 0.5*( thlu(k-1)    + thlu(k) )
+!      qtu_full  = 0.5*( qtu(k-1)     + qtu(k) )
 
-      if ( au_full > 0. ) then
-         hle_flip(k) =   exf(k)*( thl(k) - au_full*thlu_full )/( 1. - au_full ) &
-                       + (mapl_grav/mapl_cp)*zlo(k)
-         qte_flip(k) = ( qt(k)  - au_full*qtu_full  )/( 1. - au_full )
-      else
-         hle_flip(k) = exf(k)*thl(k) + (mapl_grav/mapl_cp)*zlo(k)
-         qte_flip(k) = qt(k)
-      end if
-   end do
+!      if ( au_full > 0. ) then
+!         hle_flip(k) =   exf(k)*( thl(k) - au_full*thlu_full )/( 1. - au_full ) &
+!                       + (mapl_grav/mapl_cp)*zlo(k)
+!         qte_flip(k) = ( qt(k)  - au_full*qtu_full  )/( 1. - au_full )
+!      else
+!         hle_flip(k) = exf(k)*thl(k) + (mapl_grav/mapl_cp)*zlo(k)
+!         qte_flip(k) = qt(k)
+!      end if
+!   end do
     
   !
   ! computing variables needed for solver
@@ -7418,7 +7430,7 @@ end if
      s_awhl=0.
      s_ahlqt=0.
 
-     s_awthv=0.
+!     s_awthv=0.
 
     DO I=1,NUP2
      
@@ -7457,7 +7469,7 @@ end if
              s_awqi(k) = s_awqi(K) + UPA(K,i)*UPW(K,I)*(UPQI(K,I) - QII(K))
           end if
           s_awqt(k)  = s_awqt(K)  + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - QTI(K))
-          s_awthv(K) = s_awthv(K) + UPA(K,I)*UPW(K,I)*(UPTHV(K,I) - THVI(K))
+!          s_awthv(K) = s_awthv(K) + UPA(K,I)*UPW(K,I)*(UPTHV(K,I) - THVI(K))
          ENDDO  
    
        DO k=KTS,KTE
@@ -7501,8 +7513,8 @@ end if
       awv3(IH,K)=s_awv(KTE+KTS-K-1)
       ae3(IH,K)=(1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*EDfac
       !
-      au(IH,K) = au_flip(KTE+KTS-K-1)
-      Mu(IH,K) = Mu_flip(KTE+KTS-K-1)
+!      au(IH,K) = au_flip(KTE+KTS-K-1)
+!      Mu(IH,K) = Mu_flip(KTE+KTS-K-1)
     ENDDO
     
 ! buoyancy is defined on full levels    
@@ -7519,10 +7531,10 @@ end if
       mfhlqt(IH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
       mfwhl(IH,K)=0.5*(s_awhl(KTE+KTS-K-1)+s_awhl(KTE+KTS-K))
 
-      E(IH,K)   = E_flip(KTE+KTS-K)
-      D(IH,K)   = D_flip(KTE+KTS-K)
-      hle(IH,K) = hle_flip(KTE+KTS-K)
-      qte(IH,K) = qte_flip(KTE+KTS-K)
+!      E(IH,K)   = E_flip(KTE+KTS-K)
+!      D(IH,K)   = D_flip(KTE+KTS-K)
+!      hle(IH,K) = hle_flip(KTE+KTS-K)
+!      qte(IH,K) = qte_flip(KTE+KTS-K)
   ENDDO  
     
 !   print *,'buoyf',buoyf 
