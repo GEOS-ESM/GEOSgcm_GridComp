@@ -459,7 +459,10 @@ list( APPEND MOM6_SRCS
    config_src/external/GFDL_ocean_BGC/generic_tracer_utils.F90
 )
 
-set (MOM6_path ${CMAKE_CURRENT_SOURCE_DIR}/../@mom6)
+
+esma_mepo_style(mom6 MOM6_rel_path REL_PATH ..)
+set (MOM6_path ${CMAKE_CURRENT_SOURCE_DIR}/${MOM6_rel_path})
+
 set (SRCS)
 foreach (file ${MOM6_SRCS})
   list (APPEND SRCS ${MOM6_path}/${file})
