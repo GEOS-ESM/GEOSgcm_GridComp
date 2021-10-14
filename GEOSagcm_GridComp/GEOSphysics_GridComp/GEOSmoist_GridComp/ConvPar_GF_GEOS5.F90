@@ -1,15 +1,17 @@
 MODULE ConvPar_GF_GEOS5
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!- This convective parameterization is build to attempt                 !
-!  a smooth transition to cloud resolving scales as proposed            !
-!  by Arakawa et al (2011, ACP). The scheme is  described               !
-!  in the paper Grell and Freitas (ACP, 2014).                          !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!- Implemented in GEOS5 GCM by Saulo Freitas (July 2016)                !
-!- Use the following references for this implementation:                !
-!- Freitas et al (2018, JAMES/AGU, https://doi.org/10.1029/2017MS001251)!
-!- Freitas et al (2020, GMD/EGU,   https://doi.org/10.5194/gmd-2020-38) !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!- This convective parameterization is build to attempt                      !
+!  a smooth transition to cloud resolving scales as proposed                 !
+!  by Arakawa et al (2011, ACP). The scheme is  described                    !
+!  in the paper Grell and Freitas (ACP, 2014).                               !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!- Implemented in GEOS5 GCM by Saulo Freitas (July 2016)                     !
+!- Use the following references for this implementation:                     !
+!- Freitas et al (2018, JAMES/AGU, https://doi.org/10.1029/2017MS001251)     !
+!- Freitas et al (2021, GMD/EGU,   https://doi.org/10.5194/gmd-14-5393-2021) !
+!- Please, contact Saulo Freitas (saulo.r.de.freitas@gmail.com) for comments !
+!- questions, bugs, etc.                                                     !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 USE module_gate
 USE MAPL
@@ -81,7 +83,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  INTEGER :: USE_TRACER_EVAP   = 1 != 0/1     - default 1 (only for USE_TRACER_SCAVEN > 0)
 
- INTEGER :: USE_MEMORY        =-1 != -1/0/1/2 .../10    !- 
+ INTEGER :: USE_MEMORY        =-1 != -1/0/1/2 .../10    !-
 
  INTEGER :: CONVECTION_TRACER = 0 != 0/1:  turn ON/OFF the "convection" tracer
 
@@ -89,8 +91,8 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  INTEGER :: DICYCLE           = 1 != 0/1:  diurnal cycle closure, default = 1
   
- INTEGER :: CLEV_GRID         = 1 != 0/1/2: interpolation method to define environ state at the cloud levels (at face layer), default = 0   
-                                  != clev_grid = 0 default method 
+ INTEGER :: CLEV_GRID         = 1 != 0/1/2: interpolation method to define environ state at the cloud levels (at face layer), default = 0
+                                  != clev_grid = 0 default method
 			          != clev_grid = 1 interpolation method based on Tiedtke (1989)
 			          != clev_grid = 2 for GATE soundings only
 
@@ -104,19 +106,19 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  INTEGER :: LIGHTNING_DIAG    = 0 != 0/1: do LIGHTNING_DIAGgnostics based on Lopez (2016, MWR)
  
- INTEGER :: APPLY_SUB_MP      = 0 != 0/1: subsidence transport applied the to grid-scale/anvil ice/liq mix 
+ INTEGER :: APPLY_SUB_MP      = 0 != 0/1: subsidence transport applied the to grid-scale/anvil ice/liq mix
         		          !=      ratio and cloud fraction
  
- REAL    :: ALP1              = 1 != 0/0.5/1: apply subsidence transport of LS/anvil cloud fraction using 
+ REAL    :: ALP1              = 1 != 0/0.5/1: apply subsidence transport of LS/anvil cloud fraction using
                                   !=          time implicit discretization
 
  INTEGER :: USE_WETBULB       = 0 != 0/1
  
-         	                  != boundary condition determination for the plumes  
- INTEGER :: BC_METH 	      = 1 ! 0: simple arithmetic mean around k22
-         		          ! 1: mass weighted mean around k22 
+         	                      != boundary condition determination for the plumes
+ INTEGER :: BC_METH 	      = 1 != 0: simple arithmetic mean around the source level
+         		                    != 1: mass weighted mean around the source level
 
- REAL    :: OVERSHOOT         = 0.!= 0, 1   
+ REAL    :: OVERSHOOT         = 0. != 0, 1
 
  INTEGER :: AUTOCONV          = 1     != 1, 3 or 4 autoconversion formulation: (1) Kessler, (3) Kessler with temp dependence, (4) Sundvisqt
  REAL    ::  C0_DEEP          = 2.e-3 != default= 3.e-3   conversion rate (cloud to rain, m-1) - for deep      plume
@@ -129,7 +131,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  REAL    ::  LAMBAU_DEEP        = 0.0 != default= 2.0 lambda parameter for deep/congestus convection momentum transp
  REAL    ::  LAMBAU_SHDN        = 2.0 != default= 2.0 lambda parameter for shallow/downdraft convection momentum transp
 
- INTEGER :: DOWNDRAFT           = 1   != 0/1:  turn ON/OFF downdrafts, default = 1 
+ INTEGER :: DOWNDRAFT           = 1   != 0/1:  turn ON/OFF downdrafts, default = 1
 
 
  REAL    ::  TAU_DEEP           = 1800.  != deep      convective timescale
@@ -137,7 +139,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  
  REAL    :: MAX_TQ_TEND         = 100.   != max T,Q tendency allowed (100 K/day)
  
- INTEGER :: ZERO_DIFF           = 0      != to get the closest solution of the stable version Dec 2019 for single-moment 
+ INTEGER :: ZERO_DIFF           = 0      != to get the closest solution of the stable version Dec 2019 for single-moment
 
  INTEGER :: USE_SMOOTH_PROF     = 0      != 1 makes the normalized mass flux, entr and detraiment profiles smoother
  
@@ -152,32 +154,30 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  REAL,   DIMENSION(maxiens) :: CUM_FADJ_MASSFLX  =(/1.00,  1.00,  1.00/)!= multiplicative factor for tunning the mass flux at cloud base
                                                                         != default = 1.0
- REAL,   DIMENSION(maxiens) :: CUM_AVE_LAYER     =(/50.,   30.,   50. /)!= layer depth for average the properties 
+ REAL,   DIMENSION(maxiens) :: CUM_AVE_LAYER     =(/50.,   30.,   50. /)!= layer depth for average the properties
                                                                         != of source air parcels (mbar)
  
  INTEGER,DIMENSION(maxiens) :: CUM_USE_EXCESS    =(/1,     1,     1   /)!= use T,Q excess sub-grid scale variability
 
  INTEGER :: MOIST_TRIGGER  = 0 != relative humidity effects on the cap_max trigger function
  INTEGER :: FRAC_MODIS     = 0 != use fraction liq/ice content derived from MODIS/CALIPO sensors
- INTEGER :: ADV_TRIGGER    = 0 !=  1=> Kain (2004),  2=> moisture adv trigger (Ma & Tan, 2009, Atmos Res)
+ INTEGER :: ADV_TRIGGER    = 0 != 1 => Kain (2004),  2 => moisture adv trigger (Ma & Tan, 2009, Atmos Res), 3 => dcape trigger 
  INTEGER :: EVAP_FIX       = 1 != fix total evap > column rainfall
  
- INTEGER :: OUTPUT_SOUND   = 0 
+ INTEGER :: OUTPUT_SOUND   = 0 != outputs a "GEOS" vertical profile for the GF stand alone model
 
- REAL    :: tau_ocea_cp    = 6.*3600.
- REAL    :: tau_land_cp    = 6.*3600.
- 
- REAL    :: use_cloud_dissipation = 0.
- REAL    :: use_gustiness         = 0.
- REAL    :: use_random_num        = 0.
- REAL    :: dcape_threshold       = 0.
- REAL    :: beta_sh               = 2.2   
- INTEGER :: use_linear_subcl_mf   = 1
- REAL    :: cap_maxs              = 50.
+ REAL    :: tau_ocea_cp    = 6.*3600. != not in use
+ REAL    :: tau_land_cp    = 6.*3600. != not in use
+
+ REAL    :: use_cloud_dissipation = 0.   != to acccount for the cloud dissipation at the decayment phase
+ REAL    :: use_gustiness         = 0.   != not in use
+ REAL    :: use_random_num        = 0.   != stochastic pertubation for the height of maximum Zu
+ REAL    :: dcape_threshold       = 0.   != CAPE time rate threshold for triggering ADV = 3
+ REAL    :: beta_sh               = 2.21 != only for shallow plume
+ INTEGER :: use_linear_subcl_mf   = 1    != only for shallow plume
+ REAL    :: cap_maxs              = 50.  != max distance (hPa) the air parcel is allowed to go up looking for the LFC
  !------------------- internal variables  -------------------
-
- !-- turn ON/OFF deep/shallow/mid plumes
- INTEGER, PARAMETER :: ON=1, OFF=0
+ INTEGER, PARAMETER :: ON = 1, OFF = 0 !=  ON/OFF integer paremeters
 
  REAL    ::  HEI_DOWN_LAND     != [0.2,0.8] height of the max Z Downdraft , default = 0.50
  REAL    ::  HEI_DOWN_OCEAN    != [0.2,0.8] height of the max Z Downdraft , default = 0.50
@@ -192,7 +192,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  !-- General internal controls for the diverse options in GF
  LOGICAL, PARAMETER :: ENTRNEW        = .TRUE.  != new entr formulation
  
- LOGICAL, PARAMETER :: COUPL_MPHYSICS = .TRUE.  != coupling with cloud microphysics (do not change  to false)
+ LOGICAL, PARAMETER :: COUPL_MPHYSICS = .TRUE.  != coupling with cloud microphysics (do not change to false)
  
  LOGICAL, PARAMETER :: MELT_GLAC      = .TRUE.  != turn ON/OFF ice phase/melting
 
@@ -202,10 +202,9 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  LOGICAL            :: FIRST_GUESS_W  = .FALSE. != use it to calculate a 1st guess of the updraft vert velocity
 
- INTEGER, PARAMETER :: LIQ_ICE_NUMBER_CONC = 1 !
+ INTEGER, PARAMETER :: LIQ_ICE_NUMBER_CONC = 1  != include drop/ice number mixing ratio convective tendencies
 
- !-rainfall evaporation(1) orig (2) mix orig+new (3) new
- INTEGER, PARAMETER :: aeroevap = 1
+ INTEGER, PARAMETER :: aeroevap = 1             !=rainfall evaporation (1) orig  - (2) mix orig+new - (3) new
  
  INTEGER, PARAMETER ::               &
                        maxens  = 1,  & ! 1  ensemble one on cap_max
@@ -753,6 +752,8 @@ CONTAINS
                      ,SRC_T       &
                      ,SRC_Q       &
                      ,SRC_CI      &
+                     ,SRC_NL      &
+                     ,SRC_NI      &
                      ,SRC_U       &
                      ,SRC_V       &
                      ,SUB_MPQI    & 
@@ -1026,29 +1027,29 @@ ENDIF
          DO i=1,mxp
           DO k=1,mzp 
 
-             tem1 = T(i,j,k)             
-             RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
-             RL =   min(max(RL, 10.0), 30.0)*1.e-6              
-             RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
-             RI =   min(max(RI, 20.0), 250.0)*1.e-6
-             
-             tem1 = 1.- (tem1 - 235.0) /38.0 
-             tem1 =  min(max(0.0, tem1), 1.0)
- 
+!---obsolete
+             !tem1 = T(i,j,k)             
+             !RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
+             !RL =   min(max(RL, 10.0), 30.0)*1.e-6              
+             !RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
+             !RI =   min(max(RI, 20.0), 250.0)*1.e-6
+             !tem1 = 1.- (tem1 - 235.0) /38.0 
+             !tem1 =  min(max(0.0, tem1), 1.0)
              ! make up some "number" sources. In the future this should depend explicitly on the convective mphysics
-             disp_factor =  10.0 ! used to account somehow for the size dist
- 
-             !-outputs 
-             QLCN (i,j,k) = QLCN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
-             QICN (i,j,k) = QICN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * tem1
+             !disp_factor =  10.0 ! used to account somehow for the size dist
+	     !SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
+	     !SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
+             !CNV_FICE (i, j, k)   =   tem1
+!---obsolete
+             
+	     tem1 = frct_liq(i,j,k)
+             
+             QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
+             QICN (i,j,k) = QICN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * tem1
 
-             SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
-             SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
-
-             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist *SRC_NL(flip(k),i,j)                
-             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
-             CNV_FICE (i, j, k)   =   tem1
-
+             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist * SRC_NL(flip(k),i,j)                
+             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist * SRC_NI(flip(k),i,j)     
+            
              DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
              air_dens = 100.*PLO_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
                                               
@@ -1218,10 +1219,12 @@ ENDIF
               ,rqvblten              &!sgsf_q
               !---- output ----
               ,conprr                &
-	      ,lightn_dens           &
+              ,lightn_dens           &
               ,rthcuten              &
               ,rqvcuten              &
               ,rqccuten              &
+              ,rnlcuten              &
+              ,rnicuten              &
               ,rucuten               &
               ,rvcuten               &
               ,sub_mpqi              & 
@@ -1293,7 +1296,7 @@ ENDIF
    !-- intent (in)
    REAL,    DIMENSION(its:ite,jts:jte) ::             topt ,aot500 ,temp2m ,sfc_press &
                                                      ,sflux_r ,sflux_t                &
-						     ,xland,lons,lats,dx2d,col_sat    &
+                                                     ,xland,lons,lats,dx2d,col_sat    &
                                                      ,stochastic_sig
 
    REAL,    DIMENSION(kts:kte,its:ite,jts:jte), INTENT(IN) :: rthften    &
@@ -1308,21 +1311,23 @@ ENDIF
                                                     rthcuten   &
                                                    ,rqvcuten   &
                                                    ,rqccuten   &
+                                                   ,rnlcuten   &
+                                                   ,rnicuten   &
                                                    ,rucuten    &
                                                    ,rvcuten    &
                                                    ,rbuoycuten &
-						   ,revsu_gf   &
-						   ,prfil_gf   &
-						   ,var3d_agf  &
-						   ,var3d_bgf  &
-						   ,var3d_cgf  &
-						   ,var3d_dgf
+                                                   ,revsu_gf   &
+                                                   ,prfil_gf   &
+                                                   ,var3d_agf  &
+                                                   ,var3d_bgf  &
+                                                   ,var3d_cgf  &
+                                                   ,var3d_dgf
                                                    
 
    REAL,    DIMENSION(nmp,kts:kte,its:ite,jts:jte), INTENT(IN)  :: &
-					            mp_ice     &
-					           ,mp_liq     &
-					           ,mp_cf       
+                                                    mp_ice	&
+                                                   ,mp_liq	&
+                                                   ,mp_cf	 
 
    REAL,    DIMENSION(nmp,kts:kte,its:ite,jts:jte), INTENT(OUT) :: &
                                                     sub_mpqi   & 
@@ -2046,20 +2051,20 @@ loop1:  do n=1,maxiens
              RQVCUTEN (kr,i,j)= (outq (i,k,shal) + outq (i,k,deep) + outq (i,k,mid )) *fixout_qv(i)
 
              RQCCUTEN (kr,i,j)= (outqc(i,k,shal) + outqc(i,k,deep) + outqc(i,k,mid )) *fixout_qv(i)
-	     
+
              REVSU_GF (kr,i,j)= revsu_gf_2d(i,k)*fixout_qv(i) !-- already contains deep and mid amounts.
-      
+
             !---these arrays are only for the deep plume mode	    
              PRFIL_GF (kr,i,j)= prfil_gf_2d (i,k)*fixout_qv(i) !-- ice/liq prec flux of the deep plume
             !VAR3d_aGF(kr,i,j)= var3d_gf_2d(i,k)               !-- vertical velocity of the deep plume
              VAR3d_aGF(kr,i,j)= outt (i,k,mid )*fixout_qv(i)   !-- 
              VAR3d_bGF(kr,i,j)= outq (i,k,mid )*fixout_qv(i)   !-- 
              
-	     if(icumulus_gf(shal) == OFF) then 
+             if(icumulus_gf(shal) == OFF) then 
                 VAR3d_cGF(kr,i,j)= outqc (i,k,deep)*fixout_qv(i)  !-- 
                 VAR3d_dGF(kr,i,j)= outqc (i,k,mid )*fixout_qv(i)  !-- 
              else
-	        VAR3d_cGF(kr,i,j)= outt (i,k,shal)*fixout_qv(i)   !-- 
+                VAR3d_cGF(kr,i,j)= outt (i,k,shal)*fixout_qv(i)   !-- 
                 VAR3d_dGF(kr,i,j)= outq (i,k,shal)*fixout_qv(i)   !-- 
              endif
 
@@ -2076,7 +2081,6 @@ loop1:  do n=1,maxiens
       ENDDO
      ENDIF     
 
-
      IF(APPLY_SUB_MP == 1) THEN
       DO i = its,itf
        if(do_this_column(i,j) == 0) CYCLE
@@ -2085,6 +2089,17 @@ loop1:  do n=1,maxiens
              SUB_MPQL (:,kr,i,j)= (outmpql(:,i,k,deep)+outmpql(:,i,k,mid)+outmpql(:,i,k,shal)) *fixout_qv(i)
              SUB_MPQI (:,kr,i,j)= (outmpqi(:,i,k,deep)+outmpqi(:,i,k,mid)+outmpqi(:,i,k,shal)) *fixout_qv(i)
              SUB_MPCF (:,kr,i,j)= (outmpcf(:,i,k,deep)+outmpcf(:,i,k,mid)+outmpcf(:,i,k,shal)) *fixout_qv(i)
+       ENDDO
+      ENDDO
+     ENDIF     
+
+     IF(LIQ_ICE_NUMBER_CONC == 1) THEN
+      DO i = its,itf
+       if(do_this_column(i,j) == 0) CYCLE
+       DO k = kts,kte
+             kr=k!+1
+             RNICUTEN (kr,i,j)= (outnice(i,k,shal) + outnice(i,k,deep) + outnice(i,k,mid )) *fixout_qv(i)
+             RNLCUTEN (kr,i,j)= (outnliq(i,k,shal) + outnliq(i,k,deep) + outnliq(i,k,mid )) *fixout_qv(i)
        ENDDO
       ENDDO
      ENDIF     
@@ -12541,8 +12556,8 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
     endif
  end subroutine GF_convpar_init 
 !------------------------------------------------------------------------------------
- subroutine get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop&
-                                  ,dtime,rho,outqc,tempco,outnliq,outnice)
+ subroutine get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop    &
+                                   ,dtime,rho,outqc,tempco,outnliq,outnice)
      
     implicit none
     integer,   intent (in )  :: itf,ktf,its,ite,kts,kte

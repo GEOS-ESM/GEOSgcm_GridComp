@@ -61,9 +61,22 @@
       integer  :: nspa(nbndlw)
       integer  :: nspb(nbndlw)
 
-      real  :: wavenum1(nbndlw)
-      real  :: wavenum2(nbndlw)
-      real  :: delwave(nbndlw)
+!     real  :: wavenum1(nbndlw)
+!     real  :: wavenum2(nbndlw)
+!     real  :: delwave(nbndlw)
+
+
+      ! lower band limit [cm-1]
+      real, parameter :: wavenum1 (nbndlw) = &
+         [  10.,  350.,  500.,  630.,  700.,  820.,  980., 1080., &
+          1180., 1390., 1480., 1800., 2080., 2250., 2380., 2600.  ]
+      ! upper band limit [cm-1]
+      real, parameter :: wavenum2 (nbndlw) = &
+         [ 350.,  500.,  630.,  700.,  820.,  980., 1080., 1180., &
+          1390., 1480., 1800., 2080., 2250., 2380., 2600., 3250.  ]
+      ! band width [cm-1]
+      real, parameter :: delwave  (nbndlw) = wavenum2 - wavenum1
+
 
       real  :: totplnk(181,nbndlw)
       real  :: totplk16(181)

@@ -1843,11 +1843,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', RC=STATUS )
          VERIFY_(STATUS)
 
+         if (NCAR_NRDG == 1) then
+            ! forec EFF Ridge to 1.0 everywhere
+            ANGLL = 0.0
+            ANIXY = 0.9
+            HWDTH = 25.0
+            CLNGT = 25.0
+            GBXAR = (25.0)**2
+         endif
+
        WHERE (ANGLL < -180)
          ANGLL = 0.0
        END WHERE
        if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
-        GBXAR = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
+        if (NCAR_NRDG > 1) GBXAR = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
         IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
        !call Write_Profile( 1.e-6*AREA , AREA, ESMFGRID, 'AREA' )
         call Write_Profile(       GBXAR, AREA, ESMFGRID, 'GBXAR')
