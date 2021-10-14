@@ -551,6 +551,13 @@ contains
        VERIFY_(STATUS)
     endif
 
+       call MAPL_AddConnectivity ( GC,                              &
+            SHORT_NAME  = (/'SURFSTATE'/),                          &
+            DST_ID = AGCM,                                          &
+            SRC_ID = OGCM,                                          &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+
 ! Next vars are explicitly connected through exchange grid transforms Run
 !---------------------------------------------------------------------------
 

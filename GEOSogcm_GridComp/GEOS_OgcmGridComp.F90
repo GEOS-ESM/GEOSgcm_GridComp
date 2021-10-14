@@ -768,6 +768,12 @@ contains
      endif
   end if
 
+  ! **CALLBACK
+  call MAPL_AddExportSpec ( GC   ,                            &
+         SHORT_NAME = 'SURFSTATE',                            &
+         CHILD_ID   = SEAICE ,                                &
+                                                       __RC__ )
+
 ! Children's imports are in the ocean grid and are all satisfied
 !   by OGCM from exchange grid quantities.
   

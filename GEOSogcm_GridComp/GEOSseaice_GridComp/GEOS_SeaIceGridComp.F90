@@ -482,6 +482,11 @@ contains
              SHORT_NAME = 'HIFLXN',                               &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
+        ! **CALLBACK
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'SURFSTATE',                            &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
     endif
 
 !EOS
