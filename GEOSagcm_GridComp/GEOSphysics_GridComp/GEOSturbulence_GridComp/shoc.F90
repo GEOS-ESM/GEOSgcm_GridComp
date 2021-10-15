@@ -453,7 +453,7 @@ contains
 !         a_prod_bu = bet(i,j,k)*wthv_sec(i,j,k)
           a_prod_bu = (ggr / thv(i,j,k)) * wthv_sec(i,j,k)
 
-!          wrk  = 0.5 * (tkh(i,j,ku)+tkh(i,j,kd))
+          wrk  = 0.5 * (tkh(i,j,ku)+tkh(i,j,kd))
 
           buoy_sgs = brunt(i,j,k)
 !          buoy_sgs = - a_prod_bu / (wrk + 0.0001)   ! tkh is eddy thermal diffussivity
@@ -675,6 +675,10 @@ contains
 ! Calculate the measure of PBL depth,  Eq. 11 in BK13 (Is this really PBL depth?)
     do j=1,ny
       do i=1,nx
+        do k = 3,nzm-2   ! smooth 3-layers of brunt freq to reduce influence of single layers
+           brunt_smooth(i,j,k) = SUM( brunt_smooth(i,j,k-2:k) ) / 3.
+        end do
+
         if (denom(i,j) >  0.0 .and. numer(i,j) > 0.0) then
 !          l_inf(i,j) = max(min(0.1 * (numer(i,j)/denom(i,j)),300.),10.)
           l_inf(i,j) = max(min( (numer(i,j)/denom(i,j)),1000.),10.)
@@ -751,10 +755,6 @@ contains
 
 ! Calculate Brunt-Vaisalla frequency using centered differences in the vertical
 
-             if (k.gt.3) then
-               brunt_smooth(i,j,k) = SUM( brunt_smooth(i,j,k-2:k) ) / 3.
-             end if
-
              brunt(i,j,k) = cld_sgs(i,j,k)*betdz*(bbb*(hl(i,j,kc)-hl(i,j,kb))               &
                           + (bbb*lstarn - (1.+lstarn*dqsat)*tabs(i,j,k))     &
                           * (total_water(i,j,kc)-total_water(i,j,kb))        & 
@@ -800,7 +800,7 @@ contains
               l_inf(i,j) = 100.
             end if
 
-
+            ! Calculate depth of unstable surface layer
             kk = 2
             do while (brunt_smooth(i,j,kk).le.1e-5 .and. zl(i,j,kk).lt.1500.)
               kk = kk+1
@@ -853,8 +853,9 @@ contains
              wrk2 = 1.5/(400.*tkes)
 !             wrk2 = 10.0/(zcb(i,j)*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j)))
              wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
+!             wrk3 = 1.5*sqrt(brunt_smooth(i,j,k))/(0.7*tkes)
              wrk1 = 1.0/(wrk2+wrk3)
-             smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k))/1000.)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+             smixt(i,j,k) = 9.4*exp(-max(0.,0.5*zl(i,j,k))/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
              smixt1(i,j,k) = 9.4/wrk2
@@ -876,7 +877,7 @@ contains
 !==================================
 
         end do
-          
+        print *,'zdecay=',zdecay  
       end do
     end do
     

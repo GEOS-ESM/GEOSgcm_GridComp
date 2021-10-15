@@ -2513,6 +2513,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'TKH',                                       &
+       LONG_NAME  = 'turbulent_diffusivity_from_SHOC',        &
+       UNITS      = 'm+2 s-1',                                   &
+       DEFAULT    = 0.0,                                           &
+       FRIENDLYTO = 'TURBULENCE',                             &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'QT2',                                       &
        LONG_NAME  = 'variance_of_total_water_specific_humidity', &
        UNITS      = '1',                                         &
@@ -2665,7 +2675,7 @@ contains
     real, dimension(:,:,:), pointer    :: DKSS, DKQQ, DKUU
 
 ! SHOC-related variables
-    real, dimension(:,:,:), pointer     :: TKESHOC,QT2,QT3,WTHV2
+    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
@@ -2770,6 +2780,8 @@ contains
 
 !----- SHOC-related variables -----
     call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, TKH,    'TKH',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QT3,    'QT3',     RC=STATUS)
     VERIFY_(STATUS)
@@ -3993,8 +4005,6 @@ ENDIF
                        U(:,:,1:LM),           &
                        V(:,:,1:LM),           &
                        OMEGA(:,:,1:LM),       &
-!                       SH(:,:),               &
-!                       EVAP(:,:),             &
                        T(:,:,1:LM),           &
                        Q(:,:,1:LM),           &
                        QI(:,:,1:LM),          &
@@ -4006,7 +4016,7 @@ ENDIF
                        PRANDTLSHOC(:,:,1:LM), &
                        !== Input-Outputs ==
                        TKESHOC(:,:,1:LM),     &
-                       KH(:,:,1:LM),          &
+                       TKH(:,:,1:LM),         &
                        !== Outputs ==
                        ISOTROPY(:,:,1:LM),    &
                        !== Diagnostics ==  ! not used elsewhere
@@ -4038,7 +4048,8 @@ ENDIF
 !                       SHC_USE_SUS12LEN,      &
 !                       SHC_BUOY_OPTION )
 
-        KM(:,:,1:LM) = KH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
+        KH(:,:,1:LM) = TKH(:,:,1:LM)
+        KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
@@ -4814,7 +4825,7 @@ ENDIF
       ! ---------------------------------------------------------
 
       KH(:,:,LM) = CT * (PLE(:,:,LM)/(MAPL_RGAS * TV(:,:,LM))) / Z(:,:,LM)
-
+      TKH(:,:,LM) = KH(:,:,LM)
 
       ! Water vapor can differ at the surface
       !--------------------------------------
