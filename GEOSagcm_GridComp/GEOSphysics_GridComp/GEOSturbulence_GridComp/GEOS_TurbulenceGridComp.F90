@@ -3703,9 +3703,9 @@ IF(DoMF /= 0.) then
 
    call calc_mf_depth(IM,JM,LM,T,Z,Q,PLO,edmfZCLD)
 
-   print *,'edmfZCLD=',edmfZCLD
+!   print *,'edmfZCLD=',edmfZCLD
 
-   edmfZCLD = 3000.
+!   edmfZCLD = 3000.
 
  ! compute the L0 assuming reasonable limits
    if (ETr .eq. 2.) then

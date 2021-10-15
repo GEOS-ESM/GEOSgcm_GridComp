@@ -877,7 +877,7 @@ contains
 !==================================
 
         end do
-        print *,'zdecay=',zdecay  
+!        print *,'zdecay=',zdecay  
       end do
     end do
     
