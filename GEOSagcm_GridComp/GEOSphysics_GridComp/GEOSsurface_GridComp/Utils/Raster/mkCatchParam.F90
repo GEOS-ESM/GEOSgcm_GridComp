@@ -48,7 +48,7 @@
     character*128        :: GridNameR = ''
     character*128        :: GridNameT = ''
     logical :: file_exists
-    logical, parameter :: F25Tag = .false.
+    logical             :: F25Tag = .false.
     logical :: ease_grid=.false., redo_modis=.false.
     character*40       :: lai_name 
     integer, parameter :: log_file = 998
@@ -117,7 +117,7 @@ integer :: n_threads=1
     else
        open (log_file, file ='clsm/mkCatchParam.log', status='unknown', form='formatted',action='write')
        write (log_file,'(a)')trim(cmd)
-       write (log_file,'(a6,a3,L1)')'F25Tag',' : ' ,F25Tag
+       write (log_file,'(a)')' '
     endif
 
     I = iargc()
@@ -150,6 +150,7 @@ integer :: n_threads=1
           GridName = trim(arg)
        case ('v')
           LBSV = trim(arg)
+          if (trim(arg).eq."F25") F25Tag = .true.
           call init_bcs_config (trim(LBSV))
        case ('b')
           DL = trim(arg)
@@ -165,13 +166,6 @@ integer :: n_threads=1
        nxt = nxt + 1
        call getarg(nxt,arg)
     end do
-
-    if(F25Tag) then
-!
-! Going back to f2.5 tag
-!  
-      call init_bcs_config ("F25")
-    endif
 
    call getenv ("MASKFILE"        ,MaskFile        )
  
@@ -251,10 +245,9 @@ integer :: n_threads=1
        else
           
           inquire(file='clsm/mosaic_veg_typs_fracs', exist=file_exists)
-          call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
+           call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
           
-          write (log_file,'(a)')'Done creating vegetation types using IGBP SiB2 land cover..3'
-          
+           write (log_file,'(a)')'Done creating vegetation types using IGBP SiB2 land cover..3'
        endif
        
        ! Processing Vegetation Climatology 
@@ -345,7 +338,7 @@ integer :: n_threads=1
        inquire(file='clsm/ndvi.dat', exist=file_exists)
        if (.not.file_exists)  call gimms_clim_ndvi (nc,nr,gridnamer)
 
-       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies ............4'
+       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies .............4'
   
        ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
        ! call modis_scale_para (ease_grid,gridnamet)
@@ -356,14 +349,13 @@ integer :: n_threads=1
        if(MODALB == 'MODIS1') then 
           inquire(file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat', exist=file_exists)
           if (.not.file_exists) then
-             if(.not.F25Tag) then 
-                ! allocate (maparc60    (1:21600,1:10800))
+             if(F25Tag) then 
                 call create_mapping (nc,nr,21600,10800,maparc60,    gridnamer)
                 call modis_alb_on_tiles_high (21600,10800,maparc60,MODALB,gridnamer)
-                ! if(allocated (maparc30)) deallocate (maparc60)
                 deallocate (maparc60%map)
                 deallocate (maparc60%ij_index)
              else
+              !  This option is for legacy sets like Fortuna 2.1
                 call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
              endif
           endif
@@ -375,20 +367,23 @@ integer :: n_threads=1
        endif
        write (log_file,'(a,a,a)')'Done putting ',trim(MODALB), ' Albedo on the tile space  .............5'
        
-       !if(allocated (maparc30)) deallocate (maparc30)
-       deallocate (maparc30%map)
-       deallocate (maparc30%ij_index)
+       if(.not.F25Tag) then 
+          deallocate (maparc30%map)
+          deallocate (maparc30%ij_index)
+       endif
+
        inquire(file='clsm/visdf.dat', exist=file_exists)
        if ((redo_modis).or.(.not.file_exists)) then
-          if(.not.F25Tag) then
+       !   if(.not.F25Tag) then
              call modis_scale_para_high (ease_grid,MODALB,gridnamet)
-          else
-             inquire(file='clsm/modis_scale_factor.albvf.clim', exist=file_exists)
-             if ((redo_modis).or.(.not.file_exists)) then
-                call modis_scale_para (ease_grid,gridnamet)
-                call REFORMAT_VEGFILES
-             endif
-          endif
+        !  else
+        !     This option is for legacy sets like Fortuna 2.1
+        !     inquire(file='clsm/modis_scale_factor.albvf.clim', exist=file_exists)
+        !     if ((redo_modis).or.(.not.file_exists)) then
+        !        call modis_scale_para (ease_grid,gridnamet)
+        !        call REFORMAT_VEGFILES
+        !     endif
+        !  endif
        endif
        
        write (log_file,'(a,a,a)')'Done computing ',trim(MODALB), ' scale factors .......................6'
@@ -453,8 +448,8 @@ integer :: n_threads=1
  !      inquire(file='clsm/irrig.dat', exist=file_exists)
  !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
  !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
-       
-       ! call albedo4catchcn (gridnamet)
+
+     !   call albedo4catchcn (gridnamet)
 
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'

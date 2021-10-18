@@ -602,7 +602,7 @@ END SUBROUTINE modis_lai
       character(*) :: gfile
       character*10 :: dline
       CHARACTER*20 :: version,resoln,continent
-      integer :: iret,ncid
+      integer :: iret,ncid,ncid1
       real, allocatable, target, dimension (:,:) :: SOIL_HIGH
       integer, allocatable, dimension (:,:) :: tile_id
       REAL, ALLOCATABLE :: count_soil(:)
@@ -613,6 +613,49 @@ END SUBROUTINE modis_lai
       logical :: regrid
       real, pointer :: Raster(:,:)
       logical, intent (in), optional :: F25Tag
+      logical                            :: file_exists
+      real, allocatable, dimension (:,:) :: parms4file
+
+! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+!
+! NOTE: "!$" is for conditional compilation
+!
+logical :: running_omp = .false.
+!
+!$ integer :: omp_get_thread_num, omp_get_num_threads
+!
+integer :: n_threads=1
+!
+! ------------------------------------------------------------------
+
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+  !
+  ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+  !
+  !$ running_omp = .true.         ! conditional compilation
+  !
+  ! ECHO BASIC OMP VARIABLES
+  !
+  !$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+  !
+  !$OMP SINGLE
+  !
+  !$ n_threads = omp_get_num_threads()
+  !
+  !$ write (*,*) 'running_omp = ', running_omp
+  !$ write (*,*)
+  !$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+  !$ write (*,*)
+  !$OMP ENDSINGLE
+  !
+  !$OMP CRITICAL
+  !$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+  !$OMP ENDCRITICAL
+  !
+  !$OMP BARRIER
+  !
+  !$OMP ENDPARALLEL
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
 
       data lbee /3.30, 3.80, 4.34, 5.25, 3.63, 5.96, 7.32,       &
                  8.41, 8.34, 9.70, 10.78, 12.93/
@@ -644,6 +687,7 @@ END SUBROUTINE modis_lai
 
       i_sib = i_raster
       j_sib = j_raster
+
       fname='clsm/catchment.def'
 
       open (10,file=fname,status='old',action='read',form='formatted')
@@ -654,6 +698,13 @@ END SUBROUTINE modis_lai
           allocate(soil_high(1:i_raster,1:j_raster))  
           allocate(count_soil(1:maxcat))  
           allocate(tile_id(1:nx,1:ny))
+
+          inquire(file='clsm/catch_params.nc4', exist=file_exists)
+
+          if(file_exists) then
+             status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+             allocate (parms4file (1:maxcat, 1:10))
+          endif
 
           soil_high =-9999.
           fname=trim(gfile)//'.rst'
@@ -669,15 +720,15 @@ END SUBROUTINE modis_lai
           
           if (present(F25Tag)) then 
 
-             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid)
+             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid1)
              ASSERT_(iret==NF_NOERR)
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 
-             iret = NF_GET_VARA_INT (ncid, 3,(/1/),(/ncat_gswp2/),land_gswp2)
+             iret = NF_GET_VARA_INT (ncid1, 3,(/1/),(/ncat_gswp2/),land_gswp2)
 	     ASSERT_(iret==NF_NOERR)	
-             iret = NF_GET_VARA_REAL(ncid, 4,(/1/),(/ncat_gswp2/),soildepth_gswp2)
+             iret = NF_GET_VARA_REAL(ncid1, 4,(/1/),(/ncat_gswp2/),soildepth_gswp2)
 	     ASSERT_(iret==NF_NOERR)		          
-             iret = NF_CLOSE(ncid)
+             iret = NF_CLOSE(ncid1)
              ASSERT_(iret==NF_NOERR)
 
              k1 = i_raster/360
@@ -784,12 +835,43 @@ END SUBROUTINE modis_lai
         write (21,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')tindex,pfafindex,   &
         soil_class_top,soil_class_com,lBEE(soil_gswp), lPSIS(soil_gswp),          &
         lPORO(soil_gswp),COND,WPWET,soildepth(n)
-         
+
+        if (allocated (parms4file)) then
+
+           parms4file (n, 1) = lBEE(soil_gswp)
+           parms4file (n, 2) = COND
+           parms4file (n, 3) = lPORO(soil_gswp)
+           parms4file (n, 4) = lPSIS(soil_gswp)
+           parms4file (n, 5) = WPWET         
+           parms4file (n, 6) = soildepth(n)
+           parms4file (n, 7) = atau2(soil_class_top)
+           parms4file (n, 8) = btau2(soil_class_top)
+           parms4file (n, 9) = atau5(soil_class_top)
+           parms4file (n,10) = btau5(soil_class_top)
+
+        endif         
+
       END DO
       close (10,status='delete')
       close (11,status='delete')
       close (21,status='keep')
       close (22,status='keep')
+
+      if(file_exists) then
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/maxcat/), parms4file (:, 4)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/maxcat/), parms4file (:, 5)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/maxcat/), parms4file (:, 6)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU2') ,(/1/),(/maxcat/), parms4file (:, 7)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU2') ,(/1/),(/maxcat/), parms4file (:, 8)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU5') ,(/1/),(/maxcat/), parms4file (:, 9)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU5') ,(/1/),(/maxcat/), parms4file (:,10)) ; VERIFY_(STATUS)
+         STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+         DEALLOCATE (parms4file)
+      endif
+
       deallocate (soildepth, soil_high)
     if(regrid) then
        deallocate(raster)
@@ -1403,6 +1485,47 @@ END SUBROUTINE modis_lai
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
     integer :: day, hour, min ,secs_in_day,k
     real :: yr,mn,dy,yr1,mn1,dy1,dum, slice1,slice2
+
+! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+!
+! NOTE: "!$" is for conditional compilation
+!
+logical :: running_omp = .false.
+!
+!$ integer :: omp_get_thread_num, omp_get_num_threads
+!
+integer :: n_threads=1
+!
+! ------------------------------------------------------------------
+
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+  !
+  ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+  !
+  !$ running_omp = .true.         ! conditional compilation
+  !
+  ! ECHO BASIC OMP VARIABLES
+  !
+  !$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+  !
+  !$OMP SINGLE
+  !
+  !$ n_threads = omp_get_num_threads()
+  !
+  !$ write (*,*) 'running_omp = ', running_omp
+  !$ write (*,*)
+  !$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+  !$ write (*,*)
+  !$OMP ENDSINGLE
+  !
+  !$OMP CRITICAL
+  !$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+  !$OMP ENDCRITICAL
+  !
+  !$OMP BARRIER
+  !
+  !$OMP ENDPARALLEL
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
 
     data sibname /'albvr','albnr',  &
                 'albvf','albnf'/
@@ -2028,6 +2151,46 @@ END SUBROUTINE modis_scale_para
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     integer :: nx,ny,status
     logical :: ease_grid 
+
+! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+!
+! NOTE: "!$" is for conditional compilation
+!
+logical :: running_omp = .false.
+!
+!$ integer :: omp_get_thread_num, omp_get_num_threads
+!
+integer :: n_threads=1
+
+! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+!
+! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+!
+!$ running_omp = .true.         ! conditional compilation
+!
+! ECHO BASIC OMP VARIABLES
+!
+!$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+!
+!$OMP SINGLE
+!
+!$ n_threads = omp_get_num_threads()
+!
+!$ write (*,*) 'running_omp = ', running_omp
+!$ write (*,*)
+!$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+!$ write (*,*)
+!$OMP ENDSINGLE
+!
+!$OMP CRITICAL
+!$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+!$OMP ENDCRITICAL
+!
+!$OMP BARRIER
+!
+!$OMP ENDPARALLEL
+! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+
     colsib = nx
     rowsib = ny
     !
@@ -2085,8 +2248,6 @@ END SUBROUTINE modis_scale_para
 
       !     Top layer soil classification 0-30cm
       !
-!      open (unit=11, file=ifile, form='unformatted', status='old',access='direct',recl=1,  &
-!           convert = 'little_endian')
       open (unit=11, file=ifile, form='unformatted', status='old',  &
            convert = 'big_endian')
 
@@ -2277,7 +2438,9 @@ END SUBROUTINE modis_scale_para
     integer, pointer :: Raster(:,:)
     real, pointer, dimension (:)  :: z2, z0
     real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
- 
+    logical                            :: file_exists
+    integer                            :: ncid
+
     fname=trim(gfilet)//'.til'
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
@@ -2310,7 +2473,6 @@ END SUBROUTINE modis_scale_para
 
     open (10,file=trim(c_data)//'sib22.5_v2.0.dat',form='unformatted',      &
          status='old',action='read',convert='big_endian')
-
     READ(10)sib_veg2
     
     close (10,status='keep')
@@ -2486,13 +2648,31 @@ END SUBROUTINE modis_scale_para
     end do
     close(10,status='keep')
 
-    open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
-         convert='little_endian')      
+    inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
-    write (20) real(mos_veg(:,1))
-    write (20) z2 (:)
-    write (20) z0 (:)    
-    close (20)   
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                                  ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'OLD_ITY'),(/1/),(/maxcat/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    endif
+
+    inquire(file='clsm/vegdyn.data', exist=file_exists)
+
+    if(file_exists) then
+       status = NF_OPEN ('clsm/vegdyn.data', NF_WRITE, ncid                                       ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ),(/1/),(/maxcat/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'Z2CH'   ),(/1/),(/maxcat/),z2                ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ASCATZ0'),(/1/),(/maxcat/),Z0                ) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    else
+       open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
+            convert='little_endian')      
+
+       write (20) real(mos_veg(:,1))
+       write (20) z2 (:)
+       write (20) z0 (:)    
+       close (20)   
+    endif
 
     deallocate (sib_veg2,sib_veg,mos_veg,veg_frac,zdep2_g,id,  z0, z2)
     if(regrid) then
@@ -2546,22 +2726,21 @@ END SUBROUTINE modis_scale_para
     do n = 1,ip
       if (ease_grid) then  
          read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
-!         print *, n,typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
       else
-	 read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
+	 read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
+              typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
       endif
 
-       id(n)=pfs
-       indx_old(n) = i_dum
-       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) indx_old(n) = pfs
-       if (typ == 100) ip2 = n
-       if(ierr /= 0)write (*,*)'Problem reading',fname
-       if(ierr /= 0) stop
+      id(n)=pfs
+      indx_old(n) = j_dum         
+      if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) indx_old(n) = pfs
+      if (typ == 100) ip2 = n
+      if (ierr /= 0) write (*,*)'Problem reading',fname
+      if (ierr /= 0) stop
     end do
     
     close (10,status='keep')
-!
+ 
     allocate(colin2cat(1:6000000))
     colin2cat=0
     if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
@@ -2630,7 +2809,7 @@ END SUBROUTINE modis_scale_para
                   var(indx_old(i),6)
           else
 
-             write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
+           write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
                   var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),   &
                   var(indx_old(i),6)
           endif
@@ -2675,6 +2854,10 @@ END SUBROUTINE modis_scale_para
       character(*) :: MaskFile
       logical :: picked
  
+      integer :: ncid, status
+      logical :: file_exists
+      real, allocatable, dimension (:,:) :: parms4file
+
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
 ! NOTE: "!$" is for conditional compilation
@@ -2688,7 +2871,7 @@ integer :: n_threads=1, li, ui
 integer, dimension(:), allocatable :: low_ind, upp_ind
 !
 ! ------------------------------------------------------------------
-        
+
   ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
   !
   ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
@@ -2716,9 +2899,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   !$OMP BARRIER
   !
   !$OMP ENDPARALLEL
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
       
 !c-------------------------------------------------------------------------
-      
       losfile =trim(c_data)//'GSWP2_loss_perday/loss_perday'
 !c     opening files
 
@@ -2747,11 +2930,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 		 gfrc(iwt,irz,n,i)=amin1(fracl,1.)
 	    enddo
 	  enddo
-      close (120,status='keep')	   
-
+          close (120,status='keep')	   
 	end do
       end do    
-      fname='clsm/soil_param.first'       
+     fname='clsm/soil_param.first'       
        open (10,file=fname,action='read',       &
           form='formatted',status='old')              
                                                  
@@ -2838,10 +3020,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
  
      do n=1,nbcatch
  
-        read(11,'(i10,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
-             ,minlu,maxlu,coesk                                  
-        read(10,*) tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
-             BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)                        
+        read(11,'(i10,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev,minlu,maxlu,coesk                                  
+        read(10,*) tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n), &
+                   BEE(n),PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)                        
 
         if(tindex1.ne.tindex2(n))then
            write(*,*)'Warnning 1: tindex mismatched'                        
@@ -2866,14 +3047,31 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         TOPVAR(n)  = stdev*stdev                                
         TOPSKEW(n) = coesk*stdev*stdev*stdev                   
         
-        if ( TOPVAR(n) .eq. 0. .or. coesk .eq. 0.            &
-             .or. topskew(n) .eq. 0.) then                       
+        if (TOPVAR(n) .eq. 0. .or. coesk .eq. 0. .or. topskew(n) .eq. 0.) then                       
            write(*,*) 'Problem: undefined values:'         
-           write(*,*) TOPMEAN(n),TOPVAR(n),coesk,            &
-                minlu,maxlu
+           write(*,*) TOPMEAN(n),TOPVAR(n),coesk,minlu,maxlu
            stop
         endif
      END DO
+
+     inquire(file='clsm/catch_params.nc4', exist=file_exists)
+
+     if(file_exists) then
+        status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+        allocate (parms4file (1:nbcatch, 1:25))
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ),(/1/),(/nbcatch/),BEE  (:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'COND' ),(/1/),(/nbcatch/),COND (:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'POROS'),(/1/),(/nbcatch/),POROS(:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ),(/1/),(/nbcatch/),PSIS (:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'WPWET'),(/1/),(/nbcatch/),WPWET(:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR'),(/1/),(/nbcatch/),soildepth (:)) ; VERIFY_(STATUS)
+        parms4file (:,12) = BEE      (:)
+        parms4file (:,16) = COND     (:)
+        parms4file (:,18) = POROS    (:)
+        parms4file (:,19) = PSIS     (:)
+        parms4file (:,24) = WPWET    (:)
+        parms4file (:,25) = soildepth(:)
+     endif
 
      rewind(10)
 
@@ -2963,7 +3161,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-     END DO
+      END DO
      END DO
           !$OMP ENDPARALLELDO
      tile_pick = 0
@@ -2992,6 +3190,28 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            
            write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
                 BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)  
+
+           if (allocated (parms4file)) then
+              parms4file (n, 1) = ara1(n)
+              parms4file (n, 2) = ara2(n)
+              parms4file (n, 3) = ara3(n)
+              parms4file (n, 4) = ara4(n)
+              parms4file (n, 5) = ars1(n)
+              parms4file (n, 6) = ars2(n)
+              parms4file (n, 7) = ars3(n)
+              parms4file (n, 8) = arw1(n)
+              parms4file (n, 9) = arw2(n)
+              parms4file (n,10) = arw3(n)
+              parms4file (n,11) = arw4(n)
+              parms4file (n,13) = bf1(n)
+              parms4file (n,14) = bf2(n)
+              parms4file (n,15) = bf3(n)
+              parms4file (n,17) = gnu
+              parms4file (n,20) = tsa1(n)
+              parms4file (n,21) = tsa2(n)
+              parms4file (n,22) = tsb1(n)
+              parms4file (n,23) = tsb2(n)
+           endif
         else
  
        if(preserve_soiltype) then    
@@ -3048,7 +3268,33 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                   tsa1(k),tsa2(k),tsb1(k),tsb2(k)             
              write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
                   BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
-             
+             if (allocated (parms4file)) then
+                parms4file (n, 1) = ara1(k)
+                parms4file (n, 2) = ara2(k)
+                parms4file (n, 3) = ara3(k)
+                parms4file (n, 4) = ara4(k)
+                parms4file (n, 5) = ars1(k)
+                parms4file (n, 6) = ars2(k)
+                parms4file (n, 7) = ars3(k)
+                parms4file (n, 8) = arw1(k)
+                parms4file (n, 9) = arw2(k)
+                parms4file (n,10) = arw3(k)
+                parms4file (n,11) = arw4(k)
+                parms4file (n,12) = BEE(k)
+                parms4file (n,13) = bf1(k)
+                parms4file (n,14) = bf2(k)
+                parms4file (n,15) = bf3(k)
+                parms4file (n,16) = COND(k)
+                parms4file (n,17) = gnu
+                parms4file (n,18) = POROS(k)
+                parms4file (n,19) = PSIS(k)
+                parms4file (n,20) = tsa1(k)
+                parms4file (n,21) = tsa2(k)
+                parms4file (n,22) = tsb1(k)
+                parms4file (n,23) = tsb2(k)
+                parms4file (n,24) = wpwet    (k)
+                parms4file (n,25) = soildepth(k)
+             endif
           else
              
              do k =n-1,1,-1 
@@ -3092,12 +3338,39 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                    arw2(n)=arw2(k)
                    arw3(n)=arw3(k)
                    arw4(n)=arw4(k)
+
+                   if (allocated (parms4file)) then
+                      parms4file (n, 1) = ara1(k)
+                      parms4file (n, 2) = ara2(k)
+                      parms4file (n, 3) = ara3(k)
+                      parms4file (n, 4) = ara4(k)
+                      parms4file (n, 5) = ars1(k)
+                      parms4file (n, 6) = ars2(k)
+                      parms4file (n, 7) = ars3(k)
+                      parms4file (n, 8) = arw1(k)
+                      parms4file (n, 9) = arw2(k)
+                      parms4file (n,10) = arw3(k)
+                      parms4file (n,11) = arw4(k)
+                      parms4file (n,12) = BEE(k)
+                      parms4file (n,13) = bf1(k)
+                      parms4file (n,14) = bf2(k)
+                      parms4file (n,15) = bf3(k)
+                      parms4file (n,16) = COND(k)
+                      parms4file (n,17) = gnu
+                      parms4file (n,18) = POROS(k)
+                      parms4file (n,19) = PSIS(k)
+                      parms4file (n,20) = tsa1(k)
+                      parms4file (n,21) = tsa2(k)
+                      parms4file (n,22) = tsb1(k)
+                      parms4file (n,23) = tsb2(k)
+                      parms4file (n,24) = wpwet    (k)
+                      parms4file (n,25) = soildepth(k)
+                   endif
                    exit
                 endif
                 
                 if((k==1) .and. (.not. picked)) then
                    print *,'Warning ar.new is bad at n=',n
-                   print *,'Call Sarith ......'
                    stop
                 endif
              end do
@@ -3135,7 +3408,33 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
               tsa1(k),tsa2(k),tsb1(k),tsb2(k)
          write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
-
+         if (allocated (parms4file)) then
+            parms4file (n, 1) = ara1(k)
+            parms4file (n, 2) = ara2(k)
+            parms4file (n, 3) = ara3(k)
+            parms4file (n, 4) = ara4(k)
+            parms4file (n, 5) = ars1(k)
+            parms4file (n, 6) = ars2(k)
+            parms4file (n, 7) = ars3(k)
+            parms4file (n, 8) = arw1(k)
+            parms4file (n, 9) = arw2(k)
+            parms4file (n,10) = arw3(k)
+            parms4file (n,11) = arw4(k)
+            parms4file (n,12) = BEE(k)
+            parms4file (n,13) = bf1(k)
+            parms4file (n,14) = bf2(k)
+            parms4file (n,15) = bf3(k)
+            parms4file (n,16) = COND(k)
+            parms4file (n,17) = gnu
+            parms4file (n,18) = POROS(k)
+            parms4file (n,19) = PSIS(k)
+            parms4file (n,20) = tsa1(k)
+            parms4file (n,21) = tsa2(k)
+            parms4file (n,22) = tsb1(k)
+            parms4file (n,23) = tsb2(k)
+            parms4file (n,24) = wpwet    (k)
+            parms4file (n,25) = soildepth(k)
+         endif
       endif
    endif
    
@@ -3154,13 +3453,44 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       close(20,status='keep')
       close(30,status='keep')
       close(40,status='keep')
-!       close(11,status='delete')
-
+      close(11,status='keep')
+      close(12,status='keep')
+      close(42,status='keep')
       if (error_file) then
 	 close(21,status='delete')
 	 close(31,status='delete')
          close(41,status='keep')
       endif	 
+
+      if(file_exists) then
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA1' ) ,(/1/),(/nbcatch/), parms4file (:, 1)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA2' ) ,(/1/),(/nbcatch/), parms4file (:, 2)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA3' ) ,(/1/),(/nbcatch/), parms4file (:, 3)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA4' ) ,(/1/),(/nbcatch/), parms4file (:, 4)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARS1' ) ,(/1/),(/nbcatch/), parms4file (:, 5)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARS2' ) ,(/1/),(/nbcatch/), parms4file (:, 6)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARS3' ) ,(/1/),(/nbcatch/), parms4file (:, 7)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW1' ) ,(/1/),(/nbcatch/), parms4file (:, 8)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW2' ) ,(/1/),(/nbcatch/), parms4file (:, 9)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW3' ) ,(/1/),(/nbcatch/), parms4file (:,10)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW4' ) ,(/1/),(/nbcatch/), parms4file (:,11)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/nbcatch/), parms4file (:,12)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BF1'  ) ,(/1/),(/nbcatch/), parms4file (:,13)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BF2'  ) ,(/1/),(/nbcatch/), parms4file (:,14)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BF3'  ) ,(/1/),(/nbcatch/), parms4file (:,15)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/nbcatch/), parms4file (:,16)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'GNU'  ) ,(/1/),(/nbcatch/), parms4file (:,17)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/nbcatch/), parms4file (:,18)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/nbcatch/), parms4file (:,19)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSA1' ) ,(/1/),(/nbcatch/), parms4file (:,20)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSA2' ) ,(/1/),(/nbcatch/), parms4file (:,21)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSB1' ) ,(/1/),(/nbcatch/), parms4file (:,22)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSB2' ) ,(/1/),(/nbcatch/), parms4file (:,23)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/nbcatch/), parms4file (:,24)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/nbcatch/), parms4file (:,25)) ; VERIFY_(STATUS)
+         STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+         DEALLOCATE (parms4file)
+      endif
 
   END SUBROUTINE create_model_para
 
@@ -3529,7 +3859,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                      arw1(n),arw2(n),arw3(n),arw4(n),              &
                      taberr1(n),taberr2(n),taberr3(n),taberr4(n),  &
                      normerr1(n),normerr2(n),normerr3(n),normerr4(n))
-
 
       CALL BASE_PARAM(                                  &
           BEE(n),PSIS(n),POROS(n),COND(n),              &

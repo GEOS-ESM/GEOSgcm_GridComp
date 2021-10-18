@@ -161,7 +161,6 @@ if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | 
 #######################################################################
 
 if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
-
     set orslvs = O1
 
 else
@@ -223,11 +222,14 @@ foreach orslv ($orslvs)
 #                Select land-lakes-ice-ocean mask file
 #######################################################################
 
-if ( -f /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc ) then
+set HOSTNAME = `hostname | rev | cut -c3- | rev`
+
+if ( $HOSTNAME == discover ) then
     set l_data = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
 else
     set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
 endif
+
 
 if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
     $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
@@ -258,6 +260,10 @@ else
     echo " !!!! Invalid Ocean Resolution, stopping !!!! "
     exit
 
+endif
+
+if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
+     set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
 endif
 
 set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `
@@ -488,10 +494,10 @@ if( $HRCODE == m25 ) then
      set grid = ease
      set MGRID = M25
 endif
-if( $MASKFILE == GEOS5_10arcsec_mask_freshwater-lakes.nc | $MASKFILE == GEOS5_10arcsec_mask.nc ) then
-     @ NX = 43200
-     @ NY = 21600
-endif
+ if( $MASKFILE == GEOS5_10arcsec_mask_freshwater-lakes.nc | $MASKFILE == GEOS5_10arcsec_mask.nc ) then
+        @ NX = 43200
+        @ NY = 21600
+  endif
 
 set OUTDIR = `date +'%Y%m%d%H%M%S'`
 
