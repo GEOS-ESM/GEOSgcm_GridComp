@@ -170,9 +170,9 @@ module GEOS_LandiceGridCompMod
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=N_CONST_LANDICE4SNWALB, DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:'    , value=AEROSOL_DEPOSITION  ,   DEFAULT=0, __RC__ ) 
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'           , value=CHOOSEMOSFC,            DEFAULT=1  , __RC__ )
+    call MAPL_GetResource (SCF, N_CONST_LANDICE4SNWALB, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION,     label='AEROSOL_DEPOSITION:',     DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, CHOOSEMOSFC,            label='CHOOSEMOSFC:',            DEFAULT=1, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! Set the state variable specs.

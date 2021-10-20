@@ -2,10 +2,10 @@
 
 #include "MAPL_Generic.h"
 
-module GuestOcean_GridCompMod
+module GEOS_OceanGridCompMod
 
 !BOP
-! !MODULE: GuestOcean_GridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
+! !MODULE: GEOS_OceanGridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
 
 ! !USES:
 
@@ -974,6 +974,7 @@ contains
     Iam = "Run"
     call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, RC=status )
     VERIFY_(status)
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced by MAPL get_phase 
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -1373,4 +1374,4 @@ contains
 
   end subroutine Run
 
-end module GuestOcean_GridCompMod
+end module GEOS_OceanGridCompMod
