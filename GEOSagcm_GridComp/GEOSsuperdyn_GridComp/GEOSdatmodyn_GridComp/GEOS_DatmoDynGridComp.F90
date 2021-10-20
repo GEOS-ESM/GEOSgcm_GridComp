@@ -2449,7 +2449,7 @@ contains
   real    :: RELAX_TO_OBS,DTXX,DT
   real, allocatable, dimension(:,:,:) :: DELTAP,ZLO
 
-  integer :: L
+  integer :: L ! test
 
 !=============================================================================
 
@@ -2499,9 +2499,9 @@ contains
     ! This needs to be protected against having
     ! RELAX_TO_OBS=1 when USE_ASCII_DATA=.F.
 
-    U = U + ( 1. - RELAX_TO_OBS ) * DT * UTPHYS / DELTAP 
-    V = V + ( 1. - RELAX_TO_OBS ) * DT * VTPHYS / DELTAP 
-    T = T + ( 1. - RELAX_TO_OBS ) * DT * TTPHYS / DELTAP 
+    U = U + ( 1. - RELAX_TO_OBS ) * DT * UTPHYS
+    V = V + ( 1. - RELAX_TO_OBS ) * DT * VTPHYS
+    T = T + ( 1. - RELAX_TO_OBS ) * DT * TTPHYS / DELTAP  ! S and hence T tendencies are pressure-weighted
 
     S  = MAPL_GRAV * ZLO + MAPL_CP * T
 
