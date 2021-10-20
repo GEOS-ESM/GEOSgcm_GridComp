@@ -1188,9 +1188,9 @@ module GEOS_CICE4ColumnPhysGridComp
           SHORT_NAME         = 'SURFSTATE'                 ,&
           LONG_NAME          = 'surface_state_for_seaice_thermo_coupling',  &
           UNITS              = 'W m-2'                     ,&
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),       &    
-          DIMS               = MAPL_DimsTileOnly,           &
-          VLOCATION          = MAPL_VLocationNone,          &
+          !UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),       &    
+          !DIMS               = MAPL_DimsTileOnly,           &
+          !VLOCATION          = MAPL_VLocationNone,          &
           DATATYPE           = MAPL_StateItem,              &
           RESTART            = MAPL_RestartSkip,            &
           RC=STATUS  )
