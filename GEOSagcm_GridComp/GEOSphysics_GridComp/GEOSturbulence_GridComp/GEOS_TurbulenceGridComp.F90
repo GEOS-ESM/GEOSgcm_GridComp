@@ -3251,7 +3251,7 @@ contains
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      ! mass-flux constants/parameters
-     real :: NumUpR,ETr,TH00
+     real :: NumUpR,ETr
      integer :: NumUp,ET,DOCLASP,NumUpQ
      real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
      real                            :: DOMF,STOCHENT 
@@ -3931,9 +3931,6 @@ contains
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.013215659785478 ) ! S11
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.007700882024895 ) ! S12
 
-    ! Idealized surface layer
-    th00 = 300.
-
     if ( SCM_SL /= 0 ) then
        call MAPL_TimerOn(MAPL,"---SURFACE")
 
@@ -3952,8 +3949,8 @@ contains
 
        call surface_layer(IM, JM, LM, &
                           SCM_SL_FLUX, SCM_Z0, &
-                          th00, zpbl, ssurf_scm, qsurf_scm, &
-                          z, zle, ple, rhoe, u, v, T, q, &
+                          zpbl, ssurf_scm, qsurf_scm, &
+                          z, zle, ple, rhoe, u, v, T, q, thv, &
                           sh_data, evap_data, zeta, &
                           ustar_data, cu_scm, ct_scm)
 
@@ -3990,7 +3987,6 @@ edmf_hlqt = 0.0
 IF(DoMF /= 0.) then
     
    aw3 = 0.0
-!   th00 = 300.
      
    IRAS       = nint(LONS*100)
    JRAS       = nint(LATS*100)
@@ -4006,13 +4002,12 @@ IF(DoMF /= 0.) then
       if (EDMF_OPTION.eq.1) then
        call run_edmf(IM, JM, LM, numup, NumUpQ, iras, jras, &                                 ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_plume, edmf_debug, & ! in 
-                     th00, dt, z, zle, ple, rho, rhoe, exf, &                                 ! in
+                     dt, z, zle, ple, rho, rhoe, exf, &                                       ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                         ! in 
-                     ustar, sh, evap, ice_ramp, &                                             ! in 
+                     ustar, sh, evap, frland, zpbl, ice_ramp, &                               ! in
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                                ! in
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &                       ! in 
                      edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb, &                           ! in
-                     zpbl, &                                                                  ! inout 
                      edmfdrya, edmfmoista, &                                                  ! out
                      edmfdryw, edmfmoistw, &                                                  ! out 
                      edmfdryqt, edmfmoistqt, &                                                ! out
@@ -4033,7 +4028,6 @@ IF(DoMF /= 0.) then
 #endif
                      wu0, dthv0)                                                              ! out (diagnostic)
 
-
        else if (EDMF_OPTION.eq.0) then
        call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
                U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,frland,zpbl,ice_ramp, &
@@ -4052,6 +4046,7 @@ IF(DoMF /= 0.) then
                buoyf,&                      ! diag
                mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, & ! for ADG PDF
                iras,jras, &
+               edmf_ent, edmf_mf, &
 #ifdef EDMF_DIAG
                w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -7350,13 +7345,13 @@ real, dimension(its:ite) :: L0
 DO IH=ITS,ITE ! loop over the horizontal dimension
 
 
-wthl=wthl2(IH)/mapl_cp
-wqt=wqt2(IH)
+wthl=wthl2(IH)/(mapl_cp*rhoe3(IH,kte))
+wqt=wqt2(IH)/rhoe3(IH,kte)
 ust=ust2(IH)
 pblh=pblh2(IH)
 
 pblh=max(pblh,pblhmin)
-wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
+wthv=wthl+mapl_vireps*thv3(IH,kte)*wqt
 
 ! if surface buoyancy is positive then mass-flux, otherwise not
   IF ( (wthv > 0.0 .and. doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. doclasp/=0)) then
@@ -7513,12 +7508,12 @@ if (L0(IH) .gt. 0. ) then
 
 ! increase entrainment if local minimum of THV
 
-  do k=kts+1,kte-1
-    if ( (THV(k) .lt. THV(k-1)) .and. (THV(k) .lt. THV(k+1)) ) then
-           ENT(k,:)=ENT(k,:)+5.*ENT0/L0(IH)
-!          print *,'increasing entrainment, THVs are',THV(k-1:k+1)
-     endif
-  enddo
+!  do k=kts+1,kte-1
+!    if ( (THV(k) .lt. THV(k-1)) .and. (THV(k) .lt. THV(k+1)) ) then
+!           ENT(k,:)=ENT(k,:)+5.*ENT0/L0(IH)
+!!          print *,'increasing entrainment, THVs are',THV(k-1:k+1)
+!     endif
+!  enddo
 
 !  if (entrainopt==2) ENT(kts+1:,:) = MAPL_UNDEF
 
@@ -7533,11 +7528,10 @@ end if
  exfh=(p/mapl_p00)**mapl_kappa
  exf=(0.5*(p(1:kte)+p(0:kte-1))/mapl_p00)**mapl_kappa 
 
- 
  !
  ! surface conditions
  !      
-   wstar=max(wstarmin,(mapl_grav/300.*wthv*pblh)**(1./3.))  ! convective velocity scale
+   wstar=max(wstarmin,((mapl_grav/thv(kts))*wthv*pblh)**(1./3.))  ! convective velocity scale
    qstar=wqt/wstar
    thstar=wthv/wstar
 
@@ -7578,7 +7572,6 @@ end if
        
         wlv=wmin+(wmax-wmin)/(real(NUP2))*(real(i)-1.)
         wtv=wmin+(wmax-wmin)/(real(NUP2))*real(i)
-       
 
 !        UPW(kts-1,I)=0.5*(wlv+wtv) 
         if (doclasp/=0) then
@@ -7642,13 +7635,13 @@ end if
   !      
         
          DO I=1,NUP2  ! loop over updrafts  
+
          ! loop over vertical 
          vertint:   DO k=KTS,KTE       
 
- 
                EntExp=exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
                EntExpU=exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*EntWFac)
-               
+
                ! thermo-dynamic variables in updraft
                QTn=QT(K)*(1-EntExp)+UPQT(K-1,I)*EntExp
                THLn=THL(K)*(1-EntExp)+UPTHL(K-1,I)*EntExp
@@ -7678,7 +7671,6 @@ end if
                  UPU(K,I)=Un
                  UPV(K,I)=Vn
                  UPA(K,I)=UPA(K-1,I)
-
                if (entrainopt==2 .and. L0(IH)>0.) then
                  ENT(K+1,I) = ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
  !                print *,'ENT=',ENT(K+1,I),'  UPW=',UPW(K,I),'  B=',B
@@ -7701,14 +7693,14 @@ end if
   ! If it does, rescale updraft area.  
   ! See discussion in Beljaars et al 2018 [ECMWF Tech Memo]
 
-         factor = 1.0
-         DO k=KTS,KTE
-            mf = SUM(RHOE(K)*UPA(K,:)*UPW(K,:))
-            if (mf .gt. dp(K)/(MAPL_GRAV*dt)) then
-               factor = min(factor,dp(K)/(mf*MAPL_GRAV*dt) )
-            end if
-         ENDDO
-         UPA = factor*UPA   
+!         factor = 1.0
+!         DO k=KTS,KTE
+!            mf = SUM(RHOE(K)*UPA(K,:)*UPW(K,:))
+!            if (mf .gt. dp(K)/(MAPL_GRAV*dt)) then
+!               factor = min(factor,dp(K)/(mf*MAPL_GRAV*dt) )
+!            end if
+!         ENDDO
+!         UPA = factor*UPA   
 
          edmfmf(IH,:) = rhoe*SUM(upa*upw,DIM=2)
        
@@ -7887,6 +7879,7 @@ end if
     DO I=1,NUP2
      
           DO k=KTS-1,KTE
+
           s_aw(K)=s_aw(K)+UPA(K,I)*UPW(K,I)
           s_aw2(K)=s_aw2(K)+UPA(K,I)*UPW(K,I)*UPW(K,I)
           s_aw3(K)=s_aw3(K)+UPA(K,I)*UPW(K,I)*UPW(K,I)*UPW(K,I)
@@ -7996,7 +7989,6 @@ end if
     
  END IF   !  IF ( wthv > 0.0 ) then  
 ENDDO ! loop over horizontal area  
-
 
 END SUBROUTINE edmf
 

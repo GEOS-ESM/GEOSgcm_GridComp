@@ -50,16 +50,16 @@ end subroutine surface
 !
 subroutine surface_layer(IM, JM, LM, &
                          flux_type, z0, &
-                         th00, zi, s_surf, q_surf, &
-                         zl, zle, ple, rhoe, u, v, T, qv, &
+                         zi, s_surf, q_surf, &
+                         zl, zle, ple, rhoe, u, v, T, qv, thv, &
                          sh, evap, zeta, & 
                          u_star, cm, ct)
 
   integer, intent(in)                     :: IM, JM, LM, flux_type
-  real, intent(in)                        :: th00, z0
+  real, intent(in)                        :: z0
   real, dimension(IM,JM), intent(in)      :: zi, s_surf, q_surf
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
-  real, dimension(IM,JM,LM), intent(in)   :: zl, u, v, T, qv
+  real, dimension(IM,JM,LM), intent(in)   :: zl, u, v, T, qv, thv
   real, dimension(IM,JM), intent(inout)   :: sh, evap, zeta
   real, dimension(IM,JM), intent(out)     :: u_star, cm, ct
 
@@ -76,7 +76,7 @@ subroutine surface_layer(IM, JM, LM, &
      zeta(:,:) = -0.01
      
      if ( flux_type == 1 ) then
-        bw_surf(:,:) = mapl_grav/th00 * ( sh(:,:)/mapl_cp + evap(:,:) )/rhoe(:,:,LM)
+        bw_surf(:,:) = (mapl_grav/thv(:,:,LM)) * ( sh(:,:)/mapl_cp + evap(:,:) )/rhoe(:,:,LM)
      else
         bw_surf(:,:) = 0.01
      end if
@@ -123,7 +123,7 @@ subroutine surface_layer(IM, JM, LM, &
            sh(i,j)   = -ct(i,j)*rhoe(i,j,LM)*( mapl_cp*T(i,j,LM) + mapl_grav*zl(i,j,LM) - s_surf(i,j) )
            evap(i,j) = -ct(i,j)*rhoe(i,j,LM)*( qv(i,j,LM) - q_surf(i,j) )
 
-           bw_surf(i,j) = mapl_grav/th00 * ( sh(i,j)/mapl_cp + evap(i,j) )/rhoe(i,j,LM) 
+           bw_surf(i,j) = (mapl_grav/thv(i,j,LM)) * ( sh(i,j)/mapl_cp + thv(i,j,LM)*evap(i,j) )/rhoe(i,j,LM) 
         else
            ct(i,j) = 0.
         end if

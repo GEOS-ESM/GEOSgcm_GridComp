@@ -18,25 +18,24 @@ contains
 !
 ! edmf
 !
-subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                                      ! in
-                    discrete_type, implicit_flag, stochastic_flag, plume_type, debug_flag, & ! in
-                    th00, dt, zl, zle, ple, rho, rhoe, exf, &                                ! in
-                    u, v, thl, qt, qv, ql, qi, thv, &                                        ! in         
-                    ustar, sh, evap, ice_ramp, &                                             ! in
-                    pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                                ! in
-                    ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                                  ! in
-                    au0, cth1, cth2, rho_qb, &                                               ! in
-                    zpbl, &                                                                  ! inout
-                    edmfdrya, edmfmoista, &                                                  ! out
-                    edmfdryw, edmfmoistw, &                                                  ! out
-                    edmfdryqt, edmfmoistqt, &                                                ! out
-                    edmfdrythl, edmfmoistthl, &                                              ! out
-                    edmfdryu, edmfmoistu,  &                                                 ! out
-                    edmfdryv, edmfmoistv,  &                                                 ! out
-                    edmfmoistqc, &                                                           ! out
-                    ae, awu, awv, aw, aws, awqv, awql, awqi, &                               ! out (for solver)
-                    whl_mf, wqt_mf, wthv_mf, &                                               ! out (for inconsistent partitioning)
-                    buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, &          ! out (for SHOC)
+subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                                 ! in
+                    discrete_type, implicit_flag, stochastic, plume_type, debug_flag, & ! in
+                    dt, zl, zle, ple, rho, rhoe, exf, &                                 ! in
+                    u, v, thl, qt, qv, ql, qi, thv, &                                   ! in         
+                    ustar, sh, evap, frland, zpbl_in, ice_ramp, &                       ! in
+                    pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                           ! in
+                    ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                             ! in
+                    au0, cth1, cth2, rho_qb, &                                          ! in
+                    edmfdrya, edmfmoista, &                                             ! out
+                    edmfdryw, edmfmoistw, &                                             ! out
+                    edmfdryqt, edmfmoistqt, &                                           ! out
+                    edmfdrythl, edmfmoistthl, &                                         ! out
+                    edmfdryu, edmfmoistu,  &                                            ! out
+                    edmfdryv, edmfmoistv,  &                                            ! out
+                    edmfmoistqc, &                                                      ! out
+                    ae, awu, awv, aw, aws, awqv, awql, awqi, &                          ! out (for solver)
+                    whl_mf, wqt_mf, wthv_mf, &                                          ! out (for inconsistent partitioning)
+                    buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, &     ! out (for SHOC)
 #ifdef EDMF_DIAG
                     w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                     w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -49,13 +48,12 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
   
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, nup, mup, discrete_type, implicit_flag, plume_type, debug_flag, ET
-  real, intent(in)                        :: stochastic_flag
+  real, intent(in)                        :: stochastic
   integer, dimension(IM,JM), intent(in)   :: iras, jras
   real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
-  real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
-  real, dimension(IM,JM), intent(inout)   :: zpbl
-  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, au0, cth1, cth2, rho_qb, pwmin, pwmax, &
+  real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, frland, zpbl_in, L0
+  real, intent(in)                        :: ice_ramp, dt, EntWFac, ENT0, Wa, Wb, au0, cth1, cth2, rho_qb, pwmin, pwmax, &
                                              AlphaW, AlphaQT, AlphaTH, EDfac
  
   ! Outputs
@@ -64,6 +62,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
                                               edmfmoistqc, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
+                                              whl_mf, wqt_mf, wthv_mf
 #ifdef EDMF_DIAG
                                               w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                                               w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -72,45 +71,39 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
                                               thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                                               thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-                                              whl_mf, wqt_mf, wthv_mf
-
   real, dimension(IM,JM,LM), intent(out) :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, mfhl2, mfqthl, mfwhl                                            
+  real, dimension(IM,JM), intent(out)    :: wu0, dthv0
 
-  real, dimension(IM,JM), intent(out) :: wu0, dthv0
-
-  real, dimension(mup*nup,IM,JM) :: upm, upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv, D_frac
-
+  ! Local variables
   integer :: i, j, k, km1, kp1, iup, jup, iup1, iup2, kbot, numup
+  real    :: wthv, qstar, thstar, sigmaw, sigmaqt, sigmath, sigmaQT_cond, z0, wp, &
+             B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, au_test, EntEXP, EntEXPU, EntW, wf, &
+             stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
+             thlu_full, work1, work2, exfh, dsdz, dqdz, wmin, wmax, wlv, wtv, &
+             thv_high, thv_low, thvmin, thvmax, qt_high, qt_low, qtmin, qtmax, upa_mean, upqt_mean, upthv_mean, &
+             thvu0, qtu0, foo, eps, eps_org, eps_turb, pdf_fac1, pdf_fac2, pdf_fac3, pdf_fac4, Mdet, E_org, E_turb, D_turb, &
+             udet_test, vdet_test, wdet_test, E_plume, dp, An
 
-  real :: wthv, qstar, thstar, sigmaw, sigmaqt, sigmath, sigmaQT_cond, z0, wp, &
-          B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, au_test, EntEXP, EntEXPU, EntW, wf, &
-          stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
-          goth00, thlu_full, work1, work2, exfh, dsdz, dqdz, wmin, wmax, wlv, wtv, &
-          thv_high, thv_low, thvmin, thvmax, qt_high, qt_low, qtmin, qtmax, upa_mean, upqt_mean, upthv_mean, &
-          thvu0, qtu0, foo, eps, eps_org, eps_turb, pdf_fac1, pdf_fac2, pdf_fac3, pdf_fac4, Mdet, E_org, E_turb, D_turb, &
-          udet_test, vdet_test, wdet_test
+  logical, dimension(IM,JM) :: work_flag
+  real, dimension(IM,JM)    :: zpbl, zi, Phi, au_fac, wstar, dqt0, factor
 
-  ! Temporary (too slow; need to figure out how random number generator works)
-  integer, dimension(mup*nup,IM,JM,LM)  :: enti
-  real, dimension(mup*nup,IM,JM,LM)     :: entf, ent
-
-  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql, A, E, D, &
+  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql, A, E, D, f_thermal, &
                                au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full
 
   real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, &
                                  ui, vi, thli, qti, qvi, qli, qii, thvi, &
                                  au, Mu, uu, vu, wu
 
-  integer, dimension(2)  :: seedmf, the_seed
+  integer, dimension(2) :: seedmf, the_seed
+
+  real, dimension(mup*nup,IM,JM) :: upm, upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv, D_frac
+
+  integer, dimension(mup*nup,IM,JM,LM) :: enti
+  real, dimension(mup*nup,IM,JM,LM)    :: entf, ent
 
   real, dimension(mup*nup) :: upa_out, upac_out
-  logical, dimension(IM,JM)       :: work_flag
-  logical, dimension(mup*nup,IM,JM) :: active_updraft
 
-  ! Thermal plume stuff 
-  real                      :: E_plume
-  real, dimension(IM,JM)    :: zi, Phi, au_fac, wstar, dqt0
-  real, dimension(IM,JM,LM) :: f_thermal
+  logical, dimension(mup*nup,IM,JM) :: active_updraft
 
   ! Interpolate EDMF profiles to half levels 
   call interp_edmf(IM, JM, LM, &                           ! in
@@ -126,8 +119,6 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
   else
      kbot = LM - 1
   end if
-
-  goth00 = mapl_grav/th00
 
   !
   ! Initialize arrays
@@ -260,7 +251,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
   ! Get surface layer organized entrainment
   if ( plume_type == 1 ) then
      call A_star_closure(IM, JM, LM, &                       ! in
-                         th00, wb, au0, debug_flag, &        ! in
+                         wb, au0, debug_flag, &              ! in
                          zle, zl, rho, rhoe, thl, qt, thv, & ! in
                          A, f_thermal, zi, Phi)              ! out
      E = A
@@ -274,17 +265,18 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
      ent = 0.
 
      if ( plume_type == 0 ) then
-        zpbl(i,j) = max( zpbl(i,j), zpblmin )
+        zpbl(i,j) = max( zpbl_in(i,j), zpblmin )
      end if
 
      ! Compute surface THV flux
-     wthv = ( sh(i,j)/mapl_cp + mapl_vireps*th00*evap(i,j) )/rhoe(i,j,LM)
+     wthv = ( sh(i,j)/mapl_cp + mapl_vireps*thv(i,j,LM)*evap(i,j) )/rhoe(i,j,LM)
 
      ! Test for surface-driven convection
-     if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
+!     if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
+     if ( wthv > 0. ) then
         ! Initialize plumes at surface
         if ( plume_type == 0 ) then ! JPL scheme
-           wstar(i,j) = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
+           wstar(i,j) = max( wstarmin, ((mapl_grav/thv(i,j,LM))*wthv*zpbl(i,j))**onethird )
 
            qstar  = evap(i,j)/(rhoe(i,j,LM)*wstar(i,j))
            thstar = wthv/wstar(i,j)
@@ -296,18 +288,21 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
            wmin = sigmaW*pwmin ! vertical velocity of least energetic updraft
            wmax = sigmaW*pwmax ! "        "        "  most  "         "
         
-           pdf_fac1 = 1./( sqrt(2.)*sigmaW )
+!           pdf_fac1 = 1./( sqrt(2.)*sigmaW )
 
            QTsrfF  = 0.
            THVsrfF = 0.
            do iup = 1,numup
               active_updraft(iup,i,j) = .true.         
               
-              wlv = wmin + ( wmax - wmin )*real(iup-1)/real(numup)
-              wtv = wmin + ( wmax - wmin )*real(iup)/real(numup)
-                 
+!              wlv = wmin + ( wmax - wmin )*real(iup-1)/real(numup)
+!              wtv = wmin + ( wmax - wmin )*real(iup)/real(numup) 
+              wlv = wmin + ( wmax - wmin )/(real(numup))*( real(iup) - 1. )
+              wtv = wmin + ( wmax - wmin )/(real(numup))*real(iup)
+
               upw(iup,i,j)   = 0.5*( wlv + wtv ) 
-              upa(iup,i,j)   = 0.5*( erf(wtv*pdf_fac1) - erf(wlv*pdf_fac1) )
+              upa(iup,i,j)   = 0.5*( erf(wtv/(sqrt(2.)*sigmaW)) - erf(wlv/(sqrt(2.)*sigmaW)) )
+!              upa(iup,i,j)   = 0.5*( erf(wtv*pdf_fac1) - erf(wlv*pdf_fac1) )
               upu(iup,i,j)   = ui(i,j,kbot)
               upv(iup,i,j)   = vi(i,j,kbot)
               upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
@@ -343,7 +338,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
            wu0(i,j) = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
 
            ! Get CBL scales
-           wstar(i,j) = ( goth00*wthv*zi(i,j) )**onethird
+           wstar(i,j) = ( (mapl_grav/thv(i,j,k))*wthv*zi(i,j) )**onethird
            thstar     = wthv/wstar(i,j) 
 
            !
@@ -411,7 +406,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
 
                  upw(iup,i,j) = wu0(i,j)
 !                 if ( au_fac(i,j) > 0. ) then
-!                    upw(iup,i,j) = sqrt( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) )*( upthv(iup,i,j) - thvi(i,j,LM-1) )/au_fac(i,j) )
+!                    upw(iup,i,j) = sqrt( 2.*wb*(mapl_grav/thv(i,j,LM-1))*( zle(i,j,LM-2) - zle(i,j,LM-1) )*( upthv(iup,i,j) - thvi(i,j,LM-1) )/au_fac(i,j) )
 !                 else
 !                    upw(iup,i,j) = wu0(i,j)
 !                 end if
@@ -446,17 +441,24 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
      write(*,'(I4,12F7.2)') LM-1, sum(100.*upa_out(:)), 0., 100.*upa_out(1:10)
   end if
 
-  ! Check that mass flux does not exceed 2x of layer mass at any level                                                                        
-  ! If it does, rescale updraft area.                                                                                                      
-  ! See discussion in Beljaars et al 2018 [ECMWF Tech Memo]                                                                                  
- !        factor = 1.0
- !        DO k=KTS,KTE
- !           mf = SUM(RHOE(K)*UPA(K,:)*UPW(K,:))
- !           if (mf .gt. dp(K)/(MAPL_GRAV*dt)) then
- !              factor = min(factor,dp(K)/(mf*MAPL_GRAV*dt) )
- !           end if
- !        ENDDO
- ! UPA = factor*UPA
+  ! Check that mass flux does not exceed 2x of layer mass at any level  
+  ! If it does, rescale updraft area.
+  ! See discussion in Beljaars et al 2018 [ECMWF Tech Memo]
+!  factor(:,:) = 1.0
+!  do k = 1,LM
+!     km1 = k - 1
+
+!     do j = 1,JM
+!     do i = 1,IM
+!        mf = sum( rhoe(i,j,k)*upa(i,j,k)*upw(i,j,k) )
+!        dp = ple(i,j,km1) - ple(i,j,k)
+!        if ( mf > dp/(mapl_grav*dt) ) then
+!           factor(i,j) = min( factor(i,j), dp)/(mf*mapl_grav*dt) )
+!        end if
+!     end do
+!     end do
+!  end do
+!  upa = factor*upa
 
   !
   ! Integrate updraft equations and save updraft statistics
@@ -470,7 +472,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
         dzle  = zle(i,j,km1) - zle(i,j,k)
         idzle = 1./dzle
         
-        exfh = (ple(i,j,k)/mapl_p00)**mapl_kappa
+        exfh = ( ple(i,j,k)/mapl_p00 )**mapl_kappa
 
         mfthvt = 0.
         mft    = 0.
@@ -615,26 +617,31 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
               
               ! Compute fractional entrainment rate
               if ( L0(i,j) > 0. ) then
-                 if ( stochastic_flag /= 0. ) then
-                    ent(iup,i,j,k) = entf(iup,i,j,k)*ent0*idzle
-                 else
-                    call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
-                    ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0*idzle
-                 end if
+                 call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
+
+                 ent(iup,i,j,k) = ( 1. - stochastic )*ent0/L0(i,j) + stochastic*real( enti(iup,i,j,k) )*ent0/( zle(i,j,km1) - zle(i,j,k) )
               else
                  ! negative L0 means 0 entrainment  
                  ent(:,i,j,:) = 0. ! check
               end if
 
-              ! Integrate plume budgets acroos one vertical step
+              ! Double entrainment over land
+              ent(iup,i,j,k) = ( 1. + frland(i,j) )*ent(iup,i,j,k)
+
+              !
+!              if ( k <= LM-1 .and. k >= 2 .and. thv(i,j,k) < thv(i,j,k+1) .and. thv(i,j,k) > thv(i,j,k-1) ) then
+!                 ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
+!              end if
+
+              ! Integrate plume budgets across one vertical step
               if ( plume_type == 0 ) then ! JPL entraining plume model
                  ! sample entrainment
                  E(i,j,k) = E(i,j,k) + rhoe(i,j,k)*upa(iup,i,j)*upw(iup,i,j)*ent(iup,i,j,k)
                  
                  !
                  EntExp  = exp(-ent(iup,i,j,k)*dzle)
-                 EntExpU = exp(-ent(iup,i,j,k)*dzle*EntWFac)
-                 
+                 EntExpU = exp(-ent(iup,i,j,k)*dzle*EntWFac)             
+
                  ! Thermodynamic variables in updraft
                  QTn  = qt(i,j,k)*( 1. - EntExp )  + upqt(iup,i,j)*EntExp
                  THLn = thl(i,j,k)*( 1. - EntExp ) + upthl(iup,i,j)*EntExp
@@ -645,7 +652,8 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
 
                  ! Buoyancy
-                 B = goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
+!                 B = (mapl_grav/thv(i,j,k))*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
+                 B = mapl_grav*( 0.5*( THVn + upthv(iup,i,j) )/thv(i,j,k) - 1. )
 
                  ! Vertical velocity
                  WP = Wb*ent(iup,i,j,k)
@@ -673,7 +681,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
 
                  ! Compute buoyancy
-                 B = wb*goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
+                 B = wb*(mapl_grav/thv(i,j,k))*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
 
                  ! Integrate vertical velocity budget
                  Wn2 = upw(iup,i,j)**2./( 1./f_thermal(i,j,k) + dzle*eps_turb  )**2. + 2.*dzle*B                 
@@ -713,12 +721,22 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
               end if
               
               ! Intermediate quantities 
-              mfthvt_work = upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j)
-              mft_work    = upa(iup,i,j)*upw(iup,i,j)
+              if ( plume_type == 1 ) then
+                 An = Mn/( rhoe(i,j,km1)*upw(iup,i,j) )
+              else
+                 An = upa(iup,i,j)
+              end if
 
               ! Update plume
               if ( Wn2 > 0. ) then
+                 mfthvt = 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + An*sqrt(Wn2)*THVn )
+                 mft    = 0.5*( upa(iup,i,j)*upw(iup,i,j) + An*sqrt(Wn2) )
+
+                 buoyf(i,j,k) = buoyf(i,j,k) + ( mfthvt - mft*thv(i,j,k) )*exf(i,j,k)
+
                  ! Update plume properties
+                 upm(iup,i,j)   = Mn
+                 upa(iup,i,j)   = An
                  upw(iup,i,j)   = sqrt(Wn2)
                  upthv(iup,i,j) = THVn
                  upthl(iup,i,j) = THLn
@@ -728,14 +746,14 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
                  upu(iup,i,j)   = Un
                  upv(iup,i,j)   = Vn
 
-                 if ( plume_type == 1 ) then
-                    upm(iup,i,j) = Mn
-                    upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
-                 end if
+!                 if ( plume_type == 1 ) then
+!                    upm(iup,i,j) = Mn
+!                    upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
+!                 end if
 
                  !
-                 mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
-                 mft    = mft    + 0.5*(                upa(iup,i,j)*upw(iup,i,j) + mft_work )
+!                 mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
+!                 mft    = mft    + 0.5*(                upa(iup,i,j)*upw(iup,i,j) + mft_work )
 
                  ! Save area fractions for text output
                  jup = iup/mup + 1
@@ -744,9 +762,10 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
                     upac_out(jup) = upac_out(jup) + upa(iup,i,j)
                  end if
               else
-                 !
-                 mfthvt = mfthvt + 0.5*mfthvt_work
-                 mft    = mft    + 0.5*mft_work
+                 mfthvt = 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) )
+                 mft    = 0.5*( upa(iup,i,j)*upw(iup,i,j) )
+
+                 buoyf(i,j,k) = buoyf(i,j,k) + ( mfthvt - mft*thv(i,j,k) )*exf(i,j,k)
 
                  active_updraft(iup,i,j) = .false.
               end if
@@ -765,7 +784,7 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
 !!$        end if
 
         ! Outputs needed for SHOC in TURBULENCE
-        buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
+!        buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
 
         ! Average dry updraft samples
         if ( edmfdrya(i,j,k) > 0. ) then
@@ -916,33 +935,6 @@ subroutine run_edmf(IM, JM, LM, nup, mup, iras, jras, &                         
 
      end do
   end do
-
-  ! Entrainment dissipation inverse timescale
-!  do k = 2,LM-1
-!     do j = 1,JM
-!     do i = 1,IM
-!        itau_E(i,j,k) = E(i,j,k+1)/( rho(i,j,k+1)*( 1. - au(i,j,k) ) )
-!     end do
-!     end do
-!  end do
-
-  ! Compute zpbl of thermal plume
-  if ( plume_type == 1 ) then
-     work_flag(:,:) = .true.
-     do k = LM-1,1,-1
-        
-        do j = 1,JM
-        do i = 1,IM
-           if ( work_flag(i,j) ) then
-              zpbl(i,j) = zle(i,j,k)
-              if ( edmfdrya(i,j,k) == 0. ) then
-                 work_flag(i,j) = .false.
-              end if
-           end if
-        end do
-        end do
-     end do
-  end if
 
 end subroutine run_edmf
 
@@ -1102,12 +1094,12 @@ end function interp_carpenter1990_down
 ! A_star_closure
 !
 subroutine A_star_closure(IM, JM, LM, &                       ! in
-                          th00, wb, au0, debug_flag, &        ! in
+                          wb, au0, debug_flag, &              ! in
                           zle, zl, rho, rhoe, thl, qt, thv, & ! in
                           A, f, zi, Mu0)                      ! out
 
   integer, intent(in)                      :: IM, JM, LM, debug_flag
-  real, intent(in)                         :: th00, wb, au0
+  real, intent(in)                         :: wb, au0
   real, dimension(IM,JM,LM), intent(in)    :: zl, thl, qt, thv, rho
   real, dimension(IM,JM,0:LM), intent(in)  :: zle, rhoe
   real, dimension(IM,JM), intent(out)      :: zi, Mu0
@@ -1115,12 +1107,10 @@ subroutine A_star_closure(IM, JM, LM, &                       ! in
 
   integer                     :: i, j, k, km1, iter
   real                        :: dthvdz, dzle, B, Mu_next, wu2_next, &
-                                 thlu_next, qtu_next, thvu_next, goth00, E
+                                 thlu_next, qtu_next, thvu_next, E
   integer, dimension(IM,JM)   :: izsl
   real, dimension(IM,JM)      :: A_star_sum, A_star2_int, Mu, thlu, qtu, thvu, wu2, wu0
   logical, dimension(IM,JM)   :: conv_flag, sl_flag, test_flag
-
-  goth00 = mapl_grav/th00
 
   A(:,:,:)        = 0.
   A_star_sum(:,:) = 0.
@@ -1213,7 +1203,7 @@ subroutine A_star_closure(IM, JM, LM, &                       ! in
               
               thvu_next = thlu_next*( 1. + mapl_vireps*qtu_next )
               
-              B = wb*goth00*( 0.5*( thvu(i,j) + thvu_next ) - thv(i,j,k) )
+              B = wb*(mapl_grav/thv(i,j,k))*( 0.5*( thvu(i,j) + thvu_next ) - thv(i,j,k) )
 
               wu2_next = f(i,j,k)**2.*wu2(i,j) + 2.*dzle*B
 
