@@ -1664,7 +1664,6 @@ contains
 
     call ESMF_StateGet (IMPORT, 'TI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
-!    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
     call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
     VERIFY_(STATUS)
@@ -1672,7 +1671,6 @@ contains
 
     call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
-!    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
     call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
     VERIFY_(STATUS)
@@ -1680,7 +1678,6 @@ contains
 
     call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
-!    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
     call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
     VERIFY_(STATUS)
@@ -1690,7 +1687,6 @@ contains
        call ESMF_StateGet (IMPORT, 'FRACICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
 
-!       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
        VERIFY_(STATUS)
@@ -1698,7 +1694,6 @@ contains
 
        call ESMF_StateGet (IMPORT, 'VOLICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-!       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
        VERIFY_(STATUS)
@@ -1706,7 +1701,6 @@ contains
 
        call ESMF_StateGet (IMPORT, 'VOLSNO', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-!       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
        VERIFY_(STATUS)
@@ -1714,7 +1708,6 @@ contains
 
        call ESMF_StateGet (IMPORT, 'ERGICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-!       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
        VERIFY_(STATUS)
@@ -1722,7 +1715,6 @@ contains
 
        call ESMF_StateGet (IMPORT, 'ERGSNO', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-!       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
        VERIFY_(STATUS)
@@ -1730,7 +1722,6 @@ contains
 
        call ESMF_StateGet (IMPORT, 'TAUAGE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-!       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
        VERIFY_(STATUS)
@@ -1738,7 +1729,6 @@ contains
 
        call ESMF_StateGet (IMPORT, 'MPOND', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-!       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,'FriendlyToSEAICE',FRIENDLY,RC=STATUS)
        VERIFY_(STATUS)

@@ -3227,8 +3227,6 @@ contains
 ! Get item's friendly status (default is not friendly)
 !-----------------------------------------------------
 
-!       call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
-!            VALUE=FRIENDLY, DEFAULTVALUE=dflt_false,    RC=STATUS)
        call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
        call ESMF_InfoGet(infoh,key='FriendlyToTURBULENCE',value=FRIENDLY,default=dflt_false,RC=STATUS)
        VERIFY_(STATUS)
@@ -3800,8 +3798,6 @@ end subroutine RUN1
 ! Get item's friendly status (default is not friendly)
 !-----------------------------------------------------
 
-!         call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
-!              VALUE=Friendly, DEFAULTVALUE=dflt_false,    RC=STATUS)
          call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
          call ESMF_InfoGet(infoh,key='FriendlyToTURBULENCE',value=Friendly,default=dflt_false,RC=STATUS)
          VERIFY_(STATUS)

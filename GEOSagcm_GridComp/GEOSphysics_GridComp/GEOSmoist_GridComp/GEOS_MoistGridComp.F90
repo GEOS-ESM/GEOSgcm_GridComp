@@ -6823,12 +6823,10 @@ contains
          ! Get items friendly status (default is not friendly)
          !-----------------------------------------------------
 
-!         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToMOIST",isPresent=isPresent, RC=STATUS)
          call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
          isPresent = ESMF_InfoIsPresent(infoh,'FriendlyToMOIST',RC=STATUS)
          VERIFY_(STATUS)
          if(isPresent) then
-!            call ESMF_AttributeGet  (FIELD, NAME="FriendlyToMOIST",VALUE=IS_FRIENDLY(K), RC=STATUS)
             call ESMF_InfoGet(infoh,key='FriendlyToMOIST',value=IS_FRIENDLY(K),RC=STATUS)
             VERIFY_(STATUS)
          else
