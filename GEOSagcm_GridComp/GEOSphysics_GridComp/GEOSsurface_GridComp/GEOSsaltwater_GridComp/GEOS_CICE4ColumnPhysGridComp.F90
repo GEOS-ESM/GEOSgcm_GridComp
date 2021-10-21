@@ -4081,13 +4081,13 @@ contains
          rootGC = MAPL_RootGcRetrieve(MAPL)
 !??         ASSERT_(associated(rootGC%ptr))
 
-         call ESMF_UserCompSetInternalState ( rootGC, 'GCM_XFORM_A2O', &
+         call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_A2O', &
               mystate%XFORM_A2O,status )
          VERIFY_(STATUS)
-         call ESMF_UserCompSetInternalState ( rootGC, 'GCM_XFORM_O2A', &
+         call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_O2A', &
               mystate%XFORM_O2A,status )
          VERIFY_(STATUS)
-         call ESMF_UserCompSetInternalState ( rootGC, 'GCM_LOCSTREAM_OCEAN', &
+         call ESMF_UserCompGetInternalState ( rootGC, 'GCM_LOCSTREAM_OCEAN', &
               mystate%locStreamO,status )
          VERIFY_(STATUS)
        end block
@@ -4748,6 +4748,9 @@ contains
     integer :: k, nc, nt
     
     NT = size(ptr_2d, 1)
+    if(NT == 0) then
+        RETURN_(ESMF_SUCCESS)
+    endif  
     NC = size(ptr_2d, 2)
     call MAPL_GetPointer(state, ptr_3d, name, __RC__)
     ASSERT_(NC == size(ptr_3d,3)) ! make sure the ungridded dims match
@@ -4779,6 +4782,9 @@ contains
     integer :: k, nc, nt
 
     NT = size(ptr_2d, 1)
+    if(NT == 0) then 
+       RETURN_(ESMF_SUCCESS)
+    endif 
     NC = size(ptr_2d, 2)
     call MAPL_GetPointer(state, ptr_3d, name, __RC__)
     ASSERT_(NC == size(ptr_3d,3)) ! make sure the ungridded dims match
