@@ -521,7 +521,7 @@ contains
       call MAPL_GetPointer(IMPORT, FRLANDICE,  'FRLANDICE'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, T,       'T'       ,RC=STATUS); VERIFY_(STATUS)
-      if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(T)
+      !if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(T)
       call ESMF_VMBarrier(vm)
       call MAPL_GetPointer(IMPORT, KPBLIN,  'KPBL'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
@@ -715,7 +715,7 @@ contains
             MASS(i,j,1:LM) = delp(ij,LM:1:-1)/MAPL_GRAV
          enddo
       enddo
-      if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
+      !if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
       !t1 = gt0
       !u1 = gu0
       !v1 = gv0
@@ -834,7 +834,7 @@ contains
                   rainevap=condition,errmsg=errmsg, &
                   errflg=status)
       VERIFY_(STATUS)
-      if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
+      !if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
       !print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
       call ESMF_VMBarrier(vm)
 
@@ -907,7 +907,7 @@ contains
                   !ntent(out)
                   errmsg=errmsg,errflg=status)
       VERIFY_(STATUS)
-      if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
+      !if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
 
       call GFS_SCNV_generic_post_run(                  &
                   !ntent(in)
@@ -1015,7 +1015,7 @@ contains
                   !ntent(out)
                   errmsg=errmsg,errflg=status)
       VERIFY_(STATUS)
-      if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
+      !if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
 
       !if (me == 0) print *, "phy_f3d(:,:,nleffr) ... ", nleffr
       !if (me == 0) print *, phy_f3d(:,:,nleffr)
