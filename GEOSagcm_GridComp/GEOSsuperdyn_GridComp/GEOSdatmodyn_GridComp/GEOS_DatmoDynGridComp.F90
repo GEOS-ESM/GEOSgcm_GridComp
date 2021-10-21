@@ -1242,6 +1242,8 @@ contains
 
       real, dimension(4) :: VC 
 
+      type(ESMF_Info) :: infoh
+
       INTEGER :: NT, NLEVEL,I,J,VERTADV, useana, advscheme
 
       LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, isPresent
@@ -1449,9 +1451,12 @@ contains
          ! Get item's friendly status (default is not friendly)
          !-----------------------------------------------------
 
-         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",isPresent=isPresent, __RC__)
+!         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",isPresent=isPresent, __RC__)
+         call ESMF_InfoGetFromHost(FIELD,infoh,__RC__)
+         isPresent = ESMF_InfoIsPresent(infoh,'FriendlyToDYNAMICS',__RC__)
          if(isPresent) then
-            call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",VALUE=FRIENDLY, __RC__)
+!            call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",VALUE=FRIENDLY, __RC__)
+            call ESMF_InfoGet(infoh,'FriendlyToDYNAMICS',FRIENDLY,__RC__)
          else
             FRIENDLY = .false.
          end if
