@@ -253,16 +253,6 @@ contains
 
 ! !IMPORT STATE:
 
-!     call MAPL_AddImportSpec(GC,                                  &
-!        SHORT_NAME = 'ZPBL_ANA',                                  &
-!        LONG_NAME  = 'fake_observed_pbl_height',                  &
-!        UNITS      = 'm',                                         &
-!        DIMS       = MAPL_DimsHorzOnly,                           &
-!        VLOCATION  = MAPL_VLocationNone,                          &
-!        RESTART    = MAPL_RestartSkip,                            &
-!                                                       RC=STATUS  )
-!     VERIFY_(STATUS)
-
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'PLE',                                       &
         LONG_NAME  = 'air_pressure',                              &
@@ -875,7 +865,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_dry_a',                                            &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'edmf_dry_a',                                            &
+       SHORT_NAME = 'EDMF_DRY_A',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -884,7 +874,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'z_conv_edmf',                                 &
        UNITS      = 'm',                                                     &
-       SHORT_NAME = 'z_conv_edmf',                                                &
+       SHORT_NAME = 'Z_CONV_EDMF',                                                &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
@@ -903,7 +893,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_moist_a',                                          &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'edmf_moist_a',                                          &
+       SHORT_NAME = 'EDMF_MOIST_A',                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                    RC=STATUS  )
@@ -912,7 +902,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_dry_w',                                            &
        UNITS      = 'm s-1',                                                 &
-       SHORT_NAME = 'edmf_dry_w',                                            &
+       SHORT_NAME = 'EDMF_DRY_W',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -921,7 +911,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_moist_w',                                          &
        UNITS      = 'm s-1',                                                 &
-       SHORT_NAME = 'edmf_moist_w',                                          &
+       SHORT_NAME = 'EDMF_MOIST_W',                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -930,7 +920,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_dry_qt',                                           &
        UNITS      = 'kg kg-1',                                               &
-       SHORT_NAME = 'edmf_dry_qt',                                           &
+       SHORT_NAME = 'EDMF_DRY_QT',                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -939,7 +929,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_moist_qt',                                         &
        UNITS      = 'kg kg-1',                                                  &
-       SHORT_NAME = 'edmf_moist_qt',                                         &
+       SHORT_NAME = 'EDMF_MOIST_QT',                                         &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -949,7 +939,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_moist_qc',                                         &
        UNITS      = 'kg kg-1',                                               &
-       SHORT_NAME = 'edmf_moist_qc',                                         &
+       SHORT_NAME = 'EDMF_MOIST_QC',                                         &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -958,7 +948,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_dry_thl',                                          &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'edmf_dry_thl',                                          &
+       SHORT_NAME = 'EDMF_DRY_THL',                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -967,7 +957,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_moist_thl',                                        &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'edmf_moist_thl',                                        &
+       SHORT_NAME = 'EDMF_MOIST_THL',                                        &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -976,7 +966,7 @@ contains
    call MAPL_AddExportSpec(GC,                                               &
        LONG_NAME  = 'edmf_dry_u',                                          &
        UNITS      = 'm s-1',                                                    &
-       SHORT_NAME = 'edmf_dry_u',                                          &
+       SHORT_NAME = 'EDMF_DRY_U',                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -985,7 +975,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_moist_u',                                        &
        UNITS      = 'm s-1',                                                   &
-       SHORT_NAME = 'edmf_moist_u',                                        &
+       SHORT_NAME = 'EDMF_MOIST_U',                                        &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -994,7 +984,7 @@ contains
    call MAPL_AddExportSpec(GC,                                               &
        LONG_NAME  = 'edmf_dry_v',                                          &
        UNITS      = 'm s-1',                                                    &
-       SHORT_NAME = 'edmf_dry_v',                                          &
+       SHORT_NAME = 'EDMF_DRY_V',                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -1003,7 +993,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_moist_v',                                        &
        UNITS      = 'm s-1',                                                   &
-       SHORT_NAME = 'edmf_moist_v',                                        &
+       SHORT_NAME = 'EDMF_MOIST_V',                                        &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -1012,7 +1002,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_buoyf',                                            &
        UNITS      = 'K m s-1',                                               &
-       SHORT_NAME = 'edmf_buoyf'    ,                                        &
+       SHORT_NAME = 'EDMF_BUOYF'    ,                                        &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1021,7 +1011,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_qt_flux',                                          &
        UNITS      = 'kg m-2 s-1',                                            &
-       SHORT_NAME = 'edmf_wqt'    ,                                          &
+       SHORT_NAME = 'EDMF_WQT'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1030,7 +1020,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_qt2_contribution',                                 &
        UNITS      = 'kg2 kg-2',                                               &
-       SHORT_NAME = 'edmf_qt2'    ,                                          &
+       SHORT_NAME = 'EDMF_QT2'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1039,7 +1029,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_hl2_contribution',                                 &
        UNITS      = 'K2',                                               &
-       SHORT_NAME = 'edmf_hl2'    ,                                          &
+       SHORT_NAME = 'EDMF_HL2'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1048,16 +1038,16 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_liquid_static_energy_flux',                        &
        UNITS      = 'K s-1',                                                 &
-       SHORT_NAME = 'edmf_whl'    ,                                          &
+       SHORT_NAME = 'EDMF_WHL'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'edmf_qthl_contribution',                                 &
+       LONG_NAME  = 'edmf_hlqt_contribution',                                 &
        UNITS      = 'kg K kg-1',                                               &
-       SHORT_NAME = 'edmf_qthl'    ,                                          &
+       SHORT_NAME = 'EDMF_HLQT'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1066,7 +1056,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_w2_contribution',                                  &
        UNITS      = 'm2 s-2',                                               &
-       SHORT_NAME = 'edmf_w2'    ,                                           &
+       SHORT_NAME = 'EDMF_W2'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1075,7 +1065,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_w3_contribution',                                  &
        UNITS      = 'm3 s-3',                                               &
-       SHORT_NAME = 'edmf_w3'    ,                                           &
+       SHORT_NAME = 'EDMF_W3'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1084,37 +1074,27 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_qt3_contribution',                                  &
        UNITS      = 'kg3 kg-3',                                               &
-       SHORT_NAME = 'edmf_qt3'    ,                                           &
+       SHORT_NAME = 'EDMF_QT3'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'edmf_hl3_contribution',                                  &
-       UNITS      = 'K3',                                               &
-       SHORT_NAME = 'edmf_hl3'    ,                                           &
+       LONG_NAME  = 'edmf_hl3_contribution',                                 &
+       UNITS      = 'K3',                                                    &
+       SHORT_NAME = 'EDMF_HL3'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'w3_from_SHOC_canuto',                                  &
-!       UNITS      = 'm3 s-3',                                               &
-!       SHORT_NAME = 'w3_canuto'    ,                                           &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-
-    call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'HLQT',                                      &
-       LONG_NAME  = 'covariance_of_liquid_static_energy_and_total_water', &
-       UNITS      = 'K',                                         &
-       DEFAULT    = 0.0,                                         &
-       DIMS       = MAPL_DimsHorzVert,                           &
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'HLQT',                                                  &
+       LONG_NAME  = 'covariance_of_liquid_static_energy_and_total_water',    &
+       UNITS      = 'K',                                                     &
+       DEFAULT    = 0.0,                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -1167,70 +1147,6 @@ contains
        LONG_NAME  = 'liquid_water_static_energy_flux',                       &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'WHL'    ,                                               &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'updraft_area_fraction',                                 &
-       UNITS      = '1',                                                     &
-       SHORT_NAME = 'au'    ,                                                &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'updraft_vertical_velocity',                             &
-       UNITS      = 'm+1s-1',                                                &
-       SHORT_NAME = 'wu'    ,                                                &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'updraft_mass_flux',                                     &
-       UNITS      = 'm+1s-1',                                                &
-       SHORT_NAME = 'Mu'    ,                                                &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'updraft_entrainment_rate',                              &
-       UNITS      = 'm+1s-1',                                                &
-       SHORT_NAME = 'E'     ,                                                &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'updraft_detrainment_rate',                              &
-       UNITS      = 'm+1s-1',                                                &
-       SHORT_NAME = 'D'     ,                                                &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'sub-environmental_hl',                                  &
-       UNITS      = 'K',                                                     &
-       SHORT_NAME = 'hle',                                                   &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'sub-environmental_qt',                                  &
-       UNITS      = 'kg+1kg-1',                                              &
-       SHORT_NAME = 'qte',                                                   &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -2949,7 +2865,7 @@ contains
      integer                             :: STATUS
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
-     real, dimension(:,:  ), pointer     :: VARFLT!,ZPBL_ANA
+     real, dimension(:,:  ), pointer     :: VARFLT
      real, dimension(:,:,:), pointer     :: KH, KM, QLLS, QILS, CLLS, QLCN, QICN, CLCN
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
@@ -2994,7 +2910,7 @@ contains
                                             edmf_w2, edmf_qt2, edmf_hl2, & 
                                             edmf_w3, edmf_wqt, edmf_hlqt, & 
                                             edmf_whl, edmf_qt3, edmf_hl3, &
-                                            hle, qte, edmf_entx
+                                            edmf_entx
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
    real, dimension(IM,JM,0:LM)          ::  ae3_test, aw3_test, aws3_test, awqv3_test, awql3_test, awqi3_test, awu3_test, awv3_test
@@ -3014,8 +2930,6 @@ contains
 #endif
 
    real, dimension(:,:), pointer        :: z_conv_edmf
-
-   real, dimension(:,:,:), pointer :: au, Mu, E, D
 
 
      logical, dimension(IM,JM     )      :: CONVECT
@@ -3038,67 +2952,38 @@ contains
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      ! mass-flux constants/parameters
-     real :: NumUpR,ETr
-     integer :: NumUp,ET,DOCLASP,NumUpQ
-     real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
-     real                            :: STOCHENT 
-     integer :: DOMF
+     integer :: DOMF, NumUp, DOCLASP
+     real    :: L0,L0fac
 
-     integer :: EDMF_OPTION      
-     integer :: EDMF_IMPLICIT        ! 1 (default): implicit discretization of mass flux terms
-                                     ! 0: explicit
-     integer :: EDMF_DISCRETE        ! 0 (default): centered mass flux discretization in solver
-                                     ! 1: upwind discretization 
-     integer :: EDMF_ENTRAIN         ! 1 (default): stochastic variable entrainment
-                                     ! 2: Gregory (2001) entrainment based on vertical velocity
-     real    :: EDMF_STOCHASTIC      ! Fraction of entrainment governed by Poisson distribution 
-                                     ! 
-     integer :: EDMF_THERMAL_PLUME   ! 0 (default): JPL mass flux scheme
-                                     ! 1: Thermal plume model
-     integer :: EDMF_TEST
-     integer :: EDMF_DEBUG
+     real, dimension(IM,JM)    :: L02
+     real, dimension(IM,JM,LM) :: QT,THL,HL,EXF
 
-     real :: edmf_wa, edmf_wb, edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb, c_kh_mf
-
-     real,dimension(IM,JM) :: L02
-     
-
-     real,dimension(IM,JM,LM)           :: QT,THL,HL,EXF
-     real    :: alfac
-
-! local mass-flux variables
-     real, dimension(im,jm,0:lm)     :: edmfdrya,edmfmoista, edmfdryw,edmfmoistw, &
-                                        edmfdryqt,edmfmoistqt, &
-                                        edmfdrythl,edmfmoistthl, &
-                                        edmfdryu,edmfmoistu,  &
-                                        edmfdryv,edmfmoistv,  &
-                                        edmfmoistqc
-     real, dimension(im,jm,0:lm) :: ui, vi, thli, qvi, qli, qii, thvi
-     real, dimension(im,jm,lm) :: sdry,sdrya,sdryb,sdryc,MFFRC
-     real, dimension(im,jm,lm) :: zlo,zlot,pk,rho
-     real, dimension(im,jm)    :: rhodz,edmfZCLD
-     real, dimension(im,jm,0:lm) :: RHOE,RHOAW3
-     real, dimension(im,jm) :: ZPBLmf,KPBLmf,wu0, dthv0   
-     real, dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,edmf_ent
-     real, dimension(im,jm,0:lm) :: edmf_mf
-     real, dimension(im,jm,lm) :: au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full
-     real, dimension(im,jm,lm) :: whl_edmf, wqt_edmf, wthv_edmf
-     real, dimension(im,jm,lm) :: tke_mf, qt2_mf, qt2t_M_mf, qt2t_T_mf
-     real, dimension(im,jm,0:lm) :: kh_mf, kh_t, kh_q, itau_E, wu, udet, vdet, wdet, uu, vu
+     real, dimension(im,jm,0:lm) :: edmfdrya, edmfmoista,     &
+                                    edmfdryw, edmfmoistw,     &
+                                    edmfdryqt, edmfmoistqt,   &
+                                    edmfdrythl, edmfmoistthl, &
+                                    edmfdryu, edmfmoistu,     &
+                                    edmfdryv, edmfmoistv,     &
+                                    edmfmoistqc
+     real, dimension(im,jm,lm)   :: zlo, pk, rho
+     real, dimension(im,jm)      :: edmfZCLD
+     real, dimension(im,jm,0:lm) :: RHOE, RHOAW3, edmf_mf
+     real, dimension(im,jm,lm)   :: buoyf, mfw2, mfw3, mfqt3,     &
+                                    mfhl3, mfwqt, mfqt2, mfhl2,   &
+                                    mfhlqt, mfwhl, edmf_ent
 
 #ifdef EDMF_DIAG
-     real,dimension(im,jm,0:lm) :: w_plume1,w_plume2,w_plume3,w_plume4, &
-                                   w_plume5,w_plume6,w_plume7, &
+     real,dimension(im,jm,0:lm) :: w_plume1,w_plume2,w_plume3,w_plume4,         &
+                                   w_plume5,w_plume6,w_plume7,                  &
                                    w_plume8,w_plume9,w_plume10
-     real,dimension(im,jm,0:lm) :: qt_plume1,qt_plume2,qt_plume3,qt_plume4, &
-                                   qt_plume5,qt_plume6,qt_plume7, &
+     real,dimension(im,jm,0:lm) :: qt_plume1,qt_plume2,qt_plume3,qt_plume4,     &
+                                   qt_plume5,qt_plume6,qt_plume7,               &
                                    qt_plume8,qt_plume9,qt_plume10
      real,dimension(im,jm,0:lm) :: thl_plume1,thl_plume2,thl_plume3,thl_plume4, &
-                                   thl_plume5,thl_plume6,thl_plume7, &
+                                   thl_plume5,thl_plume6,thl_plume7,            &
                                    thl_plume8,thl_plume9,thl_plume10
 #endif
 
-     real :: ice_ramp,EntWFac
      real,               dimension(LM+1) :: temparray, htke
      real,               dimension(IM,JM,LM  ) :: tcrib !TransCom bulk Ri
      real,               dimension(LM+1) :: thetav
@@ -3106,12 +2991,7 @@ contains
 ! variables associated with SHOC
      real, dimension( IM, JM, LM )       :: PRANDTLSHOC,QPL,QPI
      integer                             :: DO_SHOC
-     integer                             :: SHC_DO_TRANS, SHC_DO_CLDLEN, SHC_USE_MF_PDF
-     integer                             :: SHC_USE_MF_BUOY,SHC_BUOY_OPTION,SHC_USE_SUS12LEN
-     real                                :: SHC_LAMBDA,SHC_TSCALE,SHC_VONK,SHC_CK, &
-                                            SHC_CEFAC,SHC_CESFAC,SHC_THL2TUNE,    &
-                                            SHC_QW2TUNE,SHC_QWTHL2TUNE,           &
-                                            HL2TUNE, QT2TUNE, HLQT2TUNE,          &
+     real                                :: HL2TUNE, QT2TUNE, HLQT2TUNE,          &
                                             QT2SCALE, QT3_TSCALE
      real    :: PDFSHAPE
 
@@ -3143,7 +3023,6 @@ contains
 ! Get Sounding from the import state
 !-----------------------------------
 
-!     call MAPL_GetPointer(IMPORT,ZPBL_ANA,'ZPBL_ANA',RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     T,       'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     Q,      'QV', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,    TH,      'TH', RC=STATUS); VERIFY_(STATUS)
@@ -3164,10 +3043,11 @@ contains
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
-     call MAPL_GetPointer(IMPORT,MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,MFQTSRC, 'MFQTSRC',RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,MFW, 'MFW',RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,MFAREA, 'MFAREA',RC=STATUS); VERIFY_(STATUS)
+     ! Imports for CLASP heterogeneity coupling in EDMF
+     call MAPL_GetPointer(IMPORT, MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, MFQTSRC, 'MFQTSRC',RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, MFW,     'MFW'    ,RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, MFAREA,  'MFAREA' ,RC=STATUS); VERIFY_(STATUS)
 
 
 ! Get turbulence parameters from configuration
@@ -3217,23 +3097,23 @@ contains
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",   default=0.04,       RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",   default=400.,       RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%VONK,     trim(COMP_NAME)//"_SHC_VONK:",     default=0.4,        RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",       default=0.1,        RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",    default=1.,         RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",   default=4.,        RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CLDLEN,   trim(COMP_NAME)//"_SHC_DO_CLDLEN:", default=0,     RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%SUS12LEN, trim(COMP_NAME)//"_SHC_USE_SUS12LEN:", default=1,     RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,     RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",       default=0.04, RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",       default=400., RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%VONK,     trim(COMP_NAME)//"_SHC_VONK:",         default=0.4,  RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",           default=0.1,  RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",        default=1.,   RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",       default=4.,   RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CLDLEN,   trim(COMP_NAME)//"_SHC_DO_CLDLEN:",    default=0,    RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%SUS12LEN, trim(COMP_NAME)//"_SHC_USE_SUS12LEN:", default=1,    RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:",  default=2,    RC=STATUS)
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,  'PDFSHAPE:',   DEFAULT = 1.0    )
      call MAPL_GetResource (MAPL, HL2TUNE,   'HL2TUNE:',    DEFAULT = 0.3    )
      call MAPL_GetResource (MAPL, QT2TUNE,   'QT2TUNE:',    DEFAULT = 2.0    )
      call MAPL_GetResource (MAPL, HLQT2TUNE, 'HLQT2TUNE:',  DEFAULT = 1.0    )
-     call MAPL_GetResource (MAPL, QT2SCALE,  'QT2SCALE:',   DEFAULT = 2000.0    )
-     call MAPL_GetResource (MAPL, QT3_TSCALE,'QT3_TSCALE:', DEFAULT = 3600.0    )
+     call MAPL_GetResource (MAPL, QT2SCALE,  'QT2SCALE:',   DEFAULT = 2000.0 )
+     call MAPL_GetResource (MAPL, QT3_TSCALE,'QT3_TSCALE:', DEFAULT = 3600.0 )
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -3338,64 +3218,74 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZLES,    'ZLES',               RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_buoyf,  'edmf_buoyf',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_buoyf, 'EDMF_BUOYF',  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_hl2,  'edmf_hl2',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_hl2,  'EDMF_HL2',     RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_hlqt, 'edmf_qthl',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_hlqt, 'EDMF_HLQT',    RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'edmf_qt2', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'EDMF_QT2', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_w2,  'edmf_w2',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_w2,   'EDMF_W2',      RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_w3,  'edmf_w3',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_w3,   'EDMF_W3',      RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_qt3,  'edmf_qt3',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_qt3,  'EDMF_QT3',     RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_hl3,  'edmf_hl3',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_hl3,  'EDMF_HL3',     RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  hlqt,  'HLQT', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  w3, 'W3', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  w3,    'W3', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  w2, 'W2', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  w2,    'W2', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  hl3, 'HL3', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  hl3,   'HL3', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  hl2, 'HL2', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  hl2,   'HL2', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  wqt, 'WQT', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  wqt,   'WQT', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  whl, 'WHL', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  whl,   'WHL', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_wqt,'edmf_wqt', RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_wqt,    'EDMF_WQT', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_whl,'edmf_whl', RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_whl,    'EDMF_WHL', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_mfx, 'EDMF_MF', RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'edmf_dry_a',       RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  z_conv_edmf,  'z_conv_edmf',       RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  z_conv_edmf, 'Z_CONV_EDMF',       RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_a,  'edmf_moist_a',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_moist_a, 'EDMF_MOIST_A',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  EDMF_FRC,  'EDMF_FRC', ALLOC=.TRUE.,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  EDMF_FRC,    'EDMF_FRC', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_u,  'edmf_dry_u',      RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dry_u,  'EDMF_DRY_U',      RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_u,  'edmf_moist_u',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_moist_u, 'EDMF_MOIST_U',  RC=STATUS)
      VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  edmf_dry_v,  'edmf_dry_v',       RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dry_v,   'EDMF_DRY_V',       RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_v,  'edmf_moist_v',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_moist_v, 'EDMF_MOIST_V',  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_w,  'edmf_dry_w',      RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dry_w,   'EDMF_DRY_W',      RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_w,  'edmf_moist_w',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_moist_w, 'EDMF_MOIST_W',  RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  edmf_aw,  'edmf_aw',      RC=STATUS)
-!     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dry_qt,  'EDMF_DRY_QT',    RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_moist_qt,  'EDMF_MOIST_QT',  RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dry_thl,   'EDMF_DRY_THL',     RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_moist_thl, 'EDMF_MOIST_THL',  RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_moist_qc,  'EDMF_MOIST_QC',    RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_entx,      'EDMF_ENTR',  RC=STATUS)
+     VERIFY_(STATUS)
 #ifdef EDMF_DIAG
      call MAPL_GetPointer(EXPORT,  edmf_w_plume1,  'edmf_w_plume1',    RC=STATUS)
      VERIFY_(STATUS)
@@ -3458,16 +3348,6 @@ contains
      call MAPL_GetPointer(EXPORT,  edmf_thl_plume10, 'edmf_thl_plume10',    RC=STATUS)
      VERIFY_(STATUS)
 #endif
-     call MAPL_GetPointer(EXPORT,  edmf_dry_qt,  'edmf_dry_qt',    RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_qt,  'edmf_moist_qt',  RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_thl,  'edmf_dry_thl',     RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_thl,  'edmf_moist_thl',  RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_qc,  'edmf_moist_qc',    RC=STATUS)
-     VERIFY_(STATUS)
 
 !========== SHOC ===========
      call MAPL_GetPointer(EXPORT, TKEDISS, 'TKEDISS',  RC=STATUS)
@@ -3497,26 +3377,6 @@ contains
      call MAPL_GetPointer(EXPORT, SHEARSHOC,'SHEARSHOC', RC=STATUS)
      VERIFY_(STATUS)
 
-
-     call MAPL_GetPointer(EXPORT,        au,        'au', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,        uu,        'uu', ALLOC=.TRUE., RC=STATUS)
-!     VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,        vu,        'vu', ALLOC=.TRUE., RC=STATUS)
-!     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,        Mu,        'Mu', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,         E,         'E', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,         D,         'D', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  hle,   'hle', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  qte,   'qte',  ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-
-     call MAPL_GetPointer(EXPORT,  edmf_entx,  'EDMF_ENTR',  RC=STATUS)
-     VERIFY_(STATUS)
 
 
 ! Initialize some arrays
@@ -3702,20 +3562,22 @@ contains
          L02 = L0
       end if
 
-      call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,L02,NUMUP,&
-               U,V,THL,THV,QT,Q,QL,QI,USTAR,  & ! in
-               SH,EVAP,frland,zpbl,           & ! in
+      call EDMF(1, IM*JM, 1, LM, DT,          & ! in
+               Z, ZLE, PLE, RHOE, L02, NUMUP, & ! in
+               U, V, THL, THV, QT,            & ! in
+               Q, QL, QI, USTAR,              & ! in
+               SH, EVAP, frland, zpbl,        & ! in
                MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP imports
                ae3, aw3, aws3, awqv3,         & ! for trisolver 
                awql3, awqi3, awu3, awv3,      & ! for trisolver
                mfw2,mfw3,mfqt3,mfhl3,mfwqt,   & ! for ADG PDF
-               mfqt2,mfhl2,mfhlqt,mfwhl,      & ! for ADG PDF
-               edmfdrya,edmfmoista,           & ! diag
-               edmfdryw,edmfmoistw,           & ! diag
-               edmfdryqt,edmfmoistqt,         & ! diag
-               edmfdrythl,edmfmoistthl,       & ! diag
-               edmfdryu,edmfmoistu,           & ! diag
-               edmfdryv,edmfmoistv,           & ! diag
+               mfqt2, mfhl2, mfhlqt, mfwhl,   & ! for ADG PDF
+               edmfdrya, edmfmoista,          & ! diag
+               edmfdryw, edmfmoistw,          & ! diag
+               edmfdryqt, edmfmoistqt,        & ! diag
+               edmfdrythl, edmfmoistthl,      & ! diag
+               edmfdryu, edmfmoistu,          & ! diag
+               edmfdryv, edmfmoistv,          & ! diag
                edmfmoistqc,                   & ! diag
                buoyf, edmf_ent, edmf_mf,      & ! diag  
 #ifdef EDMF_DIAG
@@ -3863,9 +3725,6 @@ contains
       if (associated(edmf_whl))       edmf_whl      = mfwhl
      
       EDMF_FRC = 0.
-
-      ZPBLmf=0.
-      KPBLmf=float(LM)
      
    ENDIF
 
@@ -3934,19 +3793,6 @@ contains
                        SHEARSHOC,             &
                        !== Tuning params ==
                        SHOCPARAMS )
-!                       SHC_LAMBDA,            &
-!                       SHC_TSCALE,            &
-!                       SHC_VONK,              &
-!                       SHC_CK,                &
-!                       SHC_CEFAC,             &
-!                       SHC_CESFAC,            &
-!                       SHC_THL2TUNE,          &
-!                       SHC_QW2TUNE,           &
-!                       SHC_QWTHL2TUNE,        &
-!                       SHC_DO_TRANS,          &
-!                       SHC_DO_CLDLEN,         &
-!                       SHC_USE_SUS12LEN,      &
-!                       SHC_BUOY_OPTION )
 
         KH(:,:,1:LM) = TKH(:,:,1:LM)
         KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
@@ -3961,10 +3807,6 @@ contains
 
       call MAPL_TimerOn (MAPL,name="---LOUIS" ,RC=STATUS)
       VERIFY_(STATUS)
-
-!      where (ZPBL_ANA.gt.0.) 
-!         ZPBL = ZPBL_ANA
-!      end where
 
       if (DO_SHOC == 0) then
         call LOUIS_KS(                      &
@@ -4337,7 +4179,6 @@ contains
 
          CALL ENTRAIN(IM,JM,LM,                 &
                       ! Inputs
-!                      ZPBL_ANA,                 &
                       RADLW,                    &
                       USTAR,                    &
                       BSTAR,                    &
@@ -4421,7 +4262,7 @@ contains
           ! If not running SHOC, estimate ISOTROPY from KH and TKE,
           ! based on Eq. 7 from Bogenschutz and Krueger (2013).
           ! This is a placeholder to allow use of the double-gaussian
-          ! PDF without SHOC, but should be tested and revised!!!
+          ! PDF without SHOC, but should be tested and revised!
           ISOTROPY(:,:,LM) = KH(:,:,LM-1) / max(0.01,0.1*TKE(:,:,LM-1))
           ISOTROPY(:,:,1) = KH(:,:,1) / max(0.01,0.1*TKE(:,:,1))
           do L = 2,LM-1
@@ -6588,7 +6429,6 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,L0,nup,&
              dry_u3,moist_u3, &
              dry_v3,moist_v3, &
              moist_qc3, &
-!             au, Mu, E, D, hle, qte, & 
              buoyf, entx, edmfmf, &
 #ifdef EDMF_DIAG
              w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
@@ -6599,9 +6439,6 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,L0,nup,&
              thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
              params)
-!             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-!             ET,L0,ENT0,EDfac,EntWFac,&
-!             edmf_discrete_type, edmf_implicit, stochent, doclasp, entrainopt)
 
 ! Variables needed for solver:
 ! ae = sum_i (1-a_i)
@@ -6668,7 +6505,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,L0,nup,&
 !        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: au, Mu
    ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
          REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfwqt,mfhl2,&
-                                                         mfhlqt,mfwhl,entx !, hle, qte, E, D
+                                                         mfhlqt,mfwhl,entx
       REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
