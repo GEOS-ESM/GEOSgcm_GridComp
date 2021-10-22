@@ -73,9 +73,9 @@ module GEOS_CICE4ColumnPhysGridComp
   type cice_state
        integer :: CHOOSEMOSFC
        logical :: retrievedRootGC = .false.
-       type (MAPL_LocStreamXform) :: XFORM_A2O
-       type (MAPL_LocStreamXform) :: XFORM_O2A
-       type (MAPL_LocStream) :: locStreamO
+       type (MAPL_LocStreamXform), pointer :: XFORM_A2O => NULL()
+       type (MAPL_LocStreamXform), pointer :: XFORM_O2A => NULL()
+       type (MAPL_LocStream), pointer :: locStreamO => NULL()
   end type cice_state
 
   type cice_state_wrap
