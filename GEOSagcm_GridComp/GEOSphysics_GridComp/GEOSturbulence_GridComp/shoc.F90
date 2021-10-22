@@ -709,7 +709,6 @@ contains
              lstarn = fac_cond + (1.-omn)*fac_fus
 
 ! Saturation mixing ratio over water/ice wrt temp  based on relative water phase content
-
 !             qsatt =     omn  * qsatw(tabs(i,j,k),prsl(i,j,k))                &
 !                   + (1.-omn) * qsati(tabs(i,j,k),prsl(i,j,k))
              qsatt =     omn  * MAPL_EQsat(tabs(i,j,k),prsl(i,j,k),dtqw)                &
@@ -721,7 +720,6 @@ contains
               dqsat =  omn * dtqw + (1.-omn) * dtqi
 
 ! liquid/ice moist static energy static energy divided by cp?
-
              bbb = (1. + epsv*qsatt-wrk-qpl(i,j,k)-qpi(i,j,k)                &
                  + 1.61*tabs(i,j,k)*dqsat) / (1.+lstarn*dqsat)
 

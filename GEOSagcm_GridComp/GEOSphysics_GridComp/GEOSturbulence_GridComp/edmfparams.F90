@@ -11,6 +11,8 @@ module EDMFPARAMS
     integer :: TEST
     integer :: DEBUG
     integer :: ET
+    real    :: L0
+    real    :: L0fac
     real    :: STOCHFRAC
     real    :: ENTWFAC
     real    :: EDFAC
