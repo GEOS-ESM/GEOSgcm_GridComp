@@ -2952,7 +2952,9 @@ end subroutine RUN
   !
      call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
   !   ! update ts 
-     ts = ts + 1.0  ! true updates will be a call to CICE6 thermo update routine
+     where (ts /= MAPL_UNDEF)
+        ts = ts + 1.0  ! true updates will be a call to CICE6 thermo update routine
+     end where
      RETURN_(ESMF_SUCCESS)
   end subroutine thermo_coupling
 

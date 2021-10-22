@@ -1243,15 +1243,45 @@ contains
                                     RC=STATUS )
    VERIFY_(STATUS)
    !========CICE CALLBACK RELATED======
-   call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_A2O', &
-        GCM_INTERNAL_STATE%XFORM_A2O,status )
-   VERIFY_(STATUS)
-   call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_O2A', &
-        GCM_INTERNAL_STATE%XFORM_O2A,status )
-   VERIFY_(STATUS)
-   call ESMF_UserCompSetInternalState ( GC, 'GCM_LOCSTREAM_OCEAN', &
-        exchO,status )
-   VERIFY_(STATUS)
+   block
+     type WRAP_X
+        type (MAPL_LocStreamXform), pointer :: PTR => null()
+     end type WRAP_X
+     type WRAP_L
+        type (MAPL_LocStream), pointer :: PTR => null()
+     end type WRAP_L
+     
+     type (MAPL_LocStreamXform), pointer :: xform_type
+     type (MAPL_LocStream), pointer :: locstream_type
+     type(WRAP_X) :: wrap_xform
+     type(WRAP_L) :: wrap_locstream
+     
+     allocate( xform_type, stat=status )
+     VERIFY_(STATUS)
+     xform_type = gcm_internal_state%xform_a2o
+     wrap_xform%ptr => xform_type
+     call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_A2O', &
+          wrap_xform,status )
+     VERIFY_(STATUS)
+     
+     ! this (i.e. second) allocation is intentional and not a memory leak
+     !===================================================================
+     allocate( xform_type, stat=status )
+     VERIFY_(STATUS)
+     xform_type = gcm_internal_state%xform_o2a
+     wrap_xform%ptr => xform_type
+     call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_O2A', &
+          wrap_xform,status )
+     VERIFY_(STATUS)
+
+     allocate( locstream_type, stat=status )
+     VERIFY_(STATUS)
+     locstream_type = exchO
+     wrap_locstream%ptr => locstream_type
+     call ESMF_UserCompSetInternalState ( GC, 'GCM_LOCSTREAM_OCEAN', &
+          wrap_locstream,status )
+     VERIFY_(STATUS)
+   end block
    !===================================
    end if
 

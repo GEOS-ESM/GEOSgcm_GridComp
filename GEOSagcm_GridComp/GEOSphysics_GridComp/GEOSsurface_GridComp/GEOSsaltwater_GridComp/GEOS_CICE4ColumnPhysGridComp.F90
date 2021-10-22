@@ -4076,20 +4076,32 @@ contains
 
     if (.not. mystate%retrievedRootGC) then
        block
+         type WRAP_X
+            type (MAPL_LocStreamXform), pointer :: PTR => null()
+         end type WRAP_X
+         type WRAP_L
+            type (MAPL_LocStream), pointer :: PTR => null()
+         end type WRAP_L
+
          type(ESMF_GridComp) :: rootGC
+         type(WRAP_X) :: wrap_xform
+         type(WRAP_L) :: wrap_locstream
 
          rootGC = MAPL_RootGcRetrieve(MAPL)
 !??         ASSERT_(associated(rootGC%ptr))
 
          call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_A2O', &
-              mystate%XFORM_A2O,status )
+              wrap_xform,status )
          VERIFY_(STATUS)
+         mystate%XFORM_A2O => wrap_xform%ptr
          call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_O2A', &
-              mystate%XFORM_O2A,status )
+              wrap_xform, status )
          VERIFY_(STATUS)
+         mystate%XFORM_O2A => wrap_xform%ptr
          call ESMF_UserCompGetInternalState ( rootGC, 'GCM_LOCSTREAM_OCEAN', &
-              mystate%locStreamO,status )
+              wrap_locstream, status )
          VERIFY_(STATUS)
+         mystate%locStreamO => wrap_locstream%ptr
        end block
        mystate%retrievedRootGC = .true.
     end if
@@ -4748,9 +4760,9 @@ contains
     integer :: k, nc, nt
     
     NT = size(ptr_2d, 1)
-    if(NT == 0) then
-        RETURN_(ESMF_SUCCESS)
-    endif  
+!@@    if(NT == 0) then
+!@@        RETURN_(ESMF_SUCCESS)
+!@@    endif  
     NC = size(ptr_2d, 2)
     call MAPL_GetPointer(state, ptr_3d, name, __RC__)
     ASSERT_(NC == size(ptr_3d,3)) ! make sure the ungridded dims match
@@ -4782,9 +4794,9 @@ contains
     integer :: k, nc, nt
 
     NT = size(ptr_2d, 1)
-    if(NT == 0) then 
-       RETURN_(ESMF_SUCCESS)
-    endif 
+!@@    if(NT == 0) then 
+!@@       RETURN_(ESMF_SUCCESS)
+!@@    endif 
     NC = size(ptr_2d, 2)
     call MAPL_GetPointer(state, ptr_3d, name, __RC__)
     ASSERT_(NC == size(ptr_3d,3)) ! make sure the ungridded dims match
