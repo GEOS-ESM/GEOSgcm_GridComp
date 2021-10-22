@@ -10,11 +10,11 @@ module EDMFPARAMS
     integer :: THERMAL_PLUME
     integer :: TEST
     integer :: DEBUG
+    integer :: ET
     real    :: STOCHFRAC
     real    :: ENTWFAC
     real    :: EDFAC
     real    :: ENT0
-    real    :: ET
     real    :: ALPHATH
     real    :: ALPHAQT
     real    :: ALPHAW

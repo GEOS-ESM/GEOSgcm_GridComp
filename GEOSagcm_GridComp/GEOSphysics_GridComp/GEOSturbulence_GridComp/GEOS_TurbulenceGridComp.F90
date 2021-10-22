@@ -3038,10 +3038,11 @@ contains
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      ! mass-flux constants/parameters
-     real :: NumUpR,ETr,TH00
+     real :: NumUpR,ETr
      integer :: NumUp,ET,DOCLASP,NumUpQ
      real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
-     real                            :: DOMF,STOCHENT 
+     real                            :: STOCHENT 
+     integer :: DOMF
 
      integer :: EDMF_OPTION      
      integer :: EDMF_IMPLICIT        ! 1 (default): implicit discretization of mass flux terms
@@ -3079,7 +3080,7 @@ contains
      real, dimension(im,jm,0:lm) :: RHOE,RHOAW3
      real, dimension(im,jm) :: ZPBLmf,KPBLmf,wu0, dthv0   
      real, dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,edmf_ent
-     real, dimension(im,jm,0:lm) :: aavg,qavg,wavg,hlavg,edmf_mf
+     real, dimension(im,jm,0:lm) :: edmf_mf
      real, dimension(im,jm,lm) :: au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full
      real, dimension(im,jm,lm) :: whl_edmf, wqt_edmf, wthv_edmf
      real, dimension(im,jm,lm) :: tke_mf, qt2_mf, qt2t_M_mf, qt2t_T_mf
@@ -3616,162 +3617,107 @@ contains
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 
 
-   ! get thl and qt
-    
+   ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
     THL=TH-(mapl_alhl*QL+mapl_alhs*QI)/(mapl_cp*EXF)
     QT=Q+QL+QI
 
 ! get updraft constants
+    call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)
 
-
-! number of updrafts
-  call MAPL_GetResource (MAPL, NumUpR, "EDMF_NumUp:", default=10.,     RC=STATUS)
-       NumUp=nint(NumUpR)
-  call MAPL_GetResource (MAPL, NumUpQ, "EDMF_NumUpQ:", default=1,     RC=STATUS)
-
-! (1):  boundaries for the updraft area
-      call MAPL_GetResource (MAPL, pwmin, "EDMF_pwmin:", default=1.,     RC=STATUS)
-      call MAPL_GetResource (MAPL, pwmax, "EDMF_pwmax:", default=3.,     RC=STATUS)
-! (2): coefficients for surface forcing
-      call MAPL_GetResource (MAPL, AlphaW, "EDMF_AlphaW:", default=0.572,     RC=STATUS)
-      call MAPL_GetResource (MAPL, AlphaQT, "EDMF_AlphaQT:", default=2.89,     RC=STATUS)
-      call MAPL_GetResource (MAPL, AlphaTH, "EDMF_AlphaTH:", default=2.89,     RC=STATUS)
-
-!  get info on how ent. rate is to be computed
-       call MAPL_GetResource (MAPL, ETr, "EDMF_ET:", default=1.,     RC=STATUS)
-       ET=nint(ETr)
- ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, ENT0, "EDMF_ENT0:", default=0.35,     RC=STATUS)
+    if ( DOMF /= 0 ) then
+      ! number of updrafts
+      call MAPL_GetResource (MAPL, NUMUP,   "EDMF_NumUp:", default=10,     RC=STATUS)
+      ! boundaries for the updraft area (min/max sigma of w pdf)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMIN,   "EDMF_pwmin:", default=1.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMAX,   "EDMF_pwmax:", default=3.,     RC=STATUS)
+      !
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENTWFAC, "EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
+      ! coefficients for surface forcing
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaW,  "EDMF_AlphaW:", default=0.572,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaQT, "EDMF_AlphaQT:", default=2.89,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaTH, "EDMF_AlphaTH:", default=2.89,     RC=STATUS) 
+      ! Entrainment rate options
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ET,      "EDMF_ET:", default=2,     RC=STATUS)
+      ! constant entrainment rate   
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,    "EDMF_ENT0:", default=1.0,     RC=STATUS)
       ! L0 if ET==1
-      call MAPL_GetResource (MAPL, L0, "EDMF_L0:", default=100.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, L0,      "EDMF_L0:", default=100.,     RC=STATUS)
       ! L0fac if ET==2
-      call MAPL_GetResource (MAPL, L0fac, "EDMF_L0fac:", default=10.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, L0fac,   "EDMF_L0fac:", default=10.,     RC=STATUS)
      ! factor to multiply the eddy-diffusivity with
-    call MAPL_GetResource (MAPL, EDfac, "EDMF_EDfac:", default=1.,     RC=STATUS)
-  ! if true then 
-    call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
-    call MAPL_GetResource (MAPL, DOCLASP, "DOCLASP:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_ENTRAIN, "EDMF_ENTRAIN:", default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_STOCHASTIC, "EDMF_STOCHASTIC:", default=1.,  RC=STATUS)
-    call MAPL_GetResource (MAPL,EntWFac,"EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
-    call MAPL_GetResource (MAPL, EDMF_DISCRETE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_TEST,  "EDMF_TEST:" , default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_DEBUG, "EDMF_DEBUG:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_WA, "EDMF_WA:", default=1.,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_WB, "EDMF_WB:", default=1.5,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_AU0, "EDMF_AU0:", default=0.14,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_CTH1, "EDMF_CTH1:", default=7.2,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_CTH2, "EDMF_CTH2:", default=1.1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_RHO_QB, "EDMF_RHO_QB:", default=0.5,  RC=STATUS)
-    call MAPL_GetResource (MAPL, C_KH_MF, "C_KH_MF:", default=0.,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_OPTION, "EDMF_OPTION:", default = 0, RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%EDfac,   "EDMF_EDfac:", default=1.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%DOCLASP, "DOCLASP:", default=0,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENTRAIN,    "EDMF_ENTRAIN:", default=1,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:", default=0.5,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%DISCRETE,   "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%IMPLICIT,   "EDMF_IMPLICIT:", default=1,  RC=STATUS)
 
-    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
+      ! Future options
+!      call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_TEST,  "EDMF_TEST:" , default=0,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_DEBUG, "EDMF_DEBUG:", default=0,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_WA, "EDMF_WA:", default=1.,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_WB, "EDMF_WB:", default=1.5,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_AU0, "EDMF_AU0:", default=0.14,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_CTH1, "EDMF_CTH1:", default=7.2,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_CTH2, "EDMF_CTH2:", default=1.1,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, EDMF_RHO_QB, "EDMF_RHO_QB:", default=0.5,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, C_KH_MF, "C_KH_MF:", default=0.,  RC=STATUS)
+!      call MAPL_GetResource (MAPL, NumUpQ, "EDMF_NumUpQ:", default=1,     RC=STATUS)
+    end if
 
-
-     call MAPL_TimerOn(MAPL,"---MASSFLUX")
+    call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
 
-    ! Interpolate EDMF profiles to half levels 
-!    call interp_edmf(IM, JM, LM, &                           ! in
-!                     edmf_discrete, edmf_implicit, &         ! in
-!                     zle, z, &                               ! in
-!                     u, v, thl, qt, q, ql, qi, thv, &        ! in
-!                     ui, vi, thli, qti, qvi, qli, qii, thvi) ! out 
+! Initialize EDMF output variables needed for update_moments
+    mfhl2  = 0.0
+    mfhlqt = 0.0
+    mfqt2  = 0.0
+    mfw2   = 0.0
+    mfw3   = 0.0
+    mfqt3  = 0.0
+    mfhl3  = 0.0
+    mfwqt  = 0.0
+    mfwhl  = 0.0
+    edmf_hl2  = 0.0
+    edmf_qt2  = 0.0
+    edmf_hlqt = 0.0
 
-mfhl2 = 0.0
-mfhlqt = 0.0
-mfqt2 = 0.0
-mfw2 = 0.0
-mfw3 = 0.0
-mfqt3 = 0.0
-mfhl3 = 0.0
-mfwqt = 0.0
-mfwhl = 0.0
-
-edmf_hl2 = 0.0
-edmf_qt2 = 0.0
-edmf_hlqt = 0.0
-
-IF(DoMF /= 0.) then
+    IF(DoMF /= 0) then
     
-   aw3 = 0.0
-   th00 = 300.
+      aw3 = 0.0
 
-   call calc_mf_depth(IM,JM,LM,T,Z,Q,PLO,edmfZCLD)
+      call calc_mf_depth(IM,JM,LM,T,Z,Q,PLO,edmfZCLD)
 
-!   print *,'edmfZCLD=',edmfZCLD
+      ! compute L0 for entrainment calculation, assuming reasonable limits
+      if (EDMFPARAMS%ET .eq. 2) then
+        DO I=1,IM
+           DO J=1,JM
+              L02(I,J)=max(min(edmfZCLD(I,J),3000.),500.)/L0fac
+           ENDDO
+        ENDDO 
+      else
+         L02 = L0
+      end if
 
-!   edmfZCLD = 3000.
-
- ! compute the L0 assuming reasonable limits
-   if (ETr .eq. 2.) then
-     DO I=1,IM
-        DO J=1,JM
-           L02(I,J)=max(min(edmfZCLD(I,J),3000.),500.)/L0fac
-        ENDDO
-     ENDDO 
-   else
-     L02 = L0
-   end if
-
-!   do iter = 1,2
-
-!      if (EDMF_OPTION.eq.1) then
-!       call run_edmf(IM, JM, LM, numup, NumUpQ, iras, jras, &                       ! in
-!                     edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
-!                     edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in 
-!                     th00, dt, z, zle, ple, rho, rhoe, exf, &                        ! in
-!                     u, v, thl, qt, q, ql, qi, thv, &                                ! in 
-!                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
-!                     ustar, sh, evap, ice_ramp, &                                    ! in 
-!                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in
-!                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in 
-!                     edmf_au0, edmf_cth1, edmf_cth2, edmf_rho_qb, &                  ! in
-!                     zpbl, &                                                         ! inout 
-!                     edmfdrya, edmfmoista, &                                         ! out
-!                     edmfdryw, edmfmoistw, &                                         ! out 
-!                     edmfdryqt, edmfmoistqt, &                                       ! out
-!                     edmfdrythl, edmfmoistthl, &                                     ! out 
-!                     edmfdryu, edmfmoistu,  &                                        ! out
-!                     edmfdryv, edmfmoistv,  &                                        ! out 
-!                     edmfmoistqc, &                                                  ! out
-!                     tke_mf, &                                                       ! out (diagnostics) 
-!                     qt2_mf, qt2t_M_mf, qt2t_T_mf, &                                 ! out (diagnostics)
-!                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, itau_E, & ! out (for solver)
-!                     whl_edmf, wqt_edmf, wthv_edmf, &                                      ! out (for MYNN-EDMF incons!istent partitioning)
-!                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-!                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST) 
-!#ifdef EDMF_DIAG
-!                     w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
-!                     w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
-!                     qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
-!                     qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
-!                     thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
-!                     thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
-!#endif
-!                     wu0, dthv0, &
-!                     au, uu, vu, wu, Mu, E, D, udet, vdet, wdet)                     ! out (for MYNN-EDMF consistent partitioning)  
-
-!       else if (EDMF_OPTION.eq.0) then
-       call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
-               U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,frland,zpbl,ice_ramp, &
-               MFTHSRC, MFQTSRC, MFW, MFAREA, &  ! CLASP imports
-               edmfdrya,edmfmoista,      & ! diag
-               edmfdryw,edmfmoistw,      & ! diag
-               edmfdryqt,edmfmoistqt,    & ! diag
-               edmfdrythl,edmfmoistthl,  & ! diag
-               edmfdryu,edmfmoistu,      & ! diag
-               edmfdryv,edmfmoistv,      & ! diag
-               edmfmoistqc,              & ! diag
-               ae3, aw3, aws3, awqv3,    & ! for trisolver 
-               awql3, awqi3, awu3, awv3, & ! for trisolver
-               mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, & ! for ADG PDF
-!               au, Mu, E, D, hle, qte, 
-               buoyf, edmf_ent, edmf_mf, &  
+      call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,L02,NUMUP,&
+               U,V,THL,THV,QT,Q,QL,QI,USTAR,  & ! in
+               SH,EVAP,frland,zpbl,           & ! in
+               MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP imports
+               ae3, aw3, aws3, awqv3,         & ! for trisolver 
+               awql3, awqi3, awu3, awv3,      & ! for trisolver
+               mfw2,mfw3,mfqt3,mfhl3,mfwqt,   & ! for ADG PDF
+               mfqt2,mfhl2,mfhlqt,mfwhl,      & ! for ADG PDF
+               edmfdrya,edmfmoista,           & ! diag
+               edmfdryw,edmfmoistw,           & ! diag
+               edmfdryqt,edmfmoistqt,         & ! diag
+               edmfdrythl,edmfmoistthl,       & ! diag
+               edmfdryu,edmfmoistu,           & ! diag
+               edmfdryv,edmfmoistv,           & ! diag
+               edmfmoistqc,                   & ! diag
+               buoyf, edmf_ent, edmf_mf,      & ! diag  
 #ifdef EDMF_DIAG
                w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -3780,196 +3726,150 @@ IF(DoMF /= 0.) then
                thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-               pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &  ! parameters
-               ET,L02,ENT0,EDfac,EntWFac, & ! parameters
-               EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC, DOCLASP, EDMF_ENTRAIN)
-!           end if
-
-!       if (ETr.eq.1.) then
-!          exit
-!       else if (iter.eq.1) then
-
-!         edmfZCLD=0.
-    
-!          DO I=1,IM
-!            DO J=1,JM
-!              DO L=LM,0,-1
-!                IF (AW3(I,J,L) .gt. 0.) then
-!                  edmfZCLD(I,J)=ZLE(I,J,L)
-!                ENDIF  
-!              ENDDO
-!            ENDDO
-!          ENDDO 
- 
-
-!       end if
-
-!   end do  ! edmf call loop 1-2      
-      
+               EDMFPARAMS )
 
 #ifdef EDMF_DIAG
-     if (associated(edmf_w_plume1)) edmf_w_plume1 = w_plume1
-     if (associated(edmf_w_plume2)) edmf_w_plume2 = w_plume2
-     if (associated(edmf_w_plume3)) edmf_w_plume3 = w_plume3
-     if (associated(edmf_w_plume4)) edmf_w_plume4 = w_plume4
-     if (associated(edmf_w_plume5)) edmf_w_plume5 = w_plume5
-     if (associated(edmf_w_plume6)) edmf_w_plume6 = w_plume6
-     if (associated(edmf_w_plume7)) edmf_w_plume7 = w_plume7
-     if (associated(edmf_w_plume8)) edmf_w_plume8 = w_plume8
-     if (associated(edmf_w_plume9)) edmf_w_plume9 = w_plume9
-     if (associated(edmf_w_plume10)) edmf_w_plume10 = w_plume10
+      if (associated(edmf_w_plume1)) edmf_w_plume1 = w_plume1
+      if (associated(edmf_w_plume2)) edmf_w_plume2 = w_plume2
+      if (associated(edmf_w_plume3)) edmf_w_plume3 = w_plume3
+      if (associated(edmf_w_plume4)) edmf_w_plume4 = w_plume4
+      if (associated(edmf_w_plume5)) edmf_w_plume5 = w_plume5
+      if (associated(edmf_w_plume6)) edmf_w_plume6 = w_plume6
+      if (associated(edmf_w_plume7)) edmf_w_plume7 = w_plume7
+      if (associated(edmf_w_plume8)) edmf_w_plume8 = w_plume8
+      if (associated(edmf_w_plume9)) edmf_w_plume9 = w_plume9
+      if (associated(edmf_w_plume10)) edmf_w_plume10 = w_plume10 
 
-     if (associated(edmf_qt_plume1)) edmf_qt_plume1 = qt_plume1
-     if (associated(edmf_qt_plume2)) edmf_qt_plume2 = qt_plume2
-     if (associated(edmf_qt_plume3)) edmf_qt_plume3 = qt_plume3
-     if (associated(edmf_qt_plume4)) edmf_qt_plume4 = qt_plume4
-     if (associated(edmf_qt_plume5)) edmf_qt_plume5 = qt_plume5
-     if (associated(edmf_qt_plume6)) edmf_qt_plume6 = qt_plume6
-     if (associated(edmf_qt_plume7)) edmf_qt_plume7 = qt_plume7
-     if (associated(edmf_qt_plume8)) edmf_qt_plume8 = qt_plume8
-     if (associated(edmf_qt_plume9)) edmf_qt_plume9 = qt_plume9
-     if (associated(edmf_qt_plume10)) edmf_qt_plume10 = qt_plume10
+      if (associated(edmf_qt_plume1)) edmf_qt_plume1 = qt_plume1
+      if (associated(edmf_qt_plume2)) edmf_qt_plume2 = qt_plume2
+      if (associated(edmf_qt_plume3)) edmf_qt_plume3 = qt_plume3
+      if (associated(edmf_qt_plume4)) edmf_qt_plume4 = qt_plume4
+      if (associated(edmf_qt_plume5)) edmf_qt_plume5 = qt_plume5
+      if (associated(edmf_qt_plume6)) edmf_qt_plume6 = qt_plume6
+      if (associated(edmf_qt_plume7)) edmf_qt_plume7 = qt_plume7
+      if (associated(edmf_qt_plume8)) edmf_qt_plume8 = qt_plume8
+      if (associated(edmf_qt_plume9)) edmf_qt_plume9 = qt_plume9
+      if (associated(edmf_qt_plume10)) edmf_qt_plume10 = qt_plume10
 
-     if (associated(edmf_thl_plume1)) edmf_thl_plume1 = thl_plume1
-     if (associated(edmf_thl_plume2)) edmf_thl_plume2 = thl_plume2
-     if (associated(edmf_thl_plume3)) edmf_thl_plume3 = thl_plume3
-     if (associated(edmf_thl_plume4)) edmf_thl_plume4 = thl_plume4
-     if (associated(edmf_thl_plume5)) edmf_thl_plume5 = thl_plume5
-     if (associated(edmf_thl_plume6)) edmf_thl_plume6 = thl_plume6
-     if (associated(edmf_thl_plume7)) edmf_thl_plume7 = thl_plume7
-     if (associated(edmf_thl_plume8)) edmf_thl_plume8 = thl_plume8
-     if (associated(edmf_thl_plume9)) edmf_thl_plume9 = thl_plume9
-     if (associated(edmf_thl_plume10)) edmf_thl_plume10 = thl_plume10
+      if (associated(edmf_thl_plume1)) edmf_thl_plume1 = thl_plume1
+      if (associated(edmf_thl_plume2)) edmf_thl_plume2 = thl_plume2
+      if (associated(edmf_thl_plume3)) edmf_thl_plume3 = thl_plume3
+      if (associated(edmf_thl_plume4)) edmf_thl_plume4 = thl_plume4
+      if (associated(edmf_thl_plume5)) edmf_thl_plume5 = thl_plume5
+      if (associated(edmf_thl_plume6)) edmf_thl_plume6 = thl_plume6
+      if (associated(edmf_thl_plume7)) edmf_thl_plume7 = thl_plume7
+      if (associated(edmf_thl_plume8)) edmf_thl_plume8 = thl_plume8
+      if (associated(edmf_thl_plume9)) edmf_thl_plume9 = thl_plume9
+      if (associated(edmf_thl_plume10)) edmf_thl_plume10 = thl_plume10
 #endif
-!    if (associated(edmf_aw)) edmf_aw=aw3
-     if (associated(z_conv_edmf)) z_conv_edmf=edmfzcld
-     if (associated(edmf_dry_a)) edmf_dry_a=edmfdrya 
-     if (associated(edmf_moist_a)) edmf_moist_a=edmfmoista 
-     if (associated(edmf_dry_w)) edmf_dry_w=edmfdryw 
-     if (associated(edmf_moist_w)) edmf_moist_w=edmfmoistw 
-     if (associated(edmf_dry_qt)) edmf_dry_qt=edmfdryqt 
-     if (associated(edmf_moist_qt)) edmf_moist_qt=edmfmoistqt 
-     if (associated(edmf_dry_thl)) edmf_dry_thl=edmfdrythl 
-     if (associated(edmf_moist_thl)) edmf_moist_thl=edmfmoistthl 
-     if (associated(edmf_dry_u)) edmf_dry_u=edmfdryu 
-     if (associated(edmf_moist_u)) edmf_moist_u=edmfmoistu 
-     if (associated(edmf_dry_v)) edmf_dry_v=edmfdryv 
-     if (associated(edmf_moist_v)) edmf_moist_v=edmfmoistv 
-     if (associated(edmf_moist_qc)) edmf_moist_qc=edmfmoistqc 
-     if (associated(edmf_buoyf)) edmf_buoyf=buoyf 
+      if (associated(z_conv_edmf))    z_conv_edmf = edmfzcld
+      if (associated(edmf_dry_a))     edmf_dry_a = edmfdrya 
+      if (associated(edmf_moist_a))   edmf_moist_a = edmfmoista 
+      if (associated(edmf_dry_w))     edmf_dry_w = edmfdryw 
+      if (associated(edmf_moist_w))   edmf_moist_w = edmfmoistw 
+      if (associated(edmf_dry_qt))    edmf_dry_qt = edmfdryqt 
+      if (associated(edmf_moist_qt))  edmf_moist_qt = edmfmoistqt 
+      if (associated(edmf_dry_thl))   edmf_dry_thl = edmfdrythl 
+      if (associated(edmf_moist_thl)) edmf_moist_thl = edmfmoistthl 
+      if (associated(edmf_dry_u))     edmf_dry_u = edmfdryu 
+      if (associated(edmf_moist_u))   edmf_moist_u = edmfmoistu 
+      if (associated(edmf_dry_v))     edmf_dry_v = edmfdryv 
+      if (associated(edmf_moist_v))   edmf_moist_v = edmfmoistv 
+      if (associated(edmf_moist_qc))  edmf_moist_qc = edmfmoistqc 
+      if (associated(edmf_buoyf))     edmf_buoyf = buoyf 
+      if (associated(edmf_entx))      edmf_entx = edmf_ent
+      if (associated(edmf_mfx))       edmf_mfx = edmf_mf
+      if (associated(edmf_hl2))       edmf_hl2 = mfhl2 
+      if (associated(edmf_qt2))       edmf_qt2 = mfqt2 
+      if (associated(edmf_w2))        edmf_w2 = mfw2
+      if (associated(edmf_w3))        edmf_w3 = mfw3
+      if (associated(edmf_qt3))       edmf_qt3 = mfqt3
+      if (associated(edmf_hl3))       edmf_hl3 = mfhl3
+      if (associated(edmf_wqt))       edmf_wqt = mfwqt
+      if (associated(edmf_hlqt))      edmf_hlqt = mfhlqt
+      if (associated(edmf_whl))       edmf_whl = mfwhl
+      EDMF_FRC = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM)) 
 
-     EDMF_FRC = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM))
-
-     if (associated(edmf_entx)) edmf_entx =edmf_ent
-     if (associated(edmf_mfx))  edmf_mfx =edmf_mf
-     if (associated(edmf_hl2))  edmf_hl2=mfhl2 
-     if (associated(edmf_qt2))  edmf_qt2=mfqt2 
-     if (associated(edmf_w2))   edmf_w2=mfw2
-     if (associated(edmf_w3))   edmf_w3=mfw3
-     if (associated(edmf_qt3))  edmf_qt3=mfqt3
-     if (associated(edmf_hl3))  edmf_hl3=mfhl3
-     if (associated(edmf_wqt))  edmf_wqt=mfwqt
-     if (associated(edmf_hlqt)) edmf_hlqt=mfhlqt
-     if (associated(edmf_whl))  edmf_whl=mfwhl
-     aavg = edmfmoista+edmfdrya
-     where (aavg.gt.0.001) 
-      wavg = (edmfmoista*edmfmoistw+edmfdrya*edmfdryw)/aavg
-      qavg = (edmfmoista*edmfmoistqt+edmfdrya*edmfdryqt)/aavg
-      hlavg = (edmfmoista*edmfmoistthl+edmfdrya*edmfdrythl)/aavg
-     elsewhere
-      wavg = 0.
-      qavg = 0.
-      hlavg = 0.
-     end where
-!     qti(:,:,1:LM-1) = 0.5*(qt(:,:,1:LM-1)+qt(:,:,2:LM))
-!     qti(:,:,0)  = qt(:,:,1)
-!     qti(:,:,LM) = qt(:,:,LM)
-!     hli(:,:,1:LM-1) = 0.5*exf(:,:,1:LM-1)*(thl(:,:,1:LM-1)+thl(:,:,2:LM))
-!     hli(:,:,0)  = thl(:,:,1)*exf(:,:,1)
-!     hli(:,:,LM) = thl(:,:,LM)*exf(:,:,LM)
-ELSE
-! if there is no mass-flux
-!
-    ae3   = 1.0
-    aw3   = 0.0
-    aws3  = 0.0
-    awqv3 = 0.0
-    awql3 = 0.0
-    awqi3 = 0.0
-    awu3  = 0.0
-    awv3  = 0.0
-    buoyf = 0.0
+    ELSE            ! if there is no mass-flux
+      ae3   = 1.0
+      aw3   = 0.0
+      aws3  = 0.0
+      awqv3 = 0.0
+      awql3 = 0.0
+      awqi3 = 0.0
+      awu3  = 0.0
+      awv3  = 0.0
+      buoyf = 0.0  
 
 #ifdef EDMF_DIAG
-     if (associated(edmf_w_plume1)) edmf_w_plume1 = MAPL_UNDEF
-     if (associated(edmf_w_plume2)) edmf_w_plume2 = MAPL_UNDEF
-     if (associated(edmf_w_plume3)) edmf_w_plume3 = MAPL_UNDEF
-     if (associated(edmf_w_plume4)) edmf_w_plume4 = MAPL_UNDEF
-     if (associated(edmf_w_plume5)) edmf_w_plume5 = MAPL_UNDEF
-     if (associated(edmf_w_plume6)) edmf_w_plume6 = MAPL_UNDEF
-     if (associated(edmf_w_plume7)) edmf_w_plume7 = MAPL_UNDEF
-     if (associated(edmf_w_plume8)) edmf_w_plume8 = MAPL_UNDEF
-     if (associated(edmf_w_plume9)) edmf_w_plume9 = MAPL_UNDEF
-     if (associated(edmf_w_plume10)) edmf_w_plume10 = MAPL_UNDEF
+      if (associated(edmf_w_plume1)) edmf_w_plume1 = MAPL_UNDEF
+      if (associated(edmf_w_plume2)) edmf_w_plume2 = MAPL_UNDEF
+      if (associated(edmf_w_plume3)) edmf_w_plume3 = MAPL_UNDEF
+      if (associated(edmf_w_plume4)) edmf_w_plume4 = MAPL_UNDEF
+      if (associated(edmf_w_plume5)) edmf_w_plume5 = MAPL_UNDEF
+      if (associated(edmf_w_plume6)) edmf_w_plume6 = MAPL_UNDEF
+      if (associated(edmf_w_plume7)) edmf_w_plume7 = MAPL_UNDEF
+      if (associated(edmf_w_plume8)) edmf_w_plume8 = MAPL_UNDEF
+      if (associated(edmf_w_plume9)) edmf_w_plume9 = MAPL_UNDEF
+      if (associated(edmf_w_plume10)) edmf_w_plume10 = MAPL_UNDEF
 
-     if (associated(edmf_qt_plume1)) edmf_qt_plume1 = MAPL_UNDEF
-     if (associated(edmf_qt_plume2)) edmf_qt_plume2 = MAPL_UNDEF
-     if (associated(edmf_qt_plume3)) edmf_qt_plume3 = MAPL_UNDEF
-     if (associated(edmf_qt_plume4)) edmf_qt_plume4 = MAPL_UNDEF
-     if (associated(edmf_qt_plume5)) edmf_qt_plume5 = MAPL_UNDEF
-     if (associated(edmf_qt_plume6)) edmf_qt_plume6 = MAPL_UNDEF
-     if (associated(edmf_qt_plume7)) edmf_qt_plume7 = MAPL_UNDEF
-     if (associated(edmf_qt_plume8)) edmf_qt_plume8 = MAPL_UNDEF
-     if (associated(edmf_qt_plume9)) edmf_qt_plume9 = MAPL_UNDEF
-     if (associated(edmf_qt_plume10)) edmf_qt_plume10 = MAPL_UNDEF
+      if (associated(edmf_qt_plume1)) edmf_qt_plume1 = MAPL_UNDEF
+      if (associated(edmf_qt_plume2)) edmf_qt_plume2 = MAPL_UNDEF
+      if (associated(edmf_qt_plume3)) edmf_qt_plume3 = MAPL_UNDEF
+      if (associated(edmf_qt_plume4)) edmf_qt_plume4 = MAPL_UNDEF
+      if (associated(edmf_qt_plume5)) edmf_qt_plume5 = MAPL_UNDEF
+      if (associated(edmf_qt_plume6)) edmf_qt_plume6 = MAPL_UNDEF
+      if (associated(edmf_qt_plume7)) edmf_qt_plume7 = MAPL_UNDEF
+      if (associated(edmf_qt_plume8)) edmf_qt_plume8 = MAPL_UNDEF
+      if (associated(edmf_qt_plume9)) edmf_qt_plume9 = MAPL_UNDEF
+      if (associated(edmf_qt_plume10)) edmf_qt_plume10 = MAPL_UNDEF 
 
-     if (associated(edmf_thl_plume1)) edmf_thl_plume1 = MAPL_UNDEF
-     if (associated(edmf_thl_plume2)) edmf_thl_plume2 = MAPL_UNDEF
-     if (associated(edmf_thl_plume3)) edmf_thl_plume3 = MAPL_UNDEF
-     if (associated(edmf_thl_plume4)) edmf_thl_plume4 = MAPL_UNDEF
-     if (associated(edmf_thl_plume5)) edmf_thl_plume5 = MAPL_UNDEF
-     if (associated(edmf_thl_plume6)) edmf_thl_plume6 = MAPL_UNDEF
-     if (associated(edmf_thl_plume7)) edmf_thl_plume7 = MAPL_UNDEF
-     if (associated(edmf_thl_plume8)) edmf_thl_plume8 = MAPL_UNDEF
-     if (associated(edmf_thl_plume9)) edmf_thl_plume9 = MAPL_UNDEF
-     if (associated(edmf_thl_plume10)) edmf_thl_plume10 = MAPL_UNDEF
+      if (associated(edmf_thl_plume1)) edmf_thl_plume1 = MAPL_UNDEF
+      if (associated(edmf_thl_plume2)) edmf_thl_plume2 = MAPL_UNDEF
+      if (associated(edmf_thl_plume3)) edmf_thl_plume3 = MAPL_UNDEF
+      if (associated(edmf_thl_plume4)) edmf_thl_plume4 = MAPL_UNDEF
+      if (associated(edmf_thl_plume5)) edmf_thl_plume5 = MAPL_UNDEF
+      if (associated(edmf_thl_plume6)) edmf_thl_plume6 = MAPL_UNDEF
+      if (associated(edmf_thl_plume7)) edmf_thl_plume7 = MAPL_UNDEF
+      if (associated(edmf_thl_plume8)) edmf_thl_plume8 = MAPL_UNDEF
+      if (associated(edmf_thl_plume9)) edmf_thl_plume9 = MAPL_UNDEF
+      if (associated(edmf_thl_plume10)) edmf_thl_plume10 = MAPL_UNDEF
 #endif
-  
-    if (associated(z_conv_edmf))    z_conv_edmf=mapl_undef
-    if (associated(edmf_dry_a))     edmf_dry_a    =0.0
-    if (associated(edmf_moist_a))   edmf_moist_a  =0.0
-    if (associated(edmf_dry_w))     edmf_dry_w    =mapl_undef
-    if (associated(edmf_moist_w))   edmf_moist_w  =mapl_undef 
-    if (associated(edmf_dry_qt))    edmf_dry_qt   =mapl_undef
-    if (associated(edmf_moist_qt))  edmf_moist_qt =mapl_undef 
-    if (associated(edmf_dry_thl))   edmf_dry_thl  =mapl_undef 
-    if (associated(edmf_moist_thl)) edmf_moist_thl=mapl_undef 
-    if (associated(edmf_dry_u))     edmf_dry_u    =mapl_undef 
-    if (associated(edmf_moist_u))   edmf_moist_u  =mapl_undef 
-    if (associated(edmf_dry_v))     edmf_dry_v    =mapl_undef 
-    if (associated(edmf_moist_v))   edmf_moist_v  =mapl_undef 
-    if (associated(edmf_moist_qc))  edmf_moist_qc =mapl_undef 
-    if (associated(edmf_buoyf))     edmf_buoyf    =0.0
-    if (associated(edmf_entx))      edmf_entx     = mapl_undef
-    if (associated(edmf_mfx))       edmf_mfx      =0.0 
-    if (associated(edmf_hl2))       edmf_hl2      =mfhl2 
-    if (associated(edmf_qt2))       edmf_qt2      =mfqt2 
-    if (associated(edmf_w2))        edmf_w2       =mfw2
-    if (associated(edmf_w3))        edmf_w3       =mfw3
-    if (associated(edmf_qt3))       edmf_qt3      =mfqt3
-    if (associated(edmf_hl3))       edmf_hl3      =mfhl3
-    if (associated(edmf_wqt))       edmf_wqt      =mfwqt
-    if (associated(edmf_hlqt))      edmf_hlqt     =mfhlqt
-    if (associated(edmf_whl))       edmf_whl      =mfwhl
-   
-    EDMF_FRC = 0.
-
-    ZPBLmf=0.
-    KPBLmf=float(LM)
+      if (associated(z_conv_edmf))    z_conv_edmf   = mapl_undef
+      if (associated(edmf_dry_a))     edmf_dry_a    = 0.0
+      if (associated(edmf_moist_a))   edmf_moist_a  = 0.0
+      if (associated(edmf_dry_w))     edmf_dry_w    = mapl_undef
+      if (associated(edmf_moist_w))   edmf_moist_w  = mapl_undef 
+      if (associated(edmf_dry_qt))    edmf_dry_qt   = mapl_undef
+      if (associated(edmf_moist_qt))  edmf_moist_qt = mapl_undef 
+      if (associated(edmf_dry_thl))   edmf_dry_thl  = mapl_undef 
+      if (associated(edmf_moist_thl)) edmf_moist_thl= mapl_undef 
+      if (associated(edmf_dry_u))     edmf_dry_u    = mapl_undef 
+      if (associated(edmf_moist_u))   edmf_moist_u  = mapl_undef 
+      if (associated(edmf_dry_v))     edmf_dry_v    = mapl_undef 
+      if (associated(edmf_moist_v))   edmf_moist_v  = mapl_undef 
+      if (associated(edmf_moist_qc))  edmf_moist_qc = mapl_undef 
+      if (associated(edmf_buoyf))     edmf_buoyf    = 0.0
+      if (associated(edmf_entx))      edmf_entx     = mapl_undef
+      if (associated(edmf_mfx))       edmf_mfx      = 0.0 
+      if (associated(edmf_hl2))       edmf_hl2      = mfhl2 
+      if (associated(edmf_qt2))       edmf_qt2      = mfqt2 
+      if (associated(edmf_w2))        edmf_w2       = mfw2
+      if (associated(edmf_w3))        edmf_w3       = mfw3
+      if (associated(edmf_qt3))       edmf_qt3      = mfqt3
+      if (associated(edmf_hl3))       edmf_hl3      = mfhl3
+      if (associated(edmf_wqt))       edmf_wqt      = mfwqt
+      if (associated(edmf_hlqt))      edmf_hlqt     = mfhlqt
+      if (associated(edmf_whl))       edmf_whl      = mfwhl
      
-ENDIF
+      EDMF_FRC = 0.
 
- call MAPL_TimerOff(MAPL,"---MASSFLUX")
+      ZPBLmf=0.
+      KPBLmf=float(LM)
+     
+   ENDIF
+
+   call MAPL_TimerOff(MAPL,"---MASSFLUX")
 
 
 !!!=================================================================
@@ -4532,7 +4432,6 @@ ENDIF
         end if
       end if ! TKE
 
-!      print *,'before update_moments'
       ! Update the higher order moments required for the ADG PDF
       if (PDFSHAPE.eq.5) then
       HL = T + (mapl_grav*Z - mapl_alhl*QLLS)/mapl_cp
@@ -4873,7 +4772,7 @@ ENDIF
 
 ! print *,'rhoaw3',rhoaw3
 
-     if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0) then
+     if (EDMFPARAMS%IMPLICIT == 1 .and. EDMFPARAMS%DISCRETE == 0) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
@@ -4888,7 +4787,7 @@ ENDIF
   CKQQ(:,:,LM)=-CQ*DMI(:,:,LM)
   CKUU(:,:,LM)=-CU*DMI(:,:,LM)
   
-     if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0) then
+     if (EDMFPARAMS%IMPLICIT == 1 .and. EDMFPARAMS%DISCRETE == 0) then
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
@@ -4905,8 +4804,8 @@ ENDIF
 
 ! Add mass flux contribution
   
-  if (EDMF_IMPLICIT == 1) then
-     if (EDMF_DISCRETE == 0) then
+  if (EDMFPARAMS%IMPLICIT == 1) then
+     if (EDMFPARAMS%DISCRETE == 0) then
         BKSS(:,:,LM) = BKSS(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
         BKQQ(:,:,LM) = BKQQ(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
         BKUU(:,:,LM) = BKUU(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
@@ -4914,7 +4813,7 @@ ENDIF
         BKSS(:,:,1:LM-1) = BKSS(:,:,1:LM-1) + DMI(:,:,1:LM-1)*( RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2) )
         BKQQ(:,:,1:LM-1) = BKQQ(:,:,1:LM-1) + DMI(:,:,1:LM-1)*( RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2) )
         BKUU(:,:,1:LM-1) = BKUU(:,:,1:LM-1) + DMI(:,:,1:LM-1)*( RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2) ) 
-     else if (EDMF_DISCRETE == 1) then
+     else if (EDMFPARAMS%DISCRETE == 1) then
         AKSS(:,:,2:LM) = AKSS(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKQQ(:,:,2:LM) = AKQQ(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKUU(:,:,2:LM) = AKUU(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
@@ -5118,7 +5017,6 @@ ENDIF
     real, dimension(:,:,:), pointer     :: DX
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
-    real                                :: DOMF
     real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
 
     integer                             :: KM, K,L
@@ -5127,6 +5025,8 @@ ENDIF
 
     real,               dimension(IM,JM,LM) :: DP
     real(kind=MAPL_R8), dimension(IM,JM,LM) :: SX
+
+    real :: DOMF
 
     integer :: i, j, ll
 
@@ -5300,8 +5200,6 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
          AK => AKUU; BK => BKUU; CK => CKUU
          SX=S+YV        
  end if
-
-if (any(isnan(SX))) print *,'SX has NaN in DIFFUSE'
 
 
 ! Solve for semi-implicit changes. This modifies SX
@@ -6673,10 +6571,13 @@ subroutine calc_mf_depth(im,jm,nlev,t,z,q,p,ztop)
 end subroutine calc_mf_depth
 
 
-SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
+SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,L0,nup,&
               u3,v3,thl3,thv3,qt3,qv3,ql3,qi3,&
-              ust2,wthl2,wqt2,frland,pblh2,ice_ramp, &
+              ust2,wthl2,wqt2,frland,pblh2, &
               mfsrcthl, mfsrcqt, mfw, mfarea, &
+            ! outputs - variables needed for solver 
+             ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
+             mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, &
             ! outputs - tendencies
            !  &dth,dqv,dqc,du,dv,&
              ! outputs - updraft properties   
@@ -6687,9 +6588,6 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              dry_u3,moist_u3, &
              dry_v3,moist_v3, &
              moist_qc3, &
-            ! outputs - variables needed for solver 
-             ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, &
 !             au, Mu, E, D, hle, qte, & 
              buoyf, entx, edmfmf, &
 #ifdef EDMF_DIAG
@@ -6700,12 +6598,10 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
              thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L0,ENT0,EDfac,EntWFac,&
-             edmf_discrete_type, edmf_implicit, stochent, doclasp, entrainopt)
-
-
-
+             params)
+!             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
+!             ET,L0,ENT0,EDfac,EntWFac,&
+!             edmf_discrete_type, edmf_implicit, stochent, doclasp, entrainopt)
 
 ! Variables needed for solver:
 ! ae = sum_i (1-a_i)
@@ -6736,18 +6632,18 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
 ! dry_a3,moist_a3,dry_thl3, ... (ITS:ITE,KTS-1:KTE)
 ! s_aw3,s_awthl3 ... (ITS:ITE,KTS-1:KTE)
 
-
-       INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE,NUP,DOCLASP
+       type (EDMFPARAMS_TYPE), INTENT(IN) :: PARAMS
+       INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE,NUP!,DOCLASP
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3
        ! zw .. heights of the updraft levels (edges of boxes)
       ! REAL,DIMENSION(ITS:ITE,KTS:KTE+1), INTENT(IN) :: ZW
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: mfsrcqt,mfsrcthl,mfw,mfarea
        REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND
-       INTEGER, INTENT(IN) :: edmf_discrete_type, edmf_implicit, entrainopt
-       REAL, INTENT(IN) :: stochent
-       REAL, INTENT(IN)                     :: ICE_RAMP  
-       REAL :: DT,EntWFac
+!       INTEGER, INTENT(IN) :: edmf_discrete_type, edmf_implicit, entrainopt
+!       REAL, INTENT(IN) :: stochent
+!       REAL, INTENT(IN)                     :: ICE_RAMP  
+       REAL :: DT
        INTEGER :: NUP2
 
 ! outputs
@@ -6813,10 +6709,9 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
 
 
 ! constants get from resources
- real :: ENT0,pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,EDfac
- integer,intent(IN) :: ET
+! real :: ENT0,pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,EDfac
 
-real, dimension(its:ite) :: L0
+real, dimension(its:ite), intent(IN) :: L0
 
 ! w parameters
  REAL,PARAMETER :: &
@@ -6827,7 +6722,6 @@ real, dimension(its:ite) :: L0
   REAL,PARAMETER :: &
      WSTARmin=1.e-3, &
      PBLHmin=100.
-
 
 
      ! set updraft properties to zero/undef
@@ -6867,7 +6761,7 @@ real, dimension(its:ite) :: L0
 
    ! this is the environmental area - by default 1.
 
-     ae3=EDfac 
+     ae3=PARAMS%EDfac 
 
 #ifdef EDMF_DIAG
       w_plume1 = mapl_undef
@@ -6914,9 +6808,9 @@ pblh=max(pblh,pblhmin)
 wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 
 ! if surface buoyancy is positive then mass-flux, otherwise not
-  IF ( (wthv > 0.0 .and. doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. doclasp/=0)) then
+  IF ( (wthv > 0.0 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. PARAMS%doclasp/=0)) then
 
-     if (doclasp/=0) then
+     if (PARAMS%doclasp/=0) then
        nup2 = count(mfsrcthl(IH,1:nup)>=-2.0)
      else
        nup2 = nup
@@ -6948,7 +6842,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
       ql(k)=ql3(IH,kte-k+kts)
       qi(k)=qi3(IH,kte-k+kts)
       if (k<kte) then
-         if (edmf_discrete_type == 0) then
+         if (PARAMS%DISCRETE == 0) then
             ui(k)   = 0.5*( u3(IH,kte-k+kts)   + u3(IH,kte-k+kts-1) )
             vi(k)   = 0.5*( v3(IH,kte-k+kts)   + v3(IH,kte-k+kts-1) )
             thli(k) = 0.5*( thl3(IH,kte-k+kts) + thl3(IH,kte-k+kts-1) )
@@ -7042,37 +6936,21 @@ if(THE_SEED(2) == 0) THE_SEED(2) = -5
 if (L0(IH) .gt. 0. ) then
 
    ! entrainent: Ent=Ent0/dz*P(dz/L0)
-!  if (entrainopt==1) then        ! poisson random
     call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)    
-    do i=1,Nup   
+    do i=1,Nup
      do k=kts,kte
-!       ENT(k,i)=(0.2+real(ENTi(k,i))*Ent0)/(ZW(k)-ZW(k-1)) 
-       ENT(k,i)=(1.-stochent)*Ent0/L0(IH) + stochent*real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1)) 
+       ENT(k,i) = (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0(IH) & 
+                + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1)) 
      enddo
     enddo
-    ENT = (1.+frland(IH))*ENT  ! double entrainment over land
+    ENT = (1.+frland(IH))*ENT  ! double entrainment over land to reduce PBLH
 
-!  else if (entrainopt==2) then   
-!    call random_number(entf)
-!    do i=1,Nup   
-!     do k=kts,kte
-!       ENT(k,i)=(0.2+2.*ENTf(k,i)*Ent0)/L0(IH)
-!     enddo
-!    enddo
-!  else                          ! 
-!    do i=1,Nup   
-!     do k=kts,kte
-!       ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1)) ! test
-!     enddo
-!    enddo
-!  end if
-!  print *,'ent=',ent(1:3,1:10)
 
 ! increase entrainment if local minimum of THV
 
   do k=kts+1,kte-1
     if ( (THV(k) .lt. THV(k-1)) .and. (THV(k) .lt. THV(k+1)) ) then
-           ENT(k,:)=ENT(k,:)+5.*ENT0/L0(IH)
+           ENT(k,:)=ENT(k,:)+5.*PARAMS%ENT0/L0(IH)
 !          print *,'increasing entrainment, THVs are',THV(k-1:k+1)
      endif
   enddo
@@ -7102,13 +6980,13 @@ end if
 !   sigmaQT=2.89*abs(qstar)
 !   sigmaTH=2.89*abs(thstar)
    
-   sigmaW=AlphaW*wstar
-   sigmaQT=AlphaQT*qstar
-   sigmaTH=AlphaTH*thstar
+   sigmaW=PARAMS%AlphaW*wstar
+   sigmaQT=PARAMS%AlphaQT*qstar
+   sigmaTH=PARAMS%AlphaTH*thstar
 !   sigmaQT=AlphaQT*max(qstar,0.)
 !   sigmaTH=AlphaTH*max(thstar,0.)
 
-   if (doclasp/= 0) then
+   if (PARAMS%doclasp/= 0) then
      wmin=2.*sigmaW
      wmax=2.*sigmaW
 
@@ -7119,8 +6997,8 @@ end if
 !        mftot=0.5*(wlv+wtv)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
 !     END DO
    else
-     wmin=sigmaW*pwmin
-     wmax=sigmaW*pwmax
+     wmin=sigmaW*PARAMS%pwmin
+     wmax=sigmaW*PARAMS%pwmax
    end if    
 
 !  if (any(MFW(IH,1:NUP2).lt.0.)) print *,'MFW < 0 !!!'
@@ -7138,7 +7016,7 @@ end if
        
 
 !        UPW(kts-1,I)=0.5*(wlv+wtv) 
-        if (doclasp/=0) then
+        if (PARAMS%doclasp/=0) then
           UPW(kts-1,I) = MFW(IH,I) 
           UPA(kts-1,I)=MFAREA(IH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now       
         else
@@ -7149,7 +7027,7 @@ end if
         UPU(kts-1,I)=U(kts)
         UPV(kts-1,I)=V(kts)
        
-        if (doclasp/=0) then   ! if CLASP, use tile-based perturbations
+        if (PARAMS%doclasp/=0) then   ! if CLASP, use tile-based perturbations
           UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,I)
           UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,I)
         else
@@ -7191,7 +7069,7 @@ end if
       DO I=1,NUP2
        ! compute condensation and THL,QL,QI     
         call condensation_edmfA(UPTHV(kts-1,i),UPQT(kts-1,I),P(kts-1), & 
-        UPTHL(kts-1,I),UPQL(kts-1,i),UPQI(kts-1,i),ice_ramp)
+        UPTHL(kts-1,I),UPQL(kts-1,i),UPQI(kts-1,i),params%ice_ramp)
      ENDDO
 
   !   
@@ -7204,7 +7082,7 @@ end if
 
  
                EntExp=exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
-               EntExpU=exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*EntWFac)
+               EntExpU=exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*PARAMS%EntWFac)
                
                ! thermo-dynamic variables in updraft
                QTn=QT(K)*(1-EntExp)+UPQT(K-1,I)*EntExp
@@ -7213,7 +7091,13 @@ end if
                Vn=V(K)*(1-EntExpU)+UPV(K-1,I)*EntExpU
       
               ! condensation 
-               call condensation_edmf(QTn,THLn,P(K),THVn,QCn,wf,ice_ramp) 
+               call condensation_edmf(QTn,THLn,P(K),THVn,QCn,wf,params%ice_ramp) 
+               
+              ! TEST precipitation: remove condensate exceeding 1g/kg
+!               if (QCn>1e-3) then
+!                  QTn = QTn - (QCn-1e-3) 
+!                  QCn = 1e-3   
+!               end if
 
              ! vertical velocity
               B=mapl_grav*(0.5*(THVn+UPTHV(k-1,I))/THV(k)-1.)
@@ -7236,12 +7120,10 @@ end if
                  UPV(K,I)=Vn
                  UPA(K,I)=UPA(K-1,I)
 
-               if (entrainopt==2 .and. L0(IH)>0.) then
-                 ENT(K+1,I) = ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
- !                print *,'ENT=',ENT(K+1,I),'  UPW=',UPW(K,I),'  B=',B
+               if (PARAMS%ENTRAIN==2 .and. L0(IH)>0.) then
+                 ENT(K+1,I) = PARAMS%ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
                end if
               ELSE
-!                  ENT(K+1:KTE,I) = MAPL_UNDEF
                   EXIT vertint
               END IF
              ! loop over vertical 
@@ -7249,9 +7131,8 @@ end if
          ENDDO   ! loop over updrafts
 
          do k=kts,kte
-           entx(ih,k) = sum(ENT(k,:))/Nup
+           entx(ih,k) = sum(ENT(k,:))/Nup2
          end do
-!         print *,'ENTx=',entx(ih,1:20)
          
 
   ! CFL condition: Check that mass flux does not exceed layer mass at any level
@@ -7452,7 +7333,7 @@ end if
           s_aqt2(K)=s_aqt2(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPQT(K,I)-QTI(K))
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
           s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
-          if (edmf_implicit == 1) then
+          if (PARAMS%IMPLICIT == 1) then
              stmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs
           else
 !             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
@@ -7466,7 +7347,7 @@ end if
           s_ahl2(k)=s_ahl2(K)+UPA(K,i)*ltm*ltm
           s_ahl3(k)=s_ahl3(K)+UPA(K,i)*ltm*ltm*ltm
           s_awhl(k)=s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
-          if (edmf_implicit == 1) then
+          if (PARAMS%IMPLICIT == 1) then
              s_awu(k)  = s_awu(K)  + UPA(K,i)*UPW(K,I)*UPU(K,I)
              s_awv(k)  = s_awv(K)  + UPA(K,i)*UPW(K,I)*UPV(K,I)
              s_awqv(k) = s_awqv(K) + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - UPQI(K,I) - UPQL(K,I))
@@ -7522,7 +7403,7 @@ end if
       awqi3(IH,K)=s_awqi(KTE+KTS-K-1)
       awu3(IH,K)=s_awu(KTE+KTS-K-1)
       awv3(IH,K)=s_awv(KTE+KTS-K-1)
-      ae3(IH,K)=(1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*EDfac
+      ae3(IH,K)=(1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*PARAMS%EDfac
       !
 !      au(IH,K) = au_flip(KTE+KTS-K-1)
 !      Mu(IH,K) = Mu_flip(KTE+KTS-K-1)

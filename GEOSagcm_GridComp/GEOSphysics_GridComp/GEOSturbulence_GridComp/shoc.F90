@@ -31,27 +31,14 @@ module shoc
 
  public run_shoc, update_moments
 
-! type SHOCPARAMS_TYPE
-!    real   :: CLDLEN
-!    real   :: SUS12LEN
-!    real   :: BUOYOPT
-!    real   :: LAMBDA
-!    real   :: TSCALE
-!    real   :: VONK
-!    real   :: CKVAL
-!    real   :: CEFAC
-!    real   :: CESFAC
-! endtype SHOCPARAMS_TYPE
-
  contains
 
  subroutine run_shoc( nx, ny, nzm, nz, dtn, dm_inv,              &  ! in
                  prsl_inv, phii_inv, phil_inv, u_inv, v_inv,     &  ! in
-                 omega_inv, & !hflx, evap, buoy_mf_inv,             &  ! in
+                 omega_inv,                                      &  ! in       
                  tabs_inv, qwv_inv, qi_inv, qc_inv, qpi_inv,     &  ! in 
                  qpl_inv, cld_sgs_inv, wthv_sec_inv, prnum,      &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
-!                 isotropy_inv, w3_canuto_inv,                    &  ! out
                  isotropy_inv,                                   &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
                  tkesbshear_inv,tkesbtrans_inv,                  &  ! out
@@ -59,9 +46,6 @@ module shoc
                  smixt1_inv,smixt2_inv,smixt3_inv,               &  ! out
                  brunt_inv,shear_inv,                            &  ! out
                  shocparams )
-!                 LAM, TSCL, VON, CKVAL, CEFAC, CESFAC,           &  ! tuning param in
-!                 THLTUN, QWTUN, QWTHLTUN, DO_TRANS, DO_CLDLEN,   &
-!                 USE_SUS12LEN, BUOY_OPTION )                 
 
 
   real, parameter :: lsub = lcond+lfus,         &
@@ -90,17 +74,7 @@ module shoc
   integer, intent(in) :: nzm   ! Number of vertical layers
   integer, intent(in) :: nz    ! Number of layer interfaces  (= nzm + 1)   
   type(shocparams_type), intent(in) :: shocparams
-!  integer, intent(in) :: DO_TRANS     ! TKE transport term on/off
-!  integer, intent(in) :: DO_CLDLEN    ! TKE transport term on/off
-!  integer, intent(in) :: USE_SUS12LEN ! Use Suselj et al 2012 length scale
-!  integer, intent(in) :: BUOY_OPTION  ! choose source of TKE buoyancy term
-                                      ! 0=local stability
-                                      ! 1=single-gaussian PDF,
-                                      ! 2=double-gaussian PDF (MoistGridComp)
   real, intent(in   ) :: dtn          ! Physics time step, s 
-!  real, intent(in   ) :: hflx(nx,ny)  ! Surface sensible heat flux
-!  real, intent(in   ) :: evap(nx,ny)  ! Surface evaporation
-
   real, intent(in   ) :: dm_inv   (nx,ny,nzm) ! mean layer mass   
   real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure   
   real, intent(in   ) :: phii_inv (nx,ny,nz ) ! interface geopotential height
@@ -108,7 +82,6 @@ module shoc
   real, intent(in   ) :: u_inv    (nx,ny,nzm) ! u-wind, m/s
   real, intent(in   ) :: v_inv    (nx,ny,nzm) ! v-wind, m/s
   real, intent(in   ) :: omega_inv(nx,ny,nzm) ! omega, Pa/s
-!  real, intent(in   ) :: buoy_mf_inv(nx,ny,nzm) ! buoyancy flux MF, K*m/s
   real, intent(in   ) :: wthv_sec_inv(nx,ny,nzm) ! Buoyancy flux, K*m/s
 
   real, intent(in   ) :: tabs_inv   (nx,ny,nzm) ! temperature, K
@@ -121,9 +94,7 @@ module shoc
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
   real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy diffusivity
   real, intent(inout) :: prnum      (nx,ny,nzm) ! turbulent Prandtl number
-
   real, intent(  out) :: isotropy_inv(nx,ny,nzm) ! return to isotropy timescale
-!  real, intent(  out) :: w3_canuto_inv(nx,ny,nz) ! canuto w3 estimate
 
   real, dimension(:,:,:), pointer :: tkesbdiss_inv  ! dissipation
   real, dimension(:,:,:), pointer :: tkesbbuoy_inv  ! buoyancy production 
@@ -139,11 +110,7 @@ module shoc
   real, dimension(:,:,:), pointer :: brunt_inv    ! Brunt vaisala frequency
   real, dimension(:,:,:), pointer :: shear_inv    ! squared shear diagnostic
 
-!  real, intent(in   ) :: LAM, TSCL, VON, CKVAL, CEFAC,   &  ! tuning param
-!                         CESFAC, THLTUN, QWTUN, QWTHLTUN                 
-
 ! SHOC tunable parameters
-
   real :: lambda
   real, parameter :: min_tke = 1e-6  ! Minumum TKE value, m**2/s**2 
   real, parameter :: max_tke = 10.    ! Maximum TKE value, m**2/s**2 
@@ -543,18 +510,13 @@ contains
     real    txd(nx,ny)
     integer i,j,k,kb,kc
     
-   do k=1,nzm
-     do j=1,ny
-       do i=1,nx
-         def2(i,j,k) = 0.0
-       enddo
-     enddo
-   enddo
-
-! Calculate TKE shear production term 
-
-!    print *,'adzl=',adzl(1,1,:)
-!    print *,'adzi=',adzi(1,1,:)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          def2(i,j,k) = 0.0
+        enddo
+      enddo
+    enddo
 
     do k=1,nzm  
        
@@ -618,6 +580,7 @@ contains
 ! Local variables
     real    wrk, wrk1, wrk2, wrk3, zdecay
     integer i, j, k, kk, ktop, kl, ku, kb, kc, kli, kui
+    real :: lts(nx,ny)
     
     do j=1,ny
       do i=1,nx
@@ -675,6 +638,15 @@ contains
 ! Calculate the measure of PBL depth,  Eq. 11 in BK13 (Is this really PBL depth?)
     do j=1,ny
       do i=1,nx
+        lts(i,j) =  0.0
+        do k = 1,nzm
+           if (prsl(i,j,k).lt.70000.0) then
+             lts(i,j) = tabs(i,j,k)*(1e5/prsl(i,j,k))**0.286
+             exit
+           end if
+        end do
+        lts(i,j) = lts(i,j) - tabs(i,j,1)*(1e5/prsl(i,j,1))**0.286
+
         do k = 3,nzm-2   ! smooth 3-layers of brunt freq to reduce influence of single layers
            brunt_smooth(i,j,k) = SUM( brunt_smooth(i,j,k-2:k) ) / 3.
         end do
@@ -686,7 +658,8 @@ contains
           l_inf(i,j) = 100.
         endif
         kk = 2
-        do while (zl(i,j,kk).lt.1200. .and. qcl(i,j,kk)+qci(i,j,kk)<=1e-6)
+!        do while (zl(i,j,kk).lt.1200. .and. qcl(i,j,kk)+qci(i,j,kk)<=1e-6)
+        do while (zl(i,j,kk).lt.1200. .and. cld_sgs(i,j,kk)<0.01 )
           kk = kk+1
         end do
 !        zcb(i,j) = max(200.,0.8*zl(i,j,kk))
@@ -725,7 +698,6 @@ contains
 ! Compute local Brunt-Vaisalla frequency
              
           wrk = qcl(i,j,k) + qci(i,j,k)
- !         if (wrk > 0.0) then            ! If in the cloud
             
 ! Find the in-cloud Brunt-Vaisalla frequency
                 
@@ -761,8 +733,6 @@ contains
                           + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))  &
                           + (bbb*fac_sub  - (1.+fac_sub*dqsat)*tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
                 
-!          else                       ! outside of cloud
-                
 ! Find outside-of-cloud Brunt-Vaisalla frequency
 ! Only unsaturated air, rain and snow contribute to virt. pot. temp. 
 ! liquid/ice moist static energy divided by cp?
@@ -772,9 +742,6 @@ contains
                           + epsv*tabs(i,j,k)*(total_water(i,j,kc)-total_water(i,j,kb)) &
                           + (bbb*fac_cond-tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))       &
                           + (bbb*fac_sub -tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
-
-!          end if
-
              
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use. 
@@ -806,8 +773,6 @@ contains
               kk = kk+1
             end do
             zdecay = max(300.,zl(i,j,kk))
-!            print *,'zdecay=',zdecay
-!            zdecay = 750.
 
 !            if (brunt_simple(i,j,k) >= 1e-5) then
 !              brunt2(i,j,k) = brunt_simple(i,j,k)
@@ -843,19 +808,16 @@ contains
               end if
        
               smixt(i,j,k) = min(max_eddy_length_scale, 3.3*sqrt(wrk1))
-!              if (zl(i,j,k).gt.1500.) smixt(i,j,k) = 10.
-!              smixt(i,j,k) = min(max_eddy_length_scale,  3.3*sqrt(wrk1))
            endif
            
-!           zdecay = l_inf(i,j)
-!           zcb(i,j) = 750.
            if (shocparams%SUS12LEN/=0.) then
              wrk2 = 1.5/(400.*tkes)
 !             wrk2 = 10.0/(zcb(i,j)*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j)))
              wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
 !             wrk3 = 1.5*sqrt(brunt_smooth(i,j,k))/(0.7*tkes)
              wrk1 = 1.0/(wrk2+wrk3)
-             smixt(i,j,k) = 9.4*exp(-max(0.,0.5*zl(i,j,k))/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+!             smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/(zdecay+2000.*max(0.,lts(i,j)-18.)))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+             smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
              smixt1(i,j,k) = 9.4/wrk2
@@ -863,25 +825,17 @@ contains
              smixt3(i,j,k) = 9.4*vonk*zl(i,j,k)
            end if
 
-
-!         end if  ! not k=1
-
          smixt_outcld(i,j,k) = smixt(i,j,k)
-  
+ 
            
-!====== Length scale testing ======
-
-         if (zl(i,j,k).gt.5000.) smixt(i,j,k)=min(smixt(i,j,k),50.)
-
 
 !==================================
 
         end do
-!        print *,'zdecay=',zdecay  
       end do
     end do
     
-    
+   
 ! Now find the in-cloud turbulence length scale
 ! See Eq. 13 in BK13 (Eq. 4.18 in Pete's disseration)
     
