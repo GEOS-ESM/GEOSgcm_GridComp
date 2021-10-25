@@ -2034,9 +2034,6 @@ module GEOS_CICE4ColumnPhysGridComp
     integer                             :: DO_POND
     integer                             :: PRES_ICE
 
-    !*CALLBACK*
-    type(ESMF_State)                    :: SURFST
-
 !=============================================================================
 
 ! Begin... 
@@ -3297,7 +3294,6 @@ contains
    real, pointer, dimension(:)    :: FRZMLT    => null() 
 
    !*CALLBACK*
-   real, pointer, dimension(:)    :: ptr0  => null() 
    real, pointer, dimension(:,:)  :: AS_PTR_2D  => null() 
    type(ESMF_State)               :: SURFST
    type(MAPL_LocStream) :: locStreamO
@@ -4117,11 +4113,12 @@ contains
     !       
     !    .....            !*** more fields to be passed
     !
-    !    ! execute the sea ice thermo couling method
-    call ESMF_MethodExecute(SURFST, label="thermo_couling", userRC=AS_STATUS, RC=STATUS)
+    !    ! execute the sea ice thermo coupling method
+    call ESMF_MethodExecute(SURFST, label="thermo_coupling", userRC=AS_STATUS, RC=STATUS)
     VERIFY_(AS_STATUS)
     VERIFY_(STATUS)
 
+    allocate(AS_PTR_2D(size(TS,1),size(TS,2)), __STAT__)
     call RegridO2A_2d(AS_PTR_2D, SURFST, 'surface_ice_temperature', &
          XFORM_O2A, locstreamO, __RC__)
 
@@ -4133,6 +4130,7 @@ contains
     !    DTS = AS_PTR_2D - TS
     !    .....
     ! 
+    deallocate(AS_PTR_2D)
     !************************************************************************************************
     !==============================================================================================
 
@@ -4759,7 +4757,7 @@ contains
     integer :: status
     integer :: k, nc, nt
     
-    NT = size(ptr_2d, 1)
+    call MAPL_LocStreamGet(LocStream, nt_local=nt, __RC__)
 !@@    if(NT == 0) then
 !@@        RETURN_(ESMF_SUCCESS)
 !@@    endif  
@@ -4793,7 +4791,7 @@ contains
     integer :: status
     integer :: k, nc, nt
 
-    NT = size(ptr_2d, 1)
+    call MAPL_LocStreamGet(LocStream, nt_local=nt, __RC__)
 !@@    if(NT == 0) then 
 !@@       RETURN_(ESMF_SUCCESS)
 !@@    endif 

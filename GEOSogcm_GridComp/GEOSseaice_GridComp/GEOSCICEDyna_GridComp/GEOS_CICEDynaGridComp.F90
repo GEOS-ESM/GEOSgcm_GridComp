@@ -2948,7 +2948,7 @@ end subroutine RUN
      integer :: status
      character(len=ESMF_MAXSTR), parameter :: Iam=' thermo_coupling'
 
-     real, dimension(:,:), pointer         :: ts 
+     real, dimension(:,:,:), pointer         :: ts 
   !
      call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
   !   ! update ts 
