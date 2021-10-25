@@ -1202,6 +1202,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'pbltop_height_for_shallow',                             &
+       SHORT_NAME = 'ZPBL_SC',                                               &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'dry_static_energy_after_diffuse',                       &
        UNITS      = 'K',                                                     &
        SHORT_NAME = 'SAFDIFFUSE',                                            &
@@ -1987,6 +1996,7 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
      real, dimension(:,:  ), pointer     :: KPBL_SC => null()
+     real, dimension(:,:  ), pointer     :: ZPBL_SC => null()
      real, dimension(:,:  ), pointer     :: WEBRV,VSCBRV,DSIEMS,CHIS,ZCLDTOP,DELSINV,SMIXT,ZRADBS,CLDRF,VSCSFC,RADRCODE
 
      real, dimension(:,:,:), pointer     :: AKSODT, CKSODT
@@ -2211,6 +2221,8 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    KPBL_SC, 'KPBL_SC',            RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBL_SC, 'ZPBL_SC',            RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    TCZPBL,  'TCZPBL',             RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBL2,  'ZPBL2',               RC=STATUS)
@@ -2325,8 +2337,16 @@ contains
          ALLOC_ZPBL10p = .TRUE.
       endif
 
+      if(.not.associated(KPBL)) then
+         allocate(KPBL(IM,JM))
+      end if
+
       if(.not.associated(KPBL_SC )) then
          allocate(KPBL_SC(IM,JM))
+      end if
+
+      if(.not.associated(ZPBL_SC )) then
+         allocate(ZPBL_SC(IM,JM))
       end if
 
       ALLOC_TCZPBL = .FALSE.
@@ -2995,6 +3015,7 @@ contains
 
      ! Calc KPBL using surface turbulence, for use in shallow scheme
       KPBL_SC = MAPL_UNDEF
+      ZPBL_SC = MAPL_UNDEF
 
       do I = 1, IM
          do J = 1, JM
@@ -3005,10 +3026,12 @@ contains
                if ( (temparray(L) < 0.1) .and. (temparray(L+1) >= 0.1)  &
                .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
                   KPBL_SC(I,J) = float(L)
+                  ZPBL_SC(I,J) = Z(I,J,L)
                end if
             end do
             if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
                KPBL_SC(I,J) = float(LM)
+               ZPBL_SC(I,J) = Z(I,J,LM)
             endif
          end do
       end do

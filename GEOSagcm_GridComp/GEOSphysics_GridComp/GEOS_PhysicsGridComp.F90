@@ -21,6 +21,7 @@ module GEOS_PhysicsGridCompMod
 
   use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
   use GEOS_MoistGridCompMod,      only : MoistSetServices     => SetServices
+  use CCPP_GFS_MoistGridCompMod,       only : CCPP_GFSMoistSetServices  => SetServices
   use GEOS_TurbulenceGridCompMod, only : TurblSetServices     => SetServices
   use GEOS_RadiationGridCompMod,  only : RadiationSetServices => SetServices
   use GEOS_ChemGridCompMod,       only : AChemSetServices     => SetServices
@@ -117,6 +118,8 @@ contains
     character(len=ESMF_MAXSTR)              :: TendUnits
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
+    character(len=ESMF_MAXSTR)              :: CCPP_GFS_MOIST
+    logical                                 :: LCCPP_GFS_MOIST = .false.
 
 !=============================================================================
 
@@ -138,6 +141,14 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,        RC=STATUS )
     VERIFY_(STATUS)
 
+! Get MAP_generic state
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+! Decide which moist to us
+    call MAPL_GetResource ( MAPL, CCPP_GFS_MOIST, Label="CCPP_GFS_MOIST:",DEFAULT='FALSE', RC=STATUS)
+    VERIFY_(STATUS)
+    if (trim(CCPP_GFS_MOIST) == 'TRUE') LCCPP_GFS_MOIST=.true.
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
 
@@ -147,8 +158,13 @@ contains
 ! not be properly restarted
     GWD = MAPL_AddChild(GC, NAME='GWD', SS=GwdSetServices, RC=STATUS)
     VERIFY_(STATUS)
-    MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=MoistSetServices, RC=STATUS)
-    VERIFY_(STATUS)
+    if (LCCPP_GFS_MOIST) then
+       MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=CCPP_GFSMoistSetServices, RC=STATUS)
+       VERIFY_(STATUS)
+    else
+       MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=MoistSetServices, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
     TURBL = MAPL_AddChild(GC, NAME='TURBULENCE', SS=TurblSetServices, RC=STATUS)
     VERIFY_(STATUS)
     CHEM = MAPL_AddChild(GC, NAME='CHEMISTRY', SS=AChemSetServices, RC=STATUS)
@@ -160,9 +176,6 @@ contains
 
 ! Set the state variable specs.
 ! -----------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
@@ -1244,7 +1257,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'KH     ','KPBL   ','KPBL_SC',            &
-                         'TKE    '/),                              &
+                         'TKE    ','ZPBL   ','ZPBL_SC'/),          &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
