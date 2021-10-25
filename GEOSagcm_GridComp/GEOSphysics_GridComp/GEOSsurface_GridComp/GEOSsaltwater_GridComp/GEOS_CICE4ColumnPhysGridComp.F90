@@ -1753,6 +1753,26 @@ module GEOS_CICE4ColumnPhysGridComp
         RC=STATUS  ) 
    VERIFY_(STATUS)
 
+   call MAPL_AddExportSpec(GC,                    &
+        LONG_NAME          = 'ts_before_callback',&
+        UNITS              = 'K'                   ,&
+        SHORT_NAME         = 'TSCALL1'                   ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+        RC=STATUS  ) 
+   VERIFY_(STATUS)
+
+   call MAPL_AddExportSpec(GC,                    &
+        LONG_NAME          = 'ts_after_callback',&
+        UNITS              = 'K'                   ,&
+        SHORT_NAME         = 'TSCALL2'                   ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+        RC=STATUS  ) 
+   VERIFY_(STATUS)
+
    ! this export actually has dimensions(nlayer,nice) but is collapsed
    ! into one for ease of history
    call MAPL_AddExportSpec(GC,                    &
@@ -3208,6 +3228,8 @@ contains
    real, pointer, dimension(:,:)  :: FCONDBOTN   => null()
    real, pointer, dimension(:,:)  :: FCONDTOPN   => null()
    real, pointer, dimension(:,:)  :: TINZ        => null()
+   real, pointer, dimension(:,:)  :: TSCALL1     => null()
+   real, pointer, dimension(:,:)  :: TSCALL2     => null()
 
    ! pointers to CMIP5 exports (CICE)
    real, pointer, dimension(:  )  :: EVAP_C5        => null()
@@ -3598,6 +3620,8 @@ contains
    call MAPL_GetPointer(EXPORT,FSWSFCN  ,  'FSWSFCN'   ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBINe   ,  'ALBIN'     ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBSNe   ,  'ALBSN'     ,  RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TSCALL1  ,  'TSCALL1'   ,  RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TSCALL2  ,  'TSCALL2'   ,  RC=STATUS); VERIFY_(STATUS)
 
    ! CMIP5 exports
    call MAPL_GetPointer(EXPORT,EVAP_C5,        'evap_CMIP5' ,     RC=STATUS); VERIFY_(STATUS)
@@ -4121,6 +4145,11 @@ contains
     allocate(AS_PTR_2D(size(TS,1),size(TS,2)), __STAT__)
     call RegridO2A_2d(AS_PTR_2D, SURFST, 'surface_ice_temperature', &
          XFORM_O2A, locstreamO, __RC__)
+
+
+    
+    if(associated(TSCALL1)) TSCALL1 = TS
+    if(associated(TSCALL2)) TSCALL2 = AS_PTR_2D
 
     !
     !************************************************************************************************
