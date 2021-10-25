@@ -717,7 +717,7 @@ contains
 ! Derivative of saturation mixing ratio over water/ice wrt temp. based on relative water phase content
 !             dqsat =     omn  * dtqsatw(tabs(i,j,k),prsl(i,j,k))             &
 !                   + (1.-omn) * dtqsati(tabs(i,j,k),prsl(i,j,k))
-              dqsat =  omn * dtqw + (1.-omn) * dtqi
+             dqsat =  omn * dtqw + (1.-omn) * dtqi
 
 ! liquid/ice moist static energy static energy divided by cp?
              bbb = (1. + epsv*qsatt-wrk-qpl(i,j,k)-qpi(i,j,k)                &
@@ -750,21 +750,6 @@ contains
               brunt2(i,j,k) = 1e-5
             endif
  
-            kk=k
-            if (brunt_smooth(i,j,k).le.1e-5) then
-              do while (brunt_smooth(i,j,kk).le.1e-5 .and. kk.lt.nzm)
-                kk=kk+1
-              end do
-              ktop=kk
-              kk=k
-              do while (brunt_smooth(i,j,kk).le.1e-5 .and. kk.gt.1)
-                kk=kk-1
-              end do
-              l_inf(i,j) = max(100.,min(1500.,zl(i,j,ktop)-zl(i,j,kk) ))
-            else
-              l_inf(i,j) = 100.
-            end if
-
             ! Calculate depth of unstable surface layer
             kk = 2
             do while (brunt_smooth(i,j,kk).le.1e-5 .and. zl(i,j,kk).lt.1500.)
@@ -792,35 +777,50 @@ contains
 ! tscale is the eddy turnover time scale in the boundary layer and is 
 ! an empirically derived constant 
 
-            if (tkes > 0.0 .and. l_inf(i,j) > 0.0) then
-              wrk1 = (tscale*tkes*vonk*zl(i,j,k))
-              wrk2 = (tscale*tkes*0.1*l_inf(i,j))
-              wrk3 = tke(i,j,k) /(1.0 * brunt2(i,j,k))
-              smixt1(i,j,k) = sqrt(wrk1)*3.3
-              smixt2(i,j,k) = sqrt(wrk2)*3.3
-              smixt3(i,j,k) = sqrt(wrk3)*3.3
-              if (brunt2(i,j,k).gt.1e-5) then
-                 wrk1 = 1.0 / (1./wrk1 + 1./wrk2 + 1./wrk3)
+           if (shocparams%SUS12LEN==0 ) then
+              kk=k
+              if (brunt_smooth(i,j,k).le.1e-5) then
+                do while (brunt_smooth(i,j,kk).le.1e-5 .and. kk.lt.nzm)
+                  kk=kk+1
+                end do
+                ktop=kk
+                kk=k
+                do while (brunt_smooth(i,j,kk).le.1e-5 .and. kk.gt.1)
+                  kk=kk-1
+                end do
+                l_inf(i,j) = max(100.,min(1500.,zl(i,j,ktop)-zl(i,j,kk) ))
               else
-                 wrk1 = 1.0 / (1./wrk1 + 1./wrk2)
+                l_inf(i,j) = 100.
               end if
+
+              if ( tkes > 0.0 .and. l_inf(i,j) > 0.0) then
+                 wrk1 = (tscale*tkes*vonk*zl(i,j,k))
+                 wrk2 = (tscale*tkes*0.1*l_inf(i,j))
+                 wrk3 = tke(i,j,k) /(1.0 * brunt2(i,j,k))
+                 smixt1(i,j,k) = sqrt(wrk1)*3.3
+                 smixt2(i,j,k) = sqrt(wrk2)*3.3
+                 smixt3(i,j,k) = sqrt(wrk3)*3.3
+                 if (brunt2(i,j,k).gt.1e-5) then
+                    wrk1 = 1.0 / (1./wrk1 + 1./wrk2 + 1./wrk3)
+                 else
+                    wrk1 = 1.0 / (1./wrk1 + 1./wrk2)
+                 end if
        
-              smixt(i,j,k) = min(max_eddy_length_scale, 3.3*sqrt(wrk1))
-           endif
-           
-           if (shocparams%SUS12LEN/=0.) then
-             wrk2 = 1.5/(400.*tkes)
-!             wrk2 = 10.0/(zcb(i,j)*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j)))
-             wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
-!             wrk3 = 1.5*sqrt(brunt_smooth(i,j,k))/(0.7*tkes)
-             wrk1 = 1.0/(wrk2+wrk3)
-!             smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/(zdecay+2000.*max(0.,lts(i,j)-18.)))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
-             smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
-!             smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+                 smixt(i,j,k) = min(max_eddy_length_scale, 3.3*sqrt(wrk1))
+              endif
+           else
+              wrk2 = 1.5/(400.*tkes)
+!              wrk2 = 10.0/(zcb(i,j)*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j)))
+              wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
+!              wrk3 = 1.5*sqrt(brunt_smooth(i,j,k))/(0.7*tkes)
+              wrk1 = 1.0/(wrk2+wrk3)
+!              smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/(zdecay+2000.*max(0.,lts(i,j)-18.)))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+              smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
+!              smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
-             smixt1(i,j,k) = 9.4/wrk2
-             smixt2(i,j,k) = 9.4/wrk3
-             smixt3(i,j,k) = 9.4*vonk*zl(i,j,k)
+              smixt1(i,j,k) = 9.4/wrk2
+              smixt2(i,j,k) = 9.4/wrk3
+              smixt3(i,j,k) = 9.4*vonk*zl(i,j,k)
            end if
 
          smixt_outcld(i,j,k) = smixt(i,j,k)
