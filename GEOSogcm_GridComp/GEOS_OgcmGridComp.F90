@@ -19,7 +19,7 @@ module GEOS_OgcmGridCompMod
   use GEOS_OradBioGridCompMod,           only : OradBioSetServices => SetServices
   use GEOS_OradGridCompMod,              only : OradSetServices    => SetServices
 
-  use GuestOcean_GridCompMod,            only : GuestOceanSetServices => SetServices
+  use GEOS_OceanGridCompMod,             only : OceanSetServices => SetServices
   use GEOS_SeaIceGridCompMod,            only : SeaIceSetServices => SetServices
 
   implicit none
@@ -33,7 +33,7 @@ module GEOS_OgcmGridCompMod
 ! 
 !   {\tt GEOS\_Ogcm} is a light-weight gridded component that implements the
 !      interface to the ogcm components. The ogcm computational components
-!      (MOMx/GuestOcean, CICEx/GEOS_Seaice, OceanRadiation, OceanBioGeochemistry, etc)
+!      (MOMx/Ocean, CICEx/GEOS_Seaice, OceanRadiation, OceanBioGeochemistry, etc)
 !      are its children.
 !      This component currently serves as an interface between the exchange
 !      grid and the ocean's grid. Its ``natural'' grid is the ocean part of the 
@@ -181,7 +181,7 @@ contains
        NUM_ICE_LAYERS     = 1
     endif
 
-! this get resource is repeated in Guest - change both together!
+! this get resource is repeated in Ocean - change both together!
     call MAPL_GetResource ( MAPL, DO_DATASEAONLY, Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_DATAICE,     Label="USE_DATASEAICE:" ,     DEFAULT=1, RC=STATUS)
@@ -232,7 +232,7 @@ contains
     SEAICE = MAPL_AddChild(GC, NAME='SEAICE', SS=SeaIceSetServices, RC=STATUS)
     VERIFY_(STATUS)
 
-    OCEAN = MAPL_AddChild(GC, NAME='OCEAN', SS=GuestOceanSetServices, RC=STATUS) 
+    OCEAN = MAPL_AddChild(GC, NAME='OCEAN', SS=OceanSetServices, RC=STATUS) 
     VERIFY_(STATUS)
    
 ! Set the state variable specs.
@@ -2087,7 +2087,7 @@ contains
           deallocate(CHLD)
 
        else
-       ! run explicitly the children excluding "real" seaice (ocean has the data part inside guest)
+       ! run explicitly the children excluding "real" seaice (ocean has the data part inside ocean)
           allocate(CHLD(4), stat=status)
           VERIFY_(STATUS)
           CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
