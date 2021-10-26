@@ -5,6 +5,7 @@ set (srcs
   LockEntrain.F90
   shoc.F90
   edmf.F90
+  scm_surface.F90
   shocparams.F90
   edmfparams.F90
   )
