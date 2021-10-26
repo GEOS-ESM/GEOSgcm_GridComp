@@ -126,17 +126,12 @@ module shoc
   real, parameter :: Cs  = 0.15
   real :: Ck, Ce, Ces
 
-! Use double gaussian PDF-based buoyancy
-!  integer, parameter :: use_DG = 1
-
 ! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) 
 ! real, parameter :: Ces = Ce/0.7*3.0
 
-! real, parameter :: vonk=0.35  ! Von Karman constant
   real :: vonk, tscale
   real, parameter :: w_tol_sqd = 4.0e-04   ! Min vlaue of second moment of w
   real, parameter :: w_thresh  = 0.0, thresh = 0.0
-
 
 ! These parameters are a tie-in with a microphysical scheme
 ! Double check their values for the Zhao-Carr scheme.
@@ -179,23 +174,10 @@ module shoc
   real tke     (nx,ny,nzm)
   real tkh     (nx,ny,nzm)
   real wthv_sec(nx,ny,nzm)
-!  real buoy_mf (nx,ny,nzm)
   real tkesbdiss(nx,ny,nzm)
   real tkesbbuoy(nx,ny,nzm)
   real tkesbshear(nx,ny,nzm)
   real tkesbtrans(nx,ny,nzm)
-
-! Moments of the trivariate double Gaussian PDF for the SGS total water mixing ratio
-! SGS liquid/ice static energy, and vertical velocity
-
-!  real qw_sec   (nx,ny,nzm) ! Second moment total water mixing ratio, kg^2/kg^2
-!  real thl_sec  (nx,ny,nzm) ! Second moment liquid/ice static energy, K^2
-!  real qwthl_sec(nx,ny,nzm) ! Covariance tot. wat. mix. ratio and static energy, K*kg/kg
-!  real wqw_sec  (nx,ny,nzm) ! Turbulent flux of tot. wat. mix., kg/kg*m/s
-!  real wthl_sec (nx,ny,nzm) ! Turbulent flux of liquid/ice static energy, K*m/s
-!  real w_sec    (nx,ny,nzm) ! Second moment of vertical velocity, m**2/s**2
-!!  real w3       (nx,ny,nzm) ! Third moment of vertical velocity, m**3/s**3
-!  real wqp_sec  (nx,ny,nzm) ! Turbulent flux of precipitation, kg/kg*m/s
 
 ! Eddy length formulation 
   real smixt    (nx,ny,nzm) ! Turbulent length scale, m
@@ -205,7 +187,6 @@ module shoc
   real smixt_incld(nx,ny,nzm) ! Turbulent length scale, m
   real smixt_outcld(nx,ny,nzm) ! Turbulent length scale, m
   real isotropy (nx,ny,nzm) ! "Return-to-isotropy" eddy dissipation time scale, s
-! real isotropy_debug (nx,ny,nzm) ! Return to isotropy scale, s without artificial limits
   real brunt    (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
   real conv_vel2(nx,ny,nzm) ! Convective velocity scale cubed, m^3/s^3
 
@@ -232,15 +213,9 @@ module shoc
   Ces = shocparams%CESFAC*Ce
   vonk = shocparams%VONK     ! Von Karman constant Moorthi - as in GFS
   tscale = shocparams%TSCALE  ! time scale set based off of similarity results of BK13, s
-!  thl2tune = THLTUN
-!  qw2tune = QWTUN
-!  qwthl2tune = QWTHLTUN
 
-
-!  wthl_sec = 0.
 
 ! Map GEOS variables to those of SHOC
-
   do k=1,nz
     do j=1,ny
       do i=1,nx
@@ -296,7 +271,6 @@ module shoc
                                                - fac_fus *(qci(i,j,k)+qpi(i,j,k))
         hvl(i,j,k) = tabs(i,j,k)*(1.0+epsv*qv(i,j,k)-qcl(i,j,k))+gamaz(i,j,k) &
                      - fac_cond*qcl(i,j,k) - fac_fus *qci(i,j,k)
-!        w3(i,j,k) = 0.0
       enddo
     enddo
   enddo
@@ -318,21 +292,10 @@ module shoc
       adzi(i,j,1)   = (zl(i,j,1)-zi(i,j,1)) !  unused in the code
       adzi(i,j,nz)  = zi(i,j,nz)-zl(i,j,nzm) ! at the top - probably unused
       adzl(i,j,nzm) = adzi(i,j,nzm)
-!
-!      wthl_sec(i,j,1) = hflx(i,j)/cp
-!      wqw_sec(i,j,1)  = evap(i,j)
     enddo
   enddo
 
   call tke_shoc()        ! Integrate prognostic TKE equation forward in time
-
-
-! If using single-gaussian PDF for buoyancy flux,
-! this will overwrite wthv_sec
-
-!if (shocparams%BUOYOPT==1) then
-!  call buoyancy_single_gaussian()
-!end if
 
 
 !=== Assign exports and flip vertical ===!
@@ -539,7 +502,6 @@ contains
       elseif (k < nzm ) then
         do j=1,ny
           do i=1,nx
-!            print *,'adzi(k)=',adzi(i,j,kc)
             rdzw_up     = 1./adzi(i,j,kc)
             rdzw_dn     = txd(i,j)
             wrku(1)     = (u(i,j,kc)-u(i,j,k))*rdzw_up
@@ -580,7 +542,6 @@ contains
 ! Local variables
     real    wrk, wrk1, wrk2, wrk3, zdecay
     integer i, j, k, kk, ktop, kl, ku, kb, kc, kli, kui
-    real :: lts(nx,ny)
     
     do j=1,ny
       do i=1,nx
@@ -638,14 +599,6 @@ contains
 ! Calculate the measure of PBL depth,  Eq. 11 in BK13 (Is this really PBL depth?)
     do j=1,ny
       do i=1,nx
-        lts(i,j) =  0.0
-        do k = 1,nzm
-           if (prsl(i,j,k).lt.70000.0) then
-             lts(i,j) = tabs(i,j,k)*(1e5/prsl(i,j,k))**0.286
-             exit
-           end if
-        end do
-        lts(i,j) = lts(i,j) - tabs(i,j,1)*(1e5/prsl(i,j,1))**0.286
 
         do k = 3,nzm-2   ! smooth 3-layers of brunt freq to reduce influence of single layers
            brunt_smooth(i,j,k) = SUM( brunt_smooth(i,j,k-2:k) ) / 3.
@@ -657,13 +610,11 @@ contains
         else
           l_inf(i,j) = 100.
         endif
-        kk = 2
-!        do while (zl(i,j,kk).lt.1200. .and. qcl(i,j,kk)+qci(i,j,kk)<=1e-6)
-        do while (zl(i,j,kk).lt.1200. .and. cld_sgs(i,j,kk)<0.01 )
-          kk = kk+1
-        end do
-!        zcb(i,j) = max(200.,0.8*zl(i,j,kk))
-        zcb(i,j) = max(200.,zl(i,j,kk))
+!        kk = 2
+!        do while (zl(i,j,kk).lt.1200. .and. cld_sgs(i,j,kk)<0.01 )
+!          kk = kk+1
+!        end do
+!        zcb(i,j) = max(200.,zl(i,j,kk))
       enddo
     enddo
     
@@ -814,7 +765,6 @@ contains
               wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
 !              wrk3 = 1.5*sqrt(brunt_smooth(i,j,k))/(0.7*tkes)
               wrk1 = 1.0/(wrk2+wrk3)
-!              smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/(zdecay+2000.*max(0.,lts(i,j)-18.)))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
               smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !              smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
@@ -836,22 +786,6 @@ contains
    
 ! Now find the in-cloud turbulence length scale
 ! See Eq. 13 in BK13 (Eq. 4.18 in Pete's disseration)
-    
-!======== Buoyancy flux from local stability ======!
-if (shocparams%BUOYOPT==0) then
-!   wthv_sec = -1.0*(thv/ggr)*brunt*tkh
-!!! Han and Bretherton 2019
-!   a1 = ggr/(thv*MAPL_CP)
-!   delt = 0.608
-!   beta = 0.5 
-!   bhs = a1*beta
-!   bhu = a1
-!   bqs = a1*lcond*(beta-epsv)
-!   bqu = delt*ggr
-!   dsdz = (hl - hl)*adzi
-!   wthv_sec =(thv/ggr)*( (cld_sgs*bhs+(1.-cld_sgs)*bhu)*dsdz+(cld_sgs*bqs+(1.-cld_sgs)*bqu)*dqtdz )
-endif
-!==================================================!
     
 ! determine cubed convective velocity scale (conv_vel2) inside the cloud
 
@@ -1077,121 +1011,6 @@ endif
 !    ENDDO
 
 !  end subroutine buoyancy_single_gaussian
-
-
-
-
-
-
-! Saturation vapor pressure and mixing ratio subroutines
-! Based on Flatau et al (1992), J. App. Met., 31, 1507-1513
-! Code by Marat Khairoutdinov
- 
-
-  real function esatw(t)   !!! returns e in mb
-    real t	! temperature (K)
-    real a0,a1,a2,a3,a4,a5,a6,a7,a8 
-    data a0,a1,a2,a3,a4,a5,a6,a7,a8 /                       &
-         6.11239921,       0.443987641,     0.142986287e-1, &
-         0.264847430e-3,   0.302950461e-5,  0.206739458e-7, &
-         0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
-    real dt
-    dt    = max(-80.,t-273.16)
-    esatw = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
-  end function esatw
-
-  real function qsatw(t,p)
-!    implicit none
-    real t	! temperature (K)
-    real p	! pressure    (Pa)
-    real esat
-!   esat  = fpvs(t)
-!!    esat  = fpvsl(t)
-    esat = MAPL_EQsat(t)
-    qsatw = 0.622 * esat/max(esat,p-0.378*esat) 
-!   esat  = esatw(t)
-!   qsatw = 0.622 * esat/max(esat,p-esat) 
-  end function qsatw
-  
-  
-  real function esati(t)    !!! returns e in mb
-    real t	! temperature (K)
-    real a0,a1,a2,a3,a4,a5,a6,a7,a8 
-    data a0,a1,a2,a3,a4,a5,a6,a7,a8 /                     &
-         6.11147274,     0.503160820,     0.188439774e-1, &
-         0.420895665e-3, 0.615021634e-5,  0.602588177e-7, &
-         0.385852041e-9, 0.146898966e-11, 0.252751365e-14/
-    real dt
-!    real esatw
-    if(t > 273.15) then
-       esati = esatw(t)
-    else if(t.gt.185.) then
-       dt    = t-273.16
-       esati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
-    else   ! use some additional interpolation below 184K
-       dt    = max(-100.,t-273.16)
-       esati = 0.00763685 + dt*(0.000151069+dt*7.48215e-07)
-    end if
-  end function esati
-        
-  real function qsati(t,p)
-    real t	! temperature (K)
-    real p	! pressure    (Pa)
-    real esat !,esati
-!   esat  = fpvs(t)
-!!    esat  = fpvsi(t)
-    esat = MAPL_EQsat(t,OverIce=.TRUE.)
-    qsati = 0.622 * esat/max(esat,p-0.378*esat)
-!   esat  = esati(t)
-!   qsati = 0.622 * esat/max(esat,p-esat)
-  end function qsati
-  
-  real function dtesatw(t)
-    real t	! temperature (K)
-    real a0,a1,a2,a3,a4,a5,a6,a7,a8 
-    data a0,a1,a2,a3,a4,a5,a6,a7,a8 /                        &
-         0.443956472,      0.285976452e-1,   0.794747212e-3, &
-         0.121167162e-4,   0.103167413e-6,   0.385208005e-9, &
-        -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
-    real dt
-    dt      = max(-80.,t-273.16)
-    dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
-  end function dtesatw
-        
-  real function dtqsatw(t,p)
-    real t	! temperature (K)
-    real p	! pressure    (Pa)
-!    real dtesatw
-    dtqsatw = 100.0*0.622*dtesatw(t)/p
-  end function dtqsatw
-  
-  real function dtesati(t)
-    real t	! temperature (K)
-    real a0,a1,a2,a3,a4,a5,a6,a7,a8 
-    data a0,a1,a2,a3,a4,a5,a6,a7,a8 /                      &
-         0.503223089,     0.377174432e-1,  0.126710138e-2, &
-         0.249065913e-4,  0.312668753e-6,  0.255653718e-8, &
-         0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
-    real dt
-!    real dtesatw
-    if(t > 273.15) then
-       dtesati = dtesatw(t)
-    else if(t > 185.) then
-       dt      = t-273.16
-       dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
-    else  ! use additional interpolation below 185K
-       dt      = max(-100.,t-273.16)
-       dtesati = 0.0013186 + dt*(2.60269e-05+dt*1.28676e-07)
-    end if
-  end function dtesati
-  
-  
-  real function dtqsati(t,p)
-    real t	! temperature (K)
-    real p	! pressure    (Pa)
-!    real dtesati
-    dtqsati = 100.0*0.622*dtesati(t)/p
-  end function dtqsati
   
  end subroutine run_shoc
 

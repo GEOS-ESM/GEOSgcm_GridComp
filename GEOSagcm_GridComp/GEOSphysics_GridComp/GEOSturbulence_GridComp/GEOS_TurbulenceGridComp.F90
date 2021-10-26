@@ -3588,9 +3588,9 @@ contains
       call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaQT, "EDMF_AlphaQT:", default=2.89,     RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaTH, "EDMF_AlphaTH:", default=2.89,     RC=STATUS) 
       ! Entrainment rate options
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ET,      "EDMF_ET:", default=2,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ET,      "EDMF_ET:", default=2,        RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,    "EDMF_ENT0:", default=1.0,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,    "EDMF_ENT0:", default=0.6,    RC=STATUS)
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, EDMFPARAMS%L0,      "EDMF_L0:", default=100.,     RC=STATUS)
       ! L0fac if ET==2
