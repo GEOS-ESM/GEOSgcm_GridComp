@@ -2708,6 +2708,16 @@ contains
     call MAPL_GetPointer(IMPORT, WTHV2, 'WTHV2',    RC=STATUS)
     VERIFY_(STATUS)
 
+!----- Variables for idealized SCM surface layer ------
+    call MAPL_GetPointer(INTERNAL, cu_scm,    'cu_scm', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, ct_scm,    'ct_scm', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, ssurf_scm, 'ssurf_scm', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, qsurf_scm, 'qsurf_scm', RC=STATUS)
+    VERIFY_(STATUS)
+
 ! Get pointers from internal state
 !---------------------------------
     call MAPL_GetPointer(INTERNAL, AKS,   'AKS',     RC=STATUS)
@@ -3034,7 +3044,7 @@ contains
      real, dimension(IM,JM,LM) :: QT,THL,HL,EXF
 
      ! Variables for idealized surface layer     
-     real, dimension(IM,JM), target :: ustat_scm, sh_scm, evap_scm, wstar, zeta
+     real, dimension(IM,JM), target :: ustar_scm, sh_scm, evap_scm, zeta_scm
 
      real, dimension(im,jm,0:lm) :: edmfdrya, edmfmoista,     &
                                     edmfdryw, edmfmoistw,     &
@@ -3629,7 +3639,7 @@ contains
           sh_scm(:,:)   = scm_sh
           evap_scm(:,:) = scm_evap/mapl_alhl
        elseif ( SCM_SL_FLUX == 2 ) then
-          zeta(:,:) = scm_zeta
+          zeta_scm(:,:) = scm_zeta
        end if
 
        call surface(IM, JM, LM, &                                         ! in
@@ -3642,14 +3652,14 @@ contains
                           SCM_SL_FLUX, SCM_Z0, &
                           zpbl, ssurf_scm, qsurf_scm, &
                           z, zle, ple, rhoe, u, v, T, q, thv, &
-                          sh_scm, evap_scm, zeta, &
-                          ustat_scm, cu_scm, ct_scm)
+                          sh_scm, evap_scm, zeta_scm, &
+                          ustar_scm, cu_scm, ct_scm)
 
        cu => cu_scm
        ct => ct_scm
        cq => ct_scm
        
-       ustar => ustat_scm
+       ustar => ustar_scm
        sh    => sh_scm
        evap  => evap_scm
 
