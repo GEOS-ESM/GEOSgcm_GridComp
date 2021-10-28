@@ -35,6 +35,7 @@ module MOM6_GEOSPlugMod
   use diag_manager_mod,         only: diag_manager_init, diag_manager_end
   use field_manager_mod,        only: field_manager_init, field_manager_end
 
+  use mpp_mod,                  only: mpp_exit
   use fms_mod,                  only: fms_init, fms_end
   use fms_io_mod,               only: fms_io_exit
 
@@ -1481,6 +1482,8 @@ contains
 
     call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
     VERIFY_(STATUS)
+
+    call mpp_exit()
 
 ! All Done
 !---------
