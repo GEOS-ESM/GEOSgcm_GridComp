@@ -7801,15 +7801,8 @@ contains
          ZLE(:,:,L) = ZL0(:,:,L) - ZL0(:,:,LM) 
       end do
       do L=LM,1,-1
-<<<<<<< HEAD
          ZLO(:,:,L) = 0.5*(ZLE(:,:,L-1) + ZLE(:,:,L))
          DZET(:,:,L) =     ZLE(:,:,L-1) - ZLE(:,:,L)
-=======
-         ZLE(:,:,L-1) = TH (:,:,L) * (1.+MAPL_VIREPS*Q(:,:,L))    ! This term is really THV
-         ZLO(:,:,L  ) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PKE(:,:,L)-PK (:,:,L  ) ) * ZLE(:,:,L-1)
-         ZLE(:,:,L-1) = ZLO(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PK (:,:,L)-PKE(:,:,L-1) ) * ZLE(:,:,L-1)
-         DZET(:,:,L ) = ZLE(:,:,L-1) - ZLE(:,:,L)
->>>>>>> origin/feature/mmanyin/new_lightning_options
       end do
 
       GZLE  = MAPL_GRAV * ZLE
