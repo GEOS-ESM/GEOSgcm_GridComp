@@ -31,7 +31,7 @@ contains
 SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
               u3,v3,t3,thl3,thv3,qt3,qv3,ql3,qi3,&
               ust2,wthl2,wqt2,frland,pblh2, &
-              mfsrcthl, mfsrcqt, mfw, mfarea, &
+!              mfsrcthl, mfsrcqt, mfw, mfarea, &
             ! outputs - variables needed for solver
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
              mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, &
@@ -81,7 +81,7 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
        INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE,NUP!,DOCLASP
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
-       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: mfsrcqt,mfsrcthl,mfw,mfarea
+       REAL,DIMENSION(ITS:ITE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
        REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND
        REAL :: DT
        INTEGER :: NUP2
@@ -151,6 +151,11 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
      WSTARmin=1.e-3, &
      PBLHmin=100.
 
+     ! temporary, set 
+      mfsrcthl = 0.
+      mfsrcqt  = 0.
+      mfw      = 0.
+      mfarea   = 0.
 
      ! set updraft properties to zero/undef
       dry_a3=0.

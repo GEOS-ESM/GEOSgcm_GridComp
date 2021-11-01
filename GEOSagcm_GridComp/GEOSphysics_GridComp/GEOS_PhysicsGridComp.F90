@@ -1079,8 +1079,7 @@ contains
 
      call MAPL_AddConnectivity ( GC,                               &
          SHORT_NAME  = (/'CT     ','CM     ','CQ     ',            &
-                         'BSTAR  ','USTAR  ','MFQTSRC','MFTHSRC',  &
-                         'MFW    ','MFAREA ' /),   &
+                         'BSTAR  ','USTAR  ' /),   &
          DST_ID      = TURBL,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )

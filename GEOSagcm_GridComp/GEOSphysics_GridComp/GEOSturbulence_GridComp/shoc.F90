@@ -762,9 +762,10 @@ contains
            else
               wrk2 = 1.5/(400.*tkes)
 !              wrk2 = 10.0/(zcb(i,j)*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j)))
+!              wrk3 = 1.5*sqrt(brunt2(i,j,k))*exp(-0.5*zl(i,j,k)/zdecay)/(0.7*tkes)
               wrk3 = 1.5*sqrt(brunt2(i,j,k))/(0.7*tkes)
-!              wrk3 = 1.5*sqrt(brunt_smooth(i,j,k))/(0.7*tkes)
               wrk1 = 1.0/(wrk2+wrk3)
+!              smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
               smixt(i,j,k) = 9.4*exp(-0.5*zl(i,j,k)/zdecay)*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !              smixt(i,j,k) = 9.4*exp(-max(0.,zl(i,j,k)-zcb(i,j))/zcb(i,j))*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))
 !             smixt(i,j,k) = 9.4*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*800.)))

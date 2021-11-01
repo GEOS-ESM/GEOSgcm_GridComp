@@ -424,45 +424,45 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'MFTHSRC',                                   &
-        LONG_NAME  = 'mass_flux_source_temperature_perturbation', &
-        UNITS      = 'K',                                         &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+!     call MAPL_AddImportSpec(GC,                                  &
+!        SHORT_NAME = 'MFTHSRC',                                   &
+!        LONG_NAME  = 'mass_flux_source_temperature_perturbation', &
+!        UNITS      = 'K',                                         &
+!        DIMS       = MAPL_DimsHorzVert,                           &
+!        VLOCATION  = MAPL_VLocationCenter,                        &
+!        RESTART    = MAPL_RestartSkip,                            &
+!                                                       RC=STATUS  )
+!     VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'MFQTSRC',                                   &
-        LONG_NAME  = 'mass_flux_source_humidity_perturbation',    &
-        UNITS      = 'kg kg-1',                                   &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+!     call MAPL_AddImportSpec(GC,                                  &
+!        SHORT_NAME = 'MFQTSRC',                                   &
+!        LONG_NAME  = 'mass_flux_source_humidity_perturbation',    &
+!        UNITS      = 'kg kg-1',                                   &
+!        DIMS       = MAPL_DimsHorzVert,                           &
+!        VLOCATION  = MAPL_VLocationCenter,                        &
+!        RESTART    = MAPL_RestartSkip,                            &
+!                                                       RC=STATUS  )
+!     VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'MFW',                                   &
-        LONG_NAME  = 'mass_flux_initial_vertical_velocity',       &
-        UNITS      = 'm s-1',                                     &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+!     call MAPL_AddImportSpec(GC,                                  &
+!        SHORT_NAME = 'MFW',                                   &
+!        LONG_NAME  = 'mass_flux_initial_vertical_velocity',       &
+!        UNITS      = 'm s-1',                                     &
+!        DIMS       = MAPL_DimsHorzVert,                           &
+!        VLOCATION  = MAPL_VLocationCenter,                        &
+!        RESTART    = MAPL_RestartSkip,                            &
+!                                                       RC=STATUS  )
+!     VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'MFAREA',                                    &
-        LONG_NAME  = 'mass_flux_area_fraction',                   &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+!     call MAPL_AddImportSpec(GC,                                  &
+!        SHORT_NAME = 'MFAREA',                                    &
+!        LONG_NAME  = 'mass_flux_area_fraction',                   &
+!        UNITS      = '1',                                         &
+!        DIMS       = MAPL_DimsHorzVert,                           &
+!        VLOCATION  = MAPL_VLocationCenter,                        &
+!        RESTART    = MAPL_RestartSkip,                            &
+!                                                       RC=STATUS  )
+!     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'FRLAND',                            &
@@ -2937,7 +2937,7 @@ contains
      real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA
      real, dimension(IM,JM,0:LM)         :: PKE
 
-     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
+!     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
      real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
@@ -3102,6 +3102,9 @@ contains
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
 
+     real :: TIME, YY, MO, DD, HH, MM
+     real, dimension(16,10) :: TSKIN, LHF, SHF, T2M, Q2M
+
      type (SHOCPARAMS_TYPE) :: SHOCPARAMS
      type (EDMFPARAMS_TYPE) :: EDMFPARAMS
 
@@ -3134,10 +3137,10 @@ contains
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
      ! Imports for CLASP heterogeneity coupling in EDMF
-     call MAPL_GetPointer(IMPORT, MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, MFQTSRC, 'MFQTSRC',RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, MFW,     'MFW'    ,RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, MFAREA,  'MFAREA' ,RC=STATUS); VERIFY_(STATUS)
+!     call MAPL_GetPointer(IMPORT, MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
+!     call MAPL_GetPointer(IMPORT, MFQTSRC, 'MFQTSRC',RC=STATUS); VERIFY_(STATUS)
+!     call MAPL_GetPointer(IMPORT, MFW,     'MFW'    ,RC=STATUS); VERIFY_(STATUS)
+!     call MAPL_GetPointer(IMPORT, MFAREA,  'MFAREA' ,RC=STATUS); VERIFY_(STATUS)
 
 
 ! Get turbulence parameters from configuration
@@ -3577,16 +3580,16 @@ contains
 
     if ( DOMF /= 0 ) then
       ! number of updrafts
-      call MAPL_GetResource (MAPL, NUMUP,   "EDMF_NumUp:", default=10,     RC=STATUS)
+      call MAPL_GetResource (MAPL, NUMUP,   "EDMF_NUMUP:", default=10,     RC=STATUS)
       ! boundaries for the updraft area (min/max sigma of w pdf)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMIN,   "EDMF_pwmin:", default=1.,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMAX,   "EDMF_pwmax:", default=3.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMIN,   "EDMF_PWMIN:", default=1.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMAX,   "EDMF_PWMAX:", default=3.,     RC=STATUS)
       !
       call MAPL_GetResource (MAPL, EDMFPARAMS%ENTWFAC, "EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
       ! coefficients for surface forcing
-      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaW,  "EDMF_AlphaW:", default=0.572,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaQT, "EDMF_AlphaQT:", default=2.89,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaTH, "EDMF_AlphaTH:", default=2.89,     RC=STATUS) 
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaW,  "EDMF_ALPHAW:", default=0.572,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaQT, "EDMF_ALPHAQT:", default=2.89,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaTH, "EDMF_ALPHATH:", default=2.89,     RC=STATUS) 
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, EDMFPARAMS%ET,      "EDMF_ET:", default=2,        RC=STATUS)
       ! constant entrainment rate   
@@ -3594,9 +3597,9 @@ contains
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, EDMFPARAMS%L0,      "EDMF_L0:", default=100.,     RC=STATUS)
       ! L0fac if ET==2
-      call MAPL_GetResource (MAPL, EDMFPARAMS%L0fac,   "EDMF_L0fac:", default=10.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%L0fac,   "EDMF_L0FAC:", default=10.,     RC=STATUS)
      ! factor to multiply the eddy-diffusivity with
-      call MAPL_GetResource (MAPL, EDMFPARAMS%EDfac,   "EDMF_EDfac:", default=1.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%EDfac,   "EDMF_EDFAC:", default=1.,     RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%DOCLASP, "DOCLASP:", default=0,  RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
       call MAPL_GetResource (MAPL, EDMFPARAMS%ENTRAIN,    "EDMF_ENTRAIN:", default=1,  RC=STATUS)
@@ -3633,6 +3636,7 @@ contains
     call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.012957419628129 ) ! S6
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.013215659785478 ) ! S11
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.007700882024895 ) ! S12
+
 
         if ( SCM_SL /= 0 ) then
        call MAPL_TimerOn(MAPL,"---SURFACE")
@@ -3692,7 +3696,7 @@ contains
                U, V, T, THL, THV, QT,         & ! in
                Q, QL, QI, USTAR,              & ! in
                SH, EVAP, frland, zpbl,        & ! in
-               MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP imports
+!               MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP imports
                ae3, aw3, aws3, awqv3,         & ! for trisolver 
                awql3, awqi3, awu3, awv3,      & ! for trisolver
                mfw2,mfw3,mfqt3,mfhl3,mfwqt,   & ! for ADG PDF
