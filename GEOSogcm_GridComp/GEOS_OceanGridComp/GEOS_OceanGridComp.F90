@@ -2,10 +2,10 @@
 
 #include "MAPL_Generic.h"
 
-module GuestOcean_GridCompMod
+module GEOS_OceanGridCompMod
 
 !BOP
-! !MODULE: GuestOcean_GridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
+! !MODULE: GEOS_OceanGridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
 
 ! !USES:
 
@@ -1374,4 +1374,4 @@ contains
 
   end subroutine Run
 
-end module GuestOcean_GridCompMod
+end module GEOS_OceanGridCompMod
