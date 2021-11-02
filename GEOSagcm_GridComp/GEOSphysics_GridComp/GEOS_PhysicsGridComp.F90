@@ -1315,7 +1315,9 @@ contains
 
     !Aerosol
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'AERO_ACI'/),                             &
+         SHORT_NAME  = (/'AERO'/),                           &
+!         SHORT_NAME  = (/'AERO_ACI  '/),                             &
+!         SHORT_NAME  = (/'AERO_ACI  ', 'AERO2G_ACI'/),                             &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )

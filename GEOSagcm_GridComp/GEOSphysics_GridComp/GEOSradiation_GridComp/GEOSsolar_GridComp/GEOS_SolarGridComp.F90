@@ -2033,7 +2033,7 @@ contains
                VERIFY_(STATUS)
 
                ! execute the aero provider's optics method 
-               call ESMF_MethodExecute(AERO, label="aerosol_optics", userRC=AS_STATUS, RC=STATUS)
+               call ESMF_MethodExecute(AERO, label="run_aerosol_optics", userRC=AS_STATUS, RC=STATUS)
                VERIFY_(AS_STATUS)
                VERIFY_(STATUS)
 
@@ -2632,6 +2632,7 @@ contains
          if(SLICESimp(K) > 0) then ! Skip PREF
 
             if (NAMESimp(K)=="AERO") then
+!            if (NAMESimp(K)=="AERO_RAD") then
 
                _ASSERT(size(AEROSOL_EXT,3)==LM,'needs informative message')
                _ASSERT(size(AEROSOL_SSA,3)==LM,'needs informative message')

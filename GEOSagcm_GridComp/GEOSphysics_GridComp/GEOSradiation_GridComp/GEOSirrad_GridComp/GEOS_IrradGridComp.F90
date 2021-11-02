@@ -1939,7 +1939,7 @@ contains
          VERIFY_(STATUS)
 
          ! execute the aero provider's optics method
-         call ESMF_MethodExecute(AERO, label="aerosol_optics", RC=STATUS)
+         call ESMF_MethodExecute(AERO, label="run_aerosol_optics", RC=STATUS)
          VERIFY_(STATUS)
 
          ! EXT from AERO_PROVIDER
