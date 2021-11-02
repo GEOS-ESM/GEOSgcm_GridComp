@@ -12022,7 +12022,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
        fract_liq_f = 1./(1.+exp(-ptc)) 
    
 !WMP skew ice fraction for deep convective clouds
-       fract_liq_f = fract_liq_f**4
+!      fract_liq_f = fract_liq_f**4
 !WMP 
    CASE DEFAULT 
        fract_liq_f =  min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
