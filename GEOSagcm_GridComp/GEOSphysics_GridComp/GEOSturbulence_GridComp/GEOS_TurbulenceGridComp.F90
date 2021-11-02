@@ -1818,123 +1818,6 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_relative_area_fraction',                       &
-!       UNITS      = '1',                                                     &
-!       SHORT_NAME = 'PDF_A',                                                 &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_vertical_velocity_standard_deviation',         &
-!       UNITS      = '1',                                                     &
-!       SHORT_NAME = 'PDF_SIGW',                                              &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_avg_vertical_velocity_of_first_plume',         &
-!       UNITS      = 'm s-1',                                                 &
-!       SHORT_NAME = 'PDF_W1',                                                &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_avg_vertical_velocity_of_second_plume',        &
-!       UNITS      = 'm s-1',                                                 &
-!       SHORT_NAME = 'PDF_W2',                                                &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_stddev_liq_wat_pot_temp_of_first_plume',       &
-!       UNITS      = 'K',                                                     &
-!       SHORT_NAME = 'PDF_SIGTH1',                                            &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_stddev_liq_wat_pot_temp_of_second_plume',      &
-!       UNITS      = 'K',                                                     &
-!       SHORT_NAME = 'PDF_SIGTH2',                                            &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_avg_liq_wat_pot_temp_of_first_plume',          &
-!       UNITS      = 'K',                                                     &
-!       SHORT_NAME = 'PDF_TH1',                                               &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_avg_liq_wat_pot_temp_of_second_plume',         &
-!       UNITS      = 'K',                                                     &
-!       SHORT_NAME = 'PDF_TH2',                                               &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_stddev_total_water_of_first_plume',            &
-!       UNITS      = 'kg kg-1',                                               &
-!       SHORT_NAME = 'PDF_SIGQT1',                                            &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_stddev_total_water_of_second_plume',           &
-!       UNITS      = 'kg kg-1',                                               &
-!       SHORT_NAME = 'PDF_SIGQT2',                                            &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_avg_total_water_of_first_plume',               &
-!       UNITS      = 'kg kg-1',                                               &
-!       SHORT_NAME = 'PDF_QT1',                                               &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!   VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_avg_total_water_of_second_plume',              &
-!       UNITS      = 'kg kg-1',                                               &
-!       SHORT_NAME = 'PDF_QT2',                                               &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'SHOC_PDF_corr_total_water_liq_wat_pot_temp',            &
-!       UNITS      = '1',                                                     &
-!       SHORT_NAME = 'PDF_RQTTH',                                               &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                &
        SHORT_NAME = 'TKEDISS',                                   &
        LONG_NAME  = 'tke_dissipation_from_SHOC',        &
@@ -2491,7 +2374,7 @@ contains
        LONG_NAME  = 'variance_of_total_water_specific_humidity', &
        UNITS      = '1',                                         &
        DEFAULT    = 0.0,                                         &
-       FRIENDLYTO = 'TURBULENCE',                                &
+       FRIENDLYTO = 'TURBULENCE:DYNAMICS',                       &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -2501,7 +2384,7 @@ contains
        LONG_NAME  = 'third_moment_total_water_specific_humidity',&
        UNITS      = '1',                                         &
        DEFAULT    = 0.0,                                         &
-       FRIENDLYTO = 'TURBULENCE',                                &
+       FRIENDLYTO = 'TURBULENCE:DYNAMICS',                       &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -3101,9 +2984,6 @@ contains
 
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
-
-     real :: TIME, YY, MO, DD, HH, MM
-     real, dimension(16,10) :: TSKIN, LHF, SHF, T2M, Q2M
 
      type (SHOCPARAMS_TYPE) :: SHOCPARAMS
      type (EDMFPARAMS_TYPE) :: EDMFPARAMS
@@ -4542,7 +4422,6 @@ contains
             do J = 1, JM
                temparray(1:LM+1) = KH(I,J,0:LM)
                do L = LM,2,-1
-!                  locmax = min(maxloc(temparray,1),LM)
                   locmax = maxloc(temparray,1)
                   minlval = max(0.001,0.0001*maxval(temparray))
                   if(temparray(locmax-1)<minlval.and.temparray(locmax+1)<minlval) temparray(locmax) = minlval
@@ -4739,8 +4618,6 @@ contains
 
 
   RHOAW3=RHOE*AW3
-
-! print *,'rhoaw3',rhoaw3
 
      if (EDMFPARAMS%IMPLICIT == 1 .and. EDMFPARAMS%DISCRETE == 0) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &

@@ -218,18 +218,14 @@ module partition_pdf
           if (mffrc>=1e-3) then                ! if active updraft this timestep
             if (aterm<0.5) then                ! if distribution is skewed (recent updrafts)
               aterm = max(mffrc,aterm*max(1.-DT/tauskew,0.0))
-!              skew_qw = max(qt3/sqrtqt**3,skew_qw*max(1.-DT/tauskew,0.0))
             else                               ! if distribution unskewed
               aterm = mffrc
-!              skew_qw = qt3/sqrtqt**3
             end if
           else                                 ! if no active updraft
             if (aterm.lt.0.5 .and. aterm.gt.1e-3) then  ! but there is residual skewness
               aterm = aterm*max(1.-DT/tauskew,0.0)
-!              skew_qw = skew_qw*max(1.-DT/tauskew,0.0)
             else
               aterm = 0.5
-!              skew_qw = skew_qw*max(1.-DT/tauskew,0.0)
             end if
           end if
 
@@ -238,8 +234,6 @@ module partition_pdf
            aterm = mffrc
            aterm = max(1e-3,min(0.99,aterm))
            if (mffrc.le.1e-3) aterm = 0.5
-
-!           skew_qw = qt3/sqrtqt**3
          end if
 
          onema = 1.0 - aterm
