@@ -389,7 +389,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DTDT_ORO_NCAR',                                  &
+        SHORT_NAME = 'DTDT_ORO_NRDG',                                  &
         LONG_NAME  = 'air_temperature_tendency_due_to_orographic_GWD', &
         UNITS      = 'K s-1',                                  &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -397,7 +397,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DUDT_ORO_NCAR',                                  &
+        SHORT_NAME = 'DUDT_ORO_NRDG',                                  &
         LONG_NAME  = 'tendency_of_eastward_wind_due_to_orographic_GWD',               &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -405,7 +405,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DVDT_ORO_NCAR',                                  &
+        SHORT_NAME = 'DVDT_ORO_NRDG',                                  &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_orographic_GWD',              &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -1290,6 +1290,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD_NCAR , DVDT_GWD_NCAR , DTDT_GWD_NCAR
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG_NCAR , DVDT_ORG_NCAR , DTDT_ORG_NCAR
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORG_NRDG , DVDT_ORG_NRDG , DTDT_ORG_NRDG
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
@@ -1842,39 +1843,79 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          VERIFY_(STATUS)
          call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', RC=STATUS )
          VERIFY_(STATUS)
+         if (FIRST_RUN .and. (NCAR_NRDG > 0)) GBXAR = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
+         WHERE (ANGLL < -180)
+           ANGLL = 0.0
+         END WHERE
 
-       WHERE (ANGLL < -180)
-         ANGLL = 0.0
-       END WHERE
-       if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
-        GBXAR = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
-        IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-       !call Write_Profile( 1.e-6*AREA , AREA, ESMFGRID, 'AREA' )
-        call Write_Profile(       GBXAR, AREA, ESMFGRID, 'GBXAR')
-        do nrdg = 1, NCAR_NRDG
-           IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
-           call Write_Profile(MXDIS(:,:,nrdg), AREA, ESMFGRID, 'MXDIS')
-           call Write_Profile(ANGLL(:,:,nrdg), AREA, ESMFGRID, 'ANGLL')
-           call Write_Profile(ANIXY(:,:,nrdg), AREA, ESMFGRID, 'ANIXY')
-           call Write_Profile(CLNGT(:,:,nrdg), AREA, ESMFGRID, 'CLNGT')
-           call Write_Profile(HWDTH(:,:,nrdg), AREA, ESMFGRID, 'HWDTH')
-        enddo
-        FIRST_RUN = .false.
-       endif
+         if (NCAR_NRDG == 1) then
+            ANGLL = 0.0
+            HWDTH = 50.0
+            CLNGT = 100.0
+            ANIXY = 1.0
+            GBXAR = 100.**2
+            MXDIS(:,:,1) = SGH 
+         endif
 
-       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', RC=STATUS); VERIFY_(STATUS)
-       if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
-       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', RC=STATUS); VERIFY_(STATUS)
-       if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
-       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', RC=STATUS); VERIFY_(STATUS)
-       if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
-       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', RC=STATUS); VERIFY_(STATUS)
-       if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
-       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', RC=STATUS); VERIFY_(STATUS)
-       if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
-       call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', RC=STATUS); VERIFY_(STATUS)
-       if(associated(TMP2D)) TMP2D = GBXAR
+         if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
+          IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
+          call Write_Profile(   GBXAR          , AREA, ESMFGRID, 'GBXAR')
+          do nrdg = 1, NCAR_NRDG
+             IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
+             call Write_Profile(MXDIS(:,:,nrdg), AREA, ESMFGRID, 'MXDIS')
+             call Write_Profile(ANGLL(:,:,nrdg), AREA, ESMFGRID, 'ANGLL')
+             call Write_Profile(ANIXY(:,:,nrdg), AREA, ESMFGRID, 'ANIXY')
+             call Write_Profile(CLNGT(:,:,nrdg), AREA, ESMFGRID, 'CLNGT')
+             call Write_Profile(HWDTH(:,:,nrdg), AREA, ESMFGRID, 'HWDTH')
+          enddo
+          FIRST_RUN = .false.
+         endif
 
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP2D)) TMP2D = GBXAR
+
+         if (NCAR_NRDG == 1) then
+         ! Call the NCAR Ridge Scheme (but don't use the tendencies)
+         call gw_intr_ncar(IM*JM,    LM,         DT,     NCAR_NRDG,   &
+              beres_desc, beres_band, oro_band,                       &
+              PLE,       T,          U,          V,      HT_dpc,      &
+              SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
+              ANIXY,     GBXAR,      PREF,                            &
+              PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+              DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
+              DUDT_ORG_NRDG,  DVDT_ORG_NRDG,   DTDT_ORG_NRDG,         &
+              TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
+              TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
+              NCAR_EFFGWORO, &
+              NCAR_EFFGWBKG, &
+              RC=STATUS)
+         VERIFY_(STATUS)
+         ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
+         call gw_intr_ncar(IM*JM,    LM,         DT,   0*NCAR_NRDG,   &
+              beres_desc, beres_band, oro_band,                       &
+              PLE,       T,          U,          V,      HT_dpc,      &
+              SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
+              ANIXY,     GBXAR,      PREF,                            &
+              PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+              DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
+              DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
+              TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
+              TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
+              NCAR_EFFGWORO*0.125, &
+              NCAR_EFFGWBKG, &
+              RC=STATUS)
+         VERIFY_(STATUS)
+         else
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
          call gw_intr_ncar(IM*JM,    LM,         DT,     NCAR_NRDG,   &
               beres_desc, beres_band, oro_band,                       &
@@ -1888,8 +1929,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
               NCAR_EFFGWORO, &
               NCAR_EFFGWBKG, &
-              RC=STATUS            )
+              RC=STATUS)
          VERIFY_(STATUS)
+         endif
           ! Use GEOS GWD only for Extratropical background sources...
          if ( (GEOS_EFFGWORO /= 0.0) .OR. (GEOS_EFFGWBKG /= 0.0) ) then
           call gw_intr   (IM*JM,      LM,         DT,                  &
@@ -1904,7 +1946,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                GEOS_BGSTRESS, &
                GEOS_EFFGWORO, &
                GEOS_EFFGWBKG, &
-               RC=STATUS            )
+               RC=STATUS)
           VERIFY_(STATUS)
          else
           DUDT_GWD_GEOS = 0.0
@@ -1919,12 +1961,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           TAUYO_TMP_GEOS = 0.0
          endif
         ! COMBINE THE OUTPUT TENDENCIES
-         call MAPL_GetPointer(EXPORT, TMP3D, 'DUDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
-         if(associated(TMP3D)) TMP3D = DUDT_ORG_NCAR
-         call MAPL_GetPointer(EXPORT, TMP3D, 'DVDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
-         if(associated(TMP3D)) TMP3D = DVDT_ORG_NCAR
-         call MAPL_GetPointer(EXPORT, TMP3D, 'DTDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
-         if(associated(TMP3D)) TMP3D = DTDT_ORG_NCAR
+         call MAPL_GetPointer(EXPORT, TMP3D, 'DUDT_ORO_NRDG', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP3D)) TMP3D = DUDT_ORG_NRDG
+         call MAPL_GetPointer(EXPORT, TMP3D, 'DVDT_ORO_NRDG', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP3D)) TMP3D = DVDT_ORG_NRDG
+         call MAPL_GetPointer(EXPORT, TMP3D, 'DTDT_ORO_NRDG', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP3D)) TMP3D = DTDT_ORG_NRDG
          ! Total 
          DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD_NCAR
          DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR

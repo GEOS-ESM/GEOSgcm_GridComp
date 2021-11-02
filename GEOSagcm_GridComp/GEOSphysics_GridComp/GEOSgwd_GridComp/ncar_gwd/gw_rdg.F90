@@ -281,9 +281,9 @@ subroutine gw_rdg_ifc( &
    !----------------------------------------------------------------------------
 
    ! Allocate wavenumber fields.
-   allocate(tau(ncol,  band%ngwv:band%ngwv  , pverp))
-   allocate(gwut(ncol,pver,band%ngwv:band%ngwv  ))
-   allocate(c(ncol,band%ngwv:band%ngwv))
+   allocate(tau(ncol,  -band%ngwv:band%ngwv  , pverp))
+   allocate(gwut(ncol,pver,-band%ngwv:band%ngwv  ))
+   allocate(c(ncol,-band%ngwv:band%ngwv))
 
    type='BETA'
 

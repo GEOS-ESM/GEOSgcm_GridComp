@@ -349,9 +349,9 @@ subroutine gw_oro_ifc( band, &
 
 
    ! Allocate wavenumber fields.
-   allocate(tau(ncol,band%ngwv:band%ngwv,pver+1))
-   allocate(gwut(ncol,pver,band%ngwv:band%ngwv))
-   allocate(c(ncol,band%ngwv:band%ngwv))
+   allocate(tau(ncol, -band%ngwv:band%ngwv,pver+1))
+   allocate(gwut(ncol,pver, -band%ngwv:band%ngwv))
+   allocate(c(ncol, -band%ngwv:band%ngwv))
 
 ! Efficiency of gravity wave momentum transfer.
      effgw(:) = effgw_oro

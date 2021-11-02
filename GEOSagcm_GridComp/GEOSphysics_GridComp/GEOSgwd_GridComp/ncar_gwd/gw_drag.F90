@@ -272,12 +272,6 @@ contains
 ! SGH and other topo
 !----------
    sgh_dev_ff =   sgh_dev
- mxdis_dev_ff = mxdis_dev   ! obstacle/ridge height 
- hwdth_dev_ff = hwdth_dev   ! obstacle width
- clngt_dev_ff = clngt_dev   ! obstacle along-crest length
- angll_dev_ff = angll_dev   ! obstacle orientation
- anixy_dev_ff = anixy_dev   ! obstacle ansitropy param 
- gbxar_dev_ff = gbxar_dev   ! duplicate grid box area
 !
 
    call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni )
@@ -308,6 +302,12 @@ contains
        t_gwt_ff = t_gwt_ff + t_gwt_dc_ff
 
      if (nrdg > 0) then
+       mxdis_dev_ff = mxdis_dev   ! obstacle/ridge height 
+       hwdth_dev_ff = hwdth_dev   ! obstacle width
+       clngt_dev_ff = clngt_dev   ! obstacle along-crest length
+       angll_dev_ff = angll_dev   ! obstacle orientation
+       anixy_dev_ff = anixy_dev   ! obstacle ansitropy param 
+       gbxar_dev_ff = gbxar_dev   ! duplicate grid box area
        trpd_leewv    = .FALSE.
        effgw_rdg     = effgworo
        effgw_rdg_max = effgworo
