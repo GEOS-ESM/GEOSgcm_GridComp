@@ -1,3 +1,6 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
+program Scale_CatchCN
   use MAPL
   use lsm_routines, ONLY: catch_calc_tp,  catch_calc_ght, DZGT
   USE CATCH_CONSTANTS,   ONLY: N_GT              => CATCH_N_GT
@@ -146,7 +149,7 @@
   type(Netcdf4_fileformatter) :: formatter(3)
   type(Filemetadata) :: cfg(3)
   integer :: i, rc, filetype
-    
+  integer :: status  
 ! Usage
 ! -----
   if (iargc() /= 6) then
@@ -236,8 +239,8 @@
   new = 2
   
   if (filetype ==0) then
-     call readcatchcn_nc4 ( catch(old), formatter(old), cfg(old) )
-     call readcatchcn_nc4 ( catch(new), formatter(new), cfg(new) )
+     call readcatchcn_nc4 ( catch(old), formatter(old), cfg(old), __RC__ )
+     call readcatchcn_nc4 ( catch(new), formatter(new), cfg(new), __RC__ )
 !  else
 !     call readcatchcn ( 10,catch(old) )
 !     call readcatchcn ( 20,catch(new) )
@@ -522,114 +525,117 @@
    return
    end subroutine allocatch
 
-   subroutine readcatchcn_nc4 (catch,formatter,cfg)
-   type(catch_rst) catch
-   type(Filemetadata) :: cfg
-   type(Netcdf4_Fileformatter) :: formatter
-   integer :: j, dim1,dim2
-   type(Variable), pointer :: myVariable
-   character(len=:), pointer :: dname
+   subroutine readcatchcn_nc4 (catch,formatter,cfg, rc)
+      type(catch_rst) catch
+      type(Filemetadata) :: cfg
+      type(Netcdf4_Fileformatter) :: formatter
+      integer, optional, intent(out) :: rc
+      integer :: j, dim1,dim2
+      type(Variable), pointer :: myVariable
+      character(len=:), pointer :: dname
+      character(256) :: Iam = "readcatchcn_nc4"
+      integer :: status
 
-       call MAPL_VarRead(formatter,"BF1",catch%bf1)
-       call MAPL_VarRead(formatter,"BF2",catch%bf2)
-       call MAPL_VarRead(formatter,"BF3",catch%bf3)
-       call MAPL_VarRead(formatter,"VGWMAX",catch%vgwmax)
-       call MAPL_VarRead(formatter,"CDCR1",catch%cdcr1)
-       call MAPL_VarRead(formatter,"CDCR2",catch%cdcr2)
-       call MAPL_VarRead(formatter,"PSIS",catch%psis)
-       call MAPL_VarRead(formatter,"BEE",catch%bee)
-       call MAPL_VarRead(formatter,"POROS",catch%poros)
-       call MAPL_VarRead(formatter,"WPWET",catch%wpwet)
-       call MAPL_VarRead(formatter,"COND",catch%cond)
-       call MAPL_VarRead(formatter,"GNU",catch%gnu)
-       call MAPL_VarRead(formatter,"ARS1",catch%ars1)
-       call MAPL_VarRead(formatter,"ARS2",catch%ars2)
-       call MAPL_VarRead(formatter,"ARS3",catch%ars3)
-       call MAPL_VarRead(formatter,"ARA1",catch%ara1)
-       call MAPL_VarRead(formatter,"ARA2",catch%ara2)
-       call MAPL_VarRead(formatter,"ARA3",catch%ara3)
-       call MAPL_VarRead(formatter,"ARA4",catch%ara4)
-       call MAPL_VarRead(formatter,"ARW1",catch%arw1)
-       call MAPL_VarRead(formatter,"ARW2",catch%arw2)
-       call MAPL_VarRead(formatter,"ARW3",catch%arw3)
-       call MAPL_VarRead(formatter,"ARW4",catch%arw4)
-       call MAPL_VarRead(formatter,"TSA1",catch%tsa1)
-       call MAPL_VarRead(formatter,"TSA2",catch%tsa2)
-       call MAPL_VarRead(formatter,"TSB1",catch%tsb1)
-       call MAPL_VarRead(formatter,"TSB2",catch%tsb2)
-       call MAPL_VarRead(formatter,"ATAU",catch%atau)
-       call MAPL_VarRead(formatter,"BTAU",catch%btau)
+      call MAPL_VarRead(formatter,"BF1",catch%bf1, __RC__)
+      call MAPL_VarRead(formatter,"BF2",catch%bf2, __RC__)
+      call MAPL_VarRead(formatter,"BF3",catch%bf3, __RC__)
+      call MAPL_VarRead(formatter,"VGWMAX",catch%vgwmax, __RC__)
+      call MAPL_VarRead(formatter,"CDCR1",catch%cdcr1, __RC__)
+      call MAPL_VarRead(formatter,"CDCR2",catch%cdcr2, __RC__)
+      call MAPL_VarRead(formatter,"PSIS",catch%psis, __RC__)
+      call MAPL_VarRead(formatter,"BEE",catch%bee, __RC__)
+      call MAPL_VarRead(formatter,"POROS",catch%poros, __RC__)
+      call MAPL_VarRead(formatter,"WPWET",catch%wpwet, __RC__)
+      call MAPL_VarRead(formatter,"COND",catch%cond, __RC__)
+      call MAPL_VarRead(formatter,"GNU",catch%gnu, __RC__)
+      call MAPL_VarRead(formatter,"ARS1",catch%ars1, __RC__)
+      call MAPL_VarRead(formatter,"ARS2",catch%ars2, __RC__)
+      call MAPL_VarRead(formatter,"ARS3",catch%ars3, __RC__)
+      call MAPL_VarRead(formatter,"ARA1",catch%ara1, __RC__)
+      call MAPL_VarRead(formatter,"ARA2",catch%ara2, __RC__)
+      call MAPL_VarRead(formatter,"ARA3",catch%ara3, __RC__)
+      call MAPL_VarRead(formatter,"ARA4",catch%ara4, __RC__)
+      call MAPL_VarRead(formatter,"ARW1",catch%arw1, __RC__)
+      call MAPL_VarRead(formatter,"ARW2",catch%arw2, __RC__)
+      call MAPL_VarRead(formatter,"ARW3",catch%arw3, __RC__)
+      call MAPL_VarRead(formatter,"ARW4",catch%arw4, __RC__)
+      call MAPL_VarRead(formatter,"TSA1",catch%tsa1, __RC__)
+      call MAPL_VarRead(formatter,"TSA2",catch%tsa2, __RC__)
+      call MAPL_VarRead(formatter,"TSB1",catch%tsb1, __RC__)
+      call MAPL_VarRead(formatter,"TSB2",catch%tsb2, __RC__)
+      call MAPL_VarRead(formatter,"ATAU",catch%atau, __RC__)
+      call MAPL_VarRead(formatter,"BTAU",catch%btau, __RC__)
 
-       myVariable => cfg%get_variable("ITY")
-       dname => myVariable%get_ith_dimension(2)
-       dim1 = cfg%get_dimension(dname)
-       do j=1,dim1
-          call MAPL_VarRead(formatter,"ITY",catch%ity(:,j),offset1=j)
-          call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j)
-       enddo
+      myVariable => cfg%get_variable("ITY")
+      dname => myVariable%get_ith_dimension(2)
+      dim1 = cfg%get_dimension(dname)
+      do j=1,dim1
+         call MAPL_VarRead(formatter,"ITY",catch%ity(:,j),offset1=j, __RC__)
+         call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j, __RC__)
+      enddo
 
-       call MAPL_VarRead(formatter,"TC",catch%tc)
-       call MAPL_VarRead(formatter,"QC",catch%qc)
-       call MAPL_VarRead(formatter,"TG",catch%tg)
-       call MAPL_VarRead(formatter,"CAPAC",catch%capac)
-       call MAPL_VarRead(formatter,"CATDEF",catch%catdef)
-       call MAPL_VarRead(formatter,"RZEXC",catch%rzexc)
-       call MAPL_VarRead(formatter,"SRFEXC",catch%srfexc)
-       call MAPL_VarRead(formatter,"GHTCNT1",catch%ghtcnt1)
-       call MAPL_VarRead(formatter,"GHTCNT2",catch%ghtcnt2)
-       call MAPL_VarRead(formatter,"GHTCNT3",catch%ghtcnt3)
-       call MAPL_VarRead(formatter,"GHTCNT4",catch%ghtcnt4)
-       call MAPL_VarRead(formatter,"GHTCNT5",catch%ghtcnt5)
-       call MAPL_VarRead(formatter,"GHTCNT6",catch%ghtcnt6)
-       call MAPL_VarRead(formatter,"TSURF",catch%tsurf)
-       call MAPL_VarRead(formatter,"WESNN1",catch%wesnn1)
-       call MAPL_VarRead(formatter,"WESNN2",catch%wesnn2)
-       call MAPL_VarRead(formatter,"WESNN3",catch%wesnn3)
-       call MAPL_VarRead(formatter,"HTSNNN1",catch%htsnnn1)
-       call MAPL_VarRead(formatter,"HTSNNN2",catch%htsnnn2)
-       call MAPL_VarRead(formatter,"HTSNNN3",catch%htsnnn3)
-       call MAPL_VarRead(formatter,"SNDZN1",catch%sndzn1)
-       call MAPL_VarRead(formatter,"SNDZN2",catch%sndzn2)
-       call MAPL_VarRead(formatter,"SNDZN3",catch%sndzn3)
-       call MAPL_VarRead(formatter,"CH",catch%ch)
-       call MAPL_VarRead(formatter,"CM",catch%cm)
-       call MAPL_VarRead(formatter,"CQ",catch%cq)
-       call MAPL_VarRead(formatter,"FR",catch%fr)
-       call MAPL_VarRead(formatter,"WW",catch%ww)
-       call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID)
-       call MAPL_VarRead(formatter,"NDEP",catch%ndep)
-       call MAPL_VarRead(formatter,"CLI_T2M",catch%t2)
-       call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR)
-       call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF)
-       call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR)
-       call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF)
-       myVariable => cfg%get_variable("CNCOL")
-       dname => myVariable%get_ith_dimension(2)
-       dim1 = cfg%get_dimension(dname)
-       if(clm45) then          
-          call MAPL_VarRead(formatter,"ABM",     catch%ABM , rc = rc    )
-          call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP)
-          call MAPL_VarRead(formatter,"HDM",     catch%HDM     )
-          call MAPL_VarRead(formatter,"GDP",     catch%GDP     )
-          call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   )
-       endif
-       do j=1,dim1
-          call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
-       enddo
-       ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
-       ! (to be merged into the "develop" branch in late 2020):
-       ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
-       ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
-       ! resulting in bad values in the "regridded" (re-tiled) restart file. 
-       ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
-       ! - reichle, 23 Nov 2020
-       myVariable => cfg%get_variable("CNPFT")
-       dname => myVariable%get_ith_dimension(2)
-       dim1 = cfg%get_dimension(dname)       
-       do j=1,dim1
-          call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j)
-       enddo
-   return
+      call MAPL_VarRead(formatter,"TC",catch%tc, __RC__)
+      call MAPL_VarRead(formatter,"QC",catch%qc, __RC__)
+      call MAPL_VarRead(formatter,"TG",catch%tg, __RC__)
+      call MAPL_VarRead(formatter,"CAPAC",catch%capac, __RC__)
+      call MAPL_VarRead(formatter,"CATDEF",catch%catdef, __RC__)
+      call MAPL_VarRead(formatter,"RZEXC",catch%rzexc, __RC__)
+      call MAPL_VarRead(formatter,"SRFEXC",catch%srfexc, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT1",catch%ghtcnt1, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT2",catch%ghtcnt2, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT3",catch%ghtcnt3, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT4",catch%ghtcnt4, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT5",catch%ghtcnt5, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT6",catch%ghtcnt6, __RC__)
+      call MAPL_VarRead(formatter,"TSURF",catch%tsurf, __RC__)
+      call MAPL_VarRead(formatter,"WESNN1",catch%wesnn1, __RC__)
+      call MAPL_VarRead(formatter,"WESNN2",catch%wesnn2, __RC__)
+      call MAPL_VarRead(formatter,"WESNN3",catch%wesnn3, __RC__)
+      call MAPL_VarRead(formatter,"HTSNNN1",catch%htsnnn1, __RC__)
+      call MAPL_VarRead(formatter,"HTSNNN2",catch%htsnnn2, __RC__)
+      call MAPL_VarRead(formatter,"HTSNNN3",catch%htsnnn3, __RC__)
+      call MAPL_VarRead(formatter,"SNDZN1",catch%sndzn1, __RC__)
+      call MAPL_VarRead(formatter,"SNDZN2",catch%sndzn2, __RC__)
+      call MAPL_VarRead(formatter,"SNDZN3",catch%sndzn3, __RC__)
+      call MAPL_VarRead(formatter,"CH",catch%ch, __RC__)
+      call MAPL_VarRead(formatter,"CM",catch%cm, __RC__)
+      call MAPL_VarRead(formatter,"CQ",catch%cq, __RC__)
+      call MAPL_VarRead(formatter,"FR",catch%fr, __RC__)
+      call MAPL_VarRead(formatter,"WW",catch%ww, __RC__)
+      call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID, __RC__)
+      call MAPL_VarRead(formatter,"NDEP",catch%ndep, __RC__)
+      call MAPL_VarRead(formatter,"CLI_T2M",catch%t2, __RC__)
+      call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR, __RC__)
+      call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF, __RC__)
+      call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR, __RC__)
+      call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF, __RC__)
+      myVariable => cfg%get_variable("CNCOL")
+      dname => myVariable%get_ith_dimension(2)
+      dim1 = cfg%get_dimension(dname)
+      if(clm45) then          
+         call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
+         call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
+         call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
+         call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
+         call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+      endif
+      do j=1,dim1
+         call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
+      enddo
+      ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
+      ! (to be merged into the "develop" branch in late 2020):
+      ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
+      ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
+      ! resulting in bad values in the "regridded" (re-tiled) restart file. 
+      ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
+      ! - reichle, 23 Nov 2020
+      myVariable => cfg%get_variable("CNPFT")
+      dname => myVariable%get_ith_dimension(2)
+      dim1 = cfg%get_dimension(dname)       
+      do j=1,dim1
+         call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j, __RC__)
+      enddo
+      _RETURN(_SUCCESS)
    end subroutine readcatchcn_nc4
 
    subroutine readcatchcn (unit,catch)
@@ -961,7 +967,7 @@
    return
    end subroutine writecatchcn
 
-  end
+  end program
 
   subroutine calc_soil_moist( &
        ncat,dzsf,vgwmax,cdcr1,cdcr2,wpwet,poros, &
