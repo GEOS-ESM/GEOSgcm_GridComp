@@ -594,28 +594,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-!    call MAPL_AddImportSpec(GC,                                     &
-!         SHORT_NAME = 'edmf_wqtavg',                                &
-!         LONG_NAME  = 'edmf_qt_flux_from_plume_mean',               &
-!         UNITS      = 'kg kg-1 m s-1',                              &
-!         DIMS       = MAPL_DimsHorzVert,                            &
-!         VLOCATION  = MAPL_VLocationEdge,                           &
-!         AVERAGING_INTERVAL = AVRGNINT,                             &
-!         REFRESH_INTERVAL   = RFRSHINT,                             &
-!         RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddImportSpec(GC,                                     &
-!         SHORT_NAME = 'edmf_whlavg',                                &
-!         LONG_NAME  = 'edmf_hl_flux_from_plume_mean',               &
-!         UNITS      = 'K',                                          &
-!         DIMS       = MAPL_DimsHorzVert,                            &
-!         VLOCATION  = MAPL_VLocationEdge,                           &
-!         AVERAGING_INTERVAL = AVRGNINT,                             &
-!         REFRESH_INTERVAL   = RFRSHINT,                             &
-!         RC=STATUS  )
-!    VERIFY_(STATUS)
-
     call MAPL_AddImportSpec(GC,                                              &
          SHORT_NAME = 'WQT',                                                   &
          LONG_NAME  = 'Total_water_flux',                                      &
@@ -5579,7 +5557,6 @@ contains
                                           WQL,       &
                                           WHL,       &
                                           EDMF_FRC
-!    real, pointer, dimension(:,:,:) :: edmf_wqtavg,edmf_whlavg
 
     real, dimension(:,:,:),pointer     :: WTHV2,WTHV2_RAD
 
@@ -6006,8 +5983,6 @@ contains
       real,    dimension(IM,JM,  LM)  :: DQS, QSS, PLO, ZLO, TEMP, PK, DP, DQSDT, DBZ3D
       real,    dimension(IM,JM,  LM)  :: KEX, DKEX
       real,    dimension(IM,JM,  LM)  :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
-
-      real                            :: IMPOSECLD_TOP,IMPOSECLD_BOT,IMPOSECLD_QCMIN,IMPOSECLD_FRCMIN
 
       integer                         :: SHLWDIAG
       real,    dimension(IM,JM,  LM)  :: SHLW_PRC3,SHLW_SNO3,UFRC_SC
@@ -6593,11 +6568,6 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,    'KEVP:'    ,DEFAULT=2.e-6,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,   'SHLW_RDROP:',DEFAULT=8.e-6,    RC=STATUS)
 
-      call MAPL_GetResource(STATE, IMPOSECLD_TOP,   'IMPOSECLD_TOP:',DEFAULT=1200.,   RC=STATUS)
-      call MAPL_GetResource(STATE, IMPOSECLD_BOT,   'IMPOSECLD_BOT:',DEFAULT=1100.,   RC=STATUS)
-      call MAPL_GetResource(STATE, IMPOSECLD_QCMIN, 'IMPOSECLD_QCMIN:',DEFAULT=0.,    RC=STATUS)
-      call MAPL_GetResource(STATE, IMPOSECLD_FRCMIN,'IMPOSECLD_FRCMIN:',DEFAULT=0.,   RC=STATUS)
-
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0  , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0, RC=STATUS)
@@ -6691,9 +6661,6 @@ contains
       call MAPL_GetPointer(IMPORT, QT2  ,  'QT2',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QT3  ,  'QT3',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, HLQT,   'HLQT',   RC=STATUS); VERIFY_(STATUS)
-!      call MAPL_GetPointer(IMPORT, edmf_wqtavg, 'edmf_wqtavg', RC=STATUS); VERIFY_(STATUS)
-!      call MAPL_GetPointer(IMPORT, edmf_whlavg, 'edmf_whlavg', RC=STATUS); VERIFY_(STATUS)
-
 
 
       ! Pointers to exports
@@ -10561,8 +10528,6 @@ contains
               FRLAND            , &   ! <- surf
               KH                , &   ! <- turb
               EDMF_FRC          , &   ! <- turb
-!              edmf_wqtavg       , &   ! <- turb
-!              edmf_whlavg       , &   ! <- turb
               WQT               , &   ! <- turb
               WHL               , &   ! <- turb
               QT2               , &   ! <- turb
@@ -12423,26 +12388,6 @@ do K= 1, LM
       RAD_QV   = max( Q1 , 0. )
 
       
-      do i=1,IM
-        do j=1,JM
-          if (TS(i,j).le.293.) then
-          do k=1,LM
-            if (ZLO(i,j,k)>IMPOSECLD_BOT .and. ZLO(i,j,k)<IMPOSECLD_TOP) then
-              if (maxval(RAD_CF(i,j,1:k-1))<0.9) then
-                RAD_CF(i,j,k) = max(RAD_CF(i,j,k),IMPOSECLD_FRCMIN)
-                RAD_QL(i,j,k) = max(RAD_QL(i,j,k),IMPOSECLD_QCMIN)
-              end if
-            end if
-          end do
-          end if
-        end do
-      end do
-!      where (ZLO.gt.IMPOSECLD_BOT .and. ZLO.lt.IMPOSECLD_TOP) 
-!        RAD_CF = max(RAD_CF,IMPOSECLD_FRCMIN)
-!        RAD_QL = max(RAD_QL,IMPOSECLD_QCMIN)
-!      end where
-
-
       IF ( INT(CLDPARAMS%DISABLE_RAD)==1 ) THEN
          RAD_QL     = 0.
          RAD_QI     = 0.

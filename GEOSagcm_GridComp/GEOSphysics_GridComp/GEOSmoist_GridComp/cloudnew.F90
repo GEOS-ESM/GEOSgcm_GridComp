@@ -2093,12 +2093,6 @@ contains
          AF          , &
          NL          , &
          NI          , &
-!         AU          , &
-!         HLE         , &
-!         QTE         , &
-!         HL2U        , &
-!         QT2U        , &
-!         HLQTU       , &
          WHL         , &
          WQT         , &
 !         wqtfac      , &
@@ -2137,7 +2131,7 @@ contains
       integer, intent(in) :: pdfshape
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
       real, intent(in)    :: NL,NI,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
-      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3!,wqtfac,whlfac
+      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
 #ifdef PDFDIAG
       real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
                              PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
@@ -2157,8 +2151,6 @@ contains
 
       real :: QCx, QVx, CFx, QAx, QC, QA, fQi
       real :: dQAi, dQAl, dQCi, dQCl, Nfac, NLv, NIv 
-
-      real :: Tce, qle, ace, Tcu, qlu, acu, HLU, QTU
 
 !      real :: fQip
 
@@ -2249,8 +2241,6 @@ contains
                                  HL,          &
                                  WHL,         &
                                  WQT,         &
-!                                 wqtfac,      &
-!                                 whlfac,      &
                                  HL2,         &
                                  QT2,         &
                                  HLQT,        & 
@@ -2284,10 +2274,6 @@ contains
            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
 
          endif
-
-!         if (abs(QVn+QCn-QVp-QCp)>1e-6*(QVp+QCp) .and. QVp>0.0001) print *,'total water not conserved!'
-
-!         if (pl>950.) print *,'hystpdf, af dblgss: wthv2=',wthv2
 
          IF(USE_AEROSOL_NN) THEN
            DQCALL = QCn - QCp
