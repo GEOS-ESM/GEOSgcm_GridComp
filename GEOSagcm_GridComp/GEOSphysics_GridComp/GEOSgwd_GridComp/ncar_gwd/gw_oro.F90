@@ -369,7 +369,7 @@ subroutine gw_oro_ifc( band, &
         end if
      end do
 
-     pint_adj = 1.0
+!    pint_adj = 1.0
 !WMP pressure scaling from GEOS top 0.01mb to 0.5mb
 !    where (pint < 50.0)
 !     !pint_adj = (pint/50.0)**3
@@ -386,8 +386,8 @@ subroutine gw_oro_ifc( band, &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax, &
-          tau_adjust=pint_adj)
+          lapply_effgw_in=gw_apply_tndmax)
+!         tau_adjust=pint_adj)
 
      flx_heat(:ncol) = 0._r8
 

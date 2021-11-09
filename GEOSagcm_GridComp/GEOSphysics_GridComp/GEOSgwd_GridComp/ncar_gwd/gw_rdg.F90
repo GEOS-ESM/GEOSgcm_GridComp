@@ -4,9 +4,9 @@ module gw_rdg
 ! This module handles gravity waves from orographic sources, and was
 ! extracted from gw_drag in May 2013.
 !
-!use shr_const_mod, only: pii => shr_const_pi
+!use shr_const_mod, only: pi => shr_const_pi
 !use shr_kind_mod,   only: r8=>shr_kind_r8   !, cl=>shr_kind_cl
-use gw_common, only: gw_drag_prof, GWBand, cpair,rair
+use gw_common, only: gw_drag_prof, GWBand, pi,cpair,rair
 use gw_utils, only:  dot_2d, midpoint_interp
 
 
@@ -20,13 +20,6 @@ public :: gw_rdg_init
 public :: gw_rdg_ifc
 
 integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
-real(R8),parameter :: PII      = 3.14159265358979323846_R8  ! pi
-
-
-! parameter replaces 'use spmd_utils ..'
-!---------------------------------------
-logical            :: masterproc=.TRUE.
-
 
 ! Tunable Parameters
 !--------------------
@@ -298,6 +291,7 @@ subroutine gw_rdg_ifc( &
    do nn = 1, n_rdg
   
       kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
+!!!   kwvrdg  = band%effkwv
       isoflag = 0   
       effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / gbxar(1:ncol)
       effgw   = min( effgw_rdg_max , effgw )
@@ -333,13 +327,13 @@ subroutine gw_rdg_ifc( &
          satfac_in = 1._r8 )
 #endif
 
-     pint_adj = 1.0
+!    pint_adj = 1.0
 !WMP pressure scaling from GEOS top 0.01mb to 0.5mb
 !     where (pint < 50.0)
 !      !pint_adj = (pint/50.0)**3
 !       pint_adj = 1./19. * &
 !                  ((atan( (2.*(pint-1.0)/(50-1.0)-1.) * &
-!                  tan(20.*PII/21.-0.5*PII) ) + 0.5*PII) * 21./PII - 1.)
+!                  tan(20.*pi/21.-0.5*pi) ) + 0.5*pi) * 21./pi - 1.)
 !     endwhere
 !WMP pressure scaling from GEOS
 
@@ -351,8 +345,8 @@ subroutine gw_rdg_ifc( &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           kwvrdg=kwvrdg,                                 &  
           satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax,   &
-          tau_adjust=pint_adj)
+          lapply_effgw_in=gw_apply_tndmax)
+!         tau_adjust=pint_adj)
 
      flx_heat(:ncol) = 0._r8
 
@@ -659,7 +653,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   ! Get the unit vector components
   ! Want agl=0 with U>0 to give xv=1
 
-  ragl = angxy * pii/180._r8
+  ragl = angxy * pi/180._r8
 
   ! protect from wierd "bad" angles 
   ! that may occur if hdsp is zero
@@ -1246,19 +1240,19 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   wbrx(:)=0._r8
   if (do_smooth_regimes) then
      do k=pver,1,-1
-     where( (phswkb(:,k+1)<1.5_r8*pii).and.(phswkb(:,k)>=1.5_r8*pii) & 
+     where( (phswkb(:,k+1)<1.5_r8*pi).and.(phswkb(:,k)>=1.5_r8*pi) & 
             .and.(hdspdw(:)>hdspwv(:)) )
         wbr(:)  = zi(:,k)  
         ! Extrapolation to make regime
         ! transitions smoother
-        wbrx(:) = zi(:,k)   - ( phswkb(:,k) -  1.5_r8*pii ) &
+        wbrx(:) = zi(:,k)   - ( phswkb(:,k) -  1.5_r8*pi ) &
                             / ( m2(:,k) + 1.e-6_r8 )
         src_level(:) = k-1
      endwhere
      end do
   else
      do k=pver,1,-1
-     where( (phswkb(:,k+1)<1.5_r8*pii).and.(phswkb(:,k)>=1.5_r8*pii) & 
+     where( (phswkb(:,k+1)<1.5_r8*pi).and.(phswkb(:,k)>=1.5_r8*pi) & 
             .and.(hdspdw(:)>hdspwv(:)) )
         wbr(:)  = zi(:,k)
         src_level(:) = k

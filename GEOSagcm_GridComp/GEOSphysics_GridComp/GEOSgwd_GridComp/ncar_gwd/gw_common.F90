@@ -504,7 +504,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
            where (src_level >= k)
               ! Test to see if u-c has the same sign here as the level below.
               where (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l))
-                 tausat = abs(  kwvrdg  * rhoi(:,k) * ubmc**3 / &
+                 tausat = abs(kwvrdg * rhoi(:,k) * ubmc**3 / &
                     (satfac*ni(:,k)))
               end where
            end where
@@ -542,14 +542,13 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
               ! min of the saturation stress and the stress at the level below
               ! reduced by damping. The sign of the stress must be the same as
               ! at the level below.
-
               ubmc2 = max(ubmc**2, ubmc2mn)
-              mi = ni(:,k) / (2._r8 *   kwvrdg * ubmc2) * &  ! Is this 2._r8 related to satfac?
+              mi = ni(:,k) / (2._r8 * kwvrdg * ubmc2) * &
                  (alpha(k) + ni(:,k)**2/ubmc2 * d)
               wrk = -2._r8*mi*rog*t(:,k)*(piln(:,k+1) - piln(:,k))
                 wrk = max( wrk, -200._r8 )
 
-              taudmp = tau(:,l,k+1)
+              taudmp = tau(:,l,k+1) * exp(wrk)
 
               ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
               ! we limit tau, so instead limit the arrays used to set it.
