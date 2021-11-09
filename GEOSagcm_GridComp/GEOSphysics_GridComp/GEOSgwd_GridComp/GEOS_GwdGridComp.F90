@@ -960,7 +960,7 @@ contains
 
          call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=1.00_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.25_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=20.0_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
@@ -1848,14 +1848,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            ANGLL = 0.0
          END WHERE
 
-         if (NCAR_NRDG == 1) then
-            ANGLL = 0.0
-            HWDTH = 50.0
-            CLNGT = 100.0
-            ANIXY = 1.0
-            GBXAR = 100.**2
-            MXDIS(:,:,1) = SGH 
-         endif
+       ! if (NCAR_NRDG == 1) then
+       !    ANGLL = 0.0
+       !    HWDTH = 50.0
+       !    CLNGT = 100.0
+       !    ANIXY = 1.0
+       !    GBXAR = 100.**2
+       !    MXDIS(:,:,1) = SGH 
+       ! endif
 
          if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
           IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
@@ -1884,7 +1884,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', RC=STATUS); VERIFY_(STATUS)
          if(associated(TMP2D)) TMP2D = GBXAR
 
-         if (NCAR_NRDG == 1) then
+         if (NCAR_NRDG == 11111) then
          ! Call the NCAR Ridge Scheme (but don't use the tendencies)
          call gw_intr_ncar(IM*JM,    LM,         DT,     NCAR_NRDG,   &
               beres_desc, beres_band, oro_band,                       &
