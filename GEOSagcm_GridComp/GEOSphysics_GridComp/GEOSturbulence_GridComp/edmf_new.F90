@@ -1,5 +1,5 @@
 !#define EDMF_DIAG 1
-module edmf_mod
+module edmf_mod_new
 
 use edmfparams, only : edmfparams_type
 
@@ -1493,5 +1493,5 @@ end subroutine Poisson_new
       end function ran1
 
 
-end module edmf_mod
+end module edmf_mod_new
 
