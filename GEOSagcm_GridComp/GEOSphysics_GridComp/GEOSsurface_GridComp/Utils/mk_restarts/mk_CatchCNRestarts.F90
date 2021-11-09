@@ -1,4 +1,5 @@
-#define VERIFY_(A) if(A /=0)then;print *,'ERROR code',A,'at',__LINE__;call exit(3);endif
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
 
 program  mk_CatchCNRestarts
 
@@ -280,6 +281,7 @@ program  mk_CatchCNRestarts
   type(Netcdf4_Fileformatter) :: InFmt,OutFmt
   type(FileMetadata) :: InCfg,OutCfg
   integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
+  character(256) :: Iam = "mk_CatchCNRestarts"
   
   call init_MPI()
   call MPI_Info_create(infos, STATUS)                                 ; VERIFY_(STATUS)
@@ -326,12 +328,11 @@ program  mk_CatchCNRestarts
   
   ! Reading restart time stamp and constructing daylength array
   ! -----------------------------------------------------------
-
   read (RestartTime (1: 4), '(i4)', IOSTAT = K) AGCM_YY ; VERIFY_(K)
   read (RestartTime (5: 6), '(i2)', IOSTAT = K) AGCM_MM ; VERIFY_(K)
   read (RestartTime (7: 8), '(i2)', IOSTAT = K) AGCM_DD ; VERIFY_(K)
   read (RestartTime (9:10), '(i2)', IOSTAT = K) AGCM_HR ; VERIFY_(K)
-  
+
   MPI_PROC0 : if (root_proc) then
      
      ! Read Output/Input  .til files
@@ -343,14 +344,14 @@ program  mk_CatchCNRestarts
      ! create output catchcn_internal_rst in nc4 format
      ! ------------------------------------------------
      
-     call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy',pFIO_READ,rc=rc) 
-     InCfg=InFmt%read(rc=rc)
-     call MAPL_IOCountNonDimVars(InCfg,nvars,rc=rc)
-     call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),rc=rc)
+     call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy',pFIO_READ, __RC__) 
+     InCfg=InFmt%read( __RC__)
+     call MAPL_IOCountNonDimVars(InCfg,nvars, __RC__)
+     call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),__RC__)
      i = index(InRestart,'/',back=.true.)     
      OutFileName = "OutData/"//trim(InRestart(i+1:))
-     call OutFmt%create(OutFileName,rc=rc)
-     call OutFmt%write(OutCfg,rc=rc)
+     call OutFmt%create(OutFileName, __RC__)
+     call OutFmt%write(OutCfg, __RC__)
      i1= index(InRestart,'/',back=.true.)
      i = index(InRestart,'catchcn',back=.true.)
      
@@ -396,14 +397,14 @@ program  mk_CatchCNRestarts
    
      !OPT3 (Reading/writing BCs/hydrological variables)
    
-     if (root_proc) call read_bcs_data  (ntiles, SURFLAY, OutFmt, InRestart)
+     if (root_proc) call read_bcs_data  (ntiles, SURFLAY, OutFmt, InRestart, __RC__)
      
   else
 
      ! What is the format of the InRestart file?
      ! -----------------------------------------
 
-     call MAPL_NCIOGetFileType(InRestart, filetype,rc=rc)
+     call MAPL_NCIOGetFileType(InRestart, filetype, __RC__)
      
      if (filetype /= 0) then
         
@@ -420,8 +421,8 @@ program  mk_CatchCNRestarts
         ! check nVars: if nVars > 57 OPT1 (catchcn_internal_rst) ; else OPT2 (catch_internal_rst)
         ! ---------------------------------------------------------------------------------------
 
-        call InFmt%open(InRestart,pFIO_READ,rc=rc)
-        InCfg = InFmt%read(rc=rc)
+        call InFmt%open(InRestart,pFIO_READ, __RC__)
+        InCfg = InFmt%read(__RC__)
         call InFmt%close()
 
         call MAPL_IOCountNonDimVars(InCfg,nvars)
@@ -525,7 +526,7 @@ program  mk_CatchCNRestarts
         deallocate (loni,lati)
 
 
-       if (root_proc)  call read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, ID, InRestart)
+       if (root_proc)  call read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, ID, InRestart, __RC__)
 
      else
 
@@ -599,7 +600,7 @@ contains
 
   ! *****************************************************************************
   
-  SUBROUTINE read_bcs_data (ntiles, SURFLAY, OutFmt, InRestart)
+  SUBROUTINE read_bcs_data (ntiles, SURFLAY, OutFmt, InRestart, rc)
 
     ! This subroutine :
     !  1) reads BCs from BCSDIR and hydrological varables from InRestart.
@@ -613,6 +614,7 @@ contains
     integer, intent (in)                      :: ntiles
     character (*), intent (in)                :: InRestart
     type(Netcdf4_Fileformatter), intent (inout)           :: OutFmt
+    integer, optional, intent(out) :: rc
 
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
@@ -627,13 +629,13 @@ contains
     real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
     real, allocatable :: T2(:), var1(:)
     integer, allocatable :: ity(:)
-    integer                                  :: rc
     character*256                            :: vname
     character*256 :: DataDir="OutData/clsm/"
     integer       :: idum, i,j,n, ib, nv
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
     logical       :: file_exists
     type(Netcdf4_Fileformatter)                          :: InFmt,CatchCNFmt, CatchFmt
+    integer :: status
   
     allocate (   BF1(ntiles),    BF2 (ntiles),     BF3(ntiles)  )
     allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  ) 
@@ -657,59 +659,59 @@ contains
     if(file_exists) then
 
        print *,'FILE FORMAT FOR LAND BCS IS NC4'
-       call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_READ,rc=rc)
-       call CatchCNFmt%open(trim(DataDir)//'/catchcn_params.nc4',pFIO_READ,rc=rc)
-       call MAPL_VarRead ( CatchFmt ,'OLD_ITY', rity)
-       call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1)
-       call MAPL_VarRead ( CatchFmt ,'ARA2', ARA2)
-       call MAPL_VarRead ( CatchFmt ,'ARA3', ARA3)
-       call MAPL_VarRead ( CatchFmt ,'ARA4', ARA4)
-       call MAPL_VarRead ( CatchFmt ,'ARS1', ARS1)
-       call MAPL_VarRead ( CatchFmt ,'ARS2', ARS2)
-       call MAPL_VarRead ( CatchFmt ,'ARS3', ARS3)
-       call MAPL_VarRead ( CatchFmt ,'ARW1', ARW1)
-       call MAPL_VarRead ( CatchFmt ,'ARW2', ARW2)
-       call MAPL_VarRead ( CatchFmt ,'ARW3', ARW3)
-       call MAPL_VarRead ( CatchFmt ,'ARW4', ARW4)
+       call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_READ, __RC__)
+       call CatchCNFmt%open(trim(DataDir)//'/catchcn_params.nc4',pFIO_READ, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'OLD_ITY', rity, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA2', ARA2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA3', ARA3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA4', ARA4, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS1', ARS1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS2', ARS2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS3', ARS3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW1', ARW1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW2', ARW2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW3', ARW3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW4', ARW4, __RC__)
 
        if( SURFLAY.eq.20.0 ) then
-          call MAPL_VarRead ( CatchFmt ,'ATAU2', ATAU2)
-          call MAPL_VarRead ( CatchFmt ,'BTAU2', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU2', ATAU2, __RC__)
+          call MAPL_VarRead ( CatchFmt ,'BTAU2', BTAU2, __RC__)
        endif
 
        if( SURFLAY.eq.50.0 ) then
-          call MAPL_VarRead ( CatchFmt ,'ATAU5', ATAU2)
-          call MAPL_VarRead ( CatchFmt ,'BTAU5', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU5', ATAU2, __RC__)
+          call MAPL_VarRead ( CatchFmt ,'BTAU5', BTAU2, __RC__)
        endif
 
-       call MAPL_VarRead ( CatchFmt ,'PSIS', PSIS)
-       call MAPL_VarRead ( CatchFmt ,'BEE', BEE)
-       call MAPL_VarRead ( CatchFmt ,'BF1', BF1)
-       call MAPL_VarRead ( CatchFmt ,'BF2', BF2)
-       call MAPL_VarRead ( CatchFmt ,'BF3', BF3)
-       call MAPL_VarRead ( CatchFmt ,'TSA1', TSA1)
-       call MAPL_VarRead ( CatchFmt ,'TSA2', TSA2)
-       call MAPL_VarRead ( CatchFmt ,'TSB1', TSB1)
-       call MAPL_VarRead ( CatchFmt ,'TSB2', TSB2)
-       call MAPL_VarRead ( CatchFmt ,'COND', COND)
-       call MAPL_VarRead ( CatchFmt ,'GNU', GNU)
-       call MAPL_VarRead ( CatchFmt ,'WPWET', WPWET)
-       call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR)
-       call MAPL_VarRead ( CatchFmt ,'POROS', POROS)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR)
-       call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP)
-       call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2)
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1)     !  30
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2)     !  31
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3)     !  32
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4)     !  33
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1)     !  34
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2)     !  35
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3)     !  36
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4)     !  37
+       call MAPL_VarRead ( CatchFmt ,'PSIS', PSIS, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BEE', BEE, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF1', BF1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF2', BF2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF3', BF3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSA1', TSA1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSA2', TSA2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSB1', TSB1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSB2', TSB2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'COND', COND, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'GNU', GNU, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'WPWET', WPWET, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'POROS', POROS, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2, __RC__)
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1, __RC__)     !  30
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2, __RC__)     !  31
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3, __RC__)     !  32
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4, __RC__)     !  33
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1, __RC__)     !  34
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2, __RC__)     !  35
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3, __RC__)     !  36
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4, __RC__)     !  37
        call CatchFmt%close()
        call CatchCNFmt%close()
       
@@ -867,7 +869,7 @@ contains
      ! Now writing BCs (from BCSDIR) and regridded hydrological variables 1-72
      ! -----------------------------------------------------------------------
 
-     call InFmt%open(InRestart,pFIO_READ,rc=rc)
+     call InFmt%open(InRestart,pFIO_READ, __RC__)
      
      call MAPL_VarWrite(OutFmt,trim(CarbNames(1)),BF1)            !   1 
      call MAPL_VarWrite(OutFmt,trim(CarbNames(2)),BF2)            !   2
@@ -916,7 +918,7 @@ contains
         if(n == 39) vname = 'QC'
         if(n == 40) vname = 'TG'
         do j = 1,4
-           call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j)
+           call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j, __RC__)
            call MAPL_VarWrite(OutFmt,vname,var1 ,offset1=j)  ! 38-40
         end do
      end do
@@ -924,7 +926,7 @@ contains
      ! CAPAC CATDEF RZEXC SRFEXC ... SNDZN3
      
      do n=41,60
-        call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1)
+        call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1, __RC__)
         call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1)         !  41-60
      enddo
      
@@ -937,7 +939,7 @@ contains
         if(n == 65) var1 = 0.1
         do j = 1,4
            
-           call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1 ,offset1=j)
+           call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1 ,offset1=j, __RC__)
            call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1 ,offset1=j)  ! 61-65
         end do
      end do
@@ -985,12 +987,12 @@ contains
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
      deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
      deallocate (CLMC_st1,CLMC_st2)
-
+     _RETURN(_SUCCESS)
   END SUBROUTINE read_bcs_data
   
    ! *****************************************************************************
   
-  SUBROUTINE read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, IDX, InRestart)
+  SUBROUTINE read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, IDX, InRestart, rc)
 
     implicit none
 
@@ -1002,9 +1004,10 @@ contains
     character(*), intent (in)                :: InRestart
     type(Netcdf4_Fileformatter), intent (inout) :: OutFmt
     integer, dimension (NTILES), intent (in) :: IDX    
+    integer, optional, intent(out) :: rc
     type(Netcdf4_Fileformatter)              :: InFmt
     type(FileMetadata)                      :: InCfg
-    integer                                  :: rc,n,i,j, ndims, nVars,dim1,dim2
+    integer                                  :: n,i,j, ndims, nVars,dim1,dim2
     character(len=:), pointer                :: vname
     real, allocatable                        :: var1 (:), var2 (:)
     integer, allocatable                     :: TILE_ID (:)
@@ -1013,17 +1016,16 @@ contains
     type(StringVariableMapIterator) :: var_iter
     type(StringVector), pointer :: var_dimensions
     character(len=:), pointer :: dname
-    
+    integer :: status
 
-    call InFmt%open(InRestart,pFIO_READ,rc=rc)
-    InCfg = InFmt%read(rc=rc)
+    call InFmt%open(InRestart,pFIO_READ, __RC__)
+    InCfg = InFmt%read(__RC__)
     
     allocate (var1 (1:NTILES_IN))
     allocate (var2 (1:NTILES_IN))
     allocate (TILE_ID (1:NTILES_IN)) 
 
-    call MAPL_VarRead ( InFmt,'TILE_ID',var1)
-
+    call MAPL_VarRead ( InFmt,'TILE_ID',var1, __RC__)
     do n = 1, NTILES_IN      
        tile_id (NINT (var1(n))) = n
     end do
@@ -1039,7 +1041,7 @@ contains
        ndims = var_dimensions%size()
 
        if (ndims == 1) then
-          call MAPL_VarRead ( InFmt,vname,var1)
+          call MAPL_VarRead ( InFmt,vname,var1, __RC__)
           var2 = var1 (tile_id)
           call MAPL_VarWrite(OutFmt,vname,var2(idx))
           
@@ -1048,7 +1050,7 @@ contains
           dname => var%get_ith_dimension(2)
           dim1=InCfg%get_dimension(dname)
           do j=1,dim1
-             call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j)
+             call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j, __RC__)
              var2 = var1 (tile_id)
              call MAPL_VarWrite(OutFmt,vname,var2(idx),offset1=j)
           enddo
@@ -1061,7 +1063,7 @@ contains
           dim2=InCfg%get_dimension(dname)
           do i=1,dim2
              do j=1,dim1
-                call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j,offset2=i)
+                call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j,offset2=i, __RC__)
                 var2 = var1 (tile_id)
                 call MAPL_VarWrite(OutFmt,vname,var2(idx),offset1=j,offset2=i)
              enddo
@@ -1075,169 +1077,8 @@ contains
     deallocate (var1, var2, tile_id)
     call InFmt%close()
     call OutFmt%close()
-
+    _RETURN(_SUCCESS)
   END SUBROUTINE read_catchcn_nc4
-
-  ! *****************************************************************************
-  
-  SUBROUTINE read_catch_nc4 (NTILES_IN, NTILES, OutFmt, IDX, InRestart)
-  
-    ! Reads catch_internal_rst nc4 file and writes out catchcn_internal_rst bin 
-    ! with rigridded 1:29, 38: 39, and 41:65. The rest of the data records is filled
-    ! zeros. This subroutine is called when BCs data are not available. 
-    ! The output catchcn_internal_rst file is binary.
-
-    implicit none
-
-    integer, intent (in)                     :: NTILES_IN, NTILES
-    type(Netcdf4_fileformatter), intent (inout) :: OutFmt
-    character(*), intent (in)                :: InRestart
-    integer, dimension (NTILES), intent (in) :: IDX
-    real, allocatable                        :: var1 (:)
-    integer                                  :: j, n, rc
-    type(Netcdf4_Fileformatter)              :: InFmt
-
-    call InFmt%open(InRestart,pFIO_READ,rc=rc)
-
-    allocate (var1 (1:NTILES_IN))
-
-    do n = 1,29 
-       call MAPL_VarRead (InFmt,trim(CatNames(n)),var1)
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    end do
-
-    var1 = 0.
-
-    do n = 30, 37
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    end do
-
-    do n = 38,39
-       do j=1,4
-          if(n == 38) then 
-             call MAPL_VarRead(InFmt,trim(CatNames(31)),var1,offset1=j)
-             call MAPL_VarWrite(OutFmt,trim(CarbNames(n -6)),var1(Idx),offset1=j) ! 38
-             call MAPL_VarWrite(OutFmt,trim(CarbNames(40-6)),var1(Idx),offset1=j) ! 40
-          endif
-          if(n == 39) then
-             call MAPL_VarRead(InFmt,trim(CatNames(32))  ,var1,offset1=j)
-             call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx),offset1=j)  ! 39
-          endif
-       enddo
-    end do
-    
-    do n = 41,60
-       call MAPL_VarRead(InFmt,trim(CatNames(n-8)),var1)    
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx))                  ! 41-60
-    end do
-
-    do n = 61,65
-       do j=1,4
-          call MAPL_VarRead(InFmt,trim(CatNames(n-8)),var1,offset1=j)
-          call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx),offset1=j)     ! 61,65
-       enddo
-    end do
-
-    deallocate (var1)
-
-    ! 66 : 1080 dont bother this file is merely an intermedeate file
-
-    call InFmt%close()
-    call OutFmt%close()
-    
-  END SUBROUTINE read_catch_nc4
-
-  ! *****************************************************************************
-  
-  SUBROUTINE read_catch_bin (NTILES_IN, NTILES, OutFmt, IDX)
-
-    ! Reads catch_internal_rst bin file and writes out catchcn_internal_rst bin 
-    ! with rigridded 1:29, 38: 39, and 41:65. The rest of the data records is filled
-    ! zeros. This subroutine is called when BCs data are not available. 
-    ! The output catchcn_internal_rst file is nc4. 
-
-    implicit none
-    
-    integer, intent (in)                     :: NTILES_IN, NTILES
-    type(Netcdf4_Fileformatter), intent (inout) :: OutFmt
-    integer, dimension (NTILES), intent (in) :: IDX
-    real, allocatable                        :: var1 (:), vars(:,:), var2(:,:)
-    integer                                  :: j, n
-
-    allocate (var1 (1:NTILES_IN))
-    allocate (vars (1:NTILES_IN,1:4))
-    allocate (var2 (1:NTILES_IN,1:4))
-
-    do n=1,29
-       read ( InUnit) var1
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    enddo
-
-    read ( InUnit) var1
-    var1 = 0.
-
-    do n = 30, 37
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    end do
-
-    read ( InUnit) vars
-    read ( InUnit) var2
-
-    do j = 1,4
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(38-6)),vars(Idx,j),offset1=j) ! 38
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(39-6)),var2(Idx,j),offset1=j) ! 39
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(40-6)),vars(Idx,j),offset1=j) ! 40 TG=TC
-    end do
-
-    do n = 41,60
-       read ( InUnit) var1
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx))
-    end do
-
-    do n = 61, 65
-       read ( InUnit) var2
-       do j = 1,4
-          call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var2(Idx,j),offset1=j) ! 61-65
-       end do
-    end do
-
-! 66 : 1080 dont bother, this file is merely an intermedeate file
-
-!    deallocate (var1)
-!    allocate (var1 (ntiles)
-!    do i = 1,ntiles
-!       var1(i) = real (i)
-!    end do
-!
-!    call MAPL_VarWrite(OutFmt,CarbNames(66),var1) | 66
-!    
-!    ! Below CNCOL and CNPFT are not necessary in this step.
-!    var1 = 0.
-!
-!    do n = 67, 72
-!       write(OutUnit) var1(IDX)
-!    end do 
-  
-!    do n = 1,VAR_COL
-!       do j = 1,nzone
-!          write(OutUnit) var1(IDX)               !  73-192: CNCOL (n,nz*VAR_COL)  
-!       end do
-!    end do
-
-!    do n = 1,VAR_PFT
-!       do j = 1,nveg
-!           do i = 1,nzone
-!              write(OutUnit) var1(IDX)           !  193-1080: CNPFT (n,nz*nv*VAR_COL)  
-!           end do
-!        end do
-!     end do
-     
-     deallocate (var1, var2, vars)
-     
-     close ( InUnit, status = 'keep')
-     call OutFmt%close()
-
-  END SUBROUTINE read_catch_bin
 
   ! *****************************************************************************
   
@@ -1483,7 +1324,6 @@ contains
      if(root_proc) then
         
         STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID) ; VERIFY_(STATUS)
-        
         allocate (CLMC_pf1(NTILES))
         allocate (CLMC_pf2(NTILES))
         allocate (CLMC_sf1(NTILES))
@@ -2711,119 +2551,6 @@ contains
      deallocate (var_get, var_put)
 
    END SUBROUTINE put_land_vars
-
-
-  ! *****************************************************************************
-
-   SUBROUTINE reorder_LDASsa_rst (InRestart)
-
-     implicit none
-
-     character(*), intent (in)    :: InRestart
-     integer                      :: i,n,j, iargc, rc, nVars, ndims,dim1,dim2,ntiles = ntiles_cn
-     type(Netcdf4_FileFormatter)  :: InFmt, OutFmt
-     type(FileMetadata)           :: InCfg, OutCfg
-     real, allocatable            :: var1 (:), var2 (:)
-     integer, allocatable         :: TILE_ID (:)
-     character*256                :: outfile
-     type(StringVariableMap), pointer :: variables
-     type(Variable), pointer :: var
-     type(StringVariableMapIterator) :: var_iter
-     type(StringVector), pointer :: var_dimensions
-     character(len=:), pointer :: vname,dname
-
-     outfile = 'catchcn_internal_rst'
-     print *,InRestart
-
-     call InFmt%open(InRestart,pFIO_READ,rc=rc)
-     InCfg = InFmt%read(rc=rc)
-     call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),rc=rc)
-     call OutFmt%create(outfile,rc=rc)
-     call OutFmt%write(OutCfg,rc=rc)
-      
-     
-     allocate (var1 (1:NTILES))
-     allocate (var2 (1:NTILES))
-     allocate (TILE_ID (1:NTILES))   
-     
-     call MAPL_VarRead ( InFmt,'TILE_ID',var1)
-     
-     do n = 1, NTILES    
-        tile_id (NINT (var1(n))) = n
-     end do
-    
-     variables => InCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end()) 
-        
-        vname => var_iter%key()
-        var => var_iter%value()
-        var_dimensions => var%get_dimensions()
- 
-        ndims = var_dimensions%size()
-
-        if (ndims == 1) then
-           call MAPL_VarRead ( InFmt,vname,var1)
-           var2 = var1 (tile_id)
-           if(trim(vname) == 'SFMCM'  ) var2 = 0.
-           if(trim(vname) == 'BFLOWM' ) var2 = 0.
-           if(trim(vname) == 'TOTWATM') var2 = 0.
-           if(trim(vname) == 'TAIRM'  ) var2 = 0.
-           if(trim(vname) == 'TPM'    ) var2 = 0.
-           if(trim(vname) == 'CNSUM'  ) var2 = 0.
-           if(trim(vname) == 'SNDZM'  ) var2 = 0.
-           if(trim(vname) == 'ASNOWM' ) var2 = 0.
-           if(trim(vname) == 'TSURF'  ) var2 = 0.
-                     
-           call MAPL_VarWrite(OutFmt,vname,var2)
-           
-        else if (ndims == 2) then
-          
-           dname => var%get_ith_dimension(2)
-           dim1=InCfg%get_dimension(dname)
-           do j=1,dim1
-              call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j)
-              var2 = var1 (tile_id)
-              if(trim(vname) == 'TGWM'  ) var2 = 0.
-              if(trim(vname) == 'RZMM'  ) var2 = 0.
-              if(trim(vname) == 'WW'    ) var2 = 0.1
-              if(trim(vname) == 'FR'    ) var2 = 0.25
-              if(trim(vname) == 'CQ'    ) var2 = 0.001
-              if(trim(vname) == 'CN'    ) var2 = 0.001 
-              if(trim(vname) == 'CM'    ) var2 = 0.001 
-              if(trim(vname) == 'CH'    ) var2 = 0.001 
-              call MAPL_VarWrite(OutFmt,vname,var2 ,offset1=j)
-           enddo
-           
-        else if (ndims == 3) then
-           
-           dname => var%get_ith_dimension(2)
-           dim1=InCfg%get_dimension(dname)
-           dname => var%get_ith_dimension(3)
-           dim2=InCfg%get_dimension(dname)
-           do i=1,dim2
-              do j=1,dim1
-                 call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j,offset2=i)
-                 var2 = var1 (tile_id)
-                 if(trim(vname) == 'PSNSUNM'  ) var2 = 0.
-                 if(trim(vname) == 'PSNSHAM'  ) var2 = 0.
-                 call MAPL_VarWrite(OutFmt,vname,var2 ,offset1=j,offset2=i)
-              enddo
-           enddo
-           
-        end if
-
-        call var_iter%next()
-     enddo
-     
-     deallocate (var1, var2, tile_id)
-     
-     call InFmt%close()
-     call OutFmt%close()
-
-     STOP
-
-   END SUBROUTINE reorder_LDASsa_rst
 
   ! *****************************************************************************
   subroutine init_MPI()
