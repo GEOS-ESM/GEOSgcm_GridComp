@@ -3687,7 +3687,8 @@ contains
 
     IF(DoMF /= 0) then
 
-      call RUN_EDMF(1, IM*JM, 1, LM, DT,      & ! in
+!      call RUN_EDMF(1, IM*JM, 1, LM, DT,      & ! in
+      call RUN_EDMF(IM, JM, LM, DT,           & ! in
                Z, ZLE, PLE, RHOE, NUMUP,      & ! in
                U, V, T, THL, THV, QT,         & ! in
                Q, QL, QI, USTAR,              & ! in

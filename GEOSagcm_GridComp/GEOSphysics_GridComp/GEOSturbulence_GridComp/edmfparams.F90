@@ -27,7 +27,7 @@ module EDMFPARAMS
     real    :: AU0
     real    :: CTH1
     real    :: CTH2
-    real    :: RH0_QB
+    real    :: RHO_QB
     real    :: C_KH_MF
     real    :: ICE_RAMP
  endtype EDMFPARAMS_TYPE
