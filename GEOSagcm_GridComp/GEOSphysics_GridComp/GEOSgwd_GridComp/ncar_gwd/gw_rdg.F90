@@ -87,10 +87,10 @@ contains
 !------------------------------------
 !> \section arg_table_gw_rdg_init  Argument Table
 !! \htmlinclude gw_rdg_init.html
-subroutine gw_rdg_init (gw_dc, wavelength, pgwv)
+subroutine gw_rdg_init (gw_dc, fcrit2, wavelength, pgwv)
 #include <netcdf.inc>
 
-  real(r8), intent(in) :: gw_dc,wavelength
+  real(r8), intent(in) :: gw_dc,fcrit2,wavelength
   integer, intent(in)  :: pgwv
 
   call  gw_rdg_readnl   !!! ("control.nml")
@@ -99,7 +99,7 @@ subroutine gw_rdg_init (gw_dc, wavelength, pgwv)
   !  Create "Band" structure
   !----------------------------------------------
 
-  band  = GWBand(pgwv, gw_dc, 1.0_r8, wavelength )
+  band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
   
 end subroutine gw_rdg_init
 

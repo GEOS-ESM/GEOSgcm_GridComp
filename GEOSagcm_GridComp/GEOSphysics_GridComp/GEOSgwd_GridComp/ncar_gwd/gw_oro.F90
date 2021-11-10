@@ -27,22 +27,18 @@ contains
 !==========================================================================
 
 !------------------------------------
-subroutine gw_oro_init (band, gw_dc, wavelength, pgwv, oro_south_fac)
+subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac)
 #include <netcdf.inc>
 
   type(GWBand), intent(inout) :: band
-  real(r8), intent(in) :: gw_dc,wavelength,oro_south_fac
+  real(r8), intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac
   integer, intent(in)  :: pgwv
 
   
 
 ! Need to call GWBand for oro waves
 
- !! Hardwire for now
- !gw_dc = 2.5_r8
- !pgwv  = 0
- !wavelength = 1.e5_r8
-  band  = GWBand(pgwv, gw_dc, 1.0_r8, wavelength )
+  band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
 
   gw_oro_south_fac = oro_south_fac
   

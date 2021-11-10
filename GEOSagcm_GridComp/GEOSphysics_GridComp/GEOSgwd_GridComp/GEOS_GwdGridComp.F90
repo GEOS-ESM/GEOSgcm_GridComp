@@ -924,10 +924,11 @@ contains
 
     real(MAPL_R8) :: NCAR_PRNDL
     real(MAPL_R8) :: NCAR_QBO_HDEPTH_SCALING
-    integer       :: NCAR_PGWV
-    real(MAPL_R8) :: NCAR_GW_DC
-    real(MAPL_R8) :: NCAR_WAVELENGTH
-    real(MAPL_R8) :: NCAR_SOUTH_FAC
+    integer       :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
+    real(MAPL_R8) :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
+    real(MAPL_R8) :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
+    real(MAPL_R8) :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
+    real(MAPL_R8) :: NCAR_ORO_SOUTH_FAC
     real(MAPL_R8) :: NCAR_HR_CF
 
 !=============================================================================
@@ -975,30 +976,34 @@ contains
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
             default=' /discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,           RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,           RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5_MAPL_R8,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5_MAPL_R8,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0_MAPL_R8,  RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
 
-         call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc, NCAR_PGWV, NCAR_GW_DC, NCAR_WAVELENGTH )
+         call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH )
 
          ! Orographic Scheme
-         call MAPL_GetResource( MAPL, NCAR_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,            RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,            RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5_MAPL_R8,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5_MAPL_R8,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0_MAPL_R8,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0_MAPL_R8,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
-         call gw_oro_init ( oro_band, NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV, NCAR_SOUTH_FAC )
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0_MAPL_R8,  RC=STATUS)
+         VERIFY_(STATUS)
+         call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
          call MAPL_GetResource( MAPL, NCAR_NRDG,       Label="NCAR_NRDG:",           default=0,           RC=STATUS)
          VERIFY_(STATUS)
          if (NCAR_NRDG > 0) then
-           call gw_rdg_init ( NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV )
+           call gw_rdg_init ( NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV )
          endif 
 
       end if
