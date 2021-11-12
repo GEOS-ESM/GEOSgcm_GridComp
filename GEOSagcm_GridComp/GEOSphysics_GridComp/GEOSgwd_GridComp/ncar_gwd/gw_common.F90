@@ -501,20 +501,16 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         tausat = 0.0_r8
 
         if (present(kwvrdg)) then
-           where (src_level >= k)
               ! Test to see if u-c has the same sign here as the level below.
-              where (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l))
+           where ( (src_level >= k) .and. (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l)) )
                  tausat = abs(kwvrdg * rhoi(:,k) * ubmc**3 / &
                     (satfac*ni(:,k)))
-              end where
            end where
         else
-           where (src_level >= k)
               ! Test to see if u-c has the same sign here as the level below.
-              where (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l))
+           where ( (src_level >= k) .and. (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l)) )
                  tausat = abs(band%effkwv * rhoi(:,k) * ubmc**3 / &
                     (satfac*ni(:,k)))
-              end where
            end where
         end if
 
@@ -524,19 +520,12 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
            end where
         end if
 
-  ! WMP from GEOS
         if (present(tau_adjust)) then
            tausat = tausat * tau_adjust(:,k)
-          !if (k == ktop  ) tausat = 0.0
-          !if (k == ktop+1) tausat = tausat*0.02
-          !if (k == ktop+2) tausat = tausat*0.05
-          !if (k == ktop+3) tausat = tausat*0.10
-          !if (k == ktop+4) tausat = tausat*0.20
-          !if (k == ktop+5) tausat = tausat*0.50
         end if
-  ! WMP from GEOS
 
         if (present(kwvrdg)) then
+           taudmp = 0._r8
            where (src_level >= k)
               ! Compute stress for each wave. The stress at this level is the
               ! min of the saturation stress and the stress at the level below
@@ -546,21 +535,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
               mi = ni(:,k) / (2._r8 * kwvrdg * ubmc2) * &
                  (alpha(k) + ni(:,k)**2/ubmc2 * d)
               wrk = -2._r8*mi*rog*t(:,k)*(piln(:,k+1) - piln(:,k))
-                wrk = max( wrk, -200._r8 )
-
+              wrk = max( wrk, -200._r8 )
               taudmp = tau(:,l,k+1) * exp(wrk)
-
-              ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
-              ! we limit tau, so instead limit the arrays used to set it.
-              where (tausat <= taumin) tausat = 0._r8
-              where (taudmp <= taumin) taudmp = 0._r8
-
-              tau(:,l,k) = min(taudmp, tausat)
            end where
-
+           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
+           ! we limit tau, so instead limit the arrays used to set it.
+           where (tausat <= taumin) tausat = 0._r8
+           where (taudmp <= taumin) taudmp = 0._r8
+           do i = 1, ncol
+             tau(i,l,k) = min(taudmp(i), tausat(i))
+           end do
         else
            where (src_level >= k)
-
               ! Compute stress for each wave. The stress at this level is the
               ! min of the saturation stress and the stress at the level below
               ! reduced by damping. The sign of the stress must be the same as
@@ -569,17 +555,16 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
               mi = ni(:,k) / (2._r8 * band%kwv * ubmc2) * &
                  (alpha(k) + ni(:,k)**2/ubmc2 * d)
               wrk = -2._r8*mi*rog*t(:,k)*(piln(:,k+1) - piln(:,k))
-                wrk = max( wrk, -200._r8 )
-
+              wrk = max( wrk, -200._r8 )
               taudmp = tau(:,l,k+1) * exp(wrk)
-
-              ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
-              ! we limit tau, so instead limit the arrays used to set it.
-              where (tausat <= taumin) tausat = 0._r8
-              where (taudmp <= taumin) taudmp = 0._r8
-
-              tau(:,l,k) = min(taudmp, tausat)
            end where
+           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
+           ! we limit tau, so instead limit the arrays used to set it.
+           where (tausat <= taumin) tausat = 0._r8
+           where (taudmp <= taumin) taudmp = 0._r8
+           do i = 1, ncol
+             tau(i,l,k) = min(taudmp(i), tausat(i))
+           end do
         endif
 
      end do

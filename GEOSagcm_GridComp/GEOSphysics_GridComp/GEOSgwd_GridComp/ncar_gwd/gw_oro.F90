@@ -380,10 +380,7 @@ subroutine gw_oro_ifc( band, &
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
-          ttgw, egwdffi,  gwut, dttdf, dttke,            &
-          satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax)
-!         tau_adjust=pint_adj)
+          ttgw, egwdffi,  gwut, dttdf, dttke)
 
      flx_heat(:ncol) = 0._r8
 

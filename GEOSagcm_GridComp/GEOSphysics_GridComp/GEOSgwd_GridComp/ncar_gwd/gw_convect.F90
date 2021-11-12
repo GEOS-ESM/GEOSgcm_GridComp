@@ -544,7 +544,7 @@ subroutine gw_beres_ifc( band, &
    real(r8) :: taury(ncol,pver+1)
    real(r8) :: taury0(ncol,pver+1)
 
-   real(r8) :: pint_adj(ncol,pver+1)
+!  real(r8) :: pint_adj(ncol,pver+1)
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
@@ -581,9 +581,7 @@ subroutine gw_beres_ifc( band, &
           u, v, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0)
 
-
-
-     pint_adj = 1.0
+!    pint_adj = 1.0
 !WMP pressure scaling from GEOS top 0.01mb to 0.5mb
 !    where (pint < 50.0)
 !     !pint_adj = (pint/50.0)**3
@@ -600,9 +598,7 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
-          ttgw, egwdffi,  gwut, dttdf, dttke,            &
-          satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax, tau_adjust=pint_adj)
+          ttgw, egwdffi,  gwut, dttdf, dttke)
 
      ! For orographic waves, don't bother with taucd, since there are no
      ! momentum conservation routines or directional diagnostics.
