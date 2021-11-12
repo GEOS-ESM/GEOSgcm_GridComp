@@ -499,6 +499,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ubmc = ubi(:,k) - c(:,l)
 
         tausat = 0.0_r8
+        taudmp = 0.0_r8
 
         if (present(kwvrdg)) then
               ! Test to see if u-c has the same sign here as the level below.
@@ -525,7 +526,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         end if
 
         if (present(kwvrdg)) then
-           taudmp = 0._r8
            where (src_level >= k)
               ! Compute stress for each wave. The stress at this level is the
               ! min of the saturation stress and the stress at the level below
