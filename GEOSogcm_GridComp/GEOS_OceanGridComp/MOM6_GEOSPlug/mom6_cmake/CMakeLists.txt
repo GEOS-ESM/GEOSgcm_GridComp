@@ -131,6 +131,7 @@ list( APPEND MOM6_SRCS
    src/initialization/MOM_shared_initialization.F90
    src/initialization/MOM_state_initialization.F90
    src/initialization/MOM_tracer_initialization_from_Z.F90
+   src/ocean_data_assim/MOM_oda_incupd.F90
    src/ocean_data_assim/MOM_oda_driver.F90
    src/parameterizations/lateral/MOM_hor_visc.F90
    src/parameterizations/lateral/MOM_internal_tides.F90
@@ -163,6 +164,8 @@ list( APPEND MOM6_SRCS
    src/parameterizations/vertical/MOM_sponge.F90
    src/parameterizations/vertical/MOM_tidal_mixing.F90
    src/parameterizations/vertical/MOM_vert_friction.F90
+   src/tracer/nw2_tracers.F90
+   src/tracer/MOM_CFC_cap.F90
    src/tracer/advection_test_tracer.F90
    src/tracer/boundary_impulse_tracer.F90
    src/tracer/DOME_tracer.F90
@@ -449,6 +452,8 @@ list( APPEND MOM6_SRCS
    config_src/drivers/FMS_cap/MOM_surface_forcing_gfdl.F90
    config_src/drivers/FMS_cap/ocean_model_MOM.F90
    # oda
+   config_src/external/drifters/MOM_particles_types.F90
+   config_src/external/drifters/MOM_particles.F90
    config_src/external/ODA_hooks/kdtree.f90
    config_src/external/ODA_hooks/ocean_da_core.F90
    config_src/external/ODA_hooks/ocean_da_types.F90
