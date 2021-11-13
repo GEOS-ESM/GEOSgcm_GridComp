@@ -93,14 +93,28 @@ subroutine gw_rdg_init (gw_dc, fcrit2, wavelength, pgwv)
   real(r8), intent(in) :: gw_dc,fcrit2,wavelength
   integer, intent(in)  :: pgwv
 
-  call  gw_rdg_readnl   !!! ("control.nml")
-
   !==============================================
   !  Create "Band" structure
   !----------------------------------------------
 
   band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
-  
+ 
+  ! Set the local variables
+  do_divstream        = .TRUE.
+  C_BetaMax_DS        = 0.
+  C_GammaMax          = 2.
+  Frx0                = 2.
+  Frx1                = 3.
+  C_BetaMax_SM        = 2.
+  Fr_c                = fcrit2
+  do_smooth_regimes   = .FALSE.
+  do_adjust_tauoro    = .TRUE.
+  do_backward_compat  = .FALSE.
+  orohmin             = 0.01
+  orovmin             = 1.0e-3
+  orostratmin         = 0.002
+  orom2min            = 0.1
+ 
 end subroutine gw_rdg_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -264,7 +278,7 @@ subroutine gw_rdg_ifc( &
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
 
-   real(r8) :: pint_adj(ncol,pverp)
+!  real(r8) :: tau_adjust(ncol,pverp)
 
    logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
 
@@ -315,38 +329,22 @@ subroutine gw_rdg_ifc( &
          tauoro, taudsw, tau, & 
          ldo_trapped_waves=trpd_leewv)
 
-#ifdef CAM
-!CAM call
-    call gw_drag_prof(ncol, pver, band, &
-         pint, pmid, delp, src_level, tend_level, dt, &
-         t,    &
-         piln, rhoi, nm, ni, ubm, ubi, xv, yv,   &
-         effgw, c, kvtt, q, dse, tau, utgw, vtgw, &
-         ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
-         kwvrdg=kwvrdg, & 
-         satfac_in = 1._r8 )
-#endif
-
-!    pint_adj = 1.0
+!    tau_adjust = 1.0
 !WMP pressure scaling from GEOS top 0.01mb to 0.5mb
 !     where (pint < 50.0)
-!      !pint_adj = (pint/50.0)**3
-!       pint_adj = 1./19. * &
+!      !tau_adjust = (pint/50.0)**3
+!       tau_adjust = 1./19. * &
 !                  ((atan( (2.*(pint-1.0)/(50-1.0)-1.) * &
 !                  tan(20.*pi/21.-0.5*pi) ) + 0.5*pi) * 21./pi - 1.)
 !     endwhere
 !WMP pressure scaling from GEOS
 
-! GEOS call
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
-          kwvrdg=kwvrdg,                                 &  
-          satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax)
-!         tau_adjust=pint_adj)
+          kwvrdg=kwvrdg, satfac_in=1._r8)
 
      flx_heat(:ncol) = 0._r8
 
@@ -409,88 +407,6 @@ subroutine gw_rdg_ifc( &
 !  Non - interface subroutines
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
- subroutine gw_rdg_readnl
-
-  ! File containing namelist input.
-  !!!!   character(len=*), intent(in) :: nlfile
-
-  ! Local variables
-  integer :: unitn, ierr
-  character(len=*), parameter :: sub = 'gw_rdg_readnl'
-
-  logical ::  gw_rdg_do_divstream, gw_rdg_do_smooth_regimes, gw_rdg_do_adjust_tauoro, &
-              gw_rdg_do_backward_compat
-
-  
-  real(r8) :: gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
-              gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
-              gw_rdg_orohmin, gw_rdg_orovmin, gw_rdg_orostratmin, gw_rdg_orom2min 
-
-#if 0
-  namelist /gw_rdg_nl/ gw_rdg_do_divstream, gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
-                       gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
-                       gw_rdg_do_smooth_regimes, gw_rdg_do_adjust_tauoro, &
-                       gw_rdg_do_backward_compat, gw_rdg_orohmin, gw_rdg_orovmin, &
-                       gw_rdg_orostratmin, gw_rdg_orom2min
-#endif
-
-  !----------------------------------------------------------------------
-
-#if 1
-! NCAR CESM2 values
-!-------------------
- gw_rdg_do_divstream		= .TRUE.
- gw_rdg_C_BetaMax_DS		= 0.
- gw_rdg_C_GammaMax		= 2.
- gw_rdg_Frx0			= 2.
- gw_rdg_Frx1			= 3.
- gw_rdg_C_BetaMax_SM		= 2. 
- gw_rdg_Fr_c			= 1.0
- gw_rdg_do_smooth_regimes	= .FALSE. 
- gw_rdg_do_adjust_tauoro	= .TRUE. 	
- gw_rdg_do_backward_compat 	= .FALSE. 
- gw_rdg_orohmin			= 0.01
- gw_rdg_orovmin			= 1.0e-3
- gw_rdg_orostratmin		= 0.002
- gw_rdg_orom2min		= 0.1
-#else
-!----------------------------------
- gw_rdg_do_divstream		= .FALSE.
- gw_rdg_C_BetaMax_DS		= 0.
- gw_rdg_C_GammaMax		= 2.
- gw_rdg_Frx0			= 2.
- gw_rdg_Frx1			= 3.
- gw_rdg_C_BetaMax_SM		= 2. 
- gw_rdg_Fr_c			= 0.7
- gw_rdg_do_smooth_regimes	= .TRUE. 
- gw_rdg_do_adjust_tauoro	= .TRUE. 	
- gw_rdg_do_backward_compat 	= .FALSE. 
- gw_rdg_orohmin			= 0.01
- gw_rdg_orovmin			= 1.0e-3
- gw_rdg_orostratmin		= 0.002
- gw_rdg_orom2min		= 0.1
-#endif
-
-     ! Set the local variables
-     do_divstream        = gw_rdg_do_divstream 
-     C_BetaMax_DS        = gw_rdg_C_BetaMax_DS
-     C_GammaMax          = gw_rdg_C_GammaMax
-     Frx0                = gw_rdg_Frx0
-     Frx1                = gw_rdg_Frx1
-     C_BetaMax_SM        = gw_rdg_C_BetaMax_SM
-     Fr_c                = gw_rdg_Fr_c
-     do_smooth_regimes   = gw_rdg_do_smooth_regimes
-     do_adjust_tauoro    = gw_rdg_do_adjust_tauoro
-     do_backward_compat  = gw_rdg_do_backward_compat
-     orohmin             = gw_rdg_orohmin
-     orovmin             = gw_rdg_orovmin
-     orostratmin         = gw_rdg_orostratmin
-     orom2min            = gw_rdg_orom2min
-
-
-end subroutine gw_rdg_readnl
-
-
 !------------------------
 subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
      u, v, t, mxdis, angxy, anixy, kwvrdg, iso, zi, nm, &
@@ -508,13 +424,6 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   integer, intent(in) :: ncol
   ! Vertical dimension.
   integer, intent(in) :: pver
-
-  ! Band to emit orographic waves in.
-  ! Regardless, we will only ever emit into l = 0.
-  !!type(GWBand), intent(in) :: band
-  ! Pressure coordinates.
-  !!type(Coords1D), intent(in) :: p
-
 
   ! Interface pressures. (Pa)
   real(r8), intent(in) :: pint(ncol,pver+1)
@@ -861,9 +770,6 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   integer, intent(in) :: ncol
   ! Vertical dimension.
   integer, intent(in) :: pver
-  ! Band to emit orographic waves in.
-  ! Regardless, we will only ever emit into l = 0.
-  !!type(GWBand), intent(in) :: band
   ! Drag coefficient for low-level flow
   real(r8), intent(in) :: rdg_cd_llb
 
@@ -1130,13 +1036,7 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   integer, intent(in) :: ncol
   ! Vertical dimension.
   integer, intent(in) :: pver
-  ! Band to emit orographic waves in.
-  ! Regardless, we will only ever emit into l = 0.
-  !!type(GWBand), intent(in) :: band
 
-
-  ! Height estimate for ridge (m) [anisotropic orography].
-  !real(r8), intent(in) :: mxdis(ncol)
   ! Horz wavenumber for ridge (1/m) [anisotropic orography].
   real(r8), intent(in) :: kwvrdg(ncol)
   ! Interface altitudes above ground (m).
