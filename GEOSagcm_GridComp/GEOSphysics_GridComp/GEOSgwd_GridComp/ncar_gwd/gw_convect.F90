@@ -544,7 +544,8 @@ subroutine gw_beres_ifc( band, &
    real(r8) :: taury(ncol,pver+1)
    real(r8) :: taury0(ncol,pver+1)
 
-!  real(r8) :: pint_adj(ncol,pver+1)
+   real(r8) :: pint_adj(ncol,pver+1)
+   real(r8) :: zfac_layer
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
@@ -581,14 +582,14 @@ subroutine gw_beres_ifc( band, &
           u, v, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0)
 
-!    pint_adj = 1.0
-!WMP pressure scaling from GEOS top 0.01mb to 0.5mb
-!    where (pint < 50.0)
-!     !pint_adj = (pint/50.0)**3
-!      pint_adj = 1./19. * &
-!                 ((atan( (2.*(pint-1.0)/(50-1.0)-1.) * &
-!                 tan(20.*PI/21.-0.5*PI) ) + 0.5*PI) * 21./PI - 1.)
-!    endwhere
+!WMP pressure scaling from GEOS top 0.01mb to zfac_layer
+     pint_adj = 1.0
+     zfac_layer = 100.0 ! 1mb
+     where (pint < zfac_layer)
+       pint_adj = 1./19. * &
+                  ((atan( (2.*(pint-1.0)/(zfac_layer-1.0)-1.) * &
+                  tan(20.*PI/21.-0.5*PI) ) + 0.5*PI) * 21./PI - 1.)
+     endwhere
 !WMP pressure scaling from GEOS
 
      ! satfac_in is 2 by default for CAM5
@@ -598,7 +599,7 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
-          ttgw, egwdffi,  gwut, dttdf, dttke)
+          ttgw, egwdffi,  gwut, dttdf, dttke, tau_adjust=pint_adj)
 
      ! For orographic waves, don't bother with taucd, since there are no
      ! momentum conservation routines or directional diagnostics.

@@ -278,7 +278,8 @@ subroutine gw_rdg_ifc( &
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
 
-!  real(r8) :: tau_adjust(ncol,pverp)
+   real(r8) :: pint_adj(ncol,pver+1)
+   real(r8) :: zfac_layer
 
    logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
 
@@ -329,14 +330,14 @@ subroutine gw_rdg_ifc( &
          tauoro, taudsw, tau, & 
          ldo_trapped_waves=trpd_leewv)
 
-!    tau_adjust = 1.0
-!WMP pressure scaling from GEOS top 0.01mb to 0.5mb
-!     where (pint < 50.0)
-!      !tau_adjust = (pint/50.0)**3
-!       tau_adjust = 1./19. * &
-!                  ((atan( (2.*(pint-1.0)/(50-1.0)-1.) * &
-!                  tan(20.*pi/21.-0.5*pi) ) + 0.5*pi) * 21./pi - 1.)
-!     endwhere
+!WMP pressure scaling from GEOS top 0.01mb to zfac_layer
+     pint_adj = 1.0
+     zfac_layer = 100.0 ! 1mb
+     where (pint < zfac_layer)
+       pint_adj = 1./19. * &
+                  ((atan( (2.*(pint-1.0)/(zfac_layer-1.0)-1.) * &
+                  tan(20.*PI/21.-0.5*PI) ) + 0.5*PI) * 21./PI - 1.)
+     endwhere
 !WMP pressure scaling from GEOS
 
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
@@ -344,7 +345,7 @@ subroutine gw_rdg_ifc( &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
-          kwvrdg=kwvrdg, satfac_in=1._r8)
+          kwvrdg=kwvrdg, satfac_in=1._r8, tau_adjust=pint_adj)
 
      flx_heat(:ncol) = 0._r8
 
