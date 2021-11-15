@@ -25,7 +25,7 @@
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/OASIMalbedoMod.f @GEOS-ESM/ocean-team
 
 # The surface preproc team owns these
-/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/Raster/ @GEOS-ESM/surface-preproc-team
+/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/ @GEOS-ESM/surface-preproc-team
 
 # Landice Team owns Landice
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSlandice_GridComp/ @GEOS-ESM/landice-team
