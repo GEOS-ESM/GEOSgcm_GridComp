@@ -543,8 +543,8 @@ program Scale_Catch
        call MAPL_VarRead(formatter,"CQ",catch%cq, __RC__)
        call MAPL_VarRead(formatter,"FR",catch%fr, __RC__)
        call MAPL_VarRead(formatter,"WW",catch%ww, __RC__)
-
-       _RETURN(_SUCCESS)
+       if (present(rc)) rc =0
+       !_RETURN(_SUCCESS)
    end subroutine readcatch_nc4
 
    subroutine readcatch (unit,catch)
