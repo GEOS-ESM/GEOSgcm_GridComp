@@ -987,7 +987,8 @@ contains
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
      deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
      deallocate (CLMC_st1,CLMC_st2)
-     _RETURN(_SUCCESS)
+     if (present(rc)) rc = 0
+     !_RETURN(_SUCCESS)
   END SUBROUTINE read_bcs_data
   
    ! *****************************************************************************
@@ -1077,7 +1078,8 @@ contains
     deallocate (var1, var2, tile_id)
     call InFmt%close()
     call OutFmt%close()
-    _RETURN(_SUCCESS)
+    if (present(rc)) rc = 0
+    !_RETURN(_SUCCESS)
   END SUBROUTINE read_catchcn_nc4
 
   ! *****************************************************************************

@@ -752,7 +752,8 @@ contains
        read (50) var2
        write(40) ((var2(idx(i),j),i=1,ntiles),j=1,4)
     end if
-    _RETURN(_SUCCESS)
+    if (present(rc)) rc =0
+    !_RETURN(_SUCCESS)
   END SUBROUTINE read_and_write_rst
 
   ! *****************************************************************************
