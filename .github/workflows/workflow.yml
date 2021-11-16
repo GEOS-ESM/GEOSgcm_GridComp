@@ -52,8 +52,7 @@ jobs:
           mepo develop GEOSgcm_GridComp GEOSgcm_App
           mepo status
       - name: Update GEOSgcm_GridComp branch
-        if: 
-          "!contains('refs/heads/main,refs/heads/develop,main,develop', github.ref)"
+        if: github.head_ref != 'main' && github.head_ref != 'develop'
         run: |
           mepo checkout-if-exists ${GITHUB_HEAD_REF}
           mepo status
