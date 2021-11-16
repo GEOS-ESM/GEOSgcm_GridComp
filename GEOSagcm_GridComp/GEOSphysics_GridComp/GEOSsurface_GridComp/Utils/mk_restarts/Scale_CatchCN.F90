@@ -635,7 +635,8 @@ program Scale_CatchCN
       do j=1,dim1
          call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j, __RC__)
       enddo
-      _RETURN(_SUCCESS)
+      if (present(rc)) rc =0
+      !_RETURN(_SUCCESS)
    end subroutine readcatchcn_nc4
 
    subroutine readcatchcn (unit,catch)
