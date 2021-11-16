@@ -1270,8 +1270,16 @@ contains
 !search for level where this is exceeded              
 
       lts =  0.0
-      do k = nlev-1,2,-1
-         if (p(i,j,k).lt.70000.0) then
+!  LTS using TH at 700mb
+!     do k = nlev-1,2,-1
+!        if (p(i,j,k).lt.70000.0) then
+!          lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
+!          exit
+!        end if
+!     end do
+!  LTS using TH at 3km abve surface
+      do k = 2,nlev
+         if (z(i,j,k).gt.3000.0) then
            lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
            exit
          end if
