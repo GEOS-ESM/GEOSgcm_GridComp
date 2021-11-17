@@ -205,11 +205,19 @@ contains
          ! 1 Pa. So we dont need to worry about vertical correlations among the
          ! pseed.
 
+         ! isolate lower pressures for seeding
+         pseed = play(1:4,icol) * 100.  ! [Pa]
+
+         ! 2021-11-12 Try [daPa=decaPascals] instead
+         ! pseed = play(1:4,icol) * 10.  ! [daPa]
+         ! Made minimal change ~0.01 W/m2 in global mean and was not visible in
+         ! absolute zonal plots. Of same nature as 01->03 change, perhaps slightly
+         ! worse. So decided not keep this change.
+
          ! Scaling to integer seeds ...
          ! The 32-bit integer range is [-2147483648,2147483647] and we wish
          ! to avoid zero seeds, so we scale the seeds to [1,2147483647] with
          ! the following (made more general with maximo = huge(integer)-1):
-         pseed = play(1:4,icol) * 100.  ! [Pa]
          seed1 = (pseed(1) - int(pseed(1))) * maximo + 1
          seed2 = (pseed(2) - int(pseed(2))) * maximo + 1
          seed3 = (pseed(3) - int(pseed(3))) * maximo + 1
