@@ -208,11 +208,16 @@ contains
          ! isolate lower pressures for seeding
          pseed = play(1:4,icol) * 100.  ! [Pa]
 
-         ! 2021-11-12 Try [daPa=decaPascals] instead
+         ! PMN 2021-11-12: Try [daPa=decaPascals] instead.
          ! pseed = play(1:4,icol) * 10.  ! [daPa]
-         ! Made minimal change ~0.01 W/m2 in global mean and was not visible in
-         ! absolute zonal plots. Of same nature as 01->03 change, perhaps slightly
-         ! worse. So decided not keep this change.
+         ! I was potentially concerned that the fractional part of pseed in [Pa]
+         ! would have insufficient significant digits since <play> is 32-bit real.
+         ! So, for e.g., 99213.xx [Pa], since 32-bit reals have ~ 7 significant
+         ! digits. This would be 9921.3xx [daPa]. But a test of this change made
+         ! a minimal change ~0.01 W/m2 in global mean TOA and SFC fluxes and was
+         ! not visible in absolute zonal plots. The mapped differences were of
+         ! the same nature as other minor changes, perhaps slightly worse. So
+         ! I decided not keep this change.
 
          ! Scaling to integer seeds ...
          ! The 32-bit integer range is [-2147483648,2147483647] and we wish
