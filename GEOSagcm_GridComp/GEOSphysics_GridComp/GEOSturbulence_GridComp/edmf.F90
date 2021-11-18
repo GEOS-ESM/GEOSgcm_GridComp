@@ -6,7 +6,7 @@ module edmf_mod
 ! development by Nathan Arnold and David New (GMAO).
 !
 
-use MAPL_ConstantsMod, only: mapl_epsilon, mapl_grav, mapl_cp,  &
+use MAPL_ConstantsMod, only: mapl_vireps, mapl_grav, mapl_cp,  &
                              mapl_alhl, mapl_p00, mapl_vireps,  &
                              mapl_alhs, mapl_kappa, mapl_rgas
 
@@ -232,13 +232,16 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
 DO IH=ITS,ITE ! loop over the horizontal dimension
 
 
-wthl=wthl2(IH)/mapl_cp
-wqt=wqt2(IH)
+!wthl=wthl2(IH)/mapl_cp
+wthl=wthl2(IH)/(mapl_cp*rhoe3(IH,kte))
+!wqt=wqt2(IH)
+wqt=wqt2(IH)/rhoe3(IH,kte)
 ust=ust2(IH)
 pblh=pblh2(IH)
 
 pblh=max(pblh,pblhmin)
-wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
+!wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
+wthv=wthl+mapl_vireps*thv3(IH,kte)*wqt
 
 ! if surface buoyancy is positive then mass-flux, otherwise not
   IF ( (wthv > 0.0 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. PARAMS%doclasp/=0)) then
@@ -436,7 +439,6 @@ end if
 
        ENDDO
 
-
    !
    ! for stability make sure that the surface mass-fluxes are not more than their values computed from the surface scheme
    !
@@ -478,7 +480,6 @@ end if
          DO I=1,NUP2  ! loop over updrafts
          ! loop over vertical
          vertint:   DO k=KTS,KTE
-
 
                EntExp=exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
                EntExpU=exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*PARAMS%EntWFac)
@@ -754,7 +755,6 @@ end if
       awu3(IH,K)=s_awu(KTE+KTS-K-1)
       awv3(IH,K)=s_awv(KTE+KTS-K-1)
       ae3(IH,K)=(1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*PARAMS%EDfac
-
     ENDDO
 
 ! buoyancy is defined on full levels

@@ -21,7 +21,8 @@ module GEOS_TurbulenceGridCompMod
   use shocparams
   use edmfparams
   use shoc
-  use edmf_mod_new, only: run_edmf
+  use edmf_mod, only: run_edmf
+  use edmf_mod_new, only: run_edmf_new
   use scm_surface, only : surface_layer, surface
 
 #ifdef _CUDA
@@ -3486,13 +3487,13 @@ contains
       call MAPL_GetResource (MAPL, EDMFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:", default=0.5,  RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%DISCRETE,   "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%IMPLICIT,   "EDMF_IMPLICIT:", default=1,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%WA, "EDMF_WA:", default=1.,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%WB, "EDMF_WB:", default=1.5,  RC=STATUS)
 
       ! Future options
-!      call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_TEST,  "EDMF_TEST:" , default=0,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_DEBUG, "EDMF_DEBUG:", default=0,  RC=STATUS)
-!      call MAPL_GetResource (MAPL, EDMF_WA, "EDMF_WA:", default=1.,  RC=STATUS)
-!      call MAPL_GetResource (MAPL, EDMF_WB, "EDMF_WB:", default=1.5,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_AU0, "EDMF_AU0:", default=0.14,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_CTH1, "EDMF_CTH1:", default=7.2,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_CTH2, "EDMF_CTH2:", default=1.1,  RC=STATUS)
@@ -3572,7 +3573,7 @@ contains
     IF(DoMF /= 0) then
 
 !      call RUN_EDMF(1, IM*JM, 1, LM, DT,      & ! in
-      call RUN_EDMF(IM, JM, LM, DT,           & ! in
+      call RUN_EDMF_NEW(IM, JM, LM, DT,       & ! in
                Z, ZLE, PLE, RHOE, NUMUP,      & ! in
                U, V, T, THL, THV, QT,         & ! in
                Q, QL, QI, USTAR,              & ! in

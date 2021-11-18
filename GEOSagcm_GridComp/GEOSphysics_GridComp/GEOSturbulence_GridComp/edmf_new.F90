@@ -21,12 +21,12 @@ contains
 !
 ! edmf
 !
-subroutine run_edmf(IM, JM, LM, dt, &                  ! in
+subroutine run_edmf_new(IM, JM, LM, dt, &              ! in
                     z, zle, ple, rhoe, numup, &        ! in
                     u, v, T, thl, thv, qt, &           ! in
                     q, ql, qi, ustar, &                ! in
-                    sh, evap, frland, zpbl_in, &       ! in
-                    mfthsrc, mfqtsrc, mfw, mfarea, &   ! CLASP imports
+                    sh, evap, frland, zpbl, &          ! in
+!                    mfthsrc, mfqtsrc, mfw, mfarea, &   ! CLASP imports
                     ae3, aw3, aws3, awqv3, &           ! for trisolver
                     awql3, awqi3, awu3, awv3, &        ! for trisolver
                     mfw2, mfw3, mfqt3, mfhl3, mfwqt, & ! for ADG PDF
@@ -54,7 +54,7 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
   real, intent(in)                        :: dt
   real, dimension(IM,JM,LM), intent(in)   :: u, v, T, thl, qt, thv, q, ql, qi, z
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
-  real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, frland, zpbl_in
+  real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, frland, zpbl
  
   ! Outputs
   real, dimension(IM,JM,0:LM), intent(out) :: edmfdrya, edmfmoista, edmfdryw, edmfmoistw, &
@@ -71,7 +71,7 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
                                               thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
   real, dimension(IM,JM,LM), intent(out) :: buoyf, mfw2, mfw3, mfqt3, mfhl3, mfqt2, mfwqt, mfhl2, mfqthl, mfwhl, &
-                                            mfthsrc, mfqtsrc, mfw, mfarea, edmf_ent                                             
+                                            edmf_ent!, mfthsrc, mfqtsrc, mfw, mfarea                                             
   type (edmfparams_type), intent(in) :: edmfparams
 
   ! Local variables
@@ -85,10 +85,11 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
              udet_test, vdet_test, wdet_test, E_plume, dp, An
 
   logical, dimension(IM,JM) :: work_flag
-  real, dimension(IM,JM)    :: zpbl, zi, Phi, au_fac, wstar, dqt0, factor, wu0, dthv0
+  real, dimension(IM,JM)    :: zpbl_local, zi, Phi, au_fac, wstar, dqt0, factor, wu0, dthv0, ztop, L0
 
   real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql, A, E, D, f_thermal, rho, &
-                               au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full
+                               au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &
+                               mfsrcqt, mfsrcthl, mfw, mfarea, p
 
   real, dimension(IM,JM,0:LM) :: s_aw2, s_ahl2, s_aqt2, s_aw3, s_aqt3, s_ahl3, s_aqthl, &
                                  s_awhl, s_awqt, &
@@ -113,7 +114,7 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
                    u, v, thl, qt, q, ql, qi, thv, &        ! in
                    ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
 
-  nup = mup*nup
+  nup = mup*numup
 
   if ( edmfparams%thermal_plume == 0 ) then
      kbot = LM
@@ -128,6 +129,12 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
   rho(:,:,:) = 0.5*( rhoe(:,:,0:LM-1) + rhoe(:,:,1:LM) )
 
   wstar(:,:) = 0.
+
+  ! temporary
+  mfsrcthl = 0.
+  mfsrcqt  = 0.
+  mfw      = 0.
+  mfarea   = 0.
 
   ! Outputs that are diagnostic updraft statistics
   edmfdrya     = 0.
@@ -224,6 +231,15 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
   thl_plume10 = 0.
 #endif
 
+  ! Estimate scale height for entrainment calculation
+  if (edmfparams%ET == 2 ) then
+     p(:,:,:) = 0.5*( ple(:,:,0:LM-1) + ple(:,:,1:LM) )
+     call calc_mf_depth(IM, JM, LM, T, z, q, p, ztop)
+     L0(:,:) = max( min( ztop(:,:), 3000.), 500. )/edmfparams%L0fac
+  else
+     L0(:,:) = edmfparams%L0
+  end if
+
   !
   !
   !
@@ -244,7 +260,7 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
      do k = 1,LM
         km1 = k - 1
         do iup = 1,nup
-           entf(iup,i,j,k) = ( zle(i,j,km1) - zle(i,j,k) )/edmfparams%l0
+           entf(iup,i,j,k) = ( zle(i,j,km1) - zle(i,j,k) )/L0(i,j)
         end do
      end do
   end do
@@ -252,10 +268,10 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
 
   ! Get surface layer organized entrainment
   if ( edmfparams%thermal_plume == 1 ) then
-     call A_star_closure(IM, JM, LM, &                       ! in
-                         edmfparams%wb, edmfparams%au0, edmfparams%debug, &              ! in
-                         zle, z, rho, rhoe, thl, qt, thv, & ! in
-                         A, f_thermal, zi, Phi)              ! out
+     call A_star_closure(IM, JM, LM, &                                      ! in
+                         edmfparams%wb, edmfparams%au0, edmfparams%debug, & ! in
+                         zle, z, rho, rhoe, thl, qt, thv, &                 ! in
+                         A, f_thermal, zi, Phi)                             ! out
      E = A
   end if
 
@@ -267,7 +283,7 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
      ent = 0.
 
      if ( edmfparams%thermal_plume == 0 ) then
-        zpbl(i,j) = max( zpbl_in(i,j), zpblmin )
+        zpbl_local(i,j) = max( zpbl(i,j), zpblmin )
      end if
 
      ! Compute surface THV flux
@@ -275,10 +291,12 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
 
      ! Test for surface-driven convection
 !     if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
-     if ( wthv > 0. ) then
+!     if ( ( wthv > 0. .and. edmfparams%doclasp == 0 ) .or. ( mfsrcthl(i,j,1:nup) .and. edmfparams%doclasp /= 0 ) ) then
+      if ( wthv > 0. ) then
         ! Initialize plumes at surface
         if ( edmfparams%thermal_plume == 0 ) then ! JPL scheme
-           wstar(i,j) = max( wstarmin, ((mapl_grav/thv(i,j,LM))*wthv*zpbl(i,j))**onethird )
+!           wstar(i,j) = max( wstarmin, ((mapl_grav/thv(i,j,LM))*wthv*zpbl_local(i,j))**onethird )
+           wstar(i,j) = max( wstarmin, ((mapl_grav/300.)*wthv*zpbl_local(i,j))**onethird )
 
            qstar  = evap(i,j)/(rhoe(i,j,LM)*wstar(i,j))
            thstar = wthv/wstar(i,j)
@@ -297,8 +315,6 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
            do iup = 1,nup
               active_updraft(iup,i,j) = .true.         
               
-!              wlv = wmin + ( wmax - wmin )*real(iup-1)/real(nup)
-!              wtv = wmin + ( wmax - wmin )*real(iup)/real(nup) 
               wlv = wmin + ( wmax - wmin )/(real(nup))*( real(iup) - 1. )
               wtv = wmin + ( wmax - wmin )/(real(nup))*real(iup)
 
@@ -620,10 +636,10 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
               !
               
               ! Compute fractional entrainment rate
-              if ( edmfparams%l0 > 0. ) then
+              if ( L0(i,j) > 0. ) then
                  call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
 
-                 ent(iup,i,j,k) = ( 1. - edmfparams%stochfrac )*edmfparams%ent0/edmfparams%l0 + edmfparams%stochfrac*real( enti(iup,i,j,k) )*edmfparams%ent0/( zle(i,j,km1) - zle(i,j,k) )
+                 ent(iup,i,j,k) = ( 1. - edmfparams%stochfrac )*edmfparams%ent0/L0(i,j) + edmfparams%stochfrac*real( enti(iup,i,j,k) )*edmfparams%ent0/( zle(i,j,km1) - zle(i,j,k) )
               else
                  ! negative L0 means 0 entrainment  
                  ent(:,i,j,:) = 0. ! check
@@ -633,12 +649,13 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
               ent(iup,i,j,k) = ( 1. + frland(i,j) )*ent(iup,i,j,k)
 
               !
-!              if ( k <= LM-1 .and. k >= 2 .and. thv(i,j,k) < thv(i,j,k+1) .and. thv(i,j,k) > thv(i,j,k-1) ) then
-!                 ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*edmfparams%ent0/edmfparams%l0
-!              end if
+              if ( k <= LM-1 .and. k >= 2 .and. thv(i,j,k) < thv(i,j,k+1) .and. thv(i,j,k) > thv(i,j,k-1) ) then
+                 ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*edmfparams%ent0/L0(i,j)
+              end if
 
               ! Integrate plume budgets across one vertical step
               if ( edmfparams%thermal_plume == 0 ) then ! JPL entraining plume model
+
                  ! sample entrainment
                  E(i,j,k) = E(i,j,k) + rhoe(i,j,k)*upa(iup,i,j)*upw(iup,i,j)*ent(iup,i,j,k)
                  
@@ -656,7 +673,6 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, edmfparams%ice_ramp)
 
                  ! Buoyancy
-!                 B = (mapl_grav/thv(i,j,k))*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
                  B = mapl_grav*( 0.5*( THVn + upthv(iup,i,j) )/thv(i,j,k) - 1. )
 
                  ! Vertical velocity
@@ -671,7 +687,7 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
               elseif ( edmfparams%thermal_plume == 1 ) then ! thermal plume
                  ! Compute entrainment rate 
                  eps_org  = ( 1./f_thermal(i,j,k) - 1. )/dzle
-                 eps_turb = max( 0., 1./edmfparams%l0 - eps_org )
+                 eps_turb = max( 0., 1./L0(i,j) - eps_org )
 
                  eps = eps_org + eps_turb
 
@@ -749,6 +765,10 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
                  upqi(iup,i,j)  = QCn*( 1. - wf )
                  upu(iup,i,j)   = Un
                  upv(iup,i,j)   = Vn
+
+                 if ( edmfparams%entrain == 2 .and. L0(i,j) > 0. ) then
+                    ent(iup,i,j,k) = ent(iup,i,j,k) + edmfparams%ent0*max( 1.E-4, B )/max( 0.1, upw(iup,i,j)**2. )
+                 end if
 
 !                 if ( edmfparams%thermal_plume == 1 ) then
 !                    upm(iup,i,j) = Mn
@@ -942,7 +962,7 @@ subroutine run_edmf(IM, JM, LM, dt, &                  ! in
      end do
   end do
 
-end subroutine run_edmf
+end subroutine run_edmf_new
 
 !
 ! interp_edmf
@@ -1492,6 +1512,73 @@ end subroutine Poisson_new
       call random_number(ran1)
       end function ran1
 
+!
+! calc_mf_depth
+!
+subroutine calc_mf_depth(IM, JM, LM, T, z, q, p, ztop)
+
+  use GEOS_UtilsMod, only : geos_dqsat
+
+  integer, intent(in   )                      :: IM, JM, LM
+  real,    intent(in   ), dimension(IM,JM,LM) :: T, z, q, p
+  real,    intent(  out), dimension(IM,JM)    :: ztop
+
+  integer :: i, j, k, ntops, n
+  real    :: T2, qsp, dqp, dqsp, z2
+
+  logical, dimension(IM,JM) :: flag
+  real, dimension(IM,JM)    :: tep, qp, T1, z1 
+
+  n     = IM*JM
+  ntops = 0
+
+  do j = 1,JM
+  do i = 1,IM
+     flag(i,j) = .true.
+
+     tep(i,j) = T(i,j,LM) + 0.4
+     qp(i,j)  = q(i,j,LM)
+
+     T1(i,j)   = T(i,j,LM)
+     z1(i,j)   = z(i,j,LM)
+     ztop(i,j) = z(i,j,LM)
+  end do
+  end do
+
+  do k = LM-1,2,-1
+     do j = 1,JM
+     do i = 1,IM
+        if ( flag(i,j) ) then
+           z2 = z(i,j,k)
+           T2 = T(i,j,k)
+
+           tep(i,j) = tep(i,j) - mapl_grav*( z2 - z1(i,j) )/mapl_cp
+
+           dqsp = geos_dqsat(tep(i,j), p(i,j,k), qsat=qsp, pascals=.true.)
+           
+           dqp      = max( qp(i,j) - qsp, 0. )/( 1. + (mapl_alhl/mapl_cp)*dqsp )
+           qp(i,j)  = qp(i,j) - dqp
+           tep(i,j) = tep(i,j) + mapl_alhl*dqp/mapl_cp
+
+           if ( T2 >= tep(i,j) ) then
+              ztop(i,j) = 0.5*( z2 + z1(i,j) )
+              flag(i,j) = .false.
+              ntops     = ntops + 1 
+           end if
+
+           z1(i,j) = z2
+           T1(i,j) = T2
+        end if
+
+        ! See if we're finished
+        if ( ntops == n ) then
+           return
+        end if
+     end do
+     end do
+  end do
+
+end subroutine calc_mf_depth
 
 end module edmf_mod_new
 
