@@ -180,6 +180,7 @@ module GEOS_IrradGridCompMod
 
    ! PS: We may later have an RRTMG internal state like
    ! RRTMGP below with various rrtmg_lw_init data, etc.
+   ! TODO
 
    ! -----------------------------------------------
    ! RRTMGP internal state
@@ -219,21 +220,16 @@ contains
 !EOP
 
 !=============================================================================
-!
-! ErrLog Variables
 
+    character(len=ESMF_MAXSTR) :: IAm
+    integer                    :: STATUS
+    character(len=ESMF_MAXSTR) :: COMP_NAME
 
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS
-    character(len=ESMF_MAXSTR)              :: COMP_NAME
+    type (ESMF_Config) :: CF
 
-! Local derived type aliases
-
-    type (ESMF_Config          )            :: CF
-
-    integer      :: MY_STEP
-    integer      :: ACCUMINT
-    real         :: DT
+    integer :: MY_STEP
+    integer :: ACCUMINT
+    real    :: DT
 
     type (ty_RRTMGP_state), pointer :: rrtmgp_state => null()
     type (ty_RRTMGP_wrap)           :: wrap
@@ -247,14 +243,11 @@ contains
 
 !=============================================================================
 
-! Begin...
-
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
     Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet(GC, NAME=COMP_NAME, __RC__)
     Iam = trim(COMP_NAME) // Iam
 
     ! save pointer to the wrapped RRTMGP internal state in the GC
@@ -266,44 +259,36 @@ contains
 ! Set the Run entry point
 ! -----------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_RUN, Run, __RC__)
 
 ! Get the configuration
 ! ---------------------
 
-    call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet(GC, CONFIG=CF, __RC__)
 
 ! Get the intervals; "heartbeat" must exist
 ! -----------------------------------------
 
-    call ESMF_ConfigGetAttribute( CF, DT, Label="RUN_DT:"                          , RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute(CF, DT, Label="RUN_DT:", __RC__)
 
 ! Refresh interval defaults to heartbeat. This will also be read by
-!  MAPL_Generic and set as the component's main time step.
+! MAPL_Generic and set as the component's main time step.
 ! -----------------------------------------------------------------
 
-    call ESMF_ConfigGetAttribute( CF, DT, Label=trim(COMP_NAME)//"_DT:", default=DT, RC=STATUS)
-    VERIFY_(STATUS)
-
+    call ESMF_ConfigGetAttribute(CF, DT, Label=trim(COMP_NAME)//"_DT:", default=DT, __RC__)
     MY_STEP = nint(DT)
 
 ! Averaging interval defaults to the refresh interval.
 !-----------------------------------------------------
 
-    call ESMF_ConfigGetAttribute(CF, DT, Label=trim(COMP_NAME)//'Avrg:', default=DT, RC=STATUS)
-    VERIFY_(STATUS)
-
+    call ESMF_ConfigGetAttribute(CF, DT, Label=trim(COMP_NAME)//'Avrg:', default=DT, __RC__)
     ACCUMINT = nint(DT)
-
 
 ! Is RRTMG LW being run?
 ! ----------------------
 
-    call ESMF_ConfigGetAttribute( CF, RFLAG, LABEL='USE_RRTMG_IRRAD:', DEFAULT=0.0, __RC__)
-    USE_RRTMG = RFLAG /= 0.0
+    call ESMF_ConfigGetAttribute(CF, RFLAG, LABEL='USE_RRTMG_IRRAD:', DEFAULT=0., __RC__)
+    USE_RRTMG = RFLAG /= 0.
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -319,9 +304,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationEdge,                  &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'T',                                 &
@@ -330,9 +313,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'QV',                                &
@@ -341,9 +322,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'QL',                                &
@@ -352,9 +331,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'QI',                                &
@@ -363,9 +340,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'QR',                                &
@@ -374,9 +349,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'QS',                                &
@@ -385,9 +358,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'RL',                                &
@@ -396,9 +367,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'RI',                                &
@@ -407,9 +376,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'RR',                                &
@@ -418,9 +385,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'RS',                                &
@@ -429,9 +394,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'O3',                                &
@@ -440,9 +403,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'CH4',                               &
@@ -451,9 +412,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'N2O',                               &
@@ -462,9 +421,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'CFC11',                             &
@@ -473,9 +430,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'CFC12',                             &
@@ -484,9 +439,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'HCFC22',                            &
@@ -495,9 +448,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'FCLD',                              &
@@ -506,9 +457,7 @@ contains
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'TS',                                &
@@ -517,9 +466,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'EMIS',                              &
@@ -528,18 +475,14 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         AVERAGING_INTERVAL = ACCUMINT,                            &
-        REFRESH_INTERVAL   = MY_STEP,                             &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        REFRESH_INTERVAL   = MY_STEP,                      __RC__ )
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'PREF',                              &
         LONG_NAME          = 'reference_air_pressure',            &
         UNITS              = 'Pa',                                &
         DIMS               = MAPL_DimsVertOnly,                   &
-        VLOCATION          = MAPL_VLocationEdge,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        VLOCATION          = MAPL_VLocationEdge,           __RC__ )
 
 ! Instantaneous TS is used only for updating the IR fluxes due to TS change
 
@@ -548,9 +491,7 @@ contains
         LONG_NAME          = 'surface_skin_temperature',          &
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+        VLOCATION          = MAPL_VLocationNone,           __RC__ )
 
 
     call MAPL_AddImportSpec(GC,                                   &
@@ -560,9 +501,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                            &
        VLOCATION  = MAPL_VLocationCenter,                         &
        DATATYPE   = MAPL_StateItem,                               &
-       RESTART    = MAPL_RestartSkip,                             &
-                                                       RC=STATUS  )
-    VERIFY_(STATUS)
+       RESTART    = MAPL_RestartSkip,                      __RC__ )
 
 !  !EXPORT STATE:
 
@@ -571,184 +510,161 @@ contains
         LONG_NAME  = 'net_downward_longwave_flux_in_air',         &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLXA',                                      &
         LONG_NAME  = 'net_downward_longwave_flux_in_air_and_no_aerosol', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLXD',                                      &
         LONG_NAME  = 'downward_longwave_flux_in_air',             &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLXAD',                                     &
         LONG_NAME  = 'downward_longwave_flux_in_air_and_no_aerosol', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLXU',                                      &
         LONG_NAME  = 'upward_longwave_flux_in_air',               &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLXAU',                                     &
         LONG_NAME  = 'upward_longwave_flux_in_air_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLC',                                       &
         LONG_NAME  = 'net_downward_longwave_flux_in_air_assuming_clear_sky', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLCD',                                      &
         LONG_NAME  = 'downward_longwave_flux_in_air_assuming_clear_sky', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
     
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLCU',                                      &
         LONG_NAME  = 'upward_longwave_flux_in_air_assuming_clear_sky', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLA',                                       &
         LONG_NAME  = 'net_downward_longwave_flux_in_air_assuming_clear_sky_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLAD',                                      &
         LONG_NAME  = 'downward_longwave_flux_in_air_assuming_clear_sky_and_no_aerosol', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLAU',                                      &
         LONG_NAME  = 'upward_longwave_flux_in_air_assuming_clear_sky_and_no_aerosol', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'SFCEM',                                     &
         LONG_NAME  = 'longwave_flux_emitted_from_surface',        &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'SFCEM0',                                    &
         LONG_NAME  = 'longwave_flux_emitted_from_surface_at_reference_time',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'LWS0',                                      &
         LONG_NAME  = 'surface_absorbed_longwave_radiation_at_reference_time',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'DSFDTS',                                    &
         LONG_NAME  = 'sensitivity_of_longwave_flux_emitted_from_surface_to_surface_temperature', &
         UNITS      = 'W m-2 K-1',                                 &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'DSFDTS0',                                   &
         LONG_NAME  = 'sensitivity_of_longwave_flux_emitted_from_surface_to_surface_temperature_at_reference_time', &
         UNITS      = 'W m-2 K-1',                                 &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'TSREFF',                                    &
         LONG_NAME  = 'surface_temperature',                       &
         UNITS      = 'K',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'OLR',                                       &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa',            &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'OLRA',                                      &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_and_no_aerosol', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'OLC',                                       &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_assuming_clear_sky',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'OLCC5',                                     &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_assuming_clear_sky_masked_using_cldtt_LE_5',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'OLA',                                       &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_assuming_clear_sky_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     if (USE_RRTMG) then
        do ibnd = 1,nbndlw
@@ -781,136 +697,119 @@ contains
         LONG_NAME  = 'surface_net_downward_longwave_flux',        &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLNSNA',                                    &
         LONG_NAME  = 'surface_net_downward_longwave_flux_and_no_aerosol', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLNSC',                                     &
         LONG_NAME  = 'surface_net_downward_longwave_flux_assuming_clear_sky',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLNSA',                                     &
         LONG_NAME  = 'surface_net_downward_longwave_flux_assuming_clear_sky_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'LWS',                                       &
         LONG_NAME  = 'surface_absorbed_longwave_radiation',       &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'LWSA',                                      &
         LONG_NAME  = 'surface_absorbed_longwave_radiation_and_no_aerosol', &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'LCS',                                       &
         LONG_NAME  = 'surface_absorbed_longwave_radiation_assuming_clear_sky',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'LCSC5',                                     &
         LONG_NAME  = 'surface_absorbed_longwave_radiation_assuming_clear_sky_masked_using_cldtt_LE_5',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'LAS',                                       &
         LONG_NAME  = 'surface_absorbed_longwave_radiation_assuming_clear_sky_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDTMP',                                    &
         LONG_NAME  = 'cloud_top_temperature',                     &
         UNITS      = 'K',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDPRS',                                    &
         LONG_NAME  = 'cloud_top_pressure',                        &
         UNITS      = 'Pa',                                        &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'TAUIR',                                     &
         LONG_NAME  = 'longwave_cloud_optical_thickness_at_800_cm-1',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationCenter,                 __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDTT'  ,                                   &
         LONG_NAME  = 'total_2D_cloud_area_fraction',              &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDTTLW',                                   &
         LONG_NAME  = 'total_cloud_area_fraction_rrtmg_lw',        &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDHILW',                                   &
-        LONG_NAME  = 'total_hi-level_cloud_area_fraction_rrtmg_lw',     &
+        LONG_NAME  = 'total_hi-level_cloud_area_fraction_rrtmg_lw',&
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDMDLW',                                   &
-        LONG_NAME  = 'total_mid-level_cloud_area_fraction_rrtmg_lw',    &
+        LONG_NAME  = 'total_mid-level_cloud_area_fraction_rrtmg_lw',&
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDLOLW',                                   &
-        LONG_NAME  = 'total_low_level_cloud_area_fraction_rrtmg_lw',    &
+        LONG_NAME  = 'total_low_level_cloud_area_fraction_rrtmg_lw',&
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
 !  Irrad does not have a "real" internal state. To update the net_longwave_flux
 !  due to the change of surface temperature every time step, we keep 
@@ -923,99 +822,88 @@ contains
         LONG_NAME  = 'net_downward_longwave_flux_in_air',         &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'FLC',                                       &
-        LONG_NAME  = 'net_downward_longwave_flux_in_air_for_clear_sky(INTERNAL)',  &
+        LONG_NAME  = 'net_downward_longwave_flux_in_air_for_clear_sky',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'FLA',                                       &
         LONG_NAME  = 'net_downward_longwave_flux_in_air_for_clear_sky_and_no_aerosol',  &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'FLXD',                                      &
         LONG_NAME  = 'downward_longwave_flux_in_air',             &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'FLXU',                                      &
         LONG_NAME  = 'upward_longwave_flux_in_air',               &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
-    call MAPL_AddInternalSpec(GC,                                    &
-        SHORT_NAME = 'FLCD',                                         &
-        LONG_NAME  = 'downward_longwave_flux_in_air_for_clear_sky',  &
-        UNITS      = 'W m-2',                                        &
-        DIMS       = MAPL_DimsHorzVert,                              &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+    call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'FLCD',                                      &
+        LONG_NAME  = 'downward_longwave_flux_in_air_for_clear_sky',&
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
-    call MAPL_AddInternalSpec(GC,                                    &
-        SHORT_NAME = 'FLCU',                                         &
-        LONG_NAME  = 'upward_longwave_flux_in_air_for_clear_sky',    &
-        UNITS      = 'W m-2',                                        &
-        DIMS       = MAPL_DimsHorzVert,                              &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+    call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'FLCU',                                      &
+        LONG_NAME  = 'upward_longwave_flux_in_air_for_clear_sky', &
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
-    call MAPL_AddInternalSpec(GC,                                                   &
-        SHORT_NAME = 'FLAD',                                                        &
-        LONG_NAME  = 'downward_longwave_flux_in_air_for_clear_sky_and_no_aerosol',  &
-        UNITS      = 'W m-2',                                                       &
-        DIMS       = MAPL_DimsHorzVert,                                             &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+    call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'FLAD',                                      &
+        LONG_NAME  = 'downward_longwave_flux_in_air_for_clear_sky_and_no_aerosol',&
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
-    call MAPL_AddInternalSpec(GC,                                                   &
-        SHORT_NAME = 'FLAU',                                                        &
-        LONG_NAME  = 'upward_longwave_flux_in_air_for_clear_sky_and_no_aerosol',    &
-        UNITS      = 'W m-2',                                                       &
-        DIMS       = MAPL_DimsHorzVert,                                             &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+    call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'FLAU',                                      &
+        LONG_NAME  = 'upward_longwave_flux_in_air_for_clear_sky_and_no_aerosol',&
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'DFDTS',                                     &
-        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature', &
+        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature',&
         UNITS      = 'W m-2 K-1',                                 &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'DFDTSC',                                    &
-        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature_for_clear_sky', &
+        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature_for_clear_sky',&
         UNITS      = 'W m-2 K-1',                                 &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'DFDTSNA',                                   &
-        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature_no_aerosol', &
+        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature_no_aerosol',&
         UNITS      = 'W m-2 K-1',                                 &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'DFDTSCNA',                                  &
-        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature_for_clear_sky_no_aerosol', &
+        LONG_NAME  = 'sensitivity_of_net_downward_longwave_flux_in_air_to_surface_temperature_for_clear_sky_no_aerosol',&
         UNITS      = 'W m-2 K-1',                                 &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
@@ -1025,40 +913,35 @@ contains
         LONG_NAME  = 'longwave_flux_emitted_from_surface',        &
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'TS',                                        &
         LONG_NAME  = 'surface_temperature',                       &
         UNITS      = 'K',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'FLXA',                                      &
-        LONG_NAME  = 'net_downward_longwave_flux_in_air_and_no_aerosol', &
+        LONG_NAME  = 'net_downward_longwave_flux_in_air_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'FLXAD',                                     &
-        LONG_NAME  = 'downward_longwave_flux_in_air_and_no_aerosol', &
+        LONG_NAME  = 'downward_longwave_flux_in_air_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'FLXAU',                                     &
         LONG_NAME  = 'upward_longwave_flux_in_air_and_no_aerosol',&
         UNITS      = 'W m-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationEdge,                   __RC__ )
 
     if (USE_RRTMG) then
        do ibnd = 1,nbndlw
@@ -1089,31 +972,18 @@ contains
 ! Set the Profiling timers
 ! ------------------------
 
-    call MAPL_TimerAdd(GC,    name="-LW_DRIVER"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="--IRRAD"      ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---IRRAD_RUN" ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---IRRAD_DATA" ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="----IRRAD_DATA_DEVICE" ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="----IRRAD_DATA_CONST" ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---IRRAD_ALLOC" ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---IRRAD_DEALLOC" ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="--RRTMG"       ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---RRTMG_RUN"       ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---RRTMG_INIT"       ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---RRTMG_FLIP"       ,RC=STATUS)
-    VERIFY_(STATUS)
-
+    call MAPL_TimerAdd(GC, name="-LW_DRIVER"               , __RC__)
+    call MAPL_TimerAdd(GC, name="--IRRAD"                  , __RC__)
+    call MAPL_TimerAdd(GC, name="---IRRAD_RUN"             , __RC__)
+    call MAPL_TimerAdd(GC, name="---IRRAD_DATA"            , __RC__)
+    call MAPL_TimerAdd(GC, name="----IRRAD_DATA_DEVICE"    , __RC__)
+    call MAPL_TimerAdd(GC, name="----IRRAD_DATA_CONST"     , __RC__)
+    call MAPL_TimerAdd(GC, name="---IRRAD_ALLOC"           , __RC__)
+    call MAPL_TimerAdd(GC, name="---IRRAD_DEALLOC"         , __RC__)
+    call MAPL_TimerAdd(GC, name="--RRTMG"                  , __RC__)
+    call MAPL_TimerAdd(GC, name="---RRTMG_RUN"             , __RC__)
+    call MAPL_TimerAdd(GC, name="---RRTMG_INIT"            , __RC__)
+    call MAPL_TimerAdd(GC, name="---RRTMG_FLIP"            , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP"                 , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_SETUP_1"        , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_SETUP_2"        , __RC__)
@@ -1128,19 +998,14 @@ contains
     call MAPL_TimerAdd(GC, name="---RRTMGP_GAS_OPTICS"     , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_RT"             , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_POST"           , __RC__)
-
-    call MAPL_TimerAdd(GC,    name="--MISC"       ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="---AEROSOLS"       ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-UPDATE_FLX"  ,RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="--MISC"                   , __RC__)
+    call MAPL_TimerAdd(GC, name="---AEROSOLS"              , __RC__)
+    call MAPL_TimerAdd(GC, name="-UPDATE_FLX"              , __RC__)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
-    call MAPL_GenericSetServices    ( GC, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GenericSetServices(GC, __RC__)
 
     RETURN_(ESMF_SUCCESS)
   
@@ -1289,11 +1154,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    USE_RRTMGP = .false.
    USE_RRTMG  = .false.
    USE_CHOU   = .false.
-   call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_IRRAD:', DEFAULT=0.0, __RC__)
-   USE_RRTMGP = RFLAG /= 0.0
+   call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_IRRAD:', DEFAULT=0., __RC__)
+   USE_RRTMGP = RFLAG /= 0.
    if (.not. USE_RRTMGP) then
-     call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_IRRAD:', DEFAULT=0.0, __RC__)
-     USE_RRTMG = RFLAG /= 0.0
+     call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_IRRAD:', DEFAULT=0., __RC__)
+     USE_RRTMG = RFLAG /= 0.
      USE_CHOU  = .not.USE_RRTMG
    end if
 
@@ -1301,11 +1166,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    USE_RRTMGP_SORAD = .false.
    USE_RRTMG_SORAD  = .false.
    USE_CHOU_SORAD   = .false.
-   call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_SORAD:', DEFAULT=0.0, __RC__)
-   USE_RRTMGP_SORAD = RFLAG /= 0.0
+   call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_SORAD:', DEFAULT=0., __RC__)
+   USE_RRTMGP_SORAD = RFLAG /= 0.
    if (.not. USE_RRTMGP_SORAD) then
-     call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_SORAD:', DEFAULT=0.0, __RC__)
-     USE_RRTMG_SORAD = RFLAG /= 0.0
+     call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_SORAD:', DEFAULT=0., __RC__)
+     USE_RRTMG_SORAD = RFLAG /= 0.
      USE_CHOU_SORAD  = .not.USE_RRTMG_SORAD
    end if
 
@@ -1559,7 +1424,7 @@ contains
    real, parameter :: O2   = 0.2090029E+00 ! preexisting
    real, parameter :: N2   = 0.7906400E+00 ! approx from rrtmgp input file
    real, parameter :: CCL4 = 0.1105000E-09 ! preexisting
-   real, parameter :: CO   = 0.0           ! currently zero
+   real, parameter :: CO   = 0.            ! currently zero
 
    ! variables for RRTMGP code
    ! -------------------------
@@ -1691,7 +1556,7 @@ contains
 
 ! helper for testing RRTMGP error status on return;
 ! allows line number reporting cf. original call method
-#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; write(*,*) "RRTMGP Error: ", trim(error_msg); _ASSERT(.false.,'needs informative message'); endif
+#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; _ASSERT(.false.,"RRTMGP Error: "//trim(error_msg)); endif
 
 #ifdef _CUDA
 ! MATMAT CUDA Variables

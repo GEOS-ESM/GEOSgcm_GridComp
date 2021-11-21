@@ -2369,7 +2369,7 @@ contains
       type (ESMF_Time)               :: ReferenceTime
       type (ESMF_TimeInterval)       :: RefreshInterval
 
-      ! for global gcolumn index seeding of PPNGs
+      ! for global gcolumn index seeding of PRNGs
       integer :: iBeg, iEnd, jBeg, jEnd
       integer :: IM_World, JM_World, Gdims(3)
       integer, dimension(IM,JM) :: Ig, Jg
