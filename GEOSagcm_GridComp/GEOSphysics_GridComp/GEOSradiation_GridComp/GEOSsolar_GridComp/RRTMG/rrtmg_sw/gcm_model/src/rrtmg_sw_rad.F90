@@ -1113,7 +1113,6 @@ contains
                end do
             end do
 
-!pmn needs working on and the replacing by abstract as per LW
             ! cloudy gridcolumns
             if (cc == 2) then
 
@@ -1122,7 +1121,8 @@ contains
                   pncol, ncol, ngptsw, nlay, &
                   zm, alat, dyofyr, &
                   play, cld, ciwp, clwp, 1.e-20, &
-                  cldymcl, ciwpmcl, clwpmcl) 
+                  cldymcl, ciwpmcl, clwpmcl, &
+                  seed_order=[4,3,2,1]) 
 
                ! cloud optical property generation
                call cldprmc_sw( &

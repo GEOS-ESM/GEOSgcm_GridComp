@@ -550,7 +550,8 @@ contains
          pncol, pncol, ngptlw, nlay, &
          p_zm, p_alat, dyofyr, &
          p_play, p_cldf, p_ciwp, p_clwp, 1.e-20, &
-         cldymc, ciwpmc, clwpmc)
+         cldymc, ciwpmc, clwpmc, &
+         seed_order=[1,2,3,4])
 
       ! for super-band cloud fractions
 

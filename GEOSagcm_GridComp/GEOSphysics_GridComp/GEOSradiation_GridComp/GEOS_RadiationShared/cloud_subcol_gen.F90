@@ -20,6 +20,7 @@ module cloud_subcol_gen
 
    use cloud_condensate_inhomogeneity, only: &
       condensate_inhomogeneous, zcw_lookup
+   use iso_fortran_env, only : error_unit
 
    implicit none
    private
@@ -34,7 +35,8 @@ contains
       dncol, ncol, nsubcol, nlay, &
       zmid, alat, doy, &
       play, cldfrac, ciwp, clwp, cwp_tiny, &
-      cldy_stoch, ciwp_stoch, clwp_stoch)
+      cldy_stoch, ciwp_stoch, clwp_stoch, &
+      seed_order)
    !---------------------------------------------------------------------------------------
    !
    ! Original code: Based on Raisanen et al., QJRMS, 2004.
@@ -46,6 +48,8 @@ contains
    !   Tidy up code and comments
    !   Keep only exponential (generalized) overlap.
    !   Abstract and reorder indices for CPU efficiency.
+   ! Peter Norris, GMAO, Nov 2021:
+   !   Added optional seed_order (sse below).
    !
    !   Given a profile of cloud fraction, cloud water and cloud ice, produce a set of
    ! subcolumns. Each subcolumn has cloud fraction in {0,1} at each level.
@@ -62,6 +66,23 @@ contains
    ! Exponential (generalized) overlap (Raisanen et al., 2004, Pincus et al., 2005) using
    ! correlations alpha and rcorr based on decorrelation length scales from Oreopoulos et
    ! al., 2012.
+   !
+   ! Optional seed order:
+   ! This is an array of 4 integers which MUST be a permutation of [1,2,3,4]. If absent,
+   ! [1,2,3,4] is assumed. It is used in the code to permute the pseed(4) array as part
+   ! of the initial seeding on each gridcolumn's PRNG stream. As such, it provides a
+   ! way of generating a different set of random numbers for say LW and SW at the same
+   ! timetep, when the layer pressures <play> used for seed generation are the same.
+   ! For example, LW can be run with [1,2,3,4] and SW with [4,2,1,3]. 
+   ! NOTE: Using the same seed_order for LW and SW still does not mean using the "same
+   ! subcolumn cloud ensemble" because the number of subcolumns (g-points) in LW and SW
+   ! differ. Also, of course, McICA .ne. ICA, meaning that each subcolumn in McICA gets
+   ! a different g-point, and those g-points have different meanings in LW and SW. So
+   ! the same_seed order in LW and SW would only use an identical cloud field in the
+   ! case of full ICA (each subcolumn sees every g-point) and with the same nsubcol,
+   ! neither of which is true. NEVERTHELESS, if the user is worried that using the same 
+   ! seeds for LW and SW will create an unwanted correlation of some sort, they can use
+   ! a different seed_order for each. 
    !
    !---------------------------------------------------------------------------------------
 
@@ -97,6 +118,9 @@ contains
       real,    intent(out) :: ciwp_stoch (nlay,nsubcol,dncol)  ! In-cloud ice water path
       real,    intent(out) :: clwp_stoch (nlay,nsubcol,dncol)  ! In-cloud liq water path
 
+      ! optional seed_order as described above in header
+      integer, intent(in), optional :: seed_order (4)
+
       ! ----- Locals -----
 
       ! correlation length for cloud presence and condensate
@@ -109,9 +133,11 @@ contains
       real :: sigma_qcw(nlay)
 
       ! seeds for rng_kiss
+      real :: pseed(4)  ! isolate seeding pressures
+      integer :: so(4)  ! actual seed order used
+      logical :: hit(4) ! used in so validation
       integer :: seed1, seed2, seed3, seed4
       integer, parameter :: maximo = huge(seed1) - 1
-      real :: pseed(4)
 
       ! random number arrays used for overlap
       real, dimension(nlay) :: &
@@ -124,10 +150,40 @@ contains
       logical :: cond_inhomo, ciwp_negligible, clwp_negligible
 
       ! indices
-      integer :: icol, isubcol, ilay
+      integer :: icol, isubcol, ilay, n
 
       ! save for speed
       cond_inhomo = condensate_inhomogeneous()
+
+      ! set seed order to use
+      if (present(seed_order)) then
+        do n = 1,4
+          so(n) = seed_order(n)
+          hit(n) = .false.
+        end do
+        ! validate a permutation of [1,2,3,4]
+        do n = 1,4
+          if (so(n) < 1) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'seed_order element < 1'
+          end if
+          if (so(n) > 4) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'seed_order element > 4'
+          end if
+          if (.not.hit(n)) then
+            hit(n) = .true.
+          else
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'seed_order repeated element'
+          end if
+        end do
+        ! now have 4 elements 1--4 with no repeats so we are good!
+      else
+        do n = 1,4
+          so(n) = n
+        end do
+      end if
 
       ! Compute decorrelation length scales ...
 
@@ -223,10 +279,10 @@ contains
          ! The 32-bit integer range is [-2147483648,2147483647] and we wish
          ! to avoid zero seeds, so we scale the seeds to [1,2147483647] with
          ! the following (made more general with maximo = huge(integer)-1):
-         seed1 = (pseed(1) - int(pseed(1))) * maximo + 1
-         seed2 = (pseed(2) - int(pseed(2))) * maximo + 1
-         seed3 = (pseed(3) - int(pseed(3))) * maximo + 1
-         seed4 = (pseed(4) - int(pseed(4))) * maximo + 1
+         seed1 = (pseed(so(1)) - int(pseed(so(1)))) * maximo + 1
+         seed2 = (pseed(so(2)) - int(pseed(so(2)))) * maximo + 1
+         seed3 = (pseed(so(3)) - int(pseed(so(3)))) * maximo + 1
+         seed4 = (pseed(so(4)) - int(pseed(so(4)))) * maximo + 1
 
          ! Generate each subcolumn ...
          do isubcol = 1,nsubcol
