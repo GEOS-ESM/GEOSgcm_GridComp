@@ -1637,7 +1637,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Locals
 
   integer                         :: NUM_SUBTILES        ! = NUM_ICE_CATEGORIES 
-  integer                         :: NUM_ICE_LAYERS      ! set via resource parameter
   integer                         :: NUM_ICE_CATEGORIES  ! set via resource parameter
 
   type (MAPL_MetaComp), pointer   :: MAPL => null()
@@ -1687,14 +1686,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: CQ  => null()
    real, pointer, dimension(:,:)  :: WW  => null()
    real, pointer, dimension(:,:)  :: Z0  => null()
-   real, pointer, dimension(:,:)  :: TAUAGE  => null()
-   real, pointer, dimension(:)    :: SLMASK  => null()
    real(kind=MAPL_R8), pointer, dimension(:,:)   :: FR      => null()  
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: VOLICE  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: VOLSNO  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: VOLPOND => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:,:) :: ERGICE  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:,:) :: ERGSNO  => null()
 
 ! pointers to import
 
@@ -1763,33 +1755,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer, allocatable           :: IWATER(:)
    real(kind=MAPL_R8), allocatable:: FRI(:)
 
-   real(kind=MAPL_R8), allocatable:: vice0(:)
-   real(kind=MAPL_R8), allocatable:: vice1(:)
-   real(kind=MAPL_R8)  ::  TOTALAREA, ALLTOTALAREA
-   real(kind=MAPL_R8)  ::  TOTALAREA1, ALLTOTALAREA1
-   real(kind=MAPL_R8)  ::  maxl 
-   real                ::  maxlat, maxlon
-   type(ESMF_VM)                :: VMG
-   integer                        :: i
-   real                                :: LATSO, LONSO
 
    integer                        :: K
    logical                        :: L_STOP
    integer                        :: IDUM, JDUM
    real                           :: DT
-
-   integer,            allocatable    :: TRCRTYPE(:)
-   real(kind=MAPL_R8), allocatable    :: TRACERSDB2(:,:)
-   real(kind=MAPL_R8)                 :: DTDB
-   real(kind=MAPL_R8), dimension(1)   :: FRWATERDB,  FRCICEDB
-   real(kind=MAPL_R8), dimension(1)   :: FHOCNLDB, FRESHLDB, FSALTLDB
-   real                               :: MIN_FREEZE_SALINITY
-
-   real(kind=MAPL_R8), allocatable    :: FR_TMP(:)
-   real(kind=MAPL_R8), allocatable    :: VOLICE_TMP(:)
-   real(kind=MAPL_R8), allocatable    :: VOLSNO_TMP(:)
-   real(kind=MAPL_R8), allocatable    :: ERGICE_TMP(:,:)
-   real(kind=MAPL_R8), allocatable    :: ERGSNO_TMP(:,:)
 
 
    real            :: ICEZ0
@@ -1859,8 +1829,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, PRES_ICE,    Label="PRESCRIBED_ICE:" , DEFAULT=1,      RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, MIN_FREEZE_SALINITY, Label="MIN_FREEZE_SALINITY:" , DEFAULT=0.0,    RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
     VERIFY_(STATUS)
@@ -1916,20 +1884,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL,Z0   , 'Z0'     ,    RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLICE ,'VOLICE',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLSNO ,'VOLSNO',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLPOND,'VOLPOND',   RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGICE ,'ERGICE',    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGSNO ,'ERGSNO',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,TAUAGE ,'TAUAGE',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,SLMASK ,'SLMASK',    RC=STATUS) 
    VERIFY_(STATUS)
 
 ! Pointers to outputs
@@ -1993,8 +1947,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
 
   ! export to openwater
-   call MAPL_GetPointer(EXPORT,TF    , 'TFREEZE' ,    RC=STATUS)
-   VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRACI , 'FRACI'   ,    RC=STATUS)
    VERIFY_(STATUS)
 
@@ -2082,104 +2034,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(TS (NT,NUM_SUBTILES),   STAT=STATUS)
    VERIFY_(STATUS)
    allocate(FRI (NT) ,   STAT=STATUS)
-   VERIFY_(STATUS)
-
-! do a cleanup here, in case transformation from tripolar to tile induces round-off errors
-   allocate(TRCRTYPE   (NUM_3D_ICE_TRACERS),                      STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(TRACERSDB2 (NUM_3D_ICE_TRACERS , NUM_ICE_CATEGORIES), STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(FR_TMP (NUM_ICE_CATEGORIES),      STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VOLICE_TMP (NUM_ICE_CATEGORIES),  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VOLSNO_TMP (NUM_ICE_CATEGORIES),  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ERGICE_TMP (NUM_ICE_LAYERS, NUM_ICE_CATEGORIES),   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ERGSNO_TMP (NUM_SNOW_LAYERS, NUM_ICE_CATEGORIES),  STAT=STATUS)
-   VERIFY_(STATUS)
-  
-   TRCRTYPE(nt_tsfc)  = 0  ! ice/snow surface temperature
-   TRCRTYPE(nt_iage)  = 1  ! volume-weighted ice age
-   TRCRTYPE(nt_volpn) = 0  ! melt pond volume
-   IDUM = 0
-   JDUM = 0
-   do k=1, NT
-#if 0
-       maxlat = LATS(k) * rad_to_deg 
-       maxlon = LONS(k) * rad_to_deg 
-       if((abs(maxlat-LATSO) < 1.e-3) .and. (abs(maxlon-LONSO) < 1.e-3)) then
-          print*, 'before clean up'
-          do i=1,NUM_ICE_CATEGORIES
-             print*, FR(K,i), VOLICE(K,i)  
-             print*, VOLSNO(K,i), ERGSNO(K,1,i) 
-             if(VOLSNO(K,i) > 0.0_8) then
-                print*, ERGSNO(K,1,i)/VOLSNO(K,i), (Lfresh+&
-                  ERGSNO(K,1,i)/VOLSNO(K,i)/rhos)/cp_ice
-             endif
-          enddo
-       endif 
-#endif
-       TRACERSDB2(nt_tsfc,:) = REAL(TI(K,ICE:)-TFfresh, kind=MAPL_R8)
-       TRACERSDB2(nt_iage,:) = REAL(TAUAGE(K,:),        kind=MAPL_R8)
-       TRACERSDB2(nt_volpn,:)= VOLPOND(K,:)
-       FRCICEDB              = sum(FR(K,ICE:))
-       FRWATERDB             = REAL(1.0,kind=MAPL_R8) - FRCICEDB 
-
-       FHOCNLDB              = REAL(0.0,             kind=MAPL_R8)
-       FRESHLDB              = REAL(0.0,             kind=MAPL_R8)
-       FSALTLDB              = REAL(0.0,             kind=MAPL_R8)
-
-       FR_TMP(:) = FR(K,ICE:)
-       VOLICE_TMP(:) = VOLICE(K,:)
-       VOLSNO_TMP(:) = VOLSNO(K,:)
-       ERGICE_TMP(:,:) = ERGICE(K,:,:)
-       ERGSNO_TMP(:,:) = ERGSNO(K,:,:)
-
-       call cleanup_itd (1,1,1,1,1,1,DTDB, &
-            FR_TMP,        TRACERSDB2,     &     
-            VOLICE_TMP,    VOLSNO_TMP,     &
-            ERGICE_TMP,    ERGSNO_TMP,     &
-            FRWATERDB,     FRCICEDB,       &    
-            TRCRTYPE,      FRESHLDB,       &
-            FSALTLDB,      FHOCNLDB,       &    
-            .true.,        L_STOP,         &    
-            IDUM,            JDUM,         &    
-            limit_aice_in=.true.)  
-
-       _ASSERT(.not.L_STOP,'needs informative message')
-
-       FR(K,ICE:)    = FR_TMP(:)
-       VOLICE(K,:)   = VOLICE_TMP(:)
-       VOLSNO(K,:)   = VOLSNO_TMP(:)
-       ERGICE(K,:,:) = ERGICE_TMP(:,:)
-       ERGSNO(K,:,:) = ERGSNO_TMP(:,:)
-
-       TI(K,ICE:)   = REAL(TRACERSDB2(nt_tsfc, :)+TFfresh,   kind=MAPL_R4)
-       TAUAGE(K,:)  = REAL(TRACERSDB2(nt_iage, :),           kind=MAPL_R4)
-       VOLPOND(K,:) =      TRACERSDB2(nt_volpn,:)
-
-       !if((abs(maxlat-LATSO) < 1.e-3) .and. (abs(maxlon-LONSO) < 1.e-3)) then
-       !   print*, 'after  clean up'
-       !   do i=1,NUM_ICE_CATEGORIES
-       !      print*, FR(K,i),VOLICE(K,i)  
-       !   enddo
-       !endif 
-   enddo
-   deallocate(TRCRTYPE  , STAT=STATUS)
-   VERIFY_(STATUS)
-   deallocate(TRACERSDB2, STAT=STATUS)
-   VERIFY_(STATUS)
-   deallocate(FR_TMP,     STAT=STATUS)
-   VERIFY_(STATUS)
-   deallocate(VOLICE_TMP, STAT=STATUS)
-   VERIFY_(STATUS)
-   deallocate(VOLSNO_TMP, STAT=STATUS)
-   VERIFY_(STATUS)
-   deallocate(ERGICE_TMP, STAT=STATUS)
-   VERIFY_(STATUS)
-   deallocate(ERGSNO_TMP, STAT=STATUS)
    VERIFY_(STATUS)
 
 
@@ -2341,7 +2195,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if(associated(FRACI )) FRACI = REAL(FRI, KIND=MAPL_R4)
 
-   if(associated(TF    )) call FreezingTemperature(TF, SW, MIN_FREEZE_SALINITY, PRES_ICE==1, kelvin=.true.)
 
    deallocate(UUU)
    deallocate(LAI)
@@ -2429,7 +2282,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (ESMF_Config      )            :: CF
 
   integer                             :: NUM_SUBTILES        ! = NUM_ICE_CATEGORIES 
-  integer                             :: NUM_ICE_LAYERS      ! set via resource parameter
   integer                             :: NUM_ICE_CATEGORIES  ! set via resource parameter
 
   real, pointer, dimension(:)         :: LATS => null()
@@ -2456,8 +2308,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" ,     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, NUM_ICE_LAYERS    , Label="CICE_N_ICE_LAYERS:"     ,     RC=STATUS)
     VERIFY_(STATUS)
     NUM_SUBTILES  = NUM_ICE_CATEGORIES 
 
@@ -2554,69 +2404,8 @@ contains
    real, pointer, dimension(:  )  :: FRACI  => null()
    real, pointer, dimension(:  )  :: FRACINEW => null()
 
-   real, pointer, dimension(:  )  :: FRAZIL     => null()          ! CICE related exports.
-   real, pointer, dimension(:  )  :: CONGELO    => null()
-   real, pointer, dimension(:  )  :: SNOICEO    => null()
-   real, pointer, dimension(:  )  :: FRESH      => null()
-   real, pointer, dimension(:  )  :: FSALT      => null()
-   real, pointer, dimension(:  )  :: FHOCN      => null()
-   real, pointer, dimension(:  )  :: PICE       => null()
-   real, pointer, dimension(:  )  :: FSWTRUO    => null()
-   real, pointer, dimension(:  )  :: FSWABSO    => null()
-   real, pointer, dimension(:  )  :: MELTL      => null()
-   real, pointer, dimension(:  )  :: MELTTL     => null()
-   real, pointer, dimension(:  )  :: MELTBL     => null()
-   real, pointer, dimension(:  )  :: MELTSL     => null()
-   real, pointer, dimension(:  )  :: HICE       => null()
-   real, pointer, dimension(:  )  :: HSNO       => null()
-   real, pointer, dimension(:  )  :: HICEUNT    => null()
-   real, pointer, dimension(:  )  :: SNOONICE   => null()
-   real, pointer, dimension(:  )  :: ISTSFC     => null()
-   real, pointer, dimension(:  )  :: IAGE       => null()
-   real, pointer, dimension(:  )  :: DAIDTT     => null()
-   real, pointer, dimension(:  )  :: DVIDTT     => null()
-   real, pointer, dimension(:  )  :: FBOTL      => null()
-   real, pointer, dimension(:  )  :: USTARI     => null()
-   real, pointer, dimension(:  )  :: FCONDTOP   => null()
-   real, pointer, dimension(:  )  :: FCONDB     => null()
-   real, pointer, dimension(:  )  :: NIERG      => null()
-   real, pointer, dimension(:  )  :: SBLXOUT    => null()
-   real, pointer, dimension(:  )  :: SIALB      => null()
-   real, pointer, dimension(:  )  :: GHTSKIN    => null()
-   real, pointer, dimension(:)    :: FRZMLTe    => null() 
-   real, pointer, dimension(:)    :: LWDNSRFe   => null()
-   real, pointer, dimension(:)    :: SWDNSRFe   => null()
 
-   ! pointers to category dimensional exports (CICE)
-   real, pointer, dimension(:,:)  :: SHICEN      => null()
-   real, pointer, dimension(:,:)  :: HLWUPN      => null()
-   real, pointer, dimension(:,:)  :: FSURFN      => null()
-   real, pointer, dimension(:,:)  :: TSURFN      => null()
-   real, pointer, dimension(:,:)  :: LWNDSRFN    => null()
-   real, pointer, dimension(:,:)  :: FSWSFCN     => null()
-   real, pointer, dimension(:,:)  :: ALBINe      => null()
-   real, pointer, dimension(:,:)  :: ALBSNe      => null()
-   real, pointer, dimension(:,:)  :: FCONDBOTN   => null()
-   real, pointer, dimension(:,:)  :: FCONDTOPN   => null()
-   real, pointer, dimension(:,:)  :: TINZ        => null()
 
-   ! pointers to CMIP5 exports (CICE)
-   real, pointer, dimension(:  )  :: EVAP_C5        => null()
-   real, pointer, dimension(:  )  :: PR_C5          => null()
-   real, pointer, dimension(:  )  :: PRSN_C5        => null()
-   real, pointer, dimension(:  )  :: GRFRAZIL_C5    => null()
-   real, pointer, dimension(:  )  :: GRCONGEL_C5    => null()
-   real, pointer, dimension(:  )  :: GRLATERAL_C5   => null()
-   real, pointer, dimension(:  )  :: SNOTOICE_C5    => null()
-   real, pointer, dimension(:  )  :: SNOMELT_C5     => null()
-   real, pointer, dimension(:  )  :: TMELT_C5       => null()
-   real, pointer, dimension(:  )  :: BMELT_C5       => null()
-   real, pointer, dimension(:  )  :: SFDSI_C5       => null()
-   real, pointer, dimension(:  )  :: HFSIFRAZIL_C5  => null()
-   real, pointer, dimension(:  )  :: IALB_C5        => null()
-   real, pointer, dimension(:  )  :: RSDSSI_C5      => null()
-   real, pointer, dimension(:  )  :: RSUSSI_C5      => null()
-   real, pointer, dimension(:  )  :: FSITHERM_CMIP5 => null()
 
 ! pointers to internal
 
@@ -2628,17 +2417,6 @@ contains
    real, pointer, dimension(:,:)  :: CQ    => null()
    real, pointer, dimension(:,:)  :: CM    => null()
 
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: FR8     => null()     ! CICE related
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: VOLICE  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: VOLSNO  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: VOLPOND => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: APONDN  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: HPONDN  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:,:) :: ERGICE  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:,:) :: ERGSNO  => null()
-
-   real, pointer, dimension(:,:)   :: TAUAGE => null()
-   real, pointer, dimension(:)     :: SLMASK => null()
 
 ! pointers to import
 
@@ -2678,11 +2456,8 @@ contains
    real, pointer, dimension(:)    :: VW => null()
    real, pointer, dimension(:)    :: VI => null()
 
-   real, pointer, dimension(:)    :: TAUXBOT   => null()                  ! CICE related
-   real, pointer, dimension(:)    :: TAUYBOT   => null()
    real, pointer, dimension(:)    :: TW        => null()
    real, pointer, dimension(:)    :: SW        => null()
-   real, pointer, dimension(:)    :: FRZMLT    => null() 
 
    real, pointer, dimension(:,:)       :: TS  => null()
    real,    dimension(NT)              :: SHF
@@ -2712,23 +2487,13 @@ contains
    real                                :: MAXSALINITY
    real                                :: MINSALINITY
 
-! following are related  to CICE
 
-   integer                             :: DIAG_ICE_BUDGET           ! default (=0) is to not compute certain flux budgets over Sea Ice 
    integer                             :: NSUB, I, K, L
-   integer                             :: DO_POND
 
    real                                :: LATSO, LONSO
    real,    dimension(1)               :: LATSD, LONSD
-   !real                                :: TOTALAREA, ALLTOTALAREA
    logical, dimension(1)               :: OBSERVE
 
-   real,    dimension(1)               :: FRZ_ONSET, MLT_ONSET
-   real,    dimension(1)               :: RDUM 
-   real                                :: FRZMLT_MAX
-   real(kind=MAPL_R8)                  :: DTDB
-   real(kind=MAPL_R8), dimension(1)    :: FRZMLTDB, TSCDB, TFDB, TAUXBOTDB, TAUYBOTDB, &
-                                          TBOTDB, FBOTDB, RSIDEDB
 
    real,    dimension(NT)              :: FSWABS
    real                                :: YDAY 
@@ -2737,64 +2502,20 @@ contains
    real,    dimension(NT)              :: ALBNRI
    real,    dimension(NT)              :: ALBNFI
 
-   integer,            allocatable    :: TRCRTYPE      (:)
-   real,               allocatable    :: TRACERS       (:,:)
-   real,               allocatable    :: TF            (:)
-   real,               allocatable    :: MELTLN        (:)
-   real,               allocatable    :: FRAZLN        (:)
-   real,               allocatable    :: FRESHN        (:)
-   real,               allocatable    :: FRESHL        (:)
-   real,               allocatable    :: FSALTN        (:)
-   real,               allocatable    :: FSALTL        (:)
-   real,               allocatable    :: FHOCNN        (:)
-   real,               allocatable    :: FHOCNL        (:)
-   real,               allocatable    :: RSIDE         (:)
-   real,               allocatable    :: FSWTHRU       (:,:)        ! FSWTHRU is also an EXPORT 
-   real,               allocatable    :: FCOND         (:,:)
-   real,               allocatable    :: FCONDBOT      (:,:)
-   real,               allocatable    :: TBOT          (:)
-   real,               allocatable    :: FBOT          (:)
    real,               allocatable    :: ALBVRN        (:,:)
    real,               allocatable    :: ALBNRN        (:,:)
    real,               allocatable    :: ALBVFN        (:,:)
    real,               allocatable    :: ALBNFN        (:,:)
-   real,               allocatable    :: FSWSFC        (:,:)
-   real,               allocatable    :: FSWINT        (:,:)
-   real,               allocatable    :: ISWABS        (:,:,:)
-   real,               allocatable    :: SSWABS        (:,:,:)
-   real,               allocatable    :: MELTT         (:)
-   real,               allocatable    :: MELTS         (:)
-   real,               allocatable    :: MELTB         (:)
-   real,               allocatable    :: CONGEL        (:)
-   real,               allocatable    :: SNOICE        (:)
 
    real,               allocatable    :: TS_OLD        (:,:)
-
-   real,               allocatable    :: ALBIN         (:,:)
-   real,               allocatable    :: ALBSN         (:,:)
-   real,               allocatable    :: ALBPND        (:,:)
 
    real,               allocatable    :: DRUVRTHRU     (:,:)
    real,               allocatable    :: DFUVRTHRU     (:,:)
    real,               allocatable    :: DRPARTHRU     (:,:)
    real,               allocatable    :: DFPARTHRU     (:,:)
 
-   real,               allocatable    :: TOTALFLUX     (:)
-   real,               allocatable    :: NEWICEERG     (:) ! newly generated ice energy <=0 (W m-2)  
-   real,               allocatable    :: SBLX          (:) ! 
    real,               allocatable    :: FSURF         (:) ! 
 
-!  Following arrays have to be R8 for CICE 
-   real(kind=MAPL_R8), allocatable     :: AICENINIT    (:,:)
-   real(kind=MAPL_R8), allocatable     :: VICENINIT    (:,:)
-   real(kind=MAPL_R8), allocatable     :: FRCICE       (:)
-   real(kind=MAPL_R8), allocatable     :: FR_OLD       (:)
-   real(kind=MAPL_R8), allocatable     :: VOLSNO_OLD   (:)
-   real(kind=MAPL_R8), allocatable     :: VOLICE_OLD   (:)
-   real(kind=MAPL_R8), allocatable     :: VOLICE_DELTA (:,:)
-   real(kind=MAPL_R8), allocatable     :: FR8TMP       (:,:)  
-   real(kind=MAPL_R8)                  :: ERGICE_TMP(NUM_ICE_LAYERS,  NUM_ICE_CATEGORIES)
-   real(kind=MAPL_R8)                  :: ERGSNO_TMP(NUM_SNOW_LAYERS, NUM_ICE_CATEGORIES)
 
 
 !  -------------------------------------------------------------------
@@ -2813,12 +2534,6 @@ contains
    integer                             :: MYPE              ! for CICE
    logical                             :: debugzth
 
-   real(kind=MAPL_R8)                  :: TOTALAREAN, ALLTOTALAREAN
-   real(kind=MAPL_R8)                  :: TOTALAREAS, ALLTOTALAREAS
-   real(kind=MAPL_R8)                  :: TOTALAREAN1, ALLTOTALAREAN1
-   real(kind=MAPL_R8)                  :: TOTALAREAS1, ALLTOTALAREAS1
-   real(kind=MAPL_R8),       allocatable     :: vice0(:)
-   real(kind=MAPL_R8),       allocatable     :: vice1(:)
 
    real                                :: EMSICE
 
@@ -2854,10 +2569,6 @@ contains
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS); VERIFY_(STATUS)
-   !call MAPL_GetPointer(IMPORT,TF     , 'TFREEZE',    RC=STATUS); VERIFY_(STATUS)
-
-   ! TODO: revisit for dual_ocean
-   !   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    RC=STATUS); VERIFY_(STATUS)
 
    call MAPL_GetPointer(IMPORT,UW     , 'UW'     ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,VW     , 'VW'     ,    RC=STATUS); VERIFY_(STATUS)
@@ -2890,16 +2601,6 @@ contains
    call MAPL_GetPointer(INTERNAL,CQ     , 'CQ'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CM     , 'CM'   ,    RC=STATUS); VERIFY_(STATUS)
 
-   call MAPL_GetPointer(INTERNAL,FR8    , 'FR'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLICE ,'VOLICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLSNO ,'VOLSNO',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLPOND,'VOLPOND',   RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,APONDN, 'APONDN',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,HPONDN, 'HPONDN',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGICE ,'ERGICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGSNO ,'ERGSNO',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,TAUAGE ,'TAUAGE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,SLMASK ,'SLMASK',    RC=STATUS); VERIFY_(STATUS)
 
 ! Pointers to outputs
 !--------------------
@@ -2939,41 +2640,7 @@ contains
    call MAPL_GetPointer(EXPORT,SWDNSRFe,'SWDNSRF' ,    RC=STATUS); VERIFY_(STATUS)
 
 
-   call MAPL_GetPointer(EXPORT,FRAZIL , 'FRAZIL'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CONGELO, 'CONGEL'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOICEO, 'SNOICE'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRESH  , 'FRESH'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSALT  , 'FSALT'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FHOCN  , 'FHOCN'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PICE   , 'PICE'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSWTRUO, 'FSWTHRU' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSWABSO, 'FSWABS'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTL  , 'MELTL'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTTL , 'MELTT'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTBL , 'MELTB'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTSL , 'MELTS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HICE   , 'HICE'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HSNO   , 'HSNO'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HICEUNT, 'HICEUNT' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOONICE,'SNOONICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ISTSFC , 'ISTSFC'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,IAGE   , 'IAGE'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DAIDTT , 'DAIDTT'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DVIDTT , 'DVIDTT'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FBOTL  , 'FBOT'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,USTARI , 'USTARI'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FCONDTOP,'FCONDTOP',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FCONDB,  'FCONDBOT',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,NIERG,  'NEWICEERG',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SBLXOUT,'SUBLIMFLX',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SIALB,   'SIALB'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GHTSKIN, 'GHTSKIN' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRZMLTe, 'FRZMLT'  ,    RC=STATUS); VERIFY_(STATUS)
-
    ! category dimensional exports
-   call MAPL_GetPointer(EXPORT,FCONDBOTN,  'FCONDBOTN' ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FCONDTOPN,  'FCONDTOPN' ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TINZ     ,  'TINZ'      ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SHICEN   ,  'SHICEN'    ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,HLWUPN   ,  'HLWUPN'    ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWNDSRFN ,  'LWNDSRFN'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -2982,24 +2649,6 @@ contains
    call MAPL_GetPointer(EXPORT,FSWSFCN  ,  'FSWSFCN'   ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBINe   ,  'ALBIN'     ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBSNe   ,  'ALBSN'     ,  RC=STATUS); VERIFY_(STATUS)
-
-   ! CMIP5 exports
-   call MAPL_GetPointer(EXPORT,EVAP_C5,        'evap_CMIP5' ,     RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PR_C5,          'pr_CMIP5'   ,     RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PRSN_C5,        'prsn_CMIP5' ,     RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GRFRAZIL_C5,    'grFrazil_CMIP5' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GRCONGEL_C5,    'grCongel_CMIP5' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GRLATERAL_C5,   'grLateral_CMIP5', RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOTOICE_C5,    'snoToIce_CMIP5' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOMELT_C5,     'snomelt_CMIP5' ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TMELT_C5,       'tmelt_CMIP5' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,BMELT_C5,       'bmelt_CMIP5' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SFDSI_C5,       'sfdsi_CMIP5' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HFSIFRAZIL_C5,  'hfsifrazil_CMIP5',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,IALB_C5,        'ialb_CMIP5',      RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RSDSSI_C5,      'rsdssi_CMIP5',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RSUSSI_C5,      'rsussi_CMIP5',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSITHERM_CMIP5,'fsitherm_CMIP5',   RC=STATUS); VERIFY_(STATUS)
 
 ! Get the time step
 ! -----------------
@@ -3013,13 +2662,6 @@ contains
 ! --------------
 
     call MAPL_GetResource ( MAPL, EMSICE,      Label="CICE_EMSICE:",   DEFAULT=0.99999, RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, MAXSALINITY, Label="MAX_SALINITY:" , DEFAULT=40.0 ,   RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, MINSALINITY, Label="MIN_SALINITY:" , DEFAULT=5.0 ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_POND,     Label="CICE_DO_POND:" , DEFAULT=0,       RC=STATUS)
     VERIFY_(STATUS)
 
 ! Copy friendly internals into tile-tile local variables
@@ -3036,200 +2678,16 @@ contains
     if(associated(SWDNSRFe)) SWDNSRFe = VSUVR+VSUVF+DRNIR+DFNIR 
     if(associated(LWDNSRFe)) LWDNSRFe = LWDNSRF 
 
-!     allocate arrays for CICE Thermodynamics
-    allocate(TRCRTYPE  (NUM_3D_ICE_TRACERS),                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(TRACERS   (NUM_3D_ICE_TRACERS,NUM_ICE_CATEGORIES),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(TF        (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(MELTLN    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FRAZLN    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FRESHN    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FRESHL    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FSALTN    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FSALTL    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FHOCNN    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FHOCNL    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(RSIDE     (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FSWTHRU   (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FCOND     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FCONDBOT  (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(TBOT      (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FBOT      (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ALBVRN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ALBNRN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ALBVFN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ALBNFN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FSWSFC    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FSWINT    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ISWABS    (NT,NUM_ICE_LAYERS,NUM_ICE_CATEGORIES), STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(SSWABS    (NT,NUM_SNOW_LAYERS,NUM_ICE_CATEGORIES),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(MELTT     (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(MELTS     (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(MELTB     (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(CONGEL    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(SNOICE    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(TS_OLD    (NT,NUM_SUBTILES),                      STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ALBIN     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ALBSN     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(ALBPND    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(DRUVRTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(DFUVRTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(DRPARTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(DFPARTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(TOTALFLUX (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(NEWICEERG (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(SBLX      (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FSURF     (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(AICENINIT (NT, NUM_ICE_CATEGORIES),               STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VICENINIT (NT, NUM_ICE_CATEGORIES),               STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FR8TMP    (NT, NUM_SUBTILES),                     STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FRCICE    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(FR_OLD    (NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VOLSNO_OLD(NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VOLICE_OLD(NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VOLICE_DELTA(NT,NUM_ICE_CATEGORIES),              STAT=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, LATSO, Label="LATSO:", DEFAULT=70.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, LONSO, Label="LONSO:", DEFAULT=70.0, RC=STATUS)
     VERIFY_(STATUS)
 
-!     initialize arrays for CICE Thermodynamics
-    call CICE_PREP_THERMO(TF,TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
-                            FSWTHRU,FCOND,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
-                            ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,LATS,LONS,LATSO,LONSO,   &
-                            FR8,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
-                            NEWICEERG, SBLX, RC=STATUS)
-    VERIFY_(STATUS)
 
     FR_OLD     = FRCICE   ! FRCICE is initialized by above subroutine CICE_PREP_THERMO
     TS_OLD     = TS
-    VOLICE_OLD = sum(VOLICE,dim=2)
-    VOLSNO_OLD = sum(VOLSNO,dim=2)
 
-    AICENINIT  = FR8(:,ICE:)
-    VICENINIT  = VOLICE
-
-#if 0
-    allocate(vice0(NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_GridCompGet( GC, VM=VMG, RC=STATUS )
-    VERIFY_(STATUS)
-
-    vice0 =  VOLICE_OLD 
-    TOTALAREAN = sum(vice0*AREA*(MAPL_RADIUS**2), mask=SLMASK<0.5 .and. LATS>0.0)
-    TOTALAREAS = sum(vice0*AREA*(MAPL_RADIUS**2), mask=SLMASK<0.5 .and. LATS<0.0)
-    deallocate(vice0)
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
-    call MAPL_CommsAllReduceSum(VMG, TOTALAREAN, ALLTOTALAREAN, 1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_CommsAllReduceSum(VMG, TOTALAREAS, ALLTOTALAREAS, 1, RC=STATUS)
-    VERIFY_(STATUS)
-
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 North ice0  = ', &
-                                 ALLTOTALAREAN
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 South ice0  = ', &
-                                 ALLTOTALAREAS
-#endif
-
-    call MAPL_GetResource ( MAPL, FRZMLT_MAX, Label="CICE_FRZMLT_MAX:" , DEFAULT=1000., RC=STATUS)
-    VERIFY_(STATUS)
-    DTDB = REAL(DT, kind=MAPL_R8)     ! Convert DT precision: Real4 to Real8 for usage in CICE
-    do k=1, NT 
-          call CICE_INQUIRE_TILE(LATS(K), LONS(K), LATSO, LONSO, OBSERVE, LATSD, LONSD)
-          FRZMLTDB  = REAL(FRZMLT(K),            kind=MAPL_R8)
-          FRZMLTDB  = min(max(FRZMLTDB,-FRZMLT_MAX),FRZMLT_MAX) 
-          if(FRZMLT(K)<0.0) then ! heat the already existing ice from below
-             TSCDB     = REAL(TW(K)-TFfresh,        kind=MAPL_R8)
-             TFDB      = REAL(TF(K),                kind=MAPL_R8)
-             TAUXBOTDB = REAL(TAUXBOT(K),           kind=MAPL_R8)
-             TAUYBOTDB = REAL(TAUYBOT(K),           kind=MAPL_R8)
-             ERGICE_TMP(:,:) = ERGICE(K,:,:)
-             ERGSNO_TMP(:,:) = ERGSNO(K,:,:)
-
-             call frzmlt_bottom_lateral (1,1,1,1,1,1,DTDB, &
-                  OBSERVE,                                 &
-                  FRCICE(K),        FRZMLTDB,       & ! in
-                  ERGICE_TMP,       ERGSNO_TMP,     & ! in
-                  TSCDB,            TFDB,           & ! in
-                  TAUXBOTDB,        TAUYBOTDB,      & ! in
-                  TBOTDB, FBOTDB,   RSIDEDB      )    ! out
-
-                  TBOT(K)  =  TBOTDB(1)
-                  FBOT(K)  =  FBOTDB(1)
-                  RSIDE(K) =  RSIDEDB(1)
-          else
-                  TBOT(K)  =  TF(K)
-                  FBOT(K)  =  0.0
-                  RSIDE(K) =  0.0
-          endif
-    enddo !k
-
-    if(associated(FRZMLTe))   FRZMLTe = FRZMLT 
- 
-!     Output additional CICE diagnostics?
-    call MAPL_GetResource ( MAPL, DIAG_ICE_BUDGET, Label="DIAG_ICE_BUDGET:" , DEFAULT=0    , RC=STATUS)
-    VERIFY_(STATUS)
-
-    if (DIAG_ICE_BUDGET /= 0) then
-        call ESMF_GridCompGet( GC, VM=VMG, RC=STATUS )
-        VERIFY_(STATUS)
-        call ESMF_VMGet      (VMG, localpet=MYPE,  RC=STATUS)
-        VERIFY_(STATUS)
-    endif
-
-    if(associated(RSDSSI_C5))   RSDSSI_C5  = FRCICE * (VSUVR + VSUVF + DRNIR + DFNIR)
 
     call MAPL_TimerOn(MAPL,    "-Albedo")
 
@@ -3401,18 +2859,6 @@ contains
     if(associated(FBOTL  )) FBOTL   = 0.0
     if(associated(SBLXOUT)) SBLXOUT = 0.0
 
-    if(associated(EVAP_C5))        EVAP_C5         =  0.0
-    if(associated(GRCONGEL_C5))    GRCONGEL_C5     =  0.0
-    if(associated(GRLATERAL_C5))   GRLATERAL_C5    =  0.0
-    if(associated(SNOMELT_C5))     SNOMELT_C5      =  0.0
-    if(associated(TMELT_C5))       TMELT_C5        =  0.0
-    if(associated(BMELT_C5))       BMELT_C5        =  0.0
-    if(associated(IALB_C5))        IALB_C5         =  0.0
-    if(associated(RSUSSI_C5))      RSUSSI_C5       =  0.0
-    if(associated(FSITHERM_CMIP5)) FSITHERM_CMIP5  =  0.0
-
-    if(associated(HICEUNT )) HICEUNT    = sum(VOLICE, dim=2)
-    if(associated(USTARI))   USTARI     = sqrt(sqrt(TAUXBOT**2+TAUYBOT**2)/MAPL_RHO_SEAWATER)
 
     if(associated(PR_C5)) then
           PR_C5 = FRCICE * (PLS + PCU)
@@ -3600,8 +3046,6 @@ contains
      endif 
 
      if(associated(FSWTRUO)) FSWTRUO     = sum(FR8(:,ICE:)*FSWTHRU,dim=2)
-     if(associated(FBOTL  )) FBOTL       = FBOT
-     if(associated(SNOONICE )) SNOONICE  = FRCICE*SNO
 
      if(associated(LWNDICE)) then
           where( FRCICE>puny )
@@ -3644,13 +3088,6 @@ contains
           endwhere
      endif
 
-     if(associated(FCONDTOP)) then
-          where(FRCICE > puny)
-             FCONDTOP = sum(FCOND*FR8(:,ICE:),dim=2)/FRCICE
-          elsewhere
-             FCONDTOP = MAPL_UNDEF
-          endwhere
-     endif
 
      if(associated(FSURFICE)) then
           where(FRCICE > puny)
@@ -3660,38 +3097,7 @@ contains
           endwhere
      endif
 
-     if(associated(FCONDB)) then
-          where(FRCICE > puny)
-             FCONDB = sum(FCONDBOT*FR8(:,ICE:),dim=2)/FRCICE
-          elsewhere
-             FCONDB = MAPL_UNDEF
-          endwhere
-     end if
 
-     if(associated(SNOMELT_C5)) then
-        where(FRCICE == 0.0)
-             SNOMELT_C5 = 0.0
-        endwhere
-     endif
-
-     if(associated(TMELT_C5)) then
-          where(FRCICE == 0.0)
-             TMELT_C5 = 0.0
-          endwhere
-     endif
-
-     if(associated(BMELT_C5)) then
-          where(FRCICE == 0.0)
-             BMELT_C5 = 0.0
-          endwhere
-     endif
-
-     if(associated(HFSIFRAZIL_C5)) then
-          HFSIFRAZIL_C5 = FRZMLT
-          where(FRZMLT < 0.0)
-             HFSIFRAZIL_C5 = 0.0
-          endwhere
-     endif
 
      ALBVR = sum(ALBVRN(:,:)*FR8(:,ICE:),dim=2)
      ALBVF = sum(ALBVFN(:,:)*FR8(:,ICE:),dim=2)
@@ -3741,205 +3147,6 @@ contains
 
     call MAPL_TimerOff(MAPL,  "-Thermo1")
 
-! 2nd Step of LANL CICE Thermodynamics: 
-! loops over ice categories within the  subroutines, 
-! redistributing ice and water mass due to freezing and melting
-! -------------------------------------------------------------
-#if 0
-    do k=1,NT
-       if((abs(LATS(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(LONS(k)*rad_to_deg-LONSO) < 1.e-3)) then
-          print*, 'after THERMO1 before THERMO2_STEP1'
-          do i=1,NUM_ICE_CATEGORIES
-             print*, i, FR8(K,i), VOLICE(K,i)  
-             print*, i, VOLSNO(K,i), ERGSNO(K,1,i) 
-             if(VOLSNO(K,i) > 0.0_8) then
-                print*, i, ERGSNO(K,1,i)/VOLSNO(K,i), (Lfresh+&
-                  ERGSNO(K,1,i)/VOLSNO(K,i)/rhos)/cp_ice
-             endif
-          enddo
-       endif 
-    enddo
-#endif
-
-    call MAPL_TimerOn(MAPL,    "-Thermo2")
-
-    call CICE_THERMO2_STEP1 (NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR8,TS,    &
-                             VOLICE,VOLSNO,VOLPOND,ERGICE,ERGSNO,                    &
-                             AICENINIT,VICENINIT,TRCRTYPE,FRCICE,FRZMLT,FRAZLN,      &
-                             FRESHL,FSALTL,FHOCNL,RSIDE,MELTLN,VOLICE_DELTA,         &
-                             TRACERS,TAUAGE,SNOICE,SW,RC=STATUS)
-    VERIFY_(STATUS)                         
-
-    FRCICE       = sum(FR8(:,ICE:), dim=2)
-
-    if(associated(FSITHERM_CMIP5)) FSITHERM_CMIP5 = FRESHL
-
-#if 0
-    do k=1,NT
-       if((abs(LATS(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(LONS(k)*rad_to_deg-LONSO) < 1.e-3)) then
-          print*, 'after THERMO2_STEP1 before THERMO2_STEP2'
-          do i=1,NUM_ICE_CATEGORIES
-             print*, i, FR8(K,i), VOLICE(K,i)  
-             print*, i, VOLSNO(K,i), ERGSNO(K,1,i) 
-             if(VOLSNO(K,i) > 0.0_8) then
-                print*, i, ERGSNO(K,1,i)/VOLSNO(K,i), (Lfresh+&
-                  ERGSNO(K,1,i)/VOLSNO(K,i)/rhos)/cp_ice
-             endif
-          enddo
-       endif 
-    enddo
-#endif
-
-    !*** artificially do a lateral melt step over those frozen lake tiles if the ice gets too thick
-    call CICE_THERMO2_STEP2 (NT,ICE,LATS,LONS,LATSO,LONSO,DT,FR8,TS,          &
-                             VOLICE,VOLSNO,VOLPOND,ERGICE,ERGSNO,                     &
-                             TRCRTYPE,FRCICE,SLMASK,TRACERS,TAUAGE,RC=STATUS)
-    VERIFY_(STATUS)                         
-
-    ! aggregate ice concentration after step2
-    ! These are the final area fractions that are in the internal state
-    FRCICE       = sum(FR8(:,ICE:), dim=2)
-
-    do k=1,NT
-        do N=1,NUM_ICE_CATEGORIES
-           if(FR8(K,N) < puny) TI(K,N) = MAPL_TICE+Tocnfrz
-        enddo  
-    enddo
-
-    if(associated(FRACINEW)) FRACINEW = REAL(FRCICE, KIND=MAPL_R4)
-
-    if(associated(GRLATERAL_C5)) then
-          GRLATERAL_C5 = MAPL_RHO_SEAICE*sum(VOLICE_DELTA, dim=2)/DT
-    endif
-
-    if(associated(SNOTOICE_C5)) then
-          SNOTOICE_C5  =  MAPL_RHO_SEAICE * SNOICE / DT ! kg m-2 s-1
-          where( sum(VOLSNO, dim=2) == 0.0)
-             SNOTOICE_C5 = 0.0
-          end where
-    endif
-
-    if(associated(SFDSI_C5)) then
-          SFDSI_C5  =  FSALTL ! kg m-2 s-1
-          where(FRCICE == 0.0)
-             SFDSI_C5 = 0.0
-          end where
-    endif
-
-    if(associated(DAIDTT)) then
-          DAIDTT = (FRCICE - FR_OLD) / DT * 8640000
-    endif
-
-    if(associated(TINZ   )) then
-        TINZ = MAPL_UNDEF
-        do K=1, NT
-           call diagnose_internal_ice_temp(VOLICE(K,:), ERGICE(K,:,:), TINZ(K,:))
-        enddo
-    endif
-
-
-    if(associated(NIERG)) NIERG = NEWICEERG 
-
-    if(associated(SNOICEO)) SNOICEO = SNOICE / DT ! m per step -> m s-1
-    if(associated(FRESH  )) FRESH   = FRESHL
-    if(associated(FSALT  )) FSALT   = FSALTL
-    if(associated(FHOCN  )) FHOCN   = FHOCNL
-    !if(associated(PICE   )) PICE    = MAPL_GRAV*(sum(VOLICE,dim=2)*MAPL_RHO_SEAICE + sum(VOLSNO,dim=2)*MAPL_RHO_SNOW)
-    !fow now, pass zero ice pressure loading
-    !fully coupled ice-ocean dynamics not ready yet!!  
-    if(associated(PICE   )) PICE    = 0.0
-
-    if(associated(ISTSFC)) then
-          ! to be consisten with CICE (unit in degC)
-          ISTSFC = sum((TS(:,ICE:)-TFfresh)*FR8(:,ICE:),dim=2)
-          where(FRCICE > puny)
-             ISTSFC = ISTSFC / FRCICE
-          elsewhere
-             ISTSFC = MAPL_UNDEF
-          end where
-    endif
-
-    if(associated(IAGE)) then
-          ! here ice age is treated as an ice area tracer
-          IAGE = sum(TAUAGE(:,ICE:)*FR8(:,ICE:),dim=2) * iage_converter
-          where(FRCICE > puny)
-             IAGE = IAGE / FRCICE
-          elsewhere
-             IAGE = MAPL_UNDEF
-          end where
-    endif
-
-    ! the mean ice/snow thickness is computed as: sum_n_over_ice_categories(FR(n)*H(n)) which is simply 
-    ! sum_n_over_ice_categories(VOL(n)) 
-
-    if(associated(HICE  )) HICE    =  sum(VOLICE(:,:),dim=2)
-    if(associated(HSNO  )) HSNO    =  sum(VOLSNO(:,:),dim=2)
-    if(associated(MELTL )) MELTL   =  MELTLN / DT                   ! m per step -> m s-1
-    if(associated(FRAZIL)) FRAZIL  =  FRAZLN / DT                   ! m per step -> m s-1
-
-
-#if 0
-    do k=1,NT
-       if((abs(LATS(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(LONS(k)*rad_to_deg-LONSO) < 1.e-3)) then
-          print*, 'end of cice thermo'
-          do i=1,NUM_ICE_CATEGORIES
-             print*, i, FR8(K,i), VOLICE(K,i)  
-             print*, i, VOLSNO(K,i), ERGSNO(K,1,i) 
-             if(VOLSNO(K,i) > 0.0_8) then
-                print*, i, ERGSNO(K,1,i)/VOLSNO(K,i), (Lfresh+&
-                  ERGSNO(K,1,i)/VOLSNO(K,i)/rhos)/cp_ice
-             endif
-          enddo
-       endif 
-    enddo
-  
-    allocate(vice1(NT),                                   STAT=STATUS)
-    VERIFY_(STATUS)
-    vice1 =  sum(VOLICE,dim=2) 
-    TOTALAREAN1 = sum(vice1*AREA*(MAPL_RADIUS**2),mask=SLMASK<0.5 .and. LATS>0.0)
-    TOTALAREAS1 = sum(vice1*AREA*(MAPL_RADIUS**2),mask=SLMASK<0.5 .and. LATS<0.0)
-    deallocate(vice1)
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
-    call MAPL_CommsAllReduceSum(VMG, TOTALAREAN1, ALLTOTALAREAN1, 1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_CommsAllReduceSum(VMG, TOTALAREAS1, ALLTOTALAREAS1, 1, RC=STATUS)
-    VERIFY_(STATUS)
-
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 North ice1  = ', &
-                                 ALLTOTALAREAN1
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 South ice1  = ', &
-                                 ALLTOTALAREAS1
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 North ice1-ice0  = ', &
-                                 ALLTOTALAREAN1-ALLTOTALAREAN
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 South ice1-ice0  = ', &
-                                 ALLTOTALAREAS1-ALLTOTALAREAS
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 North ice1-ice0 (%)  = ', &
-                                 100*abs(ALLTOTALAREAN1-ALLTOTALAREAN)/ALLTOTALAREAN
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 South ice1-ice0 (%)  = ', &
-                                 100*abs(ALLTOTALAREAS1-ALLTOTALAREAS)/ALLTOTALAREAS
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 total ice1-ice0  = ', &
-                                 ALLTOTALAREAN1-ALLTOTALAREAN+ALLTOTALAREAS1-ALLTOTALAREAS
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' Run2 total ice1-ice0 (%)  = ', &
-                                 100*abs(ALLTOTALAREAN1-ALLTOTALAREAN+ALLTOTALAREAS1-ALLTOTALAREAS)/ &
-                                     (ALLTOTALAREAN+ALLTOTALAREAS)
-#endif
-
-    if(associated(DVIDTT))  then
-          DVIDTT  = (sum(VOLICE,dim=2) - VOLICE_OLD) / DT * 8640000
-       end if
-
-       if(associated(GRFRAZIL_C5)) then
-          GRFRAZIL_C5  =  MAPL_RHO_SEAICE * FRAZLN / DT ! kg m-2 s-1
-          where(FRCICE == 0.0)
-             GRFRAZIL_C5 = 0.0
-          end where
-       end if
-    
-    call MAPL_TimerOff(MAPL,   "-Thermo2")
-
-!xxxxxxxxxxxxxxxxxxxxxxxxxxLANL CICE: 2 step update procedure-- ENDS xxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     call MAPL_TimerOn(MAPL,    "-Albedo")
@@ -4061,222 +3268,6 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! !IROUTINE: CICE_PREP_THERMO - Initializes for CICE Thermodynamics
-
-! !INTERFACE:
-
-  subroutine CICE_PREP_THERMO(TF, TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
-                              FSWTHRU,FCOND,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
-                              ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,LATS,LONS,LATSO,LONSO,   &
-                              FR ,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
-                              NEWICEERG, SBLX, RC)
-! not passing TFfresh
-
-
-! !ARGUMENTS:
-    integer, optional, intent(OUT) :: RC
-
-    integer, intent(IN)   :: NT                 ! number of tiles
-    integer, intent(IN)   :: ICE                ! integer number of 1st ice subtile(s)
-    real,    intent(IN)   :: UW         (:)     ! u-current
-    real,    intent(IN)   :: VW         (:)     ! v-current
-    real,    intent(INOUT):: SLMASK     (:)     ! mask for cice- relating open water and sea-ice
-    real,    intent(IN)   :: LATS       (:)     ! lat
-    real,    intent(IN)   :: LONS       (:)     ! lon
-    real,    intent(IN)   :: LATSO              ! trace CICE computations at this latitude
-    real,    intent(IN)   :: LONSO              ! trace CICE computations at this longitude
-    real,    intent(IN)   :: SW         (:)     ! Sea Water salinity
-
-    real,    intent(OUT)  :: TF         (:)     !
-    integer, intent(OUT)  :: TRCRTYPE   (:)     ! CICE ice tracer type
-    real,    intent(OUT)  :: TRACERS    (:,:)   ! CICE ice tracers
-    real,    intent(OUT)  :: MELTLN     (:)     ! ?
-    real,    intent(OUT)  :: FRAZLN     (:)     ! ?
-    real,    intent(OUT)  :: FRESHN     (:)     ! ?
-    real,    intent(OUT)  :: FRESHL     (:)     ! ?
-    real,    intent(OUT)  :: FSALTN     (:)     ! ?
-    real,    intent(OUT)  :: FSALTL     (:)     ! ?
-    real,    intent(OUT)  :: FHOCNN     (:)     ! ?
-    real,    intent(OUT)  :: FHOCNL     (:)     ! ?
-    real,    intent(OUT)  :: RSIDE      (:)     ! ?
-    real,    intent(OUT)  :: FSWTHRU    (:,:)   ! SW_flux_thru_ice_to_ocean 
-    real,    intent(OUT)  :: FCOND      (:,:)   ! ?
-    real,    intent(OUT)  :: FCONDBOT   (:,:)   ! ?
-    real,    intent(OUT)  :: TBOT       (:)     ! ?
-    real,    intent(OUT)  :: FBOT       (:)     ! ?
-    real,    intent(OUT)  :: ALBIN      (:,:)   !
-    real,    intent(OUT)  :: ALBSN      (:,:)   !
-    real,    intent(OUT)  :: ALBPND     (:,:)   !
-    real,    intent(OUT)  :: ALBVRN     (:,:)   ! Albedos: 
-    real,    intent(OUT)  :: ALBNRN     (:,:)   ! Albedos: near IR
-    real,    intent(OUT)  :: ALBVFN     (:,:)   ! Albedos:
-    real,    intent(OUT)  :: ALBNFN     (:,:)   ! Albedos: near IR
-    real,    intent(OUT)  :: FSWSFC     (:,:)   ! ?
-    real,    intent(OUT)  :: FSWINT     (:,:)   ! ?
-    real,    intent(OUT)  :: ISWABS     (:,:,:) ! ?
-    real,    intent(OUT)  :: SSWABS     (:,:,:) ! ?
-    real,    intent(OUT)  :: FSWABS     (:)     ! of dimension(1)
-    real,    intent(OUT)  :: MELTT      (:)     ! ?
-    real,    intent(OUT)  :: MELTS      (:)     ! ?
-    real,    intent(OUT)  :: MELTB      (:)     ! ?
-    real,    intent(OUT)  :: CONGEL     (:)     ! ?
-    real,    intent(OUT)  :: SNOICE     (:)     ! ?
-    real,    intent(OUT)  :: NEWICEERG  (:)     ! ?
-    real,    intent(OUT)  :: SBLX       (:)     ! ?
-    real,    intent(INOUT):: TS         (:,:)   ! skin temperature
-
-    real,    intent(IN)   :: DT
-    real(kind=MAPL_R8)    :: DTDB               ! DT (time step) in R8 for CICE
-    real(kind=MAPL_R8), intent(INOUT)  :: FRCICE       (:)
-    real(kind=MAPL_R8), intent(INOUT)  :: FR           (:,:)
-    real(kind=MAPL_R8), intent(INOUT)  :: VOLICE       (:,:)
-    real(kind=MAPL_R8), intent(INOUT)  :: VOLSNO       (:,:)
-    real(kind=MAPL_R8), intent(INOUT)  :: VOLPOND      (:,:)
-    real(kind=MAPL_R8), intent(INOUT)  :: ERGICE       (:,:,:)
-    real(kind=MAPL_R8), intent(INOUT)  :: ERGSNO       (:,:,:)
-    real(kind=MAPL_R8), intent(INOUT)  :: VOLICE_DELTA (:,:)
-    real,               intent(INOUT)  :: TAUAGE       (:,:)
-
-!  !LOCAL VARIABLES
-
-    character(len=ESMF_MAXSTR)            :: IAm
-    integer                               :: STATUS
-  
-    integer                               :: PRES_ICE, K
-    logical                               :: L_STOP
-    integer                               :: IDUM, JDUM
-    logical,            dimension(1)      :: OBSERVE
-    real,               dimension(1)      :: LATSD, LONSD
-    real(kind=MAPL_R8), dimension(1)      :: FRWATERDB, FHOCNLDB, FRESHLDB, FSALTLDB, FRCICEDB
-    real                                  :: MIN_FREEZE_SALINITY
-
-    real(kind=MAPL_R8), dimension(NUM_3D_ICE_TRACERS, NUM_ICE_CATEGORIES) :: TRACERSDB2
-
-! !DESCRIPTION:
-
-    IAm =  trim(COMP_NAME) // "CICECORE" // "CICE_PREP_THERMO"
-
-    DTDB = REAL(DT, kind=MAPL_R8)       ! Convert DT precision: Real4 to Real8 for usage in CICE
-
-!   PRESCRIBED ICE. 1:AMIP mode, 0: coupled mode
-    call MAPL_GetResource ( MAPL, PRES_ICE, Label="PRESCRIBED_ICE:" , DEFAULT=1,    RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, MIN_FREEZE_SALINITY, Label="MIN_FREEZE_SALINITY:" , DEFAULT=0.0,    RC=STATUS)
-    VERIFY_(STATUS)
-
-    call  FreezingTemperature(TF, SW, MIN_FREEZE_SALINITY, PRES_ICE==1, kelvin=.false.)
-
-    TRCRTYPE(nt_tsfc)  = 0  ! ice/snow surface temperature
-    TRCRTYPE(nt_iage)  = 1  ! volume-weighted ice age
-    TRCRTYPE(nt_volpn) = 0  ! melt pond volume
-
-    TRACERS            = 0.0      
-
-    MELTLN             = 0.0
-    FRAZLN             = 0.0
-    FRESHN             = 0.0
-    FRESHL             = 0.0
-    FSALTN             = 0.0
-    FSALTL             = 0.0
-    FHOCNN             = 0.0
-    FHOCNL             = 0.0
-    RSIDE              = 0.0
-    FSWTHRU            = 0.0
-    FCOND              = 0.0
-    FCONDBOT           = 0.0
-
-    TBOT               = 0.0
-    FBOT               = 0.0
-    ALBIN              = 0.0
-    ALBSN              = 0.0
-    ALBPND             = 0.0
-    ALBVRN             = 0.0
-    ALBNRN             = 0.0
-    ALBVFN             = 0.0
-    ALBNFN             = 0.0
-    FSWSFC             = 0.0  
-    FSWINT             = 0.0
-    ISWABS             = 0.0
-    SSWABS             = 0.0
-    FSWABS             = 0.0
-    MELTT              = 0.0
-    MELTS              = 0.0
-    MELTB              = 0.0
-    CONGEL             = 0.0  
-    SNOICE             = 0.0
-    NEWICEERG          = 0.0
-    SBLX               = 0.0
-    VOLICE_DELTA       = 0.0
-
-! determine those tiles where there is no open ocean connection. See note for Atanas.
-    where(abs(UW) >  0.0 .or. abs(VW) > 0.0) 
-        SLMASK = 0.0
-    elsewhere
-        SLMASK = 1.0
-    endwhere
-
-! do a cleanup here, in case transformation from tripolar to tile induces round-off errors
-#if 0
-    FRCICE = sum(FR (:,ICE:), dim=2)
-    do k=1, NT
-     
-       call CICE_INQUIRE_TILE(LATS(K), LONS(K), LATSO, LONSO, OBSERVE, LATSD, LONSD)
-
-       TRACERSDB2(nt_tsfc,:) = REAL(TS(K,ICE:)  - TFfresh, kind=MAPL_R8)
-       TRACERSDB2(nt_iage,:) = REAL(TAUAGE(K,:),           kind=MAPL_R8)
-
-       TRACERSDB2(nt_volpn,:)= VOLPOND(K,:)
-       FRWATERDB             = 1.0_8 - FRCICE(k) 
-
-       FHOCNLDB              = REAL(FHOCNL(K),             kind=MAPL_R8)
-       FRESHLDB              = REAL(FRESHL(K),             kind=MAPL_R8)
-       FSALTLDB              = REAL(FSALTL(K),             kind=MAPL_R8)
-       FRCICEDB              = REAL(FRCICE(K),             kind=MAPL_R8)
-
-       call cleanup_itd (1,1,1,1,1,1,DTDB, &
-            FR (K,ICE:),   TRACERSDB2,     &     
-            VOLICE(K,:),   VOLSNO(K,:),    &
-            ERGICE(K,:,:), ERGSNO(K,:,:),  &
-            FRWATERDB,     FRCICEDB,       &    
-            TRCRTYPE,      FRESHLDB,       &
-            FSALTLDB,      FHOCNLDB,       &    
-            .true.,        L_STOP,         &    
-            IDUM,            JDUM,         &    
-            limit_aice_in=.true.)
-
-       if(L_STOP) then
-          print*, 'CICE_PREP_THERMO: Failing at LAT = ', LATSD, 'LON = ', LONSD
-       endif
-
-       _ASSERT(.not.L_STOP,'needs informative message')
-
-       FRESHL(K)    = REAL(FRESHLDB(1),                     kind=MAPL_R4)
-       FSALTL(K)    = REAL(FSALTLDB(1),                     kind=MAPL_R4)
-       FHOCNL(K)    = REAL(FHOCNLDB(1),                     kind=MAPL_R4)
-
-       TS(K,ICE:)   = REAL(TRACERSDB2(nt_tsfc,:) + TFfresh, kind=MAPL_R4)
-       TAUAGE(K,:)  = REAL(TRACERSDB2(nt_iage,:),           kind=MAPL_R4)
-       VOLPOND(K,:) = REAL(TRACERSDB2(nt_volpn,:),          kind=MAPL_R4)
-    enddo
-#endif
-! freshwater, salt and heat flux accumulated previously is not counted
-! because they are not **physical**  
-    FRESHL = 0.0
-    FHOCNL = 0.0
-    FSALTL = 0.0
-
-! these lines for fr are efectively same in cmip & amip modes. 
-!*** FR(:,ICE:) returned from CICEDyna or Data Sea Ice
-!*** update FRWATER accordingly 
-    FRCICE      = sum(FR (:,ICE:), dim=2)
-
-    RETURN_(ESMF_SUCCESS)
-  end subroutine CICE_PREP_THERMO
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: CICE_THERMO1 - Computes 1st step of CICE Thermodynamics
 
 ! !INTERFACE:
 
@@ -4574,476 +3565,12 @@ contains
 
        end if HAVE_ICE
 
-    !  if(OBSERVE(1)) then
-     !   print*, N, FR(K,N) 
-      !  print*, FBOT(K), FCONDBOT(K,NSUB)
-     !   print*, VOLICE(K,NSUB), VOLSNO(K,NSUB)
-      !  print*, FHOCNN(K), FSALTN(K)
-     !   print*, TS(K,N), real(FR(K,N)*MELTT(K)/DT*8640000, kind=MAPL_R4)
-     !   print*, FSURF(1), FCOND(K,NSUB) 
-     !   print*, FSWSFC(K,NSUB)
-     !   print*, LWDNSRF(K), LWUPSRF
-     !   print*, SHF(K), LHF(K)
-          
-     !   tint = MAPL_UNDEF
-     !   call diagnose_internal_ice_temp(VOLICE(K,:), ERGICE(K,:,:), tint)
-     !   do l=1,NUM_ICE_LAYERS  
-     !       print*, l,  tint(ilyr1(N)+l-1)       
-     !   enddo
-     ! endif
   
     end do TILES ! K loop
 
     RETURN_(ESMF_SUCCESS)
   end subroutine CICE_THERMO1
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: CICE_THERMO2_STEP1 - Computes part 1 of-- 2nd update of LANL CICE Thermodynamics
-
-! !INTERFACE:
-
-  subroutine CICE_THERMO2_STEP1 (NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR,TS,     &
-                                 VOLICE,VOLSNO,VOLPOND,ERGICE,ERGSNO,                    &
-                                 AICENINIT,VICENINIT,TRCRTYPE,FRCICE,FRZMLT,FRAZLN,      &
-                                 FRESHL,FSALTL,FHOCNL,RSIDE,MELTLN,VOLICE_DELTA,         &
-                                 TRACERS,TAUAGE,SNOICE,SW,RC)
-! not passing TFfresh,saltwatercap,nt_tsfc,nt_iage,nt_volpn,tauage
-
-! !ARGUMENTS:
-
-    integer, optional, intent(OUT) :: RC
-
-    integer, intent(IN)     :: NT               ! number of tiles
-    integer, intent(IN)     :: ICE              ! subtiles number assigned to surface type: "ICE" 
-
-    real,    intent(IN)     :: LATS     (:)     ! lat
-    real,    intent(IN)     :: LONS     (:)     ! lon
-    real,    intent(IN)     :: LATSO            ! trace LANL CICE computations at this latitude
-    real,    intent(IN)     :: LONSO            ! trace LANL CICE computations at this longitude
-    real,    intent(IN)     :: TF       (:)     ! sea Water freezing temperature in degrees C
-
-    real,    intent(IN)     :: SW       (:)     ! ?
-
-    real,    intent(INOUT)  :: TS       (:,:)   ! skin temperature
-    real,    intent(INOUT)  :: TRACERS  (:,:)   ! ?
-    real,    intent(INOUT)  :: TAUAGE   (:,:)    ! ?
-
-    integer, intent(INOUT)  :: TRCRTYPE (:)     ! ?
-    real,    intent(INOUT)  :: FRZMLT   (:)     ! ?
-    real,    intent(INOUT)  :: FRAZLN   (:)     ! ?
-    real,    intent(INOUT)  :: FRESHL   (:)     ! ?
-    real,    intent(INOUT)  :: FSALTL   (:)     ! ?
-    real,    intent(INOUT)  :: FHOCNL   (:)     ! ?
-    real,    intent(INOUT)  :: RSIDE    (:)     ! ?
-    real,    intent(INOUT)  :: MELTLN   (:)     ! ?
-    real,    intent(INOUT)  :: SNOICE   (:)     ! ?
-
-    real,    intent(IN)     :: DT
-    real(kind=MAPL_R8)      :: DTDB             ! DT (time step) in R8 for CICE
-    real(kind=MAPL_R8),    intent(INOUT)  :: FR       (:,:)   ! fractions of water, ice types
-    real(kind=MAPL_R8),    intent(INOUT)  :: VOLICE   (:,:)   ! volume of ice
-    real(kind=MAPL_R8),    intent(INOUT)  :: VOLSNO   (:,:)   ! volume of snow
-    real(kind=MAPL_R8),    intent(INOUT)  :: VOLPOND  (:,:)   ! ?
-    real(kind=MAPL_R8),    intent(INOUT)  :: ERGICE   (:,:,:) ! ?
-    real(kind=MAPL_R8),    intent(INOUT)  :: ERGSNO   (:,:,:) ! ?
-    real(kind=MAPL_R8),    intent(INOUT)  :: AICENINIT(:,:)   ! initial (after cice_init_thermo) ice concentration
-    real(kind=MAPL_R8),    intent(INOUT)  :: VICENINIT(:,:)   ! initial (after cice_init_thermo) volume of ice
-    real(kind=MAPL_R8),    intent(INOUT)  :: FRCICE   (:)     ! fraction of ice, surface type
-    real(kind=MAPL_R8),    intent(INOUT)  :: VOLICE_DELTA  (:,:)! change in volume of ice
-
-! !LOCAL VARIABLES
-
-    character(len=ESMF_MAXSTR)            :: IAm
-    integer                               :: STATUS
-
-    integer                               :: K
-    logical                               :: OBSERVE(1,1)        ! could be (1,1) to match cice input
-    real,               dimension(1,1)    :: LATSD, LONSD
-    logical                               :: L_STOP
-    integer                               :: IDUM, JDUM
-    real                                  :: MINSWFRESH
-    real                                  :: FRZMLT_MAX 
-
-    real(kind=MAPL_R8)                    :: YDAYDB
-    real(kind=MAPL_R8), dimension(1)      :: FRWATERDB, FRZMLTDB, FRAZLNDB, FRESHLDB, FSALTLDB, TFDB, &
-                                             RDUMDB, MELTLNDB, FHOCNLDB, RSIDEDB, SNOICEDB, FRCICEDB
-
-    real(kind=MAPL_R8), dimension(NUM_3D_ICE_TRACERS, NUM_ICE_CATEGORIES) :: TRACERSDB2
-    real(kind=MAPL_R8)             :: FR_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)             :: VOLICE_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)             :: VOLSNO_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)             :: AICEN_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)             :: VICEN_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)             :: ERGICE_TMP(NUM_ICE_LAYERS,NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)             :: ERGSNO_TMP(NUM_SNOW_LAYERS,NUM_ICE_CATEGORIES)
-    INTEGER                        :: one(1) = (/1/)
-    logical                        :: true(1) = (/.true./)
-
-
-!  !DESCRIPTION:
-!        Compute ...??
-!          based on CICE
-
-    IAm =  trim(COMP_NAME) // "CICECORE" // "CICE_THERMO2_STEP1"
-
-    DTDB = REAL(DT, kind=MAPL_R8)       ! Convert DT precision: Real4 to Real8 for usage in CICE
-    call MAPL_GetResource ( MAPL, MINSWFRESH, Label="FRESH_NEW_ICE_MIN_SALINITY:" , DEFAULT=5.0,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, FRZMLT_MAX, Label="CICE_FRZMLT_MAX:" , DEFAULT=1000., RC=STATUS)
-    VERIFY_(STATUS)
-
-! Loop over all tiles
-!-----------------------
-
-    TILES_1: do k=1, NT ! loop over all tiles
-
-       call CICE_INQUIRE_TILE(LATS(K), LONS(K), LATSO, LONSO, OBSERVE, LATSD, LONSD)
-  
-
-       TRACERS(nt_tsfc,:) = TS(K,ICE:) - TFfresh
-       TRACERS(nt_iage,:) = TAUAGE(K,:)
-       TRACERS(nt_volpn,:)= VOLPOND(K,:)
-       TRACERSDB2         = TRACERS
-       FRCICEDB           = REAL(FRCICE(K),             kind=MAPL_R8)
-
-       FR_TMP(:)       = FR(K,ICE:)
-       VOLICE_TMP(:)   = VOLICE(K,:)
-       VOLSNO_TMP(:)   = VOLSNO(K,:)
-       ERGICE_TMP(:,:) = ERGICE(K,:,:)
-       ERGSNO_TMP(:,:) = ERGSNO(K,:,:)
-
-       if(FRCICE(K) > 0.0) then 
-          FRWATERDB  =  1.0_8 - sum(FR(K,ICE:))
-          AICEN_TMP(:) = AICENINIT(K,:)
-          VICEN_TMP(:) = VICENINIT(K,:)
-          call linear_itd (1,1,1,one,one, &
-                           TRCRTYPE,          &    
-                           AICEN_TMP,         &
-                           VICEN_TMP,         &
-                           FR_TMP,            &    
-                           TRACERSDB2,        &    
-                           VOLICE_TMP,        &
-                           VOLSNO_TMP,        & 
-                           ERGICE_TMP,        &    
-                           ERGSNO_TMP,        &    
-                           FRCICEDB,          &    
-                           FRWATERDB,         &    
-                           LATSD, LONSD,      &  
-                           L_STOP,            &    
-                           IDUM, JDUM )
-
-          if(L_STOP) then
-             print*, 'CICE_THERMO2_STEP1: after linear_itd. Failing at LAT = ', LATSD, 'LON = ', LONSD
-          endif
-
-          _ASSERT(.not.L_STOP,'needs informative message')
-
-       endif 
-       
-       FRZMLTDB       =  FRZMLT(K)
-       FRZMLTDB       =  min(max(FRZMLTDB,-FRZMLT_MAX),FRZMLT_MAX) 
-       FRAZLNDB       =  FRAZLN(K)
-       FRESHLDB       =  FRESHL(K)
-       FSALTLDB       =  FSALTL(K)
-       TFDB           =  TF(K)
-       RDUMDB         =  0.0
-       YDAYDB         =  0.0
-       FRWATERDB      =  1.0_8 - sum(FR_TMP)
-
-       call add_new_ice (1,1,1,one,one,true, DTDB,           &
-                         FR_TMP,                             &    
-                         TRACERSDB2,                         &    
-                         VOLICE_TMP,                         &
-                         ERGICE_TMP,                         &
-                         FRWATERDB,                          &    
-                         FRCICEDB ,                          &    
-                         FRZMLTDB,                           &    
-                         FRAZLNDB,                           &    
-                         SW(K) < MINSWFRESH,                 &
-                         RDUMDB, YDAYDB,                     &    
-                         FRESHLDB,                           &    
-                         FSALTLDB,                           &    
-                         TFDB, L_STOP,                       &
-                         IDUM, JDUM)
-       if(L_STOP) then
-          print*, 'CICE_THERMO2_STEP1: after add_new_ice. Failing at LAT = ', LATSD, 'LON = ', LONSD
-       endif
-
-       _ASSERT(.not.L_STOP,'needs informative message')
-
-       FRAZLN(K)   =  FRAZLNDB (1)     
-
-       !if(FRZMLT(K) > 0.) NEWICEERG(K) = NEWICEERG(K) - FRZMLT(K)
-
-       VOLICE_DELTA(k,:)  =  VOLICE_TMP
-       FHOCNLDB      =  FHOCNL(K)
-       RSIDEDB       =  RSIDE(K)
-       MELTLNDB      =  MELTLN(K)
-
-       call lateral_melt (1,1,1,1,1,1,DTDB, &
-                          FRESHLDB,         &
-                          FSALTLDB,         &
-                          FHOCNLDB,         &
-                          RSIDEDB,          &
-                          MELTLNDB,         &
-                          FR_TMP,           &
-                          VOLICE_TMP,       &
-                          VOLSNO_TMP,       &
-                          ERGICE_TMP,       &
-                          ERGSNO_TMP )
-
-       VOLICE_DELTA(k,:)  = VOLICE_DELTA(k,:) - VOLICE_TMP
-       SNOICEDB      = 0.0
-
-       call freeboard_ccsm (1,1,1,1,1,1, DTDB,         &
-                            FR_TMP,                    &
-                            VOLICE_TMP,  VOLSNO_TMP,   &
-                            ERGICE_TMP,                &
-                            ERGSNO_TMP,                &
-                            SNOICEDB,                  &
-                            FSALTLDB)         
-                                 
-       SNOICE(K) = SNOICEDB(1)
-       FRWATERDB  =  1.0_8 - sum(FR_TMP)
-
-       call cleanup_itd (1,1,1,1,1,1,DTDB, &
-                         FR_TMP,           &
-                         TRACERSDB2,       &
-                         VOLICE_TMP,       &
-                         VOLSNO_TMP,       &
-                         ERGICE_TMP,       &
-                         ERGSNO_TMP,       &
-                         FRWATERDB,        &
-                         FRCICEDB ,        &    
-                         TRCRTYPE,         &    
-                         FRESHLDB,         &
-                         FSALTLDB,         &    
-                         FHOCNLDB,         &    
-                         .true., L_STOP,   &    
-                         IDUM, JDUM,       &    
-                         limit_aice_in=.true. &
-                         ,punynum=puny)
-
-       _ASSERT(.not.L_STOP,'needs informative message')
-
-       FR(K,ICE:)    = FR_TMP(:)
-       VOLICE(K,:)   = VOLICE_TMP(:)
-       VOLSNO(K,:)   = VOLSNO_TMP(:)
-       ERGICE(K,:,:) = ERGICE_TMP(:,:)
-       ERGSNO(K,:,:) = ERGSNO_TMP(:,:)
-
-       TRACERS       = TRACERSDB2
-       FRESHL(K)     = FRESHLDB (1)     
-       FSALTL(K)     = FSALTLDB (1)     
-       FHOCNL(K)     = FHOCNLDB (1)     
-       MELTLN(K)     = MELTLNDB (1)     
-
-       TS(K,ICE:)    = TRACERS(nt_tsfc,:) + TFfresh
-       TAUAGE(K,:)   = TRACERS(nt_iage,:) 
-       VOLPOND(K,:)  = TRACERS(nt_volpn,:)
-
-       !if(OBSERVE(1)) then
-       !  print*, 'after therm2: ',FRESHL(K) 
-       !  print*, 'after therm2: ',FSALTL(K) 
-       !  print*, 'after therm2: ',FHOCNL(K) 
-       !endif
-
-    end do TILES_1 ! K loop
-
-
-    RETURN_(ESMF_SUCCESS)
-  end subroutine CICE_THERMO2_STEP1
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: CICE_THERMO2_STEP2 - Computes 2st step of CICE Thermodynamics
-
-! !INTERFACE:
-
-  subroutine CICE_THERMO2_STEP2 (NT,ICE,LATS,LONS,LATSO,LONSO,DT,FR,TS,                &
-                                 VOLICE,VOLSNO,VOLPOND,ERGICE,ERGSNO,                          &
-                                 TRCRTYPE,FRCICE,SLMASK,TRACERS,TAUAGE,RC)
-! not passing TFfresh,puny,tauage,tracers
-
-! !ARGUMENTS:
-    integer, optional, intent(OUT) :: RC
-
-    integer, intent(IN)     :: NT               ! number of tiles
-    integer, intent(IN)     :: ICE              ! subtiles number assigned to surface type: "ICE" 
-
-    real,    intent(IN)     :: LATS     (:)     ! lat
-    real,    intent(IN)     :: LONS     (:)     ! lon
-    real,    intent(IN)     :: LATSO            ! trace CICE computations at this latitude
-    real,    intent(IN)     :: LONSO            ! trace CICE computations at this longitude
-    real,    intent(IN)     :: SLMASK   (:)     ! "salt water lake mask"
-
-    real,    intent(INOUT)  :: TS       (:,:)   ! skin temperature
-    real,    intent(INOUT)  :: TRACERS  (:,:)   ! ?
-    real,    intent(INOUT)  :: TAUAGE   (:,:)   ! ?
-
-    integer, intent(INOUT)  :: TRCRTYPE (:)     ! ?
-
-    real,    intent(IN)     :: DT
-    real(kind=MAPL_R8)      :: DTDB             ! DT (time step) in R8 for CICE
-    real(kind=MAPL_R8),    intent(INOUT)  :: VOLICE   (:,:)   ! volume of ice
-    real(kind=MAPL_R8),    intent(INOUT)  :: VOLSNO   (:,:)   ! volume of snow
-    real(kind=MAPL_R8),    intent(INOUT)  :: FR       (:,:)   ! fractions of water, ice types
-    real(kind=MAPL_R8),    intent(INOUT)  :: FRCICE   (:)     ! fraction of ice, surface type
-    real(kind=MAPL_R8),    intent(INOUT)  :: VOLPOND  (:,:)   ! ?
-    real(kind=MAPL_R8),    intent(INOUT)  :: ERGICE   (:,:,:) ! ?
-    real(kind=MAPL_R8),    intent(INOUT)  :: ERGSNO   (:,:,:) ! ?
-
-! !LOCAL VARIABLES
-    character(len=ESMF_MAXSTR)     :: IAm
-    integer                        :: STATUS
-
-
-    logical                :: OBSERVE(1,1)        ! could be (1,1) to match cice input
-    real,  dimension(1,1)  :: LATSD, LONSD
-    logical                :: L_STOP
-    integer                :: IDUM, JDUM
-    integer                :: k,l,n
-    real                   :: ICE_THICKNESS_THRESH
-    real                   :: ICE_ARTIFICIAL_MELT
-
-    real(kind=MAPL_R8)     :: hid, hi, hs, hsn
-
-    real(kind=MAPL_R8)     :: qin_save   (NUM_ICE_CATEGORIES, NUM_ICE_LAYERS)
-    real(kind=MAPL_R8)     :: qsn_save   (NUM_ICE_CATEGORIES, NUM_SNOW_LAYERS)
-    real(kind=MAPL_R8)     :: TRACERSDB2 (NUM_3D_ICE_TRACERS, NUM_ICE_CATEGORIES)
-
-    real(kind=MAPL_R8), dimension(1)  :: FRWATERDB, FRESHLDB, FSALTLDB, FHOCNLDB, FRCICEDB
-    real(kind=MAPL_R8)                :: FR_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)                :: VOLICE_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)                :: VOLSNO_TMP(NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)                :: ERGICE_TMP(NUM_ICE_LAYERS,NUM_ICE_CATEGORIES)
-    real(kind=MAPL_R8)                :: ERGSNO_TMP(NUM_SNOW_LAYERS,NUM_ICE_CATEGORIES)
-
-
-!  !DESCRIPTION:
-!        Compute ...??
-!          based on CICE
-
-    IAm =  trim(COMP_NAME) // "CICECORE" // "CICE_THERMO2_STEP2"
-    
-    DTDB = REAL(DT, kind=MAPL_R8)       ! Convert DT precision: Real4 to Real8 for usage in CICE
-
-    call MAPL_GetResource ( MAPL, ICE_THICKNESS_THRESH, Label="CICE_ICE_THICKNESS_THRESH:", DEFAULT=1.5, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, ICE_ARTIFICIAL_MELT,  Label="CICE_ICE_ARTIFICIAL_MELT:" , DEFAULT=0.1, RC=STATUS)
-    VERIFY_(STATUS)
-    ! the units of ICE_ARTIFICIAL_MEL are cm/day and it is converted to m/time step 
-    hid = real(ICE_ARTIFICIAL_MELT*1.e-2*DT/86400.0, kind=8)
-
-! Loop over all tiles
-!-----------------------
-
-    TILES_2: do k=1, NT ! loop over all tiles
-
-       FRCICEDB = REAL(FRCICE(k),             kind=MAPL_R8)
-
-       if( (SLMASK(K) > 0.5) .and. (FRCICE(K) > 0.0) .and. &
-           (sum(VOLICE(K,:)) > ICE_THICKNESS_THRESH)) then
-
-          call CICE_INQUIRE_TILE(LATS(K), LONS(K), LATSO, LONSO, OBSERVE, LATSD, LONSD)
-
-          qin_save(:,:) = 0.0
-          qsn_save(:,:) = 0.0
-
-          loop_over_ice_cat: do n=1, NUM_ICE_CATEGORIES
-             hi = 0.0
-             hs = 0.0
-             !if(VOLICE(k,n) > puny) then
-             if(FR(k,n) > puny) then
-
-                hi = VOLICE(k,n) / FR(k,n)
-                do l=1,NUM_ICE_LAYERS
-                   qin_save(n,l) = ERGICE(k,l,n)*REAL(NUM_ICE_LAYERS,kind=MAPL_R8)/VOLICE(k,n)
-                enddo
-
-                if(VOLSNO(k,n) > c0) then
-                   hs = VOLSNO(k,n) / FR(k,n)
-                   do l=1,NUM_SNOW_LAYERS
-                      qsn_save(n,l) = ERGSNO(k,l,n)*REAL(NUM_SNOW_LAYERS,kind=MAPL_R8)/VOLSNO(k,n)
-                   enddo
-                endif
-
-                if(hi > hid) hi = hi - hid
-                hsn = (MAPL_RHO_SEAWATER-MAPL_RHO_SEAICE)/MAPL_RHO_SNOW *hi
-                if(hs > hsn) hs = hsn
-
-                VOLICE(k,n) = hi * FR(k,n)
-                VOLSNO(k,n) = hs * FR(k,n)
-
-                do l=1,NUM_ICE_LAYERS
-                   ERGICE(k,l,n) = qin_save(n,l)*VOLICE(k,n)/real(NUM_ICE_LAYERS,kind=MAPL_R8)
-                enddo
-
-                if(VOLSNO(k,n) > puny) then
-                   do l=1,NUM_SNOW_LAYERS
-                         ERGSNO(k,l,n) = qsn_save(n,l)*VOLSNO(k,n)/real(NUM_SNOW_LAYERS,kind=MAPL_R8)
-                   enddo
-                endif
-             endif
-          enddo loop_over_ice_cat
-
-          TRACERS(nt_tsfc,:) = TS(K,ICE:)-TFfresh
-          TRACERS(nt_iage,:) = TAUAGE(K,:)
-          TRACERS(nt_volpn,:)= VOLPOND(K,:)
-
-          FRWATERDB          = 1.0 - sum(FR(K,:))
-          TRACERSDB2         = TRACERS
-
-          FR_TMP(:)          = FR(K,ICE:)
-          VOLICE_TMP(:)      = VOLICE(K,:)
-          VOLSNO_TMP(:)      = VOLSNO(K,:)
-          ERGICE_TMP(:,:)    = ERGICE(K,:,:)
-          ERGSNO_TMP(:,:)    = ERGSNO(K,:,:)
-          FRESHLDB(:)        = 0.0_8 
-          FSALTLDB(:)        = 0.0_8
-          FHOCNLDB(:)        = 0.0_8  
-
-          call cleanup_itd (1,1,1,1,1,1,DTDB, &
-                            FR_TMP,           &
-                            TRACERSDB2,       &
-                            VOLICE_TMP,       &
-                            VOLSNO_TMP,       &
-                            ERGICE_TMP,       &
-                            ERGSNO_TMP,       &
-                            FRWATERDB,        &
-                            FRCICEDB,         &
-                            TRCRTYPE,         &
-                            FRESHLDB,         &
-                            FSALTLDB,         &
-                            FHOCNLDB,         &
-                            .true., L_STOP,   &
-                            IDUM, JDUM,       &
-                            limit_aice_in=.true.)
-
-          if(L_STOP) then
-             print*, 'CICE_THERMO2_STEP2: Failing at LAT = ', LATSD, 'LON = ', LONSD
-          endif
-
-          _ASSERT(.not.L_STOP,'needs informative message')
-
-          FR(K,ICE:)    = FR_TMP(:)
-          VOLICE(K,:)   = VOLICE_TMP(:)
-          VOLSNO(K,:)   = VOLSNO_TMP(:)
-          ERGICE(K,:,:) = ERGICE_TMP(:,:)
-          ERGSNO(K,:,:) = ERGSNO_TMP(:,:)
-
-          TRACERS      = TRACERSDB2
-
-          TS(K,ICE:)   = TRACERS(nt_tsfc,:) + TFfresh
-          TAUAGE(K,:)  = TRACERS(nt_iage,:)
-          VOLPOND(K,:) = TRACERS(nt_volpn,:)
-       endif
-    end do TILES_2 ! K loop
-
-
-    RETURN_(ESMF_SUCCESS)
-  end subroutine CICE_THERMO2_STEP2
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -5303,63 +3830,6 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! !IROUTINE: CICE_ICE_BUDGET - Computes and prints: flux of total mass and fresh water 
-
-! !INTERFACE:
-
-  subroutine CICE_ICE_BUDGET (DT, NT, thermo_, VMG, TILEAREA, TOTALFLUX,                      &
-                              SLMASK, VOLICE, VOLICE_OLD, VOLSNO, VOLSNO_OLD)
-
-! !ARGUMENTS:
-
-    integer, intent(IN)     :: thermo_
-    real,    intent(IN)     :: DT               ! time-step
-    integer, intent(IN)     :: NT               ! number of tiles
-    type(ESMF_VM), intent(IN) :: VMG
-    real,    intent(IN)     :: TILEAREA  (:)
-    real,    intent(IN)     :: TOTALFLUX (:)
-    real,    intent(IN)     :: SLMASK   (:)     ! "salt water lake mask"
-
-    real(kind=MAPL_R8), intent(IN)  :: VOLICE       (:,:)
-    real(kind=MAPL_R8), intent(IN)  :: VOLSNO       (:,:)
-    real(kind=MAPL_R8), intent(IN)  :: VOLICE_OLD   (:)
-    real(kind=MAPL_R8), intent(IN)  :: VOLSNO_OLD   (:)
-    
-!  !LOCAL VARIABLES
-    real                    :: TOTALAREA, ALLTOTALAREA
-
-    real(kind=MAPL_R8), dimension(NT)  :: CICEDMASS
-
-!  !DESCRIPTION:
-!        Compute total mass flux and fresh water flux based on CICE Thermodynamics
-   
-    CICEDMASS = MAPL_RHO_SEAICE*(sum(VOLICE,dim=2)-VOLICE_OLD) + MAPL_RHO_SNOW*(sum(VOLSNO,dim=2)-VOLSNO_OLD)
-    where(SLMASK > 0.5)
-       CICEDMASS = 0.0
-    endwhere
-    TOTALAREA = sum(CICEDMASS*TILEAREA)
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
-    call MAPL_CommsAllReduceSum(VMG, TOTALAREA, ALLTOTALAREA, 1, RC=STATUS)
-    VERIFY_(STATUS)
-
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' After Thermo ', thermo_, '******************* '
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' total ice+sno mass change = ', &
-                                 ALLTOTALAREA
-
-    TOTALAREA = sum(TOTALFLUX * DT*TILEAREA)
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
-    call MAPL_CommsAllReduceSum(VMG, TOTALAREA, ALLTOTALAREA, 1, RC=STATUS)
-    VERIFY_(STATUS)
-
-    if(MAPL_AM_I_ROOT()) print*, trim(Iam), ' total freshwaterflux * dt = ', &
-                                 ALLTOTALAREA
-    
-    RETURN_(ESMF_SUCCESS)
-  end subroutine CICE_ICE_BUDGET
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -5445,8 +3915,6 @@ end subroutine RUN2
     call MAPL_TimerOn(MAPL,"TOTAL"   )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-    call dealloc_column_physics( MAPL_AM_I_Root(), Iam )
-
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
 
@@ -5461,7 +3929,6 @@ end subroutine RUN2
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Finalize
-
 
   subroutine Normalize(ptr, frac)
 
