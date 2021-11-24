@@ -48,8 +48,8 @@
 module rrtmg_sw_rad
 
    use rrsw_vsn
-   use cloud_condensate_inhomogeneity, only: &
-      initialize_inhomogeneity, release_inhomogeneity
+!  use cloud_condensate_inhomogeneity, only: &
+!     initialize_inhomogeneity, release_inhomogeneity
    use cloud_subcol_gen, only: generate_stochastic_clouds
    use rrtmg_sw_cldprmc, only: cldprmc_sw
    use rrtmg_sw_setcoef, only: setcoef_sw
@@ -344,8 +344,9 @@ contains
         error stop 'negative values in input: ssaaer'
       end if
 
-      ! set up condensate inhomogeneity tables
-      call initialize_inhomogeneity(1)
+!     ! Set up condensate inhomogeneity tables.
+!     ! Done in Radiation GC MAPL Initialize now since LW and SW both have same inhomogeneity.
+!     call initialize_inhomogeneity(1)
 
       ! set column partition size pncol
       if (rpart > 0) then
@@ -370,8 +371,8 @@ contains
          ! optional inputs
          bndscl, indsolvar, solcycfrac)
                                                       
-      ! release condensate inhomogeneity resources
-      call release_inhomogeneity
+!     ! release condensate inhomogeneity resources
+!     call release_inhomogeneity
 
    end subroutine rrtmg_sw                                                     
 
