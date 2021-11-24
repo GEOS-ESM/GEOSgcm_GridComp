@@ -4102,6 +4102,6 @@ end subroutine RUN2
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-end module GEOS_CICE4ColumnPhysGridComp
+end module GEOS_SeaiceInterfaceGridComp
 
 
