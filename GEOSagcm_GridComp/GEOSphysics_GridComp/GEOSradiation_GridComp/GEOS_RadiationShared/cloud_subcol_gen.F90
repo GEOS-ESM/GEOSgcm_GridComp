@@ -23,12 +23,95 @@ module cloud_subcol_gen
    use iso_fortran_env, only : error_unit
 
    implicit none
+
+   ! state is saved outside of scope
+   save
+
+   ! all fields and methods hidden unless declared public
    private
 
-   public :: generate_stochastic_clouds
-   public :: clearCounts_threeBand
+   ! Original correlation length parameters. 
+   ! These are the full precision versions of those presented in
+   ! Oreopoulos et al., Atmos. Chem. Phys. (2012) and SHOULD NOT BE
+   ! CHANGED. They are for historical reference only. If you want
+   ! to change the default values, change the def_ parameters below.
+   ! Cloud presence:
+   real, parameter :: Oreo12_aam1  = 1.4315
+   real, parameter :: Oreo12_aam2  = 2.1219
+   real, parameter :: Oreo12_aam30 = 7.
+   real, parameter :: Oreo12_aam4  = -25.584
+   ! Cloud condensate:
+   real, parameter :: Oreo12_ram1  = 0.72192
+   real, parameter :: Oreo12_ram2  = 0.78996
+   real, parameter :: Oreo12_ram30 = 8.5
+   real, parameter :: Oreo12_ram4  = 40.404
+
+   ! Default correlation length parameters. 
+   ! These are public so they can be accessed externally as defaults
+   ! in MAPL_GetResource(). These can be changed from the historical
+   ! Oreo12 values above if better defaults are found through tuning.
+   ! Cloud presence:
+   real, public, parameter :: def_aam1  = Oreo12_aam1
+   real, public, parameter :: def_aam2  = Oreo12_aam2
+   real, public, parameter :: def_aam30 = Oreo12_aam30
+   real, public, parameter :: def_aam4  = Oreo12_aam4
+   ! Cloud condensate:
+   real, public, parameter :: def_ram1  = Oreo12_ram1
+   real, public, parameter :: def_ram2  = Oreo12_ram2
+   real, public, parameter :: def_ram30 = Oreo12_ram30
+   real, public, parameter :: def_ram4  = Oreo12_ram4
+
+   ! Actual correlation length parameters used.
+   ! These are set to the default values above initially.
+   ! To use different values, from Radiation GC Initialize do
+   !     use cloud_subcol_gen, only : &
+   !       initialize_cloud_subcol_gen, def_aam1, ...
+   !     real :: aam1, ...
+   !     call MAPL_GetResource(MAPL,aam1,LABEL="ADL_AM1:",default=def_aam1,__RC__)
+   !     ...
+   !     call initialize_cloud_subcol_gen(adl_am1=aam1, ...)
+   ! This is only necessary to CHANGE the defaults above. 
+   ! Cloud presence:
+   real :: aam1  = def_aam1
+   real :: aam2  = def_aam2
+   real :: aam30 = def_aam30
+   real :: aam4  = def_aam4
+   ! Cloud condensate:
+   real :: ram1  = def_ram1
+   real :: ram2  = def_ram2
+   real :: ram30 = def_ram30
+   real :: ram4  = def_ram4
+
+   ! public interface
+   public :: initialize_cloud_subcol_gen  ! set non-default correlation lengths
+   public :: generate_stochastic_clouds   ! generate subcolumns
+   public :: clearCounts_threeBand        ! L|M|H|T cloud fractions
 
 contains
+
+   !---------------------------------------------------------------------------------------
+   subroutine initialize_cloud_subcol_gen( &
+      adl_am1, adl_am2, adl_am30, adl_am4, &
+      rdl_am1, rdl_am2, rdl_am30, rdl_am4)
+   !---------------------------------------------------------------------------------------
+   ! Use if want to set non-default correlation lengths.
+   !---------------------------------------------------------------------------------------
+
+      ! correlation length parameters
+      real, intent(in), optional :: adl_am1, adl_am2, adl_am30, adl_am4  ! cloud presence
+      real, intent(in), optional :: rdl_am1, rdl_am2, rdl_am30, rdl_am4  ! cloud condensate
+
+      ! optionally reset correlation length parameters from module level defaults
+      if (present(adl_am1 )) aam1  = adl_am1
+      if (present(adl_am2 )) aam2  = adl_am2
+      if (present(adl_am30)) aam30 = adl_am30
+      if (present(adl_am4 )) aam4  = adl_am4
+      if (present(rdl_am1 )) ram1  = rdl_am1
+      if (present(rdl_am2 )) ram2  = rdl_am2
+      if (present(rdl_am30)) ram30 = rdl_am30
+      if (present(rdl_am4 )) ram4  = rdl_am4
+
+   end subroutine initialize_cloud_subcol_gen
 
    !---------------------------------------------------------------------------------------
    subroutine generate_stochastic_clouds( &
@@ -189,12 +272,12 @@ contains
 
       ! for cloud presence
       call correlation_length(dncol, ncol, &
-         1.4315, 2.1219, -25.584, 7., doy, alat, adl)
+         aam1, aam2, aam30, aam4, doy, alat, adl)
 
-      ! for condensate
+      ! for cloud condensate
       if (cond_inhomo) then
          call correlation_length(dncol, ncol, &
-            0.72192, 0.78996, 40.404, 8.5, doy, alat, rdl)
+            ram1, ram2, ram30, ram4, doy, alat, rdl)
       endif
 
       ! outer loop over gridcolumn
@@ -374,14 +457,14 @@ contains
 
    !-------------------------------------------
    subroutine correlation_length(dncol, ncol, &
-      am1, am2, am4, amr, doy, alat, clength)
+      am1, am2, am30, am4, doy, alat, clength)
    !-------------------------------------------
-      integer, intent(in)  :: dncol               ! Dimensioned number of gridcols
-      integer, intent(in)  :: ncol                ! Actual number of gridcols
-      real,    intent(in)  :: am1, am2, am4, amr  ! input parameters
-      integer, intent(in)  :: doy                 ! Day of year
-      real,    intent(in)  :: alat    (dncol)     ! Latitude of gridcolumn [radians]
-      real,    intent(out) :: clength (dncol)     ! Correlation length [m]
+      integer, intent(in)  :: dncol                ! Dimensioned number of gridcols
+      integer, intent(in)  :: ncol                 ! Actual number of gridcols
+      real,    intent(in)  :: am1, am2, am30, am4  ! input parameters
+      integer, intent(in)  :: doy                  ! Day of year
+      real,    intent(in)  :: alat    (dncol)      ! Latitude of gridcolumn [radians]
+      real,    intent(out) :: clength (dncol)      ! Correlation length [m]
 
       real, parameter :: r2d = 180.d0 / 3.14159265358979323846d0
 
@@ -389,9 +472,9 @@ contains
       real :: am3
 
       if (doy > 181) then
-         am3 = -4.*amr/365.*(doy-272)
+         am3 = -4.*am30/365.*(doy-272)
       else
-         am3 =  4.*amr/365.*(doy- 91)
+         am3 =  4.*am30/365.*(doy- 91)
       endif
 
       do icol = 1,ncol

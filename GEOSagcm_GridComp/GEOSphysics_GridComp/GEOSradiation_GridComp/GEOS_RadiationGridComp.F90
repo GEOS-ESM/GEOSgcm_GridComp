@@ -458,6 +458,11 @@ module GEOS_RadiationGridCompMod
 
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
+! !USES:
+  use cloud_subcol_gen, only : initialize_cloud_subcol_gen, &
+    def_aam1, def_aam2, def_aam30, def_aam4, &
+    def_ram1, def_ram2, def_ram30, def_ram4
+
 ! !ARGUMENTS:
 
   type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
@@ -484,10 +489,15 @@ module GEOS_RadiationGridCompMod
 
 ! Local derived type aliases
 
-   type (MAPL_MetaComp),      pointer  :: MAPL
-   type (ESMF_State),         pointer  :: GIM(:)
+  type (MAPL_MetaComp),      pointer  :: MAPL
+  type (ESMF_State),         pointer  :: GIM(:)
   
-   type (ESMF_Config)                  :: CF
+  type (ESMF_Config)                  :: CF
+
+! Correlation length parameters from resource file
+
+  real :: aam1, aam2, aam30, aam4
+  real :: ram1, ram2, ram30, ram4
 
 !=============================================================================
 
@@ -512,6 +522,21 @@ module GEOS_RadiationGridCompMod
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
     VERIFY_(STATUS)
+
+! Set cloud subcolumn generator correlation length parameters to non-default values from
+! MAPL resource parameters. Comment out to just use defaults in module cloud_subcol_gen.
+
+    call MAPL_GetResource(MAPL,aam1 ,LABEL="ADL_AM1:" ,default=def_aam1 ,__RC__)
+    call MAPL_GetResource(MAPL,aam2 ,LABEL="ADL_AM2:" ,default=def_aam2 ,__RC__)
+    call MAPL_GetResource(MAPL,aam30,LABEL="ADL_AM30:",default=def_aam30,__RC__)
+    call MAPL_GetResource(MAPL,aam4 ,LABEL="ADL_AM4:" ,default=def_aam4 ,__RC__)
+    call MAPL_GetResource(MAPL,ram1 ,LABEL="RDL_AM1:" ,default=def_ram1 ,__RC__)
+    call MAPL_GetResource(MAPL,ram2 ,LABEL="RDL_AM2:" ,default=def_ram2 ,__RC__)
+    call MAPL_GetResource(MAPL,ram30,LABEL="RDL_AM30:",default=def_ram30,__RC__)
+    call MAPL_GetResource(MAPL,ram4 ,LABEL="RDL_AM4:" ,default=def_ram4 ,__RC__)
+    call initialize_cloud_subcol_gen( &
+      adl_am1=aam1, adl_am2=aam2, adl_am30=aam30, adl_am4=aam4, &
+      rdl_am1=ram1, rdl_am2=ram2, rdl_am30=ram30, rdl_am4=ram4)
 
 ! Start Total timer after generic initialize
 !-------------------------------------------
