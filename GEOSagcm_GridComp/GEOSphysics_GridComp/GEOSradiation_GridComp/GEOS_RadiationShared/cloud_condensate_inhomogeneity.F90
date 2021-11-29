@@ -68,7 +68,7 @@ contains
       inhm = 0
    end subroutine release_inhomogeneity
 
-   function condensate_inhomogeneous result (inhomo)
+   function condensate_inhomogeneous() result (inhomo)
       logical :: inhomo
       if (.not. initialized) then
          write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
