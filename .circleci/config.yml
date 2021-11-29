@@ -42,7 +42,8 @@ commands:
       compiler:
         type: string
     steps:
-      - run: mpirun --version && << parameters.compiler >> --version && echo $BASEDIR && pwd && ls && echo "$(nproc)"
+      - name: "Versions, etc."
+      - command: mpirun --version && << parameters.compiler >> --version && echo $BASEDIR && pwd && ls && echo "$(nproc)"
 
   checkout_fixture:
     description: "Checkout fixture"
@@ -50,7 +51,8 @@ commands:
       repo:
         type: string
     steps:
-      - run: |
+      - name: "Checkout fixture"
+      - command: |
           cd ${CIRCLE_WORKING_DIRECTORY}
           git clone https://github.com/GEOS-ESM/<< parameters.repo >>.git
 
@@ -60,7 +62,8 @@ commands:
       repo:
         type: string
     steps:
-      - run: |
+      - name: "Mepo clone external repos"
+      - command: |
           cd ${CIRCLE_WORKING_DIRECTORY}/<< parameters.repo >>
           mepo clone
           mepo status
@@ -71,7 +74,8 @@ commands:
       repo:
         type: string
     steps:
-      - run: |
+      - name: "Mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared"
+      - command: |
           cd ${CIRCLE_WORKING_DIRECTORY}/<< parameters.repo >>
           mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared
           mepo status
@@ -82,7 +86,8 @@ commands:
       repo:
         type: string
     steps:
-      - run: |
+      - name: "Mepo checkout-if-exists feature branch"
+      - command: |
           cd ${CIRCLE_WORKING_DIRECTORY}/<< parameters.repo >>
           echo "${CIRCLE_BRANCH}"
           if [ "${CIRCLE_BRANCH}" != "develop" ] && [ "${CIRCLE_BRANCH}" != "main" ]
@@ -99,7 +104,7 @@ commands:
       compiler:
         type: string
     steps:
-      - run: |
+      - command: |
           mkdir -p /logfiles
           cd ${CIRCLE_WORKING_DIRECTORY}/<< parameters.repo >>
           mkdir -p ${CIRCLE_WORKING_DIRECTORY}/workspace/build-<< parameters.repo >>
@@ -112,7 +117,7 @@ commands:
       repo:
         type: string
     steps:
-      - run: |
+      - command: |
           cd ${CIRCLE_WORKING_DIRECTORY}/workspace/build-<< parameters.repo >>
           make -j"$(nproc)" install |& tee /logfiles/make.log
           #MEDIUM# make -j4 install |& tee /logfiles/make.log
