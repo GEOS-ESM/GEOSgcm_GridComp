@@ -1530,6 +1530,8 @@ cat << _EOF1_ > clsm/README2
          mouth_lon [degree] longitude at the river mouth
          mouth_lat [degree] latitude at the river mouth
 
+`echo "${rout_smap}"`
+
   7.3 References
 	 Verdin, K.L., and J.P. Verdin (1999). A topographical system for delineation 
 	    and codification of the Earths river basins. J. of Hydrology (218), 1-12.
