@@ -1,3 +1,7 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
+
+program Scale_Catch
   use MAPL
   use lsm_routines, ONLY: catch_calc_tp,  catch_calc_ght, DZGT
   USE CATCH_CONSTANTS,   ONLY: N_GT              => CATCH_N_GT
@@ -121,7 +125,9 @@
   type(Netcdf4_fileformatter) :: formatter(3)
   type(Filemetadata) :: cfg(3)
   integer :: i, rc, filetype
-    
+  integer :: status
+  character(256) :: Iam = "Scale_Catch"
+ 
 ! Usage
 ! -----
   if (iargc() /= 6) then
@@ -143,13 +149,13 @@
 ! -------------------------------
   read(arg(3),'(a)') fname3
 
-  call MAPL_NCIOGetFileType(fname1, filetype,rc=rc)
+  call MAPL_NCIOGetFileType(fname1, filetype, __RC__)
 
   if (filetype == 0) then
-     call formatter(1)%open(trim(fname1),pFIO_READ,rc=rc)
-     call formatter(2)%open(trim(fname2),pFIO_READ,rc=rc)
-     cfg(1)=formatter(1)%read(rc=rc) 
-     cfg(2)=formatter(2)%read(rc=rc) 
+     call formatter(1)%open(trim(fname1),pFIO_READ, __RC__)
+     call formatter(2)%open(trim(fname2),pFIO_READ, __RC__)
+     cfg(1)=formatter(1)%read(__RC__) 
+     cfg(2)=formatter(2)%read(__RC__) 
   else
      open(unit=10, file=trim(fname1),  form='unformatted')
      open(unit=20, file=trim(fname2),  form='unformatted')
@@ -172,7 +178,7 @@
 
   if (filetype ==0) then
 
-     ntiles = cfg(1)%get_dimension('tile',rc=rc)
+     ntiles = cfg(1)%get_dimension('tile', __RC__)
 
   else
 
@@ -200,8 +206,8 @@
   new = 2
   
   if (filetype ==0) then
-     call readcatch_nc4 ( catch(old), formatter(old) )
-     call readcatch_nc4 ( catch(new), formatter(new) )
+     call readcatch_nc4 ( catch(old), formatter(old), __RC__ )
+     call readcatch_nc4 ( catch(new), formatter(new), __RC__ )
   else
      call readcatch ( 10,catch(old) )
      call readcatch ( 20,catch(new) )
@@ -391,8 +397,8 @@
 ! ------------------
   if (filetype ==0) then
      cfg(3)=cfg(2)
-     call formatter(3)%create(fname3,rc=rc)
-     call formatter(3)%write(cfg(3),rc=rc)
+     call formatter(3)%create(fname3, __RC__)
+     call formatter(3)%write(cfg(3), __RC__)
      call writecatch_nc4 ( catch(sca), formatter(3) )
   else
      call writecatch ( 30,catch(sca) )
@@ -472,70 +478,73 @@
    return
    end subroutine allocatch
 
-   subroutine readcatch_nc4 (catch,formatter)
+   subroutine readcatch_nc4 (catch,formatter, rc)
    type(catch_rst) catch
    type(Netcdf4_fileformatter) :: formatter
+   integer, optional, intent(out) :: rc
+   integer :: status
+   character(256) :: Iam = "readcatch_nc4"
 
-       call MAPL_VarRead(formatter,"BF1",catch%bf1)
-       call MAPL_VarRead(formatter,"BF2",catch%bf2)
-       call MAPL_VarRead(formatter,"BF3",catch%bf3)
-       call MAPL_VarRead(formatter,"VGWMAX",catch%vgwmax)
-       call MAPL_VarRead(formatter,"CDCR1",catch%cdcr1)
-       call MAPL_VarRead(formatter,"CDCR2",catch%cdcr2)
-       call MAPL_VarRead(formatter,"PSIS",catch%psis)
-       call MAPL_VarRead(formatter,"BEE",catch%bee)
-       call MAPL_VarRead(formatter,"POROS",catch%poros)
-       call MAPL_VarRead(formatter,"WPWET",catch%wpwet)
-       call MAPL_VarRead(formatter,"COND",catch%cond)
-       call MAPL_VarRead(formatter,"GNU",catch%gnu)
-       call MAPL_VarRead(formatter,"ARS1",catch%ars1)
-       call MAPL_VarRead(formatter,"ARS2",catch%ars2)
-       call MAPL_VarRead(formatter,"ARS3",catch%ars3)
-       call MAPL_VarRead(formatter,"ARA1",catch%ara1)
-       call MAPL_VarRead(formatter,"ARA2",catch%ara2)
-       call MAPL_VarRead(formatter,"ARA3",catch%ara3)
-       call MAPL_VarRead(formatter,"ARA4",catch%ara4)
-       call MAPL_VarRead(formatter,"ARW1",catch%arw1)
-       call MAPL_VarRead(formatter,"ARW2",catch%arw2)
-       call MAPL_VarRead(formatter,"ARW3",catch%arw3)
-       call MAPL_VarRead(formatter,"ARW4",catch%arw4)
-       call MAPL_VarRead(formatter,"TSA1",catch%tsa1)
-       call MAPL_VarRead(formatter,"TSA2",catch%tsa2)
-       call MAPL_VarRead(formatter,"TSB1",catch%tsb1)
-       call MAPL_VarRead(formatter,"TSB2",catch%tsb2)
-       call MAPL_VarRead(formatter,"ATAU",catch%atau)
-       call MAPL_VarRead(formatter,"BTAU",catch%btau)
-       call MAPL_VarRead(formatter,"OLD_ITY",catch%ity)
-       call MAPL_VarRead(formatter,"TC",catch%tc)
-       call MAPL_VarRead(formatter,"QC",catch%qc)
-       call MAPL_VarRead(formatter,"OLD_ITY",catch%ity)
-       call MAPL_VarRead(formatter,"CAPAC",catch%capac)
-       call MAPL_VarRead(formatter,"CATDEF",catch%catdef)
-       call MAPL_VarRead(formatter,"RZEXC",catch%rzexc)
-       call MAPL_VarRead(formatter,"SRFEXC",catch%srfexc)
-       call MAPL_VarRead(formatter,"GHTCNT1",catch%ghtcnt1)
-       call MAPL_VarRead(formatter,"GHTCNT2",catch%ghtcnt2)
-       call MAPL_VarRead(formatter,"GHTCNT3",catch%ghtcnt3)
-       call MAPL_VarRead(formatter,"GHTCNT4",catch%ghtcnt4)
-       call MAPL_VarRead(formatter,"GHTCNT5",catch%ghtcnt5)
-       call MAPL_VarRead(formatter,"GHTCNT6",catch%ghtcnt6)
-       call MAPL_VarRead(formatter,"TSURF",catch%tsurf)
-       call MAPL_VarRead(formatter,"WESNN1",catch%wesnn1)
-       call MAPL_VarRead(formatter,"WESNN2",catch%wesnn2)
-       call MAPL_VarRead(formatter,"WESNN3",catch%wesnn3)
-       call MAPL_VarRead(formatter,"HTSNNN1",catch%htsnnn1)
-       call MAPL_VarRead(formatter,"HTSNNN2",catch%htsnnn2)
-       call MAPL_VarRead(formatter,"HTSNNN3",catch%htsnnn3)
-       call MAPL_VarRead(formatter,"SNDZN1",catch%sndzn1)
-       call MAPL_VarRead(formatter,"SNDZN2",catch%sndzn2)
-       call MAPL_VarRead(formatter,"SNDZN3",catch%sndzn3)
-       call MAPL_VarRead(formatter,"CH",catch%ch)
-       call MAPL_VarRead(formatter,"CM",catch%cm)
-       call MAPL_VarRead(formatter,"CQ",catch%cq)
-       call MAPL_VarRead(formatter,"FR",catch%fr)
-       call MAPL_VarRead(formatter,"WW",catch%ww)
-
-   return
+       call MAPL_VarRead(formatter,"BF1",catch%bf1, __RC__)
+       call MAPL_VarRead(formatter,"BF2",catch%bf2, __RC__)
+       call MAPL_VarRead(formatter,"BF3",catch%bf3, __RC__)
+       call MAPL_VarRead(formatter,"VGWMAX",catch%vgwmax, __RC__)
+       call MAPL_VarRead(formatter,"CDCR1",catch%cdcr1, __RC__)
+       call MAPL_VarRead(formatter,"CDCR2",catch%cdcr2, __RC__)
+       call MAPL_VarRead(formatter,"PSIS",catch%psis, __RC__)
+       call MAPL_VarRead(formatter,"BEE",catch%bee, __RC__)
+       call MAPL_VarRead(formatter,"POROS",catch%poros, __RC__)
+       call MAPL_VarRead(formatter,"WPWET",catch%wpwet, __RC__)
+       call MAPL_VarRead(formatter,"COND",catch%cond, __RC__)
+       call MAPL_VarRead(formatter,"GNU",catch%gnu, __RC__)
+       call MAPL_VarRead(formatter,"ARS1",catch%ars1, __RC__)
+       call MAPL_VarRead(formatter,"ARS2",catch%ars2, __RC__)
+       call MAPL_VarRead(formatter,"ARS3",catch%ars3, __RC__)
+       call MAPL_VarRead(formatter,"ARA1",catch%ara1, __RC__)
+       call MAPL_VarRead(formatter,"ARA2",catch%ara2, __RC__)
+       call MAPL_VarRead(formatter,"ARA3",catch%ara3, __RC__)
+       call MAPL_VarRead(formatter,"ARA4",catch%ara4, __RC__)
+       call MAPL_VarRead(formatter,"ARW1",catch%arw1, __RC__)
+       call MAPL_VarRead(formatter,"ARW2",catch%arw2, __RC__)
+       call MAPL_VarRead(formatter,"ARW3",catch%arw3, __RC__)
+       call MAPL_VarRead(formatter,"ARW4",catch%arw4, __RC__)
+       call MAPL_VarRead(formatter,"TSA1",catch%tsa1, __RC__)
+       call MAPL_VarRead(formatter,"TSA2",catch%tsa2, __RC__)
+       call MAPL_VarRead(formatter,"TSB1",catch%tsb1, __RC__)
+       call MAPL_VarRead(formatter,"TSB2",catch%tsb2, __RC__)
+       call MAPL_VarRead(formatter,"ATAU",catch%atau, __RC__)
+       call MAPL_VarRead(formatter,"BTAU",catch%btau, __RC__)
+       call MAPL_VarRead(formatter,"OLD_ITY",catch%ity, __RC__)
+       call MAPL_VarRead(formatter,"TC",catch%tc, __RC__)
+       call MAPL_VarRead(formatter,"QC",catch%qc, __RC__)
+       call MAPL_VarRead(formatter,"OLD_ITY",catch%ity, __RC__)
+       call MAPL_VarRead(formatter,"CAPAC",catch%capac, __RC__)
+       call MAPL_VarRead(formatter,"CATDEF",catch%catdef, __RC__)
+       call MAPL_VarRead(formatter,"RZEXC",catch%rzexc, __RC__)
+       call MAPL_VarRead(formatter,"SRFEXC",catch%srfexc, __RC__)
+       call MAPL_VarRead(formatter,"GHTCNT1",catch%ghtcnt1, __RC__)
+       call MAPL_VarRead(formatter,"GHTCNT2",catch%ghtcnt2, __RC__)
+       call MAPL_VarRead(formatter,"GHTCNT3",catch%ghtcnt3, __RC__)
+       call MAPL_VarRead(formatter,"GHTCNT4",catch%ghtcnt4, __RC__)
+       call MAPL_VarRead(formatter,"GHTCNT5",catch%ghtcnt5, __RC__)
+       call MAPL_VarRead(formatter,"GHTCNT6",catch%ghtcnt6, __RC__)
+       call MAPL_VarRead(formatter,"TSURF",catch%tsurf, __RC__)
+       call MAPL_VarRead(formatter,"WESNN1",catch%wesnn1, __RC__)
+       call MAPL_VarRead(formatter,"WESNN2",catch%wesnn2, __RC__)
+       call MAPL_VarRead(formatter,"WESNN3",catch%wesnn3, __RC__)
+       call MAPL_VarRead(formatter,"HTSNNN1",catch%htsnnn1, __RC__)
+       call MAPL_VarRead(formatter,"HTSNNN2",catch%htsnnn2, __RC__)
+       call MAPL_VarRead(formatter,"HTSNNN3",catch%htsnnn3, __RC__)
+       call MAPL_VarRead(formatter,"SNDZN1",catch%sndzn1, __RC__)
+       call MAPL_VarRead(formatter,"SNDZN2",catch%sndzn2, __RC__)
+       call MAPL_VarRead(formatter,"SNDZN3",catch%sndzn3, __RC__)
+       call MAPL_VarRead(formatter,"CH",catch%ch, __RC__)
+       call MAPL_VarRead(formatter,"CM",catch%cm, __RC__)
+       call MAPL_VarRead(formatter,"CQ",catch%cq, __RC__)
+       call MAPL_VarRead(formatter,"FR",catch%fr, __RC__)
+       call MAPL_VarRead(formatter,"WW",catch%ww, __RC__)
+       if (present(rc)) rc =0
+       !_RETURN(_SUCCESS)
    end subroutine readcatch_nc4
 
    subroutine readcatch (unit,catch)
@@ -734,7 +743,7 @@
    return
    end subroutine writecatch
 
-  end
+  end program
 
   subroutine calc_soil_moist( &
        ncat,vegcls,dzsf,vgwmax,cdcr1,cdcr2,wpwet,poros, &
@@ -1257,4 +1266,3 @@
 
       RETURN
       END SUBROUTINE RZEQUIL
-
