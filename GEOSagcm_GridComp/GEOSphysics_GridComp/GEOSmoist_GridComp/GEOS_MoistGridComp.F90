@@ -530,28 +530,6 @@ contains
     VERIFY_(STATUS)                                                                          
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PKE',                                         &
-         LONG_NAME  = 'edge_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationEdge,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PLK',                                       &
-         LONG_NAME  = 'mid-layer_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationCenter,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME = 'PREF',                                       &
          LONG_NAME  = 'reference_air_pressure',                     &
          UNITS      = 'Pa',                                         &
@@ -560,6 +538,17 @@ contains
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
          RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'ZLE',                                       &
+         LONG_NAME  = 'geopotential_height',                       &
+         UNITS      = 'm',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         AVERAGING_INTERVAL = AVRGNINT,                             &
+         REFRESH_INTERVAL   = RFRSHINT,                             &
+                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                              &
@@ -1067,6 +1056,14 @@ contains
     call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME = 'QSTOT',                                      &
          LONG_NAME  = 'mass_fraction_of_falling_snow',              &
+         UNITS      = 'kg kg-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                             &
+         SHORT_NAME = 'QGTOT',                                      &
+         LONG_NAME  = 'mass_fraction_of_falling_graupel',           &
          UNITS      = 'kg kg-1',                                    &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -5251,12 +5248,12 @@ contains
            CLDREFFI                             
 
 
-      real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH
+      real, pointer, dimension(:,:,:) :: T, ZL0, PLE, U, V, W, TH
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
-      real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT,  CFLIQ, CFICE !DONIF
+      real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT, QGTOT,  CFLIQ, CFICE !DONIF
 
       real, pointer, dimension(:,:,:) :: NCPL,NCPI, NRAIN, NSNOW, NGRAUPEL
  
@@ -5734,6 +5731,7 @@ contains
       logical ALLOC_NHET_NUC
       logical ALLOC_NLIM_NUC
       logical ALLOC_SAT_RAT
+      logical ALLOC_QGTOT
       logical ALLOC_QSTOT
       logical ALLOC_QRTOT
       logical ALLOC_QPTOTLS
@@ -6296,6 +6294,7 @@ contains
       call MAPL_GetPointer(IMPORT, AREA,    'AREA'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, PREF,    'PREF'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, ZL0,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
@@ -6391,6 +6390,7 @@ contains
       call MAPL_GetPointer(EXPORT, QITOT,    'QITOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QRTOT,    'QRTOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QSTOT,    'QSTOT'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QGTOT,    'QGTOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QPTOTLS,  'QPTOTLS' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QLTOT,    'QLTOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, LS_ARF,   'LS_ARF'  , RC=STATUS); VERIFY_(STATUS)
@@ -7071,8 +7071,9 @@ contains
          ALLOC_CDNC_NUC   = .not.associated(CDNC_NUC )
          ALLOC_INC_NUC    = .not.associated(INC_NUC   )
          ALLOC_SAT_RAT    = .not.associated(SAT_RAT )
-         ALLOC_QSTOT    = .not.associated(QSTOT)
-         ALLOC_QRTOT    = .not.associated(QRTOT)
+         ALLOC_QGTOT      = .not.associated(QGTOT)
+         ALLOC_QSTOT      = .not.associated(QSTOT)
+         ALLOC_QRTOT      = .not.associated(QRTOT)
          ALLOC_QPTOTLS    = .not.associated(QPTOTLS)
 
          ALLOC_DTDT_moist     = .not.associated(DTDT_moist)
@@ -7145,8 +7146,9 @@ contains
          if(ALLOC_CDNC_NUC   ) allocate(CDNC_NUC   (IM,JM,LM))
          if(ALLOC_INC_NUC    ) allocate(INC_NUC    (IM,JM,LM))
          if(ALLOC_SAT_RAT    ) allocate(SAT_RAT    (IM,JM,LM))
-         if(ALLOC_QSTOT    ) allocate(QSTOT    (IM,JM,LM))
-         if(ALLOC_QRTOT    ) allocate(QRTOT    (IM,JM,LM))
+         if(ALLOC_QGTOT      ) allocate(QGTOT      (IM,JM,LM))
+         if(ALLOC_QSTOT      ) allocate(QSTOT      (IM,JM,LM))
+         if(ALLOC_QRTOT      ) allocate(QRTOT      (IM,JM,LM))
          if(ALLOC_QPTOTLS    ) allocate(QPTOTLS    (IM,JM,LM))
 
          if(ALLOC_DTDT_moist    ) allocate(DTDT_moist    (IM,JM,LM))    
@@ -7404,12 +7406,12 @@ contains
 
 !-srf - placed here before the cumulus parameterizations are called.
       if(associated(CNV_DQLDT)) CNV_DQLDT =  0.0
-      ZLE(:,:,LM) = 0.
+      do L=LM,0,-1
+         ZLE(:,:,L) = ZL0(:,:,L) - ZL0(:,:,LM) 
+      end do
       do L=LM,1,-1
-         ZLE(:,:,L-1) = TH (:,:,L) * (1.+MAPL_VIREPS*Q(:,:,L))
-         ZLO(:,:,L  ) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PKE(:,:,L)-PK (:,:,L  ) ) * ZLE(:,:,L-1)
-         ZLE(:,:,L-1) = ZLO(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PK (:,:,L)-PKE(:,:,L-1) ) * ZLE(:,:,L-1)
-         DZET(:,:,L ) = ZLE(:,:,L-1) - ZLE(:,:,L)
+         ZLO(:,:,L) = 0.5*(ZLE(:,:,L-1) + ZLE(:,:,L))
+         DZET(:,:,L) =     ZLE(:,:,L-1) - ZLE(:,:,L)
       end do
 
       GZLE  = MAPL_GRAV * ZLE
@@ -12785,6 +12787,7 @@ do K= 1, LM
          if(ALLOC_NHET_NUC  )  deallocate(NHET_NUC  )
          if(ALLOC_NLIM_NUC  )  deallocate(NLIM_NUC  )
          if(ALLOC_SAT_RAT  )  deallocate(SAT_RAT  )
+         if(ALLOC_QGTOT )  deallocate(QGTOT)
          if(ALLOC_QSTOT )  deallocate(QSTOT)
          if(ALLOC_QRTOT )  deallocate(QRTOT)
          if(ALLOC_QPTOTLS )  deallocate(QPTOTLS)

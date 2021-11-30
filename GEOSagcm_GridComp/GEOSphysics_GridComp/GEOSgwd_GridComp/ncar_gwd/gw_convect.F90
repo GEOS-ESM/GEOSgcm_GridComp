@@ -6,7 +6,7 @@ module gw_convect
 !
 
   use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
-  use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof 
+  use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof, hr_cf 
 
 
 implicit none
@@ -44,7 +44,7 @@ contains
 !==========================================================================
 
 !------------------------------------
-subroutine gw_beres_init (file_name , band, desc )
+subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength)
 #include <netcdf.inc>
 
   character(len=*), intent(in) :: file_name
@@ -52,14 +52,12 @@ subroutine gw_beres_init (file_name , band, desc )
 
   type(BeresSourceDesc), intent(inout) :: desc
 
+  integer, intent(in) :: pgwv
+  real(r8), intent(in) :: gw_dc, fcrit2, wavelength
 
   ! Stuff for Beres convective gravity wave source.
   real(r8), allocatable :: mfcc(:,:,:), hdcc(:)
   integer  :: hd_mfcc , mw_mfcc, ps_mfcc, ngwv_file, ps_mfcc_mid
-
-  real(r8) :: gw_dc, wavelength
-  integer  :: pgwv
-
 
   ! Vars needed by NetCDF operators
   integer  :: ncid, dimid, varid, status
@@ -108,11 +106,12 @@ subroutine gw_beres_init (file_name , band, desc )
 !!!  pgwv = 32
 !!!  gw_dc = 2.5D0  
 
-  ! Hardwire for now
-  gw_dc = 2.5_r8
-  pgwv  = 32
-  wavelength = 1.e5_r8
-  band  = GWBand(pgwv, gw_dc, 1.0_r8, wavelength )
+! ! Hardwire for now
+! gw_dc = 2.5_r8
+! pgwv  = 32
+! wavelength = 1.e5_r8
+! WMP now pased in from GEOS_GwdGridComp
+  band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
 
 
   ! These dimensions; {HD,MW,PS}_MFCC, came from Beres forcing file.
@@ -235,8 +234,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   ! Index to shift spectra relative to ground.
   integer :: shift
 
-  ! Heating rate conversion factor.
-  real(r8), parameter :: CF = 20._r8
+! ! Heating rate conversion factor.
+! real(r8), parameter :: CF = 20._r8
   ! Averaging length.
   real(r8), parameter :: AL = 1.0e5_r8
 
@@ -331,7 +330,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   maxq0 = q0*24._r8*3600._r8
 
   ! Multipy by conversion factor
-  q0 = q0 * CF
+  q0 = q0 * hr_cf
 
   if (desc%storm_shift) then
 
@@ -545,10 +544,12 @@ subroutine gw_beres_ifc( band, &
    real(r8) :: taury(ncol,pver+1)
    real(r8) :: taury0(ncol,pver+1)
 
+   real(r8) :: pint_adj(ncol,pver+1)
+   real(r8) :: zfac_layer
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
-   logical  :: gw_apply_tndmax  	!- default .TRUE. for Anisotropic: "Sean" limiters
+   logical, parameter :: gw_apply_tndmax = .TRUE.!- default .TRUE. for Anisotropic: "Sean" limiters
 
    character(len=1) :: cn
    character(len=9) :: fname(4)
@@ -562,9 +563,6 @@ subroutine gw_beres_ifc( band, &
    allocate(tau(ncol,-band%ngwv:band%ngwv,pver+1))
    allocate(gwut(ncol,pver,-band%ngwv:band%ngwv))
    allocate(c(ncol,-band%ngwv:band%ngwv))
-
-     gw_apply_tndmax  = .FALSE.
-
 
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
@@ -584,7 +582,15 @@ subroutine gw_beres_ifc( band, &
           u, v, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0)
 
-
+!WMP pressure scaling from GEOS top 0.01mb to zfac_layer
+     pint_adj = 1.0
+     zfac_layer = 100.0 ! 1mb
+     where (pint < zfac_layer)
+       pint_adj = 1./19. * &
+                  ((atan( (2.*(pint-1.0)/(zfac_layer-1.0)-1.) * &
+                  tan(20.*PI/21.-0.5*PI) ) + 0.5*PI) * 21./PI - 1.)
+     endwhere
+!WMP pressure scaling from GEOS
 
      ! satfac_in is 2 by default for CAM5
 
@@ -593,11 +599,7 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
-          ttgw, egwdffi,  gwut, dttdf, dttke,            &
-          satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax)
-
-
+          ttgw, egwdffi,  gwut, dttdf, dttke, tau_adjust=pint_adj)
 
      ! For orographic waves, don't bother with taucd, since there are no
      ! momentum conservation routines or directional diagnostics.

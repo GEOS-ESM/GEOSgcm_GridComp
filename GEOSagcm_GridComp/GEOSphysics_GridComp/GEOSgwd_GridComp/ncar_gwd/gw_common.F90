@@ -22,6 +22,7 @@ public :: gw_common_init
 public :: gw_prof
 public :: gw_drag_prof
 public :: qbo_hdepth_scaling
+public :: hr_cf
 
 !++jtb 
 !  These go away for now (3/26/20)
@@ -68,7 +69,8 @@ real(r8), protected :: qbo_hdepth_scaling
 logical :: tau_0_ubc = .false.
 ! Inverse Prandtl number.
 real(r8) :: prndl
-
+! Heating rate conversion factor
+real(r8), protected :: hr_cf
 
 
 !
@@ -92,8 +94,10 @@ real(r8), allocatable :: alpha(:)
 ! Minimum non-zero stress.
 real(r8), parameter :: taumin = 1.e-10_r8
 ! Maximum wind tendency from stress divergence (before efficiency applied).
-! 400 m/s/day
-real(r8), parameter :: tndmax = 400._r8 / 86400._r8
+!! 400 m/s/day
+!real(r8), parameter :: tndmax = 400._r8 / 86400._r8
+! 80 m/s/day
+real(r8), parameter :: tndmax = 80._r8 / 86400._r8
 ! Maximum allowed change in u-c (before efficiency applied).
 real(r8), parameter :: umcfac = 0.5_r8
 ! Minimum value of (u-c)**2.
@@ -160,7 +164,7 @@ end function new_GWBand
 
 subroutine gw_common_init(   &
      tau_0_ubc_in, ktop_in, gravit_in, rair_in, cpair_in, & 
-     prndl_in, qbo_hdepth_scaling_in, errstring)
+     prndl_in, qbo_hdepth_scaling_in, hr_cf_in, errstring)
 
   logical,  intent(in) :: tau_0_ubc_in
   integer,  intent(in) :: ktop_in
@@ -169,6 +173,7 @@ subroutine gw_common_init(   &
   real(r8), intent(in) :: cpair_in      ! Heat cap. for dry air (J kg-1 K-1)
   real(r8), intent(in) :: prndl_in
   real(r8), intent(in) :: qbo_hdepth_scaling_in
+  real(r8), intent(in) :: hr_cf_in
   ! Report any errors from this routine.
   character(len=*), intent(out) :: errstring
 
@@ -184,6 +189,7 @@ subroutine gw_common_init(   &
   cpair  = cpair_in
   prndl  = prndl_in
   qbo_hdepth_scaling = qbo_hdepth_scaling_in
+  hr_cf = hr_cf_in
 
   rog = rair/gravit
 
@@ -281,7 +287,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, tau,  utgw,  vtgw, &
-     ttgw,  egwdffi,   gwut, dttdf, dttke, ro_adjust, &
+     ttgw,  egwdffi,   gwut, dttdf, dttke, ro_adjust, tau_adjust, &
      kwvrdg, satfac_in, lapply_effgw_in )
 
   !-----------------------------------------------------------------------
@@ -374,6 +380,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Adjustment parameter for IGWs.
   real(r8), intent(in), optional :: &
        ro_adjust(ncol,-band%ngwv:band%ngwv,pver+1)
+
+  ! Adjustment parameter for TAU.
+  real(r8), intent(in), optional :: &
+       tau_adjust(ncol,pver+1)
 
   ! Diagnosed horizontal wavenumber for ridges.
   real(r8), intent(in), optional :: &
@@ -489,22 +499,19 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ubmc = ubi(:,k) - c(:,l)
 
         tausat = 0.0_r8
+        taudmp = 0.0_r8
 
         if (present(kwvrdg)) then
-           where (src_level >= k)
               ! Test to see if u-c has the same sign here as the level below.
-              where (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l))
-                 tausat = abs(  kwvrdg  * rhoi(:,k) * ubmc**3 / &
+           where ( (src_level >= k) .and. (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l)) )
+                 tausat = abs(kwvrdg * rhoi(:,k) * ubmc**3 / &
                     (satfac*ni(:,k)))
-              end where
            end where
         else
-           where (src_level >= k)
               ! Test to see if u-c has the same sign here as the level below.
-              where (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l))
+           where ( (src_level >= k) .and. (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l)) )
                  tausat = abs(band%effkwv * rhoi(:,k) * ubmc**3 / &
                     (satfac*ni(:,k)))
-              end where
            end where
         end if
 
@@ -514,32 +521,32 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
            end where
         end if
 
+        if (present(tau_adjust)) then
+           tausat = tausat * tau_adjust(:,k)
+        end if
+
         if (present(kwvrdg)) then
            where (src_level >= k)
               ! Compute stress for each wave. The stress at this level is the
               ! min of the saturation stress and the stress at the level below
               ! reduced by damping. The sign of the stress must be the same as
               ! at the level below.
-
               ubmc2 = max(ubmc**2, ubmc2mn)
-              mi = ni(:,k) / (2._r8 *   kwvrdg * ubmc2) * &  ! Is this 2._r8 related to satfac?
+              mi = ni(:,k) / (2._r8 * kwvrdg * ubmc2) * &
                  (alpha(k) + ni(:,k)**2/ubmc2 * d)
               wrk = -2._r8*mi*rog*t(:,k)*(piln(:,k+1) - piln(:,k))
-                wrk = max( wrk, -200._r8 )
-
-              taudmp = tau(:,l,k+1)
-
-              ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
-              ! we limit tau, so instead limit the arrays used to set it.
-              where (tausat <= taumin) tausat = 0._r8
-              where (taudmp <= taumin) taudmp = 0._r8
-
-              tau(:,l,k) = min(taudmp, tausat)
+              wrk = max( wrk, -200._r8 )
+              taudmp = tau(:,l,k+1) * exp(wrk)
            end where
-
+           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
+           ! we limit tau, so instead limit the arrays used to set it.
+           where (tausat <= taumin) tausat = 0._r8
+           where (taudmp <= taumin) taudmp = 0._r8
+           do i = 1, ncol
+             tau(i,l,k) = min(taudmp(i), tausat(i))
+           end do
         else
            where (src_level >= k)
-
               ! Compute stress for each wave. The stress at this level is the
               ! min of the saturation stress and the stress at the level below
               ! reduced by damping. The sign of the stress must be the same as
@@ -548,17 +555,16 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
               mi = ni(:,k) / (2._r8 * band%kwv * ubmc2) * &
                  (alpha(k) + ni(:,k)**2/ubmc2 * d)
               wrk = -2._r8*mi*rog*t(:,k)*(piln(:,k+1) - piln(:,k))
-                wrk = max( wrk, -200._r8 )
-
+              wrk = max( wrk, -200._r8 )
               taudmp = tau(:,l,k+1) * exp(wrk)
-
-              ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
-              ! we limit tau, so instead limit the arrays used to set it.
-              where (tausat <= taumin) tausat = 0._r8
-              where (taudmp <= taumin) taudmp = 0._r8
-
-              tau(:,l,k) = min(taudmp, tausat)
            end where
+           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
+           ! we limit tau, so instead limit the arrays used to set it.
+           where (tausat <= taumin) tausat = 0._r8
+           where (taudmp <= taumin) taudmp = 0._r8
+           do i = 1, ncol
+             tau(i,l,k) = min(taudmp(i), tausat(i))
+           end do
         endif
 
      end do
@@ -647,6 +653,12 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! new stress will be smaller than the old stress, causing stress
         ! divergence in the next layer down. This smoothes large stress
         ! divergences downward while conserving total stress.
+        ! Include a protection on SMALL gwut to prevent floating point
+        ! issues.
+        !--------------------------------------------------
+        where( abs(gwut(:,k,l)) < 1.e-15_r8 )
+           gwut(:,k,l) = 0._r8
+        endwhere   
         where (k <= tend_level)
            tau(:,l,k+1) = tau(:,l,k) + & 
                 abs(gwut(:,k,l)) * delp(:,k) / gravit 
