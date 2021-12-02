@@ -23,6 +23,7 @@
            real               :: SHEAR_EVAP_FAC        ! 11
            real               :: MIN_ALLOW_CCW         ! 12
            real               :: CCW_EVAP_EFF          ! 13
+           real               :: CCI_EVAP_EFF          ! 13
            real               :: NSUB_AUTOCONV         ! 14
            real               :: LS_SUND_INTER         ! 15
            real               :: LS_SUND_COLD          ! 16
@@ -31,10 +32,10 @@
            real               :: ANV_SUND_COLD         ! 19
            real               :: ANV_SUND_TEMP1        ! 20
            real               :: ANV_TO_LS_TIME        ! 21
-           real               :: NCCN_WARM             ! 22
-           real               :: NCCN_ICE              ! 23
-           real               :: NCCN_ANVIL            ! 24
-           real               :: NCCN_PBL              ! 25
+           real               :: CCN_OCEAN             ! 22
+           real               :: CCN_LAND              ! 23
+           real               :: NCCN_ANVIL_NULL       ! 24
+           real               :: NCCN_PBL_NULL         ! 25
            real               :: DISABLE_RAD           ! 26
            real               :: ICE_SETTLE            ! 27
            real               :: ANV_ICEFALL           ! 28
@@ -77,7 +78,8 @@
            integer            :: CFPBL_EXP             ! 62
            real               :: DISP_FACTOR_LIQ       ! 63
            real               :: DISP_FACTOR_ICE       ! 63
-           real               :: SCLM_SHW       ! 63
+           real               :: SCLM_SHALLOW          ! 63
+           real               :: SCLM_DEEP             ! 63
       endtype CLDPARAM_TYPE
 
   end module CLDPARAMS

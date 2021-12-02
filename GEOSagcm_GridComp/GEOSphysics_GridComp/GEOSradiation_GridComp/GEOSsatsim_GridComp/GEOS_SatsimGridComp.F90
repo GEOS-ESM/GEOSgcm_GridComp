@@ -183,6 +183,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME='RG',                                          &
+         LONG_NAME ='graupel_particle_effective_radius',           &
+         UNITS     ='m',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME='RS',                                          & 
          LONG_NAME ='snow_particle_effective_radius',      &
          UNITS     ='m',                                           &
@@ -257,6 +265,14 @@ contains
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME ='QSTOT',                                      &
         LONG_NAME  ='mass_fraction_of_falling_snow',              &
+        UNITS      ='kg kg-1',                                    &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME ='QGTOT',                                      &
+        LONG_NAME  ='mass_fraction_of_falling_graupel',           &
         UNITS      ='kg kg-1',                                    &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -2813,8 +2829,8 @@ contains
 ! PLE and ZLE are indexed 0:LM 
       real, pointer, dimension(:,:,:) :: T, PLE, QV, FCLD, ZLE
       real, pointer, dimension(:,:,:) :: RDFL, RDFI, QLLS, QILS, QLCN, QICN
-      real, pointer, dimension(:,:,:) :: RDFR, RDFS
-      real, pointer, dimension(:,:,:) :: QRTOT, QSTOT
+      real, pointer, dimension(:,:,:) :: RDFR, RDFS, RDFG
+      real, pointer, dimension(:,:,:) :: QRTOT, QSTOT, QGTOT
       real, dimension(IM,JM,LM) :: QLTOT, QITOT
       real, pointer, dimension(:,:) :: MCOSZ,FRLAND,TS,FROCEAN
 
@@ -2826,8 +2842,8 @@ contains
       real, dimension(IM*JM,LM) :: TCOSP, PLOCOSP, QVCOSP, FCLDCOSP
       real, dimension(IM*JM,LM) :: RDFLCOSP, RDFICOSP, QLLSCOSP, QILSCOSP, QLCNCOSP, QICNCOSP
       real, dimension(IM*JM,LM) :: QLTOTCOSP, QITOTCOSP
-      real, dimension(IM*JM,LM) :: QRTOTCOSP, QSTOTCOSP
-      real, dimension(IM*JM,LM) :: RDFRCOSP, RDFSCOSP
+      real, dimension(IM*JM,LM) :: QRTOTCOSP, QSTOTCOSP, QGTOTCOSP
+      real, dimension(IM*JM,LM) :: RDFRCOSP, RDFSCOSP, RDFGCOSP
       real, dimension(IM*JM,0:LM) :: PLECOSP, PLE2DTOA0INV, ZLECOSP 
 
 ! Local variables needed for all simulators
@@ -3011,6 +3027,11 @@ contains
     integer  :: use_satsim, use_satsim_isccp, use_satsim_modis, use_satsim_lidar, use_satsim_radar, use_satsim_misr
     integer  :: ncolumns
 
+    character(len=ESMF_MAXSTR) :: GRIDNAME
+    character(len=4)           :: imchar
+    character(len=2)           :: dateline
+    integer                    :: imsize,nn
+
 !  Begin...
 !----------
       Iam = trim(COMP_NAME) // 'Sim_Driver'
@@ -3042,7 +3063,16 @@ contains
     call MAPL_GetResource(MAPL,USE_SATSIM_MISR,LABEL="USE_SATSIM_MISR:",default=0,   RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL,Ncolumns,LABEL="SATSIM_NCOLUMNS:",default=30,   RC=STATUS)
+    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
+    VERIFY_(STATUS)
+    GRIDNAME =  AdjustL(GRIDNAME)
+    nn = len_trim(GRIDNAME)
+    dateline = GRIDNAME(nn-1:nn)
+    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
+    read(imchar,*) imsize
+    if(dateline.eq.'CF') imsize = imsize*4
+    Ncolumns = MIN(30,MAX(1,INT(4*5760*4/imsize)))
+    call MAPL_GetResource(MAPL,Ncolumns,LABEL="SATSIM_NCOLUMNS:",default=Ncolumns,  RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL,Npoints_it,LABEL="SATSIM_POINTS_PER_ITERATION:",default=-999,   RC=STATUS)
@@ -3067,6 +3097,7 @@ contains
       call MAPL_GetPointer(IMPORT, RDFI, 'RI'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, RDFR, 'RR'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, RDFS, 'RS'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, RDFG, 'RG'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FCLD, 'FCLD'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QLLS, 'QLLS', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QILS, 'QILS', RC=STATUS); VERIFY_(STATUS)
@@ -3074,6 +3105,7 @@ contains
       call MAPL_GetPointer(IMPORT, QICN, 'QICN', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QRTOT , 'QRTOT', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QSTOT , 'QSTOT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, QGTOT , 'QGTOT', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, MCOSZ, 'MCOSZ', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FRLAND,'FRLAND', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FROCEAN,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
@@ -3380,6 +3412,24 @@ contains
 
 ! delp in Pascals, reff in microns
 
+#ifdef USE_MAPL_UNDEF
+      WHERE (RDFI == MAPL_UNDEF)
+        RDFI = 36.e-6
+      END WHERE
+      WHERE (RDFL == MAPL_UNDEF)
+        RDFL = 14.e-6
+      END WHERE
+      WHERE (RDFR == MAPL_UNDEF)
+        RDFR = 50.e-6
+      END WHERE
+      WHERE (RDFS == MAPL_UNDEF)
+        RDFS = 50.e-6
+      END WHERE
+      WHERE (RDFG == MAPL_UNDEF)
+        RDFG = 50.e-6
+      END WHERE
+#endif
+
       reff(:,:,:,1) = RDFI *1.e6
       reff(:,:,:,2) = RDFL *1.e6
       reff(:,:,:,3) = RDFR *1.e6
@@ -3530,10 +3580,12 @@ contains
       RDFICOSP  = reshape( RDFI(:,:,LM:1:-1), (/ IM*JM , LM /) )
       RDFRCOSP  = reshape( RDFR(:,:,LM:1:-1), (/ IM*JM , LM /) )
       RDFSCOSP  = reshape( RDFS(:,:,LM:1:-1), (/ IM*JM , LM /) )
+      RDFGCOSP  = reshape( RDFG(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QLTOTCOSP  = reshape( QLTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QITOTCOSP  = reshape( QITOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QRTOTCOSP  = reshape( QRTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QSTOTCOSP  = reshape( QSTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
+      QGTOTCOSP  = reshape( QGTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QLCNCOSP  = reshape( QLCN(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QICNCOSP  = reshape( QICN(:,:,LM:1:-1), (/ IM*JM , LM /) )
       PLECOSP  = reshape( PLE(:,:,LM:0:-1), (/ IM*JM , LM+1 /) )
@@ -3651,12 +3703,16 @@ contains
    gbx%mr_hydro(:,:,I_LSCICE) =  QITOTCOSP(BEGSEG:ENDSEG,:)
    gbx%mr_hydro(:,:,I_LSRAIN) =  QRTOTCOSP(BEGSEG:ENDSEG,:)
    gbx%mr_hydro(:,:,I_LSSNOW) =  QSTOTCOSP(BEGSEG:ENDSEG,:)
+   gbx%mr_hydro(:,:,I_LSGRPL) =  QGTOTCOSP(BEGSEG:ENDSEG,:)
    gbx%mr_hydro(:,:,I_CVCLIQ) = 0.0
    gbx%mr_hydro(:,:,I_CVCICE) = 0.0
+   gbx%mr_hydro(:,:,I_CVRAIN) = 0.0
+   gbx%mr_hydro(:,:,I_CVSNOW) = 0.0
    gbx%reff(:,:,I_LSCLIQ) =   RDFLCOSP(BEGSEG:ENDSEG,:)
    gbx%reff(:,:,I_LSCICE) =   RDFICOSP(BEGSEG:ENDSEG,:)
    gbx%reff(:,:,I_LSRAIN) =   RDFRCOSP(BEGSEG:ENDSEG,:)
    gbx%reff(:,:,I_LSSNOW) =   RDFSCOSP(BEGSEG:ENDSEG,:)
+   gbx%reff(:,:,I_LSGRPL) =   RDFGCOSP(BEGSEG:ENDSEG,:)
    gbx%zlev =  ZLOCOSP(BEGSEG:ENDSEG,:)
    gbx%zlev_half =  ZLECOSP(BEGSEG:ENDSEG,1:LM)
 
