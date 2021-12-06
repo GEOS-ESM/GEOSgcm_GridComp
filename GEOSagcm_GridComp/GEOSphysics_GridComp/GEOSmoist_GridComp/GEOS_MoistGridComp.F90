@@ -5681,7 +5681,8 @@ contains
 
       logical                         :: isPresent
 
-  real, dimension(:,:,:,:,:), allocatable :: buffer
+      real, dimension(:,:,:,:,:), allocatable :: buffer
+      logical :: USE_MOIST_BUFFER
 
       !!real,    dimension(IM,JM,  LM)  :: QILS, QICN ! Soon to be moved into internal state
 
@@ -7637,7 +7638,11 @@ contains
                   aci_ptr_2d = FRLAND
               end if
 
-              allocate(buffer(im,jm,lm,n_modes,8), __STAT__)
+
+              call MAPL_GetResource(STATE,USE_MOIST_BUFFER, 'USE_MOIST_BUFFER:', DEFAULT=.TRUE., RC=STATUS)
+              if (USE_MOIST_BUFFER) then
+                 allocate(buffer(im,jm,lm,n_modes,8), __STAT__)
+              end if
 
               ACTIVATION_PROPERTIES: do n = 1, n_modes
                  call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
@@ -7689,36 +7694,50 @@ contains
                  END IF
 #endif
 
-                 buffer(:,:,:,n,1) = aci_num
-                 buffer(:,:,:,n,2) = aci_dgn
-                 buffer(:,:,:,n,3) = aci_sigma
-                 buffer(:,:,:,n,4) = aci_hygroscopicity
-                 buffer(:,:,:,n,5) = aci_density
-                 buffer(:,:,:,n,6) = aci_f_dust
-                 buffer(:,:,:,n,7) = aci_f_soot
-                 buffer(:,:,:,n,8) = aci_f_organic
+                 if (USE_MOIST_BUFFER) then
+                    buffer(:,:,:,n,1) = aci_num
+                    buffer(:,:,:,n,2) = aci_dgn
+                    buffer(:,:,:,n,3) = aci_sigma
+                    buffer(:,:,:,n,4) = aci_hygroscopicity
+                    buffer(:,:,:,n,5) = aci_density
+                    buffer(:,:,:,n,6) = aci_f_dust
+                    buffer(:,:,:,n,7) = aci_f_soot
+                    buffer(:,:,:,n,8) = aci_f_organic
+                 end if
 
               end do ACTIVATION_PROPERTIES
 
-              do k = 1, LM
-                 do j = 1, JM
-                    do i = 1, IM
-                       do n = 1, n_modes
-                          AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1)
-                          AeroProps(i,j,k)%dpg(n)   = buffer(i,j,k,n,2)
-                          AeroProps(i,j,k)%sig(n)   = buffer(i,j,k,n,3)
-                          AeroProps(i,j,k)%kap(n)   = buffer(i,j,k,n,4)
-                          AeroProps(i,j,k)%den(n)   = buffer(i,j,k,n,5)
-                          AeroProps(i,j,k)%fdust(n) = buffer(i,j,k,n,6)
-                          AeroProps(i,j,k)%fsoot(n) = buffer(i,j,k,n,7)
-                          AeroProps(i,j,k)%forg(n)  = buffer(i,j,k,n,8)
+              if (USE_MOIST_BUFFER) then
+                 do k = 1, LM
+                    do j = 1, JM
+                       do i = 1, IM
+                          do n = 1, n_modes
+                             AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1)
+                             AeroProps(i,j,k)%dpg(n)   = buffer(i,j,k,n,2)
+                             AeroProps(i,j,k)%sig(n)   = buffer(i,j,k,n,3)
+                             AeroProps(i,j,k)%kap(n)   = buffer(i,j,k,n,4)
+                             AeroProps(i,j,k)%den(n)   = buffer(i,j,k,n,5)
+                             AeroProps(i,j,k)%fdust(n) = buffer(i,j,k,n,6)
+                             AeroProps(i,j,k)%fsoot(n) = buffer(i,j,k,n,7)
+                             AeroProps(i,j,k)%forg(n)  = buffer(i,j,k,n,8)
+                          end do
+                          AeroProps(i,j,k)%nmods       = n_modes                 ! no need of a 3D field: aero provider specific
                        end do
-                       AeroProps(i,j,k)%nmods       = n_modes                 ! no need of a 3D field: aero provider specific
                     end do
                  end do
-              end do
 
-              deallocate(buffer, __STAT__)
+                 deallocate(buffer, __STAT__)
+              else
+                 AeroProps(:,:,:)%num(n)   = aci_num
+                 AeroProps(:,:,:)%dpg(n)   = aci_dgn
+                 AeroProps(:,:,:)%sig(n)   = aci_sigma
+                 AeroProps(:,:,:)%kap(n)   = aci_hygroscopicity
+                 AeroProps(:,:,:)%den(n)   = aci_density
+                 AeroProps(:,:,:)%fdust(n) = aci_f_dust
+                 AeroProps(:,:,:)%fsoot(n) = aci_f_soot
+                 AeroProps(:,:,:)%forg(n)  = aci_f_organic
+                 AeroProps(:,:,:)%nmods    = n_modes                 ! no need of a 3D field: aero provider specific
+              end if
 
               deallocate(aero_aci_modes, __STAT__)
           end if
