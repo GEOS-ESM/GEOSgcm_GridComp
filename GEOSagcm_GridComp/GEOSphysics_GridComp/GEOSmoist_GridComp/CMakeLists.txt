@@ -17,7 +17,7 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base FKB 
   INCLUDES ${INC_ESMF})
 
 get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)

@@ -1263,7 +1263,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'KH     ','KPBL   ','KPBL_SC',            &
-                         'TKE    '/),                              &
+                         'TKE    ', 'KM', 'RI'/),                  &  !DONIF
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )

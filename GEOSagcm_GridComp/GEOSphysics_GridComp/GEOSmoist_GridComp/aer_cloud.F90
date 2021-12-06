@@ -2,6 +2,8 @@
 
  use MAPL_ConstantsMod, r8 => MAPL_R8
  use m_fpe, only: isnan
+ use mod_network , only: network_type
+ use mod_kinds, only: ik, rk
 
  !This module calculates the number cocentration of activated aerosol particles for liquid and ice clouds, 
 ! according to the models of Nenes & Seinfeld (2003), Fountoukis and Nenes (2005) and Barahona and Nenes (2008, 2009).
@@ -12,6 +14,7 @@
 
       implicit none
       private
+      save
       
       public :: aerosol_activate
       public :: AerConversion	
@@ -21,6 +24,7 @@
       public :: aer_cloud_init
       public :: vertical_vel_variance
       public :: gammp
+      public :: Wneuralnet
     
        integer, parameter ::  &
         nsmx_par = 20, npgauss=10 !maximum number of 	
@@ -96,6 +100,8 @@
                     frac_dust(5), frac_bc, frac_org, aseasalt, nseasalt_ice, &
                     INSSfactor
 
+! Neural Network parameterization of vertical vel  variance (Barahona et al. 2021)    
+      type (network_type) :: Wnet
       
 !==================================================================
 
@@ -193,10 +199,11 @@
  
       CONTAINS
  
-      subroutine aer_cloud_init()
+      subroutine aer_cloud_init(use_wnet)
   
-        real*8 :: daux, sigaux, ahet_bc
-        integer ::ix
+       real*8 :: daux, sigaux, ahet_bc
+       real, intent(in):: use_wnet
+       integer ::ix
        call AerConversion_base
 
        !heterogeneous freezing!!!!!!!!!!!!
@@ -208,11 +215,13 @@
 
        !Calculate fractions above 0.1 microns (only for Gocart)
        do ix =  1, 5          
-	 daux = AerPr_base_polluted%dpg(ix) 
-	 sigaux =  AerPr_base_polluted%sig(ix) 		 
+	   daux = AerPr_base_polluted%dpg(ix) 
+	   sigaux =  AerPr_base_polluted%sig(ix) 		 
          frac_dust(ix)=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
 			       /sigaux/sq2_par))
-			       
+                   
+      
+      if (use_wnet .gt. 0.)  call Wnet % load('./Wnet_weights.rc')  		       
 	
 			
        end do
@@ -1028,15 +1037,21 @@
 
 
 
+
+
+
 !=======================================================================
-!============================creates normalized input for the Wnet Neural Network==========
+!============================runs the Wnet Neural Network==========
 
-subroutine Wnet_input(Wnet_in, T, DENS, U, V, W, KMN, RI, QV, QI, QL)
+subroutine Wneuralnet(sigmaWnet, T, DENS, U, V, W, KMN, RI, QV, QI, QL)
 
-real, dimension (:), intent(in) ::  T, DENS, U, V, W, KMN, RI, QV, QI, QL
-real, dimension(480), intent(out) :: Wnet_in
+real, dimension (72), intent(in) ::  T, DENS, U, V, W, KMN, RI, QV, QI, QL
+real, dimension (72), intent(inout) :: sigmaWnet 
+real, dimension(480):: Wnet_in
+real, dimension(48) :: Wnet_out
 real, dimension(10) :: means, stds
-integer :: i1, i2
+integer :: i1, i2, index
+real, parameter :: SWexp = 1.333 
 
  means= (/243.9, 0.6, 6.3, 0.013, 0.0002, 5.04, 21.8, 0.002, 9.75e-7, 7.87e-6/) !hardcoded from G5NR
  stds = (/30.3, 0.42, 16.1, 7.9, 0.05, 20.6, 20.8, 0.0036, 7.09e-6, 2.7e-5/)
@@ -1045,50 +1060,73 @@ integer :: i1, i2
 !===T  
  i1 =  1
  i2 = 48 
- Wnet_in(i1:i2) = (T(23:71) - means(1))/stds(1) 
+ Wnet_in(i1:i2) = (T(24:71) - means(1))/stds(1) 
 !===DENS  
  i1 = 49
  i2 = 96 
- Wnet_in(i1:i2) = (DENS(23:71) - means(2))/stds(2) 
+ Wnet_in(i1:i2) = (DENS(24:71) - means(2))/stds(2) 
 !===U  
  i1 = 97
  i2 = 144 
- Wnet_in(i1:i2) = (U(23:71) - means(3))/stds(3) 
+ Wnet_in(i1:i2) = (U(24:71) - means(3))/stds(3) 
 !===V  
  i1 = 145
  i2 = 192 
- Wnet_in(i1:i2) = (V(23:71) - means(4))/stds(4) 
+ Wnet_in(i1:i2) = (V(24:71) - means(4))/stds(4) 
 
 !===W  
  i1 = 193
  i2 = 240 
- Wnet_in(i1:i2) = (W(23:71) - means(5))/stds(5) 
+ Wnet_in(i1:i2) = (W(24:71) - means(5))/stds(5) 
 
 !===KMN 
  i1 = 241
  i2 = 288 
- Wnet_in(i1:i2) = (KMN(23:71) - means(6))/stds(6) 
+ Wnet_in(i1:i2) = (KMN(24:71) - means(6))/stds(6) 
 !===RI 
  i1 = 289
  i2 = 336 
- Wnet_in(i1:i2) = (RI(23:71) - means(7))/stds(7) 
+ Wnet_in(i1:i2) = (RI(24:71) - means(7))/stds(7) 
 
 !===Qv
  i1 = 337
  i2 = 384
- Wnet_in(i1:i2) = (QV(23:71) - means(8))/stds(8) 
+ Wnet_in(i1:i2) = (QV(24:71) - means(8))/stds(8) 
 
 !===QI 
  i1 = 385
  i2 = 432 
- Wnet_in(i1:i2) = (QI(23:71) - means(9))/stds(9) 
+ Wnet_in(i1:i2) = (QI(24:71) - means(9))/stds(9) 
 
 !===Ql 
  i1 = 433
  i2 = 480 
- Wnet_in(i1:i2) = (QL(23:71) - means(10))/stds(10) 
+ Wnet_in(i1:i2) = (QL(24:71) - means(10))/stds(10) 
+ 
+ Wnet_out = Wnet % output(Wnet_in)
+ 
+ Wnet_out = max(Wnet_out, 0.0)
+  
+  !do index =  1, 48
+  ! if (Wnet_out(index) /=  Wnet_out(index)) Wnet_out(index) =0.001
+  !end do 
+ Wnet_out =  Wnet_out**SWexp
+ sigmaWnet(24:71) = Wnet_out
+ 
+ if (.FALSE.) then 
+     print*, '================='
+     print*, '================='
+     print *, '======in========' 
+     print *, Wnet_in
+     print *, '======out========' 
+     do index =  1, 48
+        print *, index+24, Wnet_out(index)
+     end do 
+     print *, '======sigmaa========' 
+     print *, sigmaWnet
+ end if 
    
-end subroutine  Wnet_input
+end subroutine  Wneuralnet
 
 !=======================================================================
 !=======================================================================
@@ -1260,16 +1298,17 @@ end subroutine getINsubset
 
     type (AerProps), intent(inout) :: aerout
    
-           aerout%num = 0.0
+       aerout%num = 0.0
 	   aerout%dpg =  1.0e-9
 	   aerout%sig =  2.0
 	   aerout%kap =  0.2
 	   aerout%den = 2200.0
 	   aerout%fdust  =  0.0
-           aerout%fsoot  =  0.0
+       aerout%fsoot  =  0.0
 	   aerout%forg   =  0.0
 	   aerout%nmods = 1
 	   
+
    end subroutine init_Aer
    
       
