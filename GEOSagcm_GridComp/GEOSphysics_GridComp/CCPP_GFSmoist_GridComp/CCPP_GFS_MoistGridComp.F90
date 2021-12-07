@@ -444,7 +444,7 @@ contains
       real, pointer, dimension(:,:,:) :: PLE, T, U, V, TH, OMEGA, ZLE
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, &
                                          QLCN, CLLS, CLCN, QILS, QICN
-      real, pointer, dimension(:,:,:) :: QCTOT, QLTOT, QITOT, QRTOT, QSTOT
+      real, pointer, dimension(:,:,:) :: QCTOT, QLTOT, QITOT, QRTOT, QSTOT, QGTOT
       real, pointer, dimension(:,:,:) :: DTDT_moist
       real, pointer, dimension(:,:,:) :: UI, VI, WI, TI, KH, TKE, DTDTFRIC, DPDTMST,&
                                          DQDT_GEOS, DQIDT, DQLDT, THMOIST, SMOIST
@@ -537,6 +537,7 @@ contains
       !--------------------
 
       call MAPL_GetPointer(EXPORT, QSTOT,    'QSTOT'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QGTOT,    'QGTOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QRTOT,    'QRTOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QITOT,    'QITOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QLTOT,    'QLTOT'   , RC=STATUS); VERIFY_(STATUS)
@@ -707,7 +708,10 @@ contains
             prsl(ij,LM:1:-1) = 0.5*(PLE(i,j,0:LM-1) + PLE(i,j,1:LM))
             delp(ij,LM:1:-1) = PLE(i,j,1:LM) - PLE(i,j,0:LM-1)
             prslk(ij,1:LM) = (prsl(ij,1:LM)/MAPL_P00)**MAPL_KAPPA
-            kpbl(ij) = int(KPBLIN(i,j))
+            !kpbl(ij) = int(KPBLIN(i,j))
+            if (int(KPBLIN(I,J)) == 0) KPBLIN(I,J) = LM-1
+            kpbl(ij) = LM-int(KPBLIN(i,j))+1
+            !if(kpbl(ij) >= 181) print *, __FILE__,__LINE__,LM, int(KPBLIN(i,j)), kpbl(ij)
             prsi(ij,LM+1:1:-1) = PLE(i,j,0:LM)
             gt0(ij,LM:1:-1) = T(i,j,1:LM)
             gu0(ij,LM:1:-1) = U(i,j,1:LM)
@@ -1144,6 +1148,7 @@ contains
       if (associated(XQICN  ))   XQICN   = QICN
       if (associated(XCLCN  ))   XCLCN   = CLCN
       if (associated(QSTOT  ))   QSTOT   = QSNOW
+      if (associated(QGTOT  ))   QGTOT   = QGRAUPEL
       if (associated(QRTOT  ))   QRTOT   = QRAIN
       if (associated(QITOT  ))   QITOT   = QICN + QILS + QSNOW + QGRAUPEL
       if (associated(QLTOT  ))   QLTOT   = QLCN + QLLS + QRAIN

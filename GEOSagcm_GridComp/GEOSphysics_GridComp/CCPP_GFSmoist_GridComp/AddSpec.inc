@@ -759,6 +759,14 @@
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
+         SHORT_NAME = 'QGTOT',                                      &
+         LONG_NAME  = 'mass_fraction_of_falling_graupel',              &
+         UNITS      = 'kg kg-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME = 'QPTOTLS',                                    &
          LONG_NAME  = 'mass_fraction_of_large_scale_falling_precip', & 
          UNITS      = 'kg kg-1',                                    &
