@@ -7737,8 +7737,8 @@ contains
                     AeroProps(:,:,:)%fdust(n) = aci_f_dust
                     AeroProps(:,:,:)%fsoot(n) = aci_f_soot
                     AeroProps(:,:,:)%forg(n)  = aci_f_organic
-                    AeroProps(:,:,:)%nmods    = n_modes                 ! no need of a 3D field: aero provider specific
                  end do
+                 AeroProps(:,:,:)%nmods = n_modes                 ! no need of a 3D field: aero provider specific
               end if
 
               deallocate(aero_aci_modes, __STAT__)
