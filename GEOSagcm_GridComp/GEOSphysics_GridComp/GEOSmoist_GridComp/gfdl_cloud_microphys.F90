@@ -1242,7 +1242,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink
-                    qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,qrmin) )
+                    qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,qcmin) )
                 endif
             endif
         enddo
@@ -1254,7 +1254,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
 
        ! Use In-Cloud condensate
-       qadum = max(qa,qrmin)
+       qadum = max(qa,qcmin)
        ql = ql/qadum
        qi = qi/qadum
         
@@ -1288,7 +1288,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
-                    qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qrmin) )
+                    qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qcmin) )
                 endif
             endif
         enddo
@@ -1638,7 +1638,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! only rate is used (for snow melt) since tc > 0.
                 ! -----------------------------------------------------------------------
                 
-                if (ql > qrmin) then
+                if (ql > qcmin) then
                     factor = denfac (k) * csacw * exp (0.8125 * log (qs * den (k)))
                     psacw = factor / (1. + dts * factor) * ql ! rate
                 else
@@ -1708,7 +1708,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! -----------------------------------------------------------------------
                 
                 qden = qg * den (k)
-                if (ql > qrmin) then
+                if (ql > qcmin) then
                     factor = cgacw * qden / sqrt (den (k) * sqrt (sqrt (qden)))
                     pgacw = factor / (1. + dts * factor) * ql ! rate
                 endif
@@ -1776,9 +1776,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     tmp = fac_i2s * exp (0.025 * tc)
                 endif
                 
-                di (k) = max (di (k), qrmin)
+                di (k) = max (di (k), qcmin)
                 q_plus = qi + di (k)
-                if (q_plus > (qim + qrmin)) then
+                if (q_plus > (qim + qcmin)) then
                     if (qim > (qi - di (k))) then
                         dq = (0.25 * (q_plus - qim) ** 2) / di (k)
                     else
@@ -2102,7 +2102,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
           else
               evap = 0.0
           endif
-          qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
+          qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qcmin)))     ! new total condensate / old condensate 
           qv (k) = qv (k) + evap
           ql (k) = ql (k) - evap
           q_liq (k) = q_liq (k) - evap
@@ -2148,7 +2148,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         else
             dt_pisub = dts
             tc = tice - tz (k)
-            if (ql (k) > qrmin .and. tc > 0.) then
+            if (ql (k) > qcmin .and. tc > 0.) then
                 newqi = new_ice_condensate(tz (k), cnv_fraction, ql (k), qi (k))
                 sink = 3.3333e-10 * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
                 sink = max(0.0,min (newqi, fac_frz * tc / icpk (k), sink))
@@ -2179,7 +2179,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             qsi = iqs2 (tz (k), den (k), dqsdt)
             dq = qv (k) - qsi
             sink = dq / (1. + tcpk (k) * dqsdt)
-            if (qi (k) > qrmin) then
+            if (qi (k) > qcmin) then
                 ! eq 9, hong et al. 2004, mwr
                 ! for a and b, see dudhia 1989: page 3103 eq (b7) and (b8)
                 pidep = dt_pisub * dq * 349138.78 * exp (0.875 * log (qi (k) * den (k))) &
@@ -2198,7 +2198,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
                 sink = max (pidep, sink, - qi (k))
             endif
-            qa (k) = max(0.,min(1.,qa(k) * (qi(k)+sink + ql(k)) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
+            qa (k) = max(0.,min(1.,qa(k) * (qi(k)+sink + ql(k)) / max(qi(k)+ql(k),qcmin)))     ! new total condensate / old condensate 
             qv (k) = qv (k) - sink
             qi (k) = qi (k) + sink
             q_sol (k) = q_sol (k) + sink
@@ -2367,7 +2367,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! assuming subgrid linear distribution in horizontal; this is effectively a smoother for the
         ! binary cloud scheme
         ! -----------------------------------------------------------------------
-         if (qpz > qrmin) then
+         if (qpz > qcmin) then
              ! partial cloudiness by pdf:
              dq = max (qcmin, h_var * qpz)
              q_plus = qpz + dq ! cloud free if qstar > q_plus
@@ -2375,20 +2375,20 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
              if (icloud_f == 3) then
              ! triangular
                if(q_plus.le.qstar) then
-                  qa (k) = qa (k) + 0.0  ! no cloud change
+                  qa (k) = qcmin  ! little/no cloud cover
                elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
-                  qa (k) = min(1., qa (k) + (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
+                  qa (k) = max(qcmin,min(1., (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) )))
                elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
-                  qa (k) = min(1., qa (k) + 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) )))
+                  qa (k) = max(qcmin,min(1., ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) ))))
                elseif ( qstar.le.q_minus ) then
                   qa (k) = 1. ! air fully saturated; 100 % cloud cover
                endif
              else
              ! top-hat
                if(q_plus.le.qstar) then
-                 qa (k) = qa (k) + 0.0  ! no cloud change 
+                 qa (k) = qcmin  ! little/no cloud cover 
                elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
-                 qa (k) = max(0.0, qa (k) + min(1., (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
+                 qa (k) = max(qcmin, qa (k) + min(1., (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
                elseif (qstar .le. q_minus) then
                  qa (k) = 1. ! air fully saturated; 100 % cloud cover
                endif
@@ -2480,7 +2480,7 @@ subroutine revap_rac1 (hydrostatic, is, ie, dt, tz, qv, ql, qr, qi, qs, qg, den,
             ! accretion: pracc
             ! -----------------------------------------------------------------------
             
-            if (qr (i) > qrmin .and. ql (i) > qrmin .and. qsat < q_plus) then
+            if (qr (i) > qrmin .and. ql (i) > qcmin .and. qsat < q_plus) then
                 denfac (i) = sqrt (sfcrho / den (i))
                 sink = dt * denfac (i) * cracw * exp (0.95 * log (qr (i) * den (i)))
                 sink = sink / (1. + sink) * ql (i)
@@ -2625,7 +2625,7 @@ subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
         
         if (k0 < kbot) then
             do k = kbot - 1, k0, - 1
-                if (qi (k) > qrmin) then
+                if (qi (k) > qcmin) then
                     do m = k + 1, kbot
                         if (zt (k + 1) >= ze (m)) exit
                         if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
