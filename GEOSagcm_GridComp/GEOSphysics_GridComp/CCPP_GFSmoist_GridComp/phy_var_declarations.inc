@@ -1,24 +1,24 @@
-      real(kind=kind_phys), dimension(:), pointer  :: cnvprcp=>Null()
-      real(kind=kind_phys), dimension(:), pointer  :: cnvprcpb=>Null()
-      real(kind=kind_phys), dimension(:), pointer  :: totprcp   => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: totice    => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: totsnw    => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: totgrp    => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: totprcpb  => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: toticeb   => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: totsnwb   => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: totgrpb   => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: tdomr   => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: tdomzr   => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: tdomip   => Null()
-      real(kind=kind_phys), dimension(:), pointer  :: tdoms   => Null()
+      real(kind=kind_phys), dimension(IMJM) :: cnvprcp
+      real(kind=kind_phys), dimension(IMJM) :: cnvprcpb
+      real(kind=kind_phys), dimension(IMJM) :: totprcp
+      real(kind=kind_phys), dimension(IMJM) :: totice
+      real(kind=kind_phys), dimension(IMJM) :: totsnw
+      real(kind=kind_phys), dimension(IMJM) :: totgrp
+      real(kind=kind_phys), dimension(IMJM) :: totprcpb
+      real(kind=kind_phys), dimension(IMJM) :: toticeb
+      real(kind=kind_phys), dimension(IMJM) :: totsnwb
+      real(kind=kind_phys), dimension(IMJM) :: totgrpb
+      real(kind=kind_phys), dimension(IMJM) :: tdomr
+      real(kind=kind_phys), dimension(IMJM) :: tdomzr
+      real(kind=kind_phys), dimension(IMJM) :: tdomip
+      real(kind=kind_phys), dimension(IMJM) :: tdoms
 
-      real(kind=kind_phys), dimension(:), pointer  ::  cldwrk => Null()
+      real(kind=kind_phys), dimension(IMJM) ::  cldwrk
       ! dt3dt, dq3dt, du3dt, dv3dt upd_mf, dwn_mf, det_mf only allocated if ldiag3d == .true.
-      real(kind=kind_phys), dimension(:,:,:), pointer  :: du3dt => Null()
-      real(kind=kind_phys), dimension(:,:,:), pointer  :: dv3dt => Null()
-      real(kind=kind_phys), dimension(:,:,:), pointer  :: dt3dt => Null()
-      real(kind=kind_phys), dimension(:,:,:), pointer  :: dq3dt => Null()
+      real(kind=kind_phys), dimension(IMJM,LM,8) :: du3dt
+      real(kind=kind_phys), dimension(IMJM,LM,8) :: dv3dt
+      real(kind=kind_phys), dimension(IMJM,LM,11) :: dt3dt
+      real(kind=kind_phys), dimension(IMJM,LM,13) :: dq3dt
 
       real(kind=kind_phys), dimension(IMJM)  :: rainc
 

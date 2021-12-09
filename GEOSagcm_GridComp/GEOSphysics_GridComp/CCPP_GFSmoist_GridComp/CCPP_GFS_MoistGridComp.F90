@@ -440,8 +440,8 @@ contains
       type (ESMF_TimeInterval)  :: TINT
       real, pointer, dimension(:,:  ) :: FRLANDICE, FRLAND
       real, pointer, dimension(:  ) :: randomn => Null()
-      real, pointer, dimension(:,:  ) :: AREA, KPBLIN, ZPBL, TS
-      real, pointer, dimension(:,:,:) :: PLE, T, U, V, TH, OMEGA, ZLE
+      real, pointer, dimension(:,:  ) :: AREA, KPBLIN, TS, ZPBL
+      real, pointer, dimension(:,:,:) :: PLE, T, U, V, TH, OMEGA, ZL0
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, &
                                          QLCN, CLLS, CLCN, QILS, QICN
       real, pointer, dimension(:,:,:) :: QCTOT, QLTOT, QITOT, QRTOT, QSTOT, QGTOT
@@ -459,7 +459,6 @@ contains
       real, pointer, dimension(:,:,:) :: QX0, QLLSX0, QLCNX0, CLLSX0, CLCNX0, QILSX0, QICNX0, QCLSX0, QCCNX0
       real,    dimension(IM,JM)       :: TPREC
 
-      logical, save :: compute_firsttime = .true.
       integer :: i, j, k, ij, L
 #ifdef IMJM
 #undef IMJM
@@ -467,10 +466,12 @@ contains
 #define IMJM IM*JM      
 #include "phy_var_declarations.inc"
 
-      real, pointer, dimension(:,:) :: slmsk => Null()
+      real, dimension(IM,JM) :: slmsk
+      !real, dimension(IMJM) :: ZPBL
+      integer :: flip(LM)
       !real, dimension(IMJM,LM,ntrac) :: gq0
       real, dimension(IM,JM,LM)  ::  FQAL, FQAI, FQA, MASS
-      real, dimension(IM,JM,0:LM):: PKE, CNV_PLE, ZLE_local
+      real, dimension(IM,JM,0:LM):: PKE, CNV_PLE, ZLE_local, ZLE
       real,    dimension(IM,JM,  LM) :: TH1, PLO, PK, ZLO, GZLO
       !real, dimension(IM,JM,0:LM):: ZLE  !geopotential at model layer interfaces
       type(ESMF_VM) :: vm
@@ -528,7 +529,7 @@ contains
       call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TH,      'TH'      ,RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   ,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, ZLE,   'ZLE'   ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, ZL0,   'ZLE'   ,RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
@@ -610,56 +611,36 @@ contains
       if(associated(TSx0      )) TSx0       = TS
       if(associated(FRLANDx0  )) FRLANDx0   = FRLAND
 
-      if ( .not. associated(slmsk)) allocate(slmsk(IM,JM), stat=status); VERIFY_(status)
-      if ( .not. associated(cnvprcp)) allocate(cnvprcp(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(totprcp)) allocate(totprcp(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(totice)) allocate(totice(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(totsnw)) allocate(totsnw(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(totgrp)) allocate(totgrp(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(cnvprcpb)) allocate(cnvprcpb(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(totprcpb)) allocate(totprcpb(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(toticeb)) allocate(toticeb(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(totsnwb)) allocate(totsnwb(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(totgrpb)) allocate(totgrpb(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(cldwrk)) allocate(cldwrk(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(du3dt)) allocate(du3dt(IMJM,LM,8), stat=status); VERIFY_(status)
-      if ( .not. associated(dv3dt)) allocate(dv3dt(IMJM,LM,8), stat=status); VERIFY_(status)
-      if ( .not. associated(dt3dt)) allocate(dt3dt(IMJM,LM,11), stat=status); VERIFY_(status)
-      if ( .not. associated(dq3dt)) allocate(dq3dt(IMJM,LM,13), stat=status); VERIFY_(status)
-      if ( .not. associated(tdomr)) allocate(tdomr(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(tdomzr)) allocate(tdomzr(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(tdomip)) allocate(tdomip(IMJM), stat=status); VERIFY_(status)
-      if ( .not. associated(tdoms)) allocate(tdoms(IMJM), stat=status); VERIFY_(status)
       nncl = ncld
       PK  = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
-      if (compute_firsttime) then
-         slmsk = zero
-         cnvprcp = zero
-         cnvprcpb = zero
-         totprcp = zero
-         totice = zero
-         totsnw = zero
-         totgrp = zero
-         totprcpb = zero
-         toticeb = zero
-         totsnwb = zero
-         totgrpb = zero
-         cldwrk = zero
-         tdomr = zero
-         tdomzr = zero
-         tdomip = zero
-         tdoms = zero
+      slmsk = zero
+      cnvprcp = zero
+      cnvprcpb = zero
+      totprcp = zero
+      totice = zero
+      totsnw = zero
+      totgrp = zero
+      totprcpb = zero
+      toticeb = zero
+      totsnwb = zero
+      totgrpb = zero
+      cldwrk = zero
+      tdomr = zero
+      tdomzr = zero
+      tdomip = zero
+      tdoms = zero
       
-         where(FRLAND >= 0.5) slmsk=1.0
-         where(FRLANDICE >= 0.5) slmsk=2.0
+      where(FRLAND >= 0.5) slmsk=1.0
+      where(FRLANDICE >= 0.5) slmsk=2.0
 
-         tem     = con_rerth*con_rerth*(con_pi+con_pi)*con_pi
-         dxmax  = log(tem/(max_lon*max_lat))
-         dxmin  = log(tem/(min_lon*min_lat))
-         dxinv  = 1.0d0 / (dxmax-dxmin)
+      tem     = con_rerth*con_rerth*(con_pi+con_pi)*con_pi
+      dxmax  = log(tem/(max_lon*max_lat))
+      dxmin  = log(tem/(min_lon*min_lat))
+      dxinv  = 1.0d0 / (dxmax-dxmin)
 
-         compute_firsttime = .false.
-      end if
+      !- define the vector "flip" to invert the z-axis orientation
+      call flipz(flip,LM)
+
       dt3dt  = zero
       dq3dt  = zero
       du3dt  = zero
@@ -678,6 +659,11 @@ contains
                   dqdt=dqdt,errmsg=errmsg,errflg=status)
       VERIFY_(STATUS)
     
+     ! mimic GEOS_MoistGridComp
+      do L=LM,0,-1
+         ZLE(:,:,L) = ZL0(:,:,L) - ZL0(:,:,LM)
+      end do
+
       CNV_PLE  = PLE*.01
       PLO      = 0.5*(CNV_PLE(:,:,0:LM-1) +  CNV_PLE(:,:,1:LM  ) )
       PKE      = (      PLE/MAPL_P00)**(MAPL_KAPPA)
@@ -709,8 +695,13 @@ contains
             delp(ij,LM:1:-1) = PLE(i,j,1:LM) - PLE(i,j,0:LM-1)
             prslk(ij,1:LM) = (prsl(ij,1:LM)/MAPL_P00)**MAPL_KAPPA
             !kpbl(ij) = int(KPBLIN(i,j))
-            if (int(KPBLIN(I,J)) == 0) KPBLIN(I,J) = LM-1
-            kpbl(ij) = LM-int(KPBLIN(i,j))+1
+            !kpbl(ij) = LM-int(KPBLIN(i,j))+1
+            if (nint(KPBLIN(i,j)) /= 0) then
+               kpbl(ij) = max(1, flip(min( nint(KPBLIN(i,j)), LM)))
+            else
+               kpbl(ij) = 1
+            endif
+            !if(localPet == 0) print *, i,j,kpbl(ij),zpbl(i,j)
             !if(kpbl(ij) >= 181) print *, __FILE__,__LINE__,LM, int(KPBLIN(i,j)), kpbl(ij)
             prsi(ij,LM+1:1:-1) = PLE(i,j,0:LM)
             gt0(ij,LM:1:-1) = T(i,j,1:LM)
@@ -1019,6 +1010,7 @@ contains
                   !ntent(out)
                   errmsg=errmsg,errflg=status)
       VERIFY_(STATUS)
+      !call ESMF_VMBarrier(vm)
       !if(localPet == 31) print *, __FILE__, __LINE__, 'Rank=',localPet, maxval(gt0)
 
       !if (me == 0) print *, "phy_f3d(:,:,nleffr) ... ", nleffr
@@ -1205,6 +1197,18 @@ contains
        enddo
        return
     end function convert_precip
+
+    subroutine flipz(flip,mzp)
+       implicit none
+       integer, intent(In) :: mzp
+       integer, dimension(mzp), INtent(inout) :: flip
+       integer :: m,k
+       m=mzp
+       do k=1,mzp
+        flip(k)=m
+        m=m-1
+       enddo
+    end subroutine flipz
 
 !!!!!!!!-!-!-!!!!!!!!
    end subroutine Run
