@@ -1,6 +1,7 @@
 !  $Id$ 
 
 #include "MAPL_Generic.h"
+#define DEALLOC_(A) if(associated(A))then;A=0;if(MAPL_ShmInitialized)then; call MAPL_DeAllocNodeArray(A,rc=STATUS);else; deallocate(A,stat=STATUS);endif;_VERIFY(STATUS);NULLIFY(A);endif
 
 !=============================================================================
 module GEOS_CatchCNCLM45GridCompMod
@@ -7735,7 +7736,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
            VERIFY_(STATUS)
 
         end if
-        deallocate(mask)
+        DEALLOC_(mask)
 #endif
 
 ! call unified land model

@@ -1,4 +1,5 @@
 #include "MAPL_Generic.h"
+#define DEALLOC_(A) if(associated(A))then;A=0;if(MAPL_ShmInitialized)then; call MAPL_DeAllocNodeArray(A,rc=STATUS);else; deallocate(A,stat=STATUS);endif;_VERIFY(STATUS);NULLIFY(A);endif
 
 !=============================================================================
 module GEOS_CatchGridCompMod
@@ -5131,7 +5132,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            VERIFY_(STATUS)
 
         end if
-
+        DEALLOC_(mask)
 #endif
 
 ! Sanity Check to ensure IMPORT ITY from VEGDYN is consistent with INTERNAL ITY from CATCH
@@ -5323,7 +5324,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     
                     call inFmt%close()
                     deallocate(local_tmp_incr, global_tmp_incr)
-                    deallocate(mask)
+                    DEALLOC_(mask)
 
                     ! consolidate increment arrays  
                     allocate(ghtcnt_incr(6,NTILES))
