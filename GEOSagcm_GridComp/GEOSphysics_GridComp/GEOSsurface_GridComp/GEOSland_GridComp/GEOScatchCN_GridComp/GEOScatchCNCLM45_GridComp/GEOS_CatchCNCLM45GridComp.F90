@@ -4965,7 +4965,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer, save                   :: unit_i=0
         logical, save                   :: firsttime=.true.
         integer                         :: unit
-	integer 			:: NT_GLOBAL
+        integer                         :: NT_GLOBAL
 
 #endif
 
@@ -7561,7 +7561,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 #ifdef DBG_CNLSM_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+        call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
         VERIFY_(STATUS)
 
         call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
@@ -7653,8 +7653,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
             firsttime = .false.
            unit = GETFILE( "catchcnclm45_params.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
-
-           NT_GLOBAL = size(mask)
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)

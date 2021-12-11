@@ -4965,7 +4965,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 #ifdef DBG_CATCH_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+        call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
         VERIFY_(STATUS)
 
         call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
@@ -5053,8 +5053,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             firsttime = .false.
            unit = GETFILE( "catch_params.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
-
-           NT_GLOBAL = size(mask)
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
@@ -5269,7 +5267,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  if (fexist) then
                     call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
                     VERIFY_(STATUS)
-                    call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+                    call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
                     VERIFY_(STATUS)
                     call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
                     VERIFY_(STATUS)
@@ -5281,7 +5279,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     variables => InCfg%get_variables()
                     var_iter = variables%begin()
                     
-                    NT_GLOBAL = size(mask)
                     allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
                     allocate(local_tmp_incr(NTILES), source = 0.0)
                     
