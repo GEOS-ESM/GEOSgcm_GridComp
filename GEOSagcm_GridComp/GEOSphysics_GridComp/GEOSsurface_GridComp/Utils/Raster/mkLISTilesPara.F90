@@ -229,9 +229,9 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
 ! opening and writing  .til and .rst cti_stat and catchment.def files
 ! -------------------------------------------------------------------
 
-  open (11,file='/discover/nobackup/rreichle/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/FV_360x180_DE_360x180_DE.til', &
+  open (11,file='/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/FV_360x180_DE_360x180_DE.til', &
        form='formatted',action='READ',status='OLD')
-  open (12,file='/discover/nobackup/rreichle/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/cti_stats.dat',                &
+  open (12,file='/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/cti_stats.dat',                &
        form='formatted',action='READ',status='OLD')
 
   read (11,*) i
