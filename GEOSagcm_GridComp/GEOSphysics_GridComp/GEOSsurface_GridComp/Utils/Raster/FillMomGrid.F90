@@ -82,7 +82,7 @@ INCLUDE "netcdf.inc"
 
     if(I < 2 .or. I > 11) then
        print *, trim(Usage)
-       call exit(1)
+       error stop 1
     end if
 
     nxt = 1
@@ -117,7 +117,7 @@ INCLUDE "netcdf.inc"
           Overlay = trim(arg)
        case default
           print *, trim(Usage)
-          call exit(1)
+          error stop 1
        end select
 
        nxt = nxt + 1
@@ -138,7 +138,7 @@ INCLUDE "netcdf.inc"
 
     if(trim(Overlay)=='') then
       print*, 'Must Provide Overlay'
-      call exit(0)
+      stop
     end if
 
     call ReadGridFile(GridFile, MOMLAT, MOMWET)
@@ -285,7 +285,7 @@ INCLUDE "netcdf.inc"
 ! All done
 
     if(Verb) print * , 'Terminated Normally'
-    call exit(0)
+    stop
 
 contains
 

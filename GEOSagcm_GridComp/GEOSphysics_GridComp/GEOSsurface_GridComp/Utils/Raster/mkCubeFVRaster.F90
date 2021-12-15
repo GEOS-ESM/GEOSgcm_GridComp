@@ -27,7 +27,7 @@
     character*128        :: ARG, GridName=''
     character*1          :: opt
     integer              :: ncells !  Cells on edges of cubed faces
-    integer              :: I, J, N, status, iargc, nxt
+    integer              :: I, J, N, status, nxt
     integer              :: js,jv
     real*8               :: dx, dy
     real*8,  allocatable :: xs(:,:), ys(:,:), xv(:,:,:), yv(:,:,:)
@@ -40,22 +40,22 @@
 ! Process Arguments
 !------------------
 
-    I = iargc()
+    I = command_argument_count()
 
     if(I < 1 .or. I > 10) then
        print *, Usage
-       call exit(66)
+       error stop 66
     end if
 
     nxt = 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
     do while(arg(1:1)=='-')
 
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           endif
        else
           arg = arg(3:)
@@ -76,11 +76,11 @@
           GridName = trim(arg)
        case default
           print *, Usage
-          call exit(1)
+          error stop 1
        end select
 
        nxt = nxt + 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
     end do
 
     read(arg,'(i6)') ncells
@@ -141,6 +141,6 @@
 ! All done
 !---------
 
-    call exit(0)
+    stop
 
   end program mkCubeFVRaster

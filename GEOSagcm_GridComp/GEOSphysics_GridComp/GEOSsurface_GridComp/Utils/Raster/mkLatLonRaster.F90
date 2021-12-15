@@ -73,7 +73,7 @@
     if(I < 2 .or. I > 17) then
        print *, "Wrong Number of arguments: ", i
        print *, trim(Usage)
-       call exit(1)
+       error stop 1
     end if
 
     nxt = 1
@@ -110,7 +110,7 @@
           UseType = .true.
        case default
           print *, trim(Usage)
-          call exit(1)
+          error stop 1
        end select
        nxt = nxt + 1
        call getarg(nxt,arg)
@@ -162,7 +162,7 @@
     case default
        print *, " Bad pole grid type. Must be PE or PC:", PT
        print *, trim(Usage)
-       call exit(1)
+       error stop 1
     end select
 
     if(trim(Gridname) == '') then
@@ -213,7 +213,7 @@
 ! All Done
 !---------
 
-    call Exit(0)
+    stop
 
   end program MkLatLonRaster
 

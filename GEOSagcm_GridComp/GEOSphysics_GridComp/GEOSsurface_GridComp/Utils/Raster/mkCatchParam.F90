@@ -51,7 +51,7 @@
     character*2          :: DL ='DC'
     character*6          :: MA = 'MODIS2'
     integer              :: II, JJ, Type
-    integer              :: I, J, iargc, nxt
+    integer              :: I, J, nxt
     real*8               :: dx, dy, lon0
     logical :: regrid
     character(len=400), dimension (22) ::  Usage 
@@ -109,8 +109,8 @@ integer :: n_threads=1
 
     print *, running_omp , n_threads
 
-!   call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
-!   call system('cd ..')
+!   call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
+!   call execute_command_line('cd ..')
 
     USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -m MA -l LD -s SD -e EASE                       "
     USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                               "
@@ -148,24 +148,24 @@ integer :: n_threads=1
        write (log_file,'(a6,a3,L1)')'F25Tag',' : ' ,F25Tag
     endif
 
-    I = iargc()
+    I = command_argument_count()
 
     if(I < 1 .or. I > 16) then
        write (log_file,'(a)') "Wrong Number of arguments: ", i
        do j = 1,size(usage)
           print "(sp,a100)", Usage(j)
        end do
-       call exit(1)
+       error stop 1
     end if
 
     nxt = 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
     do while(arg(1:1)=='-')
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           endif
        else
           arg = arg(3:)
@@ -192,10 +192,10 @@ integer :: n_threads=1
           do j = 1,size(usage)
              print "(sp,a100)", Usage(j)
           end do
-          call exit(1)
+          error stop 1
        end select
        nxt = nxt + 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
     end do
 
     if(F25Tag) then
@@ -208,7 +208,7 @@ integer :: n_threads=1
 
     endif
 
-   call getenv ("MASKFILE"        ,MaskFile        )
+   call get_environment_variable ("MASKFILE"        ,MaskFile        )
  
   if(trim(Gridname) == '') then
       write (log_file,'(a)')'Unable to create parameters without til/rst files.... !'
@@ -477,7 +477,7 @@ integer :: n_threads=1
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'
               
-       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
+       call execute_command_line ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
     endif
 
     close (log_file,status='keep') 

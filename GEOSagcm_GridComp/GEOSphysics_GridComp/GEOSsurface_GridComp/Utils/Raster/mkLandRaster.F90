@@ -21,7 +21,6 @@
     integer, parameter     :: nx0 = 8640
     integer, parameter     :: ny0 = 4320
 
-    integer                :: IARGC
     integer                :: i,j,k,n, status,ncid, ncid2
     integer                :: ip, nxt
     integer                :: type, maxtiles, nx, ny
@@ -89,27 +88,27 @@
     InputFile = &
           "data/CATCH/global.cat_id.catch.DL"
      
-    I = iargc()
+    I = command_argument_count()
 
     if(I > 13) then
        print *, "Wrong Number of arguments: ", i
        print *, trim(Usage)
-       call exit(1)
+       error stop 1
     end if
 
     nxt = 1
 
     do while(nxt<=I)
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
        if(arg(1:1)/='-') then
           print *, trim(Usage)
-          call exit(1)
+          error stop 1
        end if
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           end if
        else
           arg = arg(3:)
@@ -134,7 +133,7 @@
           read(arg,*) maxtiles
        case default
           print *, trim(Usage)
-          call exit(1)
+          error stop 1
        end select
 
        nxt = nxt + 1
@@ -142,7 +141,7 @@
     
 !   Check for the 10 arc-sec MaskFile (SM)
 
-    call getenv ("MASKFILE"        ,MaskFile        )
+    call get_environment_variable ("MASKFILE"        ,MaskFile        )
 
     print *,'Using Mask file : ',trim(MaskFile)
 
@@ -402,7 +401,7 @@
              if(ip>maxtiles) then
                 print *, "Exceeded maxtiles = ", maxtiles, &
                          ". Use -t option to increase."
-                call exit(1)
+                error stop 1
              end if
              
              select case (Pix)
@@ -490,7 +489,7 @@
 ! All done
 
   if(Verb) print * , 'Terminated Normally'
-  call exit(0)
+  stop
 
 contains
 

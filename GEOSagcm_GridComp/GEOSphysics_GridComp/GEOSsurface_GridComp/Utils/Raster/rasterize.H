@@ -408,14 +408,14 @@
 
     if(k/=0) then 
        print *, 'allocation error ', k, ' at line ',__LINE__
-       call exit(1)
+       error stop 1
     endif		
 
     allocate(rTable(1:4,maxtiles),stat=k)
 
     if(k/=0) then 
        print *, 'allocation error ', k, ' at line ',__LINE__
-       call exit(1)
+       error stop 1
     endif		
 
     if(uVerb) then

@@ -49,7 +49,7 @@
    if(I < 2 .or. i > 7) then
       print *, "Wrong Number of arguments: ", i
       print *, trim(Usage)
-      call exit(1)
+      error stop 1
    end if
    
    nxt = 1
@@ -76,7 +76,7 @@
          Verb  = .true.
       case default
          print *, trim(Usage)
-         call exit(1)
+         error stop 1
       end select
       nxt = nxt + 1
       call getarg(nxt,arg)
@@ -99,7 +99,7 @@
 
    if(k==21) then
       print *, 'Bad GMIT grid file', trim(GridDir)//'/tile001.mitgrid'
-      call exit(1)
+      error stop 1
    end if
 
    nx  = nint(sqrt(length/real(k,kind=rkind)))
@@ -182,6 +182,6 @@
    call LRRasterize(RASTERFILE,XV,YV,nc=nc,nr=nr,&
                     SurfaceType=0,Verb=Verb)
 
-   call exit(0)
+   stop
 
  end program MAIN

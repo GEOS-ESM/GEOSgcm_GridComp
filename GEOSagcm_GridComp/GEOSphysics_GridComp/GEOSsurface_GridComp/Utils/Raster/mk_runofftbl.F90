@@ -278,5 +278,5 @@ program Runoff
 
   print *, "Completed successfully"
 
-  call exit(0)
+  stop
 end program Runoff

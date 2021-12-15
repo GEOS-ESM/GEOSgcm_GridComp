@@ -2496,7 +2496,7 @@ MODULE lsm_routines
 
                 CASE DEFAULT
                    print *, 'IN IRRIGATION_RATE : IRRIGATION_METHOD can  be 0, 1, or 2'
-                   call exit(1)
+                   error stop 1
                 END SELECT
              END IF CHECK_CROP_LAITHRESH
           END DO TWO_CLMTYPS

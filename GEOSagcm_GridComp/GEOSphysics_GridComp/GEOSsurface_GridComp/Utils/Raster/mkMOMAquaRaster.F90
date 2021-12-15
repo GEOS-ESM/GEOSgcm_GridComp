@@ -45,7 +45,7 @@ INCLUDE "netcdf.inc"
     if(I < 1 .or. I > 8) then
        print *, "Wrong Number of arguments: ", i
        print *, trim(Usage)
-       call exit(1)
+       error stop 1
     end if
 
     nxt = 1
@@ -75,7 +75,7 @@ INCLUDE "netcdf.inc"
           GridName = trim(arg) 
        case default
           print *, trim(Usage)
-          call exit(1)
+          error stop 1
        end select
        nxt = nxt + 1
        call getarg(nxt,arg)
@@ -105,7 +105,7 @@ INCLUDE "netcdf.inc"
     call LRRasterize(GridName,xvert,yvert,nc=nc,nr=nr,&
                      SurfaceType=0,Verb=Verb,Here=Here)
 
-    call exit(0)
+    stop
 
 contains
 

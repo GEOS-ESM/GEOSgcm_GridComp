@@ -79,7 +79,7 @@ program mkOverlaySimple
 
     if(I < 2 .or. I > 11) then
        print *, trim(Usage)
-       call exit(1)
+       error stop 1
     end if
 
     nxt = 1
@@ -114,7 +114,7 @@ program mkOverlaySimple
           Overlay = trim(arg)
        case default
           print *, trim(Usage)
-          call exit(1)
+          error stop 1
        end select
 
        nxt = nxt + 1
@@ -319,7 +319,7 @@ program mkOverlaySimple
                 print *, "Exceeded maxtiles = ", maxtiles," at j= ",  j, &
                           " ny=", ny,  " i=", i, " nx=", nx
                 print *, "Use -t option to increase."
-                call exit(1)
+                error stop 1
              end if
 
              iTable(0 ,ip) = nint(Table2(1,Pix2))
@@ -437,7 +437,7 @@ program mkOverlaySimple
 ! All done
 
     if(Verb) print * , 'Terminated Normally'
-    call exit(0)
+    stop
 
 
   end program mkOverlaySimple
