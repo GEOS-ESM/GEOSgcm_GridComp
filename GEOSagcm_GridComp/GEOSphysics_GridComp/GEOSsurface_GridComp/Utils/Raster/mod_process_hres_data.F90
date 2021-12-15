@@ -6249,7 +6249,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            date_time_values(5),':',date_time_values(6),':',date_time_values(7)
 !      call system('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
 !      call sleep (5)
-      call getenv ("USER"        ,MYNAME        )
+      call get_environment_variable ("USER"        ,MYNAME        )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'Date'     , LEN_TRIM(time_stamp),trim(time_stamp))
       status = NF_PUT_ATT_TEXT(NCVegOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
