@@ -1,4 +1,5 @@
-#define VERIFY_(A) if(A /=0)then;print *,'ERROR code',A,'at',__LINE__;call exit(3);endif
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
 
 PROGRAM mk_GEOSldasRestarts
 
@@ -117,6 +118,7 @@ PROGRAM mk_GEOSldasRestarts
   logical             :: second_visit
   integer :: zoom, k, n, infos
   character*100 :: InRestart
+  character(100) :: Iam = "mk_GEOSldasRestarts"
 
   VAR_COL = VAR_COL_CLM40
   VAR_PFT = VAR_PFT_CLM40
@@ -210,7 +212,7 @@ PROGRAM mk_GEOSldasRestarts
 
      ! This call is to reorder a LDASsa restart file (RESTART: 1)
 
-     call reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile)
+     call reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile, __RC__)
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      call MPI_FINALIZE(mpierr)
@@ -292,7 +294,7 @@ PROGRAM mk_GEOSldasRestarts
      stop
   endif
   if (root_proc) then 
-     call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData/clsm/','OutData/'//trim(MODEL)//'_internal_rst'  )
+     call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData/clsm/','OutData/'//trim(MODEL)//'_internal_rst', __RC__)
   endif
 
   call MPI_Barrier(MPI_COMM_WORLD, STATUS)
@@ -334,7 +336,7 @@ contains
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
     type(Netcdf4_FileFormatter)  :: ldFmt
     type(FileMetadata)           :: meta_data
- 
+    character(256) :: Iam = "regrid_from_xgrid" 
     ! read NTILES from output BCs and tile_coord from GEOSldas/LDASsa input restarts
     
     open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
@@ -369,10 +371,10 @@ contains
     endif
 
     if (index(MODEL, 'catchcn') /=0) then 
-       call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
-       meta_data = ldFmt%read(rc=rc)
-       call ldFmt%close(rc=rc)
-       if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
+       call ldFmt%open(trim(rst_file) , pFIO_READ,__RC__)
+       meta_data = ldFmt%read(__RC__)
+       call ldFmt%close(__RC__)
+       if(meta_data%get_dimension('unknown_dim3',rc=status) == 105) then
            clm45  = .true.
            VAR_COL = VAR_COL_CLM45 
            VAR_PFT = VAR_PFT_CLM45
@@ -533,7 +535,7 @@ contains
         ! ===========================================================
 
         filetype = 0
-        call MAPL_NCIOGetFileType(rst_file, filetype,rc=rc)
+        call MAPL_NCIOGetFileType(rst_file, filetype,__RC__)
         if(filetype == 0) then
            ! GEOSldas CATCH/CATCHCN or CATCHCN LDASsa
            call  put_land_vars  (NTILES, ntiles_rst, id_glb, ld_reorder, model,  rst_file)
@@ -549,7 +551,7 @@ contains
            ! just delaying few seconds to allow the system to copy the file
         end do
 
-        call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData/clsm/','OutData/'//trim(model)//'_internal_rst'  )
+        call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData/clsm/','OutData/'//trim(model)//'_internal_rst', __RC__)
 
      endif
 
@@ -708,12 +710,13 @@ contains
   
   ! *****************************************************************************
 
-  SUBROUTINE  reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile)
+  SUBROUTINE  reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile, rc)
 
     implicit none
 
     real, intent (in)         :: SURFLAY
     character(*), intent (in) :: BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile
+    integer, optional, intent(out) :: rc
     character(256)            :: tile_coord
     character(300)            :: rst_file, out_rst_file
     type(Netcdf4_FileFormatter) :: InFmt,OutFmt, ldFmt
@@ -729,7 +732,9 @@ contains
     character(len=:), pointer :: vname,dname
     logical :: fexist, bin_out = .false.
     character(len=:), allocatable :: ftype
-   
+    character*256        :: Iam = "reorder_LDASsa_restarts"
+    integer :: status   
+ 
     if (trim(rstfile) == "NONE") then 
        ftype = ''
        if(trim(MODEL) == 'catch') ftype='.bin'
@@ -750,10 +755,10 @@ contains
     out_rst_file = trim(model)//ENS//'_internal_rst.'//YYYYMMDDHH(1:8)
 
     if (index(model,'catchcn') /=0) then
-        call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
-        meta_data = ldFmt%read(rc=rc)
-        call ldFmt%close(rc=rc)
-        if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
+        call ldFmt%open(trim(rst_file) , pFIO_READ,__RC__)
+        meta_data = ldFmt%read(__RC__)
+        call ldFmt%close(__RC__)
+        if(meta_data%get_dimension('unknown_dim3',rc=status) == 105) then
            VAR_COL = VAR_COL_CLM45 
            VAR_PFT = VAR_PFT_CLM45
            if ( .not. clm45) stop ' ERROR: Given clm45 restart, but the model is not clm45'
@@ -784,22 +789,22 @@ contains
     endif
 
     if(trim(MODEL) == 'catch') then
-       call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,rc=rc)
+       call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,__RC__)
     end if
     if(index(MODEL, 'catchcn') /=0) then
       if (clm45) then
-         call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc)
+         call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, __RC__)
       else
-         call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , pFIO_READ, rc=rc)
+         call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , pFIO_READ, __RC__)
       endif
    end if
-   meta_data = InFmt%read(rc=rc)
-   call inFmt%close(rc=rc)
+   meta_data = InFmt%read(__RC__)
+   call inFmt%close(__RC__)
 
-   call meta_data%modify_dimension('tile',ntiles,rc=rc)
+   call meta_data%modify_dimension('tile',ntiles,__RC__)
 
-   call OutFmt%create(trim(out_rst_file),rc=rc)
-   call OutFmt%write(meta_data, rc=rc)
+   call OutFmt%create(trim(out_rst_file),__RC__)
+   call OutFmt%write(meta_data, __RC__)
 
 
    allocate (tile_id  (1:ntiles))
@@ -1018,10 +1023,10 @@ contains
 
    else ! CATCHCN 
      
-       call InFmt%open(trim(rst_file),pFIO_READ,rc=rc)
-       meta_data =  InFmt%read(rc=rc)
+       call InFmt%open(trim(rst_file),pFIO_READ,__RC__)
+       meta_data =  InFmt%read(__RC__)
 
-       call MAPL_VarRead ( InFmt,'TILE_ID',var1)
+       call MAPL_VarRead ( InFmt,'TILE_ID',var1, __RC__)
        if(sum (nint(var1) - LDAS2BCS) /= 0) then
           print *, 'Tile order mismatch ', sum(var1)/ntiles, sum(LDAS2BCS)/ntiles
           stop
@@ -1038,7 +1043,7 @@ contains
           ndims = var_dimensions%size()
 
           if (ndims == 1) then
-             call MAPL_VarRead ( InFmt,vname,var1)
+             call MAPL_VarRead ( InFmt,vname,var1, __RC__)
              var2 = var1 (tile_id)
              do n = 1,  NTILES
                 var2(n) = var1(g2d(n))
@@ -1060,7 +1065,7 @@ contains
              dname => var%get_ith_dimension(2)
              dim1=meta_data%get_dimension(dname)
              do j=1,dim1
-                call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j)
+                call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j, __RC__)
                 var2 = var1 (tile_id)
                 do n = 1,  NTILES
                    var2(n) = var1(g2d(n))
@@ -1084,7 +1089,7 @@ contains
              dim2=meta_data%get_dimension(dname)
              do i=1,dim2
                 do j=1,dim1
-                   call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j,offset2=i)
+                   call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j,offset2=i, __RC__)
                    var2 = var1 (tile_id)
                    do n = 1,  NTILES
                       var2(n) = var1(g2d(n))
@@ -1104,15 +1109,17 @@ contains
        deallocate (var1, var2, tile_id)
    endif
 
-   call read_bcs_data (ntiles, SURFLAY, trim(MODEL), trim(BCSDIR)//'/clsm/',trim(out_rst_file))
+   call read_bcs_data (ntiles, SURFLAY, trim(MODEL), trim(BCSDIR)//'/clsm/',trim(out_rst_file), __RC__)
 
    if(bin_out) then
-      call InFmt%open(trim(out_rst_file),pFIO_READ,rc=rc)
+      call InFmt%open(trim(out_rst_file),pFIO_READ,__RC__)
       open(unit=30, file=trim(out_rst_file)//'.bin',  form='unformatted')
       call write_bin (30, InFmt, NTILES)
       close(30)
       call InFmt%close()
    endif
+   if (present(rc)) rc =0
+   !_RETURN(_SUCCESS)
 
   END SUBROUTINE reorder_LDASsa_restarts
   
@@ -1136,6 +1143,7 @@ contains
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
 
     logical :: all_found
+    character(256) :: Iam="regrid_hyd_vars"
 
     if(index(MODEL, 'catchcn') /=0) ntiles_smap = ntiles_cn
     if(trim(MODEL) == 'catch'     ) ntiles_smap = ntiles_cat
@@ -1176,7 +1184,6 @@ contains
        allocate (ld_reorder(ntiles_smap)) 
 
        call ReadTileFile_RealLatLon ('InData/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
-       
        ! ---------------------------------------------
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
@@ -1283,7 +1290,7 @@ contains
 
   ! *****************************************************************************
   
-  SUBROUTINE read_bcs_data (ntiles, SURFLAY,MODEL, DataDir, InRestart)
+  SUBROUTINE read_bcs_data (ntiles, SURFLAY,MODEL, DataDir, InRestart, rc)
 
     ! This subroutine :
     !  1) reads BCs from BCSDIR and hydrological varables from InRestart.
@@ -1296,6 +1303,7 @@ contains
     real, intent (in)                         :: SURFLAY
     integer, intent (in)                      :: ntiles
     character(*), intent (in)                 :: MODEL, DataDir, InRestart
+    integer, optional, intent(out) :: rc
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
     real, allocatable :: CLMC45_pf1(:), CLMC45_pf2(:), CLMC45_sf1(:), CLMC45_sf2(:)
@@ -1317,7 +1325,8 @@ contains
     logical       :: NEWLAND, isCatchCN
     logical       :: file_exists
     type(NetCDF4_Fileformatter) :: CatchFmt,CatchCNFmt
-   
+    character*256        :: Iam = "read_bcs_data"
+ 
     allocate (   BF1(ntiles),    BF2 (ntiles),     BF3(ntiles)  )
     allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  ) 
     allocate (  PSIS(ntiles),     BEE(ntiles),   POROS(ntiles)  ) 
@@ -1348,62 +1357,62 @@ contains
     if(file_exists) then
 
        print *,'FILE FORMAT FOR LAND BCS IS NC4'
-       call CatchFmt%Open(trim(DataDir)//'/catch_params.nc4', pFIO_READ, rc=rc)   
-       call MAPL_VarRead ( CatchFmt ,'OLD_ITY', RITY)
+       call CatchFmt%Open(trim(DataDir)//'/catch_params.nc4', pFIO_READ, __RC__)   
+       call MAPL_VarRead ( CatchFmt ,'OLD_ITY', RITY, __RC__)
        ITY = NINT (RITY)
-       call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1)
-       call MAPL_VarRead ( CatchFmt ,'ARA2', ARA2)
-       call MAPL_VarRead ( CatchFmt ,'ARA3', ARA3)
-       call MAPL_VarRead ( CatchFmt ,'ARA4', ARA4)
-       call MAPL_VarRead ( CatchFmt ,'ARS1', ARS1)
-       call MAPL_VarRead ( CatchFmt ,'ARS2', ARS2)
-       call MAPL_VarRead ( CatchFmt ,'ARS3', ARS3)
-       call MAPL_VarRead ( CatchFmt ,'ARW1', ARW1)
-       call MAPL_VarRead ( CatchFmt ,'ARW2', ARW2)
-       call MAPL_VarRead ( CatchFmt ,'ARW3', ARW3)
-       call MAPL_VarRead ( CatchFmt ,'ARW4', ARW4)
+       call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA2', ARA2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA3', ARA3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA4', ARA4, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS1', ARS1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS2', ARS2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS3', ARS3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW1', ARW1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW2', ARW2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW3', ARW3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW4', ARW4, __RC__)
 
        if( SURFLAY.eq.20.0 ) then
-          call MAPL_VarRead ( CatchFmt ,'ATAU2', ATAU2)
-          call MAPL_VarRead ( CatchFmt ,'BTAU2', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU2', ATAU2, __RC__)
+          call MAPL_VarRead ( CatchFmt ,'BTAU2', BTAU2, __RC__)
        endif
 
        if( SURFLAY.eq.50.0 ) then
-          call MAPL_VarRead ( CatchFmt ,'ATAU5', ATAU2)
-          call MAPL_VarRead ( CatchFmt ,'BTAU5', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU5', ATAU2, __RC__)
+          call MAPL_VarRead ( CatchFmt ,'BTAU5', BTAU2, __RC__)
        endif
 
-       call MAPL_VarRead ( CatchFmt ,'PSIS', PSIS)
-       call MAPL_VarRead ( CatchFmt ,'BEE', BEE)
-       call MAPL_VarRead ( CatchFmt ,'BF1', BF1)
-       call MAPL_VarRead ( CatchFmt ,'BF2', BF2)
-       call MAPL_VarRead ( CatchFmt ,'BF3', BF3)
-       call MAPL_VarRead ( CatchFmt ,'TSA1', TSA1)
-       call MAPL_VarRead ( CatchFmt ,'TSA2', TSA2)
-       call MAPL_VarRead ( CatchFmt ,'TSB1', TSB1)
-       call MAPL_VarRead ( CatchFmt ,'TSB2', TSB2)
-       call MAPL_VarRead ( CatchFmt ,'COND', COND)
-       call MAPL_VarRead ( CatchFmt ,'GNU', GNU)
-       call MAPL_VarRead ( CatchFmt ,'WPWET', WPWET)
-       call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR)
-       call MAPL_VarRead ( CatchFmt ,'POROS', POROS)
+       call MAPL_VarRead ( CatchFmt ,'PSIS', PSIS, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BEE', BEE, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF1', BF1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF2', BF2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF3', BF3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSA1', TSA1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSA2', TSA2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSB1', TSB1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSB2', TSB2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'COND', COND, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'GNU', GNU, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'WPWET', WPWET, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'POROS', POROS, __RC__)
        call CatchFmt%close()
        if(isCatchCN) then
-          call CatchCNFmt%Open(trim(DataDir)//'/catchcn_params.nc4', pFIO_READ, rc=rc)    
-          call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF)
-          call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR)
-          call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF)
-          call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR)
-          call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP)
-          call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2)
-          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1)     !  30
-          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2)     !  31
-          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3)     !  32
-          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4)     !  33
-          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1)     !  34
-          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2)     !  35
-          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3)     !  36
-          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4)     !  37
+          call CatchCNFmt%Open(trim(DataDir)//'/catchcn_params.nc4', pFIO_READ, __RC__)    
+          call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
+          call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
+          call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
+          call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR, __RC__)
+          call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP, __RC__)
+          call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2, __RC__)
+          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1, __RC__)     !  30
+          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2, __RC__)     !  31
+          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3, __RC__)     !  32
+          call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4, __RC__)     !  33
+          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1, __RC__)     !  34
+          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2, __RC__)     !  35
+          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3, __RC__)     !  36
+          call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4, __RC__)     !  37
           call CatchCNFmt%close()
           if(clm45) then
             open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
@@ -1758,7 +1767,8 @@ contains
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
      deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
      deallocate (CLMC_st1,CLMC_st2)
-
+     if (present(rc)) rc =0
+     !_RETURN(_SUCCESS)
   END SUBROUTINE read_bcs_data
 
   ! *****************************************************************************
@@ -1786,6 +1796,7 @@ contains
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
     real   , pointer , dimension (:) :: long, latg, lonc, latc  
+    character*256        :: Iam = "regrid_carbon_vars"
 
     OutFileName='OutData/'//trim(model)//'_internal_rst'
 
@@ -2042,7 +2053,9 @@ contains
      real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:)   
      integer           :: N, STATUS, nv, nx, offl_cell, ityp_new, i, j, nz, iv
      real              :: fveg_new
-     
+     character(256) :: Iam = "write_regridded_carbon"    
+
+ 
      allocate (CLMC_pf1(NTILES))
      allocate (CLMC_pf2(NTILES))
      allocate (CLMC_sf1(NTILES))
@@ -2528,6 +2541,7 @@ contains
      type(FileMetadata)         :: meta_data 
      integer         :: STATUS, NCFID, OUTID
      character(*), intent (in), optional :: rst_file
+     character(256) :: Iam = "put_land_vars"
 
      allocate (var_get (NTILES_RST))
      allocate (var_put (NTILES))
@@ -2535,23 +2549,23 @@ contains
      ! create output catchcn_internal_rst
      if(index(model,'catchcn') /=0) then 
         if (clm45) then
-           call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc) ; VERIFY_(RC)
+           call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, __RC__)
         else
-           call InFmt%open(trim(InCNRestart ), pFIO_READ, rc=rc)
+           call InFmt%open(trim(InCNRestart ), pFIO_READ, __RC__)
         endif
      endif
      if(trim(model) == 'catch'  ) then
-        call InFmt%open(trim(InCatRestart), pFIO_READ, rc=rc)  
+        call InFmt%open(trim(InCatRestart), pFIO_READ, __RC__)  
      endif
-     meta_data = InFmt%read(rc=rc)
-     call InFmt%close(rc=rc)
+     meta_data = InFmt%read(__RC__)
+     call InFmt%close(__RC__)
 
-     call meta_data%modify_dimension('tile', ntiles, rc=rc)
+     call meta_data%modify_dimension('tile', ntiles, __RC__)
 
      OutFileName = "InData/"//trim(model)//"_internal_rst"
 
-     call OutFmt%create(trim(OutFileName),rc=rc) ; VERIFY_(RC)
-     call OutFmt%write(meta_data,rc=rc)
+     call OutFmt%create(trim(OutFileName),__RC__) 
+     call OutFmt%write(meta_data,__RC__)
  
      if (present(rst_file)) then
         STATUS = NF_OPEN (trim(rst_file ),NF_NOWRITE,NCFID)  ; VERIFY_(STATUS)  
@@ -2983,7 +2997,7 @@ contains
         call MAPL_VarWrite(OutFmt,'CQ',VAR_PUT ,offset1=k)  
      end do
 
-     call OutFmt%close(rc=rc) ; VERIFY_(RC)
+     call OutFmt%close(__RC__) 
      STATUS = NF_CLOSE ( NCFID)
 
      deallocate (var_get, var_put)
@@ -3382,65 +3396,67 @@ contains
      real ::        cq(ntiles,4)
      real ::        fr(ntiles,4)
      real ::        ww(ntiles,4)
+     character*256        :: Iam = "Write bin"
+     integer :: status 
 
-     call MAPL_VarRead(InFmt,"BF1",bf1)
-     call MAPL_VarRead(InFmt,"BF2",bf2)
-     call MAPL_VarRead(InFmt,"BF3",bf3)
-     call MAPL_VarRead(InFmt,"VGWMAX",vgwmax)
-     call MAPL_VarRead(InFmt,"CDCR1",cdcr1)
-     call MAPL_VarRead(InFmt,"CDCR2",cdcr2)
-     call MAPL_VarRead(InFmt,"PSIS",psis)
-     call MAPL_VarRead(InFmt,"BEE",bee)
-     call MAPL_VarRead(InFmt,"POROS",poros)
-     call MAPL_VarRead(InFmt,"WPWET",wpwet)
-     call MAPL_VarRead(InFmt,"COND",cond)
-     call MAPL_VarRead(InFmt,"GNU",gnu)
-     call MAPL_VarRead(InFmt,"ARS1",ars1)
-     call MAPL_VarRead(InFmt,"ARS2",ars2)
-     call MAPL_VarRead(InFmt,"ARS3",ars3)
-     call MAPL_VarRead(InFmt,"ARA1",ara1)
-     call MAPL_VarRead(InFmt,"ARA2",ara2)
-     call MAPL_VarRead(InFmt,"ARA3",ara3)
-     call MAPL_VarRead(InFmt,"ARA4",ara4)
-     call MAPL_VarRead(InFmt,"ARW1",arw1)
-     call MAPL_VarRead(InFmt,"ARW2",arw2)
-     call MAPL_VarRead(InFmt,"ARW3",arw3)
-     call MAPL_VarRead(InFmt,"ARW4",arw4)
-     call MAPL_VarRead(InFmt,"TSA1",tsa1)
-     call MAPL_VarRead(InFmt,"TSA2",tsa2)
-     call MAPL_VarRead(InFmt,"TSB1",tsb1)
-     call MAPL_VarRead(InFmt,"TSB2",tsb2)
-     call MAPL_VarRead(InFmt,"ATAU",atau)
-     call MAPL_VarRead(InFmt,"BTAU",btau)
-     call MAPL_VarRead(InFmt,"OLD_ITY",ity)
-     call MAPL_VarRead(InFmt,"TC",tc)
-     call MAPL_VarRead(InFmt,"QC",qc)
-     call MAPL_VarRead(InFmt,"OLD_ITY",ity)
-     call MAPL_VarRead(InFmt,"CAPAC",capac)
-     call MAPL_VarRead(InFmt,"CATDEF",catdef)
-     call MAPL_VarRead(InFmt,"RZEXC",rzexc)
-     call MAPL_VarRead(InFmt,"SRFEXC",srfexc)
-     call MAPL_VarRead(InFmt,"GHTCNT1",ghtcnt1)
-     call MAPL_VarRead(InFmt,"GHTCNT2",ghtcnt2)
-     call MAPL_VarRead(InFmt,"GHTCNT3",ghtcnt3)
-     call MAPL_VarRead(InFmt,"GHTCNT4",ghtcnt4)
-     call MAPL_VarRead(InFmt,"GHTCNT5",ghtcnt5)
-     call MAPL_VarRead(InFmt,"GHTCNT6",ghtcnt6)
-     call MAPL_VarRead(InFmt,"TSURF",tsurf)
-     call MAPL_VarRead(InFmt,"WESNN1",wesnn1)
-     call MAPL_VarRead(InFmt,"WESNN2",wesnn2)
-     call MAPL_VarRead(InFmt,"WESNN3",wesnn3)
-     call MAPL_VarRead(InFmt,"HTSNNN1",htsnnn1)
-     call MAPL_VarRead(InFmt,"HTSNNN2",htsnnn2)
-     call MAPL_VarRead(InFmt,"HTSNNN3",htsnnn3)
-     call MAPL_VarRead(InFmt,"SNDZN1",sndzn1)
-     call MAPL_VarRead(InFmt,"SNDZN2",sndzn2)
-     call MAPL_VarRead(InFmt,"SNDZN3",sndzn3)
-     call MAPL_VarRead(InFmt,"CH",ch)
-     call MAPL_VarRead(InFmt,"CM",cm)
-     call MAPL_VarRead(InFmt,"CQ",cq)
-     call MAPL_VarRead(InFmt,"FR",fr)
-     call MAPL_VarRead(InFmt,"WW",ww)
+     call MAPL_VarRead(InFmt,"BF1",bf1, __RC__)
+     call MAPL_VarRead(InFmt,"BF2",bf2, __RC__)
+     call MAPL_VarRead(InFmt,"BF3",bf3, __RC__)
+     call MAPL_VarRead(InFmt,"VGWMAX",vgwmax, __RC__)
+     call MAPL_VarRead(InFmt,"CDCR1",cdcr1, __RC__)
+     call MAPL_VarRead(InFmt,"CDCR2",cdcr2, __RC__)
+     call MAPL_VarRead(InFmt,"PSIS",psis, __RC__)
+     call MAPL_VarRead(InFmt,"BEE",bee, __RC__)
+     call MAPL_VarRead(InFmt,"POROS",poros, __RC__)
+     call MAPL_VarRead(InFmt,"WPWET",wpwet, __RC__)
+     call MAPL_VarRead(InFmt,"COND",cond, __RC__)
+     call MAPL_VarRead(InFmt,"GNU",gnu, __RC__)
+     call MAPL_VarRead(InFmt,"ARS1",ars1, __RC__)
+     call MAPL_VarRead(InFmt,"ARS2",ars2, __RC__)
+     call MAPL_VarRead(InFmt,"ARS3",ars3, __RC__)
+     call MAPL_VarRead(InFmt,"ARA1",ara1, __RC__)
+     call MAPL_VarRead(InFmt,"ARA2",ara2, __RC__)
+     call MAPL_VarRead(InFmt,"ARA3",ara3, __RC__)
+     call MAPL_VarRead(InFmt,"ARA4",ara4, __RC__)
+     call MAPL_VarRead(InFmt,"ARW1",arw1, __RC__)
+     call MAPL_VarRead(InFmt,"ARW2",arw2, __RC__)
+     call MAPL_VarRead(InFmt,"ARW3",arw3, __RC__)
+     call MAPL_VarRead(InFmt,"ARW4",arw4, __RC__)
+     call MAPL_VarRead(InFmt,"TSA1",tsa1, __RC__)
+     call MAPL_VarRead(InFmt,"TSA2",tsa2, __RC__)
+     call MAPL_VarRead(InFmt,"TSB1",tsb1, __RC__)
+     call MAPL_VarRead(InFmt,"TSB2",tsb2, __RC__)
+     call MAPL_VarRead(InFmt,"ATAU",atau, __RC__)
+     call MAPL_VarRead(InFmt,"BTAU",btau, __RC__)
+     call MAPL_VarRead(InFmt,"OLD_ITY",ity, __RC__)
+     call MAPL_VarRead(InFmt,"TC",tc, __RC__)
+     call MAPL_VarRead(InFmt,"QC",qc, __RC__)
+     call MAPL_VarRead(InFmt,"OLD_ITY",ity, __RC__)
+     call MAPL_VarRead(InFmt,"CAPAC",capac, __RC__)
+     call MAPL_VarRead(InFmt,"CATDEF",catdef, __RC__)
+     call MAPL_VarRead(InFmt,"RZEXC",rzexc, __RC__)
+     call MAPL_VarRead(InFmt,"SRFEXC",srfexc, __RC__)
+     call MAPL_VarRead(InFmt,"GHTCNT1",ghtcnt1, __RC__)
+     call MAPL_VarRead(InFmt,"GHTCNT2",ghtcnt2, __RC__)
+     call MAPL_VarRead(InFmt,"GHTCNT3",ghtcnt3, __RC__)
+     call MAPL_VarRead(InFmt,"GHTCNT4",ghtcnt4, __RC__)
+     call MAPL_VarRead(InFmt,"GHTCNT5",ghtcnt5, __RC__)
+     call MAPL_VarRead(InFmt,"GHTCNT6",ghtcnt6, __RC__)
+     call MAPL_VarRead(InFmt,"TSURF",tsurf, __RC__)
+     call MAPL_VarRead(InFmt,"WESNN1",wesnn1, __RC__)
+     call MAPL_VarRead(InFmt,"WESNN2",wesnn2, __RC__)
+     call MAPL_VarRead(InFmt,"WESNN3",wesnn3, __RC__)
+     call MAPL_VarRead(InFmt,"HTSNNN1",htsnnn1, __RC__)
+     call MAPL_VarRead(InFmt,"HTSNNN2",htsnnn2, __RC__)
+     call MAPL_VarRead(InFmt,"HTSNNN3",htsnnn3, __RC__)
+     call MAPL_VarRead(InFmt,"SNDZN1",sndzn1, __RC__)
+     call MAPL_VarRead(InFmt,"SNDZN2",sndzn2, __RC__)
+     call MAPL_VarRead(InFmt,"SNDZN3",sndzn3, __RC__)
+     call MAPL_VarRead(InFmt,"CH",ch, __RC__)
+     call MAPL_VarRead(InFmt,"CM",cm, __RC__)
+     call MAPL_VarRead(InFmt,"CQ",cq, __RC__)
+     call MAPL_VarRead(InFmt,"FR",fr, __RC__)
+     call MAPL_VarRead(InFmt,"WW",ww, __RC__)
     
      write(unit)       bf1
      write(unit)       bf2
@@ -3518,14 +3534,14 @@ contains
      allocate (var_get (NTILES_RST))
      allocate (var_put (NTILES))     
 
-     call InFmt%Open(trim(InCatRestart), pFIO_READ, rc=rc) 
-     meta_data = InFmt%read(rc=rc)
+     call InFmt%Open(trim(InCatRestart), pFIO_READ, __RC__) 
+     meta_data = InFmt%read(__RC__)
      call InFmt%close()
-     call meta_data%modify_dimension('tile', ntiles, rc=rc)
+     call meta_data%modify_dimension('tile', ntiles, __RC__)
 
      OutFileName = "InData/catch_internal_rst"
-     call OutFmt%create(OutFileName, rc=rc)
-     call OutFmt%write(meta_data, rc=rc)
+     call OutFmt%create(OutFileName, __RC__)
+     call OutFmt%write(meta_data, __RC__)
 
      open(10, file=trim(rst_file), form='unformatted', status='old', &
            convert='big_endian', action='read')

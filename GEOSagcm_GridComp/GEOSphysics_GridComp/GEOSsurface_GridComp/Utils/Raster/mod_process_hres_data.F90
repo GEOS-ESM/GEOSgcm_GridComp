@@ -13,6 +13,7 @@ use MAPL_SortMod
 use date_time_util  
 use leap_year
 use MAPL_ConstantsMod
+use lsm_routines, ONLY: sibalb
 
 #if defined USE_EXTERNAL_FINDLOC
 use findloc_mod, only: findloc
@@ -26,22 +27,27 @@ private
 
 public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
-public :: histogram, regrid_map, create_mapping, esa2mosaic , esa2clm, ESA2CLM_45
-public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, country_codes
+public :: histogram, create_mapping, esa2mosaic , esa2clm, ESA2CLM_45
+public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
 public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
 
 ! Below structure is used to regrid high resolution data to high resolution tile raster
 
-integer, parameter   :: N_tiles_per_cell = 8
-integer  , parameter :: nc_esa = 129600, nr_esa = 64800, SRTM_maxcat = 291284
+integer, parameter   :: N_tiles_per_cell = 9
+integer  , parameter :: nc_esa = 129600, nr_esa = 64800
 real, parameter      :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
+integer, parameter   :: N_GADM = 256 + 1, N_STATES = 50
 
-type :: regrid_map
-
+type :: do_regrid
    integer                               :: NT
    integer, dimension (N_tiles_per_cell) :: TID
    integer, dimension (N_tiles_per_cell) :: count
-
+end type do_regrid
+type, public :: regrid_map
+   integer :: nc_data = 1
+   integer :: nr_data = 1
+   integer, allocatable, dimension (:,:)   :: ij_index
+   type(do_regrid), pointer, dimension (:) :: map
 end type regrid_map
 
 contains
@@ -617,7 +623,7 @@ contains
  
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
        tile_lat = (minlat + maxlat)/2.
        scale = (ABS (tile_lat) - 32.)/10.
        scale = min (max(scale,0.),1.)
@@ -774,7 +780,7 @@ contains
           csf2 = 100. * csf2 / ftot 
        endif
     
-       write (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')     &
+       write (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')     &
             tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
             esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
     end do
@@ -1342,7 +1348,7 @@ contains
 
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
        tile_lat = (minlat + maxlat)/2.
        scale = (ABS (tile_lat) - 32.)/10.
        scale = min (max(scale,0.),1.)
@@ -1483,7 +1489,7 @@ contains
           csf2 = 100. * csf2 / ftot 
        endif
     
-       write (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')     &
+       write (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')     &
             tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
             esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
 
@@ -1698,7 +1704,7 @@ contains
  
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid
        tem = 0.
        tem(1:6)=veg (k,1:6)
 
@@ -1739,7 +1745,7 @@ contains
           if (sfrac == 0.) mos2 = mos1 ! No secondary type
           if(.not.jpl_height) z2(k) = VGZ2(mos1)
           ityp (k) = mos1
-          write (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
+          write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
             tid,cid,mos1,mos2,100.*mfrac,100.*sfrac, z2(k), z0 (k)
           
        endif
@@ -1819,8 +1825,8 @@ END SUBROUTINE HISTOGRAM
    implicit none
 
    integer, intent (in) :: nc,nr,nc_data,nr_data
-   type (regrid_map), intent (inout), dimension (nc_data,nr_data) :: rmap
-   integer :: i,j,n, i1,i2,j1,j2,ncatch, nbins, status, NPLUS
+   type (regrid_map), intent (inout) :: rmap
+   integer :: i,j,n, i1,i2,j1,j2,ncatch, nbins, status, NPLUS,pix_count
    REAL,    allocatable, DIMENSION (:) :: loc_val
    INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
    logical, dimension (:), allocatable :: unq_mask    
@@ -1852,26 +1858,35 @@ END SUBROUTINE HISTOGRAM
    dy_data = 180./real(nr_data)
    dx_geos = 360./real(nc)
    dy_geos = 180./real(nr)
-   rmap%NT    = 0
 
    if((nc_data  >= nc).and.(nr_data >= nr)) then
 
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
       call RegridRaster(tile_id,iraster)
-  
+      NPLUS = count(iraster >= 1 .and. iraster <= ncatch)
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%map (1:NPLUS))     
+      rmap%map%NT = 0
+      pix_count = 1
       do j = 1,nr_data
          do i =  1,nc_data
             if((iraster (i,j) >=1).and.(iraster (i,j) <=ncatch)) then
-               rmap(i,j)%NT = 1
-               rmap(i,j)%TID  (rmap(i,j)%NT) = iraster (i,j)
-               rmap(i,j)%count(rmap(i,j)%NT) = 1
+               rmap%map(pix_count)%NT = 1
+               rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = iraster (i,j)
+               rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = 1
+               rmap%ij_index(i,j) = pix_count
+               pix_count = pix_count + 1
             endif
          end do
       end do
       deallocate (iraster) ; VERIFY_(STATUS)
 
    else
-      
+      NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%map (1:NPLUS))     
+      rmap%map%NT = 0
+      pix_count   = 1
       do j = 1,nr_data
          
          lat1 = -90. + (j-1)*dy_data
@@ -1907,28 +1922,33 @@ END SUBROUTINE HISTOGRAM
                   
                   DO N =1,NBINS
                      if(density(n) > 0) then 
-                        rmap(i,j)%NT = rmap(i,j)%NT + 1
-                        if(rmap(i,j)%NT > N_tiles_per_cell) then
-                           print *,'N_tiles_per_cell exceeded :', rmap(i,j)%NT
+                        rmap%map(pix_count)%NT = rmap%map(pix_count)%NT + 1
+                        if(rmap%map(pix_count)%NT > N_tiles_per_cell) then
+                           print *,'N_tiles_per_cell exceeded :', rmap%map(pix_count)%NT
                            print *,i,j,i1,i2,j1,j2
-                           print *,'NT',rmap(i,j)%NT 
-                           print *,rmap(i,j)%TID
-                           print *,rmap(i,j)%count
+                           print *,'NT',rmap%map(pix_count)%NT 
+                           print *,rmap%map(pix_count)%TID
+                           print *,rmap%map(pix_count)%count
                            stop
                         endif
-                        rmap(i,j)%TID  (rmap(i,j)%NT) = NINT(loc_val(n))
-                        rmap(i,j)%count(rmap(i,j)%NT) = density(n)
+                        rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = NINT(loc_val(n))
+                        rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = density(n)
+                        
                      endif
                   END DO
+                  rmap%ij_index(i,j) = pix_count
+                  pix_count = pix_count + 1
                   deallocate (loc_val, density)
                   deallocate (loc_int, unq_mask)
                endif
                NULLIFY (subset)
             else
                if((tile_id (i1,j1) > 0).and.(tile_id(i1,j1).le.ncatch)) then
-                  rmap(i,j)%NT       = 1
-                  rmap(i,j)%TID(1)   = tile_id (i1,j1)
-                  rmap(i,j)%COUNT(1) = 1
+                  rmap%map(pix_count)%NT       = 1
+                  rmap%map(pix_count)%TID(1)   = tile_id (i1,j1)
+                  rmap%map(pix_count)%COUNT(1) = 1
+                  rmap%ij_index(i,j) = pix_count
+                  pix_count = pix_count + 1
                endif
             endif
          end do
@@ -1954,7 +1974,7 @@ END SUBROUTINE HISTOGRAM
     integer, parameter :: i5_hydr = 5000142, i6_hydr =  5999900  ! Australia
     integer, parameter :: i1_srtm = 229075 , i2_srtm =  267083   ! South America
     integer, parameter :: i3_srtm = 75369  , i4_srtm =  140751   ! Africa 
-    integer, parameter :: i5_srtm = 267084 , i6_srtm =  291284   ! Australia
+    integer, parameter :: i5_srtm = 267084 , i6_srtm =  SRTM_maxcat  ! Australia
 
     REAL, ALLOCATABLE, dimension (:) :: geol2_lai_bf,geol2_lai_af,geol2_lai, lai    
     real :: dum, gyr,gmn,gdy,gyr1,gmn1,gdy1, slice1,slice2
@@ -2106,10 +2126,10 @@ END SUBROUTINE HISTOGRAM
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisvf, modisnf,albvr,albnr,albvf,albnf,lat,lon, &
-         green,lai,snw,lai_before,lai_after,grn_before,grn_after
+         modisvf, modisnf,albvf,albnf, lat,lon, &
+         green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvr,calbnr,calbvf,calbnf
+         calbvf,calbnf, zero_array, one_array, albvr,albnr
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -2120,10 +2140,7 @@ END SUBROUTINE HISTOGRAM
     fname='clsm/catchment.def'
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
-
-    allocate (albvr    (1:maxcat))
     allocate (albvf    (1:maxcat))
-    allocate (albnr    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
     allocate (calbnf   (1:maxcat))
@@ -2136,7 +2153,10 @@ END SUBROUTINE HISTOGRAM
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
     allocate (vegcls     (1:maxcat))
-    allocate (snw      (1:maxcat))
+    allocate (zero_array (1:maxcat))
+    allocate (one_array  (1:maxcat))
+    allocate (albvr      (1:maxcat))
+    allocate (albnr      (1:maxcat))
     close (10,status='keep')
 
     fname=trim(gfile)//'.til'
@@ -2147,13 +2167,13 @@ END SUBROUTINE HISTOGRAM
 
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
 
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do    
+    
     do n = 1,ip
       if (ease_grid) then     
 	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
@@ -2163,7 +2183,7 @@ END SUBROUTINE HISTOGRAM
       endif
        if (typ == 100) then
           ip2 = n 
-          read (20,'(i8,i8,2(2x,i3),2(2x,f6.4))')     &
+          read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
             indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
        endif
        if(ierr /= 0)write (*,*)'Problem reading', n, ease_grid
@@ -2171,15 +2191,16 @@ END SUBROUTINE HISTOGRAM
     close (10,status='keep')
     close (20,status='keep')
 
-    albvr    =0.
     albvf    =0.
-    albnr    =0.
     albnf    =0.
     calbvf   =0.
     calbnf   =0.
     modisvf  =0.
     modisnf  =0.
-    snw      =0.
+    zero_array = 0.
+    one_array  = 1.
+    albvr      = 0.
+    albnr      = 0.
 
 ! MODIS Albedo files
     if(MA == 'MODIS1') then 
@@ -2275,8 +2296,6 @@ END SUBROUTINE HISTOGRAM
 
     calbvf   =0.
     calbnf   =0.
-    albvr    =0.
-    albnr    =0.
     albvf    =0.
     albnf    =0.
     tsteps   =0.    
@@ -2364,10 +2383,11 @@ END SUBROUTINE HISTOGRAM
          call Time_Interp_Fac (date_time_new, gf_green_time, af_green_time, slice1, slice2)
          green  = (slice1*grn_before + slice2*grn_after)
           
-          call sibalb(                                    &
-               albvr,albnr,albvf,albnf,                   &
-               lai, green, 0.0, snw, vegcls, maxcat)  
-          
+         call sibalb (                                 &
+              MAXCAT,vegcls,lai,green, zero_array,     &
+              one_array,one_array,one_array,one_array, &
+              ALBVR, ALBNR, albvf, albnf)
+         
           calbvf = calbvf + albvf
           calbnf = calbnf + albnf         
           tsteps = tsteps + 1.  
@@ -2380,9 +2400,9 @@ END SUBROUTINE HISTOGRAM
              calbvf = calbvf/tsteps
              calbnf = calbnf/tsteps
 
-             modisvf = modisvf/calbvf
-             modisnf = modisnf/calbnf
-           
+             modisvf = modisvf/(calbvf + 1.e-20)
+             modisnf = modisnf/(calbnf + 1.e-20)
+
              do n =1, maxcat
 !                if(modisvf(n).le.0)print *,'Negative MODISVF scale param at cell',n, modisvf(n)
 !                if(modisnf(n).le.0)print *,'Negative MODISNF scale param at cell',n, modisnf(n)
@@ -2421,8 +2441,6 @@ END SUBROUTINE HISTOGRAM
                call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_modis_time)
                calbvf   =0.
                calbnf   =0.
-               albvr    =0.
-               albnr    =0.
                albvf    =0.
                albnf    =0.
                tsteps   =0.   
@@ -2430,11 +2448,12 @@ END SUBROUTINE HISTOGRAM
          endif
       end do
   
-      deallocate (modisvf,modisnf,albvr,albvf,albnf,albnr)
+      deallocate (modisvf,modisnf,albvf,albnf)
       deallocate (green,lai)
       deallocate (vegcls)
       deallocate (calbvf,calbnf)
-      deallocate (lai_before,grn_before, lai_after,grn_after,snw)
+      deallocate (lai_before,grn_before, lai_after,grn_after)
+      deallocate (zero_array, one_array, albvr, albnr)
 
       close (10, status='keep')
       close (11, status='keep')        
@@ -2456,10 +2475,10 @@ END SUBROUTINE modis_scale_para_high
 !
   implicit none 
   integer, intent (in) :: nc_data,nr_data
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   character*6 :: MA
   character(*)  :: gfiler
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj
+  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj, pix_count
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
   character*100 :: fname,fout
@@ -2579,24 +2598,26 @@ END SUBROUTINE modis_scale_para_high
                    status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); VERIFY_(STATUS)
 
                    do j = jLL,jLL + nr_10 -1 
-                      do i = iLL, iLL + nc_10 -1 
+                      do i = iLL, iLL + nc_10 -1
+                         pix_count = rmap%ij_index(i,j)
                          if(net_data1(i-iLL +1 ,j - jLL +1) > 0) then
-                            if(rmap(i,j)%nt > 0) then
-                               do n = 1, rmap(i,j)%nt
-                                  vec_AlbVis(rmap(i,j)%tid(n))  = vec_AlbVis(rmap(i,j)%tid(n)) +  &
-                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n) 
-                                  count_AlbVis(rmap(i,j)%tid(n))= count_AlbVis(rmap(i,j)%tid(n)) + &
-                                        1.*rmap(i,j)%count(n)
+                            
+                            if(rmap%map(pix_count)%nt > 0) then
+                               do n = 1, rmap%map(pix_count)%nt
+                                  vec_AlbVis(rmap%map(pix_count)%tid(n))  = vec_AlbVis(rmap%map(pix_count)%tid(n)) +  &
+                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
+                                  count_AlbVis(rmap%map(pix_count)%tid(n))= count_AlbVis(rmap%map(pix_count)%tid(n)) + &
+                                        1.*rmap%map(pix_count)%count(n)
                                end do
                             endif
                          endif
                          if(net_data2(i-iLL +1 ,j - jLL +1) > 0) then
-                            if(rmap(i,j)%nt > 0) then
-                               do n = 1, rmap(i,j)%nt
-                                  vec_AlbNir(rmap(i,j)%tid(n))  = vec_AlbNir(rmap(i,j)%tid(n)) +  &
-                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n) 
-                                  count_AlbNir(rmap(i,j)%tid(n))= count_AlbNir(rmap(i,j)%tid(n)) + &
-                                        1.*rmap(i,j)%count(n)
+                            if(rmap%map(pix_count)%nt > 0) then
+                               do n = 1, rmap%map(pix_count)%nt
+                                  vec_AlbNir(rmap%map(pix_count)%tid(n))  = vec_AlbNir(rmap%map(pix_count)%tid(n)) +  &
+                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
+                                  count_AlbNir(rmap%map(pix_count)%tid(n))= count_AlbNir(rmap%map(pix_count)%tid(n)) + &
+                                        1.*rmap%map(pix_count)%count(n)
                                end do
                             endif
                           endif
@@ -3150,7 +3171,7 @@ END SUBROUTINE modis_scale_para_high
   integer, intent (in) :: nc_data,nr_data
   real, parameter :: dxy = 1.
   integer :: QSize
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   character(*)  :: gfiler,lai_name
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
@@ -3164,7 +3185,7 @@ END SUBROUTINE modis_scale_para_high
   REAL, ALLOCATABLE, dimension (:)      :: vec_lai, count_lai,tile_lon, tile_lat &
        , x, y !, distance
   real, allocatable, target, dimension (:,:) :: lai_grid
-  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l
+  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,pix_count
   character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
   logical :: regrid
   REAL :: sf, dum,dist_save,tile_distance,minlat,maxlat,minlon,maxlon
@@ -3306,13 +3327,14 @@ END SUBROUTINE modis_scale_para_high
                   do j = jLL,jLL + nr_10 -1 
                      do i = iLL, iLL + nc_10 -1 
                         if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
-                           if(rmap(i,j)%nt > 0) then
-                              do n = 1, rmap(i,j)%nt
-                                 if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
-                                 vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
-                                      sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
-                                 count_lai(rmap(i,j)%tid(n)) = &
-                                      count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
+                           pix_count = rmap%ij_index(i,j)
+                           if(rmap%map(pix_count)%nt > 0) then
+                              do n = 1, rmap%map(pix_count)%nt
+                                 if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
+                                 vec_lai(rmap%map(pix_count)%tid(n))   = vec_lai(rmap%map(pix_count)%tid(n)) + &
+                                      sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n)
+                                 count_lai(rmap%map(pix_count)%tid(n)) = &
+                                      count_lai(rmap%map(pix_count)%tid(n)) + 1.*rmap%map(pix_count)%count(n)                                     
                               end do
                            endif
                         endif
@@ -3471,7 +3493,7 @@ END SUBROUTINE modis_scale_para_high
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   real :: dum, gyr,gmn,gdy,gyr1,gmn1,gdy1, slice1,slice2
   character*100 :: fname,fout
   character*10 :: string
@@ -3487,7 +3509,7 @@ END SUBROUTINE modis_scale_para_high
        af_lai_time
   integer, intent(in), optional :: merge
   real, parameter :: dxy = 1.
-  integer         :: nx, ny, QSize
+  integer         :: nx, ny, QSize, pix_count
   REAL, ALLOCATABLE, dimension (:) :: x,y,tile_lon, tile_lat
   real, allocatable, target, dimension (:,:) :: data_grid
   integer, pointer, dimension (:,:) :: QSub
@@ -3608,13 +3630,14 @@ END SUBROUTINE modis_scale_para_high
               do j = jLL,jLL + nr_10 -1 
                  do i = iLL, iLL + nc_10 -1 
                     if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
-                       if(rmap(i,j)%nt > 0) then
-                          do n = 1, rmap(i,j)%nt
-                             if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
-                             vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
-                                  sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
-                             count_lai(rmap(i,j)%tid(n)) = &
-                                  count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
+                       pix_count = rmap%ij_index(i,j)
+                       if(rmap%map(pix_count)%nt > 0) then
+                          do n = 1, rmap%map(pix_count)%nt
+                             if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
+                             vec_lai(rmap%map(pix_count)%tid(n))   = vec_lai(rmap%map(pix_count)%tid(n)) + &
+                                  sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n)
+                             count_lai(rmap%map(pix_count)%tid(n)) = &
+                                  count_lai(rmap%map(pix_count)%tid(n)) + 1.*rmap%map(pix_count)%count(n)                                     
                           end do
                        endif
                     endif
@@ -3745,9 +3768,9 @@ END SUBROUTINE modis_scale_para_high
       ! A specific treatment of peatland hydrology in the NASA Catchment Land Surface Model. J. Adv. Model. Earth Sys., 11,
       ! 2130-2162. doi: 10.1029/2018MS001574. 
 
-      REAL, PARAMETER  :: p_poros = 0.93, p_bee = 3.5, p_psis = -0.03, p_ks = 2.8e-5, pmap_thresh = 0.3, p_wp = 0.3672
-      REAL, DIMENSION (:), POINTER      :: PMAP
-      REAL :: d_poros, d_bee, d_psis, d_ks
+      REAL, PARAMETER  :: pmap_thresh = 0.5
+      REAL, DIMENSION (:), POINTER       :: PMAP
+      REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -4011,8 +4034,30 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	    status = NF_CLOSE(ncid)
 	    endif
 	 end do 
-      end do
+       end do
+      
+      if(process_peat) then 
+         print *, 'PMAP_THRESH : ', pmap_thresh
+         allocate(pmapr (1:i_highd,1:j_highd))
+         status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+         status  = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'PEATMAP'), (/1,1/),(/i_highd, j_highd/), pmapr) ; VERIFY_(STATUS)      
 
+! move HWSD sub-surface peat to peat-rich mineral Group 3 because merged surface peat defines sub-surface peat
+! ------------------------------------------------------------------------------------------------------------       
+         where (oc_sub*sf >= cF_lim(4))
+            oc_sub = NINT(8./sf)
+         endwhere
+
+! Hybridize: add OC 1km PEATMAP pixels to HWSD oc_top
+! ---------------------------------------------------
+         where (pmapr >= pmap_thresh)
+           oc_top = NINT(33.0/sf)
+         endwhere  
+
+         deallocate (pmapr)
+         status = NF_CLOSE(ncid)
+      endif
+      
       deallocate (net_data1)
       deallocate (net_data2)
       deallocate (net_data3)
@@ -4089,6 +4134,29 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           raster  => grav_grid
       end if
 
+
+      ! compute peat fraction on tile for CLM45+      
+      
+      allocate(pmap  (1:maxcat))
+      allocate(count_soil(1:maxcat))  
+
+      pmap = 0.
+      count_soil = 0.
+      
+      do j=1,ny_adj
+         do i=1,nx_adj
+            if((iRaster(i,j).gt.0).and.(iRaster(i,j).le.maxcat)) then
+               count_soil(iRaster(i,j)) = count_soil(iRaster(i,j)) + 1. 
+               if (raster3(i,j)*sf >= cF_lim(4)) then
+                  pmap (iRaster(i,j)) = pmap(iRaster(i,j)) + 1                  
+               endif
+            endif
+         end do
+      end do
+
+      where (count_soil > 0) pmap = pmap /count_soil
+      
+      deallocate (count_soil)
 ! Deallocate large arrays
 
       allocate(land_pixels(1:size(iRaster,1),1:size(iRaster,2)))
@@ -4307,7 +4375,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !$OMP         data_vec4,data_vec5,data_vec6,cF_lim,     &
 !$OMP         table_map,soil_class_top,soil_class_com,  &
 !$OMP         soc_vec,poc_vec,ncells_top,ncells_top_pro,&
-!$OMP         ncells_sub_pro)    &
+!$OMP         ncells_sub_pro,process_peat)    &
 !$OMP PRIVATE(n,i,j,k,icount,t_count,i1,i2,ss_clay,     &
 !$OMP         ss_sand,ss_clay_all,ss_sand_all,          &
 !$OMP         ss_oc_all,cFamily,factor,o_cl,o_clp,ktop, &
@@ -4370,6 +4438,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 	if (sum(cFamily) == 0.) o_cl  = 1
 	if (sum(cFamily)  > 0.) o_cl  = maxloc(cFamily, dim = 1)
+
+        if (process_peat) then
+          ! if 50% or more of the tile surface is covered with peat, we assume the tile is peat
+           if (cFamily(4)/real(i) > 0.5)  then 
+              o_cl  = 4
+           else
+              if (sum(cFamily(1:3))  > 0.) o_cl  = maxloc(cFamily(1:3), dim = 1)
+           endif
+        endif   
 
 	cFamily = 0.
 
@@ -4525,7 +4602,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       END DO
 !$OMP ENDPARALLELDO
 
-      call process_peatmap (nx, ny, gfiler, pmap)
+!      call process_peatmap (nx, ny, gfiler, pmap)
 
       inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
@@ -4587,23 +4664,23 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          fac_surf = soil_class_top(n)
 	 fac      = soil_class_com(n)
 
-         if(process_peat) then 
-            if(pmap (n) > pmap_thresh) then
-               fac_surf = 253
-               fac      = 253
-            endif
+         if(process_peat) then
+            ! the maximum peat soil depth is set to the value Michel used to derive parameters (1334.) 
+            if (fac_surf == 253)  soildepth(n) = 5000. ! max(soildepth(n),5000.)
+            ! reseet subsurface tro peat if surface soil type is peat
+            if (fac_surf == 253)  fac      = 253
          endif
 
          wp_wetness = a_wp(fac) /a_poros(fac)
 
-         write (11,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')tindex,pfafindex,      &
+         write (11,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')tindex,pfafindex,      &
                fac_surf, fac, a_bee(fac),a_psis(fac),a_poros(fac),&
                a_aksat(fac)/exp(-1.0*zks*gnu),wp_wetness,soildepth(n),                 &
                grav_vec(n),soc_vec(n),poc_vec(n), &
                a_sand(fac_surf),a_clay(fac_surf),a_sand(fac),a_clay(fac), &
 	       a_wpsurf(fac_surf)/a_porosurf(fac_surf),a_porosurf(fac_surf), pmap(n)
 	       	    
-         write (12,'(i8,i8,4f10.7)')tindex,pfafindex, &
+         write (12,'(i10,i8,4f10.7)')tindex,pfafindex, &
 	       atau_2cm(fac_surf),btau_2cm(fac_surf),atau(fac_surf),btau(fac_surf)  
 
          if (allocated (parms4file)) then
@@ -4622,7 +4699,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   	 endif
       end do
       write (11,'(a)')'                    '
-      write (11,'(a)')'FMT=i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4'
+      write (11,'(a)')'FMT=i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4'
       write (11,'(a)')'TileIndex PfafID SoilClassTop SoilClassProfile BEE PSIS POROS Ks_at_SURF WPWET SoilDepth %Grav %OCTop %OCProf %Sand_top %Clay_top %Sand_prof %Clay_prof WPWET_SURF POROS_SURF'
       close (10, status = 'keep')	            
       close (11, status = 'keep')	            
@@ -5420,7 +5497,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              pfaf_index = 0
              pfaf_area  = 0.
 
-             READ (10,'(i8,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
+             READ (10,'(i10,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
 
              IL1 = FLOOR  ((180. + mnx)/DXY30 + 1.)
              IL2 = CEILING((180. + mxx)/DXY30 + 1.)
@@ -5677,7 +5754,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
        if(count_pix(i,3) > 0.) abm_int = NINT(abm  (i) / count_pix(i,3))
        if(count_pix(i,4) > 0.) hdm_r   = hdm   (i) / count_pix(i,4)
              
-       write (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
+       write (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
 
     end do
 
@@ -6291,336 +6368,419 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     ! ----------------------------------------------------------------------------------------------
 
 
-    SUBROUTINE country_codes (NC, NR,  gfiler)
+    SUBROUTINE map_country_codes (NC, NR,  gfiler)
 
       implicit none
       integer  , intent (in) :: nc, nr
       character (*)          :: gfiler
-      integer, parameter :: N_GADM = 256 + 1, N_STATES = 50
+
       integer, parameter :: GC = 43200
       integer, parameter :: GR = 21600
-
-      character*20, dimension (N_STATES)  :: ST_NAME
-      character*48, dimension (N_GADM  )  :: CNT_NAME
-      INTEGER, dimension (N_GADM  )       :: index_RANGE
+      INTEGER,      dimension (:), pointer :: index_RANGE 
+      character*20, dimension (:), pointer :: ST_NAME     
+      character*48, dimension (:), pointer :: CNT_NAME  
+      
       integer :: CNT_CODE, ST_CODE
       integer :: i(GC),j(GR), k,n, status, ncid, varid, maxcat, I0(1), j0(1)
       INTEGER, TARGET, ALLOCATABLE, dimension (:,:):: ST_grid, cnt_grid
       real    :: lat_mn, lat_mx, lon_mn, lon_mx
       real (kind =8) :: XG(GC),YG(GR), y0, x0, dxy
-                  
-      DATA ST_NAME  /             &
-           'AK  1 Alaska          ' ,&
-           'AL  2 Alabama         ' ,&
-           'AZ  3 Arizona         ' ,&
-           'AR  4 Arkansas        ' ,&
-           'CA  5 California      ' ,&
-           'CO  6 Colorado        ' ,&
-           'CT  7 Connecticut     ' ,&
-           'DE  8 Delaware        ' ,&
-           'FL  9 Florida         ' ,&
-           'GA 10 Georgia         ' ,&
-           'HI 11 Hawaii          ' ,&
-           'IA 12 Iowa            ' ,&
-           'ID 13 Idaho           ' ,&
-           'IL 14 Illinois        ' ,&
-           'IN 15 Indiana         ' ,&
-           'KS 16 Kansas          ' ,&
-           'KY 17 Kentucky        ' ,&
-           'LA 18 Louisiana       ' ,&
-           'MA 19 Massachusetts   ' ,&
-           'MD 20 Maryland        ' ,&
-           'ME 21 Maine           ' ,&
-           'MI 22 Michigan        ' ,&
-           'MN 23 Minnesota       ' ,&
-           'MO 24 Missouri        ' ,&
-           'MS 25 Mississippi     ' ,&
-           'MT 26 Montana         ' ,&
-           'NC 27 NorthCarolina   ' ,&
-           'ND 28 NorthDakota     ' ,&
-           'NE 29 Nebraska        ' ,&
-           'NH 30 NewHampshire    ' ,&
-           'NJ 31 NewJersey       ' ,&
-           'NM 32 NewMexico       ' ,&
-           'NV 33 Nevada          ' ,&
-           'NY 34 NewYork         ' ,&
-           'OH 35 Ohio            ' ,&
-           'OK 36 Oklahoma        ' ,&
-           'OR 37 Oregon          ' ,&
-           'PA 38 Pennsylvania    ' ,&
-           'RI 39 RhodeIsland     ' ,&
-           'SC 40 SouthCarolina   ' ,&
-           'SD 41 SouthDakota     ' ,&
-           'TN 42 Tennessee       ' ,&
-           'TX 43 Texas           ' ,&
-           'UT 44 Utah            ' ,&
-           'VA 45 Virginia        ' ,&
-           'VT 46 Vermont         ' ,&
-           'WA 47 Washington      ' ,&
-           'WI 48 Wisconsin       ' ,&
-           'WV 49 WestVirginia    ' ,&
-           'WY 50 Wyoming         ' /
+
+      call get_country_codes (index_RANGE = index_RANGE, ST_NAME = ST_NAME, &
+           CNT_NAME = CNT_NAME)
       
-      DATA CNT_NAME  /                       & 
-           'ABW  14 Aruba                                   '  ,&
-           'AFG   1 Afghanistan                             '  ,&
-           'AGO   8 Angola                                  '  ,&
-           'AIA   9 Anguilla                                '  ,&
-           'ALA   3 Aland                                   '  ,&
-           'ALB   4 Albania                                 '  ,&
-           'AND   7 Andorra                                 '  ,&
-           'ARE 241 United Arab Emirates                    '  ,&
-           'ARG  12 Argentina                               '  ,&
-           'ARM  13 Armenia                                 '  ,&
-           'ASM   6 American Samoa                          '  ,&
-           'ATA  10 Antarctica                              '  ,&
-           'ATF  82 French Southern Territories             '  ,&
-           'ATG  11 Antigua and Barbuda                     '  ,&
-           'AUS  15 Australia                               '  ,&
-           'AUT  16 Austria                                 '  ,&
-           'AZE  17 Azerbaijan                              '  ,&
-           'BDI  39 Burundi                                 '  ,&
-           'BEL  23 Belgium                                 '  ,&
-           'BEN  25 Benin                                   '  ,&
-           'BES  29 Bonaire, Sint Eustatius and Saba        '  ,&
-           'BFA  38 Burkina Faso                            '  ,&
-           'BGD  20 Bangladesh                              '  ,&
-           'BGR  37 Bulgaria                                '  ,&
-           'BHR  19 Bahrain                                 '  ,&
-           'BHS  18 Bahamas                                 '  ,&
-           'BIH  30 Bosnia and Herzegovina                  '  ,&
-           'BLM 190 Saint-Barthelemy                        '  ,&
-           'BLR  22 Belarus                                 '  ,&
-           'BLZ  24 Belize                                  '  ,&
-           'BMU  26 Bermuda                                 '  ,&
-           'BOL  28 Bolivia                                 '  ,&
-           'BRA  33 Brazil                                  '  ,&
-           'BRB  21 Barbados                                '  ,&
-           'BRN  36 Brunei                                  '  ,&
-           'BTN  27 Bhutan                                  '  ,&
-           'BVT  32 Bouvet Island                           '  ,&
-           'BWA  31 Botswana                                '  ,&
-           'CAF  46 Central African Republic                '  ,&
-           'CAN  42 Canada                                  '  ,&
-           'CCK  52 Cocos Islands                           '  ,&
-           'CHE 223 Switzerland                             '  ,&
-           'CHL  48 Chile                                   '  ,&
-           'CHN  49 China                                   '  ,&
-           'CIV  57 Cote dIvoire                            '  ,&
-           'CMR  41 Cameroon                                '  ,&
-           'COD   0 Democratic Republic of the Congo        '  ,&
-           'COG 185 Republic of Congo                       '  ,&
-           'COK  55 Cook Islands                            '  ,&
-           'COL  53 Colombia                                '  ,&
-           'COM  54 Comoros                                 '  ,&
-           'CPV  43 Cape Verde                              '  ,&
-           'CRI  56 Costa Rica                              '  ,&
-           'CUB  59 Cuba                                    '  ,&
-           'CUW  60 Curacao                                 '  ,&
-           'CXR  50 Christmas Island                        '  ,&
-           'CYM  45 Cayman Islands                          '  ,&
-           'CYP  61 Cyprus                                  '  ,&
-           'CZE  62 Czech Republic                          '  ,&
-           'DEU  86 Germany                                 '  ,&
-           'DJI  65 Djibouti                                '  ,&
-           'DMA  66 Dominica                                '  ,&
-           'DNK  64 Denmark                                 '  ,&
-           'DOM  67 Dominican Republic                      '  ,&
-           'DZA   5 Algeria                                 '  ,&
-           'ECU  68 Ecuador                                 '  ,&
-           'EGY  69 Egypt                                   '  ,&
-           'ERI  72 Eritrea                                 '  ,&
-           'ESH 253 Western Sahara                          '  ,&
-           'ESP 215 Spain                                   '  ,&
-           'EST  73 Estonia                                 '  ,&
-           'ETH  74 Ethiopia                                '  ,&
-           'FIN  78 Finland                                 '  ,&
-           'FJI  77 Fiji                                    '  ,&
-           'FLK  75 Falkland Islands                        '  ,&
-           'FRA  79 France                                  '  ,&
-           'FRO  76 Faroe Islands                           '  ,&
-           'FSM 146 Micronesia                              '  ,&
-           'GAB  83 Gabon                                   '  ,&
-           'GBR 242 United Kingdom                          '  ,&
-           'GEO  85 Georgia                                 '  ,&
-           'GGY  95 Guernsey                                '  ,&
-           'GHA  87 Ghana                                   '  ,&
-           'GIB  88 Gibraltar                               '  ,&
-           'GIN  96 Guinea                                  '  ,&
-           'GLP  92 Guadeloupe                              '  ,&
-           'GMB  84 Gambia                                  '  ,&
-           'GNB  97 Guinea-Bissau                           '  ,&
-           'GNQ  71 Equatorial Guinea                       '  ,&
-           'GRC  89 Greece                                  '  ,&
-           'GRD  91 Grenada                                 '  ,&
-           'GRL  90 Greenland                               '  ,&
-           'GTM  94 Guatemala                               '  ,&
-           'GUF  80 French Guiana                           '  ,&
-           'GUM  93 Guam                                    '  ,&
-           'GUY  98 Guyana                                  '  ,&
-           'HKG 102 Hong Kong                               '  ,&
-           'HMD 100 Heard Island and McDonald Islands       '  ,&
-           'HND 101 Honduras                                '  ,&
-           'HRV  58 Croatia                                 '  ,&
-           'HTI  99 Haiti                                   '  ,&
-           'HUN 103 Hungary                                 '  ,&
-           'IDN 106 Indonesia                               '  ,&
-           'IMN 110 Isle of Man                             '  ,&
-           'IND 105 India                                   '  ,&
-           'IOT  34 British Indian Ocean Territory          '  ,&
-           'IRL 109 Ireland                                 '  ,&
-           'IRN 107 Iran                                    '  ,&
-           'IRQ 108 Iraq                                    '  ,&
-           'ISL 104 Iceland                                 '  ,&
-           'ISR 111 Israel                                  '  ,&
-           'ITA 112 Italy                                   '  ,&
-           'JAM 113 Jamaica                                 '  ,&
-           'JEY 115 Jersey                                  '  ,&
-           'JOR 116 Jordan                                  '  ,&
-           'JPN 114 Japan                                   '  ,&
-           'KAZ 117 Kazakhstan                              '  ,&
-           'KEN 118 Kenya                                   '  ,&
-           'KGZ 122 Kyrgyzstan                              '  ,&
-           'KHM  40 Cambodia                                '  ,&
-           'KIR 119 Kiribati                                '  ,&
-           'KNA 193 Saint Kitts and Nevis                   '  ,&
-           'KOR 213 South Korea                             '  ,&
-           'KWT 121 Kuwait                                  '  ,&
-           'LAO 123 Laos                                    '  ,&
-           'LBN 125 Lebanon                                 '  ,&
-           'LBR 127 Liberia                                 '  ,&
-           'LBY 128 Libya                                   '  ,&
-           'LCA 194 Saint Lucia                             '  ,&
-           'LIE 129 Liechtenstein                           '  ,&
-           'LKA 217 Sri Lanka                               '  ,&
-           'LSO 126 Lesotho                                 '  ,&
-           'LTU 130 Lithuania                               '  ,&
-           'LUX 131 Luxembourg                              '  ,&
-           'LVA 124 Latvia                                  '  ,&
-           'MAC 132 Macao                                   '  ,&
-           'MAF 191 Saint-Martin                            '  ,&
-           'MAR 152 Morocco                                 '  ,&
-           'MCO 148 Monaco                                  '  ,&
-           'MDA 147 Moldova                                 '  ,&
-           'MDG 134 Madagascar                              '  ,&
-           'MDV 137 Maldives                                '  ,&
-           'MEX 145 Mexico                                  '  ,&
-           'MHL 140 Marshall Islands                        '  ,&
-           'MKD 133 Macedonia                               '  ,&
-           'MLI 138 Mali                                    '  ,&
-           'MLT 139 Malta                                   '  ,&
-           'MMR 154 Myanmar                                 '  ,&
-           'MNE 150 Montenegro                              '  ,&
-           'MNG 149 Mongolia                                '  ,&
-           'MNP 168 Northern Mariana Islands                '  ,&
-           'MOZ 153 Mozambique                              '  ,&
-           'MRT 142 Mauritania                              '  ,&
-           'MSR 151 Montserrat                              '  ,&
-           'MTQ 141 Martinique                              '  ,&
-           'MUS 143 Mauritius                               '  ,&
-           'MWI 135 Malawi                                  '  ,&
-           'MYS 136 Malaysia                                '  ,&
-           'MYT 144 Mayotte                                 '  ,&
-           'NAM 155 Namibia                                 '  ,&
-           'NCL 159 New Caledonia                           '  ,&
-           'NER 162 Niger                                   '  ,&
-           'NFK 165 Norfolk Island                          '  ,&
-           'NGA 163 Nigeria                                 '  ,&
-           'NIC 161 Nicaragua                               '  ,&
-           'NIU 164 Niue                                    '  ,&
-           'NLD 158 Netherlands                             '  ,&
-           'NOR 169 Norway                                  '  ,&
-           'NPL 157 Nepal                                   '  ,&
-           'NRU 156 Nauru                                   '  ,&
-           'NZL 160 New Zealand                             '  ,&
-           'OMN 170 Oman                                    '  ,&
-           'PAK 171 Pakistan                                '  ,&
-           'PAN 174 Panama                                  '  ,&
-           'PCN 180 Pitcairn Islands                        '  ,&
-           'PER 178 Peru                                    '  ,&
-           'PHL 179 Philippines                             '  ,&
-           'PLW 172 Palau                                   '  ,&
-           'PNG 175 Papua New Guinea                        '  ,&
-           'POL 181 Poland                                  '  ,&
-           'PRI 183 Puerto Rico                             '  ,&
-           'PRK 166 North Korea                             '  ,&
-           'PRT 182 Portugal                                '  ,&
-           'PRY 177 Paraguay                                '  ,&
-           'PSE 173 Palestina                               '  ,&
-           'PYF  81 French Polynesia                        '  ,&
-           'QAT 184 Qatar                                   '  ,&
-           'REU 186 Reunion                                 '  ,&
-           'ROU 187 Romania                                 '  ,&
-           'RUS 188 Russia                                  '  ,&
-           'RWA 189 Rwanda                                  '  ,&
-           'SAU 200 Saudi Arabia                            '  ,&
-           'SDN 218 Sudan                                   '  ,&
-           'SEN 201 Senegal                                 '  ,&
-           'SGP 205 Singapore                               '  ,&
-           'SGS 212 South Georgia and the South Sandwich Is '  ,&
-           'SHN 192 Saint Helena                            '  ,&
-           'SJM 220 Svalbard and Jan Mayen                  '  ,&
-           'SLB 209 Solomon Islands                         '  ,&
-           'SLE 204 Sierra Leone                            '  ,&
-           'SLV  70 El Salvador                             '  ,&
-           'SMR 198 San Marino                              '  ,&
-           'SOM 210 Somalia                                 '  ,&
-           'SPM 195 Saint Pierre and Miquelon               '  ,&
-           'SRB 202 Serbia                                  '  ,&
-           'SSD 214 South Sudan                             '  ,&
-           'STP 199 Sao Tome and Principe                   '  ,&
-           'SUR 219 Suriname                                '  ,&
-           'SVK 207 Slovakia                                '  ,&
-           'SVN 208 Slovenia                                '  ,&
-           'SWE 222 Sweden                                  '  ,&
-           'SWZ 221 Swaziland                               '  ,&
-           'SXM 206 Sint Maarten                            '  ,&
-           'SYC 203 Seychelles                              '  ,&
-           'SYR 224 Syria                                   '  ,&
-           'TCA 237 Turks and Caicos Islands                '  ,&
-           'TCD  47 Chad                                    '  ,&
-           'TGO 230 Togo                                    '  ,&
-           'THA 228 Thailand                                '  ,&
-           'TJK 226 Tajikistan                              '  ,&
-           'TKL 231 Tokelau                                 '  ,&
-           'TKM 236 Turkmenistan                            '  ,&
-           'TLS 229 Timor-Leste                             '  ,&
-           'TON 232 Tonga                                   '  ,&
-           'TTO 233 Trinidad and Tobago                     '  ,&
-           'TUN 234 Tunisia                                 '  ,&
-           'TUR 235 Turkey                                  '  ,&
-           'TUV 238 Tuvalu                                  '  ,&
-           'TWN 225 Taiwan                                  '  ,&
-           'TZA 227 Tanzania                                '  ,&
-           'UGA 239 Uganda                                  '  ,&
-           'UKR 240 Ukraine                                 '  ,&
-           'UMI 244 United States Minor Outlying Islands    '  ,&
-           'URY 245 Uruguay                                 '  ,&
-           'USA 243 United States                           '  ,&
-           'UZB 246 Uzbekistan                              '  ,&
-           'VAT 248 Vatican City                            '  ,&
-           'VCT 196 Saint Vincent and the Grenadines        '  ,&
-           'VEN 249 Venezuela                               '  ,&
-           'VGB  35 British Virgin Islands                  '  ,&
-           'VIR 251 Virgin Islands, U.S.                    '  ,&
-           'VNM 250 Vietnam                                 '  ,&
-           'VUT 247 Vanuatu                                 '  ,&
-           'WLF 252 Wallis and Futuna                       '  ,&
-           'WSM 197 Samoa                                   '  ,&
-           'XAD   2 Akrotiri and Dhekelia                   '  ,&
-           'XCA  44 Caspian Sea                             '  ,&
-           'XCL  51 Clipperton Island                       '  ,&
-           'XKO 120 Kosovo                                  '  ,&
-           'XNC 167 Northern Cyprus                         '  ,&
-           'XPI 176 Paracel Islands                         '  ,&
-           'XSP 216 Spratly Islands                         '  ,&
-           'YEM 254 Yemen                                   '  ,&
-           'ZAF 211 South Africa                            '  ,&
-           'ZMB 255 Zambia                                  '  ,&
-           'ZWE 256 Zimbabwe                                '  ,&
-           'UNK 257 Unknown                                 '/
+      ! Reading number of tiles
+      ! -----------------------
+
+      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
+           action =  'read')
       
-     DATA INDEX_RANGE / &
+      read (20, *) maxcat
+      
+
+      ! READ PEATMAP source data files and regrid
+      ! -----------------------------------------
+      
+      status  = NF_OPEN ('data/CATCH/GADM_Country_and_USStates_codes_1km.nc4', NF_NOWRITE, ncid)
+      
+      allocate (cnt_grid  (1 : GC, 1 : GR))
+      allocate (st_grid   (1 : GC, 1 : GR))
+      
+      status  = NF_INQ_VARID (ncid,'UNIT_CODE',VarID) ; VERIFY_(STATUS)
+      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,1/),(/GC, GR,1/), cnt_grid) ; VERIFY_(STATUS)
+      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,2/),(/GC, GR,1/), st_grid) ; VERIFY_(STATUS)
+      where (st_grid == 0) st_grid = 999
+      status = NF_CLOSE(ncid)
+
+      open (10,file='clsm/country_and_state_code.data',  &
+         form='formatted',status='unknown')
+
+      dxy = 360./GC
+      do k = 1, GC 
+         xg(k) = (k-1)*dxy -180. + dxy/2.
+      end do
+      do k = 1, GR 
+         yg(k) = (k-1)*dxy -90. + dxy/2.
+      end do      
+
+      DO n = 1, MAXCAT
+         read (20,*) i0,j0, lon_mn, lon_mx, lat_mn, lat_mx
+         x0 = (lon_mn + lon_mx)/2.
+         y0 = (lat_mn + lat_mx)/2.
+         I = 0
+         J = 0
+         WHERE ((xg >= x0).and.(xg < x0 + dxy)) I = 1
+         WHERE ((yg >= y0).and.(yg < y0 + dxy)) J = 1
+         
+         I0 =FINDLOC(I,1)
+         J0 =FINDLOC(J,1)
+
+         cnt_code = cnt_grid(I0(1), J0(1))
+         st_code  = st_grid (I0(1), J0(1))
+
+         if(cnt_code > 300) then
+            CNT_CODE = 257
+         endif
+
+         if(st_code <= 50) then
+            write (10, '(i10, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), ST_NAME (ST_CODE)
+         else
+            write (10, '(i10, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), 'OUTSIDE USA'
+         endif
+      
+     END DO
+
+     close (10, status = 'keep')
+     close (20, status = 'keep')
+   END SUBROUTINE map_country_codes
+
+   ! -------------------------------------------------------------------------------------------
+   
+   SUBROUTINE get_country_codes (index_RANGE, ST_NAME, CNT_NAME, ST_NAME_ABR, CNT_NAME_ABR)
+
+     implicit none
+     
+     INTEGER,      dimension (N_GADM  ), TARGET :: index_RANGE_DATA
+     character*20, dimension (N_STATES), TARGET :: ST_NAME_DATA
+     character*48, dimension (N_GADM  ), TARGET :: CNT_NAME_DATA
+     INTEGER,      dimension (:), pointer, intent (inout), optional :: index_RANGE 
+     character*20, dimension (:), pointer, intent (inout), optional :: ST_NAME     
+     character*48, dimension (:), pointer, intent (inout), optional :: CNT_NAME    
+     character*2,  dimension (:), pointer, intent (inout), optional :: ST_NAME_ABR 
+     character*3,  dimension (:), pointer, intent (inout), optional :: CNT_NAME_ABR
+
+     DATA ST_NAME_DATA /            &
+          'AK  1 Alaska          ' ,&
+          'AL  2 Alabama         ' ,&
+          'AZ  3 Arizona         ' ,&
+          'AR  4 Arkansas        ' ,&
+          'CA  5 California      ' ,&
+          'CO  6 Colorado        ' ,&
+          'CT  7 Connecticut     ' ,&
+          'DE  8 Delaware        ' ,&
+          'FL  9 Florida         ' ,&
+          'GA 10 Georgia         ' ,&
+          'HI 11 Hawaii          ' ,&
+          'IA 12 Iowa            ' ,&
+          'ID 13 Idaho           ' ,&
+          'IL 14 Illinois        ' ,&
+          'IN 15 Indiana         ' ,&
+          'KS 16 Kansas          ' ,&
+          'KY 17 Kentucky        ' ,&
+          'LA 18 Louisiana       ' ,&
+          'MA 19 Massachusetts   ' ,&
+          'MD 20 Maryland        ' ,&
+          'ME 21 Maine           ' ,&
+          'MI 22 Michigan        ' ,&
+          'MN 23 Minnesota       ' ,&
+          'MO 24 Missouri        ' ,&
+          'MS 25 Mississippi     ' ,&
+          'MT 26 Montana         ' ,&
+          'NC 27 NorthCarolina   ' ,&
+          'ND 28 NorthDakota     ' ,&
+          'NE 29 Nebraska        ' ,&
+          'NH 30 NewHampshire    ' ,&
+          'NJ 31 NewJersey       ' ,&
+          'NM 32 NewMexico       ' ,&
+          'NV 33 Nevada          ' ,&
+          'NY 34 NewYork         ' ,&
+          'OH 35 Ohio            ' ,&
+          'OK 36 Oklahoma        ' ,&
+          'OR 37 Oregon          ' ,&
+          'PA 38 Pennsylvania    ' ,&
+          'RI 39 RhodeIsland     ' ,&
+          'SC 40 SouthCarolina   ' ,&
+          'SD 41 SouthDakota     ' ,&
+          'TN 42 Tennessee       ' ,&
+          'TX 43 Texas           ' ,&
+          'UT 44 Utah            ' ,&
+          'VA 45 Virginia        ' ,&
+          'VT 46 Vermont         ' ,&
+          'WA 47 Washington      ' ,&
+          'WI 48 Wisconsin       ' ,&
+          'WV 49 WestVirginia    ' ,&
+          'WY 50 Wyoming         ' /
+     
+     DATA CNT_NAME_DATA  /                                     & 
+          'ABW  14 Aruba                                   '  ,&
+          'AFG   1 Afghanistan                             '  ,&
+          'AGO   8 Angola                                  '  ,&
+          'AIA   9 Anguilla                                '  ,&
+          'ALA   3 Aland                                   '  ,&
+          'ALB   4 Albania                                 '  ,&
+          'AND   7 Andorra                                 '  ,&
+          'ARE 241 United Arab Emirates                    '  ,&
+          'ARG  12 Argentina                               '  ,&
+          'ARM  13 Armenia                                 '  ,&
+          'ASM   6 American Samoa                          '  ,&
+          'ATA  10 Antarctica                              '  ,&
+          'ATF  82 French Southern Territories             '  ,&
+          'ATG  11 Antigua and Barbuda                     '  ,&
+          'AUS  15 Australia                               '  ,&
+          'AUT  16 Austria                                 '  ,&
+          'AZE  17 Azerbaijan                              '  ,&
+          'BDI  39 Burundi                                 '  ,&
+          'BEL  23 Belgium                                 '  ,&
+          'BEN  25 Benin                                   '  ,&
+          'BES  29 Bonaire, Sint Eustatius and Saba        '  ,&
+          'BFA  38 Burkina Faso                            '  ,&
+          'BGD  20 Bangladesh                              '  ,&
+          'BGR  37 Bulgaria                                '  ,&
+          'BHR  19 Bahrain                                 '  ,&
+          'BHS  18 Bahamas                                 '  ,&
+          'BIH  30 Bosnia and Herzegovina                  '  ,&
+          'BLM 190 Saint-Barthelemy                        '  ,&
+          'BLR  22 Belarus                                 '  ,&
+          'BLZ  24 Belize                                  '  ,&
+          'BMU  26 Bermuda                                 '  ,&
+          'BOL  28 Bolivia                                 '  ,&
+          'BRA  33 Brazil                                  '  ,&
+          'BRB  21 Barbados                                '  ,&
+          'BRN  36 Brunei                                  '  ,&
+          'BTN  27 Bhutan                                  '  ,&
+          'BVT  32 Bouvet Island                           '  ,&
+          'BWA  31 Botswana                                '  ,&
+          'CAF  46 Central African Republic                '  ,&
+          'CAN  42 Canada                                  '  ,&
+          'CCK  52 Cocos Islands                           '  ,&
+          'CHE 223 Switzerland                             '  ,&
+          'CHL  48 Chile                                   '  ,&
+          'CHN  49 China                                   '  ,&
+          'CIV  57 Cote dIvoire                            '  ,&
+          'CMR  41 Cameroon                                '  ,&
+          'COD   0 Democratic Republic of the Congo        '  ,&
+          'COG 185 Republic of Congo                       '  ,&
+          'COK  55 Cook Islands                            '  ,&
+          'COL  53 Colombia                                '  ,&
+          'COM  54 Comoros                                 '  ,&
+          'CPV  43 Cape Verde                              '  ,&
+          'CRI  56 Costa Rica                              '  ,&
+          'CUB  59 Cuba                                    '  ,&
+          'CUW  60 Curacao                                 '  ,&
+          'CXR  50 Christmas Island                        '  ,&
+          'CYM  45 Cayman Islands                          '  ,&
+          'CYP  61 Cyprus                                  '  ,&
+          'CZE  62 Czech Republic                          '  ,&
+          'DEU  86 Germany                                 '  ,&
+          'DJI  65 Djibouti                                '  ,&
+          'DMA  66 Dominica                                '  ,&
+          'DNK  64 Denmark                                 '  ,&
+          'DOM  67 Dominican Republic                      '  ,&
+          'DZA   5 Algeria                                 '  ,&
+          'ECU  68 Ecuador                                 '  ,&
+          'EGY  69 Egypt                                   '  ,&
+          'ERI  72 Eritrea                                 '  ,&
+          'ESH 253 Western Sahara                          '  ,&
+          'ESP 215 Spain                                   '  ,&
+          'EST  73 Estonia                                 '  ,&
+          'ETH  74 Ethiopia                                '  ,&
+          'FIN  78 Finland                                 '  ,&
+          'FJI  77 Fiji                                    '  ,&
+          'FLK  75 Falkland Islands                        '  ,&
+          'FRA  79 France                                  '  ,&
+          'FRO  76 Faroe Islands                           '  ,&
+          'FSM 146 Micronesia                              '  ,&
+          'GAB  83 Gabon                                   '  ,&
+          'GBR 242 United Kingdom                          '  ,&
+          'GEO  85 Georgia                                 '  ,&
+          'GGY  95 Guernsey                                '  ,&
+          'GHA  87 Ghana                                   '  ,&
+          'GIB  88 Gibraltar                               '  ,&
+          'GIN  96 Guinea                                  '  ,&
+          'GLP  92 Guadeloupe                              '  ,&
+          'GMB  84 Gambia                                  '  ,&
+          'GNB  97 Guinea-Bissau                           '  ,&
+          'GNQ  71 Equatorial Guinea                       '  ,&
+          'GRC  89 Greece                                  '  ,&
+          'GRD  91 Grenada                                 '  ,&
+          'GRL  90 Greenland                               '  ,&
+          'GTM  94 Guatemala                               '  ,&
+          'GUF  80 French Guiana                           '  ,&
+          'GUM  93 Guam                                    '  ,&
+          'GUY  98 Guyana                                  '  ,&
+          'HKG 102 Hong Kong                               '  ,&
+          'HMD 100 Heard Island and McDonald Islands       '  ,&
+          'HND 101 Honduras                                '  ,&
+          'HRV  58 Croatia                                 '  ,&
+          'HTI  99 Haiti                                   '  ,&
+          'HUN 103 Hungary                                 '  ,&
+          'IDN 106 Indonesia                               '  ,&
+          'IMN 110 Isle of Man                             '  ,&
+          'IND 105 India                                   '  ,&
+          'IOT  34 British Indian Ocean Territory          '  ,&
+          'IRL 109 Ireland                                 '  ,&
+          'IRN 107 Iran                                    '  ,&
+          'IRQ 108 Iraq                                    '  ,&
+          'ISL 104 Iceland                                 '  ,&
+          'ISR 111 Israel                                  '  ,&
+          'ITA 112 Italy                                   '  ,&
+          'JAM 113 Jamaica                                 '  ,&
+          'JEY 115 Jersey                                  '  ,&
+          'JOR 116 Jordan                                  '  ,&
+          'JPN 114 Japan                                   '  ,&
+          'KAZ 117 Kazakhstan                              '  ,&
+          'KEN 118 Kenya                                   '  ,&
+          'KGZ 122 Kyrgyzstan                              '  ,&
+          'KHM  40 Cambodia                                '  ,&
+          'KIR 119 Kiribati                                '  ,&
+          'KNA 193 Saint Kitts and Nevis                   '  ,&
+          'KOR 213 South Korea                             '  ,&
+          'KWT 121 Kuwait                                  '  ,&
+          'LAO 123 Laos                                    '  ,&
+          'LBN 125 Lebanon                                 '  ,&
+          'LBR 127 Liberia                                 '  ,&
+          'LBY 128 Libya                                   '  ,&
+          'LCA 194 Saint Lucia                             '  ,&
+          'LIE 129 Liechtenstein                           '  ,&
+          'LKA 217 Sri Lanka                               '  ,&
+          'LSO 126 Lesotho                                 '  ,&
+          'LTU 130 Lithuania                               '  ,&
+          'LUX 131 Luxembourg                              '  ,&
+          'LVA 124 Latvia                                  '  ,&
+          'MAC 132 Macao                                   '  ,&
+          'MAF 191 Saint-Martin                            '  ,&
+          'MAR 152 Morocco                                 '  ,&
+          'MCO 148 Monaco                                  '  ,&
+          'MDA 147 Moldova                                 '  ,&
+          'MDG 134 Madagascar                              '  ,&
+          'MDV 137 Maldives                                '  ,&
+          'MEX 145 Mexico                                  '  ,&
+          'MHL 140 Marshall Islands                        '  ,&
+          'MKD 133 Macedonia                               '  ,&
+          'MLI 138 Mali                                    '  ,&
+          'MLT 139 Malta                                   '  ,&
+          'MMR 154 Myanmar                                 '  ,&
+          'MNE 150 Montenegro                              '  ,&
+          'MNG 149 Mongolia                                '  ,&
+          'MNP 168 Northern Mariana Islands                '  ,&
+          'MOZ 153 Mozambique                              '  ,&
+          'MRT 142 Mauritania                              '  ,&
+          'MSR 151 Montserrat                              '  ,&
+          'MTQ 141 Martinique                              '  ,&
+          'MUS 143 Mauritius                               '  ,&
+          'MWI 135 Malawi                                  '  ,&
+          'MYS 136 Malaysia                                '  ,&
+          'MYT 144 Mayotte                                 '  ,&
+          'NAM 155 Namibia                                 '  ,&
+          'NCL 159 New Caledonia                           '  ,&
+          'NER 162 Niger                                   '  ,&
+          'NFK 165 Norfolk Island                          '  ,&
+          'NGA 163 Nigeria                                 '  ,&
+          'NIC 161 Nicaragua                               '  ,&
+          'NIU 164 Niue                                    '  ,&
+          'NLD 158 Netherlands                             '  ,&
+          'NOR 169 Norway                                  '  ,&
+          'NPL 157 Nepal                                   '  ,&
+          'NRU 156 Nauru                                   '  ,&
+          'NZL 160 New Zealand                             '  ,&
+          'OMN 170 Oman                                    '  ,&
+          'PAK 171 Pakistan                                '  ,&
+          'PAN 174 Panama                                  '  ,&
+          'PCN 180 Pitcairn Islands                        '  ,&
+          'PER 178 Peru                                    '  ,&
+          'PHL 179 Philippines                             '  ,&
+          'PLW 172 Palau                                   '  ,&
+          'PNG 175 Papua New Guinea                        '  ,&
+          'POL 181 Poland                                  '  ,&
+          'PRI 183 Puerto Rico                             '  ,&
+          'PRK 166 North Korea                             '  ,&
+          'PRT 182 Portugal                                '  ,&
+          'PRY 177 Paraguay                                '  ,&
+          'PSE 173 Palestina                               '  ,&
+          'PYF  81 French Polynesia                        '  ,&
+          'QAT 184 Qatar                                   '  ,&
+          'REU 186 Reunion                                 '  ,&
+          'ROU 187 Romania                                 '  ,&
+          'RUS 188 Russia                                  '  ,&
+          'RWA 189 Rwanda                                  '  ,&
+          'SAU 200 Saudi Arabia                            '  ,&
+          'SDN 218 Sudan                                   '  ,&
+          'SEN 201 Senegal                                 '  ,&
+          'SGP 205 Singapore                               '  ,&
+          'SGS 212 South Georgia and the South Sandwich Is '  ,&
+          'SHN 192 Saint Helena                            '  ,&
+          'SJM 220 Svalbard and Jan Mayen                  '  ,&
+          'SLB 209 Solomon Islands                         '  ,&
+          'SLE 204 Sierra Leone                            '  ,&
+          'SLV  70 El Salvador                             '  ,&
+          'SMR 198 San Marino                              '  ,&
+          'SOM 210 Somalia                                 '  ,&
+          'SPM 195 Saint Pierre and Miquelon               '  ,&
+          'SRB 202 Serbia                                  '  ,&
+          'SSD 214 South Sudan                             '  ,&
+          'STP 199 Sao Tome and Principe                   '  ,&
+          'SUR 219 Suriname                                '  ,&
+          'SVK 207 Slovakia                                '  ,&
+          'SVN 208 Slovenia                                '  ,&
+          'SWE 222 Sweden                                  '  ,&
+          'SWZ 221 Swaziland                               '  ,&
+          'SXM 206 Sint Maarten                            '  ,&
+          'SYC 203 Seychelles                              '  ,&
+          'SYR 224 Syria                                   '  ,&
+          'TCA 237 Turks and Caicos Islands                '  ,&
+          'TCD  47 Chad                                    '  ,&
+          'TGO 230 Togo                                    '  ,&
+          'THA 228 Thailand                                '  ,&
+          'TJK 226 Tajikistan                              '  ,&
+          'TKL 231 Tokelau                                 '  ,&
+          'TKM 236 Turkmenistan                            '  ,&
+          'TLS 229 Timor-Leste                             '  ,&
+          'TON 232 Tonga                                   '  ,&
+          'TTO 233 Trinidad and Tobago                     '  ,&
+          'TUN 234 Tunisia                                 '  ,&
+          'TUR 235 Turkey                                  '  ,&
+          'TUV 238 Tuvalu                                  '  ,&
+          'TWN 225 Taiwan                                  '  ,&
+          'TZA 227 Tanzania                                '  ,&
+          'UGA 239 Uganda                                  '  ,&
+          'UKR 240 Ukraine                                 '  ,&
+          'UMI 244 United States Minor Outlying Islands    '  ,&
+          'URY 245 Uruguay                                 '  ,&
+          'USA 243 United States                           '  ,&
+          'UZB 246 Uzbekistan                              '  ,&
+          'VAT 248 Vatican City                            '  ,&
+          'VCT 196 Saint Vincent and the Grenadines        '  ,&
+          'VEN 249 Venezuela                               '  ,&
+          'VGB  35 British Virgin Islands                  '  ,&
+          'VIR 251 Virgin Islands, U.S.                    '  ,&
+          'VNM 250 Vietnam                                 '  ,&
+          'VUT 247 Vanuatu                                 '  ,&
+          'WLF 252 Wallis and Futuna                       '  ,&
+          'WSM 197 Samoa                                   '  ,&
+          'XAD   2 Akrotiri and Dhekelia                   '  ,&
+          'XCA  44 Caspian Sea                             '  ,&
+          'XCL  51 Clipperton Island                       '  ,&
+          'XKO 120 Kosovo                                  '  ,&
+          'XNC 167 Northern Cyprus                         '  ,&
+          'XPI 176 Paracel Islands                         '  ,&
+          'XSP 216 Spratly Islands                         '  ,&
+          'YEM 254 Yemen                                   '  ,&
+          'ZAF 211 South Africa                            '  ,&
+          'ZMB 255 Zambia                                  '  ,&
+          'ZWE 256 Zimbabwe                                '  ,&
+          'UNK 257 Unknown                                 '/
+      
+     DATA INDEX_RANGE_DATA / &
          14 ,&
           1 ,&
           8 ,&
@@ -6879,139 +7039,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         256 ,&
         257 /
 
+     if(present(index_RANGE )) index_RANGE => index_RANGE_DATA 
+     if(present(ST_NAME     )) ST_NAME     => ST_NAME_DATA     
+     if(present(CNT_NAME    )) CNT_NAME    => CNT_NAME_DATA    
+     if(present(ST_NAME_ABR )) ST_NAME_ABR => ST_NAME_DATA (:)(1:2) 
+     if(present(CNT_NAME_ABR)) CNT_NAME_ABR=> CNT_NAME_DATA(:)(1:3) 
      
-      ! Reading number of tiles
-      ! -----------------------
-
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-           action =  'read')
-      
-      read (20, *) maxcat
-      
-
-      ! READ PEATMAP source data files and regrid
-      ! -----------------------------------------
-      
-      status  = NF_OPEN ('data/CATCH/GADM_Country_and_USStates_codes_1km.nc4', NF_NOWRITE, ncid)
-      
-      allocate (cnt_grid  (1 : GC, 1 : GR))
-      allocate (st_grid   (1 : GC, 1 : GR))
-      
-      status  = NF_INQ_VARID (ncid,'UNIT_CODE',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,1/),(/GC, GR,1/), cnt_grid) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,2/),(/GC, GR,1/), st_grid) ; VERIFY_(STATUS)
-      where (st_grid == 0) st_grid = 999
-      status = NF_CLOSE(ncid)
-
-      open (10,file='clsm/country_and_state_code.data',  &
-         form='formatted',status='unknown')
-
-      dxy = 360./GC
-      do k = 1, GC 
-         xg(k) = (k-1)*dxy -180. + dxy/2.
-      end do
-      do k = 1, GR 
-         yg(k) = (k-1)*dxy -90. + dxy/2.
-      end do      
-
-      DO n = 1, MAXCAT
-         read (20,*) i0,j0, lon_mn, lon_mx, lat_mn, lat_mx
-         x0 = (lon_mn + lon_mx)/2.
-         y0 = (lat_mn + lat_mx)/2.
-         I = 0
-         J = 0
-         WHERE ((xg >= x0).and.(xg < x0 + dxy)) I = 1
-         WHERE ((yg >= y0).and.(yg < y0 + dxy)) J = 1
-         
-         I0 =FINDLOC(I,1)
-         J0 =FINDLOC(J,1)
-
-         cnt_code = cnt_grid(I0(1), J0(1))
-         st_code  = st_grid (I0(1), J0(1))
-
-         if(cnt_code > 300) then
-            CNT_CODE = 257
-         endif
-
-         if(st_code <= 50) then
-            write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), ST_NAME (ST_CODE)
-         else
-            write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), 'OUTSIDE USA'
-         endif
-      
-     END DO
-
-     close (10, status = 'keep')
-     close (20, status = 'keep')
-    END SUBROUTINE country_codes
+   END SUBROUTINE get_country_codes
 
   END MODULE  process_hres_data
 
-! -------------------------------------------------------------------------------------------------------------------------------
+! ----------------------------------------------------------------------------------------------
 
-#ifdef DO_CLM45
-!gmake FOPT='-DDO_CLM45'
-!mpiifort -o ../bin/mk_clm45 -DsysLinux -DESMA64 -DHAS_NETCDF4 -DHAS_NETCDF3 -DH5_HAVE_PARALLEL -DNETCDF_NEED_NF_MPIIO  -DHAVE_SHMEM  -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf   -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf  -DDO_CLM45     -fPIC -fpe0 -fp-model source -heap-arrays 32 -assume noold_maxminloc  -align dcommons  -DEIGHT_BYTE -I../mod/ -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/netcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L../lib/ -I../include/ -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/netcdf -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/hdf5 mod_clm45_routines.F90 ../lib/libraster.a -lz -L../lib -lraster -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdff -lnetcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdf -ljpeg -lmfhdf -ldf -lhdf5_hl -lhdf5 -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lmfhdf -ldf -lsz -ljpeg -lgpfs -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lirc -ldl -lc -lpthread -lrt
 
-    PROGRAM mk_clm45
-  
-      use mod_clm45_routines
-      implicit none
-      character*400        :: arg(3), gfiler
-      integer              :: n , iargc, nc, nr
-
-      if(iargc() /= 3) then
-         print *, "Wrong Number of arguments: ", iargc()
-         print *, "Usage : ./mkclm45 NC NR rst/gfile"
-         stop
-      endif
-
-      do n=1,3
-         call getarg(n,arg(n))
-      enddo
-
-      read(arg(1),*) NC
-      read(arg(2),*) NR
-      read(arg(3),'(a)') gfiler
-
-      call CLM45_fixed_parameters (nc, nr, gfiler)
-      call CLM45_clim_parameters  (nc, nr, gfiler)
-
-    END PROGRAM mk_clm45
-
-#endif
-
-! ------------------------------------------------------------------------------------------------------
-
-#ifdef DO_GIMMS
-!gmake FOPT='-DDO_GIMMS'
-!mpiifort -o ../bin/mk_gimms -DsysLinux -DESMA64 -DHAS_NETCDF4 -DHAS_NETCDF3 -DH5_HAVE_PARALLEL -DNETCDF_NEED_NF_MPIIO  -DHAVE_SHMEM  -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf   -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf -DDO_GIMMS  -O3 -qopt-report0 -ftz -align all -fno-alias -qno-offload -traceback     -fPIC -fpe0 -fp-model source -heap-arrays 32 -assume noold_maxminloc  -align dcommons  -DEIGHT_BYTE -I../mod/ -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/netcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L../lib/ -I../include/ gimms_ndvi.F90 ../lib/libraster.a -lz -L../lib -lraster -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdff -lnetcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdf -ljpeg -lmfhdf -ldf -lhdf5_hl -lhdf5 -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lmfhdf -ldf -lsz -ljpeg -lgpfs -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lirc -ldl -lc -lpthread -lrt  -L/gpfsm/dnb32/mbhat/GCC/install/gcc-4.6.3/lib/gcc/x86_64-unknown-linux-gnu/4.6.3 -lstdc++
-
-    PROGRAM mk_gimms
-  
-      use gimms_ndvi
-      implicit none
-      character*400        :: arg(4), gfiler, vegfile
-      integer              :: n , iargc, nc, nr
-
-      if(iargc() /= 4) then
-         print *, "Wrong Number of arguments: ", iargc()
-         print *, "Usage : ./mkclm45 NC NR rst/gfile vegfile"
-         stop
-      endif
-
-      do n=1,4
-         call getarg(n,arg(n))
-      enddo
-
-      read(arg(1),*) NC
-      read(arg(2),*) NR
-      read(arg(3),'(a)') gfiler
-      read(arg(4),'(a)') vegfile
-
-      call ascat_r0        (nc, nr, gfiler, vegfile)
-      call gimms_clim_ndvi (nc, nr, gfiler)
-
-    END PROGRAM mk_gimms
-
-#endif
