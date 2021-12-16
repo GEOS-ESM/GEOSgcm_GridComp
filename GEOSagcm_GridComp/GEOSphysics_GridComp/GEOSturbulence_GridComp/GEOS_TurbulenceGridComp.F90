@@ -253,6 +253,14 @@ contains
 !BOS
 
 ! !IMPORT STATE:
+     call MAPL_AddImportSpec(GC,                             &
+        LONG_NAME          = 'surface geopotential height',       &
+        UNITS              = 'm+2 s-2',                           &
+        SHORT_NAME         = 'PHIS',                              &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'PLE',                                       &
@@ -2513,7 +2521,7 @@ contains
     real, dimension(:,:,:), pointer     :: AKV, BKV, CKV, DKV, EKV, FKV
     real, dimension(:,:,:), pointer     :: PLE, ZLE, SINC
     real, dimension(:,:,:), pointer     :: ZLS, ZLES
-    real, dimension(:,:  ), pointer     :: CU, CT, CQ, ZPBL
+    real, dimension(:,:  ), pointer     :: CU, CT, CQ, ZPBL, PHIS
     integer                             :: IM, JM, LM
     real                                :: DT
  
@@ -2585,12 +2593,14 @@ contains
      call MAPL_GetPointer(IMPORT,  CQ,     'CQ',     RC=STATUS)
      VERIFY_(STATUS)
 
-!----- SHOC-related variables -----
+!----- variables needed for SHOC and EDMF -----
     call MAPL_GetPointer(IMPORT, SH,   'SH',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP, 'EVAP',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WTHV2, 'WTHV2',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PHIS,   'PHIS',    RC=STATUS)
     VERIFY_(STATUS)
 
 !----- Variables for idealized SCM surface layer ------
@@ -2859,7 +2869,6 @@ contains
                                             edmf_entx
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
-   real, dimension(IM,JM,0:LM)          ::  ae3_test, aw3_test, aws3_test, awqv3_test, awql3_test, awqi3_test, awu3_test, awv3_test
 
    real, dimension(IM,JM) :: zpbl_test
 
@@ -3572,8 +3581,8 @@ contains
     IF(DoMF /= 0) then
 
       call RUN_EDMF(1, IM*JM, 1, LM, DT,      & ! in
-               Z, ZLE, PLE, RHOE, NUMUP,      & ! in
-               U, V, T, THL, THV, QT,         & ! in
+               PHIS, Z, ZLE, PLE, RHOE,       & ! in
+               NUMUP, U, V, T, THL, THV, QT,  & ! in
                Q, QL, QI, USTAR,              & ! in
                SH, EVAP, frland, zpbl,        & ! in
 !               MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP imports

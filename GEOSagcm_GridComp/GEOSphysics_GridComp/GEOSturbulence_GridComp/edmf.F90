@@ -28,7 +28,8 @@ public run_edmf
 
 contains
 
-SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
+SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
+              zlo3,zw3,pw3,rhoe3,nup,&
               u3,v3,t3,thl3,thv3,qt3,qv3,ql3,qi3,&
               ust2,wthl2,wqt2,frland,pblh2, &
 !              mfsrcthl, mfsrcqt, mfw, mfarea, &
@@ -82,7 +83,7 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
-       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND
+       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND,PHIS
        REAL :: DT
        INTEGER :: NUP2
 
@@ -535,8 +536,8 @@ end if
          factor = 1.0
          DO k=KTS,KTE
             mf = SUM(RHOE(K)*UPA(K,:)*UPW(K,:))
-            if (mf .gt. dp(K)/(MAPL_GRAV*dt)) then
-               factor = min(factor,dp(K)/(mf*MAPL_GRAV*dt) )
+            if (mf .gt. 2.*dp(K)/(MAPL_GRAV*dt)) then
+               factor = min(factor,2.*dp(K)/(mf*MAPL_GRAV*dt) )
             end if
          ENDDO
          UPA = factor*UPA
@@ -685,7 +686,7 @@ end if
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
           s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
           if (PARAMS%IMPLICIT == 1) then
-             stmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs
+             stmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + phis(IH) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs
           else
 !             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
 !             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl - exfh(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl
