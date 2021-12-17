@@ -10,11 +10,12 @@ module rmTinyCatchParaMod
   use date_time_util  
   use leap_year
   use MAPL_ConstantsMod
+  use lsm_routines, ONLY: sibalb
   
   implicit none
   logical, parameter :: error_file=.true.
   integer, parameter :: n_SoilClasses = 253
-  real, parameter :: gnu=1.0, zks = 2.0
+  real, parameter :: zks = 2.0
   integer, parameter :: i_raster = 8640, j_raster=4320
   integer, parameter :: ncat_gswp2 = 15238
   REAL, PARAMETER :: undef = 1.e+20
@@ -27,7 +28,7 @@ module rmTinyCatchParaMod
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
   character*100 :: c_data = 'data/CATCH/'
-  logical :: process_peat = .false.
+  
 
   private
 
@@ -40,16 +41,91 @@ module rmTinyCatchParaMod
   public mineral_perc, process_gswp2_veg,center_pix, soil_class
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
-  public :: ascat_r0, jpl_canoph,  NC_VarID,  process_peat 
-  logical, parameter, public :: jpl_height = .false.
+  public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
+  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
+  logical, public, save     :: process_peat = .true.
+  logical, public, save     :: jpl_height   = .true.
+  character*8, public, save :: LAIBCS  = 'MODGEO'
+  character*4, public, save :: SOILBCS = 'HWSD'
+  character*6, public, save :: MODALB  = 'MODIS2'
+  REAL, save                :: GNU = 1.0
 
-type :: mineral_perc
-   real :: clay_perc
-   real :: silt_perc
-   real :: sand_perc
-end type mineral_perc
+  type :: mineral_perc
+     real :: clay_perc
+     real :: silt_perc
+     real :: sand_perc
+  end type mineral_perc
 
 contains
+
+  SUBROUTINE init_bcs_config (LBSV)
+
+    implicit none
+
+    character(*), intent (in) :: LBSV
+! LAIBCS: Choice of LAI data set. DEFAULT : MODGEO
+!         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on  7200x3600 grid
+!         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on  7200x3600 grid
+!         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on  86400x43200 grid
+!         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Afirca and Australia
+!         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               
+!         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                  
+!         MODIS   : 8-day climatology from the period 2000-2013 on  43200x21600 grid
+!         GSWPH   : Monthly climatology from the period 1982-1998 on 43200x21600 grid              "
+! MODALB: Choice of MODIS Albedo data. DEFAULT : MODIS2                                            
+!         MODIS1 : 16-day Climatology from 1'x1 (21600x10800) MODIS data from the period 2000-2004 
+!         MODIS2 : 8-day Climatology from 30"x30"(43200x21600) MODIS data from the period 2001-2011 
+! SOILBCS:Choice of soil data. DEFAULT :HWSD                                                       
+!         HWSD : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) Parameters   
+
+    select case (trim(LBSV))
+
+    case ("F25")
+       LAIBCS  = 'GSWP2'
+       SOILBCS = 'NGDC'
+       MODALB  = 'MODIS1'
+       GNU     = 2.17
+       process_peat = .false.
+       jpl_height   = .false.
+
+    case ("GM4", "ICA")
+       LAIBCS  = 'GSWP2'
+       SOILBCS = 'NGDC'
+       MODALB  = 'MODIS2'
+       process_peat = .false.
+       jpl_height   = .false.
+
+    case ("NL3")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       process_peat = .false.
+       jpl_height   = .false.
+
+     case ("NL4")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'      
+       process_peat = .false.
+       jpl_height   = .true.
+
+     case ("NL4p")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       process_peat = .true.
+       jpl_height   = .true.
+
+    case ("DEF")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       process_peat = .true.
+       jpl_height   = .true.
+       
+    end select
+             
+  END SUBROUTINE init_bcs_config
 ! _____________________________________________________________________________________________
 !
 
@@ -526,7 +602,7 @@ END SUBROUTINE modis_lai
       character(*) :: gfile
       character*10 :: dline
       CHARACTER*20 :: version,resoln,continent
-      integer :: iret,ncid
+      integer :: iret,ncid,ncid1
       real, allocatable, target, dimension (:,:) :: SOIL_HIGH
       integer, allocatable, dimension (:,:) :: tile_id
       REAL, ALLOCATABLE :: count_soil(:)
@@ -537,6 +613,49 @@ END SUBROUTINE modis_lai
       logical :: regrid
       real, pointer :: Raster(:,:)
       logical, intent (in), optional :: F25Tag
+      logical                            :: file_exists
+      real, allocatable, dimension (:,:) :: parms4file
+
+! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+!
+! NOTE: "!$" is for conditional compilation
+!
+logical :: running_omp = .false.
+!
+!$ integer :: omp_get_thread_num, omp_get_num_threads
+!
+integer :: n_threads=1
+!
+! ------------------------------------------------------------------
+
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+  !
+  ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+  !
+  !$ running_omp = .true.         ! conditional compilation
+  !
+  ! ECHO BASIC OMP VARIABLES
+  !
+  !$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+  !
+  !$OMP SINGLE
+  !
+  !$ n_threads = omp_get_num_threads()
+  !
+  !$ write (*,*) 'running_omp = ', running_omp
+  !$ write (*,*)
+  !$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+  !$ write (*,*)
+  !$OMP ENDSINGLE
+  !
+  !$OMP CRITICAL
+  !$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+  !$OMP ENDCRITICAL
+  !
+  !$OMP BARRIER
+  !
+  !$OMP ENDPARALLEL
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
 
       data lbee /3.30, 3.80, 4.34, 5.25, 3.63, 5.96, 7.32,       &
                  8.41, 8.34, 9.70, 10.78, 12.93/
@@ -568,6 +687,7 @@ END SUBROUTINE modis_lai
 
       i_sib = i_raster
       j_sib = j_raster
+
       fname='clsm/catchment.def'
 
       open (10,file=fname,status='old',action='read',form='formatted')
@@ -578,6 +698,13 @@ END SUBROUTINE modis_lai
           allocate(soil_high(1:i_raster,1:j_raster))  
           allocate(count_soil(1:maxcat))  
           allocate(tile_id(1:nx,1:ny))
+
+          inquire(file='clsm/catch_params.nc4', exist=file_exists)
+
+          if(file_exists) then
+             status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+             allocate (parms4file (1:maxcat, 1:10))
+          endif
 
           soil_high =-9999.
           fname=trim(gfile)//'.rst'
@@ -593,15 +720,15 @@ END SUBROUTINE modis_lai
           
           if (present(F25Tag)) then 
 
-             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid)
+             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid1)
              ASSERT_(iret==NF_NOERR)
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 
-             iret = NF_GET_VARA_INT (ncid, 3,(/1/),(/ncat_gswp2/),land_gswp2)
+             iret = NF_GET_VARA_INT (ncid1, 3,(/1/),(/ncat_gswp2/),land_gswp2)
 	     ASSERT_(iret==NF_NOERR)	
-             iret = NF_GET_VARA_REAL(ncid, 4,(/1/),(/ncat_gswp2/),soildepth_gswp2)
+             iret = NF_GET_VARA_REAL(ncid1, 4,(/1/),(/ncat_gswp2/),soildepth_gswp2)
 	     ASSERT_(iret==NF_NOERR)		          
-             iret = NF_CLOSE(ncid)
+             iret = NF_CLOSE(ncid1)
              ASSERT_(iret==NF_NOERR)
 
              k1 = i_raster/360
@@ -683,7 +810,7 @@ END SUBROUTINE modis_lai
       swit =0
       DO n=1 , maxcat
          read (10,*) tindex,pfafindex, soil_class_top
-         write (22,'(i8,i8,4f10.7)')tindex,pfafindex,atau2(soil_class_top), &
+         write (22,'(i10,i8,4f10.7)')tindex,pfafindex,atau2(soil_class_top), &
               btau2(soil_class_top),atau5(soil_class_top),btau5(soil_class_top)
               read (11,*) tindex,pfafindex, soil_class_com
 
@@ -705,15 +832,46 @@ END SUBROUTINE modis_lai
         
         cond=lcond(soil_gswp)/exp(-1.*zks*gnu)
         wpwet=lwpwet(soil_gswp)/lporo(soil_gswp) 
-        write (21,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')tindex,pfafindex,   &
+        write (21,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')tindex,pfafindex,   &
         soil_class_top,soil_class_com,lBEE(soil_gswp), lPSIS(soil_gswp),          &
         lPORO(soil_gswp),COND,WPWET,soildepth(n)
-         
+
+        if (allocated (parms4file)) then
+
+           parms4file (n, 1) = lBEE(soil_gswp)
+           parms4file (n, 2) = COND
+           parms4file (n, 3) = lPORO(soil_gswp)
+           parms4file (n, 4) = lPSIS(soil_gswp)
+           parms4file (n, 5) = WPWET         
+           parms4file (n, 6) = soildepth(n)
+           parms4file (n, 7) = atau2(soil_class_top)
+           parms4file (n, 8) = btau2(soil_class_top)
+           parms4file (n, 9) = atau5(soil_class_top)
+           parms4file (n,10) = btau5(soil_class_top)
+
+        endif         
+
       END DO
       close (10,status='delete')
       close (11,status='delete')
       close (21,status='keep')
       close (22,status='keep')
+
+      if(file_exists) then
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/maxcat/), parms4file (:, 4)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/maxcat/), parms4file (:, 5)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/maxcat/), parms4file (:, 6)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU2') ,(/1/),(/maxcat/), parms4file (:, 7)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU2') ,(/1/),(/maxcat/), parms4file (:, 8)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU5') ,(/1/),(/maxcat/), parms4file (:, 9)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU5') ,(/1/),(/maxcat/), parms4file (:,10)) ; VERIFY_(STATUS)
+         STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+         DEALLOCATE (parms4file)
+      endif
+
       deallocate (soildepth, soil_high)
     if(regrid) then
        deallocate(raster)
@@ -1179,13 +1337,13 @@ END SUBROUTINE modis_lai
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
-    
+
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
+
     do n = 1,ip
       if (ease_grid) then     
 	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
@@ -1318,15 +1476,56 @@ END SUBROUTINE modis_lai
     character*30, dimension (2,2) :: geosname
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisalb,scale_fac,albvr,albnr,albvf,albnf,lat,lon, &
-         green,lai,sunang,snw,lai_before,lai_after,grn_before,grn_after
+         modisalb,scale_fac,albvf,albnf, lat,lon, &
+         green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvr,calbnr,calbvf,calbnf
+         calbvf,calbnf, zero_array, one_array, albvr,albnr
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
     integer :: day, hour, min ,secs_in_day,k
     real :: yr,mn,dy,yr1,mn1,dy1,dum, slice1,slice2
+
+! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+!
+! NOTE: "!$" is for conditional compilation
+!
+logical :: running_omp = .false.
+!
+!$ integer :: omp_get_thread_num, omp_get_num_threads
+!
+integer :: n_threads=1
+!
+! ------------------------------------------------------------------
+
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+  !
+  ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+  !
+  !$ running_omp = .true.         ! conditional compilation
+  !
+  ! ECHO BASIC OMP VARIABLES
+  !
+  !$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+  !
+  !$OMP SINGLE
+  !
+  !$ n_threads = omp_get_num_threads()
+  !
+  !$ write (*,*) 'running_omp = ', running_omp
+  !$ write (*,*)
+  !$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+  !$ write (*,*)
+  !$OMP ENDSINGLE
+  !
+  !$OMP CRITICAL
+  !$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+  !$OMP ENDCRITICAL
+  !
+  !$OMP BARRIER
+  !
+  !$OMP ENDPARALLEL
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
 
     data sibname /'albvr','albnr',  &
                 'albvf','albnf'/
@@ -1336,8 +1535,6 @@ END SUBROUTINE modis_lai
     fname='clsm/catchment.def'
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
-
-    allocate (albvr    (1:maxcat))
     allocate (albvf    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
@@ -1349,9 +1546,11 @@ END SUBROUTINE modis_lai
     allocate (grn_before (1:maxcat))
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
-    allocate (vegcls   (1:maxcat))
-    allocate (sunang   (1:maxcat))
-    allocate (snw      (1:maxcat))
+    allocate (vegcls     (1:maxcat))
+    allocate (zero_array (1:maxcat))
+    allocate (one_array  (1:maxcat))
+    allocate (albvr      (1:maxcat))
+    allocate (albnr      (1:maxcat))    
     close (10,status='keep')
 
     date_time_new%year   =2002
@@ -1377,13 +1576,13 @@ END SUBROUTINE modis_lai
 
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
 
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
+    
     do n = 1,ip
       if (ease_grid) then     
 	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
@@ -1393,7 +1592,7 @@ END SUBROUTINE modis_lai
       endif
        if (typ == 100) then
           ip2 = n 
-          read (20,'(i8,i8,2(2x,i3),2(2x,f6.4))')     &
+          read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
             indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
        endif
        if(ierr /= 0)write (*,*)'Problem reading'
@@ -1402,14 +1601,16 @@ END SUBROUTINE modis_lai
     close (20,status='keep')
 
     cyy='00-04'
-    albvr    =0.
     albvf    =0.
     albnf    =0.
     calbvf   =0.
     calbnf   =0.
     modisalb =0.
-    snw      =0.
-    sunang   =0.
+    zero_array = 0.
+    one_array  = 1.
+    albvr      = 0.
+    albnr      = 0.
+    
     unit1 =10
     unit2 =20
     unit3 =30
@@ -1476,8 +1677,6 @@ END SUBROUTINE modis_lai
 
     calbvf   =0.
     calbnf   =0.
-    albvr    =0.
-    albnr    =0.
     albvf    =0.
     albnf    =0.
     tsteps   =0.
@@ -1523,12 +1722,13 @@ END SUBROUTINE modis_lai
         
         tsteps = tsteps + 1.
 
-              call sibalb(                                    &
-                   albvr,albvr,albvf,albnf,                   &
-                   lai, green, 0.0, snw, vegcls, maxcat)  
-
-              calbvf = calbvf + albvf
-              calbnf = calbnf + albnf
+        call sibalb (                                 &
+             MAXCAT,vegcls,lai,green, zero_array,     &
+             one_array,one_array,one_array,one_array, &
+             ALBVR, ALBNR, albvf, albnf)
+                 
+        calbvf = calbvf + albvf
+        calbnf = calbnf + albnf
               
      end do
 
@@ -1546,8 +1746,8 @@ END SUBROUTINE modis_lai
            if(unit2==20)write (unit2) (calbvf(n),n=1,maxcat)
            if(unit2==21)write (unit2) (calbnf(n),n=1,maxcat)
         
-           if(unit2==20) modisalb = modisalb/calbvf
-           if(unit2==21) modisalb = modisalb/calbnf
+           if(unit2==20) modisalb = modisalb/(calbvf + 1.e-20)
+           if(unit2==21) modisalb = modisalb/(calbnf + 1.e-20)
 
 	   do n =1, maxcat
 	   if(modisalb(n).le.0)then 
@@ -1574,10 +1774,11 @@ END SUBROUTINE modis_lai
 
   end do
     
-  deallocate (modisalb,albvr,albvf,albnf)
-  deallocate (green,lai,sunang)
+  deallocate (modisalb,albvf,albnf)
+  deallocate (green,lai)
   deallocate (vegcls)
   deallocate (calbvf,calbnf)
+  deallocate (zero_array, one_array, albvr, albnr)
   
   unit1 =10
   unit2 =20
@@ -1748,15 +1949,15 @@ END SUBROUTINE modis_scale_para
     allocate(tile_area(ip))  
     id=0
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
 
-    dx_gcm = 360./float(nc_gcm)
-    dy_gcm = 180./float(nr_gcm)    
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
+    
+!    dx_gcm = 360./float(nc_gcm)
+!    dy_gcm = 180./float(nr_gcm)    
 
     do n = 1,ip
  
@@ -1886,7 +2087,7 @@ END SUBROUTINE modis_scale_para
  !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
  !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
  !      endif
-       write (10,'(i8,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
+       write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
     end do
 
@@ -1950,6 +2151,46 @@ END SUBROUTINE modis_scale_para
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     integer :: nx,ny,status
     logical :: ease_grid 
+
+! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+!
+! NOTE: "!$" is for conditional compilation
+!
+logical :: running_omp = .false.
+!
+!$ integer :: omp_get_thread_num, omp_get_num_threads
+!
+integer :: n_threads=1
+
+! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+!
+! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+!
+!$ running_omp = .true.         ! conditional compilation
+!
+! ECHO BASIC OMP VARIABLES
+!
+!$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+!
+!$OMP SINGLE
+!
+!$ n_threads = omp_get_num_threads()
+!
+!$ write (*,*) 'running_omp = ', running_omp
+!$ write (*,*)
+!$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+!$ write (*,*)
+!$OMP ENDSINGLE
+!
+!$OMP CRITICAL
+!$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+!$OMP ENDCRITICAL
+!
+!$OMP BARRIER
+!
+!$OMP ENDPARALLEL
+! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+
     colsib = nx
     rowsib = ny
     !
@@ -1969,12 +2210,12 @@ END SUBROUTINE modis_scale_para
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+    
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
 
     allocate(id(ip))
     id=0
@@ -2007,8 +2248,6 @@ END SUBROUTINE modis_scale_para
 
       !     Top layer soil classification 0-30cm
       !
-!      open (unit=11, file=ifile, form='unformatted', status='old',access='direct',recl=1,  &
-!           convert = 'little_endian')
       open (unit=11, file=ifile, form='unformatted', status='old',  &
            convert = 'big_endian')
 
@@ -2199,19 +2438,21 @@ END SUBROUTINE modis_scale_para
     integer, pointer :: Raster(:,:)
     real, pointer, dimension (:)  :: z2, z0
     real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
- 
+    logical                            :: file_exists
+    integer                            :: ncid
+
     fname=trim(gfilet)//'.til'
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
     allocate(id(1:ip))
     
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+ 
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
     
     do n = 1,ip
       if (ease_grid) then     
@@ -2232,7 +2473,6 @@ END SUBROUTINE modis_scale_para
 
     open (10,file=trim(c_data)//'sib22.5_v2.0.dat',form='unformatted',      &
          status='old',action='read',convert='big_endian')
-
     READ(10)sib_veg2
     
     close (10,status='keep')
@@ -2398,23 +2638,41 @@ END SUBROUTINE modis_scale_para
             if(.not.jpl_height) z2(j) = VGZ2(mos_veg(j,1))
             mos_veg(j,1) = mos_veg(j-1,1)
             mos_veg(j,2) = mos_veg(j-1,2)
-            write (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
+            write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
                  j+ip1,id(j+ip1),mos_veg(j-1,1),mos_veg(j-1,2),veg_frac(j,1),veg_frac(j,2),z2(j), z0 (j)           
        else
        if(.not.jpl_height) z2(j) = VGZ2(mos_veg(j,1))
-       write (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
+       write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
             j+ip1,id(j+ip1),mos_veg(j,1),mos_veg(j,2),veg_frac(j,1),veg_frac(j,2),z2(j), z0 (j)
        endif
     end do
     close(10,status='keep')
 
-    open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
-         convert='little_endian')      
+    inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
-    write (20) real(mos_veg(:,1))
-    write (20) z2 (:)
-    write (20) z0 (:)    
-    close (20)   
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                                  ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'OLD_ITY'),(/1/),(/maxcat/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    endif
+
+    inquire(file='clsm/vegdyn.data', exist=file_exists)
+
+    if(file_exists) then
+       status = NF_OPEN ('clsm/vegdyn.data', NF_WRITE, ncid                                       ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ),(/1/),(/maxcat/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'Z2CH'   ),(/1/),(/maxcat/),z2                ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ASCATZ0'),(/1/),(/maxcat/),Z0                ) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    else
+       open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
+            convert='little_endian')      
+
+       write (20) real(mos_veg(:,1))
+       write (20) z2 (:)
+       write (20) z0 (:)    
+       close (20)   
+    endif
 
     deallocate (sib_veg2,sib_veg,mos_veg,veg_frac,zdep2_g,id,  z0, z2)
     if(regrid) then
@@ -2428,7 +2686,7 @@ END SUBROUTINE modis_scale_para
   SUBROUTINE cti_stat_file (ease_grid,gfile, MaskFile)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER :: nbcat=36716,nofvar=6, SRTM_maxcat = 291284
+    INTEGER, PARAMETER :: nbcat=36716,nofvar=6
     INTEGER :: n,i,ip, itext(SRTM_maxcat,2),ix, jx,ip2, maxcat
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3
     INTEGER*8 :: idum8
@@ -2458,31 +2716,31 @@ END SUBROUTINE modis_scale_para
     id=0
  
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
     
     do n = 1,ip
       if (ease_grid) then  
          read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
       else
-	 read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
+	 read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
+              typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
       endif
 
-       id(n)=pfs
-       indx_old(n) = i_dum
-       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) indx_old(n) = pfs
-       if (typ == 100) ip2 = n
-       if(ierr /= 0)write (*,*)'Problem reading',fname
-       if(ierr /= 0) stop
+      id(n)=pfs
+      indx_old(n) = j_dum         
+      if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) indx_old(n) = pfs
+      if (typ == 100) ip2 = n
+      if (ierr /= 0) write (*,*)'Problem reading',fname
+      if (ierr /= 0) stop
     end do
     
     close (10,status='keep')
-!
+ 
     allocate(colin2cat(1:6000000))
     colin2cat=0
     if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
@@ -2546,12 +2804,12 @@ END SUBROUTINE modis_scale_para
 
        if((i > ip1).and.(i <= ip2))then
           if(((id(i).ge.5000142).and.(id(i).le.5025829)))then
-             write(20,'(i8,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1)*11.1/9.1,var(indx_old(i),2), &
+             write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1)*11.1/9.1,var(indx_old(i),2), &
                   var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),            &
                   var(indx_old(i),6)
           else
 
-             write(20,'(i8,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
+           write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
                   var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),   &
                   var(indx_old(i),6)
           endif
@@ -2596,6 +2854,10 @@ END SUBROUTINE modis_scale_para
       character(*) :: MaskFile
       logical :: picked
  
+      integer :: ncid, status
+      logical :: file_exists
+      real, allocatable, dimension (:,:) :: parms4file
+
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
 ! NOTE: "!$" is for conditional compilation
@@ -2609,7 +2871,7 @@ integer :: n_threads=1, li, ui
 integer, dimension(:), allocatable :: low_ind, upp_ind
 !
 ! ------------------------------------------------------------------
-        
+
   ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
   !
   ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
@@ -2637,9 +2899,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   !$OMP BARRIER
   !
   !$OMP ENDPARALLEL
+  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
       
 !c-------------------------------------------------------------------------
-      
       losfile =trim(c_data)//'GSWP2_loss_perday/loss_perday'
 !c     opening files
 
@@ -2668,11 +2930,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 		 gfrc(iwt,irz,n,i)=amin1(fracl,1.)
 	    enddo
 	  enddo
-      close (120,status='keep')	   
-
+          close (120,status='keep')	   
 	end do
       end do    
-      fname='clsm/soil_param.first'       
+     fname='clsm/soil_param.first'       
        open (10,file=fname,action='read',       &
           form='formatted',status='old')              
                                                  
@@ -2759,10 +3020,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
  
      do n=1,nbcatch
  
-        read(11,'(i8,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
-             ,minlu,maxlu,coesk                                  
-        read(10,*) tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
-             BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)                        
+        read(11,'(i10,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev,minlu,maxlu,coesk                                  
+        read(10,*) tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n), &
+                   BEE(n),PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)                        
 
         if(tindex1.ne.tindex2(n))then
            write(*,*)'Warnning 1: tindex mismatched'                        
@@ -2787,14 +3047,31 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         TOPVAR(n)  = stdev*stdev                                
         TOPSKEW(n) = coesk*stdev*stdev*stdev                   
         
-        if ( TOPVAR(n) .eq. 0. .or. coesk .eq. 0.            &
-             .or. topskew(n) .eq. 0.) then                       
+        if (TOPVAR(n) .eq. 0. .or. coesk .eq. 0. .or. topskew(n) .eq. 0.) then                       
            write(*,*) 'Problem: undefined values:'         
-           write(*,*) TOPMEAN(n),TOPVAR(n),coesk,            &
-                minlu,maxlu
+           write(*,*) TOPMEAN(n),TOPVAR(n),coesk,minlu,maxlu
            stop
         endif
      END DO
+
+     inquire(file='clsm/catch_params.nc4', exist=file_exists)
+
+     if(file_exists) then
+        status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+        allocate (parms4file (1:nbcatch, 1:25))
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ),(/1/),(/nbcatch/),BEE  (:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'COND' ),(/1/),(/nbcatch/),COND (:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'POROS'),(/1/),(/nbcatch/),POROS(:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ),(/1/),(/nbcatch/),PSIS (:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'WPWET'),(/1/),(/nbcatch/),WPWET(:))      ; VERIFY_(STATUS)
+        status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR'),(/1/),(/nbcatch/),soildepth (:)) ; VERIFY_(STATUS)
+        parms4file (:,12) = BEE      (:)
+        parms4file (:,16) = COND     (:)
+        parms4file (:,18) = POROS    (:)
+        parms4file (:,19) = PSIS     (:)
+        parms4file (:,24) = WPWET    (:)
+        parms4file (:,25) = soildepth(:)
+     endif
 
      rewind(10)
 
@@ -2884,7 +3161,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-     END DO
+      END DO
      END DO
           !$OMP ENDPARALLELDO
      tile_pick = 0
@@ -2902,17 +3179,39 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         ! Writing the parameters, in the same order as in catchment.def
         !      if((ars1(n).lt.0.).and.(ars2(n).le.0.3).and.(ars3(n).le.0.04).and.(arw1(n).ne.9999.))then
         if((arw1(n).ne.9999.).and.(ars1(n).ne.9999.))then   
-           write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+           write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
                 tindex2(n),pfaf2(n),gnu,   &
                 ars1(n),ars2(n),ars3(n),                   &
                 ara1(n),ara2(n),ara3(n),ara4(n),           &
                 arw1(n),arw2(n),arw3(n),arw4(n) 
-           write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
-           write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+           write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
+           write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
                 tsa1(n),tsa2(n),tsb1(n),tsb2(n)
            
-           write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
+           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
                 BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)  
+
+           if (allocated (parms4file)) then
+              parms4file (n, 1) = ara1(n)
+              parms4file (n, 2) = ara2(n)
+              parms4file (n, 3) = ara3(n)
+              parms4file (n, 4) = ara4(n)
+              parms4file (n, 5) = ars1(n)
+              parms4file (n, 6) = ars2(n)
+              parms4file (n, 7) = ars3(n)
+              parms4file (n, 8) = arw1(n)
+              parms4file (n, 9) = arw2(n)
+              parms4file (n,10) = arw3(n)
+              parms4file (n,11) = arw4(n)
+              parms4file (n,13) = bf1(n)
+              parms4file (n,14) = bf2(n)
+              parms4file (n,15) = bf3(n)
+              parms4file (n,17) = gnu
+              parms4file (n,20) = tsa1(n)
+              parms4file (n,21) = tsa2(n)
+              parms4file (n,22) = tsb1(n)
+              parms4file (n,23) = tsb2(n)
+           endif
         else
  
        if(preserve_soiltype) then    
@@ -2947,7 +3246,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              if (error_file) then
                 write (41,*)n,k
              endif
-             write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+             write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
                   tindex2(n),pfaf2(n),gnu,   &
                   ars1(k),ars2(k),ars3(k),                   &
                   ara1(k),ara2(k),ara3(k),ara4(k),           &
@@ -2964,12 +3263,38 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              arw3(n)=arw3(k)
              arw4(n)=arw4(k)
              
-             write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-             write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+             write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+             write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
                   tsa1(k),tsa2(k),tsb1(k),tsb2(k)             
-             write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
+             write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
                   BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
-             
+             if (allocated (parms4file)) then
+                parms4file (n, 1) = ara1(k)
+                parms4file (n, 2) = ara2(k)
+                parms4file (n, 3) = ara3(k)
+                parms4file (n, 4) = ara4(k)
+                parms4file (n, 5) = ars1(k)
+                parms4file (n, 6) = ars2(k)
+                parms4file (n, 7) = ars3(k)
+                parms4file (n, 8) = arw1(k)
+                parms4file (n, 9) = arw2(k)
+                parms4file (n,10) = arw3(k)
+                parms4file (n,11) = arw4(k)
+                parms4file (n,12) = BEE(k)
+                parms4file (n,13) = bf1(k)
+                parms4file (n,14) = bf2(k)
+                parms4file (n,15) = bf3(k)
+                parms4file (n,16) = COND(k)
+                parms4file (n,17) = gnu
+                parms4file (n,18) = POROS(k)
+                parms4file (n,19) = PSIS(k)
+                parms4file (n,20) = tsa1(k)
+                parms4file (n,21) = tsa2(k)
+                parms4file (n,22) = tsb1(k)
+                parms4file (n,23) = tsb2(k)
+                parms4file (n,24) = wpwet    (k)
+                parms4file (n,25) = soildepth(k)
+             endif
           else
              
              do k =n-1,1,-1 
@@ -2992,15 +3317,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                       write (41,*)n,k
                    endif
                    
-                   write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+                   write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
                         tindex2(n),pfaf2(n),gnu,   &
                         ars1(k),ars2(k),ars3(k),                   &
                         ara1(k),ara2(k),ara3(k),ara4(k),           &
                         arw1(k),arw2(k),arw3(k),arw4(k) 
-                   write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-                   write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+                   write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+                   write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
                         tsa1(k),tsa2(k),tsb1(k),tsb2(k)             
-                   write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
+                   write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
                         BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
                    ars1(n)=ars1(k)
                    ars2(n)=ars2(k)
@@ -3013,12 +3338,39 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                    arw2(n)=arw2(k)
                    arw3(n)=arw3(k)
                    arw4(n)=arw4(k)
+
+                   if (allocated (parms4file)) then
+                      parms4file (n, 1) = ara1(k)
+                      parms4file (n, 2) = ara2(k)
+                      parms4file (n, 3) = ara3(k)
+                      parms4file (n, 4) = ara4(k)
+                      parms4file (n, 5) = ars1(k)
+                      parms4file (n, 6) = ars2(k)
+                      parms4file (n, 7) = ars3(k)
+                      parms4file (n, 8) = arw1(k)
+                      parms4file (n, 9) = arw2(k)
+                      parms4file (n,10) = arw3(k)
+                      parms4file (n,11) = arw4(k)
+                      parms4file (n,12) = BEE(k)
+                      parms4file (n,13) = bf1(k)
+                      parms4file (n,14) = bf2(k)
+                      parms4file (n,15) = bf3(k)
+                      parms4file (n,16) = COND(k)
+                      parms4file (n,17) = gnu
+                      parms4file (n,18) = POROS(k)
+                      parms4file (n,19) = PSIS(k)
+                      parms4file (n,20) = tsa1(k)
+                      parms4file (n,21) = tsa2(k)
+                      parms4file (n,22) = tsb1(k)
+                      parms4file (n,23) = tsb2(k)
+                      parms4file (n,24) = wpwet    (k)
+                      parms4file (n,25) = soildepth(k)
+                   endif
                    exit
                 endif
                 
                 if((k==1) .and. (.not. picked)) then
                    print *,'Warning ar.new is bad at n=',n
-                   print *,'Call Sarith ......'
                    stop
                 endif
              end do
@@ -3046,17 +3398,43 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          write (41,*)n,k
-         write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
               tindex2(n),pfaf2(n),gnu,   &
               ars1(k),ars2(k),ars3(k),                   &
               ara1(k),ara2(k),ara3(k),ara4(k),           &
               arw1(k),arw2(k),arw3(k),arw4(k) 
-         write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-         write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+         write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+         write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
               tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
+         write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
-
+         if (allocated (parms4file)) then
+            parms4file (n, 1) = ara1(k)
+            parms4file (n, 2) = ara2(k)
+            parms4file (n, 3) = ara3(k)
+            parms4file (n, 4) = ara4(k)
+            parms4file (n, 5) = ars1(k)
+            parms4file (n, 6) = ars2(k)
+            parms4file (n, 7) = ars3(k)
+            parms4file (n, 8) = arw1(k)
+            parms4file (n, 9) = arw2(k)
+            parms4file (n,10) = arw3(k)
+            parms4file (n,11) = arw4(k)
+            parms4file (n,12) = BEE(k)
+            parms4file (n,13) = bf1(k)
+            parms4file (n,14) = bf2(k)
+            parms4file (n,15) = bf3(k)
+            parms4file (n,16) = COND(k)
+            parms4file (n,17) = gnu
+            parms4file (n,18) = POROS(k)
+            parms4file (n,19) = PSIS(k)
+            parms4file (n,20) = tsa1(k)
+            parms4file (n,21) = tsa2(k)
+            parms4file (n,22) = tsb1(k)
+            parms4file (n,23) = tsb2(k)
+            parms4file (n,24) = wpwet    (k)
+            parms4file (n,25) = soildepth(k)
+         endif
       endif
    endif
    
@@ -3075,13 +3453,44 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       close(20,status='keep')
       close(30,status='keep')
       close(40,status='keep')
-!       close(11,status='delete')
-
+      close(11,status='keep')
+      close(12,status='keep')
+      close(42,status='keep')
       if (error_file) then
 	 close(21,status='delete')
 	 close(31,status='delete')
          close(41,status='keep')
       endif	 
+
+      if(file_exists) then
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA1' ) ,(/1/),(/nbcatch/), parms4file (:, 1)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA2' ) ,(/1/),(/nbcatch/), parms4file (:, 2)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA3' ) ,(/1/),(/nbcatch/), parms4file (:, 3)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARA4' ) ,(/1/),(/nbcatch/), parms4file (:, 4)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARS1' ) ,(/1/),(/nbcatch/), parms4file (:, 5)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARS2' ) ,(/1/),(/nbcatch/), parms4file (:, 6)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARS3' ) ,(/1/),(/nbcatch/), parms4file (:, 7)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW1' ) ,(/1/),(/nbcatch/), parms4file (:, 8)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW2' ) ,(/1/),(/nbcatch/), parms4file (:, 9)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW3' ) ,(/1/),(/nbcatch/), parms4file (:,10)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ARW4' ) ,(/1/),(/nbcatch/), parms4file (:,11)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/nbcatch/), parms4file (:,12)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BF1'  ) ,(/1/),(/nbcatch/), parms4file (:,13)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BF2'  ) ,(/1/),(/nbcatch/), parms4file (:,14)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BF3'  ) ,(/1/),(/nbcatch/), parms4file (:,15)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/nbcatch/), parms4file (:,16)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'GNU'  ) ,(/1/),(/nbcatch/), parms4file (:,17)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/nbcatch/), parms4file (:,18)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/nbcatch/), parms4file (:,19)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSA1' ) ,(/1/),(/nbcatch/), parms4file (:,20)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSA2' ) ,(/1/),(/nbcatch/), parms4file (:,21)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSB1' ) ,(/1/),(/nbcatch/), parms4file (:,22)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'TSB2' ) ,(/1/),(/nbcatch/), parms4file (:,23)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/nbcatch/), parms4file (:,24)) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/nbcatch/), parms4file (:,25)) ; VERIFY_(STATUS)
+         STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+         DEALLOCATE (parms4file)
+      endif
 
   END SUBROUTINE create_model_para
 
@@ -3332,10 +3741,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      good_sand =0.
  
      do n=1,nbcatch
-        read(11,'(i8,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
+        read(11,'(i10,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
              ,minlu,maxlu,coesk                                  
  
-        read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
+        read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
@@ -3352,6 +3761,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         if(pfaf1.ne.pfaf2(n)) then
            write(*,*)'Warnning 1: pfafstetter mismatched' 
            stop
+        endif
+        if((process_peat).and.(soil_class_top(n) == 253)) then
+           meanlu = 9.3
+           stdev  = 0.12
+           minlu  = 8.5
+           maxlu  = 11.5
+           coesk  = 0.25
         endif
 
         if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
@@ -3444,7 +3860,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                      taberr1(n),taberr2(n),taberr3(n),taberr4(n),  &
                      normerr1(n),normerr2(n),normerr3(n),normerr4(n))
 
-
       CALL BASE_PARAM(                                  &
           BEE(n),PSIS(n),POROS(n),COND(n),              &
           ST, AC,                                       &
@@ -3465,10 +3880,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-      if(POROS(n) >= 0.8) then
+      if(soil_class_com(n) == 253) then
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
          if(process_peat) then
+            
             ars1(n) = -7.9514018e-03
             ars2(n) = 6.2297356e-02 
             ars3(n) = 1.9187240e-03                   
@@ -3484,6 +3900,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             bf1(n) = 4.6088086e+02  
             bf2(n) = 1.4237401e-01  
             bf3(n) = 6.9803000e+00
+
+            tsa1(n) = -2.417581e+00  
+            tsa2(n) = -4.784762e+00  
+            tsb1(n) = -3.700285e-03  
+            tsb2(n) = -2.392484e-03
             
          endif
       endif
@@ -3550,24 +3971,24 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      END DO	
 
      DO n=1,nbcatch
-         read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+         read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
 	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
 	     wpwet_surf(n),poros_surf(n), pmap(n)
      if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then   
-      write(20,'(i8,i8,f5.2,11(2x,e14.7))')         &
+      write(20,'(i10,i8,f5.2,11(2x,e14.7))')         &
                      tindex2(n),pfaf2(n),gnu,       &
                      ars1(n),ars2(n),ars3(n),         &
                      ara1(n),ara2(n),ara3(n),ara4(n), &
                      arw1(n),arw2(n),arw3(n),arw4(n) 
 
-      write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
-      write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+      write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
+      write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)
 
-      write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+      write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
@@ -3645,16 +4066,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             !                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k) 
          endif
          
-         write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
               tindex2(n),pfaf2(n),gnu,   &
               ars1(k),ars2(k),ars3(k),                   &
               ara1(k),ara2(k),ara3(k),ara4(k),           &
               arw1(k),arw2(k),arw3(k),arw4(k) 
-        write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-        write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+        write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(k),tsa2(k),tsb1(k),tsb2(k)
 
-        write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+        write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),      &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &
@@ -3707,15 +4128,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          write (41,*)n,k
-         write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
               tindex2(n),pfaf2(n),gnu,   &
               ars1(k),ars2(k),ars3(k),                   &
               ara1(k),ara2(k),ara3(k),ara4(k),           &
               arw1(k),arw2(k),arw3(k),arw4(k) 
-         write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-         write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+         write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+         write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
               tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')&
+         write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')&
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),         &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &
@@ -5214,7 +5635,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       endif
     end SUBROUTINE CURVE2
 
-
 ! ******************************************************************
 
       subroutine tgen (                         &
@@ -5284,7 +5704,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! evaluate the gamma function
 
-         CALL GAMMLN(TOPETA,GAMLN)
+         CALL GAMMLN (TOPETA,GAMLN)
 
          CUMAC=0.0
 
@@ -5360,11 +5780,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 
     END subroutine tgen
-
-  
+ 
   ! ********************************************************************
 
-    SUBROUTINE GAMMLN(XX,GAMLN)
+    SUBROUTINE GAMMLN (XX,GAMLN)
       
       implicit none
       DOUBLE PRECISION :: COF(6),STP,HALF,ONE,FPF,X,TMP,SER
@@ -6846,7 +7265,7 @@ END SUBROUTINE compute_stats
       implicit none
 
       ! 1) JPL Canopy Height 
-      ! /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001//Simard_Pinto_3DGlobalVeg_JGR.nc4
+      ! /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001//Simard_Pinto_3DGlobalVeg_JGR.nc4
      
       integer, intent (in)               :: nc, nr
       real, pointer, dimension (:), intent (inout) :: z2

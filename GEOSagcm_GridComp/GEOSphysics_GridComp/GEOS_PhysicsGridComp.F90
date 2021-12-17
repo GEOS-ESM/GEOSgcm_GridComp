@@ -1203,11 +1203,11 @@ contains
                          'FCLD    ',  'LS_PRCP ', 'CNV_MFC ',     &
                          'CNV_MFD ',  'QL      ', 'PFL_CN  ',     &
                          'PFL_LSAN',  'PFI_CN  ', 'PFI_LSAN',     &
-                         'QCTOT   ',  'CNV_QC  ', 'LFR     ',     &
+                         'QCTOT   ',  'CNV_QC  ',                 &
                          'QLTOT   ',  'QLCN    ', 'QICN    ',     &
                          'DQLDT   ',  'QITOT   ', 'REV_CN  ',     &
                          'REV_LS  ',  'REV_AN  ', 'LFR_GCC ',     &
-                         'BYNCY   ',  'DQIDT   ', 'QI      ',     &
+                                      'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
                          'QILS    ',  'DQRL    ', 'CNV_FRC ',     &
                          'RI      ',  'RL      '            /),   &

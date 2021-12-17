@@ -1,4 +1,5 @@
 #include "MAPL_Generic.h"
+#define DEALLOC_(A) if(associated(A))then;A=0;if(MAPL_ShmInitialized)then; call MAPL_DeAllocNodeArray(A,rc=STATUS);else; deallocate(A,stat=STATUS);endif;_VERIFY(STATUS);NULLIFY(A);endif
 
 !=============================================================================
 module GEOS_CatchGridCompMod
@@ -4964,7 +4965,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 #ifdef DBG_CATCH_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+        call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
         VERIFY_(STATUS)
 
         call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
@@ -5053,8 +5054,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            unit = GETFILE( "catch_params.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
 
-           NT_GLOBAL = size(mask)
-
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
            call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
@@ -5131,7 +5130,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            VERIFY_(STATUS)
 
         end if
-
+        DEALLOC_(mask)
 #endif
 
 ! Sanity Check to ensure IMPORT ITY from VEGDYN is consistent with INTERNAL ITY from CATCH
@@ -5268,7 +5267,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  if (fexist) then
                     call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
                     VERIFY_(STATUS)
-                    call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+                    call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
                     VERIFY_(STATUS)
                     call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
                     VERIFY_(STATUS)
@@ -5280,7 +5279,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     variables => InCfg%get_variables()
                     var_iter = variables%begin()
                     
-                    NT_GLOBAL = size(mask)
                     allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
                     allocate(local_tmp_incr(NTILES), source = 0.0)
                     
@@ -5323,7 +5321,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     
                     call inFmt%close()
                     deallocate(local_tmp_incr, global_tmp_incr)
-                    deallocate(mask)
+                    DEALLOC_(mask)
 
                     ! consolidate increment arrays  
                     allocate(ghtcnt_incr(6,NTILES))
