@@ -1,10 +1,13 @@
 # Non default name
 esma_set_this (OVERRIDE RRTMG_SW)
 set (srcs
-  mcica_random_numbers.F90 mcica_subcol_gen_sw.F90 rrtmg_sw_cldprmc.F90
-  rrtmg_sw_cldprop.F90 rrtmg_sw_init.F90 
-  rrtmg_sw_rad.F90 rrtmg_sw_setcoef.F90 rrtmg_sw_spcvmc.F90
-  rrtmg_sw_taumol.F90 tab_xcw.F90
+  NRLSSI2.F90
+  rrtmg_sw_init.F90
+  rrtmg_sw_cldprmc.F90
+  rrtmg_sw_setcoef.F90
+  rrtmg_sw_taumol.F90
+  rrtmg_sw_spcvmc.F90
+  rrtmg_sw_rad.F90
   )
 
 set (k_g_srcs
@@ -37,7 +40,7 @@ foreach (file ${k_g_srcs})
 endforeach ()
 
 esma_add_library (${this} SRCS ${srcs} ${k_g_srcs}
-   DEPENDENCIES GEOS_Shared MAPL RRTMG_SW_mods)
+   DEPENDENCIES GEOS_Shared MAPL RRTMG_SW_mods GEOS_RadiationShared)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 

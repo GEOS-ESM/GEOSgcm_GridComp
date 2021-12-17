@@ -458,6 +458,12 @@ module GEOS_RadiationGridCompMod
 
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
+! !USES:
+  use cloud_condensate_inhomogeneity, only: initialize_inhomogeneity
+  use cloud_subcol_gen, only : initialize_cloud_subcol_gen, &
+    def_aam1, def_aam2, def_aam30, def_aam4, &
+    def_ram1, def_ram2, def_ram30, def_ram4
+
 ! !ARGUMENTS:
 
   type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
@@ -484,52 +490,75 @@ module GEOS_RadiationGridCompMod
 
 ! Local derived type aliases
 
-   type (MAPL_MetaComp),      pointer  :: MAPL
-   type (ESMF_State),         pointer  :: GIM(:)
-  
-   type (ESMF_Config)                  :: CF
+  type (MAPL_MetaComp),      pointer  :: MAPL
+! type (ESMF_State),         pointer  :: GIM(:)
+! type (ESMF_Config)                  :: CF
+
+! Correlation length parameters from resource file
+
+  real :: aam1, aam2, aam30, aam4
+  real :: ram1, ram2, ram30, ram4
 
 !=============================================================================
-
-! Begin... 
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet (GC, NAME=COMP_NAME, __RC__)  ! CONFIG=CF, __RC__)
     Iam = trim(COMP_NAME) // trim(Iam)
 
 ! Generic initialize
 !-------------------
 
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GenericInitialize (GC, IMPORT, EXPORT, CLOCK, __RC__)
 
 ! Get my MAPL object
 !-------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC (GC, MAPL, __RC__)
 
 ! Start Total timer after generic initialize
 !-------------------------------------------
 
-    call MAPL_TimerOn(MAPL,"TOTAL")
+    call MAPL_TimerOn (MAPL,"TOTAL")
 
 ! Get parameters from MAPL
 !-------------------------
 
-    call MAPL_Get ( MAPL, GIM=GIM, RC=STATUS )
-    VERIFY_(STATUS)
+!   call MAPL_Get (MAPL, GIM=GIM, __RC__)
+
+! Initialize module-level cloud generator details.
+! Currently these are only used by RRTMG SW and LW, so should probably
+! make conditional on either RRTMG SW and LW being used. Dont bother
+! for now. Also, may later use the cloud generator for RRTMGP as well.
+!---------------------------------------------------------------------
+
+! Set up RRTMG condensate inhomogeneity tables
+
+    call initialize_inhomogeneity(1)
+
+! Set RRTMG cloud subcolumn generator correlation length parameters to non-default values
+! from MAPL resource parameters. Comment out to just use defaults in module cloud_subcol_gen.
+
+    call MAPL_GetResource(MAPL,aam1 ,LABEL="ADL_AM1:" ,default=def_aam1 ,__RC__)
+    call MAPL_GetResource(MAPL,aam2 ,LABEL="ADL_AM2:" ,default=def_aam2 ,__RC__)
+    call MAPL_GetResource(MAPL,aam30,LABEL="ADL_AM30:",default=def_aam30,__RC__)
+    call MAPL_GetResource(MAPL,aam4 ,LABEL="ADL_AM4:" ,default=def_aam4 ,__RC__)
+    call MAPL_GetResource(MAPL,ram1 ,LABEL="RDL_AM1:" ,default=def_ram1 ,__RC__)
+    call MAPL_GetResource(MAPL,ram2 ,LABEL="RDL_AM2:" ,default=def_ram2 ,__RC__)
+    call MAPL_GetResource(MAPL,ram30,LABEL="RDL_AM30:",default=def_ram30,__RC__)
+    call MAPL_GetResource(MAPL,ram4 ,LABEL="RDL_AM4:" ,default=def_ram4 ,__RC__)
+    call initialize_cloud_subcol_gen( &
+      adl_am1=aam1, adl_am2=aam2, adl_am30=aam30, adl_am4=aam4, &
+      rdl_am1=ram1, rdl_am2=ram2, rdl_am30=ram30, rdl_am4=ram4)
 
 ! All done
 !---------
 
-    call MAPL_TimerOff(MAPL,"TOTAL")
+    call MAPL_TimerOff (MAPL,"TOTAL")
+    RETURN_(ESMF_SUCCESS)
 
-   RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
