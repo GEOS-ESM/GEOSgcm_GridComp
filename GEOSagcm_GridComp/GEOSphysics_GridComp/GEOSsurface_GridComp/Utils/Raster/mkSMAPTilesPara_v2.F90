@@ -1,4 +1,7 @@
+#include "Raster.h"
+
 PROGRAM mkSMAPTilesPara_v2
+
 !     This program constructs land and lake tiles for the SMAP-EASE-M09 and M36 grids (just set MGRID) 
 !         for CLSM implementation.
 !     f90 -c create_smap_tiles.f90
@@ -10,13 +13,14 @@ PROGRAM mkSMAPTilesPara_v2
       use process_hres_data
       use MAPL_SortMod
       use MAPL_ConstantsMod
-
+      use LogRectRasterizeMod
+      
       implicit none
-
+      character*4          :: LBSV = 'DEF'
       integer i,j,ig,jg,i0,iop,n,d1,d2,j1,j2,i1,i2,ix, jx,icount,pcount
       integer :: NC = i_raster, NR = j_raster, NT = 16330000, ND = 10000, ND_raster = 10000
       
-      integer, parameter :: SRTM_maxcat = 291284, nc_esa = 129600, nr_esa = 64800
+      integer, parameter :: nc_esa = 129600, nr_esa = 64800
 
       ! For regridding
 
@@ -55,10 +59,13 @@ PROGRAM mkSMAPTilesPara_v2
       integer :: nc_smap,nr_smap, N_args, iargc 
       real :: EASE_grid_area, CELL_km
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
-      character(40) :: arg
+      character(40) :: arg, EASElabel 
       character*200 :: tmpstring, tmpstring1, tmpstring2	      
       logical :: regrid = .false.
       character*128          :: MaskFile
+      logical                :: pfaf_til = .false.
+      character*1            :: PF
+      
       include 'netcdf.inc'
 
       N_args = iargc()
@@ -80,10 +87,19 @@ PROGRAM mkSMAPTilesPara_v2
          if     ( trim(arg) == '-smap_grid' ) then
             i = i+1
             call getarg(i,MGRID)
-            
+
+         elseif ( trim(arg) == '-pfaf_til' ) then
+            i = i+1
+            call getarg(i,PF)
+            if (PF == 'T') pfaf_til = .true.
+
+         elseif ( trim(arg) == '-v' ) then
+            i = i+1
+            call getarg(i,LBSV)
+                        
          else ! stop for any other arguments
             
-            print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX'
+            print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -pfaf_til T'
             print *,'Allowed SMAP grids are: M09 M36 Ml'
             stop
             
@@ -105,6 +121,7 @@ PROGRAM mkSMAPTilesPara_v2
          nr_smap = 1624
          gfile = 'SMAP_EASEv2_'//trim(MGRID)//'_3856x1624'
          EASE_grid_area = CELL_km*CELL_km
+         EASElabel      = 'SMAP-EASEv2-M09'
          
       elseif(trim(MGRID) == 'M36') then
          
@@ -113,6 +130,7 @@ PROGRAM mkSMAPTilesPara_v2
          nr_smap = 406
          gfile = 'SMAP_EASEv2_'//trim(MGRID)//'_964x406'
          EASE_grid_area = CELL_km*CELL_km
+         EASElabel      = 'SMAP-EASEv2-M36'
          
     elseif(trim(MGRID) == 'M25') then
  
@@ -169,7 +187,17 @@ PROGRAM mkSMAPTilesPara_v2
       call getenv ("MASKFILE"        ,MaskFile        )
 
       print *, 'Using MaskFile ', trim(MaskFile)
+      
+      if(pfaf_til)  then
 
+         nc = 43200  ! Number of rows in raster file
+         nr = 21600
+         call mkEASEv2Raster
+         
+      else
+         if((trim(MGRID) == 'M09').or.(trim(MGRID) == 'M36'))call write_tilfile 
+      endif
+      
       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
          ! New ESA (Veg) + SRTM (catchments) based mask file
          ! is overlaid on SMAP 
@@ -638,14 +666,14 @@ PROGRAM mkSMAPTilesPara_v2
       write(11,*)l_index
 
       open  (10, file ='til/'//trim(gfile)//'.til',form='formatted',status='unknown',action='write')
-      write (10,*)i_index, nc, nr
+      write (10,*)i_index,SRTM_maxcat, nc, nr 
       write (10,*)1
       write (10,*)'SMAP-EASEv2-'//trim(MGRID)
       write (10,*)nc_smap
       write (10,*)nr_smap
-      write (10,*)'NO-OCEAN'
-      write (10,*) -9999
-      write (10,*) -9999      
+ !     write (10,*)'NO-OCEAN'
+ !     write (10,*) -9999
+ !     write (10,*) -9999      
 
       do l=1,i_index
 
@@ -682,7 +710,7 @@ PROGRAM mkSMAPTilesPara_v2
 
             mxy = clat 
 
-            write (11,'(i8,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy,tile_ele(l)
+            write (11,'(i10,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy,tile_ele(l)
 
          endif
 
@@ -691,7 +719,7 @@ PROGRAM mkSMAPTilesPara_v2
          fr_gcm= tile_area(l)/smap_grid_area(jg*ND +  ig)
 
          if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
-            write(10,'(i10,i9,2f10.4,2i5,f19.12,i10,i15,e13.4)') &
+            write(10,'(i10,i9,2f10.4,2i6,f19.12,i10,i15,e13.4)') &
                  typ,pfaf,clon,clat,ig-1,jg-1,fr_gcm ,pfaf,SRTM_catid(cindex) 
          else
             write(10,'(i10,i9,2f10.4,2i5,f19.12,i10,e13.4,i8)') &
@@ -719,17 +747,118 @@ PROGRAM mkSMAPTilesPara_v2
       ! create Grid2Catch transfer file
       ! -------------------------------
 
-       CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
+      ! CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
       
+      call system (tmpstring)
+
       ! now run mkCatchParam
       ! --------------------
 
-      tmpstring1 = '-e EASE -g '//trim(gfile)
+      tmpstring1 = '-e EASE -g '//trim(gfile)//' -v '//trim(LBSV)
       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
       tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
       print *,trim(tmpstring)
       
-      call system (tmpstring)   
+      call system (tmpstring)
 
-   END PROGRAM mkSMAPTilesPara_v2
+    contains
+
+      ! -------------------------------------------------------------------------------
+
+      SUBROUTINE mkEASEv2Raster
+
+        implicit none
+
+        integer       :: i, j, i_ease, j_ease
+        real*8,   allocatable :: xs(:,:), ys(:,:)
+        real          :: x,y, xout, yout
+        
+        allocate (xs ( nc_smap+1, nr_smap+1))
+        allocate (ys ( nc_smap+1, nr_smap+1))
+        
+        do  j = 1, nr_smap
+           do i = 1, nc_smap
+              x = real(i-1)        -0.5
+              y = real(nr_smap - j)+0.5
+              call easeV2_inverse(MGRID, x, y, yout, xout)
+              ys (i,j) = dble(yout)
+              xs (i,j) = dble(xout)
+           end do
+        end do
+        
+        do  j = nr_smap + 1, nr_smap + 1
+           do i = nc_smap + 1, nc_smap + 1
+              x = real(i-1)         -0.5
+              y =  -0.5
+              call easeV2_inverse(MGRID, x, y, yout, xout)
+              ys (i,j) = dble(yout)
+              xs (i,j) = dble(xout)        
+           end do
+        end do
+
+        where (ys > 90.)
+           ys = 90.D0
+        endwhere
+        where (ys < -90.)
+           ys = -90.D0
+        endwhere
+        where (xs > 180.)
+           xs = 180.D0
+        endwhere
+        where (xs < -180.)
+           xs = -180.D0
+        endwhere
+        
+        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,Here=.false., Verb=.false.)       
+        stop
+      end SUBROUTINE mkEASEv2Raster
+
+      ! ------------------------------------------------------------
+      
+      SUBROUTINE write_tilfile 
+
+        implicit none
+
+        character*200 :: infile
+        integer      :: NT, NF, NC, NR, NPF, NG, IDUM, i, N, icol, rcol
+        character*20 :: cdum
+        integer, dimension (:,:), allocatable :: iRtable
+        real,    dimension (:,:), allocatable :: rRtable
+
+        infile = 'til/'//trim(EASElabel)//'_'//trim(EASElabel)//'-Pfafstetter.'
+        
+        open (10,file =  trim(infile)//'ind', form = 'formatted', action = 'read', status = 'old')
+        open (11,file =  trim(infile)//'TIL', form = 'formatted', action = 'write', status = 'unknown')
+
+        read (10, *) NT, NF, NC, NR
+        write (11,'(4I10)')NT, NF, NC, NR
+        read (10, *) NG
+        write(11, *) NG
+        
+        do n = 1, NG
+           read (10, '(a)') cdum
+           write(11, '(a)') trim (cdum)
+           read (10, *) IDUM
+           write(11, '(I10)') IDUM
+           read (10, *) IDUM
+           write(11, '(I10)') IDUM
+        end do
+        
+        icol = 7
+        rcol = 5
+        allocate (iRtable (1, 1:icol))
+        allocate (rRtable (1, 1:rcol))
+        
+        do n = 1,  nt
+           read(10,'(I10,3E20.12,9(2I10,E20.12,I10))') iRtable (1,1),rRtable(1,1),rRtable(1,2),rRtable(1,3),iRtable (1,2),iRtable (1,3),rRtable(1,4),iRtable (1,4),&
+                iRtable (1,5),iRtable (1,6),rRtable(1,5),iRtable (1,7)
+           write(11,'(I10,3E20.12,9(2I10,E20.12,I10))') iRtable (1,1),rRtable(1,1),rRtable(1,2),rRtable(1,3),iRtable (1,2)-1,nr_smap - iRtable (1,3),rRtable(1,4),iRtable (1,4),&
+                iRtable (1,5),iRtable (1,6),rRtable(1,5),iRtable (1,7)
+        end do
+     
+        close (10, status = 'keep')
+        close (11, status = 'keep')
+    
+   END SUBROUTINE write_tilfile
+ END PROGRAM
 
