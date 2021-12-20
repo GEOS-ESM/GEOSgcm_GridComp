@@ -602,6 +602,7 @@ MODULE lsm_routines
               ARG1, EXPARG1, ARG2, EXPARG2, ARG3, EXPARG3  !, surflay
 
       LOGICAL :: LSTRESS
+      REAL    :: ZBAR, ARREST
 
 
       DATA LSTRESS/.FALSE./    !,surflay/20./
