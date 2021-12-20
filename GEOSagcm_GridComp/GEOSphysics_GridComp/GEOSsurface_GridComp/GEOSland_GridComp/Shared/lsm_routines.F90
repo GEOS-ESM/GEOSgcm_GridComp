@@ -264,7 +264,8 @@ MODULE lsm_routines
       SUBROUTINE SRUNOFF (                                                  &
            NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4, THRUL,THRUC,       &
            frice,tp1,srfmx, BUG,                                            &
-           SRFEXC,RUNSRF,                                                   &
+           VGWMAX,RZEQ,POROS,                                               &
+           SRFEXC,RUNSRF,RZEXC,                                             &
            QINFIL                                                           &
            )
 
@@ -275,7 +276,7 @@ MODULE lsm_routines
       REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
       LOGICAL, INTENT (IN):: UFW4RO 
       REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1,     &
-             srfmx, THRUL, THRUC
+             srfmx, THRUL, THRUC, VGWMAX, RZEQ, POROS
       LOGICAL, INTENT(IN) :: BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
