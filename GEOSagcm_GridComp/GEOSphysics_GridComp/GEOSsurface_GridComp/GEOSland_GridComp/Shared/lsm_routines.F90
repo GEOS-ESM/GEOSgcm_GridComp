@@ -484,7 +484,7 @@ MODULE lsm_routines
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: BF1, BF2, BF3, CDCR1, FRICE, COND,   &
-          GNU
+          GNU, AR1, POROS, ars1, ars2, ars3
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CATDEF
 
@@ -492,7 +492,7 @@ MODULE lsm_routines
 
 
       INTEGER N
-      REAL ZBAR, ashift
+      REAL ZBAR, ashift, CFRICE,Ksz_zero,m_Ivanov,v_slope,Ta,dztmp,SYSOIL,BFLOW_CATDEF,ICERAMP,AR1eq
 
       data ashift/0./
 
