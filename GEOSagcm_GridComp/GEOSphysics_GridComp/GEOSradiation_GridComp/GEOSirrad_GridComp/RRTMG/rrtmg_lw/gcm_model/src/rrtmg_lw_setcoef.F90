@@ -507,6 +507,18 @@ contains
                indfor(lay,icol) = 3
                forfrac(lay,icol) = factor - 1.
 
+               !  Set up factors needed to separately include the water vapor
+               !  self-continuum in the calculation of absorption coefficient.
+               !  In the old code this was set as:
+               !
+               !     selffac(lay,icol) = water * forfac(lay,icol)
+               !
+               !  However, selffac is never used outside of this routine in 
+               !  the upper atmosphere. So to save operations we just set to zero.
+               !  Tests confirm that this is zero-diff to actually filling the
+               !  array with the product above.
+               selffac(lay,icol) = 0.0
+
                ! factors needed to separately include the minor gases
                ! in the calculation of absorption coefficient
                scaleminor(lay,icol) = pavel(lay,icol)/tavel(lay,icol)         
