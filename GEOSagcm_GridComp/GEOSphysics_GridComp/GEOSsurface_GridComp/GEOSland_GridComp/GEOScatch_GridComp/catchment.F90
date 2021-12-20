@@ -151,7 +151,8 @@
                      EVACC, SHACC,                                             &
                      SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
                      LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
-                     TCSORIG, TPSN1IN, TPSN1OUT,lonbeg,lonend,latbeg,latend,   &
+                     TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE ,                   &
+                     lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
                      RCONSTIT, RMELT, TOTDEPOS,  LHACC)
 
@@ -212,11 +213,12 @@
                      HSNACC, EVACC, SHACC
       REAL, INTENT(OUT), DIMENSION(NCH) :: GHFLUXSNO, GHTSKIN
 
-      REAL, INTENT(OUT), DIMENSION(NCH) :: SH_SNOW, AVET_SNOW,       &
+      REAL, INTENT(OUT), DIMENSION(NCH) :: SH_SNOW, AVET_SNOW,         &
                      WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL
-      REAL, INTENT(OUT), DIMENSION(NCH) :: LH_SNOW, LWUP_SNOW,       &
+      REAL, INTENT(OUT), DIMENSION(NCH) :: LH_SNOW, LWUP_SNOW,         &
                      LWDOWN_SNOW, NETSW_SNOW
-      REAL, INTENT(OUT), DIMENSION(NCH) :: TCSORIG, TPSN1IN, TPSN1OUT
+      REAL, INTENT(OUT), DIMENSION(NCH) :: TCSORIG, TPSN1IN, TPSN1OUT, &
+                     FSW_CHANGE
 
       
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC
@@ -1282,6 +1284,14 @@
                 
         WCHANGE(N) = (WTOT(N)-WTOT_ORIG(N))/DTSTEP
         ECHANGE(N) = (ENTOT(N)-ENTOT_ORIG(N))/DTSTEP
+
+        !FSW_CHANGE IS THE CHANGE IN THE FREE-STANDING WATER, RELEVANT FOR PEATLAND ONLY
+        FSW_CHANGE(N) = 0.
+        IF(POROS(N) >= POROS_HighLat) THEN
+           pr = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
+           FSW_CHANGE(N) = PR - EVAP(N) - RUNOFF(N) - WCHANGE(N)
+        ENDIF
+
 
 
 ! Perform check on sum of AR1 and AR2, to avoid calculation of negative 
