@@ -536,8 +536,8 @@ end if
          factor = 1.0
          DO k=KTS,KTE
             mf = SUM(RHOE(K)*UPA(K,:)*UPW(K,:))
-            if (mf .gt. 2.*dp(K)/(MAPL_GRAV*dt)) then
-               factor = min(factor,2.*dp(K)/(mf*MAPL_GRAV*dt) )
+            if (mf .gt. dp(K)/(MAPL_GRAV*dt)) then
+               factor = min(factor,dp(K)/(mf*MAPL_GRAV*dt) )
             end if
          ENDDO
          UPA = factor*UPA

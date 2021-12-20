@@ -1,6 +1,7 @@
 !   $Id$
 
 !#define EDMF_DIAG 1
+!#define USE_SCM_SURF 1
 
 #include "MAPL_Generic.h"
 
@@ -2144,6 +2145,7 @@ contains
 !
 ! Start internal states for idealized SCM surface layer
 !
+#ifdef USE_SCM_SURF
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'cu_scm',                                    &
        LONG_NAME  = 'scm_surface_momentum_exchange_coefficient', &
@@ -2183,7 +2185,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                           &
        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
-
+#endif
 !
 ! End internal states for idealized SCM surface layer
 !
@@ -2537,7 +2539,9 @@ contains
     real, dimension(:,:), pointer   :: EVAP, SH
 
 ! Idealized SCM surface layer variables
+#ifdef USE_SCM_SURF
     real, dimension(:,:), pointer :: cu_scm, ct_scm, ssurf_scm, qsurf_scm
+#endif
 
 ! Begin... 
 !---------
@@ -2604,6 +2608,7 @@ contains
     VERIFY_(STATUS)
 
 !----- Variables for idealized SCM surface layer ------
+#ifdef USE_SCM_SURF
     call MAPL_GetPointer(INTERNAL, cu_scm,    'cu_scm', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, ct_scm,    'ct_scm', RC=STATUS)
@@ -2612,6 +2617,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, qsurf_scm, 'qsurf_scm', RC=STATUS)
     VERIFY_(STATUS)
+#endif
 
 ! Get pointers from internal state
 !---------------------------------
@@ -2906,6 +2912,7 @@ contains
      integer                             :: I,J,L,LOCK_ON,ITER
      integer                             :: KPBLMIN,PBLHT_OPTION
 
+#ifdef USE_SCM_SURF
      ! SCM idealized surface-layer parameters
      integer :: SCM_SL          ! 0:    use exchange coefficients from surface grid comp
                                 ! else: idealized surface layer specified in AGCM.rc
@@ -2929,6 +2936,7 @@ contains
      integer :: SCM_SURF      ! 0:    native surface from GEOS
                               ! else: idealized surface with prescribed cooling
      real    :: SCM_DTDT_SURF ! Surface heating rate (Ks-1)
+#endif
 
      ! mass-flux constants/parameters
      integer :: DOMF, NumUp, DOCLASP
@@ -3510,6 +3518,7 @@ contains
 !      call MAPL_GetResource (MAPL, NumUpQ, "EDMF_NumUpQ:", default=1,     RC=STATUS)
     end if
 
+#ifdef USE_SCM_SURF
     call MAPL_GetResource(MAPL, SCM_SURF,      'SCM_SURF:', DEFAULT=0 )
     call MAPL_GetResource(MAPL, SCM_DTDT_SURF, 'SCM_DTDT_SURF:', DEFAULT=0. )
 
@@ -3525,7 +3534,6 @@ contains
     call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.012957419628129 ) ! S6
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.013215659785478 ) ! S11
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.007700882024895 ) ! S12
-
 
         if ( SCM_SL /= 0 ) then
        call MAPL_TimerOn(MAPL,"---SURFACE")
@@ -3560,6 +3568,7 @@ contains
 
        call MAPL_TimerOff(MAPL,"---SURFACE")
     end if
+#endif
 
     call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
@@ -4704,10 +4713,12 @@ contains
    YV(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( AWV3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2) )
 
    ! Add prescribed surface fluxes
+#ifdef USE_SCM_SURF
    if ( SCM_SL /= 0 .and. SCM_SL_FLUX == 1 ) then
       YS(:,:,LM)  = YS(:,:,LM)  + DMI(:,:,LM)*SH(:,:)/RHOE(:,:,LM)
       YQV(:,:,LM) = YQV(:,:,LM) + DMI(:,:,LM)*EVAP(:,:)/RHOE(:,:,LM)
    end if
+#endif
 
       ! Add the topographic roughness term
       ! ----------------------------------
@@ -4898,6 +4909,7 @@ contains
 ! AMM pointer to export of S after diffuse
     real, dimension(:,:,:), pointer     :: SAFDIFFUSE
 
+#ifdef USE_SCM_SURF
     ! Get info for idealized SCM surface layer
     call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', default=0, RC=STATUS)
     VERIFY_(STATUS)
@@ -4914,6 +4926,7 @@ contains
        CT => ct_scm
        CQ => ct_scm
     end if
+#endif
 
 ! Get the bundles containing the quantities to be diffused, 
 !     their tendencies, their surface values, their surface
@@ -5023,6 +5036,7 @@ contains
           VERIFY_(STATUS)
        end if
 
+#ifdef USE_SCM_SURF
        ! Add presribed fluxes
        if ( SCM_SL /= 0 .and. SCM_SL_FLUX /= 1 ) then
           if ( trim(name) == 'S' ) then
@@ -5032,6 +5046,7 @@ contains
              SG => qsurf_scm
           end if
        end if
+#endif
 
 ! Pick the right exchange coefficients
 !-------------------------------------
@@ -5103,6 +5118,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
 !---------------------------
 
        if(associated(SF)) then
+#ifdef USE_SCM_SURF
           if ( SCM_SL /= 0 .and. SCM_SL_FLUX == 1 ) then
              if ( trim(name) == 'S' ) then
                 SF(:,:) = scm_sh
@@ -5116,6 +5132,13 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
                 SF = 0.0
              end if
           end if
+#else
+             if(size(SG)>0) then
+                SF = CX*(SG - SX(:,:,LM))
+             else
+                SF = 0.0
+             end if
+#endif
        end if
 
 ! Create tendencies
