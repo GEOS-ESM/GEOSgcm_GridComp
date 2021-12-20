@@ -3668,8 +3668,27 @@ subroutine SetServices ( GC, RC )
        SHORT_NAME         = 'RMELTOC002'                ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+       RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       UNITS              = 'm'                ,&
+       SHORT_NAME         = 'WATERTABLED'                ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'FSWCHANGE'                ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
 
 !EOS
 
@@ -4837,6 +4856,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
         real, pointer, dimension(:)   :: IRRIGRATE
+        real, pointer, dimension(:)   :: WATERTABLED
+        real, pointer, dimension(:)   :: FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -5525,8 +5546,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,CNFUELC            , 'CNFUELC'             ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNTOTLITC          , 'CNTOTLITC'           ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNCWDC             , 'CNCWDC'              ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNROOT             , 'CNROOT'             ,           RC=STATUS); VERIFY_(STATUS)        
-        call MAPL_GetPointer(EXPORT,CNFSEL, 'CNFSEL' ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,CNROOT             , 'CNROOT'              ,           RC=STATUS); VERIFY_(STATUS)        
+        call MAPL_GetPointer(EXPORT,CNFSEL, 'CNFSEL' ,        RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU003,'RMELTDU003',  RC=STATUS); VERIFY_(STATUS)
@@ -5536,6 +5557,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WATERTABLED,'WATERTABLED' RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FSWCHANGE,  'FSWCHANGE',  RC=STATUS); VERIFY_(STATUS)
+
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
@@ -8035,6 +8059,10 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if(associated(FSWCHANGE))  FSWCHANGE  = FSW_CHANGE
+        if(associated(WATERTABLED)) then
+           WATERTABLED = MIN(SQRT(1.e-15 + CATDEF/BF1) - BF2, CDCR2/(1.-WPWET)/POROS/1000.)
+        endif
 
         if(associated(TPSN1OUT)) then
            where(WESNN(1,:)>0.)

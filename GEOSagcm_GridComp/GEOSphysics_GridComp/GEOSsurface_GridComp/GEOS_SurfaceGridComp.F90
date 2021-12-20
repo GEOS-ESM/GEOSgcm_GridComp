@@ -2697,6 +2697,24 @@ module GEOS_SurfaceGridCompMod
        RC=STATUS  ) 
      VERIFY_(STATUS)
 
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'WATERTABLED'               ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'FSWCHANGE'      
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+     VERIFY_(STATUS)
+
   IF(LSM_CHOICE > 1) THEN     
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_exposed_leaf-area_index',&
@@ -5052,24 +5070,26 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: T2MWET       => NULL()
 
 ! GOSWIM (internal/export variables from catch/catchcn)
-    real, pointer, dimension(:,:,:) :: RDU001     => NULL()
-    real, pointer, dimension(:,:,:) :: RDU002     => NULL()
-    real, pointer, dimension(:,:,:) :: RDU003     => NULL()
-    real, pointer, dimension(:,:,:) :: RDU004     => NULL()
-    real, pointer, dimension(:,:,:) :: RDU005     => NULL()
-    real, pointer, dimension(:,:,:) :: RBC001     => NULL()
-    real, pointer, dimension(:,:,:) :: RBC002     => NULL()
-    real, pointer, dimension(:,:,:) :: ROC001     => NULL()
-    real, pointer, dimension(:,:,:) :: ROC002     => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU001 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU002 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU003 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU004 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU005 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTBC001 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTBC002 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTOC001 => NULL()
-    real, pointer, dimension(:,:)   :: RMELTOC002 => NULL()
+    real, pointer, dimension(:,:,:) :: RDU001      => NULL()
+    real, pointer, dimension(:,:,:) :: RDU002      => NULL()
+    real, pointer, dimension(:,:,:) :: RDU003      => NULL()
+    real, pointer, dimension(:,:,:) :: RDU004      => NULL()
+    real, pointer, dimension(:,:,:) :: RDU005      => NULL()
+    real, pointer, dimension(:,:,:) :: RBC001      => NULL()
+    real, pointer, dimension(:,:,:) :: RBC002      => NULL()
+    real, pointer, dimension(:,:,:) :: ROC001      => NULL()
+    real, pointer, dimension(:,:,:) :: ROC002      => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU001  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU002  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU003  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU004  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU005  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTBC001  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTBC002  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTOC001  => NULL()
+    real, pointer, dimension(:,:)   :: RMELTOC002  => NULL()
+    real, pointer, dimension(:,:)   :: WATERTABLED => NULL()
+    real, pointer, dimension(:,:)   :: FSWCHANGE   => NULL()
 
 ! CN model
     real, pointer, dimension(:,:) :: CNLAI       => NULL()
@@ -5329,6 +5349,8 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: RMELTBC002TILE   => NULL()
     real, pointer, dimension(:) :: RMELTOC001TILE   => NULL()
     real, pointer, dimension(:) :: RMELTOC002TILE   => NULL()
+    real, pointer, dimension(:) :: WATERTABLEDTILE  => NULL()
+    real, pointer, dimension(:) :: FSWCHANGETILE    => NULL()
 
     real, pointer, dimension(:) :: CNLAITILE        => NULL()
     real, pointer, dimension(:) :: CNTLAITILE       => NULL()
@@ -6141,6 +6163,9 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , RMELTBC002 , 'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RMELTOC001 , 'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RMELTOC002 , 'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , WATERTABLED, 'WATERTABLED', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , FSWCHANGE  , 'FSWCHANGE',   RC=STATUS); VERIFY_(STATUS)
+
 
     IF(LSM_CHOICE > 1) THEN
        call MAPL_GetPointer(EXPORT  , CNLAI   , 'CNLAI'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6714,6 +6739,8 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(RMELTBC002 ,RMELTBC002TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RMELTOC001 ,RMELTOC001TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RMELTOC002 ,RMELTOC002TILE ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(WATERTABLED,WATERTABLEDTILE,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(FSWCHANGE  ,FSWCHANGETILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     
     IF (LSM_CHOICE > 1) THEN
        call MKTILE(CNLAI   ,CNLAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7541,6 +7568,8 @@ module GEOS_SurfaceGridCompMod
     if(associated(RMELTBC002))call MAPL_LocStreamTransform( LOCSTREAM,RMELTBC002 ,RMELTBC002TILE, RC=STATUS); VERIFY_(STATUS)
     if(associated(RMELTOC001))call MAPL_LocStreamTransform( LOCSTREAM,RMELTOC001 ,RMELTOC001TILE, RC=STATUS); VERIFY_(STATUS)
     if(associated(RMELTOC002))call MAPL_LocStreamTransform( LOCSTREAM,RMELTOC002 ,RMELTOC002TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(WATERTABLED))call MAPL_LocStreamTransform( LOCSTREAM,WATERTABLED ,WATERTABLEDTILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(FSWCHANGE  ))call MAPL_LocStreamTransform( LOCSTREAM,FSWCHANGE   ,FSWCHANGETILE  , RC=STATUS); VERIFY_(STATUS)
 
     if(associated(CNLAI)) then
        call MAPL_LocStreamTransform( LOCSTREAM,CNLAI ,CNLAITILE , RC=STATUS) 
@@ -8074,6 +8103,8 @@ module GEOS_SurfaceGridCompMod
     if(associated(RMELTBC002TILE )) deallocate(RMELTBC002TILE )
     if(associated(RMELTOC001TILE )) deallocate(RMELTOC001TILE )
     if(associated(RMELTOC002TILE )) deallocate(RMELTOC002TILE )
+    if(associated(WATERTABLEDTILE)) deallocate(WATERTABLEDTILE)
+    if(associated(FSWCHANGETILE ))  deallocate(FSWCHANGETILE  )
     if(associated(CNLAITILE   )) deallocate(CNLAITILE   )
     if(associated(CNTLAITILE  )) deallocate(CNTLAITILE  )
     if(associated(CNSAITILE   )) deallocate(CNSAITILE   )
@@ -8408,6 +8439,10 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'RMELTOC001' , ALLOC=associated(RMELTOC001TILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'RMELTOC002' , ALLOC=associated(RMELTOC002TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WATERTABLED', ALLOC=associated(WATERTABLEDTILE ),notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FSWCHANGE'  , ALLOC=associated(FSWCHANGETILE ) , notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
       IF (LSM_CHOICE > 1) THEN
@@ -8977,6 +9012,8 @@ module GEOS_SurfaceGridCompMod
       if(associated(RMELTBC002TILE)) call FILLOUT_TILE(GEX(type), 'RMELTBC002' , RMELTBC002TILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(RMELTOC001TILE)) call FILLOUT_TILE(GEX(type), 'RMELTOC001' , RMELTOC001TILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(RMELTOC002TILE)) call FILLOUT_TILE(GEX(type), 'RMELTOC002' , RMELTOC002TILE , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(WATERTABLEDTILE))call FILLOUT_TILE(GEX(type), 'WATERTABLED', WATERTABLEDTILE, XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(FSWCHANGETILE))  call FILLOUT_TILE(GEX(type), 'FSWCHANGE'  , FSWCHANGETILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
 
       if(associated(CNLAITILE)) then
          call FILLOUT_TILE(GEX(type), 'CNLAI' ,   CNLAITILE , XFORM, RC=STATUS)
