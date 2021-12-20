@@ -584,7 +584,7 @@ MODULE lsm_routines
       REAL, INTENT(IN), DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
                                           PSIS,BEE,poros,WPWET,                &
                                           ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
-                                          arw1,arw2,arw3,arw4
+                                          arw1,arw2,arw3,arw4,BF1,BF2
 
       LOGICAL, INTENT(IN) :: BUG
 ! -------------------------------------------------------------------
