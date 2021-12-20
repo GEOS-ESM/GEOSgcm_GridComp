@@ -473,9 +473,9 @@ MODULE lsm_routines
 !**** -----------------------------------------------------------------
 !****
       SUBROUTINE BASE (                                                        &
-                       NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,            &
+                       NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,AR1,POROS,  &
                        CATDEF,                                                 &
-                       BFLOW                                                   &
+                       BFLOW,ars1,ars2,ars3                                                   &
                       )
 
       IMPLICIT NONE
