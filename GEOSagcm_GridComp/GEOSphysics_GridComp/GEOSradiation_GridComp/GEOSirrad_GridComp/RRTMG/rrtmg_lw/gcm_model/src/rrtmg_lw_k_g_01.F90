@@ -1,8 +1,3 @@
-!     path:      $Source$
-!     author:    $Author$
-!     revision:  $Revision$
-!     created:   $Date$
-!
 !  --------------------------------------------------------------------------
 ! |                                                                          |
 ! |  Copyright 2002-2009, Atmospheric & Environmental Research, Inc. (AER).  |
@@ -30,18 +25,13 @@
 !  weighted using a mapping procedure in routine RRTMG_LW_INIT to reduce
 !  the total number of g-points from 256 to 140 for use in the GCM.
 ! **************************************************************************
-      subroutine lw_kgb01
+subroutine lw_kgb01
 ! **************************************************************************
 
-       !use parkind, only : im => kind , rb => kind  
       use rrlw_kg01, only : fracrefao, fracrefbo, kao, kbo, kao_mn2, kbo_mn2, &
                             selfrefo, forrefo
-      use rrlw_vsn, only: hvrkg, hnamkg
-
       implicit none
       save
-
-      hvrkg = '$Revision$'
 
 ! Planck fraction mapping level: P = 212.7250 mbar, T = 223.06 K
       fracrefao(:) = (/ &
@@ -62,7 +52,7 @@
 !     index in the array, JT, which runs from 1 to 5, corresponds to 
 !     different temperatures.  More specifically, JT = 3 means that the 
 !     data are for the corresponding TREF for this  pressure level, 
-!     JT = 2 refers to the temperatureTREF-15, JT = 1 is for TREF-30, 
+!     JT = 2 refers to the temperature TREF-15, JT = 1 is for TREF-30, 
 !     JT = 4 is for TREF+15, and JT = 5 is for TREF+30.  The second 
 !     index, JP, runs from 1 to 13 and refers to the corresponding 
 !     pressure level in PREF (e.g. JP = 1 is for a pressure of 1053.63 mb).  
@@ -2242,4 +2232,4 @@
      & 7.84774e+00 , 6.80673e+00 , 5.90380e+00 , 5.12065e+00 , 4.44138e+00 , &
      & 3.85223e+00 , 3.34122e+00 , 2.89800e+00 , 2.51357e+00 , 2.18014e+00 /)
 
-      end subroutine lw_kgb01
+end subroutine lw_kgb01
