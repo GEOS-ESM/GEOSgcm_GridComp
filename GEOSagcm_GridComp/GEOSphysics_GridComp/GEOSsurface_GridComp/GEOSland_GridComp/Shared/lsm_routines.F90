@@ -48,7 +48,7 @@ MODULE lsm_routines
        MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
        DZ1MAX            => CATCH_DZ1MAX,        &
        SHR, N_SM, SCONST, CSOIL_1,               &
-       C_CANOP, SATCAPFR
+       C_CANOP, SATCAPFR, POROS_HighLat
 
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
@@ -290,67 +290,176 @@ MODULE lsm_routines
       DO N=1,NCH
 
          if(.not.UFW4RO) then
-            
+
             PTOTAL=THRUL(N) + THRUC(N)
-            frun=AR1(N)
-            srun0=PTOTAL*frun
-            
-            !**** Comment out this line in order to allow moisture
-            !**** to infiltrate soil:
-            !       if(tp1(n) .lt. 0.) srun0=ptotal
-            
-            if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
-                 srun0=ptotal-(srfmx(n)-srfexc(n)) 
-            
-            if (srun0 .gt. ptotal) srun0=ptotal
-            
-            RUNSRF(N)=RUNSRF(N)+srun0
-            QIN=PTOTAL-srun0
-            
+
+            IF (POROS(N) < POROS_HighLat) THEN
+               ! Non-peatland
+               frun=AR1(N)
+               srun0=PTOTAL*frun
+
+               !**** Comment out this line in order to allow moisture
+               !**** to infiltrate soil:
+               !       if(tp1(n) .lt. 0.) srun0=ptotal
+
+               if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
+                    srun0=ptotal-(srfmx(n)-srfexc(n))
+
+               if (srun0 .gt. ptotal) srun0=ptotal
+
+               RUNSRF(N)=RUNSRF(N)+srun0
+               QIN=PTOTAL-srun0
+               SRFEXC(N)=SRFEXC(N)+QIN
+            ELSE
+               ! Peatland
+               ! MB: no Hortonian surface runoff
+               !Note (rdk, from discussion w/MB; email 01/04/2021): 
+               ! forcing all the rain to fall onto 
+               ! the soil (1-AR1 fraction) rather than
+               ! onto both the soil and the free water surface is a simple shortcut;
+               ! the key function of this code is to retain all rainwater in the system
+               ! and *only* to produce surface runoff when the 
+               ! ground is already ridiculously wet.
+               ! This prevents problems (e.g., numerical instabilities) found in 
+               ! discharge calculations elsewhere in the code.
+
+               srun0 = 0.
+               ! handling numerical instability due to exceptional snow melt events at some pixels
+               ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
+               !Added ramping to avoid potential oscillations (rdk, 09/18/20)
+               IF (AR1(N)>0.50) srun0=PTOTAL*amin1(1.,(ar1(n)-0.5)/0.1)
+
+               ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+               ! Rewrote code to determine excess over capacity all at once (rdk, 09/18/20)
+
+               totcapac=(srfmx(n)-srfexc(n))+(vgwmax(n)-(rzeq(n)+rzexc(n)))
+               watadd=ptotal-srun0
+               if (watadd .gt. totcapac) then
+                  excess=watadd-totcapac
+                  srun0=srun0+excess
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=vgwmax(n)-rzeq(n)
+               elseif(watadd .gt. srfmx(n)-srfexc(n)) then
+                  excess=watadd-(srfmx(n)-srfexc(n))
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=rzexc(n)+excess
+               else
+                  srfexc(n)=srfexc(n)+watadd
+               endif
+               ! MB: check if VGWMAX is exceeded
+               !IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+               !  srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+               !  RZEXC(N)=VGWMAX(N)-RZEQ(N)
+               !  ENDIF
+               !(Commented out following lines to retain water balance -- rdk, 9/18/20)
+               !if (srun0 .gt. ptotal) then
+               !   srun0=ptotal
+               !   endif
+               RUNSRF(N)=RUNSRF(N)+srun0
+               QIN=PTOTAL-srun0
+               !SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))               
+            ENDIF
+
          endif
 
          if(UFW4RO) then
 
             !**** Compute runoff from large-scale and convective storms separately:
- 
-            deficit=srfmx(n)-srfexc(n)
-            srunl=AR1(n)*THRUL(n)
-            qinfil_l=(1.-ar1(n))*THRUL(n)
-            qcapac=deficit*FWETL
-            
-            if(qinfil_l .gt. qcapac) then
-               excess_infil=qinfil_l-qcapac
-               srunl=srunl+excess_infil
-               qinfil_l=qinfil_l-excess_infil
+            IF (POROS(N) < POROS_HighLat) THEN
+                !non-peatland
+               deficit=srfmx(n)-srfexc(n)
+               srunl=AR1(n)*THRUL(n)
+               qinfil_l=(1.-ar1(n))*THRUL(n)
+               qcapac=deficit*FWETL
+
+               if(qinfil_l .gt. qcapac) then
+                  excess_infil=qinfil_l-qcapac
+                  srunl=srunl+excess_infil
+                  qinfil_l=qinfil_l-excess_infil
+               endif
+
+               srunc=AR1(n)*THRUC(n)
+               qinfil_c=(1.-ar1(n))*THRUC(n)
+               qcapac=deficit*FWETC
+
+               if(qinfil_c .gt. qcapac) then
+                  excess_infil=qinfil_c-qcapac
+                  srunc=srunc+excess_infil
+                  qinfil_c=qinfil_c-excess_infil
+               endif
+
+               !**** Comment out this line in order to allow moisture
+               !**** to infiltrate soil:
+               !       if(tp1(n) .lt. 0.) srun0=ptotal
+
+               if (srunl .gt. THRUL(n)) srunl=THRUL(n)
+
+               if (srunc .gt. THRUC(n)) srunc=THRUC(n)
+
+               RUNSRF(N)=RUNSRF(N)+srunl+srunc
+               QIN=THRUL(n)+THRUC(n)-(srunl+srunc)
+               SRFEXC(N)=SRFEXC(N)+QIN
+
+            else
+               ! peatland
+               ! MB: no Hortonian surface runoff
+               !Note (rdk, from discussion w/MB; email 01/04/2021): 
+               ! forcing all the rain to fall onto 
+               ! the soil (1-AR1 fraction) rather than
+               ! onto both the soil and the free water surface is a simple shortcut;
+               ! the key function of this code is to retain all rainwater in the system
+               ! and *only* to produce surface runoff when the 
+               ! ground is already ridiculously wet.
+               ! This prevents problems (e.g., numerical instabilities) found in 
+               ! discharge calculations elsewhere in the code.
+
+               srunl = 0.
+               srunc = 0.
+               ! handling numerical instability due to exceptional snow melt events at some pixels
+               ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
+               IF (AR1(N)>0.50) THEN
+                  !Added ramping to avoid potential oscillations (rdk, 09/18/20)
+                  srunl = THRUL(n)*amin1(1.,(ar1(n)-0.5)/0.1)
+                  srunc = THRUC(n)*amin1(1.,(ar1(n)-0.5)/0.1)
+               ENDIF
+               PTOTAL = THRUL(N) + THRUC(N)
+               SRUN0  = srunl + srunc
+               ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+               ! Rewrote code to determine excess over capacity all at once (rdk, 09/18/20)
+               totcapac=(srfmx(n)-srfexc(n))+(vgwmax(n)-(rzeq(n)+rzexc(n)))
+               watadd=ptotal-srun0
+               if (watadd .gt. totcapac) then
+                  excess=watadd-totcapac
+                  srun0=srun0+excess
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=vgwmax(n)-rzeq(n)
+               elseif(watadd .gt. srfmx(n)-srfexc(n)) then
+                  excess=watadd-(srfmx(n)-srfexc(n))
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=rzexc(n)+excess
+               else
+                  srfexc(n)=srfexc(n)+watadd
+               endif
+               !if (ptotal-srun0 .gt. srfmx(n)-srfexc(n)) then
+               !  excess=(ptotal-srun0)-(srfmx(n)-srfexc(n))
+               !  rzexc(n)=rzexc(n) + excess
+               !  ptotal=ptotal-excess
+               !  endif                   
+               ! MB: check if VGWMAX is exceeded
+               !IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+               !  srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+               !  RZEXC(N)=VGWMAX(N)-RZEQ(N)
+               !  ENDIF
+               RUNSRF(N)=RUNSRF(N)+srun0
+               QIN=PTOTAL-srun0
+               ! SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))  
             endif
-         
-            srunc=AR1(n)*THRUC(n)
-            qinfil_c=(1.-ar1(n))*THRUC(n)
-            qcapac=deficit*FWETC
-            
-            if(qinfil_c .gt. qcapac) then
-               excess_infil=qinfil_c-qcapac
-               srunc=srunc+excess_infil
-               qinfil_c=qinfil_c-excess_infil
-            endif
-         
-            !**** Comment out this line in order to allow moisture
-            !**** to infiltrate soil:
-            !       if(tp1(n) .lt. 0.) srun0=ptotal
-         
-            if (srunl .gt. THRUL(n)) srunl=THRUL(n)
-         
-            if (srunc .gt. THRUC(n)) srunc=THRUC(n)
-            
-            RUNSRF(N)=RUNSRF(N)+srunl+srunc
-            QIN=THRUL(n)+THRUC(n)-(srunl+srunc)
 
          endif
 
-         SRFEXC(N)=SRFEXC(N)+QIN
          RUNSRF(N)=RUNSRF(N)/DTSTEP
          QINFIL(N)=QIN/DTSTEP
-     
+
       END DO
 
       RETURN
@@ -385,25 +494,64 @@ MODULE lsm_routines
 
       data ashift/0./
 
-
-      DO N=1,NCH
+    DO N=1,NCH
          ! note intentionally opposite sign w.r.t. zbar defined above, - reichle, 16 Nov 2015
-        ZBAR=SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
-        BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
-              cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
-! *1000 is to convert from m/s to mm/s
-        IF (CATDEF(N) .GE. CDCR1(N)) BFLOW(N)=0.
-!#ifdef LAND_UPD
-	IF (LAND_FIX) THEN
-	      bflow(n)=amin1(1000.*cond(n),bflow(n))
-	ELSE
-!#else
-	      bflow(n)=amin1(cond(n),bflow(n))
-	END IF
-!#endif
-        CATDEF(N)=CATDEF(N)+BFLOW(N)*dtstep
-        ENDDO
+         ZBAR=SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
+         IF (POROS(N) < POROS_HighLat) THEN
+            BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
+                 cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
+            ! *1000 is to convert from m/s to mm/s
+            IF (CATDEF(N) .GE. CDCR1(N)) BFLOW(N)=0.
+            !#ifdef LAND_UPD
+            IF (LAND_FIX) THEN
+               bflow(n)=amin1(1000.*cond(n),bflow(n))
+            ELSE
+               !#else
+               bflow(n)=amin1(cond(n),bflow(n))
+            END IF
+            !#endif
+            CATDEF(N)=CATDEF(N)+BFLOW(N)*dtstep
+         ELSE
+            ! PEAT
+            ! MB:  
+            IF (FRICE(N) .GE. 0.9999) THEN
+               CFRICE = 1.
+            ELSE
+               CFRICE = FRICE(N)
+            ENDIF
+            ! BFLOW in mm/s
+            ! based on Ivanov 1981
+            ! Ksz0  in  m/s
+            ! m_Ivanov [-]  value depends on unit of Ksz0 and z
+            ! v_slope in m^(-1)
+            Ksz_zero=10.
+            m_Ivanov=3.0
+            v_slope = 1.5e-05
+            ! Ta in m2/s, BFLOW in mm/s
+            Ta = (Ksz_zero*(1.+100.*amax1(0.,ZBAR))**(1.-m_Ivanov))/(100.*(m_Ivanov-1.))
+            BFLOW(N)=v_slope*Ta*1000.
+            ! handling numerical instability due to extrene snow melt events on partly frozen ground
+            ! --> allow BFLOW/DISCHARGE for zbar .LE. 0.05
+            ICERAMP= AMAX1(0., AMIN1(1., ZBAR/0.05))
+            ICERAMP= 1.-ICERAMP*CFRICE
+            BFLOW(N)=ICERAMP*BFLOW(N)
 
+            ! MB: Remove water from CATDEF and surface water storage
+            IF (BFLOW(N) .NE. 0.0) THEN
+               ! PEAT
+               ! MB: accounting for water ponding on AR1
+               ! same approach as for RZFLW (see subroutine RZDRAIN for
+               ! comments)
+               SYSOIL = (2*bf1(N)*amin1(amax1(zbar,0.),0.45) + 2*bf1(N)*bf2(N))/1000.
+               SYSOIL = amin1(SYSOIL,poros(n))
+               !MB2021: use AR1eq, equilibrium assumption between water level in soil hummocks and surface water level in hollows
+               AR1eq = (1+ars1(n)*(catdef(n)))/(1+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
+               BFLOW_CATDEF = (1-AR1eq)*SYSOIL*BFLOW(N)/(1.0*AR1eq+SYSOIL*(1-AR1eq))
+               CATDEF(N)=CATDEF(N)+BFLOW_CATDEF*dtstep
+            ENDIF
+
+         ENDIF
+      ENDDO
 
       RETURN
       END SUBROUTINE BASE
@@ -589,10 +737,22 @@ MODULE lsm_routines
 
           ENDIF
 
+          IF (POROS(N) >= POROS_HighLat) THEN
+             ! peat
+             ! MB: AR4 (wilting fraction) for peatland depending on water table depth
+             !ZBAR defined here positive below ground and in meter
+             ZBAR=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+             AR4(N)=amax1(0.,amin1(1.0,(ZBAR-0.30)/(1.0)))
+             ARREST = 1.0 - AR1(N)
+             AR4(N)=amin1(ARREST,AR4(N))
+             AR2(N)=1.0-AR4(n)-AR1(N)
+          ENDIF
+
         RZI(N)=RZEQYI
 
         SWSRF1(N)=1.
 !mjs: changed .001 temporarily because of large bee.
+        IF (POROS(N) < POROS_HighLat) THEN
         SWSRF2(N)=AMIN1(1., AMAX1(0.01, RZEQYI))
         SWSRF4(N)=AMIN1(1., AMAX1(0.01, WILT))
 
@@ -604,6 +764,18 @@ MODULE lsm_routines
 
         SWSRF2(N)=((SWSRF2(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
         SWSRF4(N)=((SWSRF4(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
+        ELSE
+
+             ! PEAT
+             ! MB: for peatlands integrate across surface soil moisture distribution
+             ! coefficients fitted for equilibrium conditions
+             ! SWSRF2 and SWSRF4 as wetness (not moisture)
+             ! MB: bug April 2018, AMIN1 function due to problems when spin up from
+             ! scratch (i.e. dry soil at time=0)
+             SWSRF2(N)=0.79437 - 0.99996*AMIN1(1.5,ZBAR) + 0.68801*(AMIN1(1.5,ZBAR))**2 + &
+                     0.04186*(AMIN1(1.5,ZBAR))**3 - 0.15042*(AMIN1(1.5,ZBAR))**4
+             SWSRF4(N)=SWSRF2(N)
+        ENDIF
 
 ! srfmx is the maximum amount of water that can be added to the surface layer
 ! The choice of defining SWSRF4 like SWSRF2 needs to be better examined.
@@ -1861,8 +2033,15 @@ MODULE lsm_routines
 
       do l=lstart,N_GT
          xfice=xfice+fice(l)
-         enddo
-      xfice=xfice/((N_GT+1)-lstart)
+      enddo
+
+      IF (phi < POROS_HighLat) THEN
+         xfice=xfice/((N_GT+1)-lstart)
+      ELSE
+         !PEAT
+         !MB: only first layer for total runoff reduction
+        xfice=AMIN1(1.0,fice(1))
+      ENDIF
 
       Return
 

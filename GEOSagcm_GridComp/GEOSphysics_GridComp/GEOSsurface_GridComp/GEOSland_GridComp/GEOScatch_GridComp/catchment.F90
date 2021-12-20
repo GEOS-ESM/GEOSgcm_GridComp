@@ -87,7 +87,7 @@
            SLOPE             => CATCH_SNWALB_SLOPE,  &
            MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
            DZ1MAX            => CATCH_DZ1MAX,        &  
-           SHR, SCONST, CSOIL_1, N_sm, SATCAPFR
+           SHR, SCONST, CSOIL_1, N_sm, SATCAPFR, POROS_HighLat
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
@@ -1292,8 +1292,6 @@
            FSW_CHANGE(N) = PR - EVAP(N) - RUNOFF(N) - WCHANGE(N)
         ENDIF
 
-
-
 ! Perform check on sum of AR1 and AR2, to avoid calculation of negative 
 ! wilting fraction due to roundoff, outside of catchment:
         IF(AR1(N)+AR2(N) .GT. 1.) THEN
@@ -1775,28 +1773,91 @@
 
         IF (CATDEF(N)-RZFLW .GT. CDCR2(N)) then
           RZFLW=CATDEF(N)-CDCR2(N)
-          end if
+        end if
 
-        CATDEF(N)=CATDEF(N)-RZFLW
-        RZEXC(N)=RZEXC(N)-RZFLW
+       IF (POROS(N) < POROS_HighLat) then
+          ! mineral soil
+          CATDEF(N)=CATDEF(N)-RZFLW
+          RZEXC(N)=RZEXC(N)-RZFLW
+       else
+          !MB2021: use AR1eq, equilibrium assumption between water level in soil hummocks and surface water level in hollows
+          AR1eq = (1+ars1(n)*(catdef(n)))/(1+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
+          ! PEAT
+          ! MB: accounting for water ponding on AR1
+          ! RZFLOW is partitioned into two flux components: (1) going in/out ponding water volume and (1) going in/out unsaturated soil storage
+          ! Specific yield of ponding water surface fraction is 1.0
+          ! calculate SYSOIL (see Dettmann and Bechtold, VZJ, 2016, for detailed theory)
+          ! SYSOIL in CLSM can be derived from first derivative of 
+          ! f_catdef(zbar) = ((zbar + bf2)^2 +1.0E-20)*bf1
+          ! division by 1000 to convert from m to mm gives (Note: catdef in PEATCLSM remains
+          ! the soil profile deficit, i.e. does not include the ponding water storage).
+          ! SYSOIL = (2*bf1*zbar + 2*bf1*bf2)/1000
+          ! Note: zbar defined here positive below ground.
+          ! For the SYSOIL estimation zbar must be constrained to 0.0 to 0.45 m,
+          ! to avoid extrapolation errors due to the non-optimal
+          ! (linear) approximation with the bf1-bf2-CLSM function,
+          ! theoretical SYSOIL curve levels off approximately at 0 m and 0.45 m.
+          ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+          SYSOIL = (2*bf1(n)*amin1(amax1(zbar1,0.),0.45) + 2*bf1(n)*bf2(n))/1000.
+          SYSOIL = amin1(SYSOIL,poros(n))
+          ! Calculate fraction of RZFLW removed/added to catdef
+          RZFLW_CATDEF = (1-AR1eq)*SYSOIL*RZFLW/(1.0*AR1eq+SYSOIL*(1-AR1eq))
+          CATDEF(N)=CATDEF(N)-RZFLW_CATDEF
+          ! MB: remove all RZFLW from RZEXC because the other part 
+          ! flows into the surface water storage (microtopgraphy)
+          RZEXC(N)=RZEXC(N)-RZFLW
+
+       ENDIF
+ 
 
 !****   REMOVE ANY EXCESS FROM MOISTURE RESERVOIRS:
 
         IF(CAPAC(N) .GT. SATCAP(N)) THEN
           RZEXC(N)=RZEXC(N)+CAPAC(N)-SATCAP(N)
           CAPAC(N)=SATCAP(N)
-          ENDIF
+        ENDIF
 
         IF(RZEQ(N) + RZEXC(N) .GT. VGWMAX(N)) THEN
           EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
           RZEXC(N)=VGWMAX(N)-RZEQ(N)
-          CATDEF(N)=CATDEF(N)-EXCESS
-          ENDIF
 
-        IF(CATDEF(N) .LT. 0.) THEN
+          IF (POROS(N) < POROS_HighLat) THEN
+             CATDEF(N)=CATDEF(N)-EXCESS
+          ELSE
+             ! PEAT
+             ! MB: like for RZFLW --> EXCESS_CATDEF is the fraction in/out of catdef
+             EXCESS_CATDEF=(1-AR1eq)*SYSOIL*EXCESS/(1.0*AR1eq+SYSOIL*(1-AR1eq))
+             CATDEF(N)=CATDEF(N)-EXCESS_CATDEF
+          ENDIF
+       ENDIF
+
+       IF (POROS(N) >= POROS_HighLat) THEN
+          ! MB: CATDEF Threshold at zbar=0
+          ! water table not allowed to rise higher (numerically instable) 
+          ! zbar<0 only occurred due to extreme infiltration rates
+          ! (noticed this only snow melt events, very few locations and times)
+          ! (--> NOTE: PEATCLSM has no Hortonian runoff for zbar > 0)            
+          CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0-1.e-20)*BF1(N)
+          IF(CATDEF(N) .LT. CATDEF_PEAT_THRESHOLD) THEN
+             ! RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! runoff from AR1 for zbar>0
+             ! RZFLW_AR1 = RZFLW - RZFLW_CATDEF + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! AR1=0.5 at zbar=0
+             ! SYsurface=0.5 at zbar=0
+             ! RUNSRF(N) = RUNSRF(N) + amax1(0.0, RZFLW_AR1 - 0.5*1000.*ZBAR1)
+             ! 
+             ! revised (rdk, 1/04/2021): take excess water from both 
+             ! soil and free standing water, the latter assumed to cover area AR1=0.5
+             RUNSRF(N) = RUNSRF(N) + CATDEF_PEAT_THRESHOLD-CATDEF(N) + 0.5*1000.*(-ZBAR1)
+
+             CATDEF(N)=CATDEF_PEAT_THRESHOLD
+          ENDIF
+       ENDIF
+
+       IF(CATDEF(N) .LT. 0.) THEN
           RUNSRF(N)=RUNSRF(N)-CATDEF(N)
           CATDEF(N)=0.
-          ENDIF
+       ENDIF
 
   100 ENDDO
 
@@ -1969,6 +2030,15 @@
       DESDTC(CHNO) = DQSDTC(CHNO) * PSUR(CHNO) / EPSILON
       DEDEA(CHNO)  = DEDQA(CHNO) * EPSILON / PSUR(CHNO)
       DHSDEA(CHNO) = DHSDQA(CHNO) * EPSILON / PSUR(CHNO)
+
+      IF (POROS(CHNO) < POROS_HighLat) THEN
+            ! mineral soil
+         SWSRF4(CHNO) = SWSRF(CHNO)
+      ELSE
+         ! PEAT
+         ! MB: For ET calculation, AR4 surface wetness is set to WPWET
+         SWSRF4(CHNO) = WPWET(CHNO)
+      ENDIF
 
  100  CONTINUE
 
@@ -2840,11 +2910,25 @@
 !**** REMOVE MOISTURE FROM RESERVOIRS:
 !****
 
-      IF (CATDEF(CHNO) .LT. CDCR1(CHNO)) THEN
+        IF (CATDEF(CHNO) .LT. CDCR1(CHNO)) THEN
           CAPAC(CHNO) = AMAX1(0., CAPAC(CHNO) - EINT(CHNO))
           RZEXC(CHNO) = RZEXC(CHNO) - EVEG(CHNO)*(1.-ESATFR)
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)*(1.-ESATFR)
-          CATDEF(CHNO) = CATDEF(CHNO) + (ESOI(CHNO) + EVEG(CHNO))*ESATFR
+
+          IF (POROS(CHNO) < POROS_HighLat) THEN
+             CATDEF(CHNO) = CATDEF(CHNO) + (ESOI(CHNO) + EVEG(CHNO))*ESATFR
+          ELSE
+             ! PEAT
+             ! MB: accounting for water ponding on AR1
+             ! same approach as for RZFLW (see subroutine RZDRAIN for
+             ! comments)
+             ZBAR1=SQRT(1.e-20+CATDEF(CHNO)/BF1(CHNO))-BF2(CHNO)
+             SYSOIL = (2*bf1(CHNO)*amin1(amax1(zbar1,0.),0.45) + 2*bf1(CHNO)*bf2(CHNO))/1000.
+             SYSOIL = amin1(SYSOIL,poros(CHNO))
+             ET_CATDEF = SYSOIL*(ESOI(CHNO) + EVEG(CHNO))*ESATFR/(1.0*AR1(CHNO)+SYSOIL*(1-AR1(CHNO)))
+             AR1eq = (1+ars1(chno)*(catdef(chno)))/(1+ars2(chno)*(catdef(chno))+ars3(chno)*(catdef(chno))**2)
+             CATDEF(CHNO) = CATDEF(CHNO) + (1-AR1eq)*ET_CATDEF
+          ENDIF
 ! 05.12.98: first attempt to include bedrock
         ELSE
           CAPAC(CHNO) = AMAX1(0., CAPAC(CHNO) - EINT(CHNO))
