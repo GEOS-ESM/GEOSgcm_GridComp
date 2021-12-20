@@ -284,7 +284,8 @@ MODULE lsm_routines
       REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
 
       INTEGER N
-      REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal
+      REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, &
+                   srunc, srunl, ptotal, excess, totcapac, watadd
 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
