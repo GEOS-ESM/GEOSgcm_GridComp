@@ -568,6 +568,7 @@ MODULE lsm_routines
       SUBROUTINE PARTITION (                                                   &
                             NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,     &
                             PSIS,BEE,poros,WPWET,                              &
+                            BF1, BF2,                                          &
                             ars1,ars2,ars3,ara1,ara2,ara3,ara4,                &
                             arw1,arw2,arw3,arw4,BUG,                           &
                             srfexc,catdef,runsrf,                              &
