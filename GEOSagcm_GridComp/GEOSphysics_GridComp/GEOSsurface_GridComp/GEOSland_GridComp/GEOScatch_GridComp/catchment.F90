@@ -610,7 +610,7 @@
 !**** DETERMINE INITIAL VALUE OF RZEQ:
 
       CALL RZEQUIL (                                                           &
-                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,                     &
+                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,POROS,               &
                     ars1,ars2,ars3,ara1,ara2,ara3,ara4,                        &
                     arw1,arw2,arw3,arw4,                                       &
                     RZEQOL                                                     &
@@ -772,7 +772,7 @@
 !**** 3. WILTING FRACTION
 !CC    print*,'energy4'
       CALL ENERGY4 (                                                           &
-                   NCH, DTSTEP, ITYP, UM, RCST,                                &
+                   NCH, DTSTEP, ITYP,POROS, UM, RCST,                          &
                    ETURB4, DEDQA4X, DEDTC4X, HSTURB4, DHSDQA4X, DHSDTC4X,      &
                    QM,     RA4,   SWNETF,  HLWDWN, PSUR,                       &
                    RDCX,   HFTDS4, DHFT4, QSAT4, DQS4, ALW4, BLW4,             &
@@ -1165,7 +1165,8 @@
 
         CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
              AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
-             SRFEXC,RUNSRF,                                             &
+             VGWMAX,RZEQOL,POROS,                                       &
+             SRFEXC,RUNSRF,RZEXC,                                       &
              QINFIL                                                     &
              )
 
@@ -1178,7 +1179,7 @@
 !**** RECOMPUTE RZEXC:
 
       CALL RZEQUIL (                                                           &
-                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,                     &
+                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,POROS,               &
                     ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,    &
                     RZEQ                                                       &
                    )
@@ -2383,7 +2384,7 @@
 !**** -----------------------------------------------------------------
 !****
       SUBROUTINE energy4 (                                                     &
-                       NCH, DTSTEP, ITYP, UM, RCIN,                            &
+                       NCH, DTSTEP, ITYP, POROS,UM, RCIN,                      &
                        ETURB,  DEDQA,  DEDTC,  HSTURB, DHSDQA, DHSDTC,         &
                        QM,     RA,   SWNET,  HLWDWN, PSUR,                     &
                        RDC,    HFTDS, DHFTDS,                                  &
@@ -2402,7 +2403,7 @@
       REAL, INTENT(IN), DIMENSION(NCH) :: UM, RCIN, ETURB, HSTURB, QM, RA,     &
                 SWNET, HLWDWN, PSUR, RDC, HFTDS, DHFTDS, QSATTC, DQSDTC,       &
                 ALWRAD, BLWRAD, EMAXRT, CSOIL, SWSRF, POTFRC, WPWET, DEDQA,    &
-                DEDTC, DHSDQA, DHSDTC
+                DEDTC, DHSDQA, DHSDTC, POROS
       LOGICAL, INTENT(IN) ::  BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: TC, QA
@@ -2440,6 +2441,15 @@
       DESDTC(CHNO) = DQSDTC(CHNO) * PSUR(CHNO) / EPSILON
       DEDEA(CHNO)  = DEDQA(CHNO) * EPSILON / PSUR(CHNO)
       DHSDEA(CHNO) = DHSDQA(CHNO) * EPSILON / PSUR(CHNO)
+
+      IF (POROS(CHNO) < POROS_HighLat) THEN
+            ! mineral soil
+         SWSRF4(CHNO) = SWSRF(CHNO)
+      ELSE
+         ! PEAT
+         ! MB: For ET calculation, AR4 surface wetness is set to WPWET
+         SWSRF4(CHNO) = WPWET(CHNO)
+      ENDIF
 
  100  CONTINUE
 
