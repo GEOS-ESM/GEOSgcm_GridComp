@@ -1692,7 +1692,9 @@
 
       INTEGER N
       REAL srflw,rzflw,FLOW,EXCESS,TSC0,tsc2,rzave,rz0,wanom,rztot,            &
-            rzx,btaux,ax,bx,rzdif, rzavemin
+            rzx,btaux,ax,bx,rzdif, rzavemin,ZBAR1,SYSOIL,RZFLW_CATDEF,         &
+           EXCESS_CATDEF, CATDEF_PEAT_THRESHOLD, RZFLW_AR1, AR1eq
+
 
 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 

@@ -634,6 +634,7 @@ CONTAINS
       CALL PARTITION (                                                         &
                       NCH,DTSTEP,DZSF,RZEXC,  RZEQOL,VGWMAX,CDCR1,CDCR2,       &
                       PSIS,BEE,poros,WPWET,                                    &
+                      bf1, bf2,                                                &
                       ars1,ars2,ars3,ara1,ara2,ara3,ara4,                      &
                       arw1,arw2,arw3,arw4,BUG,                                 &
                       SRFEXC,CATDEF,RUNSRF,                                    &
@@ -1081,13 +1082,13 @@ CONTAINS
 !**** REMOVE EVAPORATED WATER FROM SURFACE RESERVOIRS:
 
       CALL WUPDAT (                                                            &
-                     NCH, DTSTEP,                                              &
+                     NCH, DTSTEP, BF1, BF2,                                    &
                      EVAPFR, SATCAP, TG1, RA1, RC,                             &
                      AR1,AR2,AR4,CDCR1, ESATFR,                                &
-                     RZEQOL,SRFMN,WPWET,VGWMAX,                                &
+                     RZEQOL,SRFMN,WPWET,VGWMAX, POROS,                         &
                      CAPAC, RZEXC, CATDEF, SRFEXC,                             &
                      ESOI, EVEG, EINT,                                         &
-                     ECORR                                                     &
+                     ECORR, ARS1,ARS2,ARS3                                     &
                     )
 
 !**** UPDATE SENSIBLE HEAT IF WATER LIMITATIONS WERE IMPOSED:
@@ -1109,9 +1110,9 @@ CONTAINS
 !**** REDISTRIBUTE MOISTURE BETWEEN RESERVOIRS:
 
       CALL RZDRAIN (                                                           &
-                    NCH,DTSTEP,VGWMAX,SATCAP,RZEQOL,AR1,WPWET,                 &
+                    NCH,DTSTEP,VGWMAX,SATCAP,RZEQOL,AR1,WPWET,BF1, BF2         &
                     tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,             &
-                    CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF                           &
+                    CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF,ARS1,ARS2,ARS3            &
                     )
 
 ! ---------------------------------------------------------------------
@@ -1123,9 +1124,9 @@ CONTAINS
 !**** COMPUTE BASEFLOW FROM TOPMODEL EQUATIONS
 
       CALL BASE (                                                              &
-                 NCH, DTSTEP,BF1, BF2, BF3, CDCR1, FRICE, COND, GNU,           &
+                 NCH, DTSTEP,BF1, BF2, BF3, CDCR1, FRICE, COND, GNU,AR1, POROS,&  
                  CATDEF,                                                       &
-                 BFLOW                                                         &
+                 BFLOW,ars1,ars2,ars3                                          &
                 )
 
 ! ---------------------------------------------------------------------
@@ -1642,9 +1643,9 @@ CONTAINS
 !**** ===================================================
 
       SUBROUTINE RZDRAIN (                                                     &
-                          NCH,DTSTEP,VGWMAX,SATCAP,RZEQ,AR1,WPWET,             &
+                          NCH,DTSTEP,VGWMAX,SATCAP,RZEQ,AR1,WPWET,BF1, BF2,    &
                           tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,       &
-                          CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF                     &
+                          CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF,ars1,ars2,ars3      &
                          )
 
 !-----------------------------------------------------------------
@@ -1659,7 +1660,7 @@ CONTAINS
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) ::  DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: VGWMAX, SATCAP, RZEQ, AR1, wpwet,    &
-              tsa1, tsa2, tsb1, tsb2, atau, btau, CDCR2, poros
+              tsa1, tsa2, tsb1, tsb2, atau, btau, CDCR2, poros, BF1, BF2, ars1, ars2, ars3
       LOGICAL, INTENT(IN) :: BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: RZEXC, SRFEXC, CATDEF, CAPAC,     &
@@ -1667,8 +1668,10 @@ CONTAINS
 
 
       INTEGER N
+
       REAL srflw,rzflw,FLOW,EXCESS,TSC0,tsc2,rzave,rz0,wanom,rztot,            &
-            rzx,btaux,ax,bx,rzdif
+            rzx,btaux,ax,bx,rzdif,ZBAR1, SYSOIL,RZFLW_CATDEF,EXCESS_CATDEF,    &
+            CATDEF_PEAT_THRESHOLD,RZFLW_AR1, AR1eq
 
 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -2329,13 +2332,13 @@ CONTAINS
 !**** [ BEGIN WUPDAT ]
 !****
       SUBROUTINE WUPDAT (                                                   &
-                           NCH, DTSTEP,                                     &
+                           NCH, DTSTEP, BF1, BF2,                           &
                            EVAP, SATCAP, TC, RA, RC,                        &
                            AR1,AR2,AR4,CDCR1, ESATFR,                       &
-                           RZEQ,SRFMN,WPWET,VGWMAX,                         &
+                           RZEQ,SRFMN,WPWET,VGWMAX, POROS,                  &
                            CAPAC, RZEXC, CATDEF, SRFEXC,                    &
                            EVROOT, EVSURF, EVINT,                           &
-                           ECORR                                            &
+                           ECORR, ars1,ars2,ars3                            &
                           )
 !****
 !**** THIS SUBROUTINE ALLOWS EVAPOTRANSPIRATION TO ADJUST THE WATER
@@ -2355,11 +2358,12 @@ CONTAINS
 
       INTEGER  N
       REAL  EGRO,CNDSAT,CNDUNS,CNDV,CNDS,WILT,EGROMX,RZEMAX
+      REAL :: ZBAR1,SYSOIL,ET_CATDEF,AR1eq
 !****
 !**** -----------------------------------------------------------------
 
       DO 100 N = 1, NCH
-
+       ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
 !****
 !**** PARTITION EVAP BETWEEN INTERCEPTION AND GROUND RESERVOIRS.
 !****
