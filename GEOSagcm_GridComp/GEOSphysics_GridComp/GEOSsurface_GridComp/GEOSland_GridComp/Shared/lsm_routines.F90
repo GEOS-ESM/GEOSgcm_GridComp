@@ -842,7 +842,7 @@ MODULE lsm_routines
 !**** -----------------------------------------------------------------
 
       SUBROUTINE RZEQUIL (                                                     &
-                          NCH,CATDEF,VGWMAX,CDCR1,CDCR2,WPWET,                 &
+                          NCH,CATDEF,VGWMAX,CDCR1,CDCR2,WPWET,POROS,           &
                           ars1,ars2,ars3,ara1,ara2,ara3,ara4,                  &
                           arw1,arw2,arw3,arw4,                                 &
                           RZEQ                                                 &
@@ -853,7 +853,7 @@ MODULE lsm_routines
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN), DIMENSION(NCH) :: CATDEF, VGWMAX, CDCR1, CDCR2,        &
                    WPWET, ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1,      &
-                   arw2, arw3, arw4
+                   arw2, arw3, arw4, POROS
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: RZEQ
 
@@ -1647,7 +1647,7 @@ MODULE lsm_routines
 
     call rzequil( &
          NTILES, catdef, vgwmax,    &
-         cdcr1, cdcr2, wpwet, &
+         cdcr1, cdcr2, wpwet, poros, &
          ars1, ars2, ars3, ara1, ara2, ara3, ara4, &
          arw1, arw2, arw3, arw4, &
          rzeq)
