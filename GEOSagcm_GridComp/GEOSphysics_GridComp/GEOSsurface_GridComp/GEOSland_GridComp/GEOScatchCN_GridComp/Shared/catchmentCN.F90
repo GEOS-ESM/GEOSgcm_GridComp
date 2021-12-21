@@ -1110,7 +1110,7 @@ CONTAINS
 !**** REDISTRIBUTE MOISTURE BETWEEN RESERVOIRS:
 
       CALL RZDRAIN (                                                           &
-                    NCH,DTSTEP,VGWMAX,SATCAP,RZEQOL,AR1,WPWET,BF1, BF2         &
+                    NCH,DTSTEP,VGWMAX,SATCAP,RZEQOL,AR1,WPWET,BF1,BF2,         &
                     tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,             &
                     CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF,ARS1,ARS2,ARS3            &
                     )
@@ -2349,7 +2349,8 @@ CONTAINS
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: EVAP,  SATCAP, TC, RA, RC, AR1,   &
-            AR2, AR4, CDCR1, ESATFR, RZEQ, SRFMN, WPWET, VGWMAX
+            AR2, AR4, CDCR1, ESATFR, RZEQ, SRFMN, WPWET, VGWMAX,            &
+            POROS, BF1, BF2, ars1, ars2, ars3
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC, RZEXC, CATDEF,          &
             SRFEXC, EVROOT, EVSURF, EVINT
