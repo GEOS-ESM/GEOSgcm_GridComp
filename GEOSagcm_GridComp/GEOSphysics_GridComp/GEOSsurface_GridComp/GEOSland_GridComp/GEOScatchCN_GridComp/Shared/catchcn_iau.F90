@@ -25,6 +25,7 @@ contains
   subroutine apply_catchcn_iau( NTILES,                                    & 
        VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           & 
        ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   & 
+       bf1, bf2,                                                           &
        TG1_INC, TG2_INC, TG4_INC,                                          &
        TC1_INC, TC2_INC, TC4_INC, QC1_INC, QC2_INC, QC4_INC,               & 
        CAPAC_INC, CATDEF_INC, RZEXC_INC, SRFEXC_INC,                       & 
@@ -45,6 +46,7 @@ contains
     real,    dimension(       NTILES), intent(in)    :: ARS1, ARS2, ARS3
     real,    dimension(       NTILES), intent(in)    :: ARA1, ARA2, ARA3, ARA4
     real,    dimension(       NTILES), intent(in)    :: ARW1, ARW2, ARW3, ARW4
+    real,    dimension(       NTILES), intent(in)    :: bf1, bf2
 
     ! CATCHMENT-CN MODEL PROGNOSTIC INCREMENTS
 
@@ -97,6 +99,7 @@ contains
     call check_catchcn_progn( NTILES,                                        &
          VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           & 
          ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   & 
+         bf1, bf2,                                                           &
          TG1, TG2, TG4, TC1, TC2, TC4, QC1, QC2, QC4,                        & 
          CAPAC, CATDEF, RZEXC, SRFEXC, 	                                     &  
          GHTCNT, WESNN, HTSNNN, SNDZN  )
@@ -108,6 +111,7 @@ contains
   subroutine check_catchcn_progn( NTILES,                                  &
        VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           & 
        ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   & 
+       bf1, bf2,                                                           &
        TG1, TG2, TG4, TC1, TC2, TC4, QC1, QC2, QC4,                        & 
        CAPAC, CATDEF, RZEXC, SRFEXC,                                       & 
        GHTCNT, WESNN, HTSNNN, SNDZN  )
@@ -138,6 +142,7 @@ contains
     real,    dimension(       NTILES), intent(in)    :: ARS1, ARS2, ARS3
     real,    dimension(       NTILES), intent(in)    :: ARA1, ARA2, ARA3, ARA4
     real,    dimension(       NTILES), intent(in)    :: ARW1, ARW2, ARW3, ARW4
+    real,    dimension(       NTILES), intent(in)    :: bf1, bf2
 
     ! CATCHMENT-CN MODEL PROGNOSTICS
 

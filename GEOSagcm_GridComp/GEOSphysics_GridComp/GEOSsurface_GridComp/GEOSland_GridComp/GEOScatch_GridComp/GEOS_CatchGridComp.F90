@@ -5373,7 +5373,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
                     call apply_catch_incr(NTILES,                                                        &
                          VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                       &
-                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,               &
+                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4, bf1, bf2,     &
                          TCFSAT_INCR, TCFTRN_INCR, TCFWLT_INCR, QCFSAT_INCR, QCFTRN_INCR, QCFWLT_INCR,   &
                          CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                               &
                          GHTCNT_INCR, WESNN_INCR, HTSNNN_INCR, SNDZN_INCR,                               &
@@ -5896,6 +5896,8 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw2(:)=>null()
   real, pointer :: arw3(:)=>null()
   real, pointer :: arw4(:)=>null()
+  real, pointer :: bf1(:)=>null()
+  real, pointer :: bf2(:)=>null()
 
   !! Miscellaneous
   integer :: ntiles
@@ -5988,6 +5990,10 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(INTERNAL, arw3, 'ARW3', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, arw4, 'ARW4', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf1, 'BF1', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf2, 'BF2', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, srfexc, 'SRFEXC', rc=status)
   VERIFY_(status)
