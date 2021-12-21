@@ -151,6 +151,7 @@ echo "                    files produced by current source codes may differ with
 echo "                    Nevertheless, the impact of those differences on science is insignificant and"
 echo "                    the parameter files produced by current source codes can be considered as "
 echo "                    scientifically equivalent to achieved BCs"
+echo "              ${C2}NL4p  -- in development for peat testing"
 echo "                                      "
 echo "              (OR press ENTER If you want to use the develop version of land BCs.)"
 set dummy = `echo $<`
