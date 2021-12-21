@@ -17,6 +17,7 @@ module GEOS_DatmoDynGridCompMod
   use MAPL
   use PPM
   use cfmip_data_mod
+  use MAPL_PhysicalConstantsMod, only : MAPL_OMEGA
   
   implicit none
   private
@@ -137,19 +138,19 @@ contains
                                                         __RC__  )
     
     call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME='U  ',                                      &
-         LONG_NAME ='Zonal wind ',        &
-         UNITS     ='m/s',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
+         SHORT_NAME ='U  ',                                     &
+         LONG_NAME  ='Zonal wind ',                             &
+         UNITS      ='m/s',                                     &
+         DIMS       = MAPL_DimsHorzVert,                        &
+         VLOCATION  = MAPL_VLocationCenter,                     &
                                                         __RC__  )
     
     call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME='V  ',                                      &
-         LONG_NAME ='meridional wind',        &
-         UNITS     ='m/s',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
+         SHORT_NAME = 'V  ',                                      &
+         LONG_NAME  = 'meridional wind',                          &
+         UNITS      = 'm/s',                                      &
+         DIMS       = MAPL_DimsHorzVert,                         &
+         VLOCATION  = MAPL_VLocationCenter,                      &
                                                         __RC__  )
     
     call MAPL_AddInternalSpec(GC,                               &
@@ -262,7 +263,7 @@ contains
          UNITS      = 'm+2 sec-2',                                 &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               __RC__  )
-    
+
 !!This bundle should come from PHYSICS(MOIST)
     call MAPL_AddImportSpec( gc,                              &
         SHORT_NAME = 'TRADV',                                        &
@@ -400,12 +401,25 @@ contains
          VLOCATION = MAPL_VLocationEdge,                __RC__  )
     
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='UOBS',                                        &
+         LONG_NAME ='Obs. Eastward Wind',                          &
+         UNITS     ='m s-1',                                       &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                __RC__  )
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='VOBS',                                        &
+         LONG_NAME ='Obs. Northward Wind',                          &
+         UNITS     ='m s-1',                                       &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                __RC__  )
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QOBS',                                        &
          LONG_NAME ='Obs. Spec. Humidity',                         &
          UNITS     ='1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TOBS',                                        &
@@ -912,6 +926,19 @@ contains
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
      
+    call MAPL_AddExportSpec ( gc,                                    &
+         SHORT_NAME = 'DUDTDYN',                                     &
+         LONG_NAME  = 'tendency_of_eastward_wind_speed_due_to_dynamics', &
+         UNITS      = 'm s-2',                                       &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationCenter,             __RC__    )
+
+    call MAPL_AddExportSpec ( gc,                                    &
+         SHORT_NAME = 'DVDTDYN',                                     &
+         LONG_NAME  = 'tendency_of_northward_wind_speed_due_to_dynamics', &
+         UNITS      = 'm s-2',                                       &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationCenter,             __RC__    )
 
     call MAPL_AddExportSpec ( gc,                                    &
          SHORT_NAME = 'DTDTDYN',                                     &
@@ -920,7 +947,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             __RC__    )
      
-
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'HDQDTDYN',                                      &
          LONG_NAME  = 'horiz_tendency_of_specific_humidity_due_to_dynamics', &
@@ -928,7 +954,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
      
-
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'VDQDTDYN',                                      &
          LONG_NAME  = 'vertical_tendency_of_specific_humidity_due_to_dynamics', &
@@ -1136,6 +1161,13 @@ contains
 
     real    :: DT,Fac0,Fac1,DTXX,RELAX_TO_OBS
     real    :: OROGSGH 
+    
+    real, dimension(:,:), allocatable :: F0
+    real :: SCM_UG, SCM_VG
+    integer :: SCM_CORIOLIS ! 0:    Coriolis acceleration off
+                            ! else: Coriolis acceleration on
+    integer :: SCM_WIND ! 0:    use observed winds
+                        ! else: use interactive winds
 
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
 
@@ -1148,6 +1180,7 @@ contains
     real, pointer, dimension(:,:,:) :: TH,PL
     real, pointer, dimension(:,:,:) :: U,UE,UOUT
     real, pointer, dimension(:,:,:) :: V,VOUT
+    real, pointer, dimension(:,:,:) :: UOBS, VOBS, DUDTDYN, DVDTDYN
     real, pointer, dimension(:,:,:) :: TTPHYS,QTEST,OM,OMOUT,div
     real, pointer, dimension(:,:,:) :: DUDT,DVDT,DTDT,PV,EPV
     real, pointer, dimension(:,:,:) :: DQVDTDYN,DTDTDYN
@@ -1196,8 +1229,10 @@ contains
          real, pointer, dimension(:,:,:) :: ptr3
     end type three_d_ptr
 
-    real, allocatable, dimension(:,:,:) :: PKE,PLO,QTDYN,TTDYN,OMOBS,THOBS
-    real, allocatable, dimension(:,:,:) :: UdQdx,VdQdy,UdTdx,VdTdy, CFMIPRLX
+    real, allocatable, dimension(:,:,:) :: PKE,ZLO,PLO,QTDYN,TTDYN,OMOBS,THOBS
+    real, allocatable, dimension(:,:,:) :: UTDYN, VTDYN
+    real, allocatable, dimension(:,:,:) :: UdQdx,VdQdy,UdTdx,VdTdy, CFMIPRLX,CFMIPRLX1
+    real, allocatable, dimension(:,:,:) :: CFMIPRLX_WIND
     type(three_d_ptr), allocatable :: TRCarr(:)
     real, pointer , dimension(:,:,:) :: qdum
             real,allocatable, dimension(:) :: WF, XXX
@@ -1243,10 +1278,11 @@ contains
       real, dimension(4) :: VC 
 
       INTEGER :: NT, NLEVEL,I,J,VERTADV, useana, advscheme
+      real :: zrel,zrelp,qfloor       
 
-      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, isPresent
+      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, CFMIP3, isPresent
       LOGICAL, SAVE :: ALREADY_HAVE_DATA
-      integer, save :: I_time_step
+      integer, save :: I_time_step,cfcse
       real blendwgt
 
 !=============================================================================
@@ -1284,6 +1320,15 @@ contains
 
     call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
     
+    ! Idealized SCM parameters
+    call ESMF_ConfigGetAttribute ( CF, SCM_WIND, Label="SCM_WIND:", & 
+                                         DEFAULT=0,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_CORIOLIS, Label="SCM_CORIOLIS:", & 
+                                         DEFAULT=0,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_UG,  Label="SCM_UG:", & 
+                                         DEFAULT=0.,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_VG,  Label="SCM_VG:", & 
+                                         DEFAULT=0.,  __RC__)
 
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
                                          DEFAULT=0.00,  __RC__)
@@ -1317,6 +1362,12 @@ contains
 
     call ESMF_ConfigGetAttribute( cf, CFMIP2, label ='SCM_CFMIP2:', &
                                     DEFAULT=.false., rc = status )
+                                    
+    call ESMF_ConfigGetAttribute( cf, CFMIP3, label ='SCM_CFMIP3:', &
+                                    DEFAULT=.false., rc = status )
+
+    call ESMF_ConfigGetAttribute( cf, CFCSE, label ='CGILS_CASE:', &
+                                    DEFAULT=0, rc = status )
 
     call ESMF_ConfigGetAttribute ( CF, OROGSGH,  Label="OROG_STDEV:", &
                                          DEFAULT=100.,  __RC__)
@@ -1522,6 +1573,8 @@ contains
       call MAPL_GetPointer(EXPORT, OMOUT,  'OMEGA' , __RC__)
       call MAPL_GetPointer(EXPORT, DIV,    'DIV' , ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, PL ,    'PL' , __RC__)
+      call MAPL_GetPointer(EXPORT, DUDTDYN,   'DUDTDYN'  , __RC__)
+      call MAPL_GetPointer(EXPORT, DVDTDYN,   'DVDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, DTDTDYN,   'DTDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, HDTDTDYN,   'HDTDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, VDTDTDYN,   'VDTDTDYN'  , __RC__)
@@ -1639,6 +1692,10 @@ contains
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, TSKINOBS,    'TSKINOBS'    , &
                            ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, UOBS,  'UOBS' , &
+                           ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, VOBS,  'VOBS' , &
+                           ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, TOBS,  'TOBS' , &
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, QOBS,  'QOBS' , &
@@ -1666,8 +1723,12 @@ contains
       ALLOCATE( UdQdx(IM,JM,1:LM), __STAT__ )
 
       ALLOCATE( CFMIPRLX(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( CFMIPRLX1(IM,JM,1:LM), __STAT__ )     
+      ALLOCATE( CFMIPRLX_WIND(IM,JM,1:LM), __STAT__ )
 
       ALLOCATE( THOBS(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( UTDYN(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( VTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( QTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( TTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( OMOBS(IM,JM,0:LM), __STAT__ )
@@ -1710,7 +1771,8 @@ contains
 
      ALLOCATE( PKE(IM,JM,0:LM), __STAT__ )
      ALLOCATE( PLO(IM,JM,1:LM), __STAT__ )
-     
+   ALLOCATE( ZLO(IM,JM,1:LM), __STAT__ )    
+
      do l=0,lm
         PLE(:,:,l)   = ( Fac0*PLE_DATA(ii,l) + Fac1*PLE_DATA(iip1,l) )
      end do
@@ -1721,10 +1783,15 @@ contains
       DELTAP = ( PLE(:,:,1:LM) - PLE(:,:,0:LM-1) )
       
       do l=1,lm
+        if ( SCM_WIND /= 0 ) then
+           UOBS(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
+           VOBS(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
+        else
+           U(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
+           V(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
+        end if
         QOBS(:,:,l)=( Fac0*QQ(ii,l) + Fac1*QQ(iip1,l) )/1000.
         TOBS(:,:,l)=( Fac0*TT(ii,l) + Fac1*TT(iip1,l) )
-        U(:,:,l)   =( Fac0*UU(ii,l) + Fac1*UU(iip1,l) )
-        V(:,:,l)   =( Fac0*VV(ii,l) + Fac1*VV(iip1,l) )
         QLOBS(:,:,l)=( Fac0*QLQL(ii,l) + Fac1*QLQL(iip1,l) ) 
         QIOBS(:,:,l)=( Fac0*QiQi(ii,l) + Fac1*QiQi(iip1,l) )
       end do
@@ -1738,15 +1805,27 @@ contains
       SHOBS(:,:)     = ( Fac0*SHF(ii)   + Fac1*SHF(iip1) ) 
       QSKINOBS(:,:)  = ( Fac0*QSKIN(ii)   + Fac1*QSKIN(iip1) )/1000.
       TSKINOBS(:,:)  = ( Fac0*TSKIN(ii)   + Fac1*TSKIN(iip1) )
-      SPEED(:,:)  =   SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 ) 
-      US(:,:) = U(:,:,LM)
-      VS(:,:) = V(:,:,LM)
+!      SPEED(:,:)  =   SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 ) 
+!      US(:,:) = U(:,:,LM)
+!      VS(:,:) = V(:,:,LM)
 
       do l=0,lm
         OMOBS(:,:,L) = ( Fac0*OMEGA(ii,l)    + Fac1*OMEGA(iip1,l) )
       end do
 
+      if ( SCM_CORIOLIS /= 0 ) then
+         allocate(F0(IM,JM))
+         F0(:,:) = 2.*MAPL_OMEGA*sin( LATS(:,:) )
+      end if
+
        do l=1,lm
+          if ( SCM_CORIOLIS == 0 ) then
+             UTDYN(:,:,l) = 0.
+             VTDYN(:,:,l) = 0.
+          else
+             UTDYN(:,:,l) = F0*( V(:,:,l) - SCM_VG )
+             VTDYN(:,:,l) = -F0*( U(:,:,l) - SCM_UG )
+          end if         
         QTDYN(:,:,l) = &
          Fac0*( vc(1)*Q_H_ADV(ii,l)  + vc(2)*Q_V_ADV(ii,l)   + vc(3)*Q_t_DYN(ii,l) + vc(4)*Q_ana(ii,l) ) & 
       +  Fac1*( vc(1)*Q_H_ADV(iip1,l)+ vc(2)*Q_V_ADV(iip1,l) + vc(3)*Q_t_DYN(iip1,l) + vc(4)*Q_ana(iip1,l) ) 
@@ -1754,6 +1833,10 @@ contains
          Fac0*( vc(1)*T_H_ADV(ii,l)  + vc(2)*T_V_ADV(ii,l)   + vc(3)*T_t_DYN(ii,l) + vc(4)*T_ana(ii,l) ) & 
      +   Fac1*( vc(1)*T_H_ADV(iip1,l)+ vc(2)*T_V_ADV(iip1,l) + vc(3)*T_t_DYN(iip1,l) + vc(4)*T_ana(iip1,l) ) 
       enddo!
+
+      if ( SCM_CORIOLIS /= 0 ) then
+         deallocate(F0)
+      end if
 
       TTDYN = -1.0 * TTDYN 
       QTDYN = -1.0 * QTDYN / 1000.
@@ -1780,6 +1863,10 @@ contains
        else
         blendwgt = 1.
        endif
+!       if ( SCM_WIND /= 0 ) then
+!          UOBS(i,j,L) = UOBS(i,j,L) * blendwgt + U(i,j,L) * ( 1. - blendwgt )
+!          VOBS(i,j,L) = VOBS(i,j,L) * blendwgt + V(i,j,L) * ( 1. - blendwgt )
+!       end if
        TOBS(i,j,L) = TOBS(i,j,L) * blendwgt + T(i,j,L) * (1.-blendwgt)
        QOBS(i,j,L) = QOBS(i,j,L) * blendwgt + Q(i,j,L) * (1.-blendwgt)
       enddo
@@ -1787,6 +1874,10 @@ contains
       enddo
      endif
       if ( AT_START ) then
+        if ( SCM_WIND /= 0 ) then
+           U = UOBS
+           V = VOBS
+        end if
         Q  = QOBS
         T  = TOBS
         OM = OMOBS
@@ -1795,6 +1886,10 @@ contains
       endif     
       TH = T * ( ( MAPL_P00 / PLO )**MAPL_KAPPA )
       OM = OMOBS
+
+      SPEED(:,:) = SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 )
+      US(:,:)    = U(:,:,LM)
+      VS(:,:)    = V(:,:,LM)
 
       if (associated(QVDYN))  QVDYN = Q
       if (associated(TDYN))   TDYN = T
@@ -1809,6 +1904,8 @@ contains
       end do
       DZ(:,:)     =  0.5 * ( ZLE(:,:,LM-1) -  ZLE(:,:,LM) )
 
+     ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+
         ! These quantities are special. Used in SFC to calculate CDs 
         ! In 3D GEOS5 they are just set == values_at_LM
       QA(:,:)     = (1.0-RELAX_TO_OBS)*Q(:,:,LM) + RELAX_TO_OBS*     &
@@ -1817,6 +1914,10 @@ contains
 
 ! Load tendency diagnostics with 'before' values
 
+      if ( SCM_WIND /= 0 ) then 
+         if ( associated(DUDTDYN) ) DUDTDYN  = U
+         if ( associated(DVDTDYN) ) DVDTDYN  = V
+      end if
       if (associated(DTDTDYN))   DTDTDYN  = T
       if (associated(DQVDTDYN))  DQVDTDYN = Q
       if (associated(DQVDTDYNINT))  then
@@ -1831,6 +1932,10 @@ contains
 
 ! Increment T and Q with  tendencies from dataset that we are using
       if ( .NOT. AT_START ) then
+        if ( SCM_WIND /= 0 ) then
+           U = U + ( 1.0 - RELAX_TO_OBS ) * DT * UTDYN + RELAX_TO_OBS*( UOBS - U )
+           V = V + ( 1.0 - RELAX_TO_OBS ) * DT * VTDYN + RELAX_TO_OBS*( VOBS - V )
+        end if
         Q = Q +  (1.0-RELAX_TO_OBS) * DT * QTDYN +  RELAX_TO_OBS*( QOBS - Q) 
         T = T +  (1.0-RELAX_TO_OBS) * DT * TTDYN +  RELAX_TO_OBS*( TOBS - T)                             
       endif     
@@ -1857,6 +1962,13 @@ contains
       endif
       T  = TH * ( ( PLO / MAPL_P00 )**MAPL_KAPPA )
 
+      if ( SCM_WIND /= 0 ) then 
+         if ( associated(DUDTDYN) ) DUDTDYN = ( U - DUDTDYN  ) / DT
+         if ( associated(DVDTDYN) ) DVDTDYN = ( V - DVDTDYN  ) / DT
+      else
+         if ( associated(DUDTDYN) ) DUDTDYN = 0.
+         if ( associated(DVDTDYN) ) DVDTDYN = 0.
+      end if
       if (associated(DTDTDYN))   DTDTDYN  = ( T - DTDTDYN  ) / DT
       if (associated(DQVDTDYN))  DQVDTDYN = ( Q - DQVDTDYN ) / DT
       if (associated(DQVDTDYNINT))  then
@@ -1884,6 +1996,62 @@ contains
    end if
 
       CFMIPRLX = 0.00
+      CFMIPRLX_WIND = 1./600.
+
+!    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
+      if ( CFMIP3 ) then  
+
+         ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+
+         if (CFCSE .eq. 12) then
+           zrel=1200.
+           zrelp=1500.
+           qfloor=0.003581839
+         elseif (CFCSE .eq. 11) then
+           zrel=2500.
+           zrelp=3000.
+           qfloor=0.  !3.55e-3  ! not used in Blossey LES, but recommended for future
+         elseif (CFCSE .eq. 6) then
+           zrel=4000.
+           zrelp=4800.
+           qfloor=0.
+         else
+           print *,'error - define the right case'
+           RETURN_(ESMF_FAILURE)
+         endif
+         
+          where((ZLO>zrel).and.(ZLO<zrelp))
+              CFMIPRLX=1./(2.*10800.)*(1.-cos(3.14*(ZLO-zrel)/(zrelp-zrel)))
+          endwhere
+
+          where(ZLO>=zrelp) 
+              CFMIPRLX=1./10800.
+          endwhere
+          
+          
+           CFMIPRLX1=0. 
+           where((Q<qfloor) .and. (ZLO<1300.))
+           CFMIPRLX1=1./3600.
+           endwhere
+
+         if ( SCM_WIND /= 0 ) then
+            U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
+            V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
+         end if
+         T = T - CFMIPRLX * ( T - TOBS ) * DT 
+         Q = Q - CFMIPRLX * ( Q - QOBS ) * DT-CFMIPRLX1*(Q-qfloor)*DT  
+         if ( SCM_WIND /= 0 ) then
+            if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
+            if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
+         end if
+         if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
+         if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )-CFMIPRLX1*(Q-qfloor)*DT
+
+   end if ! CFMIP3
+
+
+
+
 
 !       if ( NT ==  1 .and. .not. CFMIP2 ) then  ! cgils case
        if ( CFMIP ) then  ! cgils case
@@ -1897,8 +2065,16 @@ contains
          where( CFMIPRLX > 0.000 )
              CFMIPRLX = 1./ CFMIPRLX 
          endwhere
+         if ( SCM_WIND /= 0 ) then
+            U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
+            V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
+         end if
          T = T - CFMIPRLX * ( T - TOBS ) * DT 
          Q = Q - CFMIPRLX * ( Q - QOBS ) * DT  
+         if ( SCM_WIND /= 0 ) then
+            if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
+            if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
+         end if
          if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )
       end if
@@ -1937,9 +2113,12 @@ contains
       DEALLOCATE(THOBS)
       DEALLOCATE(PKE)
       DEALLOCATE(PLO)
+      DEALLOCATE(UTDYN)
+      DEALLOCATE(VTDYN)
       DEALLOCATE(TTDYN)
       DEALLOCATE(QTDYN)
       DEALLOCATE(CFMIPRLX)
+      DEALLOCATE(CFMIPRLX_WIND)
 
       DEALLOCATE(OMOBS)
       DEALLOCATE(SGH)
@@ -2079,7 +2258,7 @@ contains
       QLQL = 0.
       QIQI = 0.     
 
-       if ( CFMIP .or. CFMIP2 ) then
+       if ( CFMIP .or. CFMIP2 .or. CFMIP3 ) then
            CALL CFMIP_IC(trim(DATA)//'.bin', NT, NLEVEL,     &
                      LM ,                                &
                      PREF_IN,                            &
@@ -2201,11 +2380,13 @@ contains
    character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 
-  real, pointer, dimension(:,:,:) :: T, TTPHYS,PLE,ZLE,S
+  real, pointer, dimension(:,:,:) :: U, V, T, UTPHYS, VTPHYS, TTPHYS, PLE, ZLE, S
   integer :: IM,JM,LM
 
   real    :: RELAX_TO_OBS,DTXX,DT
   real, allocatable, dimension(:,:,:) :: DELTAP,ZLO
+
+  integer :: L ! test
 
 !=============================================================================
 
@@ -2231,14 +2412,17 @@ contains
                    CF       = CF,                &
                    INTERNAL_ESMF_STATE=INTERNAL, &
                     __RC__ )
-    
-    call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
+        call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
                                    DEFAULT=0.00,  __RC__)
     DT=DTXX
 
     call MAPL_GetPointer(INTERNAL, PLE, 'PLE', __RC__)
+    call MAPL_GetPointer(INTERNAL, U,   'U'  , __RC__)
+    call MAPL_GetPointer(INTERNAL, V,   'V'  , __RC__)
     call MAPL_GetPointer(INTERNAL, T,   'T'  , __RC__)
+    call MAPL_GetPointer(IMPORT  , UTPHYS, 'DUDT', __RC__)
+    call MAPL_GetPointer(IMPORT  , VTPHYS, 'DVDT', __RC__)
     call MAPL_GetPointer(IMPORT  , TTPHYS, 'DTDT', __RC__)
     call MAPL_GetPointer(EXPORT  , ZLE, 'ZLE', __RC__)
     call MAPL_GetPointer(EXPORT  , S  , 'S'  , __RC__)
@@ -2252,7 +2436,9 @@ contains
     ! This needs to be protected against having
     ! RELAX_TO_OBS=1 when USE_ASCII_DATA=.F.
 
-    T = T +  (1.0-RELAX_TO_OBS) * DT * TTPHYS / DELTAP 
+    U = U + ( 1. - RELAX_TO_OBS ) * DT * UTPHYS
+    V = V + ( 1. - RELAX_TO_OBS ) * DT * VTPHYS
+    T = T + ( 1. - RELAX_TO_OBS ) * DT * TTPHYS / DELTAP  ! S and hence T tendencies are pressure-weighted
 
     S  = MAPL_GRAV * ZLO + MAPL_CP * T
 
