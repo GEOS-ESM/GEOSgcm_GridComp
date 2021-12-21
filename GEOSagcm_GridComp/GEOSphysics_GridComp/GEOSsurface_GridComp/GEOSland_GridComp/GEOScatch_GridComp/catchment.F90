@@ -630,6 +630,7 @@
       CALL PARTITION (                                                         &
                       NCH,DTSTEP,DZSF,RZEXC,  RZEQOL,VGWMAX,CDCR1,CDCR2,       &
                       PSIS,BEE,poros,WPWET,                                    &
+                      bf1, bf2,                                                &
                       ars1,ars2,ars3,ara1,ara2,ara3,ara4,                      &
                       arw1,arw2,arw3,arw4,BUG,                                 &
                       SRFEXC,CATDEF,RUNSRF,                                    &
@@ -1106,11 +1107,11 @@
 
 
       CALL WUPDAT (                                                            &
-                     NCH, DTSTEP, EVAPFR, SATCAP, TC1, RA1, RC,                &
+                     NCH, DTSTEP,BF1, BF2, EVAPFR, SATCAP, TC1, RA1, RC,       &
                      RX11,RX21,RX12,RX22,RX14,RX24,                            &
-                     AR1,AR2,AR4,CDCR1,EIRFRC,RZEQOL,srfmn,WPWET,VGWMAX,       &
+                     AR1,AR2,AR4,CDCR1,EIRFRC,RZEQOL,srfmn,WPWET,VGWMAX,POROS, &
                      CAPAC, RZEXC, CATDEF, SRFEXC,                             &
-                     EINT, ESOI, EVEG                                          &
+                     EINT, ESOI, EVEG, ARS1,ARS2,ARS3                          &
                     )
 
 ! ---------------------------------------------------------------------
@@ -1122,9 +1123,9 @@
 !**** REDISTRIBUTE MOISTURE BETWEEN RESERVOIRS:
 
       CALL RZDRAIN (                                                           &
-                    NCH,DTSTEP,VGWMAX,SATCAP,RZEQOL,AR1,WPWET,                 &
+                    NCH,DTSTEP,VGWMAX,SATCAP,RZEQOL,AR1,WPWET,BF1, BF2,        &
                     tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,             &
-                    CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF                           &
+                    CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF,ars1,ars2,ars3            &
                     )
 
 ! ---------------------------------------------------------------------
@@ -1136,9 +1137,9 @@
 !**** COMPUTE BASEFLOW FROM TOPMODEL EQUATIONS
 
       CALL BASE (                                                              &
-                 NCH, DTSTEP,BF1, BF2, BF3, CDCR1, FRICE, COND, GNU,           &
+                 NCH, DTSTEP,BF1, BF2, BF3, CDCR1, FRICE, COND, GNU,AR1, POROS,&
                  CATDEF,                                                       &
-                 BFLOW                                                         &
+                 BFLOW, ars1,ars2,ars3                                         &
                 )
 
 ! ---------------------------------------------------------------------
@@ -1665,9 +1666,9 @@
 !**** ===================================================
 
       SUBROUTINE RZDRAIN (                                                     &
-                          NCH,DTSTEP,VGWMAX,SATCAP,RZEQ,AR1,WPWET,             &
+                          NCH,DTSTEP,VGWMAX,SATCAP,RZEQ,AR1,WPWET,BF1, BF2,    &
                           tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,       &
-                          CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF                     &
+                          CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF,ars1,ars2,ars3      &
                          )
 
 !-----------------------------------------------------------------
@@ -1682,7 +1683,7 @@
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) ::  DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: VGWMAX, SATCAP, RZEQ, AR1, wpwet,    &
-              tsa1, tsa2, tsb1, tsb2, atau, btau, CDCR2, poros
+              tsa1, tsa2, tsb1, tsb2, atau, btau, CDCR2, poros, BF1,  BF2, ars1, ars2, ars3
       LOGICAL, INTENT(IN) :: BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: RZEXC, SRFEXC, CATDEF, CAPAC,     &
@@ -2804,11 +2805,11 @@
 !**** [ BEGIN WUPDAT ]
 !****
       SUBROUTINE WUPDAT (                                                      &
-                           NCH,   DTSTEP,  EVAP, SATCAP, TC, RA, RC,           &
+                           NCH, DTSTEP, BF1, BF2, EVAP, SATCAP, TC, RA, RC,    &
                            RX11,RX21,RX12,RX22,RX14,RX24, AR1,AR2,AR4,CDCR1,   &
-                           EIRFRC,RZEQ,srfmn,WPWET,VGWMAX,                     &
+                           EIRFRC,RZEQ,srfmn,WPWET,VGWMAX, POROS,              &
                            CAPAC, RZEXC, CATDEF, SRFEXC,                       &
-                           EINT, ESOI, EVEG                                    &
+                           EINT, ESOI, EVEG,ars1,ars2,ars3                     &
                           )
 !****
 !**** THIS SUBROUTINE ALLOWS EVAPOTRANSPIRATION TO ADJUST THE WATER
@@ -2821,7 +2822,7 @@
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: EVAP, SATCAP, TC, RA, RC, RX11,      &
              RX21, RX12, RX22, RX14, RX24, AR1, AR2, AR4, CDCR1, EIRFRC,       &
-             RZEQ, srfmn, WPWET, VGWMAX
+             RZEQ, srfmn, WPWET, VGWMAX, POROS, BF1, BF2, ars1,ars2,ars3
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC, CATDEF, RZEXC, SRFEXC
 
@@ -2830,10 +2831,12 @@
 
       INTEGER CHNO
       REAL EGRO, CNDSAT, CNDUNS, ESATFR, cndv, cnds, WILT, egromx,rzemax
+      REAL :: ZBAR1,SYSOIL,ET_CATDEF,AR1eq
 
 !****
 !**** -----------------------------------------------------------------
       DO 100 CHNO = 1, NCH
+      ZBAR1=SQRT(1.e-20+CATDEF(CHNO)/BF1(CHNO))-BF2(CHNO)
 
 !**** COMPUTE EFFECTIVE SURFACE CONDUCTANCES IN SATURATED AND UNSATURATED
 !**** AREAS:
@@ -3205,7 +3208,7 @@
   ! *******************************************************************
  
   subroutine catch_calc_etotl( NTILES, vegcls, dzsf, vgwmax, cdcr1, cdcr2, &
-       psis, bee, poros, wpwet,                                            &
+       psis, bee, poros, wpwet, bf1, bf2,                                  &
        ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,   &
        srfexc, rzexc, catdef, tc1, tc2, tc4, wesnn, htsnn, ghtcnt,         &
        etotl )
@@ -3224,7 +3227,7 @@
     integer, dimension(       NTILES), intent(in)  :: vegcls
     real,    dimension(       NTILES), intent(in)  :: dzsf
     real,    dimension(       NTILES), intent(in)  :: vgwmax
-    real,    dimension(       NTILES), intent(in)  :: cdcr1, cdcr2
+    real,    dimension(       NTILES), intent(in)  :: cdcr1, cdcr2, bf1, bf2
     real,    dimension(       NTILES), intent(in)  :: psis, bee, poros, wpwet    
     real,    dimension(       NTILES), intent(in)  :: ars1, ars2, ars3
     real,    dimension(       NTILES), intent(in)  :: ara1, ara2, ara3, ara4
