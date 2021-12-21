@@ -4,26 +4,12 @@
 !
 ! !ARGUMENTS:
 !
-!  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -m MA -l LD -s SD -e EASE"       
+!  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -v LBSV -e EASE"       
 !     -x: Size of longitude dimension of input raster. DEFAULT: 8640
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -l: Choice of LAI data set. DEFAULT : MODGEO
-!         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on  7200x3600 grid
-!         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on  7200x3600 grid
-!         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on  86400x43200 grid
-!         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Afirca and Australia
-!         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               
-!         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                  
-!         MODIS   : 8-day climatology from the period 2000-2013 on  43200x21600 grid
-!         GSWPH   : Monthly climatology from the period 1982-1998 on 43200x21600 grid              "
-!     -m: Choice of MODIS Albedo data. DEFAULT : MODIS2                                            
-!         MODIS1 : 16-day Climatology from 1'x1 (21600x10800) MODIS data from the period 2000-2004 
-!         MODIS2 : 8-day Climatology from 30"x30"(43200x21600) MODIS data from the period 2001-2011 
-!     -s: Choice of soil data. DEFAULT :HWSD                                                       
-!         HWSD : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) Parameters   
-!         NGDC : Reynolds soil texture clsses on 4320x2160 with GSWP2 soil hydraulic  parameters                   
+!     -v: LBCSV : use a configuration from GEOS5 bcs directory ICA, NL3, NL4, or NL4p              
 !     -e: EASE : This is optional if catchment.def file is available already or                    
 !         the til file format is pre-Fortuna-2.                                                    
 !     
@@ -38,36 +24,38 @@
    use rmTinyCatchParaMod
    use process_hres_data
    use comp_CATCHCN_AlbScale_parameters, ONLY : albedo4catchcn
+!   use module_irrig_params, ONLY : create_irrig_params
 
   implicit none
-    integer              :: NC = i_raster, NR = j_raster
+  integer                :: NC = i_raster, NR = j_raster
+    character*4          :: LBSV = 'DEF'
     character*128        :: GridName = ''
     character*128        :: ARG, MaskFile
     character*256        :: CMD
     character*1          :: opt
-    character*8          :: LD = 'MODGEO'
-    character*4          :: SD = 'HWSD'
+    character*7          :: PEATSOURCE   = 'GDLHWSD'
+    character*3          :: VEGZSOURCE   = 'D&S'
     character*4          :: EASE ='    '
-    character*2          :: DL ='DC'
-    character*6          :: MA = 'MODIS2'
+    character*2          :: DL ='DC'    
     integer              :: II, JJ, Type
     integer              :: I, J, iargc, nxt
     real*8               :: dx, dy, lon0
     logical :: regrid
-    character(len=400), dimension (22) ::  Usage 
+    character(len=400), dimension (8) ::  Usage 
     character*128        ::  Grid2
     character*2 :: poles
     CHARACTER*100 :: gfile,fname,pdir,rstdir
     character*128        :: GridNameR = ''
     character*128        :: GridNameT = ''
     logical :: file_exists
-    logical, parameter :: F25Tag = .false.
+    logical             :: F25Tag = .false.
     logical :: ease_grid=.false., redo_modis=.false.
     character*40       :: lai_name 
     integer, parameter :: log_file = 998
     include 'netcdf.inc'	
-    type (regrid_map), allocatable, dimension (:,:) :: maparc30, mapgeoland2,maparc60
+    type (regrid_map) :: maparc30, mapgeoland2,maparc60
     character*200 :: tmpstring, tmpstring1, tmpstring2
+    
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -107,33 +95,17 @@ integer :: n_threads=1
 !
 !$OMP ENDPARALLEL
 
-    print *, running_omp , n_threads
-
 !   call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
 !   call system('cd ..')
 
-    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -m MA -l LD -s SD -e EASE                       "
+    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE                                "
     USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                               "
     USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320                               "
     USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)                         "
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                   "
-    USAGE(6) ="     -l: Choice of LAI data set. DEFAULT : MODGEO                                                 "
-    USAGE(7) ="         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on 7200x3600 grid            "
-    USAGE(8) ="         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on 7200x3600 grid            "
-    USAGE(9) ="         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on 86400x43200 grid          "
-    USAGE(10)="         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Africa and Australia            "
-    USAGE(11)="         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               "
-    USAGE(12)="         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                  "
-    USAGE(13)="         GSWPH   : Monthly climatology from the period 1982-1998 on 43200x21600 grid              "
-    USAGE(14)="         MODIS   : 8-day climatology from the period 2000-2013  on 43200x21600 grid               "
-    USAGE(15)="     -s: Choice of soil data. DEFAULT :HWSD                                                       "
-    USAGE(16)="         HWSD : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten (1999) Parameters"
-    USAGE(17)="         NGDC : Reynolds soil texture classes on 4320x2160 with GSWP2  soil hydraulic parameters  "
-    USAGE(18)="     -m: Choice of MODIS Albedo data. DEFAULT : MODIS2                                            "
-    USAGE(19)="         MODIS1: 16-day Climatology from 1'x1'(21600x10800) MODIS data from the period 2000-2004  "
-    USAGE(20)="         MODIS2: 8-day Climatology from 0.5'x0.5'(43200x21600) MODIS data from  period 2001-2011  "
-    USAGE(21)="     -e: EASE : This is optional if catchment.def file is available already or                    "          
-    USAGE(22)="                the til file format is pre-Fortuna-2.                                             "           
+    USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                    "          
+    USAGE(7) ="                the til file format is pre-Fortuna-2.                                             "
+    USAGE(8) ="     -v  LBCSV : use a configuration from GEOS5 bcs directory F25, GM4, ICA, NL3, NL4, or NL4p    "
 
 ! Process Arguments                            
 !------------------ 
@@ -145,12 +117,11 @@ integer :: n_threads=1
     else
        open (log_file, file ='clsm/mkCatchParam.log', status='unknown', form='formatted',action='write')
        write (log_file,'(a)')trim(cmd)
-       write (log_file,'(a6,a3,L1)')'F25Tag',' : ' ,F25Tag
+       write (log_file,'(a)')' '
     endif
 
     I = iargc()
-
-    if(I < 1 .or. I > 16) then
+    if(I < 1 .or. I > 10) then
        write (log_file,'(a)') "Wrong Number of arguments: ", i
        do j = 1,size(usage)
           print "(sp,a100)", Usage(j)
@@ -163,7 +134,7 @@ integer :: n_threads=1
     do while(arg(1:1)=='-')
        opt=arg(2:2)
        if(len(trim(arg))==2) then
-          if(scan(opt,'zvh')==0) then
+          if(scan(opt,'zh')==0) then
              nxt = nxt + 1
              call getarg(nxt,arg)
           endif
@@ -177,14 +148,12 @@ integer :: n_threads=1
           read(arg,'(i6)') nr
        case ('g')
           GridName = trim(arg)
-       case ('l')
-          LD = trim(arg)
-       case ('s')
-          SD = trim(arg)
+       case ('v')
+          LBSV = trim(arg)
+          if (trim(arg).eq."F25") F25Tag = .true.
+          call init_bcs_config (trim(LBSV))
        case ('b')
           DL = trim(arg)
-       case ('m')
-          MA = trim(arg)
        case ('e')
           EASE = trim(arg)
 	  if(EASE=='EASE') ease_grid=.true.
@@ -197,16 +166,6 @@ integer :: n_threads=1
        nxt = nxt + 1
        call getarg(nxt,arg)
     end do
-
-    if(F25Tag) then
-!
-! Going back to f2.5 tag
-!  
-      LD ='GSWP2'
-      MA ='MODIS1'
-      SD ='HWSD'
-
-    endif
 
    call getenv ("MASKFILE"        ,MaskFile        )
  
@@ -225,12 +184,17 @@ integer :: n_threads=1
       GridnameT='til/'//trim(Gridname)  
     endif 
 
+    if(process_peat) PEATSOURCE   = 'PEATMAP'
+    if(jpl_height)   VEGZSOURCE   = 'JPL'
+
     if(n_threads == 1) then
 
-       write (log_file,'(a)')trim(LD)
-       write (log_file,'(a)')trim(MA)
-       write (log_file,'(a)')trim(SD)   
+       write (log_file,'(a)')trim(LAIBCS)
+       write (log_file,'(a)')trim(MODALB)
+       write (log_file,'(a)')trim(SOILBCS)   
        write (log_file,'(a)')trim(MaskFile)
+       write (log_file,'(a)')trim(PEATSOURCE)
+       write (log_file,'(a)')trim(VEGZSOURCE)
        write (log_file,'(a)')'                              '
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'............ Begin CLSM parameter generation:...............'    
@@ -245,8 +209,9 @@ integer :: n_threads=1
           DL = 'DE'
           write (log_file,'(a)')'Cube Grid - assuming DE'
        endif
-
-       CALL open_landparam_nc4_files 
+       
+       inquire(file='clsm/catch_params.nc4', exist=file_exists)
+       if (.not.file_exists) CALL open_landparam_nc4_files 
 
        ! Creating catchment.def 
        ! ----------------------
@@ -280,10 +245,9 @@ integer :: n_threads=1
        else
           
           inquire(file='clsm/mosaic_veg_typs_fracs', exist=file_exists)
-          call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
+           call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
           
-          write (log_file,'(a)')'Done creating vegetation types using IGBP SiB2 land cover..3'
-          
+           write (log_file,'(a)')'Done creating vegetation types using IGBP SiB2 land cover..3'
        endif
        
        ! Processing Vegetation Climatology 
@@ -291,34 +255,36 @@ integer :: n_threads=1
        
        ! creating mapping arrays if necessary
        
-       if((trim(LD) == 'MODGEO').or.(trim(LD) == 'GEOLAND2')) then 
+       if((trim(LAIBCS) == 'MODGEO').or.(trim(LAIBCS) == 'GEOLAND2')) then 
           inquire(file='clsm/lai.GEOLAND2_10-DayClim', exist=file_exists)
           if (.not.file_exists) then
-             allocate (mapgeoland2 (1:40320,1:20160))
+             !allocate (mapgeoland2 (1:40320,1:20160))
              call create_mapping (nc,nr,40320,20160,mapgeoland2, gridnamer)         
              lai_name = 'GEOLAND2_10-DayClim/geoland2_' 
-             if(trim(LD) == 'GEOLAND2') then
+             if(trim(LAIBCS) == 'GEOLAND2') then
                 call hres_lai_no_gswp (40320,20160,mapgeoland2,gridnamer, lai_name) 
              else
                 call hres_lai_no_gswp (40320,20160,mapgeoland2,gridnamer, lai_name, merge=1) 
              endif
-             if(allocated(mapgeoland2)) deallocate (mapgeoland2)
+             ! if(allocated(mapgeoland2)) deallocate (mapgeoland2)
+             deallocate (mapgeoland2%map)
+             deallocate (mapgeoland2%ij_index)
           endif
        endif
        
-       if ((LD == 'MODGEO').or.(LD == 'MODIS').or.(MA == 'MODIS2')) then
-          allocate (maparc30    (1:43200,1:21600))
+       if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2')) then
+          ! allocate (maparc30    (1:43200,1:21600))
           call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
        endif
        
        inquire(file='clsm/green.dat', exist=file_exists)
        
        if (.not.file_exists) then
-          if (trim(LD) == 'GSWP2') then 
+          if (trim(LAIBCS) == 'GSWP2') then 
              call process_gswp2_veg (nc,nr,regrid,'grnFrac',gridnamer)
           else
-             if (.not. allocated(maparc30)) then 
-                allocate (maparc30    (1:43200,1:21600))
+             if (size(maparc30%ij_index,1) /= 43200) then 
+                ! allocate (maparc30    (1:43200,1:21600))
                 call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
              endif
              call hres_gswp2 (43200,21600, maparc30, gridnamer,'green') 
@@ -330,39 +296,39 @@ integer :: n_threads=1
        if (.not.file_exists) then
           redo_modis = .true.
           
-          if (trim(LD) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',gridnamer) 
-          if (trim(LD) == 'GSWPH') then
-             if (.not. allocated(maparc30)) then 
-                allocate (maparc30    (1:43200,1:21600))
+          if (trim(LAIBCS) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',gridnamer) 
+          if (trim(LAIBCS) == 'GSWPH') then
+             if (size(maparc30%ij_index,1) /= 43200) then 
+                ! allocate (maparc30    (1:43200,1:21600))
                 call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
              endif
              inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
              if (.not.file_exists) call hres_gswp2 (43200,21600, maparc30, gridnamer,'lai') 
           endif
           
-          if (trim(LD) == 'MODIS') then
+          if (trim(LAIBCS) == 'MODIS') then
              lai_name = 'MODIS_8-DayClim/MODIS_'
              call hres_lai_no_gswp (43200,21600,maparc30,gridnamer,lai_name) 
           endif
           
-          if (trim(LD) == 'MODGEO') then
+          if (trim(LAIBCS) == 'MODGEO') then
              lai_name = 'MODIS_8-DayClim/MODIS_'
              inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
              if (.not.file_exists)call hres_lai_no_gswp (43200,21600,maparc30,gridnamer,lai_name, merge=1)  
              call merge_lai_data (MaskFile)
           endif
           
-          if (trim(LD) == 'MODISV6') then
+          if (trim(LAIBCS) == 'MODISV6') then
              lai_name = 'MCD15A2H.006/MODIS_'
              call grid2tile_modis6 (86400,43200,nc,nr,gridnamer,lai_name)  
           endif
 
-          if (trim(LD) == 'GLASSA') then
+          if (trim(LAIBCS) == 'GLASSA') then
              lai_name = 'GLASS-LAI/AVHRR.v4/GLASS01B02.V04.AYYYY'
              call grid2tile_glass (nc,nr,gridnamer,lai_name)  
           endif
 
-          if (trim(LD) == 'GLASSM') then
+          if (trim(LAIBCS) == 'GLASSM') then
              lai_name = 'GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY'
              call grid2tile_glass (nc,nr,gridnamer,lai_name)  
           endif
@@ -372,7 +338,7 @@ integer :: n_threads=1
        inquire(file='clsm/ndvi.dat', exist=file_exists)
        if (.not.file_exists)  call gimms_clim_ndvi (nc,nr,gridnamer)
 
-       write (log_file,'(a,a,a)')'Done computing ', trim(LD),' vegetation climatologies ............4'
+       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies .............4'
   
        ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
        ! call modis_scale_para (ease_grid,gridnamet)
@@ -380,50 +346,55 @@ integer :: n_threads=1
        ! MODIS albedo on tile space. The subroutine was replaced with "modis_alb_on_tiles_high" that process
        ! MODIS1 data on native grid and produces 8/16-day MODIS Albedo climatology
        
-       if(MA == 'MODIS1') then 
+       if(MODALB == 'MODIS1') then 
           inquire(file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat', exist=file_exists)
           if (.not.file_exists) then
-             if(.not.F25Tag) then 
-                allocate (maparc60    (1:21600,1:10800))
+             if(F25Tag) then 
                 call create_mapping (nc,nr,21600,10800,maparc60,    gridnamer)
-                call modis_alb_on_tiles_high (21600,10800,maparc60,MA,gridnamer)
-                if(allocated (maparc30)) deallocate (maparc60)
+                call modis_alb_on_tiles_high (21600,10800,maparc60,MODALB,gridnamer)
+                deallocate (maparc60%map)
+                deallocate (maparc60%ij_index)
              else
+              !  This option is for legacy sets like Fortuna 2.1
                 call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
              endif
           endif
        endif
        
-       if(MA == 'MODIS2') then 
+       if(MODALB == 'MODIS2') then 
           inquire(file='clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat', exist=file_exists)
-          if (.not.file_exists) call modis_alb_on_tiles_high (43200,21600,maparc30,MA,gridnamer)
+          if (.not.file_exists) call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB,gridnamer)
        endif
-       write (log_file,'(a,a,a)')'Done putting ',trim(MA), ' Albedo on the tile space  .............5'
+       write (log_file,'(a,a,a)')'Done putting ',trim(MODALB), ' Albedo on the tile space  .............5'
        
-       if(allocated (maparc30)) deallocate (maparc30)
-       
+       if(.not.F25Tag) then 
+          deallocate (maparc30%map)
+          deallocate (maparc30%ij_index)
+       endif
+
        inquire(file='clsm/visdf.dat', exist=file_exists)
        if ((redo_modis).or.(.not.file_exists)) then
-          if(.not.F25Tag) then
-             call modis_scale_para_high (ease_grid,MA,gridnamet)
-          else
-             inquire(file='clsm/modis_scale_factor.albvf.clim', exist=file_exists)
-             if ((redo_modis).or.(.not.file_exists)) then
-                call modis_scale_para (ease_grid,gridnamet)
-                call REFORMAT_VEGFILES
-             endif
-          endif
+       !   if(.not.F25Tag) then
+             call modis_scale_para_high (ease_grid,MODALB,gridnamet)
+        !  else
+        !     This option is for legacy sets like Fortuna 2.1
+        !     inquire(file='clsm/modis_scale_factor.albvf.clim', exist=file_exists)
+        !     if ((redo_modis).or.(.not.file_exists)) then
+        !        call modis_scale_para (ease_grid,gridnamet)
+        !        call REFORMAT_VEGFILES
+        !     endif
+        !  endif
        endif
        
-       write (log_file,'(a,a,a)')'Done computing ',trim(MA), ' scale factors .......................6'
+       write (log_file,'(a,a,a)')'Done computing ',trim(MODALB), ' scale factors .......................6'
 !       tmpstring1 = '-e EASE -g '//trim(gfile) 
 !       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
 !       tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
 
     else      
  
-       if(SD=='NGDC') call create_soil_types_files (nc,nr,ease_grid,gridnamet,gridnamer)    
-       if(SD=='NGDC') write (log_file,'(a)')'Done creating NGDC soil types file .......................7a'	   
+       if(SOILBCS=='NGDC') call create_soil_types_files (nc,nr,ease_grid,gridnamet,gridnamer)    
+       if(SOILBCS=='NGDC') write (log_file,'(a)')'Done creating NGDC soil types file .......................7a'	   
        
        ! Creating soil_param.first and tau_param.dat files that has 2 options: 
        !  1) NGDC soil properties, 2) HWSD-STATSGO2 Soil Properties
@@ -431,22 +402,22 @@ integer :: n_threads=1
        
        inquire(file='clsm/soil_param.first', exist=file_exists)
        if (.not.file_exists) then
-          if(SD=='NGDC')  then 
+          if(SOILBCS=='NGDC')  then 
              if(F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
              if(.not.F25Tag) call soil_para_high (nc,nr,regrid,gridnamer)
           endif
           
-          if(SD=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer) 
+          if(SOILBCS=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer) 
        endif
-       write (log_file,'(a,a,a)')'Done computing ',trim(SD),' soil parameters .......................7'
+       write (log_file,'(a,a,a)')'Done computing ',trim(SOILBCS),' soil parameters .......................7'
        
        
        inquire(file='clsm/ts.dat', exist=file_exists)
        if (.not.file_exists) then
-          if(SD=='NGDC') call create_model_para (MaskFile)
-          if(SD=='HWSD') call create_model_para_woesten (MaskFile) 
+          if(SOILBCS=='NGDC') call create_model_para (MaskFile)
+          if(SOILBCS=='HWSD') call create_model_para_woesten (MaskFile) 
        endif
-       write (log_file,'(a,a,a)')'Done computing CLSM model parameters based on ',trim(SD),'.........8'
+       write (log_file,'(a,a,a)')'Done computing CLSM model parameters based on ',trim(SOILBCS),'.........8'
 
        ! Commented out this call because 7.5-minute raster file is only used
        ! for plotting purposes
@@ -470,14 +441,21 @@ integer :: n_threads=1
        if (.not.file_exists) call CLM45_clim_parameters (nc,nr,gridnamer)   
        write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
 
-       call country_codes (nc,nr,gridnamer)
-       call albedo4catchcn (gridnamet)
+       inquire(file='clsm/country_and_state_code.data', exist=file_exists)
+       if (.not.file_exists) call map_country_codes (nc,nr,gridnamer)
+       write (log_file,'(a)')'Done mapping country and state codes .....................12'
+
+ !      inquire(file='clsm/irrig.dat', exist=file_exists)
+ !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
+ !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
+
+     !   call albedo4catchcn (gridnamet)
 
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'
               
-       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
+!       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
     endif
 
     close (log_file,status='keep') 
