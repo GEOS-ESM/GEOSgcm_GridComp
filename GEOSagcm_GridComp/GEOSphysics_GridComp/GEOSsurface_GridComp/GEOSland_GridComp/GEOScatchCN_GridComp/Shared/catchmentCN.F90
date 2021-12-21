@@ -2697,10 +2697,10 @@ CONTAINS
   ! *******************************************************************
 
   subroutine catchcn_calc_etotl( NTILES, vegcls, dzsf, vgwmax, cdcr1, cdcr2, &
-       psis, bee, poros, wpwet,                                            &
-       ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,   &
-       srfexc, rzexc, catdef, tc1, tc2, tc4, tg1, tg2, tg4,                &
-       wesnn, htsnn, ghtcnt,                                               &
+       psis, bee, poros, wpwet,bf1, bf2,                                     &
+       ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,     &
+       srfexc, rzexc, catdef, tc1, tc2, tc4, tg1, tg2, tg4,                  &
+       wesnn, htsnn, ghtcnt,                                                 &
        etotl )
     
     ! compute total energy stored in land tiles
