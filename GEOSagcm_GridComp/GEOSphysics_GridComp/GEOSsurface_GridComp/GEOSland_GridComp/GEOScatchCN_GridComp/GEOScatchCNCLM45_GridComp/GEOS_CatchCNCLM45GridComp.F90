@@ -6495,10 +6495,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
-call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,                    &
-                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,         &
-                              srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc,                          &
-                              SWSRF1OUT=SWSRF1, SWSRF2OUT=SWSRF2, SWSRF4OUT=SWSRF4 )
+call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,                         &
+                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,              &
+                              srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc )
+                            
                               
 ! obtain saturated canopy resistance following Farquhar, CLM4 implementation    
 
