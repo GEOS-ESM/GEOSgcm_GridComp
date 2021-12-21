@@ -1531,12 +1531,12 @@ MODULE lsm_routines
   subroutine catch_calc_soil_moist( &
        NTILES,vegcls,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
        ars1,ars2,ars3,ara1,ara2, &
-       ara3,ara4,arw1,arw2,arw3,arw4, &
+       ara3,ara4,arw1,arw2,arw3,arw4,bf1, bf2, &
        srfexc,rzexc,catdef, &
        ar1, ar2, ar4, &
        sfmc, rzmc, prmc,  &
-       werror, sfmcun, rzmcun, prmcun, &
-       swsrf1out, swsrf2out, swsrf4out )
+       werror, sfmcun, rzmcun, prmcun )
+    !   swsrf1out, swsrf2out, swsrf4out ) not needed with peat
 
     ! Calculate diagnostic soil moisture content from prognostic
     ! excess/deficit variables.
@@ -1587,7 +1587,7 @@ MODULE lsm_routines
 
     real,    dimension(NTILES), intent(in) :: dzsf,vgwmax,cdcr1,cdcr2
     real,    dimension(NTILES), intent(in) :: wpwet,poros,psis
-    real,    dimension(NTILES), intent(in) :: bee,ars1
+    real,    dimension(NTILES), intent(in) :: bee,ars1,bf1, bf2
     real,    dimension(NTILES), intent(in) :: ars2,ars3,ara1,ara2,ara3
     real,    dimension(NTILES), intent(in) :: ara4,arw1,arw2,arw3,arw4
 
@@ -1687,7 +1687,7 @@ MODULE lsm_routines
     call partition( &
          NTILES,dtstep_dummy,dzsf,rzexc, &
          rzeq,vgwmax,cdcr1,cdcr2, &
-         psis,bee,poros,wpwet, &
+         psis,bee,poros,wpwet,bf1, bf2, &
          ars1,ars2,ars3, &
          ara1,ara2,ara3,ara4, &
          arw1,arw2,arw3,arw4,.false., &
@@ -1696,9 +1696,6 @@ MODULE lsm_routines
          swsrf1,swsrf2,swsrf4,rzi &
          )
 
-     if(present(swsrf1out)) swsrf1out = swsrf1
-     if(present(swsrf2out)) swsrf2out = swsrf2
-     if(present(swsrf4out)) swsrf4out = swsrf4
 
     ! compute surface, root zone, and profile soil moisture
 
