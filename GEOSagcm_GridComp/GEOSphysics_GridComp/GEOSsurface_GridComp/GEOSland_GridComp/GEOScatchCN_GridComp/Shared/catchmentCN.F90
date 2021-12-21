@@ -1152,7 +1152,8 @@ CONTAINS
 
         CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
              AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
-             SRFEXC,RUNSRF,POROS,                                       &
+             VGWMAX,RZEQOL,POROS,                                       &
+             SRFEXC,RUNSRF,RZEXC,                                       &
              QINFIL                                                     &
              )
 
