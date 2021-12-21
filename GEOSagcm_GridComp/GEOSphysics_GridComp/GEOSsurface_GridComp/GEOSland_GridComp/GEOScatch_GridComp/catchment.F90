@@ -2035,14 +2035,6 @@
       DEDEA(CHNO)  = DEDQA(CHNO) * EPSILON / PSUR(CHNO)
       DHSDEA(CHNO) = DHSDQA(CHNO) * EPSILON / PSUR(CHNO)
 
-      IF (POROS(CHNO) < POROS_HighLat) THEN
-            ! mineral soil
-         SWSRF4(CHNO) = SWSRF(CHNO)
-      ELSE
-         ! PEAT
-         ! MB: For ET calculation, AR4 surface wetness is set to WPWET
-         SWSRF4(CHNO) = WPWET(CHNO)
-      ENDIF
 
  100  CONTINUE
 
