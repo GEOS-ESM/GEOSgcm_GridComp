@@ -1536,7 +1536,6 @@ MODULE lsm_routines
        ar1, ar2, ar4, &
        sfmc, rzmc, prmc,  &
        werror, sfmcun, rzmcun, prmcun )
-    !   swsrf1out, swsrf2out, swsrf4out ) not needed with peat
 
     ! Calculate diagnostic soil moisture content from prognostic
     ! excess/deficit variables.
@@ -1602,7 +1601,6 @@ MODULE lsm_routines
     real,    dimension(NTILES), intent(out), optional :: sfmcun
     real,    dimension(NTILES), intent(out), optional :: rzmcun
     real,    dimension(NTILES), intent(out), optional :: prmcun
-    real,    dimension(NTILES), intent(out), optional :: swsrf1out, swsrf2out, swsrf4out    
 
     ! ----------------------------
     !
