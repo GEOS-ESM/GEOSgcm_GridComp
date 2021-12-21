@@ -6046,7 +6046,7 @@ subroutine RUN0(gc, import, export, clock, rc)
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4,                                                  &
+       arw1, arw2, arw3, arw4,bf1, bf2,                                         &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &

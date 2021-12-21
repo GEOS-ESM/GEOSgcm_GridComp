@@ -1191,7 +1191,7 @@ CONTAINS
 
       CALL CATCH_CALC_SOIL_MOIST (                                             &
           nch,ityp1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,              &
-          ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,              &
+          ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,      &
           srfexc,rzexc,catdef,                                                 &
           AR1, AR2, AR4,                                                       &
           sfmc, rzmc, prmc,                                                    &
@@ -2744,9 +2744,9 @@ CONTAINS
     rzexc_tmp  = rzexc    ! rzexc  is "inout" in catch_calc_soil_moist()
     catdef_tmp = catdef   ! catdef is "inout" in catch_calc_soil_moist()
     
-    call catch_calc_soil_moist(                                                &
-         NTILES, vegcls, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,  &
-         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,     &
+    call catch_calc_soil_moist(                                                    &
+         NTILES, vegcls, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,      &
+         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,bf1, bf2,&
          srfexc_tmp, rzexc_tmp, catdef_tmp, ar1, ar2, ar4 )
     
     ! compute snow-free tsurf
