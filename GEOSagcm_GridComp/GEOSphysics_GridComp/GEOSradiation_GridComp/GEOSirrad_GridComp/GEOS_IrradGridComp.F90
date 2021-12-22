@@ -792,21 +792,21 @@ contains
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDHILW',                                   &
-        LONG_NAME  = 'total_hi-level_cloud_area_fraction_rrtmg_lw',&
+        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_lw',   &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDMDLW',                                   &
-        LONG_NAME  = 'total_mid-level_cloud_area_fraction_rrtmg_lw',&
+        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_lw',    &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'CLDLOLW',                                   &
-        LONG_NAME  = 'total_low_level_cloud_area_fraction_rrtmg_lw',&
+        LONG_NAME  = 'low_level_cloud_area_fraction_rrtmg_lw',    &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                   __RC__ )
