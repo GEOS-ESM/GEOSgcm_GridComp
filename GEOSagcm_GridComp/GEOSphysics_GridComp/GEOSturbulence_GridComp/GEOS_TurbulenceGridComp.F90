@@ -249,6 +249,16 @@ contains
 
 ! !IMPORT STATE:
 
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME = 'AREA',                                      &
+        LONG_NAME  = 'grid_box_area',                             &
+        UNITS      = 'm^2',                                       &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'PLE',                                       &
         LONG_NAME  = 'air_pressure',                              &
@@ -1962,7 +1972,7 @@ contains
      type (ESMF_FieldBundle)             :: TR
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
-     real, dimension(:,:  ), pointer     :: VARFLT
+     real, dimension(:,:  ), pointer     :: AREA, VARFLT
      real, dimension(:,:,:), pointer     :: KH, KM, QLLS, QILS, CLLS, QLCN, QICN, CLCN
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
@@ -2072,6 +2082,7 @@ contains
      call MAPL_GetPointer(IMPORT,     U,       'U', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     V,       'V', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer( IMPORT, AREA,   'AREA',  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,VARFLT,  'VARFLT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,  PREF,    'PREF', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, RADLW,   'RADLW', RC=STATUS); VERIFY_(STATUS)
@@ -2101,7 +2112,7 @@ contains
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
      else
        if (LM .eq. 181) then
-         call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=1.5,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
@@ -2109,7 +2120,6 @@ contains
          call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
-        !LAMBDADISS = MIN(50.0,80.0*720.0/FLOAT(imsize))
          call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=40.0,         RC=STATUS); VERIFY_(STATUS)
        endif
      endif
@@ -2124,7 +2134,8 @@ contains
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=2.5101471e-8, RC=STATUS)  ! Pre Ganymed-4_1 value
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=1.02e-7,      RC=STATUS)  ! Value used for Ganymed-4_1 through Heracles-5_4_p3
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.00e-7,      RC=STATUS)  ! Value used with updated GMTED TOPO Data
-     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
+!    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
+     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
                                   C_B = C_B*1.e-7                                                                                    ! update correct scaling x1.e-7
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,         RC=STATUS); VERIFY_(STATUS)
@@ -3405,7 +3416,7 @@ contains
 
       call BELJAARS(IM, JM, LM, DT, &
                     LAMBDA_B, C_B,  &
-                    U, V, Z,        &
+                    U, V, Z, AREA,  &
                     VARFLT, PLE,    &
                     BKV, FKV        )
 
@@ -4715,7 +4726,7 @@ end subroutine RUN1
 
    subroutine BELJAARS(IM, JM, LM, DT, &
                        LAMBDA_B, C_B,  &
-                       U, V, Z,        &
+                       U, V, Z, AREA,  &
                        VARFLT, PLE,    &
                        BKV, FKV        )
 
@@ -4743,7 +4754,7 @@ end subroutine RUN1
       real,    intent(IN   ), dimension(:,:,: ) :: U
       real,    intent(IN   ), dimension(:,:,: ) :: V
       real,    intent(IN   ), dimension(:,:,: ) :: Z
-      real,    intent(IN   ), dimension(:,:   ) :: VARFLT
+      real,    intent(IN   ), dimension(:,:   ) :: AREA, VARFLT
       real,    intent(IN   ), dimension(:,:,0:) :: PLE
 
       real,    intent(INOUT), dimension(:,:,: ) :: BKV
@@ -4751,17 +4762,23 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: FKV_temp
+      real    ::CBl, FKV_temp
+! Beljaars parameters
+      real, parameter ::      &
+          dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
+          dxmax_ss = 12000.0           ! maximum grid length for Beljaars
 
       do I = 1, IM
          do J = 1, JM
             do L = LM, 1, -1
                FKV(I,J,L) = 0.0
-
-               if (Z(I,J,L) < 4.0*LAMBDA_B) then
+             ! Resolution sensitivity to disable Beljaars at <5km
+               CBl = C_B*MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(I,J))/(dxmax_ss-dxmin_ss))))
+               if ( (CBl > 0.0) .AND. Z(I,J,L) < 4.0*LAMBDA_B ) then
                   FKV_temp = Z(I,J,L)*(1.0/LAMBDA_B)
                   FKV_temp = VARFLT(I,J) * exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-                  FKV_temp = (C_B/LAMBDA_B)*min( sqrt(U(I,J,L)**2+V(I,J,L)**2),5.0 )*FKV_temp
+           !!!    FKV_temp = (CBl/LAMBDA_B)*min( sqrt(U(I,J,L)**2+V(I,J,L)**2),5.0 )*FKV_temp
+                  FKV_temp = (CBl/LAMBDA_B)*     sqrt(U(I,J,L)**2+V(I,J,L)**2)      *FKV_temp
 
                   BKV(I,J,L) = BKV(I,J,L) + DT*FKV_temp
                   FKV(I,J,L) = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))

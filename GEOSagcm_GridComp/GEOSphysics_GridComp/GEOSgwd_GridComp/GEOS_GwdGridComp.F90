@@ -96,6 +96,11 @@ module GEOS_GwdGridCompMod
   real :: NCAR_EFFGWBKG
   real :: NCAR_EFFGWORO 
   integer :: NCAR_NRDG
+
+! Beljaars parameters
+   real, parameter ::      &
+      dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
+      dxmax_ss = 12000.0           ! maximum grid length for Beljaars
 contains
 
 !BOP
@@ -213,6 +218,16 @@ contains
         SHORT_NAME = 'SGH',                                       &
         LONG_NAME  = 'standard_deviation_of_topography',          &
         UNITS      = 'm',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME = 'VARFLT',                                    &
+        LONG_NAME  = 'variance_of_the_filtered_topography',       &
+        UNITS      = 'm+2',                                       &
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &
         RESTART    = MAPL_RestartSkip,                            &
@@ -383,6 +398,22 @@ contains
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DVDT',                                      &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_GWD',                &
+        UNITS      = 'm s-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'DUDT_TFD',                                  &
+        LONG_NAME  = 'tendency_of_eastward_wind_due_to_topographic_form_drag',               &
+        UNITS      = 'm s-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'DVDT_TFD',                                  &
+        LONG_NAME  = 'tendency_of_northward_wind_due_to_topographic_form_dra',              &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -718,7 +749,6 @@ contains
           VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
      VERIFY_(STATUS)
 
-     if (USE_NCEP_GWD) then
 !ALT: Reminder for myself: we need connections in Physics
 ! We need some new imports
 ! from turbulance
@@ -730,6 +760,7 @@ contains
              VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
         VERIFY_(STATUS)      
 
+     if (USE_NCEP_GWD) then
 ! from dycore
         call MAPL_AddImportSpec ( gc,                            &
              SHORT_NAME = 'DXC',                                 &
@@ -1202,7 +1233,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Pointers from Import state
 
       real, pointer, dimension(:)      :: PREF
-      real, pointer, dimension(:,:)    :: AREA, SGH
+      real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
       !++jtb Array for moist/deepconv heating
       real, pointer, dimension(:,:,:)  :: HT_dpc, TRATE
@@ -1239,6 +1270,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:)    :: PEGWD, PEORO,  PERAY,  PEBKG, BKGERR
 
       real, pointer, dimension(:,:,:)  :: DTDT, DUDT, DVDT, TTMGW
+      real, pointer, dimension(:,:,:)  ::           DUDT_TFD, DVDT_TFD
       real, pointer, dimension(:,:,:)  :: DTDT_ORO, DUDT_ORO, DVDT_ORO
       real, pointer, dimension(:,:,:)  :: DTDT_BKG, DUDT_BKG, DVDT_BKG
       real, pointer, dimension(:,:,:)  :: DTDT_RAY, DUDT_RAY, DVDT_RAY
@@ -1250,6 +1282,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! local variables
 
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
+      real,              dimension(IM,JM     ) :: a2, Hefold
+      real,              dimension(IM,JM,LM  ) :: DUDT_TOFD, DVDT_TOFD
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
       real,              dimension(IM,JM,LM  ) :: DUDT_RAH, DVDT_RAH, DTDT_RAH
@@ -1278,7 +1312,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       integer                                  :: J, K, L, nrdg
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
-
+      real                                     :: a1, wsp, var_temp
 #ifdef _CUDA
       type(dim3) :: Grid, Block
       integer :: blocksize
@@ -1337,6 +1371,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, SGH,    'SGH',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, PREF,   'PREF',    RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, AREA,   'AREA',    RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, VARFLT, 'VARFLT',  RC=STATUS ); VERIFY_(STATUS)
 !++jtb
       call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, TRATE,  'DTDT_moist', RC=STATUS ); VERIFY_(STATUS)
@@ -1353,6 +1388,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(EXPORT,  SGH_EXP, 'SGH'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PREF_EXP, 'PREF'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,    TTMGW, 'TTMGW'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DUDT_TFD, 'DUDT_TFD', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DVDT_TFD, 'DVDT_TFD', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DTDT_ORO, 'DTDT_ORO', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DUDT_ORO, 'DUDT_ORO', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DVDT_ORO, 'DVDT_ORO', RC=STATUS); VERIFY_(STATUS)
@@ -2064,6 +2101,46 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
     end if
+
+    call MAPL_GetPointer( IMPORT, FPBL, 'KPBL', RC=STATUS )
+    VERIFY_(STATUS)
+    allocate(KPBL(IM,JM),stat=status)
+    VERIFY_(STATUS)
+    KPBL = nint(fPBL)
+    KPBL = MIN(KPBL, LM-1)
+    ! Topographic Form Drag [Beljaars et al (2004)]
+    DO J=1,JM
+       DO I=1,IM
+             var_temp = MIN(VARFLT(i,j),150.0) + &
+                        MAX(0.,0.2*(VARFLT(i,j)-150.0))
+             var_temp = MIN(var_temp, 250.)
+            ! (IH*kflt**n1)**-1 = (0.00102*0.00035**-1.9)**-1 = 0.00026615161
+             a1=0.00026615161*var_temp**2
+            ! k1**(n1-n2) = 0.003**(-1.9 - -2.8) = 0.003**0.9 = 0.005363
+             a2(i,j)=a1*0.005363 * &
+                     MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
+           ! Revise e-folding height based on PBL height and topographic std. dev.
+             Hefold(i,j) = min(max(2*VARFLT(i,j),ZM(i,j,KPBL(i,j))),1500.)
+       END DO
+    END DO
+    DO L=1, LM
+       DO J=1,JM
+          DO I=1,IM
+               wsp=SQRT(U(i,j,l)**2 + V(i,j,l)**2)
+               ! alpha*beta*Cmd*Ccorr*2.109 = 12.*1.*0.005*0.6*2.109 = 0.0759
+               var_temp = 0.0759*EXP(-(ZM(i,j,l)/Hefold(i,j))**1.5)*a2(i,j)* &
+                                 ZM(i,j,l)**(-1.2) ! this is greater than zero
+               !  Note:  This is a semi-implicit treatment of the time differencing
+               !  per Beljaars et al. (2004, QJRMS)
+               DUDT_TOFD(i,j,l) = - var_temp*wsp*U(i,j,l)/(1. + var_temp*DT*wsp)
+               DVDT_TOFD(i,j,l) = - var_temp*wsp*V(i,j,l)/(1. + var_temp*DT*wsp)
+          END DO
+       END DO
+    END DO
+    DUDT_GWD=DUDT_GWD+DUDT_TOFD
+    DVDT_GWD=DVDT_GWD+DVDT_TOFD
+    deallocate(KPBL)
+ 
     call MAPL_TimerOff(MAPL,"-INTR")
 
     CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
@@ -2125,12 +2202,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !! Tendency diagnostics
 !!---------------------
 
+    if(associated(DUDT_TFD)) DUDT_TFD = DUDT_TOFD
+    if(associated(DVDT_TFD)) DVDT_TFD = DVDT_TOFD
+
     if(associated(DUDT_ORO)) DUDT_ORO = DUDT_ORG
     if(associated(DVDT_ORO)) DVDT_ORO = DVDT_ORG
     if(associated(DTDT_ORO)) DTDT_ORO = DTDT_ORG
 
-    if(associated(DUDT_BKG)) DUDT_BKG = DUDT_GWD - DUDT_ORG 
-    if(associated(DVDT_BKG)) DVDT_BKG = DVDT_GWD - DVDT_ORG 
+    if(associated(DUDT_BKG)) DUDT_BKG = DUDT_GWD - DUDT_ORG - DUDT_TOFD 
+    if(associated(DVDT_BKG)) DVDT_BKG = DVDT_GWD - DVDT_ORG - DVDT_TOFD
     if(associated(DTDT_BKG)) DTDT_BKG = DTDT_GWD - DTDT_ORG 
 
 ! Orographic stress

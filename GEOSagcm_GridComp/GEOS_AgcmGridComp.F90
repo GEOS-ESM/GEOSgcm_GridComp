@@ -1154,7 +1154,7 @@ contains
     call MAPL_GetPointer(EXPORT, VARFLT, 'VARFLT', ALLOC=.true., rc=STATUS)
     VERIFY_(STATUS)
 
-! PHIS ...
+! PHIS (topography)...
 !---------
     call ESMF_StateGet( GIM(SDYN), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
@@ -1168,7 +1168,7 @@ contains
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     PHIS = PTR
 
-! GWDVAR ...
+! GWDVAR (standard deviation)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'SGH', FIELD, rc=STATUS )
     VERIFY_(STATUS)
@@ -1177,7 +1177,7 @@ contains
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     SGH = PTR
 
-! TRBVAR ...
+! TRBVAR (variance)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'VARFLT', FIELD, rc=STATUS )
     VERIFY_(STATUS)
