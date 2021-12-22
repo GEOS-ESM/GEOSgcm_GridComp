@@ -1,10 +1,3 @@
-!     path:      $Source$
-!     author:    $Author$
-!     revision:  $Revision$
-!     created:   $Date$
-!
-      module rrtmg_lw_setcoef
-
 !  --------------------------------------------------------------------------
 ! |                                                                          |
 ! |  Copyright 2002-2009, Atmospheric & Environmental Research, Inc. (AER).  |
@@ -15,411 +8,640 @@
 ! |                                                                          |
 !  --------------------------------------------------------------------------
 
-! ------- Modules -------
+module rrtmg_lw_setcoef
 
-       !use parkind, only : im => kind , rb => kind 
-      use parrrtm, only : nbndlw, mg, maxxsec, mxmol
-      use rrlw_wvn, only: totplnk, totplk16, totplnkderiv, totplk16deriv
-      use rrlw_ref
-      use rrlw_vsn, only: hvrset, hnamset
+   use parrrtm,  only : nbndlw
+   use rrlw_wvn, only : totplnk, totplk16, totplnkderiv, totplk16deriv
+   use rrlw_con, only : grav, avogad
+   use rrlw_ref
 
-      implicit none
+   use iso_fortran_env, only : error_unit
 
-      contains
+   implicit none
 
-!----------------------------------------------------------------------------
-      subroutine setcoef(nlayers, istart, pavel, tavel, tz, tbound, semiss, &
-                         coldry, wkl, wbroad, &
-                         laytrop, jp, jt, jt1, planklay, planklev, plankbnd, &
-                         idrv, dplankbnd_dt, &
-                         colh2o, colco2, colo3, coln2o, colco, colch4, colo2, &
-                         colbrd, fac00, fac01, fac10, fac11, &
-                         rat_h2oco2, rat_h2oco2_1, rat_h2oo3, rat_h2oo3_1, &
-                         rat_h2on2o, rat_h2on2o_1, rat_h2och4, rat_h2och4_1, &
-                         rat_n2oco2, rat_n2oco2_1, rat_o3co2, rat_o3co2_1, &
-                         selffac, selffrac, indself, forfac, forfrac, indfor, &
-                         minorfrac, scaleminor, scaleminorn2, indminor)
-!----------------------------------------------------------------------------
-!
-!  Purpose:  For a given atmosphere, calculate the indices and
-!  fractions related to the pressure and temperature interpolations.
-!  Also calculate the values of the integrated Planck functions 
-!  for each band at the level and layer temperatures.
+   ! lower / upper atmosphere separator (see code)
+   integer, allocatable :: laytrop (:)
 
-! ------- Declarations -------
+   ! molecular concentrations (scaled molecules per cm^2)
+   real, allocatable, dimension (:,:) :: &
+      colh2o, colco2, colo3, coln2o, colch4, colo2, colco, colbrd, &
+      colcfc11, colcfc12, colcfc22, colccl4
 
-! ----- Input -----
-      integer , intent(in) :: nlayers         ! total number of layers
-      integer , intent(in) :: istart          ! beginning band of calculation
-      integer , intent(in) :: idrv            ! Planck derivative option flag
+   real, allocatable :: coldry (:,:)  ! dry air column density [molec/cm^2]
+   real, allocatable :: pwvcm  (:)    ! precipitable water vapor [cm]
 
-      real , intent(in) :: pavel(:)           ! layer pressures (mb) 
-                                                      !    Dimensions: (nlayers)
-      real , intent(in) :: tavel(:)           ! layer temperatures (K)
-                                                      !    Dimensions: (nlayers)
-      real , intent(in) :: tz(0:)             ! level (interface) temperatures (K)
-                                                      !    Dimensions: (0:nlayers)
-      real , intent(in) :: tbound             ! surface temperature (K)
-      real , intent(in) :: coldry(:)          ! dry air column density (mol/cm2)
-                                                      !    Dimensions: (nlayers)
-      real , intent(in) :: wbroad(:)          ! broadening gas column density (mol/cm2)
-                                                      !    Dimensions: (nlayers)
-      real , intent(in) :: wkl(:,:)           ! molecular amounts (mol/cm-2)
-                                                      !    Dimensions: (mxmol,nlayers)
-      real , intent(in) :: semiss(:)          ! lw surface emissivity
-                                                      !    Dimensions: (nbndlw)
+   ! Planck functions and interpolation factors for continuum,
+   ! minor absorber, and (ln p, T, & binary species) CKD tables
+   real, allocatable, dimension (:,:,:) :: planklev, planklay
+   real, allocatable, dimension (:,:) :: &
+      plankbnd, dplankbnd_dTs, &
+      forfac, forfrac, selffac, selffrac, &
+      scaleminor, scaleminorn2, minorfrac
+   integer, allocatable, dimension (:,:) :: &
+      jp, jt, jt1, indfor, indself, indminor
+   real, allocatable, dimension (:,:) :: &
+      rat_h2oco2, rat_h2oco2_1, rat_h2oo3,  rat_h2oo3_1,  &
+      rat_h2on2o, rat_h2on2o_1, rat_h2och4, rat_h2och4_1, &
+      rat_n2oco2, rat_n2oco2_1, rat_o3co2,  rat_o3co2_1
+   real, allocatable, dimension(:,:) :: &
+      fac00, fac01, fac10, fac11
 
-! ----- Output -----
-      integer , intent(out) :: laytrop        ! tropopause layer index
-      integer , intent(out) :: jp(:)          ! 
-                                                      !    Dimensions: (nlayers)
-      integer , intent(out) :: jt(:)          !
-                                                      !    Dimensions: (nlayers)
-      integer , intent(out) :: jt1(:)         !
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: planklay(:,:)     ! 
-                                                      !    Dimensions: (nlayers,nbndlw)
-      real , intent(out) :: planklev(0:,:)    ! 
-                                                      !    Dimensions: (0:nlayers,nbndlw)
-      real , intent(out) :: plankbnd(:)       ! 
-                                                      !    Dimensions: (nbndlw)
-      real , intent(out) :: dplankbnd_dt(:)   ! 
-                                                      !    Dimensions: (nbndlw)
+contains
 
-      real , intent(out) :: colh2o(:)         ! column amount (h2o)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colco2(:)         ! column amount (co2)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colo3(:)          ! column amount (o3)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: coln2o(:)         ! column amount (n2o)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colco(:)          ! column amount (co)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colch4(:)         ! column amount (ch4)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colo2(:)          ! column amount (o2)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colbrd(:)         ! column amount (broadening gases)
-                                                      !    Dimensions: (nlayers)
+   !----------------------------------------------------------------------------
+   subroutine setcoef ( &
+      ncol, nlay, istart, dudTs, &
+      pavel, tavel, pz, tz, tbound, semiss, &
+      h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, covmr, &
+      cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr)
 
-      integer , intent(out) :: indself(:)
-                                                      !    Dimensions: (nlayers)
-      integer , intent(out) :: indfor(:)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: selffac(:)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: selffrac(:)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: forfac(:)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: forfrac(:)
-                                                      !    Dimensions: (nlayers)
+   !----------------------------------------------------------------------------
+   !
+   ! For a given atmosphere, calculate the indices and fractions related to
+   ! pressure and temperature interpolations. Also calculate the values of
+   ! the integrated Planck functions for each band at the level and layer
+   ! temperatures.
 
-      integer , intent(out) :: indminor(:)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: minorfrac(:)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: scaleminor(:)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: scaleminorn2(:)
-                                                      !    Dimensions: (nlayers)
+      integer, intent(in) :: ncol    ! number of gridcolumns
+      integer, intent(in) :: nlay    ! number of layers
+      integer, intent(in) :: istart  ! see code
+      logical, intent(in) :: dudTs   ! Planck derivative option flag
 
-      real , intent(out) :: &                 !
-                       fac00(:), fac01(:), &          !    Dimensions: (nlayers)
-                       fac10(:), fac11(:) 
-                                                        
-      real , intent(out) :: &                 !
-                       rat_h2oco2(:),rat_h2oco2_1(:), &
-                       rat_h2oo3(:),rat_h2oo3_1(:), & !    Dimensions: (nlayers)
-                       rat_h2on2o(:),rat_h2on2o_1(:), &
-                       rat_h2och4(:),rat_h2och4_1(:), &
-                       rat_n2oco2(:),rat_n2oco2_1(:), &
-                       rat_o3co2(:),rat_o3co2_1(:)
-                                                        
+      real, intent(in) :: pavel    (nlay,ncol)  ! layer pressures [hPa]
+      real, intent(in) :: tavel    (nlay,ncol)  ! layer temperatures [K]
+      real, intent(in) :: pz     (0:nlay,ncol)  ! level (interface) pressure [hPa]
+      real, intent(in) :: tz     (0:nlay,ncol)  ! level (interface) temperatures [K]
+      real, intent(in) :: tbound        (ncol)  ! surface temperature [K]
+      real, intent(in) :: semiss (nbndlw,ncol)  ! surface emissivity
 
-! ----- Local -----
-      integer  :: indbound, indlev0
-      integer  :: lay, indlay, indlev, iband
-      integer  :: jp1
-      real  :: stpfac, tbndfrac, t0frac, tlayfrac, tlevfrac
-      real  :: dbdtlev, dbdtlay
-      real  :: plog, fp, ft, ft1, water, scalefac, factor, compfp
+      ! volume mixing ratios (moles per mole of dry air)
+      real, intent(in), dimension (nlay,ncol) :: &
+         h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, covmr, &
+         cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr
 
+      real, parameter :: amd = 28.9660  ! Effective molecular weight of dry air (g/mol)
+      real, parameter :: amw = 18.0160  ! Molecular weight of water vapor (g/mol)
+      real, parameter :: stpfac = 296. / 1013.
 
-      hvrset = '$Revision$'
+      ! broadening gas column density [molec/cm^2]
+      real :: wbroad (nlay,ncol)
 
-      stpfac = 296. /1013. 
+      integer :: icol, lay, iband
+      integer :: indbound, indlev0, indlay, indlev, jp1
+      real    :: tbndfrac, t0frac, tlayfrac, tlevfrac
+      real    :: dbdtlev, dbdtlay
+      real    :: plog, fp, ft, ft1, water, scalefac, factor, compfp
+      real    :: amm, amttl, wvttl, wvsh, summol, btemp, wv, lcoldry
+      logical :: upper_atmosphere_found
 
-      indbound = tbound - 159. 
-      if (indbound .lt. 1) then
-         indbound = 1
-      elseif (indbound .gt. 180) then
-         indbound = 180
-      endif
-      tbndfrac = tbound - 159.  - float(indbound)
-      indlev0 = tz(0) - 159. 
-      if (indlev0 .lt. 1) then
-         indlev0 = 1
-      elseif (indlev0 .gt. 180) then
-         indlev0 = 180
-      endif
-      t0frac = tz(0) - 159.  - float(indlev0)
-      laytrop = 0
+      ! allocate or reallocate as necessary
+      if (allocated (laytrop)) then
+         if (size(laytrop) /= ncol) then
+           deallocate (coldry       )
+           deallocate (pwvcm        )
+           deallocate (laytrop      )
+           deallocate (colh2o       )
+           deallocate (colco2       )
+           deallocate (colo3        )
+           deallocate (coln2o       )
+           deallocate (colch4       )
+           deallocate (colo2        )
+           deallocate (colco        )
+           deallocate (colbrd       )
+           deallocate (colcfc11     )
+           deallocate (colcfc12     )
+           deallocate (colcfc22     )
+           deallocate (colccl4      )
+           deallocate (plankbnd     )
+           deallocate (dplankbnd_dTs)
+           deallocate (planklev     )
+           deallocate (planklay     )
+           deallocate (jp           )
+           deallocate (jt           )
+           deallocate (jt1          )
+           deallocate (forfac       )
+           deallocate (indfor       )
+           deallocate (forfrac      )
+           deallocate (selffac      )
+           deallocate (indself      )
+           deallocate (selffrac     )
+           deallocate (scaleminor   )
+           deallocate (scaleminorn2 )
+           deallocate (indminor     )
+           deallocate (minorfrac    )
+           deallocate (rat_h2oco2   )
+           deallocate (rat_h2oco2_1 )
+           deallocate (rat_h2oo3    )
+           deallocate (rat_h2oo3_1  )
+           deallocate (rat_h2on2o   )
+           deallocate (rat_h2on2o_1 )
+           deallocate (rat_h2och4   )
+           deallocate (rat_h2och4_1 )
+           deallocate (rat_n2oco2   )
+           deallocate (rat_n2oco2_1 )
+           deallocate (rat_o3co2    )
+           deallocate (rat_o3co2_1  )
+           deallocate (fac00        )
+           deallocate (fac01        )
+           deallocate (fac10        )
+           deallocate (fac11        )
+         end if
+      end if
+      if (.not. allocated (laytrop)) then
+         allocate (coldry        (nlay,ncol))
+         allocate (pwvcm              (ncol))
+         allocate (laytrop            (ncol))
+         allocate (colh2o        (nlay,ncol))
+         allocate (colco2        (nlay,ncol))
+         allocate (colo3         (nlay,ncol))
+         allocate (coln2o        (nlay,ncol))
+         allocate (colch4        (nlay,ncol))
+         allocate (colo2         (nlay,ncol))
+         allocate (colco         (nlay,ncol))
+         allocate (colbrd        (nlay,ncol))
+         allocate (colcfc11      (nlay,ncol))
+         allocate (colcfc12      (nlay,ncol))
+         allocate (colcfc22      (nlay,ncol))
+         allocate (colccl4       (nlay,ncol))
+         allocate (plankbnd      (nbndlw,       ncol))
+         allocate (dplankbnd_dTs (nbndlw,       ncol))
+         allocate (planklev      (nbndlw,0:nlay,ncol))
+         allocate (planklay      (nbndlw,  nlay,ncol))
+         allocate (jp            (nlay,ncol))
+         allocate (jt            (nlay,ncol))
+         allocate (jt1           (nlay,ncol))
+         allocate (forfac        (nlay,ncol))
+         allocate (indfor        (nlay,ncol))
+         allocate (forfrac       (nlay,ncol))
+         allocate (selffac       (nlay,ncol))
+         allocate (indself       (nlay,ncol))
+         allocate (selffrac      (nlay,ncol))
+         allocate (scaleminor    (nlay,ncol))
+         allocate (scaleminorn2  (nlay,ncol))
+         allocate (indminor      (nlay,ncol))
+         allocate (minorfrac     (nlay,ncol))
+         allocate (rat_h2oco2    (nlay,ncol))
+         allocate (rat_h2oco2_1  (nlay,ncol))
+         allocate (rat_h2oo3     (nlay,ncol))
+         allocate (rat_h2oo3_1   (nlay,ncol))
+         allocate (rat_h2on2o    (nlay,ncol))
+         allocate (rat_h2on2o_1  (nlay,ncol))
+         allocate (rat_h2och4    (nlay,ncol))
+         allocate (rat_h2och4_1  (nlay,ncol))
+         allocate (rat_n2oco2    (nlay,ncol))
+         allocate (rat_n2oco2_1  (nlay,ncol))
+         allocate (rat_o3co2     (nlay,ncol))
+         allocate (rat_o3co2_1   (nlay,ncol))
+         allocate (fac00         (nlay,ncol))
+         allocate (fac01         (nlay,ncol))
+         allocate (fac10         (nlay,ncol))
+         allocate (fac11         (nlay,ncol))
+      end if
 
-! Begin layer loop 
-!  Calculate the integrated Planck functions for each band at the
-!  surface, level, and layer temperatures.
-      do lay = 1, nlayers
-         indlay = tavel(lay) - 159. 
-         if (indlay .lt. 1) then
-            indlay = 1
-         elseif (indlay .gt. 180) then
-            indlay = 180
-         endif
-         tlayfrac = tavel(lay) - 159.  - float(indlay)
-         indlev = tz(lay) - 159. 
-         if (indlev .lt. 1) then
-            indlev = 1
-         elseif (indlev .gt. 180) then
-            indlev = 180
-         endif
-         tlevfrac = tz(lay) - 159.  - float(indlev)
+      ! (re-)initialize as necessary
+      ! (if not done below for all entries)
+      
+      ! set coldry, wbroad, and pwvcm
 
-! Begin spectral band loop 
-         do iband = 1, 15
-            if (lay.eq.1) then
-               dbdtlev = totplnk(indbound+1,iband) - totplnk(indbound,iband)
-               plankbnd(iband) = semiss(iband) * &
-                   (totplnk(indbound,iband) + tbndfrac * dbdtlev)
-               dbdtlev = totplnk(indlev0+1,iband)-totplnk(indlev0,iband)
-               planklev(0,iband) = totplnk(indlev0,iband) + t0frac * dbdtlev
-               if (idrv .eq. 1) then 
-                  dbdtlev = totplnkderiv(indbound+1,iband) - totplnkderiv(indbound,iband)
-                  dplankbnd_dt(iband) = semiss(iband) * &
-                      (totplnkderiv(indbound,iband) + tbndfrac * dbdtlev)
-               endif
-            endif
-            dbdtlev = totplnk(indlev+1,iband) - totplnk(indlev,iband)
-            dbdtlay = totplnk(indlay+1,iband) - totplnk(indlay,iband)
-            planklay(lay,iband) = totplnk(indlay,iband) + tlayfrac * dbdtlay
-            planklev(lay,iband) = totplnk(indlev,iband) + tlevfrac * dbdtlev
+      do icol = 1,ncol
+
+         do lay = 1, nlay
+
+            ! molecular weight of moist air in g/mol:
+            !   amm = [(\sum_i n_i a_i) + n_w a_w] / [(\sum_i n_i) + n_w],
+            ! where i is a dry air species, n_i and a_i are its number of
+            ! moles (in a volume of air) nand molecular weight, and similarly
+            ! n_w and a_w (== amw) for water molecules. In the same way,
+            !   amd = [\sum_i n_i a_i] / n_d, where n_d == [\sum_i n_i],
+            ! so,
+            !   amm = [n_d amd + n_w amw] / [n_d + n_w]
+            !       = [amd + h2ovmr amw] / [1 + h2ovmr]
+            ! since h2ovmr = n_w / n_d.
+            ! Finally, since h2ovmr ~ 1%, on average, at sea-level, less above,
+            ! a good *approximation* is
+            !   amm \approx [1 - h2ovmr] * amd + h2ovmr * amw.
+
+            amm = (1. - h2ovmr(lay,icol)) * amd + h2ovmr(lay,icol) * amw
+
+            ! coldry = layer molecules of dry air per cm^2:
+            ! -dp/g = rho*dz, where -dp = 100*(pz(k-1)-pz(k)) since pz in [hPa].
+            ! So 1e3*(pz(k-1)-pz(k))/(1e2*grav) = (g moist air)/cm^2. This /amm
+            ! is (moles moist air)/cm^2, and *avogad is (molecules moist air)/cm^2.
+            ! Finally number of dry air (non-water) molecules per cm^2 should be
+            ! this times n_d / (n_d + n_w) = 1 / (1 + h2ovmr).
+
+            coldry(lay,icol) = (pz(lay-1,icol)-pz(lay,icol)) * 1.e3 * avogad / &
+                  (1.e2 * grav * amm * (1. + h2ovmr(lay,icol)))
+
+         end do
+
+         ! calculate precipitable water vapor, and
+         ! calculate n2 column density (for broadening)
+
+         amttl = 0.
+         wvttl = 0.
+         do lay = 1,nlay
+
+            ! pmn: summol appears to be used as a proxy for the sum of
+            ! non-n2 dry air mole fractions. In fact it also contains
+            ! the non-radiatively active Argon, about 1% by volume.
+            ! pmn: Does this need to be corrected?
+            summol = co2vmr(lay,icol) + o3vmr(lay,icol) &
+               + n2ovmr(lay,icol) + ch4vmr(lay,icol) + o2vmr(lay,icol)
+            ! wbroad is ~ number of n2 molecules per cm^2 in layer
+            wbroad(lay,icol) = coldry(lay,icol) * (1. - summol)
+
+            ! btemp is number of h2o molecules per cm^2 in layer
+            ! so wvttl accumulates column h2o molecules per cm^2
+            ! and amttl the total column molecules per cm^2
+            btemp = h2ovmr(lay,icol) * coldry(lay,icol)
+            amttl = amttl + coldry(lay,icol) + btemp
+            wvttl = wvttl + btemp
+
          enddo
 
-!  For band 16, if radiative transfer will be performed on just
-!  this band, use integrated Planck values up to 3250 cm-1.  
-!  If radiative transfer will be performed across all 16 bands,
-!  then include in the integrated Planck values for this band
-!  contributions from 2600 cm-1 to infinity.
-         iband = 16
-         if (istart .eq. 16) then
-            if (lay.eq.1) then
-               dbdtlev = totplk16(indbound+1) - totplk16(indbound)
-               plankbnd(iband) = semiss(iband) * &
-                    (totplk16(indbound) + tbndfrac * dbdtlev)
-               if (idrv .eq. 1) then
-                  dbdtlev = totplk16deriv(indbound+1) - totplk16deriv(indbound)
-                  dplankbnd_dt(iband) = semiss(iband) * &
-                       (totplk16deriv(indbound) + tbndfrac * dbdtlev)
-               endif
-               dbdtlev = totplnk(indlev0+1,iband)-totplnk(indlev0,iband)
-               planklev(0,iband) = totplk16(indlev0) + &
-                    t0frac * dbdtlev
-            endif
-            dbdtlev = totplk16(indlev+1) - totplk16(indlev)
-            dbdtlay = totplk16(indlay+1) - totplk16(indlay)
-            planklay(lay,iband) = totplk16(indlay) + tlayfrac * dbdtlay
-            planklev(lay,iband) = totplk16(indlev) + tlevfrac * dbdtlev
-         else
-            if (lay.eq.1) then
-               dbdtlev = totplnk(indbound+1,iband) - totplnk(indbound,iband)
-               plankbnd(iband) = semiss(iband) * &
-                    (totplnk(indbound,iband) + tbndfrac * dbdtlev)
-               if (idrv .eq. 1) then 
-                  dbdtlev = totplnkderiv(indbound+1,iband) - totplnkderiv(indbound,iband)
-                  dplankbnd_dt(iband) = semiss(iband) * &
-                       (totplnkderiv(indbound,iband) + tbndfrac * dbdtlev)
-               endif
-               dbdtlev = totplnk(indlev0+1,iband)-totplnk(indlev0,iband)
-               planklev(0,iband) = totplnk(indlev0,iband) + t0frac * dbdtlev
-            endif
-            dbdtlev = totplnk(indlev+1,iband) - totplnk(indlev,iband)
-            dbdtlay = totplnk(indlay+1,iband) - totplnk(indlay,iband)
-            planklay(lay,iband) = totplnk(indlay,iband) + tlayfrac * dbdtlay
-            planklev(lay,iband) = totplnk(indlev,iband) + tlevfrac * dbdtlev
-         endif
+         ! column specic humidity [grams water vapor / grams moist air]
+         ! pmn: almost. Really needs amm not amd in denominator.
+         wvsh = (amw * wvttl) / (amd * amttl)
 
-!  Find the two reference pressures on either side of the
-!  layer pressure.  Store them in JP and JP1.  Store in FP the
-!  fraction of the difference (in ln(pressure)) between these
-!  two values that the layer pressure lies.
-!         plog = alog(pavel(lay))
-         plog = alog(pavel(lay))
-         jp(lay) = int(36.  - 5*(plog+0.04 ))
-         if (jp(lay) .lt. 1) then
-            jp(lay) = 1
-         elseif (jp(lay) .gt. 58) then
-            jp(lay) = 58
-         endif
-         jp1 = jp(lay) + 1
-         fp = 5.  *(preflog(jp(lay)) - plog)
+         ! precipitable water vapor [grams water / cm^2], or,
+         ! since 1 cm^3 of liquid water ~ 1 gram, it is also the
+         ! precipitable water vapor in [cm].
+         pwvcm(icol) = wvsh * (1.e3 * pz(0,icol)) / (1.e2 * grav)
 
-!  Determine, for each reference pressure (JP and JP1), which
-!  reference temperature (these are different for each  
-!  reference pressure) is nearest the layer temperature but does
-!  not exceed it.  Store these indices in JT and JT1, resp.
-!  Store in FT (resp. FT1) the fraction of the way between JT
-!  (JT1) and the next highest reference temperature that the 
-!  layer temperature falls.
-         jt(lay) = int(3.  + (tavel(lay)-tref(jp(lay)))/15. )
-         if (jt(lay) .lt. 1) then
-            jt(lay) = 1
-         elseif (jt(lay) .gt. 4) then
-            jt(lay) = 4
-         endif
-         ft = ((tavel(lay)-tref(jp(lay)))/15. ) - float(jt(lay)-3)
-         jt1(lay) = int(3.  + (tavel(lay)-tref(jp1))/15. )
-         if (jt1(lay) .lt. 1) then
-            jt1(lay) = 1
-         elseif (jt1(lay) .gt. 4) then
-            jt1(lay) = 4
-         endif
-         ft1 = ((tavel(lay)-tref(jp1))/15. ) - float(jt1(lay)-3)
-         water = wkl(1,lay)/coldry(lay)
-         scalefac = pavel(lay) * stpfac / tavel(lay)
-
-!  If the pressure is less than ~100mb, perform a different
-!  set of species interpolations.
-         if (plog .le. 4.56 ) go to 5300
-         laytrop =  laytrop + 1
-
-         forfac(lay) = scalefac / (1.+water)
-         factor = (332.0 -tavel(lay))/36.0 
-         indfor(lay) = min(2, max(1, int(factor)))
-         forfrac(lay) = factor - float(indfor(lay))
-
-!  Set up factors needed to separately include the water vapor
-!  self-continuum in the calculation of absorption coefficient.
-         selffac(lay) = water * forfac(lay)
-         factor = (tavel(lay)-188.0 )/7.2 
-         indself(lay) = min(9, max(1, int(factor)-7))
-         selffrac(lay) = factor - float(indself(lay) + 7)
-
-!  Set up factors needed to separately include the minor gases
-!  in the calculation of absorption coefficient
-         scaleminor(lay) = pavel(lay)/tavel(lay)
-         scaleminorn2(lay) = (pavel(lay)/tavel(lay)) &
-             *(wbroad(lay)/(coldry(lay)+wkl(1,lay)))
-         factor = (tavel(lay)-180.8 )/7.2 
-         indminor(lay) = min(18, max(1, int(factor)))
-         minorfrac(lay) = factor - float(indminor(lay))
-
-!  Setup reference ratio to be used in calculation of binary
-!  species parameter in lower atmosphere.
-         rat_h2oco2(lay)=chi_mls(1,jp(lay))/chi_mls(2,jp(lay))
-         rat_h2oco2_1(lay)=chi_mls(1,jp(lay)+1)/chi_mls(2,jp(lay)+1)
-
-         rat_h2oo3(lay)=chi_mls(1,jp(lay))/chi_mls(3,jp(lay))
-         rat_h2oo3_1(lay)=chi_mls(1,jp(lay)+1)/chi_mls(3,jp(lay)+1)
-
-         rat_h2on2o(lay)=chi_mls(1,jp(lay))/chi_mls(4,jp(lay))
-         rat_h2on2o_1(lay)=chi_mls(1,jp(lay)+1)/chi_mls(4,jp(lay)+1)
-
-         rat_h2och4(lay)=chi_mls(1,jp(lay))/chi_mls(6,jp(lay))
-         rat_h2och4_1(lay)=chi_mls(1,jp(lay)+1)/chi_mls(6,jp(lay)+1)
-
-         rat_n2oco2(lay)=chi_mls(4,jp(lay))/chi_mls(2,jp(lay))
-         rat_n2oco2_1(lay)=chi_mls(4,jp(lay)+1)/chi_mls(2,jp(lay)+1)
-
-!  Calculate needed column amounts.
-         colh2o(lay) = 1.e-20  * wkl(1,lay)
-         colco2(lay) = 1.e-20  * wkl(2,lay)
-         colo3(lay) = 1.e-20  * wkl(3,lay)
-         coln2o(lay) = 1.e-20  * wkl(4,lay)
-         colco(lay) = 1.e-20  * wkl(5,lay)
-         colch4(lay) = 1.e-20  * wkl(6,lay)
-         colo2(lay) = 1.e-20  * wkl(7,lay)
-         if (colco2(lay) .eq. 0. ) colco2(lay) = 1.e-32  * coldry(lay)
-         if (colo3(lay) .eq. 0. ) colo3(lay) = 1.e-32  * coldry(lay)
-         if (coln2o(lay) .eq. 0. ) coln2o(lay) = 1.e-32  * coldry(lay)
-         if (colco(lay) .eq. 0. ) colco(lay) = 1.e-32  * coldry(lay)
-         if (colch4(lay) .eq. 0. ) colch4(lay) = 1.e-32  * coldry(lay)
-         colbrd(lay) = 1.e-20  * wbroad(lay)
-         go to 5400
-
-!  Above laytrop.
- 5300    continue
-
-         forfac(lay) = scalefac / (1.+water)
-         factor = (tavel(lay)-188.0 )/36.0 
-         indfor(lay) = 3
-         forfrac(lay) = factor - 1.0 
-
-!  Set up factors needed to separately include the water vapor
-!  self-continuum in the calculation of absorption coefficient.
-         selffac(lay) = water * forfac(lay)
-
-!  Set up factors needed to separately include the minor gases
-!  in the calculation of absorption coefficient
-         scaleminor(lay) = pavel(lay)/tavel(lay)         
-         scaleminorn2(lay) = (pavel(lay)/tavel(lay)) &
-             * (wbroad(lay)/(coldry(lay)+wkl(1,lay)))
-         factor = (tavel(lay)-180.8 )/7.2 
-         indminor(lay) = min(18, max(1, int(factor)))
-         minorfrac(lay) = factor - float(indminor(lay))
-
-!  Setup reference ratio to be used in calculation of binary
-!  species parameter in upper atmosphere.
-         rat_h2oco2(lay)=chi_mls(1,jp(lay))/chi_mls(2,jp(lay))
-         rat_h2oco2_1(lay)=chi_mls(1,jp(lay)+1)/chi_mls(2,jp(lay)+1)         
-
-         rat_o3co2(lay)=chi_mls(3,jp(lay))/chi_mls(2,jp(lay))
-         rat_o3co2_1(lay)=chi_mls(3,jp(lay)+1)/chi_mls(2,jp(lay)+1)         
-
-!  Calculate needed column amounts.
-         colh2o(lay) = 1.e-20  * wkl(1,lay)
-         colco2(lay) = 1.e-20  * wkl(2,lay)
-         colo3(lay) = 1.e-20  * wkl(3,lay)
-         coln2o(lay) = 1.e-20  * wkl(4,lay)
-         colco(lay) = 1.e-20  * wkl(5,lay)
-         colch4(lay) = 1.e-20  * wkl(6,lay)
-         colo2(lay) = 1.e-20  * wkl(7,lay)
-         if (colco2(lay) .eq. 0. ) colco2(lay) = 1.e-32  * coldry(lay)
-         if (colo3(lay) .eq. 0. ) colo3(lay) = 1.e-32  * coldry(lay)
-         if (coln2o(lay) .eq. 0. ) coln2o(lay) = 1.e-32  * coldry(lay)
-         if (colco(lay)  .eq. 0. ) colco(lay) = 1.e-32  * coldry(lay)
-         if (colch4(lay) .eq. 0. ) colch4(lay) = 1.e-32  * coldry(lay)
-         colbrd(lay) = 1.e-20  * wbroad(lay)
- 5400    continue
-
-!  We have now isolated the layer ln pressure and temperature,
-!  between two reference pressures and two reference temperatures 
-!  (for each reference pressure).  We multiply the pressure 
-!  fraction FP with the appropriate temperature fractions to get 
-!  the factors that will be needed for the interpolation that yields
-!  the optical depths (performed in routines TAUGBn for band n).`
-
-         compfp = 1. - fp
-         fac10(lay) = compfp * ft
-         fac00(lay) = compfp * (1.  - ft)
-         fac11(lay) = fp * ft1
-         fac01(lay) = fp * (1.  - ft1)
-
-!  Rescale selffac and forfac for use in taumol
-         selffac(lay) = colh2o(lay)*selffac(lay)
-         forfac(lay) = colh2o(lay)*forfac(lay)
-
-	
-! End layer loop
       enddo
 
-	  	 !print *,  sum(colh2o), sum(colco2), sum(colo3), sum(coln2o), sum(colco), sum(colch4), sum(colo2), sum(colbrd)
+      ! main loop over column
+      do icol = 1,ncol
+
+         ! tbound indexing within Planck table
+         indbound = tbound(icol) - 159. 
+         if (indbound < 1) then
+            indbound = 1
+         elseif (indbound > 180) then
+            indbound = 180
+         endif
+         tbndfrac = tbound(icol) - 159. - float(indbound)
+
+         ! tz(lev==0) indexing within Planck table
+         indlev0 = tz(0,icol) - 159. 
+         if (indlev0 < 1) then
+            indlev0 = 1
+         elseif (indlev0 > 180) then
+            indlev0 = 180
+         endif
+         t0frac = tz(0,icol) - 159. - float(indlev0)
+
+         ! laytrop is highest layer with pavel > ~95.6 hPa (details below)
+         upper_atmosphere_found = .false.
+         laytrop(icol) = 0
+
+         ! layer loop (bottom up)
+         do lay = 1,nlay
+
+            lcoldry = coldry(lay,icol)       ! dry air molec / cm^2
+            wv = h2ovmr(lay,icol) * lcoldry  ! water vapor molec / cm^2
+
+            ! layer temperature indexing within Planck table
+            indlay = tavel(lay,icol) - 159. 
+            if (indlay < 1) then
+               indlay = 1
+            elseif (indlay > 180) then
+               indlay = 180
+            endif
+            tlayfrac = tavel(lay,icol) - 159. - float(indlay)
+
+            ! level (interface) temperature indexing within Planck table
+            indlev = tz(lay,icol) - 159. 
+            if (indlev < 1) then
+               indlev = 1
+            elseif (indlev > 180) then
+               indlev = 180
+            endif
+            tlevfrac = tz(lay,icol) - 159. - float(indlev)
+
+            ! Calculate the integrated Planck functions for each band at the
+            ! surface, level, and layer temperatures.
+
+            ! spectral band loop 
+            do iband = 1,15
+
+               ! interpolate Planck functions to boundary & level zero temperatures
+               if (lay.eq.1) then
+                  dbdtlev = totplnk(indbound+1,iband) - totplnk(indbound,iband)
+                  plankbnd(iband,icol) = semiss(iband,icol) * &
+                     (totplnk(indbound,iband) + tbndfrac * dbdtlev)
+                  dbdtlev = totplnk(indlev0+1,iband)-totplnk(indlev0,iband)
+                  planklev(iband,0,icol) = totplnk(indlev0,iband) + t0frac * dbdtlev
+                  if (dudTs) then 
+                     dbdtlev = totplnkderiv(indbound+1,iband) - totplnkderiv(indbound,iband)
+                     dplankbnd_dTs(iband,icol) = semiss(iband,icol) * &
+                        (totplnkderiv(indbound,iband) + tbndfrac * dbdtlev)
+                  endif
+               endif
+
+               ! interpolate Planck functions to layer & level temperatures
+               dbdtlev = totplnk(indlev+1,iband) - totplnk(indlev,iband)
+               planklev(iband,lay,icol) = totplnk(indlev,iband) + tlevfrac * dbdtlev
+               dbdtlay = totplnk(indlay+1,iband) - totplnk(indlay,iband)
+               planklay(iband,lay,icol) = totplnk(indlay,iband) + tlayfrac * dbdtlay
+
+            enddo
+
+            ! For band 16, if radiative transfer will be performed on just
+            ! this band, use integrated Planck values up to 3250 cm-1.  
+            ! If radiative transfer will be performed across all 16 bands,
+            ! then include in the integrated Planck values for this band
+            ! contributions from 2600 cm-1 to infinity.
+            iband = 16
+            if (istart == 16) then
+               if (lay == 1) then
+                  dbdtlev = totplk16(indbound+1) - totplk16(indbound)
+                  plankbnd(iband,icol) = semiss(iband,icol) * &
+                     (totplk16(indbound) + tbndfrac * dbdtlev)
+! pmn: 2021-05-05
+! istart==16 has not been used so far. Just as well, because the following
+! line was in error by using totplnk instead of totplk16
+                  dbdtlev = totplk16(indlev0+1) - totplk16(indlev0)
+                  planklev(iband,0,icol) = totplk16(indlev0) + t0frac * dbdtlev
+                  if (dudTs) then
+                     dbdtlev = totplk16deriv(indbound+1) - totplk16deriv(indbound)
+                     dplankbnd_dTs(iband,icol) = semiss(iband,icol) * &
+                        (totplk16deriv(indbound) + tbndfrac * dbdtlev)
+                  endif
+               endif
+               dbdtlev = totplk16(indlev+1) - totplk16(indlev)
+               planklev(iband,lay,icol) = totplk16(indlev) + tlevfrac * dbdtlev
+               dbdtlay = totplk16(indlay+1) - totplk16(indlay)
+               planklay(iband,lay,icol) = totplk16(indlay) + tlayfrac * dbdtlay
+            else
+               if (lay == 1) then
+                  dbdtlev = totplnk(indbound+1,iband) - totplnk(indbound,iband)
+                  plankbnd(iband,icol) = semiss(iband,icol) * &
+                     (totplnk(indbound,iband) + tbndfrac * dbdtlev)
+                  dbdtlev = totplnk(indlev0+1,iband) - totplnk(indlev0,iband)
+                  planklev(iband,0,icol) = totplnk(indlev0,iband) + t0frac * dbdtlev
+                  if (dudTs) then 
+                     dbdtlev = totplnkderiv(indbound+1,iband) - totplnkderiv(indbound,iband)
+                     dplankbnd_dTs(iband,icol) = semiss(iband,icol) * &
+                        (totplnkderiv(indbound,iband) + tbndfrac * dbdtlev)
+                  endif
+               endif
+               dbdtlev = totplnk(indlev+1,iband) - totplnk(indlev,iband)
+               planklev(iband,lay,icol) = totplnk(indlev,iband) + tlevfrac * dbdtlev
+               dbdtlay = totplnk(indlay+1,iband) - totplnk(indlay,iband)
+               planklay(iband,lay,icol) = totplnk(indlay,iband) + tlayfrac * dbdtlay
+            endif
+
+            ! Find the two reference pressures on either side of the
+            ! layer pressure. Store them in JP and JP1. Store in FP the
+            ! fraction of the difference (in ln(pressure)) between these
+            ! two values that the layer pressure lies.
+
+            plog = alog(pavel(lay,icol))
+            jp(lay,icol) = int(36. - 5*(plog+0.04))
+            if (jp(lay,icol) < 1) then
+               jp(lay,icol) = 1
+            elseif (jp(lay,icol) > 58) then
+               jp(lay,icol) = 58
+            endif
+            jp1 = jp(lay,icol) + 1
+            fp = 5. *(preflog(jp(lay,icol)) - plog)
+
+            ! Determine, for each reference pressure (JP and JP1), which
+            ! reference temperature (these are different for each  
+            ! reference pressure) is nearest the layer temperature but does
+            ! not exceed it. Store these indices in JT and JT1, resp.
+            ! Store in FT (resp. FT1) the fraction of the way between JT
+            ! (JT1) and the next highest reference temperature that the 
+            ! layer temperature falls.
+
+            jt(lay,icol) = int(3. + (tavel(lay,icol)-tref(jp(lay,icol)))/15.)
+            if (jt(lay,icol) < 1) then
+               jt(lay,icol) = 1
+            elseif (jt(lay,icol) > 4) then
+               jt(lay,icol) = 4
+            endif
+            ft = ((tavel(lay,icol)-tref(jp(lay,icol)))/15.) - float(jt(lay,icol)-3)
+
+            jt1(lay,icol) = int(3. + (tavel(lay,icol)-tref(jp1))/15.)
+            if (jt1(lay,icol) < 1) then
+               jt1(lay,icol) = 1
+            elseif (jt1(lay,icol) > 4) then
+               jt1(lay,icol) = 4
+            endif
+            ft1 = ((tavel(lay,icol)-tref(jp1))/15.) - float(jt1(lay,icol)-3)
+
+            ! intermediates needed for selffac and forfac
+            water = wv / lcoldry                                   ! same as h2ovmr
+            scalefac = pavel(lay,icol) * stpfac / tavel(lay,icol)  ! normalized p/T scalefac
+
+            ! If the pressure is less than ~100mb, perform a different
+            ! set of species interpolations.
+
+            ! lower atmosphere
+            if (plog > 4.56) then
+
+               if (upper_atmosphere_found) then
+                 ! upper atmosphere has already been found, so should never
+                 ! be here in the lower atmosphere again unless there is a
+                 ! non-monotonically-decreasing pressure with height. This
+                 ! will mess up current laytrop method, so die.
+                 write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+                 write(error_unit,*) 'icol, lay, plog:', icol, lay, plog
+                 error stop 'RRTMG LW pressure misordering'
+               end if
+
+               ! laytrop counts the layers with pavel > exp(4.56) ~ 95.6 hPa.
+               ! But pavel is strictly decreasing with height in model atmosphere.
+               ! So pavel(lay <= laytrop) > ~95.6 hPa and pavel(lay > laytrop) <= ~95.6 hPa
+               laytrop(icol) = laytrop(icol) + 1
+
+               ! factors needed for water vapor foreign-continuum
+               forfac(lay,icol) = scalefac/(1.+water)
+               factor = (332.-tavel(lay,icol))/36. 
+               indfor(lay,icol) = min(2,max(1,int(factor)))
+               forfrac(lay,icol) = factor - float(indfor(lay,icol))
+
+               ! factors needed to separately include the water vapor
+               ! self-continuum in the calc'n of absorption coefficient
+               selffac(lay,icol) = water * forfac(lay,icol)
+               factor = (tavel(lay,icol)-188.)/7.2 
+               indself(lay,icol) = min(9,max(1,int(factor)-7))
+               selffrac(lay,icol) = factor - float(indself(lay,icol)+7)
+
+               ! factors needed to separately include the minor gases
+               ! in the calculation of absorption coefficient
+               scaleminor(lay,icol) = pavel(lay,icol)/tavel(lay,icol)
+               scaleminorn2(lay,icol) = (pavel(lay,icol)/tavel(lay,icol)) &
+                  * (wbroad(lay,icol)/(lcoldry+wv))
+               factor = (tavel(lay,icol)-180.8)/7.2 
+               indminor(lay,icol) = min(18,max(1,int(factor)))
+               minorfrac(lay,icol) = factor - float(indminor(lay,icol))
+
+               ! Setup reference ratio to be used in calculation of binary
+               ! species parameter in lower atmosphere.
+               rat_h2oco2  (lay,icol) = chi_mls(1,jp(lay,icol)  ) / chi_mls(2,jp(lay,icol)  )
+               rat_h2oco2_1(lay,icol) = chi_mls(1,jp(lay,icol)+1) / chi_mls(2,jp(lay,icol)+1)
+
+               rat_h2oo3   (lay,icol) = chi_mls(1,jp(lay,icol)  ) / chi_mls(3,jp(lay,icol)  )
+               rat_h2oo3_1 (lay,icol) = chi_mls(1,jp(lay,icol)+1) / chi_mls(3,jp(lay,icol)+1)
+
+               rat_h2on2o  (lay,icol) = chi_mls(1,jp(lay,icol)  ) / chi_mls(4,jp(lay,icol)  )
+               rat_h2on2o_1(lay,icol) = chi_mls(1,jp(lay,icol)+1) / chi_mls(4,jp(lay,icol)+1)
+
+               rat_h2och4  (lay,icol) = chi_mls(1,jp(lay,icol)  ) / chi_mls(6,jp(lay,icol)  )
+               rat_h2och4_1(lay,icol) = chi_mls(1,jp(lay,icol)+1) / chi_mls(6,jp(lay,icol)+1)
+
+               rat_n2oco2  (lay,icol) = chi_mls(4,jp(lay,icol)  ) / chi_mls(2,jp(lay,icol)  )
+               rat_n2oco2_1(lay,icol) = chi_mls(4,jp(lay,icol)+1) / chi_mls(2,jp(lay,icol)+1)
+
+            else
+
+               ! upper atmosphere (above laytrop)
+               upper_atmosphere_found = .true.
+
+               ! factors needed for water vapor foreign-continuum
+               forfac(lay,icol) = scalefac/(1.+water)
+               factor = (tavel(lay,icol)-188.)/36. 
+               indfor(lay,icol) = 3
+               forfrac(lay,icol) = factor - 1.
+
+               !  Initialize selffac in upper atmosphere
+               !
+               !  In the old code this was set as:
+               !  ! Set up factors needed to separately include the water vapor
+               !  ! self-continuum in the calculation of absorption coefficient.
+               !  selffac(lay,icol) = water * forfac(lay,icol)
+               !
+               !  However, selffac is never used outside of this routine in 
+               !  the upper atmosphere. So to save operations we just set to zero.
+               !  Tests confirm that this is zero-diff to actually filling the
+               !  array with the product above in both optimized and debug runs.
+               selffac(lay,icol) = 0.0
+
+               ! factors needed to separately include the minor gases
+               ! in the calculation of absorption coefficient
+               scaleminor(lay,icol) = pavel(lay,icol)/tavel(lay,icol)         
+               scaleminorn2(lay,icol) = (pavel(lay,icol)/tavel(lay,icol)) &
+                  * (wbroad(lay,icol)/(lcoldry+wv))
+               factor = (tavel(lay,icol)-180.8)/7.2 
+               indminor(lay,icol) = min(18,max(1,int(factor)))
+               minorfrac(lay,icol) = factor - float(indminor(lay,icol))
+
+               ! Setup reference ratio to be used in calculation of binary
+               ! species parameter in upper atmosphere.
+               rat_h2oco2  (lay,icol) = chi_mls(1,jp(lay,icol)  ) / chi_mls(2,jp(lay,icol)  )
+               rat_h2oco2_1(lay,icol) = chi_mls(1,jp(lay,icol)+1) / chi_mls(2,jp(lay,icol)+1)
+
+               rat_o3co2   (lay,icol) = chi_mls(3,jp(lay,icol)  ) / chi_mls(2,jp(lay,icol)  )
+               rat_o3co2_1 (lay,icol) = chi_mls(3,jp(lay,icol)+1) / chi_mls(2,jp(lay,icol)+1)
+
+            end if
+
+            ! Calculate needed column amounts.
+            colh2o  (lay,icol) = 1.e-20 * h2ovmr  (lay,icol) * lcoldry
+            colco2  (lay,icol) = 1.e-20 * co2vmr  (lay,icol) * lcoldry
+            colo3   (lay,icol) = 1.e-20 * o3vmr   (lay,icol) * lcoldry
+            coln2o  (lay,icol) = 1.e-20 * n2ovmr  (lay,icol) * lcoldry
+            colch4  (lay,icol) = 1.e-20 * ch4vmr  (lay,icol) * lcoldry
+            colo2   (lay,icol) = 1.e-20 * o2vmr   (lay,icol) * lcoldry
+            colco   (lay,icol) = 1.e-20 * covmr   (lay,icol) * lcoldry
+            colcfc11(lay,icol) = 1.e-20 * cfc11vmr(lay,icol) * lcoldry
+            colcfc12(lay,icol) = 1.e-20 * cfc12vmr(lay,icol) * lcoldry
+            colcfc22(lay,icol) = 1.e-20 * cfc22vmr(lay,icol) * lcoldry
+            colccl4 (lay,icol) = 1.e-20 * ccl4vmr (lay,icol) * lcoldry
+            colbrd  (lay,icol) = 1.e-20 * wbroad  (lay,icol)
+
+            ! require some minor absorbers to be non-zero
+            if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * lcoldry
+            if (colo3 (lay,icol) == 0.) colo3 (lay,icol) = 1.e-32 * lcoldry
+            if (coln2o(lay,icol) == 0.) coln2o(lay,icol) = 1.e-32 * lcoldry
+            if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * lcoldry
+            if (colco (lay,icol) == 0.) colco (lay,icol) = 1.e-32 * lcoldry
+
+            ! We have now isolated the layer ln pressure and temperature,
+            ! between two reference pressures and two reference temperatures 
+            ! (for each reference pressure).  We multiply the pressure 
+            ! fraction FP with the appropriate temperature fractions to get 
+            ! the factors that will be needed for the interpolation that yields
+            ! the optical depths (performed in routines TAUGBn for band n).
+            compfp = 1. - fp
+            fac10(lay,icol) = compfp * ft
+            fac00(lay,icol) = compfp * (1. - ft)
+            fac11(lay,icol) = fp * ft1
+            fac01(lay,icol) = fp * (1. - ft1)
+
+            ! rescale selffac and forfac for use in taumol
+            selffac(lay,icol) = colh2o(lay,icol) * selffac(lay,icol)
+            forfac (lay,icol) = colh2o(lay,icol) * forfac (lay,icol)
+	
+         enddo ! layer
+      end do ! column
+
+   end subroutine setcoef
 
 
-      end subroutine setcoef
+   ! Deallocate module level allocatables when no longer needed.
+   ! Do this after only when rrtmg_lw() is done. It is not necessary
+   ! to do this between partitions because setcoef() handles reallocation
+   ! if the size of a partition changes.
+   subroutine setcoef_free
+      if (allocated (laytrop)) then
+         deallocate (coldry       )
+         deallocate (pwvcm        )
+         deallocate (laytrop      )
+         deallocate (colh2o       )
+         deallocate (colco2       )
+         deallocate (colo3        )
+         deallocate (coln2o       )
+         deallocate (colch4       )
+         deallocate (colo2        )
+         deallocate (colco        )
+         deallocate (colbrd       )
+         deallocate (colcfc11     )
+         deallocate (colcfc12     )
+         deallocate (colcfc22     )
+         deallocate (colccl4      )
+         deallocate (plankbnd     )
+         deallocate (dplankbnd_dTs)
+         deallocate (planklev     )
+         deallocate (planklay     )
+         deallocate (jp           )
+         deallocate (jt           )
+         deallocate (jt1          )
+         deallocate (forfac       )
+         deallocate (indfor       )
+         deallocate (forfrac      )
+         deallocate (selffac      )
+         deallocate (indself      )
+         deallocate (selffrac     )
+         deallocate (scaleminor   )
+         deallocate (scaleminorn2 )
+         deallocate (indminor     )
+         deallocate (minorfrac    )
+         deallocate (rat_h2oco2   )
+         deallocate (rat_h2oco2_1 )
+         deallocate (rat_h2oo3    )
+         deallocate (rat_h2oo3_1  )
+         deallocate (rat_h2on2o   )
+         deallocate (rat_h2on2o_1 )
+         deallocate (rat_h2och4   )
+         deallocate (rat_h2och4_1 )
+         deallocate (rat_n2oco2   )
+         deallocate (rat_n2oco2_1 )
+         deallocate (rat_o3co2    )
+         deallocate (rat_o3co2_1  )
+         deallocate (fac00        )
+         deallocate (fac01        )
+         deallocate (fac10        )
+         deallocate (fac11        )
+      end if
+   end subroutine setcoef_free
+
 
 !***************************************************************************
-      subroutine lwatmref
+   subroutine lwatmref
 !***************************************************************************
 
       save
@@ -579,10 +801,10 @@
         0.2090 ,  0.2090 ,  0.2090 ,  0.2090 ,  0.2090 , &
         0.2090 ,  0.2090 /)
 
-      end subroutine lwatmref
+   end subroutine lwatmref
 
 !***************************************************************************
-      subroutine lwavplank
+   subroutine lwavplank
 !***************************************************************************
 
       save
@@ -1285,10 +1507,10 @@
       0.12421e-06 ,0.12876e-06 ,0.13346e-06 ,0.13830e-06 ,0.14328e-06 , &
       0.14841e-06 /)
 
-      end subroutine lwavplank
+   end subroutine lwavplank
 
 !***************************************************************************
-      subroutine lwavplankderiv
+   subroutine lwavplankderiv
 !***************************************************************************
 
       save
@@ -1991,7 +2213,6 @@
       4.48800e-09 ,4.62535e-09 ,4.76640e-09 ,4.91110e-09 ,5.05850e-09 , &
       5.20965e-09 /)
 
-      end subroutine lwavplankderiv
+   end subroutine lwavplankderiv
 
-      end module rrtmg_lw_setcoef
-
+end module rrtmg_lw_setcoef

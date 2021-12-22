@@ -14,8 +14,9 @@ MODULE comp_CATCHCN_AlbScale_parameters
   public :: albedo4catchcn 
 
   character*400, PARAMETER ::                                                                          &
-                 InBCSDIR = '/gpfsm/dnb02/smahanam/MERRA3/FPAR/SMAP_EASEv2_M09/',                      &
-                 EXPDIR   = '/archive/u/smahanam/FPAR-ALB/e0004s_wet2/output/SMAP_EASEv2_M09_GLOBAL/', &
+                 InBCSDIR = '/discover/nobackup/smahanam/MERRA3/FPAR/SMAP_EASEv2_M09/',                      &
+                 !EXPDIR   = '/archive/u/smahanam/FPAR-ALB/e0004s_wet2/output/SMAP_EASEv2_M09_GLOBAL/', &
+                 EXPDIR   = '/discover/nobackup/borescan/BCS/add_to_l_land/e0004s_wet2/output/SMAP_EASEv2_M09_GLOBAL/', &
                  EXNAME   = 'e0004s_wet2',                                                             &
                  InGFILE  = 'SMAP_EASEv2_M09_3856x1624'
                                                
