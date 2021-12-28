@@ -109,7 +109,7 @@ contains
        process_peat = .false.
        jpl_height   = .true.
 
-     case ("NL4p")
+     case ("NL5")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'

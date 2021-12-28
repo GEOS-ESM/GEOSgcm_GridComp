@@ -143,6 +143,7 @@ echo "              ${C2}GM4  -- for /discover/nobackup/ltakacs/bcs/Ganymed-4_0/
 echo "              ${C2}ICA  -- for /discover/nobackup/ltakacs/bcs/Icarus/"
 echo "              ${C2}NL3  -- for /discover/nobackup/ltakacs/bcs/Icarus-NLv3/"
 echo "              ${C2}NL4  -- for /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4/"
+echo "              ${C2}NL5  -- in development for peat testing"
 echo "              ${C2}            equivalent parameter configuration and ancillary data."
 echo "                                      "
 echo "              NOTE: Due to compiler differences, code improvements and bug fixes that"
@@ -151,13 +152,12 @@ echo "                    files produced by current source codes may differ with
 echo "                    Nevertheless, the impact of those differences on science is insignificant and"
 echo "                    the parameter files produced by current source codes can be considered as "
 echo "                    scientifically equivalent to achieved BCs"
-echo "              ${C2}NL4p  -- in development for peat testing"
 echo "                                      "
 echo "              (OR press ENTER If you want to use the develop version of land BCs.)"
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 set lbcsv =  DEF
-if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL4p') set lbcsv = $dummy
+if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5' ) set lbcsv = $dummy
 
 #######################################################################
 
