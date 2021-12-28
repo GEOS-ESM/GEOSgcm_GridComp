@@ -507,6 +507,21 @@ contains
                indfor(lay,icol) = 3
                forfrac(lay,icol) = factor - 1.
 
+               ! Initialize selffac in upper atmosphere
+               !
+               ! In the old code this was set as:
+               !   selffac(lay,icol) = water * forfac(lay,icol)
+               !
+               ! However, selffac is never used outside of this routine in the
+               ! upper atmosphere. So to save operations we just set to zero.
+               ! Tests confirm that this is zero-diff to actually filling the
+               ! array with the product above in both optimized and debug runs.
+               ! The only reason it needs to be set at all (since it's never used)
+               ! is because of the scaling below by colh2o outside of the lower/
+               ! upper atmosphere branch. If this scaling encoanuters an unitialized
+               ! selffac when compiled in debug mode it will give a FP exception.
+               selffac(lay,icol) = 0.
+
                ! factors needed to separately include the minor gases
                ! in the calculation of absorption coefficient
                scaleminor(lay,icol) = pavel(lay,icol)/tavel(lay,icol)         
