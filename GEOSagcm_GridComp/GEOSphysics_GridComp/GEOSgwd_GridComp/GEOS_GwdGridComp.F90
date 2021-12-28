@@ -1056,6 +1056,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer                             :: IM, JM, LM
   integer                             :: pgwv
+  real                                :: effbeljaars
   real                                :: effgworo, effgwbkg
   real                                :: CDMBGWD1, CDMBGWD2
   real                                :: bgstressmax
@@ -1309,7 +1310,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
-      integer                                  :: J, K, L, nrdg
+      integer                                  :: J, K, L, nrdg, ikpbl
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
       real                                     :: a1, wsp, var_temp
@@ -2104,11 +2105,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetPointer( IMPORT, FPBL, 'KPBL', RC=STATUS )
     VERIFY_(STATUS)
-    allocate(KPBL(IM,JM),stat=status)
-    VERIFY_(STATUS)
-    KPBL = nint(fPBL)
-    KPBL = MIN(KPBL, LM-1)
     ! Topographic Form Drag [Beljaars et al (2004)]
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=1.0, RC=STATUS)
+    VERIFY_(STATUS)
     DO J=1,JM
        DO I=1,IM
              var_temp = MIN(VARFLT(i,j),150.0) + &
@@ -2118,9 +2117,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              a1=0.00026615161*var_temp**2
             ! k1**(n1-n2) = 0.003**(-1.9 - -2.8) = 0.003**0.9 = 0.005363
              a2(i,j)=a1*0.005363 * &
+                     effbeljaars * &
                      MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! Revise e-folding height based on PBL height and topographic std. dev.
-             Hefold(i,j) = min(max(2*VARFLT(i,j),ZM(i,j,KPBL(i,j))),1500.)
+             ikpbl = MAX(1,MIN(LM-1,NINT(FPBL(i,j))))
+             Hefold(i,j) = MIN(MAX(2*VARFLT(i,j),ZM(i,j,ikpbl)),1500.)
        END DO
     END DO
     DO L=1, LM
@@ -2139,7 +2140,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     END DO
     DUDT_GWD=DUDT_GWD+DUDT_TOFD
     DVDT_GWD=DVDT_GWD+DVDT_TOFD
-    deallocate(KPBL)
  
     call MAPL_TimerOff(MAPL,"-INTR")
 

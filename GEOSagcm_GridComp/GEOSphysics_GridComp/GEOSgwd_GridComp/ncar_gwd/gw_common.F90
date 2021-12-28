@@ -502,68 +502,80 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         taudmp = 0.0_r8
 
         if (present(kwvrdg)) then
+           do i=1,ncol
+            if (src_level(i) >= k) then
               ! Test to see if u-c has the same sign here as the level below.
-           where ( (src_level >= k) .and. (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l)) )
-                 tausat = abs(kwvrdg * rhoi(:,k) * ubmc**3 / &
-                    (satfac*ni(:,k)))
-           end where
+              if (ubmc(i) > 0.0_r8 .eqv. ubi(i,k+1) > c(i,l)) then
+                 tausat(i) = abs(kwvrdg(i) * rhoi(i,k) * ubmc(i)**3 / &
+                    (satfac*ni(i,k)))
+              end if
+            end if
+           end do
         else
+           do i=1,ncol
+            if (src_level(i) >= k) then
               ! Test to see if u-c has the same sign here as the level below.
-           where ( (src_level >= k) .and. (ubmc > 0.0_r8 .eqv. ubi(:,k+1) > c(:,l)) )
-                 tausat = abs(band%effkwv * rhoi(:,k) * ubmc**3 / &
-                    (satfac*ni(:,k)))
-           end where
+              if (ubmc(i) > 0.0_r8 .eqv. ubi(i,k+1) > c(i,l)) then
+                 tausat(i) = abs(band%effkwv * rhoi(i,k) * ubmc(i)**3 / &
+                    (satfac*ni(i,k)))
+              end if
+            end if
+           end do
         end if
 
         if (present(ro_adjust)) then
-           where (src_level >= k)
-              tausat = tausat * sqrt(ro_adjust(:,l,k))
-           end where
+           do i=1,ncol
+            if (src_level(i) >= k) then
+              tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
+            end if
+           end do
         end if
 
         if (present(tau_adjust)) then
-           tausat = tausat * tau_adjust(:,k)
+           do i=1,ncol 
+             tausat(i) = tausat(i) * tau_adjust(i,k)
+           end do
         end if
 
         if (present(kwvrdg)) then
-           where (src_level >= k)
+           do i=1,ncol 
+            if (src_level(i) >= k) then
               ! Compute stress for each wave. The stress at this level is the
               ! min of the saturation stress and the stress at the level below
               ! reduced by damping. The sign of the stress must be the same as
               ! at the level below.
-              ubmc2 = max(ubmc**2, ubmc2mn)
-              mi = ni(:,k) / (2._r8 * kwvrdg * ubmc2) * &
-                 (alpha(k) + ni(:,k)**2/ubmc2 * d)
-              wrk = -2._r8*mi*rog*t(:,k)*(piln(:,k+1) - piln(:,k))
-              wrk = max( wrk, -200._r8 )
-              taudmp = tau(:,l,k+1) * exp(wrk)
-           end where
-           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
-           ! we limit tau, so instead limit the arrays used to set it.
-           where (tausat <= taumin) tausat = 0._r8
-           where (taudmp <= taumin) taudmp = 0._r8
-           do i = 1, ncol
-             tau(i,l,k) = min(taudmp(i), tausat(i))
+              ubmc2(i) = max(ubmc(i)**2, ubmc2mn)
+              mi(i) = ni(i,k) / (2._r8 * kwvrdg(i) * ubmc2(i)) * &  ! Is this 2._r8 related to satfac?
+                 (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
+              wrk(i) = -2._r8*mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
+              wrk(i) = max( wrk(i), -200._r8 ) * exp(wrk(i))
+              taudmp(i) = tau(i,l,k+1) * exp(wrk(i))
+              ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
+              ! we limit tau, so instead limit the arrays used to set it.
+              if (tausat(i) <= taumin) tausat(i) = 0._r8
+              if (taudmp(i) <= taumin) taudmp(i) = 0._r8
+              tau(i,l,k) = min(taudmp(i), tausat(i))
+            end if
            end do
         else
-           where (src_level >= k)
+           do i=1,ncol 
+            if (src_level(i) >= k) then
               ! Compute stress for each wave. The stress at this level is the
               ! min of the saturation stress and the stress at the level below
               ! reduced by damping. The sign of the stress must be the same as
               ! at the level below.
-              ubmc2 = max(ubmc**2, ubmc2mn)
-              mi = ni(:,k) / (2._r8 * band%kwv * ubmc2) * &
-                 (alpha(k) + ni(:,k)**2/ubmc2 * d)
-              wrk = -2._r8*mi*rog*t(:,k)*(piln(:,k+1) - piln(:,k))
-              wrk = max( wrk, -200._r8 )
-              taudmp = tau(:,l,k+1) * exp(wrk)
-           end where
-           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
-           ! we limit tau, so instead limit the arrays used to set it.
-           where (tausat <= taumin) tausat = 0._r8
-           where (taudmp <= taumin) taudmp = 0._r8
-           do i = 1, ncol
-             tau(i,l,k) = min(taudmp(i), tausat(i))
+              ubmc2(i) = max(ubmc(i)**2, ubmc2mn)
+              mi(i) = ni(i,k) / (2._r8 * band%kwv * ubmc2(i)) * &
+                 (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
+              wrk(i) = -2._r8*mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
+              wrk(i) = max( wrk(i), -200._r8 )
+              taudmp(i) = tau(i,l,k+1) * exp(wrk(i))
+              ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
+              ! we limit tau, so instead limit the arrays used to set it.
+              if (tausat(i) <= taumin) tausat(i) = 0._r8
+              if (taudmp(i) <= taumin) taudmp(i) = 0._r8
+              tau(i,l,k) = min(taudmp(i), tausat(i))
+            end if
            end do
         endif
 
@@ -579,9 +591,11 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   if (lapply_effgw) then
      do k = ktop, kbot_tend+1
         do l = -band%ngwv, band%ngwv
-           where (k-1 <= tend_level)
-              tau(:,l,k) = tau(:,l,k) * effgw
-           end where
+           do i=1,ncol
+            if (k-1 <= tend_level(i)) then
+              tau(i,l,k) = tau(i,l,k) * effgw(i)
+            end if
+           end do
         end do
      end do
   end if
@@ -599,33 +613,36 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
      do l = -band%ngwv, band%ngwv    ! loop over wave
 
-        ! Determine the wind tendency, including excess stress carried down
-        ! from above.
-        ubtl = gravit * (tau(:,l,k+1)-tau(:,l,k)) * rdelp(:,k) ! p%rdel(:,k)  !/1/D_pint
+        do i=1,ncol
+
+          ! Determine the wind tendency, including excess stress carried down
+          ! from above.
+          ubtl(i) = gravit * (tau(i,l,k+1)-tau(i,l,k)) * rdelp(i,k) ! p%rdel(i,k)  !/1/D_pint
 
 
-        ! Apply first tendency limit to maintain numerical stability.
-        ! Enforce du/dt < |c-u|/dt  so u-c cannot change sign
-        !    (u^n+1 = u^n + du/dt * dt)
-        ! The limiter is somewhat stricter, so that we don't come anywhere
-        ! near reversing c-u.
-        ubtl = min(ubtl, umcfac * abs(c(:,l)-ubm(:,k)) / dt)
+          ! Apply first tendency limit to maintain numerical stability.
+          ! Enforce du/dt < |c-u|/dt  so u-c cannot change sign
+          !    (u^n+1 = u^n + du/dt * dt)
+          ! The limiter is somewhat stricter, so that we don't come anywhere
+          ! near reversing c-u.
+          ubtl(i) = min(ubtl(i), umcfac * abs(c(i,l)-ubm(i,k)) / dt)
 
-        ! Note: Here the limiter is being applied to each component wave
-        ! seperately; BEFORE adding spectrum (conv., frontal) and BEFORE 
-        ! applying effgw_{} (all GW)
-        if (.not. lapply_effgw) ubtl = min(ubtl, tndmax)
+          ! Note: Here the limiter is being applied to each component wave
+          ! seperately; BEFORE adding spectrum (conv., frontal) and BEFORE 
+          ! applying effgw_{} (all GW)
+          if (.not. lapply_effgw) ubtl(i) = min(ubtl(i), tndmax)
         
-
-        where (k <= tend_level)
+          if (k <= tend_level(i)) then
 
            ! Save tendency for each wave (for later computation of kzz).
            ! sign function returns magnitude of ubtl with sign of c-ubm 
            ! Renders ubt/ubm check for mountain waves unecessary
-           gwut(:,k,l) = sign(ubtl, c(:,l)-ubm(:,k))
-           ubt(:,k) = ubt(:,k) + gwut(:,k,l)
+           gwut(i,k,l) = sign(ubtl(i), c(i,l)-ubm(i,k))
+           ubt(i,k) = ubt(i,k) + gwut(i,k,l)
 
-        end where
+          end if
+
+        end do
 
      end do
 
@@ -635,12 +652,14 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! permitted.
         ! This can only happen above tend_level, so don't bother checking the
         ! level explicitly.
-        where (abs(ubt(:,k)) > tndmax)
-           ubt_lim_ratio = tndmax/abs(ubt(:,k))
-           ubt(:,k) = ubt_lim_ratio * ubt(:,k)
-        elsewhere
-           ubt_lim_ratio = 1._r8
-        end where
+        do i=1,ncol
+          if (abs(ubt(i,k)) > tndmax) then
+           ubt_lim_ratio(i) = tndmax/abs(ubt(i,k))
+           ubt(i,k) = ubt_lim_ratio(i) * ubt(i,k)
+          else
+           ubt_lim_ratio(i) = 1._r8
+          end if
+        end do
      else
         ubt_lim_ratio = 1._r8
      end if
@@ -656,21 +675,25 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! Include a protection on SMALL gwut to prevent floating point
         ! issues.
         !--------------------------------------------------
-        where( abs(gwut(:,k,l)) < 1.e-15_r8 )
-           gwut(:,k,l) = 0._r8
-        endwhere   
-        where (k <= tend_level)
-           tau(:,l,k+1) = tau(:,l,k) + & 
-                abs(gwut(:,k,l)) * delp(:,k) / gravit 
-                !!! abs(gwut(:,k,l)) * p%del(:,k) / gravit 
-        end where
+        do i=1,ncol
+         if ( abs(gwut(i,k,l)) < 1.e-15_r8 ) then
+           gwut(i,k,l) = 0._r8
+         end if   
+         if (k <= tend_level(i)) then
+           tau(i,l,k+1) = tau(i,l,k) + & 
+                abs(gwut(i,k,l)) * delp(i,k) / gravit 
+                !!! abs(gwut(i,k,l)) * p%del(i,k) / gravit 
+         end if
+        end do
      end do
 
      ! Project the mean wind tendency onto the components.
-     where (k <= tend_level)
-        utgw(:,k) = ubt(:,k) * xv
-        vtgw(:,k) = ubt(:,k) * yv
-     end where
+     do i=1,ncol
+       if (k <= tend_level(i)) then
+        utgw(i,k) = ubt(i,k) * xv(i)
+        vtgw(i,k) = ubt(i,k) * yv(i)
+       end if
+     end do
 
      ! End of level loop.
   end do
@@ -683,9 +706,11 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   if (.not.(lapply_effgw)) then
      do k = ktop, kbot_tend+1
         do l = -band%ngwv, band%ngwv
-           where (k-1 <= tend_level)
-              tau(:,l,k) = tau(:,l,k) * effgw
-           end where
+           do i=1,ncol
+             if (k-1 <= tend_level(i)) then
+              tau(i,l,k) = tau(i,l,k) * effgw(i)
+             end if
+           end do
         end do
      end do
      do k = ktop, kbot_tend
