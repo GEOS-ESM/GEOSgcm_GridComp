@@ -988,12 +988,18 @@ contains
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds',              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds__deprecated',  &
        UNITS      = '1' ,                                                    &
        SHORT_NAME = 'TAUTT',                                                 &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
-!? PMN ... implement the approx fix as another variable ... this one is broken
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds__improved',    &
+       UNITS      = '1' ,                                                    &
+       SHORT_NAME = 'TAUTTX',                                                &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_for_ice_clouds',             &
@@ -4314,13 +4320,18 @@ contains
       real, pointer, dimension(:,:,:,:) :: TAUCLD, HYDROMETS, REFF
       real, pointer, dimension(:,:,:)   :: TAUI,TAUW,TAUR,TAUS
 
+      ! for efficiency
+      real, allocatable, dimension(:,:) :: aCLDL,aCLDM,aCLDH
+      real, allocatable, dimension(:,:) :: aTAUL,aTAUM,aTAUH
+      real, allocatable, dimension(:,:) :: aCLDT
+
       real, dimension(LM  ) :: DUM1D
       real, dimension(LM,4) :: DUM2D
 
       real, pointer, dimension(:,:)   :: TDUST,TSALT,TSO4,TBC,TOC
-      real, pointer, dimension(:,:)   :: CLDH,CLDM,CLDL,CLDT,  &
-                                         TAUH,TAUM,TAUL,TAUT,  &
-                                         CLDTMP, CLDPRS
+      real, pointer, dimension(:,:)   :: CLDH,CLDM,CLDL,CLDT, &
+                                         TAUH,TAUM,TAUL,TAUT,TAUTX, &
+                                         CLDTMP,CLDPRS
 
       type (ESMF_FieldBundle)         :: BUNDLE
       type (ESMF_Field)               :: FIELD
@@ -4447,55 +4458,49 @@ contains
       call MAPL_GetPointer(EXPORT  , TAUM,       'TAUMD',      __RC__)
       call MAPL_GetPointer(EXPORT  , TAUH,       'TAUHI',      __RC__)
       call MAPL_GetPointer(EXPORT  , TAUT,       'TAUTT',      __RC__)
+      call MAPL_GetPointer(EXPORT  , TAUTX,      'TAUTTX',     __RC__)
       call MAPL_GetPointer(EXPORT  , CLDTMP,     'CLDTMP',     __RC__)
       call MAPL_GetPointer(EXPORT  , CLDPRS,     'CLDPRS',     __RC__)
 
-      if(associated(FCLD)) FCLD = CLIN
+      if (associated(FCLD)) FCLD = CLIN
 
-      if(associated(CLDH)) then
-         CLDH = 0.
+      if (associated(CLDH) .or. associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDH(IM,JM),__STAT__)
+         aCLDH = 0.
          do l=1,LCLDMH-1
-            CLDH = max(CLDH,CLIN(:,:,L))
+            aCLDH = max(aCLDH,CLIN(:,:,L))
          end do
+         if (associated(CLDH)) CLDH = aCLDH
       end if
 
-      if(associated(CLDM)) then
-         CLDM = 0.
+      if (associated(CLDM) .or. associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDM(IM,JM),__STAT__)
+         aCLDM = 0.
          do l=LCLDMH,LCLDLM-1
-            CLDM = max(CLDM,CLIN(:,:,L))
+            aCLDM = max(aCLDM,CLIN(:,:,L))
          end do
+         if (associated(CLDM)) CLDM = aCLDM
       end if
 
-      if(associated(CLDL)) then
-         CLDL = 0.
+      if (associated(CLDL) .or. associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDL(IM,JM),__STAT__)
+         aCLDL = 0.
          do l=LCLDLM,LM
-            CLDL = max(CLDL,CLIN(:,:,L))
+            aCLDL = max(aCLDL,CLIN(:,:,L))
          end do
+         if (associated(CLDL)) CLDL = aCLDL
       end if
 
-      if(associated(CLDT)) then
-         CLD = 0.
-         do l=1,LCLDMH-1
-            CLD = max(CLD,CLIN(:,:,L))
-         end do
-         CLDT = (1-CLD)
-         CLD = 0.
-         do l= LCLDMH,LCLDLM-1
-            CLD = max(CLD,CLIN(:,:,L))
-         end do
-         CLDT = CLDT*(1-CLD)
-         CLD = 0.
-         do l=LCLDLM,LM
-            CLD = max(CLD,CLIN(:,:,L))
-         end do
-         CLDT = 1.0 - CLDT*(1-CLD)
+      if (associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDT(IM,JM),__STAT__)
+         aCLDT = 1. - (1-aCLDH)*(1-aCLDM)*(1-aCLDL)
+         if (associated(CLDT)) CLDT = aCLDT
       end if
 
-      if(associated(TAUI  ).or.associated(TAUW  ).or. &
-         associated(TAUR  ).or.associated(TAUS  ).or. &
-         associated(TAUL  ).or.associated(TAUM  ).or. &
-         associated(TAUH  ).or.associated(TAUT  ).or. &
-         associated(CLDTMP).or.associated(CLDPRS)) then
+      if (associated(TAUI) .or. associated(TAUW) .or. associated(TAUR) .or. associated(TAUS).or. &
+          associated(TAUL) .or. associated(TAUM) .or. associated(TAUH) .or. &
+          associated(TAUT) .or. associated(TAUTX) .or. &
+          associated(CLDTMP) .or. associated(CLDPRS)) then
 
          allocate(   TAUCLD(IM,JM,LM,4), __STAT__)
          allocate(HYDROMETS(IM,JM,LM,4), __STAT__)
@@ -4510,17 +4515,17 @@ contains
          !       3  Falling Liquid (Rain)
          !       4  Falling Ice (Rain)
 
-         REFF(:,:,:,1) = RRI * 1.0e6  ! REFF must be in microns
-         REFF(:,:,:,2) = RRL * 1.0e6
-         REFF(:,:,:,3) = RRR * 1.0e6
-         REFF(:,:,:,4) = RRS * 1.0e6
+         REFF(:,:,:,1) = RRI * 1.e6  ! REFF must be in microns
+         REFF(:,:,:,2) = RRL * 1.e6
+         REFF(:,:,:,3) = RRR * 1.e6
+         REFF(:,:,:,4) = RRS * 1.e6
 
          HYDROMETS(:,:,:,1) = RQI
          HYDROMETS(:,:,:,2) = RQL
          HYDROMETS(:,:,:,3) = RQR
          HYDROMETS(:,:,:,4) = RQS
 
-         TAUCLD = 0.0
+         TAUCLD = 0.
 
          ! Due to the generic use of this routine, it currently works on one column at a time,
          ! thus the need for the array sections below.
@@ -4528,60 +4533,100 @@ contains
          ! NOTE: Dummy arrays are passed into outputs 1 and 3 because these are currently only 
          !       used in sorad.F90.
 
-         DO I = 1, IM
-            DO J = 1, JM
-               CALL GETVISTAU(LM,ZTH(I,J),DP(I,J,:),CLIN(I,J,:),REFF(I,J,:,:),HYDROMETS(I,J,:,:),LCLDMH,LCLDLM,&
-                              DUM2D(:,:),TAUCLD(I,J,:,:),DUM1D(:))
+         DO I = 1,IM
+            DO J = 1,JM
+               CALL GETVISTAU( &
+                  LM,ZTH(I,J),DP(I,J,:),&
+                  CLIN(I,J,:),REFF(I,J,:,:),HYDROMETS(I,J,:,:),&
+                  LCLDMH,LCLDLM,&
+                  DUM2D(:,:),TAUCLD(I,J,:,:),DUM1D(:))
             END DO
          END DO
 
-         if(associated(TAUI)) TAUI = TAUCLD(:,:,:,1)
-         if(associated(TAUW)) TAUW = TAUCLD(:,:,:,2)
-         if(associated(TAUR)) TAUR = TAUCLD(:,:,:,3)
-         if(associated(TAUS)) TAUS = TAUCLD(:,:,:,4)
+         if (associated(TAUI)) TAUI = TAUCLD(:,:,:,1)
+         if (associated(TAUW)) TAUW = TAUCLD(:,:,:,2)
+         if (associated(TAUR)) TAUR = TAUCLD(:,:,:,3)
+         if (associated(TAUS)) TAUS = TAUCLD(:,:,:,4)
 
+         ! use the total hydrometor optical thickness for the general opticl thicknesses below
          TAUCLD(:,:,:,1) = TAUCLD(:,:,:,1) + TAUCLD(:,:,:,2) + TAUCLD(:,:,:,3) + TAUCLD(:,:,:,4)
 
-         if(associated(TAUH)) then
-            TAUH = 0.
+         ! TAU[HML] are correct because GETVISTAU produces in-cloud optical thicknesses for
+         ! 'effective clouds' extended-out and diluted to the maximum cloud fraction in each
+         ! pressure super-band [LMT].
+
+         if (associated(TAUH) .or. associated(TAUT) .or. associated(TAUTX)) then
+            allocate(aTAUH(IM,JM),__STAT__)
+            aTAUH = 0.
             do l=1,LCLDMH-1
-               TAUH = TAUH + TAUCLD(:,:,L,1)
+               aTAUH = aTAUH + TAUCLD(:,:,L,1)
             end do
+            if (associated(TAUH)) TAUH = aTAUH
          end if
 
-         if(associated(TAUM)) then
-            TAUM = 0.
+         if (associated(TAUM) .or. associated(TAUT) .or. associated(TAUTX)) then
+            allocate(aTAUM(IM,JM),__STAT__)
+            aTAUM = 0.
             do l=LCLDMH,LCLDLM-1
-               TAUM = TAUM + TAUCLD(:,:,L,1)
+               aTAUM = aTAUM + TAUCLD(:,:,L,1)
             end do
+            if (associated(TAUM)) TAUM = aTAUM
          end if
 
-         if(associated(TAUL)) then
-            TAUL = 0.
+         if (associated(TAUL) .or. associated(TAUT) .or. associated(TAUTX)) then
+            allocate(aTAUL(IM,JM),__STAT__)
+            aTAUL = 0.
             do l=LCLDLM,LM
-               TAUL = TAUL + TAUCLD(:,:,L,1)
+               aTAUL = aTAUL + TAUCLD(:,:,L,1)
             end do
+            if (associated(TAUL)) TAUL = aTAUL
          end if
 
-         if(associated(TAUT)) then
-            TAUT = 0.
-            do l=1,LM
-               TAUT = TAUT + TAUCLD(:,:,L,1)
-            end do
+         ! TAUT however is broken because the three super-bands are randomly overlapped
+         ! and with different effective cloud fractions. It has been broken but used for
+         ! a long time. It should be considered deprecated. TAUTX below is an improved
+         ! version.
+
+         if (associated(TAUT)) TAUT = aTAUH + aTAUM + aTAUL
+
+         ! As noted above, one cannot simply add TAUL, TAUM and TAUH to get a column
+         ! in-cloud optical thickness, because the actual column value depends on the
+         ! overlap of these bands. This overlap is here assumed random. We can express
+         ! the approximate column in-cloud optical thickness in terms of the sum over
+         ! the 2**3 - 1 combinations with some cloud in at least one of the 3 bands,
+         ! each with their respective fractions. For random overlap, CLDL*CLDM*CLDH of
+         ! the gridcolumn would have a column TAU of TAUL+TAUM+TAUH, CLDL*CLDM*(1-CLDH)
+         ! would have a column TAU of TAUL+TAUM, etc. Then, for an in-cloud column TAU,
+         ! the sum of the 7 must be normalized by the random column cloud fraction
+         !    CLDT = 1 – (1-CLDL)*(1-CLDM)*(1-CLDH).
+         ! Not surprisingly this gives
+         !    TAUTX = (TAUL*CLDL + TAUM*CLDM + TAUH*CLDH) / CLDT,
+         ! because we assume we can linearly average optical thickness among the comb-
+         ! inations. This assumption is questionable, since cloud radiative properties
+         ! are non-linear in optical thickness. This is why TAUTX is approximate. But
+         ! its the best we SIMPLY can do.
+
+         if (associated(TAUTX)) then
+            TAUTX = 0.
+            where (aCLDT > 0.) TAUTX = (aTAUL*aCLDL + aTAUM*aCLDM + aTAUH*aCLDH) / CLDT
          end if
 
-         if(associated(CLDTMP).or.associated(CLDPRS)) then
-            call MAPL_GetResource(MAPL, TAUCRIT , 'TAUCRIT:', DEFAULT=0.10, __RC__)
+         if (allocated(aTAUH)) deallocate(aTAUH,__STAT__)
+         if (allocated(aTAUM)) deallocate(aTAUM,__STAT__)
+         if (allocated(aTAUL)) deallocate(aTAUL,__STAT__)
 
-            if(associated(CLDTMP)) CLDTMP = MAPL_UNDEF
-            if(associated(CLDPRS)) CLDPRS = MAPL_UNDEF
+         if (associated(CLDTMP) .or. associated(CLDPRS)) then
+            call MAPL_GetResource(MAPL,TAUCRIT,'TAUCRIT:',DEFAULT=0.10,__RC__)
 
-            do l=LM,1,-1
-               if(associated(CLDTMP)) then
-                  where(TAUCLD(:,:,L,1)>TAUCRIT) CLDTMP = T(:,:,L)
+            if (associated(CLDTMP)) CLDTMP = MAPL_UNDEF
+            if (associated(CLDPRS)) CLDPRS = MAPL_UNDEF
+
+            do L=LM,1,-1
+               if (associated(CLDTMP)) then
+                  where (TAUCLD(:,:,L,1) > TAUCRIT) CLDTMP = T(:,:,L)
                end if
-               if(associated(CLDPRS)) then
-                  where(TAUCLD(:,:,L,1)>TAUCRIT) CLDPRS = PLL(:,:,L-1)
+               if (associated(CLDPRS)) then
+                  where (TAUCLD(:,:,L,1) > TAUCRIT) CLDPRS = PLL(:,:,L-1)
                end if
             end do
          end if
@@ -4592,6 +4637,11 @@ contains
          deallocate(DP       )
 
       end if
+
+      if (allocated(aCLDH)) deallocate(aCLDH,__STAT__)
+      if (allocated(aCLDM)) deallocate(aCLDM,__STAT__)
+      if (allocated(aCLDL)) deallocate(aCLDL,__STAT__)
+      if (allocated(aCLDT)) deallocate(aCLDT,__STAT__)
 
 ! Fill Albedos
 !-------------
