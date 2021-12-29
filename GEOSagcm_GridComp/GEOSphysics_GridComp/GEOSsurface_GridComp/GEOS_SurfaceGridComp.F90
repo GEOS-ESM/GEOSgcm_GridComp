@@ -625,7 +625,8 @@ module GEOS_SurfaceGridCompMod
          RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+       VERIFY_(STATUS)
+    end if
 
 !  !EXPORT STATE:
 
