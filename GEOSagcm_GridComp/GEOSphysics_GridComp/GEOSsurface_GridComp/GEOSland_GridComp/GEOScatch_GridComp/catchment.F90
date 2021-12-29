@@ -2406,8 +2406,8 @@
 
       INTEGER ChNo, N
       REAL, DIMENSION(NCH) :: DEDEA, DHSDEA, EM, ESATTC, DESDTC, EA, RC,       &
-                DRCDTC, DRCDEA
-      REAL  DELTC, DELEA, SWSRF4
+                DRCDTC, DRCDEA, SWSRF4
+      REAL  DELTC, DELEA
 
 !****
       DATA DELTC /0.01/, DELEA /0.001/
