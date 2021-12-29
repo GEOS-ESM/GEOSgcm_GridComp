@@ -2406,8 +2406,8 @@
 
       INTEGER ChNo, N
       REAL, DIMENSION(NCH) :: DEDEA, DHSDEA, EM, ESATTC, DESDTC, EA, RC,       &
-                DRCDTC, DRCDEA, SWSRF4
-      REAL  DELTC, DELEA
+                DRCDTC, DRCDEA
+      REAL  DELTC, DELEA, SWSRF4
 
 !****
       DATA DELTC /0.01/, DELEA /0.001/
@@ -2460,7 +2460,7 @@
         ENDDO
 
       CALL RSURFP2 (                                                           &
-                   NCH, UM, RDC, SWSRF, ESATTC, EA, WPWET,                     &
+                   NCH, UM, RDC, SWSRF4, ESATTC, EA, WPWET,                     &
                    RC,                                                         &
                    RX1, RX2                                                    &
                   )
