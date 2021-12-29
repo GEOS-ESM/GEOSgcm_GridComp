@@ -197,6 +197,9 @@ module GEOS_DataAtmGridCompMod
 
 !EOS
 
+! Set generic init and final methods
+! ----------------------------------
+
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="RUN"       ,RC=STATUS)
@@ -204,8 +207,10 @@ module GEOS_DataAtmGridCompMod
     call MAPL_TimerAdd(GC,    name="FINALIZE"  ,RC=STATUS)
     VERIFY_(STATUS)
 
-! Set generic init and final methods
-! ----------------------------------
+    ! This call is needed only when we use ReadForcing.
+    ! If we switch to use ExtData, next line has be commented out
+    call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS)
     VERIFY_(STATUS)
@@ -486,6 +491,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
     DZ = 50.0 ! meters
 
+! River runoff    
+    call ReadForcingData(impName='DISCHARGE', frcName='RR', default=0., __RC__)
+
     !ALT: we should read topo, but for now over ocean this is fine
     call SetVarToZero('PHIS', __RC__)
 
@@ -598,7 +606,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read sea surface salinity (psu),
 !---------------------------------------------------
 
-! Andrea: dry andwet clay depositions???
+! Andrea: dry and wet clay depositions???
 #ifdef LEFTOVER_FROM_OLD_CODE
 
 ! Read Clay-Sized Dry Atmospheric Dust Depositions

@@ -97,7 +97,8 @@ module GEOS_SurfaceGridCompMod
   integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
-
+  integer :: DO_DATAATM
+  
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
@@ -217,6 +218,10 @@ module GEOS_SurfaceGridCompMod
 !--------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+    ! Are we running DataAtm?
+    !------------------------
+    call MAPL_GetResource ( MAPL, DO_DATAATM,  Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Create Surface Config
@@ -607,6 +612,16 @@ module GEOS_SurfaceGridCompMod
          SHORT_NAME = 'DTSDT',                                     &
          LONG_NAME  = 'skin_temperature_analysis_tendency',        &
          UNITS      = 'K s-1',                                     &
+         RESTART    = MAPL_RestartSkip,                            &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    if (DO_DATAATM /= 0) then
+       call MAPL_AddImportSpec ( gc,                               &
+         SHORT_NAME = 'DISCHARGE',                                 &
+         LONG_NAME  = 'river_discharge_at_ocean_points',           &
+         UNITS      = 'kg m-2 s-1',                                &
          RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
@@ -5385,6 +5400,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
     real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
 !
+    real, pointer, dimension(:,:) :: DISCHARGE_IM    => NULL()
 
 ! for reading "forced" precip
     real, pointer, dimension(:,:) :: PTTe => NULL()
@@ -6648,7 +6664,8 @@ module GEOS_SurfaceGridCompMod
 
 !ALT    call MKTILE(RUNOFF  ,RUNOFFTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
 !ALT    call MKTILE(DISCHARGE,DISCHARGETILE,NT,RC=STATUS); VERIFY_(STATUS)
-    if (associated(SURF_INTERNAL_STATE%LocalRoutings)) then ! routing file exists
+    if (associated(SURF_INTERNAL_STATE%LocalRoutings) .or. &
+         DO_DATAATM /=0) then ! routing file exists or we run DataAtm
        allocate(DISCHARGETILE(NT),stat=STATUS); VERIFY_(STATUS)
        DISCHARGETILE=MAPL_Undef
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
@@ -6767,8 +6784,19 @@ module GEOS_SurfaceGridCompMod
 
        ! Create discharge at exit tiles by routing runoff
 
-       call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_DATAATM /= 0) then
+          call MAPL_LocStreamTransform( LOCSTREAM,  RUNOFFTILE, DISCHARGE_IM, RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetPointer(IMPORT  , DISCHARGE_IM, 'DISCHARGE',  RC=STATUS); VERIFY_(STATUS)
+          ! it seems redundant to fill both DISCHARGETILE and RUNOFFTILE
+          ! but this is done in case we need to output RUNOFF
+          ! and not to change the existing code too much
+          DISCHARGETILE = RUNOFFTILE
+
+       else
+          call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
+          VERIFY_(STATUS)
+       end if
        
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
