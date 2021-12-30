@@ -1,22 +1,23 @@
 MODULE ConvPar_GF_GEOS5
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!- This convective parameterization is build to attempt                 !
-!  a smooth transition to cloud resolving scales as proposed            !
-!  by Arakawa et al (2011, ACP). The scheme is  described               !
-!  in the paper Grell and Freitas (ACP, 2014).                          !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!- Implemented in GEOS5 GCM by Saulo Freitas (July 2016)                !
-!- Use the following references for this implementation:                !
-!- Freitas et al (2018, JAMES/AGU, https://doi.org/10.1029/2017MS001251)!
-!- Freitas et al (2020, GMD/EGU,   https://doi.org/10.5194/gmd-2020-38) !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!- This convective parameterization is build to attempt                      !
+!  a smooth transition to cloud resolving scales as proposed                 !
+!  by Arakawa et al (2011, ACP). The scheme is  described                    !
+!  in the paper Grell and Freitas (ACP, 2014).                               !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!- Implemented in GEOS5 GCM by Saulo Freitas (July 2016)                     !
+!- Use the following references for this implementation:                     !
+!- Freitas et al (2018, JAMES/AGU, https://doi.org/10.1029/2017MS001251)     !
+!- Freitas et al (2021, GMD/EGU,   https://doi.org/10.5194/gmd-14-5393-2021) !
+!- Please, contact Saulo Freitas (saulo.r.de.freitas@gmail.com) for comments !
+!- questions, bugs, etc.                                                     !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 USE module_gate
 USE MAPL
 !USE MAPL_ConstantsMod ! - only for GATE soundings
 !
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
-!USE cldmacro, ONLY: make_DropletNumber, make_IceNumber
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
 
  IMPLICIT NONE
@@ -754,6 +755,8 @@ CONTAINS
                      ,SRC_T       &
                      ,SRC_Q       &
                      ,SRC_CI      &
+                     ,SRC_NL      &
+                     ,SRC_NI      &
                      ,SRC_U       &
                      ,SRC_V       &
                      ,SUB_MPQI    & 
@@ -1027,29 +1030,29 @@ ENDIF
          DO i=1,mxp
           DO k=1,mzp 
 
-             tem1 = T(i,j,k)             
-             RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
-             RL =   min(max(RL, 10.0), 30.0)*1.e-6              
-             RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
-             RI =   min(max(RI, 20.0), 250.0)*1.e-6
-             
-             tem1 = 1.- (tem1 - 235.0) /38.0 
-             tem1 =  min(max(0.0, tem1), 1.0)
- 
+!---obsolete
+             !tem1 = T(i,j,k)             
+             !RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
+             !RL =   min(max(RL, 10.0), 30.0)*1.e-6              
+             !RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
+             !RI =   min(max(RI, 20.0), 250.0)*1.e-6
+             !tem1 = 1.- (tem1 - 235.0) /38.0 
+             !tem1 =  min(max(0.0, tem1), 1.0)
              ! make up some "number" sources. In the future this should depend explicitly on the convective mphysics
-             disp_factor =  10.0 ! used to account somehow for the size dist
- 
-             !-outputs 
-             QLCN (i,j,k) = QLCN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
-             QICN (i,j,k) = QICN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * tem1
+             !disp_factor =  10.0 ! used to account somehow for the size dist
+	     !SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
+	     !SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
+             !CNV_FICE (i, j, k)   =   tem1
+!---obsolete
+             
+	     tem1 = frct_liq(i,j,k)
+             
+             QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
+             QICN (i,j,k) = QICN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * tem1
 
-             SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
-             SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
-
-             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist *SRC_NL(flip(k),i,j)                
-             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
-             CNV_FICE (i, j, k)   =   tem1
-
+             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist * SRC_NL(flip(k),i,j)                
+             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist * SRC_NI(flip(k),i,j)     
+            
              DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
              air_dens = 100.*PLO_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
                                               
@@ -1219,10 +1222,12 @@ ENDIF
               ,rqvblten              &!sgsf_q
               !---- output ----
               ,conprr                &
-	      ,lightn_dens           &
+              ,lightn_dens           &
               ,rthcuten              &
               ,rqvcuten              &
               ,rqccuten              &
+              ,rnlcuten              &
+              ,rnicuten              &
               ,rucuten               &
               ,rvcuten               &
               ,sub_mpqi              & 
@@ -1294,7 +1299,7 @@ ENDIF
    !-- intent (in)
    REAL,    DIMENSION(its:ite,jts:jte) ::             topt ,aot500 ,temp2m ,sfc_press &
                                                      ,sflux_r ,sflux_t                &
-						     ,xland,lons,lats,dx2d,col_sat    &
+                                                     ,xland,lons,lats,dx2d,col_sat    &
                                                      ,stochastic_sig
 
    REAL,    DIMENSION(kts:kte,its:ite,jts:jte), INTENT(IN) :: rthften    &
@@ -1309,21 +1314,23 @@ ENDIF
                                                     rthcuten   &
                                                    ,rqvcuten   &
                                                    ,rqccuten   &
+                                                   ,rnlcuten   &
+                                                   ,rnicuten   &
                                                    ,rucuten    &
                                                    ,rvcuten    &
                                                    ,rbuoycuten &
-						   ,revsu_gf   &
-						   ,prfil_gf   &
-						   ,var3d_agf  &
-						   ,var3d_bgf  &
-						   ,var3d_cgf  &
-						   ,var3d_dgf
+                                                   ,revsu_gf   &
+                                                   ,prfil_gf   &
+                                                   ,var3d_agf  &
+                                                   ,var3d_bgf  &
+                                                   ,var3d_cgf  &
+                                                   ,var3d_dgf
                                                    
 
    REAL,    DIMENSION(nmp,kts:kte,its:ite,jts:jte), INTENT(IN)  :: &
-					            mp_ice     &
-					           ,mp_liq     &
-					           ,mp_cf       
+                                                    mp_ice	&
+                                                   ,mp_liq	&
+                                                   ,mp_cf	 
 
    REAL,    DIMENSION(nmp,kts:kte,its:ite,jts:jte), INTENT(OUT) :: &
                                                     sub_mpqi   & 
@@ -2047,20 +2054,20 @@ loop1:  do n=1,maxiens
              RQVCUTEN (kr,i,j)= (outq (i,k,shal) + outq (i,k,deep) + outq (i,k,mid )) *fixout_qv(i)
 
              RQCCUTEN (kr,i,j)= (outqc(i,k,shal) + outqc(i,k,deep) + outqc(i,k,mid )) *fixout_qv(i)
-	     
+
              REVSU_GF (kr,i,j)= revsu_gf_2d(i,k)*fixout_qv(i) !-- already contains deep and mid amounts.
-      
+
             !---these arrays are only for the deep plume mode	    
              PRFIL_GF (kr,i,j)= prfil_gf_2d (i,k)*fixout_qv(i) !-- ice/liq prec flux of the deep plume
             !VAR3d_aGF(kr,i,j)= var3d_gf_2d(i,k)               !-- vertical velocity of the deep plume
              VAR3d_aGF(kr,i,j)= outt (i,k,mid )*fixout_qv(i)   !-- 
              VAR3d_bGF(kr,i,j)= outq (i,k,mid )*fixout_qv(i)   !-- 
              
-	     if(icumulus_gf(shal) == OFF) then 
+             if(icumulus_gf(shal) == OFF) then 
                 VAR3d_cGF(kr,i,j)= outqc (i,k,deep)*fixout_qv(i)  !-- 
                 VAR3d_dGF(kr,i,j)= outqc (i,k,mid )*fixout_qv(i)  !-- 
              else
-	        VAR3d_cGF(kr,i,j)= outt (i,k,shal)*fixout_qv(i)   !-- 
+                VAR3d_cGF(kr,i,j)= outt (i,k,shal)*fixout_qv(i)   !-- 
                 VAR3d_dGF(kr,i,j)= outq (i,k,shal)*fixout_qv(i)   !-- 
              endif
 
@@ -2077,7 +2084,6 @@ loop1:  do n=1,maxiens
       ENDDO
      ENDIF     
 
-
      IF(APPLY_SUB_MP == 1) THEN
       DO i = its,itf
        if(do_this_column(i,j) == 0) CYCLE
@@ -2086,6 +2092,17 @@ loop1:  do n=1,maxiens
              SUB_MPQL (:,kr,i,j)= (outmpql(:,i,k,deep)+outmpql(:,i,k,mid)+outmpql(:,i,k,shal)) *fixout_qv(i)
              SUB_MPQI (:,kr,i,j)= (outmpqi(:,i,k,deep)+outmpqi(:,i,k,mid)+outmpqi(:,i,k,shal)) *fixout_qv(i)
              SUB_MPCF (:,kr,i,j)= (outmpcf(:,i,k,deep)+outmpcf(:,i,k,mid)+outmpcf(:,i,k,shal)) *fixout_qv(i)
+       ENDDO
+      ENDDO
+     ENDIF     
+
+     IF(LIQ_ICE_NUMBER_CONC == 1) THEN
+      DO i = its,itf
+       if(do_this_column(i,j) == 0) CYCLE
+       DO k = kts,kte
+             kr=k!+1
+             RNICUTEN (kr,i,j)= (outnice(i,k,shal) + outnice(i,k,deep) + outnice(i,k,mid )) *fixout_qv(i)
+             RNLCUTEN (kr,i,j)= (outnliq(i,k,shal) + outnliq(i,k,deep) + outnliq(i,k,mid )) *fixout_qv(i)
        ENDDO
       ENDDO
      ENDIF     
@@ -12541,8 +12558,8 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
     endif
  end subroutine GF_convpar_init 
 !------------------------------------------------------------------------------------
- subroutine get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop&
-                                  ,dtime,rho,outqc,tempco,outnliq,outnice)
+ subroutine get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop    &
+                                   ,dtime,rho,outqc,tempco,outnliq,outnice)
      
     implicit none
     integer,   intent (in )  :: itf,ktf,its,ite,kts,kte
@@ -12559,7 +12576,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
     real,   dimension (its:ite,kts:kte) :: nifa   ! in the future set this as NCPI
     
     
-    nwfa(:,:) =  99.e7  ! in the future set this as NCPL
+    nwfa(:,:) =  99.e7  ! in the future set this as NCPL. Actually this is CCN number
     nifa(:,:) =  0.     ! in the future set this as NCPI
     dtinv    = 1./dtime
     do i=its,itf
