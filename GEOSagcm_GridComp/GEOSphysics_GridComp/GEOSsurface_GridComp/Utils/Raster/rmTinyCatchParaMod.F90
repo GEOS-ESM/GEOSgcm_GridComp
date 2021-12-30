@@ -3880,7 +3880,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-      if(soil_class_com(n) == 253) then
+      if(POROS(n) >= 0.8) then
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
          if(process_peat) then
