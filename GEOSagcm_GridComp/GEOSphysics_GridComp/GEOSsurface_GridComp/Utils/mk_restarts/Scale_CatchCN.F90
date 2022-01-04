@@ -171,13 +171,13 @@ program Scale_CatchCN
 ! -------------------------------
   read(arg(3),'(a)') fname3
 
-  call MAPL_NCIOGetFileType(fname1, filetype,rc=rc)
+  call MAPL_NCIOGetFileType(fname1, filetype,__RC__)
 
   if (filetype == 0) then
-     call formatter(1)%open(trim(fname1),pFIO_READ,rc=rc)
-     call formatter(2)%open(trim(fname2),pFIO_READ,rc=rc)
-     cfg(1)=formatter(1)%read(rc=rc) 
-     cfg(2)=formatter(2)%read(rc=rc)
+     call formatter(1)%open(trim(fname1),pFIO_READ,__RC__)
+     call formatter(2)%open(trim(fname2),pFIO_READ,__RC__)
+     cfg(1)=formatter(1)%read(__RC__) 
+     cfg(2)=formatter(2)%read(__RC__)
  ! else
  !    open(unit=10, file=trim(fname1),  form='unformatted')
  !    open(unit=20, file=trim(fname2),  form='unformatted')
@@ -203,8 +203,8 @@ program Scale_CatchCN
 
   if (filetype ==0) then
 
-     ntiles = cfg(1)%get_dimension('tile',rc=rc)
-     un_dim3 = cfg(1)%get_dimension('unknown_dim3',rc=rc)
+     ntiles = cfg(1)%get_dimension('tile',__RC__)
+     un_dim3 = cfg(1)%get_dimension('unknown_dim3',__RC__)
      if(un_dim3 == 105) then
         clm45  = .true.
         VAR_COL = VAR_COL_CLM45 
@@ -436,8 +436,8 @@ program Scale_CatchCN
 ! ------------------
   if (filetype ==0) then
      cfg(3) = cfg(2)
-     call formatter(3)%create(fname3,rc=rc)
-     call formatter(3)%write(cfg(3),rc=rc)
+     call formatter(3)%create(fname3,__RC__)
+     call formatter(3)%write(cfg(3),__RC__)
      call writecatchcn_nc4 ( catch(sca), formatter(3) ,cfg(3) )
 !  else
 !     call writecatchcn ( 30,catch(sca) )
