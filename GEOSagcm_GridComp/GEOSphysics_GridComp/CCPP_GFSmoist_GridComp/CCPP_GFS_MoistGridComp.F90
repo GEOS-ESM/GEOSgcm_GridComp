@@ -181,6 +181,13 @@ contains
 
 #include "AddSpec.inc"  ! All MAPL_Add[Export/Import/Internal]Spec
 
+    call MAPL_TimerAdd(GC,    name="INITIALIZE"  ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="DRIVER"         ,RC=STATUS)
+    VERIFY_(STATUS)
+    !call MAPL_TimerAdd(GC,    name="FINALIZE"    ,RC=STATUS)
+    !VERIFY_(STATUS)
+
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,  Finalize,  &
          RC=STATUS)
     VERIFY_(STATUS)
@@ -255,6 +262,12 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
     VERIFY_(STATUS)
 
+! Start the timers
+!-----------------
+
+    call MAPL_TimerOn(MAPL,"TOTAL")
+    call MAPL_TimerOn(MAPL,"INITIALIZE")
+
 ! Call Generic Initialize
 !------------------------
 
@@ -305,6 +318,9 @@ contains
     !   call aer_cloud_init()
     !   call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
     !end if
+
+    call MAPL_TimerOff(MAPL,"INITIALIZE")
+    call MAPL_TimerOff(MAPL,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)
     contains
@@ -390,6 +406,8 @@ contains
     call MAPL_GetObjectFromGC ( GC, STATE, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_TimerOn(STATE,"TOTAL")
+
     ! Get parameters from generic state.
     !-----------------------------------
 
@@ -419,9 +437,13 @@ contains
        VERIFY_(STATUS)
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
        VERIFY_(STATUS)
+    call MAPL_TimerOn(STATE,"DRIVER")
        call MOIST_DRIVER(IM,JM,LM, advanceCount, RC=STATUS)
        VERIFY_(STATUS)
+    call MAPL_TimerOff(STATE,"DRIVER")
     endif
+
+    call MAPL_TimerOff(STATE,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)
 
@@ -1240,16 +1262,34 @@ contains
 
     ! ErrLog Variables
 
+    type (MAPL_MetaComp),      pointer  :: MAPL
     character(len=ESMF_MAXSTR)      :: IAm
     integer                         :: STATUS
     character(len=ESMF_MAXSTR)      :: COMP_NAME
     character(len=ESMF_MAXSTR)      :: errmsg
+
+    Iam = "Finalize"
+    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
+    VERIFY_(STATUS)
+    Iam = trim(COMP_NAME) // Iam
+
+! Retrieve the pointer to the state
+! ---------------------------------
+
+    call MAPL_GetObjectFromGC (GC, MAPL,  RC=STATUS )
+    VERIFY_(STATUS)
+
+    !call MAPL_TimerOn(MAPL,"TOTAL")
+    !call MAPL_TimerOn(MAPL,"FINALIZE")
 
     call gfdl_cloud_microphys_finalize(errmsg=errmsg,errflg=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GenericFinalize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
+
+    !call MAPL_TimerOff(MAPL,"FINALIZE")
+    !call MAPL_TimerOff(MAPL,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)
 
