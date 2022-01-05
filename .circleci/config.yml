@@ -46,6 +46,14 @@ commands:
           name: "Versions, etc."
           command: mpirun --version && << parameters.compiler >> --version && echo $BASEDIR && pwd && ls && echo "$(nproc)"
 
+  compress_artifacts:
+    description: "Compress artifacts"
+    steps:
+      - run:
+          name: "Compress artifacts"
+          command: |
+            gzip -9 /logfiles/*
+
   checkout_fixture:
     description: "Checkout fixture"
     parameters:
@@ -157,5 +165,6 @@ jobs:
           compiler: << parameters.compiler >>
       - buildinstall:
           repo: GEOSgcm
+      - compress_artifacts
       - store_artifacts:
           path: /logfiles
