@@ -2015,7 +2015,7 @@ contains
      real                                :: MINTHICK
      real                                :: MINSHEAR
      real                                :: AKHMMAX
-     real                                :: C_B, LAMBDA_B, ZMAX_B,LOUIS_MEMORY
+     real                                :: C_B, LAMBDA_B, WSPD_MAX, LOUIS_MEMORY
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
@@ -2082,7 +2082,7 @@ contains
      call MAPL_GetPointer(IMPORT,     U,       'U', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     V,       'V', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer( IMPORT, AREA,   'AREA',  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  AREA,   'AREA',  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,VARFLT,  'VARFLT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,  PREF,    'PREF', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, RADLW,   'RADLW', RC=STATUS); VERIFY_(STATUS)
@@ -2112,7 +2112,7 @@ contains
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
      else
        if (LM .eq. 181) then
-         call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=1.5,          RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
@@ -2137,6 +2137,7 @@ contains
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
      call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
                                   C_B = C_B*1.e-7                                                                                    ! update correct scaling x1.e-7
+     call MAPL_GetResource (MAPL, WSPD_MAX,     trim(COMP_NAME)//"_WSPD_MAX:",     default=5.0,          RC=STATUS); VERIFY_(STATUS) ! maximum windspeed in Beljaars TOFD
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS); VERIFY_(STATUS)
@@ -3416,6 +3417,7 @@ contains
 
       call BELJAARS(IM, JM, LM, DT, &
                     LAMBDA_B, C_B,  &
+                    WSPD_MAX,       &
                     U, V, Z, AREA,  &
                     VARFLT, PLE,    &
                     BKV, FKV        )
@@ -4726,6 +4728,7 @@ end subroutine RUN1
 
    subroutine BELJAARS(IM, JM, LM, DT, &
                        LAMBDA_B, C_B,  &
+                       WSPD_MAX,       &
                        U, V, Z, AREA,  &
                        VARFLT, PLE,    &
                        BKV, FKV        )
@@ -4750,6 +4753,7 @@ end subroutine RUN1
       real,    intent(IN   )                    :: DT
       real,    intent(IN   )                    :: LAMBDA_B
       real,    intent(IN   )                    :: C_B
+      real,    intent(IN   )                    :: WSPD_MAX
 
       real,    intent(IN   ), dimension(:,:,: ) :: U
       real,    intent(IN   ), dimension(:,:,: ) :: V
@@ -4762,8 +4766,7 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    ::CBl, FKV_temp
-! Beljaars parameters
+      real    :: CBl, FKV_temp
       real, parameter ::      &
           dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
           dxmax_ss = 12000.0           ! maximum grid length for Beljaars
@@ -4777,9 +4780,8 @@ end subroutine RUN1
                if ( (CBl > 0.0) .AND. Z(I,J,L) < 4.0*LAMBDA_B ) then
                   FKV_temp = Z(I,J,L)*(1.0/LAMBDA_B)
                   FKV_temp = VARFLT(I,J) * exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-           !!!    FKV_temp = (CBl/LAMBDA_B)*min( sqrt(U(I,J,L)**2+V(I,J,L)**2),5.0 )*FKV_temp
-                  FKV_temp = (CBl/LAMBDA_B)*     sqrt(U(I,J,L)**2+V(I,J,L)**2)      *FKV_temp
-
+                  FKV_temp = (CBl/LAMBDA_B)*min( sqrt(U(I,J,L)**2+V(I,J,L)**2),WSPD_MAX )*FKV_temp
+           !!!    FKV_temp = (CBl/LAMBDA_B)*     sqrt(U(I,J,L)**2+V(I,J,L)**2)      *FKV_temp
                   BKV(I,J,L) = BKV(I,J,L) + DT*FKV_temp
                   FKV(I,J,L) = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
                end if

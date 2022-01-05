@@ -1056,7 +1056,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer                             :: IM, JM, LM
   integer                             :: pgwv
-  real                                :: effbeljaars
+  real                                :: effbeljaars, mxwspd, tcrib
   real                                :: effgworo, effgwbkg
   real                                :: CDMBGWD1, CDMBGWD2
   real                                :: bgstressmax
@@ -1318,6 +1318,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       type(dim3) :: Grid, Block
       integer :: blocksize
 #endif
+
+      real, allocatable :: THV(:,:,:)
 
 ! NCEP gwd related vars
       real          :: CDMBGWD(2)
@@ -2103,13 +2105,27 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     end if
 
-    call MAPL_GetPointer( IMPORT, FPBL, 'KPBL', RC=STATUS )
-    VERIFY_(STATUS)
     ! Topographic Form Drag [Beljaars et al (2004)]
     call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=1.0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, mxwspd, Label="BELJAARS_MAX_WSPD:",  default=5.0, RC=STATUS)
+    VERIFY_(STATUS)
+    allocate(THV(IM,JM,LM),stat=status)
+    VERIFY_(STATUS)
+    THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
     DO J=1,JM
        DO I=1,IM
+! Find the PBL height
+             ikpbl = LM
+             do L=LM-1,1,-1
+                tcrib = MAPL_GRAV*(THV(I,J,L)-THV(I,J,LM))*ZM(I,J,L)/ &
+                        (THV(I,J,LM)*MAX(U(I,J,L)**2+V(I,J,L)**2,1.0E-8))
+                if (tcrib >= 0.25) then
+                   ikpbl = L
+                   exit
+                end if
+             end do
+! determine the efolding height
              var_temp = MIN(VARFLT(i,j),150.0) + &
                         MAX(0.,0.2*(VARFLT(i,j)-150.0))
              var_temp = MIN(var_temp, 250.)
@@ -2120,14 +2136,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                      effbeljaars * &
                      MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! Revise e-folding height based on PBL height and topographic std. dev.
-             ikpbl = MAX(1,MIN(LM-1,NINT(FPBL(i,j))))
              Hefold(i,j) = MIN(MAX(2*VARFLT(i,j),ZM(i,j,ikpbl)),1500.)
        END DO
     END DO
     DO L=1, LM
        DO J=1,JM
           DO I=1,IM
-               wsp=SQRT(U(i,j,l)**2 + V(i,j,l)**2)
+               wsp=MIN(mxwspd,SQRT(U(i,j,l)**2 + V(i,j,l)**2))
                ! alpha*beta*Cmd*Ccorr*2.109 = 12.*1.*0.005*0.6*2.109 = 0.0759
                var_temp = 0.0759*EXP(-(ZM(i,j,l)/Hefold(i,j))**1.5)*a2(i,j)* &
                                  ZM(i,j,l)**(-1.2) ! this is greater than zero
@@ -2140,6 +2155,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     END DO
     DUDT_GWD=DUDT_GWD+DUDT_TOFD
     DVDT_GWD=DVDT_GWD+DVDT_TOFD
+    deallocate( THV )
  
     call MAPL_TimerOff(MAPL,"-INTR")
 

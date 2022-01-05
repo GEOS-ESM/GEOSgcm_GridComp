@@ -988,7 +988,7 @@ contains
 
      call MAPL_TerminateImport    ( GC,                                                     &
           SHORT_NAME = (/'DUDT  ','DVDT  ','DWDT  ','DTDT  ','DPEDT ','DQVANA','DQLANA',    &
-                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS  '/),  &
+                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS','VARFLT'/),  &
           CHILD      = SDYN,                                                                &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -1160,13 +1160,16 @@ contains
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
+    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
+    PHIS = PTR
 
+! Pass PHIS into PHYS
+!---------
     call ESMF_StateGet( GIM(PHYS), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
-    PHIS = PTR
 
 ! GWDVAR (standard deviation)...
 !-----------
@@ -1184,7 +1187,15 @@ contains
     Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
     VERIFY_(STATUS)
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
     VARFLT = PTR
+
+! Pass variance into SDYN
+!-----------
+    call ESMF_StateGet( GIM(SDYN), 'VARFLT', FIELD, rc=STATUS )
+    VERIFY_(STATUS)
+    Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
+    VERIFY_(STATUS)
 
 ! ======================================================================
 !ALT: the next section addresses the problem when export variables have been

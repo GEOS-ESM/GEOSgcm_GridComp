@@ -2460,7 +2460,7 @@ contains
 !
 !  AMM - compute TH using T after GWD and write on moist import state TH
     if ( SYNCTQ.ge.1. ) then
-     TFORMOIST = TGWD
+      TFORMOIST = TGWD
      THFORMOIST = TGWD / PK
     endif
 
@@ -2530,7 +2530,7 @@ contains
      do k = 1,LM
      SFORTURB(:,:,k) = SAFTERMOIST(:,:,k) + ZLE(:,:,LM) * MAPL_GRAV
      enddo
-     TFORTURB = THAFMOIST*PK
+      TFORTURB = THAFMOIST*PK
      THFORTURB = THAFMOIST
     endif
 
@@ -2549,10 +2549,10 @@ contains
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
        allocate(DTSURFAFTURB(IM,JM),stat=STATUS);VERIFY_(STATUS)
        call VertInterp(DTSURFAFTURB,(SAFDIFFUSE-SFORTURB)/MAPL_CP,-HGT,-HGT_SURFACE, status)
-       TFORSURF = TFORSURF + DTSURFAFTURB
+       TFORSURF = TFORTURB(:,:,LM) + DTSURFAFTURB
        deallocate(DTSURFAFTURB)
      else
-       TFORSURF = TFORSURF + ( SAFDIFFUSE(:,:,LM) - SFORTURB(:,:,LM) ) / MAPL_CP
+       TFORSURF = TFORTURB(:,:,LM) + ( SAFDIFFUSE(:,:,LM) - SFORTURB(:,:,LM) ) / MAPL_CP
      endif
 ! set THFORCHEM and TFORRAD using turb run 1 updated S - assume change in S is all change in T
      if (SYNCTQ.eq.1.) THFORCHEM = THFORTURB + (SAFDIFFUSE -SFORTURB) / (PK * MAPL_CP)
@@ -2590,7 +2590,7 @@ contains
 !  AMM - Now Update T (for RAD) and T,TH (for CHEM) using S after turb run 2 assume change in S is all change in T
      THFORCHEM = THFORCHEM + ( SAFUPDATE -SAFDIFFUSE ) / (PK * MAPL_CP)
       TFORCHEM = THFORCHEM*PK
-     TFORRAD = TFORRAD + ( SAFUPDATE -SafDIFFUSE) / MAPL_CP
+      TFORRAD  =  TFORCHEM
     endif
 
 !-srf-gf-scheme
