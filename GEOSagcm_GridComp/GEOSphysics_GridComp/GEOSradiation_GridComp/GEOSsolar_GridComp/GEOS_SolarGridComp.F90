@@ -1030,6 +1030,34 @@ contains
        VLOCATION  = MAPL_VLocationCenter,                              __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds_RRTMG_PAR',    &
+       UNITS      = '1' ,                                                    &
+       SHORT_NAME = 'TAULOPAR',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_middle_clouds_RRTMG_PAR', &
+       UNITS      = '1' ,                                                    &
+       SHORT_NAME = 'TAUMDPAR',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_high_clouds_RRTMG_PAR',   &
+       UNITS      = '1' ,                                                    &
+       SHORT_NAME = 'TAUHIPAR',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds_RRTMG_PAR',    &
+       UNITS      = '1' ,                                                    &
+       SHORT_NAME = 'TAUTTPAR',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_net_downward_shortwave_flux_assuming_clear_sky',&
        UNITS      = 'W m-2',                                                 &
        SHORT_NAME = 'RSCS',                                                  &
@@ -1982,17 +2010,24 @@ contains
       real,    dimension(IM,JM)       :: ZTH, SLR
       logical, dimension(IM,JM)       :: daytime
 
-      ! super-band RRTMG cloud fraction exports
+      ! super-layer RRTMG cloud fraction exports
       real, pointer, dimension(:,:)   :: CLDTTSW
       real, pointer, dimension(:,:)   :: CLDHISW
       real, pointer, dimension(:,:)   :: CLDMDSW
       real, pointer, dimension(:,:)   :: CLDLOSW
 
+      ! super-layer RRTMG PAR optical thickness exports
+      real, pointer, dimension(:,:)   :: TAUTTPAR
+      real, pointer, dimension(:,:)   :: TAUHIPAR
+      real, pointer, dimension(:,:)   :: TAUMDPAR
+      real, pointer, dimension(:,:)   :: TAULOPAR
+
 !  DAYTIME ONLY COPY OF VARIABLES
 
       real, pointer, dimension(:  )   :: ALBNR,ALBNF,ALBVR,ALBVF,ZT,SLR1D, &
-                                         UVRR,UVRF,PARR,PARF,NIRR,NIRF,    &
-                                         Ig1D,Jg1D,CLDTS,CLDHS,CLDMS,CLDLS
+                                         UVRR,UVRF,PARR,PARF,NIRR,NIRF,Ig1D,Jg1D, &
+                                         CLDTS,CLDHS,CLDMS,CLDLS, &
+                                         TAUTP,TAUHP,TAUMP,TAULP
       real, pointer, dimension(:,:,:) :: FCLD,TAUI,TAUW,CLIN,RRL,RRI,RQI,RQL,RQR
       real, pointer, dimension(:,:,:) :: DP, PLL
       real, pointer, dimension(:,:,:) :: RAERO
@@ -2197,11 +2232,17 @@ contains
         end do
       end do
 
-      ! super-band RRTMG cloud fraction exports
+      ! super-layer RRTMG cloud fraction exports
       call MAPL_GetPointer(EXPORT, CLDTTSW, 'CLDTTSW', __RC__)
       call MAPL_GetPointer(EXPORT, CLDHISW, 'CLDHISW', __RC__)
       call MAPL_GetPointer(EXPORT, CLDMDSW, 'CLDMDSW', __RC__)
       call MAPL_GetPointer(EXPORT, CLDLOSW, 'CLDLOSW', __RC__)
+
+      ! super-layer RRTMG PAR optical thickness exports
+      call MAPL_GetPointer(EXPORT, TAUTTPAR, 'TAUTTPAR', __RC__)
+      call MAPL_GetPointer(EXPORT, TAUHIPAR, 'TAUHIPAR', __RC__)
+      call MAPL_GetPointer(EXPORT, TAUMDPAR, 'TAUMDPAR', __RC__)
+      call MAPL_GetPointer(EXPORT, TAULOPAR, 'TAULOPAR', __RC__)
 
       call MAPL_TimerOff(MAPL,"-MISC")
 
@@ -2257,11 +2298,12 @@ contains
 !  component needs the LATS, SLR and ZTH from MAPL and the global
 !  gridcolumn indicies Ig and Jg. The outputs are the INTERNAL
 !  variables being refreshed plus four cloud fraction diagnostics
-!  (CLDTTSW, CLDHISW, CLDMDSW, CLDLOSW).
+!  (CLDTTSW, CLDHISW, CLDMDSW, CLDLOSW) & four optical thickness
+!  diagnostics (TAUTTPAR, TAUHIPAR, TAUMDPAR, TAULOPAR).
 !--------------------------------------------------------------
 
       NumInp = size(ImportSpec) + 5
-      NumOut = size(InternalSpec) + 4
+      NumOut = size(InternalSpec) + 8
 
       allocate(SlicesInp(NumInp), NamesInp(NumInp), &
                SlicesOut(NumOut), NamesOut(NumOut), __STAT__)
@@ -2528,21 +2570,29 @@ contains
 
       OUTPUT_VARS_1: do k=1,NumOut
 
-         if (k < NumOut-3) then
+         if (k < NumOut-7) then
             ! internal outputs
             call MAPL_VarSpecGet(InternalSpec(k), &
                DIMS=dims, SHORT_NAME=NamesOut(k), __RC__)
          else
             ! cloud fraction outputs
             dims = MAPL_DIMSHORZONLY
-            if (k == NumOut-3) then
+            if      (k == NumOut-7) then
                NamesOut(k) = "CLDTTSW"
-            else if (k == NumOut-2) then
+            else if (k == NumOut-6) then
                NamesOut(k) = "CLDHISW"
-            else if (k == NumOut-1) then
+            else if (k == NumOut-5) then
                NamesOut(k) = "CLDMDSW"
-            else
+            else if (k == NumOut-4) then
                NamesOut(k) = "CLDLOSW"
+            else if (k == NumOut-3) then
+               NamesOut(k) = "TAUTTPAR"
+            else if (k == NumOut-2) then
+               NamesOut(k) = "TAUHIPAR"
+            else if (k == NumOut-1) then
+               NamesOut(k) = "TAUMDPAR"
+            else
+               NamesOut(k) = "TAULOPAR"
             end if
          end if
 
@@ -2640,6 +2690,14 @@ contains
             CLDMS     => ptr2(1:Num2do,1)               
          case('CLDLOSW')  
             CLDLS     => ptr2(1:Num2do,1)               
+         case('TAUTTPAR')  
+            TAUTP     => ptr2(1:Num2do,1)               
+         case('TAUHIPAR')  
+            TAUHP     => ptr2(1:Num2do,1)               
+         case('TAUMDPAR')  
+            TAUMP     => ptr2(1:Num2do,1)               
+         case('TAULOPAR')  
+            TAULP     => ptr2(1:Num2do,1)               
          end select
 
       enddo OUTPUT_VARS_2
@@ -3444,7 +3502,7 @@ contains
       allocate(O3_R  (size(Q,1),size(Q,2)),__STAT__)
       allocate(CO2_R (size(Q,1),size(Q,2)),__STAT__)
       allocate(CH4_R (size(Q,1),size(Q,2)),__STAT__)
-      ! super-band cloud fractions
+      ! super-layer cloud fractions
       allocate(CLEARCOUNTS (size(Q,1),4),__STAT__)
       ! output fluxes
       allocate(SWUFLX (size(Q,1),size(Q,2)+1),__STAT__)
@@ -3699,6 +3757,7 @@ contains
          LM-LCLDLM+1, LM-LCLDMH+1, NORMFLX, &
          CLEARCOUNTS, SWUFLX, SWDFLX, SWUFLXC, SWDFLXC, &
          NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R,&
+         TAUTP, TAUHP, TAUMP, TAULP, &
          BNDSOLVAR, INDSOLVAR, SOLCYCFRAC)
 
       call MAPL_TimerOff(MAPL,"--RRTMG_RUN")
@@ -3717,7 +3776,7 @@ contains
       ! required outputs
       ! ----------------
 
-      ! convert super-band clearCounts to cloud fractions
+      ! convert super-layer clearCounts to cloud fractions
       CLDTS(:) = 1. - CLEARCOUNTS(:,1)/float(NGPTSW)
       CLDHS(:) = 1. - CLEARCOUNTS(:,2)/float(NGPTSW)
       CLDMS(:) = 1. - CLEARCOUNTS(:,3)/float(NGPTSW)
@@ -3822,13 +3881,13 @@ contains
             ! internal 3D outputs
             call ESMFL_StateGetPointerToData(INTERNAL, ptr3, NamesOut(k), __RC__)
             call ReOrder(BufOut(L1),ptr3,daytime,NumMax,HorzDims,size(ptr3,3),UNPACKIT)
-         else if (k < NumOut-3) then
+         else if (k < NumOut-7) then
             ! internal 2D outputs
             call ESMFL_StateGetPointerToData(INTERNAL, ptr2, NamesOut(k), __RC__)
             call ReOrder(BufOut(L1),ptr2,daytime,NumMax,HorzDims,1,UNPACKIT)
          else
             ! cloud fraction outputs (2D)
-            if (NamesOut(k) == "CLDTTSW") then
+            if      (NamesOut(k) == "CLDTTSW") then
                if (associated(CLDTTSW)) then
                   call ReOrder(BufOut(L1),CLDTTSW,daytime,NumMax,HorzDims,1,UNPACKIT)
                   WHERE (.not.daytime) CLDTTSW = MAPL_UNDEF
@@ -3847,6 +3906,26 @@ contains
                if (associated(CLDLOSW)) then
                   call ReOrder(BufOut(L1),CLDLOSW,daytime,NumMax,HorzDims,1,UNPACKIT)
                   WHERE (.not.daytime) CLDLOSW = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAUTTPAR") then
+               if (associated(TAUTTPAR)) then
+                  call ReOrder(BufOut(L1),TAUTTPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAUTTPAR = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAUHIPAR") then
+               if (associated(TAUHIPAR)) then
+                  call ReOrder(BufOut(L1),TAUHIPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAUHIPAR = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAUMDPAR") then
+               if (associated(TAUMDPAR)) then
+                  call ReOrder(BufOut(L1),TAUMDPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAUMDPAR = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAULOPAR") then
+               if (associated(TAULOPAR)) then
+                  call ReOrder(BufOut(L1),TAULOPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAULOPAR = MAPL_UNDEF
                end if
             end if
          end if
@@ -4553,7 +4632,7 @@ contains
 
          ! TAU[HML] are correct because GETVISTAU produces in-cloud optical thicknesses for
          ! 'effective clouds' extended-out and diluted to the maximum cloud fraction in each
-         ! pressure super-band [LMT].
+         ! pressure super-layers [LMH].
 
          if (associated(TAUH) .or. associated(TAUT) .or. associated(TAUTX)) then
             allocate(aTAUH(IM,JM),__STAT__)
@@ -4582,7 +4661,7 @@ contains
             if (associated(TAUL)) TAUL = aTAUL
          end if
 
-         ! TAUT however is broken because the three super-bands are randomly overlapped
+         ! TAUT however is broken because the three super-layers are randomly overlapped
          ! and with different effective cloud fractions. It has been broken but used for
          ! a long time. It should be considered deprecated. TAUTX below is an improved
          ! version.

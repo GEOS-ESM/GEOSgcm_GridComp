@@ -3345,7 +3345,7 @@ contains
       do I = 1,IM
          IJ = IJ + 1
 
-         ! convert super-band clearCounts to cloud fractions
+         ! convert super-layer clearCounts to cloud fractions
          if(associated(CLDTTLW)) then
             CLDTTLW(I,J) = 1.0 - CLEARCOUNTS(IJ,1)/float(NGPTLW)
          endif
