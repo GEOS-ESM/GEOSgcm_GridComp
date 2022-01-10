@@ -9,7 +9,7 @@
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -v: LBCSV : use a configuration from GEOS5 bcs directory ICA, NL3, NL4, NL5, development or default             
+!     -v: LBCSV : Choose bcs version (ICA, NL3, NL4, NL5, or development)             
 !     -e: EASE : This is optional if catchment.def file is available already or                    
 !         the til file format is pre-Fortuna-2.                                                    
 !     
@@ -105,7 +105,7 @@ integer :: n_threads=1
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                         "
     USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                          "          
     USAGE(7) ="                the til file format is pre-Fortuna-2.                                                   "
-    USAGE(8) ="     -v  LBCSV : use a configuration from GEOS5 bcs directory F25, GM4, ICA, NL3, NL4, NL5, DEV or DEF  "
+    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, or DEV)                              "
 
 ! Process Arguments                            
 !------------------ 
