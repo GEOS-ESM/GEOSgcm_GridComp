@@ -159,7 +159,7 @@ echo "              (ENTER will choose DEF - Default BCS and that is NLv3.)"
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 set lbcsv =  DEF
-if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5', $dummy == 'DEV') set lbcsv = $dummy
+if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5'| $dummy == 'DEV') set lbcsv = $dummy
 
 #######################################################################
 
