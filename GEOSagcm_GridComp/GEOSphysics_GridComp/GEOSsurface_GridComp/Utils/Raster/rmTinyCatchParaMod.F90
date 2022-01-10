@@ -122,13 +122,6 @@ contains
        MODALB  = 'MODIS2'
        process_peat = .true.
        jpl_height   = .true.
-
-    case ("DEF")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       process_peat = .false.
-       jpl_height   = .false.
        
     end select
              
