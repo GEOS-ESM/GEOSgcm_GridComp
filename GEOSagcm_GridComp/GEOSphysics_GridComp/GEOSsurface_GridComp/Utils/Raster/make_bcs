@@ -144,6 +144,8 @@ echo "              ${C2}ICA  -- for /discover/nobackup/ltakacs/bcs/Icarus/"
 echo "              ${C2}NL3  -- for /discover/nobackup/ltakacs/bcs/Icarus-NLv3/"
 echo "              ${C2}NL4  -- for /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4/"
 echo "              ${C2}            equivalent parameter configuration and ancillary data."
+echo "              ${C2}NL5  -- as NL4 + peatlands"
+echo "              ${C2}DEV  -- boundary conditions development branch"
 echo "                                      "
 echo "              NOTE: Due to compiler differences, code improvements and bug fixes that"
 echo "                    have taken place since the above archived BCs were created, some parameter "
@@ -152,11 +154,12 @@ echo "                    Nevertheless, the impact of those differences on scien
 echo "                    the parameter files produced by current source codes can be considered as "
 echo "                    scientifically equivalent to achieved BCs"
 echo "                                      "
-echo "              (OR press ENTER If you want to use the develop version of land BCs.)"
+echo "              (OR press ENTER If you want to use suggested  version of land BCs.)"
+echo "              (ENTER will choose DEF - Default BCS and that is NLv3.)"
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 set lbcsv =  DEF
-if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL4p') set lbcsv = $dummy
+if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5', $dummy == 'DEV') set lbcsv = $dummy
 
 #######################################################################
 
@@ -263,7 +266,7 @@ else
 endif
 
 if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
-     set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
+     set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask_freshwater-lakes.nc
 endif
 
 set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `

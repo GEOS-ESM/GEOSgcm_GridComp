@@ -9,7 +9,7 @@
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -v: LBCSV : use a configuration from GEOS5 bcs directory ICA, NL3, NL4, or NL4p              
+!     -v: LBCSV : use a configuration from GEOS5 bcs directory ICA, NL3, NL4, NL5, development or default             
 !     -e: EASE : This is optional if catchment.def file is available already or                    
 !         the til file format is pre-Fortuna-2.                                                    
 !     
@@ -98,14 +98,14 @@ integer :: n_threads=1
 !   call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
 !   call system('cd ..')
 
-    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE                                "
-    USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                               "
-    USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320                               "
-    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)                         "
-    USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                   "
-    USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                    "          
-    USAGE(7) ="                the til file format is pre-Fortuna-2.                                             "
-    USAGE(8) ="     -v  LBCSV : use a configuration from GEOS5 bcs directory F25, GM4, ICA, NL3, NL4, or NL4p    "
+    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE                                      "
+    USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                                     "
+    USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320                                     "
+    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)                               "
+    USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                         "
+    USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                          "          
+    USAGE(7) ="                the til file format is pre-Fortuna-2.                                                   "
+    USAGE(8) ="     -v  LBCSV : use a configuration from GEOS5 bcs directory F25, GM4, ICA, NL3, NL4, NL5, DEV or DEF  "
 
 ! Process Arguments                            
 !------------------ 
@@ -338,7 +338,7 @@ integer :: n_threads=1
        inquire(file='clsm/ndvi.dat', exist=file_exists)
        if (.not.file_exists)  call gimms_clim_ndvi (nc,nr,gridnamer)
 
-       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies .............4'
+       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies ............4'
   
        ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
        ! call modis_scale_para (ease_grid,gridnamet)
