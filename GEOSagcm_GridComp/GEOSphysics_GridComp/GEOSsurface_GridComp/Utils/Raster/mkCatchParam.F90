@@ -218,16 +218,26 @@ integer :: n_threads=1
        
        if(.not.ease_grid) then  
           inquire(file='clsm/catchment.def', exist=file_exists)
-          if (.not.file_exists) call catchment_def (nc,nr,regrid,dl,gridnamet,gridnamer) 
-          write (log_file,'(a)')'Done creating catchment.def file ..........................1'
+          if (.not.file_exists) then
+             write (log_file,'(a)')'Creating catchment.def file...'
+             call catchment_def (nc,nr,regrid,dl,gridnamet,gridnamer) 
+             write (log_file,'(a)')'Done.'
+          else
+             write (log_file,'(a)')'Using existing catchment.def file.'
+          endif
        endif
        
        ! Creating cti_stats.dat 
        ! ----------------------
        
        inquire(file='clsm/cti_stats.dat', exist=file_exists)
-       if (.not.file_exists) call cti_stat_file (ease_grid,gridnamet, MaskFile)
-       write (log_file,'(a)')'Done creating CTI stat file ...............................2'	 
+       if (.not.file_exists) then
+          write (log_file,'(a)')'Creating CTI stats file...'	 
+          call cti_stat_file (ease_grid,gridnamet, MaskFile)
+          write (log_file,'(a)')'Done.'
+       else
+          write (log_file,'(a)')'Using existing CTI stats file.'
+       endif
        
        ! Creating vegetation classification files
        !-----------------------------------------
@@ -235,25 +245,68 @@ integer :: n_threads=1
        if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
           
           inquire(file='clsm/mosaic_veg_typs_fracs', exist=file_exists)      
-          if (.not.file_exists) call ESA2MOSAIC (nc,nr,gridnamer)
+          if (.not.file_exists) then
+             write (log_file,'(a)')'Creating vegetation types using ESA land cover (MOSAIC/Catch).'
+             call ESA2MOSAIC (nc,nr,gridnamer)
+             write (log_file,'(a)')'Done.'           
+          else
+             write (log_file,'(a)')'Using existing vegetation types file (MOSAIC/Catch).'
+          endif
+             
           inquire(file='clsm/CLM_veg_typs_fracs', exist=file_exists) 
-          if (.not.file_exists) call ESA2CLM (nc,nr,gridnamer)    
+          if (.not.file_exists) then
+             write (log_file,'(a)')'Creating vegetation types using ESA land cover (CatchCNCLM40).'
+             call ESA2CLM (nc,nr,gridnamer)    
+             write (log_file,'(a)')'Done.'           
+          else
+             write (log_file,'(a)')'Using existing vegetation types file (CatchCNCLM40).'
+          endif
+
           inquire(file='clsm/CLM4.5_veg_typs_fracs', exist=file_exists) 
-          if (.not.file_exists) call ESA2CLM_45 (nc,nr,gridnamer)           
+          if (.not.file_exists) then
+             write (log_file,'(a)')'Creating vegetation types using ESA land cover (CatchCNCLM45).'
+             call ESA2CLM_45 (nc,nr,gridnamer)           
+             write (log_file,'(a)')'Done.'           
+          else
+             write (log_file,'(a)')'Using existing vegetation types file (CatchCNCLM45).'
+          endif
+
           write (log_file,'(a)')'Done creating vegetation types using ESA land cover........3'
           
        else
-          
+
           inquire(file='clsm/mosaic_veg_typs_fracs', exist=file_exists)
-           call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
+          if (.not.file_exists) then
+             write (log_file,'(a)')'Creating vegetation types using IGBP SiB2 land cover (MOSAIC/Catch).'
+             call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
+             write (log_file,'(a)')'Done.'           
+          else
+             write (log_file,'(a)')'Using existing vegetation types file (MOSAIC/Catch).'
+          endif
           
-           write (log_file,'(a)')'Done creating vegetation types using IGBP SiB2 land cover..3'
+          ! Per make_bcs, it looks like there are four possible mask files:
+          !
+          ! GEOS5_10arcsec_mask.nc
+          ! global.cat_id.catch.DL
+          ! global.cat_id.catch.GreatLakesCaspian_Updated.DL
+          ! GEOS5_10arcsec_mask_freshwater-lakes.nc
+          !
+          ! If we are in this else block, we must be using one of the latter three masks.
+          ! It looks like these latter masks only work for Catchment and not CatchCNCLM[xx]
+          !
+          ! - reichle, 11 Jan 2022
+          
+          write (log_file,'(a)')'NOTE: The selected mask works only for the Catchment model.'
+          write (log_file,'(a)')'      Vegetation types *not* created for CatchCNCLM[xx].'
+                    
        endif
        
        ! Processing Vegetation Climatology 
        ! ---------------------------------
        
        ! creating mapping arrays if necessary
+
+       write (log_file,'(a,a)')'Creating vegetation climatologies: ', trim(LAIBCS)
        
        if((trim(LAIBCS) == 'MODGEO').or.(trim(LAIBCS) == 'GEOLAND2')) then 
           inquire(file='clsm/lai.GEOLAND2_10-DayClim', exist=file_exists)
@@ -338,13 +391,17 @@ integer :: n_threads=1
        inquire(file='clsm/ndvi.dat', exist=file_exists)
        if (.not.file_exists)  call gimms_clim_ndvi (nc,nr,gridnamer)
 
-       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies .............4'
-  
+       write (log_file,'(a)')'Done.'
+
+       ! -------------------------------------------------
+       
        ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
        ! call modis_scale_para (ease_grid,gridnamet)
        ! NOTE: modis_alb_on_tiles uses monthly climatological raster data on 8640x4320 to produce 
        ! MODIS albedo on tile space. The subroutine was replaced with "modis_alb_on_tiles_high" that process
        ! MODIS1 data on native grid and produces 8/16-day MODIS Albedo climatology
+       
+       write (log_file,'(a,a)')'Mapping albedo on tile space: ',trim(MODALB)
        
        if(MODALB == 'MODIS1') then 
           inquire(file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat', exist=file_exists)
@@ -365,13 +422,17 @@ integer :: n_threads=1
           inquire(file='clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat', exist=file_exists)
           if (.not.file_exists) call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB,gridnamer)
        endif
-       write (log_file,'(a,a,a)')'Done putting ',trim(MODALB), ' Albedo on the tile space  .............5'
+       write (log_file,'(a)')'Done.'
        
        if(.not.F25Tag) then 
           deallocate (maparc30%map)
           deallocate (maparc30%ij_index)
        endif
 
+       ! ---------------------------------------------
+
+       write (log_file,'(a)')'Creating albedo scale factors: ',trim(MODALB)
+       
        inquire(file='clsm/visdf.dat', exist=file_exists)
        if ((redo_modis).or.(.not.file_exists)) then
        !   if(.not.F25Tag) then
@@ -386,15 +447,21 @@ integer :: n_threads=1
         !  endif
        endif
        
-       write (log_file,'(a,a,a)')'Done computing ',trim(MODALB), ' scale factors .......................6'
+       write (log_file,'(a)')'Done.'
 !       tmpstring1 = '-e EASE -g '//trim(gfile) 
 !       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
 !       tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
 
     else      
- 
-       if(SOILBCS=='NGDC') call create_soil_types_files (nc,nr,ease_grid,gridnamet,gridnamer)    
-       if(SOILBCS=='NGDC') write (log_file,'(a)')'Done creating NGDC soil types file .......................7a'	   
+
+       ! this block is for n_threads>1
+       !==============================
+       
+       if(SOILBCS=='NGDC') then
+          write (log_file,'(a)')'Creating NGDC soil types file...'
+          call create_soil_types_files (nc,nr,ease_grid,gridnamet,gridnamer)    
+          write (log_file,'(a)')'Done.'
+       endif
        
        ! Creating soil_param.first and tau_param.dat files that has 2 options: 
        !  1) NGDC soil properties, 2) HWSD-STATSGO2 Soil Properties
@@ -402,48 +469,68 @@ integer :: n_threads=1
        
        inquire(file='clsm/soil_param.first', exist=file_exists)
        if (.not.file_exists) then
+          write (log_file,'(a,a)')'Creating soil parameters: ',trim(SOILBCS)
           if(SOILBCS=='NGDC')  then 
              if(F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
              if(.not.F25Tag) call soil_para_high (nc,nr,regrid,gridnamer)
-          endif
-          
-          if(SOILBCS=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer) 
+          endif          
+          if(SOILBCS=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer)
+          write (log_file,'(a)')'Done.'
+       else
+          write (log_file,'(a,a)')'Using existing soil parameter file.'
        endif
-       write (log_file,'(a,a,a)')'Done computing ',trim(SOILBCS),' soil parameters .......................7'
-       
+              
        
        inquire(file='clsm/ts.dat', exist=file_exists)
        if (.not.file_exists) then
+          write (log_file,'(a,a)')'Creating CLSM model parameters: ',trim(SOILBCS)
           if(SOILBCS=='NGDC') call create_model_para (MaskFile)
           if(SOILBCS=='HWSD') call create_model_para_woesten (MaskFile) 
+          write (log_file,'(a)')'Done.'
+       else
+          write (log_file,'(a,a)')'Using existing CLSM model parameter file.'
        endif
-       write (log_file,'(a,a,a)')'Done computing CLSM model parameters based on ',trim(SOILBCS),'.........8'
 
        ! Commented out this call because 7.5-minute raster file is only used
        ! for plotting purposes
        !  call make_75 (nc,nr,regrid,c_data,gridnamer)
        !    write (log_file,'(a)')'Done creating 7.5 minute raster file ......................'
-       !    write (log_file,'(a)')'Not created 7.5 minute raster file   ......................'
+       write (log_file,'(a)')'NOTE: 7.5 minute raster file not created (only needed for diagnostic plotting).'
+       write (log_file,'(a)')'      Uncomment associated lines in source to generate 7.5 minute raster file.'
        
        inquire(file='clsm/CLM_veg_typs_fracs', exist=file_exists)
        if (file_exists) then
-          
+          write (log_file,'(a)')'Creating CLSM-CN NDep T2m SoilAlb file...'
           call grid2tile_ndep_t2m_alb (nc,nr,gridnamer)  
-          write (log_file,'(a)')'Done computing CLSM-CN NDep T2m SoilAlb ...................9'
-          
+          write (log_file,'(a)')'Done.'
        endif
 
        inquire(file='clsm/CLM4.5_abm_peatf_gdp_hdm_fc', exist=file_exists) 
-       if (.not.file_exists) call CLM45_fixed_parameters (nc,nr,gridnamer)           
-       write (log_file,'(a)')'Done creating CLM4.5_abm_peatf_gdp_hdm_fc ................10'
+       if (.not.file_exists) then
+          write (log_file,'(a)')'Creating CLM4.5_abm_peatf_gdp_hdm_fc file...'
+          call CLM45_fixed_parameters (nc,nr,gridnamer)           
+          write (log_file,'(a)')'Done.'
+       else
+          write (log_file,'(a)')'Using existing CLM4.5_abm_peatf_gdp_hdm_fc file.'
+       endif
 
        inquire(file='clsm/lnfm.dat', exist=file_exists)
-       if (.not.file_exists) call CLM45_clim_parameters (nc,nr,gridnamer)   
-       write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
+       if (.not.file_exists) then
+          write (log_file,'(a)')'Creating CLM4.5 lightning frequency file...'
+          call CLM45_clim_parameters (nc,nr,gridnamer)   
+          write (log_file,'(a)')'Done.'
+       else
+          write (log_file,'(a)')'Using existing CLM4.5 lightning frequency file.'
+       endif
 
        inquire(file='clsm/country_and_state_code.data', exist=file_exists)
-       if (.not.file_exists) call map_country_codes (nc,nr,gridnamer)
-       write (log_file,'(a)')'Done mapping country and state codes .....................12'
+       if (.not.file_exists) then
+          write (log_file,'(a)')'Mapping country and state codes...'
+          call map_country_codes (nc,nr,gridnamer)
+          write (log_file,'(a)')'Done.'
+       else
+          write (log_file,'(a)')'Using country and state codes file.'
+       endif
 
  !      inquire(file='clsm/irrig.dat', exist=file_exists)
  !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
