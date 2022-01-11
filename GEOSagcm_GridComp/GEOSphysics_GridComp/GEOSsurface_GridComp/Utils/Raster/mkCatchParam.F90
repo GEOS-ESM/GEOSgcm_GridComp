@@ -225,6 +225,7 @@ integer :: n_threads=1
           else
              write (log_file,'(a)')'Using existing catchment.def file.'
           endif
+          write (log_file,'(a)')' '
        endif
        
        ! Creating cti_stats.dat 
@@ -238,6 +239,7 @@ integer :: n_threads=1
        else
           write (log_file,'(a)')'Using existing CTI stats file.'
        endif
+       write (log_file,'(a)')' '
        
        ! Creating vegetation classification files
        !-----------------------------------------
@@ -252,6 +254,7 @@ integer :: n_threads=1
           else
              write (log_file,'(a)')'Using existing vegetation types file (MOSAIC/Catch).'
           endif
+          write (log_file,'(a)')' '
              
           inquire(file='clsm/CLM_veg_typs_fracs', exist=file_exists) 
           if (.not.file_exists) then
@@ -261,6 +264,7 @@ integer :: n_threads=1
           else
              write (log_file,'(a)')'Using existing vegetation types file (CatchCNCLM40).'
           endif
+          write (log_file,'(a)')' '
 
           inquire(file='clsm/CLM4.5_veg_typs_fracs', exist=file_exists) 
           if (.not.file_exists) then
@@ -270,9 +274,8 @@ integer :: n_threads=1
           else
              write (log_file,'(a)')'Using existing vegetation types file (CatchCNCLM45).'
           endif
+          write (log_file,'(a)')' '
 
-          write (log_file,'(a)')'Done creating vegetation types using ESA land cover........3'
-          
        else
 
           inquire(file='clsm/mosaic_veg_typs_fracs', exist=file_exists)
@@ -283,6 +286,7 @@ integer :: n_threads=1
           else
              write (log_file,'(a)')'Using existing vegetation types file (MOSAIC/Catch).'
           endif
+          write (log_file,'(a)')' '
           
           ! Per make_bcs, it looks like there are four possible mask files:
           !
@@ -298,7 +302,8 @@ integer :: n_threads=1
           
           write (log_file,'(a)')'NOTE: The selected mask works only for the Catchment model.'
           write (log_file,'(a)')'      Vegetation types *not* created for CatchCNCLM[xx].'
-                    
+          write (log_file,'(a)')' '
+          
        endif
        
        ! Processing Vegetation Climatology 
@@ -392,7 +397,8 @@ integer :: n_threads=1
        if (.not.file_exists)  call gimms_clim_ndvi (nc,nr,gridnamer)
 
        write (log_file,'(a)')'Done.'
-
+       write (log_file,'(a)')' '
+       
        ! -------------------------------------------------
        
        ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
@@ -423,6 +429,7 @@ integer :: n_threads=1
           if (.not.file_exists) call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB,gridnamer)
        endif
        write (log_file,'(a)')'Done.'
+       write (log_file,'(a)')' '
        
        if(.not.F25Tag) then 
           deallocate (maparc30%map)
@@ -448,6 +455,8 @@ integer :: n_threads=1
        endif
        
        write (log_file,'(a)')'Done.'
+       write (log_file,'(a)')' '
+       
 !       tmpstring1 = '-e EASE -g '//trim(gfile) 
 !       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
 !       tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
@@ -461,6 +470,7 @@ integer :: n_threads=1
           write (log_file,'(a)')'Creating NGDC soil types file...'
           call create_soil_types_files (nc,nr,ease_grid,gridnamet,gridnamer)    
           write (log_file,'(a)')'Done.'
+          write (log_file,'(a)')' '
        endif
        
        ! Creating soil_param.first and tau_param.dat files that has 2 options: 
@@ -471,7 +481,7 @@ integer :: n_threads=1
        if (.not.file_exists) then
           write (log_file,'(a,a)')'Creating soil parameters: ',trim(SOILBCS)
           if(SOILBCS=='NGDC')  then 
-             if(F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
+             if(     F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
              if(.not.F25Tag) call soil_para_high (nc,nr,regrid,gridnamer)
           endif          
           if(SOILBCS=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer)
@@ -479,6 +489,7 @@ integer :: n_threads=1
        else
           write (log_file,'(a,a)')'Using existing soil parameter file.'
        endif
+       write (log_file,'(a)')' '
               
        
        inquire(file='clsm/ts.dat', exist=file_exists)
@@ -490,6 +501,7 @@ integer :: n_threads=1
        else
           write (log_file,'(a,a)')'Using existing CLSM model parameter file.'
        endif
+       write (log_file,'(a)')' '
 
        ! Commented out this call because 7.5-minute raster file is only used
        ! for plotting purposes
@@ -497,6 +509,7 @@ integer :: n_threads=1
        !    write (log_file,'(a)')'Done creating 7.5 minute raster file ......................'
        write (log_file,'(a)')'NOTE: 7.5 minute raster file not created (only needed for diagnostic plotting).'
        write (log_file,'(a)')'      Uncomment associated lines in source to generate 7.5 minute raster file.'
+       write (log_file,'(a)')' '
        
        inquire(file='clsm/CLM_veg_typs_fracs', exist=file_exists)
        if (file_exists) then
@@ -504,6 +517,7 @@ integer :: n_threads=1
           call grid2tile_ndep_t2m_alb (nc,nr,gridnamer)  
           write (log_file,'(a)')'Done.'
        endif
+       write (log_file,'(a)')' '       
 
        inquire(file='clsm/CLM4.5_abm_peatf_gdp_hdm_fc', exist=file_exists) 
        if (.not.file_exists) then
@@ -513,7 +527,8 @@ integer :: n_threads=1
        else
           write (log_file,'(a)')'Using existing CLM4.5_abm_peatf_gdp_hdm_fc file.'
        endif
-
+       write (log_file,'(a)')' '
+       
        inquire(file='clsm/lnfm.dat', exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'Creating CLM4.5 lightning frequency file...'
@@ -522,7 +537,8 @@ integer :: n_threads=1
        else
           write (log_file,'(a)')'Using existing CLM4.5 lightning frequency file.'
        endif
-
+       write (log_file,'(a)')' '
+       
        inquire(file='clsm/country_and_state_code.data', exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'Mapping country and state codes...'
@@ -531,7 +547,8 @@ integer :: n_threads=1
        else
           write (log_file,'(a)')'Using country and state codes file.'
        endif
-
+       write (log_file,'(a)')' '
+       
  !      inquire(file='clsm/irrig.dat', exist=file_exists)
  !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
  !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
@@ -541,7 +558,8 @@ integer :: n_threads=1
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'
-              
+       write (log_file,'(a)')' '
+       
 !       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
     endif
 
