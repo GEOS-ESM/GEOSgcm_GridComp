@@ -7,8 +7,7 @@
 #  
 #                             ---- USAGE ----
 # 1) STEP 1 : build the model.
-# 2) STEP 2 : create a link to install/bin from the working directory.
-# 3) STEP 3 : bin/make_bcs
+# 2) STEP 2 : ./make_bcs
 #             Answer the following questions:
 #             a) Enter the Atmospheric Horizontal Resolution Code(s) to build:
 #             b) Select the Land BCs version to use: 
@@ -27,8 +26,8 @@ if ( $1 == noland ) set SKIPLAND = YES
 #                     Set GEOS5/ESMADIR Variables
 #######################################################################
 
-set MAKE_BCS = `echo $cwd`/bin/make_bcs
-set  ESMADIR = `echo $cwd`/bin/ 
+set MAKE_BCS = `echo $cwd`/make_bcs
+set  ESMADIR = `echo $cwd` 
 
 echo ' '
 echo MAKE_BCS: $MAKE_BCS
@@ -59,14 +58,79 @@ set WHITE   = "\033[37m"
 set RESET   = "\033[0m"
 set BOLD    = "\033[1m"
 
-set C1 = $RED
-set C2 = $BLUE
-set CR = $RESET
-
 #######################################################################
 #######################################################################
 
 set pwd = `pwd`
+
+if( -e $HOME/.make_bcs) then
+     set make_bcsinfo = `cat $HOME/.make_bcs`
+     set C1 = $make_bcsinfo[1]
+     set C2 = $make_bcsinfo[2]
+else
+     set C1 = $RED
+     set C2 = $BLUE
+endif
+     set CR = $RESET
+#######################################################################
+#                     Build Directory Locations
+#######################################################################
+
+# Set Current Working Path to make_bcs
+# -------------------------------------
+setenv ARCH `uname -s`
+if ($ARCH == Darwin) then
+   set FINDPATH = realpath
+else
+   set FINDPATH = 'readlink -f'
+endif
+set MAKE_BCS = `$FINDPATH $0`
+
+# Test if GEOSgcm.x or GEOSldas.x are here which means you are in install directory
+if (! -x  GEOSgcm.x && ! -x  GEOSldas.x) then
+   echo "You are trying to run $0 from the wrong directory"
+   echo "Please run from the bin/ directory in your installation"
+   exit 1
+endif
+#######################################################################
+#                 Create Paths for EXP Directorie
+#######################################################################
+echo
+echo "Enter the ${C1}Boundary Conditions Directory Name${CR}:"
+set EXPID = $<
+
+# EXP Directory (for Output Data )
+# --------------------------------------------
+    set check =  FALSE
+while( $check == FALSE )
+  if( -e $HOME/.EXPDIRroot ) then
+         set EXPDIRroot = `cat $HOME/.EXPDIRroot`
+  else
+         set EXPDIRroot = $WRKDIR
+  endif
+  setenv EXPDIR_def $EXPDIRroot/$EXPID
+  echo ""
+  echo "Enter Desired Location for the ${C1}EXPERIMENT${CR} Directory (to contain BC's output)"
+  echo "Hit ENTER to use Default Location:"
+  echo "----------------------------------"
+  echo "Default:  ${C2}${EXPDIR_def}${CR}"
+  set   NUEXPDIR  = $<
+  if( .$NUEXPDIR != . ) then
+       setenv EXPDIR     $NUEXPDIR
+       setenv EXPDIR_def $NUEXPDIR
+  else
+       setenv EXPDIR  $EXPDIR_def
+  endif
+
+  if( "$EXPID" != `basename $EXPDIR` ) then
+       echo "\!\! The ${C1}EXPERIMENT${CR} Directory MUST point to the ${C1}EXPID${CR}: ${C2}${EXPID}${CR}"
+       echo " "
+  else
+      set check = TRUE
+  endif
+end
+mkdir -p $EXPDIR
+
 
 #######################################################################
 #
@@ -563,7 +627,7 @@ set IMO = `echo ${imo}  | awk '{printf "%4.4i", $1}'`
 set JMO = `echo ${jmo}  | awk '{printf "%4.4i", $1}'`
 
 set             BCNAME = DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
-set             BCDIR  = $OUTDIR/$BCNAME.scratch
+set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 
 if(     -e $BCDIR) /bin/rm -r $BCDIR
@@ -588,7 +652,7 @@ setenv ESMADIR $ESMADIR
 cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd/bin
+/bin/ln -s $pwd
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
@@ -738,7 +802,7 @@ else
 	set       BCNAME = CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 endif
 
-set             BCDIR  = $OUTDIR/$BCNAME.scratch
+set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 
 if(     -e $BCDIR) /bin/rm -r $BCDIR
@@ -764,7 +828,7 @@ setenv ESMADIR $ESMADIR
 cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd/bin
+/bin/ln -s $pwd
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
@@ -965,7 +1029,7 @@ setenv ESMADIR $ESMADIR
 cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd/bin
+/bin/ln -s $pwd
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
@@ -1135,7 +1199,7 @@ set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
 set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
 set             BCNAME = SMAP_${EVERSION}_${MGRID}
-set             BCDIR  = $OUTDIR/$BCNAME.scratch
+set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 set           THISGRID = SMAP-${EVERSION}-${MGRID}
 if(     -e $BCDIR) /bin/rm -r $BCDIR
@@ -1160,7 +1224,7 @@ setenv ESMADIR $ESMADIR
 cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd/bin
+/bin/ln -s $pwd
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
 ln -s $l_data CATCH
