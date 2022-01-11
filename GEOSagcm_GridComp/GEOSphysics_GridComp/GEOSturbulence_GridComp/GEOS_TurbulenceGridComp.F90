@@ -2135,9 +2135,9 @@ contains
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=1.02e-7,      RC=STATUS)  ! Value used for Ganymed-4_1 through Heracles-5_4_p3
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.00e-7,      RC=STATUS)  ! Value used with updated GMTED TOPO Data
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
-     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
+     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=2.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
                                   C_B = C_B*1.e-7                                                                                    ! update correct scaling x1.e-7
-     call MAPL_GetResource (MAPL, WSPD_MAX,     trim(COMP_NAME)//"_WSPD_MAX:",     default=5.0,          RC=STATUS); VERIFY_(STATUS) ! maximum windspeed in Beljaars TOFD
+     call MAPL_GetResource (MAPL, WSPD_MAX,     trim(COMP_NAME)//"_WSPD_MAX:",     default=15.0,         RC=STATUS); VERIFY_(STATUS) ! maximum windspeed in Beljaars TOFD
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS); VERIFY_(STATUS)

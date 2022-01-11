@@ -2106,9 +2106,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
 
     ! Topographic Form Drag [Beljaars et al (2004)]
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=1.0, RC=STATUS)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=0.0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, mxwspd, Label="BELJAARS_MAX_WSPD:",  default=5.0, RC=STATUS)
+    call MAPL_GetResource( MAPL, mxwspd, Label="BELJAARS_MAX_WSPD:",  default=15.0, RC=STATUS)
     VERIFY_(STATUS)
     allocate(THV(IM,JM,LM),stat=status)
     VERIFY_(STATUS)
