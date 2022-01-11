@@ -338,7 +338,7 @@ integer :: n_threads=1
        inquire(file='clsm/ndvi.dat', exist=file_exists)
        if (.not.file_exists)  call gimms_clim_ndvi (nc,nr,gridnamer)
 
-       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies ............4'
+       write (log_file,'(a,a,a)')'Done computing ', trim(LAIBCS),' vegetation climatologies .............4'
   
        ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
        ! call modis_scale_para (ease_grid,gridnamet)
