@@ -69,6 +69,8 @@ set CR = $RESET
 set pwd = `pwd`
 
 #######################################################################
+#
+# Atmospheric Horizontal Resolution (HRCODE)
 
 HRCODE:
 echo " "
@@ -134,6 +136,11 @@ if( $HRCODE == o ) then
 endif
 
 #######################################################################
+#
+# Land bcs version (LBCSV)
+
+# set default land bcs version
+set lbcsv = NL3
 
 LBCSV:
 echo
@@ -153,11 +160,15 @@ echo "                    Nevertheless, the impact of these differences on scien
 echo "                    the parameter files produced by current source code is considered to be"
 echo "                    scientifically equivalent to the corresponding archived BCs"
 echo "                                      "
-echo "              OR press ENTER to select NL3 (current default)."
+echo "              OR press ENTER to select $lbcsv (current default)."
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
-set lbcsv =  NL3
-if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5'| $dummy == 'DEV') set lbcsv = $dummy
+if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5'| $dummy == 'DEV') then
+    set lbcsv = $dummy
+else
+    echo "You selected lbcsv=$dummy   !!!! Invalid Version, stopping !!!! "
+    exit  
+endif
 
 #######################################################################
 
@@ -165,6 +176,10 @@ if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES
     set orslvs = O1
 
 else
+
+#######################################################################
+#
+# Ocean Horizontal Resolution (ORSLV)
 
 ORSLV:
     
