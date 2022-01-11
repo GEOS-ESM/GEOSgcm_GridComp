@@ -1256,6 +1256,13 @@ contains
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'cosine_of_the_solar_zenith_angle_of_Solar_REFRESH',     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'COSZSW',                                                &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
         SHORT_NAME = 'CLDTMP',                                               &
         LONG_NAME  = 'cloud_top_temperature',                                &
         UNITS      = 'K',                                                    &
@@ -2022,6 +2029,9 @@ contains
       real, pointer, dimension(:,:)   :: TAUMDPAR
       real, pointer, dimension(:,:)   :: TAULOPAR
 
+      ! cosine solar zenith angle used by REFRESH
+      real, pointer, dimension(:,:)   :: COSZSW
+
 !  DAYTIME ONLY COPY OF VARIABLES
 
       real, pointer, dimension(:  )   :: ALBNR,ALBNF,ALBVR,ALBVF,ZT,SLR1D, &
@@ -2232,6 +2242,9 @@ contains
         end do
       end do
 
+      ! cosine solar zenith angle used by REFRESH
+      call MAPL_GetPointer(EXPORT, COSZSW, 'COSZSW', __RC__)
+
       ! super-layer RRTMG cloud fraction exports
       call MAPL_GetPointer(EXPORT, CLDTTSW, 'CLDTTSW', __RC__)
       call MAPL_GetPointer(EXPORT, CLDHISW, 'CLDHISW', __RC__)
@@ -2269,6 +2282,9 @@ contains
          daytime = .true.
          NumLit  = size(ZTH)
       end if
+
+      ! write out the cosine solar zenith angle actually used by REFRESH
+      if (associated(COSZSW)) COSZSW = ZTH
 
 !  Create a balancing strategy. This is a collective call on the communicator
 !  of the current VM. The original, unbalanced local work consists of (OrgLen)
