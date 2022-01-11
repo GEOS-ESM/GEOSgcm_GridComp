@@ -2349,20 +2349,18 @@ contains
                    ALLOC_TCZPBL = .TRUE.
       endif
 
-      if (SMTH_HGT /= 0) then
+      if (SMTH_HGT > 0) then
          ! Use Pressure Thickness at the surface to determine index
          SMTH_LEV=LM
-         if (SMTH_HGT > 0.0) then
-          do L=LM,1,-1
-           do J=1,JM
-            do I=1,IM
-              if ( (SMTH_LEV(I,J) == LM) .AND. ((ZLE(I,J,L)-ZLE(I,J,LM)) >= SMTH_HGT) ) then
-                SMTH_LEV(I,J)=L
-              end if
-            enddo
+         do L=LM,1,-1
+          do J=1,JM
+           do I=1,IM
+             if ( (SMTH_LEV(I,J) == LM) .AND. ((ZLE(I,J,L)-ZLE(I,J,LM)) >= SMTH_HGT) ) then
+               SMTH_LEV(I,J)=L
+             end if
            enddo
           enddo
-         endif
+         enddo
       else
          SMTH_LEV=LM-5
       end if
@@ -2374,9 +2372,8 @@ contains
          ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! height above the surface 
       enddo
       ZSM = ZL0
-      where (SMTH_LEV .eq. LM)
-        ZSM(:,:,LM) = ZL0(:,:,LM-1)*0.25 + ZL0(:,:,LM  )*0.75
-      end where
+      if (SMTH_HGT >= 0) then
+      ZSM(:,:,LM) = ZL0(:,:,LM-1)*0.25 + ZL0(:,:,LM  )*0.75
       do J=1,JM
        do I=1,IM
          do L=LM-1,SMTH_LEV(I,J),-1
@@ -2384,6 +2381,7 @@ contains
          end do
        end do
       end do
+      end if
 
       ! Layer height, pressure, and virtual temperatures
       !-------------------------------------------------
@@ -2413,11 +2411,10 @@ contains
       USM = U
       VSM = V
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
-      where (SMTH_LEV .eq. LM)
-        TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-        USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
-        VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
-      end where
+      TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+      USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
+      VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
+      if (SMTH_HGT >= 0) then
       do J=1,JM
        do I=1,IM
          do L=LM-1,SMTH_LEV(I,J),-1
@@ -2427,6 +2424,7 @@ contains
          end do
        end do
       end do
+      end if
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 

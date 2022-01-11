@@ -1322,7 +1322,7 @@ contains
          tep = tep + (pceff + 0.5*(1.-pceff)*(1.+TANH(lts-18.)))*MAPL_ALHL * dqp/MAPL_CP
 !                           Set pceff to 1 where LTS is high
 !           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
-                                                            ! of condensation heating that gets applied to parcel
+!                                                           ! of condensation heating that gets applied to parcel
 
 
 ! If parcel temperature (tep) colder than env (t2)
