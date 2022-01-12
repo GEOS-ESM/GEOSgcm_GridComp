@@ -63,15 +63,11 @@ set BOLD    = "\033[1m"
 
 set pwd = `pwd`
 
-if( -e $HOME/.make_bcs) then
-     set make_bcsinfo = `cat $HOME/.make_bcs`
-     set C1 = $make_bcsinfo[1]
-     set C2 = $make_bcsinfo[2]
-else
-     set C1 = $RED
-     set C2 = $BLUE
-endif
-     set CR = $RESET
+set C1 = $RED
+set C2 = $BLUE
+set CR = $RESET
+
+
 #######################################################################
 #                     Build Directory Locations
 #######################################################################
@@ -96,7 +92,7 @@ endif
 #                 Create Paths for EXP Directorie
 #######################################################################
 echo
-echo "Enter the ${C1}Boundary Conditions Directory Name${CR}:"
+echo "Enter the ${C1}EXPERIMENT ID${CR}:"
 set EXPID = $<
 
 # EXP Directory (for Output Data )
@@ -229,8 +225,9 @@ set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5'| $dummy == 'DEV') then
     set lbcsv = $dummy
+else if ( $dummy == '' ) then
 else
-    echo "You selected lbcsv=$dummy   !!!! Invalid Version, stopping !!!! "
+    echo "You selected lbcsv=$dummy   \!\!\!\!  Invalid Version, stopping \!\!\!\!  "
     exit  
 endif
 
@@ -337,13 +334,13 @@ else if ( $orslv == O2 | $orslv == O3 | $orslv == CS ) then
     
 else
 
-    echo " !!!! Invalid Ocean Resolution, stopping !!!! "
+    echo " \!\!\!\! Invalid Ocean Resolution, stopping \!\!\!\! "
     exit
 
 endif
 
 if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
-     set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask_freshwater-lakes.nc
+     set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
 endif
 
 set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `
@@ -1262,7 +1259,7 @@ endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
 /bin/cp til/SMAP_${EVERSION}_${MGRID}_${RS}.til clsm.${IM}x${JM}
-/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.TIL clsm.${IM}x${JM}
+##/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.TIL clsm.${IM}x${JM}
 
 cd clsm.${IM}x${JM}
    /bin/mv irrig.dat irrigation_${RS}_DE.dat

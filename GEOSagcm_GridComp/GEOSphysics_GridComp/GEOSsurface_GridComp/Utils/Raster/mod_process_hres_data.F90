@@ -5754,7 +5754,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
        if(count_pix(i,3) > 0.) abm_int = NINT(abm  (i) / count_pix(i,3))
        if(count_pix(i,4) > 0.) hdm_r   = hdm   (i) / count_pix(i,4)
              
-       write (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
+       write (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
 
     end do
 
