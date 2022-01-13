@@ -225,10 +225,11 @@ integer :: n_threads=1
           else
              write (log_file,'(a)')'Using existing catchment.def file.'
           endif
-          write (log_file,'(a)')' '
        else 
-             write (log_file,'(a)')'Ease grid. Step 1'
+             write (log_file,'(a)')'Ease grid. '
+             write (log_file,'(a)')'Done. Step 1'
        endif
+       write (log_file,'(a)')' '
        
        ! Creating cti_stats.dat 
        ! ----------------------

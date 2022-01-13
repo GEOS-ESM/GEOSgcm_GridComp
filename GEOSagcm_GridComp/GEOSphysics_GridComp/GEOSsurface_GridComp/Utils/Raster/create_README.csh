@@ -38,10 +38,6 @@ set myusage=`head -1 clsm/mkCatchParam.log | tail -1`
 set NTILES=`head -1 clsm/catchment.def | tail -1`
 set NGLOBAL=`head -1 til/${gfile}.til | cut -c1-12`
 set mygrid=`echo $myusage | cut -d'g' -f2 | cut -d '-' -f1`
-cvs status src/mkCatchParam.F90 > clsm/TagInfo
-#echo GMU_OCT10_SM >> clsm/TagInfo
-echo `head -7 clsm/TagInfo | tail -1` | cut -d':' -f2 | cut -d'(' -f1 > clsm/TagName
-/bin/rm clsm/Tag*
 
 # Set Mask/Topo speifics
 ########################
