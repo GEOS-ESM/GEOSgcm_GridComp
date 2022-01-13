@@ -1,3 +1,5 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
 program SaltIntSplitter
 
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
@@ -43,7 +45,8 @@ program SaltIntSplitter
   character*256        :: IceFileName
   integer              :: dimSizes(3)
   integer              :: filetype,nVars
-
+  character*256        :: Iam = "SaltIntSplitter"
+  integer :: status
 !---------------------------------------------------------------------------
 
   I = iargc()
@@ -130,7 +133,7 @@ program SaltIntSplitter
            write(*,*)"Writing ",trim(var_name),ndims
            
            if (ndims == 1) then
-              call MAPL_VarRead(InFmt,var_name,varIn)
+              call MAPL_VarRead(InFmt,var_name,varIn, __RC__)
               varOut(:) = varIn(:)
               select case (var_name)
               case ('HSKINI','SSKINI','TSKINI') ! sea ice vars
@@ -152,31 +155,31 @@ program SaltIntSplitter
               if (dataType == pFIO_REAL64) then ! R8 vars only from coupled 
                  if (var_name(1:2) == 'FR') then ! FR dim changes from 6 to 5
                     do j=2,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j-1)
                     enddo 
                  else
                     do j=1,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j)
                     enddo 
                  endif
               else if (dimSizes(2) == 2) then ! AMIP
-                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=1)
+                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=1, __RC__)
                  call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=1)
-                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=2)
+                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=2, __RC__)
                  call MAPL_VarWrite(WaterFmt,var_name,varIn,offset1=1)
               else
                  if (var_name == 'TSKINI') then 
                     do j=1,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j)
                     enddo 
                  else
-                    call MAPL_VarRead(InFmt,var_name,varIn,offset1=1)
+                    call MAPL_VarRead(InFmt,var_name,varIn,offset1=1, __RC__)
                     call MAPL_VarWrite(WaterFmt,var_name,varIn,offset1=1)
                     do j=2,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j-1)
                     enddo 
                  endif 
@@ -191,10 +194,10 @@ program SaltIntSplitter
               do k=1,dimSizes(3)
                  do j=1,dimSizes(2)
                     if (dataType == pFIO_REAL64) then 
-                       call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j,offset2=k)
+                       call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j,offset2=k, __RC__)
                        call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j,offset2=k)
                     else
-                       call MAPL_VarRead(InFmt,var_name,varIn,offset1=j,offset2=k)
+                       call MAPL_VarRead(InFmt,var_name,varIn,offset1=j,offset2=k, __RC__)
                        call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j,offset2=k)
                     endif
                  enddo

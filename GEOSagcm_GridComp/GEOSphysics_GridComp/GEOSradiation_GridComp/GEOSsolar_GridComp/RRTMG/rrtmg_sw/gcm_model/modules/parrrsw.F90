@@ -16,7 +16,6 @@
 
 !  name     type     purpose
 ! -----  :  ----   : ----------------------------------------------
-! mxlay  :  integer: maximum number of layers
 ! mg     :  integer: number of original g-intervals per spectral band
 ! nbndsw :  integer: number of spectral bands
 ! naerec :  integer: number of aerosols (iaer=6, ecmwf aerosol option)
@@ -25,13 +24,10 @@
 ! ngsNN  :  integer: cumulative number of g-intervals per band
 !------------------------------------------------------------------
 
-      integer , parameter :: mxlay  = 603   !jplay, klev
       integer , parameter :: mg     = 16     !jpg
       integer , parameter :: nbndsw = 14     !jpsw, ksw
       integer , parameter :: naerec  = 6     !jpaer
-      integer , parameter :: mxmol  = 39
       integer , parameter :: nstr   = 2
-      integer , parameter :: nmol   = 7
 ! Use for 112 g-point model   
       integer , parameter :: ngptsw = 112    !jpgpt
 ! Use for 224 g-point model   

@@ -25,17 +25,17 @@
 ! bpade  :  real   : Inverse of Pade constant
 !------------------------------------------------------------------
 
-      integer , parameter :: ntbl = 10000
+      integer, parameter :: ntbl = 10000
 
-      real , parameter :: tblint = 10000.0 
+      real, parameter :: tblint = 10000.0 
 
-      real , parameter :: od_lo = 0.06 
+      real, parameter :: od_lo = 0.06 
 
-      real  :: tau_tbl
-      real  , dimension(0:ntbl) :: exp_tbl
+      real :: tau_tbl
+      real, dimension(0:ntbl) :: exp_tbl
 
-      real , parameter :: pade = 0.278 
-      real  :: bpade
+      real, parameter :: pade = 0.278 
+      real :: bpade
 
       end module rrsw_tbl
 

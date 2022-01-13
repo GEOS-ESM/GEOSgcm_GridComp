@@ -1075,8 +1075,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV  ','QLLS','QILS','QLCN',              &
-                         'QICN','CLLS','CLCN'         /),          &
+         SHORT_NAME  = (/'QV   ','QLLS ','QILS ','QLCN ',              &
+                         'QICN ','CLLS ','CLCN ','WTHV2'/),           &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1216,11 +1216,11 @@ contains
                          'FCLD    ',  'LS_PRCP ', 'CNV_MFC ',     &
                          'CNV_MFD ',  'QL      ', 'PFL_CN  ',     &
                          'PFL_LSAN',  'PFI_CN  ', 'PFI_LSAN',     &
-                         'QCTOT   ',  'CNV_QC  ', 'LFR     ',     &
+                         'QCTOT   ',  'CNV_QC  ',                 &
                          'QLTOT   ',  'QLCN    ', 'QICN    ',     &
                          'DQLDT   ',  'QITOT   ', 'REV_CN  ',     &
                          'REV_LS  ',  'REV_AN  ', 'LFR_GCC ',     &
-                         'BYNCY   ',  'DQIDT   ', 'QI      ',     &
+                                      'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
                          'QILS    ',  'DQRL    ', 'CNV_FRC ',     &
                          'RI      ',  'RL      '            /),   &
@@ -1274,11 +1274,14 @@ contains
 ! Moist Imports
 !--------------
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'KH     ','KPBL   ','KPBL_SC',            &
-                         'TKE    ','ZPBL   '/),           &
-         DST_ID      = MOIST,                                      &
-         SRC_ID      = TURBL,                                      &
+    call MAPL_AddConnectivity ( GC,                                          &
+         SHORT_NAME  = (/'KH      ', 'KPBL    ', 'KPBL_SC   ',               &
+                         'TKE     ', 'ZPBL    ',' TKESHOC   ', 'EDMF_FRC  ', &
+                         'HL2     ', 'HL3     ', 'W2        ',               &
+                         'W3      ', 'HLQT    ', 'WQT       ',               &
+                         'WHL     ', 'QT2     ', 'QT3       '/),             &
+         DST_ID      = MOIST,                                                &
+         SRC_ID      = TURBL,                                                &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -1714,6 +1717,27 @@ contains
     call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="U",       RC=STATUS )
     VERIFY_(STATUS)
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                                RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'TKESHOC'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'QT2'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
 ! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
