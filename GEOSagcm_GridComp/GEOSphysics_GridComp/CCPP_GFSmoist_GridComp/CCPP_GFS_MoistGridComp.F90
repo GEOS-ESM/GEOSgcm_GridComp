@@ -473,6 +473,7 @@ contains
       real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
       real, pointer, dimension(:,:  ) :: CN_PRCP,SC_PRCP,TT_PRCP, PRECU
       real, pointer, dimension(:,:,:) :: RH1, RHX, RH2, XQLLS, XQLCN, XCLLS, XCLCN, XQILS, XQICN
+      real, pointer, dimension(:,:,:) :: WTHV2
 
       !Record vars at top pf moist
       real, pointer, dimension(:,:  ) :: TVQ0, TVQ1
@@ -615,6 +616,7 @@ contains
       call MAPL_GetPointer(EXPORT, Vx0,     'VX0'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, TSx0,    'TSX0'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, FRLANDx0,'FRLANDX0' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, WTHV2,   'WTHV2', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
       if(associated(Qx0       )) Qx0        = Q
       if(associated(QLLSx0    )) QLLSx0     = QLLS
@@ -1155,6 +1157,7 @@ contains
       enddo
 
       ! Exports
+      if (associated(WTHV2  ))   WTHV2   = 0.0  ! SHOC not used so buoyancy flux for SHOC irrelevant; only to satisfy connectivity in GEOS_PhysicsGridComp.F90
       if (associated(XQLLS  ))   XQLLS   = QLLS
       if (associated(XQILS  ))   XQILS   = QILS
       if (associated(XCLLS  ))   XCLLS   = CLLS
