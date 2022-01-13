@@ -7,7 +7,8 @@
 #  
 #                             ---- USAGE ----
 # 1) STEP 1 : build the model.
-# 2) STEP 2 : ./make_bcs
+# 2) STEP 2 : go to your install/bin
+# 3) STEP 3 : ./make_bcs
 #             Answer the following questions:
 #             a) Enter the Atmospheric Horizontal Resolution Code(s) to build:
 #             b) Select the Land BCs version to use: 
