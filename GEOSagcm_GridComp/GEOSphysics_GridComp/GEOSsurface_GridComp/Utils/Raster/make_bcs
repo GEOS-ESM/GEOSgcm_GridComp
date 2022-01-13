@@ -607,7 +607,7 @@ while ("$group" == "")
    
 end
 
-mkdir -p $pwd/logs
+mkdir -p $EXPDIR/logs
 
 #######################################################################
 #                        LatLon Case
@@ -635,8 +635,8 @@ echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$pwd/logs/$BCNAME.log
-#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -811,8 +811,8 @@ if ($HRCODE == c2880 | $HRCODE == c3072 | $HRCODE == c5760) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$pwd/logs/$BCNAME.log
-#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
@@ -881,8 +881,8 @@ set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
 cat << _EOF_ > $BCJOB-2
 #!/bin/csh -x
 
-#SBATCH --output=$pwd/logs/$BCNAME-2.log
-#SBATCH --error=$pwd/logs/$BCNAME-2.err
+#SBATCH --output=$EXPDIR/logs/$BCNAME-2.log
+#SBATCH --error=$EXPDIR/logs/$BCNAME-2.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1012,8 +1012,8 @@ else
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$pwd/logs/$BCNAME.log
-#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1208,8 +1208,8 @@ echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$pwd/logs/$BCNAME.log
-#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
