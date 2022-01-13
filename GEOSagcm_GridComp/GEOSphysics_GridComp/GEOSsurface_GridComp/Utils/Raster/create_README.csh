@@ -41,7 +41,6 @@ set mygrid=`echo $myusage | cut -d'g' -f2 | cut -d '-' -f1`
 cvs status src/mkCatchParam.F90 > clsm/TagInfo
 #echo GMU_OCT10_SM >> clsm/TagInfo
 echo `head -7 clsm/TagInfo | tail -1` | cut -d':' -f2 | cut -d'(' -f1 > clsm/TagName
-set MYTAG=`head -1 clsm/TagName | tail -1`
 /bin/rm clsm/Tag*
 
 # Set Mask/Topo speifics
@@ -1056,7 +1055,7 @@ cat << _EOV2_ > clsm/veg2
        3.2.3 CLM/CLM4.5, CLM/CLM4.5-carbon, CLM4.5 and CLM4.5-carbon vegetation types and fractions 
 	 file names: CLM_veg_typs_fracs and  CLM4.5_veg_typs_fracs
 	 do n = 1, ${NTILES} 
-	 read (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')       &
+	 read (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')       &
             tile_index,pfaf_code,                    &
 	    CLM-C_pt1,CLM-C_pt2,CLM-C_st1,CLM-C_st2, &
 	    CLM-C_pf1,CLM-C_pf2,CLM-C_sf1,CLM-C_sf2, &
@@ -1156,7 +1155,7 @@ cat << _EOV2_ > clsm/veg2
              population density (HDM)
          file name: CLM4.5_abm_peatf_gdp_hdm_fc
          do n = 1, ${NTILES}
-               read (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)') &
+               read (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)') &
                TID, CID, ABM, PEATF, GDP, HDM, FC
          end do
 
@@ -1559,7 +1558,7 @@ cat << _EOF2_ > clsm/README3
 	 file name : country_and_state_code.data
 
 	 do n = 1, ${NTILES}
-		read (10,'(i8, 2I4, 1x, a48, a20)')         &     
+		read (10,'(i10, 2I4, 1x, a48, a20)')         &     
                 tile_index, cnt_code, st_code, CNT_NAME, ST_NAME
   
    8.3 References https://gadm.org
@@ -1570,7 +1569,6 @@ cat << _EOF2_ > clsm/README3
 
 APPENDIX I - mkCatchParam tag, input options, and log
 
-CVS TAG : $MYTAG
 
                                   mkCatchParam LOG
                                   ~~~~~~~~~~~~~~~~

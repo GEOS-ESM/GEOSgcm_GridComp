@@ -248,7 +248,7 @@ integer :: n_threads=1
           
           inquire(file='clsm/mosaic_veg_typs_fracs', exist=file_exists)      
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating vegetation types using ESA land cover (MOSAIC/Catch).'
+             write (log_file,'(a)')'Creating vegetation types using ESA land cover (MOSAIC/Catch)...'
              call ESA2MOSAIC (nc,nr,gridnamer)
              write (log_file,'(a)')'Done.'           
           else
@@ -258,7 +258,7 @@ integer :: n_threads=1
              
           inquire(file='clsm/CLM_veg_typs_fracs', exist=file_exists) 
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating vegetation types using ESA land cover (CatchCNCLM40).'
+             write (log_file,'(a)')'Creating vegetation types using ESA land cover (CatchCNCLM40)...'
              call ESA2CLM (nc,nr,gridnamer)    
              write (log_file,'(a)')'Done.'           
           else
@@ -268,7 +268,7 @@ integer :: n_threads=1
 
           inquire(file='clsm/CLM4.5_veg_typs_fracs', exist=file_exists) 
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating vegetation types using ESA land cover (CatchCNCLM45).'
+             write (log_file,'(a)')'Creating vegetation types using ESA land cover (CatchCNCLM45)...'
              call ESA2CLM_45 (nc,nr,gridnamer)           
              write (log_file,'(a)')'Done.'           
           else
@@ -280,7 +280,7 @@ integer :: n_threads=1
 
           inquire(file='clsm/mosaic_veg_typs_fracs', exist=file_exists)
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating vegetation types using IGBP SiB2 land cover (MOSAIC/Catch).'
+             write (log_file,'(a)')'Creating vegetation types using IGBP SiB2 land cover (MOSAIC/Catch)...'
              call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
              write (log_file,'(a)')'Done.'           
           else
