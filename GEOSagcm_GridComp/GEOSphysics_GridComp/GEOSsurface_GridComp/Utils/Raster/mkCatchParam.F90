@@ -314,7 +314,7 @@ integer :: n_threads=1
        
        ! creating mapping arrays if necessary
 
-       write (log_file,'(a,a)')'Creating vegetation climatologies: ', trim(LAIBCS),'...'
+       write (log_file,'(a,a)')'Creating vegetation climatologies ... ', trim(LAIBCS)
        
        if((trim(LAIBCS) == 'MODGEO').or.(trim(LAIBCS) == 'GEOLAND2')) then 
           inquire(file='clsm/lai.GEOLAND2_10-DayClim', exist=file_exists)
@@ -410,7 +410,7 @@ integer :: n_threads=1
        ! MODIS albedo on tile space. The subroutine was replaced with "modis_alb_on_tiles_high" that process
        ! MODIS1 data on native grid and produces 8/16-day MODIS Albedo climatology
        
-       write (log_file,'(a,a)')'Mapping albedo on tile space: ',trim(MODALB),'...'
+       write (log_file,'(a,a)')'Mapping albedo on tile space ... ',trim(MODALB)
        
        if(MODALB == 'MODIS1') then 
           inquire(file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat', exist=file_exists)
@@ -441,7 +441,7 @@ integer :: n_threads=1
 
        ! ---------------------------------------------
 
-       write (log_file,'(a)')'Creating albedo scale factors:',trim(MODALB),'...'
+       write (log_file,'(a)')'Creating albedo scale factors ... ',trim(MODALB)
        
        inquire(file='clsm/visdf.dat', exist=file_exists)
        if ((redo_modis).or.(.not.file_exists)) then
@@ -482,7 +482,7 @@ integer :: n_threads=1
        
        inquire(file='clsm/soil_param.first', exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a,a)')'Creating soil parameters:',trim(SOILBCS),'...'
+          write (log_file,'(a,a)')'Creating soil parameters ... ',trim(SOILBCS)
           if(SOILBCS=='NGDC')  then 
              if(     F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
              if(.not.F25Tag) call soil_para_high (nc,nr,regrid,gridnamer)
@@ -497,7 +497,7 @@ integer :: n_threads=1
        
        inquire(file='clsm/ts.dat', exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a,a)')'Creating CLSM model parameters: ',trim(SOILBCS),'...'
+          write (log_file,'(a,a)')'Creating CLSM model parameters ...  ',trim(SOILBCS)
           if(SOILBCS=='NGDC') call create_model_para (MaskFile)
           if(SOILBCS=='HWSD') call create_model_para_woesten (MaskFile) 
           write (log_file,'(a)')'Done. Step 10'           
