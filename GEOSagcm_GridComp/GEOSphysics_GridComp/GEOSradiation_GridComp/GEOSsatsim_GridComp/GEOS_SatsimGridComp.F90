@@ -3028,7 +3028,7 @@ contains
     integer  :: ncolumns
 
     character(len=ESMF_MAXSTR) :: GRIDNAME
-    character(len=4)           :: imchar
+    character(len=5)           :: imchar
     character(len=2)           :: dateline
     integer                    :: imsize,nn
 
@@ -3071,9 +3071,10 @@ contains
     imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
     read(imchar,*) imsize
     if(dateline.eq.'CF') imsize = imsize*4
-    Ncolumns = MIN(30,MAX(1,INT(4*5760*4/imsize)))
-    call MAPL_GetResource(MAPL,Ncolumns,LABEL="SATSIM_NCOLUMNS:",default=Ncolumns,  RC=STATUS)
-    VERIFY_(STATUS)
+    associate (default_Ncolumns => MIN(30,MAX(1,INT(4*5760*4/imsize))) )
+      call MAPL_GetResource(MAPL,Ncolumns,LABEL="SATSIM_NCOLUMNS:",default=default_Ncolumns,  RC=STATUS)
+      VERIFY_(STATUS)
+    end associate
 
     call MAPL_GetResource(MAPL,Npoints_it,LABEL="SATSIM_POINTS_PER_ITERATION:",default=-999,   RC=STATUS)
     VERIFY_(STATUS)

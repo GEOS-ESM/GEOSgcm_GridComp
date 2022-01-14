@@ -129,7 +129,7 @@ contains
        end select
     endif
 
-    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, RC=STATUS )
+    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, __RC__ )
     DUAL_OCEAN = iDUAL_OCEAN /= 0
 
     OCNd = 0
