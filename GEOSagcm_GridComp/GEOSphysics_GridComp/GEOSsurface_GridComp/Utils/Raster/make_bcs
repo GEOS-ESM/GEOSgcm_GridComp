@@ -6,15 +6,17 @@
 #    specified combination of atmospheric and ocean grid resolutions.  
 #  
 #                             ---- USAGE ----
-# 1) STEP 1 : build the model.
-# 2) STEP 2 : go to your install/bin
-# 3) STEP 3 : ./make_bcs
-#             Answer the following questions:
-#             a) Enter the Atmospheric Horizontal Resolution Code(s) to build:
-#             b) Select the Land BCs version to use: 
-#             c) Enter the Ocean Resolution Code(s) to build:
-#                (Note this selection is not relevant to land-only EASE grids)
-#             d) Enter sponsor code.
+#
+#  STEP 1 : Build the model (GCM or GEOSldas).
+#  STEP 2 : cd [install-path]/bin
+#  STEP 3 : source g5_modules
+#  STEP 4 : ./make_bcs 
+#               Answer the following interactive questions:
+#               a) Enter the Atmospheric Horizontal Resolution Code(s) to build.
+#               b) Select the Land BCs version to use. 
+#               c) Enter the Ocean Resolution Code(s) to build.
+#                  (Note this selection is not relevant to land-only EASE grids)
+#               d) Enter sponsor code.
 #  
 #######################################################################
 

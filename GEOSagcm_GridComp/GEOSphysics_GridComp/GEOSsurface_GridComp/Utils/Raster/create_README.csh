@@ -39,8 +39,8 @@ set NTILES=`head -1 clsm/catchment.def | tail -1`
 set NGLOBAL=`head -1 til/${gfile}.til | cut -c1-12`
 set mygrid=`echo $myusage | cut -d'g' -f2 | cut -d '-' -f1`
 
-# Set Mask/Topo speifics
-########################
+# Set Mask/Topo specifics
+#########################
 set MYMASK=`head -6 clsm/mkCatchParam.log | tail -1`
 set NPfafs=291284
 
