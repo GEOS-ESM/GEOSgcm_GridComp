@@ -938,33 +938,61 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDTTSW',                                   &
-        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_sw',        &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDTTSW',                                              &
+        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_sw_REFRESH',           &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDHISW',                                   &
-        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_sw',   &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDHISW',                                              &
+        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_sw_REFRESH',      &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDMDSW',                                   &
-        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_sw',    &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDMDSW',                                              &
+        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_sw_REFRESH',       &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDLOSW',                                   &
-        LONG_NAME  = 'low-level_cloud_area_fraction_rrtmg_sw',    &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDLOSW',                                              &
+        LONG_NAME  = 'low-level_cloud_area_fraction_rrtmg_sw_REFRESH',       &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDTTSWHB',                                            &
+        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_sw_HEARTBEAT',         &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDHISWHB',                                            &
+        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_sw_HEARTBEAT',    &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDMDSWHB',                                            &
+        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_sw_HEARTBEAT',     &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDLOSWHB',                                            &
+        LONG_NAME  = 'low-level_cloud_area_fraction_rrtmg_sw_HEARTBEAT',     &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds',              &
@@ -1029,33 +1057,33 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                              __RC__)
 
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds_RRTMG_PAR',    &
-       UNITS      = '1' ,                                                    &
-       SHORT_NAME = 'TAULOPAR',                                              &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds_RRTMG_PAR_REFRESH',    &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAULOPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
 
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'in_cloud_optical_thickness_of_middle_clouds_RRTMG_PAR', &
-       UNITS      = '1' ,                                                    &
-       SHORT_NAME = 'TAUMDPAR',                                              &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_middle_clouds_RRTMG_PAR_REFRESH', &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAUMDPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
 
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'in_cloud_optical_thickness_of_high_clouds_RRTMG_PAR',   &
-       UNITS      = '1' ,                                                    &
-       SHORT_NAME = 'TAUHIPAR',                                              &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_high_clouds_RRTMG_PAR_REFRESH',   &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAUHIPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
 
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds_RRTMG_PAR',    &
-       UNITS      = '1' ,                                                    &
-       SHORT_NAME = 'TAUTTPAR',                                              &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds_RRTMG_PAR_REFRESH',    &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAUTTPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_net_downward_shortwave_flux_assuming_clear_sky',&
@@ -1698,22 +1726,39 @@ contains
 
     call MAPL_GetPointer(IMPORT, PREF, 'PREF', __RC__)
 
-! Determine the model level seperating high-middle and low-middle clouds
+! Determine the model level separating high-middle and low-middle clouds
 !-----------------------------------------------------------------------
 
     _ASSERT(PRS_MID_HIGH > PREF(1)     , 'mid-high pressure band boundary too high!')
     _ASSERT(PRS_LOW_MID  > PRS_MID_HIGH, 'pressure band misordering!')
     _ASSERT(PRS_LOW_MID  < PREF(LM)    , 'low-mid pressure band boundary too low!')
     
+    ! find mid-high interface level
     k = 1
     do while ( PREF(k) < PRS_MID_HIGH )
       k=k+1
     end do
     LCLDMH = k
-    do while ( PREF(k) < PRS_LOW_MID  )
+    ! Guaranteed that LCLDMH > 1 (by first ASSERT above)
+    !    and that PREF(LCLDMH) >= PRS_MID_HIGH (by while loop)
+
+    ! find low-mid interface level
+    do while ( PREF(k) < PRS_LOW_MID )
       k=k+1
     end do
     LCLDLM = k
+    ! Guaranteed that LCLDLM <= LM (by third assert above)
+    !    and that PREF(LCLDLM) >= PRS_LOW_MID (by while loop)
+
+    ! But it's still possible that LCLDLM == LCLDMH if the
+    ! interface pressures are too close. We now ASSERT to
+    ! prevent this.
+    _ASSERT(LCLDMH < LCLDLM, 'PRS_LOW_MID and PRS_MID_HIGH are too close!')
+
+    ! now we have 1 < LCLDMH < LCLDLM <= LM and can use:
+    !    layers [1,      LCLDMH-1] are in high pressure band
+    !    layers [LCLDMH, LCLDLM-1] are in mid  pressure band
+    !    layers [LCLDLM, LM      ] are in low  pressure band
 
     call MAPL_TimerOff(MAPL,"PRELIMS",__RC__)
 
@@ -4428,6 +4473,22 @@ contains
                                          TAUH,TAUM,TAUL,TAUT,TAUTX, &
                                          CLDTMP,CLDPRS
 
+      ! super-layer RRTMG cloud fraction exports on heartbeat
+      real, pointer, dimension(:,:)   :: CLDTTSWHB
+      real, pointer, dimension(:,:)   :: CLDHISWHB
+      real, pointer, dimension(:,:)   :: CLDMDSWHB
+      real, pointer, dimension(:,:)   :: CLDLOSWHB
+
+      ! locals supporting CLD??SWHB
+      integer :: rpart, pncol, ncld
+      real    :: plmid(LM), tlev(LM-1), cfac(LM)
+      integer, allocatable, dimension(:)     :: icld, jcld
+      real,    allocatable, dimension(:)     :: alat
+      real,    allocatable, dimension(:,:)   :: zmid, play, cldfrac, ciwp, clwp
+      logical, allocatable, dimension(:,:,:) :: cldymcl
+      real,    allocatable, dimension(:,:,:) :: ciwpmcl, clwpmcl
+      integer, allocatable, dimension(:,:)   :: clearCounts
+
       type (ESMF_FieldBundle)         :: BUNDLE
       type (ESMF_Field)               :: FIELD
       type (ESMF_TimeInterval)        :: DELT
@@ -4557,6 +4618,11 @@ contains
       call MAPL_GetPointer(EXPORT  , CLDTMP,     'CLDTMP',     __RC__)
       call MAPL_GetPointer(EXPORT  , CLDPRS,     'CLDPRS',     __RC__)
 
+      call MAPL_GetPointer(EXPORT  , CLDLOSWHB,  'CLDLOSWHB',  __RC__)
+      call MAPL_GetPointer(EXPORT  , CLDMDSWHB,  'CLDMDSWHB',  __RC__)
+      call MAPL_GetPointer(EXPORT  , CLDHISWHB,  'CLDHISWHB',  __RC__)
+      call MAPL_GetPointer(EXPORT  , CLDTTSWHB,  'CLDTTSWHB',  __RC__)
+
       if (associated(FCLD)) FCLD = CLIN
 
       if (associated(CLDH) .or. associated(CLDT) .or. associated(TAUTX)) then
@@ -4590,6 +4656,171 @@ contains
          allocate(aCLDT(IM,JM),__STAT__)
          aCLDT = 1. - (1-aCLDH)*(1-aCLDM)*(1-aCLDL)
          if (associated(CLDT)) CLDT = aCLDT
+      end if
+
+      ! CLD??SWHB:
+      ! Special heartbeat versions of RRTMG generated cloud fractions ...
+      ! These are expensive because they require a call to the cloud generator,
+      ! which normally is only done inside the IRRAD and SOLAR REFRESHes (and
+      ! for the SOLAR case only on the sunlit portion of the globe). We provide
+      ! these here as a means of validation, but they should not be regularly
+      ! exported since they will slow down SOLAR considerably, and since the
+      ! equivalent REFRESH-generated versions (without the "HB" suffix), which
+      ! are updated only at the REFRESH frequency (~hourly), should be fine in
+      ! most cases (especially for longer term averages).
+      ! NB: Filled on all globe unlike the RESFRESH version CLD??SW.
+
+      if (associated(CLDLOSWHB) .or. associated(CLDMDSWHB) .or. &
+          associated(CLDHISWHB) .or. associated(CLDTTSWHB)) then
+
+         ! default to clear columns which do not need subcolumn generation
+         if (associated(CLDLOSWHB)) CLDLOSWHB = 0.
+         if (associated(CLDMDSWHB)) CLDMDSWHB = 0.
+         if (associated(CLDHISWHB)) CLDHISWHB = 0.
+         if (associated(CLDTTSWHB)) CLDTTSWHB = 0.
+
+         ! partition size pncol for cloudy columns to conserve memory & improve efficiency
+         call MAPL_GetResource(MAPL,rpart,'RRTMGSW_PARTITION_SIZE:',DEFAULT=0,__RC__)
+         if (rpart > 0) then
+            pncol = rpart
+         else
+            pncol = 2
+         end if
+
+         ! space for partition:
+         ! The partition stores up cloudy gridcolumns to process in batch
+         allocate(icld   (          pncol),__STAT__)
+         allocate(jcld   (          pncol),__STAT__)
+         allocate(zmid   (LM,       pncol),__STAT__)
+         allocate(alat   (          pncol),__STAT__)
+         allocate(play   (LM,       pncol),__STAT__)
+         allocate(cldfrac(LM,       pncol),__STAT__)
+         allocate(ciwp   (LM,       pncol),__STAT__)
+         allocate(clwp   (LM,       pncol),__STAT__)
+         allocate(cldymcl(LM,ngptsw,pncol),__STAT__)
+         allocate(ciwpmcl(LM,ngptsw,pncol),__STAT__)
+         allocate(clwpmcl(LM,ngptsw,pncol),__STAT__)
+         allocate(clearCounts(4,    pncol),__STAT__)
+
+         ! start with empty partition
+         ncld = 0
+
+! after this test ... make sure DOY used consistently by refresh and update in model
+! I guess its only now being used in update, but was its use in refresh really consistent?
+! this may be a non-zero-diff bug fix later ... co2 by DOY = hb but DOY for RRTMG should be for REFRESH style time
+
+         ! loop over domain
+         do j = 1,JM
+            do i = 1,IM
+
+               ! load up cloudy columns to partition
+               if (any(CLIN(i,j,:) > 0.) then
+
+                  ! cloudy column
+                  ncld = ncld + 1
+                  icld (ncld) = i
+                  jcld (ncld) = j
+                  alat (ncld) = LATS(i,j)
+
+                  ! Note: unlike RRTMG we do not reverse the levels. This is a
+                  ! technicality and will not alter the POPULATION stats of the
+                  ! generation and saves time (see notes under cloud_subcol_gen).
+                  ! If an exact replication of RRTMGSW is required, can reverse
+                  ! vertical ordering here ... but an exact replication will
+                  ! also require saving the exact cldfrac used by the REFRESH
+                  ! into the internal state for use here as well.
+
+                  plmid = 0.5 * (PLL(i,j,0:LM-1) + PLL(i,j,1:LM))
+                  play   (:,ncld) = plmid / 100.  ! hPa
+                  cldfrac(:,ncld) = CLIN(i,j,:)
+
+                  ! cloud water paths converted from g/g to g/m^2
+                  cfac = 1.02 * 100 * (PLL(i,j,1:LM)-PLL(i,j,0:LM-1))
+                  ciwp(:,ncld) = cfac * RQI(i,j,:)
+                  clwp(:,ncld) = cfac * RQL(i,j,:)
+
+                  ! interior interface temperatures
+                  ! * "0-based" but extema at 0 and LM not needed for zmid;
+                  ! * RRTMG call code uses layer delP (DPR) but any multiple
+                  ! of it, specifically cfac, is equivalent.
+
+                  tlev = (T(i,j,1:LM-1) * cfac(2:LM) + T(i,j,2:LM) * cfac(1:LM-1)) &
+                       / (                cfac(2:LM) +               cfac(1:LM-1))
+
+                  ! Calculate the LAYER (mid-point) heights.
+                  ! The interlayer distances are needed for the calculations
+                  ! of inter-layer correlation for cloud overlapping. Only
+                  ! *relative* distances matter, so wolog set zmid(LM) = 0.
+                  zmid(LM,ncld) = 0.
+                  do k = LM-1, 1, -1
+                     ! dz ~ RT/g x dp/p by hysrostatic eqn and ideal gas eqn.
+                     ! The jump from LAYER k+1 to k is centered on LEVEL k
+                     !   since the LEVEL indices are zero-based
+                     zmid(k,ncld) = zmid(k+1,ncld) + MAPL_RGAS * tlev(k) / MAPL_GRAV &
+                                        * (plmid(k+1) - plmid(k)) / PLL(i,j,k)
+                  end do
+
+               end if ! cloudy column
+               
+               ! nothing to process yet?
+               if (ncld == 0) cycle
+
+               ! process the partition?
+               if (ncld == pncol               & ! partition is full so process
+                   .or. i == IM .and. j == JM  & ! partition is partially full
+                                               &     but no more gridcolumns
+                                               &     so process what have.
+                  ) then
+
+                  ! McICA subcolumn generation
+                  call generate_stochastic_clouds( &
+                     pncol, ncld, ngptsw, LM, &
+                     zmid, alat, doy, &
+                     play, cldfrac, ciwp, clwp, 1.e-20, &
+                     cldymcl, ciwpmcl, clwpmcl, &
+                     seed_order=[4,3,2,1])
+
+                  ! for super-layer cloud fractions
+                  call clearCounts_threeBand( &
+                     pncol, ncld, ngptsw, LM, LCLDLM, LCLDMH, cldymcl, &
+                     clearCounts)
+
+                  ! convert super-layer clearCounts to cloud fractions
+                  if (associated(CLDTTSWHB)) then
+                     do n = 1,ncld
+                        CLDTTSWHB(icld(n),jcld(n)) = 1. - clearCounts(n,1)/float(ngptsw)
+                     end do
+                  end if
+                  if (associated(CLDHISWHB)) then
+                     do n = 1,ncld
+                        CLDHISWHB(icld(n),jcld(n)) = 1. - clearCounts(n,2)/float(ngptsw)
+                     end do
+                  end if
+                  if (associated(CLDMDSWHB)) then
+                     do n = 1,ncld
+                        CLDMDSWHB(icld(n),jcld(n)) = 1. - clearCounts(n,3)/float(ngptsw)
+                     end do
+                  end if
+                  if (associated(CLDLOSWHB)) then
+                     do n = 1,ncld
+                        CLDLOSWHB(icld(n),jcld(n)) = 1. - clearCounts(n,4)/float(ngptsw)
+                     end do
+                  end if
+
+                  ! restart partition
+                  ncld = 0
+
+               end if  ! process partition
+
+            end do ! i
+         end do ! j
+
+         ! clean up
+         deallocate(icld,jcld,__STAT__)
+         deallocate(zmid,alat,play,cldfrac,ciwp,clwp,__STAT__)
+         deallocate(cldymcl,ciwpmcl,clwpmcl,__STAT__)
+         deallocate(clearCounts,__STAT__)
+
       end if
 
       if (associated(TAUI) .or. associated(TAUW) .or. associated(TAUR) .or. associated(TAUS).or. &

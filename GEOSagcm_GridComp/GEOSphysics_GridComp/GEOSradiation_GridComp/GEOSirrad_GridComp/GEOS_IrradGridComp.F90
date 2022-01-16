@@ -783,33 +783,33 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDTTLW',                                   &
-        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_lw',        &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDTTLW',                                         &
+        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_lw_REFRESH',      &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDHILW',                                   &
-        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_lw',   &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDHILW',                                         &
+        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_lw_REFRESH', &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDMDLW',                                   &
-        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_lw',    &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDMDLW',                                         &
+        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_lw_REFRESH',  &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDLOLW',                                   &
-        LONG_NAME  = 'low_level_cloud_area_fraction_rrtmg_lw',    &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDLOLW',                                         &
+        LONG_NAME  = 'low_level_cloud_area_fraction_rrtmg_lw_REFRESH',  &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
 
 !  Irrad does not have a "real" internal state. To update the net_longwave_flux
 !  due to the change of surface temperature every time step, we keep 
@@ -1701,27 +1701,39 @@ contains
    REFF(:,:,:,KRAIN  ) = RR * 1.0e6
    REFF(:,:,:,KSNOW  ) = RS * 1.0e6
 
-! Determine the model level seperating high and middle clouds
-!------------------------------------------------------------
+! Determine the model level separating high-middle and low-middle clouds
+!-----------------------------------------------------------------------
 
-   LCLDMH = 1
-   do K = 1, LM
-      if( PREF(K) >= PRS_MID_HIGH ) then
-         LCLDMH = K
-         exit
-      end if
+   _ASSERT(PRS_MID_HIGH > PREF(1)     , 'mid-high pressure band boundary too high!')
+   _ASSERT(PRS_LOW_MID  > PRS_MID_HIGH, 'pressure band misordering!')
+   _ASSERT(PRS_LOW_MID  < PREF(LM)    , 'low-mid pressure band boundary too low!')
+
+   ! find mid-high interface level
+   k = 1
+   do while ( PREF(k) < PRS_MID_HIGH )
+     k=k+1
    end do
+   LCLDMH = k
+   ! Guaranteed that LCLDMH > 1 (by first ASSERT above)
+   !    and that PREF(LCLDMH) >= PRS_MID_HIGH (by while loop)
 
-! Determine the model level seperating low and middle clouds
-!-----------------------------------------------------------
-
-   LCLDLM = LM
-   do K = 1, LM
-      if( PREF(K) >= PRS_LOW_MID  ) then
-         LCLDLM = K
-         exit
-      end if
+   ! find low-mid interface level
+   do while ( PREF(k) < PRS_LOW_MID )
+     k=k+1
    end do
+   LCLDLM = k
+   ! Guaranteed that LCLDLM <= LM (by third assert above)
+   !    and that PREF(LCLDLM) >= PRS_LOW_MID (by while loop)
+
+   ! But it's still possible that LCLDLM == LCLDMH if the
+   ! interface pressures are too close. We now ASSERT to
+   ! prevent this.
+   _ASSERT(LCLDMH < LCLDLM, 'PRS_LOW_MID and PRS_MID_HIGH are too close!')
+
+   ! now we have 1 < LCLDMH < LCLDLM <= LM and can use:
+   !    layers [1,      LCLDMH-1] are in high pressure band
+   !    layers [LCLDMH, LCLDLM-1] are in mid  pressure band
+   !    layers [LCLDLM, LM      ] are in low  pressure band
 
    call MAPL_GetPointer(EXPORT, CLDTTLW, 'CLDTTLW', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, CLDHILW, 'CLDHILW', RC=STATUS); VERIFY_(STATUS)
