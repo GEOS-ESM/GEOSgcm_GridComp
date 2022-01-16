@@ -4768,8 +4768,8 @@ contains
                ! process the partition?
                if (ncld == pncol               & ! partition is full so process
                    .or. i == IM .and. j == JM  & ! partition is partially full
-                                               &     but no more gridcolumns
-                                               &     so process what have.
+                                               & !   but no more gridcolumns
+                                               & !   so process what have.
                   ) then
 
                   ! McICA subcolumn generation
