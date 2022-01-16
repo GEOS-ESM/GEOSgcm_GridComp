@@ -4765,12 +4765,10 @@ contains
                ! nothing to process yet?
                if (ncld == 0) cycle
 
-               ! process the partition?
-               if (ncld == pncol               & ! partition is full so process
-                   .or. i == IM .and. j == JM  & ! partition is partially full
-                                               & !   but no more gridcolumns
-                                               & !   so process what have.
-                  ) then
+               ! process the partition if its full or if its partially
+               !   full but there are no more gridcolumns left.
+
+               if (ncld == pncol .or. i == IM .and. j == JM) then
 
                   ! McICA subcolumn generation
                   call generate_stochastic_clouds( &
