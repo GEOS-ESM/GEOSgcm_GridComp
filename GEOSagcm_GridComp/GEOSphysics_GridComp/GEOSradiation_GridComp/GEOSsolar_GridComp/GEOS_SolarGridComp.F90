@@ -4714,7 +4714,7 @@ contains
             do i = 1,IM
 
                ! load up cloudy columns to partition
-               if (any(CLIN(i,j,:) > 0.) then
+               if (any(CLIN(i,j,:) > 0.)) then
 
                   ! cloudy column
                   ncld = ncld + 1
@@ -4812,8 +4812,8 @@ contains
 
                end if  ! process partition
 
-            end do ! i
-         end do ! j
+            end do  ! i
+         end do  ! j
 
          ! clean up
          deallocate(icld,jcld,__STAT__)
@@ -4821,7 +4821,7 @@ contains
          deallocate(cldymcl,ciwpmcl,clwpmcl,__STAT__)
          deallocate(clearCounts,__STAT__)
 
-      end if
+      end if  ! CLD??SWHB
 
       if (associated(TAUI) .or. associated(TAUW) .or. associated(TAUR) .or. associated(TAUS).or. &
           associated(TAUL) .or. associated(TAUM) .or. associated(TAUH) .or. &
