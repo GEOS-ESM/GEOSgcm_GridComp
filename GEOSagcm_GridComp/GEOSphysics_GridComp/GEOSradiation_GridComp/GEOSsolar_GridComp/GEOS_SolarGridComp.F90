@@ -4786,22 +4786,22 @@ contains
                   ! convert super-layer clearCounts to cloud fractions
                   if (associated(CLDTTSWHB)) then
                      do n = 1,ncld
-                        CLDTTSWHB(icld(n),jcld(n)) = 1. - clearCounts(n,1)/float(ngptsw)
+                        CLDTTSWHB(icld(n),jcld(n)) = 1. - clearCounts(1,n)/float(ngptsw)
                      end do
                   end if
                   if (associated(CLDHISWHB)) then
                      do n = 1,ncld
-                        CLDHISWHB(icld(n),jcld(n)) = 1. - clearCounts(n,2)/float(ngptsw)
+                        CLDHISWHB(icld(n),jcld(n)) = 1. - clearCounts(2,n)/float(ngptsw)
                      end do
                   end if
                   if (associated(CLDMDSWHB)) then
                      do n = 1,ncld
-                        CLDMDSWHB(icld(n),jcld(n)) = 1. - clearCounts(n,3)/float(ngptsw)
+                        CLDMDSWHB(icld(n),jcld(n)) = 1. - clearCounts(3,n)/float(ngptsw)
                      end do
                   end if
                   if (associated(CLDLOSWHB)) then
                      do n = 1,ncld
-                        CLDLOSWHB(icld(n),jcld(n)) = 1. - clearCounts(n,4)/float(ngptsw)
+                        CLDLOSWHB(icld(n),jcld(n)) = 1. - clearCounts(4,n)/float(ngptsw)
                      end do
                   end if
 
