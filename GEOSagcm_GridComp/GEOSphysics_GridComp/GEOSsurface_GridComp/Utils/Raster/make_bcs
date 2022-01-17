@@ -9,8 +9,7 @@
 #
 #  STEP 1 : Build the model (GCM or GEOSldas).
 #  STEP 2 : cd [install-path]/bin
-#  STEP 3 : source g5_modules
-#  STEP 4 : ./make_bcs 
+#  STEP 3 : ./make_bcs 
 #               Answer the following interactive questions:
 #               a) Enter the Atmospheric Horizontal Resolution Code(s) to build.
 #               b) Select the Land BCs version to use. 
@@ -21,6 +20,9 @@
 #######################################################################
 
 # process input arguments
+
+# When "noland" argument is used the script stops after deriving surface tile files. 
+#  ./make_bcs noland
 
 set SKIPLAND = NO
 if ( $1 == noland ) set SKIPLAND = YES
@@ -72,70 +74,35 @@ set CR = $RESET
 
 
 #######################################################################
-#                     Build Directory Locations
-#######################################################################
-
-# Set Current Working Path to make_bcs
-# -------------------------------------
-setenv ARCH `uname -s`
-if ($ARCH == Darwin) then
-   set FINDPATH = realpath
-else
-   set FINDPATH = 'readlink -f'
-endif
-set MAKE_BCS = `$FINDPATH $0`
-
-# Test if GEOSgcm.x or GEOSldas.x are here which means you are in install directory
-if (! -x  GEOSgcm.x && ! -x  GEOSldas.x) then
-   echo "You are trying to run $0 from the wrong directory"
-   echo "Please run from the bin/ directory in your installation"
-   exit 1
-endif
-#######################################################################
 #                 Create Paths for EXP Directorie
 #######################################################################
-echo
-echo "Enter the ${C1}EXPERIMENT ID${CR}:"
-set EXPID = $<
 
 # EXP Directory (for Output Data )
 # --------------------------------------------
-    set check =  FALSE
-while( $check == FALSE )
-  if( -e $HOME/.EXPDIRroot ) then
-         set EXPDIRroot = `cat $HOME/.EXPDIRroot`
-  else
-         set EXPDIRroot = $WRKDIR
-  endif
-  setenv EXPDIR_def $EXPDIRroot/$EXPID
+  setenv EXPDIR /discover/nobackup/$USER/BC_PACKAGE
+
   echo ""
   echo "Enter Desired Location for the ${C1}EXPERIMENT${CR} Directory (to contain BC's output)"
   echo "Hit ENTER to use Default Location:"
   echo "----------------------------------"
-  echo "Default:  ${C2}${EXPDIR_def}${CR}"
-  set   NUEXPDIR  = $<
-  if( .$NUEXPDIR != . ) then
-       setenv EXPDIR     $NUEXPDIR
-       setenv EXPDIR_def $NUEXPDIR
-  else
-       setenv EXPDIR  $EXPDIR_def
-  endif
-
-  if( "$EXPID" != `basename $EXPDIR` ) then
-       echo "\!\! The ${C1}EXPERIMENT${CR} Directory MUST point to the ${C1}EXPID${CR}: ${C2}${EXPID}${CR}"
-       echo " "
-  else
-      set check = TRUE
-  endif
-end
-mkdir -p $EXPDIR
-
+  echo "Default:  ${C2}${EXPDIR}${CR}"
+  set   NEWEXPDIR  = $<
+   if( $NEWEXPDIR == '' ) then
+       mkdir -p $EXPDIR
+       if($EXPDIR == '') then
+       else
+         echo "${C1}\!\!\!\!  NOTE: Choosen directory not empty.              \!\!\!\!${CR} " 
+         echo "${C1}\!\!\!\!        Same resolution BC's will be overwritten. \!\!\!\!${CR} " 
+       endif
+   else
+       mkdir -p $NEWEXPDIR
+       setenv EXPDIR $NEWEXPDIR
+   endif
 
 #######################################################################
 #
 # Atmospheric Horizontal Resolution (HRCODE)
 
-HRCODE:
 echo " "
 echo "Enter 1-5 character alphanumeric code to select specific ${C1}Atmospheric Horizontal Resolution ${CR} to be built:"
 echo "------------------------------------------------------------------------------------------------------------------"
@@ -159,6 +126,7 @@ echo "   ${C2}                          c5760 -- 1/64 deg (${C1}1.5-km${C2}) ${C
 echo " "
 #echo "   ${C2}o --  other${CR} Lat/Lon or Cube"
 echo " "
+HRCODE:
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:upper:]" "[:lower:]"`
 set HRCODES =  $dummy[1]
@@ -188,7 +156,11 @@ foreach HRCODE ($dummy)
        $HRCODE != 'm3'      & \
        $HRCODE != 'm9'      & \
        $HRCODE != 'm36'     & \
-       $HRCODE != 'm25') goto HRCODE
+       $HRCODE != 'm25')    then  
+       echo " "
+       echo " ${C1} Wrong choice, try again:${CR}"
+       goto HRCODE
+   endif
    if( $HRCODE != "$HRCODES" ) set HRCODES = `echo ${HRCODES} ${HRCODE}`
 end
 
@@ -203,10 +175,10 @@ endif
 # Land bcs version (LBCSV)
 
 # set default land bcs version
-set lbcsv = NL3
 
+set lbcsv = NL3
 LBCSV:
-echo
+echo " "
 echo "Enter 3-character alphanumeric code to select specific ${C1}Land BCs version ${CR} to use:"
 echo "      Choose: ${C2}F25 : Fortuna-2_5"
 echo "              ${C2}GM4 : Ganymed-4_0  (/discover/nobackup/ltakacs/bcs/Ganymed-4_0/)"
@@ -223,7 +195,8 @@ echo "                    Nevertheless, the impact of these differences on scien
 echo "                    the parameter files produced by current source code is considered to be"
 echo "                    scientifically equivalent to the corresponding archived BCs"
 echo "                                      "
-echo "              OR press ENTER to select $lbcsv (current default)."
+echo "              OR press ENTER to select $lbcsv (current default).${CR}"
+echo " "
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5'| $dummy == 'DEV') then
@@ -231,23 +204,28 @@ if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | 
 else if ( $dummy == '' ) then
 else
     echo "You selected lbcsv=$dummy   \!\!\!\!  Invalid Version, stopping \!\!\!\!  "
-    exit  
+    exit
 endif
 
 #######################################################################
 
-if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
+if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m25) then
     set orslvs = O1
 
+    echo " "
+    echo " ${C2}------------------------------------------------------------------------------"
+    echo " ${C1}NOTE: With selection of EASE grid Ocean resolution is set to $orslvs ${CR}"
+    echo " ${C1}      O1 --  Low-Resolution  Reynolds 1deg (Lon/Lat Data-Ocean: 360x180) ${CR}"
+    echo " ${C2}------------------------------------------------------------------------------"
+    echo " "
 else
 
 #######################################################################
 #
 # Ocean Horizontal Resolution (ORSLV)
 
-ORSLV:
     
-    echo
+    echo " "
     echo "Enter 2-6 character alphanumeric code (no dashes) to select specific ${C1}Ocean Resolution ${CR} to be built:"
     echo "              Choose: ${C2}O1     --  Low-Resolution  Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:    360x180) "
     echo "                      ${C2}O2     --  Med-Resolution  Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean:   1440x720) "
@@ -259,7 +237,8 @@ ORSLV:
 #   echo "                      ${C2}T2MOM6 --  Med-Resolution  Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:   360x210) "
     echo "                      ${C2}T4MOM6 --  High-Resolution Tripolar 1/4 deg${CR} (MOM6-Tripolar-Ocean: 1440x1080) "
     echo "                      ${C2}CS     --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean       ) "
-    echo "              (Select anything just to move forward for land-only EASE grids.)"
+    echo " "
+ORSLV:
     set dummy = `echo $<`
     set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
     set orslvs =  $dummy[1]
@@ -273,7 +252,12 @@ ORSLV:
 	$orslv != 'T1MOM6' & \
 	$orslv != 'T2MOM6' & \
 	$orslv != 'T4MOM6' & \
-	$orslv != 'CS') goto ORSLV
+	$orslv != 'CS') then
+        echo " "
+        echo " ${C1} Wrong choice, try again:${CR}"
+        goto ORSLV
+    endif
+   if( $HRCODE != "$HRCODES" ) set HRCODES = `echo ${HRCODES} ${HRCODE}`
 	if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
     end
 
@@ -342,7 +326,7 @@ else
 
 endif
 
-if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
+if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m25) then
      set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
 endif
 
@@ -610,7 +594,6 @@ while ("$group" == "")
    
 end
 
-mkdir -p $EXPDIR/logs
 
 #######################################################################
 #                        LatLon Case
@@ -625,21 +608,26 @@ set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
 set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 set IMO = `echo ${imo}  | awk '{printf "%4.4i", $1}'`
 set JMO = `echo ${jmo}  | awk '{printf "%4.4i", $1}'`
+set NC  = `echo ${nc}   | awk '{printf "%4.4i", $1}'`
+
+set DATENAME = DE
+set POLENAME = PE
 
 set             BCNAME = DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
 set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 
 if(     -e $BCDIR) /bin/rm -r $BCDIR
-mkdir -p $BCDIR
+mkdir -p $BCDIR 
+mkdir -p $EXPDIR/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -770,6 +758,8 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
+/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
@@ -807,6 +797,7 @@ set             BCJOB  = $BCDIR/$BCNAME.j
 
 if(     -e $BCDIR) /bin/rm -r $BCDIR
 mkdir -p $BCDIR
+mkdir -p $EXPDIR/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -814,8 +805,8 @@ if ($HRCODE == c2880 | $HRCODE == c3072 | $HRCODE == c5760) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
@@ -884,8 +875,8 @@ set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
 cat << _EOF_ > $BCJOB-2
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/logs/$BCNAME-2.log
-#SBATCH --error=$EXPDIR/logs/$BCNAME-2.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME-2.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME-2.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1002,6 +993,8 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB-2              $BCNAME
+/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
@@ -1015,8 +1008,8 @@ else
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1169,6 +1162,8 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
+/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
@@ -1203,7 +1198,8 @@ set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 set           THISGRID = SMAP-${EVERSION}-${MGRID}
 if(     -e $BCDIR) /bin/rm -r $BCDIR
-mkdir -p $BCDIR
+mkdir -p $BCDIR 
+mkdir -p $EXPDIR/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -1211,8 +1207,8 @@ echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1324,6 +1320,8 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
+/bin/mv    $EXPDIR/$OUTDIR/logs   $BCNAME/.
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm IRRIG/$BCNAME/rst
