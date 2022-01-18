@@ -7,22 +7,26 @@
 #  
 #                             ---- USAGE ----
 #
-#  STEP 1 : Build the model (GCM or GEOSldas).
-#  STEP 2 : cd [install-path]/bin
-#  STEP 3 : ./make_bcs 
-#               Answer the following interactive questions:
-#               a) Enter the Atmospheric Horizontal Resolution Code(s) to build.
-#               b) Select the Land BCs version to use. 
-#               c) Enter the Ocean Resolution Code(s) to build.
-#                  (Note this selection is not relevant to land-only EASE grids)
-#               d) Enter sponsor code.
+#  STEP 1: Build the model (GCM or GEOSldas).
+#  STEP 2: cd [install-path]/bin
+#  STEP 3: ./make_bcs 
+#             Answer the following interactive questions:
+#             a) Enter Atmospheric Horizontal Resolution Code(s) to build.
+#             b) Select Land BCs version to use. 
+#             c) Enter Ocean Resolution Code(s) to build.
+#                  (Selection not relevant for land-only EASE grids.)
+#             d) Enter sponsor code.
 #  
+# To skip the generation of land parameter files (i.e., mkCatchParam.x),
+#    use:  ./make_bcs noland
+# This option can potentially save time when additional bcs are created
+#    that have the exact same land parameters as an existing set of bcs
+#    because the only difference between the two sets of bcs is the
+#    [non-tripolar] ocean resolution. 
+#
 #######################################################################
 
 # process input arguments
-
-# When "noland" argument is used the script stops after deriving surface tile files. 
-#  ./make_bcs noland
 
 set SKIPLAND = NO
 if ( $1 == noland ) set SKIPLAND = YES
@@ -79,20 +83,19 @@ set CR = $RESET
 
 # EXP Directory (for Output Data )
 # --------------------------------------------
-  setenv EXPDIR /discover/nobackup/$USER/BC_PACKAGE
+  setenv EXPDIR /discover/nobackup/$USER/BCS_PACKAGE
 
   echo ""
-  echo "Enter Desired Location for the ${C1}EXPERIMENT${CR} Directory (to contain BC's output)"
-  echo "Hit ENTER to use Default Location:"
-  echo "----------------------------------"
-  echo "Default:  ${C2}${EXPDIR}${CR}"
+  echo "Enter desired ${C1}output directory${CR} (incl. full path)"
+  echo "   or press ENTER to use the default:"
+  echo "   [${C2}${EXPDIR}${CR}]"
   set   NEWEXPDIR  = $<
    if( $NEWEXPDIR == '' ) then
        mkdir -p $EXPDIR
        if($EXPDIR == '') then
        else
-         echo "${C1}\!\!\!\!  NOTE: Choosen directory not empty.              \!\!\!\!${CR} " 
-         echo "${C1}\!\!\!\!        Same resolution BC's will be overwritten. \!\!\!\!${CR} " 
+         echo "${C1}\!\!\!\!  NOTE: Chosen directory not empty.              \!\!\!\!${CR} " 
+         echo "${C1}\!\!\!\!        Same resolution BCS will be overwritten. \!\!\!\!${CR} " 
        endif
    else
        mkdir -p $NEWEXPDIR
@@ -104,7 +107,7 @@ set CR = $RESET
 # Atmospheric Horizontal Resolution (HRCODE)
 
 echo " "
-echo "Enter 1-5 character alphanumeric code to select specific ${C1}Atmospheric Horizontal Resolution ${CR} to be built:"
+echo "Enter 1-5 character alphanumeric code to select specific ${C1}Atmospheric Horizontal Resolution ${CR}to be built:"
 echo "------------------------------------------------------------------------------------------------------------------"
 echo "        Lat/Lon                               Cubed-Sphere                          EASE (land-only)"
 echo "------------------------------------------------------------------------------------------------------------------"
@@ -158,7 +161,7 @@ foreach HRCODE ($dummy)
        $HRCODE != 'm36'     & \
        $HRCODE != 'm25')    then  
        echo " "
-       echo " ${C1} Wrong choice, try again:${CR}"
+       echo " ${C1} Invalid choice, try again:${CR}"
        goto HRCODE
    endif
    if( $HRCODE != "$HRCODES" ) set HRCODES = `echo ${HRCODES} ${HRCODE}`
@@ -207,26 +210,23 @@ else
     exit
 endif
 
-#######################################################################
-
-if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m25) then
-    set orslvs = O1
-
-    echo " "
-    echo " ${C2}------------------------------------------------------------------------------"
-    echo " ${C1}NOTE: With selection of EASE grid Ocean resolution is set to $orslvs ${CR}"
-    echo " ${C1}      O1 --  Low-Resolution  Reynolds 1deg (Lon/Lat Data-Ocean: 360x180) ${CR}"
-    echo " ${C2}------------------------------------------------------------------------------"
-    echo " "
-else
 
 #######################################################################
 #
 # Ocean Horizontal Resolution (ORSLV)
-
     
+if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m25) then
+    set orslvs = O1
+
     echo " "
-    echo "Enter 2-6 character alphanumeric code (no dashes) to select specific ${C1}Ocean Resolution ${CR} to be built:"
+    echo " $------------------------------------------------------------------------------"
+    echo " ${C1}NOTE: With selection of EASE grid for the Atmospheric Horizontal Resolution${CR},"
+    echo " ${C1}      the Ocean resolution is irrelevant and set to $orslvs ${CR}"
+    echo " $------------------------------------------------------------------------------"
+    echo " "
+else
+    echo " "
+    echo "Enter 2-6 character alphanumeric code (no dashes) to select specific ${C1}Ocean Resolution ${CR}to be built:"
     echo "              Choose: ${C2}O1     --  Low-Resolution  Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:    360x180) "
     echo "                      ${C2}O2     --  Med-Resolution  Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean:   1440x720) "
     echo "                      ${C2}O3     --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean:  2880x1440) "
@@ -254,7 +254,7 @@ ORSLV:
 	$orslv != 'T4MOM6' & \
 	$orslv != 'CS') then
         echo " "
-        echo " ${C1} Wrong choice, try again:${CR}"
+        echo " ${C1} Invalid choice, try again:${CR}"
         goto ORSLV
     endif
    if( $HRCODE != "$HRCODES" ) set HRCODES = `echo ${HRCODES} ${HRCODE}`

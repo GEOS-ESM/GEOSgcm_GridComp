@@ -223,11 +223,11 @@ integer :: n_threads=1
        if(.not.ease_grid) then  
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              call catchment_def (nc,nr,regrid,dl,gridnamet,gridnamer) 
-             write (log_file,'(a)')'Done.'
+             write (log_file,'(a)')'         Done.'
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
        else 
           write (log_file,'(a)')'Skipping step for EASE grid. '
@@ -242,11 +242,11 @@ integer :: n_threads=1
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'	 
+          write (log_file,'(a)')'         Creating file...'	 
           call cti_stat_file (ease_grid,gridnamet, MaskFile)
-          write (log_file,'(a)')'Done.'
+          write (log_file,'(a)')'         Done.'
        else
-          write (log_file,'(a)')'Using existing file.'
+          write (log_file,'(a)')'         Using existing file.'
        endif
        write (log_file,'(a)')' '
        
@@ -260,11 +260,11 @@ integer :: n_threads=1
           write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              call ESA2MOSAIC (nc,nr,gridnamer)
-             write (log_file,'(a)')'Done.'           
+             write (log_file,'(a)')'         Done.'           
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
           write (log_file,'(a)')' '
 
@@ -273,11 +273,11 @@ integer :: n_threads=1
           write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              call ESA2CLM (nc,nr,gridnamer)    
-             write (log_file,'(a)')'Done.'           
+             write (log_file,'(a)')'         Done.'           
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
           write (log_file,'(a)')' '
 
@@ -286,11 +286,11 @@ integer :: n_threads=1
           write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
           inquire(file=trim(fname_tmp), exist=file_exists) 
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              call ESA2CLM_45 (nc,nr,gridnamer)           
-             write (log_file,'(a)')'Done.'           
+             write (log_file,'(a)')'         Done.'           
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
           write (log_file,'(a)')' '
 
@@ -301,11 +301,11 @@ integer :: n_threads=1
           write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
-             write (log_file,'(a)')'Done.'           
+             write (log_file,'(a)')'         Done.'           
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
           write (log_file,'(a)')' '
           
@@ -341,7 +341,7 @@ integer :: n_threads=1
           write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
           inquire(file=trim(fname_tmp), exist=file_exists)          
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              !allocate (mapgeoland2 (1:40320,1:20160))
              call create_mapping (nc,nr,40320,20160,mapgeoland2, gridnamer)         
              lai_name = 'GEOLAND2_10-DayClim/geoland2_' 
@@ -353,9 +353,9 @@ integer :: n_threads=1
              ! if(allocated(mapgeoland2)) deallocate (mapgeoland2)
              deallocate (mapgeoland2%map)
              deallocate (mapgeoland2%ij_index)
-             write (log_file,'(a)')'Done.'
+             write (log_file,'(a)')'         Done.'
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
        endif
        
@@ -368,7 +368,7 @@ integer :: n_threads=1
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)          
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           if (trim(LAIBCS) == 'GSWP2') then 
              call process_gswp2_veg (nc,nr,regrid,'grnFrac',gridnamer)
           else
@@ -378,16 +378,16 @@ integer :: n_threads=1
              endif
              call hres_gswp2 (43200,21600, maparc30, gridnamer,'green') 
           endif
-          write (log_file,'(a)')'Done.'
+          write (log_file,'(a)')'         Done.'
        else
-          write (log_file,'(a)')'Using existing file.'
+          write (log_file,'(a)')'         Using existing file.'
        endif
 
        fname_tmp = 'clsm/lai.dat'
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           redo_modis = .true.
           
           if (trim(LAIBCS) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',gridnamer) 
@@ -427,20 +427,20 @@ integer :: n_threads=1
              call grid2tile_glass (nc,nr,gridnamer,lai_name)  
           endif
 
-          write (log_file,'(a)')'Done.'
+          write (log_file,'(a)')'         Done.'
        else
-          write (log_file,'(a)')'Using existing file.'
+          write (log_file,'(a)')'         Using existing file.'
        endif
 
        fname_tmp = 'clsm/ndvi.dat'
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           call gimms_clim_ndvi (nc,nr,gridnamer)
-          write (log_file,'(a)')'Done.'
+          write (log_file,'(a)')'         Done.'
        else
-          write (log_file,'(a)')'Using existing file.'
+          write (log_file,'(a)')'         Using existing file.'
        endif
 
        write (log_file,'(a)')' '
@@ -462,7 +462,7 @@ integer :: n_threads=1
           write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
           inquire(file=trim(fname_tmp), exist=file_exists)          
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              if(F25Tag) then 
                 call create_mapping (nc,nr,21600,10800,maparc60,    gridnamer)
                 call modis_alb_on_tiles_high (21600,10800,maparc60,MODALB,gridnamer)
@@ -472,9 +472,9 @@ integer :: n_threads=1
                 !  This option is for legacy sets like Fortuna 2.1
                 call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
              endif
-             write (log_file,'(a)')'Done.'
+             write (log_file,'(a)')'         Done.'
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
        endif
        
@@ -483,11 +483,11 @@ integer :: n_threads=1
           write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
           inquire(file=trim(fname_tmp), exist=file_exists)          
           if (.not.file_exists) then
-             write (log_file,'(a)')'Creating file...'
+             write (log_file,'(a)')'         Creating file...'
              call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB,gridnamer)
-             write (log_file,'(a)')'Done.'
+             write (log_file,'(a)')'         Done.'
           else
-             write (log_file,'(a)')'Using existing file.'
+             write (log_file,'(a)')'         Using existing file.'
           endif
        endif
        write (log_file,'(a)')' '
@@ -512,7 +512,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp2), exist=file_exists2)
        if ((redo_modis).or.(.not.file_exists).or.(.not.file_exists2)) then
           !   if(.not.F25Tag) then
-          write (log_file,'(a)')'Creating files...'
+          write (log_file,'(a)')'         Creating files...'
           call modis_scale_para_high (ease_grid,MODALB,gridnamet)
           !  else
           !     This option is for legacy sets like Fortuna 2.1
@@ -522,9 +522,9 @@ integer :: n_threads=1
           !        call REFORMAT_VEGFILES
           !     endif
           !  endif
-          write (log_file,'(a)')'Done.'
+          write (log_file,'(a)')'         Done.'
        else
-          write (log_file,'(a)')'Using existing files.'
+          write (log_file,'(a)')'         Using existing files.'
        endif
        write (log_file,'(a)')' '
        
@@ -540,7 +540,7 @@ integer :: n_threads=1
        if(SOILBCS=='NGDC') then
           write (log_file,'(a)')'Creating (intermediate) NGDC soil types file...'
           call create_soil_types_files (nc,nr,ease_grid,gridnamet,gridnamer)    
-          write (log_file,'(a)')'Done.'
+          write (log_file,'(a)')'         Done.'
           write (log_file,'(a)')' '
        endif
        
@@ -553,15 +553,15 @@ integer :: n_threads=1
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           if(SOILBCS=='NGDC')  then 
              if(     F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
              if(.not.F25Tag) call soil_para_high (nc,nr,regrid,gridnamer)
           endif
           if(SOILBCS=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer)
-          write (log_file,'(a)')'Done.'           
+          write (log_file,'(a)')'         Done.'           
        else
-          write (log_file,'(a,a)')'Using existing file.'
+          write (log_file,'(a,a)')'         Using existing file.'
        endif
        write (log_file,'(a)')' '
               
@@ -577,12 +577,12 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp3), exist=file_exists3)
        inquire(file=trim(fname_tmp4), exist=file_exists4)
        if ((.not.file_exists).or.(.not.file_exists2).or.(.not.file_exists3).or.(.not.file_exists4)) then
-          write (log_file,'(a)')'Creating files...'
+          write (log_file,'(a)')'         Creating files...'
           if(SOILBCS=='NGDC') call create_model_para (MaskFile)
           if(SOILBCS=='HWSD') call create_model_para_woesten (MaskFile) 
-          write (log_file,'(a)')'Done.'           
+          write (log_file,'(a)')'         Done.'           
        else
-          write (log_file,'(a,a)')'Using existing files.'
+          write (log_file,'(a,a)')'         Using existing files.'
        endif
        write (log_file,'(a)')' '
        
@@ -600,9 +600,9 @@ integer :: n_threads=1
        ! create this file only if matching veg types file already exists
        inquire(file='clsm/CLM_veg_typs_fracs', exist=file_exists)
        if (file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           call grid2tile_ndep_t2m_alb (nc,nr,gridnamer)  
-          write (log_file,'(a)')'Done.'           
+          write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a)')'Skipping step for lack of matching veg types file.'
        endif
@@ -613,11 +613,11 @@ integer :: n_threads=1
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           call CLM45_fixed_parameters (nc,nr,gridnamer)           
-          write (log_file,'(a)')'Done.'           
+          write (log_file,'(a)')'         Done.'           
        else
-          write (log_file,'(a)')'Using existing file.'
+          write (log_file,'(a)')'         Using existing file.'
        endif
        write (log_file,'(a)')' '
        
@@ -626,11 +626,11 @@ integer :: n_threads=1
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           call CLM45_clim_parameters (nc,nr,gridnamer)   
-          write (log_file,'(a)')'Done.'           
+          write (log_file,'(a)')'         Done.'           
        else
-          write (log_file,'(a)')'Using existing file.'
+          write (log_file,'(a)')'         Using existing file.'
        endif
        write (log_file,'(a)')' '
 
@@ -639,11 +639,11 @@ integer :: n_threads=1
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'Creating file...'
+          write (log_file,'(a)')'         Creating file...'
           call map_country_codes (nc,nr,gridnamer)
-          write (log_file,'(a)')'Done.'           
+          write (log_file,'(a)')'         Done.'           
        else
-          write (log_file,'(a)')'Using existing file.'
+          write (log_file,'(a)')'         Using existing file.'
        endif
        write (log_file,'(a)')' '
        

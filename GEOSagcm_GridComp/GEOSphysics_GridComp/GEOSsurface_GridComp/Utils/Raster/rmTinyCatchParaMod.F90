@@ -3673,7 +3673,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	     form='formatted',status='unknown')  
  
      endif 
-       fout='clsm/soil_param.dat'
+
+     fout='clsm/soil_param.dat'
  	open (42,file=fout,action='write',        &
 	     form='formatted',status='unknown')       
 
