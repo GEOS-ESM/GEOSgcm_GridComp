@@ -78,29 +78,26 @@ set CR = $RESET
 
 
 #######################################################################
-#                 Create Paths for EXP Directorie
-#######################################################################
+#
+# Experiment directory (for BCS output)
 
-# EXP Directory (for Output Data )
-# --------------------------------------------
-  setenv EXPDIR /discover/nobackup/$USER/BCS_PACKAGE
+# define default
+setenv EXPDIR /discover/nobackup/$USER/BCS_PACKAGE
 
-  echo ""
-  echo "Enter desired ${C1}output directory${CR} (incl. full path)"
-  echo "   or press ENTER to use the default:"
-  echo "   [${C2}${EXPDIR}${CR}]"
-  set   NEWEXPDIR  = $<
-   if( $NEWEXPDIR == '' ) then
-       mkdir -p $EXPDIR
-       if($EXPDIR == '') then
-       else
-         echo "${C1}\!\!\!\!  NOTE: Chosen directory not empty.              \!\!\!\!${CR} " 
-         echo "${C1}\!\!\!\!        Same resolution BCS will be overwritten. \!\!\!\!${CR} " 
-       endif
-   else
-       mkdir -p $NEWEXPDIR
-       setenv EXPDIR $NEWEXPDIR
-   endif
+echo " "
+echo "Enter desired BCS ${C1}output directory${CR} (incl. full path)"
+echo "   or press ENTER to use the default:"
+echo "   [${C2}${EXPDIR}${CR}]"
+set NEWEXPDIR = $<
+
+if( $NEWEXPDIR != '' ) setenv EXPDIR $NEWEXPDIR
+
+mkdir -p $EXPDIR
+
+if($EXPDIR != '') then
+   echo "${C1}\!\!\!\!  NOTE: Chosen directory not empty.              \!\!\!\!${CR} " 
+   echo "${C1}\!\!\!\!        Same resolution BCS will be overwritten. \!\!\!\!${CR} " 
+endif
 
 #######################################################################
 #
