@@ -783,6 +783,14 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
+! Note: the four CLDxxLW diagnostics below represent super-layer cloud
+! fractions based on the subcolumn cloud generation called in RRTMG LW.
+! They are global fields but generated only at the LW REFRESH frequency,
+! NOT at the heartbeat. As such, they are useful for diagnostic comparisons
+! with CLDTT above and with the full CLDxx set from the Solar GC. But they
+! should NOT be used to subsample fields that are produced on the model
+! heartbeat (e.g. subsampling for cloud presence).
+
     call MAPL_AddExportSpec(GC,                                         &
         SHORT_NAME = 'CLDTTLW',                                         &
         LONG_NAME  = 'total_cloud_area_fraction_rrtmg_lw_REFRESH',      &

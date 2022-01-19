@@ -938,6 +938,20 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
+! Note: the four CLDxxSW diagnostics below represent super-layer cloud
+! fractions based on the subcolumn cloud generation called in RRTMG SW.
+! They are sunlit only fields and generated only at the SW REFRESH frequency,
+! NOT at the heartbeat. As such, they are useful for diagnostic comparisons
+! with with the full CLDxx set above. But they should NOT be used to subsample
+! fields that are produced on the model heartbeat (e.g. subsampling for cloud
+! presence). Note, also, that when comparing CLDxxSW with CLDxx, it is better
+! to subsample both with COSZSW >= cmin, (e.g., 0.25). This COSZSW is a 
+! REFRESH-frequency version of MCOSZ and, as such, is most appropriate for
+! subsampling REFRESH-frequency fields like CLDxxSW. Of course, you can also
+! subsample CLDxx with COSZSW since CLDxx are global. By sampling both
+! CLDxxSW and CLDxx with COSZSW you get a fair apples-to-apples comparison
+! between the two.
+
     call MAPL_AddExportSpec(GC,                                              &
         SHORT_NAME = 'CLDTTSW',                                              &
         LONG_NAME  = 'total_cloud_area_fraction_rrtmg_sw_REFRESH',           &
@@ -965,6 +979,22 @@ contains
         UNITS      = '1',                                                    &
         DIMS       = MAPL_DimsHorzOnly,                                      &
         VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+! Note: the four CLDxxSWHB diagnostics below represent super-layer cloud
+! fractions based on essentially the same subcolumn cloud generation used
+! by RRTMG SW but called from within the SOLAR UPDATE at the HEARTBEAT.
+! They are GLOBAL (not just sunlit) fields and generated on the heartbeat.
+! But because subcolumn cloud generation is EXPENSIVE, asking for any of 
+! these exports will DOUBLE the cost of running the SOLAR GC. As such,
+! they are for SPECIAL VALIDATION PURPOSES ONLY. No cost is incurred if
+! they are not exported. Note, also, that they are NOT EXACTLY heartbeat
+! versions of CLDxxSW, since they sample the heartbeat cloud fractions
+! not the less frequent snapshots used at REFRESH-frequency, and also since
+! the generation inside UPDATE is on non-flipped vertical fields. This latter
+! difference should be statistically insignificant. A re-coding to use vert-
+! ically flipped fields as per RRTMG SW is possible but will be slightly
+! slower, and was deemed not necessary since the first cloud fraction
+! frequency difference will likely dominate.
 
     call MAPL_AddExportSpec(GC,                                              &
         SHORT_NAME = 'CLDTTSWHB',                                            &
@@ -1056,6 +1086,10 @@ contains
        SHORT_NAME = 'TAUCLS',                                                &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                              __RC__)
+
+! Note: The following four TAUxxPAR are REFRESH-frequency fields. As such, all
+! the important provisos given in the comment on CLDxxSW above apply to these
+! fields as well. Please read those provisos.
 
     call MAPL_AddExportSpec(GC,                                                      &
        LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds_RRTMG_PAR_REFRESH',    &
