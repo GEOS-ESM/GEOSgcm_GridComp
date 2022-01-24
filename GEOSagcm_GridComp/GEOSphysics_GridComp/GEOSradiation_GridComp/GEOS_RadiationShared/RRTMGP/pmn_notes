@@ -1,3 +1,4 @@
+note from pre-v1.5 ...
 rrtmgp/mo_gas_concentrations.F90:
   vmr is assumed to be moles of the gas per moles of dry air in other parts of code
 rte/kernels/mo_rte_solver_kernels.F90:

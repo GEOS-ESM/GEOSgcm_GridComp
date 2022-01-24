@@ -151,6 +151,9 @@ contains
     !$acc enter data create(this)                                               &
     !$acc            create(this%lut_extliq, this%lut_ssaliq, this%lut_asyliq)  &
     !$acc            create(this%lut_extice, this%lut_ssaice, this%lut_asyice)
+    !$omp target enter data &
+    !$omp map(alloc:this%lut_extliq, this%lut_ssaliq, this%lut_asyliq) &
+    !$omp map(alloc:this%lut_extice, this%lut_ssaice, this%lut_asyice)
     ! Load LUT constants
     this%radliq_lwr = radliq_lwr
     this%radliq_upr = radliq_upr
@@ -159,6 +162,7 @@ contains
 
     ! Load LUT coefficients
     !$acc kernels
+    !$omp target
     this%lut_extliq = lut_extliq
     this%lut_ssaliq = lut_ssaliq
     this%lut_asyliq = lut_asyliq
@@ -166,6 +170,7 @@ contains
     this%lut_ssaice = lut_ssaice
     this%lut_asyice = lut_asyice
     !$acc end kernels
+    !$omp end target
     !
     ! Set default ice roughness - min values
     !
@@ -277,10 +282,16 @@ contains
     !$acc            create(this%pade_extice, this%pade_ssaice, this%pade_asyice)                       &
     !$acc            create(this%pade_sizreg_extliq, this%pade_sizreg_ssaliq, this%pade_sizreg_asyliq)  &
     !$acc            create(this%pade_sizreg_extice, this%pade_sizreg_ssaice, this%pade_sizreg_asyice)
+    !$omp target enter data &
+    !$omp map(alloc:this%pade_extliq, this%pade_ssaliq, this%pade_asyliq) &
+    !$omp map(alloc:this%pade_extice, this%pade_ssaice, this%pade_asyice) &
+    !$omp map(alloc:this%pade_sizreg_extliq, this%pade_sizreg_ssaliq, this%pade_sizreg_asyliq) &
+    !$omp map(alloc:this%pade_sizreg_extice, this%pade_sizreg_ssaice, this%pade_sizreg_asyice)
     !
     ! Load data
     !
     !$acc kernels
+    !$omp target
     this%pade_extliq = pade_extliq
     this%pade_ssaliq = pade_ssaliq
     this%pade_asyliq = pade_asyliq
@@ -294,6 +305,7 @@ contains
     this%pade_sizreg_ssaice = pade_sizreg_ssaice
     this%pade_sizreg_asyice = pade_sizreg_asyice
     !$acc end kernels
+    !$omp end target
     !
     ! Set default ice roughness - min values
     !
@@ -318,6 +330,8 @@ contains
       !$acc exit data delete(this%lut_extliq, this%lut_ssaliq, this%lut_asyliq)  &
       !$acc           delete(this%lut_extice, this%lut_ssaice, this%lut_asyice)  &
       !$acc           delete(this)
+      !$omp target exit data map(release:this%lut_extliq, this%lut_ssaliq, this%lut_asyliq) &
+      !$omp map(release:this%lut_extice, this%lut_ssaice, this%lut_asyice)
 
 
       deallocate(this%lut_extliq, this%lut_ssaliq, this%lut_asyliq, &
@@ -336,6 +350,10 @@ contains
       !$acc           delete(this%pade_sizreg_extliq, this%pade_sizreg_ssaliq, this%pade_sizreg_asyliq)  &
       !$acc           delete(this%pade_sizreg_extice, this%pade_sizreg_ssaice, this%pade_sizreg_asyice)  &
       !$acc           delete(this)
+      !$omp target exit data map(release:this%pade_extliq, this%pade_ssaliq, this%pade_asyliq) &
+      !$omp map(release:this%pade_extice, this%pade_ssaice, this%pade_asyice) &
+      !$omp map(release:this%pade_sizreg_extliq, this%pade_sizreg_ssaliq, this%pade_sizreg_asyliq) &
+      !$omp map(release:this%pade_sizreg_extice, this%pade_sizreg_ssaice, this%pade_sizreg_asyice)
 
       deallocate(this%pade_extliq, this%pade_ssaliq, this%pade_asyliq, &
                  this%pade_extice, this%pade_ssaice, this%pade_asyice, &
@@ -356,10 +374,10 @@ contains
                         optical_props) result(error_msg)
     class(ty_cloud_optics), &
               intent(in   ) :: this
-    real(wp), intent(in   ) :: clwp  (:,:), &   ! cloud ice water path    (units?)
-                               ciwp  (:,:), &   ! cloud liquid water path (units?)
-                               reliq (:,:), &   ! cloud ice particle effective size (microns)
-                               reice (:,:)      ! cloud liquid particle effective radius (microns)
+    real(wp), intent(in   ) :: clwp  (:,:), &   ! cloud liquid water path (g/m2)
+                               ciwp  (:,:), &   ! cloud ice water path    (g/m2)
+                               reliq (:,:), &   ! cloud liquid particle effective size (microns)
+                               reice (:,:)      ! cloud ice particle effective radius  (microns)
     class(ty_optical_props_arry), &
               intent(inout) :: optical_props
                                                ! Dimensions: (ncol,nlay,nbnd)
@@ -394,36 +412,44 @@ contains
     !
     ! Array sizes
     !
-    if(size(liqmsk,1) /= ncol .or. size(liqmsk,2) /= nlay) &
-      error_msg = "cloud optics: liqmask has wrong extents"
-    if(size(icemsk,1) /= ncol .or. size(icemsk,2) /= nlay) &
-      error_msg = "cloud optics: icemsk has wrong extents"
-    if(size(ciwp,  1) /= ncol .or. size(ciwp,  2) /= nlay) &
-      error_msg = "cloud optics: ciwp has wrong extents"
-    if(size(reliq, 1) /= ncol .or. size(reliq, 2) /= nlay) &
-      error_msg = "cloud optics: reliq has wrong extents"
-    if(size(reice, 1) /= ncol .or. size(reice, 2) /= nlay) &
-      error_msg = "cloud optics: reice has wrong extents"
-    if(optical_props%get_ncol() /= ncol .or. optical_props%get_nlay() /= nlay) &
-      error_msg = "cloud optics: optical_props have wrong extents"
-    if(error_msg /= "") return
+    if (check_extents) then
+      if(size(liqmsk,1) /= ncol .or. size(liqmsk,2) /= nlay) &
+        error_msg = "cloud optics: liqmask has wrong extents"
+      if(size(icemsk,1) /= ncol .or. size(icemsk,2) /= nlay) &
+        error_msg = "cloud optics: icemsk has wrong extents"
+      if(size(ciwp,  1) /= ncol .or. size(ciwp,  2) /= nlay) &
+        error_msg = "cloud optics: ciwp has wrong extents"
+      if(size(reliq, 1) /= ncol .or. size(reliq, 2) /= nlay) &
+        error_msg = "cloud optics: reliq has wrong extents"
+      if(size(reice, 1) /= ncol .or. size(reice, 2) /= nlay) &
+        error_msg = "cloud optics: reice has wrong extents"
+      if(optical_props%get_ncol() /= ncol .or. optical_props%get_nlay() /= nlay) &
+        error_msg = "cloud optics: optical_props have wrong extents"
+      if(error_msg /= "") return
+    end if
 
     !
     ! Spectral consistency
     !
-    if(.not. this%bands_are_equal(optical_props)) &
-      error_msg = "cloud optics: optical properties don't have the same band structure"
-    if(optical_props%get_nband() /= optical_props%get_ngpt() ) &
-      error_msg = "cloud optics: optical properties must be requested by band not g-points"
-    if(error_msg /= "") return
+    if(check_values) then
+      if(.not. this%bands_are_equal(optical_props)) &
+        error_msg = "cloud optics: optical properties don't have the same band structure"
+      if(optical_props%get_nband() /= optical_props%get_ngpt() ) &
+        error_msg = "cloud optics: optical properties must be requested by band not g-points"
+      if(error_msg /= "") return
+    end if
 
     !$acc data copyin(clwp, ciwp, reliq, reice)                         &
     !$acc      create(ltau, ltaussa, ltaussag, itau, itaussa, itaussag) &
     !$acc      create(liqmsk,icemsk)
+    !$omp target data map(to:clwp, ciwp, reliq, reice) &
+    !$omp map(alloc:ltau, ltaussa, ltaussag, itau, itaussa, itaussag) &
+    !$omp map(alloc:liqmsk, icemsk)
     !
     ! Cloud masks; don't need value re values if there's no cloud
     !
     !$acc parallel loop gang vector default(none) collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
     do ilay = 1, nlay
       do icol = 1, ncol
         liqmsk(icol,ilay) = clwp(icol,ilay) > 0._wp
@@ -500,6 +526,8 @@ contains
       type is (ty_optical_props_1scl)
         !$acc parallel loop gang vector default(none) collapse(3) &
         !$acc               copyin(optical_props) copyout(optical_props%tau)
+        !$omp target teams distribute parallel do simd collapse(3) &
+        !$omp map(from:optical_props%tau)
 
         do ibnd = 1, nbnd
           do ilay = 1, nlay
@@ -513,6 +541,8 @@ contains
       type is (ty_optical_props_2str)
         !$acc parallel loop gang vector default(none) collapse(3) &
         !$acc               copyin(optical_props) copyout(optical_props%tau, optical_props%ssa, optical_props%g)
+        !$omp target teams distribute parallel do simd collapse(3) &
+        !$omp map(from:optical_props%tau, optical_props%ssa, optical_props%g)
         do ibnd = 1, nbnd
           do ilay = 1, nlay
             do icol = 1,ncol
@@ -528,9 +558,9 @@ contains
       type is (ty_optical_props_nstr)
         error_msg = "cloud optics: n-stream calculations not yet supported"
       end select
-
-    end if ! error_msg == ""
+    end if
     !$acc end data
+    !$omp end target data
   end function cloud_optics
   !--------------------------------------------------------------------------------------------------------------------
   !
@@ -613,9 +643,10 @@ contains
     integer  :: icol, ilay, ibnd
     integer  :: index
     real(wp) :: fint
-    real(wp) :: t, ts, tsg  ! tau, tau*ssa, tau*ssa*g
+    real(wp) :: t, ts  ! tau, tau*ssa, tau*ssa*g
     ! ---------------------------
     !$acc parallel loop gang vector default(present) collapse(3)
+    !$omp target teams distribute parallel do simd collapse(3)
     do ibnd = 1, nbnd
       do ilay = 1,nlay
         do icol = 1, ncol
@@ -666,10 +697,11 @@ contains
                                     intent(in) :: coeffs_asy
     real(wp), dimension(ncol,nlay,nbnd)        :: tau, taussa, taussag
     ! ---------------------------
-    integer  :: icol, ilay, ibnd, irad, count
+    integer  :: icol, ilay, ibnd, irad
     real(wp) :: t, ts
 
     !$acc parallel loop gang vector default(present) collapse(3)
+    !$omp target teams distribute parallel do simd collapse(3)
     do ibnd = 1, nbnd
       do ilay = 1, nlay
         do icol = 1, ncol
@@ -742,6 +774,7 @@ contains
   !
   function pade_eval_1(iband, nbnd, nrads, m, n, irad, re, pade_coeffs)
     !$acc routine seq
+    !$omp declare target
     !
     integer,                intent(in) :: iband, nbnd, nrads, m, n, irad
     real(wp), dimension(nbnd, nrads, 0:m+n), &
