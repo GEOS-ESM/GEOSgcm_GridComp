@@ -216,10 +216,10 @@ if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m
     set orslvs = O1
 
     echo " "
-    echo " $------------------------------------------------------------------------------"
+    echo " ------------------------------------------------------------------------------"
     echo " ${C1}NOTE: With selection of EASE grid for the Atmospheric Horizontal Resolution${CR},"
     echo " ${C1}      the Ocean resolution is irrelevant and set to $orslvs ${CR}"
-    echo " $------------------------------------------------------------------------------"
+    echo " ------------------------------------------------------------------------------"
     echo " "
 else
     echo " "
