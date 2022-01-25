@@ -564,13 +564,13 @@ subroutine gw_beres_ifc( band, &
    allocate(gwut(ncol,pver,-band%ngwv:band%ngwv))
    allocate(c(ncol,-band%ngwv:band%ngwv))
 
-     ! Efficiency of gravity wave momentum transfer.
-     ! This is really only to remove the pole points.
-     where (pi/2._r8 - abs(lats(:ncol)) >= 1.e-4 )  !-4*epsilon(1._r8))
-        effgw = effgw_dp
-     elsewhere
-        effgw = 0._r8
-     end where
+    !! Efficiency of gravity wave momentum transfer.
+    !! This is really only to remove the pole points.
+    !where (pi/2._r8 - abs(lats(:ncol)) >= 1.e-4 )  !-4*epsilon(1._r8))
+    !   effgw = effgw_dp
+    !elsewhere
+    !   effgw = 0._r8
+    !end where
 
      do k = 0, pver
         ! 700 hPa index
@@ -584,7 +584,7 @@ subroutine gw_beres_ifc( band, &
 
 !WMP pressure scaling from GEOS top 0.01mb to zfac_layer
      pint_adj = 1.0
-     zfac_layer = 100.0 ! 1mb
+     zfac_layer = 10.0 ! 0.1mb
      where (pint < zfac_layer)
        pint_adj = 1./19. * &
                   ((atan( (2.*(pint-1.0)/(zfac_layer-1.0)-1.) * &

@@ -968,7 +968,7 @@ contains
 
          call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.25_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.5_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=30.0_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
@@ -1164,7 +1164,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, RC=STATUS)
+       call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.250, RC=STATUS)
        VERIFY_(STATUS)
        if (NCAR_NRDG > 0) then
          call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
