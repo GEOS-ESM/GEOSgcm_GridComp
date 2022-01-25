@@ -21,7 +21,6 @@ set (srcs
    extensions/rng/mo_rng.F90
    extensions/mo_compute_bc.F90
    extensions/mo_fluxes_byband.F90
-   extensions/mo_fluxes_byband_kernels.F90
    extensions/mo_fluxes_bygpoint.F90
    extensions/mo_heating_rates.F90
    extensions/mo_rrtmgp_clr_all_sky.F90
