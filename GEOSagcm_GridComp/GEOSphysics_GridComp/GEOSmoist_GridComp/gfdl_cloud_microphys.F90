@@ -2092,23 +2092,21 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! cloud water < -- > vapor adjustment:
         ! -----------------------------------------------------------------------
 
-        if (do_qa) then
-          qsw = wqs2 (tz (k), den (k), dwsdt)
-          dq0 = qsw - qv (k)
-          if (dq0 > 0.) then
-            ! factor = min (1., fac_l2v * sqrt(10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-              factor = min (1., fac_l2v * (10. * dq0 / qsw))
-              evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
-          else
-              evap = 0.0
-          endif
-          qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
-          qv (k) = qv (k) + evap
-          ql (k) = ql (k) - evap
-          q_liq (k) = q_liq (k) - evap
-          cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-          tz (k) = tz (k) - evap * lhl (k) / cvm (k)
+        qsw = wqs2 (tz (k), den (k), dwsdt)
+        dq0 = qsw - qv (k)
+        if (dq0 > 0.) then
+          ! factor = min (1., fac_l2v * sqrt(10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
+            factor = min (1., fac_l2v * (10. * dq0 / qsw))
+            evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
+        else
+            evap = 0.0
         endif
+        qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
+        qv (k) = qv (k) + evap
+        ql (k) = ql (k) - evap
+        q_liq (k) = q_liq (k) - evap
+        cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
+        tz (k) = tz (k) - evap * lhl (k) / cvm (k)
 
         ! -----------------------------------------------------------------------
         ! update heat capacity and latend heat coefficient
@@ -2340,7 +2338,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! use the "liquid - frozen water temperature" (tin) to compute saturated specific humidity
         ! -----------------------------------------------------------------------
         
-        tin = tz (k) - (lcpk (k) * q_cond (k) + icpk (k) * q_sol (k)) ! minimum temperature
+     !! tin = tz (k) - (lcpk (k) * q_cond (k) + icpk (k) * q_sol (k)) ! minimum temperature
+        tin = tz (k)
         ! tin = tz (k) - ((lv00 + d0_vap * tz (k)) * q_cond (k) + &
         ! (li00 + dc_ice * tz (k)) * q_sol (k)) / (c_air + qpz * c_vap)
         
@@ -2375,22 +2374,22 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
              if (icloud_f == 3) then
              ! triangular
                if(q_plus.le.qstar) then
-                  qa (k) = qa (k) + 0.0  ! no cloud change
+                  qa (k) = qcmin
                elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
-                  qa (k) = min(1., qa (k) + (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
+                  qa (k) = max(qcmin, min(1., (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) )))
                elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
-                  qa (k) = min(1., qa (k) + 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) )))
+                  qa (k) = max(qcmin, min(1., 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) ))))
                elseif ( qstar.le.q_minus ) then
-                  qa (k) = 1. ! air fully saturated; 100 % cloud cover
+                  qa (k) = 1.0 ! air fully saturated; 100 % cloud cover
                endif
              else
              ! top-hat
                if(q_plus.le.qstar) then
-                 qa (k) = qa (k) + 0.0  ! no cloud change 
+                 qa (k) = qcmin  ! little/no cloud cover 
                elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
-                 qa (k) = max(0.0, qa (k) + min(1., (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
+                 qa (k) = max(qcmin, min(1., (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
                elseif (qstar .le. q_minus) then
-                 qa (k) = 1. ! air fully saturated; 100 % cloud cover
+                 qa (k) = 1.0 ! air fully saturated; 100 % cloud cover
                endif
              endif
          endif
