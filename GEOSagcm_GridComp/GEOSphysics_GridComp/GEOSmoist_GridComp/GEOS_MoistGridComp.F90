@@ -2468,6 +2468,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'KUCHERA_RATIO',                       &
+         LONG_NAME = 'kuchera_snow_to_liquid_ratio',     &
+         UNITS     = 'unitless',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'PCU',                                         & 
          LONG_NAME = 'convective_rainfall',                         &
          UNITS     = 'kg m-2 s-1',                                  &
@@ -5912,6 +5920,7 @@ contains
       real, pointer, dimension(:,:,:) :: DBZ
       real, pointer, dimension(:,:  ) :: DBZ_MAX
 
+      real, pointer, dimension(:,:  ) :: KUCHERA_RATIO
       real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
       real, pointer, dimension(:,:  ) :: LS_PRCP,CN_PRCP,AN_PRCP,SC_PRCP,TT_PRCP,ER_PRCP,FILLNQV
       real, pointer, dimension(:,:  ) :: SC_MSE, SC_QT
@@ -6277,6 +6286,7 @@ contains
       real                            :: DT, DT_MOIST
       real(ESMF_KIND_R8)              :: DT_R8
 
+      real                            :: Tmax
       real                            :: PMIN_DET,AUTOC_CN_LAND,AUTOC_CN_OCN, LCCIRRUS, & 
            UISCALE, AUTO_CNV, SS_SCALE, REEVAP_MICRO, LIU_MU, TFRZ, & 
            NPRE_FRAC, QCVAR, ZPBLMAXLL, TMAXLL,  &
@@ -7068,6 +7078,8 @@ contains
       call MAPL_GetPointer(EXPORT, PRCP_SNOW,    'PRCP_SNOW'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PRCP_ICE,     'PRCP_ICE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PRCP_GRAUPEL, 'PRCP_GRAUPEL' , RC=STATUS); VERIFY_(STATUS)
+
+      call MAPL_GetPointer(EXPORT, KUCHERA_RATIO,'KUCHERA_RATIO', RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, LS_PRCP,  'LS_PRCP' , RC=STATUS); VERIFY_(STATUS) 
       call MAPL_GetPointer(EXPORT, CN_PRCP,  'CN_PRCP' , RC=STATUS); VERIFY_(STATUS)
@@ -13202,6 +13214,24 @@ do K= 1, LM
             if (associated(PRECU))   PRECU = CN_PRC2 + SC_PRC2
             if (associated(PRELS))   PRELS = LS_PRC2 + AN_PRC2
        endif
+      endif
+
+      if (associated(KUCHERA_RATIO)) then
+         do i = 1,IM
+           do j = 1,JM
+               Tmax = 0.0
+               do k =  LM, 1, -1
+                  if (PLO(i,j,k).gt.500.) then
+                     Tmax = MAX(Tmax,TEMP(i,j,k))
+                  end if
+               end do
+               if (Tmax <= 271.16) then
+                  KUCHERA_RATIO(i,j) = 12.0 + (271.16 - Tmax)
+               else
+                  KUCHERA_RATIO(i,j) = 12.0 + 2*(271.16 - Tmax)
+               end if
+           end do
+         end do
       endif
 
       if (associated(CN_PRCP))   CN_PRCP = CN_PRC2 + CN_SNR
