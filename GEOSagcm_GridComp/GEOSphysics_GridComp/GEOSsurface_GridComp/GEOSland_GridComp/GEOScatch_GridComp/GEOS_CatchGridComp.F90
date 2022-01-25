@@ -4113,6 +4113,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
+        logical, save                 :: snow_first =.true.
+        integer                       :: unit_s
+        real, allocatable, save       :: MODIS_SNOW_ALBEDO(:)        
+
+        character(len=ESMF_MAXSTR) :: GRIDNAME
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4835,6 +4840,34 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
+        if (snow_first) then
+           call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
+           VERIFY_(STATUS)
+           GRIDNAME =  AdjustL(GRIDNAME)
+
+           snow_first = .false.
+           if(.NOT. allocated (MODIS_SNOW_ALBEDO)) allocate(MODIS_SNOW_ALBEDO(NTILES))
+           call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)             ; VERIFY_(STATUS)
+           call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS) ; VERIFY_(STATUS)
+           call MAPL_TileMaskGet(tilegrid,  mask, rc=status)               ; VERIFY_(STATUS)
+           unit_s = GETFILE( "/discover/nobackup/projects/gmao/osse2/stage/BCS_FILES/MODIS_snow_alb/MODIS_snow_alb_" // trim(GRIDNAME) // "_nel_Global.bin", &
+                             form="unformatted", RC=STATUS ) ; VERIFY_(STATUS)
+          !! Hard coded - must choose right resolution ( 720/360/180) !!
+          ! unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0720x6C_DE1440xPE0720_nel_2496746_Global.bin", &
+          ! unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0360x6C_DE1440xPE0720_nel_1188020_Global.bin", &
+          ! unit_s = GETFILE( "/discover/nobackup/borescan/for_AGCM_test/MODIS_snow_alb_CF0180x6C_DE1440xPE0720_nel_686448_Global.bin", &
+          !     form="unformatted", RC=STATUS ) ; VERIFY_(STATUS)
+           call MAPL_VarRead (unit_s, tilegrid,MODIS_SNOW_ALBEDO, mask=mask, rc=status) ; VERIFY_(STATUS)
+           call FREE_FILE(unit_s, RC=STATUS)  ; VERIFY_(STATUS)
+        endif
+
+        where (MODIS_SNOW_ALBEDO > 0.)
+           SNOVR = MODIS_SNOW_ALBEDO
+           SNONR = MODIS_SNOW_ALBEDO
+           SNOVF = MODIS_SNOW_ALBEDO
+           SNONF = MODIS_SNOW_ALBEDO
+        endwhere
+        
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
         ! --------------------------------------------------------------------------
@@ -5517,6 +5550,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
 
+        where (MODIS_SNOW_ALBEDO > 0.)
+           SNOVR = MODIS_SNOW_ALBEDO
+           SNONR = MODIS_SNOW_ALBEDO
+           SNOVF = MODIS_SNOW_ALBEDO
+           SNONF = MODIS_SNOW_ALBEDO
+        endwhere
+        
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
         ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
