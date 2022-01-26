@@ -3736,8 +3736,8 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'depth_to_water_table_from_surface',&
-       UNITS              = 'm'                ,&
-       SHORT_NAME         = 'WATERTABLED'                ,&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'WATERTABLED'               ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
@@ -3746,7 +3746,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'FSWCHANGE'                ,&
+       SHORT_NAME         = 'FSWCHANGE'                 ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
       RC=STATUS  ) 
@@ -7585,7 +7585,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
                 TSURF                                                ,&
                 SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
                 LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-                TCSORIG1, TPSN1IN1, TPSN1OUT1,FSW_CHANGE             ,&
+                TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE            ,&
                 TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
                 QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
                 RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)

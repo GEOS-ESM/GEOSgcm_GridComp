@@ -3673,8 +3673,8 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'depth_to_water_table_from_surface',&
-       UNITS              = 'm'                ,&
-       SHORT_NAME         = 'WATERTABLED'                ,&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'WATERTABLED'               ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -3683,7 +3683,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'FSWCHANGE'                ,&
+       SHORT_NAME         = 'FSWCHANGE'                 ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )

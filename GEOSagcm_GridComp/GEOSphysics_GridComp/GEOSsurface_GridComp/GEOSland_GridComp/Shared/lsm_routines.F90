@@ -48,7 +48,7 @@ MODULE lsm_routines
        MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
        DZ1MAX            => CATCH_DZ1MAX,        &
        SHR, N_SM, SCONST, CSOIL_1,               &
-       C_CANOP, SATCAPFR, POROS_HighLat
+       C_CANOP, SATCAPFR, POROS_THRESHOLD_PEATCLSM
 
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
@@ -262,10 +262,10 @@ MODULE lsm_routines
 !**** ===================================================
 
       SUBROUTINE SRUNOFF (                                                  &
-           NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4, THRUL,THRUC,       &
-           frice,tp1,srfmx, BUG,                                            &
-           VGWMAX,RZEQ,POROS,                                               &
-           SRFEXC,RUNSRF,RZEXC,                                             &
+           NCH, DTSTEP, UFW4RO, FWETC, FWETL,                               &
+           AR1, AR2, AR4, THRUL, THRUC, FRICE, TP1, SRFMX, BUG,             &
+           VGWMAX, RZEQ, POROS,                                             &
+           SRFEXC, RZEXC, RUNSRF,                                           &
            QINFIL                                                           &
            )
 
@@ -279,7 +279,7 @@ MODULE lsm_routines
              srfmx, THRUL, THRUC, VGWMAX, RZEQ, POROS
       LOGICAL, INTENT(IN) :: BUG
 
-      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF,  RZEXC
+      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC, RZEXC, RUNSRF
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
 
@@ -295,7 +295,7 @@ MODULE lsm_routines
 
             PTOTAL=THRUL(N) + THRUC(N)
 
-            IF (POROS(N) < POROS_HighLat) THEN
+            IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
                ! Non-peatland
                frun=AR1(N)
                srun0=PTOTAL*frun
@@ -367,7 +367,7 @@ MODULE lsm_routines
          if(UFW4RO) then
 
             !**** Compute runoff from large-scale and convective storms separately:
-            IF (POROS(N) < POROS_HighLat) THEN
+            IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
                 !non-peatland
                deficit=srfmx(n)-srfexc(n)
                srunl=AR1(n)*THRUL(n)
@@ -472,11 +472,10 @@ MODULE lsm_routines
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
 !****
-      SUBROUTINE BASE (                                                        &
-                       NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,AR1,POROS,  &
-                       CATDEF,                                                 &
-                       BFLOW,ars1,ars2,ars3                                                   &
-                      )
+      SUBROUTINE BASE (                                                            &
+           NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,AR1,POROS,ars1,ars2,ars3,   &           
+           CATDEF,BFLOW                                                            &
+           )
 
       IMPLICIT NONE
 
@@ -496,10 +495,10 @@ MODULE lsm_routines
 
       data ashift/0./
 
-    DO N=1,NCH
+      DO N=1,NCH
          ! note intentionally opposite sign w.r.t. zbar defined above, - reichle, 16 Nov 2015
          ZBAR=SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
-         IF (POROS(N) < POROS_HighLat) THEN
+         IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
             BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
                  cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
             ! *1000 is to convert from m/s to mm/s
@@ -532,7 +531,7 @@ MODULE lsm_routines
             ! Ta in m2/s, BFLOW in mm/s
             Ta = (Ksz_zero*(1.+100.*amax1(0.,ZBAR))**(1.-m_Ivanov))/(100.*(m_Ivanov-1.))
             BFLOW(N)=v_slope*Ta*1000.
-            ! handling numerical instability due to extrene snow melt events on partly frozen ground
+            ! handling numerical instability due to extreme snow melt events on partly frozen ground
             ! --> allow BFLOW/DISCHARGE for zbar .LE. 0.05
             ICERAMP= AMAX1(0., AMIN1(1., ZBAR/0.05))
             ICERAMP= 1.-ICERAMP*CFRICE
@@ -544,11 +543,11 @@ MODULE lsm_routines
                ! MB: accounting for water ponding on AR1
                ! same approach as for RZFLW (see subroutine RZDRAIN for
                ! comments)
-               SYSOIL = (2*bf1(N)*amin1(amax1(zbar,0.),0.45) + 2*bf1(N)*bf2(N))/1000.
+               SYSOIL = (2.*bf1(N)*amin1(amax1(zbar,0.),0.45) + 2.*bf1(N)*bf2(N))/1000.
                SYSOIL = amin1(SYSOIL,poros(n))
                !MB2021: use AR1eq, equilibrium assumption between water level in soil hummocks and surface water level in hollows
-               AR1eq = (1+ars1(n)*(catdef(n)))/(1+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
-               BFLOW_CATDEF = (1-AR1eq)*SYSOIL*BFLOW(N)/(1.0*AR1eq+SYSOIL*(1-AR1eq))
+               AR1eq = (1.+ars1(n)*(catdef(n)))/(1.+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
+               BFLOW_CATDEF = (1.-AR1eq)*SYSOIL*BFLOW(N)/(1.*AR1eq+SYSOIL*(1.-AR1eq))
                CATDEF(N)=CATDEF(N)+BFLOW_CATDEF*dtstep
             ENDIF
 
@@ -584,8 +583,9 @@ MODULE lsm_routines
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
                                           PSIS,BEE,poros,WPWET,                &
+                                          BF1,BF2,                             &
                                           ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
-                                          arw1,arw2,arw3,arw4,BF1,BF2
+                                          arw1,arw2,arw3,arw4
 
       LOGICAL, INTENT(IN) :: BUG
 ! -------------------------------------------------------------------
@@ -741,22 +741,22 @@ MODULE lsm_routines
 
           ENDIF
 
-          IF (POROS(N) >= POROS_HighLat) THEN
-             ! peat
-             ! MB: AR4 (wilting fraction) for peatland depending on water table depth
-             !ZBAR defined here positive below ground and in meter
-             ZBAR=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
-             AR4(N)=amax1(0.,amin1(1.0,(ZBAR-0.30)/(1.0)))
-             ARREST = 1.0 - AR1(N)
-             AR4(N)=amin1(ARREST,AR4(N))
-             AR2(N)=1.0-AR4(n)-AR1(N)
-          ENDIF
+        IF (POROS(N) >= POROS_THRESHOLD_PEATCLSM) THEN
+           ! peat
+           ! MB: AR4 (wilting fraction) for peatland depending on water table depth
+           !ZBAR defined here positive below ground and in meter
+           ZBAR=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+           AR4(N)=amax1(0.,amin1(1.0,(ZBAR-0.30)/(1.0)))
+           ARREST = 1.0 - AR1(N)
+           AR4(N)=amin1(ARREST,AR4(N))
+           AR2(N)=1.0-AR4(n)-AR1(N)
+           ENDIF
 
         RZI(N)=RZEQYI
 
         SWSRF1(N)=1.
 !mjs: changed .001 temporarily because of large bee.
-        IF (POROS(N) < POROS_HighLat) THEN
+        IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
         SWSRF2(N)=AMIN1(1., AMAX1(0.01, RZEQYI))
         SWSRF4(N)=AMIN1(1., AMAX1(0.01, WILT))
 
@@ -1013,7 +1013,7 @@ MODULE lsm_routines
 !             ***********************************
 ! lets get the thermal conductivity for the layers
 
-      a1=1-phi
+      a1=1.-phi
       tk1=1.01692+a1*(0.89865+1.06211*a1)
       xw=phi*(1.-fice(1))
       a2=phi-xw
@@ -1850,7 +1850,7 @@ MODULE lsm_routines
                     ! this routine.
       do l=1,N_GT
         zb(l+1)=zb(l)-DZGT(l)
-        shc(l)=shr0*(1-phi)*DZGT(l)
+        shc(l)=shr0*(1.-phi)*DZGT(l)
         enddo
       do l=1,N_GT
         zc(l)=0.5*(zb(l)+zb(l+1))
@@ -1922,7 +1922,7 @@ MODULE lsm_routines
 
       do k=1,N_GT
 
-         a1=1-phi              ! ROCK FRACTION
+         a1=1.-phi             ! ROCK FRACTION
          tk1=1.01692+a1*(0.89865+1.06211*a1)
          xw=phi*(1.-fice(k))   ! FOR SATURATED SOIL, XW HERE IS
                                !   THE LIQUID WATER FRACTION
@@ -2034,7 +2034,7 @@ MODULE lsm_routines
          xfice=xfice+fice(l)
       enddo
 
-      IF (phi < POROS_HighLat) THEN
+      IF (phi < POROS_THRESHOLD_PEATCLSM) THEN
          xfice=xfice/((N_GT+1)-lstart)
       ELSE
          !PEAT
@@ -2104,7 +2104,7 @@ MODULE lsm_routines
 
        do k=1,N_gt
 
-          shc(k) = shr0*(1-phi)*DZGT(k)
+          shc(k) = shr0*(1.-phi)*DZGT(k)
 
           ws = phi*DZGT(k) ! PORE SPACE IN LAYER
 
@@ -2228,7 +2228,7 @@ MODULE lsm_routines
        phi=PHIGT
     end if
 
-    shc = shr0*(1-phi)*DZGT
+    shc = shr0*(1.-phi)*DZGT
 
     ws  = phi*DZGT           ! PORE SPACE IN LAYER
 

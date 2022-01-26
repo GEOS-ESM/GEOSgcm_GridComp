@@ -44,7 +44,7 @@ module catch_constants
 
   INTEGER, PARAMETER, PUBLIC :: N_Pfaf_Catchs      = 291284 ! # of Pfafstetter hydrological catchements in the globe
   INTEGER, PARAMETER, PUBLIC :: N_Pfaf_LandCatchs  = 290188 ! # of Pfafstetter hydrological catchments used within
-                                                        ! the runoff routing model (excluding submerged catchments)
+                                                            ! the runoff routing model (excluding submerged catchments)
 
   ! ---------------------------------------------------------------------------
 
@@ -85,7 +85,17 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: SATCAPFR = 0.2    ! SATCAP = SATCAPFR * LAI
 
   ! peatCLSM implementation smahanam  3-16-2021
-
-    REAL, PARAMETER, PUBLIC :: POROS_HighLat = 0.9
+  !
+  ! Use of peat-specific hydrology (PEATCLSM) is triggered by a porosity threshold.
+  ! Porosity of peat tiles depends on bcs version.
+  !
+  !     bcs version           | source of peat info       | porosity
+  !     -----------------------------------------------------------------
+  !     NLv3, NLv4            | HWSD                      | poros=0.80
+  !     NLv5                  | PEATMAP                   | poros=0.93
+  !
+  ! - reichle, 26 Jan 2022
+  
+  REAL, PARAMETER, PUBLIC :: POROS_THRESHOLD_PEATCLSM = 0.90  
 
 end module catch_constants
