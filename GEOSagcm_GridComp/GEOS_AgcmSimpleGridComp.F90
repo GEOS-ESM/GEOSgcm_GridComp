@@ -110,7 +110,7 @@ contains
 !         RESTART    = MAPL_RestartRequired,                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                        &
          SHORT_NAME = 'QLLS',                                            &
@@ -119,7 +119,7 @@ contains
          FRIENDLYTO = 'DYNAMICS',                             &
          DIMS       = MAPL_DimsHorzVert,                                 &
          VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                       &
          SHORT_NAME = 'QLCN',                                           &
@@ -136,8 +136,7 @@ contains
          FRIENDLYTO = 'DYNAMICS',                          &
          DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
-
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                    &
          SHORT_NAME = 'QICN',                                        &
@@ -146,7 +145,55 @@ contains
          FRIENDLYTO = 'DYNAMICS',                         &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )  
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'CLLS',                                      &
+         LONG_NAME  = 'large_scale_cloud_area_fraction',           &
+         UNITS      = '1',                                         &
+         FRIENDLYTO = 'DYNAMICS',                                  &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
     VERIFY_(STATUS)                                                                          
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'CLCN',                                      &
+         LONG_NAME  = 'convective_cloud_area_fraction',            &
+         UNITS      = '1',                                         &
+         FRIENDLYTO = 'DYNAMICS',                                  &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
+    VERIFY_(STATUS)                                                                          
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'QRAIN',                                     &
+         LONG_NAME  = 'mass_fraction_of_rain',                     & 
+         UNITS      = 'kg kg-1',                                   &
+         FRIENDLYTO = 'DYNAMICS',                       &
+         default    = 0.0,                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'QSNOW',                                     &
+         LONG_NAME  = 'mass_fraction_of_snow',                     &
+         UNITS      = 'kg kg-1',                                   &
+         FRIENDLYTO = 'DYNAMICS',                       &
+         default    = 0.0,                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'QGRAUPEL',                                  &
+         LONG_NAME  = 'mass_fraction_of_graupel',                  &
+         UNITS      = 'kg kg-1',                                   &
+         FRIENDLYTO = 'DYNAMICS',                       &
+         default    = 0.0,                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+                                                                          
 
 ! Register children with MAPL and go down their SS hierarchy
 ! ----------------------------------------------------------
