@@ -2709,7 +2709,7 @@ module GEOS_SurfaceGridCompMod
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'FSWCHANGE'      
+       SHORT_NAME         = 'FSWCHANGE'                 ,& 
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
