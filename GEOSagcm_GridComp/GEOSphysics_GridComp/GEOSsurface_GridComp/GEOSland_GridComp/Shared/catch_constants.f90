@@ -181,7 +181,7 @@ contains
     write (logunit,*) '-----------------------------------------------------------'
     write (logunit,*)
 
-  end subroutine echo_constants
+  end subroutine echo_catch_constants
 
   ! *******************************************************************************
   
