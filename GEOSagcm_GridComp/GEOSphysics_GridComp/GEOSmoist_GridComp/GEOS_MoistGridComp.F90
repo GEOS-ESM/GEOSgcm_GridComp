@@ -2460,6 +2460,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'SNOWTOTAL',                                &
+         LONG_NAME = 'snowfall_total',                       &
+         UNITS     = 'mm',                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'PRECTOTAL',                                &
+         LONG_NAME = 'precipitation_total',                        &     
+         UNITS     = 'mm',                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'RAIN',                                         &
          LONG_NAME = 'rainfall',                                    &
          UNITS     = 'kg m-2 s-1',                                  &
@@ -5920,7 +5936,7 @@ contains
       real, pointer, dimension(:,:,:) :: DBZ
       real, pointer, dimension(:,:  ) :: DBZ_MAX
 
-      real, pointer, dimension(:,:  ) :: KUCHERA_RATIO
+      real, pointer, dimension(:,:  ) :: KUCHERA_RATIO, SNOWTOTAL, PRECTOTAL
       real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
       real, pointer, dimension(:,:  ) :: LS_PRCP,CN_PRCP,AN_PRCP,SC_PRCP,TT_PRCP,ER_PRCP,FILLNQV
       real, pointer, dimension(:,:  ) :: SC_MSE, SC_QT
@@ -6094,7 +6110,7 @@ contains
       real, dimension(IM,JM,LM)  :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                     DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic
 
-      real, dimension(IM,JM) :: OMEGA500_X
+      real, dimension(IM,JM) :: OMEGA500_X, TMP2D_X
 
       real, pointer, dimension(:,:,:) :: LWC, IWC, CIRRUS_FREQ_HOM, CIRRUS_FREQ_HET
       real, pointer, dimension(:,:) ::  CLDREFFI_TOP, CLDREFFL_TOP, NCPL_TOP, NCPI_TOP, QCVAR_EXP, &
@@ -11591,7 +11607,7 @@ contains
        END IF     
 
        TPREC = CN_PRC2 + LS_PRC2 + AN_PRC2 + SC_PRC2 + &
-              CN_SNR  + LS_SNR  + AN_SNR + SC_SNR
+               CN_SNR  + LS_SNR  + AN_SNR + SC_SNR
       
 if (MGVERSION .gt. 1.0) then 
       if(associated(TVQX2)) TVQX2    = SUM( ( Q1 +  QLLS + QLCN + QILS + QICN +  QRAIN +  QSNOW + QGRAUPEL)*MASS , 3 )  + TPREC*DT_MOIST -TVQ0
@@ -12277,7 +12293,7 @@ end if
          QTOT= QICN+QILS+QLCN+QLLS
 
        TPREC = CN_PRC2 + LS_PRC2 + AN_PRC2 + SC_PRC2 + &
-              CN_SNR  + LS_SNR  + AN_SNR + SC_SNR
+               CN_SNR  + LS_SNR  + AN_SNR + SC_SNR
 
 
    
@@ -12339,7 +12355,7 @@ do K= 1, LM
 
 
          TPREC = CN_PRC2 + LS_PRC2 + AN_PRC2 + SC_PRC2 + &
-              CN_SNR  + LS_SNR  + AN_SNR + SC_SNR + RASPRCP
+                 CN_SNR  + LS_SNR  + AN_SNR + SC_SNR + RASPRCP
 
   
  !if(associated(TVQX2)) TVQX2    = SUM( ( Q1 +  QLLS + QLCN + QILS + QICN )*MASS , 3 )  + TPREC*DT_MOIST
@@ -13216,23 +13232,34 @@ do K= 1, LM
        endif
       endif
 
-      if (associated(KUCHERA_RATIO)) then
-         do i = 1,IM
-           do j = 1,JM
-               Tmax = 0.0
-               do k =  LM, 1, -1
-                  if (PLO(i,j,k).gt.500.) then
-                     Tmax = MAX(Tmax,TEMP(i,j,k))
-                  end if
-               end do
-               if (Tmax <= 271.16) then
-                  KUCHERA_RATIO(i,j) = 12.0 + (271.16 - Tmax)
-               else
-                  KUCHERA_RATIO(i,j) = 12.0 + 2*(271.16 - Tmax)
-               end if
-           end do
-         end do
+      do i = 1,IM
+          do j = 1,JM
+              Tmax = 0.0
+              do k =  LM, 1, -1
+                 if (PLO(i,j,k).gt.500.) then
+                    Tmax = MAX(Tmax,TEMP(i,j,k))
+                 end if
+              end do
+              if (Tmax <= 271.16) then
+                 TMP2D_X(i,j) = 12.0 + (271.16 - Tmax)
+              else
+                 TMP2D_X(i,j) = 12.0 + 2*(271.16 - Tmax)
+              end if
+              TMP2D_X(i,j) = max(0.0,TMP2D_X(i,j))
+          end do
+      end do
+      call MAPL_GetPointer(EXPORT, KUCHERA_RATIO,'KUCHERA_RATIO', RC=STATUS); VERIFY_(STATUS)
+      KUCHERA_RATIO=TMP2D_X
+
+      call MAPL_GetPointer(EXPORT, SNOWTOTAL,'SNOWTOTAL', RC=STATUS); VERIFY_(STATUS)
+      if (associated(SNOWTOTAL)) then
+         if (associated(SNR) .and. associated(ICE)) then
+            SNOWTOTAL = TMP2D_X*DT_MOIST*(SNR+ICE)
+         else
+            SNOWTOTAL = TMP2D_X*DT_MOIST*(CN_SNR+SC_SNR+AN_SNR+LS_SNR)
+         endif
       endif
+      if (associated(PRECTOTAL)) PRECTOTAL = DT_MOIST*TPREC
 
       if (associated(CN_PRCP))   CN_PRCP = CN_PRC2 + CN_SNR
       if (associated(SC_PRCP))   SC_PRCP = SC_PRC2 + SC_SNR
