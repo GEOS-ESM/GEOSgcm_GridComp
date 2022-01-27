@@ -20,7 +20,8 @@ if ( $HELPMODE == YES ) then
    echo "                                                                         "
    echo " STEP 1: Build the model (GCM or GEOSldas).                              "
    echo " STEP 2: cd [install-path]/bin                                           "
-   echo " STEP 3: ./make_bcs                                                      "
+   echo " STEP 3: source g5_modules.sh                                            "
+   echo " STEP 4: ./make_bcs                                                      "
    echo "            Answer the following interactive questions:                  "
    echo "            a) Enter BCS output directory.                               "
    echo "            b) Enter Atmospheric Horizontal Resolution Code(s) to build. "
@@ -50,16 +51,6 @@ if ( "$1" == "-noland" ) set SKIPLAND = YES
 #######################################################################
 
 if ( $HELPMODE != YES ) then
-
-   set MAKE_BCS = `echo $cwd`/make_bcs
-   set  ESMADIR = `echo $cwd` 
-
-   echo ' '
-   echo MAKE_BCS: $MAKE_BCS
-   echo  ESMADIR: $ESMADIR
-
-   echo   $ESMADIR/g5_modules
-   source $ESMADIR/g5_modules
 
    setenv NCPUS `/usr/bin/lscpu | grep '^CPU(s)' | cut -d ':' -f2 | head -1 `
    @ NCPUS = $NCPUS / 4
@@ -676,7 +667,6 @@ cat << _EOF_ > $BCJOB
 #SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-setenv ESMADIR $ESMADIR
 
 cd $pwd
 cd $BCDIR
@@ -855,7 +845,6 @@ cat << _EOF_ > $BCJOB
 #SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-setenv ESMADIR $ESMADIR
 
 cd $pwd
 cd $BCDIR
@@ -925,7 +914,6 @@ cat << _EOF_ > $BCJOB-2
 #SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-setenv ESMADIR $ESMADIR
 
 cd $pwd
 cd $BCDIR
@@ -1058,7 +1046,6 @@ cat << _EOF_ > $BCJOB
 #SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-setenv ESMADIR $ESMADIR
 
 cd $pwd
 cd $BCDIR
@@ -1257,7 +1244,6 @@ cat << _EOF_ > $BCJOB
 #SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-setenv ESMADIR $ESMADIR
 cd $pwd
 cd $BCDIR
 
