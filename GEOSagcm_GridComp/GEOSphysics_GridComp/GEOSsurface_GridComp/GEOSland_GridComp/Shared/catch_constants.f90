@@ -28,7 +28,12 @@ module catch_constants
   ! reichle, 27 Jan 2022 - cleanup: moved "public" constants from lsm_routines to here; added "CATCH_" prefix
 
   ! ---------------------------------------------------------------------------
-  ! 
+  !
+  
+  USE MAPL_ConstantsMod, ONLY:          &
+       MAPL_ALHF
+
+  
   ! use constants from SURFPARAMS in echo_catch_contants()
   
   USE SURFPARAMS,        ONLY:                   &
@@ -104,9 +109,9 @@ module catch_constants
   !  Fortuna-2_3  |  -9999.       ALHM
   
   REAL,    PARAMETER, PUBLIC :: CATCH_PHIGT         = -9999.
-  REAL,    PARAMETER, PUBLIC :: CATCH_ALHMGT        = ALHM
+  REAL,    PARAMETER, PUBLIC :: CATCH_ALHMGT        = MAPL_ALHF
 
-  REAL,    PARAMETER, PUBLIC :: CATCH_FSN           = 1.e3*ALHMGT ! unit change J/kg/K -> J/m/K
+  REAL,    PARAMETER, PUBLIC :: CATCH_FSN           = 1.e3*CATCH_ALHMGT ! unit change J/kg/K -> J/m/K
 
   ! miscellaneous Catchment model constants
   
