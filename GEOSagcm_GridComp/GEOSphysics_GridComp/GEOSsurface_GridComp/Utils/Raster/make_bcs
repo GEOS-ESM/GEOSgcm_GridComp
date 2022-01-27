@@ -20,7 +20,7 @@ if ( $HELPMODE == YES ) then
    echo "                                                                         "
    echo " STEP 1: Build the model (GCM or GEOSldas).                              "
    echo " STEP 2: cd [install-path]/bin                                           "
-   echo " STEP 3: source g5_modules.sh                                            "
+   echo " STEP 3: source g5_modules (for bash or zsh use g5_modules.[z]sh)        "
    echo " STEP 4: ./make_bcs                                                      "
    echo "            Answer the following interactive questions:                  "
    echo "            a) Enter BCS output directory.                               "
