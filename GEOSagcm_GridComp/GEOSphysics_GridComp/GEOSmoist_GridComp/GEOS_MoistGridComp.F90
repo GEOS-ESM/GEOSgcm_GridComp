@@ -95,7 +95,7 @@ module GEOS_MoistGridCompMod
   use RASPARAMS
   use CLDPARAMS
   use SHLWPARAMS
-  !use micro_mg3_0
+  use micro_mg3_0
  
 !-srf-gf-scheme
   USE ConvPar_GF_GEOS5, only: GF_GEOS5_INTERFACE, MAXIENS, ICUMULUS_GF, CLOSURE_CHOICE, DEEP, SHAL, MID &
@@ -205,8 +205,10 @@ contains
     integer      :: IQVAINC
     real         :: DT
     
-    character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
-                                  FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL
+     character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
+                                  FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL, &
+                                  FRIENDLIES_QRAIN_2M, FRIENDLIES_QSNOW_2M, FRIENDLIES_QGRAUPEL_2M
+                                  
     character(len=ESMF_MAXSTR) :: FRIENDLIES_QRAIN, FRIENDLIES_QSNOW, FRIENDLIES_QGRAUPEL
 
     !=============================================================================
@@ -305,6 +307,10 @@ contains
     FRIENDLIES_QRAIN    = trim(COMP_NAME)
     FRIENDLIES_QSNOW    = trim(COMP_NAME)
     FRIENDLIES_QGRAUPEL = trim(COMP_NAME)
+    FRIENDLIES_QRAIN_2M    = trim(COMP_NAME)
+    FRIENDLIES_QSNOW_2M    = trim(COMP_NAME)
+    FRIENDLIES_QGRAUPEL_2M = trim(COMP_NAME)
+    
    
     if(adjustl(CLDMICRO)=="2MOMENT") then
     
@@ -314,13 +320,13 @@ contains
       if (MGVERSION .gt. 1.0) then
           FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QRAIN_2M = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QSNOW_2M = 'DYNAMICS:TURBULENCE'
       end if
       
-       if (MGVERSION .gt. 2.0) then                       
+      if (MGVERSION .gt. 2.0) then           
           FRIENDLIES_NGRAUPEL = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QGRAUPEL = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QGRAUPEL_2M = 'DYNAMICS:TURBULENCE'
       endif
     end if 
     
@@ -501,6 +507,37 @@ contains
     VERIFY_(STATUS)                                                                          
 
 
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'QRAIN_2M',                                     &
+         LONG_NAME  = 'mass_fraction_of_rain',                     & 
+         UNITS      = 'kg kg-1',                                   &
+         FRIENDLYTO = trim(FRIENDLIES_QRAIN_2M),                       &
+         default    = 0.0,                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+          VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'QSNOW_2M',                                     &
+         LONG_NAME  = 'mass_fraction_of_snow',                     &
+         UNITS      = 'kg kg-1',                                   &
+         FRIENDLYTO = trim(FRIENDLIES_QSNOW_2M),                       &
+         default    = 0.0,                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+         VERIFY_(STATUS)
+     
+    call MAPL_AddInternalSpec(GC,                                  &
+             SHORT_NAME = 'QGRAUPEL_2M',                                  &
+             LONG_NAME  = 'mass_fraction_of_graupel',                  &
+             UNITS      = 'kg kg-1',                                   &
+             FRIENDLYTO = trim(FRIENDLIES_QGRAUPEL_2M),                       &
+             default    = 0.0,                                         &
+             DIMS       = MAPL_DimsHorzVert,                           &
+             VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+             
+      VERIFY_(STATUS)         
      
     
   if (DOSHLW /= 0) then
@@ -5064,6 +5101,7 @@ contains
     type (ESMF_Config)                  :: CF
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
+    real, pointer, dimension(:,:,:)     :: QRAIN_2M, QSNOW_2M, QGRAUPEL_2M
     real, dimension(:,:,:), pointer     :: PTR3
 
     integer  unit
@@ -5126,9 +5164,14 @@ contains
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QW,       'QW'      , RC=STATUS); VERIFY_(STATUS)
-
-    QW = Q+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
-
+    call MAPL_GetPointer(INTERNAL, QRAIN_2M,    'QRAIN_2M'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QSNOW_2M,    'QSNOW_2M'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QGRAUPEL_2M, 'QGRAUPEL_2M', RC=STATUS); VERIFY_(STATUS)
+  
+  
+  
+    QW = Q+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL 
+   
     if(adjustl(CLDMICRO)=="GFDL") then
        call gfdl_cloud_microphys_init()
        call WRITE_PARALLEL ("INITIALIZED GFDL microphysics in non-generic GC INIT")
@@ -5165,10 +5208,10 @@ contains
        if  (NG_CST .gt. 0.0)  ngcons =.true.
          
        if  (MGVERSION .gt. 1.0) then 
-         ! call micro_mg_init(Dcsr8, do_graupel,  micro_mg_berg_eff_factor_in, &
-          !               nccons, nicons, ncnstr8, ninstr8, ngcons, ngnstr8, mui_cnstr8)       
+          call micro_mg_init(Dcsr8, do_graupel,  micro_mg_berg_eff_factor_in, &
+                         nccons, nicons, ncnstr8, ninstr8, ngcons, ngnstr8, mui_cnstr8)       
        else     
-           call ini_micro(Dcsr8, micro_mg_berg_eff_factor_in, &
+          call ini_micro(Dcsr8, micro_mg_berg_eff_factor_in, &
                           nccons, nicons, ncnstr8, ninstr8, qcvarr8)
        end if 
                          
@@ -5561,8 +5604,11 @@ contains
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
-      real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT,  CFLIQ, CFICE !DONIF
-
+      real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT, CFLIQ, CFICE !DONIF
+         real, pointer, dimension(:,:,:)     :: QRAIN_2M, QSNOW_2M, QGRAUPEL_2M
+  
+      
+   
       real, pointer, dimension(:,:,:) :: NCPL,NCPI, NRAIN, NSNOW, NGRAUPEL
  
  
@@ -6418,7 +6464,7 @@ contains
       call MAPL_GetResource(STATE, MAX_EXP,        'MAX_EXP:',        DEFAULT= 1.0,   RC=STATUS) !Exponent of the relation CFA=CFV^n
       call MAPL_GetResource(STATE, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    RC=STATUS) !Set to > 0 to use an average velocity for activation
       call MAPL_GetResource(STATE, AUTSC,          'AUT_SCALE:',      DEFAULT= 0.5,    RC=STATUS) !scale factor for critical size for drizzle      call MAPL_GetResource(STATE, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    RC=STATUS) !Set to > 0 to use an average velocity for activation
-      call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 2.0, RC=STATUS) !Ice autoconversion time scale
+      call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 4.0, RC=STATUS) !Ice autoconversion time scale
       call MAPL_GetResource(STATE, TMAXLL,         'TMAXLL:',         DEFAULT= 250.0,  RC=STATUS) !Liquid clouds min T
       call MAPL_GetResource(STATE, CCN_PARAM,      'CCNPARAM:',       DEFAULT= 2.0,    RC=STATUS) !CCN activation param
       call MAPL_GetResource(STATE, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    RC=STATUS) !IN param
@@ -6593,6 +6639,9 @@ contains
       call MAPL_GetPointer(INTERNAL, NRAIN,    'NRAIN'    , RC=STATUS); VERIFY_(STATUS)  
       call MAPL_GetPointer(INTERNAL, NSNOW,    'NSNOW'    , RC=STATUS); VERIFY_(STATUS)      
       call MAPL_GetPointer(INTERNAL, NGRAUPEL, 'NGRAUPEL'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, QRAIN_2M,    'QRAIN_2M'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, QSNOW_2M,    'QSNOW_2M'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, QGRAUPEL_2M, 'QGRAUPEL_2M', RC=STATUS); VERIFY_(STATUS)
        
       if (DOSHLW /= 0) then
        call MAPL_GetPointer(INTERNAL, CUSH,  'CUSH'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
@@ -11209,9 +11258,9 @@ contains
          CLCN, &
          NCPL, &
          NCPI, & 
-         QRAIN, &
-         QSNOW, &
-         QGRAUPEL, &
+         QRAIN_2M, &
+         QSNOW_2M, &
+         QGRAUPEL_2M, &
          NRAIN, &
          NSNOW, &
          NGRAUPEL)
@@ -11219,9 +11268,9 @@ contains
          
          ! need to clean up small negative values. MG does can't handle them
           call FILLQ2ZERO2( Q1, MASS, FILLQ) 
-          call FILLQ2ZERO2( QGRAUPEL, MASS, FILLQ) 
-          call FILLQ2ZERO2( QRAIN, MASS, FILLQ) 
-          call FILLQ2ZERO2( QSNOW, MASS, FILLQ) 
+          call FILLQ2ZERO2( QGRAUPEL_2M, MASS, FILLQ) 
+          call FILLQ2ZERO2( QRAIN_2M, MASS, FILLQ) 
+          call FILLQ2ZERO2( QSNOW_2M, MASS, FILLQ) 
           call FILLQ2ZERO2( QLLS, MASS, FILLQ)
           call FILLQ2ZERO2( QLCN, MASS, FILLQ)  
           call FILLQ2ZERO2( QILS, MASS, FILLQ)
@@ -11508,9 +11557,9 @@ contains
                         frzimmr8 =  nimmr8
                         frzcntr8 = nimmr8*0.0  
                         frzdepr8 = nhet_depr8
-                        qrr8(1, 1:LM)     =  QRAIN(I, J,1:LM)
-                        qsr8(1, 1:LM)     =  QSNOW(I, J,1:LM)
-                        qgr8(1, 1:LM)     =  QGRAUPEL(I, J,1:LM)                        
+                        qrr8(1, 1:LM)     =  QRAIN_2M(I, J,1:LM)
+                        qsr8(1, 1:LM)     =  QSNOW_2M(I, J,1:LM)
+                        qgr8(1, 1:LM)     =  QGRAUPEL_2M(I, J,1:LM)                        
                         nrr8(1, 1:LM)     =  NRAIN(I, J,1:LM)
                         nsr8(1, 1:LM)     =  NSNOW(I, J,1:LM)
                         ngr8(1, 1:LM)     =  NGRAUPEL(I, J,1:LM)                         
@@ -11573,78 +11622,78 @@ contains
 
     else ! MG2/3
         
-       !  call  micro_mg_tend_interface ( DT_MICRO, INT(CLDPARAMS%PDFSHAPE), ALPH_tmp, SCICE_tmp, FQA_tmp, &
-        !                                CNV_FRACTION(I, J), SNOMAS(I, J), FRLANDICE(I, J), FRLAND(I, J), & 
-        !                     ncolmicro,             LM,               dt_r8,       & 
-        !                     ter8,                            qvr8,                              &
-        !                     qcr8,                          qir8,                          &
-        !                     ncr8,                          nir8,                          &
-        !                     qrr8,                          qsr8,                          &
-        !                     nrr8,                          nsr8,                          &
-        !                     qgr8,                          ngr8,                          &
-        !                     relvarr8,                      accre_enhanr8,   accre_enhan_icer8,  &
-        !                     plevr8,                        pdelr8,                        &
-        !                     cldfr8, liqcldfr8, icecldfr8,  qsatfacr8,                     &
-        !                     qcsinksum_rate1ordr8,                                         &
-        !                     naair8,                         npccninr8,                      &
-        !                     rndstr8,                        naconr8,                        &
-        !                     tlatr8,                         qvlatr8,                        &
-        !                     qctendr8,                       qitendr8,                       &
-        !                     nctendr8,                       nitendr8,                       &
-        !                     qrtendr8,                       qstendr8,                       &
-         !                    nrtendr8,                       nstendr8,                       & 
-         !                    qgtendr8,                       ngtendr8,                       &
-         !                    effcr8,               effc_fnr8,            effir8,              &
-         !                    sadicer8,                       sadsnowr8,                      &
-         !                    prectr8,                        precir8,                        &
-         !                    nevaprr8,                       evapsnowr8,                     &
-         !                    am_evp_str8,                                                  &
-         !                    prainr8,                        prodsnowr8,                     &
-         !                    cmeoutr8,                       deffir8,                        &
-         !                    pgamradr8,                      lamcradr8,                      &
-         !                    qsoutr8,                        dsoutr8,                        &
-         !                    qgoutr8,     ngoutr8,           dgoutr8,                        &
-         !                    lflxr8,               iflxr8,   & 
-         !                    gflxr8,                           &
-         !                    rflxr8,           sflxr8,    qroutr8,          &
-         !                    reff_rainr8,      reff_snowr8, reff_graur8,        &
-         !                    qcsevapr8,            qisevapr8,            qvresr8,              &
-         !                    cmeioutr8,            vtrmcr8,              vtrmir8,              &
-         !                    umrr8,                          umsr8,                          &
-         !                    umgr8,                          qgsedtendr8,                    &    
-         !                    qcsedtenr8,                     qisedtenr8,                     &
-         !                    qrsedtenr8,                     qssedtenr8,                     &
-         !                    praor8,                       prcor8,                       &
-         !                    mnucccor8,          mnucctor8,          msacwior8,          &
-         !                    psacwsor8,          bergsor8,           bergor8,            &
-         !                    meltor8,                      homoor8,                      &
-         !                    qcresor8,           prcior8,            praior8,            &
-         !                    qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &                           
-         !                    meltsdtr8,         frzrdtr8,          mnuccdor8,          &
-         !                    pracgtotr8,           psacwgtotr8,          pgsacwtotr8,          &
-         !                    pgracstotr8,          prdgtotr8,           &
-         !                    qmultgtotr8,          qmultrgtotr8,         psacrtotr8,           &
-         !                    npracgtotr8,          nscngtotr8,           ngracstotr8,          &
-         !                    nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         & 
-         !                    nroutr8,                            nsoutr8,                        &
-         !                    reflr8,               areflr8,              areflzr8,             &
-         !                    freflr8,              csrflr8,              acsrflr8,             &
-         !                    fcsrflr8,                       rercldr8,                       &
-         !                    ncair8,                         ncalr8,                         &
-         !                    qrout2r8,                       qsout2r8,                       &
-         !                    nrout2r8,                       nsout2r8,                       &
-         !                    drout2r8,                       dsout2r8,                       &
-         !                    qgout2r8,     ngout2r8,         dgout2r8,   freqgr8,                     &
-         !                    freqsr8,                        freqrr8,                        &
-         !                    nficer8,                        qcratr8,                        &
+         call  micro_mg_tend_interface ( DT_MICRO, INT(CLDPARAMS%PDFSHAPE), ALPH_tmp, SCICE_tmp, FQA_tmp, &
+                                        CNV_FRACTION(I, J), SNOMAS(I, J), FRLANDICE(I, J), FRLAND(I, J), & 
+                             ncolmicro,             LM,               dt_r8,       & 
+                             ter8,                            qvr8,                              &
+                             qcr8,                          qir8,                          &
+                             ncr8,                          nir8,                          &
+                             qrr8,                          qsr8,                          &
+                             nrr8,                          nsr8,                          &
+                             qgr8,                          ngr8,                          &
+                             relvarr8,                      accre_enhanr8,   accre_enhan_icer8,  &
+                             plevr8,                        pdelr8,                        &
+                             cldfr8, liqcldfr8, icecldfr8,  qsatfacr8,                     &
+                             qcsinksum_rate1ordr8,                                         &
+                             naair8,                         npccninr8,                      &
+                             rndstr8,                        naconr8,                        &
+                             tlatr8,                         qvlatr8,                        &
+                             qctendr8,                       qitendr8,                       &
+                             nctendr8,                       nitendr8,                       &
+                             qrtendr8,                       qstendr8,                       &
+                             nrtendr8,                       nstendr8,                       & 
+                             qgtendr8,                       ngtendr8,                       &
+                             effcr8,               effc_fnr8,            effir8,              &
+                             sadicer8,                       sadsnowr8,                      &
+                             prectr8,                        precir8,                        &
+                             nevaprr8,                       evapsnowr8,                     &
+                             am_evp_str8,                                                  &
+                             prainr8,                        prodsnowr8,                     &
+                             cmeoutr8,                       deffir8,                        &
+                             pgamradr8,                      lamcradr8,                      &
+                             qsoutr8,                        dsoutr8,                        &
+                             qgoutr8,     ngoutr8,           dgoutr8,                        &
+                             lflxr8,               iflxr8,   & 
+                             gflxr8,                           &
+                             rflxr8,           sflxr8,    qroutr8,          &
+                             reff_rainr8,      reff_snowr8, reff_graur8,        &
+                             qcsevapr8,            qisevapr8,            qvresr8,              &
+                             cmeioutr8,            vtrmcr8,              vtrmir8,              &
+                             umrr8,                          umsr8,                          &
+                             umgr8,                          qgsedtendr8,                    &    
+                             qcsedtenr8,                     qisedtenr8,                     &
+                             qrsedtenr8,                     qssedtenr8,                     &
+                             praor8,                       prcor8,                       &
+                             mnucccor8,          mnucctor8,          msacwior8,          &
+                             psacwsor8,          bergsor8,           bergor8,            &
+                             meltor8,                      homoor8,                      &
+                             qcresor8,           prcior8,            praior8,            &
+                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &                           
+                             meltsdtr8,         frzrdtr8,          mnuccdor8,          &
+                             pracgtotr8,           psacwgtotr8,          pgsacwtotr8,          &
+                             pgracstotr8,          prdgtotr8,           &
+                             qmultgtotr8,          qmultrgtotr8,         psacrtotr8,           &
+                             npracgtotr8,          nscngtotr8,           ngracstotr8,          &
+                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         & 
+                             nroutr8,                            nsoutr8,                        &
+                             reflr8,               areflr8,              areflzr8,             &
+                             freflr8,              csrflr8,              acsrflr8,             &
+                             fcsrflr8,                       rercldr8,                       &
+                             ncair8,                         ncalr8,                         &
+                             qrout2r8,                       qsout2r8,                       &
+                             nrout2r8,                       nsout2r8,                       &
+                             drout2r8,                       dsout2r8,                       &
+                             qgout2r8,     ngout2r8,         dgout2r8,   freqgr8,                     &
+                             freqsr8,                        freqrr8,                        &
+                             nficer8,                        qcratr8,                        &
 !        !                     errstring, & ! Below arguments are "optional" (pass null pointers to omit).
-         !             !       tnd_qsnow,          tnd_nsnow,          re_ice,    &
-         !                    prer_evap, &
-         !                    frzimmr8,             frzcntr8,              frzdepr8,  & ! contact is not passed since it depends on the droplet size dist
-         !                    nsootr8, rnsootr8,  & ! soot for contact IN
-         !                    npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
-         !                    npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
-         !                    ts_autice, ui_scale, autscx , disp_liu, nbincontactdust, urscale)
+                      !       tnd_qsnow,          tnd_nsnow,          re_ice,    &
+                             prer_evap, &
+                             frzimmr8,             frzcntr8,              frzdepr8,  & ! contact is not passed since it depends on the droplet size dist
+                             nsootr8, rnsootr8,  & ! soot for contact IN
+                             npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
+                             npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
+                             ts_autice, ui_scale, autscx , disp_liu, nbincontactdust, urscale)
 
 
 
@@ -11653,8 +11702,8 @@ contains
       IF (MGVERSION .gt. 1.0) then 
 
 !#ifdef FAILS 
-                  QRAIN(I,J,1:LM)  = max(QRAIN(I,J,1:LM) + REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
-                  QSNOW(I,J,1:LM)  = max(QSNOW(I,J,1:LM) + REAL(qstendr8(1, 1:LM)*DT_R8), 0.0) ! grid average                     
+                  QRAIN_2M(I,J,1:LM)  = max(QRAIN_2M(I,J,1:LM) + REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
+                  QSNOW_2M(I,J,1:LM)  = max(QSNOW_2M(I,J,1:LM) + REAL(qstendr8(1, 1:LM)*DT_R8), 0.0) ! grid average                     
                   NRAIN(I,J,1:LM)  = max(NRAIN(I,J,1:LM) + REAL(nrtendr8(1, 1:LM)*DT_R8), 0.0)
                   NSNOW(I,J,1:LM)  = max(NSNOW(I,J,1:LM) + REAL(nstendr8(1, 1:LM)*DT_R8), 0.0)                  
                   CLDREFFR(I,J,1:LM) = REAL(reff_rainr8(1, 1:LM))        
@@ -11663,7 +11712,7 @@ contains
                   DQRL_X(I,J,1:LM)   = REAL(   qrtendr8(1, 1:LM)) !rain mixing ratio tendency from micro
                   
                IF (MGVERSION .gt. 2.0) then                   
-                  QGRAUPEL(I,J,1:LM)  = max(QGRAUPEL(I,J,1:LM) + REAL(qgtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
+                  QGRAUPEL_2M(I,J,1:LM)  = max(QGRAUPEL_2M(I,J,1:LM) + REAL(qgtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
                   NGRAUPEL(I,J,1:LM)  = max(NGRAUPEL(I,J,1:LM) + REAL(ngtendr8(1, 1:LM)*DT_R8), 0.0)
                else
                   QGRAUPEL(I,J,1:LM)  = 0.0 ! grid average                    
@@ -11673,8 +11722,8 @@ contains
             
         else
                     
-                   QRAIN(I,J,1:LM)  = max(REAL(qrout2r8(1, 1:LM)), 0.0) ! grid average 
-                   QSNOW(I,J,1:LM)  = max(REAL(qsout2r8(1, 1:LM)), 0.0)                      
+                   QRAIN_2M(I,J,1:LM)  = max(REAL(qrout2r8(1, 1:LM)), 0.0) ! grid average 
+                   QSNOW_2M(I,J,1:LM)  = max(REAL(qsout2r8(1, 1:LM)), 0.0)                      
                    NRAIN(I,J,1:LM)  = max(REAL(nrout2r8(1, 1:LM)), 0.0)
                    NSNOW(I,J,1:LM)  = max(REAL(nsout2r8(1, 1:LM)), 0.0)
                    CLDREFFR(I,J,1:LM) = REAL(drout2r8(1, 1:LM))/2.0        
@@ -11682,7 +11731,6 @@ contains
                    DQRL_X(I,J,1:LM)   = REAL(qrout2r8(1, 1:LM)/DT_R8) !rain mixing ratio tendency from micro
                  
          end if          
-         
          
          
   
@@ -11892,12 +11940,12 @@ do K= 1, LM
              WHERE  (RAD_CF > 1e-4)
                 RAD_QL = min((QLLS+QLCN)/RAD_CF, 1.0e-3)
                 RAD_QI = min((QILS+QICN)/RAD_CF, 1.0e-3) 
-                RAD_QG =  QGRAUPEL/RAD_CF
+                RAD_QG =  QGRAUPEL_2M/RAD_CF
                 
                where (TEMP < MAPL_TICE) !SNOW
-                 RAD_QS = (QSNOW + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
+                 RAD_QS = (QSNOW_2M + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
                else where ! RAIN
-                 RAD_QR = (QRAIN + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
+                 RAD_QR = (QRAIN_2M + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
                end where
                                         
              ELSEWHERE 
@@ -11986,10 +12034,10 @@ do K= 1, LM
             RAD_QS = 0.
             RAD_QG = 0.      
          endif
-
-         if (associated(QRTOT)) QRTOT = QRAIN
-         if (associated(QSTOT)) QSTOT = QSNOW
-
+          
+         if (associated(QRTOT)) QRTOT = QRAIN_2M
+         if (associated(QSTOT)) QSTOT = QSNOW_2M
+ 
 
          CLDREFFL = MAX(4.1e-6, CLDREFFL) !DONIF Limits according to MG2008-I 
          CLDREFFL = MIN(29.e-6, CLDREFFL)
@@ -12447,9 +12495,18 @@ do K= 1, LM
       if (associated(XQLCN  ))   XQLCN   = QLCN
       if (associated(XQICN  ))   XQICN   = QICN
       if (associated(XCLCN  ))   XCLCN   = CLCN
-      if (associated(QITOT  ))   QITOT   = QICN + QILS + QSNOW + QGRAUPEL
-      if (associated(QLTOT  ))   QLTOT   = QLCN + QLLS + QRAIN
-      if (associated(QCTOT  ))   QCTOT   = QLCN + QLLS + QICN + QILS + QRAIN + QSNOW + QGRAUPEL
+      
+      if(adjustl(CLDMICRO)/="2MOMENT") then
+          if (associated(QITOT  ))   QITOT   = QICN + QILS + QSNOW + QGRAUPEL 
+          if (associated(QLTOT  ))   QLTOT   = QLCN + QLLS + QRAIN
+          if (associated(QCTOT  ))   QCTOT   = QLCN + QLLS + QICN + QILS + QRAIN + QSNOW + QGRAUPEL 
+      else
+          if (associated(QITOT  ))   QITOT   = QICN + QILS 
+          if (associated(QLTOT  ))   QLTOT   = QLCN + QLLS 
+          if (associated(QCTOT  ))   QCTOT   = QLCN + QLLS + QICN + QILS 
+      end if
+      
+      
       if (associated(TVQ1   ))   TVQ1    = SUM( ( Q1 +  QLLS + QLCN + QILS + QICN + QRAIN + QSNOW + QGRAUPEL )*MASS , 3 ) & 
            +  TPREC*DT_MOIST
       if (associated(TVE1   ))   TVE1    = SUM( (  MAPL_CP*TEMP + MAPL_ALHL*Q1             & 
