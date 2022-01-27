@@ -70,18 +70,12 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: SHR      = 2400.  ! J/kg/K  spec heat of rock 
   !                                                     [where "per kg" is something like 
   !                                                      "per kg of water equiv. density"]
-  REAL,    PARAMETER, PUBLIC :: SCONST   = 1.9E6/920.
-  ! Changed CSOIL_2 back to pre-MERRA value of 70,000 J/K.
-  ! This amounts to a change in the very definition of the surface temperature and
-  !  also shifts the layers for ground heat content (soil temperature) downward. 
-  ! - reichle, 16 Nov 2015
+
+  REAL,    PARAMETER, PUBLIC :: SCONST   = 1.9E6/920.  ! some snow constant
+
   REAL,    PARAMETER, PUBLIC :: CSOIL_1  = 70000. ! J/K - heat capacity associated w/ tsurf
-! #ifdef LAND_UPD
-!   REAL,    PARAMETER, PUBLIC :: CSOIL_2  = 70000.   ! J/K - heat capacity associated w/ tsurf ! Post H5_0  
-! #else
-!   REAL,    PARAMETER, PUBLIC :: CSOIL_2  =   200.   ! J/K - heat capacity associated w/ tsurf 
-! #endif
-  REAL,    PARAMETER, PUBLIC :: C_CANOP  = 200.   ! J/K - heat capacity associated w/ tc
+  REAL,    PARAMETER, PUBLIC :: C_CANOP  = 200.   ! J/K - heat capacity associated w/ tc (CatchCN)
+
   REAL,    PARAMETER, PUBLIC :: SATCAPFR = 0.2    ! SATCAP = SATCAPFR * LAI
 
   ! peatCLSM implementation smahanam  3-16-2021
@@ -96,6 +90,10 @@ module catch_constants
   !
   ! - reichle, 26 Jan 2022
   
-  REAL, PARAMETER, PUBLIC :: POROS_THRESHOLD_PEATCLSM = 0.90  
+  REAL, PARAMETER, PUBLIC :: PEATCLSM_THRESHOLD_POROS  = 0.90    ! [m3/m3]
 
+  ! max zbar for specific yield calc in PEATCLSM
+  
+  REAL, PARAMETER, PUBLIC :: PEATCLSM_ZBARMAX_4_SYSOIL = 0.45    ! [m] 
+  
 end module catch_constants

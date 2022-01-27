@@ -87,7 +87,9 @@
            SLOPE             => CATCH_SNWALB_SLOPE,  &
            MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
            DZ1MAX            => CATCH_DZ1MAX,        &  
-           SHR, SCONST, CSOIL_1, N_sm, SATCAPFR, POROS_THRESHOLD_PEATCLSM
+           SHR, SCONST, CSOIL_1, N_sm, SATCAPFR,     &
+           PEATCLSM_POROS_THRESHOLD,                 &
+           PEATCLSM_ZBARMAX_4_SYSOIL
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
@@ -1292,7 +1294,7 @@
 
         !FSW_CHANGE IS THE CHANGE IN THE FREE-STANDING WATER, RELEVANT FOR PEATLAND ONLY
         FSW_CHANGE(N) = 0.
-        IF(POROS(N) >= POROS_THRESHOLD_PEATCLSM) THEN
+        IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
            pr = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
            FSW_CHANGE(N) = PR - EVAP(N) - RUNOFF(N) - WCHANGE(N)
         ENDIF
@@ -1784,7 +1786,7 @@
           RZFLW=CATDEF(N)-CDCR2(N)
         end if
 
-       IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) then
+       IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) then
           ! mineral soil
           CATDEF(N)=CATDEF(N)-RZFLW
           RZEXC(N)=RZEXC(N)-RZFLW
@@ -1807,7 +1809,7 @@
           ! (linear) approximation with the bf1-bf2-CLSM function,
           ! theoretical SYSOIL curve levels off approximately at 0 m and 0.45 m.
           ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
-          SYSOIL = (2.*bf1(n)*amin1(amax1(zbar1,0.),0.45) + 2.*bf1(n)*bf2(n))/1000.
+          SYSOIL = (2.*bf1(n)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(n)*bf2(n))/1000.
           SYSOIL = amin1(SYSOIL,poros(n))
           ! Calculate fraction of RZFLW removed/added to catdef
           RZFLW_CATDEF = (1.-AR1eq)*SYSOIL*RZFLW/(1.*AR1eq+SYSOIL*(1.-AR1eq))
@@ -1830,7 +1832,7 @@
           EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
           RZEXC(N)=VGWMAX(N)-RZEQ(N)
 
-          IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
+          IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
              CATDEF(N)=CATDEF(N)-EXCESS
           ELSE
              ! PEAT
@@ -1840,7 +1842,7 @@
           ENDIF
        ENDIF
 
-       IF (POROS(N) >= POROS_THRESHOLD_PEATCLSM) THEN
+       IF (POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
           ! MB: CATDEF Threshold at zbar=0
           ! water table not allowed to rise higher (numerically instable) 
           ! zbar<0 only occurred due to extreme infiltration rates
@@ -2439,7 +2441,7 @@
       DEDEA(CHNO)  = DEDQA(CHNO) * EPSILON / PSUR(CHNO)
       DHSDEA(CHNO) = DHSDQA(CHNO) * EPSILON / PSUR(CHNO)
 
-      IF (POROS(CHNO) < POROS_THRESHOLD_PEATCLSM) THEN
+      IF (POROS(CHNO) < PEATCLSM_POROS_THRESHOLD) THEN
          ! mineral soil
          SWSRF4(CHNO) = SWSRF(CHNO)
       ELSE
@@ -2928,7 +2930,7 @@
           RZEXC(CHNO) = RZEXC(CHNO) - EVEG(CHNO)*(1.-ESATFR)
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)*(1.-ESATFR)
 
-          IF (POROS(CHNO) < POROS_THRESHOLD_PEATCLSM) THEN
+          IF (POROS(CHNO) < PEATCLSM_POROS_THRESHOLD) THEN
              CATDEF(CHNO) = CATDEF(CHNO) + (ESOI(CHNO) + EVEG(CHNO))*ESATFR
           ELSE
              ! PEAT
@@ -2936,7 +2938,7 @@
              ! same approach as for RZFLW (see subroutine RZDRAIN for
              ! comments)
              ZBAR1=SQRT(1.e-20+CATDEF(CHNO)/BF1(CHNO))-BF2(CHNO)
-             SYSOIL = (2.*bf1(CHNO)*amin1(amax1(zbar1,0.),0.45) + 2.*bf1(CHNO)*bf2(CHNO))/1000.
+             SYSOIL = (2.*bf1(CHNO)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(CHNO)*bf2(CHNO))/1000.
              SYSOIL = amin1(SYSOIL,poros(CHNO))
              ET_CATDEF = SYSOIL*(ESOI(CHNO) + EVEG(CHNO))*ESATFR/(1.*AR1(CHNO)+SYSOIL*(1.-AR1(CHNO)))
              AR1eq = (1.+ars1(chno)*(catdef(chno)))/(1.+ars2(chno)*(catdef(chno))+ars3(chno)*(catdef(chno))**2)

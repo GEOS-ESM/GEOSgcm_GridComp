@@ -48,7 +48,9 @@ MODULE lsm_routines
        MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
        DZ1MAX            => CATCH_DZ1MAX,        &
        SHR, N_SM, SCONST, CSOIL_1,               &
-       C_CANOP, SATCAPFR, POROS_THRESHOLD_PEATCLSM
+       C_CANOP, SATCAPFR,                        &
+       PEATCLSM_POROS_THRESHOLD,                 &
+       PEATCLSM_ZBARMAX_4_SYSOIL
 
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
@@ -91,8 +93,8 @@ MODULE lsm_routines
   ! ---------------------------------------------------------------------------
   !
  
-   REAL,    PARAMETER :: TIMFRL = 1.0
-   REAL,    PARAMETER :: TIMFRC = 0.333
+  REAL,    PARAMETER :: TIMFRL = 1.0
+  REAL,    PARAMETER :: TIMFRC = 0.333
   
   ! ---------------------------------------------------------------------------
   !
@@ -121,14 +123,14 @@ MODULE lsm_routines
   !
   ! constants for "landscape" freeze/thaw (FT) state (see subroutine catch_calc_FT())
 
-  REAL, PARAMETER  :: CATCH_FT_WEIGHT_TP1      = 0.5   !
-  REAL, PARAMETER  :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
-  REAL, PARAMETER  :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
+  REAL,    PARAMETER :: CATCH_FT_WEIGHT_TP1      = 0.5   !
+  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
+  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
 
   REAL,    PARAMETER :: ZERO     = 0.
   REAL,    PARAMETER :: ONE      = 1.
   
-  CONTAINS
+CONTAINS
 
 !****
 !**** -----------------------------------------------------------------
@@ -295,7 +297,7 @@ MODULE lsm_routines
 
             PTOTAL=THRUL(N) + THRUC(N)
 
-            IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
+            IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
                frun=AR1(N)
                srun0=PTOTAL*frun
@@ -367,7 +369,7 @@ MODULE lsm_routines
          if(UFW4RO) then
 
             !**** Compute runoff from large-scale and convective storms separately:
-            IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
+            IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                 !non-peatland
                deficit=srfmx(n)-srfexc(n)
                srunl=AR1(n)*THRUL(n)
@@ -498,7 +500,7 @@ MODULE lsm_routines
       DO N=1,NCH
          ! note intentionally opposite sign w.r.t. zbar defined above, - reichle, 16 Nov 2015
          ZBAR=SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
-         IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
+         IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
             BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
                  cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
             ! *1000 is to convert from m/s to mm/s
@@ -543,7 +545,7 @@ MODULE lsm_routines
                ! MB: accounting for water ponding on AR1
                ! same approach as for RZFLW (see subroutine RZDRAIN for
                ! comments)
-               SYSOIL = (2.*bf1(N)*amin1(amax1(zbar,0.),0.45) + 2.*bf1(N)*bf2(N))/1000.
+               SYSOIL = (2.*bf1(N)*amin1(amax1(zbar,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(N)*bf2(N))/1000.
                SYSOIL = amin1(SYSOIL,poros(n))
                !MB2021: use AR1eq, equilibrium assumption between water level in soil hummocks and surface water level in hollows
                AR1eq = (1.+ars1(n)*(catdef(n)))/(1.+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
@@ -741,7 +743,7 @@ MODULE lsm_routines
 
           ENDIF
 
-        IF (POROS(N) >= POROS_THRESHOLD_PEATCLSM) THEN
+        IF (POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
            ! peat
            ! MB: AR4 (wilting fraction) for peatland depending on water table depth
            !ZBAR defined here positive below ground and in meter
@@ -756,7 +758,7 @@ MODULE lsm_routines
 
         SWSRF1(N)=1.
 !mjs: changed .001 temporarily because of large bee.
-        IF (POROS(N) < POROS_THRESHOLD_PEATCLSM) THEN
+        IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
         SWSRF2(N)=AMIN1(1., AMAX1(0.01, RZEQYI))
         SWSRF4(N)=AMIN1(1., AMAX1(0.01, WILT))
 
@@ -2039,7 +2041,7 @@ MODULE lsm_routines
          xfice=xfice+fice(l)
       enddo
 
-      IF (phi < POROS_THRESHOLD_PEATCLSM) THEN
+      IF (phi < PEATCLSM_POROS_THRESHOLD) THEN
          xfice=xfice/((N_GT+1)-lstart)
       ELSE
          !PEAT

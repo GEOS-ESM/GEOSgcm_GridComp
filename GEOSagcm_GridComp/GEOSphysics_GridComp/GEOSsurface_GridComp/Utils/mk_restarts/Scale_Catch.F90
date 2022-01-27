@@ -4,7 +4,7 @@
 program Scale_Catch
   use MAPL
   use lsm_routines,    ONLY: catch_calc_tp,  catch_calc_ght, DZGT
-  USE CATCH_CONSTANTS, ONLY: N_GT => CATCH_N_GT, POROS_THRESHOLD_PEATCLSM
+  USE CATCH_CONSTANTS, ONLY: N_GT => CATCH_N_GT, PEATCLSM_POROS_THRESHOLD
   implicit none
 
   character(256)    :: fname1, fname2, fname3
@@ -396,7 +396,7 @@ program Scale_Catch
   ! PEAT CLSM - ensure low CATDEF on peat tiles
   ! -------------------------------------------
 
-  where (catch(sca)%poros >= POROS_THRESHOLD_PEATCLSM)
+  where (catch(sca)%poros >= PEATCLSM_POROS_THRESHOLD)
      catch(sca)%catdef = 100.
      catch(sca)%rzexc  = 0.
      catch(sca)%srfexc = 0.
