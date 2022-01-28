@@ -310,7 +310,11 @@ echo "${C1} Land BCs version:${CR} ${C2}$lbcsv${CR}"
 #######################################################################
 #######################################################################
 
-set NEWBCS = $EXPDIR/${HRCODES}_${orslvs}_${lbcsv}
+set atmcode = `echo "$HRCODES" | tr " " _`
+set oceancode = `echo "$orslvs" | tr " " _`
+
+set NEWBCS = $EXPDIR/${atmcode}_${oceancode}_${lbcsv}
+
 mkdir -p $NEWBCS
 
 set foo=`ls -a $NEWBCS | wc -l`
@@ -662,7 +666,6 @@ set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
 set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 set IMO = `echo ${imo}  | awk '{printf "%4.4i", $1}'`
 set JMO = `echo ${jmo}  | awk '{printf "%4.4i", $1}'`
-set NC  = `echo ${nc}   | awk '{printf "%4.4i", $1}'`
 
 set DATENAME = DE
 set POLENAME = PE
@@ -743,7 +746,7 @@ endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
 /bin/cp til/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til clsm.${IM}x${JM}
-if( $TRIPOL_OCEAN == TRUE ) /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.${IM}x${JM}
+if( $TRIPOL_OCEAN == TRUE ) /bin/cp til/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.${IM}x${JM}
 /bin/rm clsm.${IM}x${JM}/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.file
 
 cd clsm.${IM}x${JM}
