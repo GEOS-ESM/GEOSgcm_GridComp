@@ -5160,7 +5160,7 @@ contains
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS) 
     _VERIFY(status)
 
-    call ESMF_TimeIntervalSet(MoistIntvl, s=MOIST_DT, rc=status)
+    call ESMF_TimeIntervalSet(MoistIntvl, s=nint(MOIST_DT), rc=status)
     _VERIFY(status)
 
     MoistAlarm = ESMF_AlarmCreate(                                     &
@@ -6369,7 +6369,7 @@ contains
       !----------------------------------
       call ESMF_ConfigGetAttribute (CF, HEARTBEAT, Label="RUN_DT:", RC=STATUS)
       VERIFY_(STATUS)
-      call ESMF_ConfigGetAttribute ( CF, Moist_DT, Label="MOIST_DT:", default = HEARTBEAT              RC=STATUS)
+      call ESMF_ConfigGetAttribute ( CF, Moist_DT, Label="MOIST_DT:", default = HEARTBEAT,     RC=STATUS)
       VERIFY_(STATUS)
 
       call ESMF_ConfigGetAttribute( CF, RAS_NO_NEG, Label='RAS_NO_NEG:', default=.FALSE. , RC=STATUS)
