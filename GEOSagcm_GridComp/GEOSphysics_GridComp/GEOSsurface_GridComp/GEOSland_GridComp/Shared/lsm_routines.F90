@@ -289,6 +289,11 @@ CONTAINS
       REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, &
                    srunc, srunl, ptotal, excess, totcapac, watadd
 
+      ! constants for piecewise linear relationship between surface runoff and AR1
+      
+      REAL, PARAMETER :: SRUN_AR1_MIN      = 0.5
+      REAL, PARAMETER :: SRUN_AR1_INVSLOPE = 0.1
+      
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
       DO N=1,NCH
@@ -331,7 +336,7 @@ CONTAINS
                ! handling numerical instability due to exceptional snow melt events at some pixels
                ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
                !Added ramping to avoid potential oscillations (rdk, 09/18/20)
-               IF (AR1(N)>0.50) srun0=PTOTAL*amin1(1.,(ar1(n)-0.5)/0.1)
+               IF (AR1(N)>SRUN_AR1_MIN) srun0=PTOTAL*amin1(1.,(ar1(n)-SRUN_AR1_MIN)/SRUN_AR1_INVSLOPE)
 
                ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
                ! Rewrote code to determine excess over capacity all at once (rdk, 09/18/20)
@@ -421,10 +426,10 @@ CONTAINS
                srunc = 0.
                ! handling numerical instability due to exceptional snow melt events at some pixels
                ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
-               IF (AR1(N)>0.50) THEN
+               IF (AR1(N)>SRUN_AR1_MIN) THEN
                   !Added ramping to avoid potential oscillations (rdk, 09/18/20)
-                  srunl = THRUL(n)*amin1(1.,(ar1(n)-0.5)/0.1)
-                  srunc = THRUC(n)*amin1(1.,(ar1(n)-0.5)/0.1)
+                  srunl = THRUL(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)/SRUN_AR1_INVSLOPE)
+                  srunc = THRUC(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)/SRUN_AR1_INVSLOPE)
                ENDIF
                PTOTAL = THRUL(N) + THRUC(N)
                SRUN0  = srunl + srunc
