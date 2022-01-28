@@ -107,10 +107,15 @@ if ( $HELPMODE != YES ) then
 
    mkdir -p $EXPDIR
 
-   if($EXPDIR != '') then
-      echo "${C1}\!\!\!\!  NOTE: Chosen directory not empty.              \!\!\!\!${CR} " 
-      echo "${C1}\!\!\!\!        Same resolution BCS will be overwritten. \!\!\!\!${CR} " 
-   endif
+set foo=`ls -a ${EXPDIR} | wc -l`
+if ( "${foo}" == 2 ) then
+  echo "${C2} ${EXPDIR} is empty ${CR}"
+  echo " "
+else
+  echo "${C1} WARNING: ${EXPDIR} is not empty ${CR}"
+  echo " "
+endif
+
    
 endif
 
@@ -304,6 +309,23 @@ echo "${C1} Land BCs version:${CR} ${C2}$lbcsv${CR}"
 
 #######################################################################
 #######################################################################
+
+set NEWBCS = $EXPDIR/${HRCODES}_${orslvs}_${lbcsv}
+mkdir -p $NEWBCS
+
+set foo=`ls -a $NEWBCS | wc -l`
+if ( "${foo}" == 2 ) then
+else
+  echo ""
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo "${C2} Abort: $NEWBCS is not empty ${CR}"
+  echo "${C2} Please delete same resolution BCS files and resubmit"
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo ""
+  exit
+endif
+
+#######################################
 
 set IRRIGTHRES = 2
 set make_bcs_jobs = ''
@@ -646,20 +668,20 @@ set DATENAME = DE
 set POLENAME = PE
 
 set             BCNAME = DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
-set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
+set             BCDIR  = $NEWBCS/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 
 if(     -e $BCDIR) /bin/rm -r $BCDIR
 mkdir -p $BCDIR 
-mkdir -p $EXPDIR/$OUTDIR/logs
+mkdir -p $NEWBCS/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -686,7 +708,6 @@ cd ../
 
 if( -e DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
 setenv MASKFILE $MASKFILE
-source bin/g5_modules
 limit stacksize unlimited
 bin/mkLatLonRaster.x -x ${NX} -y ${NY}  -t -1 ${IM} ${JM} >/dev/null
 bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
@@ -789,7 +810,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
-/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $NEWBCS/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
@@ -823,12 +844,12 @@ else
 	set       BCNAME = CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 endif
 
-set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
+set             BCDIR  = $NEWBCS/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 
 if(     -e $BCDIR) /bin/rm -r $BCDIR
 mkdir -p $BCDIR
-mkdir -p $EXPDIR/$OUTDIR/logs
+mkdir -p $NEWBCS/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -836,8 +857,8 @@ if ($HRCODE == c2880 | $HRCODE == c3072 | $HRCODE == c5760) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
@@ -864,7 +885,6 @@ cd ../
  
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
 setenv MASKFILE $MASKFILE
-source bin/g5_modules
 limit stacksize unlimited
 bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${NC} >/dev/null 
 bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
@@ -905,8 +925,8 @@ set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
 cat << _EOF_ > $BCJOB-2
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME-2.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME-2.err
+#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME-2.log
+#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME-2.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -919,7 +939,6 @@ cd $pwd
 cd $BCDIR
  
 setenv MASKFILE $MASKFILE
-source bin/g5_modules
 limit stacksize unlimited
 
 if( $LATLON_OCEAN == TRUE ) then
@@ -1022,7 +1041,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB-2              $BCNAME
-/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $NEWBCS/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
@@ -1037,8 +1056,8 @@ else
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1065,7 +1084,6 @@ cd ../
  
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
 setenv MASKFILE $MASKFILE
-source bin/g5_modules
 limit stacksize unlimited
 bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${NC} >/dev/null 
 bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
@@ -1190,7 +1208,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
-/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $NEWBCS/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
@@ -1222,12 +1240,12 @@ set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
 set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
 set             BCNAME = SMAP_${EVERSION}_${MGRID}
-set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
+set             BCDIR  = $NEWBCS/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 set           THISGRID = SMAP-${EVERSION}-${MGRID}
 if(     -e $BCDIR) /bin/rm -r $BCDIR
 mkdir -p $BCDIR 
-mkdir -p $EXPDIR/$OUTDIR/logs
+mkdir -p $NEWBCS/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -1235,8 +1253,8 @@ echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1252,7 +1270,6 @@ mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
 ln -s $l_data CATCH
 cd ../
-source bin/g5_modules
 limit stacksize unlimited
 if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
@@ -1347,7 +1364,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
-/bin/mv    $EXPDIR/$OUTDIR/logs   $BCNAME/.
+/bin/mv    $NEWBCS/$OUTDIR/logs   $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
