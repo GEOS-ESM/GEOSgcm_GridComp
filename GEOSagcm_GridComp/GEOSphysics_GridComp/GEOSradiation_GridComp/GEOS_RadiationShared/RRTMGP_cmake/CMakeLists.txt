@@ -29,7 +29,7 @@ set (srcs
    extensions/cloud_optics/mo_cloud_sampling.F90
    examples/mo_simple_netcdf.F90
    examples/mo_load_coefficients.F90
-   examples/mo_load_cloud_coefficients.F90
+   examples/all-sky/mo_load_cloud_coefficients.F90
    rte/mo_rte_lw.F90
    rte/mo_rte_sw.F90
    )
