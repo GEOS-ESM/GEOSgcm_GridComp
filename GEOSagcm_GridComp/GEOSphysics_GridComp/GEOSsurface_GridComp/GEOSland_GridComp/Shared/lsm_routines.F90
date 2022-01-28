@@ -289,7 +289,7 @@ CONTAINS
       REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, &
                    srunc, srunl, ptotal, excess, totcapac, watadd
 
-      ! constants for piecewise linear relationship between surface runoff and AR1
+      ! constants for PEATCLSM piecewise linear relationship between surface runoff and AR1
       
       REAL, PARAMETER :: SRUN_AR1_MIN      = 0.5
       REAL, PARAMETER :: SRUN_AR1_INVSLOPE = 0.1
