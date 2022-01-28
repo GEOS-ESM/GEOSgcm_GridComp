@@ -42,7 +42,7 @@ foreach (file ${RRTMGP_SRCS})
 endforeach ()
 
 # Now we append some sources not in RRTMGP proper
-list (APPEND SRC
+list (APPEND SRCS
   rng/mo_rng.F90
   )
 
