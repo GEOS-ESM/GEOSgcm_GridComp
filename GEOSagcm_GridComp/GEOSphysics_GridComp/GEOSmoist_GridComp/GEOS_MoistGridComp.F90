@@ -206,8 +206,7 @@ contains
     real         :: DT
     
      character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
-                                  FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL, &
-                                  FRIENDLIES_QRAIN_2M, FRIENDLIES_QSNOW_2M, FRIENDLIES_QGRAUPEL_2M
+                                  FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL
                                   
     character(len=ESMF_MAXSTR) :: FRIENDLIES_QRAIN, FRIENDLIES_QSNOW, FRIENDLIES_QGRAUPEL
 
@@ -307,9 +306,6 @@ contains
     FRIENDLIES_QRAIN    = trim(COMP_NAME)
     FRIENDLIES_QSNOW    = trim(COMP_NAME)
     FRIENDLIES_QGRAUPEL = trim(COMP_NAME)
-    FRIENDLIES_QRAIN_2M    = trim(COMP_NAME)
-    FRIENDLIES_QSNOW_2M    = trim(COMP_NAME)
-    FRIENDLIES_QGRAUPEL_2M = trim(COMP_NAME)
     
    
     if(adjustl(CLDMICRO)=="2MOMENT") then
@@ -320,13 +316,13 @@ contains
       if (MGVERSION .gt. 1.0) then
           FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QRAIN_2M = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QSNOW_2M = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QRAIN= 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
       !end if
       
       !if (MGVERSION .gt. 2.0) then           
           FRIENDLIES_NGRAUPEL = 'DYNAMICS:TURBULENCE'
-          FRIENDLIES_QGRAUPEL_2M = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QGRAUPEL = 'DYNAMICS:TURBULENCE'
       endif
     end if 
     
@@ -506,39 +502,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
     VERIFY_(STATUS)                                                                          
 
-
-
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QRAIN_2M',                                     &
-         LONG_NAME  = 'mass_fraction_of_rain',                     & 
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES_QRAIN_2M),                       &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-          VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QSNOW_2M',                                     &
-         LONG_NAME  = 'mass_fraction_of_snow',                     &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES_QSNOW_2M),                       &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-         VERIFY_(STATUS)
-     
-    call MAPL_AddInternalSpec(GC,                                  &
-             SHORT_NAME = 'QGRAUPEL_2M',                                  &
-             LONG_NAME  = 'mass_fraction_of_graupel',                  &
-             UNITS      = 'kg kg-1',                                   &
-             FRIENDLYTO = trim(FRIENDLIES_QGRAUPEL_2M),                       &
-             default    = 0.0,                                         &
-             DIMS       = MAPL_DimsHorzVert,                           &
-             VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-             
-      VERIFY_(STATUS)         
-     
+  
     
   if (DOSHLW /= 0) then
           
@@ -5101,7 +5065,6 @@ contains
     type (ESMF_Config)                  :: CF
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
-    real, pointer, dimension(:,:,:)     :: QRAIN_2M, QSNOW_2M, QGRAUPEL_2M
     real, dimension(:,:,:), pointer     :: PTR3
 
     integer  unit
@@ -5164,14 +5127,7 @@ contains
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QW,       'QW'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QRAIN_2M,    'QRAIN_2M'   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QSNOW_2M,    'QSNOW_2M'   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QGRAUPEL_2M, 'QGRAUPEL_2M', RC=STATUS); VERIFY_(STATUS)
   
-  
-    QRAIN =  QRAIN_2M
-    QSNOW =  QSNOW_2M
-    QGRAUPEL =  QGRAUPEL_2M
      
     QW = Q+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL 
    
@@ -5608,7 +5564,6 @@ contains
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
       real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT, CFLIQ, CFICE !DONIF
-         real, pointer, dimension(:,:,:)     :: QRAIN_2M, QSNOW_2M, QGRAUPEL_2M
   
       
    
@@ -6642,9 +6597,6 @@ contains
       call MAPL_GetPointer(INTERNAL, NRAIN,    'NRAIN'    , RC=STATUS); VERIFY_(STATUS)  
       call MAPL_GetPointer(INTERNAL, NSNOW,    'NSNOW'    , RC=STATUS); VERIFY_(STATUS)      
       call MAPL_GetPointer(INTERNAL, NGRAUPEL, 'NGRAUPEL'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, QRAIN_2M,    'QRAIN_2M'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, QSNOW_2M,    'QSNOW_2M'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, QGRAUPEL_2M, 'QGRAUPEL_2M', RC=STATUS); VERIFY_(STATUS)
        
       if (DOSHLW /= 0) then
        call MAPL_GetPointer(INTERNAL, CUSH,  'CUSH'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
@@ -11261,9 +11213,9 @@ contains
          CLCN, &
          NCPL, &
          NCPI, & 
-         QRAIN_2M, &
-         QSNOW_2M, &
-         QGRAUPEL_2M, &
+         QRAIN, &
+         QSNOW, &
+         QGRAUPEL, &
          NRAIN, &
          NSNOW, &
          NGRAUPEL)
@@ -11271,9 +11223,9 @@ contains
          
          ! need to clean up small negative values. MG does can't handle them
           call FILLQ2ZERO2( Q1, MASS, FILLQ) 
-          call FILLQ2ZERO2( QGRAUPEL_2M, MASS, FILLQ) 
-          call FILLQ2ZERO2( QRAIN_2M, MASS, FILLQ) 
-          call FILLQ2ZERO2( QSNOW_2M, MASS, FILLQ) 
+          call FILLQ2ZERO2( QGRAUPEL, MASS, FILLQ) 
+          call FILLQ2ZERO2( QRAIN, MASS, FILLQ) 
+          call FILLQ2ZERO2( QSNOW, MASS, FILLQ) 
           call FILLQ2ZERO2( QLLS, MASS, FILLQ)
           call FILLQ2ZERO2( QLCN, MASS, FILLQ)  
           call FILLQ2ZERO2( QILS, MASS, FILLQ)
@@ -11560,9 +11512,9 @@ contains
                         frzimmr8 =  nimmr8
                         frzcntr8 = nimmr8*0.0  
                         frzdepr8 = nhet_depr8
-                        qrr8(1, 1:LM)     =  QRAIN_2M(I, J,1:LM)
-                        qsr8(1, 1:LM)     =  QSNOW_2M(I, J,1:LM)
-                        qgr8(1, 1:LM)     =  QGRAUPEL_2M(I, J,1:LM)                        
+                        qrr8(1, 1:LM)     =  QRAIN(I, J,1:LM)
+                        qsr8(1, 1:LM)     =  QSNOW(I, J,1:LM)
+                        qgr8(1, 1:LM)     =  QGRAUPEL(I, J,1:LM)                        
                         nrr8(1, 1:LM)     =  NRAIN(I, J,1:LM)
                         nsr8(1, 1:LM)     =  NSNOW(I, J,1:LM)
                         ngr8(1, 1:LM)     =  NGRAUPEL(I, J,1:LM)                         
@@ -11705,8 +11657,8 @@ contains
       IF (MGVERSION .gt. 1.0) then 
 
 !#ifdef FAILS 
-                  QRAIN_2M(I,J,1:LM)  = max(QRAIN_2M(I,J,1:LM) + REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
-                  QSNOW_2M(I,J,1:LM)  = max(QSNOW_2M(I,J,1:LM) + REAL(qstendr8(1, 1:LM)*DT_R8), 0.0) ! grid average                     
+                  QRAIN(I,J,1:LM)  = max(QRAIN(I,J,1:LM) + REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
+                  QSNOW(I,J,1:LM)  = max(QSNOW(I,J,1:LM) + REAL(qstendr8(1, 1:LM)*DT_R8), 0.0) ! grid average                     
                   NRAIN(I,J,1:LM)  = max(NRAIN(I,J,1:LM) + REAL(nrtendr8(1, 1:LM)*DT_R8), 0.0)
                   NSNOW(I,J,1:LM)  = max(NSNOW(I,J,1:LM) + REAL(nstendr8(1, 1:LM)*DT_R8), 0.0)                  
                   CLDREFFR(I,J,1:LM) = REAL(reff_rainr8(1, 1:LM))        
@@ -11715,18 +11667,18 @@ contains
                   DQRL_X(I,J,1:LM)   = REAL(   qrtendr8(1, 1:LM)) !rain mixing ratio tendency from micro
                   
                IF (MGVERSION .gt. 2.0) then                   
-                  QGRAUPEL_2M(I,J,1:LM)  = max(QGRAUPEL_2M(I,J,1:LM) + REAL(qgtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
+                  QGRAUPEL(I,J,1:LM)  = max(QGRAUPEL(I,J,1:LM) + REAL(qgtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
                   NGRAUPEL(I,J,1:LM)  = max(NGRAUPEL(I,J,1:LM) + REAL(ngtendr8(1, 1:LM)*DT_R8), 0.0)
                else
-                  QGRAUPEL_2M(I,J,1:LM)  = 0.0 ! grid average                    
+                  QGRAUPEL(I,J,1:LM)  = 0.0 ! grid average                    
                   NGRAUPEL(I,J,1:LM)  = 0.0 ! grid average 
                end if                         
 
             
         else
                     
-                   QRAIN_2M(I,J,1:LM)  = max(REAL(qrout2r8(1, 1:LM)), 0.0) ! grid average 
-                   QSNOW_2M(I,J,1:LM)  = max(REAL(qsout2r8(1, 1:LM)), 0.0)                      
+                   QRAIN(I,J,1:LM)  = max(REAL(qrout2r8(1, 1:LM)), 0.0) ! grid average 
+                   QSNOW(I,J,1:LM)  = max(REAL(qsout2r8(1, 1:LM)), 0.0)                      
                    NRAIN(I,J,1:LM)  = max(REAL(nrout2r8(1, 1:LM)), 0.0)
                    NSNOW(I,J,1:LM)  = max(REAL(nsout2r8(1, 1:LM)), 0.0)
                    CLDREFFR(I,J,1:LM) = REAL(drout2r8(1, 1:LM))/2.0        
@@ -11943,12 +11895,12 @@ do K= 1, LM
              WHERE  (RAD_CF > 1e-4)
                 RAD_QL = min((QLLS+QLCN)/RAD_CF, 1.0e-3)
                 RAD_QI = min((QILS+QICN)/RAD_CF, 1.0e-3) 
-                RAD_QG =  QGRAUPEL_2M/RAD_CF
+                RAD_QG =  QGRAUPEL/RAD_CF
                 
                where (TEMP < MAPL_TICE) !SNOW
-                 RAD_QS = (QSNOW_2M + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
+                 RAD_QS = (QSNOW + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
                else where ! RAIN
-                 RAD_QR = (QRAIN_2M + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
+                 RAD_QR = (QRAIN + CNV_PRC3*iMASS*DT_MOIST)/RAD_CF
                end where
                                         
              ELSEWHERE 
@@ -12038,12 +11990,9 @@ do K= 1, LM
             RAD_QG = 0.      
          endif
           
-         QRAIN =  QRAIN_2M
-         QSNOW =  QSNOW_2M
-         QGRAUPEL =  QGRAUPEL_2M
-     
-         if (associated(QRTOT)) QRTOT = QRAIN_2M
-         if (associated(QSTOT)) QSTOT = QSNOW_2M
+      
+         if (associated(QRTOT)) QRTOT = QRAIN
+         if (associated(QSTOT)) QSTOT = QSNOW
  
 
          CLDREFFL = MAX(4.1e-6, CLDREFFL) !DONIF Limits according to MG2008-I 
