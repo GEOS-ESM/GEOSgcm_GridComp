@@ -322,9 +322,9 @@ contains
           FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_QRAIN_2M = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_QSNOW_2M = 'DYNAMICS:TURBULENCE'
-      end if
+      !end if
       
-      if (MGVERSION .gt. 2.0) then           
+      !if (MGVERSION .gt. 2.0) then           
           FRIENDLIES_NGRAUPEL = 'DYNAMICS:TURBULENCE'
           FRIENDLIES_QGRAUPEL_2M = 'DYNAMICS:TURBULENCE'
       endif
@@ -5169,7 +5169,10 @@ contains
     call MAPL_GetPointer(INTERNAL, QGRAUPEL_2M, 'QGRAUPEL_2M', RC=STATUS); VERIFY_(STATUS)
   
   
-  
+    QRAIN =  QRAIN_2M
+    QSNOW =  QSNOW_2M
+    QGRAUPEL =  QGRAUPEL_2M
+     
     QW = Q+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL 
    
     if(adjustl(CLDMICRO)=="GFDL") then
@@ -11715,7 +11718,7 @@ contains
                   QGRAUPEL_2M(I,J,1:LM)  = max(QGRAUPEL_2M(I,J,1:LM) + REAL(qgtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
                   NGRAUPEL(I,J,1:LM)  = max(NGRAUPEL(I,J,1:LM) + REAL(ngtendr8(1, 1:LM)*DT_R8), 0.0)
                else
-                  QGRAUPEL(I,J,1:LM)  = 0.0 ! grid average                    
+                  QGRAUPEL_2M(I,J,1:LM)  = 0.0 ! grid average                    
                   NGRAUPEL(I,J,1:LM)  = 0.0 ! grid average 
                end if                         
 
@@ -12035,6 +12038,10 @@ do K= 1, LM
             RAD_QG = 0.      
          endif
           
+         QRAIN =  QRAIN_2M
+         QSNOW =  QSNOW_2M
+         QGRAUPEL =  QGRAUPEL_2M
+     
          if (associated(QRTOT)) QRTOT = QRAIN_2M
          if (associated(QSTOT)) QSTOT = QSNOW_2M
  
