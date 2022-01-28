@@ -2746,7 +2746,7 @@ contains
         ! for LW start at counter=0
         seeds(3) = 0
 
-        call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
+        call MAPL_TimerOff(MAPL,"---RRTMGP_MCICA",__RC__)
 
       end if ! need_cloud_optical_props
 
