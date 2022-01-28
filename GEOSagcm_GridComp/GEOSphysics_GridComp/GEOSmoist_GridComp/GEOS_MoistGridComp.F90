@@ -194,7 +194,7 @@ contains
     integer      :: RFRSHINT
     integer      :: AVRGNINT
     integer      :: IQVAINC
-    real         :: DT
+    real         :: HEARTBEAT
     
     character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
                                   FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL
@@ -252,10 +252,10 @@ contains
     ! Set the state variable specs.
     ! -----------------------------
 
-    call ESMF_ConfigGetAttribute ( CF, DT, Label="RUN_DT:",                                   RC=STATUS)
+    call ESMF_ConfigGetAttribute ( CF, HEARTBEAT, Label="RUN_DT:",                                   RC=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(DT), RC=STATUS)
+    call ESMF_ConfigGetAttribute( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(HEARTBEAT), RC=STATUS)
     VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
@@ -5124,13 +5124,16 @@ contains
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
     real, dimension(:,:,:), pointer     :: PTR3
 
-    integer  unit
-
-    real DCS, QCVAR_, WBFFACTOR, NC_CST, NI_CST, NG_CST
-    logical  :: nccons, nicons, ngcons, do_graupel
-    integer  :: LM
+    integer            ::  unit
+    real               :: HEARTBEAT, MOIST_DT
+    type (ESMF_Time)   :: CurrentTime
+    type (ESMF_Alarm)  :: MoistAlarm
+    type (ESMF_TimeInterval) :: MoistIntvl
+    real               :: DCS, QCVAR_, WBFFACTOR, NC_CST, NI_CST, NG_CST
+    logical            :: nccons, nicons, ngcons, do_graupel
+    integer            :: LM
  
-    real(ESMF_KIND_R8)  Dcsr8, qcvarr8,  micro_mg_berg_eff_factor_in, ncnstr8, ninstr8, ngnstr8
+    real(ESMF_KIND_R8) ::  Dcsr8, qcvarr8,  micro_mg_berg_eff_factor_in, ncnstr8, ninstr8, ngnstr8
     !=============================================================================
 
     ! Begin... 
@@ -5147,6 +5150,29 @@ contains
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
     VERIFY_(STATUS)
+
+    call ESMF_ConfigGetAttribute (CF, HEARTBEAT, Label="RUN_DT:", RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_ConfigGetAttribute (CF, MOIST_DT, Label="MOIST_DT:", default = HEARTBEAT, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS) 
+    _VERIFY(status)
+
+    call ESMF_TimeIntervalSet(MoistIntvl, s=MOIST_DT, rc=status)
+    _VERIFY(status)
+
+    MoistAlarm = ESMF_AlarmCreate(                                     &
+        CLOCK,                                                         &
+        name='MoistAlarm',                                             &
+        ringTime=CurrentTime,                                          &
+        ringInterval = MoistIntvl,                                     &
+        ringTimeStepCount=1,                                           &
+        sticky=.false.,                                                &
+        rc=status                                                      &
+        )
+    _VERIFY(status)
 
     ! Call Generic Initialize for MOIST GC
     !----------------------------------------
@@ -5351,7 +5377,7 @@ contains
     type (MAPL_MetaComp), pointer   :: STATE
     type (ESMF_Config  )            :: CF
     type (ESMF_State   )            :: INTERNAL
-    type (ESMF_Alarm   )            :: ALARM
+    type (ESMF_Alarm   )            :: ALARM, MoistAlarm
 
     type (RASPARAM_TYPE)            :: RASPARAMS
     type (CLDPARAM_TYPE)            :: CLDPARAMS
@@ -5381,6 +5407,13 @@ contains
     call MAPL_GetObjectFromGC ( GC, STATE, RC=STATUS)
     VERIFY_(STATUS)
 
+    call ESMF_ClockGetAlarm(CLOCK, 'MoistAlarm', MoistAlarm, rc=status)
+    _VERIFY(status)
+    
+    if ( .not. ESMF_AlarmIsRinging(MoistAlarm)) then
+       RETURN_(ESMF_SUCCESS)
+    endif
+
     call MAPL_TimerOn (STATE,"TOTAL")
 
     ! Get parameters from generic state.
@@ -5394,7 +5427,6 @@ contains
          INTERNAL_ESMF_STATE=INTERNAL, &
          RC=STATUS )
     VERIFY_(STATUS)
-
 
 
 
@@ -5904,7 +5936,7 @@ contains
 
       real                            :: CBL_TPERTi, CBL_TPERT, CBL_QPERT, RASAL1, RASAL2
       real                            :: RHEXCESS,CBL_TPERT_MXOCN,CBL_TPERT_MXLND
-      real                            :: HEARTBEAT
+      real                            :: HEARTBEAT, Moist_DT
 
       integer                         :: L, K, I, J, KM, KK , Kii, NAER, N !DONIF
      
@@ -6337,6 +6369,8 @@ contains
       !----------------------------------
       call ESMF_ConfigGetAttribute (CF, HEARTBEAT, Label="RUN_DT:", RC=STATUS)
       VERIFY_(STATUS)
+      call ESMF_ConfigGetAttribute ( CF, Moist_DT, Label="MOIST_DT:", default = HEARTBEAT              RC=STATUS)
+      VERIFY_(STATUS)
 
       call ESMF_ConfigGetAttribute( CF, RAS_NO_NEG, Label='RAS_NO_NEG:', default=.FALSE. , RC=STATUS)
       VERIFY_(STATUS)
@@ -6391,7 +6425,7 @@ contains
       call MAPL_GetResource(STATE, ORG_INFAC,     'ORG_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
 	 call MAPL_GetResource(STATE, SS_INFAC,          'SS_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
      	  
-      call MAPL_GetResource(STATE, DT_MICRO,          'DT_MICRO:',        DEFAULT= HEARTBEAT,   RC=STATUS)    ! time step of the microphysics substepping (s) (MG2) (5 min)
+      call MAPL_GetResource(STATE, DT_MICRO,          'DT_MICRO:',        DEFAULT= Moist_DT,   RC=STATUS)    ! time step of the microphysics substepping (s) (MG2) (5 min)
       call MAPL_GetResource(STATE, UR_SCALE,        'URSCALE:',        DEFAULT= 1.0,    RC=STATUS) !Scaling factor for sed vel of rain    
           
       call MAPL_GetResource(STATE, USE_NATURE_WSUB,     'USE_NAT_WSUB:',     DEFAULT= 1.0  ,RC=STATUS) !greater than zero reads wsub from nature run	             
