@@ -19,7 +19,6 @@ set (RRTMGP_SRCS
   rrtmgp/mo_gas_concentrations.F90
   rrtmgp/kernels/mo_gas_optics_kernels.F90
   rrtmgp/kernels/mo_rrtmgp_util_reorder_kernels.F90
-  extensions/rng/mo_rng.F90
   extensions/mo_compute_bc.F90
   extensions/mo_fluxes_byband.F90
   extensions/mo_fluxes_bygpoint.F90
@@ -29,26 +28,32 @@ set (RRTMGP_SRCS
   extensions/cloud_optics/mo_cloud_sampling.F90
   examples/mo_simple_netcdf.F90
   examples/mo_load_coefficients.F90
-  examples/mo_load_cloud_coefficients.F90
+  examples/all-sky/mo_load_cloud_coefficients.F90
   rte/mo_rte_lw.F90
   rte/mo_rte_sw.F90
   )
 
 esma_mepo_style(RRTMGP RRTMGP_rel_path REL_PATH ..)
-set (MOM6_path ${CMAKE_CURRENT_SOURCE_DIR}/${RRTMGP_rel_path})
+set (RRTMGP_path ${CMAKE_CURRENT_SOURCE_DIR}/${RRTMGP_rel_path})
 
 set (SRCS)
 foreach (file ${RRTMGP_SRCS})
-  list (APPEND SRCS ${RRTMGP_SRCS}/${file})
+  list (APPEND SRCS ${RRTMGP_path}/${file})
 endforeach ()
 
+# Now we append some sources not in RRTMGP proper
+list (APPEND SRC
+  rng/mo_rng.F90
+  )
+
+# These files need MKL
 if (APPLE)
    set(MKL_Fortran TRUE)
 endif ()
 find_package(MKL)
 if (MKL_FOUND)
   set(BLA_VENDOR Intel10_64lp_seq)
-  
+
   list (APPEND SRCS
     rng/mo_rng_mklvsl.F90
     rng/mo_rng_mklvsl_plus.F90
@@ -58,7 +63,7 @@ else ()
   ecbuild_warn("MKL was not found. The mklvsl rng will not be compiled. RRTMGP should not be used.")
 endif()
 
-esma_add_library(${this} 
+esma_add_library(${this}
   SRCS ${SRCS}
   DEPENDENCIES NetCDF::NetCDF_Fortran)
 
