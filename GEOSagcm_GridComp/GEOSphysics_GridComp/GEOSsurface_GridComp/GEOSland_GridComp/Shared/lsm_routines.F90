@@ -1536,7 +1536,7 @@ CONTAINS
   ! ================================================================================
 
   subroutine catch_calc_soil_moist( &
-       NTILES,vegcls,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
+       NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
        ars1,ars2,ars3,ara1,ara2, &
        ara3,ara4,arw1,arw2,arw3,arw4,bf1, bf2, &
        srfexc,rzexc,catdef, &
@@ -1590,7 +1590,6 @@ CONTAINS
     implicit none
 
     integer,                    intent(in) :: NTILES
-    integer, dimension(NTILES), intent(in) :: vegcls
 
     real,    dimension(NTILES), intent(in) :: dzsf,vgwmax,cdcr1,cdcr2
     real,    dimension(NTILES), intent(in) :: wpwet,poros,psis

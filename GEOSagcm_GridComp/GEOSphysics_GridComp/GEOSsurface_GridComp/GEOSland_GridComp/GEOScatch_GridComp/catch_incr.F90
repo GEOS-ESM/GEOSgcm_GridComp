@@ -22,7 +22,7 @@ contains
   ! ***********************************************************************
   
   subroutine apply_catch_incr( NTILES,                                     & 
-       VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           & 
+       DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                & 
        ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   & 
        bf1, bf2,                                                           &
        TC1_INC, TC2_INC, TC4_INC, QC1_INC, QC2_INC, QC4_INC,               & 
@@ -38,7 +38,6 @@ contains
     
     ! CATCHMENT MODEL PARAMETERS 
     
-    integer, dimension(       NTILES), intent(in)    :: VEG
     real,    dimension(       NTILES), intent(in)    :: DZSF, VGWMAX, CDCR1, CDCR2
     real,    dimension(       NTILES), intent(in)    :: PSIS, BEE, POROS, WPWET
     real,    dimension(       NTILES), intent(in)    :: ARS1, ARS2, ARS3
@@ -89,7 +88,7 @@ contains
     ! make sure that updated prognostics are OK
     
     call check_catch_progn( NTILES,                                          &
-         VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           & 
+         DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                & 
          ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   &
          bf1,bf2,                                                            & 
          TC1, TC2, TC4, QC1, QC2, QC4,                                       & 
@@ -101,7 +100,7 @@ contains
   ! ***********************************************************************
   
   subroutine check_catch_progn( NTILES,                                    &
-       VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           & 
+       DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                & 
        ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   & 
        bf1,bf2,                                                            & 
        TC1, TC2, TC4, QC1, QC2, QC4,                                       & 
@@ -128,7 +127,6 @@ contains
     
     ! CATCHMENT MODEL PARAMETERS 
     
-    integer, dimension(       NTILES), intent(in)    :: VEG
     real,    dimension(       NTILES), intent(in)    :: DZSF, VGWMAX, CDCR1, CDCR2
     real,    dimension(       NTILES), intent(in)    :: PSIS, BEE, POROS, WPWET
     real,    dimension(       NTILES), intent(in)    :: ARS1, ARS2, ARS3
@@ -215,7 +213,7 @@ contains
     ! lower bound on catdef, - reichle, 3 Apr 2012
         
     call catch_calc_soil_moist( &
-         NTILES,veg,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
+         NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
          ars1,ars2,ars3,ara1,ara2, &
          ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2, &
          srfexc,rzexc,catdef, &

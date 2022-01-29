@@ -6495,11 +6495,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
-call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,                         &
-                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,              &
-                              srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc,                               &
-                              SWSRF1OUT=SWSRF1, SWSRF2OUT=SWSRF2, SWSRF4OUT=SWSRF4 )
-
+    call catch_calc_soil_moist( ntiles, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,      &
+         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,              &
+         srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc,                               &
+         SWSRF1OUT=SWSRF1, SWSRF2OUT=SWSRF2, SWSRF4OUT=SWSRF4 )
+    
                             
                               
 ! obtain saturated canopy resistance following Farquhar, CLM4 implementation    
@@ -7562,7 +7562,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
     IF ((RUN_IRRIG /= 0).AND.(ntiles >0))  THEN  
        
        CALL CATCH_CALC_SOIL_MOIST (                                            &
-            NTILES,VEG1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,          &
+            NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,               &
             ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,    &
             srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
 	    
@@ -8812,11 +8812,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
        ! intent(in)
-       ntiles, nint(veg1), dzsf, vgwmax, cdcr1, cdcr2,                           &
+       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4, bf1, bf2,                                         &
+       arw1, arw2, arw3, arw4, bf1, bf2,                                        &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &

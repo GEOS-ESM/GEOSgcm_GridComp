@@ -1210,7 +1210,7 @@
       ! note revised interface - reichle, 3 Apr 2012
 
       CALL CATCH_CALC_SOIL_MOIST (                                             &
-          nch,ityp,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,               &
+          nch,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,                    &
           ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,      &
           srfexc,rzexc,catdef,                                                 &
           AR1, AR2, AR4,                                                       &
@@ -3271,9 +3271,9 @@
     rzexc_tmp  = rzexc    ! rzexc  is "inout" in catch_calc_soil_moist()
     catdef_tmp = catdef   ! catdef is "inout" in catch_calc_soil_moist()
     
-    call catch_calc_soil_moist(                                                &
-         NTILES, vegcls, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,  &
-         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,     &
+    call catch_calc_soil_moist(                                                       &
+         NTILES, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,                 &
+         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,  &
          srfexc_tmp, rzexc_tmp, catdef_tmp, ar1, ar2, ar4 )
     
     ! compute snow-free tsurf

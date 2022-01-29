@@ -124,7 +124,6 @@ program Scale_CatchCN
   type(catch_rst) catch(3)
 
   real,    allocatable, dimension(:)   :: dzsf, ar1, ar2, ar4
-  integer, allocatable, dimension(:)   :: veg1
   real,    allocatable, dimension(:,:) :: TP_IN, GHT_IN, FICE, GHT_OUT, TP_OUT
   real,    allocatable, dimension(:)   :: swe_in, depth_in, areasc_in, areasc_out, depth_out
 
@@ -230,16 +229,6 @@ program Scale_CatchCN
 !     call readcatchcn ( 20,catch(new) )
   end if
 
-
-  allocate( veg1(ntiles) )
-
-  where(ITY(:,1) > 0.)
-     VEG1 = map_cat(nint(catch(new)%ITY(:,1)))  ! gkw: primary   CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
-  elsewhere
-     VEG1 = map_cat(nint(catch(new)%ITY(:,2)))  ! gkw: primary   CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
-  endwhere
-
-  
 ! Create Scaled Catch
 ! -------------------
   sca = 3
@@ -300,7 +289,7 @@ program Scale_CatchCN
 
   dzsf = SURFLAY
 
-  call catch_calc_soil_moist( ntiles, veg1, dzsf,                                      &
+  call catch_calc_soil_moist( ntiles, dzsf,                                            &
        catch(sca)%vgwmax, catch(sca)%cdcr1, catch(sca)%cdcr2,                          &
        catch(sca)%psis,   catch(sca)%bee,   catch(sca)%poros, catch(sca)%wpwet,        &
        catch(sca)%ars1,   catch(sca)%ars2,  catch(sca)%ars3,                           &

@@ -93,7 +93,6 @@ program Scale_Catch
   type(catch_rst) catch(3)
 
   real,    allocatable, dimension(:)   :: dzsf, ar1, ar2, ar4
-  integer, allocatable, dimension(:)   :: vegcls
   real,    allocatable, dimension(:,:) :: TP_IN, GHT_IN, FICE, GHT_OUT, TP_OUT
   real,    allocatable, dimension(:)   :: swe_in, depth_in, areasc_in, areasc_out, depth_out
 
@@ -188,9 +187,6 @@ program Scale_Catch
      call readcatch ( 20,catch(new) )
   end if
 
-  allocate( vegcls(ntiles) )
-            vegcls(:) = catch(new)%ity(:)
-
 ! Create Scaled Catch
 ! -------------------
   sca = 3
@@ -251,7 +247,7 @@ program Scale_Catch
 
   dzsf = SURFLAY
 
-  call catch_calc_soil_moist( ntiles, vegcls, dzsf,                                    &
+  call catch_calc_soil_moist( ntiles, dzsf,                                            &
        catch(sca)%vgwmax, catch(sca)%cdcr1, catch(sca)%cdcr2,                          &
        catch(sca)%psis,   catch(sca)%bee,   catch(sca)%poros, catch(sca)%wpwet,        &
        catch(sca)%ars1,   catch(sca)%ars2,  catch(sca)%ars3,                           &
