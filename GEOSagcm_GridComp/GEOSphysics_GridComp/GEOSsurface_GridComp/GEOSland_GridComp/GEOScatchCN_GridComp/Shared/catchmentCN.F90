@@ -91,15 +91,16 @@ MODULE CATCHMENT_CN_MODEL
        PEATCLSM_POROS_THRESHOLD,                 &
        PEATCLSM_ZBARMAX_4_SYSOIL
 
-  USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
-      LAND_FIX, FLWALPHA
+  USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT,   &
+       LAND_FIX, FLWALPHA
 
   
-  USE lsm_routines, only :                          &
-          INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
-          catch_calc_soil_moist, gndtmp,            &
-          catch_calc_wtotl, dampen_tc_oscillations, &
-          PHIGT, DZTC, DZGT, FSN, SRUNOFF
+  USE lsm_routines, only :                       &
+       INTERC, BASE, PARTITION, RZEQUIL,         &
+       gndtp0, gndtmp,                           &   
+       catch_calc_soil_moist, catch_calc_zbar,   &
+       catch_calc_wtotl, dampen_tc_oscillations, &
+       PHIGT, DZTC, DZGT, FSN, SRUNOFF
   
   USE SIBALB_COEFF,  ONLY: coeffsib
   
@@ -278,7 +279,7 @@ CONTAINS
     
     REAL, DIMENSION(N_SM) :: T1, AREA, tkgnd, fhgnd
     
-    REAL :: TG1SN, TG2SN, TG4SN, DTG1SN,DTG2SN,DTG4SN, ZBAR, THETAF,         &
+    REAL :: TG1SN, TG2SN, TG4SN, DTG1SN,DTG2SN,DTG4SN, ZBAR, THETAF,      &
          XFICE, FH21, FH21W, FH21I, FH21D, DFH21W, DFH21I, DFH21D,        &
          EVSN, SHFLS, HUPS, HCORR, SWNET0, HLWDWN0, TMPSNW, HLWTC,        &
          DHLWTC, HSTURB, DHSDEA, DHSDTC, ESATTC, ETURB, DEDEA, DEDTC,     &
@@ -684,16 +685,17 @@ CONTAINS
         else
            phi=PHIGT
         end if
-        ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)
+        ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTP0)
+        ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
         THETAF=.5
         DO LAYER=1,6
           HT(LAYER)=GHTCNT(LAYER,N)
           ENDDO
 
-        CALL GNDTP0(                                                           &
-                    T1,phi,ZBAR,THETAF,                                        &
-                    HT,                                                        &
-                    fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp                  &
+        CALL GNDTP0(                                                &
+                    T1,phi,-1.*ZBAR,THETAF,                         &   ! note minus sign for zbar
+                    HT,                                             &
+                    fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp       &
                    )
 
         HFTDS1(N)=-FH21W
@@ -1050,16 +1052,17 @@ CONTAINS
         else
            phi=PHIGT
         end if
-        ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)
+        ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTMP)
+        ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
         THETAF=.5
         DO LAYER=1,6
           HT(LAYER)=GHTCNT(LAYER,N)
           ENDDO
         FH21=-GHFLUX(N)
 
-        CALL GNDTMP(                                                           &
-              dtstep,phi,zbar,thetaf,fh21,                                     &
-              ht,                                                              &
+        CALL GNDTMP(                                   &
+              dtstep,phi,-1.*zbar,thetaf,fh21,         &   ! note minus sign for zbar
+              ht,                                      &
               xfice,tp, soilice)
 
         DO LAYER=1,6
@@ -1769,7 +1772,7 @@ CONTAINS
           ! to avoid extrapolation errors due to the non-optimal
           ! (linear) approximation with the bf1-bf2-CLSM function,
           ! theoretical SYSOIL curve levels off approximately at 0 m and 0.45 m.
-          ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+          ZBAR1 = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
           SYSOIL = (2.*bf1(n)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(n)*bf2(n))/1000.
           ! Calculate fraction of RZFLW removed/added to catdef
           RZFLW_CATDEF = (1.-AR1eq)*SYSOIL*RZFLW/(1.*AR1eq+SYSOIL*(1.-AR1eq))
@@ -2373,7 +2376,6 @@ CONTAINS
 !**** -----------------------------------------------------------------
 
       DO 100 N = 1, NCH
-       ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
 !****
 !**** PARTITION EVAP BETWEEN INTERCEPTION AND GROUND RESERVOIRS.
 !****
@@ -2426,7 +2428,7 @@ CONTAINS
              ! MB: accounting for water ponding on AR1
              ! same approach as for RZFLW (see subroutine RZDRAIN for
              ! comments)
-             ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+             ZBAR1  = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
              SYSOIL = (2.*bf1(N)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(N)*bf2(N))/1000.
              SYSOIL = amin1(SYSOIL,poros(N))
              ET_CATDEF = SYSOIL*(EVSURF(N) + EVROOT(N))*ESATFR(N)/(1.*AR1(N)+SYSOIL*(1.-AR1(N)))

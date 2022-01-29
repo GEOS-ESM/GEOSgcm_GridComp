@@ -95,11 +95,12 @@
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
 	   FLWALPHA, CSOIL_2 
 
-      USE lsm_routines, only :                      &
-          INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
-          catch_calc_soil_moist, gndtmp,            &
-          catch_calc_wtotl, dampen_tc_oscillations, &
-          PHIGT, DZTC, SRUNOFF 
+      USE lsm_routines, only :                       &
+           INTERC, BASE, PARTITION, RZEQUIL,         &
+           gndtp0, gndtmp,                           &
+           catch_calc_soil_moist, catch_calc_zbar,   &
+           catch_calc_wtotl, dampen_tc_oscillations, &
+           PHIGT, DZTC, SRUNOFF 
       
       USE SIBALB_COEFF,  ONLY: coeffsib
 
@@ -684,23 +685,22 @@
         else
            phi=PHIGT
         end if
-!#ifdef LAND_UPD
 	if (LAND_FIX) then
-           ZBAR =-SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)  ! zbar bug fix, - reichle, 16 Nov 2015
-	else
-!#else
-	   ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
+           ! zbar bug fix, - reichle, 16 Nov 2015
+           ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTP0)
+           ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
+        else
+	   ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)  
 	end if
-!#endif
         THETAF=.5
         DO LAYER=1,6
           HT(LAYER)=GHTCNT(LAYER,N)
           ENDDO
 
-        CALL GNDTP0(                                                           &
-                    T1,phi,ZBAR,THETAF,                                        &
-                    HT,                                                        &
-                    fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp                  &
+        CALL GNDTP0(                                               &
+                    T1,phi,-1.*ZBAR,THETAF,                        &   ! note minus sign for zbar
+                    HT,                                            &
+                    fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp      &
                    )
 
         HFTDS1(N)=-FH21W
@@ -1033,7 +1033,7 @@
         GHFLUX(N)=(1.-ASNOW(N))*                                               &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*GHFLUXS(N) 
-        GHTSKIN(N)=(1.-ASNOW(N))*                                               &
+        GHTSKIN(N)=(1.-ASNOW(N))*                                              &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               -ASNOW(N)*ghfluxsno(N)
         ENDDO 
@@ -1054,7 +1054,9 @@
            phi=PHIGT
         end if
         if (LAND_FIX) then
-       	   ZBAR =-SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)  ! zbar bug fix, - reichle, 16 Nov 2015
+           ! zbar bug fix, - reichle, 16 Nov 2015
+           ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTMP)
+           ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
         else
 	   ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
         end if	
@@ -1064,9 +1066,9 @@
           ENDDO
         FH21=-GHFLUX(N)
 
-        CALL GNDTMP(                                                           &
-              dtstep,phi,zbar,thetaf,fh21,                                     &
-              ht,                                                              &
+        CALL GNDTMP(                                  &
+              dtstep,phi,-1.*zbar,thetaf,fh21,        &   ! note minus sign for zbar
+              ht,                                     &
               xfice,tp, soilice)
 
         DO LAYER=1,6
@@ -1808,7 +1810,7 @@
           ! to avoid extrapolation errors due to the non-optimal
           ! (linear) approximation with the bf1-bf2-CLSM function,
           ! theoretical SYSOIL curve levels off approximately at 0 m and 0.45 m.
-          ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+          ZBAR1 = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
           SYSOIL = (2.*bf1(n)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(n)*bf2(n))/1000.
           SYSOIL = amin1(SYSOIL,poros(n))
           ! Calculate fraction of RZFLW removed/added to catdef
@@ -2848,7 +2850,6 @@
 !****
 !**** -----------------------------------------------------------------
       DO 100 CHNO = 1, NCH
-      ZBAR1=SQRT(1.e-20+CATDEF(CHNO)/BF1(CHNO))-BF2(CHNO)
 
 !**** COMPUTE EFFECTIVE SURFACE CONDUCTANCES IN SATURATED AND UNSATURATED
 !**** AREAS:
@@ -2937,7 +2938,7 @@
              ! MB: accounting for water ponding on AR1
              ! same approach as for RZFLW (see subroutine RZDRAIN for
              ! comments)
-             ZBAR1=SQRT(1.e-20+CATDEF(CHNO)/BF1(CHNO))-BF2(CHNO)
+             ZBAR1  = catch_calc_zbar( BF1(CHNO), BF2(CHNO), CATDEF(CHNO) )  
              SYSOIL = (2.*bf1(CHNO)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(CHNO)*bf2(CHNO))/1000.
              SYSOIL = amin1(SYSOIL,poros(CHNO))
              ET_CATDEF = SYSOIL*(ESOI(CHNO) + EVEG(CHNO))*ESATFR/(1.*AR1(CHNO)+SYSOIL*(1.-AR1(CHNO)))

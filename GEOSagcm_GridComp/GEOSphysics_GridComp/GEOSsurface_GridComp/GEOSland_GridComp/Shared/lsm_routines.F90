@@ -66,7 +66,7 @@ MODULE lsm_routines
   PRIVATE
 
   PUBLIC :: INTERC, BASE, PARTITION, RZEQUIL, gndtp0
-  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
+  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT, catch_calc_wtotl
   PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate, SRUNOFF
 
@@ -503,8 +503,7 @@ CONTAINS
       data ashift/0./
 
       DO N=1,NCH
-         ! note intentionally opposite sign w.r.t. zbar defined above, - reichle, 16 Nov 2015
-         ZBAR=SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
+         ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
          IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
             BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
                  cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
@@ -752,7 +751,7 @@ CONTAINS
            ! peat
            ! MB: AR4 (wilting fraction) for peatland depending on water table depth
            !ZBAR defined here positive below ground and in meter
-           ZBAR=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+           ZBAR = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
            AR4(N)=amax1(0.,amin1(1.0,(ZBAR-0.30)/(1.0)))
            ARREST = 1.0 - AR1(N)
            AR4(N)=amin1(ARREST,AR4(N))
@@ -1764,6 +1763,29 @@ CONTAINS
   return
 
   end subroutine catch_calc_soil_moist
+
+  ! *******************************************************************
+
+  real function catch_calc_zbar( bf1, bf2, catdef )
+
+    ! Calculate zbar for Catchment[CN] model.
+    !
+    ! Convention: zbar positive below ground (downward).
+    !             
+    ! This convention applies to water calculations, incl. subroutines RZDRAIN(),
+    !   WUPDAT(), BASE(), PEATCLSM
+    !
+    ! WARNING:
+    !   Opposite convention applies when zbar is used in ground heat
+    !   diffusion model, incl. subroutines GNDTP0(), GNDTMP(), GNDTMP_CN().
+    !
+    ! - reichle, 29 Jan 2022
+
+    real, intent(in) :: bf1, bf2, catdef
+
+    catch_calc_bar = SQRT(1.e-20 + catdef/bf1) - bf2
+        
+  end function catch_calc_zbar
 
   ! *******************************************************************
 
