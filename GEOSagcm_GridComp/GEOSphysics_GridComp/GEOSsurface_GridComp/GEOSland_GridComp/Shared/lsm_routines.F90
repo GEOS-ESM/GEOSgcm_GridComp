@@ -1783,7 +1783,7 @@ CONTAINS
 
     real, intent(in) :: bf1, bf2, catdef
 
-    catch_calc_bar = SQRT(1.e-20 + catdef/bf1) - bf2
+    catch_calc_zbar = SQRT(1.e-20 + catdef/bf1) - bf2
         
   end function catch_calc_zbar
 
