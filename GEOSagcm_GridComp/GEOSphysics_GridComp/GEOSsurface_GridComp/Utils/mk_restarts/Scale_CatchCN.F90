@@ -14,9 +14,6 @@ program Scale_CatchCN
   USE CATCH_CONSTANTS,   ONLY:          &
        N_GT              => CATCH_N_GT, &
        PEATCLSM_POROS_THRESHOLD
-
-  USE CLM_VARPAR,        ONLY:          &
-       MAP_CAT
   
   implicit none
 
