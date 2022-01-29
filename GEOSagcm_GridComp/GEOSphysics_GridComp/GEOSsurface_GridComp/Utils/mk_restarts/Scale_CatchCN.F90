@@ -295,6 +295,7 @@ program Scale_CatchCN
        catch(sca)%ars1,   catch(sca)%ars2,  catch(sca)%ars3,                           &
        catch(sca)%ara1,   catch(sca)%ara2,  catch(sca)%ara3,  catch(sca)%ara4,         &
        catch(sca)%arw1,   catch(sca)%arw2,  catch(sca)%arw3,  catch(sca)%arw4,         &
+       catch(sca)%bf1,    catch(sca)%bf2,                                              &
        catch(sca)%srfexc, catch(sca)%rzexc, catch(sca)%catdef,                         &
        ar1,               ar2,              ar4                                 )
   
