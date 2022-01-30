@@ -803,7 +803,11 @@ CONTAINS
         T1(2)  = TG2(N)-TF
         T1(3)  = TG4(N)-TF
         ! MB: avoid division by zero (AR1=0) in PEATCLSM equations
-        IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD)  AREA(1)= amax1(AR1(N),2.E-20)
+        IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
+           AREA(1)= amax1(AR1(N),2.E-20)
+        ELSE
+           AREA(1) = AR1(N)
+        END IF
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
         pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
