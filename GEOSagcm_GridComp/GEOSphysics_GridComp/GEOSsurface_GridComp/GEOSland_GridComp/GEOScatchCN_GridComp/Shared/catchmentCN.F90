@@ -2558,8 +2558,8 @@ CONTAINS
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
 
-      zb(1)=-0.05    ! Bottom of surface layer, which is handled outside
-                    ! this routine.
+      zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
+                     ! this routine.
       do l=1,N_GT
         zb(l+1)=zb(l)-DZGT(l)
         shc(l)=SHR0*(1.-phi)*DZGT(l)
