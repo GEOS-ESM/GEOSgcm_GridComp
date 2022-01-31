@@ -107,15 +107,14 @@ if ( $HELPMODE != YES ) then
 
    mkdir -p $EXPDIR
 
-set foo=`ls -a ${EXPDIR} | wc -l`
-if ( "${foo}" == 2 ) then
-  echo "${C2} ${EXPDIR} is empty ${CR}"
-  echo " "
-else
-  echo "${C1} WARNING: ${EXPDIR} is not empty ${CR}"
-  echo " "
-endif
-
+   set foo=`ls -a ${EXPDIR} | wc -l`
+   if ( "${foo}" == 2 ) then
+       echo "${C2} ${EXPDIR} is empty ${CR}"
+       echo " "
+   else
+       echo "${C1} WARNING: ${EXPDIR} is not empty ${CR}"
+       echo " "
+   endif
    
 endif
 
@@ -294,8 +293,7 @@ ORSLV:
        echo " ${C1} Invalid choice, try again:${CR}"
        goto ORSLV
    endif
-   if( $HRCODE != "$HRCODES" ) set HRCODES = `echo ${HRCODES} ${HRCODE}`
-       if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
+     if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
    end
 
 endif
@@ -309,27 +307,6 @@ echo "${C1} Land BCs version:${CR} ${C2}$lbcsv${CR}"
 
 #######################################################################
 #######################################################################
-
-set atmcode = `echo "$HRCODES" | tr " " _`
-set oceancode = `echo "$orslvs" | tr " " _`
-
-set NEWBCS = $EXPDIR/${atmcode}_${oceancode}_${lbcsv}
-
-mkdir -p $NEWBCS
-
-set foo=`ls -a $NEWBCS | wc -l`
-if ( "${foo}" == 2 ) then
-else
-  echo ""
-  echo "${C1} ----------------------------------------------------${CR}"
-  echo "${C2} Abort: $NEWBCS is not empty ${CR}"
-  echo "${C2} Please delete same resolution BCS files and resubmit"
-  echo "${C1} ----------------------------------------------------${CR}"
-  echo ""
-  exit
-endif
-
-#######################################
 
 set IRRIGTHRES = 2
 set make_bcs_jobs = ''
@@ -671,20 +648,32 @@ set DATENAME = DE
 set POLENAME = PE
 
 set             BCNAME = DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
-set             BCDIR  = $NEWBCS/$OUTDIR/$BCNAME.scratch
+set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 
-if(     -e $BCDIR) /bin/rm -r $BCDIR
+set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
+if( $nfiles >= 1 ) then
+  echo ""
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo "${C1}                 Abort:                              ${CR}"
+  echo "${C2} This BCS run $BCDIR ${CR}"
+  echo "${C2} will create resolution dir already present: $BCNAME ${CR}"
+  echo "${C2} Please delete run dir and same resolution BCS files and resubmit"
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo ""
+  exit
+endif
+
 mkdir -p $BCDIR 
-mkdir -p $NEWBCS/$OUTDIR/logs
+mkdir -p $EXPDIR/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -813,7 +802,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
-/bin/mv    $NEWBCS/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
@@ -847,12 +836,24 @@ else
 	set       BCNAME = CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 endif
 
-set             BCDIR  = $NEWBCS/$OUTDIR/$BCNAME.scratch
+set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 
-if(     -e $BCDIR) /bin/rm -r $BCDIR
+set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
+if( $nfiles >= 1 ) then
+  echo ""
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo "${C1}                 Abort:                              ${CR}"
+  echo "${C2} This BCS run $BCDIR ${CR}"
+  echo "${C2} will create resolution dir already present: $BCNAME ${CR}"
+  echo "${C2} Please delete run dir and same resolution BCS files and resubmit"
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo ""
+  exit
+endif
+
 mkdir -p $BCDIR
-mkdir -p $NEWBCS/$OUTDIR/logs
+mkdir -p $EXPDIR/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -860,8 +861,8 @@ if ($HRCODE == c2880 | $HRCODE == c3072 | $HRCODE == c5760) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
@@ -928,8 +929,8 @@ set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
 cat << _EOF_ > $BCJOB-2
 #!/bin/csh -x
 
-#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME-2.log
-#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME-2.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME-2.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME-2.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1044,7 +1045,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB-2              $BCNAME
-/bin/mv    $NEWBCS/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
@@ -1059,8 +1060,8 @@ else
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1211,7 +1212,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
-/bin/mv    $NEWBCS/$OUTDIR/logs  $BCNAME/.
+/bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
@@ -1243,12 +1244,25 @@ set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
 set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
 set             BCNAME = SMAP_${EVERSION}_${MGRID}
-set             BCDIR  = $NEWBCS/$OUTDIR/$BCNAME.scratch
+set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
 set           THISGRID = SMAP-${EVERSION}-${MGRID}
-if(     -e $BCDIR) /bin/rm -r $BCDIR
+
+set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
+if( $nfiles >= 1 ) then
+  echo ""
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo "${C1}                 Abort:                              ${CR}"
+  echo "${C2} This BCS run $BCDIR ${CR}"
+  echo "${C2} will create resolution dir already present: $BCNAME ${CR}"
+  echo "${C2} Please delete run dir and same resolution BCS files and resubmit"
+  echo "${C1} ----------------------------------------------------${CR}"
+  echo ""
+  exit
+endif
+
 mkdir -p $BCDIR 
-mkdir -p $NEWBCS/$OUTDIR/logs
+mkdir -p $EXPDIR/$OUTDIR/logs
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -1256,8 +1270,8 @@ echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$NEWBCS/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$NEWBCS/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
@@ -1367,7 +1381,7 @@ cd ../
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
-/bin/mv    $NEWBCS/$OUTDIR/logs   $BCNAME/.
+/bin/mv    $EXPDIR/$OUTDIR/logs   $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
 /bin/rm -r $OUTDIR
 
@@ -1402,9 +1416,9 @@ end # End Ocean Resolution Loop
 #    end
 #else
 foreach job ($make_bcs_jobs)
-
 set jobid="`sbatch $job |  cut -d' ' -f4`"
 echo $jobid
+echo $job
 
 if( -e $job-2) then
 set jobid="`sbatch --dependency=afterok:$jobid $make_bcs_jobs[2] |  cut -d' ' -f4`"
