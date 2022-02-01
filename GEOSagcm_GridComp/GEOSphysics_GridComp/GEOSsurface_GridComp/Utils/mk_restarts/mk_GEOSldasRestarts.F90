@@ -201,7 +201,11 @@ PROGRAM mk_GEOSldasRestarts
         stop
      endif
 
-     if (index(model,'45') /=0) clm45 = .true.
+     if (index(model,'45') /=0) then
+       clm45 = .true.
+       VAR_COL = VAR_COL_CLM45
+       VAR_PFT = VAR_PFT_CLM45
+     endif
      catch_scaler = 'Scale_CatchCN'
   else
      catch_scaler = 'Scale_Catch'
