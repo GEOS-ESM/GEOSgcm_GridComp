@@ -55,10 +55,10 @@
 !                        ../Shared/lsm_routines.F90 
 !                      - moved SHR, EPSILON, SCONST, CSOIL_1,  CSOIL_2, N_sm, and SATCAPFR to
 !                        ../Shared/catch_constants.f90
-! Justin , 19 Apr 2018  - removed LAND_UPD ifdefs, use SurfParams
-! Justin , 11 Dec 2018  - put in ASNOW fix affecting AGCM only
-! Sarith , 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
-
+! Justin, 19 Apr 2018  - removed LAND_UPD ifdefs, use SurfParams
+! Justin, 11 Dec 2018  - put in ASNOW fix affecting AGCM only
+! Sarith, 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
+! Reichle, 14 Jan 2022 - removed redundant qa constraint; removed commented-out #ifdef LAND_UPD directives
 
       MODULE CATCHMENT_MODEL
 
@@ -540,18 +540,14 @@
         tc1_orig(n)=tc1(n)
         tc2_orig(n)=tc2(n)
         tc4_orig(n)=tc4(n)
-
-!#ifdef LAND_UPD
-	if (LAND_FIX) then
-           ! Andrea Molod (Oct 21, 2016):
-	   qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
-           qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
-           qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
-           qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
-           qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
-	   qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
-	end if 
-!#endif
+        
+        ! Removed an #ifdef LAND_UPD [if (LAND_FIX)] block from here that constrained qa
+        ! between qm and qsat.
+        ! For energy conservation reasons, the same code was added in GEOS_CatchGridComp.F90 
+        ! by Andrea Molod ca. 2016.
+        ! Because the legacy LDASsa did not use GEOS_CatchGridComp.F90, the constraint was
+        ! still needed here until the offline land software migrated to GEOSldas in 2020.
+        ! - reichle, 14 Jan 2022
 
         if(ityp(n) .ge. 7) potfrc(n)=0.
 !$$$        RA1(N)     = ONE / ( CD1(N) * max(UM(N),1.) )
@@ -690,6 +686,7 @@
         else
            phi=PHIGT
         end if
+
 	if (LAND_FIX) then
            ! zbar bug fix, - reichle, 16 Nov 2015
            ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTP0)
@@ -697,6 +694,7 @@
         else
 	   ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)  
 	end if
+
         THETAF=.5
         DO LAYER=1,6
           HT(LAYER)=GHTCNT(LAYER,N)
@@ -1326,12 +1324,6 @@
        ! Apply engineering fix for all vegetation classes.
        ! - reichle, 24 Nov 2015
 
-! #ifdef LAND_UPD
-!        !IF (ityp(N) .ne. 1) THEN
-!        IF (.true.) THEN
-! #else
-!        IF (ityp(N) .ne. 1) THEN 
-! #endif
        IF (LAND_FIX .OR. (ityp(N) .ne. 1)) THEN           
           call dampen_tc_oscillations(dtstep,tm(N),tc1_orig(N),tc1(N),     &
                tc1_00(N),dtc1)
@@ -1740,11 +1732,7 @@
 	else
 	   rzavemin = 0.
 	end if
-! #ifdef LAND_UPD
-!         if (rzave .le. 1.e-4) then
-! #else
-!         if (rzave .le. 0.) then
-! #endif
+
         if (rzave .le. rzavemin) then  ! JP: could put rzavemin in catch_constants
           rzave=1.e-4
           print*,'problem: rzave <= 1.e-4 in catchment',n
@@ -1761,9 +1749,7 @@
 ! ---------------------------------------------------------------------
 
         SRFLW=SRFEXC(N)*DTSTEP/TSC0
-! #ifdef LAND_UPD
-!         IF(SRFLW < 0.    ) SRFLW = 0.04 * SRFLW ! C05 change
-! #endif
+
         IF(SRFLW < 0.    ) SRFLW = FLWALPHA * SRFLW ! C05 change
 
 !rr   following inserted by koster Sep 22, 2003
@@ -2216,16 +2202,6 @@
 !      REAL DELTC, DELEA, STEXP, ATRANS, ASTRFR
       REAL DELTC, DELEA, ATRANS
 
-! Removed ifdef -JP
-! !!#ifdef LAND_UPD      
-! !      ! C05 change - SM
-! !      PARAMETER (ASTRFR=1.)  ! STRESS TRANSITION POINT
-! !      PARAMETER (STEXP=2.)  ! STRESS RAMPING
-! !!#else
-!       ! keep the GCM values starting from GEOSldas_m4-17_6 -- WJ
-!       PARAMETER (ASTRFR=0.333)  ! STRESS TRANSITION POINT
-!       PARAMETER (STEXP=1.)  ! STRESS RAMPING
-! !!#endif
       DATA DELTC /0.01/, DELEA /0.001/
 
 
@@ -3038,13 +3014,7 @@
 
 ! RDK 04/04/06
 !  VALUES OF BARE SOIL SURFACE RESISTANCE AT WILTING POINT, SATURATION
-! Removed ifdef - JP
-! !!#ifdef LAND_UPD
-! !      PARAMETER (RSWILT=2000., RSSAT=25.) ! C05 Change -SM
-! !!#else
-!       !keep GCM values starting from GEOSldas_m4-17_6 - WJ
-!       PARAMETER (RSWILT= 500., RSSAT=25.) 
-! !!#endif
+
      PARAMETER (RSSAT=25.)
 
 !****
