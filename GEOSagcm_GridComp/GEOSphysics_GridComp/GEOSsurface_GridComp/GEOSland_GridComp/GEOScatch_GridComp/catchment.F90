@@ -87,7 +87,12 @@
            SLOPE             => CATCH_SNWALB_SLOPE,  &
            MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
            DZ1MAX            => CATCH_DZ1MAX,        &  
-           SHR, SCONST, CSOIL_1, N_sm, SATCAPFR
+           SCONST            => CATCH_SCONST,        &
+           CSOIL_1           => CATCH_CSOIL_1,       &
+           N_sm              => CATCH_N_ZONES,       &
+           SATCAPFR          => CATCH_SATCAPFR,      &
+           PHIGT             => CATCH_PHIGT,         &
+           DZTC              => CATCH_DZTC
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
@@ -97,7 +102,7 @@
           INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
           catch_calc_soil_moist, gndtmp,            &
           catch_calc_wtotl, dampen_tc_oscillations, &
-          PHIGT, DZTC, SRUNOFF 
+          SRUNOFF
       
       USE SIBALB_COEFF,  ONLY: coeffsib
 
