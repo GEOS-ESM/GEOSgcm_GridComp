@@ -6246,6 +6246,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            end do
         end if
 
+        ! Compute DQS; make sure QC is between QA and QSAT; compute RA.
+        !
+        !   Some 1,000 lines below, duplicate code was present and removed in Jan 2022. 
+        !   - reichle, 14 Jan 2022.
+
         do N=1,NUM_SUBTILES
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
@@ -7547,16 +7552,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        PLSIN = PLS + IRRIGRATE
        
     ENDIF
-
-
-! Andrea Molod (Oct 21, 2016):
- 
-        do N=1,NUM_SUBTILES
-           DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N),PASCALS=.true., RAMP=0.0 )
-           QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
-           QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
-           RA (:,N) = RHO/CH(:,N)
-        end do
 
 #ifdef DBG_CNLSM_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
