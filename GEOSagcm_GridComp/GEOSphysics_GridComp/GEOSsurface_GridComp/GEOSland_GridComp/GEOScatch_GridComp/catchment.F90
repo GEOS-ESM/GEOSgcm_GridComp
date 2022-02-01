@@ -87,7 +87,12 @@
            SLOPE             => CATCH_SNWALB_SLOPE,  &
            MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
            DZ1MAX            => CATCH_DZ1MAX,        &  
-           SHR, SCONST, CSOIL_1, N_sm, SATCAPFR,     &
+           SCONST            => CATCH_SCONST,        &
+           CSOIL_1           => CATCH_CSOIL_1,       &
+           N_sm              => CATCH_N_ZONES,       &
+           SATCAPFR          => CATCH_SATCAPFR,      &
+           PHIGT             => CATCH_PHIGT,         &
+           DZTC              => CATCH_DZTC,          &
            PEATCLSM_POROS_THRESHOLD,                 &
            PEATCLSM_ZBARMAX_4_SYSOIL
 
@@ -100,7 +105,7 @@
            gndtp0, gndtmp,                           &
            catch_calc_soil_moist, catch_calc_zbar,   &
            catch_calc_wtotl, dampen_tc_oscillations, &
-           PHIGT, DZTC, SRUNOFF 
+           SRUNOFF 
       
       USE SIBALB_COEFF,  ONLY: coeffsib
 

@@ -8,11 +8,11 @@ program Scale_CatchCN
   use LSM_ROUTINES,      ONLY:          &
        catch_calc_soil_moist,           &
        catch_calc_tp,                   &
-       catch_calc_ght,                  &
-       DZGT
+       catch_calc_ght
   
   USE CATCH_CONSTANTS,   ONLY:          &
        N_GT              => CATCH_N_GT, &
+       DZGT              => CATCH_DZGT, &
        PEATCLSM_POROS_THRESHOLD
   
   implicit none

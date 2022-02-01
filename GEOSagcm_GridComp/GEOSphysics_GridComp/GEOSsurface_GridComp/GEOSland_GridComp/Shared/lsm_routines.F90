@@ -1,134 +1,94 @@
 MODULE lsm_routines
 
-! The module contains subroutines that are shared by Catchment and Catchment-CN models.
-! Sarith, 10 Nov 2015  - The first version
-!                      - moved   RZDRAIN, INTERC, BASE, PARTITION, RZEQUIL, gndtp0
-!                        SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
-!                        gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT,
-!                        catch_calc_wtotl, dampen_tc_oscillations and catch_echo_constants from
-!                        land models
-!                      - moved DZTC, FWETL, FWETC, DZGT, PHIGT, ALHMGT, FSN, CATCH_FT_WEIGHT_TP1,
-!                        CATCH_FT_THRESHOLD_TEFF, CATCH_FT_THRESHOLD_ASNOW, ZERO, and ONE from
-!                        from land models.
-!                      - removed ITYP from argument list in subroutines INTERC, PARTITION, RZEQUIL
-!                      - removed CSOIL from arguments to INTERC
-!                      - removed CDCR2 from arguments to BASE
-!                      - change catch_echo_constants to lsmroutines_echo_constants
-! Justin, 16 Apr 2018  - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called
-!                        from SurfParams, as well as others
-! Sarith, 14 Aug 2018  - Added irrigation routines, considered experimental
-! Sarith, 22 Apr 2020  - moved SUBROUTINE SRUNOFF here and modified to account for separate convective and 
-!                        large-scale throughfalls. FWETC and FWETL are now passed through the resource file.
-
-  USE MAPL_BaseMod,      ONLY:                &
-       NTYPS             => MAPL_NumVegTypes, &
-       MAPL_Land,                             &
-       MAPL_UNDEF
-
-  USE MAPL_ConstantsMod, ONLY:           &
-       PIE               => MAPL_PI,     &  ! -
-       ALHE              => MAPL_ALHL,   &  ! J/kg  @15C
-       ALHM              => MAPL_ALHF,   &  ! J/kg
-       ALHS              => MAPL_ALHS,   &  ! J/kg
-       TF                => MAPL_TICE,   &  ! K
-       RGAS              => MAPL_RGAS,   &  ! J/(kg K)
-       SHW               => MAPL_CAPWTR, &  ! J/kg/K  spec heat of wat
-       SHI               => MAPL_CAPICE, &  ! J/kg/K  spec heat of ice
-       EPSILON           => MAPL_EPSILON,&
-       MAPL_H2OMW,                       &
-       MAPL_AIRMW
+  ! The module contains subroutines that are shared by Catchment and CatchmentCN.
+  ! Sarith,  10 Nov 2015 - The first version
+  !                      - moved   RZDRAIN, INTERC, BASE, PARTITION, RZEQUIL, gndtp0
+  !                        SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
+  !                        gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT,
+  !                        catch_calc_wtotl, dampen_tc_oscillations and catch_echo_constants from
+  !                        land models
+  !                      - moved DZTC, FWETL, FWETC, DZGT, PHIGT, ALHMGT, FSN, CATCH_FT_WEIGHT_TP1,
+  !                        CATCH_FT_THRESHOLD_TEFF, CATCH_FT_THRESHOLD_ASNOW, ZERO, and ONE from
+  !                        from land models.
+  !                      - removed ITYP from argument list in subroutines INTERC, PARTITION, RZEQUIL
+  !                      - removed CSOIL from arguments to INTERC
+  !                      - removed CDCR2 from arguments to BASE
+  !                      - change catch_echo_constants to lsmroutines_echo_constants
+  ! Justin,  16 Apr 2018 - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called
+  !                        from SurfParams, as well as others
+  ! Sarith,  14 Aug 2018 - Added irrigation routines, considered experimental
+  ! Sarith,  22 Apr 2020 - moved SUBROUTINE SRUNOFF here and modified to account for separate convective and 
+  !                        large-scale throughfalls. FWETC and FWETL are now passed through the resource file.
+  ! reichle, 27 Jan 2022 - moved "public" constants & subroutine echo_catch_constants() to catch_constants.f90
+  
+  USE MAPL_ConstantsMod, ONLY:                   &
+       PIE               => MAPL_PI,             &  ! -
+       TF                => MAPL_TICE,           &  ! K
+       SHW               => MAPL_CAPWTR,         &  ! J/kg/K  spec heat of water
+       SHI               => MAPL_CAPICE             ! J/kg/K  spec heat of ice
 
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
        RHOFS             => CATCH_SNWALB_RHOFS,  &
-       SNWALB_VISMAX     => CATCH_SNWALB_VISMAX, &
-       SNWALB_NIRMAX     => CATCH_SNWALB_NIRMAX, &
-       SLOPE             => CATCH_SNWALB_SLOPE,  &
-       MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
-       DZ1MAX            => CATCH_DZ1MAX,        &
-       SHR, N_SM, SCONST, CSOIL_1,               &
-       C_CANOP, SATCAPFR,                        &
+       DZTC              => CATCH_DZTC,          &
+       DZGT              => CATCH_DZGT,          &
+       PHIGT             => CATCH_PHIGT,         &
+       FSN               => CATCH_FSN,           &       
+       SHR               => CATCH_SHR,           &
+       N_SM              => CATCH_N_ZONES,       &
        PEATCLSM_POROS_THRESHOLD,                 &
        PEATCLSM_ZBARMAX_4_SYSOIL
-
+  
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
        FLWALPHA, ASTRFR, STEXP, RSWILT
+  
+  USE SIBALB_COEFF,      ONLY:                   &
+       coeffsib
 
-  USE SIBALB_COEFF,  ONLY: coeffsib
-
-  USE STIEGLITZSNOW, ONLY: &
+  USE STIEGLITZSNOW,     ONLY:                   &
        snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d
 
   IMPLICIT NONE
 
   PRIVATE
 
-  PUBLIC :: INTERC, BASE, PARTITION, RZEQUIL, gndtp0
+  PUBLIC :: INTERC, SRUNOFF, BASE, PARTITION, RZEQUIL, gndtp0
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_subtile2tile
-  PUBLIC :: gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT, catch_calc_wtotl
-  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate, SRUNOFF
-
-  ! layer depth associated with snow-free land temperatures
-  !
-  ! Note: DZTC = .05 is a hardwired setting of the depth of the bottom of
-  ! the surface soil layer.  It should be made a parameter that is tied to
-  ! the heat capacity CSOIL, which had been set to either CSOIL_1 or
-  ! CSOIL_2 based on vegetation type.  For now we leave
-  ! it set to 0.05 despite an apparent inconsistency with CSOIL as
-  ! currently used.  We do this (again, for now) because the effects of the
-  ! inconsistency are drowned out by our arbitrary assumption, in computing
-  ! the thermal conductivities, that the unsaturated soil has a degree of
-  ! saturation of 50%.  For the flux calculation, setting the depth to .05m
-  ! here provides approximately the same fluxes as setting the depth to much
-  ! closer to 0 (as the value of CSOIL_2 suggests) and assuming a degree of
-  ! saturation of about 25%, which is no less realistic an assumption.  There
-  ! are other impacts in wet climates regarding the effect of
-  ! the depth of the water table on the thermal conductivity; these impacts
-  ! are presumably very small.
-
-  REAL,    PARAMETER, PUBLIC :: DZTC     = 0.05   ! m  layer depth for tc1, tc2, tc4
+  PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
+  PUBLIC :: dampen_tc_oscillations, irrigation_rate
 
   ! ---------------------------------------------------------------------------
   !
- 
-  REAL,    PARAMETER :: TIMFRL = 1.0
-  REAL,    PARAMETER :: TIMFRC = 0.333
+  !    ***** Do not define *public* Catchment model constants here. *****
+  !
+  ! Public Catchment model constants should be defined in ./catch_constants.f90
+  !  (or in ../../GEOSsurface_GridComp/Shared/SurfParams.F90 if necessary).
+  !
+  !
+  ! local constants:
   
-  ! ---------------------------------------------------------------------------
-  !
-  ! constants for ground temperature routine (gndtp0() and gndtmp())
-
-  REAL,    PARAMETER, DIMENSION(N_gt), PUBLIC :: DZGT = &  ! m  layer depths
-       (/ 0.0988, 0.1952, 0.3859, 0.7626, 1.5071, 10.0 /)
-
-  ! PHIGT and ALHMGT are needed for backward compatibility with
-  !  off-line (land-only) MERRA replay:
-  !
-  ! PHIGT = porosity used in gndtp0() and gndtmp()
-  !         if neg,  POROS(n) from soil moisture submodel will be used
-  !
-  !               |   PHIGT      ALHMGT
-  ! ------------------------------------------------
-  !  MERRA        |      0.45    3.34e+5
-  !  Fortuna-2_3  |  -9999.       ALHM
-
-  REAL,    PARAMETER, PUBLIC :: PHIGT   = -9999.
-  REAL,    PARAMETER, PUBLIC :: ALHMGT  = ALHM
-
-  REAL,    PARAMETER, PUBLIC :: FSN     = 1.e3*ALHMGT ! unit change J/kg/K -> J/m/K
-
-  ! ---------------------------------------------------------------------------
-  !
+  REAL,    PARAMETER :: CATCH_TIMFRL             = 1.0
+  REAL,    PARAMETER :: CATCH_TIMFRC             = 0.333
+  
   ! constants for "landscape" freeze/thaw (FT) state (see subroutine catch_calc_FT())
+  
+  REAL,    PARAMETER :: CATCH_FT_WEIGHT_TP1      = 0.5   !
+  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
+  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
 
+<<<<<<< HEAD
   REAL,    PARAMETER :: CATCH_FT_WEIGHT_TP1      = 0.5   !
   REAL,    PARAMETER :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
   REAL,    PARAMETER :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
 
   REAL,    PARAMETER :: ZERO     = 0.
   REAL,    PARAMETER :: ONE      = 1.
+=======
+  REAL,    PARAMETER :: ZERO                     = 0.
+  REAL,    PARAMETER :: ONE                      = 1.
+>>>>>>> feature/rreichle/cleancatchconstants
   
 CONTAINS
 
@@ -180,7 +140,7 @@ CONTAINS
 !**** TO REFLECT THE EFFECTIVE LOSS OF "POSITION MEMORY" WHEN STORM
 !**** COVERS ENTIRE GRID SQUARE.)
 
-      XTCORR= (1.-TIMFRL) *                                                    &
+      XTCORR= (1.-CATCH_TIMFRL) *                                                    &
             AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/FWETL )
 
 !****
@@ -217,7 +177,7 @@ CONTAINS
 !**** DETERMINE XTCORR, THE FRACTION OF A STORM THAT FALLS ON A PREVIOUSLY
 !**** WET SURFACE DUE TO THE TIME CORRELATION OF PRECIPITATION POSITION.
 
-      XTCORR= (1.-TIMFRC) *                                                    &
+      XTCORR= (1.-CATCH_TIMFRC) *                                                    &
            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/FWETC )
 
 !****
@@ -2428,75 +2388,6 @@ CONTAINS
     end if
 
   end subroutine dampen_tc_oscillations
-
-  ! ********************************************************************
-
-  subroutine lsmroutines_echo_constants(logunit)
-
-    ! moved to here from catch_constants.F90, reichle, 14 Aug 2014
-
-    ! reichle, 10 Oct 2008
-
-    implicit none
-
-    integer, intent(in) :: logunit
-
-    write (logunit,*)
-    write (logunit,*) '-----------------------------------------------------------'
-    write (logunit,*)
-    write (logunit,*) 'lsmroutines_echo_constants():'
-    write (logunit,*)
-    write (logunit,*) 'PIE      = ', PIE
-    write (logunit,*) 'ALHE     = ', ALHE
-    write (logunit,*) 'ALHM     = ', ALHM
-    write (logunit,*) 'ALHS     = ', ALHS
-    write (logunit,*) 'TF       = ', TF
-    write (logunit,*) 'RGAS     = ', RGAS
-    write (logunit,*) 'SHW      = ', SHW
-    write (logunit,*) 'SHI      = ', SHI
-    write (logunit,*)
-    write (logunit,*) 'N_snow        = ', N_snow
-    write (logunit,*) 'N_gt          = ', N_gt
-    write (logunit,*)
-    write (logunit,*) 'RHOFS         = ', RHOFS
-    write (logunit,*) 'SNWALB_VISMAX = ', SNWALB_VISMAX
-    write (logunit,*) 'SNWALB_NIRMAX = ', SNWALB_NIRMAX
-    write (logunit,*) 'SLOPE         = ', SLOPE
-    write (logunit,*) 'MAXSNDEPTH    = ', MAXSNDEPTH
-    write (logunit,*) 'DZ1MAX        = ', DZ1MAX
-    write (logunit,*)
-    write (logunit,*) 'SHR           = ', SHR
-    write (logunit,*) 'EPSILON       = ', EPSILON
-    write (logunit,*)
-    write (logunit,*) 'N_sm          = ', N_sm
-    write (logunit,*)
-    write (logunit,*) 'SCONST        = ', SCONST
-    write (logunit,*) 'CSOIL_2       = ', CSOIL_2
-    write (logunit,*) 'LAND_FIX      = ', LAND_FIX
-    write (logunit,*) 'WEMIN         = ', WEMIN
-    write (logunit,*) 'AICEV         = ', AICEV
-    write (logunit,*) 'AICEN         = ', AICEN
-    write (logunit,*) 'FLWALPHA      = ', FLWALPHA
-    write (logunit,*) 'ASTRFR        = ', ASTRFR
-    write (logunit,*) 'STEXP         = ', STEXP
-    write (logunit,*) 'RSWILT        = ', RSWILT
-
-    write (logunit,*) 'C_CANOP (catchCN only)  = ', C_CANOP
-    write (logunit,*)
-    write (logunit,*) 'DZTC          = ', DZTC
-    write (logunit,*)
-    write (logunit,*) 'SATCAPFR      = ', SATCAPFR
-    write (logunit,*)
-    write (logunit,*) 'DZGT          = ', DZGT
-    write (logunit,*) 'PHIGT         = ', PHIGT
-    write (logunit,*) 'ALHMGT        = ', ALHMGT
-    write (logunit,*)
-    write (logunit,*) 'end lsmroutines_echo_constants()'
-    write (logunit,*)
-    write (logunit,*) '-----------------------------------------------------------'
-    write (logunit,*)
-
-  end subroutine lsmroutines_echo_constants
 
   ! ********************************************************************
 
