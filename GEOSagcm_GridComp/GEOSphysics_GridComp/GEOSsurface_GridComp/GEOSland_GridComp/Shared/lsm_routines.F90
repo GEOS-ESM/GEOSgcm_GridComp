@@ -78,17 +78,8 @@ MODULE lsm_routines
   REAL,    PARAMETER :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
   REAL,    PARAMETER :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
 
-<<<<<<< HEAD
-  REAL,    PARAMETER :: CATCH_FT_WEIGHT_TP1      = 0.5   !
-  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
-  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
-
-  REAL,    PARAMETER :: ZERO     = 0.
-  REAL,    PARAMETER :: ONE      = 1.
-=======
   REAL,    PARAMETER :: ZERO                     = 0.
   REAL,    PARAMETER :: ONE                      = 1.
->>>>>>> feature/rreichle/cleancatchconstants
   
 CONTAINS
 

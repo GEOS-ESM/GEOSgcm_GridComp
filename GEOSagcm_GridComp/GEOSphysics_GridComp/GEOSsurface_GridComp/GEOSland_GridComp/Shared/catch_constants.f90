@@ -203,7 +203,6 @@ contains
   end subroutine echo_catch_constants
 
   ! *******************************************************************************
->>>>>>> feature/rreichle/cleancatchconstants
   
 end module catch_constants
 
