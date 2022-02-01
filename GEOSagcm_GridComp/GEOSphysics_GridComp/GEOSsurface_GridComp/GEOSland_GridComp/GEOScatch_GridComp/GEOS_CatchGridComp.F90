@@ -45,9 +45,6 @@ module GEOS_CatchGridCompMod
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
        SLOPE          => CATCH_SNWALB_SLOPE
 
-  USE SURFPARAMS,     ONLY:                   &
-       LAND_FIX
-
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
 
 !#for_ldas_coupling 
@@ -4912,6 +4909,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            end do
         end if
 
+        ! Compute DQS; make sure QC is between QA and QSAT; compute RA.
+        !
+        !   For energy conservation reasons, this code was moved from catchment.F90
+        !   to here by Andrea Molod ca. 2016.
+        !   Some 40 lines below, duplicate code was present within #ifdef LAND_UPD block
+        !   (later changed to "if (LAND_FIX)") and was removed in Jan 2022. 
+        !   - reichle, 14 Jan 2022.
+
         do N=1,NUM_SUBTILES
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
@@ -4920,7 +4925,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         end do
 
         QC(:,FSNW) = QSAT(:,FSNW)
-
         
 	! --------------------------------------------------------------------------
         ! get total solid precip
@@ -4950,18 +4954,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         TILEZERO = 0.0
 
         call MAPL_TimerOn  ( MAPL, "-CATCH" )
-!#ifdef LAND_UPD
-        if (LAND_FIX) then
-! Andrea Molod (Oct 21, 2016):
- 
-	   do N=1,NUM_SUBTILES
-              DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N),PASCALS=.true., RAMP=0.0 )
-              QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
-              QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
-              RA (:,N) = RHO/CH(:,N)
-           end do
-	end if 
-!#endif
+
 #ifdef DBG_CATCH_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
         VERIFY_(STATUS)
