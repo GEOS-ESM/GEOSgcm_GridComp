@@ -1823,19 +1823,24 @@ CONTAINS
           ! (--> NOTE: PEATCLSM has no Hortonian runoff for zbar > 0)            
           CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0-1.e-20)*BF1(N)
           IF(CATDEF(N) .LT. CATDEF_PEAT_THRESHOLD) THEN
-             RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
              ! runoff from AR1 for zbar>0
-             RZFLW_AR1 = RZFLW - RZFLW_CATDEF + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! RZFLW_AR1 = RZFLW - RZFLW_CATDEF + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
              ! AR1=0.5 at zbar=0
              ! SYsurface=0.5 at zbar=0
-             RUNSRF(N) = RUNSRF(N) + amax1(0.0, RZFLW_AR1 - 0.5*1000.*ZBAR1)
-             ! 
+             ! RUNSRF(N) = RUNSRF(N) + amax1(0.0, RZFLW_AR1 - 0.5*1000.*ZBAR1)
+             !
+             ! revised (rdk, 1/04/2021): take excess water from both 
+             ! soil and free standing water, the latter assumed to cover area AR1=0.5
+             RUNSRF(N) = RUNSRF(N) + (CATDEF_PEAT_THRESHOLD-CATDEF(N) + 0.5*1000.*(-ZBAR1))/DTSTEP             
              CATDEF(N)=CATDEF_PEAT_THRESHOLD
           ENDIF
        ENDIF
  
         IF(CATDEF(N) .LT. 0.) THEN
-          RUNSRF(N)=RUNSRF(N)-CATDEF(N)
+          ! Bug fix: Added missing division by DTSTEP; short test runs suggest that if block
+          !  is rarely if ever reached, so effectively 0-diff; reichle+rdkoster, 2/2/22
+          RUNSRF(N)=RUNSRF(N)-CATDEF(N)/DTSTEP
           CATDEF(N)=0.
           ENDIF
 
@@ -2622,7 +2627,14 @@ CONTAINS
       do l=lstart,N_GT
          xfice=xfice+fice(l)
          enddo
-      xfice=xfice/((N_GT+1)-lstart)      
+
+      IF (phi < PEATCLSM_POROS_THRESHOLD) THEN
+         xfice=xfice/((N_GT+1)-lstart)
+      ELSE
+         !PEAT
+         !MB: only first layer for total runoff reduction
+        xfice=AMIN1(1.0,fice(1))
+      ENDIF
 
       Return
       end subroutine gndtmp_cn

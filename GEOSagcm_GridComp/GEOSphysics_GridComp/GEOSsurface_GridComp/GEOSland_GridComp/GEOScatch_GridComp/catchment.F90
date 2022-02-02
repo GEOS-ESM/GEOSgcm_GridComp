@@ -1856,14 +1856,15 @@
              ! 
              ! revised (rdk, 1/04/2021): take excess water from both 
              ! soil and free standing water, the latter assumed to cover area AR1=0.5
-             RUNSRF(N) = RUNSRF(N) + CATDEF_PEAT_THRESHOLD-CATDEF(N) + 0.5*1000.*(-ZBAR1)
-
+             RUNSRF(N) = RUNSRF(N) + (CATDEF_PEAT_THRESHOLD-CATDEF(N) + 0.5*1000.*(-ZBAR1))/DTSTEP
              CATDEF(N)=CATDEF_PEAT_THRESHOLD
           ENDIF
        ENDIF
 
        IF(CATDEF(N) .LT. 0.) THEN
-          RUNSRF(N)=RUNSRF(N)-CATDEF(N)
+          ! Bug fix: Added missing division by DTSTEP; short test runs suggest that if block
+          !  is rarely if ever reached, so effectively 0-diff; reichle+rdkoster, 2/2/22
+          RUNSRF(N)=RUNSRF(N)-CATDEF(N)/DTSTEP
           CATDEF(N)=0.
        ENDIF
 

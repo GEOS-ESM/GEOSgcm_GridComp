@@ -367,7 +367,7 @@ program Scale_Catch
   ! -------------------------------------------
 
   where (catch(sca)%poros >= PEATCLSM_POROS_THRESHOLD)
-     catch(sca)%catdef = 100.
+     catch(sca)%catdef = 25. ! changed from 100. to 25. for now, needs more thought, reichle, 2/2/22
      catch(sca)%rzexc  = 0.
      catch(sca)%srfexc = 0.
   end where
