@@ -31,7 +31,7 @@ MODULE lsm_routines
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
        RHOFS             => CATCH_SNWALB_RHOFS,  &
-       DZTC              => CATCH_DZTC,          &
+       DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
        PHIGT             => CATCH_PHIGT,         &
        FSN               => CATCH_FSN,           &       
@@ -907,7 +907,7 @@ CONTAINS
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
 
-      zb(1)=-DZTC
+      zb(1)=-DZTSURF
       zb(2)=zb(1)-DZGT(1)
       shc(1)=shr0*(1.-phi)*DZGT(1)
       zc(1)=0.5*(zb(1)+zb(2))
@@ -992,7 +992,7 @@ CONTAINS
       xklh(1)=(tksat-tkdry)*xwi + tkdry
       xklhw=tksat
 
-      denom=-(DZTC*0.5)-zc(1)
+      denom=-(DZTSURF*0.5)-zc(1)
       fh21w=-xklhw  *(t1(1)-TF-tp(1))/denom
       fh21i=-xklh(1)*(t1(2)-TF-tp(1))/denom
       fh21d=-xklh(1)*(t1(3)-TF-tp(1))/denom
@@ -1830,8 +1830,8 @@ CONTAINS
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
 
-      zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
-                    ! this routine.
+      zb(1)=-DZTSURF  ! Bottom of surface layer, which is handled outside
+                      ! this routine.
       do l=1,N_GT
         zb(l+1)=zb(l)-DZGT(l)
         shc(l)=shr0*(1.-phi)*DZGT(l)

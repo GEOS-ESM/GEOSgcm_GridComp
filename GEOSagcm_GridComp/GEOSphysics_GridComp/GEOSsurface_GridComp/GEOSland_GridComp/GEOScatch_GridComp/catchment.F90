@@ -92,7 +92,7 @@
            N_sm              => CATCH_N_ZONES,       &
            SATCAPFR          => CATCH_SATCAPFR,      &
            PHIGT             => CATCH_PHIGT,         &
-           DZTC              => CATCH_DZTC,          &
+           DZTSURF           => CATCH_DZTSURF,       &
            PEATCLSM_POROS_THRESHOLD,                 &
            PEATCLSM_ZBARMAX_4_SYSOIL
 
@@ -857,7 +857,7 @@
         tkgnd(2)=1.8 
         tkgnd(3)=1.8 
         raddn=hlwdwn(n)+swnets(n) 
-        zc1=-(DZTC*0.5)
+        zc1=-(DZTSURF*0.5)
         hups=0.0 
  
 !**** 1. RUN SNOW MODEL: 

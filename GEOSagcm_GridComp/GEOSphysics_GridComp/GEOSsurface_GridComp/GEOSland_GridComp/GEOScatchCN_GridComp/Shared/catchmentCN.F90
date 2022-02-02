@@ -93,7 +93,7 @@ MODULE CATCHMENT_CN_MODEL
        N_sm              => CATCH_N_ZONES,       &
        SATCAPFR          => CATCH_SATCAPFR,      &
        PHIGT             => CATCH_PHIGT,         &
-       DZTC              => CATCH_DZTC,          &
+       DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
        FSN               => CATCH_FSN,           &
        PEATCLSM_POROS_THRESHOLD,                 &
@@ -831,7 +831,7 @@ CONTAINS
         tkgnd(2)=1.8 
         tkgnd(3)=1.8 
         raddn=hlwdwn(n)+swnets(n) 
-        zc1=-(DZTC*0.5)
+        zc1=-(DZTSURF*0.5)
         hups=0.0 
  
 !**** 1. RUN SNOW MODEL: 
@@ -2565,8 +2565,8 @@ CONTAINS
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
 
-      zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
-                     ! this routine.
+      zb(1)=-DZTSURF  ! Bottom of surface layer, which is handled outside
+                      ! this routine.
       do l=1,N_GT
         zb(l+1)=zb(l)-DZGT(l)
         shc(l)=SHR0*(1.-phi)*DZGT(l)

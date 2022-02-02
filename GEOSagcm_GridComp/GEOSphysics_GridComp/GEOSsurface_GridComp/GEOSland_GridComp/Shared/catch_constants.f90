@@ -70,9 +70,11 @@ module catch_constants
   
   ! ---------------------------------------------------------------------------
   !
-  ! layer depth associated with snow-free land temperatures
+  ! layer depth associated with snow-free land surface soil temperatures
   !
-  ! Note: DZTC = .05 is a hardwired setting of the depth of the bottom of
+  ! ==================
+  ! Note by Randy Koster & Rolf Reichle when CSOIL=200. was still used (~2018):
+  ! DZTC = .05 is a hardwired setting of the depth of the bottom of
   ! the surface soil layer.  It should be made a parameter that is tied to
   ! the heat capacity CSOIL, which had been set to either CSOIL_1 or
   ! CSOIL_2 based on vegetation type.  For now we leave
@@ -87,8 +89,13 @@ module catch_constants
   ! are other impacts in wet climates regarding the effect of
   ! the depth of the water table on the thermal conductivity; these impacts
   ! are presumably very small.
-
-  REAL,    PARAMETER, PUBLIC :: CATCH_DZTC          = 0.05     ! m  layer depth for tc1, tc2, tc4
+  ! ==================
+  !
+  ! DZTSURF (formerly DZTC) is the layer depth associated w/ surface soil temperatures:
+  !   Catchment:    tc1, tc2, tc4  (CSOIL also includes veg canopy)
+  !   CatchmentCN:  tg1, tg2, tg4  (tc[X] are separate canopy temperatures)
+  
+  REAL,    PARAMETER, PUBLIC :: CATCH_DZTSURF       = 0.05     ! m  layer depth for tc[X] or tg[X]
 
   ! ---------------------------------------------------------------------------
   !
@@ -172,7 +179,7 @@ contains
     write (logunit,*) 'CATCH_SNWALB_SLOPE  = ', CATCH_SNWALB_SLOPE  
     write (logunit,*) 'CATCH_MAXSNDEPTH    = ', CATCH_MAXSNDEPTH    
     write (logunit,*) 'CATCH_DZ1MAX        = ', CATCH_DZ1MAX        
-    write (logunit,*) 'CATCH_DZTC          = ', CATCH_DZTC          
+    write (logunit,*) 'CATCH_DZTSURF       = ', CATCH_DZTSURF          
     write (logunit,*) 'CATCH_DZGT          = ', CATCH_DZGT          
     write (logunit,*) 'CATCH_PHIGT         = ', CATCH_PHIGT         
     write (logunit,*) 'CATCH_ALHMGT        = ', CATCH_ALHMGT        
