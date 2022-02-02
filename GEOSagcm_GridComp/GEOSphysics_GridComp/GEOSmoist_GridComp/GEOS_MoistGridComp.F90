@@ -5169,10 +5169,7 @@ contains
         ringTime=CurrentTime,                                          &
         ringInterval = MoistIntvl,                                     &
         ringTimeStepCount=1,                                           &
-        sticky=.false.,                                                &
-        rc=status                                                      &
-        )
-    _VERIFY(status)
+        sticky=.false., __RC__)
 
     ! Call Generic Initialize for MOIST GC
     !----------------------------------------
@@ -5407,20 +5404,14 @@ contains
     call MAPL_GetObjectFromGC ( GC, STATE, RC=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_ClockGetAlarm(CLOCK, 'MoistAlarm', MoistAlarm, rc=status)
-    _VERIFY(status)
     
-    if ( .not. ESMF_AlarmIsRinging(MoistAlarm)) then
-       RETURN_(ESMF_SUCCESS)
-    endif
-
     call MAPL_TimerOn (STATE,"TOTAL")
 
     ! Get parameters from generic state.
     !-----------------------------------
 
     call MAPL_Get( STATE, IM=IM, JM=JM, LM=LM,   &
-         RUNALARM = ALARM,             &
+         !RUNALARM = ALARM,             &
          CF       = CF,                &
          LONS     = LONS,              &
          LATS     = LATS,              &
@@ -5428,15 +5419,17 @@ contains
          RC=STATUS )
     VERIFY_(STATUS)
 
+    call ESMF_ClockGetAlarm(CLOCK, 'MoistAlarm', MoistAlarm, rc=status)
+    _VERIFY(status)
 
 
     ! If its time, calculate convective tendencies
     ! --------------------------------------------
 
-    if ( ESMF_AlarmIsRinging( ALARM, RC=status) ) then
+    if ( ESMF_AlarmIsRinging( MoistAlarm, RC=status) ) then
        VERIFY_(STATUS)
-       call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
-       VERIFY_(STATUS)
+       !call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
+       !VERIFY_(STATUS)
        call MAPL_TimerOn(STATE,"DRIVER")
        call MOIST_DRIVER(IM,JM,LM, RC=STATUS)
        VERIFY_(STATUS)
@@ -6423,9 +6416,9 @@ contains
       call MAPL_GetResource(STATE, DUST_INFAC,    'DUST_INFAC:',        DEFAULT= 0.5,   RC=STATUS)  !work on this
       call MAPL_GetResource(STATE, BC_INFAC,        'BC_INFAC:',        DEFAULT= 0.1,   RC=STATUS) 
       call MAPL_GetResource(STATE, ORG_INFAC,     'ORG_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
-	 call MAPL_GetResource(STATE, SS_INFAC,          'SS_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
+	   call MAPL_GetResource(STATE, SS_INFAC,          'SS_INFAC:',        DEFAULT= 1.0,   RC=STATUS)   
      	  
-      call MAPL_GetResource(STATE, DT_MICRO,          'DT_MICRO:',        DEFAULT= Moist_DT,   RC=STATUS)    ! time step of the microphysics substepping (s) (MG2) (5 min)
+      call MAPL_GetResource(STATE, DT_MICRO,          'DT_MICRO:',        DEFAULT= HEARTBEAT,   RC=STATUS)    ! time step of the microphysics substepping (s) (MG2) (5 min)
       call MAPL_GetResource(STATE, UR_SCALE,        'URSCALE:',        DEFAULT= 1.0,    RC=STATUS) !Scaling factor for sed vel of rain    
           
       call MAPL_GetResource(STATE, USE_NATURE_WSUB,     'USE_NAT_WSUB:',     DEFAULT= 1.0  ,RC=STATUS) !greater than zero reads wsub from nature run	             
@@ -6547,7 +6540,7 @@ contains
       ! Get the time step from the alarm
       !---------------------------------
 
-      call ESMF_AlarmGet( ALARM, RingInterval=TINT, RC=STATUS)
+      call ESMF_AlarmGet( MoistAlarm, RingInterval=TINT, RC=STATUS)
       VERIFY_(STATUS)
       call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8, RC=STATUS)
       VERIFY_(STATUS)
