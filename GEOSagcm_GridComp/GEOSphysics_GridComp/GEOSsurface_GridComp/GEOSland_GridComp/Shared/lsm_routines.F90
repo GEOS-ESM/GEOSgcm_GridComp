@@ -59,6 +59,11 @@ MODULE lsm_routines
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
   PUBLIC :: dampen_tc_oscillations, irrigation_rate
 
+  INTERFACE catch_calc_zbar
+     MODULE PROCEDURE catch_calc_zbar_scalar
+     MODULE PROCEDURE catch_calc_zbar_vector
+  END INTERFACE catch_calc_zbar
+
   ! ---------------------------------------------------------------------------
   !
   !    ***** Do not define *public* Catchment model constants here. *****
@@ -1716,28 +1721,46 @@ CONTAINS
   end subroutine catch_calc_soil_moist
 
   ! *******************************************************************
+  
+  ! Calculate zbar for Catchment[CN] model.
+  !
+  ! Convention: zbar positive below ground (downward).
+  !             
+  ! This convention applies to water calculations, incl. subroutines RZDRAIN(),
+  !   WUPDAT(), BASE(), PEATCLSM
+  !
+  ! WARNING:
+  !   Opposite convention applies when zbar is used in ground heat
+  !   diffusion model, incl. subroutines GNDTP0(), GNDTMP(), GNDTMP_CN().
+  !
+  ! - reichle, 29 Jan 2022
+  
+  function catch_calc_zbar_scalar( bf1, bf2, catdef ) result(zbar)
+    
+    implicit none
+    
+    real,                       intent(in) :: bf1, bf2, catdef
+    real                                   :: zbar
 
-  real function catch_calc_zbar( bf1, bf2, catdef )
+    zbar = SQRT(1.e-20 + catdef/bf1) - bf2
+    
+  end function catch_calc_zbar_scalar
+  
+  ! --------------------------
+  
+  function catch_calc_zbar_vector( bf1, bf2, catdef ) result(zbar)
+    
+    ! vector version of catch_calc_zbar 
 
-    ! Calculate zbar for Catchment[CN] model.
-    !
-    ! Convention: zbar positive below ground (downward).
-    !             
-    ! This convention applies to water calculations, incl. subroutines RZDRAIN(),
-    !   WUPDAT(), BASE(), PEATCLSM
-    !
-    ! WARNING:
-    !   Opposite convention applies when zbar is used in ground heat
-    !   diffusion model, incl. subroutines GNDTP0(), GNDTMP(), GNDTMP_CN().
-    !
-    ! - reichle, 29 Jan 2022
-
-    real, intent(in) :: bf1, bf2, catdef
-
-    catch_calc_zbar = SQRT(1.e-20 + catdef/bf1) - bf2
-        
-  end function catch_calc_zbar
-
+    implicit none
+    
+    real, dimension(:),         intent(in) :: bf1, bf2, catdef
+    real, dimension(size(bf1))             :: zbar
+    
+    zbar = SQRT(1.e-20 + catdef/bf1) - bf2
+    
+  end function catch_calc_zbar_vector
+  
   ! *******************************************************************
 
   subroutine catch_calc_subtile2tile( NTILES, ar1, ar2, asnow, subtile_data, tile_data )

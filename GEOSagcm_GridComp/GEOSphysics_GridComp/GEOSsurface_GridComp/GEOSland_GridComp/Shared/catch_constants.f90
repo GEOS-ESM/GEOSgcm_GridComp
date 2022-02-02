@@ -168,39 +168,42 @@ contains
     write (logunit,*)
     write (logunit,*) 'echo_catch_constants():'
     write (logunit,*)
-    write (logunit,*) 'CATCH_N_PFAFS       = ', CATCH_N_PFAFS       
-    write (logunit,*) 'CATCH_N_PFAFSROUTE  = ', CATCH_N_PFAFSROUTE  
-    write (logunit,*) 'CATCH_N_SNOW        = ', CATCH_N_SNOW        
-    write (logunit,*) 'CATCH_N_GT          = ', CATCH_N_GT          
-    write (logunit,*) 'CATCH_N_ZONES       = ', CATCH_N_ZONES       
-    write (logunit,*) 'CATCH_SNWALB_RHOFS  = ', CATCH_SNWALB_RHOFS  
-    write (logunit,*) 'CATCH_SNWALB_VISMAX = ', CATCH_SNWALB_VISMAX 
-    write (logunit,*) 'CATCH_SNWALB_NIRMAX = ', CATCH_SNWALB_NIRMAX 
-    write (logunit,*) 'CATCH_SNWALB_SLOPE  = ', CATCH_SNWALB_SLOPE  
-    write (logunit,*) 'CATCH_MAXSNDEPTH    = ', CATCH_MAXSNDEPTH    
-    write (logunit,*) 'CATCH_DZ1MAX        = ', CATCH_DZ1MAX        
-    write (logunit,*) 'CATCH_DZTSURF       = ', CATCH_DZTSURF          
-    write (logunit,*) 'CATCH_DZGT          = ', CATCH_DZGT          
-    write (logunit,*) 'CATCH_PHIGT         = ', CATCH_PHIGT         
-    write (logunit,*) 'CATCH_ALHMGT        = ', CATCH_ALHMGT        
-    write (logunit,*) 'CATCH_FSN           = ', CATCH_FSN           
-    write (logunit,*) 'CATCH_SHR           = ', CATCH_SHR           
-    write (logunit,*) 'CATCH_SCONST        = ', CATCH_SCONST        
-    write (logunit,*) 'CATCH_CSOIL_1       = ', CATCH_CSOIL_1       
-    write (logunit,*) 'CATCH_C_CANOP       = ', CATCH_C_CANOP       
-    write (logunit,*) 'CATCH_SATCAPFR      = ', CATCH_SATCAPFR      
+    write (logunit,*) 'CATCH_N_PFAFS              = ', CATCH_N_PFAFS       
+    write (logunit,*) 'CATCH_N_PFAFSROUTE         = ', CATCH_N_PFAFSROUTE  
+    write (logunit,*) 'CATCH_N_SNOW               = ', CATCH_N_SNOW        
+    write (logunit,*) 'CATCH_N_GT                 = ', CATCH_N_GT          
+    write (logunit,*) 'CATCH_N_ZONES              = ', CATCH_N_ZONES       
+    write (logunit,*) 'CATCH_SNWALB_RHOFS         = ', CATCH_SNWALB_RHOFS  
+    write (logunit,*) 'CATCH_SNWALB_VISMAX        = ', CATCH_SNWALB_VISMAX 
+    write (logunit,*) 'CATCH_SNWALB_NIRMAX        = ', CATCH_SNWALB_NIRMAX 
+    write (logunit,*) 'CATCH_SNWALB_SLOPE         = ', CATCH_SNWALB_SLOPE  
+    write (logunit,*) 'CATCH_MAXSNDEPTH           = ', CATCH_MAXSNDEPTH    
+    write (logunit,*) 'CATCH_DZ1MAX               = ', CATCH_DZ1MAX        
+    write (logunit,*) 'CATCH_DZTSURF              = ', CATCH_DZTSURF          
+    write (logunit,*) 'CATCH_DZGT                 = ', CATCH_DZGT          
+    write (logunit,*) 'CATCH_PHIGT                = ', CATCH_PHIGT         
+    write (logunit,*) 'CATCH_ALHMGT               = ', CATCH_ALHMGT        
+    write (logunit,*) 'CATCH_FSN                  = ', CATCH_FSN           
+    write (logunit,*) 'CATCH_SHR                  = ', CATCH_SHR           
+    write (logunit,*) 'CATCH_SCONST               = ', CATCH_SCONST        
+    write (logunit,*) 'CATCH_CSOIL_1              = ', CATCH_CSOIL_1       
+    write (logunit,*) 'CATCH_C_CANOP              = ', CATCH_C_CANOP       
+    write (logunit,*) 'CATCH_SATCAPFR             = ', CATCH_SATCAPFR
+    write (logunit,*)
+    write (logunit,*) 'PEATCLSM_POROS_THRESHOLD   = ', PEATCLSM_POROS_THRESHOLD
+    write (logunit,*) 'PEATCLSM_ZBARMAX_4_SYSOIL  = ', PEATCLSM_ZBARMAX_4_SYSOIL
     write (logunit,*)
     write (logunit,*) 'Constants from SURFPARAMS:'
     write (logunit,*)
-    write (logunit,*) 'LAND_FIX            = ', LAND_FIX 
-    write (logunit,*) 'CSOIL_2             = ', CSOIL_2 
-    write (logunit,*) 'WEMIN               = ', WEMIN   
-    write (logunit,*) 'AICEV               = ', AICEV   
-    write (logunit,*) 'AICEN               = ', AICEN   
-    write (logunit,*) 'FLWALPHA            = ', FLWALPHA
-    write (logunit,*) 'ASTRFR              = ', ASTRFR  
-    write (logunit,*) 'STEXP               = ', STEXP   
-    write (logunit,*) 'RSWILT              = ', RSWILT  
+    write (logunit,*) 'LAND_FIX                   = ', LAND_FIX 
+    write (logunit,*) 'CSOIL_2                    = ', CSOIL_2 
+    write (logunit,*) 'WEMIN                      = ', WEMIN   
+    write (logunit,*) 'AICEV                      = ', AICEV   
+    write (logunit,*) 'AICEN                      = ', AICEN   
+    write (logunit,*) 'FLWALPHA                   = ', FLWALPHA
+    write (logunit,*) 'ASTRFR                     = ', ASTRFR  
+    write (logunit,*) 'STEXP                      = ', STEXP   
+    write (logunit,*) 'RSWILT                     = ', RSWILT  
     write (logunit,*)    
     write (logunit,*) 'end echo_catch_constants()'
     write (logunit,*)
