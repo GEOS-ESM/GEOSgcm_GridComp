@@ -87,17 +87,26 @@ MODULE CATCHMENT_CN_MODEL
        SLOPE             => CATCH_SNWALB_SLOPE,  &
        MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
        DZ1MAX            => CATCH_DZ1MAX,        &  
-       SHR, SCONST, C_CANOP, N_sm, SATCAPFR   
-
-  USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
-      LAND_FIX, FLWALPHA
+       SHR               => CATCH_SHR,           &
+       SCONST            => CATCH_SCONST,        &
+       C_CANOP           => CATCH_C_CANOP,       &
+       N_sm              => CATCH_N_ZONES,       &
+       SATCAPFR          => CATCH_SATCAPFR,      &
+       PHIGT             => CATCH_PHIGT,         &
+       DZTC              => CATCH_DZTC,          &
+       DZGT              => CATCH_DZGT,          &
+       FSN               => CATCH_FSN
 
   
-  USE lsm_routines, only :                          &
-          INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
-          catch_calc_soil_moist, gndtmp,            &
-          catch_calc_wtotl, dampen_tc_oscillations, &
-          PHIGT, DZTC, DZGT, FSN, SRUNOFF
+  USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT,   &
+       LAND_FIX, FLWALPHA
+
+  
+  USE lsm_routines, only :                       &
+       INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
+       catch_calc_soil_moist, gndtmp,            &
+       catch_calc_wtotl, dampen_tc_oscillations, &
+       SRUNOFF
   
   USE SIBALB_COEFF,  ONLY: coeffsib
   
