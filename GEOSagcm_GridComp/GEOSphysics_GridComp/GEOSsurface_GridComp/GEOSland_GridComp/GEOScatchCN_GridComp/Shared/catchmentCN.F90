@@ -737,9 +737,7 @@ CONTAINS
 
         ENDDO
 
-
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 !**** 1. SATURATED FRACTION
 
       DO N=1,NCH
@@ -758,9 +756,7 @@ CONTAINS
                      SHFLUX1,  HLWUP1, GHFLUX1                                 &
                    )
 
-
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 !**** 2. SUBSATURATED BUT UNSTRESSED FRACTION
 
       CALL RSURFP2 ( NCH, RSSAT, SWSRF2, QSAT2, QA2, PSUR, WPWET, RSURF )
@@ -772,19 +768,18 @@ CONTAINS
                      SWNETF, HLWDWN, ALW2, BLW2,                               &
                      QM,  CSOIL, CCANOP,   PSUR,                               &
                      HFTDS2, DHFT2, RD, RSURF, POTFRC,                         &
-                     TG2SF,  TC2SF,     QA2,                                       &
+                     TG2SF,  TC2SF,     QA2,                                   &
                      EVAP2, EVROOT2, EVSURF2, EVINT2,                          &
                      SHFLUX2,  HLWUP2, GHFLUX2                                 &
                   )
 
-!****
-
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 !**** 3. WILTING FRACTION
 
+      ! MB: For ET calculation, AR4 surface wetness is set to WPWET 
+      WHERE (POROS > PEATCLSM_POROS_THRESHOLD)  SWSRF4 = WPWET  ! PEATCLSM
+      
       CALL RSURFP2 ( NCH, RSSAT, SWSRF4, QSAT4, QA4, PSUR, WPWET, RSURF  )
-
 
       CALL FLUXES (                                                            &
                      NCH,   FVEG, DTSTEP, QSAT4, DQS4,                         &
@@ -793,11 +788,10 @@ CONTAINS
                      SWNETF, HLWDWN, ALW4, BLW4,                               &
                      QM,  CSOIL, CCANOP,   PSUR,                               &
                      HFTDS4, DHFT4, RD, RSURF, POTFRC,                         &
-                     TG4SF, TC4SF, QA4,                                            &
+                     TG4SF, TC4SF, QA4,                                        &
                      EVAP4, EVROOT4, EVSURF4, EVINT4,                          &
                      SHFLUX4,  HLWUP4, GHFLUX4                                 &
                    )
-
 
 !**** --------------------------------------------------------
 !**** B. SNOW-COVERED FRACTION.
