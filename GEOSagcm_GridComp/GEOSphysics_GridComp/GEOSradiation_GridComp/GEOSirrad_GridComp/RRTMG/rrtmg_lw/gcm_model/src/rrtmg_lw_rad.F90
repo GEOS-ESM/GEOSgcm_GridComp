@@ -181,7 +181,7 @@ contains
 
       ! ----- Output -----
 
-      ! subcolumn clear counts for Tot|High|Mid|Low bands
+      ! subcolumn clear counts for Tot|High|Mid|Low super-layers
       integer, intent(out) :: clearCounts(ncol,4)
 
       real, intent(out) :: uflx  (ncol,nlay+1)  ! Total sky LW upward flux [W/m2]
@@ -426,7 +426,7 @@ contains
 
       ! ----- Output -----
 
-      ! subcolumn clear counts for Tot|High|Mid|Low bands
+      ! subcolumn clear counts for Tot|High|Mid|Low super-layers
       integer, intent(out) :: clearCounts(ncol,4)
 
       real, intent(out) :: uflx  (ncol,nlay+1)  ! Total sky LW upward flux [W/m2]
@@ -484,7 +484,7 @@ contains
       real    :: ciwpmc (nlay,ngptlw,pncol)  ! cloud ice water path [g/m2]
       real    :: clwpmc (nlay,ngptlw,pncol)  ! cloud liq water path [g/m2]
       real    :: taucmc (nlay,ngptlw,pncol)  ! cloud optical depth
-      integer :: p_clearCounts (4,pncol)     ! for super-band cld fractions
+      integer :: p_clearCounts (4,pncol)     ! for super-layer cld fractions
 
       ! cloudy for ANY subcol/gpoint of column?
       logical :: cloudy (nlay,pncol)
@@ -554,7 +554,7 @@ contains
          cldymc, ciwpmc, clwpmc, &
          seed_order=[1,2,3,4])
 
-      ! for super-band cloud fractions
+      ! for super-layer cloud fractions
 
       call clearCounts_threeBand( &
          pncol, pncol, ngptlw, nlay, cloudLM, cloudMH, cldymc, &
