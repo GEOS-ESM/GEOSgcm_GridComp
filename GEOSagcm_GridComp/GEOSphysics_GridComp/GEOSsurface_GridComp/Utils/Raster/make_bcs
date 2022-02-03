@@ -9,33 +9,32 @@ if ( "$1" == "-h" | "$1" == "-help" | "$1" == "--help" ) set HELPMODE = YES
 
 if ( $HELPMODE == YES ) then
 
-   echo "Usage: `basename $0` [option]"
-  
-   echo "-------------------------------------------------------------------------"
-   echo "                   Boundary Conditions Package                           " 
-   echo "  This script creates surface tiles, and writes all model input files    "
-   echo "    (.til [tiles], .rst [raster] and land parameters) in BCSDIR for any  "
-   echo "    specified combination of atmospheric and ocean grid resolutions.     "
-   echo "-------------------------------------------------------------------------"
-   echo "                                                                         "
-   echo " STEP 1: Build the model (GCM or GEOSldas).                              "
-   echo " STEP 2: cd [install-path]/bin                                           "
-   echo " STEP 3: source g5_modules (for bash or zsh use g5_modules.[z]sh)        "
-   echo " STEP 4: ./make_bcs                                                      "
-   echo "            Answer the following interactive questions:                  "
-   echo "            a) Enter BCS output directory.                               "
-   echo "            b) Enter Atmospheric Horizontal Resolution Code(s) to build. "
-   echo "            c) Select Land BCs version to use.                           "
-   echo "            d) Enter Ocean Resolution Code(s) to build.                  "
-   echo "                 (Selection not relevant for land-only EASE grids.)      "
-   echo "            e) Enter sponsor code for computing account.                 "
-   echo "                                                                         "
-   echo " To skip the generation of land parameter files (i.e., mkCatchParam.x),  "
-   echo "    use:  ./make_bcs -noland                                             "
-   echo "    This option saves time when additional bcs are created that have the "
-   echo "    exact same land parameters as an existing set of bcs because the only"
-   echo "    difference between the two sets of bcs is the [non-tripolar] ocean   "
-   echo "    resolution.                                                          "
+   echo "Usage: `basename $0` [option]                                           "
+   echo "                                                                        "
+   echo "Boundary Conditions (BCs) Package:                                      " 
+   echo "   Creates surface tile and other model parameter input files           "
+   echo "   (.til [tiles], .rst [raster], and land parameters) for               "
+   echo "   combinations of atmospheric resolution, ocean resolution,            "
+   echo "   and land BCs version.                                                "
+   echo "                                                                        "
+   echo "   STEP 1: Build the model.      (GCM or GEOSldas)                      "
+   echo "   STEP 2: cd [install-path]/bin                                        "
+   echo "   STEP 3: source g5_modules     (for bash or zsh use g5_modules.[z]sh) "
+   echo "   STEP 4: ./make_bcs                                                   "
+   echo "           Answer the following interactive questions:                  "
+   echo "           a) Enter BCs output directory.                               "
+   echo "           b) Select atmospheric horizontal resolution(s).              "
+   echo "           c) Select Land BCs version.                                  "
+   echo "           d) Select ocean resolution(s).                               "
+   echo "                (Not relevant for land-only EASE-grid BCs.)             "
+   echo "           e) Enter sponsor code for computing account.                 "
+   echo "                                                                        "
+   echo "   To skip the generation of land parameter files (ie, mkCatchParam.x), "
+   echo "   use:  ./make_bcs -noland                                             "
+   echo "   This option saves time when additional bcs are created that have     "
+   echo "   the exact same land parameters as an existing set of bcs because     "
+   echo "   the only difference between the two sets of bcs is the [non-tripolar]"
+   echo "   ocean resolution.                                                    "
 
 endif
 
@@ -87,7 +86,6 @@ set CR = $RESET
 
 echo "${CR}"
 
-
 #######################################################################
 
 # Experiment directory (for BCS output)
@@ -98,7 +96,7 @@ setenv EXPDIR /discover/nobackup/$USER/BCS_PACKAGE
 if ( $HELPMODE != YES ) then
 
    echo " "
-   echo "Enter desired BCS ${C1}output directory${CR} (incl. full path)"
+   echo "Enter desired BCS output directory (incl. full path)"
    echo "   or press ENTER to use the default:"
    echo "   [${C2}${EXPDIR}${CR}]"
    set NEWEXPDIR = $<
@@ -106,16 +104,10 @@ if ( $HELPMODE != YES ) then
    if( $NEWEXPDIR != '' ) setenv EXPDIR $NEWEXPDIR
 
    mkdir -p $EXPDIR
-
-   set foo=`ls -a ${EXPDIR} | wc -l`
-   if ( "${foo}" == 2 ) then
-       echo "${C2} ${EXPDIR} is empty ${CR}"
-       echo " "
-   else
-       echo "${C1} WARNING: ${EXPDIR} is not empty ${CR}"
-       echo " "
+   if ($status>0) then
+      echo "mkdir ERROR! Exiting..."
+      exit
    endif
-   
 endif
 
 #######################################################################
@@ -123,9 +115,11 @@ endif
 # Atmospheric Horizontal Resolution (HRCODE)
 
 if ( $HELPMODE != YES ) then
-   echo "Enter 1-5 character alphanumeric code to select ${C1}Atmospheric Horizontal Resolution ${CR}to be built:"
+   echo " "
+   echo "Enter 1-5 character alphanumeric code(s) for atmospheric horizontal resolution:"
+   echo "(Separate multiple entries by spaces.)"
 else
-   echo "Options for ${C1}Atmospheric Horizontal Resolution${CR}:"
+   echo "Options for atmospheric horizontal resolution:"
 endif
 echo "   Lat/Lon            Cubed-Sphere                   EASE (land-only)"
 echo "   ${C2}b -- 2   deg         c12 -- 8    deg              m1  --  1km EASEv2 Grid ${CR}"
@@ -145,9 +139,13 @@ echo "   ${C2}                   c3072 -- 1/32 deg ${C1}(  3   km) ${CR}"
 echo "   ${C2}                   c5760 -- 1/64 deg ${C1}(  1.5 km) ${CR}"
 #echo "   ${C2}o --  other${CR} Lat/Lon or Cube"
 echo " "
+
 HRCODE:
 if ( $HELPMODE != YES ) then
+
    set dummy = `echo $<`
+   if (${%dummy} == 0) set dummy = "BLANK"
+   
    set dummy = `echo $dummy | tr "[:upper:]" "[:lower:]"`
    set HRCODES =  $dummy[1]
 
@@ -177,7 +175,6 @@ if ( $HELPMODE != YES ) then
           $HRCODE != 'm9'      & \
           $HRCODE != 'm36'     & \
           $HRCODE != 'm25')    then  
-          echo " "
           echo " ${C1} Invalid choice, try again:${CR}"
           goto HRCODE
       endif
@@ -190,13 +187,28 @@ if ( $HELPMODE != YES ) then
       set Resolution = `echo $<`
    endif
 
+   # figure out if one or more of the selected atmospheric resolutions is an EASE grid
+
+   set isEASE = 0
+
+   foreach HRCODE ($HRCODES)
+      if( $HRCODE == 'm1'      | \
+          $HRCODE == 'm3'      | \
+          $HRCODE == 'm9'      | \
+          $HRCODE == 'm36'     | \
+          $HRCODE == 'm25')    then  
+	  set isEASE = 1
+      endif
+   end
+   
 else
 
    set HRCODE  = null
    set HRCODES = null
    
 endif
-   
+
+
 #######################################################################
 #
 # Land bcs version (LBCSV)
@@ -204,11 +216,11 @@ endif
 # set default land bcs version
 
 set lbcsv = NL3
-LBCSV:
 if ( $HELPMODE != YES ) then
-   echo "Enter 3-character alphanumeric code to select ${C1}Land BCs version ${CR} to use:"
+   echo " "
+   echo "Enter 3-character alphanumeric code for land BCs version (select only one):"
 else
-   echo "Options for ${C1}Land BCs version${CR}:"
+   echo "Options for land BCs version:"
 endif
 echo "   ${C2}F25 : Fortuna-2_5"
 echo "   ${C2}GM4 : Ganymed-4_0  (/discover/nobackup/ltakacs/bcs/Ganymed-4_0/)"
@@ -230,35 +242,51 @@ if ( $HELPMODE != YES ) then
    echo " "
 endif
 
+LBCSV:
 if ( $HELPMODE != YES ) then
+
    set dummy = `echo $<`
+   
    set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
-   if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL5'| $dummy == 'DEV') then
+   
+   if( $dummy == 'F25'  | \
+       $dummy == 'GM4'  | \
+       $dummy == 'ICA'  | \
+       $dummy == 'NL3'  | \
+       $dummy == 'NL4'  | \
+       $dummy == 'NL5'  | \
+       $dummy == 'DEV') then
       set lbcsv = $dummy
    else if ( $dummy == '' ) then
+      echo $lbcsv
    else
-      echo "You selected lbcsv=$dummy   \!\!\!\!  Invalid Version, stopping \!\!\!\!  "
-      exit
+      echo " "
+      echo " ${C1} Invalid choice, try again:${CR}"
+      goto LBCSV
    endif
 endif
 
 #######################################################################
 #
 # Ocean Horizontal Resolution (ORSLV)
-    
-if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m25) then
+
+if ($isEASE > 0) then
    set orslvs = O1
 
-   echo " ------------------------------------------------------------------------------"
-   echo " ${C1}NOTE: With selection of EASE grid for the Atmospheric Horizontal Resolution${CR},"
-   echo " ${C1}      the Ocean resolution is irrelevant and set to $orslvs ${CR}"
-   echo " ------------------------------------------------------------------------------"
+   echo " ${C1}---------------------------------------------------------------------- ${CR}"
+   echo " ${C1}   Selected atmospheric resolution(s) include(s) EASE grid(s).         ${CR}"
+   echo " ${C1}   Setting ocean resolution to $orslvs \!\!\!                          ${CR}"
+   echo " ${C1}   For a choice of ocean resolutions, exclude EASE grid selection(s)   ${CR}"
+   echo " ${C1}   from selected atmospheric resolution(s) and process separately.     ${CR}"
+   echo " ${C1}-----------------------------------------------------------------------${CR}"
    echo " "
 else
    if ( $HELPMODE != YES ) then
-      echo "Enter 2-6 character alphanumeric code (no dashes) to select ${C1}Ocean Resolution ${CR}to be built:"
+      echo " "
+      echo "Enter 2-6 character alphanumeric code(s) for ocean horizontal resolution:"
+      echo "(Separate multiple entries by spaces.)"
    else
-      echo "Options for ${C1}Ocean Resolution${CR}:"
+      echo "Options for ocean horizontal resolution:"
    endif
    echo "   ${C2}O1     --  Low-Resolution  Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:    360x180 )"
    echo "   ${C2}O2     --  Med-Resolution  Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean:   1440x720 )"
@@ -275,25 +303,29 @@ else
    if ( $HELPMODE == YES ) exit 
 
 ORSLV:
+
    set dummy = `echo $<`
+
+   if (${%dummy} == 0) set dummy = "BLANK"
+   
    set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
    set orslvs =  $dummy[1]
+
    foreach orslv ($dummy)
-   if( $orslv != 'O1' & \
-       $orslv != 'O2' & \
-       $orslv != 'O3' & \
-       $orslv != 'T2' & \
-       $orslv != 'T3' & \
-       $orslv != 'T4' & \
-       $orslv != 'T1MOM6' & \
-       $orslv != 'T2MOM6' & \
-       $orslv != 'T4MOM6' & \
-       $orslv != 'CS') then
-       echo " "
-       echo " ${C1} Invalid choice, try again:${CR}"
-       goto ORSLV
-   endif
-     if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
+      if( $orslv != 'O1'     & \
+          $orslv != 'O2'     & \
+          $orslv != 'O3'     & \
+          $orslv != 'T2'     & \
+          $orslv != 'T3'     & \
+          $orslv != 'T4'     & \
+          $orslv != 'T1MOM6' & \
+          $orslv != 'T2MOM6' & \
+          $orslv != 'T4MOM6' & \
+          $orslv != 'CS')    then
+          echo " ${C1} Invalid choice, try again:${CR}"
+          goto ORSLV
+      endif
+      if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
    end
 
 endif
@@ -301,9 +333,10 @@ endif
 #######################################################################
 
 echo ""
-echo "${C1} Atmospheric Code:${CR} ${C2}$HRCODES${CR}"
-echo "${C1} Ocean Resolution:${CR} ${C2}$orslvs${CR}"
-echo "${C1} Land BCs version:${CR} ${C2}$lbcsv${CR}"
+echo "${C1} Experiment directory:${CR}   ${C2}$EXPDIR${CR}"
+echo "${C1} Atmospheric resolution:${CR} ${C2}$HRCODES${CR}"
+echo "${C1} Ocean resolution:${CR}       ${C2}$orslvs${CR}"
+echo "${C1} Land BCs version:${CR}       ${C2}$lbcsv${CR}"
 
 #######################################################################
 #######################################################################
@@ -593,10 +626,10 @@ if( $HRCODE == m25 ) then
      set grid = ease
      set MGRID = M25
 endif
- if( $MASKFILE == GEOS5_10arcsec_mask_freshwater-lakes.nc | $MASKFILE == GEOS5_10arcsec_mask.nc ) then
-        @ NX = 43200
-        @ NY = 21600
-  endif
+if( $MASKFILE == GEOS5_10arcsec_mask_freshwater-lakes.nc | $MASKFILE == GEOS5_10arcsec_mask.nc ) then
+     @ NX = 43200
+     @ NY = 21600
+endif
 
 set OUTDIR = `date +'%Y%m%d%H%M%S'`
 
