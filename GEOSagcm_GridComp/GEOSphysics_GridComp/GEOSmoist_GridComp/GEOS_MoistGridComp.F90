@@ -141,6 +141,9 @@ module GEOS_MoistGridCompMod
   character(len=ESMF_MAXSTR) :: DIAGNOSE_PRECIP_TYPE ! TRUE or FALSE
   logical                    :: LDIAGNOSE_PRECIP_TYPE
 
+  character(len=ESMF_MAXSTR) :: UPDATE_PRECIP_TYPE ! TRUE or FALSE
+  logical                    :: LUPDATE_PRECIP_TYPE
+
   integer :: USE_GF2020
   integer :: DOSHLW
   real    :: MGVERSION
@@ -283,21 +286,6 @@ contains
       call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=1.0, RC=STATUS)
     endif
     call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
-
-    call ESMF_ConfigGetAttribute( CF, HYDROSTATIC, Label="HYDROSTATIC:",  default="TRUE", RC=STATUS)
-    VERIFY_(STATUS)
-    if (adjustl(HYDROSTATIC)=="TRUE" ) LHYDROSTATIC=.true.
-    if (adjustl(HYDROSTATIC)=="FALSE") LHYDROSTATIC=.false.
-
-    call ESMF_ConfigGetAttribute( CF, PHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default="TRUE", RC=STATUS)
-    VERIFY_(STATUS)
-    if (adjustl(PHYS_HYDROSTATIC)=="TRUE" ) LPHYS_HYDROSTATIC=.true.
-    if (adjustl(PHYS_HYDROSTATIC)=="FALSE") LPHYS_HYDROSTATIC=.false.
-
-    call ESMF_ConfigGetAttribute( CF, DIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default="TRUE", RC=STATUS)
-    VERIFY_(STATUS)
-    if (adjustl(DIAGNOSE_PRECIP_TYPE)=="TRUE" ) LDIAGNOSE_PRECIP_TYPE=.true.
-    if (adjustl(DIAGNOSE_PRECIP_TYPE)=="FALSE") LDIAGNOSE_PRECIP_TYPE=.false.
 
     FRIENDLIES_NCPI     = trim(COMP_NAME)
     FRIENDLIES_NCPL     = trim(COMP_NAME)
@@ -5457,6 +5445,26 @@ contains
       call MAPL_GetResource( MAPL, MGVERSION, Label="MGVERSION:",  default=1.0, RC=STATUS)
     endif
     call MAPL_GetResource( MAPL, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
+
+    call MAPL_GetResource( MAPL, HYDROSTATIC, Label="HYDROSTATIC:",  default="TRUE", RC=STATUS)
+    VERIFY_(STATUS)
+    if (adjustl(HYDROSTATIC)=="TRUE" ) LHYDROSTATIC=.true.
+    if (adjustl(HYDROSTATIC)=="FALSE") LHYDROSTATIC=.false.
+
+    call MAPL_GetResource( MAPL, PHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default="TRUE", RC=STATUS)
+    VERIFY_(STATUS)
+    if (adjustl(PHYS_HYDROSTATIC)=="TRUE" ) LPHYS_HYDROSTATIC=.true.
+    if (adjustl(PHYS_HYDROSTATIC)=="FALSE") LPHYS_HYDROSTATIC=.false.
+
+    call MAPL_GetResource( MAPL, DIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default="TRUE", RC=STATUS)
+    VERIFY_(STATUS)
+    if (adjustl(DIAGNOSE_PRECIP_TYPE)=="TRUE" ) LDIAGNOSE_PRECIP_TYPE=.true.
+    if (adjustl(DIAGNOSE_PRECIP_TYPE)=="FALSE") LDIAGNOSE_PRECIP_TYPE=.false.
+
+    call MAPL_GetResource( MAPL, UPDATE_PRECIP_TYPE, Label="UPDATE_PRECIP_TYPE:",  default="TRUE", RC=STATUS)
+    VERIFY_(STATUS)
+    if (adjustl(UPDATE_PRECIP_TYPE)=="TRUE" ) LUPDATE_PRECIP_TYPE=.true.
+    if (adjustl(UPDATE_PRECIP_TYPE)=="FALSE") LUPDATE_PRECIP_TYPE=.false.
  
     ! Inititialize QW Passive Tracer
     !-------------------------------
@@ -5597,8 +5605,6 @@ contains
           call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'	         ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'	         ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'         ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
 
@@ -5653,55 +5659,67 @@ contains
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
           
         ELSE
-	
-          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       ,'AVE_LAYER_DP:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       ,'AVE_LAYER_SH:'         ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        ,'AVE_LAYER_MD:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+
           call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'             ,default= 0,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'             ,default= 0,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 5400., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'         ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
+         
+          call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF           , 'USE_SMOOTH_PROF:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'            ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+
           call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'             ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'              ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:' 	         ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'             ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, QRC_CRIT                  , 'QRC_CRIT:'            ,default= 2.e-4, RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C1                        , 'C1:'                  ,default= 1.e-3, RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'         ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
-          
+
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       ,'AVE_LAYER_DP:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       ,'AVE_LAYER_SH:'         ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        ,'AVE_LAYER_MD:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
+ 
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'   ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'   ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'   ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'    ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'   ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'     ,default= 0.00,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE   	, 'SGS_W_TIMESCALE:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL ,FRAC_MODIS        	, 'FRAC_MODIS:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, ZERO_DIFF         	, 'ZERO_DIFF:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF   	, 'USE_SMOOTH_PROF:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL ,EVAP_FIX          	, 'EVAP_FIX:'	         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-
-
+ 
         ENDIF
+
+        if(JASON_TUNING == 1) then
+          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+        else
+          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 7200., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
+        endif
 
        ! IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
        !    call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
@@ -8302,7 +8320,7 @@ contains
          CNV_FRACTION = 0.0 
          
     ! CNV_FRACTION Criteria
-      if(USE_GF2020==0) then
+      if(JASON_TUNING == 1) then
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
@@ -12960,53 +12978,44 @@ do K= 1, LM
       CNV_MFD = CNV_MFD + MFD_SC
       !--------------------------------------------------------------
 
-! For 2 moment, move some LS precip/flux into the CN precip/flux category for use by chemistry
-! --------------------------------------------------------------------------------------------
-      ! if(adjustl(CLDMICRO)=="2MOMENT") then
-
-     if(.false.) then
-      call MAPL_GetPointer(EXPORT, CU2DRAINMOVE,'CU2DRAINMOVE', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, CU2DSNOWMOVE,'CU2DSNOWMOVE', RC=STATUS); VERIFY_(STATUS)
-
-      if(associated(CU2DRAINMOVE)) cu2drainmove = cn_prc2
-      if(associated(CU2DSNOWMOVE)) cu2dsnowmove = cn_snr
-
-      !CN_PRC2 = CN_PRC2 + LS_PRC2*cnv_fraction
-      !LS_PRC2 = LS_PRC2 - LS_PRC2*cnv_fraction
-
-      !CN_SNR = CN_SNR + LS_SNR*cnv_fraction
-      !LS_SNR = LS_SNR - LS_SNR*cnv_fraction
-
-      if(associated(CU2DRAINMOVE)) cu2drainmove = cn_prc2 - cu2drainmove
-      if(associated(CU2DSNOWMOVE)) cu2dsnowmove = cn_snr - cu2dsnowmove
-
-
-      call MAPL_GetPointer(EXPORT, PFLCNMOVE,'PFLCNMOVE', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, PFICNMOVE,'PFICNMOVE', RC=STATUS); VERIFY_(STATUS)
-
-      if(associated(PFLCNMOVE)) pflcnmove = pfl_cn
-      if(associated(PFICNMOVE)) pficnmove = pfi_cn
-
-      !do l=1,lm
-
-      !pfl_cn  (:,:,L) = pfl_cn  (:,:,L) + pfl_ls(:,:,L)*cnv_fraction
-      !pfl_lsan(:,:,L) = pfl_lsan(:,:,L) - pfl_ls(:,:,L)*cnv_fraction
-      !pfl_ls  (:,:,L) = pfl_ls  (:,:,L) - pfl_ls(:,:,L)*cnv_fraction
-
-      !pfi_cn  (:,:,L) = pfi_cn  (:,:,L) + pfi_ls(:,:,L)*cnv_fraction
-      !pfi_lsan(:,:,L) = pfi_lsan(:,:,L) - pfi_ls(:,:,L)*cnv_fraction
-      !pfi_ls  (:,:,L) = pfi_ls  (:,:,L) - pfi_ls(:,:,L)*cnv_fraction
-
-      !enddo
-
-      if(associated(PFLCNMOVE)) pflcnmove = pfl_cn - pflcnmove
-      if(associated(PFICNMOVE)) pficnmove = pfi_cn - pficnmove
-
+! Break out precip types if possible
+      if(adjustl(CLDMICRO)=="GFDL") then
+       ! Use true precip types for Land
+         if (associated(TT_PRCP))   TT_PRCP = TPREC
+         if (associated(SNR    ))   SNR     = PRCP_SNOW
+         if (associated(ICE    ))   ICE     = PRCP_ICE + PRCP_GRAUPEL
+         if (associated(RAIN   ))   RAIN    = PRCP_RAIN + CN_PRC2 + SC_PRC2
+         if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
+         if (associated(PRELS  ))   PRELS   = PRCP_RAIN
+         if (associated(FRZR   )) then
+            FRZR = 0.0
+            do J=1,JM
+               do I=1,IM
+                  if (TEMP(I,J,LM) < MAPL_TICE) FRZR(I,J) = PRCP_RAIN(I,J)
+               enddo
+            enddo
+         endif
+      else
+      TPREC = CN_PRC2 + LS_PRC2 + AN_PRC2 + SC_PRC2 + &
+              CN_SNR  + LS_SNR  + AN_SNR  + SC_SNR
+         if (associated(TT_PRCP))   TT_PRCP = TPREC
+         if (associated(SNR    ))   SNR     = CN_SNR  + LS_SNR  + AN_SNR  + SC_SNR
+         if (associated(ICE    ))   ICE     = 0.0
+         if (associated(RAIN   ))   RAIN    = CN_PRC2 + LS_PRC2 + AN_PRC2 + SC_PRC2
+         if (associated(PRECU  ))   PRECU   = CN_PRC2 + AN_PRC2 + SC_PRC2
+         if (associated(PRELS  ))   PRELS   = LS_PRC2
+         if (associated(FRZR   )) then
+            FRZR = 0.0
+            do J=1,JM
+               do I=1,IM
+                  if (TEMP(I,J,LM) < MAPL_TICE) FRZR(I,J) = &
+                     CN_PRC2(I,J) + LS_PRC2(I,J) + AN_PRC2(I,J) + SC_PRC2(I,J)  
+               enddo
+            enddo
+         endif
       endif
-! --------------------------------------------------------------------------------------------
 
-      DIAGNOSE_PTYPE: if (LDIAGNOSE_PRECIP_TYPE) then
-
+      DIAGNOSE_PTYPE: if (LUPDATE_PRECIP_TYPE .OR. LDIAGNOSE_PRECIP_TYPE) then
 
          PTYPE(:,:) = 0 ! default PTYPE to rain
          ! Surface Precip Type diagnostic
@@ -13021,8 +13030,7 @@ do K= 1, LM
          !       in WEATHER AND FORECASTING Vol 15 pp 583-592
          do J=1,JM 
          do I=1,IM
-! WMP: 2019-04-01 For now keep all frozen precip from microphysics frozen
-         if (SNR(I,J) > 0.0) then ! Diagnostic PTYPE when GEOS thinks there is frozen precip...
+          if (SNR(I,J)+ICE(I,J)+FRZR(I,J) > 0.0) then
            PTYPE(I,J) = 4 ! Start as snow
            PA2 = -999
            ! Sweep down the column from ~300mb looking for freezing/melting layers
@@ -13086,29 +13094,21 @@ do K= 1, LM
                      NA = MAPL_CP*TL_MEAN*log( TH_TOP/TH_BOT )
                   endif
                endif
-               if (SNR(I,J) > 0.0) then ! Diagnostic PTYPE when GEOS thinks there is frozen precip...
-                 if (PTYPE(I,J) == 4) then ! No Warm layer found above the surface yet
-                   if (PA <  5.6) PTYPE(I,J) = 4 ! SNOW
-                   if (PA >= 5.6) PTYPE(I,J) = 3 ! Mix of Snow Ice and Rain
-! WMP: 2019-04-01 For now keep all frozen precip from microphysics frozen
-! WMP: 2019-04-01  if (PA > 13.2) PTYPE(I,J) = 0 ! RAIN
-                 else
-                   if ( NA <  (46.0 + 0.66*PA2) ) PTYPE(I,J) = 1   ! Freezing Rain
-                   if ( NA >= (46.0 + 0.66*PA2) ) PTYPE(I,J) = 1.5 ! Freezing Rain & Ice Pellets (sleet)
-                   if ( NA >  (66.0 + 0.66*PA2) ) PTYPE(I,J) = 2   ! Ice Pellets (sleet)
-                 endif
+               if (PTYPE(I,J) == 4) then ! No Warm layer found above the surface yet
+                 if (PA <  5.6) PTYPE(I,J) = 4 ! SNOW
+                 if (PA >= 5.6) PTYPE(I,J) = 3 ! Mix of Snow Ice and Rain
+                 if (PA > 13.2) PTYPE(I,J) = 0 ! RAIN
                else
-                                 PTYPE(I,J) = 0 ! Rain
-                 if (NA > 50.0 ) PTYPE(I,J) = 1 ! Freezing Rain
-                 if (NA > 200.0) PTYPE(I,J) = 2 ! Ice Pellets (sleet)
+                 if ( NA <  (46.0 + 0.66*PA2) ) PTYPE(I,J) = 1   ! Freezing Rain
+                 if ( NA >= (46.0 + 0.66*PA2) ) PTYPE(I,J) = 1.5 ! Freezing Rain & Ice Pellets (sleet)
+                 if ( NA >  (66.0 + 0.66*PA2) ) PTYPE(I,J) = 2   ! Ice Pellets (sleet)
                endif
                KTOP = LM
             else
                if (PA > 2.0) then ! Found a warm layer...
                   if (PA <  5.6) PTYPE(I,J) = 4 ! SNOW
                   if (PA >= 5.6) PTYPE(I,J) = 3 ! Mix of Snow and Rain
-! WMP: 2019-04-01 For now keep all frozen precip from microphysics frozen
-! WMP: 2019-04-01 if (PA > 13.2) PTYPE(I,J) = 0 ! RAIN
+                  if (PA > 13.2) PTYPE(I,J) = 0 ! RAIN
                   PA2 = PA
                else ! Found a freezing layer
                   PA2 = 0
@@ -13119,29 +13119,12 @@ do K= 1, LM
                endif
             endif
            enddo
-         endif
+          endif
          enddo
          enddo
-! WMP: 2019-04-01
       endif DIAGNOSE_PTYPE
 
-      if(adjustl(CLDMICRO)=="GFDL") then
-       ! Use true precip types for Land
-         if (associated(TT_PRCP))   TT_PRCP = TPREC
-         if (associated(SNR    ))   SNR     = PRCP_SNOW
-         if (associated(ICE    ))   ICE     = PRCP_ICE + PRCP_GRAUPEL
-         if (associated(RAIN   ))   RAIN    = PRCP_RAIN + CN_PRC2 + SC_PRC2 
-         if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
-         if (associated(PRELS  ))   PRELS   = PRCP_RAIN
-         if (associated(FRZR   )) then
-            FRZR = 0.0
-            do J=1,JM
-               do I=1,IM
-                  if (TEMP(I,J,LM) < MAPL_TICE) FRZR(I,J) = PRCP_RAIN(I,J)
-               enddo
-            enddo
-         endif
-      else
+      UPDATE_PTYPE: if (LUPDATE_PRECIP_TYPE) then
          if (associated(TT_PRCP))   TT_PRCP = TPREC
          if (associated(SNR) .AND. associated(PTYPE) .AND. LDIAGNOSE_PRECIP_TYPE) then
             SNR = 0.0
@@ -13191,9 +13174,10 @@ do K= 1, LM
             if (associated(RAIN ))   RAIN  = CN_PRC2+SC_PRC2+LS_PRC2+AN_PRC2
             if (associated(PRECU))   PRECU = CN_PRC2 + SC_PRC2
             if (associated(PRELS))   PRELS = LS_PRC2 + AN_PRC2
-       endif
-      endif
+         endif
+      endif UPDATE_PTYPE
 
+! Get Kuchera snow:rain ratios
       do i = 1,IM
           do j = 1,JM
               Tmax = 0.0
