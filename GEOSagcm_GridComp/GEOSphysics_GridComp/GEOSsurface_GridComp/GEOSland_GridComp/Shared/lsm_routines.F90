@@ -55,7 +55,8 @@ MODULE lsm_routines
   PRIVATE
 
   PUBLIC :: INTERC, SRUNOFF, BASE, PARTITION, RZEQUIL, gndtp0
-  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_subtile2tile
+  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_watertabled
+  PUBLIC :: catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
   PUBLIC :: dampen_tc_oscillations, irrigation_rate
 
@@ -1760,6 +1761,21 @@ CONTAINS
     zbar = SQRT(1.e-20 + catdef/bf1) - bf2
     
   end function catch_calc_zbar_vector
+  
+  ! *******************************************************************
+
+  function catch_calc_watertabled( bf1, bf2, cdcr2, poros, wpwet, catdef ) result(wtd)
+    
+    ! calculate water table depth [m]
+
+    implicit none
+    
+    real, dimension(:),         intent(in) :: bf1, bf2, cdcr2, poros, wpwet, catdef
+    real, dimension(size(bf1))             :: wtd
+    
+    wtd = MIN( catch_calc_zbar(BF1,BF2,CATDEF), CDCR2/(1.-WPWET)/POROS/1000. )
+    
+  end function catch_calc_watertabled
   
   ! *******************************************************************
 

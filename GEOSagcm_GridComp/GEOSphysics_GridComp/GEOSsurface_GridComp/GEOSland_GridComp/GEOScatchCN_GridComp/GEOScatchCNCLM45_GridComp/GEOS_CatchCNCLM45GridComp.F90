@@ -61,7 +61,8 @@ module GEOS_CatchCNCLM45GridCompMod
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
-  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, catch_calc_zbar, irrigation_rate
+  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
+       catch_calc_zbar, catch_calc_watertabled, irrigation_rate
   use update_model_para4cn, only : upd_curr_date_time
 
 implicit none
@@ -8062,7 +8063,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(WATERTABLED)) then
            WATERTABLED = MIN(SQRT(1.e-15 + CATDEF/BF1) - BF2, CDCR2/(1.-WPWET)/POROS/1000.)
            ! non-zero-diff change for PEATCLSM, to be implemented after final PEATCLSM 0-diff testing  
-           !WATERTABLED = MIN( catch_calc_zbar(BF1, BF2, CATDEF), CDCR2/(1.-WPWET)/POROS/1000.)
+           !WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
         endif
 
         if(associated(TPSN1OUT)) then

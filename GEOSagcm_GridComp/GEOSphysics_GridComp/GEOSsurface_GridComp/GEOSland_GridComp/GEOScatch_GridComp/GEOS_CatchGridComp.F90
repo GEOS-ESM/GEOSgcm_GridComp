@@ -45,7 +45,7 @@ module GEOS_CatchGridCompMod
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
        SLOPE          => CATCH_SNWALB_SLOPE
 
-  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
+  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_watertabled
 
 !#for_ldas_coupling 
   use catch_incr
@@ -5648,7 +5648,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(WATERTABLED )) then
            WATERTABLED = MIN(SQRT(1.e-15 + CATDEF/BF1) - BF2, CDCR2/(1.-WPWET)/POROS/1000.)
            ! non-zero-diff change for PEATCLSM, to be implemented after final PEATCLSM 0-diff testing  
-           !WATERTABLED = MIN( catch_calc_zbar(BF1, BF2, CATDEF), CDCR2/(1.-WPWET)/POROS/1000.)
+           !WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
         endif
 
         if(associated(TPSN1)) then
