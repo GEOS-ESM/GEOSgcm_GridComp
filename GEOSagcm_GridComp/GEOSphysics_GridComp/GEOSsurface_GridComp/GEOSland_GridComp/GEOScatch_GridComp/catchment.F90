@@ -692,7 +692,8 @@
            ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTP0)
            ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
         else
-	   ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)  
+           ! zbar minus sign applied in call to GNDTP0
+	   ZBAR = SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)  ! old bug is wrong sign for bf2 here
 	end if
 
         THETAF=.5
@@ -1065,7 +1066,8 @@
            ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTMP)
            ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
         else
-	   ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
+           ! zbar minus sign applied in call to GNDTMP
+	   ZBAR = SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)  ! old bug is wrong sign for bf2 here
         end if	
         THETAF=.5
         DO LAYER=1,6
