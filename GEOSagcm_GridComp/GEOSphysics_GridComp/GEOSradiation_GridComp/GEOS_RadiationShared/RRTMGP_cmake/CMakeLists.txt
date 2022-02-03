@@ -67,10 +67,12 @@ esma_add_library(${this}
   SRCS ${SRCS}
   DEPENDENCIES NetCDF::NetCDF_Fortran)
 
-string(REPLACE " " ";" tmp ${FREAL8})
-foreach(flag ${tmp})
-  target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
-endforeach()
+# Use of the GEOS Vectorized flags in RRTMGP caused a segfault leading to
+# line 726 of mo_gas_optics_kernels.F90. Moving to the "old" no-vect flags
+# allows RRTMGP to run again.
+if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Release)
+  set (CMAKE_Fortran_FLAGS_RELEASE "${GEOS_Fortran_FLAGS_NOVECT}")
+endif ()
 
 if (MKL_FOUND)
   target_include_directories (${this} PRIVATE ${MKL_INCLUDE_DIRS})
