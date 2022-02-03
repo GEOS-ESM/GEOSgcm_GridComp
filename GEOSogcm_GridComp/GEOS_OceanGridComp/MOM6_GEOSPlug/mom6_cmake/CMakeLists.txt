@@ -61,6 +61,7 @@ list( APPEND MOM6_SRCS
    src/core/MOM_unit_tests.F90
    src/core/MOM_variables.F90
    src/core/MOM_verticalGrid.F90
+   src/core/MOM_porous_barriers.F90
    src/diagnostics/MOM_debugging.F90
    src/diagnostics/MOM_diagnostics.F90
    src/diagnostics/MOM_obsolete_diagnostics.F90
@@ -181,6 +182,7 @@ list( APPEND MOM6_SRCS
    src/parameterizations/vertical/MOM_sponge.F90
    src/parameterizations/vertical/MOM_tidal_mixing.F90
    src/parameterizations/vertical/MOM_vert_friction.F90
+   src/parameterizations/stochastic/MOM_stochastics.F90 
    src/tracer/advection_test_tracer.F90
    src/tracer/boundary_impulse_tracer.F90
    src/tracer/DOME_tracer.F90
@@ -481,6 +483,8 @@ list( APPEND MOM6_SRCS
    # drifters-particles
    config_src/external/drifters/MOM_particles.F90
    config_src/external/drifters/MOM_particles_types.F90
+   # stochastic physics
+   config_src/external/stochastic_physics/stochastic_physics.F90
 )
 
 
