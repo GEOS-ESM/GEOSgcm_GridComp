@@ -3303,7 +3303,11 @@ contains
             ! aerosol system's *un*-normalized single scattering albedo,
             ! which is actually tau_ext * omega0 = tau_scat, and TAUA
             ! is the aerosol extinction optical thickness.
-            TAUAER(IJ,K,:) = TAUA(I,J,LV,:) - SSAA(I,J,LV,:)
+            ! PMN 2022-01-19 Added max(,0.) ... it shouldn't happen
+            !   that tau_ext < tau_scat, but since these TAUA and SSAA
+            !   come directly from the radiatively active aerosols
+            !   system, we provide a simple mitigation here.
+            TAUAER(IJ,K,:) = max(TAUA(I,J,LV,:) - SSAA(I,J,LV,:), 0.)
 
          enddo
 
