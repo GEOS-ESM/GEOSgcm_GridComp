@@ -3,8 +3,8 @@
 
 program Scale_Catch
   use MAPL
-  use lsm_routines, ONLY: catch_calc_tp,  catch_calc_ght, DZGT
-  USE CATCH_CONSTANTS,   ONLY: N_GT              => CATCH_N_GT
+  use lsm_routines,    ONLY: catch_calc_tp, catch_calc_ght
+  USE CATCH_CONSTANTS, ONLY: N_GT=>CATCH_N_GT, DZGT=>CATCH_DZGT
   implicit none
 
   character(256)    :: fname1, fname2, fname3
