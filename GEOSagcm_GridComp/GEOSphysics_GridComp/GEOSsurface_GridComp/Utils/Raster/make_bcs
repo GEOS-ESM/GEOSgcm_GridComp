@@ -22,11 +22,11 @@ if ( $HELPMODE == YES ) then
    echo "   STEP 3: source g5_modules     (for bash or zsh use g5_modules.[z]sh) "
    echo "   STEP 4: ./make_bcs                                                   "
    echo "           Answer the following interactive questions:                  "
-   echo "           a) Enter BCs output directory.                               "
-   echo "           b) Select atmospheric horizontal resolution(s).              "
-   echo "           c) Select Land BCs version.                                  "
-   echo "           d) Select ocean resolution(s).                               "
+   echo "           a) Select Land BCs version.                                  "
+   echo "           b) Select atmospheric resolution(s).                         "
+   echo "           c) Select ocean resolution(s).                               "
    echo "                (Not relevant for land-only EASE-grid BCs.)             "
+   echo "           d) Enter BCs output directory.                               "
    echo "           e) Enter sponsor code for computing account.                 "
    echo "                                                                        "
    echo "   To skip the generation of land parameter files (ie, mkCatchParam.x), "
@@ -84,29 +84,62 @@ set C1 = $RED
 set C2 = $BLUE
 set CR = $RESET
 
-echo "${CR}"
-
 #######################################################################
+#
+# Land bcs version (LBCSV)
 
-# Experiment directory (for BCS output)
-
-# define default
-setenv EXPDIR /discover/nobackup/$USER/BCS_PACKAGE
+# set default land bcs version
+set lbcsv = NL3
 
 if ( $HELPMODE != YES ) then
-
+   echo "${CR}"
+   echo "Boundary Conditions (BCs) Package:"    
    echo " "
-   echo "Enter desired BCS output directory (incl. full path)"
-   echo "   or press ENTER to use the default:"
-   echo "   [${C2}${EXPDIR}${CR}]"
-   set NEWEXPDIR = $<
+   echo "Enter 3-character alphanumeric code for land BCs version (select only one):"
+else
+   echo "Options for land BCs version:"
+endif
+echo "   ${C2}F25 : Fortuna-2_5"
+echo "   ${C2}GM4 : Ganymed-4_0  (/discover/nobackup/ltakacs/bcs/Ganymed-4_0/)"
+echo "   ${C2}ICA : Icarus       (/discover/nobackup/ltakacs/bcs/Icarus/)"
+echo "   ${C2}NL3 : Icarus-NLv3  (/discover/nobackup/ltakacs/bcs/Icarus-NLv3/)"
+echo "   ${C2}NL4 : NLv4 [SMAP]  (/discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)"
+echo "   ${C2}NL5 : NLv5 [SMAP]"
+echo "   ${C2}DEV : Development version${CR}"
+echo "                                            "
+if ( $HELPMODE != YES ) then
+   echo "              NOTE: Due to compiler differences, code improvements and bug fixes that"
+   echo "                    have taken place since the above archived BCs were created, some parameter"
+   echo "                    files produced by current source code may differ from those in the archived BCs."
+   echo "                    Nevertheless, the impact of these differences on science is insignificant and"
+   echo "                    the parameter files produced by current source code is considered to be"
+   echo "                    scientifically equivalent to the corresponding archived BCs"
+   echo "                                      "
+   echo "              OR press ENTER to select $lbcsv (current default).${CR}"
+   echo " "
+endif
 
-   if( $NEWEXPDIR != '' ) setenv EXPDIR $NEWEXPDIR
+LBCSV:
+if ( $HELPMODE != YES ) then
 
-   mkdir -p $EXPDIR
-   if ($status>0) then
-      echo "mkdir ERROR! Exiting..."
-      exit
+   set dummy = `echo $<`
+   
+   set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
+   
+   if( $dummy == 'F25'  | \
+       $dummy == 'GM4'  | \
+       $dummy == 'ICA'  | \
+       $dummy == 'NL3'  | \
+       $dummy == 'NL4'  | \
+       $dummy == 'NL5'  | \
+       $dummy == 'DEV') then
+      set lbcsv = $dummy
+   else if ( $dummy == '' ) then
+      echo $lbcsv
+   else
+      echo " "
+      echo " ${C1} Invalid choice, try again:${CR}"
+      goto LBCSV
    endif
 endif
 
@@ -211,63 +244,6 @@ endif
 
 #######################################################################
 #
-# Land bcs version (LBCSV)
-
-# set default land bcs version
-
-set lbcsv = NL3
-if ( $HELPMODE != YES ) then
-   echo " "
-   echo "Enter 3-character alphanumeric code for land BCs version (select only one):"
-else
-   echo "Options for land BCs version:"
-endif
-echo "   ${C2}F25 : Fortuna-2_5"
-echo "   ${C2}GM4 : Ganymed-4_0  (/discover/nobackup/ltakacs/bcs/Ganymed-4_0/)"
-echo "   ${C2}ICA : Icarus       (/discover/nobackup/ltakacs/bcs/Icarus/)"
-echo "   ${C2}NL3 : Icarus-NLv3  (/discover/nobackup/ltakacs/bcs/Icarus-NLv3/)"
-echo "   ${C2}NL4 : NLv4 [SMAP]  (/discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)"
-echo "   ${C2}NL5 : NLv5 [SMAP]"
-echo "   ${C2}DEV : Development version${CR}"
-echo "                                            "
-if ( $HELPMODE != YES ) then
-   echo "              NOTE: Due to compiler differences, code improvements and bug fixes that"
-   echo "                    have taken place since the above archived BCs were created, some parameter"
-   echo "                    files produced by current source code may differ from those in the archived BCs."
-   echo "                    Nevertheless, the impact of these differences on science is insignificant and"
-   echo "                    the parameter files produced by current source code is considered to be"
-   echo "                    scientifically equivalent to the corresponding archived BCs"
-   echo "                                      "
-   echo "              OR press ENTER to select $lbcsv (current default).${CR}"
-   echo " "
-endif
-
-LBCSV:
-if ( $HELPMODE != YES ) then
-
-   set dummy = `echo $<`
-   
-   set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
-   
-   if( $dummy == 'F25'  | \
-       $dummy == 'GM4'  | \
-       $dummy == 'ICA'  | \
-       $dummy == 'NL3'  | \
-       $dummy == 'NL4'  | \
-       $dummy == 'NL5'  | \
-       $dummy == 'DEV') then
-      set lbcsv = $dummy
-   else if ( $dummy == '' ) then
-      echo $lbcsv
-   else
-      echo " "
-      echo " ${C1} Invalid choice, try again:${CR}"
-      goto LBCSV
-   endif
-endif
-
-#######################################################################
-#
 # Ocean Horizontal Resolution (ORSLV)
 
 if ($isEASE > 0) then
@@ -330,13 +306,39 @@ ORSLV:
 
 endif
     
+
+#######################################################################
+#
+# Experiment directory (for BCS output)
+
+# define default
+setenv EXPDIR /discover/nobackup/$USER/BCS_PACKAGE/$lbcsv/
+
+if ( $HELPMODE != YES ) then
+
+   echo " "
+   echo "Enter desired BCS output directory (incl. full path)"
+   echo "   or press ENTER to use the default:"
+   echo "   [${C2}${EXPDIR}${CR}]"
+   set NEWEXPDIR = $<
+
+   if( $NEWEXPDIR != '' ) setenv EXPDIR $NEWEXPDIR
+
+   mkdir -p $EXPDIR
+   if ($status>0) then
+      echo "mkdir ERROR! Exiting..."
+      exit
+   endif
+endif
+
+
 #######################################################################
 
 echo ""
-echo "${C1} Experiment directory:${CR}   ${C2}$EXPDIR${CR}"
+echo "${C1} Land BCs version:${CR}       ${C2}$lbcsv${CR}"
 echo "${C1} Atmospheric resolution:${CR} ${C2}$HRCODES${CR}"
 echo "${C1} Ocean resolution:${CR}       ${C2}$orslvs${CR}"
-echo "${C1} Land BCs version:${CR}       ${C2}$lbcsv${CR}"
+echo "${C1} Experiment directory:${CR}   ${C2}$EXPDIR${CR}"
 
 #######################################################################
 #######################################################################
