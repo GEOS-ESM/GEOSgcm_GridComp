@@ -36,6 +36,9 @@ module mo_rte_solver_kernels
             sw_solver_noscat,                              sw_solver_2stream
 
   real(wp), parameter :: pi = acos(-1._wp)
+
+  real(wp), parameter :: k_min = 1.e-4_wp
+
 contains
   ! -------------------------------------------------------------------------------------------------
   !
@@ -853,7 +856,7 @@ contains
         !   k = 0 for isotropic, conservative scattering; this lower limit on k
         !   gives relative error with respect to conservative solution
         !   of < 0.1% in Rdif down to tau = 10^-9
-        k(i) = sqrt(max((gamma1(i,j) - gamma2(i,j)) * (gamma1(i,j) + gamma2(i,j)), 1.e-12_wp))
+        k(i) = sqrt(max((gamma1(i,j) - gamma2(i,j)) * (gamma1(i,j) + gamma2(i,j)), k_min))
       end do
 
       ! Written to encourage vectorization of exponential
@@ -1050,7 +1053,7 @@ contains
         !   k = 0 for isotropic, conservative scattering; this lower limit on k
         !   gives relative error with respect to conservative solution
         !   of < 0.1% in Rdif down to tau = 10^-9
-        k = sqrt(max((gamma1 - gamma2) * (gamma1 + gamma2), 1.e-12_wp))
+        k = sqrt(max((gamma1 - gamma2) * (gamma1 + gamma2), k_min))
         k_mu     = k * mu0_s
         k_gamma3 = k * gamma3
         k_gamma4 = k * gamma4

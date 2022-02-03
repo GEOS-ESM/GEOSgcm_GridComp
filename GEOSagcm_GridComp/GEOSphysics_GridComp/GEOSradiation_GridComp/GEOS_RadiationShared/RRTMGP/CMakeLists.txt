@@ -55,8 +55,34 @@ esma_add_library(${this}
 # line 726 of mo_gas_optics_kernels.F90. Moving to the "old" no-vect flags
 # allows RRTMGP to run again.
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Release)
-  set (CMAKE_Fortran_FLAGS_RELEASE "${GEOS_Fortran_FLAGS_NOVECT}")
+  #set (CMAKE_Fortran_FLAGS_RELEASE "${GEOS_Fortran_FLAGS_NOVECT}")
+
+  # Explicit vect flags: CRASH
+  set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -g -march=core-avx2 -fma -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fpe3 -fp-model consistent -assume noold_maxminloc -align dcommons")
+
+  # Remove -fma: CRASH
+  #set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -g -march=core-avx2 -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fpe3 -fp-model consistent -assume noold_maxminloc -align dcommons")
+
+  # Remove -fpe3: CRASH
+  #set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -g -march=core-avx2 -fma -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fp-model consistent -assume noold_maxminloc -align dcommons")
+
+  # Remove -march=core-avx2: CRASH
+  #set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -g -fma -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fpe3 -fp-model consistent -assume noold_maxminloc -align dcommons")
+
+  # Remove -align array32byte: CRASH
+  #set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -g -march=core-avx2 -fma -qopt-report0 -ftz -align all -fno-alias -traceback -assume realloc_lhs -fpe3 -fp-model consistent -assume noold_maxminloc -align dcommons")
+
+  # Change consistent to source: CRASH
+  #set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -g -march=core-avx2 -fma -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fpe3 -fp-model source -assume noold_maxminloc -align dcommons")
+
+  # Explicit novect flags:
+  #set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -g -qopt-report0 -ftz -align all -fno-alias -traceback -assume realloc_lhs -fpe0 -fp-model source -heap-arrays 32 -assume noold_maxminloc -fimf-arch-consistency=true -align dcommons")
+
 endif ()
+
+message(STATUS "GEOS_Fortran_FLAGS_VECT: ${GEOS_Fortran_FLAGS_VECT}")
+message(STATUS "GEOS_Fortran_FLAGS_NOVECT: ${GEOS_Fortran_FLAGS_NOVECT}")
+message(STATUS "CMAKE_Fortran_FLAGS_RELEASE: ${CMAKE_Fortran_FLAGS_RELEASE}")
 
 target_include_directories (${this} PRIVATE ${MKL_INCLUDE_DIRS} ${INC_NETCDF})
 
