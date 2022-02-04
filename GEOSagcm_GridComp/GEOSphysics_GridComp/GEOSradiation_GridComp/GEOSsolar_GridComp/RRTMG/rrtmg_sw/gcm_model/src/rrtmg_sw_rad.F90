@@ -76,6 +76,7 @@ contains
       cloudLM, cloudMH, normFlx, &
       clearCounts, swuflx, swdflx, swuflxc, swdflxc, &
       nirr, nirf, parr, parf, uvrr, uvrf, &
+      tautp, tauhp, taump, taulp, &
 
       ! optional inputs
       bndscl, indsolvar, solcycfrac)
@@ -232,7 +233,7 @@ contains
 
       ! ----- Outputs -----
 
-      ! subcolumn clear counts for Tot|High|Mid|Low bands
+      ! subcolumn clear counts for Tot|High|Mid|Low super-layers
       integer, intent(out) :: clearCounts(ncol,4)
 
       real, intent(out) :: swuflx  (ncol,nlay+1)     ! Total sky SW up   flux (W/m2)
@@ -247,6 +248,9 @@ contains
       real, intent(out) :: parf    (ncol)            ! Visible diffuse down SW flux (W/m2)
       real, intent(out) :: uvrr    (ncol)            ! UV      direct  down SW flux (W/m2)
       real, intent(out) :: uvrf    (ncol)            ! UV      diffuse down SW flux (W/m2)
+
+      ! In-cloud PAR optical thickness for Tot|High|Mid|Low super-layers
+      real, intent(out), dimension (ncol) :: tautp, tauhp, taump, taulp
 
       ! ----- Locals -----
 
@@ -375,6 +379,7 @@ contains
          cloudLM, cloudMH, normFlx, &
          clearCounts, swuflx, swdflx, swuflxc, swdflxc, &
          nirr, nirf, parr, parf, uvrr, uvrf, &
+         tautp, tauhp, taump, taulp, &
          ! optional inputs
          bndscl, indsolvar, solcycfrac)
                                                       
@@ -397,6 +402,7 @@ contains
       cloudLM, cloudMH, normFlx, &
       clearCounts, swuflx, swdflx, swuflxc, swdflxc, &
       nirr, nirf, parr, parf, uvrr, uvrf, &
+      tautp, tauhp, taump, taulp, &
       ! optional inputs
       bndscl, indsolvar, solcycfrac)
 
@@ -473,7 +479,7 @@ contains
       real, intent(in) :: galdir  (gncol)              ! Near-IR surface albedo: direct rad
       real, intent(in) :: galdif  (gncol)              ! Near-IR surface albedo: diffuse rad
 
-      ! super-band cloud fraction boundaries 
+      ! super-layer cloud fraction boundaries 
       integer, intent(in) :: cloudLM                   ! Low-mid
       integer, intent(in) :: cloudMH                   ! Mid-high
 
@@ -481,7 +487,7 @@ contains
 
       ! ----- Outputs -----
 
-      ! subcolumn clear counts for Tot|High|Mid|Low bands
+      ! subcolumn clear counts for Tot|High|Mid|Low super-layers
       integer, intent(out) :: clearCounts(gncol,4)
 
       real, intent(out) :: swuflx  (gncol,nlay+1)      ! Total sky SW up   flux (W/m2)
@@ -496,6 +502,9 @@ contains
       real, intent(out) :: parf   (gncol)             ! Visible diffuse down SW flux (w/m2)
       real, intent(out) :: uvrr   (gncol)             ! UV      direct  down SW flux (w/m2)
       real, intent(out) :: uvrf   (gncol)             ! UV      diffuse down SW flux (w/m2)
+
+      ! In-cloud PAR optical thickness for Tot|High|Mid|Low super-layers
+      real, intent(out), dimension (gncol) :: tautp, tauhp, taump, taulp
 
       ! ----- Locals -----
 
@@ -563,9 +572,9 @@ contains
       real :: zm   (nlay,pncol)		    ! mid-layer hgt for cld overlap [m]
                                                       
       logical :: cldymcl (nlay,ngptsw,pncol)   ! cloud or not? [mcica]
-      real    :: ciwpmcl (nlay,ngptsw,pncol)   ! in-cloud ice water path [mcica]
-      real    :: clwpmcl (nlay,ngptsw,pncol)   ! in-cloud liquid water path [mcica]
-      integer :: p_clearCounts (4,pncol)       ! for super-band cld fractions
+      real    :: ciwpmcl (nlay,ngptsw,pncol)   ! in-cloud ice water path [mcica] [g/m2]
+      real    :: clwpmcl (nlay,ngptsw,pncol)   ! in-cloud liq water path [mcica] [g/m2]
+      integer :: p_clearCounts (4,pncol)       ! for super-layer cld fractions
 
       real :: taucmc  (nlay,ngptsw,pncol)   ! in-cloud optical depth [mcica]
       real :: taormc  (nlay,ngptsw,pncol)   ! unscaled in-cloud optl depth [mcica]
@@ -597,6 +606,9 @@ contains
 
       real, dimension (pncol) :: &
          znirr, znirf, zparr, zparf, zuvrr, zuvrf
+
+      ! in-cloud PAR optical thicknesses
+      real, dimension (pncol) :: ztautp, ztauhp, ztaump, ztaulp
       
       ! Solar variability multipliers
       ! -----------------------------
@@ -1129,7 +1141,7 @@ contains
                   cldymcl, ciwpmcl, clwpmcl, &
                   seed_order=[4,3,2,1]) 
 
-               ! for super-band cloud fractions
+               ! for super-layer cloud fractions
                call clearCounts_threeBand( &
                   pncol, ncol, ngptsw, nlay, cloudLM, cloudMH, cldymcl, &
                   p_clearCounts)
@@ -1163,10 +1175,12 @@ contains
                laytrop, jp, jt, jt1, &
                colch4, colco2, colh2o, colmol, colo2, colo3, &
                fac00, fac01, fac10, fac11, &
+               cloudLM, cloudMH, & 
                selffac, selffrac, indself, forfac, forfrac, indfor, &
                zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, zuvcd, znifd, znicd, &
                zbbfddir, zbbcddir, zuvfddir, zuvcddir, znifddir, znicddir,&
-               znirr,znirf,zparr,zparf,zuvrr,zuvrf)
+               znirr, znirf, zparr, zparf, zuvrr, zuvrf, &
+               ztautp, ztauhp, ztaump, ztaulp)
 
             ! Copy out up and down, clear and total sky fluxes to output arrays.
             ! Vertical indexing goes from bottom to top; reverse here for GCM if necessary.
@@ -1176,7 +1190,7 @@ contains
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
         
-                  ! super-band clear counts
+                  ! super-layer clear counts
                   do n = 1,4
                      clearCounts (gicol,n) = ngptsw
                   end do
@@ -1188,6 +1202,12 @@ contains
                      swuflx (gicol,ilev) = zbbfu(ilev,icol) 
                      swdflx (gicol,ilev) = zbbfd(ilev,icol) 
                   enddo
+
+                  ! super-layer optical thicknesses
+                  tautp(gicol) = 0.
+                  tauhp(gicol) = 0.
+                  taump(gicol) = 0.
+                  taulp(gicol) = 0.
 
                enddo
 
@@ -1215,7 +1235,10 @@ contains
                      swuflx (gicol,ilev) = zbbfu(ilev,icol) 
                      swdflx (gicol,ilev) = zbbfd(ilev,icol) 
                   enddo
-
+                  tautp(gicol) = ztautp(icol)
+                  tauhp(gicol) = ztauhp(icol)
+                  taump(gicol) = ztaump(icol)
+                  taulp(gicol) = ztaulp(icol)
                enddo
 
                do icol = 1,ncol
