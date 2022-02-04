@@ -938,33 +938,91 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDTTSW',                                   &
-        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_sw',        &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+! Note: the four CLDxxSW diagnostics below represent super-layer cloud
+! fractions based on the subcolumn cloud generation called in RRTMG SW.
+! They are sunlit only fields and generated only at the SW REFRESH frequency,
+! NOT at the heartbeat. As such, they are useful for diagnostic comparisons
+! with with the full CLDxx set above. But they should NOT be used to subsample
+! fields that are produced on the model heartbeat (e.g. subsampling for cloud
+! presence). Note, also, that when comparing CLDxxSW with CLDxx, it is better
+! to subsample both with COSZSW >= cmin, (e.g., 0.25). This COSZSW is a 
+! REFRESH-frequency version of MCOSZ and, as such, is most appropriate for
+! subsampling REFRESH-frequency fields like CLDxxSW. Of course, you can also
+! subsample CLDxx with COSZSW since CLDxx are global. By sampling both
+! CLDxxSW and CLDxx with COSZSW you get a fair apples-to-apples comparison
+! between the two.
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDHISW',                                   &
-        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_sw',   &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDTTSW',                                              &
+        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_sw_REFRESH',           &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDMDSW',                                   &
-        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_sw',    &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDHISW',                                              &
+        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_sw_REFRESH',      &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDLOSW',                                   &
-        LONG_NAME  = 'low-level_cloud_area_fraction_rrtmg_sw',    &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDMDSW',                                              &
+        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_sw_REFRESH',       &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDLOSW',                                              &
+        LONG_NAME  = 'low-level_cloud_area_fraction_rrtmg_sw_REFRESH',       &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+! Note: the four CLDxxSWHB diagnostics below represent super-layer cloud
+! fractions based on essentially the same subcolumn cloud generation used
+! by RRTMG SW but called from within the SOLAR UPDATE at the HEARTBEAT.
+! They are GLOBAL (not just sunlit) fields and generated on the heartbeat.
+! But because subcolumn cloud generation is EXPENSIVE, asking for any of 
+! these exports will DOUBLE the cost of running the SOLAR GC. As such,
+! they are for SPECIAL VALIDATION PURPOSES ONLY. No cost is incurred if
+! they are not exported. Note, also, that they are NOT EXACTLY heartbeat
+! versions of CLDxxSW, since they sample the heartbeat cloud fractions
+! not the less frequent snapshots used at REFRESH-frequency, and also since
+! the generation inside UPDATE is on non-flipped vertical fields. This latter
+! difference should be statistically insignificant. A re-coding to use vert-
+! ically flipped fields as per RRTMG SW is possible but will be slightly
+! slower, and was deemed not necessary since the first cloud fraction
+! frequency difference will likely dominate.
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDTTSWHB',                                            &
+        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_sw_HEARTBEAT',         &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDHISWHB',                                            &
+        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_sw_HEARTBEAT',    &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDMDSWHB',                                            &
+        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_sw_HEARTBEAT',     &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME = 'CLDLOSWHB',                                            &
+        LONG_NAME  = 'low-level_cloud_area_fraction_rrtmg_sw_HEARTBEAT',     &
+        UNITS      = '1',                                                    &
+        DIMS       = MAPL_DimsHorzOnly,                                      &
+        VLOCATION  = MAPL_VLocationNone,                              __RC__ )
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds',              &
@@ -988,12 +1046,18 @@ contains
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds',              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds__deprecated',  &
        UNITS      = '1' ,                                                    &
        SHORT_NAME = 'TAUTT',                                                 &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
-!? PMN ... implement the approx fix as another variable ... this one is broken
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds__improved',    &
+       UNITS      = '1' ,                                                    &
+       SHORT_NAME = 'TAUTTX',                                                &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_for_ice_clouds',             &
@@ -1022,6 +1086,38 @@ contains
        SHORT_NAME = 'TAUCLS',                                                &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                              __RC__)
+
+! Note: The following four TAUxxPAR are REFRESH-frequency fields. As such, all
+! the important provisos given in the comment on CLDxxSW above apply to these
+! fields as well. Please read those provisos.
+
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds_RRTMG_PAR_REFRESH',    &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAULOPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
+
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_middle_clouds_RRTMG_PAR_REFRESH', &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAUMDPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
+
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_high_clouds_RRTMG_PAR_REFRESH',   &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAUHIPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
+
+    call MAPL_AddExportSpec(GC,                                                      &
+       LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds_RRTMG_PAR_REFRESH',    &
+       UNITS      = '1' ,                                                            &
+       SHORT_NAME = 'TAUTTPAR',                                                      &
+       DIMS       = MAPL_DimsHorzOnly,                                               &
+       VLOCATION  = MAPL_VLocationNone,                                        __RC__)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_net_downward_shortwave_flux_assuming_clear_sky',&
@@ -1218,6 +1314,13 @@ contains
        LONG_NAME  = 'mean_cosine_of_the_solar_zenith_angle',                 &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'MCOSZ',                                                 &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'cosine_of_the_solar_zenith_angle_of_Solar_REFRESH',     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'COSZSW',                                                &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
@@ -1657,22 +1760,39 @@ contains
 
     call MAPL_GetPointer(IMPORT, PREF, 'PREF', __RC__)
 
-! Determine the model level seperating high-middle and low-middle clouds
+! Determine the model level separating high-middle and low-middle clouds
 !-----------------------------------------------------------------------
 
     _ASSERT(PRS_MID_HIGH > PREF(1)     , 'mid-high pressure band boundary too high!')
     _ASSERT(PRS_LOW_MID  > PRS_MID_HIGH, 'pressure band misordering!')
     _ASSERT(PRS_LOW_MID  < PREF(LM)    , 'low-mid pressure band boundary too low!')
     
+    ! find mid-high interface level
     k = 1
     do while ( PREF(k) < PRS_MID_HIGH )
       k=k+1
     end do
     LCLDMH = k
-    do while ( PREF(k) < PRS_LOW_MID  )
+    ! Guaranteed that LCLDMH > 1 (by first ASSERT above)
+    !    and that PREF(LCLDMH) >= PRS_MID_HIGH (by while loop)
+
+    ! find low-mid interface level
+    do while ( PREF(k) < PRS_LOW_MID )
       k=k+1
     end do
     LCLDLM = k
+    ! Guaranteed that LCLDLM <= LM (by third assert above)
+    !    and that PREF(LCLDLM) >= PRS_LOW_MID (by while loop)
+
+    ! But it's still possible that LCLDLM == LCLDMH if the
+    ! interface pressures are too close. We now ASSERT to
+    ! prevent this.
+    _ASSERT(LCLDMH < LCLDLM, 'PRS_LOW_MID and PRS_MID_HIGH are too close!')
+
+    ! now we have 1 < LCLDMH < LCLDLM <= LM and can use:
+    !    layers [1,      LCLDMH-1] are in high pressure band
+    !    layers [LCLDMH, LCLDLM-1] are in mid  pressure band
+    !    layers [LCLDLM, LM      ] are in low  pressure band
 
     call MAPL_TimerOff(MAPL,"PRELIMS",__RC__)
 
@@ -1975,17 +2095,27 @@ contains
       real,    dimension(IM,JM)       :: ZTH, SLR
       logical, dimension(IM,JM)       :: daytime
 
-      ! super-band RRTMG cloud fraction exports
+      ! super-layer RRTMG cloud fraction exports
       real, pointer, dimension(:,:)   :: CLDTTSW
       real, pointer, dimension(:,:)   :: CLDHISW
       real, pointer, dimension(:,:)   :: CLDMDSW
       real, pointer, dimension(:,:)   :: CLDLOSW
 
+      ! super-layer RRTMG PAR optical thickness exports
+      real, pointer, dimension(:,:)   :: TAUTTPAR
+      real, pointer, dimension(:,:)   :: TAUHIPAR
+      real, pointer, dimension(:,:)   :: TAUMDPAR
+      real, pointer, dimension(:,:)   :: TAULOPAR
+
+      ! cosine solar zenith angle used by REFRESH
+      real, pointer, dimension(:,:)   :: COSZSW
+
 !  DAYTIME ONLY COPY OF VARIABLES
 
       real, pointer, dimension(:  )   :: ALBNR,ALBNF,ALBVR,ALBVF,ZT,SLR1D, &
-                                         UVRR,UVRF,PARR,PARF,NIRR,NIRF,    &
-                                         Ig1D,Jg1D,CLDTS,CLDHS,CLDMS,CLDLS
+                                         UVRR,UVRF,PARR,PARF,NIRR,NIRF,Ig1D,Jg1D, &
+                                         CLDTS,CLDHS,CLDMS,CLDLS, &
+                                         TAUTP,TAUHP,TAUMP,TAULP
       real, pointer, dimension(:,:,:) :: FCLD,TAUI,TAUW,CLIN,RRL,RRI,RQI,RQL,RQR
       real, pointer, dimension(:,:,:) :: DP, PLL
       real, pointer, dimension(:,:,:) :: RAERO
@@ -2193,11 +2323,20 @@ contains
         end do
       end do
 
-      ! super-band RRTMG cloud fraction exports
+      ! cosine solar zenith angle used by REFRESH
+      call MAPL_GetPointer(EXPORT, COSZSW, 'COSZSW', __RC__)
+
+      ! super-layer RRTMG cloud fraction exports
       call MAPL_GetPointer(EXPORT, CLDTTSW, 'CLDTTSW', __RC__)
       call MAPL_GetPointer(EXPORT, CLDHISW, 'CLDHISW', __RC__)
       call MAPL_GetPointer(EXPORT, CLDMDSW, 'CLDMDSW', __RC__)
       call MAPL_GetPointer(EXPORT, CLDLOSW, 'CLDLOSW', __RC__)
+
+      ! super-layer RRTMG PAR optical thickness exports
+      call MAPL_GetPointer(EXPORT, TAUTTPAR, 'TAUTTPAR', __RC__)
+      call MAPL_GetPointer(EXPORT, TAUHIPAR, 'TAUHIPAR', __RC__)
+      call MAPL_GetPointer(EXPORT, TAUMDPAR, 'TAUMDPAR', __RC__)
+      call MAPL_GetPointer(EXPORT, TAULOPAR, 'TAULOPAR', __RC__)
 
       call MAPL_TimerOff(MAPL,"-MISC")
 
@@ -2224,6 +2363,9 @@ contains
          daytime = .true.
          NumLit  = size(ZTH)
       end if
+
+      ! write out the cosine solar zenith angle actually used by REFRESH
+      if (associated(COSZSW)) COSZSW = ZTH
 
 !  Create a balancing strategy. This is a collective call on the communicator
 !  of the current VM. The original, unbalanced local work consists of (OrgLen)
@@ -2253,11 +2395,12 @@ contains
 !  component needs the LATS, SLR and ZTH from MAPL and the global
 !  gridcolumn indicies Ig and Jg. The outputs are the INTERNAL
 !  variables being refreshed plus four cloud fraction diagnostics
-!  (CLDTTSW, CLDHISW, CLDMDSW, CLDLOSW).
+!  (CLDTTSW, CLDHISW, CLDMDSW, CLDLOSW) & four optical thickness
+!  diagnostics (TAUTTPAR, TAUHIPAR, TAUMDPAR, TAULOPAR).
 !--------------------------------------------------------------
 
       NumInp = size(ImportSpec) + 5
-      NumOut = size(InternalSpec) + 4
+      NumOut = size(InternalSpec) + 8
 
       allocate(SlicesInp(NumInp), NamesInp(NumInp), &
                SlicesOut(NumOut), NamesOut(NumOut), __STAT__)
@@ -2524,21 +2667,29 @@ contains
 
       OUTPUT_VARS_1: do k=1,NumOut
 
-         if (k < NumOut-3) then
+         if (k < NumOut-7) then
             ! internal outputs
             call MAPL_VarSpecGet(InternalSpec(k), &
                DIMS=dims, SHORT_NAME=NamesOut(k), __RC__)
          else
             ! cloud fraction outputs
             dims = MAPL_DIMSHORZONLY
-            if (k == NumOut-3) then
+            if      (k == NumOut-7) then
                NamesOut(k) = "CLDTTSW"
-            else if (k == NumOut-2) then
+            else if (k == NumOut-6) then
                NamesOut(k) = "CLDHISW"
-            else if (k == NumOut-1) then
+            else if (k == NumOut-5) then
                NamesOut(k) = "CLDMDSW"
-            else
+            else if (k == NumOut-4) then
                NamesOut(k) = "CLDLOSW"
+            else if (k == NumOut-3) then
+               NamesOut(k) = "TAUTTPAR"
+            else if (k == NumOut-2) then
+               NamesOut(k) = "TAUHIPAR"
+            else if (k == NumOut-1) then
+               NamesOut(k) = "TAUMDPAR"
+            else
+               NamesOut(k) = "TAULOPAR"
             end if
          end if
 
@@ -2636,6 +2787,14 @@ contains
             CLDMS     => ptr2(1:Num2do,1)               
          case('CLDLOSW')  
             CLDLS     => ptr2(1:Num2do,1)               
+         case('TAUTTPAR')  
+            TAUTP     => ptr2(1:Num2do,1)               
+         case('TAUHIPAR')  
+            TAUHP     => ptr2(1:Num2do,1)               
+         case('TAUMDPAR')  
+            TAUMP     => ptr2(1:Num2do,1)               
+         case('TAULOPAR')  
+            TAULP     => ptr2(1:Num2do,1)               
          end select
 
       enddo OUTPUT_VARS_2
@@ -3442,7 +3601,7 @@ contains
       allocate(O3_R  (size(Q,1),size(Q,2)),__STAT__)
       allocate(CO2_R (size(Q,1),size(Q,2)),__STAT__)
       allocate(CH4_R (size(Q,1),size(Q,2)),__STAT__)
-      ! super-band cloud fractions
+      ! super-layer cloud fractions
       allocate(CLEARCOUNTS (size(Q,1),4),__STAT__)
       ! output fluxes
       allocate(SWUFLX (size(Q,1),size(Q,2)+1),__STAT__)
@@ -3697,6 +3856,7 @@ contains
          LM-LCLDLM+1, LM-LCLDMH+1, NORMFLX, &
          CLEARCOUNTS, SWUFLX, SWDFLX, SWUFLXC, SWDFLXC, &
          NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R,&
+         TAUTP, TAUHP, TAUMP, TAULP, &
          BNDSOLVAR, INDSOLVAR, SOLCYCFRAC)
 
       call MAPL_TimerOff(MAPL,"--RRTMG_RUN")
@@ -3715,7 +3875,7 @@ contains
       ! required outputs
       ! ----------------
 
-      ! convert super-band clearCounts to cloud fractions
+      ! convert super-layer clearCounts to cloud fractions
       CLDTS(:) = 1. - CLEARCOUNTS(:,1)/float(NGPTSW)
       CLDHS(:) = 1. - CLEARCOUNTS(:,2)/float(NGPTSW)
       CLDMS(:) = 1. - CLEARCOUNTS(:,3)/float(NGPTSW)
@@ -3820,13 +3980,13 @@ contains
             ! internal 3D outputs
             call ESMFL_StateGetPointerToData(INTERNAL, ptr3, NamesOut(k), __RC__)
             call ReOrder(BufOut(L1),ptr3,daytime,NumMax,HorzDims,size(ptr3,3),UNPACKIT)
-         else if (k < NumOut-3) then
+         else if (k < NumOut-7) then
             ! internal 2D outputs
             call ESMFL_StateGetPointerToData(INTERNAL, ptr2, NamesOut(k), __RC__)
             call ReOrder(BufOut(L1),ptr2,daytime,NumMax,HorzDims,1,UNPACKIT)
          else
             ! cloud fraction outputs (2D)
-            if (NamesOut(k) == "CLDTTSW") then
+            if      (NamesOut(k) == "CLDTTSW") then
                if (associated(CLDTTSW)) then
                   call ReOrder(BufOut(L1),CLDTTSW,daytime,NumMax,HorzDims,1,UNPACKIT)
                   WHERE (.not.daytime) CLDTTSW = MAPL_UNDEF
@@ -3845,6 +4005,26 @@ contains
                if (associated(CLDLOSW)) then
                   call ReOrder(BufOut(L1),CLDLOSW,daytime,NumMax,HorzDims,1,UNPACKIT)
                   WHERE (.not.daytime) CLDLOSW = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAUTTPAR") then
+               if (associated(TAUTTPAR)) then
+                  call ReOrder(BufOut(L1),TAUTTPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAUTTPAR = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAUHIPAR") then
+               if (associated(TAUHIPAR)) then
+                  call ReOrder(BufOut(L1),TAUHIPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAUHIPAR = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAUMDPAR") then
+               if (associated(TAUMDPAR)) then
+                  call ReOrder(BufOut(L1),TAUMDPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAUMDPAR = MAPL_UNDEF
+               end if
+            else if (NamesOut(k) == "TAULOPAR") then
+               if (associated(TAULOPAR)) then
+                  call ReOrder(BufOut(L1),TAULOPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
+                  WHERE (.not.daytime) TAULOPAR = MAPL_UNDEF
                end if
             end if
          end if
@@ -4318,13 +4498,34 @@ contains
       real, pointer, dimension(:,:,:,:) :: TAUCLD, HYDROMETS, REFF
       real, pointer, dimension(:,:,:)   :: TAUI,TAUW,TAUR,TAUS
 
+      ! for efficiency
+      real, allocatable, dimension(:,:) :: aCLDL,aCLDM,aCLDH
+      real, allocatable, dimension(:,:) :: aTAUL,aTAUM,aTAUH
+      real, allocatable, dimension(:,:) :: aCLDT
+
       real, dimension(LM  ) :: DUM1D
       real, dimension(LM,4) :: DUM2D
 
       real, pointer, dimension(:,:)   :: TDUST,TSALT,TSO4,TBC,TOC
-      real, pointer, dimension(:,:)   :: CLDH,CLDM,CLDL,CLDT,  &
-                                         TAUH,TAUM,TAUL,TAUT,  &
-                                         CLDTMP, CLDPRS
+      real, pointer, dimension(:,:)   :: CLDH,CLDM,CLDL,CLDT, &
+                                         TAUH,TAUM,TAUL,TAUT,TAUTX, &
+                                         CLDTMP,CLDPRS
+
+      ! super-layer RRTMG cloud fraction exports on heartbeat
+      real, pointer, dimension(:,:)   :: CLDTTSWHB
+      real, pointer, dimension(:,:)   :: CLDHISWHB
+      real, pointer, dimension(:,:)   :: CLDMDSWHB
+      real, pointer, dimension(:,:)   :: CLDLOSWHB
+
+      ! locals supporting CLD??SWHB
+      integer :: rpart, pncol, ncld
+      real    :: plmid(LM), tlev(LM-1), cfac(LM)
+      integer, allocatable, dimension(:)     :: icld, jcld
+      real,    allocatable, dimension(:)     :: alat
+      real,    allocatable, dimension(:,:)   :: zmid, play, cldfrac, ciwp, clwp
+      logical, allocatable, dimension(:,:,:) :: cldymcl
+      real,    allocatable, dimension(:,:,:) :: ciwpmcl, clwpmcl
+      integer, allocatable, dimension(:,:)   :: clearCounts
 
       type (ESMF_FieldBundle)         :: BUNDLE
       type (ESMF_Field)               :: FIELD
@@ -4451,55 +4652,217 @@ contains
       call MAPL_GetPointer(EXPORT  , TAUM,       'TAUMD',      __RC__)
       call MAPL_GetPointer(EXPORT  , TAUH,       'TAUHI',      __RC__)
       call MAPL_GetPointer(EXPORT  , TAUT,       'TAUTT',      __RC__)
+      call MAPL_GetPointer(EXPORT  , TAUTX,      'TAUTTX',     __RC__)
       call MAPL_GetPointer(EXPORT  , CLDTMP,     'CLDTMP',     __RC__)
       call MAPL_GetPointer(EXPORT  , CLDPRS,     'CLDPRS',     __RC__)
 
-      if(associated(FCLD)) FCLD = CLIN
+      call MAPL_GetPointer(EXPORT  , CLDLOSWHB,  'CLDLOSWHB',  __RC__)
+      call MAPL_GetPointer(EXPORT  , CLDMDSWHB,  'CLDMDSWHB',  __RC__)
+      call MAPL_GetPointer(EXPORT  , CLDHISWHB,  'CLDHISWHB',  __RC__)
+      call MAPL_GetPointer(EXPORT  , CLDTTSWHB,  'CLDTTSWHB',  __RC__)
 
-      if(associated(CLDH)) then
-         CLDH = 0.
+      if (associated(FCLD)) FCLD = CLIN
+
+      if (associated(CLDH) .or. associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDH(IM,JM),__STAT__)
+         aCLDH = 0.
          do l=1,LCLDMH-1
-            CLDH = max(CLDH,CLIN(:,:,L))
+            aCLDH = max(aCLDH,CLIN(:,:,L))
          end do
+         if (associated(CLDH)) CLDH = aCLDH
       end if
 
-      if(associated(CLDM)) then
-         CLDM = 0.
+      if (associated(CLDM) .or. associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDM(IM,JM),__STAT__)
+         aCLDM = 0.
          do l=LCLDMH,LCLDLM-1
-            CLDM = max(CLDM,CLIN(:,:,L))
+            aCLDM = max(aCLDM,CLIN(:,:,L))
          end do
+         if (associated(CLDM)) CLDM = aCLDM
       end if
 
-      if(associated(CLDL)) then
-         CLDL = 0.
+      if (associated(CLDL) .or. associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDL(IM,JM),__STAT__)
+         aCLDL = 0.
          do l=LCLDLM,LM
-            CLDL = max(CLDL,CLIN(:,:,L))
+            aCLDL = max(aCLDL,CLIN(:,:,L))
          end do
+         if (associated(CLDL)) CLDL = aCLDL
       end if
 
-      if(associated(CLDT)) then
-         CLD = 0.
-         do l=1,LCLDMH-1
-            CLD = max(CLD,CLIN(:,:,L))
-         end do
-         CLDT = (1-CLD)
-         CLD = 0.
-         do l= LCLDMH,LCLDLM-1
-            CLD = max(CLD,CLIN(:,:,L))
-         end do
-         CLDT = CLDT*(1-CLD)
-         CLD = 0.
-         do l=LCLDLM,LM
-            CLD = max(CLD,CLIN(:,:,L))
-         end do
-         CLDT = 1.0 - CLDT*(1-CLD)
+      if (associated(CLDT) .or. associated(TAUTX)) then
+         allocate(aCLDT(IM,JM),__STAT__)
+         aCLDT = 1. - (1-aCLDH)*(1-aCLDM)*(1-aCLDL)
+         if (associated(CLDT)) CLDT = aCLDT
       end if
 
-      if(associated(TAUI  ).or.associated(TAUW  ).or. &
-         associated(TAUR  ).or.associated(TAUS  ).or. &
-         associated(TAUL  ).or.associated(TAUM  ).or. &
-         associated(TAUH  ).or.associated(TAUT  ).or. &
-         associated(CLDTMP).or.associated(CLDPRS)) then
+      ! CLD??SWHB:
+      ! Special heartbeat versions of RRTMG generated cloud fractions ...
+      ! These are expensive because they require a call to the cloud generator,
+      ! which normally is only done inside the IRRAD and SOLAR REFRESHes (and
+      ! for the SOLAR case only on the sunlit portion of the globe). We provide
+      ! these here as a means of validation, but they should not be regularly
+      ! exported since they will slow down SOLAR considerably, and since the
+      ! equivalent REFRESH-generated versions (without the "HB" suffix), which
+      ! are updated only at the REFRESH frequency (~hourly), should be fine in
+      ! most cases (especially for longer term averages).
+      ! NB: Filled on all globe unlike the RESFRESH version CLD??SW.
+
+      if (associated(CLDLOSWHB) .or. associated(CLDMDSWHB) .or. &
+          associated(CLDHISWHB) .or. associated(CLDTTSWHB)) then
+
+         ! default to clear columns which do not need subcolumn generation
+         if (associated(CLDLOSWHB)) CLDLOSWHB = 0.
+         if (associated(CLDMDSWHB)) CLDMDSWHB = 0.
+         if (associated(CLDHISWHB)) CLDHISWHB = 0.
+         if (associated(CLDTTSWHB)) CLDTTSWHB = 0.
+
+         ! partition size pncol for cloudy columns to conserve memory & improve efficiency
+         call MAPL_GetResource(MAPL,rpart,'RRTMGSW_PARTITION_SIZE:',DEFAULT=0,__RC__)
+         if (rpart > 0) then
+            pncol = rpart
+         else
+            pncol = 2
+         end if
+
+         ! space for partition:
+         ! The partition stores up cloudy gridcolumns to process in batch
+         allocate(icld   (          pncol),__STAT__)
+         allocate(jcld   (          pncol),__STAT__)
+         allocate(zmid   (LM,       pncol),__STAT__)
+         allocate(alat   (          pncol),__STAT__)
+         allocate(play   (LM,       pncol),__STAT__)
+         allocate(cldfrac(LM,       pncol),__STAT__)
+         allocate(ciwp   (LM,       pncol),__STAT__)
+         allocate(clwp   (LM,       pncol),__STAT__)
+         allocate(cldymcl(LM,ngptsw,pncol),__STAT__)
+         allocate(ciwpmcl(LM,ngptsw,pncol),__STAT__)
+         allocate(clwpmcl(LM,ngptsw,pncol),__STAT__)
+         allocate(clearCounts(4,    pncol),__STAT__)
+
+         ! start with empty partition
+         ncld = 0
+
+! after this test ... make sure DOY used consistently by refresh and update in model
+! I guess its only now being used in update, but was its use in refresh really consistent?
+! this may be a non-zero-diff bug fix later ... co2 by DOY = hb but DOY for RRTMG should be for REFRESH style time
+
+         ! loop over domain
+         do j = 1,JM
+            do i = 1,IM
+
+               ! load up cloudy columns to partition
+               if (any(CLIN(i,j,:) > 0.)) then
+
+                  ! cloudy column
+                  ncld = ncld + 1
+                  icld (ncld) = i
+                  jcld (ncld) = j
+                  alat (ncld) = LATS(i,j)
+
+                  ! Note: unlike RRTMG we do not reverse the levels. This is a
+                  ! technicality and will not alter the POPULATION stats of the
+                  ! generation and saves time (see notes under cloud_subcol_gen).
+                  ! If an exact replication of RRTMGSW is required, can reverse
+                  ! vertical ordering here ... but an exact replication will
+                  ! also require saving the exact cldfrac used by the REFRESH
+                  ! into the internal state for use here as well.
+
+                  plmid = 0.5 * (PLL(i,j,0:LM-1) + PLL(i,j,1:LM))
+                  play   (:,ncld) = plmid / 100.  ! hPa
+                  cldfrac(:,ncld) = CLIN(i,j,:)
+
+                  ! cloud water paths converted from g/g to g/m^2
+                  cfac = 1.02 * 100 * (PLL(i,j,1:LM)-PLL(i,j,0:LM-1))
+                  ciwp(:,ncld) = cfac * RQI(i,j,:)
+                  clwp(:,ncld) = cfac * RQL(i,j,:)
+
+                  ! interior interface temperatures
+                  ! * "0-based" but extema at 0 and LM not needed for zmid;
+                  ! * RRTMG call code uses layer delP (DPR) but any multiple
+                  ! of it, specifically cfac, is equivalent.
+
+                  tlev = (T(i,j,1:LM-1) * cfac(2:LM) + T(i,j,2:LM) * cfac(1:LM-1)) &
+                       / (                cfac(2:LM) +               cfac(1:LM-1))
+
+                  ! Calculate the LAYER (mid-point) heights.
+                  ! The interlayer distances are needed for the calculations
+                  ! of inter-layer correlation for cloud overlapping. Only
+                  ! *relative* distances matter, so wolog set zmid(LM) = 0.
+                  zmid(LM,ncld) = 0.
+                  do k = LM-1, 1, -1
+                     ! dz ~ RT/g x dp/p by hysrostatic eqn and ideal gas eqn.
+                     ! The jump from LAYER k+1 to k is centered on LEVEL k
+                     !   since the LEVEL indices are zero-based
+                     zmid(k,ncld) = zmid(k+1,ncld) + MAPL_RGAS * tlev(k) / MAPL_GRAV &
+                                        * (plmid(k+1) - plmid(k)) / PLL(i,j,k)
+                  end do
+
+               end if ! cloudy column
+               
+               ! nothing to process yet?
+               if (ncld == 0) cycle
+
+               ! process the partition if its full or if its partially
+               !   full but there are no more gridcolumns left.
+
+               if (ncld == pncol .or. i == IM .and. j == JM) then
+
+                  ! McICA subcolumn generation
+                  call generate_stochastic_clouds( &
+                     pncol, ncld, ngptsw, LM, &
+                     zmid, alat, doy, &
+                     play, cldfrac, ciwp, clwp, 1.e-20, &
+                     cldymcl, ciwpmcl, clwpmcl, &
+                     seed_order=[4,3,2,1])
+
+                  ! for super-layer cloud fractions
+                  call clearCounts_threeBand( &
+                     pncol, ncld, ngptsw, LM, LCLDLM, LCLDMH, cldymcl, &
+                     clearCounts)
+
+                  ! convert super-layer clearCounts to cloud fractions
+                  if (associated(CLDTTSWHB)) then
+                     do n = 1,ncld
+                        CLDTTSWHB(icld(n),jcld(n)) = 1. - clearCounts(1,n)/float(ngptsw)
+                     end do
+                  end if
+                  if (associated(CLDHISWHB)) then
+                     do n = 1,ncld
+                        CLDHISWHB(icld(n),jcld(n)) = 1. - clearCounts(2,n)/float(ngptsw)
+                     end do
+                  end if
+                  if (associated(CLDMDSWHB)) then
+                     do n = 1,ncld
+                        CLDMDSWHB(icld(n),jcld(n)) = 1. - clearCounts(3,n)/float(ngptsw)
+                     end do
+                  end if
+                  if (associated(CLDLOSWHB)) then
+                     do n = 1,ncld
+                        CLDLOSWHB(icld(n),jcld(n)) = 1. - clearCounts(4,n)/float(ngptsw)
+                     end do
+                  end if
+
+                  ! restart partition
+                  ncld = 0
+
+               end if  ! process partition
+
+            end do  ! i
+         end do  ! j
+
+         ! clean up
+         deallocate(icld,jcld,__STAT__)
+         deallocate(zmid,alat,play,cldfrac,ciwp,clwp,__STAT__)
+         deallocate(cldymcl,ciwpmcl,clwpmcl,__STAT__)
+         deallocate(clearCounts,__STAT__)
+
+      end if  ! CLD??SWHB
+
+      if (associated(TAUI) .or. associated(TAUW) .or. associated(TAUR) .or. associated(TAUS).or. &
+          associated(TAUL) .or. associated(TAUM) .or. associated(TAUH) .or. &
+          associated(TAUT) .or. associated(TAUTX) .or. &
+          associated(CLDTMP) .or. associated(CLDPRS)) then
 
          allocate(   TAUCLD(IM,JM,LM,4), __STAT__)
          allocate(HYDROMETS(IM,JM,LM,4), __STAT__)
@@ -4514,17 +4877,17 @@ contains
          !       3  Falling Liquid (Rain)
          !       4  Falling Ice (Rain)
 
-         REFF(:,:,:,1) = RRI * 1.0e6  ! REFF must be in microns
-         REFF(:,:,:,2) = RRL * 1.0e6
-         REFF(:,:,:,3) = RRR * 1.0e6
-         REFF(:,:,:,4) = RRS * 1.0e6
+         REFF(:,:,:,1) = RRI * 1.e6  ! REFF must be in microns
+         REFF(:,:,:,2) = RRL * 1.e6
+         REFF(:,:,:,3) = RRR * 1.e6
+         REFF(:,:,:,4) = RRS * 1.e6
 
          HYDROMETS(:,:,:,1) = RQI
          HYDROMETS(:,:,:,2) = RQL
          HYDROMETS(:,:,:,3) = RQR
          HYDROMETS(:,:,:,4) = RQS
 
-         TAUCLD = 0.0
+         TAUCLD = 0.
 
          ! Due to the generic use of this routine, it currently works on one column at a time,
          ! thus the need for the array sections below.
@@ -4532,60 +4895,100 @@ contains
          ! NOTE: Dummy arrays are passed into outputs 1 and 3 because these are currently only 
          !       used in sorad.F90.
 
-         DO I = 1, IM
-            DO J = 1, JM
-               CALL GETVISTAU(LM,ZTH(I,J),DP(I,J,:),CLIN(I,J,:),REFF(I,J,:,:),HYDROMETS(I,J,:,:),LCLDMH,LCLDLM,&
-                              DUM2D(:,:),TAUCLD(I,J,:,:),DUM1D(:))
+         DO I = 1,IM
+            DO J = 1,JM
+               CALL GETVISTAU( &
+                  LM,ZTH(I,J),DP(I,J,:),&
+                  CLIN(I,J,:),REFF(I,J,:,:),HYDROMETS(I,J,:,:),&
+                  LCLDMH,LCLDLM,&
+                  DUM2D(:,:),TAUCLD(I,J,:,:),DUM1D(:))
             END DO
          END DO
 
-         if(associated(TAUI)) TAUI = TAUCLD(:,:,:,1)
-         if(associated(TAUW)) TAUW = TAUCLD(:,:,:,2)
-         if(associated(TAUR)) TAUR = TAUCLD(:,:,:,3)
-         if(associated(TAUS)) TAUS = TAUCLD(:,:,:,4)
+         if (associated(TAUI)) TAUI = TAUCLD(:,:,:,1)
+         if (associated(TAUW)) TAUW = TAUCLD(:,:,:,2)
+         if (associated(TAUR)) TAUR = TAUCLD(:,:,:,3)
+         if (associated(TAUS)) TAUS = TAUCLD(:,:,:,4)
 
+         ! use the total hydrometor optical thickness for the general opticl thicknesses below
          TAUCLD(:,:,:,1) = TAUCLD(:,:,:,1) + TAUCLD(:,:,:,2) + TAUCLD(:,:,:,3) + TAUCLD(:,:,:,4)
 
-         if(associated(TAUH)) then
-            TAUH = 0.
+         ! TAU[HML] are correct because GETVISTAU produces in-cloud optical thicknesses for
+         ! 'effective clouds' extended-out and diluted to the maximum cloud fraction in each
+         ! pressure super-layers [LMH].
+
+         if (associated(TAUH) .or. associated(TAUT) .or. associated(TAUTX)) then
+            allocate(aTAUH(IM,JM),__STAT__)
+            aTAUH = 0.
             do l=1,LCLDMH-1
-               TAUH = TAUH + TAUCLD(:,:,L,1)
+               aTAUH = aTAUH + TAUCLD(:,:,L,1)
             end do
+            if (associated(TAUH)) TAUH = aTAUH
          end if
 
-         if(associated(TAUM)) then
-            TAUM = 0.
+         if (associated(TAUM) .or. associated(TAUT) .or. associated(TAUTX)) then
+            allocate(aTAUM(IM,JM),__STAT__)
+            aTAUM = 0.
             do l=LCLDMH,LCLDLM-1
-               TAUM = TAUM + TAUCLD(:,:,L,1)
+               aTAUM = aTAUM + TAUCLD(:,:,L,1)
             end do
+            if (associated(TAUM)) TAUM = aTAUM
          end if
 
-         if(associated(TAUL)) then
-            TAUL = 0.
+         if (associated(TAUL) .or. associated(TAUT) .or. associated(TAUTX)) then
+            allocate(aTAUL(IM,JM),__STAT__)
+            aTAUL = 0.
             do l=LCLDLM,LM
-               TAUL = TAUL + TAUCLD(:,:,L,1)
+               aTAUL = aTAUL + TAUCLD(:,:,L,1)
             end do
+            if (associated(TAUL)) TAUL = aTAUL
          end if
 
-         if(associated(TAUT)) then
-            TAUT = 0.
-            do l=1,LM
-               TAUT = TAUT + TAUCLD(:,:,L,1)
-            end do
+         ! TAUT however is broken because the three super-layers are randomly overlapped
+         ! and with different effective cloud fractions. It has been broken but used for
+         ! a long time. It should be considered deprecated. TAUTX below is an improved
+         ! version.
+
+         if (associated(TAUT)) TAUT = aTAUH + aTAUM + aTAUL
+
+         ! As noted above, one cannot simply add TAUL, TAUM and TAUH to get a column
+         ! in-cloud optical thickness, because the actual column value depends on the
+         ! overlap of these bands. This overlap is here assumed random. We can express
+         ! the approximate column in-cloud optical thickness in terms of the sum over
+         ! the 2**3 - 1 combinations with some cloud in at least one of the 3 bands,
+         ! each with their respective fractions. For random overlap, CLDL*CLDM*CLDH of
+         ! the gridcolumn would have a column TAU of TAUL+TAUM+TAUH, CLDL*CLDM*(1-CLDH)
+         ! would have a column TAU of TAUL+TAUM, etc. Then, for an in-cloud column TAU,
+         ! the sum of the 7 must be normalized by the random column cloud fraction
+         !    CLDT = 1 – (1-CLDL)*(1-CLDM)*(1-CLDH).
+         ! Not surprisingly this gives
+         !    TAUTX = (TAUL*CLDL + TAUM*CLDM + TAUH*CLDH) / CLDT,
+         ! because we assume we can linearly average optical thickness among the comb-
+         ! inations. This assumption is questionable, since cloud radiative properties
+         ! are non-linear in optical thickness. This is why TAUTX is approximate. But
+         ! its the best we SIMPLY can do.
+
+         if (associated(TAUTX)) then
+            TAUTX = 0.
+            where (aCLDT > 0.) TAUTX = (aTAUL*aCLDL + aTAUM*aCLDM + aTAUH*aCLDH) / CLDT
          end if
 
-         if(associated(CLDTMP).or.associated(CLDPRS)) then
-            call MAPL_GetResource(MAPL, TAUCRIT , 'TAUCRIT:', DEFAULT=0.10, __RC__)
+         if (allocated(aTAUH)) deallocate(aTAUH,__STAT__)
+         if (allocated(aTAUM)) deallocate(aTAUM,__STAT__)
+         if (allocated(aTAUL)) deallocate(aTAUL,__STAT__)
 
-            if(associated(CLDTMP)) CLDTMP = MAPL_UNDEF
-            if(associated(CLDPRS)) CLDPRS = MAPL_UNDEF
+         if (associated(CLDTMP) .or. associated(CLDPRS)) then
+            call MAPL_GetResource(MAPL,TAUCRIT,'TAUCRIT:',DEFAULT=0.10,__RC__)
 
-            do l=LM,1,-1
-               if(associated(CLDTMP)) then
-                  where(TAUCLD(:,:,L,1)>TAUCRIT) CLDTMP = T(:,:,L)
+            if (associated(CLDTMP)) CLDTMP = MAPL_UNDEF
+            if (associated(CLDPRS)) CLDPRS = MAPL_UNDEF
+
+            do L=LM,1,-1
+               if (associated(CLDTMP)) then
+                  where (TAUCLD(:,:,L,1) > TAUCRIT) CLDTMP = T(:,:,L)
                end if
-               if(associated(CLDPRS)) then
-                  where(TAUCLD(:,:,L,1)>TAUCRIT) CLDPRS = PLL(:,:,L-1)
+               if (associated(CLDPRS)) then
+                  where (TAUCLD(:,:,L,1) > TAUCRIT) CLDPRS = PLL(:,:,L-1)
                end if
             end do
          end if
@@ -4596,6 +4999,11 @@ contains
          deallocate(DP       )
 
       end if
+
+      if (allocated(aCLDH)) deallocate(aCLDH,__STAT__)
+      if (allocated(aCLDM)) deallocate(aCLDM,__STAT__)
+      if (allocated(aCLDL)) deallocate(aCLDL,__STAT__)
+      if (allocated(aCLDT)) deallocate(aCLDT,__STAT__)
 
 ! Fill Albedos
 !-------------

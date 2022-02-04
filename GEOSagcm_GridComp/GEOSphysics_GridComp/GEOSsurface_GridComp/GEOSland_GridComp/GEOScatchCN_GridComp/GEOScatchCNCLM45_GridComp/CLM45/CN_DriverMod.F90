@@ -29,7 +29,7 @@ module CN_DriverMod
 #else
   use CNDecompCascadeMod_CENTURY, only : init_decompcascade
 #endif
-  use lsm_routines,      only: DZTC, DZGT
+  use catch_constants,   only: DZTC=>CATCH_DZTC, DZGT=>CATCH_DZGT
   use SurfParams,        only: LAND_FIX
 !  use update_model_para4cn, only : LocalTileID, upd_tileid   ! useful for debugging
 
