@@ -1161,17 +1161,9 @@ contains
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'Q', 'DTDT_moist','CNV_FRC','DTDTCN'/),   &
+         SHORT_NAME  = (/'Q', 'DTDTCN'/),                          &
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-! connections needed for NCEP GWD
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'KPBL'/),                                 &
-         DST_ID      = GWD,                                        &
-         SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
