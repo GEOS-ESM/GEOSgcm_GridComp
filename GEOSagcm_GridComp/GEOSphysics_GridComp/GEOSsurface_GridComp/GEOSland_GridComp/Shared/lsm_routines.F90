@@ -203,8 +203,8 @@ CONTAINS
 !****
       ! return throughfall as a flux (kg m-2 s-1) for consistency with units of precip inputs
       ! - reichle, 5 Feb 2022
-      THRUL = THRUL/DTSTEP    
-      THRUC = THRUC/DTSTEP
+      !!THRUL = THRUL/DTSTEP    
+      !!THRUC = THRUC/DTSTEP
 !****
       RETURN
       END SUBROUTINE INTERC
@@ -246,8 +246,8 @@ CONTAINS
 
       ! calculations throughout srunoff() are in "volumes" (kg m-2)
       ! convert input fluxes to volumes, reichle, 5 Feb 2022
-      THRUL  = THRUL_IN * DTSTEP
-      THRUC  = THRUC_IN * DTSTEP
+      !!THRUL  = THRUL_IN * DTSTEP
+      !!THRUC  = THRUC_IN * DTSTEP
       RUNSRF = RUNSRF   * DTSTEP
       
       DO N=1,NCH
