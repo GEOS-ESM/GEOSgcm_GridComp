@@ -1772,7 +1772,9 @@
           ENDIF
 
         IF(CATDEF(N) .LT. 0.) THEN
-          RUNSRF(N)=RUNSRF(N)-CATDEF(N)
+          ! bug fix: RUNSRF in flux units (kg m-2 s-1) for consistency with partition()
+          ! reichle, 5 Feb 2022
+          RUNSRF(N)=RUNSRF(N)-CATDEF(N)/DTSTEP   
           CATDEF(N)=0.
           ENDIF
 

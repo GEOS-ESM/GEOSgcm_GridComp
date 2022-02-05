@@ -199,7 +199,12 @@ CONTAINS
       THRUL(CHNO)=AMAX1(0., THRUL(CHNO))
       THRUC(CHNO)=AMAX1(0., THRUC(CHNO))
       
- 100  CONTINUE
+ 100  CONTINUE                 ! ends do loop???
+!****
+      ! return throughfall as a flux (kg m-2 s-1) for consistency with units of precip inputs
+      ! - reichle, 5 Feb 2022
+      THRUL = THRUL/DTSTEP    
+      THRUC = THRUC/DTSTEP
 !****
       RETURN
       END SUBROUTINE INTERC
@@ -213,7 +218,7 @@ CONTAINS
 !**** ===================================================
 
       SUBROUTINE SRUNOFF (                                                  &
-           NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4, THRUL,THRUC,       &
+           NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4, THRUL_IN,THRUC_IN, &
            frice,tp1,srfmx, BUG,                                            &
            SRFEXC,RUNSRF,                                                   &
            QINFIL                                                           &
@@ -226,7 +231,7 @@ CONTAINS
       REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
       LOGICAL, INTENT (IN):: UFW4RO 
       REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1,     &
-             srfmx, THRUL, THRUC
+             srfmx, THRUL_IN, THRUC_IN
       LOGICAL, INTENT(IN) :: BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
@@ -235,9 +240,16 @@ CONTAINS
 
       INTEGER N
       REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal
+      REAL, DIMENSION(NCH) :: THRUL, THRUC
 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+      ! calculations throughout srunoff() are in "volumes" (kg m-2)
+      ! convert input fluxes to volumes, reichle, 5 Feb 2022
+      THRUL  = THRUL_IN * DTSTEP
+      THRUC  = THRUC_IN * DTSTEP
+      RUNSRF = RUNSRF   * DTSTEP
+      
       DO N=1,NCH
 
          if(.not.UFW4RO) then
@@ -299,6 +311,7 @@ CONTAINS
          endif
 
          SRFEXC(N)=SRFEXC(N)+QIN
+         ! convert outputs back to flux units (kg m-2 s-1)
          RUNSRF(N)=RUNSRF(N)/DTSTEP
          QINFIL(N)=QIN/DTSTEP
      
