@@ -529,33 +529,35 @@ CONTAINS
 !**** -----------------------------------------------------------------
 !****
 
-      SUBROUTINE PARTITION (                                                   &
-                            NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,     &
-                            PSIS,BEE,poros,WPWET,                              &
-                            ars1,ars2,ars3,ara1,ara2,ara3,ara4,                &
-                            arw1,arw2,arw3,arw4,BUG,                           &
-                            srfexc,catdef,runsrf,                              &
-                            AR1, AR2, AR4, srfmx, srfmn,                       &
-                            SWSRF1,SWSRF2,SWSRF4,RZI                           &
+      SUBROUTINE PARTITION (                                                &
+                            NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
+                            PSIS,BEE,poros,WPWET,                           &
+                            ars1,ars2,ars3,ara1,ara2,ara3,ara4,             &
+                            arw1,arw2,arw3,arw4,BUG,                        &
+                            srfexc,catdef,                                  &
+                            runsrf,                                         & ! [kg m-2 s-1]
+                            AR1, AR2, AR4, srfmx, srfmn,                    &
+                            SWSRF1,SWSRF2,SWSRF4,RZI                        &
                            )
 
       IMPLICIT NONE
 
 ! -------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: NCH
+      INTEGER, INTENT(IN)                    :: NCH
 
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
-                                          PSIS,BEE,poros,WPWET,                &
-                                          ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
-                                          arw1,arw2,arw3,arw4
+      REAL,    INTENT(IN)                    :: DTSTEP
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
+                                                PSIS,BEE,poros,WPWET,                &
+                                                ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
+                                                arw1,arw2,arw3,arw4
 
-      LOGICAL, INTENT(IN) :: BUG
+      LOGICAL, INTENT(IN)                    :: BUG
 ! -------------------------------------------------------------------
-      REAL, INTENT(INOUT), DIMENSION(NCH) :: srfexc,catdef,runsrf
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: srfexc,catdef
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: runsrf                                 ! [kg m-2 s-1]
 ! -------------------------------------------------------------------
-      REAL, INTENT(OUT), DIMENSION(NCH) :: AR1, AR2, AR4, srfmx, srfmn,        &
-                                           SWSRF1, SWSRF2, SWSRF4, RZI
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: AR1, AR2, AR4, srfmx, srfmn,         &
+                                                SWSRF1, SWSRF2, SWSRF4, RZI
 ! -------------------------------------------------------------------
       INTEGER :: N
 
