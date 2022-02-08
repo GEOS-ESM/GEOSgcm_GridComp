@@ -54,7 +54,7 @@ MODULE lsm_routines
 
   PRIVATE
 
-  PUBLIC :: INTERC, SRUNOFF, BASE, PARTITION, RZEQUIL, gndtp0
+  PUBLIC :: INTERC, SRUNOFF, RZDRAIN, BASE, PARTITION, RZEQUIL, gndtp0
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_watertabled
   PUBLIC :: catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
@@ -97,27 +97,34 @@ CONTAINS
 !**** [ BEGIN INTERC ]
 !****
 
-      SUBROUTINE INTERC (                                                      &
-                         NCH, DTSTEP, FWETC, FWETL, TRAINL, TRAINC,SMELT,      &
-                         SATCAP,BUG,                                           &
-                         CAPAC,                                                &
-                         THRUL, THRUC                                          &
+      SUBROUTINE INTERC (                             &
+                         NCH, DTSTEP, FWETC, FWETL,   &
+                         TRAINL, TRAINC, SMELT,       &  ! [kg m-2 s-1]
+                         SATCAP,BUG,                  &
+                         CAPAC,                       &
+                         THRUL, THRUC                 &  ! [kg m-2] !!!!
                         )
 !****
 !**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE
 !**** CHANGES IN INTERCEPTION AND SOIL MOISTURE STORAGE.
 !****
+!****
+!**** NOTE: Input precip & snow melt are in flux units [kg m-2 s-1]
+!****       Output throughfall is in volume units      [kg m-2]
+!****       (added comments for clarity but did not change units to preserve 0-diff, reichle, 6 Feb 2022)
+        
       IMPLICIT NONE
 
 !****
-      INTEGER, INTENT(IN) ::  NCH
-      REAL, INTENT(IN) :: DTSTEP, FWETC, FWETL
-      REAL, INTENT(IN), DIMENSION(NCH) :: TRAINL, TRAINC, SMELT, SATCAP
-      LOGICAL, INTENT(IN) :: BUG
+      INTEGER, INTENT(IN)                    :: NCH
+      REAL,    INTENT(IN)                    :: DTSTEP, FWETC, FWETL
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: TRAINL, TRAINC, SMELT  ! [kg m-2 s-1]  (flux units)
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: SATCAP
+      LOGICAL, INTENT(IN)                    :: BUG
 
-      REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: CAPAC
 
-      REAL, INTENT(OUT), DIMENSION(NCH) :: THRUC, THRUL
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: THRUC, THRUL           ! [kg m-2]      ("volume" units) !!!
 
       INTEGER CHNO
       REAL WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR,SMPERS
@@ -220,39 +227,55 @@ CONTAINS
 !**** ///////////////////////////////////////////////////
 !**** ===================================================
 
-      SUBROUTINE SRUNOFF (                                                  &
-           NCH, DTSTEP, UFW4RO, FWETC, FWETL,                               &
-           AR1, AR2, AR4, THRUL, THRUC, FRICE, TP1, SRFMX, BUG,             &
-           VGWMAX, RZEQ, POROS,                                             &
-           SRFEXC, RZEXC, RUNSRF,                                           &
-           QINFIL                                                           &
+      SUBROUTINE SRUNOFF (                                    &
+           NCH, DTSTEP, UFW4RO, FWETC, FWETL, AR1, AR2, AR4,  &
+           THRUL_VOL, THRUC_VOL,                              &  ! [kg m-2]      ("volume" units) !!!
+           FRICE, TP1, SRFMX, BUG,                            &
+           VGWMAX, RZEQ, POROS,                               &
+           SRFEXC, RZEXC,                                     &
+           RUNSRF,                                            &  ! [kg m-2 s-1]  (flux units)
+           QINFIL                                             &  ! [kg m-2 s-1]  (flux units)
            )
 
+!**** NOTE: Input throughfall is in volume units, as are calcs throughout this subroutine  [kg m-2]
+!****       Input-output surface runoff and output infiltration are in flux units          [kg m-2 s-1]
+!****         (added comments and clarified variable names, left throughfall units 
+!****          unchanged to preserve 0-diff, reichle, 6 Feb 2022)
+        
       IMPLICIT NONE
 
+      INTEGER, INTENT(IN)                    :: NCH
+      REAL,    INTENT(IN)                    :: DTSTEP, FWETC, FWETL
+      LOGICAL, INTENT(IN)                    :: UFW4RO 
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, AR2, AR4, FRICE, TP1, SRFMX
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: VGWMAX, RZEQ, POROS
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: THRUL_VOL, THRUC_VOL              ! [kg m-2] 
+      LOGICAL, INTENT(IN)                    :: BUG
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: SRFEXC, RZEXC
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                            ! [kg m-2 s-1]
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: QINFIL                            ! [kg m-2 s-1]
 
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
-      LOGICAL, INTENT (IN):: UFW4RO 
-      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1,     &
-             srfmx, THRUL, THRUC, VGWMAX, RZEQ, POROS
-      LOGICAL, INTENT(IN) :: BUG
-
-      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC, RZEXC, RUNSRF
-
-      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
-
-      INTEGER N
-      REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, &
-                   srunc, srunl, ptotal, excess, totcapac, watadd
+      ! ---------------------------
+      
+      INTEGER              :: N
+      REAL                 :: deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil
+      REAL                 :: srunc, srunl, ptotal, excess, totcapac, watadd
+      REAL, DIMENSION(NCH) :: THRUL, THRUC
 
       ! constants for PEATCLSM piecewise linear relationship between surface runoff and AR1
       
-      REAL, PARAMETER :: SRUN_AR1_MIN      = 0.5
-      REAL, PARAMETER :: SRUN_AR1_INVSLOPE = 0.1
+      REAL, PARAMETER      :: SRUN_AR1_MIN      = 0.5
+      REAL, PARAMETER      :: SRUN_AR1_INVSLOPE = 0.1
       
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+      ! calculations throughout srunoff() are in "volume" units [kg m-2]
+      
+      THRUL  = THRUL_VOL        ! introduced *_VOL variables for clarity 
+      THRUC  = THRUC_VOL   
+      
+      RUNSRF = RUNSRF * DTSTEP  ! convert input surface runoff from flux to "volume" units
+      
       DO N=1,NCH
 
          if(.not.UFW4RO) then
@@ -423,6 +446,7 @@ CONTAINS
 
          endif
 
+         ! convert outputs to flux units [kg m-2 s-1]
          RUNSRF(N)=RUNSRF(N)/DTSTEP
          QINFIL(N)=QIN/DTSTEP
 
@@ -436,10 +460,221 @@ CONTAINS
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
 !****
-      SUBROUTINE BASE (                                                            &
-           NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,AR1,POROS,ars1,ars2,ars3,   &           
-           CATDEF,BFLOW                                                            &
-           )
+
+
+      SUBROUTINE RZDRAIN (                                                   &
+                          NCH, DTSTEP, VGWMAX, SATCAP, RZEQ, AR1, WPWET,     &
+                          TSA1, TSA2, TSB1, TSB2, ATAU, BTAU, CDCR2, POROS,  &
+                          BF1, BF2, ARS1, ARS2, ARS3, BUG,                   &
+                          CAPAC, RZEXC, SRFEXC,C ATDEF,                      &
+                          RUNSRF                                             &  ! [kg m-2 s-1]
+                          )
+
+!-----------------------------------------------------------------
+!        defines drainage timescales:
+!             - tsc0, between srfex and rzex
+!             - tsc2, between rzex and catdef
+!        then defines correponding drainages
+!        and updates the water contents
+!-----------------------------------------------------------------
+
+      IMPLICIT NONE
+      INTEGER, INTENT(IN)                    :: NCH
+      REAL,    INTENT(IN)                    :: DTSTEP
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: VGWMAX, SATCAP, RZEQ, AR1, wpwet
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: TSA1, TSA2, TSB1, TSB2, ATAU, BTAU, CDCR2, POROS
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: BF1,  BF2, ARS1, ARS2, ARS3
+      LOGICAL, INTENT(IN)                    :: BUG
+
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RZEXC, SRFEXC, CATDEF, CAPAC   
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                          ! [kg m-2 s-1]
+
+      ! --------------------
+
+      INTEGER N
+      REAL srflw,rzflw,FLOW,EXCESS,TSC0,tsc2,rzave,rz0,wanom,rztot,          &
+           rzx,btaux,ax,bx,rzdif, rzavemin,ZBAR1,SYSOIL,RZFLW_CATDEF,        &
+           EXCESS_CATDEF, CATDEF_PEAT_THRESHOLD, RZFLW_AR1, AR1eq
+
+
+
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+      DO 100 N=1,NCH
+
+!****   Compute equivalent of root zone excess in non-saturated area:
+        rztot=rzeq(n)+rzexc(n)
+        if(ar1(n).ne.1.) then
+        !!! rzave=(rztot-ar1(n)*vgwmax(n))/(1.-ar1(n))
+        !!! rzave=rzave*poros(n)/vgwmax(n)
+            rzave=rztot*poros(n)/vgwmax(n)
+          else
+            rzave=poros(n)
+          endif
+  
+! updated warning statement, reichle+koster, 12 Aug 2014
+!
+! Impose minimum of 1.e-4, rather than leaving positive values <1.e-4 unchanged.
+! -reichle, 15 Jan 2016
+
+        if (LAND_FIX) then
+	   rzavemin = 1.e-4
+	else
+	   rzavemin = 0.
+	end if
+
+        if (rzave .le. rzavemin) then  ! JP: could put rzavemin in catch_constants
+          rzave=1.e-4
+          print*,'problem: rzave <= 1.e-4 in catchment',n
+          end if
+
+        btaux=btau(n)
+        if (srfexc(n) .lt. 0.) btaux=btau(n)*(poros(n)/rzave)
+        rz0=amax1(0.001,rzave-srfexc(n)/(1000.*(-btaux)))
+        tsc0=atau(n)/(rz0**3.)
+
+        tsc0=tsc0*3600.
+        if(tsc0.lt.dtstep) tsc0=dtstep
+
+! ---------------------------------------------------------------------
+
+        SRFLW=SRFEXC(N)*DTSTEP/TSC0
+
+        IF(SRFLW < 0.    ) SRFLW = FLWALPHA * SRFLW ! C05 change
+
+!rr   following inserted by koster Sep 22, 2003
+        rzdif=rzave/poros(n)-wpwet(n)
+!**** No moisture transport up if rz at wilting; employ ramping.
+        if(rzdif.le.0. .and. srflw.lt.0.)  srflw=0.
+        if(rzdif.gt.0. .and. rzdif.lt.0.01                                     &
+                   .and. srflw.lt.0.) srflw=srflw*(rzdif/0.01)
+        RZEXC(N)=RZEXC(N)+SRFLW
+        SRFEXC(N)=SRFEXC(N)-SRFLW
+
+!**** Topography-dependent tsc2, between rzex and catdef
+
+        rzx=rzexc(n)/vgwmax(n)
+
+        if(rzx .gt. .01) then
+            ax=tsa1(n)
+            bx=tsb1(n)
+          elseif(rzx .lt. -.01) then
+            ax=tsa2(n)
+            bx=tsb2(n)
+          else
+            ax=tsa2(n)+(rzx+.01)*(tsa1(n)-tsa2(n))/.02
+            bx=tsb2(n)+(rzx+.01)*(tsb1(n)-tsb2(n))/.02
+          endif
+
+        tsc2=exp(ax+bx*catdef(n))
+        rzflw=rzexc(n)*tsc2*dtstep/3600.
+
+        IF (CATDEF(N)-RZFLW .GT. CDCR2(N)) then
+          RZFLW=CATDEF(N)-CDCR2(N)
+        end if
+
+       IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) then
+          ! mineral soil
+          CATDEF(N)=CATDEF(N)-RZFLW
+          RZEXC(N)=RZEXC(N)-RZFLW
+       else
+          !MB2021: use AR1eq, equilibrium assumption between water level in soil hummocks and surface water level in hollows
+          AR1eq = (1.+ars1(n)*(catdef(n)))/(1.+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
+          ! PEAT
+          ! MB: accounting for water ponding on AR1
+          ! RZFLOW is partitioned into two flux components: (1) going in/out ponding water volume and (1) going in/out unsaturated soil storage
+          ! Specific yield of ponding water surface fraction is 1.0
+          ! calculate SYSOIL (see Dettmann and Bechtold, VZJ, 2016, for detailed theory)
+          ! SYSOIL in CLSM can be derived from first derivative of 
+          ! f_catdef(zbar) = ((zbar + bf2)^2 +1.0E-20)*bf1
+          ! division by 1000 to convert from m to mm gives (Note: catdef in PEATCLSM remains
+          ! the soil profile deficit, i.e. does not include the ponding water storage).
+          ! SYSOIL = (2*bf1*zbar + 2*bf1*bf2)/1000
+          ! Note: zbar defined here positive below ground.
+          ! For the SYSOIL estimation zbar must be constrained to 0.0 to 0.45 m,
+          ! to avoid extrapolation errors due to the non-optimal
+          ! (linear) approximation with the bf1-bf2-CLSM function,
+          ! theoretical SYSOIL curve levels off approximately at 0 m and 0.45 m.
+          ZBAR1 = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
+          SYSOIL = (2.*bf1(n)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(n)*bf2(n))/1000.
+          SYSOIL = amin1(SYSOIL,poros(n))
+          ! Calculate fraction of RZFLW removed/added to catdef
+          RZFLW_CATDEF = (1.-AR1eq)*SYSOIL*RZFLW/(1.*AR1eq+SYSOIL*(1.-AR1eq))
+          CATDEF(N)=CATDEF(N)-RZFLW_CATDEF
+          ! MB: remove all RZFLW from RZEXC because the other part 
+          ! flows into the surface water storage (microtopgraphy)
+          RZEXC(N)=RZEXC(N)-RZFLW
+
+       ENDIF
+ 
+
+!****   REMOVE ANY EXCESS FROM MOISTURE RESERVOIRS:
+
+        IF(CAPAC(N) .GT. SATCAP(N)) THEN
+          RZEXC(N)=RZEXC(N)+CAPAC(N)-SATCAP(N)
+          CAPAC(N)=SATCAP(N)
+        ENDIF
+
+        IF(RZEQ(N) + RZEXC(N) .GT. VGWMAX(N)) THEN
+          EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
+          RZEXC(N)=VGWMAX(N)-RZEQ(N)
+
+          IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
+             CATDEF(N)=CATDEF(N)-EXCESS
+          ELSE
+             ! PEAT
+             ! MB: like for RZFLW --> EXCESS_CATDEF is the fraction in/out of catdef
+             EXCESS_CATDEF=(1.-AR1eq)*SYSOIL*EXCESS/(1.*AR1eq+SYSOIL*(1.-AR1eq))
+             CATDEF(N)=CATDEF(N)-EXCESS_CATDEF
+          ENDIF
+       ENDIF
+
+       IF (POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
+          ! MB: CATDEF Threshold at zbar=0
+          ! water table not allowed to rise higher (numerically instable) 
+          ! zbar<0 only occurred due to extreme infiltration rates
+          ! (noticed this only snow melt events, very few locations and times)
+          ! (--> NOTE: PEATCLSM has no Hortonian runoff for zbar > 0)            
+          CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0-1.e-20)*BF1(N)
+          IF(CATDEF(N) .LT. CATDEF_PEAT_THRESHOLD) THEN
+             ! RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! runoff from AR1 for zbar>0
+             ! RZFLW_AR1 = RZFLW - RZFLW_CATDEF + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! AR1=0.5 at zbar=0
+             ! SYsurface=0.5 at zbar=0
+             ! RUNSRF(N) = RUNSRF(N) + amax1(0.0, RZFLW_AR1 - 0.5*1000.*ZBAR1)
+             ! 
+             ! revised (rdk, 1/04/2021): take excess water from both 
+             ! soil and free standing water, the latter assumed to cover area AR1=0.5
+             RUNSRF(N) = RUNSRF(N) + (CATDEF_PEAT_THRESHOLD-CATDEF(N) + 0.5*1000.*(-ZBAR1))/DTSTEP
+             CATDEF(N)=CATDEF_PEAT_THRESHOLD
+          ENDIF
+       ENDIF
+
+       IF(CATDEF(N) .LT. 0.) THEN
+          ! bug fix: RUNSRF in flux units [kg m-2 s-1] for consistency with partition()
+          ! reichle, 6 Feb 2022
+          RUNSRF(N)=RUNSRF(N)-CATDEF(N)/DTSTEP
+          CATDEF(N)=0.
+       ENDIF
+
+  100 ENDDO
+
+      RETURN
+      END SUBROUTINE RZDRAIN
+
+
+!**** -----------------------------------------------------------------
+!**** /////////////////////////////////////////////////////////////////
+!**** -----------------------------------------------------------------
+!****
+
+      SUBROUTINE BASE (                                                        &
+                       NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,            &
+                       AR1, POROS, ARS1, ARS2, ARS3,                           &           
+                       CATDEF,                                                 &
+                       BFLOW                                                   &
+                      )
 
       IMPLICIT NONE
 
@@ -527,35 +762,36 @@ CONTAINS
 !**** -----------------------------------------------------------------
 !****
 
-      SUBROUTINE PARTITION (                                                   &
-                            NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,     &
-                            PSIS,BEE,poros,WPWET,                              &
-                            BF1, BF2,                                          &
-                            ars1,ars2,ars3,ara1,ara2,ara3,ara4,                &
-                            arw1,arw2,arw3,arw4,BUG,                           &
-                            srfexc,catdef,runsrf,                              &
-                            AR1, AR2, AR4, srfmx, srfmn,                       &
-                            SWSRF1,SWSRF2,SWSRF4,RZI                           &
+      SUBROUTINE PARTITION (                                                &
+                            NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
+                            PSIS,BEE,poros,WPWET,                           &
+                            BF1, BF2,                                       &
+                            ars1,ars2,ars3,ara1,ara2,ara3,ara4,             &
+                            arw1,arw2,arw3,arw4,BUG,                        &
+                            srfexc,catdef,                                  &
+                            runsrf,                                         & ! [kg m-2 s-1]
+                            AR1, AR2, AR4, srfmx, srfmn,                    &
+                            SWSRF1,SWSRF2,SWSRF4,RZI                        &
                            )
 
       IMPLICIT NONE
 
 ! -------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: NCH
+      INTEGER, INTENT(IN)                    :: NCH
 
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
-                                          PSIS,BEE,poros,WPWET,                &
-                                          BF1,BF2,                             &
-                                          ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
-                                          arw1,arw2,arw3,arw4
+      REAL,    INTENT(IN)                    :: DTSTEP
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
+                                                PSIS,BEE,poros,WPWET,BF1,BF2,        &
+                                                ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
+                                                arw1,arw2,arw3,arw4
 
-      LOGICAL, INTENT(IN) :: BUG
+      LOGICAL, INTENT(IN)                    :: BUG
 ! -------------------------------------------------------------------
-      REAL, INTENT(INOUT), DIMENSION(NCH) :: srfexc,catdef,runsrf
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: srfexc,catdef
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: runsrf                                 ! [kg m-2 s-1]
 ! -------------------------------------------------------------------
-      REAL, INTENT(OUT), DIMENSION(NCH) :: AR1, AR2, AR4, srfmx, srfmn,        &
-                                           SWSRF1, SWSRF2, SWSRF4, RZI
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: AR1, AR2, AR4, srfmx, srfmn,         &
+                                                SWSRF1, SWSRF2, SWSRF4, RZI
 ! -------------------------------------------------------------------
       INTEGER :: N
 
