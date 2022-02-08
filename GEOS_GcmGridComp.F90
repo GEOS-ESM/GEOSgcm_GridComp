@@ -80,6 +80,7 @@ type T_GCM_STATE
    character(len=ESMF_MAXSTR) :: checkpointFilename = ''
    character(len=ESMF_MAXSTR) :: checkpointFileType = ''
    type(ESMF_GridComp)        :: history_parent
+   logical                    :: run_history = .false.
 end type T_GCM_STATE
 
 ! Wrapper for extracting internal state
@@ -656,23 +657,30 @@ contains
          integer, intent(out), optional :: rc
 
          integer :: status
-         type(ESMF_Config) :: hist_cf
+         type(ESMF_Config) :: hist_cf, gcm_cf
          type(MAPL_MetaComp), pointer :: history_metaobj
          type(StubComponent) :: stub_component
          integer :: run_dt
          character(len=ESMF_MAXSTR) :: replay_history
+         logical :: is_present
 
-         hist_cf = ESMF_ConfigCreate(_RC)
-         call MAPL_GetResource(MAPL,replay_history,"REPLAY_HISTORY_RC:",_RC)
-         call ESMF_ConfigLoadFile(hist_cf,trim(replay_history),_RC)
-         call MAPL_GetResource(MAPL,run_dt,"RUN_DT:",_RC)
-         call MAPL_ConfigSetAttribute(hist_cf,value=run_dt,label="RUN_DT:",_RC)
-         gcm_internal_state%history_parent = ESMF_GridCompCreate(name="History_GCM_parent",config=hist_cf,_RC)
-         history_metaobj => null()
-         call MAPL_InternalStateCreate(gcm_internal_state%history_parent,history_metaobj,_RC)
-         call MAPL_Set(history_metaobj,cf=hist_cf,name="History_GCM_parent",component=stub_component,_RC)
-         hist = MAPL_AddChild(history_metaobj,name="History_GCM",ss=hist_setservices,_RC) 
+         call ESMF_GridCompGet(gc,config=gcm_cf,_RC)
+         call ESMF_ConfigFindLabel(gcm_cf,"REPLAY_HISTORY_RC:",isPresent=is_present,_RC)
 
+         if (is_present) then
+            gcm_internal_state%run_history = .true. 
+            call MAPL_GetResource(MAPL,replay_history,"REPLAY_HISTORY_RC:",_RC)
+            hist_cf = ESMF_ConfigCreate(_RC)
+            call ESMF_ConfigLoadFile(hist_cf,trim(replay_history),_RC)
+            call MAPL_GetResource(MAPL,run_dt,"RUN_DT:",_RC)
+            call MAPL_ConfigSetAttribute(hist_cf,value=run_dt,label="RUN_DT:",_RC)
+            call MAPL_ConfigSetAttribute(hist_cf,value=replay_history,label="HIST_CF:",_RC)
+            gcm_internal_state%history_parent = ESMF_GridCompCreate(name="History_GCM_parent",config=hist_cf,_RC)
+            history_metaobj => null()
+            call MAPL_InternalStateCreate(gcm_internal_state%history_parent,history_metaobj,_RC)
+            call MAPL_Set(history_metaobj,cf=hist_cf,name="History_GCM_parent",component=stub_component,_RC)
+            hist = MAPL_AddChild(history_metaobj,name="History_GCM",ss=hist_setservices,_RC) 
+         end if
          _RETURN(_SUCCESS)
       end subroutine history_setservice
 
@@ -1327,7 +1335,7 @@ contains
     if ( MAPL_am_I_root() ) call ESMF_StatePrint ( EXPORT, rc=STATUS )
 #endif
 
-    if(gcm_internal_state%rplRegular) then
+    if(gcm_internal_state%rplRegular .and. gcm_internal_state%run_history) then
        call initialize_history(_RC)
     end if
 
@@ -1771,7 +1779,9 @@ contains
                 call ESMF_VMBarrier(VM, rc=status)
                 VERIFY_(STATUS)
 
-                call run_history(_RC)
+                if (gcm_internal_state%run_history) then
+                   call run_history(_RC)
+                end if
 
                 DONE = ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%replayStopAlarm, RC=STATUS)
                 VERIFY_(STATUS)
