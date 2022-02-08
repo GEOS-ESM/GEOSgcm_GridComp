@@ -267,8 +267,8 @@ CONTAINS
 
       ! constants for PEATCLSM piecewise linear relationship between surface runoff and AR1
       
-      REAL, PARAMETER      :: SRUN_AR1_MIN      = 0.5
-      REAL, PARAMETER      :: SRUN_AR1_INVSLOPE = 0.1
+      REAL, PARAMETER      :: SRUN_AR1_MIN   =  0.5
+      REAL, PARAMETER      :: SRUN_AR1_SLOPE = 10.
       
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -319,7 +319,7 @@ CONTAINS
                ! handling numerical instability due to exceptional snow melt events at some pixels
                ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
                !Added ramping to avoid potential oscillations (rdk, 09/18/20)
-               IF (AR1(N)>SRUN_AR1_MIN) srun0=PTOTAL*amin1(1.,(ar1(n)-SRUN_AR1_MIN)/SRUN_AR1_INVSLOPE)
+               IF (AR1(N)>SRUN_AR1_MIN) srun0=PTOTAL*amin1(1.,(ar1(n)-SRUN_AR1_MIN)*SRUN_AR1_SLOPE)
 
                ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
                ! Rewrote code to determine excess over capacity all at once (rdk, 09/18/20)
@@ -411,8 +411,8 @@ CONTAINS
                ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
                IF (AR1(N)>SRUN_AR1_MIN) THEN
                   !Added ramping to avoid potential oscillations (rdk, 09/18/20)
-                  srunl = THRUL(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)/SRUN_AR1_INVSLOPE)
-                  srunc = THRUC(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)/SRUN_AR1_INVSLOPE)
+                  srunl = THRUL(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)*SRUN_AR1_SLOPE)
+                  srunc = THRUC(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)*SRUN_AR1_SLOPE)
                ENDIF
                PTOTAL = THRUL(N) + THRUC(N)
                SRUN0  = srunl + srunc
@@ -638,7 +638,7 @@ CONTAINS
           ! zbar<0 only occurred due to extreme infiltration rates
           ! (noticed this only snow melt events, very few locations and times)
           ! (--> NOTE: PEATCLSM has no Hortonian runoff for zbar > 0)            
-          CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0-1.e-20)*BF1(N)
+          CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0)*BF1(N)
           IF(CATDEF(N) .LT. CATDEF_PEAT_THRESHOLD) THEN
              ! RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
              ! runoff from AR1 for zbar>0

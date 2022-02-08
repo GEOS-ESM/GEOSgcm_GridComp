@@ -5646,9 +5646,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
         if(associated(FSWCHANGE )) FSWCHANGE  = FSW_CHANGE
         if(associated(WATERTABLED )) then
-           WATERTABLED = MIN(SQRT(1.e-15 + CATDEF/BF1) - BF2, CDCR2/(1.-WPWET)/POROS/1000.)
-           ! non-zero-diff change for PEATCLSM, to be implemented after final PEATCLSM 0-diff testing  
-           !WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+           WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
         endif
 
         if(associated(TPSN1)) then
