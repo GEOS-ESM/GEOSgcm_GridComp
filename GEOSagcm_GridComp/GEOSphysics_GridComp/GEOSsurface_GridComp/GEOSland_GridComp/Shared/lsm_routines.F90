@@ -102,7 +102,7 @@ CONTAINS
                          TRAINL, TRAINC, SMELT,       &  ! [kg m-2 s-1]
                          SATCAP,BUG,                  &
                          CAPAC,                       &
-                         THRUL, THRUC                 &  ! [kg m-2] !!!!
+                         THRUL_VOL, THRUC_VOL         &  ! [kg m-2] !!!!
                         )
 !****
 !**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE
@@ -124,10 +124,12 @@ CONTAINS
 
       REAL,    INTENT(INOUT), DIMENSION(NCH) :: CAPAC
 
-      REAL,    INTENT(OUT),   DIMENSION(NCH) :: THRUC, THRUL           ! [kg m-2]      ("volume" units) !!!
-
-      INTEGER CHNO
-      REAL WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR,SMPERS
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: THRUL_VOL, THRUC_VOL   ! [kg m-2]      ("volume" units) !!!
+      
+      ! --------------------------
+      
+      INTEGER :: CHNO
+      REAL    :: WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR, SMPERS, THRUL, THRUC
 
 !****
 !**** ------------------------------------------------------------------
@@ -169,7 +171,7 @@ CONTAINS
 
       THRU2=XTCORR*WATADD
 
-      THRUL(CHNO)=THRU1+THRU2
+      THRUL=THRU1+THRU2
 
       CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
 
@@ -206,13 +208,14 @@ CONTAINS
 
       THRU2=XTCORR*WATADD
 
-      THRUC(CHNO)=THRU1+THRU2
+      THRUC=THRU1+THRU2
+      
       CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
 !****
-      IF (THRUL(CHNO)+THRUC(CHNO) .LT. -1.e-8) WRITE(*,*) 'THRU= ',                        &
-          THRUL(CHNO), THRUC(CHNO), TRAINC(CHNO), TRAINL(CHNO), SMELT(CHNO)
-      THRUL(CHNO)=AMAX1(0., THRUL(CHNO))
-      THRUC(CHNO)=AMAX1(0., THRUC(CHNO))
+      IF (THRUL+THRUC .LT. -1.e-8) WRITE(*,*) 'THRU= ',                        &
+          THRUL, THRUC, TRAINC(CHNO), TRAINL(CHNO), SMELT(CHNO)
+      THRUL_VOL(CHNO)=AMAX1(0., THRUL)
+      THRUC_VOL(CHNO)=AMAX1(0., THRUC)
       
  100  CONTINUE
 !****
@@ -466,7 +469,7 @@ CONTAINS
                           NCH, DTSTEP, VGWMAX, SATCAP, RZEQ, AR1, WPWET,     &
                           TSA1, TSA2, TSB1, TSB2, ATAU, BTAU, CDCR2, POROS,  &
                           BF1, BF2, ARS1, ARS2, ARS3, BUG,                   &
-                          CAPAC, RZEXC, SRFEXC,C ATDEF,                      &
+                          CAPAC, RZEXC, SRFEXC, CATDEF,                      &
                           RUNSRF                                             &  ! [kg m-2 s-1]
                           )
 

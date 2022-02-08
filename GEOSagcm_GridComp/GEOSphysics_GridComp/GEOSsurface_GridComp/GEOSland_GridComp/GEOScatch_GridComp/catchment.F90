@@ -246,7 +246,8 @@
             RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,      &
             HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,                &
             QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4, RX11, RX21, RX12,     &
-            RX14, RX24, RX22, EIRFRC, FCAN, THRUL, THRUC,RZEQOL, frice, srfmx, &
+            RX14, RX24, RX22, EIRFRC, FCAN, THRUL_VOL, THRUC_VOL,              &
+            RZEQOL, frice, srfmx,                                              &
             srfmn, RCST, EVAPFR, RCUN, PAR, PDIR, RDCX, EVAP1, EVAP2,          &
             EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,          &
             GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,       &
@@ -1170,7 +1171,7 @@
              NCH, DTSTEP, FWETC, FWETL, TRAINLX, TRAINCX, SMELT,         &
              SATCAP, BUG,                                                &
              CAPAC,                                                      &
-             THRUL, THRUC                                                &
+             THRUL_VOL, THRUC_VOL                                        &
              )
 
       IF (BUG) THEN
@@ -1180,7 +1181,8 @@
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
         CALL SRUNOFF ( NCH, DTSTEP, UFW4RO, FWETC, FWETL,               &
-             AR1, AR2, AR4, THRUL, THRUC, FRICE, TP1, SRFMX, BUG,       & 
+             AR1, AR2, AR4, THRUL_VOL, THRUC_VOL,                       &
+             FRICE, TP1, SRFMX, BUG,                                    & 
              VGWMAX, RZEQOL, POROS,                                     &
              SRFEXC, RZEXC, RUNSRF,                                     &
              QINFIL                                                     &
