@@ -322,15 +322,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Read bulk SST from retrieval
 !------------------------------
 
-   call MAPL_GetPointer(import,     data_sst  , 'data_SST'       , RC=STATUS)
+   call MAPL_GetPointer(import,     data_sst  , 'SATA_SST'       , RC=STATUS)
    VERIFY_(STATUS)
    sst = data_sst
-
-!  Read bulk SSS from retrieval
-!------------------------------
-
-!  call MAPL_ReadForcing(MAPL,'SSS',DATASeaSalFILE, CURRENTTIME, SSS, INIT_ONLY=FCST, RC=STATUS)
-!  VERIFY_(STATUS)
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )
 
