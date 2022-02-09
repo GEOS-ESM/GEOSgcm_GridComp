@@ -1062,9 +1062,9 @@ CONTAINS
         FH21=-GHFLUX(N)
 
         CALL GNDTMP(                                                           &
-              DTS=dtstep,phi,zbar,THETAF=thetaf,FH21=fh21,                     &
+              phi,zbar,                                                        &
               ht,                                                              &
-              xfice,tp, soilice)
+              xfice,tp, soilice,DTS=dtstep,THETAF=thetaf,FH21=fh21)
 
         DO LAYER=1,6
           GHTCNT(LAYER,N)=HT(LAYER)
