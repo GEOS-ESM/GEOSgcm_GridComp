@@ -566,7 +566,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 file name: ../til/${gfile}.til
 	 The 8-line header is followed by ${NGLOBAL} number of rows.
 	 do n = 1,${NGLOBAL}
-	        read (10,*)type,`echo "${sec2_til}"`
+	        write (lun,*)type,`echo "${sec2_til}"`
 	 end do
 	 
 	where for each tile:
@@ -580,9 +580,9 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	`echo "${sec2_til2}"`
        2.2.2 Western, eastern, southern, northern edges and mean elevation of tiles
 	 file name: catchment.def
-	 read (10,*) NTILES
+	 write (lun,*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i10,i8,5(2x,f9.4))') tile_index,pfaf_code,   &
+		write (lun,'(i10,i8,5(2x,f9.4))') tile_index,pfaf_code,   &
 		min_lon,max_lon,min_lat,max_lat, mean_elevation (m) 
          end do
 	 
@@ -598,9 +598,9 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 
        2.2.3 Tile topography - statistics of Compound Topographic Index (CTI) 
 	 file name: cti_stats.dat
-	 read (10,*) NTILES
+	 write (lun,*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i10,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
+		write (lun,'(i10,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
 		cti_mean, cti_std, cti_min, cti_max, cti_skew
 	 enddo
 
@@ -622,7 +622,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 _EOI_
 if( $mysoil == HWSD ) then
 cat << _EOS1_ > clsm/soil
-		read (10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+		write (lun,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 		tile_index,pfaf_code,soil_class_top,soil_class_com,BEE,              &
 		PSIS,POROS,COND, WPWET, DP2BR, gravel,OrgCarbon_top,                 &
 		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top, PMAP
@@ -946,7 +946,7 @@ cat << _EOS1_ > clsm/soil
 _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
- 		read (10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4)')  &
+ 		write (lun,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')  &
 		tile_index,pfaf_code,soil_class_top,              &
 		soil_class_com,BEE, PSIS,POROS,COND,              &
 		WPWET,soildepth	
@@ -1017,7 +1017,7 @@ cat << _EOV1_ > clsm/veg1
        3.2.1 Mosaic vegetation types and fractions
 	 file name: mosaic_veg_typs_fracs
 	 do n = 1, ${NTILES}
-		read (10,*)tile_index,pfaf_code,   &
+		write (lun,(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7))tile_index,pfaf_code,   &
 		primary_veg_type,secondary_veg_type, primary_veg_frac,         &
 		secondary_veg_frac, canopy_height, ASCATZ0
 	 end do
@@ -1051,7 +1051,7 @@ cat << _EOV2_ > clsm/veg2
        3.2.3 CLM/CLM4.5, CLM/CLM4.5-carbon, CLM4.5 and CLM4.5-carbon vegetation types and fractions 
 	 file names: CLM_veg_typs_fracs and  CLM4.5_veg_typs_fracs
 	 do n = 1, ${NTILES} 
-	 read (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')       &
+	 write (lun,'(2I10,4I3,4f7.2,2I3,2f7.2)')       &
             tile_index,pfaf_code,                    &
 	    CLM-C_pt1,CLM-C_pt2,CLM-C_st1,CLM-C_st2, &
 	    CLM-C_pf1,CLM-C_pf2,CLM-C_sf1,CLM-C_sf2, &
@@ -1126,7 +1126,7 @@ cat << _EOV2_ > clsm/veg2
        3.2.4 Nitrogen Deposition, annual mean 2m Tair, soil back gorund albedo
 	 file name: CLM_Ndep_SoilAlb
 	 do n = 1, ${NTILES}
-               read (10, '(f10.4,4f7.4,2f8.3)')    &
+               write (lun, '(f10.4,4f7.4,2f8.3)')    &
                NDEP,BGALBVR, BGALBVF, BGALBNR, BGALBNF, T2_M, T2_S 
 	enddo
 
@@ -1151,7 +1151,7 @@ cat << _EOV2_ > clsm/veg2
              population density (HDM)
          file name: CLM4.5_abm_peatf_gdp_hdm_fc
          do n = 1, ${NTILES}
-               read (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)') &
+               write (lun,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)') &
                TID, CID, ABM, PEATF, GDP, HDM, FC
          end do
 
@@ -1175,9 +1175,9 @@ cat << _EOV2_ > clsm/veg2
               `echo "${GSWP2_DATES}"`
 
               Loop below through until the last data record:
-              read (10) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+              write (lun) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
               Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-              read(10) (data(n),n=1,${NTILES})
+              write(lun) (data(n),n=1,${NTILES})
 
 _EOV2_
 endif
@@ -1364,7 +1364,7 @@ cat << _EOF0_ > clsm/README1
 	 surfexec and rzexec
 	 file name : tau_param.dat
          do n = 1, ${NTILES}
-		read (10,'(i10,i8,4f10.7)')    &
+		write (lun,'(i10,i8,4f10.7)')    &
 			tile_index,pfaf_code,atau2,btau2,atau5,btau5
 	 end do
 	 where:
@@ -1377,7 +1377,7 @@ cat << _EOF0_ > clsm/README1
 	 root zone and water table
 	 file name : ts.dat
    	 do n = 1, ${NTILES}
-		read (10,'(i10,i8,f5.2,4(2x,e13.7))')tile_index,pfaf_code,gnu,   &
+		write (lun,'(i10,i8,f5.2,4(2x,e13.7))')tile_index,pfaf_code,gnu,   &
 	             tsa1,tsa2,tsb1,tsb2
       	 end do
 
@@ -1390,7 +1390,7 @@ cat << _EOF0_ > clsm/README1
        6.2.3 Baseflow parameters
 	 file name : bf.dat
 	 do n = 1, ${NTILES}
-		read (10,'(i10,i8,f5.2,3(2x,e13.7))')tile_index,pfaf_code,gnu,bf1,bf2,bf3
+		write (lun,'(i10,i8,f5.2,3(2x,e13.7))')tile_index,pfaf_code,gnu,bf1,bf2,bf3
 	 end do
 
 	 where:
@@ -1402,7 +1402,7 @@ cat << _EOF0_ > clsm/README1
        6.2.4 Area fractioning parameters
 	 file name : ar.new
 	 do n = 1, ${NTILES}
-		read (10,'(i10,i8,f5.2,11(2x,e13.7))')tile_index,pfaf_code,gnu,  &
+		write (lun,'(i10,i8,f5.2,11(2x,e14.7))')tile_index,pfaf_code,gnu,  &
 			ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4
 	 end do
 
@@ -1498,9 +1498,9 @@ cat << _EOF1_ > clsm/README2
        7.2.1 Pafafstetter catchment connectivity, channel information
 	 file name : /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
 		    SRTM-TopoData/Pfafcatch-routing.dat
-	 read (10,*) NPfafs
+	 write (lun,*) NPfafs
 	 do n = 1, ${NPfafs}
-		read (10,'(i8,i15,4(1x,f9.4),1x,e10.3,3(1x,e9.3),I8,6(1x,f9.4))')         &     
+		write (lun,'(i8,i15,4(1x,f9.4),1x,e10.3,4(1x,e9.3),I8,6(1x,f9.4))')         &     
                 pfaf_index,pfaf_code,min_lon,max_lon,min_lat,max_lat, mean_elevation,     & 
                 cat_area,cum_area, length,ElevDiff, dnst_pfaf_index,DN_long, DN_lat,      &
                 UP_lon, UP_lat, mouth_lon, mouth_lat
@@ -1554,7 +1554,7 @@ cat << _EOF2_ > clsm/README3
 	 file name : country_and_state_code.data
 
 	 do n = 1, ${NTILES}
-		read (10,'(i10, 2I4, 1x, a48, a20)')         &     
+		write (lun,'(i10, 2I4, 1x, a48, a20)')         &     
                 tile_index, cnt_code, st_code, CNT_NAME, ST_NAME
   
    8.3 References https://gadm.org
