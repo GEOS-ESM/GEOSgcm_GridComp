@@ -600,8 +600,8 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 file name: cti_stats.dat
 	 write (lun,*) NTILES
 	 do n = 1, ${NTILES}
-		write (lun,'(i10,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
-		cti_mean, cti_std, cti_min, cti_max, cti_skew
+		write (lun,'i10,i8,5(1x,f8.4),i5,e18.3)') tile_index,pfaf_code,   &
+		cti_mean, cti_std, cti_min, cti_max, cti_skew, dummy, dummy
 	 enddo
 
 	 where for each tile:
