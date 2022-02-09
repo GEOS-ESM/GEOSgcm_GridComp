@@ -1062,7 +1062,7 @@ CONTAINS
         FH21=-GHFLUX(N)
 
         CALL GNDTMP(                                                           &
-              dtstep,phi,zbar,thetaf,fh21,                                     &
+              DTS=dtstep,phi,zbar,THETAF=thetaf,FH21=fh21,                     &
               ht,                                                              &
               xfice,tp, soilice)
 
