@@ -1574,7 +1574,7 @@ CONTAINS
 
   ! *******************************************************************
 
-      subroutine gndtmp(dts,phi_in,zbar,thetaf,fh21,ht,xfice,tp, FICE)
+      subroutine gndtmp(phi_in,zbar,ht,xfice,tp,FICE,dts,thetaf,fh21)
 ! using a diffusion equation this code generates ground temperatures
 ! with depth given t1
 !            *****************************************
