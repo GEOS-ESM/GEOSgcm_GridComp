@@ -771,7 +771,8 @@ contains
 ! Children's imports are in the ocean grid and are all satisfied
 !   by OGCM from exchange grid quantities.
   
-  call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
+  !call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
+  call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_ICE"], [ocean,seaice], RC=STATUS  )
 
 ! Set the Profiling timers
 ! ------------------------

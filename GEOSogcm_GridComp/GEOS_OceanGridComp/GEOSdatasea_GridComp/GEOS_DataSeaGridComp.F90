@@ -102,6 +102,13 @@ module GEOS_DataSeaGridCompMod
 
 !  !Export state:
 
+  call MAPL_AddImportSpec(GC, &
+    SHORT_NAME = 'DATA_SST', &
+    LONG_NAME = 'sea_surface_temperature', &
+    UNITS = 'K', &
+    DIMS = MAPL_DimsHorzOnly, &
+    VLOCATION = MAPL_VLocationNone, _RC)
+
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'UW',                                &
     LONG_NAME          = 'zonal_velocity_of_surface_water',   &
@@ -202,7 +209,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type (MAPL_MetaComp),     pointer   :: MAPL
   type (ESMF_Time)                    :: CurrentTime
-  character(len=ESMF_MAXSTR)          :: DATASeaFILE
 ! character(len=ESMF_MAXSTR)          :: DATASeaSalFILE
   integer                             :: IFCST
   logical                             :: FCST
@@ -229,6 +235,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    real, pointer, dimension(:,:)  :: FI
 
+   real, pointer, dimension(:,:) :: data_sst
 !  Begin...
 !----------
 
@@ -275,12 +282,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, RC=STATUS)
     VERIFY_(STATUS)
 
-! Get the SST bcs file name from the resource file
-!-------------------------------------------------
-
-    call MAPL_GetResource(MAPL,DATASeaFILE,LABEL="DATA_SST_FILE:", RC=STATUS)
-    VERIFY_(STATUS)
-
 ! Get the SSS bcs file name from the resource file
 !-------------------------------------------------
 
@@ -321,8 +322,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Read bulk SST from retrieval
 !------------------------------
 
-   call MAPL_ReadForcing(MAPL,'SST',DATASeaFILE, CURRENTTIME, SST, INIT_ONLY=FCST, RC=STATUS)
+   call MAPL_GetPointer(import,     data_sst  , 'data_SST'       , RC=STATUS)
    VERIFY_(STATUS)
+   sst = data_sst
 
 !  Read bulk SSS from retrieval
 !------------------------------

@@ -141,6 +141,15 @@ module GEOS_DataSeaIceGridCompMod
 
 ! !Import state:
 
+  call MAPL_AddImportSpec(GC, &
+    SHORT_NAME         = 'DATA_ICE',           &
+    LONG_NAME          = 'test import',           &
+    UNITS              = 'm',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    rc=status)
+  VERIFY_(status)
+
   call MAPL_AddImportSpec(GC,                                 &
     SHORT_NAME         = 'HI',                                &
     LONG_NAME          = 'seaice_skin_layer_depth',           &
@@ -370,7 +379,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: FRIENDLY
   type(ESMF_FIELD)                    :: FIELD
   type (ESMF_Time)                    :: CurrentTime
-  character(len=ESMF_MAXSTR)          :: DATAFRTFILE
   integer                             :: IFCST
   logical                             :: FCST
 ! real, pointer, dimension(:,:)       :: MELT   => null()
@@ -432,6 +440,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable, dimension(:,:)  :: FRT 
    real :: f
 
+   real, pointer :: DATA_ice(:,:)
+
 ! above were for CICE Thermo
 
 
@@ -464,6 +474,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_TimerOn(MAPL,"TOTAL")
    call MAPL_TimerOn(MAPL,"RUN" )
 
+   call MAPL_GetPointer(IMPORT, DATA_ice     ,  'DATA_ICE', RC=STATUS)
+   VERIFY_(STATUS)
 
 ! Pointers to Imports
 !--------------------
@@ -507,12 +519,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !------------------------------
 
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
-    VERIFY_(STATUS)
-
-! Get the file name from the resource file
-!-----------------------------------------
-
-    call MAPL_GetResource(MAPL,DATAFRTFILE,LABEL="DATA_FRT_FILE:", RC=STATUS)
     VERIFY_(STATUS)
 
 ! In atmospheric forecast mode we do not have future Sea Ice Conc
@@ -559,8 +565,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if (DO_CICE_THERMO == 0) then
      if(associated(FR)) then
-       call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FR, INIT_ONLY=FCST, RC=STATUS)
-       VERIFY_(STATUS)
+       FR = data_ice
 
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
           if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
@@ -568,8 +573,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        endif
      end if
    else
-       call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FRT, INIT_ONLY=FCST, RC=STATUS)
-       VERIFY_(STATUS)
+       frt = data_ice
 
 ! Sanity checks
        do I=1, size(FRT,1)
