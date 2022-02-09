@@ -1604,6 +1604,7 @@ CONTAINS
       REAL, DIMENSION(N_GT+1) :: FH, ZB
       REAL SHW0, SHI0, SHR0, WS, XW, A1, TK1, A2, TK2, TK3, TKSAT,      &
            XWI, XD1, XD2, XKTH, TKDRY
+      REAL :: phi
 
       !data dz/0.0988,0.1952,0.3859,0.7626,1.5071,10.0/
       !DATA PHI/0.45/, FSN/3.34e+8/, SHR/2.4E6/
