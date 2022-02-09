@@ -1593,7 +1593,8 @@ CONTAINS
 !        xfice   a total soil column ice factor (0-1)
 !             ***********************************
 
-      REAL, INTENT(IN) :: DTS, phi, ZBAR, THETAF, FH21
+      REAL, INTENT(IN) :: phi, ZBAR
+      REAL, INTENT(IN), OPTIONAL :: DTS, THETAF, FH21
 
       REAL, INTENT(INOUT), DIMENSION(*) :: HT
 
@@ -1615,6 +1616,13 @@ CONTAINS
       shi0=SHI*1000. ! PER M RATHER THAN PER KG
       shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
 
+      if (.NOT. PRESENT (DTS)) then ! jkolassa Jan 2022: the following code block was previously only present in gndtmp_cn, so including it conditionally here
+         if (PHIGT<0.) then ! if statement for bkwd compatibility w/ off-line MERRA replay
+            phi=poros
+         else 
+            phi=PHIGT
+         end if
+      end if 
 !----------------------------------
 ! initialize fice in ALL components
 ! reichle, July 8, 2002
@@ -1625,16 +1633,24 @@ CONTAINS
 !----------------------------------
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
-
-      zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
+ 
+      if (present(DTS)) then
+         zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
                     ! this routine.
+      else
+         zb(1)=-0.05
+      end if
+
       do l=1,N_GT
         zb(l+1)=zb(l)-DZGT(l)
         shc(l)=shr0*(1-phi)*DZGT(l)
         enddo
-      do l=1,N_GT
-        zc(l)=0.5*(zb(l)+zb(l+1))
-        enddo
+
+      if (present(DTS)) then
+         do l=1,N_GT
+            zc(l)=0.5*(zb(l)+zb(l+1))
+         enddo
+      end if
 
 
 ! evaluates the temperatures in the soil layers based on the heat values.
@@ -1674,131 +1690,136 @@ CONTAINS
 
     10  continue
 
-! evaluates:  layer thermal conductivities
-! *****************************************
-!             from farouki(cold regions sci and tech, 5, 1981,
-!             67-75) the values for tk1,tk2,tk3 are as follows:
-!             tk2=2.2**(phi(l,ibv)-xw), tk3=.57**xw, and
-!             tk1=3**(1-phi(l,ibv) for %sand<.5, and
-!             for computation purposes i have fit these eqs.
-!             to 2nd order polynomials.
-!             ***********************************
-!             input:
-!             sklh - soil heat conductivities of layers
-!             zb - soil layer boundaries, m
-!             zc - soil layer centers, m
-!             DZGT - layer thickness, m
-!             w - soil water content, m
-!             phi - soil porosity, dimensionless
-!             q - % sand, silt, clay, peat
-!             fice - fraction of ice in layers
-!             output:
-!             xklh - thermal conductivity, w m-2 k-1
-!             ***********************************
+
+ if (present(DTS)) then
+
+   ! evaluates:  layer thermal conductivities
+   ! *****************************************
+   !             from farouki(cold regions sci and tech, 5, 1981,
+   !             67-75) the values for tk1,tk2,tk3 are as follows:
+   !             tk2=2.2**(phi(l,ibv)-xw), tk3=.57**xw, and
+   !             tk1=3**(1-phi(l,ibv) for %sand<.5, and
+   !             for computation purposes i have fit these eqs.
+   !             to 2nd order polynomials.
+   !             ***********************************
+   !             input:
+   !             sklh - soil heat conductivities of layers
+   !             zb - soil layer boundaries, m
+   !             zc - soil layer centers, m
+   !             DZGT - layer thickness, m
+   !             w - soil water content, m
+   !             phi - soil porosity, dimensionless
+   !             q - % sand, silt, clay, peat
+   !             fice - fraction of ice in layers
+   !             output:
+   !             xklh - thermal conductivity, w m-2 k-1
+   !             ***********************************
 
 
 
-! lets get the thermal conductivity for the layers
+   ! lets get the thermal conductivity for the layers
 
-      do k=1,N_GT
+         do k=1,N_GT
 
-         a1=1-phi              ! ROCK FRACTION
-         tk1=1.01692+a1*(0.89865+1.06211*a1)
-         xw=phi*(1.-fice(k))   ! FOR SATURATED SOIL, XW HERE IS
-                               !   THE LIQUID WATER FRACTION
-         a2=phi-xw             ! FOR SATURATED SOIL, THE ICE FRACTION
+            a1=1-phi              ! ROCK FRACTION
+            tk1=1.01692+a1*(0.89865+1.06211*a1)
+            xw=phi*(1.-fice(k))   ! FOR SATURATED SOIL, XW HERE IS
+                                  !   THE LIQUID WATER FRACTION
+            a2=phi-xw             ! FOR SATURATED SOIL, THE ICE FRACTION
 
-         tk2=1.00543+a2*(0.723371+.464342*a2)
-         tk3=0.998899+xw*(-0.548043+0.120291*xw)
-         tksat=tk1*tk2*tk3
+            tk2=1.00543+a2*(0.723371+.464342*a2)
+            tk3=0.998899+xw*(-0.548043+0.120291*xw)
+            tksat=tk1*tk2*tk3
 
-         xwi=1.0
-         if (zbar .le. zb(k+1))then
-             xwi=thetaf
-           elseif (zbar .ge. zb(k+1) .and. zbar .le. zb(k))then
-             xd1=zb(k)-zbar
-             xd2=zbar-zb(k+1)
-             xwi=((xd1*thetaf)+xd2)/(xd1+xd2)
-           endif
+            xwi=1.0
+            if (zbar .le. zb(k+1))then
+              xwi=thetaf
+            elseif (zbar .ge. zb(k+1) .and. zbar .le. zb(k))then
+              xd1=zb(k)-zbar
+              xd2=zbar-zb(k+1)
+              xwi=((xd1*thetaf)+xd2)/(xd1+xd2)
+            endif
 
-         xwi=min(xwi,1.)
-         tkdry=0.226 ! = .039*0.45^(-2.2), from Farouki, p. 71
-         xklh(k)=(tksat-tkdry)*xwi + tkdry
+            xwi=min(xwi,1.)
+            tkdry=0.226 ! = .039*0.45^(-2.2), from Farouki, p. 71
+            xklh(k)=(tksat-tkdry)*xwi + tkdry
 
-         enddo
+            enddo
 
-! evaluates heat flux between layers due to heat diffussion
-!             ***********************************
-!             input:
-!             zb - soil layer boundaries, m
-!             zc - soil layer centers, m
-!             DZGT - layer thickness, m
-!             fice - fraction of ice in layers
-!             tp - temperature of layers, c
-!             shw - specific heat of water
-!             shi - specific heat of ice
-!             fsn - heat of fusion    J/m
-!             output:
-!             fh - heat flux between layers
-!             ***********************************
-
-
-! total heat flux is via diffusion along the temperature gradient
-      fh(N_GT+1)=0.
-      fh(1)=fh21
-      do k=2,N_GT
-! THIS xkth is NEW (ie., Agnes corrected) - it should be fixed in all
-! codes I'm using
-         xkth=((zb(k)-zc(k-1))*xklh(k-1)+(zc(k)-zb(k))*xklh(k))                &
-               /(zc(k)-zc(k-1))
-         fh(k)=-xkth*(tp(k-1)-tp(k))/(zc(k-1)-zc(k))
-         enddo
-
-! update the heat contents in the model layers; ht(l)
-! IF THERE'S SNOW THIS WILL HAVE TO BE MODIFIED L=1,N
-
-      do k=1,N_GT
-         ht(k)=ht(k)+(fh(k+1)-fh(k))*dts
-         enddo
+   ! evaluates heat flux between layers due to heat diffussion
+   !             ***********************************
+   !             input:
+   !             zb - soil layer boundaries, m
+   !             zc - soil layer centers, m
+   !             DZGT - layer thickness, m
+   !             fice - fraction of ice in layers
+   !             tp - temperature of layers, c
+   !             shw - specific heat of water
+   !             shi - specific heat of ice
+   !             fsn - heat of fusion    J/m
+   !             output:
+   !             fh - heat flux between layers
+   !             ***********************************
 
 
+   ! total heat flux is via diffusion along the temperature gradient
+         fh(N_GT+1)=0.
+         fh(1)=fh21
+         do k=2,N_GT
+   ! THIS xkth is NEW (ie., Agnes corrected) - it should be fixed in all
+   ! codes I'm using
+            xkth=((zb(k)-zc(k-1))*xklh(k-1)+(zc(k)-zb(k))*xklh(k))                &
+                  /(zc(k)-zc(k-1))
+            fh(k)=-xkth*(tp(k-1)-tp(k))/(zc(k-1)-zc(k))
+            enddo
 
-! evaluates the temperatures in the soil  layers based on the heat
-! values.
-!             ***********************************
-!             input:
-!             xw - water in soil layers, m
-!             ht - heat in soil layers
-!             fsn - heat of fusion of water    J/m
-!             shc - specific heat capacity of soil
-!             shi - specific heat capacity of ice
-!             shw - specific heat capcity of water
-!             snowd - snow depth, equivalent water m
-!             output:
-!             tp - temperature of layers, c
-!             fice - fraction of ice of layers
-!             pre - extra precipitation, i.e. snowmelt, m s-1
-!             snowd - snow depth after melting, equivalent water m.
-!             ***********************************
-! determine fraction of ice and temp of soil layers based on layer
-! heat and water content
-      do 1000 k=1,N_GT
-         ws=phi*DZGT(k)          ! saturated water content
-!            xl=l
-!            xw=(1/(7-xl))*ws
-         xw=0.5*ws             ! For calculations here, assume soil
+   ! update the heat contents in the model layers; ht(l)
+   ! IF THERE'S SNOW THIS WILL HAVE TO BE MODIFIED L=1,N
+
+         do k=1,N_GT
+            ht(k)=ht(k)+(fh(k+1)-fh(k))*dts
+            enddo
+
+
+
+   ! evaluates the temperatures in the soil  layers based on the heat
+   ! values.
+   !             ***********************************
+   !             input:
+   !             xw - water in soil layers, m
+   !             ht - heat in soil layers
+   !             fsn - heat of fusion of water    J/m
+   !             shc - specific heat capacity of soil
+   !             shi - specific heat capacity of ice
+   !             shw - specific heat capcity of water
+   !             snowd - snow depth, equivalent water m
+   !             output:
+   !             tp - temperature of layers, c
+   !             fice - fraction of ice of layers
+   !             pre - extra precipitation, i.e. snowmelt, m s-1
+   !             snowd - snow depth after melting, equivalent water m.
+   !             ***********************************
+   ! determine fraction of ice and temp of soil layers based on layer
+   ! heat and water content
+         do 1000 k=1,N_GT
+            ws=phi*DZGT(k)          ! saturated water content
+!               xl=l
+!               xw=(1/(7-xl))*ws
+            xw=0.5*ws             ! For calculations here, assume soil
                                ! is half full of water.
-         fice(k)=AMAX1( 0., AMIN1( 1., -ht(k)/(fsn*xw) ) )
+            fice(k)=AMAX1( 0., AMIN1( 1., -ht(k)/(fsn*xw) ) )
 
-         IF(FICE(K) .EQ. 1.) THEN
-               tp(k)=(ht(k)+xw*fsn)/(shc(k)+xw*shi0)
-            ELSEIF(FICE(K) .EQ. 0.) THEN
-               tp(k)=ht(k)/(shc(k)+xw*shw0)
-            ELSE
-               TP(K)=0.
-            ENDIF
+            IF(FICE(K) .EQ. 1.) THEN
+                  tp(k)=(ht(k)+xw*fsn)/(shc(k)+xw*shi0)
+               ELSEIF(FICE(K) .EQ. 0.) THEN
+                  tp(k)=ht(k)/(shc(k)+xw*shw0)
+               ELSE
+                  TP(K)=0.
+               ENDIF
 
- 1000    continue
+    1000    continue
+ 
+ end if ! present(DTS)
 
 ! determine the value of xfice
       xfice=0.0
