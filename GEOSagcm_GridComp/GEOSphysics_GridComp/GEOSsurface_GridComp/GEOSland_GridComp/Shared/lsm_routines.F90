@@ -1574,26 +1574,24 @@ CONTAINS
 
   ! *******************************************************************
 
-      subroutine gndtmp(dts,phi,zbar,thetaf,fh21,ht,xfice,tp, FICE)
+      subroutine gndtmp(dts,phi_in,zbar,thetaf,fh21,ht,xfice,tp, FICE)
 ! using a diffusion equation this code generates ground temperatures
 ! with depth given t1
 !            *****************************************
 !        input
 !        dts     timestep in seconds
-!        phi     porosity
-!        t1      terrestrial (layer 1) temperature in deg C
+!        phi_in  porosity
 !        zbar    mean depth to the water table.
 !        thetaf  mean vadose zone soil moisture factor (0-1)
 !        output,
 !        ht      heat content in layers 2-7
 !        tp      ground temperatures in layers 2-7
-!        tdeep   the temperature of the "deep"
 !        f21     heat flux between layer 2 and the terrestrial layer (1)
-!        df21    derivative of f21 with respect to temperature
 !        xfice   a total soil column ice factor (0-1)
+!        FICE    soil ice
 !             ***********************************
 
-      REAL, INTENT(IN) :: phi, ZBAR
+      REAL, INTENT(IN) :: phi_in, ZBAR
       REAL, INTENT(IN), OPTIONAL :: DTS, THETAF, FH21
 
       REAL, INTENT(INOUT), DIMENSION(*) :: HT
@@ -1616,7 +1614,9 @@ CONTAINS
       shi0=SHI*1000. ! PER M RATHER THAN PER KG
       shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
 
-      if (.NOT. PRESENT (DTS)) then ! jkolassa Jan 2022: the following code block was previously only present in gndtmp_cn, so including it conditionally here
+      if (PRESENT (DTS)) then ! jkolassa Jan 2022: the bkwd compatibility code block was previously only present in gndtmp_cn, so including it conditionally here
+         phi = phi_in
+      else
          if (PHIGT<0.) then ! if statement for bkwd compatibility w/ off-line MERRA replay
             phi=poros
          else 
