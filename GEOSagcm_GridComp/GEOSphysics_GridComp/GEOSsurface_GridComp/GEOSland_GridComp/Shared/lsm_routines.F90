@@ -1619,7 +1619,7 @@ CONTAINS
          phi = phi_in
       else
          if (PHIGT<0.) then ! if statement for bkwd compatibility w/ off-line MERRA replay
-            phi=poros
+            phi=phi_in
          else 
             phi=PHIGT
          end if
