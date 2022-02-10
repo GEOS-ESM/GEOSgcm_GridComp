@@ -1,134 +1,85 @@
 MODULE lsm_routines
 
-! The module contains subroutines that are shared by Catchment and Catchment-CN models.
-! Sarith, 10 Nov 2015  - The first version
-!                      - moved   RZDRAIN, INTERC, BASE, PARTITION, RZEQUIL, gndtp0
-!                        SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
-!                        gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT,
-!                        catch_calc_wtotl, dampen_tc_oscillations and catch_echo_constants from
-!                        land models
-!                      - moved DZTC, FWETL, FWETC, DZGT, PHIGT, ALHMGT, FSN, CATCH_FT_WEIGHT_TP1,
-!                        CATCH_FT_THRESHOLD_TEFF, CATCH_FT_THRESHOLD_ASNOW, ZERO, and ONE from
-!                        from land models.
-!                      - removed ITYP from argument list in subroutines INTERC, PARTITION, RZEQUIL
-!                      - removed CSOIL from arguments to INTERC
-!                      - removed CDCR2 from arguments to BASE
-!                      - change catch_echo_constants to lsmroutines_echo_constants
-! Justin, 16 Apr 2018  - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called
-!                        from SurfParams, as well as others
-! Sarith, 14 Aug 2018  - Added irrigation routines, considered experimental
-! Sarith, 22 Apr 2020  - moved SUBROUTINE SRUNOFF here and modified to account for separate convective and 
-!                        large-scale throughfalls. FWETC and FWETL are now passed through the resource file.
-
-  USE MAPL_BaseMod,      ONLY:                &
-       NTYPS             => MAPL_NumVegTypes, &
-       MAPL_Land,                             &
-       MAPL_UNDEF
-
-  USE MAPL_ConstantsMod, ONLY:           &
-       PIE               => MAPL_PI,     &  ! -
-       ALHE              => MAPL_ALHL,   &  ! J/kg  @15C
-       ALHM              => MAPL_ALHF,   &  ! J/kg
-       ALHS              => MAPL_ALHS,   &  ! J/kg
-       TF                => MAPL_TICE,   &  ! K
-       RGAS              => MAPL_RGAS,   &  ! J/(kg K)
-       SHW               => MAPL_CAPWTR, &  ! J/kg/K  spec heat of wat
-       SHI               => MAPL_CAPICE, &  ! J/kg/K  spec heat of ice
-       EPSILON           => MAPL_EPSILON,&
-       MAPL_H2OMW,                       &
-       MAPL_AIRMW
+  ! The module contains subroutines that are shared by Catchment and CatchmentCN.
+  ! Sarith,  10 Nov 2015 - The first version
+  !                      - moved   RZDRAIN, INTERC, BASE, PARTITION, RZEQUIL, gndtp0
+  !                        SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
+  !                        gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT,
+  !                        catch_calc_wtotl, dampen_tc_oscillations and catch_echo_constants from
+  !                        land models
+  !                      - moved DZTC, FWETL, FWETC, DZGT, PHIGT, ALHMGT, FSN, CATCH_FT_WEIGHT_TP1,
+  !                        CATCH_FT_THRESHOLD_TEFF, CATCH_FT_THRESHOLD_ASNOW, ZERO, and ONE from
+  !                        from land models.
+  !                      - removed ITYP from argument list in subroutines INTERC, PARTITION, RZEQUIL
+  !                      - removed CSOIL from arguments to INTERC
+  !                      - removed CDCR2 from arguments to BASE
+  !                      - change catch_echo_constants to lsmroutines_echo_constants
+  ! Justin,  16 Apr 2018 - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called
+  !                        from SurfParams, as well as others
+  ! Sarith,  14 Aug 2018 - Added irrigation routines, considered experimental
+  ! Sarith,  22 Apr 2020 - moved SUBROUTINE SRUNOFF here and modified to account for separate convective and 
+  !                        large-scale throughfalls. FWETC and FWETL are now passed through the resource file.
+  ! reichle, 27 Jan 2022 - moved "public" constants & subroutine echo_catch_constants() to catch_constants.f90
+  
+  USE MAPL_ConstantsMod, ONLY:                   &
+       PIE               => MAPL_PI,             &  ! -
+       TF                => MAPL_TICE,           &  ! K
+       SHW               => MAPL_CAPWTR,         &  ! J/kg/K  spec heat of water
+       SHI               => MAPL_CAPICE             ! J/kg/K  spec heat of ice
 
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
        RHOFS             => CATCH_SNWALB_RHOFS,  &
-       SNWALB_VISMAX     => CATCH_SNWALB_VISMAX, &
-       SNWALB_NIRMAX     => CATCH_SNWALB_NIRMAX, &
-       SLOPE             => CATCH_SNWALB_SLOPE,  &
-       MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
-       DZ1MAX            => CATCH_DZ1MAX,        &
-       SHR, N_SM, SCONST, CSOIL_1,               &
-       C_CANOP, SATCAPFR
-
+       DZTC              => CATCH_DZTC,          &
+       DZGT              => CATCH_DZGT,          &
+       PHIGT             => CATCH_PHIGT,         &
+       FSN               => CATCH_FSN,           &       
+       SHR               => CATCH_SHR,           &
+       N_SM              => CATCH_N_ZONES
+  
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
        FLWALPHA, ASTRFR, STEXP, RSWILT
+  
+  USE SIBALB_COEFF,      ONLY:                   &
+       coeffsib
 
-  USE SIBALB_COEFF,  ONLY: coeffsib
-
-  USE STIEGLITZSNOW, ONLY: &
+  USE STIEGLITZSNOW,     ONLY:                   &
        snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d
 
   IMPLICIT NONE
 
   PRIVATE
 
-  PUBLIC :: INTERC, BASE, PARTITION, RZEQUIL, gndtp0
+  PUBLIC :: INTERC, SRUNOFF, RZDRAIN, BASE, PARTITION, RZEQUIL, gndtp0
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
-  PUBLIC :: gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT, catch_calc_wtotl
-  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate, SRUNOFF
-
-  ! layer depth associated with snow-free land temperatures
-  !
-  ! Note: DZTC = .05 is a hardwired setting of the depth of the bottom of
-  ! the surface soil layer.  It should be made a parameter that is tied to
-  ! the heat capacity CSOIL, which had been set to either CSOIL_1 or
-  ! CSOIL_2 based on vegetation type.  For now we leave
-  ! it set to 0.05 despite an apparent inconsistency with CSOIL as
-  ! currently used.  We do this (again, for now) because the effects of the
-  ! inconsistency are drowned out by our arbitrary assumption, in computing
-  ! the thermal conductivities, that the unsaturated soil has a degree of
-  ! saturation of 50%.  For the flux calculation, setting the depth to .05m
-  ! here provides approximately the same fluxes as setting the depth to much
-  ! closer to 0 (as the value of CSOIL_2 suggests) and assuming a degree of
-  ! saturation of about 25%, which is no less realistic an assumption.  There
-  ! are other impacts in wet climates regarding the effect of
-  ! the depth of the water table on the thermal conductivity; these impacts
-  ! are presumably very small.
-
-  REAL,    PARAMETER, PUBLIC :: DZTC     = 0.05   ! m  layer depth for tc1, tc2, tc4
+  PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
+  PUBLIC :: dampen_tc_oscillations, irrigation_rate
 
   ! ---------------------------------------------------------------------------
   !
- 
-   REAL,    PARAMETER :: TIMFRL = 1.0
-   REAL,    PARAMETER :: TIMFRC = 0.333
+  !    ***** Do not define *public* Catchment model constants here. *****
+  !
+  ! Public Catchment model constants should be defined in ./catch_constants.f90
+  !  (or in ../../GEOSsurface_GridComp/Shared/SurfParams.F90 if necessary).
+  !
+  !
+  ! local constants:
   
-  ! ---------------------------------------------------------------------------
-  !
-  ! constants for ground temperature routine (gndtp0() and gndtmp())
-
-  REAL,    PARAMETER, DIMENSION(N_gt), PUBLIC :: DZGT = &  ! m  layer depths
-       (/ 0.0988, 0.1952, 0.3859, 0.7626, 1.5071, 10.0 /)
-
-  ! PHIGT and ALHMGT are needed for backward compatibility with
-  !  off-line (land-only) MERRA replay:
-  !
-  ! PHIGT = porosity used in gndtp0() and gndtmp()
-  !         if neg,  POROS(n) from soil moisture submodel will be used
-  !
-  !               |   PHIGT      ALHMGT
-  ! ------------------------------------------------
-  !  MERRA        |      0.45    3.34e+5
-  !  Fortuna-2_3  |  -9999.       ALHM
-
-  REAL,    PARAMETER, PUBLIC :: PHIGT   = -9999.
-  REAL,    PARAMETER, PUBLIC :: ALHMGT  = ALHM
-
-  REAL,    PARAMETER, PUBLIC :: FSN     = 1.e3*ALHMGT ! unit change J/kg/K -> J/m/K
-
-  ! ---------------------------------------------------------------------------
-  !
+  REAL,    PARAMETER :: CATCH_TIMFRL             = 1.0
+  REAL,    PARAMETER :: CATCH_TIMFRC             = 0.333
+  
   ! constants for "landscape" freeze/thaw (FT) state (see subroutine catch_calc_FT())
-
-  REAL, PARAMETER  :: CATCH_FT_WEIGHT_TP1      = 0.5   !
-  REAL, PARAMETER  :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
-  REAL, PARAMETER  :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
-
-  REAL,    PARAMETER :: ZERO     = 0.
-  REAL,    PARAMETER :: ONE      = 1.
   
-  CONTAINS
+  REAL,    PARAMETER :: CATCH_FT_WEIGHT_TP1      = 0.5   !
+  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
+  REAL,    PARAMETER :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
+
+  REAL,    PARAMETER :: ZERO                     = 0.
+  REAL,    PARAMETER :: ONE                      = 1.
+  
+CONTAINS
 
 !****
 !**** -----------------------------------------------------------------
@@ -138,27 +89,34 @@ MODULE lsm_routines
 !**** [ BEGIN INTERC ]
 !****
 
-      SUBROUTINE INTERC (                                                      &
-                         NCH, DTSTEP, FWETC, FWETL, TRAINL, TRAINC,SMELT,      &
-                         SATCAP,BUG,                                           &
-                         CAPAC,                                                &
-                         THRUL, THRUC                                          &
+      SUBROUTINE INTERC (                             &
+                         NCH, DTSTEP, FWETC, FWETL,   &
+                         TRAINL, TRAINC, SMELT,       &  ! [kg m-2 s-1]
+                         SATCAP,BUG,                  &
+                         CAPAC,                       &
+                         THRUL, THRUC                 &  ! [kg m-2] !!!!
                         )
 !****
 !**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE
 !**** CHANGES IN INTERCEPTION AND SOIL MOISTURE STORAGE.
 !****
+!****
+!**** NOTE: Input precip & snow melt are in flux units [kg m-2 s-1]
+!****       Output throughfall is in volume units      [kg m-2]
+!****       (added comments for clarity but did not change units to preserve 0-diff, reichle, 6 Feb 2022)
+        
       IMPLICIT NONE
 
 !****
-      INTEGER, INTENT(IN) ::  NCH
-      REAL, INTENT(IN) :: DTSTEP, FWETC, FWETL
-      REAL, INTENT(IN), DIMENSION(NCH) :: TRAINL, TRAINC, SMELT, SATCAP
-      LOGICAL, INTENT(IN) :: BUG
+      INTEGER, INTENT(IN)                    :: NCH
+      REAL,    INTENT(IN)                    :: DTSTEP, FWETC, FWETL
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: TRAINL, TRAINC, SMELT  ! [kg m-2 s-1]  (flux units)
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: SATCAP
+      LOGICAL, INTENT(IN)                    :: BUG
 
-      REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: CAPAC
 
-      REAL, INTENT(OUT), DIMENSION(NCH) :: THRUC, THRUL
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: THRUC, THRUL           ! [kg m-2]      ("volume" units) !!!
 
       INTEGER CHNO
       REAL WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR,SMPERS
@@ -178,7 +136,7 @@ MODULE lsm_routines
 !**** TO REFLECT THE EFFECTIVE LOSS OF "POSITION MEMORY" WHEN STORM
 !**** COVERS ENTIRE GRID SQUARE.)
 
-      XTCORR= (1.-TIMFRL) *                                                    &
+      XTCORR= (1.-CATCH_TIMFRL) *                                                    &
             AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/FWETL )
 
 !****
@@ -215,7 +173,7 @@ MODULE lsm_routines
 !**** DETERMINE XTCORR, THE FRACTION OF A STORM THAT FALLS ON A PREVIOUSLY
 !**** WET SURFACE DUE TO THE TIME CORRELATION OF PRECIPITATION POSITION.
 
-      XTCORR= (1.-TIMFRC) *                                                    &
+      XTCORR= (1.-CATCH_TIMFRC) *                                                    &
            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/FWETC )
 
 !****
@@ -261,32 +219,47 @@ MODULE lsm_routines
 !**** ///////////////////////////////////////////////////
 !**** ===================================================
 
-      SUBROUTINE SRUNOFF (                                                  &
-           NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4, THRUL,THRUC,       &
-           frice,tp1,srfmx, BUG,                                            &
-           SRFEXC,RUNSRF,                                                   &
-           QINFIL                                                           &
+      SUBROUTINE SRUNOFF (                                &
+           NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4,  &
+           THRUL_VOL, THRUC_VOL,                          &  ! [kg m-2]      ("volume" units) !!!
+           frice,tp1,srfmx, BUG,                          &
+           SRFEXC,                                        &
+           RUNSRF,                                        &  ! [kg m-2 s-1]  (flux units)
+           QINFIL                                         &  ! [kg m-2 s-1]  (flux units)
            )
 
+!**** NOTE: Input throughfall is in volume units, as are calcs throughout this subroutine  [kg m-2]
+!****       Input-output surface runoff and output infiltration are in flux units          [kg m-2 s-1]
+!****         (added comments and clarified variable names, left throughfall units 
+!****          unchanged to preserve 0-diff, reichle, 6 Feb 2022)
+        
       IMPLICIT NONE
 
+      INTEGER, INTENT(IN)                    :: NCH
+      REAL,    INTENT(IN)                    :: DTSTEP, FWETC, FWETL
+      LOGICAL, INTENT(IN)                    :: UFW4RO 
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1, srfmx
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: THRUL_VOL, THRUC_VOL              ! [kg m-2] 
+      LOGICAL, INTENT(IN)                    :: BUG
 
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
-      LOGICAL, INTENT (IN):: UFW4RO 
-      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1,     &
-             srfmx, THRUL, THRUC
-      LOGICAL, INTENT(IN) :: BUG
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: SRFEXC
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                            ! [kg m-2 s-1]
 
-      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
-
-      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: QINFIL                            ! [kg m-2 s-1]
 
       INTEGER N
       REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal
+      REAL, DIMENSION(NCH) :: THRUL, THRUC
 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+      ! calculations throughout srunoff() are in "volume" units [kg m-2]
+      
+      THRUL  = THRUL_VOL        ! introduced *_VOL variables for clarity 
+      THRUC  = THRUC_VOL   
+      
+      RUNSRF = RUNSRF * DTSTEP  ! convert input surface runoff from flux to "volume" units
+      
       DO N=1,NCH
 
          if(.not.UFW4RO) then
@@ -348,6 +321,8 @@ MODULE lsm_routines
          endif
 
          SRFEXC(N)=SRFEXC(N)+QIN
+         
+         ! convert outputs to flux units [kg m-2 s-1]
          RUNSRF(N)=RUNSRF(N)/DTSTEP
          QINFIL(N)=QIN/DTSTEP
      
@@ -361,6 +336,145 @@ MODULE lsm_routines
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
 !****
+      SUBROUTINE RZDRAIN (                                                 &
+                          NCH,DTSTEP,VGWMAX,SATCAP,RZEQ,AR1,WPWET,         &
+                          tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,   &
+                          CAPAC,RZEXC,SRFEXC,CATDEF,                       &
+                          RUNSRF                                           &  ! [kg m-2 s-1]
+                         )
+
+!-----------------------------------------------------------------
+!        defines drainage timescales:
+!             - tsc0, between srfex and rzex
+!             - tsc2, between rzex and catdef
+!        then defines correponding drainages
+!        and updates the water contents
+!-----------------------------------------------------------------
+
+      IMPLICIT NONE
+
+      INTEGER, INTENT(IN)                    :: NCH
+      REAL,    INTENT(IN)                    :: DTSTEP
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: VGWMAX, SATCAP, RZEQ, AR1, wpwet
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: tsa1, tsa2, tsb1, tsb2, atau, btau, CDCR2, poros
+      LOGICAL, INTENT(IN)                    :: BUG
+
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RZEXC, SRFEXC, CATDEF, CAPAC
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                        ! [kg m-2 s-1]
+
+      INTEGER N
+      REAL srflw,rzflw,FLOW,EXCESS,TSC0,tsc2,rzave,rz0,wanom,rztot,            &
+            rzx,btaux,ax,bx,rzdif, rzavemin
+
+
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+      DO 100 N=1,NCH
+
+!****   Compute equivalent of root zone excess in non-saturated area:
+        rztot=rzeq(n)+rzexc(n)
+        if(ar1(n).ne.1.) then
+        !!! rzave=(rztot-ar1(n)*vgwmax(n))/(1.-ar1(n))
+        !!! rzave=rzave*poros(n)/vgwmax(n)
+            rzave=rztot*poros(n)/vgwmax(n)
+          else
+            rzave=poros(n)
+          endif
+  
+! updated warning statement, reichle+koster, 12 Aug 2014
+!
+! Impose minimum of 1.e-4, rather than leaving positive values <1.e-4 unchanged.
+! -reichle, 15 Jan 2016
+
+        if (LAND_FIX) then
+	   rzavemin = 1.e-4
+	else
+	   rzavemin = 0.
+	end if
+
+        if (rzave .le. rzavemin) then  ! JP: could put rzavemin in catch_constants
+          rzave=1.e-4
+          print*,'problem: rzave <= 1.e-4 in catchment',n
+          end if
+
+        btaux=btau(n)
+        if (srfexc(n) .lt. 0.) btaux=btau(n)*(poros(n)/rzave)
+        rz0=amax1(0.001,rzave-srfexc(n)/(1000.*(-btaux)))
+        tsc0=atau(n)/(rz0**3.)
+
+        tsc0=tsc0*3600.
+        if(tsc0.lt.dtstep) tsc0=dtstep
+
+! ---------------------------------------------------------------------
+
+        SRFLW=SRFEXC(N)*DTSTEP/TSC0
+
+        IF(SRFLW < 0.    ) SRFLW = FLWALPHA * SRFLW ! C05 change
+
+!rr   following inserted by koster Sep 22, 2003
+        rzdif=rzave/poros(n)-wpwet(n)
+!**** No moisture transport up if rz at wilting; employ ramping.
+        if(rzdif.le.0. .and. srflw.lt.0.)  srflw=0.
+        if(rzdif.gt.0. .and. rzdif.lt.0.01                                     &
+                   .and. srflw.lt.0.) srflw=srflw*(rzdif/0.01)
+        RZEXC(N)=RZEXC(N)+SRFLW
+        SRFEXC(N)=SRFEXC(N)-SRFLW
+
+!**** Topography-dependent tsc2, between rzex and catdef
+
+        rzx=rzexc(n)/vgwmax(n)
+
+        if(rzx .gt. .01) then
+            ax=tsa1(n)
+            bx=tsb1(n)
+          elseif(rzx .lt. -.01) then
+            ax=tsa2(n)
+            bx=tsb2(n)
+          else
+            ax=tsa2(n)+(rzx+.01)*(tsa1(n)-tsa2(n))/.02
+            bx=tsb2(n)+(rzx+.01)*(tsb1(n)-tsb2(n))/.02
+          endif
+
+        tsc2=exp(ax+bx*catdef(n))
+        rzflw=rzexc(n)*tsc2*dtstep/3600.
+
+        IF (CATDEF(N)-RZFLW .GT. CDCR2(N)) then
+          RZFLW=CATDEF(N)-CDCR2(N)
+          end if
+
+        CATDEF(N)=CATDEF(N)-RZFLW
+        RZEXC(N)=RZEXC(N)-RZFLW
+
+!****   REMOVE ANY EXCESS FROM MOISTURE RESERVOIRS:
+
+        IF(CAPAC(N) .GT. SATCAP(N)) THEN
+          RZEXC(N)=RZEXC(N)+CAPAC(N)-SATCAP(N)
+          CAPAC(N)=SATCAP(N)
+          ENDIF
+
+        IF(RZEQ(N) + RZEXC(N) .GT. VGWMAX(N)) THEN
+          EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
+          RZEXC(N)=VGWMAX(N)-RZEQ(N)
+          CATDEF(N)=CATDEF(N)-EXCESS
+          ENDIF
+
+        IF(CATDEF(N) .LT. 0.) THEN
+          ! bug fix: RUNSRF in flux units [kg m-2 s-1] for consistency with partition()
+          ! reichle, 6 Feb 2022
+          RUNSRF(N)=RUNSRF(N)-CATDEF(N)/DTSTEP   
+          CATDEF(N)=0.
+          ENDIF
+
+  100 ENDDO
+
+      RETURN
+      END SUBROUTINE RZDRAIN
+
+!**** -----------------------------------------------------------------
+!**** /////////////////////////////////////////////////////////////////
+!**** -----------------------------------------------------------------
+!****
+
       SUBROUTINE BASE (                                                        &
                        NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,            &
                        CATDEF,                                                 &
@@ -415,33 +529,35 @@ MODULE lsm_routines
 !**** -----------------------------------------------------------------
 !****
 
-      SUBROUTINE PARTITION (                                                   &
-                            NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,     &
-                            PSIS,BEE,poros,WPWET,                              &
-                            ars1,ars2,ars3,ara1,ara2,ara3,ara4,                &
-                            arw1,arw2,arw3,arw4,BUG,                           &
-                            srfexc,catdef,runsrf,                              &
-                            AR1, AR2, AR4, srfmx, srfmn,                       &
-                            SWSRF1,SWSRF2,SWSRF4,RZI                           &
+      SUBROUTINE PARTITION (                                                &
+                            NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
+                            PSIS,BEE,poros,WPWET,                           &
+                            ars1,ars2,ars3,ara1,ara2,ara3,ara4,             &
+                            arw1,arw2,arw3,arw4,BUG,                        &
+                            srfexc,catdef,                                  &
+                            runsrf,                                         & ! [kg m-2 s-1]
+                            AR1, AR2, AR4, srfmx, srfmn,                    &
+                            SWSRF1,SWSRF2,SWSRF4,RZI                        &
                            )
 
       IMPLICIT NONE
 
 ! -------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: NCH
+      INTEGER, INTENT(IN)                    :: NCH
 
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
-                                          PSIS,BEE,poros,WPWET,                &
-                                          ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
-                                          arw1,arw2,arw3,arw4
+      REAL,    INTENT(IN)                    :: DTSTEP
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
+                                                PSIS,BEE,poros,WPWET,                &
+                                                ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
+                                                arw1,arw2,arw3,arw4
 
-      LOGICAL, INTENT(IN) :: BUG
+      LOGICAL, INTENT(IN)                    :: BUG
 ! -------------------------------------------------------------------
-      REAL, INTENT(INOUT), DIMENSION(NCH) :: srfexc,catdef,runsrf
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: srfexc,catdef
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: runsrf                                 ! [kg m-2 s-1]
 ! -------------------------------------------------------------------
-      REAL, INTENT(OUT), DIMENSION(NCH) :: AR1, AR2, AR4, srfmx, srfmn,        &
-                                           SWSRF1, SWSRF2, SWSRF4, RZI
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: AR1, AR2, AR4, srfmx, srfmn,         &
+                                                SWSRF1, SWSRF2, SWSRF4, RZI
 ! -------------------------------------------------------------------
       INTEGER :: N
 
@@ -2217,75 +2333,6 @@ MODULE lsm_routines
     end if
 
   end subroutine dampen_tc_oscillations
-
-  ! ********************************************************************
-
-  subroutine lsmroutines_echo_constants(logunit)
-
-    ! moved to here from catch_constants.F90, reichle, 14 Aug 2014
-
-    ! reichle, 10 Oct 2008
-
-    implicit none
-
-    integer, intent(in) :: logunit
-
-    write (logunit,*)
-    write (logunit,*) '-----------------------------------------------------------'
-    write (logunit,*)
-    write (logunit,*) 'lsmroutines_echo_constants():'
-    write (logunit,*)
-    write (logunit,*) 'PIE      = ', PIE
-    write (logunit,*) 'ALHE     = ', ALHE
-    write (logunit,*) 'ALHM     = ', ALHM
-    write (logunit,*) 'ALHS     = ', ALHS
-    write (logunit,*) 'TF       = ', TF
-    write (logunit,*) 'RGAS     = ', RGAS
-    write (logunit,*) 'SHW      = ', SHW
-    write (logunit,*) 'SHI      = ', SHI
-    write (logunit,*)
-    write (logunit,*) 'N_snow        = ', N_snow
-    write (logunit,*) 'N_gt          = ', N_gt
-    write (logunit,*)
-    write (logunit,*) 'RHOFS         = ', RHOFS
-    write (logunit,*) 'SNWALB_VISMAX = ', SNWALB_VISMAX
-    write (logunit,*) 'SNWALB_NIRMAX = ', SNWALB_NIRMAX
-    write (logunit,*) 'SLOPE         = ', SLOPE
-    write (logunit,*) 'MAXSNDEPTH    = ', MAXSNDEPTH
-    write (logunit,*) 'DZ1MAX        = ', DZ1MAX
-    write (logunit,*)
-    write (logunit,*) 'SHR           = ', SHR
-    write (logunit,*) 'EPSILON       = ', EPSILON
-    write (logunit,*)
-    write (logunit,*) 'N_sm          = ', N_sm
-    write (logunit,*)
-    write (logunit,*) 'SCONST        = ', SCONST
-    write (logunit,*) 'CSOIL_2       = ', CSOIL_2
-    write (logunit,*) 'LAND_FIX      = ', LAND_FIX
-    write (logunit,*) 'WEMIN         = ', WEMIN
-    write (logunit,*) 'AICEV         = ', AICEV
-    write (logunit,*) 'AICEN         = ', AICEN
-    write (logunit,*) 'FLWALPHA      = ', FLWALPHA
-    write (logunit,*) 'ASTRFR        = ', ASTRFR
-    write (logunit,*) 'STEXP         = ', STEXP
-    write (logunit,*) 'RSWILT        = ', RSWILT
-
-    write (logunit,*) 'C_CANOP (catchCN only)  = ', C_CANOP
-    write (logunit,*)
-    write (logunit,*) 'DZTC          = ', DZTC
-    write (logunit,*)
-    write (logunit,*) 'SATCAPFR      = ', SATCAPFR
-    write (logunit,*)
-    write (logunit,*) 'DZGT          = ', DZGT
-    write (logunit,*) 'PHIGT         = ', PHIGT
-    write (logunit,*) 'ALHMGT        = ', ALHMGT
-    write (logunit,*)
-    write (logunit,*) 'end lsmroutines_echo_constants()'
-    write (logunit,*)
-    write (logunit,*) '-----------------------------------------------------------'
-    write (logunit,*)
-
-  end subroutine lsmroutines_echo_constants
 
   ! ********************************************************************
 

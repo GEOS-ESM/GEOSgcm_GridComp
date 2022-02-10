@@ -55,10 +55,10 @@
 !                        ../Shared/lsm_routines.F90 
 !                      - moved SHR, EPSILON, SCONST, CSOIL_1,  CSOIL_2, N_sm, and SATCAPFR to
 !                        ../Shared/catch_constants.f90
-! Justin , 19 Apr 2018  - removed LAND_UPD ifdefs, use SurfParams
-! Justin , 11 Dec 2018  - put in ASNOW fix affecting AGCM only
-! Sarith , 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
-
+! Justin, 19 Apr 2018  - removed LAND_UPD ifdefs, use SurfParams
+! Justin, 11 Dec 2018  - put in ASNOW fix affecting AGCM only
+! Sarith, 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
+! Reichle, 14 Jan 2022 - removed redundant qa constraint; removed commented-out #ifdef LAND_UPD directives
 
       MODULE CATCHMENT_MODEL
 
@@ -87,18 +87,24 @@
            SLOPE             => CATCH_SNWALB_SLOPE,  &
            MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
            DZ1MAX            => CATCH_DZ1MAX,        &  
-           SHR, SCONST, CSOIL_1, N_sm, SATCAPFR
+           SCONST            => CATCH_SCONST,        &
+           CSOIL_1           => CATCH_CSOIL_1,       &
+           N_sm              => CATCH_N_ZONES,       &
+           SATCAPFR          => CATCH_SATCAPFR,      &
+           PHIGT             => CATCH_PHIGT,         &
+           DZTC              => CATCH_DZTC
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
 	   FLWALPHA, CSOIL_2 
 
-      USE lsm_routines, only :                      &
-          INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
-          catch_calc_soil_moist, gndtmp,            &
-          catch_calc_wtotl, dampen_tc_oscillations, &
-          PHIGT, DZTC, SRUNOFF 
-      
+      USE lsm_routines, only :                       &
+           INTERC, RZDRAIN, BASE, PARTITION, RZEQUIL,&
+           gndtp0, gndtmp,                           &
+           catch_calc_soil_moist,                    &
+           catch_calc_wtotl, dampen_tc_oscillations, &
+           SRUNOFF 
+
       USE SIBALB_COEFF,  ONLY: coeffsib
 
       USE STIEGLITZSNOW, ONLY: &
@@ -530,18 +536,14 @@
         tc1_orig(n)=tc1(n)
         tc2_orig(n)=tc2(n)
         tc4_orig(n)=tc4(n)
-
-!#ifdef LAND_UPD
-	if (LAND_FIX) then
-           ! Andrea Molod (Oct 21, 2016):
-	   qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
-           qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
-           qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
-           qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
-           qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
-	   qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
-	end if 
-!#endif
+        
+        ! Removed an #ifdef LAND_UPD [if (LAND_FIX)] block from here that constrained qa
+        ! between qm and qsat.
+        ! For energy conservation reasons, the same code was added in GEOS_CatchGridComp.F90 
+        ! by Andrea Molod ca. 2016.
+        ! Because the legacy LDASsa did not use GEOS_CatchGridComp.F90, the constraint was
+        ! still needed here until the offline land software migrated to GEOSldas in 2020.
+        ! - reichle, 14 Jan 2022
 
         if(ityp(n) .ge. 7) potfrc(n)=0.
 !$$$        RA1(N)     = ONE / ( CD1(N) * max(UM(N),1.) )
@@ -679,14 +681,13 @@
         else
            phi=PHIGT
         end if
-!#ifdef LAND_UPD
+
 	if (LAND_FIX) then
            ZBAR =-SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)  ! zbar bug fix, - reichle, 16 Nov 2015
 	else
-!#else
 	   ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
 	end if
-!#endif
+
         THETAF=.5
         DO LAYER=1,6
           HT(LAYER)=GHTCNT(LAYER,N)
@@ -1300,12 +1301,6 @@
        ! Apply engineering fix for all vegetation classes.
        ! - reichle, 24 Nov 2015
 
-! #ifdef LAND_UPD
-!        !IF (ityp(N) .ne. 1) THEN
-!        IF (.true.) THEN
-! #else
-!        IF (ityp(N) .ne. 1) THEN 
-! #endif
        IF (LAND_FIX .OR. (ityp(N) .ne. 1)) THEN           
           call dampen_tc_oscillations(dtstep,tm(N),tc1_orig(N),tc1(N),     &
                tc1_00(N),dtc1)
@@ -1655,149 +1650,6 @@
 !**** ===================================================
 !**** ///////////////////////////////////////////////////
 !**** ===================================================
-
-      SUBROUTINE RZDRAIN (                                                     &
-                          NCH,DTSTEP,VGWMAX,SATCAP,RZEQ,AR1,WPWET,             &
-                          tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,       &
-                          CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF                     &
-                         )
-
-!-----------------------------------------------------------------
-!        defines drainage timescales:
-!             - tsc0, between srfex and rzex
-!             - tsc2, between rzex and catdef
-!        then defines correponding drainages
-!        and updates the water contents
-!-----------------------------------------------------------------
-
-      IMPLICIT NONE
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN) ::  DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: VGWMAX, SATCAP, RZEQ, AR1, wpwet,    &
-              tsa1, tsa2, tsb1, tsb2, atau, btau, CDCR2, poros
-      LOGICAL, INTENT(IN) :: BUG
-
-      REAL, INTENT(INOUT), DIMENSION(NCH) :: RZEXC, SRFEXC, CATDEF, CAPAC,     &
-              RUNSRF
-
-
-      INTEGER N
-      REAL srflw,rzflw,FLOW,EXCESS,TSC0,tsc2,rzave,rz0,wanom,rztot,            &
-            rzx,btaux,ax,bx,rzdif, rzavemin
-
-
-!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-      DO 100 N=1,NCH
-
-!****   Compute equivalent of root zone excess in non-saturated area:
-        rztot=rzeq(n)+rzexc(n)
-        if(ar1(n).ne.1.) then
-        !!! rzave=(rztot-ar1(n)*vgwmax(n))/(1.-ar1(n))
-        !!! rzave=rzave*poros(n)/vgwmax(n)
-            rzave=rztot*poros(n)/vgwmax(n)
-          else
-            rzave=poros(n)
-          endif
-  
-! updated warning statement, reichle+koster, 12 Aug 2014
-!
-! Impose minimum of 1.e-4, rather than leaving positive values <1.e-4 unchanged.
-! -reichle, 15 Jan 2016
-
-        if (LAND_FIX) then
-	   rzavemin = 1.e-4
-	else
-	   rzavemin = 0.
-	end if
-! #ifdef LAND_UPD
-!         if (rzave .le. 1.e-4) then
-! #else
-!         if (rzave .le. 0.) then
-! #endif
-        if (rzave .le. rzavemin) then  ! JP: could put rzavemin in catch_constants
-          rzave=1.e-4
-          print*,'problem: rzave <= 1.e-4 in catchment',n
-          end if
-
-        btaux=btau(n)
-        if (srfexc(n) .lt. 0.) btaux=btau(n)*(poros(n)/rzave)
-        rz0=amax1(0.001,rzave-srfexc(n)/(1000.*(-btaux)))
-        tsc0=atau(n)/(rz0**3.)
-
-        tsc0=tsc0*3600.
-        if(tsc0.lt.dtstep) tsc0=dtstep
-
-! ---------------------------------------------------------------------
-
-        SRFLW=SRFEXC(N)*DTSTEP/TSC0
-! #ifdef LAND_UPD
-!         IF(SRFLW < 0.    ) SRFLW = 0.04 * SRFLW ! C05 change
-! #endif
-        IF(SRFLW < 0.    ) SRFLW = FLWALPHA * SRFLW ! C05 change
-
-!rr   following inserted by koster Sep 22, 2003
-        rzdif=rzave/poros(n)-wpwet(n)
-!**** No moisture transport up if rz at wilting; employ ramping.
-        if(rzdif.le.0. .and. srflw.lt.0.)  srflw=0.
-        if(rzdif.gt.0. .and. rzdif.lt.0.01                                     &
-                   .and. srflw.lt.0.) srflw=srflw*(rzdif/0.01)
-        RZEXC(N)=RZEXC(N)+SRFLW
-        SRFEXC(N)=SRFEXC(N)-SRFLW
-
-!**** Topography-dependent tsc2, between rzex and catdef
-
-        rzx=rzexc(n)/vgwmax(n)
-
-        if(rzx .gt. .01) then
-            ax=tsa1(n)
-            bx=tsb1(n)
-          elseif(rzx .lt. -.01) then
-            ax=tsa2(n)
-            bx=tsb2(n)
-          else
-            ax=tsa2(n)+(rzx+.01)*(tsa1(n)-tsa2(n))/.02
-            bx=tsb2(n)+(rzx+.01)*(tsb1(n)-tsb2(n))/.02
-          endif
-
-        tsc2=exp(ax+bx*catdef(n))
-        rzflw=rzexc(n)*tsc2*dtstep/3600.
-
-        IF (CATDEF(N)-RZFLW .GT. CDCR2(N)) then
-          RZFLW=CATDEF(N)-CDCR2(N)
-          end if
-
-        CATDEF(N)=CATDEF(N)-RZFLW
-        RZEXC(N)=RZEXC(N)-RZFLW
-
-!****   REMOVE ANY EXCESS FROM MOISTURE RESERVOIRS:
-
-        IF(CAPAC(N) .GT. SATCAP(N)) THEN
-          RZEXC(N)=RZEXC(N)+CAPAC(N)-SATCAP(N)
-          CAPAC(N)=SATCAP(N)
-          ENDIF
-
-        IF(RZEQ(N) + RZEXC(N) .GT. VGWMAX(N)) THEN
-          EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
-          RZEXC(N)=VGWMAX(N)-RZEQ(N)
-          CATDEF(N)=CATDEF(N)-EXCESS
-          ENDIF
-
-        IF(CATDEF(N) .LT. 0.) THEN
-          RUNSRF(N)=RUNSRF(N)-CATDEF(N)
-          CATDEF(N)=0.
-          ENDIF
-
-  100 ENDDO
-
-      RETURN
-      END SUBROUTINE RZDRAIN
-
-
-!****
-!**** -----------------------------------------------------------------
-!**** /////////////////////////////////////////////////////////////////
-!**** -----------------------------------------------------------------
 !****
 !**** [ BEGIN RCUNST ]
 !****
@@ -2122,16 +1974,6 @@
 !      REAL DELTC, DELEA, STEXP, ATRANS, ASTRFR
       REAL DELTC, DELEA, ATRANS
 
-! Removed ifdef -JP
-! !!#ifdef LAND_UPD      
-! !      ! C05 change - SM
-! !      PARAMETER (ASTRFR=1.)  ! STRESS TRANSITION POINT
-! !      PARAMETER (STEXP=2.)  ! STRESS RAMPING
-! !!#else
-!       ! keep the GCM values starting from GEOSldas_m4-17_6 -- WJ
-!       PARAMETER (ASTRFR=0.333)  ! STRESS TRANSITION POINT
-!       PARAMETER (STEXP=1.)  ! STRESS RAMPING
-! !!#endif
       DATA DELTC /0.01/, DELEA /0.001/
 
 
@@ -2919,13 +2761,7 @@
 
 ! RDK 04/04/06
 !  VALUES OF BARE SOIL SURFACE RESISTANCE AT WILTING POINT, SATURATION
-! Removed ifdef - JP
-! !!#ifdef LAND_UPD
-! !      PARAMETER (RSWILT=2000., RSSAT=25.) ! C05 Change -SM
-! !!#else
-!       !keep GCM values starting from GEOSldas_m4-17_6 - WJ
-!       PARAMETER (RSWILT= 500., RSSAT=25.) 
-! !!#endif
+
      PARAMETER (RSSAT=25.)
 
 !****
