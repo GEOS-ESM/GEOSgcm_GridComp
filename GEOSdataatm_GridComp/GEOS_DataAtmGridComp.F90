@@ -430,6 +430,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !----------------------------
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, __RC__)
 
+    call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__ )
+
 ! Pointers to Imports
 !--------------------
 
