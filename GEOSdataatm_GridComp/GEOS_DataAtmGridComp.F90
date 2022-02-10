@@ -350,12 +350,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer       :: MAPL => null()
-  type (ESMF_GridComp),       pointer :: GCS(:)
-  type (ESMF_State),          pointer :: GIM(:)
-  type (ESMF_State),          pointer :: GEX(:)
-  type (ESMF_State),          pointer :: SurfImport
-  type (ESMF_State),          pointer :: SurfExport
+  type (MAPL_MetaComp), pointer       :: MAPL       => null()
+  type (ESMF_GridComp),       pointer :: GCS(:)     => null()
+  type (ESMF_State),          pointer :: GIM(:)     => null()
+  type (ESMF_State),          pointer :: GEX(:)     => null()
+  character(len=ESMF_MAXSTR), pointer :: GCNAMES(:) => null()
+  type (ESMF_State),          pointer :: SurfImport => null()
+  type (ESMF_State),          pointer :: SurfExport => null()
   type (ESMF_Time)                    :: currentTime
 
   integer                                   :: IM, JM
@@ -389,8 +390,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! pointers to export - none???
 
 ! Andrea: OBSERVE????
-   logical, dimension(1) :: OBSERVE
-   real LATSO, LONSO
+!  logical, dimension(1) :: OBSERVE
+!  real LATSO, LONSO
    type(ESMF_VM)      :: vm
    integer            :: mype
 
@@ -423,8 +424,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !   call MAPL_GetResource (MAPL, DT, Label="RUN_DT:"        , __RC__)
 !   call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, __RC__)
-    call MAPL_GetResource (MAPL, LATSO, Label="LATSO:", DEFAULT=70.0, __RC__)
-    call MAPL_GetResource (MAPL, LONSO, Label="LONSO:", DEFAULT=70.0, __RC__)
+!   call MAPL_GetResource (MAPL, LATSO, Label="LATSO:", DEFAULT=70.0, __RC__)
+!   call MAPL_GetResource (MAPL, LONSO, Label="LONSO:", DEFAULT=70.0, __RC__)
 
 ! Get current time from clock
 !----------------------------
@@ -439,10 +440,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Pointers to Exports ????
 !---------------------
  
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
-
 !new stuff: this is what Surface needs
 !======================================
+
+! Get children and their im/ex states from my generic state.
+!----------------------------------------------------------
+    call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCNAMES=GCNAMES, __RC__)
+    VERIFY_(STATUS)
+
 !  !IMPORT STATE:
     SurfImport => GIM(SURF)
     SurfExport => GEX(SURF)
@@ -450,7 +455,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read Sea Level Pressure (Pa)
 !---------------------------------------------------
     !ALT is this default too low?
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     call ReadForcingData(impName='PS', frcName='SLP', default=90000., __RC__)
 
 ! Read 10m temperature (K)
@@ -547,7 +551,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !ALT: this is not done yet.
 !SA:  seems we do not need it?!
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     if (DO_GOSWIM) then
        ! BUNDLE
 !        SHORT_NAME         = 'AERO_DP',                           &
@@ -768,16 +771,13 @@ contains
     real, pointer :: ptr(:,:) => null()
     character(len=ESMF_MAXSTR) :: datafile, frcName_, label_
 
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     if (present(dataptr)) then
        if (mapl_am_i_root()) PRINT*, trim(impName)
        ASSERT_(.not.present(impName))
        ptr => dataPtr
     else
-       if (mapl_am_i_root()) PRINT*, 'not present', trim(impName)
        call MAPL_GetPointer(SurfImport, ptr, impName, __RC__)
     end if
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     if (present(frcName)) then
        frcName_ = frcName
     else
@@ -786,7 +786,6 @@ contains
     end if
     label_ = trim(frcName_)//'_FILE:'
 
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     call MAPL_GetResource(MAPL, datafile, label=label_, default="none", __RC__)
     if(trim(datafile) == 'none') then
        ptr = default
