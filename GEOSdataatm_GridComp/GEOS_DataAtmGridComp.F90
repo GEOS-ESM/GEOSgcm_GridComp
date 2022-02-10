@@ -430,7 +430,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !----------------------------
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, __RC__)
 
-
 ! Pointers to Imports
 !--------------------
 
@@ -439,7 +438,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !  Pointers to Exports ????
 !---------------------
-
+ 
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
 
 !new stuff: this is what Surface needs
 !======================================
@@ -450,6 +450,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read Sea Level Pressure (Pa)
 !---------------------------------------------------
     !ALT is this default too low?
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     call ReadForcingData(impName='PS', frcName='SLP', default=90000., __RC__)
 
 ! Read 10m temperature (K)
@@ -476,6 +477,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, SPEED, 'SPEED', __RC__)
     SPEED = SQRT(Uair**2 + Vair**2)
 
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     IM = size(Uair, 1)
     JM = size(Uair, 1)
     allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
@@ -545,6 +547,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !ALT: this is not done yet.
 !SA:  seems we do not need it?!
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     if (DO_GOSWIM) then
        ! BUNDLE
 !        SHORT_NAME         = 'AERO_DP',                           &
@@ -552,6 +555,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     call SetVarToZero('DTSDT', __RC__)
 
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
 ! call Run (or, phase) 1 of Surface
     call ESMF_GridCompRun (GCS(SURF), importState=GIM(SURF), &
          exportState=GEX(SURF), clock=CLOCK, PHASE=1, userRC=status )
@@ -764,12 +768,16 @@ contains
     real, pointer :: ptr(:,:) => null()
     character(len=ESMF_MAXSTR) :: datafile, frcName_, label_
 
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     if (present(dataptr)) then
+       if (mapl_am_i_root()) PRINT*, trim(impName)
        ASSERT_(.not.present(impName))
        ptr => dataPtr
     else
+       if (mapl_am_i_root()) PRINT*, 'not present', trim(impName)
        call MAPL_GetPointer(SurfImport, ptr, impName, __RC__)
     end if
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     if (present(frcName)) then
        frcName_ = frcName
     else
@@ -778,6 +786,7 @@ contains
     end if
     label_ = trim(frcName_)//'_FILE:'
 
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     call MAPL_GetResource(MAPL, datafile, label=label_, default="none", __RC__)
     if(trim(datafile) == 'none') then
        ptr = default
