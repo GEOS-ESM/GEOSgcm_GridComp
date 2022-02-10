@@ -14,7 +14,7 @@ module GEOS_DataAtmGridCompMod
 
   use ESMF
   use MAPL_Mod
-!  use ncar_ocean_fluxes_mod !? Do we still need this
+! use ncar_ocean_fluxes_mod
   use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
   use GEOS_UtilsMod
 
@@ -31,20 +31,7 @@ module GEOS_DataAtmGridCompMod
 
 ! !DESCRIPTION:
 ! 
-!   {\tt GEOS\_DataAtm  } is a gridded component that reads the 
-!   ocean forcings files. Each forcing field is a a separate file
-!   that uses the same format as the SST files used by dataocean, datase, etc. 
-
-!   This module interpolates the SST and sea ice data from 
-!   either daily or monthly values to the correct time of the simulation.
-!   Data are read only if the simulation time is not in the save interval.
-!   Surface Albedo and Surface roughness calculations are also takencare of in
-!   this module.
-!
-!   Santha: This module (as it stands below) uses an old version of CICE Thermodynamics 
-!           which was same as in CICEThermo. But CICEThermo has been merged with Saltwater
-!           and most of the CICE thermodynamics interface has changed (from what's below)
-!           So-- please be aware of that, while using this module. July, 2015.
+!   {\tt GEOS\_DataAtm  } is a gridded component that ...??
 
 !EOP
 
@@ -67,9 +54,11 @@ module GEOS_DataAtmGridCompMod
   integer            :: NUM_ICE_LAYERS
   integer, parameter :: NUM_SNOW_LAYERS=1
 
-  integer, parameter :: WATER = 1
-  integer, parameter :: ICE   = 2
   integer            :: NUM_SUBTILES
+  integer, parameter :: ICE   = 1
+  integer, parameter :: WATER = 2
+  integer, parameter :: OBIO  = 3
+
   real,    parameter :: KUVR = 0.09
   real,    parameter :: EPS6 = 1.e-7
 
@@ -118,8 +107,9 @@ module GEOS_DataAtmGridCompMod
 ! Local derived type aliases
 
     type (ESMF_Config)                      :: CF
-    integer                                 :: DO_CICE_THERMO  ! default (=0) is to run without CICE
-    type (MAPL_MetaComp),  pointer      :: MAPL
+    integer                                 :: DO_CICE_THERMO  ! default (=1) is to run with CICE
+    type (MAPL_MetaComp),  pointer          :: MAPL
+    integer                                 :: DO_OBIO         ! default (=0) is to run without ocean bio and chem
 
 !=============================================================================
 
@@ -139,32 +129,35 @@ module GEOS_DataAtmGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Get constants from CF
 ! ---------------------
 
-    if (DO_CICE_THERMO /= 0) then     ! Before merging CICEthermo with SaltWater, following were set via makefile.
-       !if(MAPL_AM_I_ROOT()) then
-       !   print *, 'DATA ATM Gridded Component:'
-       !   print *, 'CICE Thermodynamics may not work as expected!' 
-       !   print *, 'You are on your own!'
-       !endif
+    if (DO_CICE_THERMO == 0) then
+       if(MAPL_AM_I_ROOT()) then
+          print *, 'Current DATA ATM Gridded Component'
+          print *, 'Needs CICE Thermodynamics! You turned it off, so this run will now terminate!'
+          ASSERT_(DO_CICE_THERMO == 0)
+       endif
 
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
+!      call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
+!      VERIFY_(STATUS)
+!      call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+!      VERIFY_(STATUS)
        
-    else
-       NUM_ICE_CATEGORIES = 1
-       NUM_ICE_LAYERS     = 1
-    endif
+!   else
+!      NUM_ICE_CATEGORIES = 1
+!      NUM_ICE_LAYERS     = 1
+!   endif
+!   NUM_SUBTILES = NUM_ICE_CATEGORIES + 1
 
-    NUM_SUBTILES = NUM_ICE_CATEGORIES + 1
-! [SA] may be following?
-!   NUM_SUBTILES = NUM_ICE_CATEGORIES
+! Ocean biology and chemistry: using OBIO or not?
+! ------------------------------------------------
+
+    call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Set the Initialize and Run entry points
 ! ---------------------------------------
@@ -219,8 +212,6 @@ module GEOS_DataAtmGridCompMod
   
   end subroutine SetServices
 
-
-
 !BOP
 
 ! !IROUTINE: INITIALIZE -- Initialize stage for the DataAtm component
@@ -250,24 +241,24 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Locals
 
   type (MAPL_MetaComp), pointer   :: STATE => null()
-  type (MAPL_LocStream)               :: LOCSTREAM
-  type (MAPL_LocStream)               :: EXCH
+  type (MAPL_LocStream)           :: LOCSTREAM
+  type (MAPL_LocStream)           :: EXCH
 
-  integer                     :: K, N, Nsub, NT
-  real                        :: DTI
-  real                        :: ALBICEV, ALBSNOWV, ALBICEI, ALBSNOWI
-  real                        :: USTAR_MIN, AHMAX
-  real                        :: KSNO
-  real                        :: ICE_REF_SALINITY
-  real                        :: SNOWPATCH
-  real                        :: DALB_MLT
+! integer                     :: K, N, Nsub, NT
+! real                        :: DTI
+! real                        :: ALBICEV, ALBSNOWV, ALBICEI, ALBSNOWI
+! real                        :: USTAR_MIN, AHMAX
+! real                        :: KSNO
+! real                        :: ICE_REF_SALINITY
+! real                        :: SNOWPATCH
+! real                        :: DALB_MLT
 
 
-  character(len=ESMF_MAXSTR)  :: CONDTYPE
-  character(len=ESMF_MAXSTR)  :: SHORTWAVE 
+! character(len=ESMF_MAXSTR)  :: CONDTYPE
+! character(len=ESMF_MAXSTR)  :: SHORTWAVE 
 
-  integer                     :: DO_POND
-  logical                     :: TR_POND
+! integer                     :: DO_POND
+! logical                     :: TR_POND
 
 !  Begin...
 !----------
@@ -299,18 +290,20 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_Get(STATE, EXCHANGEGRID=EXCH,        RC=STATUS )
     VERIFY_(STATUS)
+
     call MAPL_LocStreamCreate(LOCSTREAM, EXCH, NAME='OCEAN', &
                                        MASK=(/MAPL_OCEAN/), RC=STATUS )
     VERIFY_(STATUS)
+
     call MAPL_Set(STATE, LOCSTREAM=LOCSTREAM,   RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_Get(STATE, HEARTBEAT = DTI, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( STATE, DTI, Label="CICE_DT:", DEFAULT=DTI, RC=STATUS)
-    VERIFY_(STATUS)
-!+=======================================+
+!   call MAPL_Get(STATE, HEARTBEAT = DTI, RC=STATUS)
+!   VERIFY_(STATUS)
 
+!   call MAPL_GetResource ( STATE, DTI, Label="CICE_DT:", DEFAULT=DTI, RC=STATUS)
+!   VERIFY_(STATUS)
+!+=======================================+
 ! all of CICE initialization is now done in GEOS_CICE4ColumnPhysGridComp.F90
 
 
@@ -353,24 +346,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: STATUS
   character(len=ESMF_MAXSTR)          :: COMP_NAME
 
-  integer                             :: DO_CICE_THERMO  ! default (=0) is to run without CICE
+  integer                             :: DO_CICE_THERMO  ! default (=1) is to run with CICE
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer   :: MAPL => null()
+  type (MAPL_MetaComp), pointer       :: MAPL => null()
   type (ESMF_GridComp),       pointer :: GCS(:)
   type (ESMF_State),          pointer :: GIM(:)
   type (ESMF_State),          pointer :: GEX(:)
   type (ESMF_State),          pointer :: SurfImport
   type (ESMF_State),          pointer :: SurfExport
-  type (ESMF_Time) :: currentTime
+  type (ESMF_Time)                    :: currentTime
 
-  integer :: IM, JM
-  real, dimension(:,:), allocatable :: Uskin, Vskin, Qskin
+  integer                                   :: IM, JM
+  real, dimension(:,:), allocatable         :: Uskin, Vskin, Qskin
   real, dimension(:,:), allocatable, target :: swrad
-  real, dimension(:,:), pointer :: PS, Tair, Qair, Uair, Vair, DZ, ALW, SPEED
-  real, dimension(:,:), pointer :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin
-  real, dimension(:,:), pointer :: DRPARN, DFPARN, DRNIRN, DFNIRN, DRUVRN, DFUVRN
+  real, dimension(:,:), pointer             :: PS, Tair, Qair, Uair, Vair, DZ, ALW, SPEED
+  real, dimension(:,:), pointer             :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin
+  real, dimension(:,:), pointer             :: DRPARN, DFPARN, DRNIRN, DFNIRN, DRUVRN, DFUVRN
 
   logical :: DO_OBIO, DO_CO2SC, DO_GOSWIM
 
@@ -394,7 +387,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! internal pointers to tile variables ???
 
 ! pointers to export - none???
-
 
 ! Andrea: OBSERVE????
    logical, dimension(1) :: OBSERVE
@@ -429,8 +421,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get the time step
 ! -----------------
 
-!    call MAPL_GetResource (MAPL, DT, Label="RUN_DT:"        , __RC__)
-!    call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, __RC__)
+!   call MAPL_GetResource (MAPL, DT, Label="RUN_DT:"        , __RC__)
+!   call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, __RC__)
     call MAPL_GetResource (MAPL, LATSO, Label="LATSO:", DEFAULT=70.0, __RC__)
     call MAPL_GetResource (MAPL, LONSO, Label="LONSO:", DEFAULT=70.0, __RC__)
 
@@ -551,18 +543,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !            SHORT_NAME         = 'FSWBANDNA',                         &
     endif
 
-!ALT: this is not done yet
+!ALT: this is not done yet.
+!SA:  seems we do not need it?!
     if (DO_GOSWIM) then
        ! BUNDLE
-!            SHORT_NAME         = 'AERO_DP',                           &
+!        SHORT_NAME         = 'AERO_DP',                           &
     end if
     
     call SetVarToZero('DTSDT', __RC__)
 
-! call phase 1 of Surface
+! call Run (or, phase) 1 of Surface
     call ESMF_GridCompRun (GCS(SURF), importState=GIM(SURF), &
          exportState=GEX(SURF), clock=CLOCK, PHASE=1, userRC=status )
     VERIFY_(status)
+
 ! we deal with these after Run1 of surf
     call MAPL_GetPointer(SurfImport, Tair, 'TA', __RC__)
     call MAPL_GetPointer(SurfImport, Qair, 'QA', __RC__)
@@ -588,11 +582,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     TAUX = CM * (Uskin - Uair)
     TAUY = CM * (Vskin - Vair)
 
-! call phase 2 of Surface
+! call Run (or, phase) 2 of Surface
     call ESMF_GridCompRun (GCS(SURF), importState=GIM(SURF), &
          exportState=GEX(SURF), clock=CLOCK, PHASE=2, userRC=status )
     VERIFY_(status)
-
 
 ! by now Saltwater should be able to provide everything the ocean needs
 
@@ -812,7 +805,6 @@ contains
 
 
 end subroutine RUN
-
 !----------------------------------------------------------------------------------------------------------------------------------
 
     function renamefile(name, time) result(name0)
