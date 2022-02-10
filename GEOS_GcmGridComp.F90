@@ -575,15 +575,6 @@ contains
       call OBIO_TerminateImports(DO_DATAATM, RC)
      end if
 
-     if(DO_DATAATM /= 0) then
-        call MAPL_TerminateImport    ( GC,   & 
-             SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
-             'VI     ','TAUXBOT','TAUYBOT'/),         &
-             CHILD      = AGCM,           &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-     end if
-
     if (DO_CICE_THERMO /= 0) then  
        call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/ &
