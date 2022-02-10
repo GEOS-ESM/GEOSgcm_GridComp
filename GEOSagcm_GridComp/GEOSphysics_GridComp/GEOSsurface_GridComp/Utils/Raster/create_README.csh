@@ -58,7 +58,7 @@ set toc_rout="`printf '\\n7. GLOBAL RUNOFF ROUTING MODEL DATA ..................
        The Mosaic types used for catchment surface elements are determined by computing\\n \
        the dominant Mosaic type of all 10-arcsec pixels within the catchment in question.\\n \
 \\n \
-       (b) Deriving Catchment-carbon (Catchment-CN) classes:\\n \
+       (b) Deriving Catchment-Carbon/Nitrogen (Catchment-CN) classes:\\n \
 \\n \
        The Common Land Model version 4 (CLM4: Oleson et al., 2010) utilizes 17 vegetation\\n \
        classes and the version 4.5 (CLM4.5: Oleson et al., 2013) uses 25 vegetation classes (Table 2).\\n \
@@ -165,7 +165,7 @@ endif
 # Set AGCM/SMAP specifics
 #########################
 set WGRID=AGCM
-set int_str1="`printf 'by overlaying the atmospheric grid on ${NPfafs} number of hydraulic catchments \\n in ${MYMASK} mask file.'`"
+set int_str1="`printf 'by overlaying the atmospheric grid on ${NPfafs} hydraulic catchments \\n  in the ${MYMASK} mask file.'`"
 set sec2_til="`printf ' area, longitude, latitude, ig, jg, cell_frac'`"
 set pfafin_des="`printf 'catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order'`"  
 set pfaf_des="`printf 'Pfafstetter code of the hydrologic catchment'`"
@@ -239,7 +239,7 @@ if($mylai == GLASSA) then
        8-day climatology of LAI was computed from these data by temporally averaging over the 37-year period \\n \
        (by 8-day periods) on the 3-arcmin grid. Those climatological data  were aggregated over \\n \
        the pixels of each land element to derive a 8-day LAI\\n \
-       In order to fill gaps that may exist due to inconsistencies between LAI and GEOS5 masks as well as data gaps themselves\\n \
+       In order to fill gaps that may exist due to inconsistencies between the LAI and GEOS masks as well as data gaps themselves\\n \
        we constructed, at every time slice, a 1°×1° global gridded LAI dataset \\n \
        by spatially aggregating the finer resolution LAI climatological data. Missing \\n \
        LAI values in the finer resolution datasets were filled with the value for the \\n \
@@ -251,7 +251,7 @@ if($mylai == GLASSM) then
        8-day climatology of LAI was computed from these data by temporally averaging over the 18-year period \\n \
        (by 8-day periods) on the 3-arcmin grid. Those climatological data  were aggregated over \\n \
        the pixels of each land element to derive a 8-day LAI\\n \
-       In order to fill gaps that may exist due to inconsistencies between LAI and GEOS5 masks as well as data gaps themselves\\n \
+       In order to fill gaps that may exist due to inconsistencies between the LAI and GEOS masks as well as data gaps themselves\\n \
        we constructed, at every time slice, a 1°×1° global gridded LAI dataset \\n \
        by spatially aggregating the finer resolution LAI climatological data. Missing \\n \
        LAI values in the finer resolution datasets were filled with the value for the \\n \
@@ -276,7 +276,7 @@ if($mylai == MODIS | $mylai == MODGEO) then
        Preprocessing of the two datasets showed that each had potential flaws, \\n \
        with GEOLAND2 showing questionable seasonal cycles in Siberia, and MODIS \\n \
        showing questionable values over the rain forests. We thus decided to \\n \
-       produce a merged LAI data product for GEOS5 to avoid these potential \\n \
+       produce a merged LAI data product for GEOS to avoid these potential \\n \
        deficiencies. \\n \
 \\n \
        The first step in generating the merged product was computing a 10-day \\n \
@@ -357,7 +357,7 @@ cat << _EOI_ > clsm/intro
                                                                                       
                           Land Boundary Conditions for the                           
                                                                                      
-              Goddard Earth Observing System Model  Version 5 (GEOS-5)               
+                     Goddard Earth Observing System (GEOS) Model
   										     
                           ${mygrid} Grid
                                                                                      
@@ -423,7 +423,7 @@ cat << _EOI_ > clsm/intro
    3.1 Data generation and processing chain
    3.2 Data files and images
 	3.2.1 Mosaic vegetation types and fractions
-        3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS5
+        3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS
 	3.2.3 CLM/CLM4.5 and CLM/CLM4.5-carbon vegetation types and fractions 
 	3.2.4 CLM Nitrogen Deposition, annual mean T2m, soil back ground albedo
 	3.2.5 CLM4.5 ABM, PEATF, GDP, HDM, and soil field capacity
@@ -461,7 +461,7 @@ cat << _EOI_ > clsm/intro
 	8.2.1 Country Code, US State Code, Country Name, State Name
    8.3 References
 
-APPENDIX I - mkCatchParam tag, input options, and log ........................... A-I
+APPENDIX I - mkCatchParam input options and log ................................. A-I
 
 =====================================================================================
 =================================== SECTION  1 ======================================
@@ -470,8 +470,8 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 1. INTRODUCTION
 
    This directory contains land boundary data files that are needed by the land models in 
-   the GEOS-5 climate modeling system.  The catchment-tiles (computational units at the 
-   land surface) have been derived for the GEOS5 ${mygrid} grid 
+   the GEOS climate modeling system.  The catchment-tiles (computational units at the 
+   land surface) have been derived for the GEOS ${mygrid} grid 
    `echo "$int_str1"`  
    The ${mygrid} grid comprises ${NGLOBAL} tiles globally, of which ${NTILES} 
    are catchment-tiles.
@@ -650,7 +650,7 @@ cat << _EOS1_ > clsm/soil
 	 (17)	clay_rz [w%]	percentage clay in the root-zone layer (0-100cm)
 	 (18)	WPWET_top [-]	wilting point/porosity for the surface layer (0-30cm)
 	 (19)	POROS_top [m3/m3] soil moisture content at saturation in the surface layer (0-30cm)
-	 (20)   PMAP the fraction of cell covered bt PEATLAND
+	 (20)   PMAP [-] fraction of cell (tile?) covered by peatland
 
 
 	         ========================================================================
@@ -912,8 +912,8 @@ cat << _EOS1_ > clsm/soil
  		 13.333  3.333 83.333  1.123  2.3751 -1.1086  0.4422  0.0555  0.57369E-06
  		  6.667  6.667 86.667  1.123  2.6893 -1.0407  0.4470  0.0699  0.51317E-06
  		  3.333  3.333 93.333  1.123  2.2797 -1.3816  0.4436  0.0563  0.32091E-06
-                 PEAT   (N/A)         >=8.72  3.4130 -1.7600  0.8000  0.2162  0.78600E-06
-                 PEAT,Bechtold et al. PEATMAP 3.5000 -0.0300  0.9300  0.3672  0.28000E-06
+   Peat: HWSD    (N/A)  (N/A)  (N/A)  >=8.72  3.4130 -1.7600  0.8000  0.2162  0.78600E-06
+or Peat: PEATMAP (N/A)  (N/A)  (N/A)          3.5000 -0.0300  0.9300  0.3672  0.28000E-06  (Bechtold et al)
 		 ------------------------------------------------------------------------
 
 		 Table 1: Soil Hydraulic Properties for 253 soil classes (adapted from De 
@@ -938,7 +938,6 @@ cat << _EOS1_ > clsm/soil
 	    T. M. Munir, M.B. Nilsson, J. S. Price, M. Röhl, A. Schneider, and B. Tiemeyer, 2019. 
 	    PEAT-CLSM: A specific treatment of peatland hydrology in the NASA Catchment Land 
 	    Surface Model. J. Adv. Model. Earth Sys., 11, 2130-2162. doi: 10.1029/2018MS001574. 
-
 _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
@@ -1033,8 +1032,8 @@ cat << _EOV1_ > clsm/veg1
 	 with Mosaic types: 1 - Broadleaf Evergreen; 2 - Broadleaf Deciduous; 3 - Needleleaf; 
 		4 - Grassland; 5 - Broadleaf Shrubs; 6 - Dwarf Trees 
 
-       3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS5
-       . file name: vegdyn.data or ../vegdyn_*.dat
+       3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS
+         file name: vegdyn.data or ../vegdyn_*.dat
          file format: fortran binaries, little_endian
              read ([UNIT]) (primary_veg_type(n),n=1,${NTILES})
              read ([UNIT]) (canopy_height   (n),n=1,${NTILES})
@@ -1280,7 +1279,7 @@ cat << _EOF0_ > clsm/README1
 
          Meanwhile, the SiB-based albedo scheme was run at a daily time step over a 1-year 
 	 period using the vegetation types, greenness fractions, and leaf area indices 
-	 established for GEOS-5 for a given distribution of land elements, as described 
+	 established for GEOS for a given distribution of land elements, as described 
 	 in sections 3 and 4 above.  Averaging the visible diffuse and near-infrared 
 	 diffuse albedos generated by the scheme over 8-day periods produced, in effect, 
 	 an 8-day ‘climatology’ of this particular scheme’s diffuse albedos.  The ratio 
@@ -1294,7 +1293,10 @@ cat << _EOF0_ > clsm/README1
 	                     
    5.2 Data files and movies 
        5.2.1 MODIS Albedo Climatology [Diffused, Visible (0.3_0.7) and Near-Infrared (0.7_5.0);
-             Note: GEOS5/CLSM does not read these data
+             Note: These data are not read into GEOS.  They are needed to derive the albedo
+                   scaling parameters (Section 5.2.2), which are used in conjunction with
+                   sun-angle dependent lookup values to achieve albedo values that match
+                   the MODIS climatology while preserving the diurnal cycle.  
          [Movie 3 : "plots/VISDF.mp4" (Diffused visible) and Movie 4 "plots/NIRDF.mp4" 
                    (Diffused infrared)]
 	 file names : ${AlbFileNames}
@@ -1451,7 +1453,7 @@ cat << _EOF1_ > clsm/README2
 	 codes together allows the construction of a catchment network within the basin. 
 	 Verdin (2013) provided global raster arrays of global Level 12 Pfafstetter codes 
 	 at 1-arcmin resolution along with information on mean elevation.  These data sets 
-	 were used to build the global river channel network slated for use with GEOS-5. 
+	 were used to build the global river channel network slated for use with GEOS. 
 
          The steps used to generate the river network are as follows. Each catchment 
 	 (referred to in this discussion as CatchX) has up to two upstream catchments 
