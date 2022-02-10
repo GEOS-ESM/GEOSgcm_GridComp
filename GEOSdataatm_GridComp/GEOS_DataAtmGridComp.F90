@@ -150,7 +150,7 @@ module GEOS_DataAtmGridCompMod
 !   else
 !      NUM_ICE_CATEGORIES = 1
 !      NUM_ICE_LAYERS     = 1
-!   endif
+    endif
 !   NUM_SUBTILES = NUM_ICE_CATEGORIES + 1
 
 ! Ocean biology and chemistry: using OBIO or not?
