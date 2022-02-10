@@ -547,12 +547,12 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 across a given catchment land element to determine that catchment’s effective soil 
 	 depth.
 
-	 Sixteen ARC/GIS shapefiles were obtained from Xu et al. (2017). Canada and 
+	 For PEATMAP, sixteen ARC/GIS shapefiles were obtained from Xu et al. (2017). Canada and 
 	 Hokaido-Mongolia-NorthKorea provided peat fractions inside designated polygons. All 
 	 other regional shape files give exact perimeter of of the peatland. A global 30-arcsec
 	 raster array (43200x21600) of peatland fraction was constructed using those 16 shapefiles.
 	 Soil types derived on tiles are now further updated using the peatmap data. If the computed
-	 fractional coverage of peatland based on PEATMAP data at a given catchment-tile excceeds 0.3, 
+	 fractional coverage of peatland based on PEATMAP data at a given catchment-tile excceeds 0.5(?), 
 	 we assume the dominant soil type is as peatland. Soil hydraulic parameters for all
 	 peatland tiles are now obtained from Bechtold et al. (2019).
          
@@ -1170,10 +1170,11 @@ cat << _EOV2_ > clsm/veg2
               data records are given below:
               `echo "${GSWP2_DATES}"`
 
-              Loop below through until the last data record:
-              read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
-              Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-              read ([UNIT]) (data(n),n=1,${NTILES})
+              do ii=1,N_avgperiod
+	         read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+	                       Year_End,  Month_End,  Day_End,  Hour_End,  Minute_End,  Secs_End (Float Numbers)
+	         read ([UNIT]) (data(n),n=1,${NTILES})
+	      end do
 
 _EOV2_
 endif
