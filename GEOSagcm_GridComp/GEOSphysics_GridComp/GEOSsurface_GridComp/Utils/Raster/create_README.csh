@@ -1171,9 +1171,9 @@ cat << _EOV2_ > clsm/veg2
               `echo "${GSWP2_DATES}"`
 
               Loop below through until the last data record:
-              write (lun) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+              read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
               Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-              write(lun) (data(n),n=1,${NTILES})
+              read ([UNIT]) (data(n),n=1,${NTILES})
 
 _EOV2_
 endif
