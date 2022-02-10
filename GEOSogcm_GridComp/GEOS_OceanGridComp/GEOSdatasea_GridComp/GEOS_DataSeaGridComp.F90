@@ -322,7 +322,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Read bulk SST from retrieval
 !------------------------------
 
-   call MAPL_GetPointer(import,     data_sst  , 'SATA_SST'       , RC=STATUS)
+   call MAPL_GetPointer(import,     data_sst  , 'DATA_SST'       , RC=STATUS)
    VERIFY_(STATUS)
    sst = data_sst
 
