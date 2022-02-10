@@ -74,8 +74,6 @@ MODULE CATCHMENT_CN_MODEL
        TF                => MAPL_TICE,   &  ! K                       
        RGAS              => MAPL_RGAS,   &  ! J/(kg K)                
        CPAIR             => MAPL_CP,     &  ! J/(kg K)
-       SHW               => MAPL_CAPWTR, &  ! J/kg/K  spec heat of wat
-       SHI               => MAPL_CAPICE, &  ! J/kg/K  spec heat of ice
        EPSILON           => MAPL_EPSILON 
   
   USE CATCH_CONSTANTS,   ONLY:                   &
@@ -87,7 +85,6 @@ MODULE CATCHMENT_CN_MODEL
        SLOPE             => CATCH_SNWALB_SLOPE,  &
        MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
        DZ1MAX            => CATCH_DZ1MAX,        &  
-       SHR               => CATCH_SHR,           &
        SCONST            => CATCH_SCONST,        &
        C_CANOP           => CATCH_C_CANOP,       &
        N_sm              => CATCH_N_ZONES,       &

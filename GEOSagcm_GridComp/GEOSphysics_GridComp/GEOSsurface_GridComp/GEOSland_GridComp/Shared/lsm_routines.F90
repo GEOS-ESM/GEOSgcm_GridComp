@@ -850,21 +850,26 @@ CONTAINS
                       dfh21w,dfh21i,dfh21d,tp)
 
 ! using a diffusion equation this code generates ground temperatures
-! with depth given t1
+! with depth given t1 (soil surface temperature; see below)
+! gndtp0(): calculate heat fluxes between TSURF components and TP1; calculate derivatives
+! gndtmp(): calculate soil heat content and temperature profiles
+!             (layers 2-7: TP1, ..., TP6; GHTCNT1, ... GHTCNT6)
+!
 !            *****************************************
-!        input
-!        dts     timestep in seconds
-!        t1      terrestrial (layer 1) temperature in deg C
+!      input:
+!        t1      terrestrial (layer 1) surface temperature in deg C
+!                (TC1, TC2, TC4 in Catchment and TG1, TG2, TG4 in CatchmentCN)
 !        phi     porosity
 !        zbar    mean depth to the water table.
 !        thetaf  mean vadose zone soil moisture factor (0-1)
-!        output,
+!      output:
 !        ht      heat content in layers 2-7
 !        tp      ground temperatures in layers 2-7
-!        tdeep   the temperature of the "deep"
 !        f21     heat flux between layer 2 and the terrestrial layer (1)
+!                   "w"=wet         =saturated   <=> AR1
+!                   "i"=intermediate=transpiring <=> AR2
+!                   "d"=dry         =wilting     <=> AR4
 !        df21    derivative of f21 with respect to temperature
-!        xfice   a total soil column ice factor (0-1)
 !             ***********************************
 
       REAL, INTENT(IN) :: phi, ZBAR, THETAF
@@ -1739,38 +1744,55 @@ CONTAINS
 
   ! *******************************************************************
 
-      subroutine gndtmp(phi_in,zbar,ht,xfice,tp,FICE,dts,thetaf,fh21)
+  subroutine gndtmp(phi,zbar,ht,xfice,tp,FICE,dts,thetaf,fh21)
+
+    ! Added functionality for "short" and "full" versions of gndtmp():
+    !   The "short" version of gndtmp() was originally introduced by Greg Walker 
+    !   for CatchmentCN by duplicating code in catchmentCN.F90.
+    !   It is now part of gndtmp() when called without the optional arguments.
+    !   - reichle+jkolassa, 10 Feb 2022
+    
 ! using a diffusion equation this code generates ground temperatures
-! with depth given t1
+! with depth given t1 (soil surface temperature; see below)
+! gndtp0(): calculate heat fluxes between TSURF components and TP1; calculate derivatives
+! gndtmp(): calculate soil heat content and temperature profiles
+!             (layers 2-7: TP1, ..., TP6; GHTCNT1, ... GHTCNT6)
+!
+! t1 = terrestrial (layer 1) surface temperature in deg C
+!                (TC1, TC2, TC4 in Catchment and TG1, TG2, TG4 in CatchmentCN)
+!
 !            *****************************************
-!        input
+!      input:
 !        dts     timestep in seconds
-!        phi_in  porosity
+!        phi     porosity
 !        zbar    mean depth to the water table.
 !        thetaf  mean vadose zone soil moisture factor (0-1)
-!        output,
+!        fh21    ground heat flux (between layer 1 and layer 2)
+!      input/output:
 !        ht      heat content in layers 2-7
+!      output:
 !        tp      ground temperatures in layers 2-7
-!        f21     heat flux between layer 2 and the terrestrial layer (1)
-!        xfice   a total soil column ice factor (0-1)
-!        FICE    soil ice
+!        xfice   a total soil column ice factor (0-1)  [in saturated portion of layers 2-7 only???]
+!        FICE    soil ice fraction in layers 2-7
 !             ***********************************
 
-      REAL, INTENT(IN) :: phi_in, ZBAR
-      REAL, INTENT(IN), OPTIONAL :: DTS, THETAF, FH21
+      REAL, INTENT(IN)                            :: phi, ZBAR
+      REAL, INTENT(IN),                  OPTIONAL :: DTS, THETAF, FH21
 
-      REAL, INTENT(INOUT), DIMENSION(*) :: HT
+      REAL, INTENT(INOUT), DIMENSION(*)           :: HT                        ! dimension(N_GT)
 
-      REAL, INTENT(OUT) :: XFICE
-      REAL, INTENT(OUT), DIMENSION(*) :: TP, FICE
+      REAL, INTENT(OUT)                           :: XFICE
+      REAL, INTENT(OUT),   DIMENSION(*)           :: TP, FICE                  ! dimension(N_GT)
 
-      INTEGER L, LSTART, K
-      REAL, DIMENSION(N_GT) :: ZC, SHC, XKLH
-      REAL, DIMENSION(N_GT+1) :: FH, ZB
-      REAL SHW0, SHI0, SHR0, WS, XW, A1, TK1, A2, TK2, TK3, TKSAT,      &
-           XWI, XD1, XD2, XKTH, TKDRY
-      REAL :: phi
-
+      ! ----------------------------------
+      
+      INTEGER                    :: L, LSTART, K
+      REAL,    DIMENSION(N_GT)   :: ZC, SHC, XKLH
+      REAL,    DIMENSION(N_GT+1) :: FH, ZB
+      REAL                       :: SHW0, SHI0, SHR0, WS, XW, A1, TK1, A2, TK2, TK3, TKSAT
+      REAL                       :: XWI, XD1, XD2, XKTH, TKDRY
+      LOGICAL                    :: full_version
+      
       !data dz/0.0988,0.1952,0.3859,0.7626,1.5071,10.0/
       !DATA PHI/0.45/, FSN/3.34e+8/, SHR/2.4E6/
 
@@ -1780,15 +1802,20 @@ CONTAINS
       shi0=SHI*1000. ! PER M RATHER THAN PER KG
       shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
 
-      if (PRESENT (DTS)) then ! jkolassa Jan 2022: the bkwd compatibility code block was previously only present in gndtmp_cn, so including it conditionally here
-         phi = phi_in
+! ---------------------------------
+
+      ! process optional arguments (all or none must be present)
+      
+      if     (       present(DTS)  .and.        present(THETAF)  .and.        present(FH21) ) then
+         full_version = .true.
+      elseif ((.not. present(DTS)) .and. (.not. present(THETAF)) .and. (.not. present(FH21))) then
+         full_version = .false.
       else
-         if (PHIGT<0.) then ! if statement for bkwd compatibility w/ off-line MERRA replay
-            phi=phi_in
-         else 
-            phi=PHIGT
-         end if
-      end if 
+         ! should be replaced with better error handling...
+         write (*,*) 'ERROR with optional input arguments for gndtmp()... stopping'
+         stop
+      endif
+
 !----------------------------------
 ! initialize fice in ALL components
 ! reichle, July 8, 2002
@@ -1800,24 +1827,13 @@ CONTAINS
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
  
-      if (present(DTS)) then
-         zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
-                    ! this routine.
-      else
-         zb(1)=-0.05
-      end if
+      zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
+                     ! this routine.
 
       do l=1,N_GT
         zb(l+1)=zb(l)-DZGT(l)
         shc(l)=shr0*(1-phi)*DZGT(l)
         enddo
-
-      if (present(DTS)) then
-         do l=1,N_GT
-            zc(l)=0.5*(zb(l)+zb(l+1))
-         enddo
-      end if
-
 
 ! evaluates the temperatures in the soil layers based on the heat values.
 !             ***********************************
@@ -1856,9 +1872,14 @@ CONTAINS
 
     10  continue
 
+      if (full_version) then
 
- if (present(DTS)) then
-
+         ! full version of gndtmp: additional updates of tp and fice
+         
+         do l=1,N_GT
+           zc(l)=0.5*(zb(l)+zb(l+1))
+           enddo
+    
    ! evaluates:  layer thermal conductivities
    ! *****************************************
    !             from farouki(cold regions sci and tech, 5, 1981,
@@ -1880,8 +1901,6 @@ CONTAINS
    !             output:
    !             xklh - thermal conductivity, w m-2 k-1
    !             ***********************************
-
-
 
    ! lets get the thermal conductivity for the layers
 
@@ -1946,8 +1965,6 @@ CONTAINS
             ht(k)=ht(k)+(fh(k+1)-fh(k))*dts
             enddo
 
-
-
    ! evaluates the temperatures in the soil  layers based on the heat
    ! values.
    !             ***********************************
@@ -1985,7 +2002,7 @@ CONTAINS
 
     1000    continue
  
- end if ! present(DTS)
+      end if ! full version of gndtmp()
 
 ! determine the value of xfice
       xfice=0.0
