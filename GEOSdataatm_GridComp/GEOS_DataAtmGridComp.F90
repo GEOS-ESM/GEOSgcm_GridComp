@@ -240,7 +240,7 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer   :: STATE => null()
+  type (MAPL_MetaComp), pointer   :: MAPL => null()
   type (MAPL_LocStream)           :: LOCSTREAM
   type (MAPL_LocStream)           :: EXCH
 
@@ -274,41 +274,41 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get my internal MAPL_Generic state
 !----------------------------------
 
-    call MAPL_GetObjectFromGC(GC, STATE, STATUS)
+    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
 
 ! Start Total timer
 !------------------
 
-    call MAPL_TimerOn (STATE,"TOTAL")
-    call MAPL_TimerOn (STATE,"INITIALIZE"  )
+    call MAPL_TimerOn (MAPL,"TOTAL")
+    call MAPL_TimerOn (MAPL,"INITIALIZE"  )
 
 !!! ALT this section below is not needed
 !+=======================================+
 ! Change the location stream to just the ocean part
 !--------------------------------------------------
 
-    call MAPL_Get(STATE, EXCHANGEGRID=EXCH,        RC=STATUS )
+    call MAPL_Get(MAPL, EXCHANGEGRID=EXCH,        RC=STATUS )
     VERIFY_(STATUS)
 
     call MAPL_LocStreamCreate(LOCSTREAM, EXCH, NAME='OCEAN', &
                                        MASK=(/MAPL_OCEAN/), RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_Set(STATE, LOCSTREAM=LOCSTREAM,   RC=STATUS )
+    call MAPL_ExchangeGridSet(GC, LOCSTREAM, rc=status)
     VERIFY_(STATUS)
 
-!   call MAPL_Get(STATE, HEARTBEAT = DTI, RC=STATUS)
+!   call MAPL_Get(MAPL, HEARTBEAT = DTI, RC=STATUS)
 !   VERIFY_(STATUS)
 
-!   call MAPL_GetResource ( STATE, DTI, Label="CICE_DT:", DEFAULT=DTI, RC=STATUS)
+!   call MAPL_GetResource ( MAPL, DTI, Label="CICE_DT:", DEFAULT=DTI, RC=STATUS)
 !   VERIFY_(STATUS)
 !+=======================================+
 ! all of CICE initialization is now done in GEOS_CICE4ColumnPhysGridComp.F90
 
 
-    call MAPL_TimerOff(STATE,"INITIALIZE"  )
-    call MAPL_TimerOff(STATE,"TOTAL")
+    call MAPL_TimerOff(MAPL,"INITIALIZE"  )
+    call MAPL_TimerOff(MAPL,"TOTAL")
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
@@ -615,11 +615,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-------------------------------------------------
     do K = 1, NUM_DUDP
        write(label,'(I3.3)') K
-       call MAPL_GetResource( STATE, DATAfile, LABEL='DUDP'//label//'_FILE:', default = 'none', RC=STATUS )
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUDP'//label//'_FILE:', default = 'none', RC=STATUS )
        VERIFY_(STATUS)
        if(trim(datafile) == 'none') then; dry_clay = 0.0
        else
-          call MAPl_ReadForcing( STATE, 'DUDP'//label, DATAFILE, CURRENTTIME, dry_clay, RC=STATUS )
+          call MAPl_ReadForcing( MAPL, 'DUDP'//label, DATAFILE, CURRENTTIME, dry_clay, RC=STATUS )
           VERIFY_(STATUS)
        endif
        if (associated(dry_clayx)) dry_clayx(:,K) = dry_clay
@@ -629,11 +629,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-------------------------------------------------
     do K = 1, NUM_DUWT
        write(label,'(I3.3)') K
-       call MAPL_GetResource( STATE, DATAfile, LABEL='DUWT'//label//'_FILE:', default = 'none', RC=STATUS )
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUWT'//label//'_FILE:', default = 'none', RC=STATUS )
        VERIFY_(STATUS)
        if(trim(datafile) == 'none') then; wet_clay = 0.0
        else
-          call MAPl_ReadForcing( STATE, 'DUWT'//label, DATAFILE, CURRENTTIME, wet_clay, RC=STATUS )
+          call MAPl_ReadForcing( MAPL, 'DUWT'//label, DATAFILE, CURRENTTIME, wet_clay, RC=STATUS )
           VERIFY_(STATUS)
        endif
        if (associated(wet_clayx)) wet_clayx(:,K) = wet_clay
@@ -643,11 +643,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !---------------------------------------------------------
     do K = 1, NUM_DUSD
        write(label,'(I3.3)') K
-       call MAPL_GetResource( STATE, DATAfile, LABEL='DUSD'//label//'_FILE:', default = 'none', RC=STATUS )
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUSD'//label//'_FILE:', default = 'none', RC=STATUS )
        VERIFY_(STATUS)
        if(trim(datafile) == 'none') then; sed_clay = 0.0
        else
-          call MAPl_ReadForcing( STATE, 'DUSD'//label, DATAFILE, CURRENTTIME, sed_clay, RC=STATUS )
+          call MAPl_ReadForcing( MAPL, 'DUSD'//label, DATAFILE, CURRENTTIME, sed_clay, RC=STATUS )
           VERIFY_(STATUS)
        endif
        if (associated(sed_clayx)) sed_clayx(:,K) = sed_clay
@@ -655,63 +655,63 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Read Atmospheric Clouds (Atmospheric Optics)
 !---------------------------------------------
-    call MAPL_GetResource( STATE, DATAfile, LABEL='CCOVM_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CCOVM_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; ccovm = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'CCOVM', DATAFILE, CURRENTTIME, ccovm, RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'CCOVM', DATAFILE, CURRENTTIME, ccovm, RC=STATUS )
         VERIFY_(STATUS)
     endif; 
 
-    call MAPL_GetResource( STATE, DATAfile, LABEL='CLDTCM_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CLDTCM_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; cldtcm = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'CLDTCM', DATAFILE, CURRENTTIME, cldtcm, RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'CLDTCM', DATAFILE, CURRENTTIME, cldtcm, RC=STATUS )
         VERIFY_(STATUS)
     endif; 
 
-    call MAPL_GetResource( STATE, DATAfile, LABEL='RLWPM_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='RLWPM_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; rlwpm = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'RLWPM', DATAFILE, CURRENTTIME, rlwpm, RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'RLWPM', DATAFILE, CURRENTTIME, rlwpm, RC=STATUS )
         VERIFY_(STATUS)
     endif; 
 
-    call MAPL_GetResource( STATE, DATAfile, LABEL='CDREM_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CDREM_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; cdrem = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'CDREM', DATAFILE, CURRENTTIME, cdrem, RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'CDREM', DATAFILE, CURRENTTIME, cdrem, RC=STATUS )
         VERIFY_(STATUS)
     endif; 
 
 ! Read Atmospheric Properties (Atmospheric Optics)
 !-------------------------------------------------
-    call MAPL_GetResource( STATE, DATAfile, LABEL='RH_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='RH_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; rh = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'RH', DATAFILE, CURRENTTIME, rh, RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'RH', DATAFILE, CURRENTTIME, rh, RC=STATUS )
         VERIFY_(STATUS)
     endif; 
 
-    call MAPL_GetResource( STATE, DATAfile, LABEL='OZ_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='OZ_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; oz = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'OZ', DATAFILE, CURRENTTIME, oz, RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'OZ', DATAFILE, CURRENTTIME, oz, RC=STATUS )
         VERIFY_(STATUS)
     endif; 
 
-    call MAPL_GetResource( STATE, DATAfile, LABEL='WV_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='WV_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; wv = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'WV', DATAFILE, CURRENTTIME, wv, RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'WV', DATAFILE, CURRENTTIME, wv, RC=STATUS )
         VERIFY_(STATUS)
     endif; 
 
 ! Read Atmospheric Carbon Dioxide from Carbon Tracker (_2011_OI)
 !-----------------------------------------------------
-    call MAPL_GetResource( STATE, DATAfile, LABEL='CO2SC_FILE:', default = 'none', RC=STATUS )
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CO2SC_FILE:', default = 'none', RC=STATUS )
     VERIFY_(STATUS)
     if(trim(datafile) == 'none') then; co2sc = 0.0; 
-    else; call MAPl_ReadForcing( STATE, 'CO2SC', DATAFILE, CURRENTTIME, co2sc,  RC=STATUS )
+    else; call MAPl_ReadForcing( MAPL, 'CO2SC', DATAFILE, CURRENTTIME, co2sc,  RC=STATUS )
         VERIFY_(STATUS)
     endif;
     if ( associated(co2scx) ) co2scx = co2sc
@@ -722,26 +722,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     do k=1, 33
      write(unit = suffix, fmt = '(i2.2)') k
-     call MAPL_GetResource( STATE, DATAfile, LABEL='TAUA_FILE:', default = 'none', RC=STATUS )
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='TAUA_FILE:', default = 'none', RC=STATUS )
      VERIFY_(STATUS)
      if(trim(datafile) == 'none') then; taua = 0.0
-     else; call MAPL_ReadForcing( STATE, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, taua, RC=STATUS)
+     else; call MAPL_ReadForcing( MAPL, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, taua, RC=STATUS)
          VERIFY_(STATUS)
      endif;
      ataua(k)%b => taua
 
-     call MAPL_GetResource( STATE, DATAfile, LABEL='ASYMP_FILE:', default = 'none', RC=STATUS )
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='ASYMP_FILE:', default = 'none', RC=STATUS )
      VERIFY_(STATUS)
      if(trim(datafile) == 'none') then; asymp = 0.0
-     else; call MAPL_ReadForcing( STATE, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, asymp, RC=STATUS)
+     else; call MAPL_ReadForcing( MAPL, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, asymp, RC=STATUS)
          VERIFY_(STATUS)
      endif;  
      aasymp(k)%b => asymp
 
-     call MAPL_GetResource( STATE, DATAfile, LABEL='SSALB_FILE:', default = 'none', RC=STATUS )
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='SSALB_FILE:', default = 'none', RC=STATUS )
      VERIFY_(STATUS)
      if(trim(datafile) == 'none') then; ssalb = 0.0
-     else; call MAPL_ReadForcing( STATE, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ssalb, RC=STATUS)
+     else; call MAPL_ReadForcing( MAPL, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ssalb, RC=STATUS)
          VERIFY_(STATUS)
      endif;
      assalb(k)%b => ssalb
