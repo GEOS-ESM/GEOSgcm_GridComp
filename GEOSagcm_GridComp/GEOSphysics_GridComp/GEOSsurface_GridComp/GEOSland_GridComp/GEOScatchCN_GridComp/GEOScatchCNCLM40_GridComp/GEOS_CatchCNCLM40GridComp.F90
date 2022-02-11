@@ -62,7 +62,8 @@ module GEOS_CatchCNCLM40GridCompMod
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
-       catch_calc_zbar, catch_calc_watertabled, irrigation_rate
+       catch_calc_zbar, catch_calc_watertabled, irrigation_rate, &
+       gndtmp
 
 implicit none
 private
@@ -6570,10 +6571,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! soil temperatures
 ! -----------------
        
-      ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTMP_CN)
+      ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTMP)
       ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
       HT(:)=GHTCNT(:,N)
-      CALL GNDTMP_CN(poros(n),-1.*zbar,ht,frice,tp,soilice)  ! note minus sign for zbar
+      CALL GNDTMP(poros(n),-1.*zbar,ht,frice,tp,soilice)  ! note minus sign for zbar
 
       ! At the CatchCNGridComp level, tp1, tp2, .., tp6 are export variables in units of Kelvin,
       ! - rreichle & borescan, 6 Nov 2020

@@ -1076,10 +1076,11 @@
           ENDDO
         FH21=-GHFLUX(N)
 
-        CALL GNDTMP(                                  &
-              dtstep,phi,-1.*zbar,thetaf,fh21,        &   ! note minus sign for zbar
-              ht,                                     &
-              xfice,tp, soilice)
+        CALL GNDTMP(                                   &
+              phi, -1.*zbar,                           &   ! note minus sign for zbar
+              ht,                                      &
+              xfice, tp, soilice,                      &
+              DTS=dtstep, THETAF=thetaf, FH21=fh21)
 
         DO LAYER=1,6
           GHTCNT(LAYER,N)=HT(LAYER)
