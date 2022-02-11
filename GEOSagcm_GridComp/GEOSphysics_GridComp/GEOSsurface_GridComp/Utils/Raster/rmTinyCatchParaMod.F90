@@ -109,14 +109,14 @@ contains
        process_peat = .false.
        jpl_height   = .true.
 
-     case ("NL4p")
+     case ("NL5")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        process_peat = .true.
        jpl_height   = .true.
 
-    case ("DEF")
+    case ("DEV")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -3673,7 +3673,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	     form='formatted',status='unknown')  
  
      endif 
-       fout='clsm/soil_param.dat'
+
+     fout='clsm/soil_param.dat'
  	open (42,file=fout,action='write',        &
 	     form='formatted',status='unknown')       
 
