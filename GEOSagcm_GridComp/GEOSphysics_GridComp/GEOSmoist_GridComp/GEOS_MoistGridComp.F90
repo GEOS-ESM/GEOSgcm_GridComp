@@ -5717,7 +5717,7 @@ contains
           call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 5400., RC=STATUS );VERIFY_(STATUS)
         else
-          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 7200., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 7200.,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
         endif
 
@@ -6977,7 +6977,7 @@ contains
         call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT= 0.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:'  ,DEFAULT=40.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,  'FRC_RASN:'  ,DEFAULT= 1.0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT= 8.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT= 5.0, RC=STATUS)
       endif
       call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
 
@@ -8235,12 +8235,7 @@ contains
 
       QSSFC    = GEOS_QSAT( TS , CNV_PLE(:,:,LM) )
 
-!--srf-gf-scheme
-      if(associated(DTDTCN)) DTDTCN=TEMP
-!--srf-gf-scheme
-
 !-srf - placed here before the cumulus parameterizations are called.
-      if(associated(CNV_DQLDT)) CNV_DQLDT =  0.0
       do L=LM,0,-1
          ZLE(:,:,L) = ZL0(:,:,L) - ZL0(:,:,LM) 
       end do
@@ -8272,8 +8267,12 @@ contains
       if(associated(TVE0   )) TVE0    = SUM( (  MAPL_CP*TEMP + MAPL_ALHL*Q           & 
            -  MAPL_ALHF*(QILS+QICN) )*MASS , 3 )
       if(associated(DCPTE  )) DCPTE   = SUM( MAPL_CP*TEMP*MASS , 3 )
-      if(associated(DQDTCN )) DQDTCN  = Q1
-      if(associated(DTHDTCN)) DTHDTCN = TH1
+
+      ! Total convective tendencies DeepCu + ShCu
+      if(associated(DQDTCN ))   DQDTCN  = Q1
+      if(associated(DTHDTCN))   DTHDTCN = TH1
+      if(associated(DTDTCN))    DTDTCN  = TEMP
+      if(associated(CNV_DQLDT)) CNV_DQLDT =  0.0
 
       if(associated(DQLDT  )) DQLDT   = QLLS + QLCN
       if(associated(DQIDT  )) DQIDT   = QILS + QICN
@@ -9204,10 +9203,6 @@ contains
         
       if(associated(ZCBL   )) ZCBL     = ZCBLx
       if(associated(DQRC   )) DQRC     = CNV_PRC3           / DT_MOIST
-      if(associated(DQDTCN )) DQDTCN   = ( Q1  -  DQDTCN  ) / DT_MOIST
-      if(associated(DTHDTCN)) DTHDTCN  = ( TH1 -  DTHDTCN ) / DT_MOIST
-      if(associated(DQCDTCN)) DQCDTCN  = CNV_DQLDT * MAPL_GRAV / ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
-      if(associated(DTDTCN )) DTDTCN   = ( TH1*PK -  DTDTCN ) / DT_MOIST
 
       if(associated(DTDT_DC)) DTDT_DC=(TH1*PK - DTDT_DC)/DT_MOIST
       if(associated(DQVDT_DC)) DQVDT_DC=(Q1 - DQVDT_DC)/DT_MOIST
@@ -9491,13 +9486,12 @@ contains
          end if
       end do
 
-      call MAPL_TimerOff(STATE,"-POST_CNV")
+      if(associated(DQDTCN )) DQDTCN   = ( Q1  -  DQDTCN  ) / DT_MOIST
+      if(associated(DTHDTCN)) DTHDTCN  = ( TH1 -  DTHDTCN ) / DT_MOIST
+      if(associated(DQCDTCN)) DQCDTCN  = CNV_DQLDT * MAPL_GRAV / ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
+      if(associated(DTDTCN )) DTDTCN   = ( TH1*PK -  DTDTCN ) / DT_MOIST
 
-      if(JASON_TUNING == 1) then
-         call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
-      else
-         call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
-      end if
+      call MAPL_TimerOff(STATE,"-POST_CNV")
 
       ! Horizontal resolution dependant defaults for minimum RH crit
       tmprh = CEILING(100.0*(1.0-min(0.20, max(0.01, 0.1*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0
@@ -9553,9 +9547,11 @@ contains
       if(JASON_TUNING == 1) then
         call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
         call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.0   )
+        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,        'PDFSHAPE:',        DEFAULT= 1.0   )
       else
         call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
         call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 2.0   )
+        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,        'PDFSHAPE:',        DEFAULT= 2.0   )
       endif
 
 #ifdef _CUDA
@@ -13195,7 +13191,7 @@ do K= 1, LM
           end do
       end do
       call MAPL_GetPointer(EXPORT, KUCHERA_RATIO,'KUCHERA_RATIO', RC=STATUS); VERIFY_(STATUS)
-      KUCHERA_RATIO=TMP2D_X
+      if(associated(KUCHERA_RATIO)) KUCHERA_RATIO=TMP2D_X
 
       call MAPL_GetPointer(EXPORT, SNOWTOTAL,'SNOWTOTAL', RC=STATUS); VERIFY_(STATUS)
       if (associated(SNOWTOTAL)) then

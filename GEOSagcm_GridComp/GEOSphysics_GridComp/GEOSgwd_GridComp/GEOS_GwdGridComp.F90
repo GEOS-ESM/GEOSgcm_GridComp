@@ -154,7 +154,7 @@ contains
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.false., RC=STATUS)
+    call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.true., RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set the state variable specs.
@@ -996,7 +996,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, RC=STATUS)
+       call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
@@ -1679,7 +1679,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOn(MAPL,"-INTR")
 
-       if (USE_NCAR_GWD) then
+!      if (USE_NCAR_GWD) then
          ! get pointers from INTERNAL:MXDIS
          call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
          VERIFY_(STATUS)
@@ -1743,7 +1743,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               NCAR_EFFGWBKG, &
               RC=STATUS)
          VERIFY_(STATUS)
+
           ! Use GEOS GWD only for Extratropical background sources...
+          DUDT_GWD_GEOS = 0.0
+          DVDT_GWD_GEOS = 0.0
+          DTDT_GWD_GEOS = 0.0
+          TAUXB_TMP_GEOS = 0.0
+          TAUYB_TMP_GEOS = 0.0
+          DUDT_ORG_GEOS = 0.0
+          DVDT_ORG_GEOS = 0.0
+          DTDT_ORG_GEOS = 0.0
+          TAUXO_TMP_GEOS = 0.0
+          TAUYO_TMP_GEOS = 0.0
          if ( (GEOS_EFFGWORO /= 0.0) .OR. (GEOS_EFFGWBKG /= 0.0) ) then
           call gw_intr   (IM*JM,      LM,         DT,                  &
                GEOS_PGWV,                                              &
@@ -1759,18 +1770,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                GEOS_EFFGWBKG, &
                RC=STATUS)
           VERIFY_(STATUS)
-         else
-          DUDT_GWD_GEOS = 0.0
-          DVDT_GWD_GEOS = 0.0
-          DTDT_GWD_GEOS = 0.0
-          TAUXB_TMP_GEOS = 0.0
-          TAUYB_TMP_GEOS = 0.0
-          DUDT_ORG_GEOS = 0.0
-          DVDT_ORG_GEOS = 0.0
-          DTDT_ORG_GEOS = 0.0
-          TAUXO_TMP_GEOS = 0.0
-          TAUYO_TMP_GEOS = 0.0
          endif
+
          ! Total 
          DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD_NCAR
          DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR
@@ -1784,26 +1785,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
          TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
-       else
-          ! Use GEOS GWD    
-          call gw_intr   (IM*JM,      LM,         DT,                  &
-               PGWV,                                                   &
-               PLE,       T,          U,          V,      SGH,   PREF, &
-               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-               DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-               BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
-         VERIFY_(STATUS)
-       end if
+
+!      else
+!         ! Use GEOS GWD    
+!         call gw_intr   (IM*JM,      LM,         DT,                  &
+!              PGWV,                                                   &
+!              PLE,       T,          U,          V,      SGH,   PREF, &
+!              PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+!              DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+!              DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+!              TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+!              TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+!              FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+!              BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
+!        VERIFY_(STATUS)
+!      end if
 
     ! Topographic Form Drag [Beljaars et al (2004)]
     call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=0.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, mxwspd, Label="BELJAARS_MAX_WSPD:",  default=15.0, RC=STATUS)
     VERIFY_(STATUS)
+    if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),stat=status)
     VERIFY_(STATUS)
     THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
@@ -1850,7 +1853,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     DUDT_GWD=DUDT_GWD+DUDT_TOFD
     DVDT_GWD=DVDT_GWD+DVDT_TOFD
     deallocate( THV )
- 
+    else
+    DUDT_TOFD=0.0
+    DVDT_TOFD=0.0  
+    endif 
     call MAPL_TimerOff(MAPL,"-INTR")
 
     CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
