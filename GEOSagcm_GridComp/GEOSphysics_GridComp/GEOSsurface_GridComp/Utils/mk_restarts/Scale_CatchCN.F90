@@ -402,13 +402,13 @@ program Scale_CatchCN
           
   endif
 
-  ! PEAT CLSM - ensure low CATDEF on peat tiles
-  ! -------------------------------------------
+  ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
+  ! -------------------------------------------------------------------------------
 
-  where (catch(sca)%poros >= PEATCLSM_POROS_THRESHOLD)
-     catch(sca)%catdef = 25. ! changed to 25. for now, needs more thought, reichle, 2/2/22
-     catch(sca)%rzexc  = 0.
-     catch(sca)%srfexc = 0.
+  where ( (catch(old)%poros < PEATCLSM_POROS_THRESHOLD) .and. (catch(sca)%poros >= PEATCLSM_POROS_THRESHOLD) )
+     catch(sca)%catdef = 25.
+     catch(sca)%rzexc  =  0.
+     catch(sca)%srfexc =  0.
   end where
 
 ! Write Scaled Catch

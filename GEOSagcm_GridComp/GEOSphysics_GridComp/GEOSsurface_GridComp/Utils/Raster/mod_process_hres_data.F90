@@ -4036,7 +4036,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	 end do 
        end do
       
-      if(process_peat) then 
+      if(use_PEATMAP) then 
          print *, 'PMAP_THRESH : ', pmap_thresh
          allocate(pmapr (1:i_highd,1:j_highd))
          status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
@@ -4274,7 +4274,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	allocate(btau_2cm(1:n_SoilClasses))
         allocate(a_wpsurf(1:n_SoilClasses))
         allocate(a_porosurf(1:n_SoilClasses))
-      if(process_peat) then 
+      if(use_PEATMAP) then 
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap'
       else
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
@@ -4375,7 +4375,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !$OMP         data_vec4,data_vec5,data_vec6,cF_lim,     &
 !$OMP         table_map,soil_class_top,soil_class_com,  &
 !$OMP         soc_vec,poc_vec,ncells_top,ncells_top_pro,&
-!$OMP         ncells_sub_pro,process_peat)    &
+!$OMP         ncells_sub_pro,use_PEATMAP)    &
 !$OMP PRIVATE(n,i,j,k,icount,t_count,i1,i2,ss_clay,     &
 !$OMP         ss_sand,ss_clay_all,ss_sand_all,          &
 !$OMP         ss_oc_all,cFamily,factor,o_cl,o_clp,ktop, &
@@ -4439,7 +4439,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	if (sum(cFamily) == 0.) o_cl  = 1
 	if (sum(cFamily)  > 0.) o_cl  = maxloc(cFamily, dim = 1)
 
-        if (process_peat) then
+        if (use_PEATMAP) then
           ! if 50% or more of the tile surface is covered with peat, we assume the tile is peat
            if (cFamily(4)/real(i) > 0.5)  then 
               o_cl  = 4
@@ -4664,7 +4664,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          fac_surf = soil_class_top(n)
 	 fac      = soil_class_com(n)
 
-         if(process_peat) then
+         if(use_PEATMAP) then
             ! the maximum peat soil depth is set to the value Michel used to derive parameters (1334.) 
             if (fac_surf == 253)  soildepth(n) = 5000. ! max(soildepth(n),5000.)
             ! reseet subsurface tro peat if surface soil type is peat
