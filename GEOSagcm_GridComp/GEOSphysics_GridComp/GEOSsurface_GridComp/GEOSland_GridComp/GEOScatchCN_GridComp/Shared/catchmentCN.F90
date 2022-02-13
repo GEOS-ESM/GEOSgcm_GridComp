@@ -74,8 +74,6 @@ MODULE CATCHMENT_CN_MODEL
        TF                => MAPL_TICE,   &  ! K                       
        RGAS              => MAPL_RGAS,   &  ! J/(kg K)                
        CPAIR             => MAPL_CP,     &  ! J/(kg K)
-       SHW               => MAPL_CAPWTR, &  ! J/kg/K  spec heat of wat
-       SHI               => MAPL_CAPICE, &  ! J/kg/K  spec heat of ice
        EPSILON           => MAPL_EPSILON 
   
   USE CATCH_CONSTANTS,   ONLY:                   &
@@ -87,7 +85,6 @@ MODULE CATCHMENT_CN_MODEL
        SLOPE             => CATCH_SNWALB_SLOPE,  &
        MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
        DZ1MAX            => CATCH_DZ1MAX,        &  
-       SHR               => CATCH_SHR,           &
        SCONST            => CATCH_SCONST,        &
        C_CANOP           => CATCH_C_CANOP,       &
        N_sm              => CATCH_N_ZONES,       &
@@ -121,7 +118,6 @@ MODULE CATCHMENT_CN_MODEL
   public :: catchcn_calc_tsurf
   public :: catchcn_calc_tsurf_excl_snow
   public :: catchcn_calc_etotl
-  public :: gndtmp_cn
 
   ! -----------------------------------------------------------------------------
   
@@ -1062,9 +1058,9 @@ CONTAINS
         FH21=-GHFLUX(N)
 
         CALL GNDTMP(                                                           &
-              dtstep,phi,zbar,thetaf,fh21,                                     &
+              phi,zbar,                                                        &
               ht,                                                              &
-              xfice,tp, soilice)
+              xfice,tp, soilice,DTS=dtstep,THETAF=thetaf,FH21=fh21)
 
         DO LAYER=1,6
           GHTCNT(LAYER,N)=HT(LAYER)
@@ -2304,111 +2300,6 @@ CONTAINS
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
-
-      subroutine gndtmp_cn(poros, zbar, ht, xfice, tp, FICE)                                              
-
-      REAL, INTENT(IN) :: POROS, ZBAR
-
-      REAL, INTENT(IN), DIMENSION(*) :: HT
-
-      REAL, INTENT(OUT) :: XFICE
-      REAL, INTENT(OUT), DIMENSION(*) :: TP, FICE
-
-      INTEGER L, LSTART, K
-      REAL, DIMENSION(N_GT) :: SHC
-
-      REAL, DIMENSION(N_GT+1) :: FH, ZB
-      REAL SHW0, SHI0, SHR0, WS, XW, PHI
-
-      !data dz/0.0988,0.1952,0.3859,0.7626,1.5071,10.0/
-      !DATA PHI/0.45/, FSN/3.34e+8/, SHR/2.4E6/        
-
-! initialize parameters
-
-      shw0=SHW*1000. ! PER M RATHER THAN PER KG 
-      shi0=SHI*1000. ! PER M RATHER THAN PER KG 
-      shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
-
-      if (PHIGT<0.) then ! if statement for bkwd compatibility w/ off-line MERRA replay
-         phi=poros
-       else
-         phi=PHIGT
-      end if
-
-!----------------------------------
-! initialize fice in ALL components
-! reichle, July 8, 2002            
-
-      do l=1,N_GT
-        fice(l)=0.0  
-        enddo        
-!----------------------------------
-
-! calculate the boundaries, based on the layer thicknesses(DZGT)
-
-      zb(1)=-0.05    ! Bottom of surface layer, which is handled outside
-                    ! this routine.
-      do l=1,N_GT
-        zb(l+1)=zb(l)-DZGT(l)
-        shc(l)=SHR0*(1-phi)*DZGT(l)
-        enddo
-
- 
-! evaluates the temperatures in the soil layers based on the heat values.  
-!             ***********************************                          
-!             input:                                                       
-!             xw - water in soil layers, m                                 
-!             ht - heat in soil layers                                     
-!             fsn - heat of fusion of water   J/m                              
-!             shc - specific heat capacity of soil                         
-!             shi - specific heat capacity of ice                          
-!             shw - specific heat capcity of water                         
-!             snowd - snow depth, equivalent water m                       
-!             output:                                                      
-!             tp - temperature of layers, c                                
-!             fice - fraction of ice of layers                             
-!             pre - extra precipitation, i.e. snowmelt, m s-1              
-!             snowd - snow depth after melting, equivalent water m.        
-!             ***********************************                          
-! determine fraction of ice and temp of soil layers based on layer         
-! heat and water content                                                   
-
-      do 10 k=1,N_GT
-        ws=phi*DZGT(k)  ! PORE SPACE IN LAYER
-        xw=0.5*ws   ! ASSUME FOR THESE CALCULATIONS THAT THE PORE SPACE
-                    ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE     
-                    ! AMOUNT OF WATER IN THE LAYER.                    
-        tp(k)=0.                                                       
-        fice(k)= AMAX1( 0., AMIN1( 1., -ht(k)/(fsn*xw) ) )             
-
-        IF(FICE(K) .EQ. 1.) THEN
-            tp(k)=(ht(k)+xw*fsn)/(shc(k)+xw*shi0)
-          ELSEIF(FICE(K) .EQ. 0.) THEN           
-            tp(k)=ht(k)/(shc(k)+xw*shw0)         
-          ELSE                                   
-            TP(K)=0.                             
-          ENDIF                                  
-    10  continue
-
-! determine the value of xfice
-      xfice=0.0
-
-      lstart=N_GT
-      DO L=N_GT,1,-1
-         IF(ZBAR .GE. ZB(L+1))THEN
-            LSTART=L
-            ENDIF
-         ENDDO   
-
-      do l=lstart,N_GT
-         xfice=xfice+fice(l)
-         enddo
-      xfice=xfice/((N_GT+1)-lstart)      
-
-      Return
-      end subroutine gndtmp_cn
-  
-  
   ! *******************************************************************
 
   subroutine catchcn_calc_tsurf( NTILES, tc1, tc2, tc4, wesnn, htsnn,    &

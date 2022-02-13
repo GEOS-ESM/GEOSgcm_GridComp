@@ -61,7 +61,8 @@ module GEOS_CatchCNCLM45GridCompMod
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
-  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
+  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate, &
+                               gndtmp
   use update_model_para4cn, only : upd_curr_date_time
 
 implicit none
@@ -6622,7 +6623,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 ! -----------------
       zbar = -sqrt(1.e-20+catdef(n)/bf1(n))+bf2(n)
       HT(:)=GHTCNT(:,N)
-      CALL GNDTMP_CN(poros(n),zbar,ht,frice,tp,soilice)
+      CALL GNDTMP(poros(n),zbar,ht,frice,tp,soilice)
 
       ! At the CatchCNGridComp level, tp1, tp2, .., tp6 are export variables in units of Kelvin,
       ! - rreichle & borescan, 6 Nov 2020
