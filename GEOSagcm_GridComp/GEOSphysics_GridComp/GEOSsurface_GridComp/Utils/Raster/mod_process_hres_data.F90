@@ -3758,7 +3758,7 @@ END SUBROUTINE modis_scale_para_high
       logical :: regrid,write_file
       INTEGER, allocatable, dimension (:) :: soil_class_top,soil_class_com
       REAL :: sf,factor,wp_wetness,fac_count
-      logical                            :: file_exists
+      logical                            :: CatchParamsNC_file_exists
       REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
       ! PEAT-clsm modification
       ! Below parameters are from Table 2 of:
@@ -4036,7 +4036,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	 end do 
        end do
       
-      if(process_peat) then 
+      if(use_PEATMAP) then 
          print *, 'PMAP_THRESH : ', pmap_thresh
          allocate(pmapr (1:i_highd,1:j_highd))
          status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
@@ -4274,7 +4274,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	allocate(btau_2cm(1:n_SoilClasses))
         allocate(a_wpsurf(1:n_SoilClasses))
         allocate(a_porosurf(1:n_SoilClasses))
-      if(process_peat) then 
+      if(use_PEATMAP) then 
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap'
       else
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
@@ -4375,7 +4375,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !$OMP         data_vec4,data_vec5,data_vec6,cF_lim,     &
 !$OMP         table_map,soil_class_top,soil_class_com,  &
 !$OMP         soc_vec,poc_vec,ncells_top,ncells_top_pro,&
-!$OMP         ncells_sub_pro,process_peat)    &
+!$OMP         ncells_sub_pro,use_PEATMAP)    &
 !$OMP PRIVATE(n,i,j,k,icount,t_count,i1,i2,ss_clay,     &
 !$OMP         ss_sand,ss_clay_all,ss_sand_all,          &
 !$OMP         ss_oc_all,cFamily,factor,o_cl,o_clp,ktop, &
@@ -4439,7 +4439,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	if (sum(cFamily) == 0.) o_cl  = 1
 	if (sum(cFamily)  > 0.) o_cl  = maxloc(cFamily, dim = 1)
 
-        if (process_peat) then
+        if (use_PEATMAP) then
           ! if 50% or more of the tile surface is covered with peat, we assume the tile is peat
            if (cFamily(4)/real(i) > 0.5)  then 
               o_cl  = 4
@@ -4604,9 +4604,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 !      call process_peatmap (nx, ny, gfiler, pmap)
 
-      inquire(file='clsm/catch_params.nc4', exist=file_exists)
+      inquire(file='clsm/catch_params.nc4', exist=CatchParamsNC_file_exists)
 
-      if(file_exists) then
+      if(CatchParamsNC_file_exists) then
          status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
          allocate (parms4file (1:maxcat, 1:10))
       endif
@@ -4664,7 +4664,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          fac_surf = soil_class_top(n)
 	 fac      = soil_class_com(n)
 
-         if(process_peat) then
+         if(use_PEATMAP) then
             ! the maximum peat soil depth is set to the value Michel used to derive parameters (1334.) 
             if (fac_surf == 253)  soildepth(n) = 5000. ! max(soildepth(n),5000.)
             ! reseet subsurface tro peat if surface soil type is peat
@@ -4699,8 +4699,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   	 endif
       end do
       write (11,'(a)')'                    '
-      write (11,'(a)')'FMT=i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4'
-      write (11,'(a)')'TileIndex PfafID SoilClassTop SoilClassProfile BEE PSIS POROS Ks_at_SURF WPWET SoilDepth %Grav %OCTop %OCProf %Sand_top %Clay_top %Sand_prof %Clay_prof WPWET_SURF POROS_SURF'
+      write (11,'(a)')'FMT=i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4,f8.4'
+      write (11,'(a)')'TileIndex PfafID SoilClassTop SoilClassProfile BEE PSIS POROS Ks_at_SURF WPWET SoilDepth %Grav %OCTop %OCProf %Sand_top %Clay_top %Sand_prof %Clay_prof WPWET_SURF POROS_SURF PMAP'
       close (10, status = 'keep')	            
       close (11, status = 'keep')	            
       close (12, status = 'keep')	            
@@ -4713,7 +4713,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             atau_2cm,btau_2cm)
       deallocate (soildepth, grav_vec,soc_vec,poc_vec,&
              ncells_top,ncells_top_pro,ncells_sub_pro,soil_class_top,soil_class_com)
-      if(file_exists) then
+      if(CatchParamsNC_file_exists) then
          status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; VERIFY_(STATUS) 
          status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; VERIFY_(STATUS) 
          status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; VERIFY_(STATUS) 
@@ -4852,82 +4852,84 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     
     ! --------------------------------------------------------------------------------------
 
-    SUBROUTINE process_peatmap (nc, nr, gfiler, pmap)
-      
-      implicit none
-      integer  , parameter                         :: N_lon_pm = 43200, N_lat_pm = 21600
-      integer, intent (in)                         :: nc, nr
-      real, pointer, dimension (:), intent (inout) :: pmap
-      character(*), intent (in)                    :: gfiler
-      integer                                      :: i,j, status, varid, ncid
-      integer                                      :: NTILES        
-      REAL, ALLOCATABLE, dimension (:)             :: count_pix
-      REAL, ALLOCATABLE, dimension (:,:)           :: data_grid, pm_grid
-      INTEGER, ALLOCATABLE, dimension (:,:)        :: tile_id
-      character*100                                :: fout    
-      
-      ! Reading number of tiles
-      ! -----------------------
-      
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
-      
-      read (20, *) NTILES
-      
-      close (20, status = 'keep')
-      
-      ! READ PEATMAP source data files and regrid
-      ! -----------------------------------------
-      
-      status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
-      
-      allocate (pm_grid   (1 : NC      , 1 : NR))
-      allocate (data_grid (1 : N_lon_pm, 1 : N_lat_pm)) 
-      
-      status  = NF_INQ_VARID (ncid,'PEATMAP',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1/),(/N_lon_pm, N_lat_pm/), data_grid) ; VERIFY_(STATUS)
-      
-      call RegridRasterReal(data_grid, pm_grid)
-      
-      status = NF_CLOSE(ncid)
-      
-      ! Grid to tile
-      ! ------------
-      
-      ! Reading tile-id raster file
-      
-      allocate(tile_id(1:nc,1:nr))
-      
-      open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
-           form='unformatted',convert='little_endian')
-      
-      do j=1,nr
-         read(10)tile_id(:,j)
-      end do
-      
-      close (10,status='keep')     
-      
-      allocate (pmap      (1:NTILES))
-      allocate (count_pix (1:NTILES))
-      
-      pmap      = 0.
-      count_pix = 0.
-      
-      do j = 1,nr
-         do i = 1, nc
-            if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.NTILES)) then                
-               if(pm_grid(i,j) > 0.)  pmap (tile_id(i,j)) = pmap (tile_id(i,j)) + pm_grid(i,j)
-               count_pix (tile_id(i,j)) = count_pix (tile_id(i,j)) + 1. 
-            endif
-         end do
-      end do
-      
-      where (count_pix >   0.) pmap = pmap/count_pix
-      
-      deallocate (count_pix)
-      deallocate (pm_grid)
-      deallocate (tile_id)
-      
-    END SUBROUTINE process_peatmap
+! this subroutine seems obsolete, commented out for now - reichle, 9 Feb 2022
+
+!   SUBROUTINE process_peatmap (nc, nr, gfiler, pmap)
+!     
+!     implicit none
+!     integer  , parameter                         :: N_lon_pm = 43200, N_lat_pm = 21600
+!     integer, intent (in)                         :: nc, nr
+!     real, pointer, dimension (:), intent (inout) :: pmap
+!     character(*), intent (in)                    :: gfiler
+!     integer                                      :: i,j, status, varid, ncid
+!     integer                                      :: NTILES        
+!     REAL, ALLOCATABLE, dimension (:)             :: count_pix
+!     REAL, ALLOCATABLE, dimension (:,:)           :: data_grid, pm_grid
+!     INTEGER, ALLOCATABLE, dimension (:,:)        :: tile_id
+!     character*100                                :: fout    
+!     
+!     ! Reading number of tiles
+!     ! -----------------------
+!     
+!     open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
+!     
+!     read (20, *) NTILES
+!     
+!     close (20, status = 'keep')
+!     
+!     ! READ PEATMAP source data files and regrid
+!     ! -----------------------------------------
+!     
+!     status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+!     
+!     allocate (pm_grid   (1 : NC      , 1 : NR))
+!     allocate (data_grid (1 : N_lon_pm, 1 : N_lat_pm)) 
+!     
+!     status  = NF_INQ_VARID (ncid,'PEATMAP',VarID) ; VERIFY_(STATUS)
+!     status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1/),(/N_lon_pm, N_lat_pm/), data_grid) ; VERIFY_(STATUS)
+!     
+!     call RegridRasterReal(data_grid, pm_grid)
+!     
+!     status = NF_CLOSE(ncid)
+!     
+!     ! Grid to tile
+!     ! ------------
+!     
+!     ! Reading tile-id raster file
+!     
+!     allocate(tile_id(1:nc,1:nr))
+!     
+!     open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+!          form='unformatted',convert='little_endian')
+!     
+!     do j=1,nr
+!        read(10)tile_id(:,j)
+!     end do
+!     
+!     close (10,status='keep')     
+!     
+!     allocate (pmap      (1:NTILES))
+!     allocate (count_pix (1:NTILES))
+!     
+!     pmap      = 0.
+!     count_pix = 0.
+!     
+!     do j = 1,nr
+!        do i = 1, nc
+!           if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.NTILES)) then                
+!              if(pm_grid(i,j) > 0.)  pmap (tile_id(i,j)) = pmap (tile_id(i,j)) + pm_grid(i,j)
+!              count_pix (tile_id(i,j)) = count_pix (tile_id(i,j)) + 1. 
+!           endif
+!        end do
+!     end do
+!     
+!     where (count_pix >   0.) pmap = pmap/count_pix
+!     
+!     deallocate (count_pix)
+!     deallocate (pm_grid)
+!     deallocate (tile_id)
+!     
+!   END SUBROUTINE process_peatmap
     
 ! ====================================================================
 
@@ -6398,7 +6400,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       read (20, *) maxcat
       
 
-      ! READ PEATMAP source data files and regrid
+      ! READ country code source data files and regrid
       ! -----------------------------------------
       
       status  = NF_OPEN ('data/CATCH/GADM_Country_and_USStates_codes_1km.nc4', NF_NOWRITE, ncid)

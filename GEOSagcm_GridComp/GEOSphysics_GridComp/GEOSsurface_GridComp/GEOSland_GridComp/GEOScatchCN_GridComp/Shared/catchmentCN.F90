@@ -90,20 +90,21 @@ MODULE CATCHMENT_CN_MODEL
        N_sm              => CATCH_N_ZONES,       &
        SATCAPFR          => CATCH_SATCAPFR,      &
        PHIGT             => CATCH_PHIGT,         &
-       DZTC              => CATCH_DZTC,          &
+       DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
-       FSN               => CATCH_FSN
+       FSN               => CATCH_FSN,           &
+       PEATCLSM_POROS_THRESHOLD,                 &
+       PEATCLSM_ZBARMAX_4_SYSOIL
 
-  
   USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT,   &
        LAND_FIX, FLWALPHA
-
+  
   USE lsm_routines, only :                       &
        INTERC, RZDRAIN, BASE, PARTITION, RZEQUIL,&
-       gndtp0, gndtmp,                           &
-       catch_calc_soil_moist,                    &
+       gndtp0, gndtmp,                           &   
+       catch_calc_soil_moist, catch_calc_zbar,   &
        catch_calc_wtotl, dampen_tc_oscillations, &
-       SRUNOFF 
+       SRUNOFF
   
   USE SIBALB_COEFF,  ONLY: coeffsib
   
@@ -168,7 +169,7 @@ CONTAINS
        EVACC, SHACC, TSURF,                                      &
        SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
        LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
-       TCSORIG, TPSN1IN, TPSN1OUT,                               &
+       TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE,                    &
        TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
        RCONSTIT, RMELT, TOTDEPOS, LHACC                          &
        )
@@ -230,11 +231,12 @@ CONTAINS
          HSNACC, EVACC, SHACC
     REAL, INTENT(OUT), DIMENSION(:) :: GHFLUXSNO, GHTSKIN
     
-    REAL, INTENT(OUT), DIMENSION(:) :: SH_SNOW, AVET_SNOW,       &
+    REAL, INTENT(OUT), DIMENSION(:) :: SH_SNOW, AVET_SNOW,         &
          WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL
-    REAL, INTENT(OUT), DIMENSION(:) :: LH_SNOW, LWUP_SNOW,       &
+    REAL, INTENT(OUT), DIMENSION(:) :: LH_SNOW, LWUP_SNOW,         &
          LWDOWN_SNOW, NETSW_SNOW
-    REAL, INTENT(OUT), DIMENSION(:) :: TCSORIG, TPSN1IN, TPSN1OUT
+    REAL, INTENT(OUT), DIMENSION(:) :: TCSORIG, TPSN1IN, TPSN1OUT, &
+         FSW_CHANGE
     
     
     REAL, INTENT(OUT), DIMENSION(:), OPTIONAL :: LHACC
@@ -253,7 +255,7 @@ CONTAINS
          RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,      &
          HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,                &
          QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4,                       &
-         FCAN, THRUL, THRUC, RZEQOL, frice, srfmx,                          &
+         FCAN, THRUL_VOL, THRUC_VOL, RZEQOL, frice, srfmx,                  &
          srfmn, RCST1, RCST2, EVAPFR, RDCX, EVAP1, EVAP2,                   &
          EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,          &
          GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,       &
@@ -280,7 +282,7 @@ CONTAINS
     
     REAL, DIMENSION(N_SM) :: T1, AREA, tkgnd, fhgnd
     
-    REAL :: TG1SN, TG2SN, TG4SN, DTG1SN,DTG2SN,DTG4SN, ZBAR, THETAF,         &
+    REAL :: TG1SN, TG2SN, TG4SN, DTG1SN,DTG2SN,DTG4SN, ZBAR, THETAF,      &
          XFICE, FH21, FH21W, FH21I, FH21D, DFH21W, DFH21I, DFH21D,        &
          EVSN, SHFLS, HUPS, HCORR, SWNET0, HLWDWN0, TMPSNW, HLWTC,        &
          DHLWTC, HSTURB, DHSDEA, DHSDTC, ESATTC, ETURB, DEDEA, DEDTC,     &
@@ -622,7 +624,7 @@ CONTAINS
 !**** DETERMINE INITIAL VALUE OF RZEQ:
 
       CALL RZEQUIL (                                                           &
-                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,                     &
+                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,POROS,               &
                     ars1,ars2,ars3,ara1,ara2,ara3,ara4,                        &
                     arw1,arw2,arw3,arw4,                                       &
                     RZEQOL                                                     &
@@ -638,6 +640,7 @@ CONTAINS
       CALL PARTITION (                                                         &
                       NCH,DTSTEP,DZSF,RZEXC,  RZEQOL,VGWMAX,CDCR1,CDCR2,       &
                       PSIS,BEE,poros,WPWET,                                    &
+                      bf1, bf2,                                                &
                       ars1,ars2,ars3,ara1,ara2,ara3,ara4,                      &
                       arw1,arw2,arw3,arw4,BUG,                                 &
                       SRFEXC,CATDEF,RUNSRF,                                    &
@@ -685,16 +688,17 @@ CONTAINS
         else
            phi=PHIGT
         end if
-        ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)
+        ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTP0)
+        ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
         THETAF=.5
         DO LAYER=1,6
           HT(LAYER)=GHTCNT(LAYER,N)
           ENDDO
 
-        CALL GNDTP0(                                                           &
-                    T1,phi,ZBAR,THETAF,                                        &
-                    HT,                                                        &
-                    fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp                  &
+        CALL GNDTP0(                                                &
+                    T1,phi,-1.*ZBAR,THETAF,                         &   ! note minus sign for zbar
+                    HT,                                             &
+                    fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp       &
                    )
 
         HFTDS1(N)=-FH21W
@@ -729,9 +733,7 @@ CONTAINS
 
         ENDDO
 
-
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 !**** 1. SATURATED FRACTION
 
       DO N=1,NCH
@@ -750,9 +752,7 @@ CONTAINS
                      SHFLUX1,  HLWUP1, GHFLUX1                                 &
                    )
 
-
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 !**** 2. SUBSATURATED BUT UNSTRESSED FRACTION
 
       CALL RSURFP2 ( NCH, RSSAT, SWSRF2, QSAT2, QA2, PSUR, WPWET, RSURF )
@@ -764,19 +764,18 @@ CONTAINS
                      SWNETF, HLWDWN, ALW2, BLW2,                               &
                      QM,  CSOIL, CCANOP,   PSUR,                               &
                      HFTDS2, DHFT2, RD, RSURF, POTFRC,                         &
-                     TG2SF,  TC2SF,     QA2,                                       &
+                     TG2SF,  TC2SF,     QA2,                                   &
                      EVAP2, EVROOT2, EVSURF2, EVINT2,                          &
                      SHFLUX2,  HLWUP2, GHFLUX2                                 &
                   )
 
-!****
-
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 !**** 3. WILTING FRACTION
 
+      ! MB: For ET calculation, AR4 surface wetness is set to WPWET 
+      WHERE (POROS > PEATCLSM_POROS_THRESHOLD)  SWSRF4 = WPWET  ! PEATCLSM
+      
       CALL RSURFP2 ( NCH, RSSAT, SWSRF4, QSAT4, QA4, PSUR, WPWET, RSURF  )
-
 
       CALL FLUXES (                                                            &
                      NCH,   FVEG, DTSTEP, QSAT4, DQS4,                         &
@@ -785,11 +784,10 @@ CONTAINS
                      SWNETF, HLWDWN, ALW4, BLW4,                               &
                      QM,  CSOIL, CCANOP,   PSUR,                               &
                      HFTDS4, DHFT4, RD, RSURF, POTFRC,                         &
-                     TG4SF, TC4SF, QA4,                                            &
+                     TG4SF, TC4SF, QA4,                                        &
                      EVAP4, EVROOT4, EVSURF4, EVINT4,                          &
                      SHFLUX4,  HLWUP4, GHFLUX4                                 &
                    )
-
 
 !**** --------------------------------------------------------
 !**** B. SNOW-COVERED FRACTION.
@@ -801,7 +799,12 @@ CONTAINS
         T1(1)  = TG1(N)-TF
         T1(2)  = TG2(N)-TF
         T1(3)  = TG4(N)-TF
-        AREA(1)= AR1(N)
+        ! MB: avoid division by zero (AR1=0) in PEATCLSM equations
+        IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
+           AREA(1)= amax1(AR1(N),2.E-20)
+        ELSE
+           AREA(1) = AR1(N)
+        END IF
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
         pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
@@ -818,7 +821,7 @@ CONTAINS
         tkgnd(2)=1.8 
         tkgnd(3)=1.8 
         raddn=hlwdwn(n)+swnets(n) 
-        zc1=-(DZTC*0.5)
+        zc1=-(DZTSURF*0.5)
         hups=0.0 
  
 !**** 1. RUN SNOW MODEL: 
@@ -958,9 +961,9 @@ CONTAINS
           TG4SN=TPSNB(N)
           ENDIF
 
-        TG1(N)=TG1SF(N)*(1-AREASC)+TG1SN*AREASC
-        TG2(N)=TG2SF(N)*(1-AREASC)+TG2SN*AREASC
-        TG4(N)=TG4SF(N)*(1-AREASC)+TG4SN*AREASC
+        TG1(N)=TG1SF(N)*(1.-AREASC)+TG1SN*AREASC
+        TG2(N)=TG2SF(N)*(1.-AREASC)+TG2SN*AREASC
+        TG4(N)=TG4SF(N)*(1.-AREASC)+TG4SN*AREASC
 
 
         
@@ -972,9 +975,9 @@ CONTAINS
         DTC2SN=TPSN1(N)-TC2(N)
         DTC4SN=TPSN1(N)-TC4(N)
 
-        TC1(N)=TC1SF(N)*(1-AREASC)+TPSN1(N)*AREASC
-        TC2(N)=TC2SF(N)*(1-AREASC)+TPSN1(N)*AREASC
-        TC4(N)=TC4SF(N)*(1-AREASC)+TPSN1(N)*AREASC
+        TC1(N)=TC1SF(N)*(1.-AREASC)+TPSN1(N)*AREASC
+        TC2(N)=TC2SF(N)*(1.-AREASC)+TPSN1(N)*AREASC
+        TC4(N)=TC4SF(N)*(1.-AREASC)+TPSN1(N)*AREASC
 
 !        TC1(N)=TC1SF(N)*(1-AREASC)+TC1_ORIG(N)*AREASC
 !        TC2(N)=TC2SF(N)*(1-AREASC)+TC2_ORIG(N)*AREASC
@@ -1050,17 +1053,19 @@ CONTAINS
         else
            phi=PHIGT
         end if
-        ZBAR=-SQRT(1.e-20+catdef(n)/bf1(n))+bf2(n)
+        ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTMP)
+        ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
         THETAF=.5
         DO LAYER=1,6
           HT(LAYER)=GHTCNT(LAYER,N)
           ENDDO
         FH21=-GHFLUX(N)
 
-        CALL GNDTMP(                                                           &
-              phi,zbar,                                                        &
-              ht,                                                              &
-              xfice,tp, soilice,DTS=dtstep,THETAF=thetaf,FH21=fh21)
+        CALL GNDTMP(                                   &
+              phi, -1.*zbar,                           &   ! note minus sign for zbar
+              ht,                                      &
+              xfice, tp, soilice,                      &
+              DTS=dtstep, THETAF=thetaf, FH21=fh21)
 
         DO LAYER=1,6
           GHTCNT(LAYER,N)=HT(LAYER)
@@ -1088,7 +1093,8 @@ CONTAINS
                      NCH, DTSTEP,                                              &
                      EVAPFR, SATCAP, TG1, RA1, RC,                             &
                      AR1,AR2,AR4,CDCR1, ESATFR,                                &
-                     RZEQOL,SRFMN,WPWET,VGWMAX,                                &
+                     RZEQOL,SRFMN,WPWET,VGWMAX, POROS,                         &
+                     BF1, BF2, ARS1, ARS2, ARS3,                               &
                      CAPAC, RZEXC, CATDEF, SRFEXC,                             &
                      ESOI, EVEG, EINT,                                         &
                      ECORR                                                     &
@@ -1114,7 +1120,8 @@ CONTAINS
 
       CALL RZDRAIN (                                                           &
                     NCH,DTSTEP,VGWMAX,SATCAP,RZEQOL,AR1,WPWET,                 &
-                    tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,             &
+                    tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,                 &
+                    BF1, BF2, ARS1, ARS2, ARS3, BUG,                           &
                     CAPAC,RZEXC,SRFEXC,CATDEF,RUNSRF                           &
                     )
 
@@ -1127,9 +1134,9 @@ CONTAINS
 !**** COMPUTE BASEFLOW FROM TOPMODEL EQUATIONS
 
       CALL BASE (                                                              &
-                 NCH, DTSTEP,BF1, BF2, BF3, CDCR1, FRICE, COND, GNU,           &
-                 CATDEF,                                                       &
-                 BFLOW                                                         &
+                 NCH, DTSTEP,BF1, BF2, BF3, CDCR1, FRICE, COND, GNU,AR1, POROS,&  
+                 ARS1, ARS2, ARS3,                                             &
+                 CATDEF, BFLOW                                                 &
                 )
 
 ! ---------------------------------------------------------------------
@@ -1144,7 +1151,7 @@ CONTAINS
              NCH, DTSTEP, FWETC, FWETL, TRAINLX, TRAINCX, SMELT,         &
              SATCAP, BUG,                                                &
              CAPAC,                                                      &
-             THRUL, THRUC                                                &
+             THRUL_VOL, THRUC_VOL                                        &
              )
 
       IF (BUG) THEN
@@ -1153,9 +1160,11 @@ CONTAINS
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-        CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
-             AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
-             SRFEXC,RUNSRF,                                             &
+        CALL SRUNOFF ( NCH, DTSTEP, UFW4RO, FWETC, FWETL,               &
+             AR1, AR2, AR4, THRUL_VOL, THRUC_VOL,                       &
+             FRICE, TP1, SRFMX, BUG,                                    & 
+             VGWMAX, RZEQOL, POROS,                                     &
+             SRFEXC, RZEXC, RUNSRF,                                     &
              QINFIL                                                     &
              )
 
@@ -1168,7 +1177,7 @@ CONTAINS
 !**** RECOMPUTE RZEXC:
 
       CALL RZEQUIL (                                                           &
-                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,                     &
+                    NCH, CATDEF, VGWMAX,CDCR1,CDCR2,WPWET,POROS,               &
                     ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,    &
                     RZEQ                                                       &
                    )
@@ -1194,8 +1203,8 @@ CONTAINS
       ! note revised interface - reichle, 3 Apr 2012
 
       CALL CATCH_CALC_SOIL_MOIST (                                             &
-          nch,ityp1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,              &
-          ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,              &
+          nch,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,                    &
+          ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,      &
           srfexc,rzexc,catdef,                                                 &
           AR1, AR2, AR4,                                                       &
           sfmc, rzmc, prmc,                                                    &
@@ -1276,6 +1285,12 @@ CONTAINS
         WCHANGE(N) = (WTOT(N)-WTOT_ORIG(N))/DTSTEP
         ECHANGE(N) = (ENTOT(N)-ENTOT_ORIG(N))/DTSTEP
 
+        !FSW_CHANGE IS THE CHANGE IN THE FREE-STANDING WATER, RELEVANT FOR PEATLAND ONLY
+        FSW_CHANGE(N) = 0.
+        IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
+           pr = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
+           FSW_CHANGE(N) = PR - EVAP(N) - RUNOFF(N) - WCHANGE(N)
+        ENDIF
 
 ! Perform check on sum of AR1 and AR2, to avoid calculation of negative 
 ! wilting fraction due to roundoff, outside of catchment:
@@ -1902,7 +1917,7 @@ CONTAINS
       DTC=DTCDRY+WETFRC*(DTCWET-DTCDRY)
       DTG=DTGDRY+WETFRC*(DTGWET-DTGDRY)
       DEA=DEADRY+WETFRC*(DEAWET-DEADRY)
-      ENBAL1=(1-FVEG(N))*SWNET(N) +  FVEG(N)*(HLWTC + DHLWTC*DTC) +         &
+      ENBAL1=(1.-FVEG(N))*SWNET(N) +  FVEG(N)*(HLWTC + DHLWTC*DTC) +        &
           (1.-FVEG(N))*HLWDWN(N) - (HLWTG + DHLWTC*DTG) -                   &
           DHDTG*(TG(N)-TC(N)) -                                             &
           RHOTERM*ALHE*(ESATTC(N)+DESDTC(N)*(TG(N)-TCOLD)                   &
@@ -2149,7 +2164,8 @@ CONTAINS
                            NCH, DTSTEP,                                     &
                            EVAP, SATCAP, TC, RA, RC,                        &
                            AR1,AR2,AR4,CDCR1, ESATFR,                       &
-                           RZEQ,SRFMN,WPWET,VGWMAX,                         &
+                           RZEQ,SRFMN,WPWET,VGWMAX, POROS,                  &
+                           BF1, BF2, ARS1, ARS2, ARS3,                      &
                            CAPAC, RZEXC, CATDEF, SRFEXC,                    &
                            EVROOT, EVSURF, EVINT,                           &
                            ECORR                                            &
@@ -2163,7 +2179,8 @@ CONTAINS
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: EVAP,  SATCAP, TC, RA, RC, AR1,   &
-            AR2, AR4, CDCR1, ESATFR, RZEQ, SRFMN, WPWET, VGWMAX
+            AR2, AR4, CDCR1, ESATFR, RZEQ, SRFMN, WPWET, VGWMAX,            &
+            POROS, BF1, BF2, ARS1, ARS2, ARS3
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC, RZEXC, CATDEF,          &
             SRFEXC, EVROOT, EVSURF, EVINT
@@ -2172,11 +2189,11 @@ CONTAINS
 
       INTEGER  N
       REAL  EGRO,CNDSAT,CNDUNS,CNDV,CNDS,WILT,EGROMX,RZEMAX
+      REAL :: ZBAR1,SYSOIL,ET_CATDEF,AR1eq
 !****
 !**** -----------------------------------------------------------------
 
       DO 100 N = 1, NCH
-
 !****
 !**** PARTITION EVAP BETWEEN INTERCEPTION AND GROUND RESERVOIRS.
 !****
@@ -2217,17 +2234,30 @@ CONTAINS
 !**** REMOVE MOISTURE FROM RESERVOIRS:
 !****
 
-      IF (CATDEF(N) .LT. CDCR1(N)) THEN
+       IF (CATDEF(N) .LT. CDCR1(N)) THEN
           CAPAC(N) = AMAX1(0., CAPAC(N) - EVINT(N)*DTSTEP)
           RZEXC(N) = RZEXC(N) - EVROOT(N)*(1.-ESATFR(N))*DTSTEP
           SRFEXC(N) = SRFEXC(N) - EVSURF(N)*(1.-ESATFR(N))*DTSTEP
-          CATDEF(N) = CATDEF(N) + (EVSURF(N) + EVROOT(N))*ESATFR(N)*DTSTEP
-! 05.12.98: FIRST ATTEMPT TO INCLUDE BEDROCK
-        ELSE
+          IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
+             CATDEF(N) = CATDEF(N) + (EVSURF(N) + EVROOT(N))*ESATFR(N)*DTSTEP
+             ! 05.12.98: FIRST ATTEMPT TO INCLUDE BEDROCK
+          ELSE
+             ! PEAT
+             ! MB: accounting for water ponding on AR1
+             ! same approach as for RZFLW (see subroutine RZDRAIN for
+             ! comments)
+             ZBAR1  = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
+             SYSOIL = (2.*bf1(N)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(N)*bf2(N))/1000.
+             SYSOIL = amin1(SYSOIL,poros(N))
+             ET_CATDEF = SYSOIL*(EVSURF(N) + EVROOT(N))*ESATFR(N)/(1.*AR1(N)+SYSOIL*(1.-AR1(N)))
+             AR1eq = (1.+ars1(N)*(catdef(N)))/(1.+ars2(N)*(catdef(N))+ars3(N)*(catdef(N))**2)
+             CATDEF(N) = CATDEF(N) + (1.-AR1eq)*ET_CATDEF
+          ENDIF
+       ELSE
           CAPAC(N) = AMAX1(0., CAPAC(N) - EVINT(N)*DTSTEP)
           RZEXC(N) = RZEXC(N) -  EVROOT(N)*DTSTEP
           SRFEXC(N) = SRFEXC(N) - EVSURF(N)*DTSTEP
-        ENDIF
+       ENDIF
 
 !****
  100  CONTINUE
@@ -2300,7 +2330,6 @@ CONTAINS
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
-  ! *******************************************************************
 
   subroutine catchcn_calc_tsurf( NTILES, tc1, tc2, tc4, wesnn, htsnn,    &
        ar1, ar2, ar4, tsurf )
@@ -2389,11 +2418,11 @@ CONTAINS
 
   ! *******************************************************************
 
-  subroutine catchcn_calc_etotl( NTILES, vegcls, dzsf, vgwmax, cdcr1, cdcr2, &
-       psis, bee, poros, wpwet,                                            &
-       ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,   &
-       srfexc, rzexc, catdef, tc1, tc2, tc4, tg1, tg2, tg4,                &
-       wesnn, htsnn, ghtcnt,                                               &
+  subroutine catchcn_calc_etotl( NTILES, dzsf, vgwmax, cdcr1, cdcr2,         &
+       psis, bee, poros, wpwet,bf1, bf2,                                     &
+       ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,     &
+       srfexc, rzexc, catdef, tc1, tc2, tc4, tg1, tg2, tg4,                  &
+       wesnn, htsnn, ghtcnt,                                                 &
        etotl )
     
     ! compute total energy stored in land tiles
@@ -2407,10 +2436,9 @@ CONTAINS
     
     integer,                           intent(in)  :: NTILES
     
-    integer, dimension(       NTILES), intent(in)  :: vegcls
     real,    dimension(       NTILES), intent(in)  :: dzsf
     real,    dimension(       NTILES), intent(in)  :: vgwmax
-    real,    dimension(       NTILES), intent(in)  :: cdcr1, cdcr2
+    real,    dimension(       NTILES), intent(in)  :: cdcr1, cdcr2, bf1, bf2
     real,    dimension(       NTILES), intent(in)  :: psis, bee, poros, wpwet    
     real,    dimension(       NTILES), intent(in)  :: ars1, ars2, ars3
     real,    dimension(       NTILES), intent(in)  :: ara1, ara2, ara3, ara4
@@ -2443,9 +2471,9 @@ CONTAINS
     rzexc_tmp  = rzexc    ! rzexc  is "inout" in catch_calc_soil_moist()
     catdef_tmp = catdef   ! catdef is "inout" in catch_calc_soil_moist()
     
-    call catch_calc_soil_moist(                                                &
-         NTILES, vegcls, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,  &
-         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,     &
+    call catch_calc_soil_moist(                                                    &
+         NTILES, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,              &
+         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,bf1, bf2,&
          srfexc_tmp, rzexc_tmp, catdef_tmp, ar1, ar2, ar4 )
     
     ! compute snow-free tsurf

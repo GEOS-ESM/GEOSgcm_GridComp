@@ -31,12 +31,14 @@ MODULE lsm_routines
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
        RHOFS             => CATCH_SNWALB_RHOFS,  &
-       DZTC              => CATCH_DZTC,          &
+       DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
        PHIGT             => CATCH_PHIGT,         &
        FSN               => CATCH_FSN,           &       
        SHR               => CATCH_SHR,           &
-       N_SM              => CATCH_N_ZONES
+       N_SM              => CATCH_N_ZONES,       &
+       PEATCLSM_POROS_THRESHOLD,                 &
+       PEATCLSM_ZBARMAX_4_SYSOIL
   
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
@@ -53,9 +55,15 @@ MODULE lsm_routines
   PRIVATE
 
   PUBLIC :: INTERC, SRUNOFF, RZDRAIN, BASE, PARTITION, RZEQUIL, gndtp0
-  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
+  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_watertabled
+  PUBLIC :: catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
   PUBLIC :: dampen_tc_oscillations, irrigation_rate
+
+  INTERFACE catch_calc_zbar
+     MODULE PROCEDURE catch_calc_zbar_scalar
+     MODULE PROCEDURE catch_calc_zbar_vector
+  END INTERFACE catch_calc_zbar
 
   ! ---------------------------------------------------------------------------
   !
@@ -94,7 +102,7 @@ CONTAINS
                          TRAINL, TRAINC, SMELT,       &  ! [kg m-2 s-1]
                          SATCAP,BUG,                  &
                          CAPAC,                       &
-                         THRUL, THRUC                 &  ! [kg m-2] !!!!
+                         THRUL_VOL, THRUC_VOL         &  ! [kg m-2] !!!!
                         )
 !****
 !**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE
@@ -116,10 +124,12 @@ CONTAINS
 
       REAL,    INTENT(INOUT), DIMENSION(NCH) :: CAPAC
 
-      REAL,    INTENT(OUT),   DIMENSION(NCH) :: THRUC, THRUL           ! [kg m-2]      ("volume" units) !!!
-
-      INTEGER CHNO
-      REAL WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR,SMPERS
+      REAL,    INTENT(OUT),   DIMENSION(NCH) :: THRUL_VOL, THRUC_VOL   ! [kg m-2]      ("volume" units) !!!
+      
+      ! --------------------------
+      
+      INTEGER :: CHNO
+      REAL    :: WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR, SMPERS, THRUL, THRUC
 
 !****
 !**** ------------------------------------------------------------------
@@ -161,7 +171,7 @@ CONTAINS
 
       THRU2=XTCORR*WATADD
 
-      THRUL(CHNO)=THRU1+THRU2
+      THRUL=THRU1+THRU2
 
       CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
 
@@ -198,13 +208,14 @@ CONTAINS
 
       THRU2=XTCORR*WATADD
 
-      THRUC(CHNO)=THRU1+THRU2
+      THRUC=THRU1+THRU2
+      
       CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
 !****
-      IF (THRUL(CHNO)+THRUC(CHNO) .LT. -1.e-8) WRITE(*,*) 'THRU= ',                        &
-          THRUL(CHNO), THRUC(CHNO), TRAINC(CHNO), TRAINL(CHNO), SMELT(CHNO)
-      THRUL(CHNO)=AMAX1(0., THRUL(CHNO))
-      THRUC(CHNO)=AMAX1(0., THRUC(CHNO))
+      IF (THRUL+THRUC .LT. -1.e-8) WRITE(*,*) 'THRU= ',                        &
+          THRUL, THRUC, TRAINC(CHNO), TRAINL(CHNO), SMELT(CHNO)
+      THRUL_VOL(CHNO)=AMAX1(0., THRUL)
+      THRUC_VOL(CHNO)=AMAX1(0., THRUC)
       
  100  CONTINUE
 !****
@@ -219,13 +230,14 @@ CONTAINS
 !**** ///////////////////////////////////////////////////
 !**** ===================================================
 
-      SUBROUTINE SRUNOFF (                                &
-           NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4,  &
-           THRUL_VOL, THRUC_VOL,                          &  ! [kg m-2]      ("volume" units) !!!
-           frice,tp1,srfmx, BUG,                          &
-           SRFEXC,                                        &
-           RUNSRF,                                        &  ! [kg m-2 s-1]  (flux units)
-           QINFIL                                         &  ! [kg m-2 s-1]  (flux units)
+      SUBROUTINE SRUNOFF (                                    &
+           NCH, DTSTEP, UFW4RO, FWETC, FWETL, AR1, AR2, AR4,  &
+           THRUL_VOL, THRUC_VOL,                              &  ! [kg m-2]      ("volume" units) !!!
+           FRICE, TP1, SRFMX, BUG,                            &
+           VGWMAX, RZEQ, POROS,                               &
+           SRFEXC, RZEXC,                                     &
+           RUNSRF,                                            &  ! [kg m-2 s-1]  (flux units)
+           QINFIL                                             &  ! [kg m-2 s-1]  (flux units)
            )
 
 !**** NOTE: Input throughfall is in volume units, as are calcs throughout this subroutine  [kg m-2]
@@ -238,19 +250,26 @@ CONTAINS
       INTEGER, INTENT(IN)                    :: NCH
       REAL,    INTENT(IN)                    :: DTSTEP, FWETC, FWETL
       LOGICAL, INTENT(IN)                    :: UFW4RO 
-      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1, srfmx
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, AR2, AR4, FRICE, TP1, SRFMX
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: VGWMAX, RZEQ, POROS
       REAL,    INTENT(IN),    DIMENSION(NCH) :: THRUL_VOL, THRUC_VOL              ! [kg m-2] 
       LOGICAL, INTENT(IN)                    :: BUG
-
-      REAL,    INTENT(INOUT), DIMENSION(NCH) :: SRFEXC
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: SRFEXC, RZEXC
       REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                            ! [kg m-2 s-1]
-
       REAL,    INTENT(OUT),   DIMENSION(NCH) :: QINFIL                            ! [kg m-2 s-1]
 
-      INTEGER N
-      REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal
+      ! ---------------------------
+      
+      INTEGER              :: N
+      REAL                 :: deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil
+      REAL                 :: srunc, srunl, ptotal, excess, totcapac, watadd
       REAL, DIMENSION(NCH) :: THRUL, THRUC
 
+      ! constants for PEATCLSM piecewise linear relationship between surface runoff and AR1
+      
+      REAL, PARAMETER      :: SRUN_AR1_MIN   =  0.5
+      REAL, PARAMETER      :: SRUN_AR1_SLOPE = 10.
+      
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
       ! calculations throughout srunoff() are in "volume" units [kg m-2]
@@ -263,69 +282,177 @@ CONTAINS
       DO N=1,NCH
 
          if(.not.UFW4RO) then
-            
+
             PTOTAL=THRUL(N) + THRUC(N)
-            frun=AR1(N)
-            srun0=PTOTAL*frun
-            
-            !**** Comment out this line in order to allow moisture
-            !**** to infiltrate soil:
-            !       if(tp1(n) .lt. 0.) srun0=ptotal
-            
-            if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
-                 srun0=ptotal-(srfmx(n)-srfexc(n)) 
-            
-            if (srun0 .gt. ptotal) srun0=ptotal
-            
-            RUNSRF(N)=RUNSRF(N)+srun0
-            QIN=PTOTAL-srun0
-            
+
+            IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
+               ! Non-peatland
+               frun=AR1(N)
+               srun0=PTOTAL*frun
+
+               !**** Comment out this line in order to allow moisture
+               !**** to infiltrate soil:
+               !       if(tp1(n) .lt. 0.) srun0=ptotal
+
+               if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
+                    srun0=ptotal-(srfmx(n)-srfexc(n))
+
+               if (srun0 .gt. ptotal) srun0=ptotal
+
+               RUNSRF(N)=RUNSRF(N)+srun0
+               QIN=PTOTAL-srun0
+               SRFEXC(N)=SRFEXC(N)+QIN
+            ELSE
+               ! Peatland
+               ! MB: no Hortonian surface runoff
+               !Note (rdk, from discussion w/MB; email 01/04/2021): 
+               ! forcing all the rain to fall onto 
+               ! the soil (1-AR1 fraction) rather than
+               ! onto both the soil and the free water surface is a simple shortcut;
+               ! the key function of this code is to retain all rainwater in the system
+               ! and *only* to produce surface runoff when the 
+               ! ground is already ridiculously wet.
+               ! This prevents problems (e.g., numerical instabilities) found in 
+               ! discharge calculations elsewhere in the code.
+
+               srun0 = 0.
+               ! handling numerical instability due to exceptional snow melt events at some pixels
+               ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
+               !Added ramping to avoid potential oscillations (rdk, 09/18/20)
+               IF (AR1(N)>SRUN_AR1_MIN) srun0=PTOTAL*amin1(1.,(ar1(n)-SRUN_AR1_MIN)*SRUN_AR1_SLOPE)
+
+               ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+               ! Rewrote code to determine excess over capacity all at once (rdk, 09/18/20)
+
+               totcapac=(srfmx(n)-srfexc(n))+(vgwmax(n)-(rzeq(n)+rzexc(n)))
+               watadd=ptotal-srun0
+               if (watadd .gt. totcapac) then
+                  excess=watadd-totcapac
+                  srun0=srun0+excess
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=vgwmax(n)-rzeq(n)
+               elseif(watadd .gt. srfmx(n)-srfexc(n)) then
+                  excess=watadd-(srfmx(n)-srfexc(n))
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=rzexc(n)+excess
+               else
+                  srfexc(n)=srfexc(n)+watadd
+               endif
+               ! MB: check if VGWMAX is exceeded
+               !IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+               !  srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+               !  RZEXC(N)=VGWMAX(N)-RZEQ(N)
+               !  ENDIF
+               !(Commented out following lines to retain water balance -- rdk, 9/18/20)
+               !if (srun0 .gt. ptotal) then
+               !   srun0=ptotal
+               !   endif
+               RUNSRF(N)=RUNSRF(N)+srun0
+               QIN=PTOTAL-srun0
+               !SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))               
+            ENDIF
+
          endif
 
          if(UFW4RO) then
 
             !**** Compute runoff from large-scale and convective storms separately:
- 
-            deficit=srfmx(n)-srfexc(n)
-            srunl=AR1(n)*THRUL(n)
-            qinfil_l=(1.-ar1(n))*THRUL(n)
-            qcapac=deficit*FWETL
-            
-            if(qinfil_l .gt. qcapac) then
-               excess_infil=qinfil_l-qcapac
-               srunl=srunl+excess_infil
-               qinfil_l=qinfil_l-excess_infil
+            IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
+                !non-peatland
+               deficit=srfmx(n)-srfexc(n)
+               srunl=AR1(n)*THRUL(n)
+               qinfil_l=(1.-ar1(n))*THRUL(n)
+               qcapac=deficit*FWETL
+
+               if(qinfil_l .gt. qcapac) then
+                  excess_infil=qinfil_l-qcapac
+                  srunl=srunl+excess_infil
+                  qinfil_l=qinfil_l-excess_infil
+               endif
+
+               srunc=AR1(n)*THRUC(n)
+               qinfil_c=(1.-ar1(n))*THRUC(n)
+               qcapac=deficit*FWETC
+
+               if(qinfil_c .gt. qcapac) then
+                  excess_infil=qinfil_c-qcapac
+                  srunc=srunc+excess_infil
+                  qinfil_c=qinfil_c-excess_infil
+               endif
+
+               !**** Comment out this line in order to allow moisture
+               !**** to infiltrate soil:
+               !       if(tp1(n) .lt. 0.) srun0=ptotal
+
+               if (srunl .gt. THRUL(n)) srunl=THRUL(n)
+
+               if (srunc .gt. THRUC(n)) srunc=THRUC(n)
+
+               RUNSRF(N)=RUNSRF(N)+srunl+srunc
+               QIN=THRUL(n)+THRUC(n)-(srunl+srunc)
+               SRFEXC(N)=SRFEXC(N)+QIN
+
+            else
+               ! peatland
+               ! MB: no Hortonian surface runoff
+               !Note (rdk, from discussion w/MB; email 01/04/2021): 
+               ! forcing all the rain to fall onto 
+               ! the soil (1-AR1 fraction) rather than
+               ! onto both the soil and the free water surface is a simple shortcut;
+               ! the key function of this code is to retain all rainwater in the system
+               ! and *only* to produce surface runoff when the 
+               ! ground is already ridiculously wet.
+               ! This prevents problems (e.g., numerical instabilities) found in 
+               ! discharge calculations elsewhere in the code.
+
+               srunl = 0.
+               srunc = 0.
+               ! handling numerical instability due to exceptional snow melt events at some pixels
+               ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
+               IF (AR1(N)>SRUN_AR1_MIN) THEN
+                  !Added ramping to avoid potential oscillations (rdk, 09/18/20)
+                  srunl = THRUL(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)*SRUN_AR1_SLOPE)
+                  srunc = THRUC(n)*amin1(1.,(ar1(n)-SRUN_AR1_MIN)*SRUN_AR1_SLOPE)
+               ENDIF
+               PTOTAL = THRUL(N) + THRUC(N)
+               SRUN0  = srunl + srunc
+               ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+               ! Rewrote code to determine excess over capacity all at once (rdk, 09/18/20)
+               totcapac=(srfmx(n)-srfexc(n))+(vgwmax(n)-(rzeq(n)+rzexc(n)))
+               watadd=ptotal-srun0
+               if (watadd .gt. totcapac) then
+                  excess=watadd-totcapac
+                  srun0=srun0+excess
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=vgwmax(n)-rzeq(n)
+               elseif(watadd .gt. srfmx(n)-srfexc(n)) then
+                  excess=watadd-(srfmx(n)-srfexc(n))
+                  srfexc(n)=srfmx(n)
+                  rzexc(n)=rzexc(n)+excess
+               else
+                  srfexc(n)=srfexc(n)+watadd
+               endif
+               !if (ptotal-srun0 .gt. srfmx(n)-srfexc(n)) then
+               !  excess=(ptotal-srun0)-(srfmx(n)-srfexc(n))
+               !  rzexc(n)=rzexc(n) + excess
+               !  ptotal=ptotal-excess
+               !  endif                   
+               ! MB: check if VGWMAX is exceeded
+               !IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+               !  srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+               !  RZEXC(N)=VGWMAX(N)-RZEQ(N)
+               !  ENDIF
+               RUNSRF(N)=RUNSRF(N)+srun0
+               QIN=PTOTAL-srun0
+               ! SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))  
             endif
-         
-            srunc=AR1(n)*THRUC(n)
-            qinfil_c=(1.-ar1(n))*THRUC(n)
-            qcapac=deficit*FWETC
-            
-            if(qinfil_c .gt. qcapac) then
-               excess_infil=qinfil_c-qcapac
-               srunc=srunc+excess_infil
-               qinfil_c=qinfil_c-excess_infil
-            endif
-         
-            !**** Comment out this line in order to allow moisture
-            !**** to infiltrate soil:
-            !       if(tp1(n) .lt. 0.) srun0=ptotal
-         
-            if (srunl .gt. THRUL(n)) srunl=THRUL(n)
-         
-            if (srunc .gt. THRUC(n)) srunc=THRUC(n)
-            
-            RUNSRF(N)=RUNSRF(N)+srunl+srunc
-            QIN=THRUL(n)+THRUC(n)-(srunl+srunc)
 
          endif
 
-         SRFEXC(N)=SRFEXC(N)+QIN
-         
          ! convert outputs to flux units [kg m-2 s-1]
          RUNSRF(N)=RUNSRF(N)/DTSTEP
          QINFIL(N)=QIN/DTSTEP
-     
+
       END DO
 
       RETURN
@@ -336,12 +463,15 @@ CONTAINS
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
 !****
-      SUBROUTINE RZDRAIN (                                                 &
-                          NCH,DTSTEP,VGWMAX,SATCAP,RZEQ,AR1,WPWET,         &
-                          tsa1,tsa2,tsb1,tsb2,atau,btau,CDCR2,poros,BUG,   &
-                          CAPAC,RZEXC,SRFEXC,CATDEF,                       &
-                          RUNSRF                                           &  ! [kg m-2 s-1]
-                         )
+
+
+      SUBROUTINE RZDRAIN (                                                   &
+                          NCH, DTSTEP, VGWMAX, SATCAP, RZEQ, AR1, WPWET,     &
+                          TSA1, TSA2, TSB1, TSB2, ATAU, BTAU, CDCR2, POROS,  &
+                          BF1, BF2, ARS1, ARS2, ARS3, BUG,                   &
+                          CAPAC, RZEXC, SRFEXC, CATDEF,                      &
+                          RUNSRF                                             &  ! [kg m-2 s-1]
+                          )
 
 !-----------------------------------------------------------------
 !        defines drainage timescales:
@@ -352,19 +482,23 @@ CONTAINS
 !-----------------------------------------------------------------
 
       IMPLICIT NONE
-
       INTEGER, INTENT(IN)                    :: NCH
       REAL,    INTENT(IN)                    :: DTSTEP
       REAL,    INTENT(IN),    DIMENSION(NCH) :: VGWMAX, SATCAP, RZEQ, AR1, wpwet
-      REAL,    INTENT(IN),    DIMENSION(NCH) :: tsa1, tsa2, tsb1, tsb2, atau, btau, CDCR2, poros
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: TSA1, TSA2, TSB1, TSB2, ATAU, BTAU, CDCR2, POROS
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: BF1,  BF2, ARS1, ARS2, ARS3
       LOGICAL, INTENT(IN)                    :: BUG
 
-      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RZEXC, SRFEXC, CATDEF, CAPAC
-      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                        ! [kg m-2 s-1]
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RZEXC, SRFEXC, CATDEF, CAPAC   
+      REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                          ! [kg m-2 s-1]
+
+      ! --------------------
 
       INTEGER N
-      REAL srflw,rzflw,FLOW,EXCESS,TSC0,tsc2,rzave,rz0,wanom,rztot,            &
-            rzx,btaux,ax,bx,rzdif, rzavemin
+      REAL srflw,rzflw,FLOW,EXCESS,TSC0,tsc2,rzave,rz0,wanom,rztot,          &
+           rzx,btaux,ax,bx,rzdif, rzavemin,ZBAR1,SYSOIL,RZFLW_CATDEF,        &
+           EXCESS_CATDEF, CATDEF_PEAT_THRESHOLD, RZFLW_AR1, AR1eq
+
 
 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -440,35 +574,98 @@ CONTAINS
 
         IF (CATDEF(N)-RZFLW .GT. CDCR2(N)) then
           RZFLW=CATDEF(N)-CDCR2(N)
-          end if
+        end if
 
-        CATDEF(N)=CATDEF(N)-RZFLW
-        RZEXC(N)=RZEXC(N)-RZFLW
+       IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) then
+          ! mineral soil
+          CATDEF(N)=CATDEF(N)-RZFLW
+          RZEXC(N)=RZEXC(N)-RZFLW
+       else
+          !MB2021: use AR1eq, equilibrium assumption between water level in soil hummocks and surface water level in hollows
+          AR1eq = (1.+ars1(n)*(catdef(n)))/(1.+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
+          ! PEAT
+          ! MB: accounting for water ponding on AR1
+          ! RZFLOW is partitioned into two flux components: (1) going in/out ponding water volume and (1) going in/out unsaturated soil storage
+          ! Specific yield of ponding water surface fraction is 1.0
+          ! calculate SYSOIL (see Dettmann and Bechtold, VZJ, 2016, for detailed theory)
+          ! SYSOIL in CLSM can be derived from first derivative of 
+          ! f_catdef(zbar) = ((zbar + bf2)^2 +1.0E-20)*bf1
+          ! division by 1000 to convert from m to mm gives (Note: catdef in PEATCLSM remains
+          ! the soil profile deficit, i.e. does not include the ponding water storage).
+          ! SYSOIL = (2*bf1*zbar + 2*bf1*bf2)/1000
+          ! Note: zbar defined here positive below ground.
+          ! For the SYSOIL estimation zbar must be constrained to 0.0 to 0.45 m,
+          ! to avoid extrapolation errors due to the non-optimal
+          ! (linear) approximation with the bf1-bf2-CLSM function,
+          ! theoretical SYSOIL curve levels off approximately at 0 m and 0.45 m.
+          ZBAR1 = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
+          SYSOIL = (2.*bf1(n)*amin1(amax1(zbar1,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(n)*bf2(n))/1000.
+          SYSOIL = amin1(SYSOIL,poros(n))
+          ! Calculate fraction of RZFLW removed/added to catdef
+          RZFLW_CATDEF = (1.-AR1eq)*SYSOIL*RZFLW/(1.*AR1eq+SYSOIL*(1.-AR1eq))
+          CATDEF(N)=CATDEF(N)-RZFLW_CATDEF
+          ! MB: remove all RZFLW from RZEXC because the other part 
+          ! flows into the surface water storage (microtopgraphy)
+          RZEXC(N)=RZEXC(N)-RZFLW
+
+       ENDIF
+ 
 
 !****   REMOVE ANY EXCESS FROM MOISTURE RESERVOIRS:
 
         IF(CAPAC(N) .GT. SATCAP(N)) THEN
           RZEXC(N)=RZEXC(N)+CAPAC(N)-SATCAP(N)
           CAPAC(N)=SATCAP(N)
-          ENDIF
+        ENDIF
 
         IF(RZEQ(N) + RZEXC(N) .GT. VGWMAX(N)) THEN
           EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
           RZEXC(N)=VGWMAX(N)-RZEQ(N)
-          CATDEF(N)=CATDEF(N)-EXCESS
-          ENDIF
 
-        IF(CATDEF(N) .LT. 0.) THEN
+          IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
+             CATDEF(N)=CATDEF(N)-EXCESS
+          ELSE
+             ! PEAT
+             ! MB: like for RZFLW --> EXCESS_CATDEF is the fraction in/out of catdef
+             EXCESS_CATDEF=(1.-AR1eq)*SYSOIL*EXCESS/(1.*AR1eq+SYSOIL*(1.-AR1eq))
+             CATDEF(N)=CATDEF(N)-EXCESS_CATDEF
+          ENDIF
+       ENDIF
+
+       IF (POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
+          ! MB: CATDEF Threshold at zbar=0
+          ! water table not allowed to rise higher (numerically instable) 
+          ! zbar<0 only occurred due to extreme infiltration rates
+          ! (noticed this only snow melt events, very few locations and times)
+          ! (--> NOTE: PEATCLSM has no Hortonian runoff for zbar > 0)            
+          CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0)*BF1(N)
+          IF(CATDEF(N) .LT. CATDEF_PEAT_THRESHOLD) THEN
+             ! RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! runoff from AR1 for zbar>0
+             ! RZFLW_AR1 = RZFLW - RZFLW_CATDEF + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+             ! AR1=0.5 at zbar=0
+             ! SYsurface=0.5 at zbar=0
+             ! RUNSRF(N) = RUNSRF(N) + amax1(0.0, RZFLW_AR1 - 0.5*1000.*ZBAR1)
+             ! 
+             ! revised (rdk, 1/04/2021): take excess water from both 
+             ! soil and free standing water, the latter assumed to cover area AR1=0.5
+             RUNSRF(N) = RUNSRF(N) + (CATDEF_PEAT_THRESHOLD-CATDEF(N) + 0.5*1000.*(-ZBAR1))/DTSTEP
+             CATDEF(N)=CATDEF_PEAT_THRESHOLD
+          ENDIF
+       ENDIF
+
+       IF(CATDEF(N) .LT. 0.) THEN
           ! bug fix: RUNSRF in flux units [kg m-2 s-1] for consistency with partition()
           ! reichle, 6 Feb 2022
-          RUNSRF(N)=RUNSRF(N)-CATDEF(N)/DTSTEP   
+          RUNSRF(N)=RUNSRF(N)-CATDEF(N)/DTSTEP
           CATDEF(N)=0.
-          ENDIF
+       ENDIF
 
   100 ENDDO
 
       RETURN
       END SUBROUTINE RZDRAIN
+
 
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
@@ -477,6 +674,7 @@ CONTAINS
 
       SUBROUTINE BASE (                                                        &
                        NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,            &
+                       AR1, POROS, ARS1, ARS2, ARS3,                           &           
                        CATDEF,                                                 &
                        BFLOW                                                   &
                       )
@@ -487,7 +685,7 @@ CONTAINS
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: BF1, BF2, BF3, CDCR1, FRICE, COND,   &
-          GNU
+          GNU, AR1, POROS, ars1, ars2, ars3
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CATDEF
 
@@ -495,29 +693,67 @@ CONTAINS
 
 
       INTEGER N
-      REAL ZBAR, ashift
+      REAL ZBAR, ashift, CFRICE,Ksz_zero,m_Ivanov,v_slope,Ta,dztmp,SYSOIL,BFLOW_CATDEF,ICERAMP,AR1eq
 
       data ashift/0./
 
-
       DO N=1,NCH
-         ! note intentionally opposite sign w.r.t. zbar defined above, - reichle, 16 Nov 2015
-        ZBAR=SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
-        BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
-              cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
-! *1000 is to convert from m/s to mm/s
-        IF (CATDEF(N) .GE. CDCR1(N)) BFLOW(N)=0.
-!#ifdef LAND_UPD
-	IF (LAND_FIX) THEN
-	      bflow(n)=amin1(1000.*cond(n),bflow(n))
-	ELSE
-!#else
-	      bflow(n)=amin1(cond(n),bflow(n))
-	END IF
-!#endif
-        CATDEF(N)=CATDEF(N)+BFLOW(N)*dtstep
-        ENDDO
+         ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
+         IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
+            BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
+                 cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
+            ! *1000 is to convert from m/s to mm/s
+            IF (CATDEF(N) .GE. CDCR1(N)) BFLOW(N)=0.
+            !#ifdef LAND_UPD
+            IF (LAND_FIX) THEN
+               bflow(n)=amin1(1000.*cond(n),bflow(n))
+            ELSE
+               !#else
+               bflow(n)=amin1(cond(n),bflow(n))
+            END IF
+            !#endif
+            CATDEF(N)=CATDEF(N)+BFLOW(N)*dtstep
+         ELSE
+            ! PEAT
+            ! MB:  
+            IF (FRICE(N) .GE. 0.9999) THEN
+               CFRICE = 1.
+            ELSE
+               CFRICE = FRICE(N)
+            ENDIF
+            ! BFLOW in mm/s
+            ! based on Ivanov 1981
+            ! Ksz0  in  m/s
+            ! m_Ivanov [-]  value depends on unit of Ksz0 and z
+            ! v_slope in m^(-1)
+            Ksz_zero=10.
+            m_Ivanov=3.0
+            v_slope = 1.5e-05
+            ! Ta in m2/s, BFLOW in mm/s
+            Ta = (Ksz_zero*(1.+100.*amax1(0.,ZBAR))**(1.-m_Ivanov))/(100.*(m_Ivanov-1.))
+            BFLOW(N)=v_slope*Ta*1000.
+            ! handling numerical instability due to extreme snow melt events on partly frozen ground
+            ! --> allow BFLOW/DISCHARGE for zbar .LE. 0.05
+            ICERAMP= AMAX1(0., AMIN1(1., ZBAR/0.05))
+            ICERAMP= 1.-ICERAMP*CFRICE
+            BFLOW(N)=ICERAMP*BFLOW(N)
 
+            ! MB: Remove water from CATDEF and surface water storage
+            IF (BFLOW(N) .NE. 0.0) THEN
+               ! PEAT
+               ! MB: accounting for water ponding on AR1
+               ! same approach as for RZFLW (see subroutine RZDRAIN for
+               ! comments)
+               SYSOIL = (2.*bf1(N)*amin1(amax1(zbar,0.),PEATCLSM_ZBARMAX_4_SYSOIL) + 2.*bf1(N)*bf2(N))/1000.
+               SYSOIL = amin1(SYSOIL,poros(n))
+               !MB2021: use AR1eq, equilibrium assumption between water level in soil hummocks and surface water level in hollows
+               AR1eq = (1.+ars1(n)*(catdef(n)))/(1.+ars2(n)*(catdef(n))+ars3(n)*(catdef(n))**2)
+               BFLOW_CATDEF = (1.-AR1eq)*SYSOIL*BFLOW(N)/(1.*AR1eq+SYSOIL*(1.-AR1eq))
+               CATDEF(N)=CATDEF(N)+BFLOW_CATDEF*dtstep
+            ENDIF
+
+         ENDIF
+      ENDDO
 
       RETURN
       END SUBROUTINE BASE
@@ -532,6 +768,7 @@ CONTAINS
       SUBROUTINE PARTITION (                                                &
                             NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
                             PSIS,BEE,poros,WPWET,                           &
+                            BF1, BF2,                                       &
                             ars1,ars2,ars3,ara1,ara2,ara3,ara4,             &
                             arw1,arw2,arw3,arw4,BUG,                        &
                             srfexc,catdef,                                  &
@@ -547,7 +784,7 @@ CONTAINS
 
       REAL,    INTENT(IN)                    :: DTSTEP
       REAL,    INTENT(IN),    DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
-                                                PSIS,BEE,poros,WPWET,                &
+                                                PSIS,BEE,poros,WPWET,BF1,BF2,        &
                                                 ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
                                                 arw1,arw2,arw3,arw4
 
@@ -568,6 +805,7 @@ CONTAINS
               ARG1, EXPARG1, ARG2, EXPARG2, ARG3, EXPARG3  !, surflay
 
       LOGICAL :: LSTRESS
+      REAL    :: ZBAR, ARREST
 
 
       DATA LSTRESS/.FALSE./    !,surflay/20./
@@ -705,10 +943,22 @@ CONTAINS
 
           ENDIF
 
+        IF (POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
+           ! peat
+           ! MB: AR4 (wilting fraction) for peatland depending on water table depth
+           !ZBAR defined here positive below ground and in meter
+           ZBAR = catch_calc_zbar( BF1(N), BF2(N), CATDEF(N) )  
+           AR4(N)=amax1(0.,amin1(1.0,(ZBAR-0.30)/(1.0)))
+           ARREST = 1.0 - AR1(N)
+           AR4(N)=amin1(ARREST,AR4(N))
+           AR2(N)=1.0-AR4(n)-AR1(N)
+           ENDIF
+
         RZI(N)=RZEQYI
 
         SWSRF1(N)=1.
 !mjs: changed .001 temporarily because of large bee.
+        IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
         SWSRF2(N)=AMIN1(1., AMAX1(0.01, RZEQYI))
         SWSRF4(N)=AMIN1(1., AMAX1(0.01, WILT))
 
@@ -720,6 +970,18 @@ CONTAINS
 
         SWSRF2(N)=((SWSRF2(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
         SWSRF4(N)=((SWSRF4(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
+        ELSE
+
+             ! PEAT
+             ! MB: for peatlands integrate across surface soil moisture distribution
+             ! coefficients fitted for equilibrium conditions
+             ! SWSRF2 and SWSRF4 as wetness (not moisture)
+             ! MB: bug April 2018, AMIN1 function due to problems when spin up from
+             ! scratch (i.e. dry soil at time=0)
+             SWSRF2(N)=0.79437 - 0.99996*AMIN1(1.5,ZBAR) + 0.68801*(AMIN1(1.5,ZBAR))**2 + &
+                     0.04186*(AMIN1(1.5,ZBAR))**3 - 0.15042*(AMIN1(1.5,ZBAR))**4
+             SWSRF4(N)=SWSRF2(N)
+        ENDIF
 
 ! srfmx is the maximum amount of water that can be added to the surface layer
 ! The choice of defining SWSRF4 like SWSRF2 needs to be better examined.
@@ -782,7 +1044,7 @@ CONTAINS
 !**** -----------------------------------------------------------------
 
       SUBROUTINE RZEQUIL (                                                     &
-                          NCH,CATDEF,VGWMAX,CDCR1,CDCR2,WPWET,                 &
+                          NCH,CATDEF,VGWMAX,CDCR1,CDCR2,WPWET,POROS,           &
                           ars1,ars2,ars3,ara1,ara2,ara3,ara4,                  &
                           arw1,arw2,arw3,arw4,                                 &
                           RZEQ                                                 &
@@ -793,7 +1055,7 @@ CONTAINS
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN), DIMENSION(NCH) :: CATDEF, VGWMAX, CDCR1, CDCR2,        &
                    WPWET, ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1,      &
-                   arw2, arw3, arw4
+                   arw2, arw3, arw4, POROS
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: RZEQ
 
@@ -895,7 +1157,7 @@ CONTAINS
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
 
-      zb(1)=-DZTC
+      zb(1)=-DZTSURF
       zb(2)=zb(1)-DZGT(1)
       shc(1)=shr0*(1.-phi)*DZGT(1)
       zc(1)=0.5*(zb(1)+zb(2))
@@ -958,7 +1220,7 @@ CONTAINS
 !             ***********************************
 ! lets get the thermal conductivity for the layers
 
-      a1=1-phi
+      a1=1.-phi
       tk1=1.01692+a1*(0.89865+1.06211*a1)
       xw=phi*(1.-fice(1))
       a2=phi-xw
@@ -980,7 +1242,7 @@ CONTAINS
       xklh(1)=(tksat-tkdry)*xwi + tkdry
       xklhw=tksat
 
-      denom=-(DZTC*0.5)-zc(1)
+      denom=-(DZTSURF*0.5)-zc(1)
       fh21w=-xklhw  *(t1(1)-TF-tp(1))/denom
       fh21i=-xklh(1)*(t1(2)-TF-tp(1))/denom
       fh21d=-xklh(1)*(t1(3)-TF-tp(1))/denom
@@ -1474,9 +1736,9 @@ CONTAINS
   ! ================================================================================
 
   subroutine catch_calc_soil_moist( &
-       NTILES,vegcls,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
+       NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
        ars1,ars2,ars3,ara1,ara2, &
-       ara3,ara4,arw1,arw2,arw3,arw4, &
+       ara3,ara4,arw1,arw2,arw3,arw4,bf1, bf2, &
        srfexc,rzexc,catdef, &
        ar1, ar2, ar4, &
        sfmc, rzmc, prmc,  &
@@ -1528,11 +1790,10 @@ CONTAINS
     implicit none
 
     integer,                    intent(in) :: NTILES
-    integer, dimension(NTILES), intent(in) :: vegcls
 
     real,    dimension(NTILES), intent(in) :: dzsf,vgwmax,cdcr1,cdcr2
     real,    dimension(NTILES), intent(in) :: wpwet,poros,psis
-    real,    dimension(NTILES), intent(in) :: bee,ars1
+    real,    dimension(NTILES), intent(in) :: bee,ars1,bf1, bf2
     real,    dimension(NTILES), intent(in) :: ars2,ars3,ara1,ara2,ara3
     real,    dimension(NTILES), intent(in) :: ara4,arw1,arw2,arw3,arw4
 
@@ -1547,7 +1808,7 @@ CONTAINS
     real,    dimension(NTILES), intent(out), optional :: sfmcun
     real,    dimension(NTILES), intent(out), optional :: rzmcun
     real,    dimension(NTILES), intent(out), optional :: prmcun
-    real,    dimension(NTILES), intent(out), optional :: swsrf1out, swsrf2out, swsrf4out    
+    real,    dimension(NTILES), intent(out), optional :: swsrf1out, swsrf2out, swsrf4out
 
     ! ----------------------------
     !
@@ -1594,7 +1855,7 @@ CONTAINS
 
     call rzequil( &
          NTILES, catdef, vgwmax,    &
-         cdcr1, cdcr2, wpwet, &
+         cdcr1, cdcr2, wpwet, poros, &
          ars1, ars2, ars3, ara1, ara2, ara3, ara4, &
          arw1, arw2, arw3, arw4, &
          rzeq)
@@ -1632,7 +1893,7 @@ CONTAINS
     call partition( &
          NTILES,dtstep_dummy,dzsf,rzexc, &
          rzeq,vgwmax,cdcr1,cdcr2, &
-         psis,bee,poros,wpwet, &
+         psis,bee,poros,wpwet,bf1, bf2, &
          ars1,ars2,ars3, &
          ara1,ara2,ara3,ara4, &
          arw1,arw2,arw3,arw4,.false., &
@@ -1704,6 +1965,62 @@ CONTAINS
 
   end subroutine catch_calc_soil_moist
 
+  ! *******************************************************************
+  
+  ! Calculate zbar for Catchment[CN] model.
+  !
+  ! Convention: zbar positive below ground (downward).
+  !             
+  ! This convention applies to water calculations, incl. subroutines RZDRAIN(),
+  !   WUPDAT(), BASE(), PEATCLSM
+  !
+  ! WARNING:
+  !   Opposite convention applies when zbar is used in ground heat
+  !   diffusion model, incl. subroutines GNDTP0(), GNDTMP(), GNDTMP_CN().
+  !
+  ! - reichle, 29 Jan 2022
+  
+  function catch_calc_zbar_scalar( bf1, bf2, catdef ) result(zbar)
+    
+    implicit none
+    
+    real,                       intent(in) :: bf1, bf2, catdef
+    real                                   :: zbar
+
+    zbar = SQRT(1.e-20 + catdef/bf1) - bf2
+    
+  end function catch_calc_zbar_scalar
+  
+  ! --------------------------
+  
+  function catch_calc_zbar_vector( bf1, bf2, catdef ) result(zbar)
+    
+    ! vector version of catch_calc_zbar 
+
+    implicit none
+    
+    real, dimension(:),         intent(in) :: bf1, bf2, catdef
+    real, dimension(size(bf1))             :: zbar
+    
+    zbar = SQRT(1.e-20 + catdef/bf1) - bf2
+    
+  end function catch_calc_zbar_vector
+  
+  ! *******************************************************************
+
+  function catch_calc_watertabled( bf1, bf2, cdcr2, poros, wpwet, catdef ) result(wtd)
+    
+    ! calculate water table depth [m]
+
+    implicit none
+    
+    real, dimension(:),         intent(in) :: bf1, bf2, cdcr2, poros, wpwet, catdef
+    real, dimension(size(bf1))             :: wtd
+    
+    wtd = MIN( catch_calc_zbar(BF1,BF2,CATDEF), CDCR2/(1.-WPWET)/POROS/1000. )
+    
+  end function catch_calc_watertabled
+  
   ! *******************************************************************
 
   subroutine catch_calc_subtile2tile( NTILES, ar1, ar2, asnow, subtile_data, tile_data )
@@ -1781,18 +2098,18 @@ CONTAINS
 
       REAL, INTENT(INOUT), DIMENSION(*)           :: HT                        ! dimension(N_GT)
 
-      REAL, INTENT(OUT)                           :: XFICE
+      REAL, INTENT(OUT) :: XFICE
       REAL, INTENT(OUT),   DIMENSION(*)           :: TP, FICE                  ! dimension(N_GT)
 
       ! ----------------------------------
       
       INTEGER                    :: L, LSTART, K
-      REAL,    DIMENSION(N_GT)   :: ZC, SHC, XKLH
-      REAL,    DIMENSION(N_GT+1) :: FH, ZB
+      REAL, DIMENSION(N_GT) :: ZC, SHC, XKLH
+      REAL, DIMENSION(N_GT+1) :: FH, ZB
       REAL                       :: SHW0, SHI0, SHR0, WS, XW, A1, TK1, A2, TK2, TK3, TKSAT
       REAL                       :: XWI, XD1, XD2, XKTH, TKDRY
       LOGICAL                    :: full_version
-      
+
       !data dz/0.0988,0.1952,0.3859,0.7626,1.5071,10.0/
       !DATA PHI/0.45/, FSN/3.34e+8/, SHR/2.4E6/
 
@@ -1826,13 +2143,13 @@ CONTAINS
 !----------------------------------
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
- 
-      zb(1)=-DZTC    ! Bottom of surface layer, which is handled outside
-                     ! this routine.
+
+      zb(1)=-DZTSURF  ! Bottom of surface layer, which is handled outside
+                      ! this routine.
 
       do l=1,N_GT
         zb(l+1)=zb(l)-DZGT(l)
-        shc(l)=shr0*(1-phi)*DZGT(l)
+        shc(l)=shr0*(1.-phi)*DZGT(l)
         enddo
 
 ! evaluates the temperatures in the soil layers based on the heat values.
@@ -1880,128 +2197,128 @@ CONTAINS
            zc(l)=0.5*(zb(l)+zb(l+1))
            enddo
     
-   ! evaluates:  layer thermal conductivities
-   ! *****************************************
-   !             from farouki(cold regions sci and tech, 5, 1981,
-   !             67-75) the values for tk1,tk2,tk3 are as follows:
-   !             tk2=2.2**(phi(l,ibv)-xw), tk3=.57**xw, and
-   !             tk1=3**(1-phi(l,ibv) for %sand<.5, and
-   !             for computation purposes i have fit these eqs.
-   !             to 2nd order polynomials.
-   !             ***********************************
-   !             input:
-   !             sklh - soil heat conductivities of layers
-   !             zb - soil layer boundaries, m
-   !             zc - soil layer centers, m
-   !             DZGT - layer thickness, m
-   !             w - soil water content, m
-   !             phi - soil porosity, dimensionless
-   !             q - % sand, silt, clay, peat
-   !             fice - fraction of ice in layers
-   !             output:
-   !             xklh - thermal conductivity, w m-2 k-1
-   !             ***********************************
+! evaluates:  layer thermal conductivities
+! *****************************************
+!             from farouki(cold regions sci and tech, 5, 1981,
+!             67-75) the values for tk1,tk2,tk3 are as follows:
+!             tk2=2.2**(phi(l,ibv)-xw), tk3=.57**xw, and
+!             tk1=3**(1-phi(l,ibv) for %sand<.5, and
+!             for computation purposes i have fit these eqs.
+!             to 2nd order polynomials.
+!             ***********************************
+!             input:
+!             sklh - soil heat conductivities of layers
+!             zb - soil layer boundaries, m
+!             zc - soil layer centers, m
+!             DZGT - layer thickness, m
+!             w - soil water content, m
+!             phi - soil porosity, dimensionless
+!             q - % sand, silt, clay, peat
+!             fice - fraction of ice in layers
+!             output:
+!             xklh - thermal conductivity, w m-2 k-1
+!             ***********************************
 
-   ! lets get the thermal conductivity for the layers
+! lets get the thermal conductivity for the layers
 
-         do k=1,N_GT
+      do k=1,N_GT
 
-            a1=1-phi              ! ROCK FRACTION
-            tk1=1.01692+a1*(0.89865+1.06211*a1)
-            xw=phi*(1.-fice(k))   ! FOR SATURATED SOIL, XW HERE IS
-                                  !   THE LIQUID WATER FRACTION
-            a2=phi-xw             ! FOR SATURATED SOIL, THE ICE FRACTION
+         a1=1.-phi             ! ROCK FRACTION
+         tk1=1.01692+a1*(0.89865+1.06211*a1)
+         xw=phi*(1.-fice(k))   ! FOR SATURATED SOIL, XW HERE IS
+                               !   THE LIQUID WATER FRACTION
+         a2=phi-xw             ! FOR SATURATED SOIL, THE ICE FRACTION
 
-            tk2=1.00543+a2*(0.723371+.464342*a2)
-            tk3=0.998899+xw*(-0.548043+0.120291*xw)
-            tksat=tk1*tk2*tk3
+         tk2=1.00543+a2*(0.723371+.464342*a2)
+         tk3=0.998899+xw*(-0.548043+0.120291*xw)
+         tksat=tk1*tk2*tk3
 
-            xwi=1.0
-            if (zbar .le. zb(k+1))then
-              xwi=thetaf
-            elseif (zbar .ge. zb(k+1) .and. zbar .le. zb(k))then
-              xd1=zb(k)-zbar
-              xd2=zbar-zb(k+1)
-              xwi=((xd1*thetaf)+xd2)/(xd1+xd2)
-            endif
+         xwi=1.0
+         if (zbar .le. zb(k+1))then
+             xwi=thetaf
+           elseif (zbar .ge. zb(k+1) .and. zbar .le. zb(k))then
+             xd1=zb(k)-zbar
+             xd2=zbar-zb(k+1)
+             xwi=((xd1*thetaf)+xd2)/(xd1+xd2)
+           endif
 
-            xwi=min(xwi,1.)
-            tkdry=0.226 ! = .039*0.45^(-2.2), from Farouki, p. 71
-            xklh(k)=(tksat-tkdry)*xwi + tkdry
+         xwi=min(xwi,1.)
+         tkdry=0.226 ! = .039*0.45^(-2.2), from Farouki, p. 71
+         xklh(k)=(tksat-tkdry)*xwi + tkdry
 
-            enddo
+         enddo
 
-   ! evaluates heat flux between layers due to heat diffussion
-   !             ***********************************
-   !             input:
-   !             zb - soil layer boundaries, m
-   !             zc - soil layer centers, m
-   !             DZGT - layer thickness, m
-   !             fice - fraction of ice in layers
-   !             tp - temperature of layers, c
-   !             shw - specific heat of water
-   !             shi - specific heat of ice
-   !             fsn - heat of fusion    J/m
-   !             output:
-   !             fh - heat flux between layers
-   !             ***********************************
+! evaluates heat flux between layers due to heat diffussion
+!             ***********************************
+!             input:
+!             zb - soil layer boundaries, m
+!             zc - soil layer centers, m
+!             DZGT - layer thickness, m
+!             fice - fraction of ice in layers
+!             tp - temperature of layers, c
+!             shw - specific heat of water
+!             shi - specific heat of ice
+!             fsn - heat of fusion    J/m
+!             output:
+!             fh - heat flux between layers
+!             ***********************************
 
 
-   ! total heat flux is via diffusion along the temperature gradient
-         fh(N_GT+1)=0.
-         fh(1)=fh21
-         do k=2,N_GT
-   ! THIS xkth is NEW (ie., Agnes corrected) - it should be fixed in all
-   ! codes I'm using
-            xkth=((zb(k)-zc(k-1))*xklh(k-1)+(zc(k)-zb(k))*xklh(k))                &
-                  /(zc(k)-zc(k-1))
-            fh(k)=-xkth*(tp(k-1)-tp(k))/(zc(k-1)-zc(k))
-            enddo
+! total heat flux is via diffusion along the temperature gradient
+      fh(N_GT+1)=0.
+      fh(1)=fh21
+      do k=2,N_GT
+! THIS xkth is NEW (ie., Agnes corrected) - it should be fixed in all
+! codes I'm using
+         xkth=((zb(k)-zc(k-1))*xklh(k-1)+(zc(k)-zb(k))*xklh(k))                &
+               /(zc(k)-zc(k-1))
+         fh(k)=-xkth*(tp(k-1)-tp(k))/(zc(k-1)-zc(k))
+         enddo
 
-   ! update the heat contents in the model layers; ht(l)
-   ! IF THERE'S SNOW THIS WILL HAVE TO BE MODIFIED L=1,N
+! update the heat contents in the model layers; ht(l)
+! IF THERE'S SNOW THIS WILL HAVE TO BE MODIFIED L=1,N
 
-         do k=1,N_GT
-            ht(k)=ht(k)+(fh(k+1)-fh(k))*dts
-            enddo
+      do k=1,N_GT
+         ht(k)=ht(k)+(fh(k+1)-fh(k))*dts
+         enddo
 
-   ! evaluates the temperatures in the soil  layers based on the heat
-   ! values.
-   !             ***********************************
-   !             input:
-   !             xw - water in soil layers, m
-   !             ht - heat in soil layers
-   !             fsn - heat of fusion of water    J/m
-   !             shc - specific heat capacity of soil
-   !             shi - specific heat capacity of ice
-   !             shw - specific heat capcity of water
-   !             snowd - snow depth, equivalent water m
-   !             output:
-   !             tp - temperature of layers, c
-   !             fice - fraction of ice of layers
-   !             pre - extra precipitation, i.e. snowmelt, m s-1
-   !             snowd - snow depth after melting, equivalent water m.
-   !             ***********************************
-   ! determine fraction of ice and temp of soil layers based on layer
-   ! heat and water content
-         do 1000 k=1,N_GT
-            ws=phi*DZGT(k)          ! saturated water content
-!               xl=l
-!               xw=(1/(7-xl))*ws
-            xw=0.5*ws             ! For calculations here, assume soil
+! evaluates the temperatures in the soil  layers based on the heat
+! values.
+!             ***********************************
+!             input:
+!             xw - water in soil layers, m
+!             ht - heat in soil layers
+!             fsn - heat of fusion of water    J/m
+!             shc - specific heat capacity of soil
+!             shi - specific heat capacity of ice
+!             shw - specific heat capcity of water
+!             snowd - snow depth, equivalent water m
+!             output:
+!             tp - temperature of layers, c
+!             fice - fraction of ice of layers
+!             pre - extra precipitation, i.e. snowmelt, m s-1
+!             snowd - snow depth after melting, equivalent water m.
+!             ***********************************
+! determine fraction of ice and temp of soil layers based on layer
+! heat and water content
+      do 1000 k=1,N_GT
+         ws=phi*DZGT(k)          ! saturated water content
+!            xl=l
+!            xw=(1/(7-xl))*ws
+         xw=0.5*ws             ! For calculations here, assume soil
                                ! is half full of water.
-            fice(k)=AMAX1( 0., AMIN1( 1., -ht(k)/(fsn*xw) ) )
+         fice(k)=AMAX1( 0., AMIN1( 1., -ht(k)/(fsn*xw) ) )
 
-            IF(FICE(K) .EQ. 1.) THEN
-                  tp(k)=(ht(k)+xw*fsn)/(shc(k)+xw*shi0)
-               ELSEIF(FICE(K) .EQ. 0.) THEN
-                  tp(k)=ht(k)/(shc(k)+xw*shw0)
-               ELSE
-                  TP(K)=0.
-               ENDIF
+         IF(FICE(K) .EQ. 1.) THEN
+               tp(k)=(ht(k)+xw*fsn)/(shc(k)+xw*shi0)
+            ELSEIF(FICE(K) .EQ. 0.) THEN
+               tp(k)=ht(k)/(shc(k)+xw*shw0)
+            ELSE
+               TP(K)=0.
+            ENDIF
 
-    1000    continue
- 
+ 1000    continue
+
       end if ! full version of gndtmp()
 
 ! determine the value of xfice
@@ -2016,12 +2333,31 @@ CONTAINS
 
       do l=lstart,N_GT
          xfice=xfice+fice(l)
-         enddo
-      xfice=xfice/((N_GT+1)-lstart)
+      enddo
+
+      IF (phi < PEATCLSM_POROS_THRESHOLD) THEN
+         xfice=xfice/((N_GT+1)-lstart)
+      ELSE
+         !PEAT
+         !MB: only first layer for total runoff reduction
+        xfice=AMIN1(1.0,fice(1))
+      ENDIF
 
       Return
 
       end subroutine gndtmp
+
+ ! *******************************************************************
+
+  
+
+  
+
+
+
+
+
+    
 
  ! *******************************************************************
 
@@ -2081,7 +2417,7 @@ CONTAINS
 
        do k=1,N_gt
 
-          shc(k) = shr0*(1-phi)*DZGT(k)
+          shc(k) = shr0*(1.-phi)*DZGT(k)
 
           ws = phi*DZGT(k) ! PORE SPACE IN LAYER
 
@@ -2205,7 +2541,7 @@ CONTAINS
        phi=PHIGT
     end if
 
-    shc = shr0*(1-phi)*DZGT
+    shc = shr0*(1.-phi)*DZGT
 
     ws  = phi*DZGT           ! PORE SPACE IN LAYER
 
