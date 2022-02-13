@@ -772,7 +772,7 @@ contains
 !   by OGCM from exchange grid quantities.
   
   !call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
-  call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_ICE"], [ocean,seaice], RC=STATUS  )
+  call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_ICE","DATA_KPAR"], [ocean,seaice,orad], RC=STATUS  )
 
 ! Set the Profiling timers
 ! ------------------------

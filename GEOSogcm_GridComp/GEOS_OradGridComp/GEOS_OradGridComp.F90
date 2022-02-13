@@ -113,6 +113,16 @@ module GEOS_OradGridCompMod
 
      VERIFY_(STATUS)
 
+   call MAPL_AddImportSpec(GC,                               &
+        SHORT_NAME = 'data_kpar',                                 &
+        LONG_NAME  = 'PAR_extinction_coefficient',                &
+        UNITS      = 'm-1',                                       &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
+
 !  !EXPORT STATE:
 
      call MAPL_AddExportSpec(GC,                             &
@@ -377,6 +387,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)   :: DRNIR
    real, pointer, dimension(:,:)   :: DFNIR
    real, pointer, dimension(:,:,:) :: H
+   real, pointer, dimension(:,:)   :: data_kpar
 
 ! ponters to export
 
@@ -482,11 +493,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get KPAR from data file
 !------------------------
 
-   call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
-   VERIFY_(STATUS)
+!  call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
+!  VERIFY_(STATUS)
 
-   call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
-   VERIFY_(STATUS)
+!  call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
+!  VERIFY_(STATUS)
+    call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
+    VERIFY_(STATUS)
+    KPAR = data_kpar
 
 ! Use Beer'S Law to compute flux divergence
 !------------------------------------------
