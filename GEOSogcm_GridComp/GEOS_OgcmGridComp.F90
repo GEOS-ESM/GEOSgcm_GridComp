@@ -772,7 +772,11 @@ contains
 !   by OGCM from exchange grid quantities.
   
   !call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
-  call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_ICE","DATA_KPAR"], [ocean,seaice,orad], RC=STATUS  )
+  if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
+    call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_ICE","DATA_KPAR"], [ocean,seaice,orad], RC=STATUS  )
+  else ! real ocean and sea ice
+    call MAPL_TerminateImport    ( GC, ["DATA_KPAR"], [orad], RC=STATUS  )
+  endif
 
 ! Set the Profiling timers
 ! ------------------------
