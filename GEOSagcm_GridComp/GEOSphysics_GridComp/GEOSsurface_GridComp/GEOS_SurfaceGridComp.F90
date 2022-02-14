@@ -6786,9 +6786,9 @@ module GEOS_SurfaceGridCompMod
        ! Create discharge at exit tiles by routing runoff
 
        if (DO_DATAATM /= 0) then
+          call MAPL_GetPointer(IMPORT  , DISCHARGE_IM, 'DISCHARGE',  RC=STATUS); VERIFY_(STATUS)
           call MAPL_LocStreamTransform( LOCSTREAM,  RUNOFFTILE, DISCHARGE_IM, RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetPointer(IMPORT  , DISCHARGE_IM, 'DISCHARGE',  RC=STATUS); VERIFY_(STATUS)
           ! it seems redundant to fill both DISCHARGETILE and RUNOFFTILE
           ! but this is done in case we need to output RUNOFF
           ! and not to change the existing code too much
@@ -7685,6 +7685,10 @@ module GEOS_SurfaceGridCompMod
        if(associated( QSTAR)) QSTAR = (EVAP       + DEVAP*DQS)/(RHOS*FAC)
     end if
 
+    if (DO_DATAATM) then
+       GOTO 100
+    end if
+
     FAC = sqrt(CN)/MAPL_KARMAN
     Z0  = max((DZ-D0),10.)/(exp(1.0/FAC)-1.0)
 
@@ -7856,6 +7860,8 @@ module GEOS_SurfaceGridCompMod
 
 ! Clean-up
 !---------
+
+100 continue
 
     deallocate(TMP)
     deallocate(TTM)

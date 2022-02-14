@@ -243,6 +243,10 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (MAPL_MetaComp), pointer   :: MAPL => null()
   type (MAPL_LocStream)           :: LOCSTREAM
   type (MAPL_LocStream)           :: EXCH
+  real, pointer :: tmp(:,:) ! needed only to force allocation
+  type (ESMF_State),         pointer  :: GEX(:)
+  type (ESMF_Alarm) :: alarm, solarAlarm
+
 
 ! integer                     :: K, N, Nsub, NT
 ! real                        :: DTI
@@ -313,6 +317,19 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
 
+!ALT: At this point all the children (i.e. Surface) and grand-childrean 
+! have been initialized
+!
+! we are now mimicking connections in Physics to force allocation
+! for some Surface exports
+
+    call MAPL_Get (MAPL, GEX=GEX, __RC__ )
+    call MAPL_GetPointer(GEX(SURF), tmp, 'LWI'  ,  alloc=.true., __RC__)
+
+! also we need to fake the "Solar alarm"
+    call MAPL_Get (MAPL, runAlarm=alarm, __RC__ )
+    solarAlarm = ESMF_AlarmCreate(alarm, __RC__)
+    call ESMF_AlarmSet(solarAlarm, name='SOLAR_Alarm', __RC__)
 
     RETURN_(ESMF_SUCCESS)
 
@@ -396,6 +413,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer            :: mype
 
    real, parameter :: HW_hack = 2.
+   logical :: firsttime = .true.
 
 !  Begin...
 !----------
@@ -463,6 +481,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !---------------------------------------------------
     ! how about default T10 = 270+30*COS(LAT)
     call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__)
+    call MAPL_GetPointer(SurfImport, Tair, 'TA', __RC__)
 
 ! Read 10m specific humidity (kg kg-1)
 !---------------------------------------------------
@@ -540,6 +559,23 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfExport, Tskin, 'TS', __RC__)
     call MAPL_GetPointer(SurfImport, ALW, 'ALW', __RC__)
 
+    if (firsttime) then
+       firsttime = .false.
+       Tskin = Tair
+    end if
+
+#if DEBUG
+    if (any(Tskin < 150.0)) then
+       print *, 'Low Tskin', tskin
+    end if
+    if (any(Tskin > 400.0)) then
+       print *, 'High Tskin', tskin
+    end if
+#endif
+ 
+    WHERE (Tskin < 150.0) Tskin = 273.16 ! some sanity, values are arbitrary
+    WHERE (Tskin > 400.0) Tskin = 300.0  ! some sanity, values are arbitrary
+
     ALW = MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4
     call SetVarToZero('BLW', __RC__)
 
@@ -585,6 +621,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! here we assume that the wind at the skin is zero
     Uskin = 0.0
     Vskin = 0.0
+
+    call MAPL_GetPointer(SurfImport, SH, 'SH', __RC__)
+    call MAPL_GetPointer(SurfImport, EVAP, 'EVAP', __RC__)
+    call MAPL_GetPointer(SurfImport, TAUX, 'TAUX', __RC__)
+    call MAPL_GetPointer(SurfImport, TAUY, 'TAUY', __RC__)
 
     SH = CT * MAPL_CP * (Tskin - Tair)
     EVAP = CQ * (Qskin - Qair) 
