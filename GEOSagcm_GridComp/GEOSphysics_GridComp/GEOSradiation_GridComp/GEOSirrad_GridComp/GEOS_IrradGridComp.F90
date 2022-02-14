@@ -783,33 +783,41 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                   __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDTTLW',                                   &
-        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_lw',        &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+! Note: the four CLDxxLW diagnostics below represent super-layer cloud
+! fractions based on the subcolumn cloud generation called in RRTMG LW.
+! They are global fields but generated only at the LW REFRESH frequency,
+! NOT at the heartbeat. As such, they are useful for diagnostic comparisons
+! with CLDTT above and with the full CLDxx set from the Solar GC. But they
+! should NOT be used to subsample fields that are produced on the model
+! heartbeat (e.g. subsampling for cloud presence).
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDHILW',                                   &
-        LONG_NAME  = 'total_hi-level_cloud_area_fraction_rrtmg_lw',&
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDTTLW',                                         &
+        LONG_NAME  = 'total_cloud_area_fraction_rrtmg_lw_REFRESH',      &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDMDLW',                                   &
-        LONG_NAME  = 'total_mid-level_cloud_area_fraction_rrtmg_lw',&
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDHILW',                                         &
+        LONG_NAME  = 'high-level_cloud_area_fraction_rrtmg_lw_REFRESH', &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'CLDLOLW',                                   &
-        LONG_NAME  = 'total_low_level_cloud_area_fraction_rrtmg_lw',&
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDMDLW',                                         &
+        LONG_NAME  = 'mid-level_cloud_area_fraction_rrtmg_lw_REFRESH',  &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
+
+    call MAPL_AddExportSpec(GC,                                         &
+        SHORT_NAME = 'CLDLOLW',                                         &
+        LONG_NAME  = 'low_level_cloud_area_fraction_rrtmg_lw_REFRESH',  &
+        UNITS      = '1',                                               &
+        DIMS       = MAPL_DimsHorzOnly,                                 &
+        VLOCATION  = MAPL_VLocationNone,                         __RC__ )
 
 !  Irrad does not have a "real" internal state. To update the net_longwave_flux
 !  due to the change of surface temperature every time step, we keep 
@@ -1483,8 +1491,6 @@ contains
    real(wp), dimension(LM+1)      :: tlev_wp
    type (ESMF_Time)               :: ReferenceTime
    type (ESMF_TimeInterval)       :: RefreshInterval
-!  real :: delTS_r
-!  real(wp) delTS
 
    ! gridcolum presence of liq and ice clouds (ncol,nlay)
    real(wp), dimension(:,:), allocatable :: clwp, ciwp
@@ -1664,7 +1670,7 @@ contains
          write (*,*) "    SORAD RRTMG: ", USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_CHOU_SORAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      _ASSERT(.FALSE.,'needs informative message')
+      _ASSERT(.FALSE.,'Radiation NUM_BANDS inconsistency!')
    end if
 
 ! Compute surface air temperature ("2 m") adiabatically
@@ -1701,27 +1707,39 @@ contains
    REFF(:,:,:,KRAIN  ) = RR * 1.0e6
    REFF(:,:,:,KSNOW  ) = RS * 1.0e6
 
-! Determine the model level seperating high and middle clouds
-!------------------------------------------------------------
+! Determine the model level separating high-middle and low-middle clouds
+!-----------------------------------------------------------------------
 
-   LCLDMH = 1
-   do K = 1, LM
-      if( PREF(K) >= PRS_MID_HIGH ) then
-         LCLDMH = K
-         exit
-      end if
+   _ASSERT(PRS_MID_HIGH > PREF(1)     , 'mid-high pressure band boundary too high!')
+   _ASSERT(PRS_LOW_MID  > PRS_MID_HIGH, 'pressure band misordering!')
+   _ASSERT(PRS_LOW_MID  < PREF(LM)    , 'low-mid pressure band boundary too low!')
+
+   ! find mid-high interface level
+   k = 1
+   do while ( PREF(k) < PRS_MID_HIGH )
+     k=k+1
    end do
+   LCLDMH = k
+   ! Guaranteed that LCLDMH > 1 (by first ASSERT above)
+   !    and that PREF(LCLDMH) >= PRS_MID_HIGH (by while loop)
 
-! Determine the model level seperating low and middle clouds
-!-----------------------------------------------------------
-
-   LCLDLM = LM
-   do K = 1, LM
-      if( PREF(K) >= PRS_LOW_MID  ) then
-         LCLDLM = K
-         exit
-      end if
+   ! find low-mid interface level
+   do while ( PREF(k) < PRS_LOW_MID )
+     k=k+1
    end do
+   LCLDLM = k
+   ! Guaranteed that LCLDLM <= LM (by third assert above)
+   !    and that PREF(LCLDLM) >= PRS_LOW_MID (by while loop)
+
+   ! But it's still possible that LCLDLM == LCLDMH if the
+   ! interface pressures are too close. We now ASSERT to
+   ! prevent this.
+   _ASSERT(LCLDMH < LCLDLM, 'PRS_LOW_MID and PRS_MID_HIGH are too close!')
+
+   ! now we have 1 < LCLDMH < LCLDLM <= LM and can use:
+   !    layers [1,      LCLDMH-1] are in high pressure band
+   !    layers [LCLDMH, LCLDLM-1] are in mid  pressure band
+   !    layers [LCLDLM, LM      ] are in low  pressure band
 
    call MAPL_GetPointer(EXPORT, CLDTTLW, 'CLDTTLW', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, CLDHILW, 'CLDHILW', RC=STATUS); VERIFY_(STATUS)
@@ -2606,13 +2624,6 @@ contains
 
       call MAPL_TimerOff(MAPL,"---RRTMGP_SETUP_3",__RC__)
 
- ! RRTMGP Jacobian currently uses fixed internal delTS of 1K
- !    ! numerical derivatives wrt surface temperature use a small delta TS
- !    ! (set this to zero exactly to disable linearization for RRTMGP)
- !    call MAPL_GetResource( MAPL, &
- !      delTS_r, "RRTMGP_NUMERICAL_DFDTS_DELTS_IN_K:", DEFAULT=0.1, __RC__)
- !    delTS = real(delTS_r, kind=wp)
-
       ! get cloud optical properties (band-only)
       if (need_cloud_optical_props) then
         ! pmn: some of this should be done only once per run
@@ -2755,7 +2766,7 @@ contains
         ! for LW start at counter=0
         seeds(3) = 0
 
-        call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
+        call MAPL_TimerOff(MAPL,"---RRTMGP_MCICA",__RC__)
 
       end if ! need_cloud_optical_props
 
@@ -3283,7 +3294,11 @@ contains
             ! aerosol system's *un*-normalized single scattering albedo,
             ! which is actually tau_ext * omega0 = tau_scat, and TAUA
             ! is the aerosol extinction optical thickness.
-            TAUAER(IJ,K,:) = TAUA(I,J,LV,:) - SSAA(I,J,LV,:)
+            ! PMN 2022-01-19 Added max(,0.) ... it shouldn't happen
+            !   that tau_ext < tau_scat, but since these TAUA and SSAA
+            !   come directly from the radiatively active aerosols
+            !   system, we provide a simple mitigation here.
+            TAUAER(IJ,K,:) = max(TAUA(I,J,LV,:) - SSAA(I,J,LV,:), 0.)
 
          enddo
 
@@ -3345,7 +3360,7 @@ contains
       do I = 1,IM
          IJ = IJ + 1
 
-         ! convert super-band clearCounts to cloud fractions
+         ! convert super-layer clearCounts to cloud fractions
          if(associated(CLDTTLW)) then
             CLDTTLW(I,J) = 1.0 - CLEARCOUNTS(IJ,1)/float(NGPTLW)
          endif
