@@ -2054,7 +2054,6 @@ contains
       use mo_optical_props,           only: ty_optical_props, &
                                             ty_optical_props_arry, ty_optical_props_1scl, &
                                             ty_optical_props_2str, ty_optical_props_nstr
-      use mo_source_functions,        only: ty_source_func_sw
       use mo_fluxes_byband,           only: ty_fluxes_byband
       use mo_rte_sw,                  only: rte_sw
       use mo_load_coefficients,       only: load_and_init
@@ -2172,15 +2171,16 @@ contains
       ! conversion factor (see below)
       real(wp), parameter :: cwp_fac = real(1000./MAPL_GRAV,kind=wp)
 
-      ! solar inputs
+      ! solar inputs: (ncol) and (nbnd,ncol)
       real(wp), dimension(:),       allocatable         :: tsi, mu0
-      real(wp), dimension(:,:),     allocatable         :: sfc_alb_dir, sfc_alb_dif ! first dim is band
+      real(wp), dimension(:,:),     allocatable         :: sfc_alb_dir, sfc_alb_dif
 
-      ! per g-point toa flux (col, ngpt) [W/m2 NORMAL to solar beam]
+      ! per g-point toa flux (ncols_subset,ngpt) [W/m2 NORMAL to solar beam]
       real(wp), dimension(:,:),     allocatable         :: toa_flux  
 
-      ! input arrays: dimensions (col, lay)
-      real(wp), dimension(:,:),     allocatable         :: p_lay, t_lay, p_lev, dp_wp
+      ! input arrays: dimensions (ncol,nlay[+1]) [Pa,K]
+      real(wp), dimension(:,:),     allocatable         :: p_lay, t_lay, dp_wp
+      real(wp), dimension(:,:),     allocatable         :: p_lev
 
       ! fluxes that we actually need
       ! NB: fluxes_byand makes available fluxes%[bnd_]flux_[up|dn|net|dn_dir->"dir"]. 
@@ -2190,6 +2190,8 @@ contains
       real(wp), dimension(:,:,:),   allocatable, target :: bnd_flux_dn_allsky, bnd_flux_net_allsky, bnd_flux_dir_allsky
 
       ! derived types for interacting with RRTMGP
+      ! (cloud_optics generates cloud_props from loaded
+      ! coefficients and cloud physical properties)
       type(ty_gas_optics_rrtmgp), pointer               :: k_dist
       type(ty_gas_concs)                                :: gas_concs, gas_concs_subset
       type(ty_cloud_optics)                             :: cloud_optics
@@ -3103,7 +3105,7 @@ contains
       allocate(ty_optical_props_2str::optical_props,__STAT__)
       nmom = 2 ! Used only if nstr, in which case must be >= 2
 
-      ! initialize optical_props
+      ! initialize spectral discretiz'n and gpt mapping of optical_props
       TEST_(optical_props%init(k_dist))
 
       call MAPL_TimerOff(MAPL, name="--RRTMGP_SETUP_2", __RC__)
@@ -3114,6 +3116,8 @@ contains
       call MAPL_TimerOn(MAPL, name="--RRTMGP_IO_2", __RC__)
 
       ! load and init cloud_optics from file
+      ! (gets appropriate coefficients needed to calculate
+      ! cloud optical properties from cloud physical properties)
       call MAPL_GetResource( &
         MAPL, cloud_optics_file, "RRTMGP_CLOUD_OPTICS_COEFFS_SW:", &
         DEFAULT='rrtmgp-cloud-optics-coeffs-sw.nc', __RC__)
@@ -3377,11 +3381,11 @@ contains
         colS = (b-1) * rrtmgp_blockSize + 1
         colE = colS + ncols_subset - 1
         TEST_(gas_concs%get_subset(colS, ncols_subset, gas_concs_subset))
+
+        ! get column subset of aerosol and in-cloud cloud optical props
         if (need_aer_optical_props) then
           TEST_(aer_props%get_subset(colS, ncols_subset, aer_props_subset))
         end if
-
-        ! get column subset of the band-space in-cloud optical properties
         TEST_(cloud_props%get_subset(colS, ncols_subset, cloud_props_subset))
 
         call MAPL_TimerOff(MAPL,"--RRTMGP_SUBSET",__RC__)
@@ -3415,7 +3419,7 @@ contains
               urand(:,:,1:ncols_subset), real(CL(colS:colE,:),kind=wp), cld_mask)
             TEST_(error_msg)
           case ("EXP_RAN_OVERLAP")
-            TEST_('EXP_RAN_OVERLAP not yet implemnted')
+            TEST_('EXP_RAN_OVERLAP not yet implemented')
             !TEST_(sampled_mask_exp_ran())
           case default
             TEST_('RRTMGP_LW: unknown cloud overlap')
