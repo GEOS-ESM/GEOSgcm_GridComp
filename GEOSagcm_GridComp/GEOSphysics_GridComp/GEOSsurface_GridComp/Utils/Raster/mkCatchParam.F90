@@ -185,7 +185,7 @@ integer :: n_threads=1
       GridnameT='til/'//trim(Gridname)  
     endif 
 
-    if(process_peat) PEATSOURCE   = 'PEATMAP'
+    if(use_PEATMAP)  PEATSOURCE   = 'PEATMAP'
     if(jpl_height)   VEGZSOURCE   = 'JPL'
 
     if(n_threads == 1) then

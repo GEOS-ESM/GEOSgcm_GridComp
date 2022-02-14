@@ -45,7 +45,7 @@ module GEOS_CatchGridCompMod
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
        SLOPE          => CATCH_SNWALB_SLOPE
 
-  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
+  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_watertabled
 
 !#for_ldas_coupling 
   use catch_incr
@@ -2678,6 +2678,24 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  ) 
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'WATERTABLED'               ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'FSWCHANGE'                 ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
@@ -3909,6 +3927,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTBC002
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
+        real, pointer, dimension(:)   :: WATERTABLED
+        real, pointer, dimension(:)   :: FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -3937,7 +3957,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: ghflxsno, ghflxtskin
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
-        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1
+        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
 	real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
 	real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
 	real,pointer,dimension(:) :: VSUVR, VSUVF
@@ -4448,6 +4468,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WATERTABLED,'WATERTABLED',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FSWCHANGE,  'FSWCHANGE',  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
 
@@ -4516,6 +4538,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(SUMEV     (NTILES))
         allocate(FICE1     (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
+        allocate(FSW_CHANGE(NTILES))
         
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -5342,8 +5365,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     SNDZN_INCR (3,:) = SNDZN3_INCR
 
                     call apply_catch_incr(NTILES,                                                        &
-                         VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                       &
-                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,               &
+                         DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                            &
+                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4, bf1, bf2,     &
                          TCFSAT_INCR, TCFTRN_INCR, TCFWLT_INCR, QCFSAT_INCR, QCFTRN_INCR, QCFWLT_INCR,   &
                          CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                               &
                          GHTCNT_INCR, WESNN_INCR, HTSNNN_INCR, SNDZN_INCR,                               &
@@ -5436,7 +5459,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, SHACC   ,&
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-             TCSORIG1, TPSN1IN1, TPSN1OUT1                        ,&
+             TCSORIG1, TPSN1IN1, TPSN1OUT1,FSW_CHANGE             ,&
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
@@ -5621,6 +5644,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if(associated(FSWCHANGE )) FSWCHANGE  = FSW_CHANGE
+        if(associated(WATERTABLED )) then
+           WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+        endif
 
         if(associated(TPSN1)) then
            where(WESNN(1,:)>0.)
@@ -5784,6 +5811,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(RMELT )
         deallocate(FICE1 )
         deallocate(SLDTOT )
+        deallocate(FSW_CHANGE)
 
         RETURN_(ESMF_SUCCESS)
 
@@ -5861,6 +5889,8 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw2(:)=>null()
   real, pointer :: arw3(:)=>null()
   real, pointer :: arw4(:)=>null()
+  real, pointer :: bf1(:)=>null()
+  real, pointer :: bf2(:)=>null()
 
   !! Miscellaneous
   integer :: ntiles
@@ -5954,6 +5984,10 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, arw4, 'ARW4', rc=status)
   VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf1, 'BF1', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf2, 'BF2', rc=status)
+  VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, srfexc, 'SRFEXC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, rzexc, 'RZEXC', rc=status)
@@ -6007,11 +6041,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
        ! intent(in)
-       ntiles, nint(ity), dzsf, vgwmax, cdcr1, cdcr2,                           &
+       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4,                                                  &
+       arw1, arw2, arw3, arw4,bf1, bf2,                                         &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &
