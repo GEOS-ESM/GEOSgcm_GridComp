@@ -1491,8 +1491,6 @@ contains
    real(wp), dimension(LM+1)      :: tlev_wp
    type (ESMF_Time)               :: ReferenceTime
    type (ESMF_TimeInterval)       :: RefreshInterval
-!  real :: delTS_r
-!  real(wp) delTS
 
    ! gridcolum presence of liq and ice clouds (ncol,nlay)
    real(wp), dimension(:,:), allocatable :: clwp, ciwp
@@ -1672,7 +1670,7 @@ contains
          write (*,*) "    SORAD RRTMG: ", USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_CHOU_SORAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      _ASSERT(.FALSE.,'needs informative message')
+      _ASSERT(.FALSE.,'Radiation NUM_BANDS inconsistency!')
    end if
 
 ! Compute surface air temperature ("2 m") adiabatically
@@ -2626,13 +2624,6 @@ contains
 
       call MAPL_TimerOff(MAPL,"---RRTMGP_SETUP_3",__RC__)
 
- ! RRTMGP Jacobian currently uses fixed internal delTS of 1K
- !    ! numerical derivatives wrt surface temperature use a small delta TS
- !    ! (set this to zero exactly to disable linearization for RRTMGP)
- !    call MAPL_GetResource( MAPL, &
- !      delTS_r, "RRTMGP_NUMERICAL_DFDTS_DELTS_IN_K:", DEFAULT=0.1, __RC__)
- !    delTS = real(delTS_r, kind=wp)
-
       ! get cloud optical properties (band-only)
       if (need_cloud_optical_props) then
         ! pmn: some of this should be done only once per run
@@ -2775,7 +2766,7 @@ contains
         ! for LW start at counter=0
         seeds(3) = 0
 
-        call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
+        call MAPL_TimerOff(MAPL,"---RRTMGP_MCICA",__RC__)
 
       end if ! need_cloud_optical_props
 
