@@ -771,7 +771,6 @@ contains
 ! Children's imports are in the ocean grid and are all satisfied
 !   by OGCM from exchange grid quantities.
   
-  !call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
   if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
     call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_ICE","DATA_KPAR"], [ocean,seaice,orad], RC=STATUS  )
   else ! real ocean and sea ice
