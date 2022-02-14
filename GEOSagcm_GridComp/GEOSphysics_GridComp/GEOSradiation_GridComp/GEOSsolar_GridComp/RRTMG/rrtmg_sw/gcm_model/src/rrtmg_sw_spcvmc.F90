@@ -36,10 +36,12 @@ contains
       laytrop, jp, jt, jt1, &
       colch4, colco2, colh2o, colmol, colo2, colo3, &
       fac00, fac01, fac10, fac11, &
+      cloudLM, cloudMH, & 
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
       pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir, &
-      znirr, znirf, zparr, zparf, zuvrr, zuvrf)
+      znirr, znirf, zparr, zparf, zuvrr, zuvrf, &
+      ztautp, ztauhp, ztaump, ztaulp)
    ! ---------------------------------------------------------------------------
    !
    ! Purpose: Contains spectral loop to compute the shortwave radiative fluxes, 
@@ -129,6 +131,10 @@ contains
       real, intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
 
+      ! pressure super-layer interface levels for optical thicknesses
+      integer, intent(in) :: cloudLM  ! Low-mid
+      integer, intent(in) :: cloudMH  ! Mid-high
+
       ! ------- Output -------
 
       real, intent(out) :: pbbcd    (nlay+1,pncol) 
@@ -148,8 +154,13 @@ contains
       real, intent(out) :: pnicddir (nlay+1,pncol) 
       real, intent(out) :: pnifddir (nlay+1,pncol) 
       
+      ! surface band fluxes (direct and TOTAL)
       real, intent(out), dimension(pncol) :: &
          znirr, znirf, zparr, zparf, zuvrr, zuvrf
+
+      ! in-cloud PAR optical thicknesses
+      real, intent(out), dimension (pncol) :: &
+         ztautp, ztauhp, ztaump, ztaulp
 
       ! ------- Local -------
 
@@ -157,7 +168,9 @@ contains
       integer :: jk, ikl
       integer :: iw, jb, ibm
 
-      real :: zf, zwf, zincflx
+      real :: zf, zwf, zincflx, wgt
+      real :: stautp, stauhp, staump, staulp
+      real :: wtautp, wtauhp, wtaump, wtaulp
 
       real :: zgco   (nlay,ngptsw,pncol)
       real :: zomco  (nlay,ngptsw,pncol)  
@@ -474,6 +487,108 @@ contains
 
          end do
       enddo                    
+
+      ! diagnostic in-cloud optical thicknesses in PAR super-band
+      ! (weighted across and within bands by TOA incident flux)
+      ! -------------------------------------------------------
+      ztautp = 0.
+      ztauhp = 0.
+      ztaump = 0.
+      ztaulp = 0.
+
+      ! can only be non-zero for potentially cloudy columns
+      if (cc == 2) then
+
+         do icol = 1,ncol
+
+            wtautp = 0.
+            wtauhp = 0.
+            wtaump = 0.
+            wtaulp = 0.
+
+            do iw = 1,ngptsw
+               jb = ngb(iw)
+               ibm = jb - 15
+   
+               ! band weights
+               if (ibm >= 10 .and. ibm <= 11) then
+                  ! Photosynthetically active radiation (PAR)
+                  wgt = 1.0
+               else if (ibm == 9) then
+                  ! half PAR, half NIR
+                  wgt = 0.5
+               else
+                  ! no contribution to PAR
+                  cycle
+               end if
+   
+               ! TOA flux weighting (adjustment for zenith angle
+               ! not needed since normalized for each icol)
+               if (isolvar < 0) then
+                  zincflx = adjflux(jb) * zsflxzen(iw,icol)
+               else
+                  zincflx = adjflux(jb) * ssi     (iw,icol)
+               endif
+               wgt = wgt * zincflx
+
+               ! low pressure layer
+               staulp = sum(ptaormc(1:cloudLM,iw,icol),dim=1)
+               if (staulp > 0.) then
+                  ztaulp(icol) = ztaulp(icol) + wgt * staulp
+                  wtaulp       = wtaulp       + wgt
+               end if
+
+               ! mid pressure layer
+               staump = sum(ptaormc(cloudLM+1:cloudMH,iw,icol),dim=1)
+               if (staump > 0.) then
+                  ztaump(icol) = ztaump(icol) + wgt * staump
+                  wtaump       = wtaump       + wgt
+               end if
+
+               ! high pressure layer
+               stauhp = sum(ptaormc(cloudMH+1:nlay,iw,icol),dim=1)
+               if (stauhp > 0.) then
+                  ztauhp(icol) = ztauhp(icol) + wgt * stauhp
+                  wtauhp       = wtauhp       + wgt
+               end if
+
+               ! whole subcolumn
+               stautp = staulp + staump + stauhp
+               if (stautp > 0.) then
+                  ztautp(icol) = ztautp(icol) + wgt * stautp
+                  wtautp       = wtautp       + wgt
+               end if
+
+            end do ! iw
+
+            ! normalize
+            if (wtautp > 0.) then
+               ztautp(icol) = ztautp(icol) / wtautp
+            else
+               ztautp(icol) = 0.
+            end if
+
+            if (wtauhp > 0.) then
+               ztauhp(icol) = ztauhp(icol) / wtauhp
+            else
+               ztauhp(icol) = 0.
+            end if
+
+            if (wtaump > 0.) then
+               ztaump(icol) = ztaump(icol) / wtaump
+            else
+               ztaump(icol) = 0.
+            end if
+
+            if (wtaulp > 0.) then
+               ztaulp(icol) = ztaulp(icol) / wtaulp
+            else
+               ztaulp(icol) = 0.
+            end if
+
+         end do  ! icol
+
+      end if  ! cc==2
 
    end subroutine spcvmc_sw
 

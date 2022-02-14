@@ -52,10 +52,10 @@ contains
       integer, intent(in) :: liqflag         ! see definitions
 
       logical, intent(in) :: cldymc (nlay,ngptsw,pncol)  ! cloudy or not? [mcica]
-      real,    intent(in) :: ciwpmc (nlay,ngptsw,pncol)  ! cloud ice water path [mcica]
-      real,    intent(in) :: clwpmc (nlay,ngptsw,pncol)  ! cloud liq water path [mcica]
-      real,    intent(in) :: relqmc (nlay,pncol)         ! cloud liq ptle eff radius (um)
-      real,    intent(in) :: reicmc (nlay,pncol)         ! cloud ice ptle eff radius (um)
+      real,    intent(in) :: ciwpmc (nlay,ngptsw,pncol)  ! cloud ice water path [mcica] [g/m2]
+      real,    intent(in) :: clwpmc (nlay,ngptsw,pncol)  ! cloud liq water path [mcica] [g/m2]
+      real,    intent(in) :: relqmc (nlay,pncol)         ! cloud liq ptle eff radius [um]
+      real,    intent(in) :: reicmc (nlay,pncol)         ! cloud ice ptle eff radius [um]
 
       ! Specific definition of reicmc depends on iceflag:
       ! iceflag = 1: ice effective radius, r_ec, (Ebert and Curry, 1992),
@@ -92,6 +92,16 @@ contains
       real, dimension (nlay,ngptsw,pncol) :: &
          extcoice, gice, ssacoice, forwice, &
          extcoliq, gliq, ssacoliq, forwliq
+
+      ! Notes by PMN:
+      ! The optical properties per unit ice (liquid) amount (e.g., extcoice)
+      ! are currently per band only but are redundantly re-calculated for
+      ! each g-point in the band that has non-zero mcica ice (liquid) amount.
+      ! This is inefficient if two or more band g-points have ice (liquid).
+      ! I have resisted the urge to remove this inefficiency because a future
+      ! improvement may well McICA-generate an ice (liquid) effective radius
+      ! that covaries with the condensate amount. In this more general case,
+      ! extcoice, etc., will vary with g-point within a band.
 
       ! ---------------------------------------------------------
       ! Calculation of absorption coefficients due to ice clouds.
