@@ -4029,7 +4029,7 @@ contains
 
 
 
-
+    RETURN_(0)
 !xxxxxxxxxxxxxxxxxxxxxxxxxxLANL CICE: 2 step update procedure-- STARTS xxxxxxxxxxxxxxxxxxxxxxxxx
     call MAPL_TimerOn(MAPL,   "-Thermo1")
 
