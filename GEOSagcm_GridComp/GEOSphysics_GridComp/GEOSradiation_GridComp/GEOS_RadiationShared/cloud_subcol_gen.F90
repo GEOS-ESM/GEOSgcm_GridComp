@@ -99,6 +99,9 @@ module cloud_subcol_gen
    public :: generate_stochastic_clouds   ! generate subcolumns
    public :: clearCounts_threeBand        ! L|M|H|T cloud fractions
 
+   ! correlation length formulations of Oreopoulos et al. (2012)
+   public :: correlation_length_cloud_fraction, correlation_length_condensate
+
 contains
 
    !---------------------------------------------------------------------------------------
@@ -298,14 +301,9 @@ contains
 
       ! Compute decorrelation length scales ...
 
-      ! for cloud presence
-      call correlation_length(dncol, ncol, &
-         aam1, aam2, aam30, aam4, doy, alat, adl)
-
-      ! for cloud condensate
+      call correlation_length_cloud_fraction(dncol, ncol, doy, alat, adl)
       if (cond_inhomo) then
-         call correlation_length(dncol, ncol, &
-            ram1, ram2, ram30, ram4, doy, alat, rdl)
+         call correlation_length_condensate(dncol, ncol, doy, alat, rdl)
       endif
 
       ! outer loop over gridcolumn
@@ -489,10 +487,10 @@ contains
    end subroutine generate_stochastic_clouds
 
 
-   !-------------------------------------------
-   subroutine correlation_length(dncol, ncol, &
+   !------------------------------------------------
+   pure subroutine correlation_length(dncol, ncol, &
       am1, am2, am30, am4, doy, alat, clength)
-   !-------------------------------------------
+   !------------------------------------------------
       integer, intent(in)  :: dncol                ! Dimensioned number of gridcols
       integer, intent(in)  :: ncol                 ! Actual number of gridcols
       real,    intent(in)  :: am1, am2, am30, am4  ! input parameters
@@ -516,6 +514,32 @@ contains
       enddo
 
    end subroutine correlation_length
+
+   !---------------------------------------------------
+   pure subroutine correlation_length_cloud_fraction( &
+      dncol, ncol, doy, alat, clength)
+   !---------------------------------------------------
+      integer, intent(in)  :: dncol                ! Dimensioned number of gridcols
+      integer, intent(in)  :: ncol                 ! Actual number of gridcols
+      integer, intent(in)  :: doy                  ! Day of year
+      real,    intent(in)  :: alat    (dncol)      ! Latitude of gridcolumn [radians]
+      real,    intent(out) :: clength (dncol)      ! Correlation length [m]
+      call correlation_length(dncol, ncol, &
+         aam1, aam2, aam30, aam4, doy, alat, clength)
+   end subroutine correlation_length_cloud_fraction
+
+   !-----------------------------------------------
+   pure subroutine correlation_length_condensate( &
+      dncol, ncol, doy, alat, clength)
+   !-----------------------------------------------
+      integer, intent(in)  :: dncol                ! Dimensioned number of gridcols
+      integer, intent(in)  :: ncol                 ! Actual number of gridcols
+      integer, intent(in)  :: doy                  ! Day of year
+      real,    intent(in)  :: alat    (dncol)      ! Latitude of gridcolumn [radians]
+      real,    intent(out) :: clength (dncol)      ! Correlation length [m]
+      call correlation_length(dncol, ncol, &
+         ram1, ram2, ram30, ram4, doy, alat, clength)
+   end subroutine correlation_length_condensate
 
 
    !-------------------------------------------------------
