@@ -528,17 +528,16 @@ module GEOS_RadiationGridCompMod
 
 !   call MAPL_Get (MAPL, GIM=GIM, __RC__)
 
-! Initialize module-level cloud generator details.
-! Currently these are only used by RRTMG SW and LW, so should probably
-! make conditional on either RRTMG SW and LW being used. Dont bother
-! for now. Also, may later use the cloud generator for RRTMGP as well.
+! Initialize module-level cloud generator details. Currently these are
+! only used by RRTMG[P] SW and LW, so could make conditional on either
+! RRTMG[P] SW or LW being used. Dont bother for now.
 !---------------------------------------------------------------------
 
-! Set up RRTMG condensate inhomogeneity tables
+! Set up RRTMG[P] condensate inhomogeneity tables
 
     call initialize_inhomogeneity(1)
 
-! Set RRTMG cloud subcolumn generator correlation length parameters to non-default values
+! Set RRTMG[P] cloud subcolumn generator correlation length parameters to non-default values
 ! from MAPL resource parameters. Comment out to just use defaults in module cloud_subcol_gen.
 
     call MAPL_GetResource(MAPL,aam1 ,LABEL="ADL_AM1:" ,default=def_aam1 ,__RC__)
