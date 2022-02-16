@@ -2223,7 +2223,7 @@ contains
       character(len=128)             :: cloud_optics_type, cloud_overlap_type
       type (ESMF_Time)               :: ReferenceTime
       type (ESMF_TimeInterval)       :: RefreshInterval
-      real :: sigma_qcw
+      real :: cld_frac, sigma_qcw
 
       ! for global gcolumn index seeding of PRNGs
       integer :: iBeg, iEnd, jBeg, jEnd
@@ -3051,7 +3051,7 @@ contains
       do k = 1,LM-1
         ! t_lev are interior interface temperatures at level k+1
         t_lev = (t_lay(:,k) * dp_wp(:,k+1) + t_lay(:,k+1) * dp_wp(:,k)) / (dp_wp(:,k+1) + dp_wp(:,k))
-        dzmid(:,k) = MAPL_RGAS * t_lev / MAPL_GRAV * (p_lay(:,k+1) - p_lay(:,k)) / p_lev(:,k+1)
+        dzmid(:,k) = t_lev * real(MAPL_RGAS/MAPL_GRAV,kind=wp) * (p_lay(:,k+1) - p_lay(:,k)) / p_lev(:,k+1)
       end do
       deallocate(t_lev,__STAT__)
 
@@ -3170,7 +3170,7 @@ contains
       ! read desired cloud overlap type
       call MAPL_GetResource( &
         MAPL, cloud_overlap_type, "RRTMGP_CLOUD_OVERLAP_TYPE_SW:", &
-        DEFAULT='MAX_RAN_OVERLAP', __RC__)
+        DEFAULT='GEN_MAX_RAN_OVERLAP', __RC__)
 
       ! condensate inhomogeneity?
       if (cloud_overlap_type == "GEN_MAX_RAN_OVERLAP") then
@@ -3487,30 +3487,32 @@ contains
             do isub = 1,ncols_block
               icol = colS + isub - 1
               do ilay = 1,LM
+                cld_frac = CL(icol,ilay)
 
-                ! subgrid-scale cloud mask
-                cld_mask(isub,ilay,1:ngpt) = urand(1:ngpt,ilay,isub) < CL(icol,ilay)
+                ! if grid-box clear, no subgrid variability
+                if (cld_frac <= 0.) then
+                  cld_mask(isub,ilay,:) = .false.
+                else
 
-                ! subgrid-scale condensate
-                if (cond_inhomo) then
-  
-                  ! level of condensate inhomogeneity based on cloud fraction.
-                  if (CL(icol,ilay) > 0.99) then
-                    sigma_qcw = 0.5
-                  elseif (CL(icol,ilay) > 0.9) then
-                    sigma_qcw = 0.71
-                  else
-                    sigma_qcw = 1.0
-                  endif
+                  ! subgrid-scale cloud mask
+                  cld_mask(isub,ilay,:) = urand(:,ilay,isub) < cld_frac
 
-                  do igpt = 1, ngpt
-                    if (cld_mask(isub,ilay,igpt)) then
-                      zcw(isub,ilay,igpt) = zcw_lookup( &
-                        real(urand_cond(igpt,ilay,isub)), sigma_qcw)
+                  ! subgrid-scale condensate
+                  if (cond_inhomo) then
+                    ! level of condensate inhomogeneity based on cloud fraction.
+                    if (cld_frac > 0.99) then
+                      sigma_qcw = 0.5
+                    elseif (cld_frac > 0.9) then
+                      sigma_qcw = 0.71
                     else
-                      zcw(isub,ilay,igpt) = 0.
+                      sigma_qcw = 1.0
                     endif
-                  end do
+                    do igpt = 1,ngpt
+                      if (cld_mask(isub,ilay,igpt)) zcw(isub,ilay,igpt) = &
+                        zcw_lookup(real(urand_cond(igpt,ilay,isub)),sigma_qcw)
+                    end do
+                  end if
+
                 end if
 
               end do
@@ -3526,7 +3528,9 @@ contains
         ! since tau for each phase is linear in the phase's water path
         ! and since the scaling zcw applies equally to both phases, the
         ! total g-point optical thickness tau will scale with zcw.
-        if (cond_inhomo) cloud_props_gpt%tau = cloud_props_gpt%tau * zcw
+        if (cond_inhomo) then
+          where (cld_mask) cloud_props_gpt%tau = cloud_props_gpt%tau * zcw
+        end if
 
         call MAPL_TimerOff(MAPL,"--RRTMGP_MCICA",__RC__)
 
