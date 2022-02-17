@@ -1,3 +1,13 @@
+! Revision notes:
+! 02-16-2022 The earlier version was too heavyweight, in the sense that it could be
+! uninitialized, thereby requiring tests for initialization and potential STOPs if not,
+! thus preventing PURE functions and potential speed optimizations. This new version
+! has a homogeneous state (ihnm = 0) as the default, and set_inhomogeneity(ih) can only
+! result in a valid inhomogeneous state, so the system is always initialized. This
+! allows tests and STOPs to be removed from condensate_inhomogeneity() and zcw_lookup()
+! and these two function are now PURE. Call unset_inhomogeneity() returns to a homogen-
+! eous state, and is required before one can set_inhomogeneity() to a DIFFERENT state.
+
 module cloud_condensate_inhomogeneity
 
    use iso_fortran_env, only : error_unit
@@ -14,71 +24,66 @@ module cloud_condensate_inhomogeneity
    integer, parameter :: n1 = 1000
    integer, parameter :: n2 = 140
 
-   ! inhomogeneity type and table
+   ! Inhomogeneity type and table:
+   ! the default is homogeneous (inhm = 0),
+   !   in which case xcw is unallocated.
    integer :: inhm = 0
    real, allocatable :: xcw(:,:)
 
-   ! initialization status
-   logical :: initialized = .false.
-
    ! public interface
-   public :: inhomogeneity_initialized  ! check if initialized
-   public :: initialize_inhomogeneity   ! get resources
-   public :: release_inhomogeneity      ! release resources
+   public :: set_inhomogeneity          ! set valid inhomogeneous state
+   public :: unset_inhomogeneity        ! return to homogeneous state
    public :: condensate_inhomogeneous   ! test if inhomogeneous or not
-   public :: zcw_lookup                 ! lookup zcw if inhomogeneous
+   public :: zcw_lookup                 ! lookup zcw
 
 contains
 
-   logical function inhomogeneity_initialized()
-     inhomogeneity_initialized = initialized
-   end function inhomogeneity_initialized
+   ! Set an inhomogeneous state from the homogeneous default.
+   ! Cannot change between DIFFERENT inhomogeneous states. To do that must
+   ! call unset_inhomogeneity instead to return to homogeneous state first.
 
-   subroutine initialize_inhomogeneity (ih)
+   subroutine set_inhomogeneity (ih)
 
-      ! ih == 0: homogeneous
       ! ih == 1: inhomogeneous, beta  distribution
       ! ih == 2: inhomogeneous, gamma distribution
 
       integer, intent(in) :: ih
 
-      if (initialized) then
+      ! nothing to change?
+      if (ih == inhm) return
+
+      ! cannot change from one inhomogeneity to another
+      if (inhm /= 0) then
          write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
-         error stop 'must release_inhomogeneity first'
+         error stop 'must call unset_inhomogeneity first'
       end if
 
+      ! now homogeneous (inhm==0), change to inhomogeneous
       if (ih == 1) then
          call tabulate_xcw_beta
       elseif (ih == 2) then
          call tabulate_xcw_gamma
-      elseif (ih /= 0) then
+      else 
          write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
          write(error_unit,*) 'ih == ', ih
-         error stop 'unknown inhomogeneity type: ih'
+         error stop 'unknown inhomogeneity type'
       endif
-
-      initialized = .true.
       inhm = ih
 
-   end subroutine initialize_inhomogeneity
+   end subroutine set_inhomogeneity
 
-   subroutine release_inhomogeneity 
+   subroutine unset_inhomogeneity 
       if (allocated(xcw)) deallocate(xcw)
-      initialized = .false.
       inhm = 0
-   end subroutine release_inhomogeneity
+   end subroutine unset_inhomogeneity
 
-   function condensate_inhomogeneous() result (inhomo)
+   pure function condensate_inhomogeneous() result (inhomo)
       logical :: inhomo
-      if (.not. initialized) then
-         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
-         error stop 'must initialize_inhomogeneity first'
-      end if 
       inhomo = (inhm > 0)
    end function condensate_inhomogeneous
 
    ! -----------------------------------------------------------
-   function zcw_lookup (cdf, sigma_qcw) result (zcw)
+   pure function zcw_lookup (cdf, sigma_qcw) result (zcw)
    ! -----------------------------------------------------------
    ! Horizontally inhomogeneous cloud condensate:
    ! Determine ZCW = ratio of cloud condensate mixing ratio QC
@@ -92,10 +97,11 @@ contains
       integer :: ind1, ind2
       real :: rind1, rind2
 
-      if (.not. condensate_inhomogeneous()) then
-         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
-         error stop 'zcw_lookup only works if condensate_inhomogeneous()'
-      end if 
+      ! dispense with easy homogeneous case
+      if (inhm == 0) then
+        zcw = 1.
+        return
+      endif
 
       ! bilinear interpolation of ZCW tabulated in array XCW as a func of
       !   * cumulative condensate probability CDF

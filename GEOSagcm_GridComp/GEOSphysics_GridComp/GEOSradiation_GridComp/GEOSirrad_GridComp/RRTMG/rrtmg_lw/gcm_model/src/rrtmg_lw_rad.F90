@@ -1,7 +1,5 @@
 module rrtmg_lw_rad
 
-!  use cloud_condensate_inhomogeneity, only: &
-!     initialize_inhomogeneity, release_inhomogeneity
    use rrtmg_lw_cldprmc, only : cldprmc
    use rrtmg_lw_setcoef, only : setcoef, setcoef_free
    use rrtmg_lw_taumol, only : taumol
@@ -324,10 +322,6 @@ contains
       ! area, since this has to be called only once.  
       ! call rrtmg_lw_ini()
 
-!     ! Set up condensate inhomogeneity tables.
-!     ! Done in Radiation GC MAPL Initialize now since LW and SW both have same inhomogeneity.
-!     call initialize_inhomogeneity(1)
-
       ! ---------------------------------
       ! partition columns for performance
       ! ---------------------------------
@@ -346,9 +340,6 @@ contains
             band_output, olrb, dolrb_dTs)
 
       end do
-
-!     ! release condensate inhomogeneity resources
-!     call release_inhomogeneity
 
    end subroutine rrtmg_lw
 

@@ -459,7 +459,7 @@ module GEOS_RadiationGridCompMod
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !USES:
-  use cloud_condensate_inhomogeneity, only: initialize_inhomogeneity
+  use cloud_condensate_inhomogeneity, only: set_inhomogeneity
   use cloud_subcol_gen, only : initialize_cloud_subcol_gen, &
     def_aam1, def_aam2, def_aam30, def_aam4, &
     def_ram1, def_ram2, def_ram30, def_ram4
@@ -535,7 +535,7 @@ module GEOS_RadiationGridCompMod
 
 ! Set up RRTMG[P] condensate inhomogeneity tables
 
-    call initialize_inhomogeneity(1)
+    call set_inhomogeneity(1)
 
 ! Set RRTMG[P] cloud subcolumn generator correlation length parameters to non-default values
 ! from MAPL resource parameters. Comment out to just use defaults in module cloud_subcol_gen.
