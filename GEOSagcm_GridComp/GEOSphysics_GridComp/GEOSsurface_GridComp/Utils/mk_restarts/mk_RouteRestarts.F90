@@ -4,7 +4,7 @@ PROGRAM mk_RouteRestarts
        SEARCH_DNST
 
   USE catch_constants, ONLY:          &
-       N_All => N_Pfaf_Catchs !, N_LND => N_Pfaf_LandCatchs
+       N_All => CATCH_N_PFAFS
 
   use MAPL_IOMod
 
