@@ -1844,6 +1844,11 @@ contains
          call MAPL_GetPointer(GEX(ICE), dummy, 'ISTSFC' , alloc=.true., RC=STATUS)
          VERIFY_(STATUS)
       endif
+   else
+      if(associated(TSKINI)) then
+         call MAPL_GetPointer(GEX(ICE), dummy, 'TSKINI' , alloc=.true., RC=STATUS)
+         VERIFY_(STATUS)
+      endif
    endif
 
 ! Call the childrens' RUN2
