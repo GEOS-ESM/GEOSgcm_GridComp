@@ -8179,10 +8179,16 @@ module GEOS_SurfaceGridCompMod
       type (MAPL_LocStreamXFORM)   :: XFORM
       real, pointer                :: DUM(:)
 
+      integer                      :: DO_CICE_THERMO
+
       call MAPL_TimerOn(MAPL,           trim(GCNames(type)))
       call MAPL_TimerOn(MAPL,"--RUN2_"//trim(GCNames(type)))
 
       Iam = trim(COMP_NAME)//"RUN2_DOTYPE"
+
+      call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, RC=STATUS)
+      VERIFY_(STATUS)
+
 
 ! Fill the child's import state on his location stream from
 ! variables on Surface's location stream.
@@ -8523,8 +8529,13 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'TSKINW', ALLOC=associated(TSKINWTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'TSKINI', ALLOC=associated(TSKINITILE  ), notFoundOK=.true., RC=STATUS)
-      VERIFY_(STATUS)
+      if(DO_CICE_THERMO == 0) then
+        call MAPL_GetPointer(GEX(type), dum, 'TSKINI', ALLOC=associated(TSKINITILE  ), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+      else
+        call MAPL_GetPointer(GEX(type), dum, 'TSKINICE', ALLOC=associated(TSKINITILE  ), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+      endif
 
       call MAPL_GetPointer(GEX(type), dum, 'DCOOL' ,   ALLOC=associated(DCOOL_TILE    ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
@@ -9196,9 +9207,16 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'TSKINW',TSKINWTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
-      if(associated(TSKINITILE)) then
-         call FILLOUT_TILE(GEX(type), 'TSKINI',TSKINITILE, XFORM, RC=STATUS)
-         VERIFY_(STATUS)
+      if(DO_CICE_THERMO == 0) then
+        if(associated(TSKINITILE)) then
+          call FILLOUT_TILE(GEX(type), 'TSKINI',TSKINITILE, XFORM, RC=STATUS)
+          VERIFY_(STATUS)
+        end if
+      else
+        if(associated(TSKINITILE)) then
+          call FILLOUT_TILE(GEX(type), 'TSKINICE',TSKINITILE, XFORM, RC=STATUS)
+          VERIFY_(STATUS)
+        end if
       end if
 
       if(associated(DCOOL_TILE)) then
