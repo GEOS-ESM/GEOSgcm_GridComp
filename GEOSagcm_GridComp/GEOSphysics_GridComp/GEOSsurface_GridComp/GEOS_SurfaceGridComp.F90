@@ -2048,11 +2048,11 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                             &
-    SHORT_NAME         = 'TSKINI',                    &
-    LONG_NAME          = 'sea_ice_skin_temperature',&
-    UNITS              = 'K'                         ,&
-    DIMS               = MAPL_DimsHorzOnly,                   &
-    VLOCATION          = MAPL_VLocationNone,                  &
+    SHORT_NAME         = 'TSKINI',                        &
+    LONG_NAME          = 'sea_ice_skin_temperature',      &
+    UNITS              = 'K'                         ,    &
+    DIMS               = MAPL_DimsHorzOnly,               &
+    VLOCATION          = MAPL_VLocationNone,              &
     RC=STATUS  )
   VERIFY_(STATUS)
 
