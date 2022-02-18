@@ -2042,7 +2042,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                             &
-    SHORT_NAME         = 'TSKINI',                    &
+    SHORT_NAME         = 'TSKINICE',                    &
     LONG_NAME          = 'sea_ice_skin_temperature',&
     UNITS              = 'K'                         ,&
     DIMS               = MAPL_DimsHorzOnly,                   &
@@ -4927,7 +4927,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SNOWOCN  => NULL()
     real, pointer, dimension(:,:) :: RAINOCN  => NULL()
     real, pointer, dimension(:,:) :: TSKINW   => NULL()
-    real, pointer, dimension(:,:) :: TSKINI   => NULL()
+    real, pointer, dimension(:,:) :: TSKINICE => NULL()
 
     real, pointer, dimension(:,:) :: DCOOL    => NULL()
     real, pointer, dimension(:,:) :: DWARM    => NULL()
@@ -5195,7 +5195,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: SNOWOCNTILE    => NULL()
     real, pointer, dimension(:) :: RAINOCNTILE    => NULL()
     real, pointer, dimension(:) ::  TSKINWTILE    => NULL()
-    real, pointer, dimension(:) ::  TSKINITILE    => NULL()
+    real, pointer, dimension(:) ::  TSKINICETILE  => NULL()
 
     real, pointer, dimension(:) :: DCOOL_TILE    => NULL()
     real, pointer, dimension(:) :: DWARM_TILE    => NULL()
@@ -6025,8 +6025,8 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , SWNDICE   , 'SWNDICE'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWOCN   , 'SNOWOCN'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RAINOCN   , 'RAINOCN'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , TSKINW, 'TSKINW',  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , TSKINI, 'TSKINI',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TSKINW    , 'TSKINW'    ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TSKINICE  , 'TSKINICE'  ,  RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT  , HICE    , 'HICE'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , HSNO    , 'HSNO'    ,  RC=STATUS); VERIFY_(STATUS)
@@ -6569,7 +6569,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(SNOWOCN   ,SNOWOCNTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RAINOCN   ,RAINOCNTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TSKINW,   TSKINWTILE ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(TSKINI,   TSKINITILE ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(TSKINICE, TSKINICETILE ,NT,RC=STATUS); VERIFY_(STATUS)
 
     call MKTILE(DCOOL,   DCOOL_TILE  ,   NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(DWARM,   DWARM_TILE  ,   NT, RC=STATUS); VERIFY_(STATUS)
@@ -7067,8 +7067,8 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     endif
 
-    if(associated(TSKINI)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,TSKINI,TSKINITILE, RC=STATUS)
+    if(associated(TSKINICE)) then
+       call MAPL_LocStreamTransform( LOCSTREAM,TSKINICE,TSKINICETILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
 
@@ -7928,7 +7928,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(SNOWOCNTILE   )) deallocate(SNOWOCNTILE   )
     if(associated(RAINOCNTILE   )) deallocate(RAINOCNTILE   )
     if(associated(TSKINWTILE  )) deallocate(TSKINWTILE  )
-    if(associated(TSKINITILE  )) deallocate(TSKINITILE  )
+    if(associated(TSKINICETILE  )) deallocate(TSKINICETILE  )
 
     if(associated(DCOOL_TILE    )) deallocate(DCOOL_TILE     )
     if(associated(DWARM_TILE    )) deallocate(DWARM_TILE     )
@@ -8454,7 +8454,7 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'TSKINW', ALLOC=associated(TSKINWTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'TSKINI', ALLOC=associated(TSKINITILE  ), notFoundOK=.true., RC=STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TSKINICE', ALLOC=associated(TSKINICETILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
       call MAPL_GetPointer(GEX(type), dum, 'DCOOL' ,   ALLOC=associated(DCOOL_TILE    ), notFoundOK=.true., RC=STATUS)
@@ -9121,8 +9121,8 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'TSKINW',TSKINWTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
-      if(associated(TSKINITILE)) then
-         call FILLOUT_TILE(GEX(type), 'TSKINI',TSKINITILE, XFORM, RC=STATUS)
+      if(associated(TSKINICETILE)) then
+         call FILLOUT_TILE(GEX(type), 'TSKINICE',TSKINICETILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
 
