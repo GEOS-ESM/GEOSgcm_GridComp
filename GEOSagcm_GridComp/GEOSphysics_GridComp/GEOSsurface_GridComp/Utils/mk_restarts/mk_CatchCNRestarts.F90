@@ -1,3 +1,6 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
+
 program  mk_CatchCNRestarts
 
 !  Usage : mk_CatchCNRestarts OutTileFile InTileFile InRestart SURFLAY RestartTime
@@ -194,7 +197,7 @@ program  mk_CatchCNRestarts
   use MAPL
   use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
-  use mk_restarts_getidsMod, only: GetIDs, to_radian, haversine, ReadTileFile_RealLatLon,ReadTileFile_IntLatLon
+  use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
 
   implicit none
   include 'mpif.h'
@@ -229,7 +232,7 @@ program  mk_CatchCNRestarts
 
   integer, parameter :: ntiles_cn = 1684725
   character(len=300), parameter :: &
-       InCNRestart = '/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
+       InCNRestart = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
        InCNTilFile = '/discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_EASE/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'     
 
   character(len=256), parameter :: CatNames   (57) = &
@@ -269,28 +272,33 @@ program  mk_CatchCNRestarts
   character*256 :: OutTileFile, InTileFile, InRestart, arg(6), OutFileName
   character*10  :: RestartTime
 
-  integer :: zoom
   logical :: clsmcn_file = .true., RegridSMAP = .false.
   logical :: havedata
-  integer :: i, i1, iargc, n, k, ncatch,ntiles,ntiles_in, filetype, rc, nVars
-  integer, pointer  :: Pf(:), Id(:), loni(:),lono(:), lati(:), lato(:)
-  real    :: SURFLAY
+  integer :: i, i1, iargc, n, k, ncatch,ntiles,ntiles_in, filetype, rc, nVars, req, infos, STATUS
+  integer, pointer  :: Id(:), id_loc(:), tid_in(:)
+  real,    pointer  :: loni(:),lono(:), lati(:), lato(:) , lonn(:), latt(:)
+  real              :: SURFLAY
   type(Netcdf4_Fileformatter) :: InFmt,OutFmt
   type(FileMetadata) :: InCfg,OutCfg
-
+  integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
+  character(256) :: Iam = "mk_CatchCNRestarts"
+  
   call init_MPI()
-
+  call MPI_Info_create(infos, STATUS)                                 ; VERIFY_(STATUS)
+  call MPI_Info_set(infos, "romio_cb_read", "automatic", STATUS)      ; VERIFY_(STATUS)
+  call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+  
   !-----------------------------------------------------
   ! Read command-line arguments, file names (inRestart,
   ! inTile, outTile), determine file format, and BCs 
   ! availability.  
   !-----------------------------------------------------
 
-  MPI_PROC0 : if (root_proc) then
+  
   
   I = iargc()
   
-  if( I /=6 ) then
+  if( I /=5 ) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
      stop
@@ -305,22 +313,54 @@ program  mk_CatchCNRestarts
   read(arg(3),'(a)')  InRestart
   read(arg(4),*)  SURFLAY
   read(arg(5),'(a)') RestartTime
-  read(arg(6),*)  zoom
-
-  if (SURFLAY == 99) call reorder_LDASsa_rst (InRestart)
 
   if (SURFLAY.ne.20 .and. SURFLAY.ne.50) then
      print *, "You must supply a valid SURFLAY value:"
      print *, "(Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params"
      print *, "(Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params"
-     stop
+     call exit(2)
   end if
 
   ! Are BCs data available? 
   ! -----------------------
  
   inquire(file=trim(DataDir)//"CLM_veg_typs_fracs",exist=havedata)
+  
+  ! Reading restart time stamp and constructing daylength array
+  ! -----------------------------------------------------------
+  read (RestartTime (1: 4), '(i4)', IOSTAT = K) AGCM_YY ; VERIFY_(K)
+  read (RestartTime (5: 6), '(i2)', IOSTAT = K) AGCM_MM ; VERIFY_(K)
+  read (RestartTime (7: 8), '(i2)', IOSTAT = K) AGCM_DD ; VERIFY_(K)
+  read (RestartTime (9:10), '(i2)', IOSTAT = K) AGCM_HR ; VERIFY_(K)
 
+  MPI_PROC0 : if (root_proc) then
+     
+     ! Read Output/Input  .til files
+     call ReadTileFile_RealLatLon(OutTileFile, ntiles, lono, lato)  
+     call ReadTileFile_RealLatLon(InTileFile,ntiles_in,loni,lati)
+     allocate(Id (ntiles))
+     
+     ! ------------------------------------------------
+     ! create output catchcn_internal_rst in nc4 format
+     ! ------------------------------------------------
+     
+     call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy',pFIO_READ, __RC__) 
+     InCfg=InFmt%read( __RC__)
+     call MAPL_IOCountNonDimVars(InCfg,nvars, __RC__)
+     call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),__RC__)
+     i = index(InRestart,'/',back=.true.)     
+     OutFileName = "OutData/"//trim(InRestart(i+1:))
+     call OutFmt%create(OutFileName, __RC__)
+     call OutFmt%write(OutCfg, __RC__)
+     i1= index(InRestart,'/',back=.true.)
+     i = index(InRestart,'catchcn',back=.true.)
+     
+  endif MPI_PROC0
+  
+  call MPI_Barrier(MPI_COMM_WORLD, mpierr)
+  call MPI_BCAST(NTILES   ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr) ; VERIFY_(mpierr)    
+  call MPI_BCAST(NTILES_IN,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr) ; VERIFY_(mpierr)
+  
   HAVE_DATA :if(havedata) then
 
      ! OPT3
@@ -335,48 +375,39 @@ program  mk_CatchCNRestarts
      
      close(22)
      
-     ! Check # of tiles in OutTile
-     
-     call ReadTileFile_IntLatLon (OutTileFile,Pf,Id,lono,lato,zoom)
-     
-     ntiles = size(Pf) ! # of land tiles in OutTileFile
- 
-     deallocate (Pf,Id,lono,lato)
-
      if(ncatch /= ntiles) then
         print *, "Number of tiles in BCs data, ",Ncatch," does not match number in OutTile file ", NTILES
         print *, trim(OutTileFile)
         stop
      endif
-
-     call ReadTileFile_IntLatLon (InTileFile,Pf,Id,lono,lato,zoom)
      
-     ntiles_in = size(Pf) ! # of land tiles in InTileFile must be that of OutTileFile
- 
-     deallocate (Pf,Id,lono,lato)
-
      if(ntiles_in /= ntiles) then
         print *, "HAVEDATA : Number of tiles in InTileFile, ",NTILES_IN," does not match number in OutTileFile ", NTILES
         print *, trim ( InTileFile)
         print *, trim (OutTileFile)
         stop
      endif
-
+     
      allocate (Id(ntiles))  
-
+     
      do i = 1,ntiles
         id (i) = i  ! Just one-to-one mapping
      end do
-
+     RegridSMAP = .true.
+   
+     !OPT3 (Reading/writing BCs/hydrological variables)
+   
+     if (root_proc) call read_bcs_data  (ntiles, SURFLAY, OutFmt, InRestart, __RC__)
+     
   else
 
      ! What is the format of the InRestart file?
      ! -----------------------------------------
 
-     call MAPL_NCIOGetFileType(InRestart, filetype,rc=rc)
-  
+     call MAPL_NCIOGetFileType(InRestart, filetype, __RC__)
+     
      if (filetype /= 0) then
-
+        
         ! OPT2 (filetype =/ 0: a binary file must be a catch_internal_rst)
         ! ----
         clsmcn_file = .false. 
@@ -390,150 +421,112 @@ program  mk_CatchCNRestarts
         ! check nVars: if nVars > 57 OPT1 (catchcn_internal_rst) ; else OPT2 (catch_internal_rst)
         ! ---------------------------------------------------------------------------------------
 
-        call InFmt%open(InRestart,pFIO_READ,rc=rc)
-        InCfg = InFmt%read(rc=rc)
+        call InFmt%open(InRestart,pFIO_READ, __RC__)
+        InCfg = InFmt%read(__RC__)
         call InFmt%close()
 
         call MAPL_IOCountNonDimVars(InCfg,nvars)
-
+       
         if(nVars == 57) clsmcn_file = .false. 
-        
+
      endif
-     
-     ! ----------------------------------------------------
-     ! INPUT/OUTPUT Mapping since InTileFile =/ OutTileFile
-     ! ----------------------------------------------------
-     
-     call ReadTileFile_IntLatLon (OutTileFile,Pf,Id,lono,lato,zoom)
-     
-     ntiles = size(Pf) ! # of land tiles in OutTileFile
-     
-     deallocate (Pf, id)
-     
-     ! Read input Tile File 
-     ! -------------------------------------------
 
-     call ReadTileFile_IntLatLon (InTileFile,Pf,Id,loni,lati,zoom)
-     ntiles_in = size(pf)
-     
-     deallocate (Pf, id)
-     
-     ! Now mapping (Id)
-     ! ----------------
-     
-     allocate (Id(ntiles))  ! Id contains corresponding InTileID after mapping InTiles on to OutTile
-     call GetIds(loni,lati,lono,lato,zoom,Id)
-     
-     deallocate (loni,lati,lono,lato)
- 
-  endif HAVE_DATA
+     CATCHCN: if (clsmcn_file) then
 
-  ! Reading restart time stamp and constructing daylength array
-  ! -----------------------------------------------------------
-
-  read (RestartTime (1: 4), '(i4)', IOSTAT = K) AGCM_YY
-  read (RestartTime (5: 6), '(i2)', IOSTAT = K) AGCM_MM
-  read (RestartTime (7: 8), '(i2)', IOSTAT = K) AGCM_DD
-  read (RestartTime (9:10), '(i2)', IOSTAT = K) AGCM_HR
-  
-!  i = index(InRestart,'internal_rst.',back=.true.)
-!
-!  read (InRestart(i+13:i+16), '(i4)', IOSTAT = K) AGCM_YY
-!  read (InRestart(i+17:i+18), '(i2)', IOSTAT = K) AGCM_MM
-!  read (InRestart(i+19:i+20), '(i2)', IOSTAT = K) AGCM_DD
-!  read (InRestart(i+22:i+23), '(i2)', IOSTAT = K) AGCM_HR
-!  
-!  IF(K /=0) THEN 
-!
-!     IF (iargc() < 5) then
-!        print *, " Restart_Time YYYYMMDDHH not found "
-!        print *, " mk_CatchCNRestarts OutTileFile InTileFile InRestart SURFLAY <RestartTime>"
-!        stop
-!     endif
-!
-!     read (RestartTime (1: 4), '(i4)', IOSTAT = K) AGCM_YY
-!     read (RestartTime (5: 6), '(i2)', IOSTAT = K) AGCM_MM
-!     read (RestartTime (7: 8), '(i2)', IOSTAT = K) AGCM_DD
-!     read (RestartTime (9:10), '(i2)', IOSTAT = K) AGCM_HR
-!
-!  ENDIF
-  
-! ------------------------------------------------
-! create output catchcn_internal_rst in nc4 format
-! ------------------------------------------------
-
-  call InFmt%open('/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy',pFIO_READ,rc=rc) 
-  InCfg=InFmt%read(rc=rc)
-  call MAPL_IOCountNonDimVars(InCfg,nvars,rc=rc)
-  call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),rc=rc)
-  i = index(InRestart,'/',back=.true.)     
-  OutFileName = "OutData/"//trim(InRestart(i+1:))
-  call OutFmt%create(OutFileName,rc=rc)
-  call OutFmt%write(OutCfg,rc=rc)
-  i1= index(InRestart,'/',back=.true.)
-  i = index(InRestart,'catchcn',back=.true.)
-                                             
-! -----------------
-! BEGIN THE PROCESS
-! -----------------
-
-  print *, "                                         "
-  print *, "**********************************************************************"
-  print *, "                                         "
-  print *, "mk_CatchCNRestarts Configuration"
-  print *, "--------------------------------"
-  print *, "                                         "  
-  print '(A22, i4.4,i2.2,i2.2,i2.2)', " Restart Time         :",AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR 
-  print *, 'SURFLAY              : ',SURFLAY
-  print *, 'Have BCs data        : ',havedata
-  print *, "# of tiles in InTile : ",ntiles_in
-  print *, "# of tiles in OutTile: ",ntiles
-
-  if(clsmcn_file) then 
-     print *,"InRestart is from    : Catchment-carbon AGCM simulation"
-  else
-     InRestart = trim(InCNRestart)
-     print *,"InRestart is from    : offline SMAP_EASEv2_M09"
-  endif
-
-  print *, "InRestart filename   : ",trim(InRestart)
-  print *, "OutRestart filename  : ","OutData/"//trim(InRestart(i1+1:i-1))//'catchcn'//trim(InRestart(i+7:))
-  print *, "OutRestart file fmt  : nc4"
-  print *, "                                         "
-  print *, "**********************************************************************"
-  print *, "                                         "
-
-endif MPI_PROC0
-
-call MPI_BCAST(RegridSMAP  ,     1, MPI_LOGICAL  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(havedata    ,     1, MPI_LOGICAL  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(clsmcn_file ,     1, MPI_LOGICAL  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(NTILES      ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(AGCM_YY     ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(AGCM_MM     ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(AGCM_DD     ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(AGCM_HR     ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(OutFileName ,   256, MPI_CHARACTER,  0,MPI_COMM_WORLD,mpierr)
-call MPI_BCAST(OutTileFile ,   256, MPI_CHARACTER,  0,MPI_COMM_WORLD,mpierr)
-
-HAVE :  if(havedata) then
-
-   ! OPT3
-   ! ----
-   
-   RegridSMAP = .true.
-   
-   !OPT3 (Reading/writing BCs/hydrological variables)
-   
-   if (root_proc) call read_bcs_data  (ntiles, SURFLAY, OutFmt, InRestart)
-   
-else
-     
-   CATCHCN: if (clsmcn_file) then
         ! OPT1
         ! ----
 
-       if (root_proc)  call read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, ID, InRestart)
+        ! ----------------------------------------------------
+        ! INPUT/OUTPUT Mapping since InTileFile =/ OutTileFile
+        ! ----------------------------------------------------
+        
+        if(myid > 0)    allocate (loni   (1:ntiles_in))
+        if(myid > 0)    allocate (lati   (1:ntiles_in))
+        
+        allocate (tid_in (1:ntiles_in))
+        do n = 1, NTILES_IN
+           tid_in (n) = n
+        end do
+        
+        call MPI_BCAST(loni,ntiles_in,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
+        call MPI_BCAST(lati,ntiles_in,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
+        call MPI_Barrier(MPI_COMM_WORLD, mpierr)
+        
+        ! Now mapping (Id)
+        ! ----------------
+        
+        allocate (Id(ntiles))  ! Id contains corresponding InTileID after mapping InTiles on to OutTile
+        ! call GetIds(loni,lati,lono,lato,zoom,Id)
+        allocate(low_ind (   numprocs))
+        allocate(upp_ind (   numprocs))
+        allocate(nt_local(   numprocs))
+        low_ind (:)    = 1
+        upp_ind (:)    = NTILES       
+        nt_local(:)    = NTILES 
+        
+        ! Domain decomposition
+        ! --------------------
+        
+        if (numprocs > 1) then      
+           do i = 1, numprocs - 1
+              upp_ind(i)   = low_ind(i) + (ntiles/numprocs) - 1 
+              low_ind(i+1) = upp_ind(i) + 1
+              nt_local(i)  = upp_ind(i) - low_ind(i) + 1
+           end do
+           nt_local(numprocs) = upp_ind(numprocs) - low_ind(numprocs) + 1
+        endif
+        
+        ! Get out tile lat/lots from root
+        
+        allocate (id_loc  (nt_local (myid + 1)))
+        allocate (lonn    (nt_local (myid + 1)))
+        allocate (latt    (nt_local (myid + 1)))  
+        
+        do i = 1, numprocs
+           if((I == 1).and.(myid == 0)) then
+              lonn(:) = lono(low_ind(i) : upp_ind(i))
+              latt(:) = lato(low_ind(i) : upp_ind(i))
+           else if (I > 1) then
+              if(I-1 == myid) then
+                 ! receiving from root
+                 
+                 call MPI_RECV(lonn,nt_local(i) , MPI_REAL, 0,995,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+                 call MPI_RECV(latt,nt_local(i) , MPI_REAL, 0,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+              else if (myid == 0) then
+                 ! root sends
+                 
+                 call MPI_ISend(lono(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
+                 call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+                 call MPI_ISend(lato(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
+                 call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+              endif
+           endif
+        end do
+        
+        call GetIds(loni,lati,lonn,latt,id_loc, tid_in)
+        call MPI_Barrier(MPI_COMM_WORLD, mpierr)
+        
+        do i = 1, numprocs
+           if((I == 1).and.(myid == 0)) then
+              id(low_ind(i) : upp_ind(i)) = Id_loc(:)
+           else if (I > 1) then
+              if(I-1 == myid) then
+                 ! send to root
+                 call MPI_ISend(id_loc,nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
+                 call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+              else if (myid == 0) then
+                 ! root receives
+                 call MPI_RECV(id(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+              endif
+           endif
+        end do
+        
+        if(root_proc) deallocate (lono, lato,lonn,latt, tid_in)
+     
+        deallocate (loni,lati)
+
+
+       if (root_proc)  call read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, ID, InRestart, __RC__)
 
      else
 
@@ -552,18 +545,53 @@ else
         !        endif NC4ORBIN
 
      endif CATCHCN
+ 
+  endif HAVE_DATA
 
-  end if HAVE
-
-
-
-if (RegridSMAP) then
-   ntiles_in = ntiles_cn
-   !OPT3 (carbon variables from offline SMAP M09) 
-   call regrid_carbon_vars (NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR, OutFileName, OutTileFile) 
-!   call regrid_carbon_vars_omp (NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR, OutFileName, OutTileFile) 
-   
-endif
+  if (root_proc) then
+          
+     ! -----------------
+     ! BEGIN THE PROCESS
+     ! -----------------
+     
+     print *, "                                         "
+     print *, "**********************************************************************"
+     print *, "                                         "
+     print *, "mk_CatchCNRestarts Configuration"
+     print *, "--------------------------------"
+     print *, "                                         "  
+     print '(A22, i4.4,i2.2,i2.2,i2.2)', " Restart Time         :",AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR 
+     print *, 'SURFLAY              : ',SURFLAY
+     print *, 'Have BCs data        : ',havedata
+     print *, "# of tiles in InTile : ",ntiles_in
+     print *, "# of tiles in OutTile: ",ntiles
+     
+     if(clsmcn_file) then 
+        print *,"InRestart is from    : Catchment-carbon AGCM simulation"
+     else
+        InRestart = trim(InCNRestart)
+        print *,"InRestart is from    : offline SMAP_EASEv2_M09"
+     endif
+     
+     print *, "InRestart filename   : ",trim(InRestart)
+     print *, "OutRestart filename  : ",trim(OutFileName)
+     print *, "OutRestart file fmt  : nc4"
+     print *, "                                         "
+     print *, "**********************************************************************"
+     print *, "                                         "
+     
+  endif
+  
+  call MPI_BCAST(OutFileName ,   256, MPI_CHARACTER,  0,MPI_COMM_WORLD,mpierr)
+  call MPI_Barrier(MPI_COMM_WORLD, mpierr)
+  
+  if (RegridSMAP) then
+     ntiles_in = ntiles_cn
+     !OPT3 (carbon variables from offline SMAP M09) 
+     call regrid_carbon_vars (NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR, OutFileName, OutTileFile) 
+     !   call regrid_carbon_vars_omp (NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR, OutFileName, OutTileFile) 
+     
+  endif
 
 call MPI_BARRIER( MPI_COMM_WORLD, mpierr)
 call MPI_FINALIZE(mpierr)
@@ -572,7 +600,7 @@ contains
 
   ! *****************************************************************************
   
-  SUBROUTINE read_bcs_data (ntiles, SURFLAY, OutFmt, InRestart)
+  SUBROUTINE read_bcs_data (ntiles, SURFLAY, OutFmt, InRestart, rc)
 
     ! This subroutine :
     !  1) reads BCs from BCSDIR and hydrological varables from InRestart.
@@ -586,6 +614,7 @@ contains
     integer, intent (in)                      :: ntiles
     character (*), intent (in)                :: InRestart
     type(Netcdf4_Fileformatter), intent (inout)           :: OutFmt
+    integer, optional, intent(out) :: rc
 
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
@@ -600,13 +629,13 @@ contains
     real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
     real, allocatable :: T2(:), var1(:)
     integer, allocatable :: ity(:)
-    integer                                  :: rc
     character*256                            :: vname
     character*256 :: DataDir="OutData/clsm/"
     integer       :: idum, i,j,n, ib, nv
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
     logical       :: file_exists
     type(Netcdf4_Fileformatter)                          :: InFmt,CatchCNFmt, CatchFmt
+    integer :: status
   
     allocate (   BF1(ntiles),    BF2 (ntiles),     BF3(ntiles)  )
     allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  ) 
@@ -630,59 +659,59 @@ contains
     if(file_exists) then
 
        print *,'FILE FORMAT FOR LAND BCS IS NC4'
-       call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_READ,rc=rc)
-       call CatchCNFmt%open(trim(DataDir)//'/catchcn_params.nc4',pFIO_READ,rc=rc)
-       call MAPL_VarRead ( CatchFmt ,'OLD_ITY', rity)
-       call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1)
-       call MAPL_VarRead ( CatchFmt ,'ARA2', ARA2)
-       call MAPL_VarRead ( CatchFmt ,'ARA3', ARA3)
-       call MAPL_VarRead ( CatchFmt ,'ARA4', ARA4)
-       call MAPL_VarRead ( CatchFmt ,'ARS1', ARS1)
-       call MAPL_VarRead ( CatchFmt ,'ARS2', ARS2)
-       call MAPL_VarRead ( CatchFmt ,'ARS3', ARS3)
-       call MAPL_VarRead ( CatchFmt ,'ARW1', ARW1)
-       call MAPL_VarRead ( CatchFmt ,'ARW2', ARW2)
-       call MAPL_VarRead ( CatchFmt ,'ARW3', ARW3)
-       call MAPL_VarRead ( CatchFmt ,'ARW4', ARW4)
+       call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_READ, __RC__)
+       call CatchCNFmt%open(trim(DataDir)//'/catchcn_params.nc4',pFIO_READ, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'OLD_ITY', rity, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA2', ARA2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA3', ARA3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARA4', ARA4, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS1', ARS1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS2', ARS2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARS3', ARS3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW1', ARW1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW2', ARW2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW3', ARW3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'ARW4', ARW4, __RC__)
 
        if( SURFLAY.eq.20.0 ) then
-          call MAPL_VarRead ( CatchFmt ,'ATAU2', ATAU2)
-          call MAPL_VarRead ( CatchFmt ,'BTAU2', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU2', ATAU2, __RC__)
+          call MAPL_VarRead ( CatchFmt ,'BTAU2', BTAU2, __RC__)
        endif
 
        if( SURFLAY.eq.50.0 ) then
-          call MAPL_VarRead ( CatchFmt ,'ATAU5', ATAU2)
-          call MAPL_VarRead ( CatchFmt ,'BTAU5', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU5', ATAU2, __RC__)
+          call MAPL_VarRead ( CatchFmt ,'BTAU5', BTAU2, __RC__)
        endif
 
-       call MAPL_VarRead ( CatchFmt ,'PSIS', PSIS)
-       call MAPL_VarRead ( CatchFmt ,'BEE', BEE)
-       call MAPL_VarRead ( CatchFmt ,'BF1', BF1)
-       call MAPL_VarRead ( CatchFmt ,'BF2', BF2)
-       call MAPL_VarRead ( CatchFmt ,'BF3', BF3)
-       call MAPL_VarRead ( CatchFmt ,'TSA1', TSA1)
-       call MAPL_VarRead ( CatchFmt ,'TSA2', TSA2)
-       call MAPL_VarRead ( CatchFmt ,'TSB1', TSB1)
-       call MAPL_VarRead ( CatchFmt ,'TSB2', TSB2)
-       call MAPL_VarRead ( CatchFmt ,'COND', COND)
-       call MAPL_VarRead ( CatchFmt ,'GNU', GNU)
-       call MAPL_VarRead ( CatchFmt ,'WPWET', WPWET)
-       call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR)
-       call MAPL_VarRead ( CatchFmt ,'POROS', POROS)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR)
-       call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP)
-       call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2)
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1)     !  30
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2)     !  31
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3)     !  32
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4)     !  33
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1)     !  34
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2)     !  35
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3)     !  36
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4)     !  37
+       call MAPL_VarRead ( CatchFmt ,'PSIS', PSIS, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BEE', BEE, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF1', BF1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF2', BF2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'BF3', BF3, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSA1', TSA1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSA2', TSA2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSB1', TSB1, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'TSB2', TSB2, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'COND', COND, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'GNU', GNU, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'WPWET', WPWET, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR, __RC__)
+       call MAPL_VarRead ( CatchFmt ,'POROS', POROS, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2, __RC__)
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1, __RC__)     !  30
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2, __RC__)     !  31
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3, __RC__)     !  32
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4, __RC__)     !  33
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1, __RC__)     !  34
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2, __RC__)     !  35
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3, __RC__)     !  36
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4, __RC__)     !  37
        call CatchFmt%close()
        call CatchCNFmt%close()
       
@@ -840,7 +869,7 @@ contains
      ! Now writing BCs (from BCSDIR) and regridded hydrological variables 1-72
      ! -----------------------------------------------------------------------
 
-     call InFmt%open(InRestart,pFIO_READ,rc=rc)
+     call InFmt%open(InRestart,pFIO_READ, __RC__)
      
      call MAPL_VarWrite(OutFmt,trim(CarbNames(1)),BF1)            !   1 
      call MAPL_VarWrite(OutFmt,trim(CarbNames(2)),BF2)            !   2
@@ -889,7 +918,7 @@ contains
         if(n == 39) vname = 'QC'
         if(n == 40) vname = 'TG'
         do j = 1,4
-           call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j)
+           call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j, __RC__)
            call MAPL_VarWrite(OutFmt,vname,var1 ,offset1=j)  ! 38-40
         end do
      end do
@@ -897,7 +926,7 @@ contains
      ! CAPAC CATDEF RZEXC SRFEXC ... SNDZN3
      
      do n=41,60
-        call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1)
+        call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1, __RC__)
         call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1)         !  41-60
      enddo
      
@@ -910,7 +939,7 @@ contains
         if(n == 65) var1 = 0.1
         do j = 1,4
            
-           call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1 ,offset1=j)
+           call MAPL_VarRead ( InFmt,trim(CarbNames(n-6)),var1 ,offset1=j, __RC__)
            call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1 ,offset1=j)  ! 61-65
         end do
      end do
@@ -958,12 +987,13 @@ contains
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
      deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
      deallocate (CLMC_st1,CLMC_st2)
-
+     if (present(rc)) rc = 0
+     !_RETURN(_SUCCESS)
   END SUBROUTINE read_bcs_data
   
    ! *****************************************************************************
   
-  SUBROUTINE read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, IDX, InRestart)
+  SUBROUTINE read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, IDX, InRestart, rc)
 
     implicit none
 
@@ -975,9 +1005,10 @@ contains
     character(*), intent (in)                :: InRestart
     type(Netcdf4_Fileformatter), intent (inout) :: OutFmt
     integer, dimension (NTILES), intent (in) :: IDX    
+    integer, optional, intent(out) :: rc
     type(Netcdf4_Fileformatter)              :: InFmt
     type(FileMetadata)                      :: InCfg
-    integer                                  :: rc,n,i,j, ndims, nVars,dim1,dim2
+    integer                                  :: n,i,j, ndims, nVars,dim1,dim2
     character(len=:), pointer                :: vname
     real, allocatable                        :: var1 (:), var2 (:)
     integer, allocatable                     :: TILE_ID (:)
@@ -986,17 +1017,16 @@ contains
     type(StringVariableMapIterator) :: var_iter
     type(StringVector), pointer :: var_dimensions
     character(len=:), pointer :: dname
-    
+    integer :: status
 
-    call InFmt%open(InRestart,pFIO_READ,rc=rc)
-    InCfg = InFmt%read(rc=rc)
+    call InFmt%open(InRestart,pFIO_READ, __RC__)
+    InCfg = InFmt%read(__RC__)
     
     allocate (var1 (1:NTILES_IN))
     allocate (var2 (1:NTILES_IN))
     allocate (TILE_ID (1:NTILES_IN)) 
 
-    call MAPL_VarRead ( InFmt,'TILE_ID',var1)
-
+    call MAPL_VarRead ( InFmt,'TILE_ID',var1, __RC__)
     do n = 1, NTILES_IN      
        tile_id (NINT (var1(n))) = n
     end do
@@ -1012,7 +1042,7 @@ contains
        ndims = var_dimensions%size()
 
        if (ndims == 1) then
-          call MAPL_VarRead ( InFmt,vname,var1)
+          call MAPL_VarRead ( InFmt,vname,var1, __RC__)
           var2 = var1 (tile_id)
           call MAPL_VarWrite(OutFmt,vname,var2(idx))
           
@@ -1021,7 +1051,7 @@ contains
           dname => var%get_ith_dimension(2)
           dim1=InCfg%get_dimension(dname)
           do j=1,dim1
-             call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j)
+             call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j, __RC__)
              var2 = var1 (tile_id)
              call MAPL_VarWrite(OutFmt,vname,var2(idx),offset1=j)
           enddo
@@ -1034,7 +1064,7 @@ contains
           dim2=InCfg%get_dimension(dname)
           do i=1,dim2
              do j=1,dim1
-                call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j,offset2=i)
+                call MAPL_VarRead ( InFmt,vname,var1     ,offset1=j,offset2=i, __RC__)
                 var2 = var1 (tile_id)
                 call MAPL_VarWrite(OutFmt,vname,var2(idx),offset1=j,offset2=i)
              enddo
@@ -1048,169 +1078,9 @@ contains
     deallocate (var1, var2, tile_id)
     call InFmt%close()
     call OutFmt%close()
-
+    if (present(rc)) rc = 0
+    !_RETURN(_SUCCESS)
   END SUBROUTINE read_catchcn_nc4
-
-  ! *****************************************************************************
-  
-  SUBROUTINE read_catch_nc4 (NTILES_IN, NTILES, OutFmt, IDX, InRestart)
-  
-    ! Reads catch_internal_rst nc4 file and writes out catchcn_internal_rst bin 
-    ! with rigridded 1:29, 38: 39, and 41:65. The rest of the data records is filled
-    ! zeros. This subroutine is called when BCs data are not available. 
-    ! The output catchcn_internal_rst file is binary.
-
-    implicit none
-
-    integer, intent (in)                     :: NTILES_IN, NTILES
-    type(Netcdf4_fileformatter), intent (inout) :: OutFmt
-    character(*), intent (in)                :: InRestart
-    integer, dimension (NTILES), intent (in) :: IDX
-    real, allocatable                        :: var1 (:)
-    integer                                  :: j, n, rc
-    type(Netcdf4_Fileformatter)              :: InFmt
-
-    call InFmt%open(InRestart,pFIO_READ,rc=rc)
-
-    allocate (var1 (1:NTILES_IN))
-
-    do n = 1,29 
-       call MAPL_VarRead (InFmt,trim(CatNames(n)),var1)
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    end do
-
-    var1 = 0.
-
-    do n = 30, 37
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    end do
-
-    do n = 38,39
-       do j=1,4
-          if(n == 38) then 
-             call MAPL_VarRead(InFmt,trim(CatNames(31)),var1,offset1=j)
-             call MAPL_VarWrite(OutFmt,trim(CarbNames(n -6)),var1(Idx),offset1=j) ! 38
-             call MAPL_VarWrite(OutFmt,trim(CarbNames(40-6)),var1(Idx),offset1=j) ! 40
-          endif
-          if(n == 39) then
-             call MAPL_VarRead(InFmt,trim(CatNames(32))  ,var1,offset1=j)
-             call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx),offset1=j)  ! 39
-          endif
-       enddo
-    end do
-    
-    do n = 41,60
-       call MAPL_VarRead(InFmt,trim(CatNames(n-8)),var1)    
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx))                  ! 41-60
-    end do
-
-    do n = 61,65
-       do j=1,4
-          call MAPL_VarRead(InFmt,trim(CatNames(n-8)),var1,offset1=j)
-          call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx),offset1=j)     ! 61,65
-       enddo
-    end do
-
-    deallocate (var1)
-
-    ! 66 : 1080 dont bother this file is merely an intermedeate file
-
-    call InFmt%close()
-    call OutFmt%close()
-    
-  END SUBROUTINE read_catch_nc4
-
-  ! *****************************************************************************
-  
-  SUBROUTINE read_catch_bin (NTILES_IN, NTILES, OutFmt, IDX)
-
-    ! Reads catch_internal_rst bin file and writes out catchcn_internal_rst bin 
-    ! with rigridded 1:29, 38: 39, and 41:65. The rest of the data records is filled
-    ! zeros. This subroutine is called when BCs data are not available. 
-    ! The output catchcn_internal_rst file is nc4. 
-
-    implicit none
-    
-    integer, intent (in)                     :: NTILES_IN, NTILES
-    type(Netcdf4_Fileformatter), intent (inout) :: OutFmt
-    integer, dimension (NTILES), intent (in) :: IDX
-    real, allocatable                        :: var1 (:), vars(:,:), var2(:,:)
-    integer                                  :: j, n
-
-    allocate (var1 (1:NTILES_IN))
-    allocate (vars (1:NTILES_IN,1:4))
-    allocate (var2 (1:NTILES_IN,1:4))
-
-    do n=1,29
-       read ( InUnit) var1
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    enddo
-
-    read ( InUnit) var1
-    var1 = 0.
-
-    do n = 30, 37
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n)),var1(Idx))
-    end do
-
-    read ( InUnit) vars
-    read ( InUnit) var2
-
-    do j = 1,4
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(38-6)),vars(Idx,j),offset1=j) ! 38
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(39-6)),var2(Idx,j),offset1=j) ! 39
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(40-6)),vars(Idx,j),offset1=j) ! 40 TG=TC
-    end do
-
-    do n = 41,60
-       read ( InUnit) var1
-       call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var1(Idx))
-    end do
-
-    do n = 61, 65
-       read ( InUnit) var2
-       do j = 1,4
-          call MAPL_VarWrite(OutFmt,trim(CarbNames(n-6)),var2(Idx,j),offset1=j) ! 61-65
-       end do
-    end do
-
-! 66 : 1080 dont bother, this file is merely an intermedeate file
-
-!    deallocate (var1)
-!    allocate (var1 (ntiles)
-!    do i = 1,ntiles
-!       var1(i) = real (i)
-!    end do
-!
-!    call MAPL_VarWrite(OutFmt,CarbNames(66),var1) | 66
-!    
-!    ! Below CNCOL and CNPFT are not necessary in this step.
-!    var1 = 0.
-!
-!    do n = 67, 72
-!       write(OutUnit) var1(IDX)
-!    end do 
-  
-!    do n = 1,VAR_COL
-!       do j = 1,nzone
-!          write(OutUnit) var1(IDX)               !  73-192: CNCOL (n,nz*VAR_COL)  
-!       end do
-!    end do
-
-!    do n = 1,VAR_PFT
-!       do j = 1,nveg
-!           do i = 1,nzone
-!              write(OutUnit) var1(IDX)           !  193-1080: CNPFT (n,nz*nv*VAR_COL)  
-!           end do
-!        end do
-!     end do
-     
-     deallocate (var1, var2, vars)
-     
-     close ( InUnit, status = 'keep')
-     call OutFmt%close()
-
-  END SUBROUTINE read_catch_bin
 
   ! *****************************************************************************
   
@@ -1228,10 +1098,9 @@ contains
     integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
     integer, allocatable, dimension(:,:) :: Id_glb, Id_loc
     integer, allocatable, dimension(:)   :: tid_offl, id_vec
-    logical, allocatable, dimension(:)   :: mask
     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl
-    real    :: dw, min_lon, max_lon, min_lat, max_lat, fveg_new, sub_dist
-    integer :: n,i,j, k, nplus, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID, req
+    real    :: fveg_new, sub_dist
+    integer :: n,i,j, k, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID, req
     integer :: outid, local_id
     integer, allocatable, dimension (:) :: sub_tid, sub_ityp1, sub_ityp2,icl_ityp1
     real   , pointer, dimension (:) :: sub_lon, sub_lat, rev_dist, sub_fevg1, sub_fevg2,&
@@ -1239,11 +1108,8 @@ contains
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:) 
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
-
-    logical :: all_found
   
     allocate (tid_offl  (ntiles_cn))
-    allocate (mask      (ntiles_cn))
     allocate (ityp_offl (ntiles_cn,nveg))
     allocate (fveg_offl (ntiles_cn,nveg))
 
@@ -1344,16 +1210,19 @@ contains
 
     ! Open GKW/Fzeng SMAP M09 catchcn_internal_rst and output catchcn_internal_rst
     ! ----------------------------------------------------------------------------
-    
-    ! NF_OPEN_PAR is no longer needed since IO is done by the root processor.
     !    call MPI_Info_create(info, STATUS)
     !    call MPI_Info_set(info, "romio_cb_read", "automatic", STATUS)   
     !    STATUS = NF_OPEN_PAR   (trim(InCNRestart),IOR(NF_NOWRITE,NF_MPIIO),MPI_COMM_WORLD, info,NCFID)
     !    STATUS = NF_OPEN_PAR   (trim(OutFileName),IOR(NF_WRITE  ,NF_MPIIO),MPI_COMM_WORLD, info,OUTID)
     
-    STATUS = NF_OPEN (trim(InCNRestart),NF_NOWRITE,NCFID)
-    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS, 'OFFLINE RESTART FAILED')
-    STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID)
+    STATUS = NF_OPEN_PAR   (trim(OutFileName),IOR(NF_NOWRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID) ; VERIFY_(STATUS)
+ !   if(root_proc) then
+ !      STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID)
+ !      
+ !   else
+ !      STATUS = NF_OPEN (trim(OutFileName),NF_NOWRITE,OUTID)
+ !   endif
+ !   
     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS, 'OUTPUT RESTART FAILED')
 
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),1/), (/nt_local(myid+1),1/),CLMC_pt1)
@@ -1366,7 +1235,9 @@ contains
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),4/), (/nt_local(myid+1),1/),CLMC_sf2)
     
     if (root_proc) then
-
+       
+       STATUS = NF_OPEN (trim(InCNRestart),NF_NOWRITE,NCFID)
+       IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS, 'OFFLINE RESTART FAILED')
        allocate (TILE_ID  (1:ntiles_cn))
 
        STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TILE_ID'   ), (/1/), (/NTILES_cn/),TILE_ID)       
@@ -1409,190 +1280,11 @@ contains
     ! --------------------------------------------------------------------------------
     ! Here we create transfer index array to map offline restarts to output tile space
     ! --------------------------------------------------------------------------------   
-      
-    ! Loop through NTILES (# of tiles in output array) and find, for each PFT type seperately, 
-    !      a tile with the same PFT type in the neighborhood from the SMAP_M09 offline array.  
 
-    Id_loc = -9999
-    
-    TILES : do n = low_ind (myid + 1), upp_ind (myid + 1)
-!       if(MOD(n,10000) == 0) print *,'In regrid carbon', myid,n
-       local_id = n - low_ind (myid + 1) + 1
-        
-       ! Below block was commented out to ensure zero-diff  irrespective to the number of processors used.
-      
-       !       if (n > (low_ind (myid + 1))) then
-       !          
-       !          
-       !          ! If the previous tile  (n-1) is in the vicinity (within about 1-degree) and has any similar vegetation types 
-       !          !  with fraction > 0.
-       !          ! we simply take Id_loc(n-1,nv) values and skip the vegetation type.
-       !          
-       !          dist = haversine(to_radian(latt(local_id)), to_radian(lonn(local_id)), &
-       !               to_radian(latt(local_id-1)), to_radian(lonn(local_id-1))) 
-       !          
-       !          NEIGHBOR : if(dist < 110.) then
-       !             
-       !             if((CLMC_pt1(local_id) == CLMC_pt1(local_id-1)).and.(CLMC_pf1(local_id-1) >= fmin)) then
-       !                Id_loc (local_id,1) = Id_loc (local_id-1,1)
-       !             endif
-       !             if((CLMC_pt2(local_id) == CLMC_pt2(local_id-1)).and.(CLMC_pf2(local_id-1) >= fmin)) then 
-       !                Id_loc (local_id,2) = Id_loc (local_id-1,2)
-       !             endif
-       !             if((CLMC_st1(local_id) == CLMC_st1(local_id-1)).and.(CLMC_sf1(local_id-1) >= fmin)) then
-       !                Id_loc (local_id,3) = Id_loc (local_id-1,3)
-       !             endif
-       !             if((CLMC_st2(local_id) ==CLMC_st2(local_id-1)).and.(CLMC_sf2(local_id-1) >= fmin)) then
-       !                Id_loc (local_id,4) = Id_loc (local_id-1,4)
-       !             endif             
-       !          endif NEIGHBOR          
-       !       endif
-              
-       dw = 0.5 ! Start with a 1x1 window, then zoom out by increasing the size by 2-deg until 4 similar tiles are found for 4 PFT types        
-
-       ZOOMOUT : do  
-           
-          ! Min/Max lon/lat of the working window
-          ! -------------------------------------
-          
-          min_lon = MAX(lonn (local_id) - dw, -180.)
-          max_lon = MIN(lonn (local_id) + dw,  180.)
-          min_lat = MAX(latt (local_id) - dw,  -90.)
-          max_lat = MIN(latt (local_id) + dw,   90.) 
-          mask = .false.
-          mask =  ((latc >= min_lat .and. latc <= max_lat).and.(lonc >= min_lon .and. lonc <= max_lon))
-          nplus =  count(mask = mask)
-          
-          if(nplus < 0) then
-             dw = dw + 1.0
-             CYCLE
-          endif
-          
-          allocate (sub_tid (1:nplus))
-          allocate (sub_lon (1:nplus))
-          allocate (sub_lat (1:nplus))
-          allocate (rev_dist  (1:nplus))
-          allocate (sub_ityp1 (1:nplus))
-          allocate (sub_fevg1 (1:nplus))
-          allocate (sub_ityp2 (1:nplus))
-          allocate (sub_fevg2 (1:nplus))
-          allocate (icl_ityp1 (1:nplus))
-          
-          sub_tid = PACK (tid_offl, mask= mask) 
-          sub_lon = PACK (lonc    , mask= mask)
-          sub_lat = PACK (latc    , mask= mask)
-          
-          ! compute distance from the tile
-          
-          sub_lat = sub_lat * MAPL_PI/180.
-          sub_lon = sub_lon * MAPL_PI/180.
-          
-!          do i = 1,nplus
-!             sub_dist(i) = haversine(to_radian(latt(local_id)), to_radian(lonn(local_id)), &
-!                  sub_lat(i), sub_lon(i)) 
-!             !                   sub_dist(i) = dist
-!          end do
-          
-          ! loop through 4 vegetation types
-           
-          NVLOOP : do nv = 1, nveg
-             
-             if (nv == 1) ityp_new = CLMC_pt1(local_id)
-             if (nv == 1) fveg_new = CLMC_pf1(local_id)
-             if (nv == 2) ityp_new = CLMC_pt2(local_id)
-             if (nv == 2) fveg_new = CLMC_pf2(local_id)
-             if (nv == 3) ityp_new = CLMC_st1(local_id)
-             if (nv == 3) fveg_new = CLMC_sf1(local_id)
-             if (nv == 4) ityp_new = CLMC_st2(local_id) 
-             if (nv == 4) fveg_new = CLMC_sf2(local_id)
-             
-             SEEK : if((Id_loc(local_id,nv) < 0).and.(fveg_new > fmin)) then
-                
-                if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
-                   nx = nv + 2
-                else
-                   nx = nv - 2
-                endif
-                
-                sub_ityp1 = ityp_offl (sub_tid,nv)
-                sub_fevg1 = fveg_offl (sub_tid,nv)
-                sub_ityp2 = ityp_offl (sub_tid,nx)
-                sub_fevg2 = fveg_offl (sub_tid,nx)
-                
-                rev_dist  = 1.e20
-                icl_ityp1 = iclass(sub_ityp1)
-                
-                do i = 1,nplus
-                   if((sub_ityp1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
-                        iclass(ityp_new) ==iclass(sub_ityp1(i)))) .or.             &
-                        (sub_fevg2(i)>fmin .and. (ityp_new ==sub_ityp2(i) .or. &
-                        iclass(ityp_new)==iclass(sub_ityp2(i))))) then
-
-                      sub_dist = haversine(to_radian(latt(local_id)), to_radian(lonn(local_id)), &
-                           sub_lat(i), sub_lon(i))
-                      
-                      if(ityp_new == sub_ityp1(i) .and. sub_fevg1(i) >fmin) then
-                         rev_dist(i) = 1.*sub_dist     ! give priority to same (primary if primary, secondary if secondary)   
-                         ! gkw: these weights are tunable
-                      else if(ityp_new ==sub_ityp2(i) .and. sub_fevg2(i)>fmin) then
-                         rev_dist(i) = 2.*sub_dist     ! lower priority if not same (secondary if primary, primary if secondary)
-                      else if(iclass(ityp_new)==iclass(sub_ityp1(i)) .and. sub_fevg1(i)>fmin) then
-                         rev_dist(i) = 3.*sub_dist     ! even lower priority if same of some other PFT in same class
-                      else if(sub_fevg2(i)>fmin) then
-                         rev_dist(i) = 4.*sub_dist     ! even lower priority if not same of some other PFT in same class
-                      else
-                         rev_dist(i) = 1.e20
-                      endif
-                   endif                   
-                end do
-
-!                where ((sub_ityp1 == ityp_new) .and. (sub_fevg1 > fmin))  
-!                   rev_dist = 1. * rev_dist    ! give priority to same (primary if primary, secondary if secondary)  
-!                elsewhere ((sub_ityp2 == ityp_new) .and. (sub_fevg2 > fmin))  
-!                   rev_dist = 2. * rev_dist    ! lower priority if not same (secondary if primary, primary if secondary)       
-!                elsewhere ((icl_ityp1 == iclass(ityp_new)) .and. (sub_fevg1 > fmin))  
-!                   rev_dist = 3. * rev_dist    ! even lower priority if same of some other PFT in same class
-!                elsewhere (sub_fevg2 > fmin)
-!                   rev_dist = 4. * rev_dist    ! even lower priority if not same of some other PFT in same class
-!                elsewhere
-!                   rev_dist = 1.e20
-!                endwhere
-
-                FOUND : if(minval (rev_dist) < 1.e19) then 
-                   
-                   Id_loc(local_id,nv) = sub_tid(minloc(rev_dist,1)) ! Cell ID of the nearest neightbor in the offline 
-                                                                     ! restart file that has the same veg type
-                                      
-                endif FOUND
-                
-             endif SEEK
-          end do NVLOOP
-          
-          deallocate (sub_tid, sub_lon, sub_lat, icl_ityp1)
-          deallocate (sub_ityp1, sub_fevg1, sub_ityp2, sub_fevg2, rev_dist)  
-          
-          ! if similar types have been found for ITYPs with fveg > fmin within the window, exit
-           
-          all_found = .true.
-          
-          if((all_found).and.((CLMC_pf1(local_id) > fmin).and.(Id_loc(local_id,1) < 0))) all_found = .false.
-          if((all_found).and.((CLMC_pf2(local_id) > fmin).and.(Id_loc(local_id,2) < 0))) all_found = .false.
-          if((all_found).and.((CLMC_sf1(local_id) > fmin).and.(Id_loc(local_id,3) < 0))) all_found = .false.
-          if((all_found).and.((CLMC_sf2(local_id) > fmin).and.(Id_loc(local_id,4) < 0))) all_found = .false.
-          
-          if(all_found) GO TO 100
-           
-           ! if not increase the window size
-           dw = dw + 1.
-           
-        end do ZOOMOUT
-        
-100   continue !  if(mod (n,1000) == 0) print *, myid +1, n, Id_loc(local_id,:)
-
-     END DO TILES
-
-     deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
-     deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
+    call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl, &
+         CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
+         fveg_offl, ityp_offl)
+    deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2,lonc,latc,lonn,latt)
  
      ! update id_glb in root
 
@@ -1626,11 +1318,14 @@ contains
         if(root_proc) id_glb (:,nv) = id_vec
         
      end do
-
+     
+     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+     STATUS = NF_CLOSE (OutID)
 ! write out regridded carbon variables
 
      if(root_proc) then
-
+        
+        STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID) ; VERIFY_(STATUS)
         allocate (CLMC_pf1(NTILES))
         allocate (CLMC_pf2(NTILES))
         allocate (CLMC_sf1(NTILES))
@@ -1689,7 +1384,7 @@ contains
 
         OUT_TILE : DO N = 1, NTILES
 
-           ! if(mod (n,1000) == 0) print *, myid +1, n, Id_glb(n,:)
+           !if(mod (n,1000) == 0) print *, myid +1, n, Id_glb(n,:)
 
            NVLOOP2 : do nv = 1, nveg
 
@@ -2038,7 +1733,7 @@ contains
 
         STATUS = NF_CLOSE (NCFID)
         STATUS = NF_CLOSE (OutID)
-
+        
         deallocate (var_off_col,var_off_pft,var_col_out,var_pft_out)  
         deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
         deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
@@ -2047,579 +1742,8 @@ contains
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
+     
   END SUBROUTINE regrid_carbon_vars
-
-  ! *****************************************************************************
-  
-  SUBROUTINE regrid_carbon_vars_omp (                               &
-       NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR, OutFileName, OutTileFile) 
-
-    implicit none
-    character (*), intent (in)           :: OutTileFile, OutFileName
-    integer, intent (in)                 :: NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR 
-    real, allocatable, dimension (:)     :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
-         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
-
-    integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
-    integer, allocatable, dimension(:,:) :: Id_glb
-    integer, allocatable, dimension(:)   :: tid_offl
-    logical, allocatable, dimension(:)   :: mask
-    real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl
-    real    :: fveg_new, dist, dmin, distance
-    integer :: n,nn,i,j,ip, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID, kx
-    integer :: outid
-    real   , pointer, dimension (:) :: lonc, latc, LATT, LONN, DAYX 
-    real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
-    real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:) 
-    integer, allocatable :: low_ind(:), upp_ind(:)
-
-    logical :: seek
-
-! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
-!
-! NOTE: "!$" is for conditional compilation
-!
-logical :: running_omp = .false.
-!
-!$ integer :: omp_get_thread_num, omp_get_num_threads
-!
-integer :: n_threads=1
-!
-!
-! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
-!
-! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
-!
-!$ running_omp = .true.         ! conditional compilation
-!
-! ECHO BASIC OMP VARIABLES
-!
-!$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
-!
-!$OMP SINGLE
-!
-!$ n_threads = omp_get_num_threads()
-!
-!$ write (*,*) 'running_omp = ', running_omp
-!$ write (*,*)
-!$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
-!$ write (*,*)
-!$OMP ENDSINGLE
-!
-!$OMP CRITICAL
-!$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
-!$OMP ENDCRITICAL
-!
-!$OMP BARRIER
-!
-!$OMP ENDPARALLEL
-  
-    allocate (tid_offl  (ntiles_cn))
-    allocate (mask      (ntiles_cn))
-    allocate (ityp_offl (ntiles_cn,nveg))
-    allocate (fveg_offl (ntiles_cn,nveg))
-
-    ! Domain decomposition
-    ! --------------------
-
-     allocate(low_ind(n_threads))
-     allocate(upp_ind(n_threads))
-     low_ind(1)         = 1
-     upp_ind(n_threads) = ntiles
-     
-     if (running_omp)  then
-        do i=1,n_threads-1  
-           upp_ind(i)   = low_ind(i) + (ntiles/n_threads) - 1 
-           low_ind(i+1) = upp_ind(i) + 1
-!           print *,i,low_ind(i),upp_ind(i)
-        end do
-!        print *,i,low_ind(i),upp_ind(i)
-     end if
-
-
-    allocate (id_glb  (NTILES,4))
-    allocate (lonn    (NTILES))
-    allocate (latt    (NTILES))
-    allocate (CLMC_pf1(NTILES))
-    allocate (CLMC_pf2(NTILES))
-    allocate (CLMC_sf1(NTILES))
-    allocate (CLMC_sf2(NTILES))
-    allocate (CLMC_pt1(NTILES))
-    allocate (CLMC_pt2(NTILES))
-    allocate (CLMC_st1(NTILES))
-    allocate (CLMC_st2(NTILES))
-    allocate (lonc   (1:ntiles_cn))
-    allocate (latc   (1:ntiles_cn))
-    allocate (DAYX   (NTILES))
-
-    ! --------------------------------------------
-    ! Read extract lonn, latt from output .til file 
-    ! --------------------------------------------
-    
-    call ReadTileFile_RealLatLon (OutTileFile, i, lonn, latt)
-    
-    ! Compute DAYX
-    ! ------------
-    
-    call compute_dayx (                                     &
-         NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-         LATT, DAYX)   
-    
-    ! ---------------------------------------------
-    ! Read exact lonc, latc from offline .til File 
-    ! ---------------------------------------------
-
-    call ReadTileFile_RealLatLon(InCNTilFile, i,lonc,latc)
-
-    !Convert to radians
-
-    lonc = lonc * MAPL_PI/180.
-    latc = latc * MAPL_PI/180.
-    latt = latt * MAPL_PI/180.
-    lonn = lonn * MAPL_PI/180.
-
-    ! Open GKW/Fzeng SMAP M09 catchcn_internal_rst and output catchcn_internal_rst
-    ! ----------------------------------------------------------------------------
-    
-    ! NF_OPEN_PAR is no longer needed since IO is done by the root processor.
-    !    call MPI_Info_create(info, STATUS)
-    !    call MPI_Info_set(info, "romio_cb_read", "automatic", STATUS)   
-    !    STATUS = NF_OPEN_PAR   (trim(InCNRestart),IOR(NF_NOWRITE,NF_MPIIO),MPI_COMM_WORLD, info,NCFID)
-    !    STATUS = NF_OPEN_PAR   (trim(OutFileName),IOR(NF_WRITE  ,NF_MPIIO),MPI_COMM_WORLD, info,OUTID)
-    
-    STATUS = NF_OPEN (trim(InCNRestart),NF_NOWRITE,NCFID)
-    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS, 'OFFLINE RESTART FAILED')
-    STATUS = NF_OPEN (trim(OutFileName),NF_WRITE,OUTID)
-    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS, 'OUTPUT RESTART FAILED')
-
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,1/), (/NTILES,1/),CLMC_pt1)
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,2/), (/NTILES,1/),CLMC_pt2)
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,3/), (/NTILES,1/),CLMC_st1)
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,4/), (/NTILES,1/),CLMC_st2)
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,1/), (/NTILES,1/),CLMC_pf1)
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,2/), (/NTILES,1/),CLMC_pf2)
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,3/), (/NTILES,1/),CLMC_sf1)
-    STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,4/), (/NTILES,1/),CLMC_sf2)
-           
-    do n = 1,ntiles_cn
-       
-       STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/n,1/), (/1,4/),ityp_offl(n,:))
-       STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/n,1/), (/1,4/),fveg_offl(n,:))
-       
-       tid_offl (n) = n
-       
-       do nv = 1,nveg
-          if(ityp_offl(n,nv)<0 .or. ityp_offl(n,nv)>npft)    stop 'ityp'
-          if(fveg_offl(n,nv)<0..or. fveg_offl(n,nv)>1.00001) stop 'fveg'             
-       end do
-       
-       if((ityp_offl(n,3) == 0).and.(ityp_offl(n,4) == 0)) then
-          if(ityp_offl(n,1) /= 0) then
-             ityp_offl(n,3) = ityp_offl(n,1)
-          else
-             ityp_offl(n,3) = ityp_offl(n,2)
-          endif
-       endif
-       
-       if((ityp_offl(n,1) == 0).and.(ityp_offl(n,2) /= 0)) ityp_offl(n,1) = ityp_offl(n,2)
-       if((ityp_offl(n,2) == 0).and.(ityp_offl(n,1) /= 0)) ityp_offl(n,2) = ityp_offl(n,1)
-       if((ityp_offl(n,3) == 0).and.(ityp_offl(n,4) /= 0)) ityp_offl(n,3) = ityp_offl(n,4)
-       if((ityp_offl(n,4) == 0).and.(ityp_offl(n,3) /= 0)) ityp_offl(n,4) = ityp_offl(n,3)
-       
-    end do
-       
-    ! --------------------------------------------------------------------------------
-    ! Here we create transfer index array to map offline restarts to output tile space
-    ! --------------------------------------------------------------------------------   
-      
-    ! Loop through NTILES (# of tiles in output array) and find, for each PFT type seperately, 
-    !      a tile with the same PFT type in the neighborhood from the SMAP_M09 offline array.  
-
-    Id_glb = -9999
-         
-    ! loop through 4 vegetation types
-
-    NVLOOP : do nv = 1, nveg
-
-       if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
-          nx = nv + 2
-       else
-          nx = nv - 2
-       endif
-
-!       ic = 0
-!       ibin = 0
-
-       !$OMP PARALLELDO DEFAULT(PRIVATE) &
-       !$OMP SHARED (n_threads, low_ind, upp_ind, Id_glb,     &
-       !$OMP         CLMC_pt1,CLMC_pt2, CLMC_st1, CLMC_st2,    &
-       !$OMP         CLMC_pf1,CLMC_pf2, CLMC_sf1, CLMC_sf2,    &
-       !$OMP         lonn, latt, lonc, latc, iclass,ityp_offl, &
-       !$OMP         nv,nx, fveg_offl, NTILES) 
-       
-       TILES : DO n = 1, NTILES
-
-          ! compute distance from the tile
-                    
-          if (nv == 1) ityp_new = CLMC_pt1(n)
-          if (nv == 1) fveg_new = CLMC_pf1(n)
-          if (nv == 2) ityp_new = CLMC_pt2(n)
-          if (nv == 2) fveg_new = CLMC_pf2(n)
-          if (nv == 3) ityp_new = CLMC_st1(n)
-          if (nv == 3) fveg_new = CLMC_sf1(n)
-          if (nv == 4) ityp_new = CLMC_st2(n) 
-          if (nv == 4) fveg_new = CLMC_sf2(n)
-
-          if(ityp_new>0 .and. fveg_new>fmin) then
-             dmin = 1.e20
-             ip = 0
-             iv = 0
-             dist = 1.e20
-             nn = 1
-             seek = .true.
-
-             do while (seek .and. nn<=ntiles_cn)
-                
-                if((fveg_offl(nn,nv)>fmin .and. (ityp_new ==ityp_offl(nn,nv) .or.   &
-                     iclass(ityp_new) ==iclass(ityp_offl(nn,nv)))) .or.             &
-                     (fveg_offl(nn,nx)>fmin .and. (ityp_new ==ityp_offl(nn,nx) .or. &
-                     iclass(ityp_new)==iclass(ityp_offl(nn,nx))))) then
-
-                   distance = haversine(latt(n), lonn(n), latc(nn), lonc(nn)) 
-
-                   if(ityp_new == ityp_offl(nn,nv) .and. fveg_offl(nn,nv)>fmin) then
-                      dist = 1.*distance ! give priority to same (primary if primary, secondary if secondary)   
-                                             ! gkw: these weights are tunable
-                   else if(ityp_new ==ityp_offl(nn,nx) .and. fveg_offl(nn,nx)>fmin) then
-                      dist = 2.*distance ! lower priority if not same (secondary if primary, primary if secondary)
-                   else if(iclass(ityp_new)==iclass(ityp_offl(nn,nv)) .and. fveg_offl(nn,nv)>fmin) then
-                      dist = 3.*distance ! even lower priority if same of some other PFT in same class
-                   else if(fveg_offl(nn,nx)>fmin) then
-                      dist = 4.*distance ! even lower priority if not same of some other PFT in same class
-                   else
-                      dist = 1.e20
-                   endif
-
-                   if(dist < dmin) then
-                      ip = nn   ! pointer into input tile space
-
-                      if(ityp_new ==ityp_offl (nn,nv) .and. fveg_offl(nn,nv)>fmin) then
-                         iv = nv                                     ! same type fraction (primary of secondary)
-                         kx = 1
-                      else if(ityp_new==ityp_offl(nn,nx) .and. fveg_offl(nn,nx)>fmin) then
-                         iv = nx                                     ! not same fraction
-                         kx = 2
-                      else if(iclass(ityp_new)==iclass(ityp_offl(nn,nv)) .and. fveg_offl(nn,nv)>fmin) then
-                         iv = nv                                     ! primary, other type (same class)
-                         kx = 3
-                      else if(fveg_offl(nn,nx)>fmin) then
-                         iv = nx                                     ! secondary, other type (same class)
-                         kx = 4
-                      else
-                         kx = 0
-                      endif
-                      
-                      if(kx > 0) then
-                         dmin = dist ! a valid match was found
-                         if(dist == 0.) seek = .false. ! exact match found, skip remaining tiles
-                      endif
-                   endif
-                endif
-                nn = nn + 1
-             end do
-
-             if(dmin > 1.e6) stop 'dmin' 
-             
-             if(ip==0 .or. iv==0 .or. dist==1.e20) then
-                print *, 'error:',n,nv,ityp_new,fveg_new,lonn(n)/( MAPL_PI/180.),latt(n)/( MAPL_PI/180.)
-                stop 'not found' ! if this ever happens, set this tile to not used 
-                                 ! (set ITYP_NEW=0 & FVEG_NEW=0 in pft.dat) or set it to "cold carbon" initial state
-             endif
-
-
-             ! save dinstance stats for printing how well the matching works
-             ! -------------------------------------------------------------
-!             if(dmin <  1.) then        ! less than 1km
-!                id = 1
-!             else if (dmin <  5.) then ! less than 5km
-!                id = 2
-!             else if (dmin < 10.) then ! less than 10km, and so on
-!                id = 3
-!             else if (dmin < 20.) then
-!                id = 4
-!             else if (dmin < 50.) then
-!                id = 5
-!             else if (dmin <100.) then
-!                id = 6
-!             else if (dmin <200.) then
-!                id = 7
-!             else if (dmin <500.) then
-!                id = 8
-!             else
-!                id = 9
-!             endif
-!             
-!             ibin(id) = ibin(id) + 1
-!             
-!             ic = ic + 1
-!             if(mod(ic,5000) == 0) write(6,81) n,NTILES,nv,dmin,ibin
-!81           format('scanning',i8,' of',i8,' for nv=',i1,f8.1,9i7)
-
-             id_glb (n,nv) = ip
-
-          endif
-       end do TILES
-
-       !$OMP ENDPARALLELDO   
-   
-    end do NVLOOP
-
-    deallocate (lonn, latt, lonc, latc) 
-
-!   Now reading offline carbon variables
-
-    allocate (var_off_col (1: NTILES_CN, 1 : nzone,1 : var_col))
-    allocate (var_off_pft (1: NTILES_CN, 1 : nzone,1 : nveg, 1 : var_pft))
-    
-    allocate (var_col_out (1: NTILES, 1 : nzone,1 : var_col))
-    allocate (var_pft_out (1: NTILES, 1 : nzone,1 : nveg, 1 : var_pft)) 
-    
-    i = 1
-    do nv = 1,VAR_COL
-       do nz = 1,nzone
-           STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNCOL'), (/1,i/), (/NTILES_CN,1 /),var_off_col(:, nz,nv))
-           i = i + 1
-        end do
-     end do
-     
-     i = 1
-     do iv = 1,VAR_PFT
-        do nv = 1,nveg
-           do nz = 1,nzone
-              STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNPFT'), (/1,i/), (/NTILES_CN,1 /),var_off_pft(:, nz,nv,iv))
-              i = i + 1
-           end do
-        end do
-     end do
-     
-     var_col_out = 0.
-     var_pft_out = NaN
-     
-     where(var_off_pft /= var_off_pft)  var_off_pft = 0.   
-     
-     OUT_TILE : DO N = 1, NTILES
-        
-        ! if(mod (n,1000) == 0) print *, myid +1, n, Id_glb(n,:)
-        
-        NVLOOP2 : do nv = 1, nveg
-           
-           if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
-              nx = nv + 2
-           else
-              nx = nv - 2
-           endif
-           
-           if (nv == 1) ityp_new = CLMC_pt1(n)
-           if (nv == 1) fveg_new = CLMC_pf1(n)
-           if (nv == 2) ityp_new = CLMC_pt2(n)
-           if (nv == 2) fveg_new = CLMC_pf2(n)
-           if (nv == 3) ityp_new = CLMC_st1(n)
-           if (nv == 3) fveg_new = CLMC_sf1(n)
-           if (nv == 4) ityp_new = CLMC_st2(n) 
-           if (nv == 4) fveg_new = CLMC_sf2(n)
-           
-           if (fveg_new > fmin) then
-              
-              offl_cell    = Id_glb(n,nv)
-              
-              if(ityp_new      == ityp_offl (offl_cell,nv) .and. fveg_offl (offl_cell,nv)> fmin) then
-                 iv = nv                                     ! same type fraction (primary of secondary)                          
-              else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
-                 iv = nx                                     ! not same fraction
-              else if(iclass(ityp_new)==iclass(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
-                 iv = nv                                     ! primary, other type (same class)
-              else if(fveg_offl (offl_cell,nx)> fmin) then
-                 iv = nx                                     ! secondary, other type (same class)
-              endif
-              
-              ! Get col and pft variables for the Id_glb(nv) grid cell from offline catchcn_internal_rst
-              ! ----------------------------------------------------------------------------------------
-              
-              ! call NCDF_reshape_getOput (NCFID,Id_glb(n,nv),var_off_col,var_off_pft,.true.)  
-
-              var_pft_out (n,:,nv,:) = var_off_pft(Id_glb(n,nv), :,iv,:)                      
-              var_col_out (n,:,:)    = var_col_out(n,:,:) + fveg_new * var_off_col(Id_glb(n,nv), :,:) ! gkw: column state simple weighted mean; ! could use "woody" fraction?
-              
-              ! Check whether var_pft_out is realistic
-              do nz = 1, nzone
-                 do j = 1, VAR_PFT
-                    if (isnan(var_pft_out (n, nz,nv,j))) print *,j,nv,nz,n,var_pft_out (n, nz,nv,j),fveg_new
-                    if (var_pft_out (n, nz,nv,j) /= var_pft_out (n, nz,nv,j)) print *,j,nv,nz,n,var_pft_out (n, nz,nv,j),fveg_new
-                    !if(isnan(var_pft_out (n, nz,nv,69))) var_pft_out (n, nz,nv,69) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,70))) var_pft_out (n, nz,nv,70) = 1.e-6   
-                    !if(isnan(var_pft_out (n, nz,nv,73))) var_pft_out (n, nz,nv,73) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,74))) var_pft_out (n, nz,nv,74) = 1.e-6                 
-                 end do
-              end do
-           endif
-           
-        end do NVLOOP2
-        
-        ! reset carbon if under 10
-        ! ------------------------
-        
-        NZLOOP : do nz = 1, nzone
-           
-           if(var_col_out (n, nz,14) < 10.) then
-              
-              var_col_out(n, nz, 1) = max(var_col_out(n, nz, 1), 0.)   
-              var_col_out(n, nz, 2) = max(var_col_out(n, nz, 2), 0.)   
-              var_col_out(n, nz, 3) = max(var_col_out(n, nz, 3), 0.)   
-              var_col_out(n, nz, 4) = max(var_col_out(n, nz, 4), 0.)   
-              var_col_out(n, nz, 5) = max(var_col_out(n, nz, 5), 0.)   
-              var_col_out(n, nz,10) = max(var_col_out(n, nz,10), 0.)   
-              var_col_out(n, nz,11) = max(var_col_out(n, nz,11), 0.)   
-              var_col_out(n, nz,12) = max(var_col_out(n, nz,12), 0.)   
-              var_col_out(n, nz,13) = max(var_col_out(n, nz,13),10.)   ! soil4c       
-              var_col_out(n, nz,14) = max(var_col_out(n, nz,14), 0.) 
-              var_col_out(n, nz,15) = max(var_col_out(n, nz,15), 0.)     
-              var_col_out(n, nz,16) = max(var_col_out(n, nz,16), 0.)     
-              var_col_out(n, nz,17) = max(var_col_out(n, nz,17), 0.)     
-              var_col_out(n, nz,18) = max(var_col_out(n, nz,18), 0.)     
-              var_col_out(n, nz,19) = max(var_col_out(n, nz,19), 0.)     
-              var_col_out(n, nz,20) = max(var_col_out(n, nz,20), 0.)     
-              var_col_out(n, nz,24) = max(var_col_out(n, nz,24), 0.)     
-              var_col_out(n, nz,25) = max(var_col_out(n, nz,25), 0.)     
-              var_col_out(n, nz,26) = max(var_col_out(n, nz,26), 0.)     
-              var_col_out(n, nz,27) = max(var_col_out(n, nz,27), 0.)     
-              var_col_out(n, nz,28) = max(var_col_out(n, nz,28), 1.)     
-              var_col_out(n, nz,29) = max(var_col_out(n, nz,29), 0.)     
-              
-              NVLOOP3 : do nv = 1,nveg
-                 
-                 if (nv == 1) ityp_new = CLMC_pt1(n)
-                 if (nv == 1) fveg_new = CLMC_pf1(n)
-                 if (nv == 2) ityp_new = CLMC_pt2(n)
-                 if (nv == 2) fveg_new = CLMC_pf2(n)
-                 if (nv == 3) ityp_new = CLMC_st1(n)
-                 if (nv == 3) fveg_new = CLMC_sf1(n)
-                 if (nv == 4) ityp_new = CLMC_st2(n) 
-                 if (nv == 4) fveg_new = CLMC_sf2(n)
-                 
-                 if(fveg_new > fmin) then
-                    var_pft_out(n, nz,nv, 1) = max(var_pft_out(n, nz,nv, 1),0.)      
-                    var_pft_out(n, nz,nv, 2) = max(var_pft_out(n, nz,nv, 2),0.)      
-                    var_pft_out(n, nz,nv, 3) = max(var_pft_out(n, nz,nv, 3),0.)  
-                    var_pft_out(n, nz,nv, 4) = max(var_pft_out(n, nz,nv, 4),0.)      
-                    
-                    if(ityp_new <= 12) then ! tree or shrub deadstemc
-                       var_pft_out(n, nz,nv, 5) = max(var_pft_out(n, nz,nv, 5),0.1)
-                    else            
-                       var_pft_out(n, nz,nv, 5) = max(var_pft_out(n, nz,nv, 5),0.0)
-                    endif
-                    
-                    var_pft_out(n, nz,nv, 6) = max(var_pft_out(n, nz,nv, 6),0.)
-                    var_pft_out(n, nz,nv, 7) = max(var_pft_out(n, nz,nv, 7),0.)
-                    var_pft_out(n, nz,nv, 8) = max(var_pft_out(n, nz,nv, 8),0.)
-                    var_pft_out(n, nz,nv, 9) = max(var_pft_out(n, nz,nv, 9),0.)
-                    var_pft_out(n, nz,nv,10) = max(var_pft_out(n, nz,nv,10),0.)
-                    var_pft_out(n, nz,nv,11) = max(var_pft_out(n, nz,nv,11),0.)
-                    var_pft_out(n, nz,nv,12) = max(var_pft_out(n, nz,nv,12),0.)
-                    
-                    if(ityp_new <=2 .or. ityp_new ==4 .or. ityp_new ==5 .or. ityp_new == 9) then
-                       var_pft_out(n, nz,nv,13) = max(var_pft_out(n, nz,nv,13),1.)  ! leaf carbon display for evergreen
-                       var_pft_out(n, nz,nv,14) = max(var_pft_out(n, nz,nv,14),0.)
-                    else
-                       var_pft_out(n, nz,nv,13) = max(var_pft_out(n, nz,nv,13),0.)               
-                       var_pft_out(n, nz,nv,14) = max(var_pft_out(n, nz,nv,14),1.)  ! leaf carbon storage for deciduous
-                    endif
-                    
-                    var_pft_out(n, nz,nv,15) = max(var_pft_out(n, nz,nv,15),0.)
-                    var_pft_out(n, nz,nv,16) = max(var_pft_out(n, nz,nv,16),0.)
-                    var_pft_out(n, nz,nv,17) = max(var_pft_out(n, nz,nv,17),0.)
-                    var_pft_out(n, nz,nv,18) = max(var_pft_out(n, nz,nv,18),0.)
-                    var_pft_out(n, nz,nv,19) = max(var_pft_out(n, nz,nv,19),0.)
-                    var_pft_out(n, nz,nv,20) = max(var_pft_out(n, nz,nv,20),0.)
-                    var_pft_out(n, nz,nv,21) = max(var_pft_out(n, nz,nv,21),0.)
-                    var_pft_out(n, nz,nv,22) = max(var_pft_out(n, nz,nv,22),0.)
-                    var_pft_out(n, nz,nv,23) = max(var_pft_out(n, nz,nv,23),0.)
-                    var_pft_out(n, nz,nv,25) = max(var_pft_out(n, nz,nv,25),0.)
-                    var_pft_out(n, nz,nv,26) = max(var_pft_out(n, nz,nv,26),0.)
-                    var_pft_out(n, nz,nv,27) = max(var_pft_out(n, nz,nv,27),0.)
-                    var_pft_out(n, nz,nv,41) = max(var_pft_out(n, nz,nv,41),0.)
-                    var_pft_out(n, nz,nv,42) = max(var_pft_out(n, nz,nv,42),0.)
-                    var_pft_out(n, nz,nv,44) = max(var_pft_out(n, nz,nv,44),0.)
-                    var_pft_out(n, nz,nv,45) = max(var_pft_out(n, nz,nv,45),0.)
-                    var_pft_out(n, nz,nv,46) = max(var_pft_out(n, nz,nv,46),0.)
-                    var_pft_out(n, nz,nv,47) = max(var_pft_out(n, nz,nv,47),0.)
-                    var_pft_out(n, nz,nv,48) = max(var_pft_out(n, nz,nv,48),0.)
-                    var_pft_out(n, nz,nv,49) = max(var_pft_out(n, nz,nv,49),0.)
-                    var_pft_out(n, nz,nv,50) = max(var_pft_out(n, nz,nv,50),0.)
-                    var_pft_out(n, nz,nv,51) = max(var_pft_out(n, nz,nv, 5)/500.,0.)            
-                    var_pft_out(n, nz,nv,52) = max(var_pft_out(n, nz,nv,52),0.)
-                    var_pft_out(n, nz,nv,53) = max(var_pft_out(n, nz,nv,53),0.)
-                    var_pft_out(n, nz,nv,54) = max(var_pft_out(n, nz,nv,54),0.)
-                    var_pft_out(n, nz,nv,55) = max(var_pft_out(n, nz,nv,55),0.)
-                    var_pft_out(n, nz,nv,56) = max(var_pft_out(n, nz,nv,56),0.)
-                    var_pft_out(n, nz,nv,57) = max(var_pft_out(n, nz,nv,13)/25.,0.)        
-                    var_pft_out(n, nz,nv,58) = max(var_pft_out(n, nz,nv,14)/25.,0.)        
-                    var_pft_out(n, nz,nv,59) = max(var_pft_out(n, nz,nv,59),0.)
-                    var_pft_out(n, nz,nv,60) = max(var_pft_out(n, nz,nv,60),0.)  
-                    var_pft_out(n, nz,nv,61) = max(var_pft_out(n, nz,nv,61),0.)  
-                    var_pft_out(n, nz,nv,62) = max(var_pft_out(n, nz,nv,62),0.)  
-                    var_pft_out(n, nz,nv,63) = max(var_pft_out(n, nz,nv,63),0.)  
-                    var_pft_out(n, nz,nv,64) = max(var_pft_out(n, nz,nv,64),0.)  
-                    var_pft_out(n, nz,nv,65) = max(var_pft_out(n, nz,nv,65),0.)  
-                    var_pft_out(n, nz,nv,66) = max(var_pft_out(n, nz,nv,66),0.)  
-                    var_pft_out(n, nz,nv,67) = max(var_pft_out(n, nz,nv,67),0.)  
-                    var_pft_out(n, nz,nv,68) = max(var_pft_out(n, nz,nv,68),0.)  
-                    var_pft_out(n, nz,nv,69) = max(var_pft_out(n, nz,nv,69),0.)  
-                    var_pft_out(n, nz,nv,70) = max(var_pft_out(n, nz,nv,70),0.)  
-                    var_pft_out(n, nz,nv,73) = max(var_pft_out(n, nz,nv,73),0.)  
-                    var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)  
-                 endif
-              end do NVLOOP3  ! end veg loop                 
-           endif    ! end carbon check         
-        end do NZLOOP ! end zone loop
-        
-        ! Update dayx variable var_pft_out (:,:,28)
-        
-        do j = 28, 28  !  1,VAR_PFT var_pft_out (:,:,:,28)
-           do nv = 1,nveg
-              do nz = 1,nzone
-                 var_pft_out (n, nz,nv,j) = dayx(n)
-              end do
-           end do
-        end do
-        
-     end do OUT_TILE
-     
-     i = 1
-     do nv = 1,VAR_COL
-        do nz = 1,nzone
-           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CNCOL'), (/1,i/), (/NTILES,1 /),var_col_out(:, nz,nv))
-           i = i + 1
-        end do
-     end do
-     
-     i = 1
-     do iv = 1,VAR_PFT
-        do nv = 1,nveg
-           do nz = 1,nzone
-              STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))
-              i = i + 1
-           end do
-        end do
-     end do
-     
-     STATUS = NF_CLOSE (NCFID)
-     STATUS = NF_CLOSE (OutID)
-     
-     deallocate (var_off_col,var_off_pft,var_col_out,var_pft_out)  
-     deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
-     deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
-        
-   END SUBROUTINE regrid_carbon_vars_omp
 
   ! *****************************************************************************
 
@@ -2880,19 +2004,14 @@ integer :: n_threads=1
     integer, allocatable, dimension(:)   :: Id_glb, Id_loc
     integer, allocatable, dimension(:)   :: ld_reorder, tid_offl
     real   , allocatable, dimension(:)   :: tmp_var
-    logical, allocatable, dimension(:)   :: mask
-    real    :: dw, min_lon, max_lon, min_lat, max_lat, sub_dist
-    integer :: n,i,j, nplus, nv, nx, offl_cell, STATUS,NCFID, req
+    integer :: n,i,j, nv, nx, offl_cell, STATUS,NCFID, req
     integer :: outid, local_id
-    integer, allocatable, dimension (:) :: sub_tid
-    real   , pointer, dimension (:) :: sub_lon, sub_lat, rev_dist, lonc, latc, LATT, LONN, long, latg
+    real   , pointer, dimension (:) :: lonc, latc, LATT, LONN, long, latg
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
     type(Netcdf4_Fileformatter) :: InFmt, OutFmt
-    logical :: all_found
 
     allocate (tid_offl  (ntiles_cn))
     allocate (tmp_var   (ntiles_cn))
-    allocate (mask      (ntiles_cn))
 
     allocate(low_ind (   numprocs))
     allocate(upp_ind (   numprocs))
@@ -2982,98 +2101,15 @@ integer :: n_threads=1
      
      call MPI_BCAST(lonc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
      call MPI_BCAST(latc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
-
      call MPI_BCAST(tid_offl,size(tid_offl  ),MPI_INTEGER,0,MPI_COMM_WORLD,mpierr)
 
     ! --------------------------------------------------------------------------------
     ! Here we create transfer index array to map offline restarts to output tile space
     ! --------------------------------------------------------------------------------   
-      
-    ! Loop through NTILES (# of tiles in output array) find the nearest neighbor from Qing.  
 
-    Id_loc = -9999
+     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl)      
 
-    TILES : do n = low_ind (myid + 1), upp_ind (myid + 1)
-
-!       if(MOD(n,10000) == 0) print *,'In HYD', myid,n
-       local_id = n - low_ind (myid + 1) + 1
-                      
-       dw = 0.5 ! Start with a 1x1 window, then zoom out by increasing the size by 2-deg until 4 similar tiles are found for 4 PFT types        
-
-       ZOOMOUT : do  
-
-          all_found = .false.   
-
-          ! Min/Max lon/lat of the working window
-          ! -------------------------------------
-          
-          min_lon = MAX(lonn (local_id) - dw, -180.)
-          max_lon = MIN(lonn (local_id) + dw,  180.)
-          min_lat = MAX(latt (local_id) - dw,  -90.)
-          max_lat = MIN(latt (local_id) + dw,   90.) 
-          mask = .false.
-          mask =  ((latc >= min_lat .and. latc <= max_lat).and.(lonc >= min_lon .and. lonc <= max_lon))
-          nplus =  count(mask = mask)
-          
-          if(nplus < 0) then
-             dw = dw + 1.0
-             CYCLE
-          endif
-          
-          allocate (sub_tid (1:nplus))
-          allocate (sub_lon (1:nplus))
-          allocate (sub_lat (1:nplus))
-          allocate (rev_dist  (1:nplus))
-          
-          sub_tid = PACK (tid_offl, mask= mask) 
-          sub_lon = PACK (lonc    , mask= mask)
-          sub_lat = PACK (latc    , mask= mask)
-          
-          ! compute distance from the tile
-          
-          sub_lat = sub_lat * MAPL_PI/180.
-          sub_lon = sub_lon * MAPL_PI/180.
-          
-!          do i = 1,nplus
-!             sub_dist(i) = haversine(to_radian(latt(local_id)), to_radian(lonn(local_id)), &
-!                  sub_lat(i), sub_lon(i)) 
-!             !                   sub_dist(i) = dist
-!          end do
-             
-          SEEK : if(Id_loc(local_id) < 0) then
-                             
-                rev_dist  = 1.e20
-                
-                do i = 1,nplus
-                      
-                   rev_dist(i) = haversine(to_radian(latt(local_id)), to_radian(lonn(local_id)), &
-                        sub_lat(i), sub_lon(i))
-                                      
-                end do
-
-                FOUND : if(minval (rev_dist) < 1.e19) then 
-                   
-                   Id_loc(local_id) = sub_tid(minloc(rev_dist,1)) ! Cell ID of the nearest neightbor in the offline 
-                                                                     ! restart file that has the same veg type
-                    all_found = .true.                  
-                endif FOUND
-                
-             endif SEEK
-          
-          deallocate (sub_tid, sub_lon, sub_lat, rev_dist)
-          
-          if(all_found) GO TO 100
-           
-           ! if not increase the window size
-           dw = dw + 1.0
-           
-        end do ZOOMOUT
-        
-100   continue !  if(mod (n,1000) == 0) print *, myid +1, n, Id_loc(local_id,:)
-
-     END DO TILES
- 
-     ! update id_glb in root
+     ! Loop through NTILES (# of tiles in output array) find the nearest neighbor from Qing.  
 
      if(root_proc)  allocate (id_glb  (ntiles))
 
@@ -3517,119 +2553,6 @@ integer :: n_threads=1
      deallocate (var_get, var_put)
 
    END SUBROUTINE put_land_vars
-
-
-  ! *****************************************************************************
-
-   SUBROUTINE reorder_LDASsa_rst (InRestart)
-
-     implicit none
-
-     character(*), intent (in)    :: InRestart
-     integer                      :: i,n,j, iargc, rc, nVars, ndims,dim1,dim2,ntiles = ntiles_cn
-     type(Netcdf4_FileFormatter)  :: InFmt, OutFmt
-     type(FileMetadata)           :: InCfg, OutCfg
-     real, allocatable            :: var1 (:), var2 (:)
-     integer, allocatable         :: TILE_ID (:)
-     character*256                :: outfile
-     type(StringVariableMap), pointer :: variables
-     type(Variable), pointer :: var
-     type(StringVariableMapIterator) :: var_iter
-     type(StringVector), pointer :: var_dimensions
-     character(len=:), pointer :: vname,dname
-
-     outfile = 'catchcn_internal_rst'
-     print *,InRestart
-
-     call InFmt%open(InRestart,pFIO_READ,rc=rc)
-     InCfg = InFmt%read(rc=rc)
-     call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),rc=rc)
-     call OutFmt%create(outfile,rc=rc)
-     call OutFmt%write(OutCfg,rc=rc)
-      
-     
-     allocate (var1 (1:NTILES))
-     allocate (var2 (1:NTILES))
-     allocate (TILE_ID (1:NTILES))   
-     
-     call MAPL_VarRead ( InFmt,'TILE_ID',var1)
-     
-     do n = 1, NTILES    
-        tile_id (NINT (var1(n))) = n
-     end do
-    
-     variables => InCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end()) 
-        
-        vname => var_iter%key()
-        var => var_iter%value()
-        var_dimensions => var%get_dimensions()
- 
-        ndims = var_dimensions%size()
-
-        if (ndims == 1) then
-           call MAPL_VarRead ( InFmt,vname,var1)
-           var2 = var1 (tile_id)
-           if(trim(vname) == 'SFMCM'  ) var2 = 0.
-           if(trim(vname) == 'BFLOWM' ) var2 = 0.
-           if(trim(vname) == 'TOTWATM') var2 = 0.
-           if(trim(vname) == 'TAIRM'  ) var2 = 0.
-           if(trim(vname) == 'TPM'    ) var2 = 0.
-           if(trim(vname) == 'CNSUM'  ) var2 = 0.
-           if(trim(vname) == 'SNDZM'  ) var2 = 0.
-           if(trim(vname) == 'ASNOWM' ) var2 = 0.
-           if(trim(vname) == 'TSURF'  ) var2 = 0.
-                     
-           call MAPL_VarWrite(OutFmt,vname,var2)
-           
-        else if (ndims == 2) then
-          
-           dname => var%get_ith_dimension(2)
-           dim1=InCfg%get_dimension(dname)
-           do j=1,dim1
-              call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j)
-              var2 = var1 (tile_id)
-              if(trim(vname) == 'TGWM'  ) var2 = 0.
-              if(trim(vname) == 'RZMM'  ) var2 = 0.
-              if(trim(vname) == 'WW'    ) var2 = 0.1
-              if(trim(vname) == 'FR'    ) var2 = 0.25
-              if(trim(vname) == 'CQ'    ) var2 = 0.001
-              if(trim(vname) == 'CN'    ) var2 = 0.001 
-              if(trim(vname) == 'CM'    ) var2 = 0.001 
-              if(trim(vname) == 'CH'    ) var2 = 0.001 
-              call MAPL_VarWrite(OutFmt,vname,var2 ,offset1=j)
-           enddo
-           
-        else if (ndims == 3) then
-           
-           dname => var%get_ith_dimension(2)
-           dim1=InCfg%get_dimension(dname)
-           dname => var%get_ith_dimension(3)
-           dim2=InCfg%get_dimension(dname)
-           do i=1,dim2
-              do j=1,dim1
-                 call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j,offset2=i)
-                 var2 = var1 (tile_id)
-                 if(trim(vname) == 'PSNSUNM'  ) var2 = 0.
-                 if(trim(vname) == 'PSNSHAM'  ) var2 = 0.
-                 call MAPL_VarWrite(OutFmt,vname,var2 ,offset1=j,offset2=i)
-              enddo
-           enddo
-           
-        end if
-
-        call var_iter%next()
-     enddo
-     
-     deallocate (var1, var2, tile_id)
-     
-     call InFmt%close()
-     call OutFmt%close()
-
-     STOP
-
-   END SUBROUTINE reorder_LDASsa_rst
 
   ! *****************************************************************************
   subroutine init_MPI()

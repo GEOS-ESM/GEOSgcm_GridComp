@@ -1,13 +1,12 @@
 esma_set_this(OVERRIDE RRTMG)
 
 set (srcs
-  mcica_random_numbers.F90 rrtmg_lw_init.F90
+  rrtmg_lw_init.F90
+  rrtmg_lw_cldprmc.F90
+  rrtmg_lw_setcoef.F90
+  rrtmg_lw_taumol.F90
+  rrtmg_lw_rtrnmc.F90
   rrtmg_lw_rad.F90
-  rrtmg_lw_rtrn.F90 rrtmg_lw_rtrnmr.F90
-  rrtmg_lw_setcoef.F90 WaterDistributionMod.F90
-  gmcica_subcol_gen_lw.F90 gpu_rrtmg_lw_rtrnmc.F90
-  gpu_rrtmg_lw_setcoef.F90 gpu_rrtmg_lw_taumol.F90
-  gpu_rrtmg_lw_cldprmc.F90
   )
 
 set (k_g_srcs
@@ -43,4 +42,4 @@ endforeach ()
 
 esma_add_library (${this}
   SRCS ${srcs} ${k_g_srcs}
-  DEPENDENCIES GEOS_Shared MAPL RRTMG_mods)
+  DEPENDENCIES GEOS_Shared MAPL RRTMG_mods GEOS_RadiationShared)

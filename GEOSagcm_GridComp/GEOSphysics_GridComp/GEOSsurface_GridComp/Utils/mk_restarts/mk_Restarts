@@ -11,7 +11,8 @@ use Cwd qw(getcwd);
 
 # global variables
 #-----------------
-my ($saltwater, $openwater, $seaice, $lake, $landice, $catch, $catchcn, $route);
+my ($saltwater, $openwater, $seaice, $lake, $landice, $route);
+my ($catchFLG, $catchcn, $catchcnFLG, @cnlist, @cnlen);
 my ($surflay, $rsttime, $grpID, $numtasks, $walltime, $rescale, $qos, $partition, $yyyymm);
 my ($mk_catch_j, $mk_catch_log, $weminIN, $weminOUT, $weminDFLT);
 my ($zoom);
@@ -31,7 +32,7 @@ $mk_catch_log = "mk_catch.log";
     #---------------------------
     # catch and catchcn restarts
     #---------------------------
-    if ($catch or $catchcn) {
+    if ($catchFLG or $catchcnFLG) {
         write_mk_catch_j() unless -e $mk_catch_j;
 
         # run interactively if already on interactive job nodes
@@ -104,7 +105,6 @@ $mk_catch_log = "mk_catch.log";
         $cmd = "$Bin/mk_RouteRestarts OutData/\*.til $yyyymm";
         system_($cmd);
     }
-
     wait_for_pid($pid) if $pid;
 }
 
@@ -122,8 +122,8 @@ sub init {
                 "seaice"    => \$seaice,
                 "lake"      => \$lake,
                 "landice"   => \$landice,
-                "catch"     => \$catch,
-                "catchcn"   => \$catchcn,
+                "catch"     => \$catchFLG,
+                "catchcn=s" => \$catchcn,
                 "wemin=i"   => \$weminIN,
                 "wemout=i"  => \$weminOUT,
                 "route"     => \$route,
@@ -142,8 +142,7 @@ sub init {
     # defaults
     #---------
     $rsttime = 0 unless $rsttime;
-    $catch = 0 unless $catch;
-    $catchcn = 0 unless $catchcn;
+    $catchcnFLG = 0 unless $catchcn;
     $rescale = 0 unless $rescale;
     $weminDFLT = 26;
     $weminIN = $weminDFLT unless defined($weminIN);
@@ -152,19 +151,27 @@ sub init {
 
     usage() if $help;
 
+    # unpack catchcn values
+    #----------------------
+    if ($catchcn) {
+        $catchcnFLG = 1;
+        @cnlist = split(/,/, $catchcn);
+	@cnlen  = scalar(@cnlist);
+    }
+
     # error if no restart specified
     #------------------------------
     die "Error. No restart specified;"
-        unless $saltwater or $lake or $landice or $catch or $catchcn;
+        unless $saltwater or $lake or $landice or $catchFLG or $catchcnFLG;
 
     # rsttime and grpID values are needed for catchcn
     #----------------------------------------------
-    if ($catchcn) {
+    if ($catchcnFLG) {
         die "Error. Must specify rsttime for catchcn;" unless $rsttime;
         die "Error. rsttime not in yyyymmddhh format: $rsttime;"
             unless $rsttime =~ m/^\d{10}$/;
     }
-    if ($catch or $catchcn) {
+    if ($catchFLG or $catchcnFLG) {
         unless ($grpID) {
             $grpID = `$Bin/getsponsor.pl -d`;
             print "Using default grpID = $grpID\n";
@@ -231,8 +238,8 @@ set echo
 #limit stacksize unlimited
 unlimit
 
-set catchFLG   = $catch
-set catchcnFLG = $catchcn
+set catchFLG   = $catchFLG
+set catchcnFLG = $catchcnFLG
 set weminIN  = $weminIN
 set weminOUT = $weminOUT
 set rescaleFLG = $rescale
@@ -245,6 +252,7 @@ set zoom       = $zoom
 set esma_mpirun_X = ( $Bin/esma_mpirun -np \$numtasks )
 set mk_CatchRestarts_X   = ( \$esma_mpirun_X $Bin/mk_CatchRestarts )
 set mk_CatchCNRestarts_X = ( \$esma_mpirun_X $Bin/mk_CatchCNRestarts )
+set mk_GEOSldasRestarts_X = ( \$esma_mpirun_X $Bin/mk_GEOSldasRestarts )
 set Scale_Catch_X   = $Bin/Scale_Catch
 set Scale_CatchCN_X = $Bin/Scale_CatchCN
 
@@ -253,7 +261,7 @@ set IN_til    = InData/\*.til
 
 if (\$catchFLG) then
     set catchIN = InData/\*catch_internal_rst\*
-    set params = ( \$OUT_til \$IN_til \$catchIN \$surflay \$zoom )
+    set params = ( \$OUT_til \$IN_til \$catchIN \$surflay )
     \$mk_CatchRestarts_X \$params
 
     if (\$rescaleFLG) then
@@ -269,11 +277,28 @@ if (\$catchFLG) then
 endif
 
 if (\$catchcnFLG) then
-    set catchcnIN = InData/\*catchcn_internal_rst\*
-    set params = ( \$OUT_til \$IN_til \$catchcnIN \$surflay \$rsttime \$zoom )
-    \$mk_CatchCNRestarts_X \$params
-
+    if ($cnlen[0] == 1) then
+        set catchcnIN = InData/\*catchcn_internal_rst\*
+        set params = ( \$OUT_til \$IN_til \$catchcnIN \$surflay \$rsttime )
+        \$mk_CatchCNRestarts_X \$params
+    endif
+    if ($cnlen[0] == 4) then
+        set OUT_til   = `ls OutData/\*.til | cut -d '/' -f2`
+        /bin/cp OutData/\*.til OutData/OutTileFile
+        /bin/cp OutData/\*.til InData/OutTileFile
+        set CN_VERSION = $cnlist[0]
+        set RESTART_ID = $cnlist[1]
+        set RESTART_PATH = $cnlist[2]
+        set RESTART_DOMAIN = $cnlist[3] 
+        set RESTART_short = \${RESTART_PATH}/\${RESTART_ID}/output/\${RESTART_DOMAIN}/
+        set YYYY = `echo \${rsttime} | cut -c1-4`
+        set MM   = `echo \${rsttime} | cut -c5-6`
+        set PARAM_FILE = `ls \$RESTART_short/rc_out/Y\${YYYY}/M\${MM}/*ldas_catparam* | head -1`
+        set params = ( -b OutData/ -d \$rsttime -e \$RESTART_ID -m catchcn\$CN_VERSION -s \$surflay -j Y -r R -p \$PARAM_FILE -l \$RESTART_short)
+        \$mk_GEOSldasRestarts_X \$params
+    endif
     if (\$rescaleFLG) then
+        set catchcnIN = InData/catchcn\${CN_VERSION}_internal_rst\*
         set catchcn_regrid = OutData/\$catchcnIN:t
         set catchcn_scaled = \${catchcn_regrid}.scaled
         set params = ( \$catchcnIN \$catchcn_regrid \$catchcn_scaled \$surflay )

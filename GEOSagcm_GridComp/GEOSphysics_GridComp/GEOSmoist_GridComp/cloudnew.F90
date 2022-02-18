@@ -1,6 +1,8 @@
 ! $Id$
 ! $Name$
 
+!#define PDFDIAG 1
+
 module cloudnew
 
 #ifndef _CUDA
@@ -22,6 +24,9 @@ module cloudnew
 
    use MAPL_BaseMod,      only: MAPL_UNDEF
    use Aer_Actv_Single_Moment,only: USE_AEROSOL_NN
+
+   use partition_pdf
+
    implicit none
 
 #ifndef _CUDA
@@ -222,7 +227,6 @@ module cloudnew
    ! Parameters for Internal DQSAT
    ! -----------------------------
 
-   real, parameter :: ESFAC            = MAPL_H2OMW/MAPL_AIRMW
    real, parameter :: MAX_MIXING_RATIO = 1.
    real, parameter :: ZEROC            = MAPL_TICE
 
@@ -338,6 +342,7 @@ module cloudnew
    integer :: pdfflag
 #endif
 
+   real, parameter :: ESFAC        = MAPL_H2OMW/MAPL_AIRMW
    real, parameter :: T_ICE_MAX    = MAPL_TICE-10.0
    real, parameter :: RHO_W        = 1.0e3      ! Density of liquid water in kg/m^3
    real, parameter :: MIN_CLD_FRAC = 1.0e-8
@@ -382,12 +387,25 @@ contains
          DT               , &
          LATS_dev         , &
          PP_dev           , &
+         ZZ_dev           , &
          PPE_dev          , &
          EXNP_dev         , &
          SNOMAS_dev       , &
          FRLANDICE_dev    , &
          FRLAND_dev       , &
          KH_dev           , &
+         mf_frc_dev       , &
+!         wqtfac_dev       , &
+!         whlfac_dev       , &
+         wqt_dev          , &
+         whl_dev          , &
+         qt2_dev          , &
+         hl2_dev          , &
+         hlqt_dev         , &
+         w2_dev           , &
+         w3_dev           , &
+         qt3_dev          , &
+         hl3_dev          , &
          DTS_dev          , &
          RMFDTR_dev       , &
          QLWDTR_dev       , &              
@@ -464,6 +482,14 @@ contains
          VFALLWAT_AN_dev,VFALLWAT_LS_dev,   &
          VFALLSN_AN_dev,VFALLSN_LS_dev,VFALLSN_CN_dev,VFALLSN_SC_dev, &
          VFALLRN_AN_dev,VFALLRN_LS_dev,VFALLRN_CN_dev,VFALLRN_SC_dev,  &
+         PDF_A_dev, & 
+#ifdef PDFDIAG
+         PDF_SIGW1_dev, PDF_SIGW2_dev, PDF_W1_dev, PDF_W2_dev, & 
+         PDF_SIGTH1_dev, PDF_SIGTH2_dev, PDF_TH1_dev, PDF_TH2_dev, &
+         PDF_SIGQT1_dev, PDF_SIGQT2_dev, PDF_QT1_dev, PDF_QT2_dev, &
+         PDF_RQTTH_dev, PDF_RWTH_dev, PDF_RWQT_dev, &
+#endif
+         WTHV2_dev, wql_dev, &
          TEMPOR_dev, DOSHLW, &
          NACTL_dev,    &
          NACTI_dev,    &
@@ -485,12 +511,25 @@ contains
       real, intent(in   )                       :: DT   ! DT_MOIST
       real, intent(in   ), dimension(IRUN)      :: LATS_dev    ! LATS
       real, intent(in   ), dimension(IRUN,  LM) :: PP_dev      ! PLO
+      real, intent(in   ), dimension(IRUN,  LM) :: ZZ_dev      ! ZLO
       real, intent(in   ), dimension(IRUN,0:LM) :: PPE_dev     ! CNV_PLE
       real, intent(in   ), dimension(IRUN,  LM) :: EXNP_dev    ! PK
       real, intent(in   ), dimension(IRUN     ) :: SNOMAS_dev  ! SNOMAS
       real, intent(in   ), dimension(IRUN     ) :: FRLANDICE_dev  ! FRLANDICE
       real, intent(in   ), dimension(IRUN     ) :: FRLAND_dev  ! FRLAND
       real, intent(in   ), dimension(IRUN,0:LM) :: KH_dev      ! KH
+      real, intent(in   ), dimension(IRUN,  LM) :: mf_frc_dev  !
+!      real, intent(in   ), dimension(IRUN,  LM) :: wqtfac_dev  !
+!      real, intent(in   ), dimension(IRUN,  LM) :: whlfac_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: wqt_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: whl_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: qt2_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: hl2_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: hlqt_dev !
+      real, intent(in   ), dimension(IRUN,  LM) :: w2_dev   !
+      real, intent(in   ), dimension(IRUN,  LM) :: w3_dev   !
+      real, intent(in   ), dimension(IRUN,  LM) :: qt3_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: hl3_dev  !
       real, intent(in   ), dimension(IRUN     ) :: DTS_dev     ! DTS
       real, intent(in   ), dimension(IRUN,  LM) :: RMFDTR_dev  ! CNV_MFD
       real, intent(in   ), dimension(IRUN,  LM) :: QLWDTR_dev  ! CNV_DQLDT
@@ -595,6 +634,26 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_LS_dev ! VFALLRN_LS
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_CN_dev ! VFALLRN_CN
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_SC_dev ! VFALLRN_SC
+      real, intent(inout), dimension(IRUN,  LM) :: PDF_A_dev
+#ifdef PDFDIAG
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW1_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_W1_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_W2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGTH1_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGTH2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_TH1_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_TH2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGQT1_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGQT2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_QT1_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_QT2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_RQTTH_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_RWTH_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDF_RWQT_dev
+#endif
+      real, intent(  out), dimension(IRUN,  LM) :: WTHV2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: wql_dev
       real, intent(in   ), dimension(IRUN,  LM) :: NACTL_dev  ! NACTL
       real, intent(in   ), dimension(IRUN,  LM) :: NACTI_dev  ! NACTI
 
@@ -619,7 +678,7 @@ contains
 #define GPU_MAXLEVS LM
 #endif
 
-      integer :: I , J , K , L
+      integer :: I , J , K , L, kd, ku
 
       integer :: FRACTION_REMOVAL
 
@@ -733,6 +792,8 @@ contains
 #endif
 
       use_autoconv_timescale = .false.
+      wthv2_dev = 0.0
+      wql_dev = 0.0
 
 #ifdef _CUDA
       i = (blockidx%x - 1) * blockdim%x + threadidx%x
@@ -890,6 +951,22 @@ contains
 
             FRZ_PP_dev(I,K) = 0.00
 
+            ! Buoyancy calculation for SHOC, if not using ADG PDF
+            if (PDFFLAG .ne. 5) then
+!              wthv2_dev(I,K) = -1.0*(TH_dev(I,K)*(1.+ESFAC*Q_dev(I,K))/MAPL_GRAV)*KH_dev(I,K)
+              wthv2_dev(I,K) = -1.0*KH_dev(I,K)
+              if (K.lt.LM .and. K.gt.1) then
+                wthv2_dev(I,K) = wthv2_dev(I,K)*(TH_dev(I,K-1)*(1.+ESFAC*Q_dev(I,K-1))-TH_dev(I,K+1)*(1.+ESFAC*Q_dev(I,K+1))) &
+                                               / (ZZ_dev(I,K-1)-ZZ_dev(I,K+1))
+              else if (K.eq.LM) then
+                wthv2_dev(I,K) = wthv2_dev(I,K)*(TH_dev(I,K-1)*(1.+ESFAC*Q_dev(I,K-1))-TH_dev(I,K)*(1.+ESFAC*Q_dev(I,K))) &
+                                               / (ZZ_dev(I,K-1)-ZZ_dev(I,K))
+              else if (K.eq.1) then
+                wthv2_dev(I,K) = wthv2_dev(I,K)*(TH_dev(I,K)*(1.+ESFAC*Q_dev(I,K))-TH_dev(I,K+1)*(1.+ESFAC*Q_dev(I,K+1))) &
+                                               / (ZZ_dev(I,K)-ZZ_dev(I,K+1))
+              end if
+            end if
+
             !!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! Total Condensate Source
             !!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1016,6 +1093,7 @@ contains
                   ALPHA          , &
                   PDFFLAG        , &
                   PP_dev(I,K)    , &
+                  ZZ_dev(I,K)    , &
                   Q_dev(I,K)     , &
                   QLW_LS_dev(I,K), &
                   QLW_AN_dev(I,K), &
@@ -1026,7 +1104,39 @@ contains
                   ANVFRC_dev(I,K), &
                   NACTL_dev(I,K),  &
                   NACTI_dev(I,K),  &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I)  )
+                  whl_dev(I,K),        &
+                  wqt_dev(I,K),        &
+!                  wqtfac_dev(I,K),     &
+!                  whlfac_dev(I,K),     &
+                  hl2_dev(I,K),        &
+                  qt2_dev(I,K),        &
+                  hlqt_dev(I,K),       & 
+                  w3_dev(I,K),         &
+                  w2_dev(I,K),         &
+                  qt3_dev(I,K),        &
+                  hl3_dev(I,K),        &
+                  mf_frc_dev(I,K),     &
+                  PDF_A_dev(I,K),      &  ! can remove these after development
+#ifdef PDFDIAG
+                  PDF_SIGW1_dev(I,K),  &
+                  PDF_SIGW2_dev(I,K),  &
+                  PDF_W1_dev(I,K),     &
+                  PDF_W2_dev(I,K),     &
+                  PDF_SIGTH1_dev(I,K), &
+                  PDF_SIGTH2_dev(I,K), &
+                  PDF_TH1_dev(I,K),    &
+                  PDF_TH2_dev(I,K),    &
+                  PDF_SIGQT1_dev(I,K), &
+                  PDF_SIGQT2_dev(I,K), &
+                  PDF_QT1_dev(I,K),    &
+                  PDF_QT2_dev(I,K),    &
+                  PDF_RQTTH_dev(I,K),  &
+                  PDF_RWTH_dev(I,K),   &
+                  PDF_RWQT_dev(I,K),   &
+#endif
+                  WTHV2_dev(I,K),      &
+                  wql_dev(I,K),        &
+                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I) ) 
             else
             call hystpdf(          &
                   DT             , &
@@ -1972,6 +2082,7 @@ contains
          ALPHA       , &
          PDFSHAPE    , &
          PL          , &
+         ZL          , &
          QV          , &
          QCl         , &
          QAl         , &
@@ -1982,15 +2093,55 @@ contains
          AF          , &
          NL          , &
          NI          , &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
+         WHL         , &
+         WQT         , &
+!         wqtfac      , &
+!         whlfac      , &
+         HL2         , &
+         QT2         , &
+         HLQT        , & 
+         W3          , &
+         W2          , &
+         MFQT3       , &
+         MFHL3       , &
+         MF_FRC      , &
+         PDF_A,      &  ! can remove these after development
+#ifdef PDFDIAG
+         PDF_SIGW1,  &
+         PDF_SIGW2,  &
+         PDF_W1,     &
+         PDF_W2,     &
+         PDF_SIGHL1, &
+         PDF_SIGHL2, &
+         PDF_HL1,    &
+         PDF_HL2,    &
+         PDF_SIGQT1, &
+         PDF_SIGQT2, &
+         PDF_QT1,    &
+         PDF_QT2,    &
+         PDF_RHLQT,  &
+         PDF_RWHL,   &
+         PDF_RWQT,   &
+#endif
+         WTHV2,      &
+         WQL,        &
+         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
 
-      real, intent(in)    :: DT,ALPHA,PL
+      real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: pdfshape
-      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF
+      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
       real, intent(in)    :: NL,NI,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
+      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
+#ifdef PDFDIAG
+      real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
+                             PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
+                             PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+                             PDF_RHLQT,  PDF_RWHL, PDF_RWQT
+#endif
+      real, intent(out)   :: WTHV2, WQL
 
       ! internal arrays
-      real :: QCO, QVO, CFO, QAO, TAU
+      real :: QCO, QVO, CFO, QAO, TAU,HL
       real :: QT, QMX, QMN, DQ, sigmaqt1, sigmaqt2
 
       real :: TEO,QSx,DQsx,QS,DQs
@@ -2001,7 +2152,7 @@ contains
       real :: QCx, QVx, CFx, QAx, QC, QA, fQi
       real :: dQAi, dQAl, dQCi, dQCl, Nfac, NLv, NIv 
 
-      real :: fQip
+!      real :: fQip
 
       real :: tmpARR
       real :: ALHX, DQCALL
@@ -2040,36 +2191,89 @@ contains
       QCn = QCx
       DQS = DQSx
 
+      ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+
+      HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+!           QT = QVn+QCn
+
       do n=1,nmax
 
          QVp = QVn
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         fQip= fQi
+!         fQip= fQi
 
          if(pdfflag.lt.2) then
 
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn
 
-         elseif(pdfflag.eq.2) then
+         elseif(pdfflag.eq.2) then  ! triangular
             ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
             ! for triangular, skewed r : sigmaqt1 < sigmaqt2
             ! try: skewed right below 500 mb
-!!!       if(pl.lt.500.) then
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn
-!!!       else
-!!!       sigmaqt1  = 2*ALPHA*QSn*0.4
-!!!       sigmaqt2  = 2*ALPHA*QSn*0.6
-!!!       endif
+!         elseif(pdffrac .eq. 3) then ! single gaussian
+
          elseif(pdfflag .eq. 4) then !lognormal (sigma is dimmensionless)
             sigmaqt1 =  max(ALPHA/sqrt(3.0), 0.001)
          endif
 
-         call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
-         call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+         if (pdfflag.lt.5) then
+           call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
+           call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+         elseif (pdfflag.eq.5) then
+
+            ! Update the liquid water static energy
+            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+
+           call partition_dblgss(DT/nmax,           &
+                                 TEn,          &
+                                 QVn,          &
+                                 QCn,          &
+                                 0.0,          & ! assume OMEGA=0
+                                 ZL,           &
+                                 PL*100.,      &
+                                 QT,           &
+                                 HL,          &
+                                 WHL,         &
+                                 WQT,         &
+                                 HL2,         &
+                                 QT2,         &
+                                 HLQT,        & 
+                                 W3,           &
+                                 W2,           &
+                                 MFQT3,        &
+                                 MFHL3,        &
+                                 MF_FRC,       &
+                                 PDF_A,        &
+#ifdef PDFDIAG
+                                 PDF_SIGW1,    &
+                                 PDF_SIGW2,    &
+                                 PDF_W1,       &
+                                 PDF_W2,       &
+                                 PDF_SIGHL1,   &
+                                 PDF_SIGHL2,   &
+                                 PDF_HL1,      &
+                                 PDF_HL2,      &
+                                 PDF_SIGQT1,   &
+                                 PDF_SIGQT2,   &
+                                 PDF_QT1,      &
+                                 PDF_QT2,      &
+                                 PDF_RHLQT,    &
+                                 PDF_RWHL,     &
+                                 PDF_RWQT,     &
+#endif
+                                 WTHV2,        &
+                                 WQL,          &
+                                 CFn)
+
+           fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+
+         endif
 
          IF(USE_AEROSOL_NN) THEN
            DQCALL = QCn - QCp
@@ -2114,7 +2318,7 @@ contains
 
          if(pdfflag.eq.1) then 
             QCn = QCp + ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX/MAPL_CP)             
-         elseif(pdfflag.eq.2) then
+         elseif(pdfflag.eq.2 .or. pdfflag.eq.5) then
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
             ! for now, just use relaxation of 1/2.
             if (n.ne.nmax) QCn = QCp + ( QCn - QCp ) *0.5
