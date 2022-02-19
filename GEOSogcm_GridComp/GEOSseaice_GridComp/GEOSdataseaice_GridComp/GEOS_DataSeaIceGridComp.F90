@@ -34,7 +34,6 @@ module GEOS_DataSeaIceGridCompMod
   integer            :: NUM_ICE_LAYERS_ALL
   integer            :: NUM_SNOW_LAYERS_ALL
   integer            :: DO_CICE_THERMO
-! integer            :: DO_SKIN_LAYER
 
 ! !DESCRIPTION:
 ! 
@@ -110,9 +109,6 @@ module GEOS_DataSeaIceGridCompMod
     call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-!   call MAPL_GetResource ( MAPL,    DO_SKIN_LAYER,      Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
-!   VERIFY_(STATUS)
-   
     cice_init_: if (DO_CICE_THERMO /= 0) then
        if(MAPL_AM_I_ROOT()) print *, 'Using Data Sea Ice GC to do CICE Thermo in AMIP mode'
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
@@ -381,9 +377,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (ESMF_Time)                    :: CurrentTime
   integer                             :: IFCST
   logical                             :: FCST
-! real, pointer, dimension(:,:)       :: MELT   => null()
-! real, pointer, dimension(:,:)       :: F1     => null()
-! real, pointer, dimension(:,:)       :: TNEW   => null()
+
   real                                :: TAU_SIT
   real                                :: DT
   real                                :: RUN_DT
@@ -414,7 +408,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: UI   => null()
    real, pointer, dimension(:,:)  :: VI   => null()
    real, pointer, dimension(:,:)  :: FR   => null()
-!  real, pointer, dimension(:,:)  :: MQ   => null()
 
 ! pointers to import
 
@@ -441,7 +434,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real :: f
 
    real, pointer :: DATA_ice(:,:)
-
 ! above were for CICE Thermo
 
 
@@ -601,58 +593,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    SI   = 30.0
 
-!  if (DO_SKIN_LAYER < 2) then
-!     allocate(MELT(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
-!     allocate(F1(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
-!     allocate(TNEW(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
-!
-!     TICE=MAPL_TICE-1.8
-!     TNEW=0.0
-!     F1=0.0
-!
-!     ! TW below freezing point is set to freezing temperature
-!     TNEW   = max(TW,TICE)
-!  
-!     if (DO_CICE_THERMO == 0) then
-!        where(FR == 1.0)
-!          ! if fraction of ice is 1, set TW to freezing temperature
-!          TNEW   =  TICE
-!        elsewhere
-!          F1=FR*CTB*MAPL_RHOWTR/(HW*(1-FR))
-!          TNEW=(TNEW+TICE*F1*DT)/(1+F1*DT)
-!        end where
-!     else
-!        where(FRT == 1.0)
-!          ! if fraction of ice is 1, set TW to freezing temperature
-!          TNEW   =  TICE
-!        elsewhere
-!          F1=FRT*CTB*MAPL_RHOWTR/(HW*(1-FRT))
-!          TNEW=(TNEW+TICE*F1*DT)/(1+F1*DT)
-!        end where
-!     end if
-!
-!     MELT=(TW-TNEW)*HW*CW/DT
-!
-!     where(TW == MAPL_UNDEF)
-!       MELT=MAPL_UNDEF
-!       TNEW=MAPL_UNDEF
-!     end where
-!   
-!     ! Updated Sea-Ice Melting (non-zero diff to Fortuna-2_5_p6)
-!     ! ---------------------------------------------------------
-!     TW=TNEW
-!  
-!     if(associated(MQ)) MQ = MELT
-!
-!     if (DO_CICE_THERMO /= 0) then
-!       TW   = max(TW,MAPL_TICE)
-!       where(FR>0.0) TW = MAPL_TICE
-!     end if
-!   end if ! (DO_SKIN_LAYER < 2)
-
    call MAPL_TimerOff(MAPL,"-UPDATE" )
 
 !  Update the exports
@@ -664,7 +604,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Clean-up
 !---------
 
-!  if (DO_SKIN_LAYER < 2) deallocate(MELT,F1,TNEW)
    if (DO_CICE_THERMO /= 0) then
      deallocate(FRT)
      deallocate(FRCICE)
