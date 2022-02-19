@@ -35,6 +35,8 @@ module GEOS_DataSeaIceGridCompMod
   integer            :: NUM_SNOW_LAYERS_ALL
   integer            :: DO_CICE_THERMO
 
+  character(len=ESMF_MAXSTR)          :: ocean_data_type
+
 ! !DESCRIPTION:
 ! 
 !   {\tt GEOS\_DataSeaIce} is a gridded component that reads the 
@@ -109,6 +111,8 @@ module GEOS_DataSeaIceGridCompMod
     call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource ( MAPL, ocean_data_type,   Label="OCEAN_DATA_TYPE:",      DEFAULT="Binary", __RC__ ) ! Binary or ExtData
+
     cice_init_: if (DO_CICE_THERMO /= 0) then
        if(MAPL_AM_I_ROOT()) print *, 'Using Data Sea Ice GC to do CICE Thermo in AMIP mode'
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
@@ -137,14 +141,16 @@ module GEOS_DataSeaIceGridCompMod
 
 ! !Import state:
 
-  call MAPL_AddImportSpec(GC, &
-    SHORT_NAME         = 'DATA_ICE',           &
-    LONG_NAME          = 'test import',           &
-    UNITS              = 'm',                                 &
-    DIMS               = MAPL_DimsHorzOnly,                   &
-    VLOCATION          = MAPL_VLocationNone,                  &
-    rc=status)
-  VERIFY_(status)
+  if (ocean_data_type == 'ExtData') then
+    call MAPL_AddImportSpec(GC,                  &
+      SHORT_NAME         = 'DATA_ICE',           &
+      LONG_NAME          = 'sea_ice_concentration',        &
+      UNITS              = '1',                  &
+      DIMS               = MAPL_DimsHorzOnly,    &
+      VLOCATION          = MAPL_VLocationNone,   &
+      RC=STATUS)
+    VERIFY_(status)
+  endif
 
   call MAPL_AddImportSpec(GC,                                 &
     SHORT_NAME         = 'HI',                                &
@@ -375,9 +381,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: FRIENDLY
   type(ESMF_FIELD)                    :: FIELD
   type (ESMF_Time)                    :: CurrentTime
+  character(len=ESMF_MAXSTR)          :: DATAFRTFILE
   integer                             :: IFCST
   logical                             :: FCST
-
   real                                :: TAU_SIT
   real                                :: DT
   real                                :: RUN_DT
@@ -433,7 +439,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable, dimension(:,:)  :: FRT 
    real :: f
 
-   real, pointer :: DATA_ice(:,:)
+   real, pointer :: DATA_ice(:,:) => null()
 ! above were for CICE Thermo
 
 
@@ -466,11 +472,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_TimerOn(MAPL,"TOTAL")
    call MAPL_TimerOn(MAPL,"RUN" )
 
-   call MAPL_GetPointer(IMPORT, DATA_ice     ,  'DATA_ICE', RC=STATUS)
-   VERIFY_(STATUS)
 
 ! Pointers to Imports
 !--------------------
+
+   if (ocean_data_type == 'ExtData') then
+     call MAPL_GetPointer(IMPORT, DATA_ice     ,  'DATA_ICE', __RC__)
+   endif
 
    if (DO_CICE_THERMO == 0) then
       call MAPL_GetPointer(IMPORT, TI    ,  'TI'   , RC=STATUS)
@@ -512,6 +520,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
     VERIFY_(STATUS)
+
+   if (ocean_data_type == 'Binary') then
+    ! Get the file name from the resource file
+    !-----------------------------------------
+    call MAPL_GetResource(MAPL,DATAFRTFILE,LABEL="DATA_FRT_FILE:", RC=STATUS)
+    VERIFY_(STATUS)
+  endif
 
 ! In atmospheric forecast mode we do not have future Sea Ice Conc
 !---------------------------------------------------------------
@@ -557,7 +572,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if (DO_CICE_THERMO == 0) then
      if(associated(FR)) then
-       FR = data_ice
+       if (ocean_data_type == 'ExtData') then
+         FR = data_ice ! netcdf variable
+       else ! binary
+         call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
+       end if
 
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
           if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
@@ -565,21 +584,25 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        endif
      end if
    else
-       frt = data_ice
+     if (ocean_data_type == 'ExtData') then
+       frt = data_ice ! netcdf variable
+     else ! binary
+       call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FRT, INIT_ONLY=FCST, __RC__)
+     end if
 
 ! Sanity checks
-       do I=1, size(FRT,1)
-          do J=1, size(FRT,2)
-             f=FRT(I,J)
-             if (f==MAPL_UNDEF) cycle
-             if ((f < 0.0) .or. (f > 1.0)) then
-                print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-                _ASSERT(.FALSE.,'needs informative message')
-             end if
-          end do
-       end do
+     do I=1, size(FRT,1)
+        do J=1, size(FRT,2)
+           f=FRT(I,J)
+           if (f==MAPL_UNDEF) cycle
+           if ((f < 0.0) .or. (f > 1.0)) then
+              print *, 'Error in fraci file. Negative or larger-than-one fraction found'
+              _ASSERT(.FALSE.,'needs informative message')
+           end if
+        end do
+     end do
 
-       if(associated(FR)) FR = FRT
+     if(associated(FR)) FR = FRT
    end if ! (DO_CICE_THERMO == 0)
 
    if (DO_CICE_THERMO == 0) then
