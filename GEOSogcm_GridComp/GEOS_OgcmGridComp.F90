@@ -778,7 +778,7 @@ contains
   end if
 
 ! Children's imports are in the ocean grid and are all satisfied
-!   by OGCM from exchange grid quantities.
+! by OGCM from exchange grid quantities.
   
   if (ocean_data_type == 'ExtData') then
     if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
