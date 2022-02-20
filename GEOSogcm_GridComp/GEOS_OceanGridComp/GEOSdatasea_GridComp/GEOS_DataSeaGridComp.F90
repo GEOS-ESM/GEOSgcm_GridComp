@@ -23,6 +23,8 @@ module GEOS_DataSeaGridCompMod
 
   public SetServices
 
+  character(len=ESMF_MAXSTR)          :: ocean_data_type
+
 ! !DESCRIPTION:
 ! 
 !   {\tt GEOS\_DataSea} is a gridded component that reads the 
@@ -72,6 +74,8 @@ module GEOS_DataSeaGridCompMod
 
 ! Local derived type aliases
 
+    type (MAPL_MetaComp    ), pointer   :: MAPL => null()
+
 !=============================================================================
 
 ! Begin...
@@ -91,6 +95,7 @@ module GEOS_DataSeaGridCompMod
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource (MAPL, ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -102,12 +107,14 @@ module GEOS_DataSeaGridCompMod
 
 !  !Export state:
 
-  call MAPL_AddImportSpec(GC, &
-    SHORT_NAME = 'DATA_SST', &
-    LONG_NAME = 'sea_surface_temperature', &
-    UNITS = 'K', &
-    DIMS = MAPL_DimsHorzOnly, &
-    VLOCATION = MAPL_VLocationNone, _RC)
+  if (ocean_data_type == 'ExtData') then
+    call MAPL_AddImportSpec(GC, &
+      SHORT_NAME = 'DATA_SST', &
+      LONG_NAME = 'sea_surface_temperature', &
+      UNITS = 'K', &
+      DIMS = MAPL_DimsHorzOnly, &
+      VLOCATION = MAPL_VLocationNone, _RC)
+  endif
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'UW',                                &
@@ -173,8 +180,6 @@ module GEOS_DataSeaGridCompMod
   
   end subroutine SetServices
 
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !BOP
@@ -209,7 +214,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type (MAPL_MetaComp),     pointer   :: MAPL
   type (ESMF_Time)                    :: CurrentTime
-! character(len=ESMF_MAXSTR)          :: DATASeaSalFILE
+  character(len=ESMF_MAXSTR)          :: DATASeaFILE
   integer                             :: IFCST
   logical                             :: FCST
   integer                             :: adjSST
@@ -235,7 +240,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    real, pointer, dimension(:,:)  :: FI
 
-   real, pointer, dimension(:,:) :: data_sst
+   real, pointer, dimension(:,:) :: data_sst => null()
 !  Begin...
 !----------
 
@@ -282,6 +287,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, RC=STATUS)
     VERIFY_(STATUS)
 
+    if (ocean_data_type == 'Binary') then
+      ! Get the SST bcs file name from the resource file
+      ! -------------------------------------------------
+      call MAPL_GetResource(MAPL,DATASeaFILE,LABEL="DATA_SST_FILE:", RC=STATUS)
+      VERIFY_(STATUS)
+    endif
+
 ! Get the SSS bcs file name from the resource file
 !-------------------------------------------------
 
@@ -322,9 +334,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Read bulk SST from retrieval
 !------------------------------
 
-   call MAPL_GetPointer(import,     data_sst  , 'DATA_SST'       , RC=STATUS)
-   VERIFY_(STATUS)
-   sst = data_sst
+   if (ocean_data_type == 'ExtData') then
+     call MAPL_GetPointer(import, data_sst, 'DATA_SST', __RC__)
+     sst = data_sst ! netcdf variable
+   else ! binary
+     call MAPL_ReadForcing(MAPL,'SST',DATASeaFILE, CURRENTTIME, sst, INIT_ONLY=FCST, __RC__)
+   endif
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )
 
@@ -335,6 +350,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(VW)) VW = 0.0
 
    TICE   = MAPL_TICE-1.8
+
    if (adjSST == 1) then
       SST = max(SST, TICE)
       SST = (1.-FI)*SST+FI*TICE

@@ -381,7 +381,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: FRIENDLY
   type(ESMF_FIELD)                    :: FIELD
   type (ESMF_Time)                    :: CurrentTime
-  character(len=ESMF_MAXSTR)          :: DATAFRTFILE
+  character(len=ESMF_MAXSTR)          :: DataFrtFile
   integer                             :: IFCST
   logical                             :: FCST
   real                                :: TAU_SIT
@@ -524,7 +524,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    if (ocean_data_type == 'Binary') then
     ! Get the file name from the resource file
     !-----------------------------------------
-    call MAPL_GetResource(MAPL,DATAFRTFILE,LABEL="DATA_FRT_FILE:", RC=STATUS)
+    call MAPL_GetResource(MAPL,DataFrtFile,LABEL="DATA_FRT_FILE:", RC=STATUS)
     VERIFY_(STATUS)
   endif
 
@@ -575,7 +575,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        if (ocean_data_type == 'ExtData') then
          FR = data_ice ! netcdf variable
        else ! binary
-         call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
+         call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
        end if
 
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
@@ -587,7 +587,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      if (ocean_data_type == 'ExtData') then
        frt = data_ice ! netcdf variable
      else ! binary
-       call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FRT, INIT_ONLY=FCST, __RC__)
+       call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FRT, INIT_ONLY=FCST, __RC__)
      end if
 
 ! Sanity checks
