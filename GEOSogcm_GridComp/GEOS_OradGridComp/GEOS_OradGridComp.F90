@@ -23,6 +23,8 @@ module GEOS_OradGridCompMod
 
   public SetServices
 
+  character(len=ESMF_MAXSTR)          :: ocean_data_type
+
 ! !DESCRIPTION:
 ! 
 !   {\tt GEOS\_Orad} is a light-weight gridded component that updates
@@ -66,6 +68,10 @@ module GEOS_OradGridCompMod
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
+! Local derived type aliases
+
+    type (MAPL_MetaComp    ), pointer       :: MAPL => null()
+
 !=============================================================================
 
 ! Begin...
@@ -85,6 +91,9 @@ module GEOS_OradGridCompMod
 
 ! Set the state variable specs.
 ! -----------------------------
+
+
+    call MAPL_GetResource (MAPL,ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
 
 !BOS
 
@@ -113,14 +122,16 @@ module GEOS_OradGridCompMod
 
      VERIFY_(STATUS)
 
-   call MAPL_AddImportSpec(GC,                               &
-        SHORT_NAME = 'data_kpar',                                 &
-        LONG_NAME  = 'PAR_extinction_coefficient',                &
-        UNITS      = 'm-1',                                       &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                          &
-        RC=STATUS  )
+   if (ocean_data_type == 'ExtData') then
+     call MAPL_AddImportSpec(GC,                               &
+          SHORT_NAME = 'data_kpar',                            &
+          LONG_NAME  = 'PAR_extinction_coefficient',           &
+          UNITS      = 'm-1',                                  &
+          DIMS       = MAPL_DimsHorzOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          RC=STATUS  )
      VERIFY_(STATUS)
+   end if
 
 
 !  !EXPORT STATE:
@@ -363,43 +374,43 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (MAPL_MetaComp), pointer   :: MAPL
   type (ESMF_Time)                    :: CurrentTime
   character(len=ESMF_MAXSTR)          :: DATAFILE
-  real, pointer, dimension(:,:)       :: KPAR
-  real, pointer, dimension(:,:)       :: Z
-  real, pointer, dimension(:,:)       :: UVR
-  real, pointer, dimension(:,:)       :: PAR
-  real, pointer, dimension(:,:)       :: NIR
+  real, pointer, dimension(:,:)       :: KPAR  => null()
+  real, pointer, dimension(:,:)       :: Z     => null()
+  real, pointer, dimension(:,:)       :: UVR   => null()
+  real, pointer, dimension(:,:)       :: PAR   => null()
+  real, pointer, dimension(:,:)       :: NIR   => null()
   integer                             :: L
   integer                             :: IM,JM,LM
 
 ! pointers to export
 
-   real, pointer, dimension(:,:,:)  :: QSW
-   real, pointer, dimension(:,:  )  :: KPARX
+   real, pointer, dimension(:,:,:)  :: QSW   => null()
+   real, pointer, dimension(:,:  )  :: KPARX => null()
 
 ! pointers to import
 
-   real, pointer, dimension(:,:)   :: COSZ
-   real, pointer, dimension(:,:)   :: FR
-   real, pointer, dimension(:,:)   :: PRUVR
-   real, pointer, dimension(:,:)   :: PRPAR
-   real, pointer, dimension(:,:)   :: PRUVF
-   real, pointer, dimension(:,:)   :: PRPAF
-   real, pointer, dimension(:,:)   :: DRNIR
-   real, pointer, dimension(:,:)   :: DFNIR
-   real, pointer, dimension(:,:,:) :: H
-   real, pointer, dimension(:,:)   :: data_kpar
+   real, pointer, dimension(:,:)   :: COSZ      => null()
+   real, pointer, dimension(:,:)   :: FR        => null()
+   real, pointer, dimension(:,:)   :: PRUVR     => null()
+   real, pointer, dimension(:,:)   :: PRPAR     => null()
+   real, pointer, dimension(:,:)   :: PRUVF     => null()
+   real, pointer, dimension(:,:)   :: PRPAF     => null()
+   real, pointer, dimension(:,:)   :: DRNIR     => null()
+   real, pointer, dimension(:,:)   :: DFNIR     => null()
+   real, pointer, dimension(:,:,:) :: H         => null()
+   real, pointer, dimension(:,:)   :: data_kpar => null()
 
 ! ponters to export
 
-   real, pointer, dimension(:,:)   :: FRx
-   real, pointer, dimension(:,:)   :: PRUVRx
-   real, pointer, dimension(:,:)   :: PRPARx
-   real, pointer, dimension(:,:)   :: PRUVFx
-   real, pointer, dimension(:,:)   :: PRPAFx
-   real, pointer, dimension(:,:)   :: DRNIRx
-   real, pointer, dimension(:,:)   :: DFNIRx
-   real, pointer, dimension(:,:)   :: SWFLX
-   real, pointer, dimension(:,:,:)   :: Hx
+   real, pointer, dimension(:,:)   :: FRx    => null()
+   real, pointer, dimension(:,:)   :: PRUVRx => null()
+   real, pointer, dimension(:,:)   :: PRPARx => null()
+   real, pointer, dimension(:,:)   :: PRUVFx => null()
+   real, pointer, dimension(:,:)   :: PRPAFx => null()
+   real, pointer, dimension(:,:)   :: DRNIRx => null()
+   real, pointer, dimension(:,:)   :: DFNIRx => null()
+   real, pointer, dimension(:,:)   :: SWFLX  => null()
+   real, pointer, dimension(:,:,:)   :: Hx   => null()
 
    real, parameter                 :: KUVR = 0.09
 
@@ -493,14 +504,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get KPAR from data file
 !------------------------
 
-!  call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
-!  VERIFY_(STATUS)
+   if (ocean_data_type == 'Binary') then
+     call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
+     VERIFY_(STATUS)
 
-!  call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
-!  VERIFY_(STATUS)
-    call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
-    VERIFY_(STATUS)
-    KPAR = data_kpar
+     call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
+     VERIFY_(STATUS)
+   else
+     call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
+     KPAR = data_kpar
+   end if
 
 ! Use Beer'S Law to compute flux divergence
 !------------------------------------------
