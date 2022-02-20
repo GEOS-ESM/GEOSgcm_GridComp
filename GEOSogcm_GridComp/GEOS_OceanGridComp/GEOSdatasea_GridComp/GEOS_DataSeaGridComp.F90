@@ -98,11 +98,8 @@ module GEOS_DataSeaGridCompMod
 
     call MAPL_GetResource (MAPL,   ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
 
-    ! There will be no support for binary SSS data.
-    ! There wasn't one - ever. This new SSS data feature will be ExtData based ONLY; 'None' would set sss=30. as it was done with binary SST data
-    if (ocean_data_type == 'ExtData') then
-      call MAPL_GetResource (MAPL, ocean_sss_data,  Label="OCEAN_SSS_DATA:",  DEFAULT="None",   __RC__ ) ! None   or ExtData
-    endif
+    ! This new SSS data feature will be ExtData based ONLY; 'None' would set sss=30, as it was done with binary SST data
+    call MAPL_GetResource (MAPL, ocean_sss_data,  Label="OCEAN_SSS_DATA:",  DEFAULT="None",   __RC__ ) ! None   or ExtData
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -354,7 +351,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      if (ocean_sss_data == 'ExtData') then  ! and bulk SSS (from retrieval)
        call MAPL_GetPointer(import, data_sss, 'DATA_SSS', __RC__)
-       sss = data_sss ! netcdf variable
+       SSS = data_sss ! netcdf variable
      endif
 
    else ! binary
@@ -428,7 +425,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    deallocate(SST,     STAT=STATUS); VERIFY_(STATUS)
    if (ocean_sss_data == 'ExtData') then
-     deallocate(SSS,     STAT=STATUS); VERIFY_(STATUS)
+     deallocate(SSS,   STAT=STATUS); VERIFY_(STATUS)
    endif
 
 !  All done
