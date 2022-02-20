@@ -24,6 +24,8 @@ module GEOS_OradBioGridCompMod
   integer, parameter :: NB_CHOU_UV  = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
+  
+  character(len=ESMF_MAXSTR)       :: ocean_data_type
 
 #include "definebio.h"
 #include "comlte.h"
@@ -105,6 +107,9 @@ module GEOS_OradBioGridCompMod
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
+! Local derived type aliases
+
+    type (MAPL_MetaComp    ), pointer       :: MAPL => null()
 !=============================================================================
 
 ! Begin...
@@ -126,6 +131,8 @@ module GEOS_OradBioGridCompMod
 
 ! Set the state variable specs.
 ! -----------------------------
+
+   call MAPL_GetResource (MAPL, ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
 
 !BOC
 
@@ -435,14 +442,16 @@ module GEOS_OradBioGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'data_kpar',                                 &
-    LONG_NAME  = 'PAR_extinction_coefficient',                &
-    UNITS      = 'm-1',                                       &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RC=STATUS  )
-    VERIFY_(STATUS)
+    if (ocean_data_type == 'ExtData') then
+      call MAPL_AddImportSpec(GC,                             &
+           SHORT_NAME = 'data_kpar',                          &
+           LONG_NAME  = 'PAR_extinction_coefficient',         &
+           UNITS      = 'm-1',                                &
+           DIMS       = MAPL_DimsHorzOnly,                    &
+           VLOCATION  = MAPL_VLocationNone,                   &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+    endif
 
 !  !EXPORT STATE:
 
@@ -713,7 +722,7 @@ module GEOS_OradBioGridCompMod
     real, pointer, dimension(:,:)   :: CLDTC => null()
     real, pointer, dimension(:,:)   :: RLWP => null()
     real, pointer, dimension(:,:)   :: CDRE => null()
-    real, pointer, dimension(:,:)   :: data_kpar
+    real, pointer, dimension(:,:)   :: data_kpar => null()
 
 !=============================================================================
 
@@ -810,13 +819,15 @@ module GEOS_OradBioGridCompMod
 ! Get KPAR from data file
 !------------------------
 
-!   call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
-!   VERIFY_(STATUS)
-!   call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
-!   VERIFY_(STATUS)
-    call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
-    VERIFY_(STATUS)
-    KPAR = data_kpar
+    if (ocean_data_type == 'Binary') then
+      call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
+      VERIFY_(STATUS)
+    else
+      call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
+      KPAR = data_kpar
+    end if
 
 ! Use Beer'S Law to compute flux divergence
 !------------------------------------------
