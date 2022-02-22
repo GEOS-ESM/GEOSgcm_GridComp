@@ -4134,6 +4134,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, allocatable, save       :: MODIS_SNOW_ALBEDO(:)
         character(len=ESMF_MAXSTR)    :: GRIDNAME
         character(len=ESMF_MAXSTR)    :: ALBEDO_FILE
+        real, allocatable, dimension(:) :: global_alb
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4880,7 +4881,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            variables => InCfg%get_variables()
            var_iter = variables%begin()
            
-           allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
+           allocate(global_alb(NT_GLOBAL),source =0.0)
            if(.NOT. allocated (MODIS_SNOW_ALBEDO)) then
              allocate(MODIS_SNOW_ALBEDO(NTILES), source = 0.0)
            endif
@@ -4888,10 +4889,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            do while (var_iter/=variables%end())
               vname => var_iter%key()
               if (MAPL_AM_I_Root(VM)) then
-                call MAPL_VarRead ( InFmt,trim(vname), global_tmp_incr)
+                call MAPL_VarRead ( InFmt,trim(vname), global_alb)
               endif
               if ( trim(vname) == "Snow_Albedo" ) then
-                call ArrayScatter(MODIS_SNOW_ALBEDO, global_tmp_incr,tilegrid, mask=mask, rc=status) ; VERIFY_(STATUS)
+                call ArrayScatter(MODIS_SNOW_ALBEDO, global_alb, tilegrid, mask=mask, rc=status) ; VERIFY_(STATUS)
               endif
               
               call var_iter%next()
