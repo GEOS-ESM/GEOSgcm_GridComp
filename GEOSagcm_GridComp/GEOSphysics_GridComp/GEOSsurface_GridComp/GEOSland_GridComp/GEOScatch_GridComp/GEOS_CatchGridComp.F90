@@ -4130,7 +4130,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
-        logical, save                 :: snow_first =.true.
+        logical, save                 :: snow_first =.false.
         real, allocatable, save       :: MODIS_SNOW_ALBEDO(:)
         character(len=ESMF_MAXSTR)    :: GRIDNAME
         character(len=ESMF_MAXSTR)    :: ALBEDO_FILE
