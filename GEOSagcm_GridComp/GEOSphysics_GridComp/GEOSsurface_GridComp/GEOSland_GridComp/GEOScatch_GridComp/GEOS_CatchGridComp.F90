@@ -4874,8 +4874,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_LocStreamGet(LOCSTREAM,  NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS) ; VERIFY_(STATUS)
            call MAPL_TileMaskGet(tilegrid,  mask, rc=status)                                     ; VERIFY_(STATUS)
 
-           ALBEDO_File="/discover/nobackup/projects/gmao/osse2/stage/BCS_FILES/MODIS_snow_alb/MODIS_snow_alb_" // trim(GRIDNAME) // "_nel_Global.nc"
-           call InFmt%open(ALBEDO_File,pFIO_READ,rc=status) ; VERIFY_(status)
+           ALBEDO_FILE="/discover/nobackup/projects/gmao/osse2/stage/BCS_FILES/MODIS_snow_alb/MODIS_snow_alb_" // trim(GRIDNAME) // "_nel_Global.nc"
+           call InFmt%open(ALBEDO_FILE,pFIO_READ,rc=status) ; VERIFY_(status)
            InCfg=InFmt%read(rc=status)                       ; VERIFY_(status)
            variables => InCfg%get_variables()
            var_iter = variables%begin()
