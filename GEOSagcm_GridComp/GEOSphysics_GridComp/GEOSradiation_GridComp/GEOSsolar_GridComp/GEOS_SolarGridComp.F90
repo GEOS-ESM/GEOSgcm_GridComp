@@ -1895,7 +1895,7 @@ contains
                                            value=(BANDS_SOLAR_OFFSET+band), __RC__)
 
                ! execute the aero provider's optics method 
-               call ESMF_MethodExecute(AERO, label="aerosol_optics", userRC=AS_STATUS, RC=STATUS)
+               call ESMF_MethodExecute(AERO, label="run_aerosol_optics", userRC=AS_STATUS, RC=STATUS)
                VERIFY_(AS_STATUS)
                VERIFY_(STATUS)
 
