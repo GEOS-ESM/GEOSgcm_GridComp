@@ -3099,6 +3099,16 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_TimerAdd(GC,    name="-RUN1"   ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run1Barrier1"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run1LocStreamTransform1"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run1LocStreamTransformExports"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run1LocStreamTransform2"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run1Barrier2"   ,RC=STATUS)
+    VERIFY_(STATUS)
 
     do I=1,NUM_CHILDREN
        call MAPL_TimerAdd(GC,    name="--RUN1_"//trim(GCNames(I))  ,RC=STATUS)
@@ -3106,6 +3116,22 @@ module GEOS_SurfaceGridCompMod
     end do
 
     call MAPL_TimerAdd(GC,    name="-RUN2"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2Barrier1"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2Setup"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2ReplacePrecip"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2Pointers"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2Insolation"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2LocStreamTransform"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2Diagnostics"   ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="--Run2Barrier2"   ,RC=STATUS)
     VERIFY_(STATUS)
 
     do I=1,NUM_CHILDREN
@@ -3778,7 +3804,8 @@ module GEOS_SurfaceGridCompMod
 
 ! Locals
 
-    type (MAPL_MetaComp),  pointer  :: MAPL
+    type (ESMF_Alarm)                   :: ALARM
+    type (MAPL_MetaComp),      pointer  :: MAPL
     type (ESMF_GridComp),      pointer  :: GCS(:)
     type (ESMF_State),         pointer  :: GIM(:)
     type (ESMF_State),         pointer  :: GEX(:)
@@ -3946,6 +3973,11 @@ module GEOS_SurfaceGridCompMod
     call MAPL_TimerOn(MAPL,"TOTAL")
     call MAPL_TimerOn(MAPL,"-RUN1" )
 
+    call MAPL_TimerOn(MAPL,"--Run1Barrier1" )
+   !call ESMF_VMBarrier(VMG, rc=status)
+   !VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"--Run1Barrier1" )
+
 ! Get parameters from generic state.
 !-----------------------------------
 
@@ -4090,6 +4122,8 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     useInterp = (iUseInterp /= 0)
 
+    call MAPL_TimerOn(MAPL,"--Run1LocStreamTransform1" )
+
     call MAPL_LocStreamTransform( LOCSTREAM,  PSTILE,  PS, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  TATILE,  TA, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  QATILE,  QA, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
@@ -4099,6 +4133,8 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM,  UWINDLMTILE,  UWINDLM, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  VWINDLMTILE,  VWINDLM, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  PCUTILE,      PCU,     RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_TimerOff(MAPL,"--Run1LocStreamTransform1" )
 
 ! Allocate tile versions of internal
 !------------------------------------
@@ -4170,6 +4206,8 @@ module GEOS_SurfaceGridCompMod
 
 ! Grid exports
 !-------------
+
+    call MAPL_TimerOn(MAPL,"--Run1LocStreamTransformExports" )
 
     if(associated(GRNTILE)) then
        where(GRNTILE /= MAPL_UNDEF) GRNTILE =  GRNTILE*LAITILE
@@ -4302,6 +4340,7 @@ module GEOS_SurfaceGridCompMod
 !   12  ...  cultivations (use parameters from type 7)  MAP to ITYP=4
 !   13  ...  glacial
 
+    call MAPL_TimerOff(MAPL,"--Run1LocStreamTransformExports" )
 
 
 ! Effective surface values on atmos grid. These and the ceoffs
@@ -4312,6 +4351,8 @@ module GEOS_SurfaceGridCompMod
     QHTILE = QHTILE*CQTILE
     UHTILE = UHTILE*CMTILE
     VHTILE = VHTILE*CMTILE
+
+    call MAPL_TimerOn(MAPL,"--Run1LocStreamTransform2" )
 
     call MAPL_LocStreamTransform( LOCSTREAM, CT, CTTILE, RC=STATUS) 
     VERIFY_(STATUS)
@@ -4331,6 +4372,8 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, D0, D0TILE, RC=STATUS) 
     VERIFY_(STATUS)
+
+    call MAPL_TimerOff(MAPL,"--Run1LocStreamTransform2" )
 
 ! These are in the internal state
 
@@ -4431,8 +4474,10 @@ module GEOS_SurfaceGridCompMod
 !  All done
 !-----------
 
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"--Run1Barrier2" )
+   !call ESMF_VMBarrier(VMG, rc=status)
+   !VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"--Run1Barrier2" )
 
     call MAPL_TimerOff(MAPL,"-RUN1" )
     call MAPL_TimerOff(MAPL,"TOTAL")
@@ -5435,6 +5480,13 @@ module GEOS_SurfaceGridCompMod
     call MAPL_TimerOn(MAPL,"TOTAL")
     call MAPL_TimerOn(MAPL,"-RUN2" )
 
+    call MAPL_TimerOn(MAPL,"--Run2Barrier1" )
+   !call ESMF_VMBarrier(VMG, rc=status)
+   !VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"--Run2Barrier1" )
+
+    call MAPL_TimerOn(MAPL,"--Run2Setup")
+
 ! Get parameters from generic state.
 !-----------------------------------
 
@@ -5778,11 +5830,15 @@ module GEOS_SurfaceGridCompMod
     ICE = ICEFL
     FRZR= FRZRFL
 
+    call MAPL_TimerOff(MAPL,"--Run2Setup")
+
 ! This code is used to have the surface components (land, salwater, etc.) see
 !  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
 !  would typically be done one during reanalysis or replay. Also, OGCM-coupled
 !  replays require special treatment.
 !-----------------------------------------------------------------------------
+
+    call MAPL_TimerOn(MAPL,"--Run2ReplacePrecip")
 
     REPLACE_PRECIP: if(PRECIP_FILE /= "null") then
 
@@ -5911,6 +5967,10 @@ module GEOS_SurfaceGridCompMod
        where(FRZR<0.0) FRZR = 0.0
 
     end if REPLACE_PRECIP
+    call MAPL_TimerOff(MAPL,"--Run2ReplacePrecip")
+
+
+    call MAPL_TimerOn(MAPL,"--Run2Pointers")
 
 ! Pointers to gridded internals
 !------------------------------
@@ -6230,8 +6290,12 @@ module GEOS_SurfaceGridCompMod
     allocate(  DQSTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_TimerOff(MAPL,"--Run2Pointers")
+
 ! Get the insolation and zenith angle on grid and tiles
 !------------------------------------------------------
+
+    call MAPL_TimerOn(MAPL,"--Run2Insolation" )
 
     call ESMF_ClockGet(CLOCK,     TIMESTEP=DELT, RC=STATUS)
     VERIFY_(STATUS)
@@ -6290,8 +6354,12 @@ module GEOS_SurfaceGridCompMod
 
     ZTHTILE = max(0.0,ZTHTILE)
 
+    call MAPL_TimerOff(MAPL,"--Run2Insolation" )
+
 ! We need atmsopheric version of the run1 outputs put back on tiles
 !------------------------------------------------------------------
+
+    call MAPL_TimerOn(MAPL,"--Run2LocStreamTransform" )
 
     allocate(   TSTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
@@ -7631,8 +7699,12 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     endif
 
+    call MAPL_TimerOff(MAPL,"--Run2LocStreamTransform" )
+
 ! Fill exports computed on agcm grid
 !-----------------------------------
+
+    call MAPL_TimerOn(MAPL,"--Run2Diagnostics" )
 
     if(associated( DELTS)) DELTS = DTS
     if(associated( DELQS)) DELQS = DQS
@@ -7825,8 +7897,11 @@ module GEOS_SurfaceGridCompMod
 !          where ( FRLANDICE > 0.9 ) SNOMAS = 4
 !      endif
 
+    call MAPL_TimerOff(MAPL,"--Run2Diagnostics" )
+
 ! Clean-up
 !---------
+    call MAPL_TimerOn(MAPL,"--Run2Cleanup" )
 
     deallocate(TMP)
     deallocate(TTM)
@@ -8122,8 +8197,12 @@ module GEOS_SurfaceGridCompMod
     if(associated( UUATILE  )) deallocate( UUATILE   )
     if(associated( VVATILE  )) deallocate( VVATILE   )
 
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"--Run2Cleanup" )
+
+    call MAPL_TimerOn(MAPL,"--Run2Barrier2" )
+   !call ESMF_VMBarrier(VMG, rc=status)
+   !VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"--Run2Barrier2" )
 
     call MAPL_TimerOff(MAPL,"-RUN2" )
     call MAPL_TimerOff(MAPL,"TOTAL")

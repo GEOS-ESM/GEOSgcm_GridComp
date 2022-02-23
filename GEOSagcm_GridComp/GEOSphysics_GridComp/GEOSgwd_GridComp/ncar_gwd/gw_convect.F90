@@ -8,6 +8,7 @@ module gw_convect
   use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof, hr_cf 
 
+  use MAPL_ConstantsMod, only: MAPL_RGAS, MAPL_CP, MAPL_GRAV
 
 implicit none
 private
@@ -18,8 +19,9 @@ public :: gw_beres_ifc
 public :: gw_beres_src
 public :: gw_beres_init
 
-integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
+integer, parameter :: r8 = selected_real_kind(12) ! 8 byte real
 real(R8),parameter :: PI      = 3.14159265358979323846_R8  ! pi
+real,    parameter :: TNDMAX  = 500. / 86400.  ! maximum wind tendency
 
 type :: BeresSourceDesc
    ! Whether wind speeds are shifted to be relative to storm cells.
@@ -551,10 +553,14 @@ subroutine gw_beres_ifc( band, &
    real(r8) :: de(ncol)
    logical, parameter :: gw_apply_tndmax = .TRUE.!- default .TRUE. for Anisotropic: "Sean" limiters
 
+   real(r8) :: zlb,pm,rhom,cmu,fpmx,fpmy,fe,fpe,fpml,fpel,fpmt,fpet,dusrcl,dvsrcl,dtsrcl
+   real(r8) :: utfac,uhtmax
+   integer  :: ktop
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
-   integer :: i,j
+   integer :: i,j,l
 
    !----------------------------------------------------------------------------
 
@@ -600,6 +606,72 @@ subroutine gw_beres_ifc( band, &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke, tau_adjust=pint_adj)
+
+  ktop=1
+  do i=1,ncol
+! Calculate launch level height
+    zlb = 0.
+    do k = ktop+1, pver
+       if (k >= desc%k+1) then
+! Define layer pressure and density
+          pm   = (pint(i,k-1)+pint(i,k))*0.5
+          rhom = pm/(MAPL_RGAS*t(i,k))
+          zlb  = zlb + delp(i,k)/MAPL_GRAV/rhom
+       end if
+    end do
+   !-----------------------------------------------------------------------
+   ! Calculates energy and momentum flux profiles
+   !-----------------------------------------------------------------------
+    do l = -band%ngwv, band%ngwv
+       do k = ktop, pver
+          if ( k <= desc%k ) then
+             cmu  = c(i,l)-ubi(i,k)
+             fpmx =        sign(1.0,cmu)*tau(i,l,k)*xv(i)*effgw(i)
+             fpmy =        sign(1.0,cmu)*tau(i,l,k)*yv(i)*effgw(i)
+             fe   =    cmu*sign(1.0,cmu)*tau(i,l,k)      *effgw(i)
+             fpe  = c(i,l)*sign(1.0,cmu)*tau(i,l,k)      *effgw(i)
+             if (k == desc%k) then
+                fpml = fpmx*xv(i)+fpmy*yv(i)
+                fpel = fpe
+             end if
+             if (k == ktop) then
+                fpmt = fpmx*xv(i)+fpmy*yv(i)
+                fpet = fpe
+             end if
+          end if
+          if (k >= desc%k+1) then
+! Define layer pressure and density
+             pm   = (pint(i,k-1)+pint(i,k))*0.5
+             rhom = pm/(MAPL_RGAS*t(i,k))
+! Compute sub-source tendencies
+             dusrcl = - (fpml-fpmt)/(rhom*zlb)*xv(i)
+             dvsrcl = - (fpml-fpmt)/(rhom*zlb)*yv(i)
+             dtsrcl = -((fpel-fpet)-ubm(i,k)*(fpml-fpmt))/  &
+                              (rhom*zlb*MAPL_CP)
+! Add sub-source wind and temperature tendencies
+             utgw(i,k) = utgw(i,k) + dusrcl
+             vtgw(i,k) = vtgw(i,k) + dvsrcl
+             ttgw(i,k) = ttgw(i,k) + dtsrcl
+          end if
+       end do
+    end do
+
+!-----------------------------------------------------------------------
+! Adjust efficiency factor to prevent unrealistically strong forcing
+!-----------------------------------------------------------------------
+    uhtmax = 0.0
+    utfac  = 1.0
+    do k = ktop, pver
+       uhtmax = max(sqrt(utgw(i,k)**2 + vtgw(i,k)**2), uhtmax)
+    end do
+    if (uhtmax > TNDMAX) utfac = TNDMAX/uhtmax
+    do k = ktop, pver
+       utgw(i,k) = utgw(i,k)*utfac
+       vtgw(i,k) = vtgw(i,k)*utfac
+       ttgw(i,k) = ttgw(i,k)*utfac
+    end do
+
+  end do  ! i=1,ncol
 
      ! For orographic waves, don't bother with taucd, since there are no
      ! momentum conservation routines or directional diagnostics.

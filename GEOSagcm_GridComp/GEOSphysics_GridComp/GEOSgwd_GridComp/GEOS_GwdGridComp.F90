@@ -255,8 +255,8 @@ contains
 
 ! from moist
         call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDTCN',                                & 
-             LONG_NAME ='T tendency due to convection',          &
+             SHORT_NAME='DTDT_DC',                               & 
+             LONG_NAME ='T tendency due to deep convection',     &
              UNITS     ='K s-1',                                 &
              DIMS      = MAPL_DimsHorzVert,                      &
              VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -996,7 +996,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, RC=STATUS)
+       call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
@@ -1210,7 +1210,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, AREA,   'AREA',    RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, VARFLT, 'VARFLT',  RC=STATUS ); VERIFY_(STATUS)
 !++jtb
-      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',     RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDT_DC', RC=STATUS ); VERIFY_(STATUS)
 
 ! Allocate/refer to the outputs
 !------------------------------

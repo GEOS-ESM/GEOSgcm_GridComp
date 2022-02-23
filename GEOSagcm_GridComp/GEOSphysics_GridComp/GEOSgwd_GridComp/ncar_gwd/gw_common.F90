@@ -484,7 +484,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop from bottom to top to get stress profiles.
-  ! do k = kbot_src-1, ktop, -1 !++jtb I think this is right 
+!$OMP parallel do default(none) shared(kbot_src,ktop,kvtt,band,ubi,c,kwvrdg,rhoi,ni,satfac, &
+!$OMP                                  ro_adjust,ncol,alpha,piln,t,rog,src_level,tau_adjust,tau) &
+!$OMP                          private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
   do k = kbot_src, ktop, -1  !++ but this is in model now 
      
      ! Determine the diffusivity for each column.
@@ -589,7 +591,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Apply efficiency to completed stress profile.
   if (lapply_effgw) then
-     do k = ktop, kbot_tend+1
+!$OMP parallel do default(none) shared(kbot_tend,ktop,band,tau,tend_level,ncol,effgw) &
+!$OMP                          private(k,l,i)
+    do k = ktop, kbot_tend+1
         do l = -band%ngwv, band%ngwv
            do i=1,ncol
             if (k-1 <= tend_level(i)) then
@@ -606,6 +610,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
 
   ! Loop over levels from top to bottom
+!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
+!$OMP                                  gwut,ubt,xv,yv,lapply_effgw,ubt_lim_ratio,tend_level) &
+!$OMP                          private(k,l,i,ubtl)
   do k = ktop, kbot_tend
 
      ! Accumulate the mean wind tendency over wavenumber.
@@ -704,6 +711,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! before Sean's mods can be adopted. --jtb 03/02/16
   !==========================================
   if (.not.(lapply_effgw)) then
+!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tend_level,tau,effgw) &
+!$OMP                          private(k,l)
      do k = ktop, kbot_tend+1
         do l = -band%ngwv, band%ngwv
            do i=1,ncol
@@ -713,6 +722,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
            end do
         end do
      end do
+!$OMP parallel do default(none) shared(kbot_tend,ktop,band,gwut,utgw,vtgw,effgw) &
+!$OMP                          private(k,l)
      do k = ktop, kbot_tend
         do l = -band%ngwv, band%ngwv
            gwut(:,k,l) = gwut(:,k,l) * effgw
@@ -723,55 +734,17 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   end if
   !===========================================
 
-
-!++jtb
-! Let's disable vertical diffusion calculations in GW
-! until we have better physical ideas. (JTB 3/26/20).
-! Also avoids having to pass tracers into GW code
-!=====================================
-#if 0
-  ! Calculate effective diffusivity and LU decomposition for the
-  ! vertical diffusion solver.
-  call gw_ediff (ncol, pver, band%ngwv, kbot_tend, ktop, tend_level, &
-       gwut, ubm, nm, rhoi, dt, prndl, gravit, p, c, &
-       egwdffi, decomp, ro_adjust=ro_adjust)
-
-  ! Calculate tendency on each constituent.
-  do m = 1, size(q,3)
-
-     call gw_diff_tend(ncol, pver, kbot_tend, ktop, q(:,:,m), &
-          dt, decomp, qtgw(:,:,m))
-
-  enddo
-
-  ! Calculate tendency from diffusing dry static energy (dttdf).
-  call gw_diff_tend(ncol, pver, kbot_tend, ktop, dse, dt, decomp, dttdf)
-
   ! Evaluate second temperature tendency term: Conversion of kinetic
   ! energy into thermal.
-  do l = -band%ngwv, band%ngwv
-     do k = ktop, kbot_tend
-        dttke(:,k) = dttke(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
-     end do
-  end do
-
-  ttgw = dttke + dttdf
-
-  ! Deallocate decomp.
-  call decomp%finalize()
-#else
-
-  ! Evaluate second temperature tendency term: Conversion of kinetic
-  ! energy into thermal.
-  do l = -band%ngwv, band%ngwv
-     do k = ktop, kbot_tend
+!$OMP parallel do default(none) shared(kbot_tend,ktop,band,dttke,ubm,c,gwut) &
+!$OMP                          private(k,l)
+  do k = ktop, kbot_tend
+     do l = -band%ngwv, band%ngwv
         dttke(:,k) = dttke(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
      end do
   end do
 
   ttgw = dttke / cpair
-
-#endif
 
 deallocate( alpha )
 
