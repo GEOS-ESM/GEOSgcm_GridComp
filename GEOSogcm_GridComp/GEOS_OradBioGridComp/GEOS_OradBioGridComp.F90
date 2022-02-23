@@ -132,6 +132,9 @@ module GEOS_OradBioGridCompMod
 ! Set the state variable specs.
 ! -----------------------------
 
+   call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+   VERIFY_(STATUS)
+
    call MAPL_GetResource (MAPL, ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
 
 !BOC

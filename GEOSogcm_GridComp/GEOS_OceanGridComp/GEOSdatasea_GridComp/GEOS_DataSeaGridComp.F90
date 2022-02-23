@@ -89,11 +89,13 @@ module GEOS_DataSeaGridCompMod
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
-
 ! Set the Run entry point
 ! -----------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL,   ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
