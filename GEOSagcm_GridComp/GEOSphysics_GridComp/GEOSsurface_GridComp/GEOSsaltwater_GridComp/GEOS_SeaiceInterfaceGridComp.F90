@@ -42,18 +42,16 @@ module GEOS_SeaiceInterfaceGridComp
 !EOP
 
   integer, parameter :: ICE = 1         
-  integer, parameter :: NUM_3D_ICE_TRACERS = 3
-  integer, parameter :: NUM_SNOW_LAYERS    = 1
 
   logical ::      DUAL_OCEAN
 
-  type cice_state
+  type seaice_interface_state
        integer:: CHOOSEMOSFC
-  end type cice_state
+  end type seaice_interface_state
 
-  type cice_state_wrap
-      type(cice_state), pointer :: ptr
-  end type
+  type seaice_interface_state_wrap
+      type(seaice_interface_state), pointer :: ptr
+  end type seaice_interface_state_wrap
 
   contains
 
@@ -453,15 +451,6 @@ module GEOS_SeaiceInterfaceGridComp
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRACI',                             &
         LONG_NAME          = 'ice_covered_fraction_of_tile',      &
-        UNITS              = '1',                                 &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME         = 'FRACINEW',                             &
-        LONG_NAME          = 'ice_covered_fraction_of_tile_after_update',      &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1080,28 +1069,8 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'UW',                                &
-        LONG_NAME          = 'zonal_velocity_of_surface_water',   &
-        UNITS              = 'm s-1 ',                            &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        DEFAULT            = 0.0,                                 &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'UI',                                &
         LONG_NAME          = 'zonal_velocity_of_surface_ice',     &
-        UNITS              = 'm s-1 ',                            &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        DEFAULT            = 0.0,                                 &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'VW',                                &
-        LONG_NAME          = 'meridional_velocity_of_surface_water',   &
         UNITS              = 'm s-1 ',                            &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1120,174 +1089,24 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
 
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'SS_FOUND',                          &
-        LONG_NAME          = 'foundation_salinity_for_interface_layer',               &
-        UNITS              = 'psu',                               &
+   call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'UUA',                             &
+        LONG_NAME          = 'interpolated_effective_surface_zonal_velocity',&
+        UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        DEFAULT            = 30.0,                                &
+        RESTART            = MAPL_RestartSkip,                    &
+        __RC__  )
 
-                                                       RC=STATUS  )
-      VERIFY_(STATUS)
-
-      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'TS_FOUND',                          &
-        LONG_NAME          = 'foundation_temperature_for_interface_layer',            &
-        UNITS              = 'K',                                 &
+   call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'VVA',                             &
+        LONG_NAME          = 'interpolated_effective_surface_meridional_velocity',&
+        UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        DEFAULT            = 280.0,                               &
+        RESTART            = MAPL_RestartSkip,                    &
+        __RC__  )
 
-                                                       RC=STATUS  )
-      VERIFY_(STATUS)
-
-
-  ! CMIP5 exports; this is only one part of the list, the rest are in CICEDyna     
-
-  call MAPL_AddExportSpec(GC,                          &
-    SHORT_NAME         = 'evap_CMIP5'                ,&
-    LONG_NAME          = 'water_evaporation_flux',    &
-    UNITS              = 'kg m-2 s-1'                ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'pr_CMIP5'                  ,                                        &
-    LONG_NAME          = 'surface_rainfall_rate_into_the_sea_ice_portion_of_the_grid_cell',   &
-    UNITS              = 'kg m-2 s-1'                ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'prsn_CMIP5'                ,                                        &
-    LONG_NAME          = 'surface_snowfall_rate_into_the_sea_ice_portion_of_the_grid_cell',   &
-    UNITS              = 'kg m-2 s-1'                ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'grFrazil_CMIP5'            ,&
-    LONG_NAME          = 'frazil_sea_ice_growth_rate',&
-    UNITS              = 'kg m-2 s-1'                ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'grCongel_CMIP5'                    ,&
-    LONG_NAME          = 'congelation_sea_ice_growth_rate',   &
-    UNITS              = 'kg m-2 s-1'                        ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
-        SHORT_NAME         = 'grLateral_CMIP5'              ,&
-        LONG_NAME          = 'lateral_sea_ice_growth_rate'  ,&
-        UNITS              = 'kg m-2 s-1'                   ,&
-        DIMS               = MAPL_DimsTileOnly              ,&
-        VLOCATION          = MAPL_VLocationNone             ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
-        SHORT_NAME         = 'snoToIce_CMIP5'            ,&
-        LONG_NAME          = 'snow_ice_formation_rate',   &
-        UNITS              = 'kg m-2 s-1'                ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
-        SHORT_NAME         = 'snomelt_CMIP5'             ,&
-        LONG_NAME          = 'snow_melt_rate',            &
-        UNITS              = 'kg m-2 s-1'                ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                    &
-        SHORT_NAME         = 'tmelt_CMIP5'               ,                 &
-        LONG_NAME          = 'rate_of_melt_at_upper_surface_of_sea_ice',   &
-        UNITS              = 'kg m-2 s-1'                                 ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                    &
-        SHORT_NAME         = 'bmelt_CMIP5'               ,     &
-        LONG_NAME          = 'rate_of_melt_at_sea_ice_base',   &
-        UNITS              = 'kg m-2 s-1'                     ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                    &
-        SHORT_NAME         = 'sfdsi_CMIP5'               ,         &
-        LONG_NAME          = 'downward_sea_ice_basal_salt_flux',   &
-        UNITS              = 'kg m-2 s-1'                         ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                    &
-        SHORT_NAME         = 'hfsifrazil_CMIP5'             ,                          &
-        LONG_NAME          = 'heat_flux_into_sea_water_due_to_frazil_ice_formation',   &
-        UNITS              = 'W m-2'                        ,&
-        DIMS               = MAPL_DimsTileOnly              ,&
-        VLOCATION          = MAPL_VLocationNone             ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME         = 'ialb_CMIP5'                   ,&
-        LONG_NAME          = 'bare_sea_ice_albedo'          ,&
-        UNITS              = '1'                            ,&
-        DIMS               = MAPL_DimsTileOnly              ,&
-        VLOCATION          = MAPL_VLocationNone             ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME         = 'rsdssi_CMIP5'                 ,             &
-        LONG_NAME          = 'surface_downwelling_shortwave_flux_in_air' ,&
-        UNITS              = 'W m-2'                        ,&
-        DIMS               = MAPL_DimsTileOnly              ,&
-        VLOCATION          = MAPL_VLocationNone             ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME         = 'rsussi_CMIP5'                 ,           &
-        LONG_NAME          = 'surface_upwelling_shortwave_flux_in_air' ,&
-        UNITS              = 'W m-2'                        ,&
-        DIMS               = MAPL_DimsTileOnly              ,&
-        VLOCATION          = MAPL_VLocationNone             ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS) 
-
-  call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME         = 'fsitherm_CMIP5'               ,                           &
-        LONG_NAME          = 'water_flux_into_sea_water_due_to_sea_ice_thermodynamics' ,&
-        UNITS              = 'kg m-2 s-1'                   ,&
-        DIMS               = MAPL_DimsTileOnly              ,&
-        VLOCATION          = MAPL_VLocationNone             ,&
-                                               RC=STATUS  ) 
-  VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'FCONDTOP'                  ,             &
@@ -1299,32 +1118,23 @@ module GEOS_SeaiceInterfaceGridComp
 
   VERIFY_(STATUS)
 
-  call MAPL_AddExportSpec(GC,                            &
-         SHORT_NAME         = 'FCONDBOT'                  ,                &
-          LONG_NAME          = 'conductive_heat_flux_at_ice_bottom_surface',&
-          UNITS              = 'W m-2'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  )
-  VERIFY_(STATUS)
 
-  call MAPL_AddExportSpec(GC,                            &
-         SHORT_NAME         = 'NEWICEERG'                  ,                &
-          LONG_NAME          = 'heat_flux_associated_with_new_ice_generation',&
-          UNITS              = 'W m-2'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  )
-  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                              ,&
+         SHORT_NAME         = 'TSKINICE'                  ,&
+         LONG_NAME          = 'snow_or_ice_surface_temperature',&
+         UNITS              = 'K'                         ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         __RC__  )
 
-  call MAPL_AddExportSpec(GC,                            &
-         SHORT_NAME          = 'SUBLIMFLX'                  ,                &
+
+  call MAPL_AddExportSpec(GC                               ,&
+         SHORT_NAME          = 'SUBLIMFLX'                 ,&
           LONG_NAME          = 'heat_flux_associated_with_sublimation_of_snow_ice',&
           UNITS              = 'W m-2'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  )
-  VERIFY_(STATUS)
+         __RC__  )
 
 !  Category dimensional exports
 
@@ -1426,47 +1236,6 @@ module GEOS_SeaiceInterfaceGridComp
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
         VLOCATION          = MAPL_VLocationNone          ,&
         RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddExportSpec(GC,                    &
-        LONG_NAME          = 'saturation_specific_humidity_using_geos_formula',&
-        UNITS              = 'kg kg-1'                   ,&
-        SHORT_NAME         = 'QSAT1'                     ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddExportSpec(GC,                    &
-        LONG_NAME          = 'saturation_specific_humidity_using_bulk_formula',&
-        UNITS              = 'kg kg-1'                   ,&
-        SHORT_NAME         = 'QSAT2'                     ,&
-        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-
-   call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'UUA',                             &
-        LONG_NAME          = 'interpolated_effective_surface_zonal_velocity',&
-        UNITS              = 'm s-1',                             &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RESTART            = MAPL_RestartSkip,                    &
-        RC=STATUS  )
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'VVA',                             &
-        LONG_NAME          = 'interpolated_effective_surface_meridional_velocity',&
-        UNITS              = 'm s-1',                             &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RESTART            = MAPL_RestartSkip,                    &
-        RC=STATUS  )
    VERIFY_(STATUS)
 
 
@@ -2037,11 +1806,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
 
 
-   TS(:,ICE:) = TI           ! TI(in K): returned from CICEDyna
+   TS(:,ICE:) = TI           ! TI(in K): returned from Sea Ice Model Update
    US = UI
    VS = VI
 
-   ! refresh QS based on the updated TS
+   ! refresh QS based on the updated TS due to sea ice dynamic transport
    do N=1,NUM_SUBTILES
      QS(:,N) = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) 
    enddo
@@ -2860,19 +2629,6 @@ contains
     if(associated(SBLXOUT)) SBLXOUT = 0.0
 
 
-    if(associated(PR_C5)) then
-          PR_C5 = FRCICE * (PLS + PCU)
-          where(FRCICE == 0.0)
-             PR_C5 = 0.0
-          endwhere
-    endif
-    if(associated(PRSN_C5)) then
-          PRSN_C5 = FRCICE * SNO
-          where(FRCICE == 0.0)
-             PRSN_C5 = 0.0
-          endwhere
-    endif
-
 ! Atmospheric surface stresses
 !-----------------------------
     !*** already computed in surface
@@ -2903,8 +2659,6 @@ contains
 ! 1st Step of LANL CICE Thermodynamics
 ! ------------------------------------
 
-
-     FR8TMP = FR8 
      categories_th1_: do N=ICE, NUM_SUBTILES   ! Loop over ice catgories. 
 
           NSUB = N 
