@@ -126,7 +126,7 @@ module GEOS_OradGridCompMod
 
    if (ocean_extData) then
      call MAPL_AddImportSpec(GC,                               &
-          SHORT_NAME = 'data_kpar',                            &
+          SHORT_NAME = 'DATA_KPAR',                            &
           LONG_NAME  = 'PAR_extinction_coefficient',           &
           UNITS      = 'm-1',                                  &
           DIMS       = MAPL_DimsHorzOnly,                      &
