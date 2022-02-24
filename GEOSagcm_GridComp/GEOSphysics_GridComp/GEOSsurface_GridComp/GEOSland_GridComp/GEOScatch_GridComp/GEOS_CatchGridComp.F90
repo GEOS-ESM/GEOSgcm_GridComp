@@ -4863,19 +4863,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
-        ! - borescan, 17 Feb 2022
+        ! - borescan, 17 Feb 2022  - start snow albedo changes
         ! Based on 20 years of MODIS Terra (MOD10A1) 
         ! Use MODIS snow cover information to determine areas with 60% or more snow cover. (step1) 
         ! Use top 10th percentile of snow albedo information from regions matching step1
 
-         call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+          call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
           SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
           call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
           call MAPL_GetResource ( SCF, NEW_SNOW_ALBEDO, Label="NEW_SNOW_ALBEDO:", &
                DEFAULT=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
 
-
-        if (MAPL_AM_I_Root(VM)) print *,' Biljana NEW_SNOW_ALBEDO=',NEW_SNOW_ALBEDO
 
         if ( NEW_SNOW_ALBEDO == .TRUE. )  then
 
@@ -4886,8 +4884,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_LocStreamGet(LOCSTREAM,  NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS) ; VERIFY_(STATUS)
            call MAPL_TileMaskGet(tilegrid,  mask, rc=status)                                     ; VERIFY_(STATUS)
 
-         !  ALBEDO_FILE="/discover/nobackup/projects/gmao/osse2/stage/BCS_FILES/MODIS_snow_alb/MODIS_snow_alb_" // trim(GRIDNAME) // "_nel_Global.nc"
-           ALBEDO_FILE="/discover/nobackup/borescan/for_AGCM_test/nc4_format/MODIS_snow_alb_" // trim(GRIDNAME) // "_nel_Global.nc"
+           ALBEDO_FILE="/discover/nobackup/projects/gmao/osse2/stage/BCS_FILES/MODIS_snow_alb/MODIS_snow_alb_" // trim(GRIDNAME) // "_nel_Global.nc"
            call InFmt%open(ALBEDO_FILE,pFIO_READ,rc=status) ; VERIFY_(status)
            
            allocate(global_alb(NT_GLOBAL),source =0.0)
@@ -4914,7 +4911,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         endwhere
 
 
-        ! Biljana
+        ! borescan - end snow albedo changes 
 
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
