@@ -245,3 +245,9 @@
 # GEOSagcm=>SCALE_ALBFPAR: 0
 # GEOSldas=>SCALE_ALBFPAR: 0
 
+# ---- NEW SNOW ALBEDO INFORMATION
+#    .FALSE.  : Default; uses current snow albedo arbitrary information 
+#    .TRUE.   : New; uses product based on 20Y of MODIS Terra 
+#  
+# GEOSagcm=>NEW_SNOW_ALBEDO: .FALSE.
+# GEOSldas=>NEW_SNOW_ALBEDO: .FALSE.
