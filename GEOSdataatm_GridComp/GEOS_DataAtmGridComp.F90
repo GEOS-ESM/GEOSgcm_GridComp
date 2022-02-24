@@ -289,19 +289,6 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !!! ALT this section below is not needed
 !+=======================================+
-! Change the location stream to just the ocean part
-!--------------------------------------------------
-
-    call MAPL_Get(MAPL, EXCHANGEGRID=EXCH,        RC=STATUS )
-    VERIFY_(STATUS)
-
-    call MAPL_LocStreamCreate(LOCSTREAM, EXCH, NAME='OCEAN', &
-                                       MASK=(/MAPL_OCEAN/), RC=STATUS )
-    VERIFY_(STATUS)
-
-    call MAPL_ExchangeGridSet(GC, LOCSTREAM, rc=status)
-    VERIFY_(STATUS)
-
 !   call MAPL_Get(MAPL, HEARTBEAT = DTI, RC=STATUS)
 !   VERIFY_(STATUS)
 
@@ -482,6 +469,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! how about default T10 = 270+30*COS(LAT)
     call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__)
     call MAPL_GetPointer(SurfImport, Tair, 'TA', __RC__)
+#define DEBUG
+#ifdef DEBUG
+    if (any(Tair < 150.0)) then
+       print *, 'Low Tair', tair
+    end if
+    if (any(Tair > 400.0)) then
+       print *, 'High Tair', tair
+    end if
+#endif
 
 ! Read 10m specific humidity (kg kg-1)
 !---------------------------------------------------
@@ -536,9 +532,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ReadForcingData(impName='SNO', frcName='SNO', default=0., __RC__)
 
 ! Radiation
-    call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=-100., __RC__)
+    call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=-0.100, __RC__)
 
-    call ReadForcingData(swrad, frcName='SWRAD', default=200., __RC__)
+    call ReadForcingData(swrad, frcName='SWRAD', default=0.200, __RC__)
     call MAPL_GetPointer(SurfImport, DRPARN, 'DRPARN', __RC__)
     call MAPL_GetPointer(SurfImport, DFPARN, 'DFPARN', __RC__)
     call MAPL_GetPointer(SurfImport, DRNIRN, 'DRNIRN', __RC__)
@@ -564,7 +560,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        Tskin = Tair
     end if
 
-#if DEBUG
+#ifdef DEBUG
     if (any(Tskin < 150.0)) then
        print *, 'Low Tskin', tskin
     end if
@@ -573,8 +569,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
 #endif
  
-    WHERE (Tskin < 150.0) Tskin = 273.16 ! some sanity, values are arbitrary
-    WHERE (Tskin > 400.0) Tskin = 300.0  ! some sanity, values are arbitrary
+    WHERE (Tskin < 250.0) Tskin = 250 ! some sanity, values are arbitrary
+    WHERE (Tskin > 310.0) Tskin = 310.0  ! some sanity, values are arbitrary
 
     ALW = MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4
     call SetVarToZero('BLW', __RC__)
@@ -829,7 +825,7 @@ contains
     end if
     label_ = trim(frcName_)//'_FILE:'
 
-    call MAPL_GetResource(MAPL, datafile, label=label_, default="none", __RC__)
+    call MAPL_GetResource(MAPL, datafile, label=label_, default='none', __RC__)
     if(trim(datafile) == 'none') then
        ptr = default
     else
