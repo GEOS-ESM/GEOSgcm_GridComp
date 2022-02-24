@@ -123,6 +123,13 @@ module GEOS_DataAtmGridCompMod
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'TA',                     &
+      LONG_NAME = 'surface_air_temperature', &
+      UNITS = 'K',                           &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
 ! Get my MAPL_Generic state
 !--------------------------
 
@@ -404,6 +411,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! pointers to import - none
 ! internal pointers to tile variables ???
 
+  real, pointer, dimension(:,:) :: TA! => null()
+
 ! pointers to export - none???
 
 ! Andrea: OBSERVE????
@@ -480,8 +489,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read 10m temperature (K)
 !---------------------------------------------------
     ! how about default T10 = 270+30*COS(LAT)
-    call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__)
+!   call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__)
     call MAPL_GetPointer(SurfImport, Tair, 'TA', __RC__)
+    call MAPL_GetPointer(import, TA, 'TA', __RC__)
+    Tair = TA
 
 ! Read 10m specific humidity (kg kg-1)
 !---------------------------------------------------
