@@ -4875,7 +4875,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                DEFAULT=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
 
 
-        if ( NEW_SNOW_ALBEDO == .TRUE. )  then
+        if ( NEW_SNOW_ALBEDO .eq. .TRUE. )  then
 
            call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)                      ; VERIFY_(STATUS)
            GRIDNAME =  AdjustL(GRIDNAME)
