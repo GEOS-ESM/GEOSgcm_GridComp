@@ -23,7 +23,7 @@ module GEOS_OradGridCompMod
 
   public SetServices
 
-  character(len=ESMF_MAXSTR)          :: ocean_data_type
+  logical          :: ocean_extData
 
 ! !DESCRIPTION:
 ! 
@@ -95,7 +95,7 @@ module GEOS_OradGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource (MAPL,ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
+    call MAPL_GetResource (MAPL, ocean_extData, Label="OCEAN_EXT_DATA:", DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
 
 !BOS
 
@@ -124,7 +124,7 @@ module GEOS_OradGridCompMod
 
      VERIFY_(STATUS)
 
-   if (ocean_data_type == 'ExtData') then
+   if (ocean_extData) then
      call MAPL_AddImportSpec(GC,                               &
           SHORT_NAME = 'data_kpar',                            &
           LONG_NAME  = 'PAR_extinction_coefficient',           &
@@ -506,7 +506,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get KPAR from data file
 !------------------------
 
-   if (ocean_data_type == 'Binary') then
+   if (.not. ocean_extData) then
      call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
      VERIFY_(STATUS)
 

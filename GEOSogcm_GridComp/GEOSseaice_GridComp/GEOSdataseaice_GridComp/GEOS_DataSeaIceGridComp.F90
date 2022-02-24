@@ -35,7 +35,7 @@ module GEOS_DataSeaIceGridCompMod
   integer            :: NUM_SNOW_LAYERS_ALL
   integer            :: DO_CICE_THERMO
 
-  character(len=ESMF_MAXSTR)          :: ocean_data_type
+  logical            :: ocean_extData
 
 ! !DESCRIPTION:
 ! 
@@ -111,7 +111,7 @@ module GEOS_DataSeaIceGridCompMod
     call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, ocean_data_type,   Label="OCEAN_DATA_TYPE:",      DEFAULT="Binary", __RC__ ) ! Binary or ExtData
+    call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
 
     cice_init_: if (DO_CICE_THERMO /= 0) then
        if(MAPL_AM_I_ROOT()) print *, 'Using Data Sea Ice GC to do CICE Thermo in AMIP mode'
@@ -141,7 +141,7 @@ module GEOS_DataSeaIceGridCompMod
 
 ! !Import state:
 
-  if (ocean_data_type == 'ExtData') then
+  if (ocean_extData) then
     call MAPL_AddImportSpec(GC,                  &
       SHORT_NAME         = 'DATA_ICE',           &
       LONG_NAME          = 'sea_ice_concentration',        &
@@ -476,7 +476,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to Imports
 !--------------------
 
-   if (ocean_data_type == 'ExtData') then
+   if (ocean_extData) then
      call MAPL_GetPointer(IMPORT, DATA_ice     ,  'DATA_ICE', __RC__)
    endif
 
@@ -521,7 +521,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
     VERIFY_(STATUS)
 
-   if (ocean_data_type == 'Binary') then
+   if (.not. ocean_extData) then
     ! Get the file name from the resource file
     !-----------------------------------------
     call MAPL_GetResource(MAPL,DataFrtFile,LABEL="DATA_FRT_FILE:", RC=STATUS)
@@ -572,7 +572,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if (DO_CICE_THERMO == 0) then
      if(associated(FR)) then
-       if (ocean_data_type == 'ExtData') then
+       if (ocean_extData) then
          FR = data_ice ! netcdf variable
        else ! binary
          call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
@@ -584,7 +584,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        endif
      end if
    else
-     if (ocean_data_type == 'ExtData') then
+     if (ocean_extData) then
        frt = data_ice ! netcdf variable
      else ! binary
        call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FRT, INIT_ONLY=FCST, __RC__)

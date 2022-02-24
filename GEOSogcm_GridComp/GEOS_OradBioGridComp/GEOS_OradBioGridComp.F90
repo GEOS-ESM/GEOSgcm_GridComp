@@ -25,7 +25,7 @@ module GEOS_OradBioGridCompMod
   integer, parameter :: NB_CHOU_NIR = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
   
-  character(len=ESMF_MAXSTR)       :: ocean_data_type
+  logical            :: ocean_extData
 
 #include "definebio.h"
 #include "comlte.h"
@@ -135,7 +135,7 @@ module GEOS_OradBioGridCompMod
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
    VERIFY_(STATUS)
 
-   call MAPL_GetResource (MAPL, ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
+   call MAPL_GetResource (MAPL,   ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
 
 !BOC
 
@@ -445,7 +445,7 @@ module GEOS_OradBioGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
-    if (ocean_data_type == 'ExtData') then
+    if (ocean_extData) then
       call MAPL_AddImportSpec(GC,                             &
            SHORT_NAME = 'data_kpar',                          &
            LONG_NAME  = 'PAR_extinction_coefficient',         &
@@ -822,7 +822,7 @@ module GEOS_OradBioGridCompMod
 ! Get KPAR from data file
 !------------------------
 
-    if (ocean_data_type == 'Binary') then
+    if (.not. ocean_extData) then
       call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)

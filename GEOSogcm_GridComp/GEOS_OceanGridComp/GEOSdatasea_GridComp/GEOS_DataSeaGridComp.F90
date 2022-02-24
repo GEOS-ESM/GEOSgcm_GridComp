@@ -23,8 +23,8 @@ module GEOS_DataSeaGridCompMod
 
   public SetServices
 
-  character(len=ESMF_MAXSTR)          :: ocean_data_type
-  character(len=ESMF_MAXSTR)          :: ocean_sss_data
+  logical          :: ocean_extData
+  logical          :: ocean_sssData
 
 ! !DESCRIPTION:
 ! 
@@ -98,10 +98,10 @@ module GEOS_DataSeaGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource (MAPL,   ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
+    call MAPL_GetResource (MAPL,   ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
 
-    ! This new SSS data feature will be ExtData based ONLY; 'None' would set sss=30, as it was done with binary SST data
-    call MAPL_GetResource (MAPL, ocean_sss_data,  Label="OCEAN_SSS_DATA:",  DEFAULT="None",   __RC__ ) ! None   or ExtData
+    ! This new SSS data feature will be ExtData based ONLY; No SSS data would set sss=30, as it was done with binary SST data
+    call MAPL_GetResource (MAPL,   ocean_sssData,  Label="OCEAN_SSS_DATA:",  DEFAULT=.FALSE.,   __RC__ ) ! .TRUE. or .FALSE.
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -113,7 +113,7 @@ module GEOS_DataSeaGridCompMod
 
 !  !Export state:
 
-  if (ocean_data_type == 'ExtData') then
+  if (ocean_extData) then
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'DATA_SST',               &
       LONG_NAME = 'sea_surface_temperature', &
@@ -122,7 +122,7 @@ module GEOS_DataSeaGridCompMod
       VLOCATION = MAPL_VLocationNone, RC=STATUS)
   endif
 
-  if (ocean_sss_data == 'ExtData') then
+  if (ocean_sssData) then
     call MAPL_AddImportSpec(GC,           &
       SHORT_NAME = 'DATA_SSS',            &
       LONG_NAME = 'sea_surface_salinity', &
@@ -305,7 +305,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, RC=STATUS)
    VERIFY_(STATUS)
 
-   if (ocean_data_type == 'Binary') then
+   if (.not. ocean_extData) then
      ! Get the SST bcs file name from the resource file
      ! -------------------------------------------------
      call MAPL_GetResource(MAPL,DATASeaFILE,LABEL="DATA_SST_FILE:", RC=STATUS)
@@ -335,7 +335,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! SSS is usually bulk SSS
 !-------------------------
 
-  if (ocean_sss_data == 'ExtData') then
+  if (ocean_sssData) then
     allocate(SSS(IM, JM), stat=STATUS); VERIFY_(STATUS)
   endif
 
@@ -347,11 +347,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Read bulk SST from retrieval
 !------------------------------
 
-   if (ocean_data_type == 'ExtData') then
+   if (ocean_extData) then
      call MAPL_GetPointer(import, data_sst, 'DATA_SST', __RC__)
      sst = data_sst ! netcdf variable
 
-     if (ocean_sss_data == 'ExtData') then  ! and bulk SSS (from retrieval)
+     if (ocean_sssData) then  ! and bulk SSS (from retrieval)
        call MAPL_GetPointer(import, data_sss, 'DATA_SSS', __RC__)
        SSS = data_sss ! netcdf variable
      endif
@@ -415,7 +415,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    end if
 
    if(associated(SW)) then
-     if (ocean_sss_data == 'ExtData') then
+     if (ocean_sssData) then
        SW = SSS        ! SA: every SST data point must have SSS (in PSU) as well
      else
        SW = 30.0       ! SA: for now
@@ -426,7 +426,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !---------
 
    deallocate(SST,     STAT=STATUS); VERIFY_(STATUS)
-   if (ocean_sss_data == 'ExtData') then
+   if (ocean_sssData) then
      deallocate(SSS,   STAT=STATUS); VERIFY_(STATUS)
    endif
 

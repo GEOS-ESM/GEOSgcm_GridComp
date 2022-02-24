@@ -61,8 +61,8 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_OBIO
   integer            :: DO_DATAATM
 
-  character(len=ESMF_MAXSTR)          :: ocean_data_type
-  character(len=ESMF_MAXSTR)          :: ocean_sss_data
+  logical          :: ocean_extData
+  logical          :: ocean_sssData
 
 !if DO_OBIO =/ 0
   integer, parameter :: NUM_DUDP = 5
@@ -205,10 +205,10 @@ contains
        _ASSERT(DO_OBIO       ==0,'needs informative message')
     end if
 
-    call MAPL_GetResource (MAPL,   ocean_data_type, Label="OCEAN_DATA_TYPE:", DEFAULT="Binary", __RC__ ) ! Binary or ExtData
+    call MAPL_GetResource (MAPL,   ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
     if (DO_DATASEAONLY==1) then ! Fake-ocean (i.e., data ocean). 
                                 ! This check is strictly for sss only because of data kpar that is used when DO_DATASEAONLY == 0.
-      call MAPL_GetResource (MAPL, ocean_sss_data,  Label="OCEAN_SSS_DATA:",  DEFAULT="None",   __RC__ ) ! None or ExtData
+      call MAPL_GetResource (MAPL, ocean_sssData,  Label="OCEAN_SSS_DATA:",  DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
     endif
 
 ! Set the Run and initialize entry points
@@ -780,16 +780,18 @@ contains
 ! Children's imports are in the ocean grid and are all satisfied
 ! by OGCM from exchange grid quantities.
   
-  if (ocean_data_type == 'ExtData') then
+  if (ocean_extData) then
     if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
-      if (ocean_sss_data == 'ExtData') then
+      if (ocean_sssData) then
         call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_SSS", "DATA_ICE","DATA_KPAR"], [ocean,ocean,seaice,orad], RC=STATUS  )
       else ! no (None) data_sss
         call MAPL_TerminateImport    ( GC, ["DATA_SST",            "DATA_ICE","DATA_KPAR"], [ocean,      seaice,orad], RC=STATUS  )
       endif
     else ! we get real ocean and sea ice in case of coupled model, and only data KPAR is used.
-      call MAPL_TerminateImport    ( GC, ["DATA_KPAR"], [orad], RC=STATUS  )
+      call MAPL_TerminateImport    ( GC, ["DATA_KPAR"], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
     endif
+  else
+    call MAPL_TerminateImport ( GC, ALL=.true., __RC__)
   endif
 
 ! Set the Profiling timers
