@@ -4135,7 +4135,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=ESMF_MAXSTR)      :: GRIDNAME
         character(len=ESMF_MAXSTR)      :: ALBEDO_FILE
         real, allocatable, dimension(:) :: global_alb
-        logical                         :: NEW_SNOW_ALBEDO
+        integer                         :: SNOW_ALBEDO_INFO
         character(len=ESMF_MAXSTR)      :: SURFRC
         type(ESMF_Config)               :: SCF 
 !#---
@@ -4871,11 +4871,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
           SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
           call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-          call MAPL_GetResource ( SCF, NEW_SNOW_ALBEDO, Label="NEW_SNOW_ALBEDO:", &
-               DEFAULT=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_GetResource ( SCF, SNOW_ALBEDO_INFO, Label="SNOW_ALBEDO_INFO:", &
+               DEFAULT=0, RC=STATUS) ; VERIFY_(STATUS)
 
 
-        if ( NEW_SNOW_ALBEDO .eqv. .TRUE. )  then
+        if ( SNOW_ALBEDO_INFO .eqv. 1 )  then
 
            call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)                      ; VERIFY_(STATUS)
            GRIDNAME =  AdjustL(GRIDNAME)
