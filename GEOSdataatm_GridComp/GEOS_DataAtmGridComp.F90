@@ -123,6 +123,13 @@ module GEOS_DataAtmGridCompMod
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'TA',                     &
+      LONG_NAME = 'surface_air_temperature', &
+      UNITS = 'K',                           &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
 ! Get my MAPL_Generic state
 !--------------------------
 
@@ -241,8 +248,6 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Locals
 
   type (MAPL_MetaComp), pointer   :: MAPL => null()
-  type (MAPL_LocStream)           :: LOCSTREAM
-  type (MAPL_LocStream)           :: EXCH
   real, pointer :: tmp(:,:) ! needed only to force allocation
   type (ESMF_State),         pointer  :: GEX(:)
   type (ESMF_Alarm) :: alarm, solarAlarm
@@ -391,13 +396,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! pointers to import - none
 ! internal pointers to tile variables ???
 
+  real, pointer, dimension(:,:) :: TA! => null()
+
 ! pointers to export - none???
 
 ! Andrea: OBSERVE????
 !  logical, dimension(1) :: OBSERVE
 !  real LATSO, LONSO
-   type(ESMF_VM)      :: vm
-   integer            :: mype
 
    real, parameter :: HW_hack = 2.
    logical :: firsttime = .true.
@@ -467,8 +472,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read 10m temperature (K)
 !---------------------------------------------------
     ! how about default T10 = 270+30*COS(LAT)
-    call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__)
+!   call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__)
     call MAPL_GetPointer(SurfImport, Tair, 'TA', __RC__)
+    call MAPL_GetPointer(import, TA, 'TA', __RC__)
+    Tair = TA
+
 #define DEBUG
 #ifdef DEBUG
     if (any(Tair < 150.0)) then
@@ -478,6 +486,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        print *, 'High Tair', tair
     end if
 #endif
+    
 
 ! Read 10m specific humidity (kg kg-1)
 !---------------------------------------------------
@@ -532,7 +541,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ReadForcingData(impName='SNO', frcName='SNO', default=0., __RC__)
 
 ! Radiation
-    call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=-0.100, __RC__)
+    call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=100.0*0.0, __RC__)
 
     call ReadForcingData(swrad, frcName='SWRAD', default=0.200, __RC__)
     call MAPL_GetPointer(SurfImport, DRPARN, 'DRPARN', __RC__)
@@ -623,7 +632,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, TAUX, 'TAUX', __RC__)
     call MAPL_GetPointer(SurfImport, TAUY, 'TAUY', __RC__)
 
-    SH = CT * MAPL_CP * (Tskin - Tair)
+    SH = 0*CT * MAPL_CP * (Tskin - Tair)
     EVAP = CQ * (Qskin - Qair) 
     TAUX = CM * (Uskin - Uair)
     TAUY = CM * (Vskin - Vair)
