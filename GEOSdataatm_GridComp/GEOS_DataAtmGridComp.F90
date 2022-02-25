@@ -541,7 +541,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ReadForcingData(impName='SNO', frcName='SNO', default=0., __RC__)
 
 ! Radiation
-    call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=100.0*0.0, __RC__)
+    call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=100.0, __RC__)
 
     call ReadForcingData(swrad, frcName='SWRAD', default=0.200, __RC__)
     call MAPL_GetPointer(SurfImport, DRPARN, 'DRPARN', __RC__)
@@ -581,7 +581,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     WHERE (Tskin < 250.0) Tskin = 250 ! some sanity, values are arbitrary
     WHERE (Tskin > 310.0) Tskin = 310.0  ! some sanity, values are arbitrary
 
-    ALW = MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4
+    ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4
     call SetVarToZero('BLW', __RC__)
 
 ! Andrea: do we need this?
