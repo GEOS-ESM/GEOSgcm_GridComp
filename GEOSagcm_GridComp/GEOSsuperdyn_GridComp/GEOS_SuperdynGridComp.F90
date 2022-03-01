@@ -14,7 +14,7 @@ module GEOS_SuperdynGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use FVdycore_GridCompMod,     only :    FV_SetServices => SetServices
   use FVdycoreCubed_GridComp,   only :   FV3_SetServices => SetServices
@@ -295,6 +295,18 @@ integer ::          ADV = -1
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DELP',                                      &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'US',                                        &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'VS',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
     VERIFY_(STATUS)

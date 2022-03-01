@@ -1,0 +1,20 @@
+! Blank file in which we can put "overrides" for parameters
+
+LAYOUT = 40, 30
+#override DT = 450.0
+#override DT_THERM = 450.
+!BAD_VAL_SST_MIN = -3.0
+!BAD_VAL_SSS_MAX = 55.0
+HFREEZE = 2.0
+
+! disable checksums
+RESTART_CHECKSUMS_REQUIRED = False
+
+!VERBOSITY = 9
+!DEBUG = True
+!REPORT_UNUSED_PARAMS = True
+
+#override NUM_DIAG_COORDS = 1
+#override DIAG_COORDS = "z Z ZSTAR"
+#override DIAG_COORD_DEF_Z = "WOA09"
+

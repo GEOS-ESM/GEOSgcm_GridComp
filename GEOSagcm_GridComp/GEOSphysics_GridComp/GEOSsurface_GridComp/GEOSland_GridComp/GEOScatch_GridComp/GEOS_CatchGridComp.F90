@@ -1,4 +1,5 @@
 #include "MAPL_Generic.h"
+#define DEALLOC_(A) if(associated(A))then;A=0;if(MAPL_ShmInitialized)then; call MAPL_DeAllocNodeArray(A,rc=STATUS);else; deallocate(A,stat=STATUS);endif;_VERIFY(STATUS);NULLIFY(A);endif
 
 !=============================================================================
 module GEOS_CatchGridCompMod
@@ -22,10 +23,9 @@ module GEOS_CatchGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
+  use MAPL
   use GEOS_Mod
-  use MAPL_ConstantsMod
   use GEOS_UtilsMod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   use DragCoefficientsMod
   use CATCHMENT_MODEL, ONLY :                 &
        catchment
@@ -45,16 +45,10 @@ module GEOS_CatchGridCompMod
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
        SLOPE          => CATCH_SNWALB_SLOPE
 
-  USE SURFPARAMS,     ONLY:                   &
-       LAND_FIX
+  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_watertabled
 
-  USE MAPL_BaseMod
-  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
-
-!#sqz_for_ldas_coupling 
+!#for_ldas_coupling 
   use catch_incr
-  use ESMF_CFIOMOD, only:  StrTemplate => ESMF_CFIOstrTemplate
-  use ESMF_CFIOUtilMod, only: strToInt
 !#--
   
 implicit none
@@ -89,7 +83,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_LDAS_ENSEMBLE, USE_ASCATZ0
+integer           :: NUM_LDAS_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 ! Veg-dep. vector SAI factor for scaling of rough length (now exp(-.5) )
@@ -118,13 +112,17 @@ real,   parameter :: EMSSNO        =    0.99999
 ! Internal state and its wrapper
 type T_OFFLINE_MODE
    private
-   logical :: CATCH_OFFLINE
+   ! change logical to integer
+   ! 0 --- false (DEFAULT for GCM)
+   ! 1 --- true  (DEFAULT gor GEOSldas)
+   ! 2 new options for internal WW,CH,CM,CQ,FR 
+   integer :: CATCH_OFFLINE
 end type T_OFFLINE_MODE
 type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
 end type OFFLINE_WRAP
 
-!#sqz_for_ldas_coupling
+!#for_ldas_coupling
 type T_CATCH_STATE
     private
     type (ESMF_FieldBundle)  :: Bundle
@@ -135,6 +133,12 @@ type CATCH_WRAP
    type (T_CATCH_STATE), pointer :: PTR
 end type CATCH_WRAP
 !#--
+
+integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
+real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
+                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+real    :: FWETC, FWETL
+logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -169,9 +173,9 @@ subroutine SetServices ( GC, RC )
     type(T_OFFLINE_MODE), pointer :: internal=>null()
     type(OFFLINE_WRAP) :: wrap
     integer :: OFFLINE_MODE
-    logical :: is_OFFLINE
     integer :: RESTART
-    integer :: DO_GOSWIM
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 ! Begin...
 ! --------
@@ -198,26 +202,45 @@ subroutine SetServices ( GC, RC )
     VERIFY_(status)
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE /= 0
-
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE
 
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, USE_ASCATZ0, Label="USE_ASCATZ0:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (SCF, SURFLAY,             label='SURFLAY:',             DEFAULT=50.,     __RC__ )
+    call MAPL_GetResource (SCF, Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
+    call MAPL_GetResource (SCF, USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
+    call MAPL_GetResource (SCF, CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
+    call MAPL_GetResource (SCF, USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
+    
+    if (.NOT. USE_FWET_FOR_RUNOFF) then
+       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
+       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
+    else
+       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
+       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
+    endif
+
+    ! GOSWIM ANOW_ALBEDO 
+    ! 0 : GOSWIM snow albedo scheme is turned off
+    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
+    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0  , __RC__ )
+
+    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
+    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
+    ! __________________________________________
+    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION, label='AEROSOL_DEPOSITION:', DEFAULT=0  , __RC__ )
+    call ESMF_ConfigDestroy(SCF, __RC__)
 
 ! Set the Run entry points
 ! ------------------------
 
-!#sqz_for_ldas_coupling  
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize,RC=STATUS )
-!#--
-
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN1, RC=STATUS )
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN2, RC=STATUS )
@@ -762,10 +785,14 @@ subroutine SetServices ( GC, RC )
 !  !INTERNAL STATE:
 
 ! if is_offline, some variables ( in the last) are not required
-  if (is_OFFLINE) then
+  if      ( OFFLINE_MODE == 1 ) then
      RESTART = MAPL_RestartSkip
-  else
+  elseif  ( OFFLINE_MODE == 2 ) then 
+     RESTART = MAPL_RestartOptional
+  elseif  ( OFFLINE_MODE == 0 ) then
      RESTART = MAPL_RestartRequired
+  else
+     ASSERT_(.FALSE.)
   endif
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -1237,7 +1264,7 @@ subroutine SetServices ( GC, RC )
     SHORT_NAME         = 'TSURF'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
+    RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1419,7 +1446,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
  
-  if (DO_GOSWIM /= 0) then 
+  if (N_CONST_LAND4SNWALB /= 0) then 
 
      call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -1795,18 +1822,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-       LONG_NAME          = 'fractional_area_of_land_snowcover',&
-       UNITS              = '1'                         ,&
-       SHORT_NAME         = 'ASNOW'                     ,&
-       DIMS               = MAPL_DimsTileOnly           ,&
-       VLOCATION          = MAPL_VLocationNone          ,&
-       RESTART            = MAPL_RestartSkip            ,&
-       FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_land_snowcover',&
     UNITS              = '1'                         ,&
@@ -1815,7 +1830,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'downward_heat_flux_into_snow',&
@@ -1936,7 +1950,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_1' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP1'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1945,7 +1959,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_2' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP2'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1954,7 +1968,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_3' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP3'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1963,7 +1977,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_4' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP4'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1972,7 +1986,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_5' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP5'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1981,25 +1995,13 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_6' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP6'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-        LONG_NAME          = 'surface_emissivity'        ,&
-        UNITS              = '1'                         ,&
-        SHORT_NAME         = 'EMIS'                      ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RESTART            = MAPL_RestartSkip            ,&
-        FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_emissivity'        ,&
     UNITS              = '1'                         ,&
@@ -2008,7 +2010,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_albedo_visible_beam',&
@@ -2677,26 +2678,41 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  ) 
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'WATERTABLED'               ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'FSWCHANGE'                 ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
 !EOS
 
-!#sqz_for_ldas_coupling 
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
     VERIFY_(STATUS)
-!#--
-
-    call MAPL_TimerAdd(GC,    name="RUN1"  ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="RUN1"   ,RC=STATUS)
     VERIFY_(STATUS)
-    if (is_OFFLINE) then
-       call MAPL_TimerAdd(GC,    name="-RUN0"  ,RC=STATUS)
+    if (OFFLINE_MODE /= 0) then
+       call MAPL_TimerAdd(GC, name="-RUN0"  ,RC=STATUS)
        VERIFY_(status)
     end if
-    call MAPL_TimerAdd(GC,    name="-SURF" ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="-SURF"  ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="RUN2"  ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="RUN2"   ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-CATCH" ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-ALBEDO" ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="-ALBEDO",RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set generic init and final method
@@ -2709,14 +2725,14 @@ subroutine SetServices ( GC, RC )
 
 end subroutine SetServices 
 
-!#sqz_for_ldas_coupling 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! !IROUTINE: Initialize -- Initialize method for the GEOS catchment component
 
 ! !INTERFACE:
 
-  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
-
+subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+  
 ! !ARGUMENTS:
     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
@@ -2751,13 +2767,18 @@ end subroutine SetServices
     type (ESMF_Field)                       :: FIELD
     integer                                 :: I
     integer                                 :: LDAS_INTERVAL, ADAS_INTERVAL
-    integer                                 :: LDAS_INTERVAL_CENTER
     integer                                 :: LDAS_INCR
+
+    type(ESMF_Time)                         :: CurrentTime
+    type(ESMF_TimeInterval)                 :: t0sec_l
+    integer                                 :: LandAssim_DT
+    integer                                 :: LandAssim_T0
+    integer                                 :: T0sec, h, m, s
+
 
 !=============================================================================
 
 ! Begin... 
-
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -2768,7 +2789,6 @@ end subroutine SetServices
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
-
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -2791,32 +2811,30 @@ end subroutine SetServices
     call ESMF_UserCompSetInternalState ( GC, 'CATCH_STATE',wrap2,status )
     VERIFY_(STATUS)
 
-! Test for LDAS increments
-!------------------------------
 
-    call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LDAS_INTERVAL:", &
-         DEFAULT=10800, RC=STATUS)
-    VERIFY_(STATUS)
+!#for_ldas_coupling 
+!
+! LDAS increments
+!------------------------------
 
     call MAPL_GetResource ( MAPL, LDAS_INCR, Label="LDAS_INCR:", &
          DEFAULT=0, RC=STATUS)
-
+    
     if(LDAS_INCR > 0) then
-
-       call WRITE_PARALLEL( 'LDAS_coupling: LDAS_INCR>0 initializeCatchGC  ')
+       
+       call WRITE_PARALLEL('LDAS_coupling: LDAS_INCR>0, initialize LDAS coupling...')
        ! Get the grid
        call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
        VERIFY_(STATUS)
-
+       
        ! Create bundle for LDAS increments on tilegrid
-        CATCH_INTERNAL_STATE%bundle = ESMF_FieldBundleCreate(NAME="LDAS_INCREMENTS", &
-                                     RC=STATUS)
+       CATCH_INTERNAL_STATE%bundle = ESMF_FieldBundleCreate(NAME="LDAS_INCREMENTS", &
+            RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_FieldBundleSet(CATCH_INTERNAL_STATE%bundle, GRID=TILEGRID, RC=STATUS)
        VERIFY_(STATUS)
-
 
        INCR_NAMES = [character(len=12) :: "TCFSAT_INCR", "TCFTRN_INCR", "TCFWLT_INCR", &
                      "QCFSAT_INCR", "QCFTRN_INCR", "QCFWLT_INCR", &
@@ -2832,75 +2850,97 @@ end subroutine SetServices
        LOCATION = MAPL_VLocationNone
        KND = kind(0.0)
        IF (KND /= ESMF_KIND_R4 .and. KND /=ESMF_KIND_R8) THEN
-        ASSERT_(.FALSE.)
+          ASSERT_(.FALSE.)
        ENDIF
-
+       
        ! Fields of Land INCR list  
        DO I=1, N_INCR
-        FIELD = MAPL_FieldCreateEmpty(TRIM(INCR_NAMES(I)),grid=TILEGRID,RC=STATUS)
-        VERIFY_(STATUS)
-        CALL MAPL_FieldAllocCommit(FIELD,DIMS,LOCATION,KND,HW,RC=STATUS)
-        VERIFY_(STATUS)
-        call ESMF_AttributeSet(FIELD, NAME='DIMS', VALUE=DIMS, RC=STATUS)
-        VERIFY_(STATUS)
-        CALL MAPL_FieldBundleAdd(CATCH_INTERNAL_STATE%bundle,Field,RC=STATUS)
-        VERIFY_(STATUS)
+          FIELD = MAPL_FieldCreateEmpty(TRIM(INCR_NAMES(I)),grid=TILEGRID,RC=STATUS)
+          VERIFY_(STATUS)
+          CALL MAPL_FieldAllocCommit(FIELD,DIMS,LOCATION,KND,HW,RC=STATUS)
+          VERIFY_(STATUS)
+          call ESMF_AttributeSet(FIELD, NAME='DIMS', VALUE=DIMS, RC=STATUS)
+          VERIFY_(STATUS)
+          CALL MAPL_FieldBundleAdd(CATCH_INTERNAL_STATE%bundle,Field,RC=STATUS)
+          VERIFY_(STATUS)
        ENDDO
-
-      ! Set up LDAS_CORRECTOR, and alarm
-      CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .TRUE.
-
-      ! ADAS corrector interval/alarm
-      call MAPL_GetResource ( MAPL, ADAS_INTERVAL, Label="ADAS_INTERVAL:", &
-          DEFAULT=21600, RC=STATUS)
-      VERIFY_(STATUS)
-
-      call ESMF_TimeIntervalSet(Interval_c, s=ADAS_INTERVAL, rc = STATUS  )
+       
+       ! Set up LDAS_CORRECTOR switch and alarm
+       CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .TRUE.
+       
+       ! ADAS corrector interval/alarm
+       ! Need to know length of the ADAS Corrector segment, because LDAS increments are added
+       !    *only* during the Corrector segment and not during the subsequent Predictor segment.
+       call MAPL_GetResource ( MAPL, ADAS_INTERVAL, Label="ASSIMILATION_CYCLE:", &
+             RC=STATUS)
+       VERIFY_(STATUS)
+       
+       call ESMF_TimeIntervalSet(Interval_c, s=ADAS_INTERVAL, rc = STATUS  )
        VERIFY_(STATUS)
 
-       ALARM_C = ESMF_AlarmCreate(name="CORRECTOR_ALARM",clock=CLOCK, &
+       ALARM_C = ESMF_AlarmCreate(name="SEGMENT_ALARM",clock=CLOCK, &
                  ringInterval=Interval_c,RC=STATUS)
        VERIFY_(STATUS)
 
-             call MAPL_StateAlarmAdd(MAPL,ALARM_C,RC=STATUS)
+       call MAPL_StateAlarmAdd(MAPL,ALARM_C,RC=STATUS)
        VERIFY_(STATUS)
 
-      call ESMF_AlarmSet(ALARM_C, ringing=.false., rc=status)
+       call ESMF_AlarmSet(ALARM_C, ringing=.false., rc=status)
        VERIFY_(STATUS)
 
-      ! LDAS increment interval/ alarm
-       call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LDAS_INTERVAL:", &
-          DEFAULT=10800, RC=STATUS)
+       ! LDAS increment alarm
+       !
+       ! LANDASSIM_DT : land analysis time step        (seconds) 
+       ! LANDASSIM_T0 : land analysis "reference" time (hhmmss)
+       ! (see GEOSldas for details)
+       
+       call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LANDASSIM_DT:", &
+            DEFAULT=10800, RC=STATUS)
        VERIFY_(STATUS)
-       LDAS_INTERVAL_CENTER = LDAS_INTERVAL/2
-
-       call ESMF_TimeIntervalSet(Interval_l, s=LDAS_INTERVAL_CENTER, rc = STATUS  )
+       
+       call ESMF_TimeIntervalSet(Interval_l, s=LDAS_INTERVAL, rc = STATUS  )
        VERIFY_(STATUS)
-
-
-       ALARM_L = ESMF_AlarmCreate(name="LDAS_ALARM",clock=CLOCK, &
-                 ringInterval=Interval_l,RC=STATUS)
+       
+       call MAPL_GetResource ( MAPL, LandAssim_T0, Label="LANDASSIM_T0:", &
+            DEFAULT=013000, RC=STATUS)
        VERIFY_(STATUS)
-              call MAPL_StateAlarmAdd(MAPL,ALARM_L,RC=STATUS)
+       
+       h = LandAssim_T0/10000
+       m = mod(LandAssim_T0,10000)/100
+       s = mod(LandAssim_T0,100)
+       T0sec = h*3600 + m*60 + s
+       call ESMF_TimeIntervalSet(t0sec_l, S=T0sec , RC=STATUS)
+       VERIFY_(STATUS)  
+       
+       call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
+       VERIFY_(status)
+       
+       ALARM_L = ESMF_AlarmCreate( name="LDAS_ALARM",clock=CLOCK, &
+            ringTime=CurrentTime + t0sec_l,                       &
+            ringInterval=Interval_l,                              &
+            rc=status   )
+       VERIFY_(status)
+       
+       call MAPL_StateAlarmAdd(MAPL,ALARM_L,RC=STATUS)
        VERIFY_(STATUS)
-
+       
        call MAPL_StateAlarmGet(MAPL,ALARM_L,"LDAS_ALARM",RC=STATUS)
        VERIFY_(STATUS)
-       call ESMF_AlarmSet(ALARM_L, ringing=.true., rc=status)
+       call ESMF_AlarmSet(ALARM_L, ringing=.false., rc=status)
        VERIFY_(STATUS)
-
-       call WRITE_PARALLEL( 'LDAS_coupling: complete initialze ')
-       endif !LDAS_INCR>0 
-
-   call MAPL_TimerOff(MAPL,"INITIALIZE")
-
-! All Done
-!---------
-
+       call WRITE_PARALLEL( 'LDAS coupling: Completed initialization.')
+       
+    endif ! LDAS_INCR>0 
+!#---
+    
+    call MAPL_TimerOff(MAPL,"INITIALIZE")
+    
+    ! All Done
+    !---------
+    
     RETURN_(ESMF_SUCCESS)
-  end subroutine Initialize
-
-!#--
+end subroutine Initialize
+  
 !----------------------------------------------------
 
 
@@ -3029,34 +3069,31 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: Q2M (:)
    real, allocatable              :: U2M (:)
    real, allocatable              :: V2M (:)
-    real, allocatable              :: RHOH(:)
-    real, allocatable              :: VKH(:)
-    real, allocatable              :: VKM(:)
-    real, allocatable              :: USTAR(:)
-    real, allocatable              :: XX(:)
-    real, allocatable              :: YY(:)
-    real, allocatable              :: CU(:)
-    real, allocatable              :: CT(:)
-    real, allocatable              :: RIB(:)
-    real, allocatable              :: ZETA(:)
-    real, allocatable              :: WS(:)
-    integer, allocatable           :: IWATER(:)
-    real, allocatable              :: PSMB(:)
-    real, allocatable              :: PSL(:)
-    integer                        :: niter
+   real, allocatable              :: RHOH(:)
+   real, allocatable              :: VKH(:)
+   real, allocatable              :: VKM(:)
+   real, allocatable              :: USTAR(:)
+   real, allocatable              :: XX(:)
+   real, allocatable              :: YY(:)
+   real, allocatable              :: CU(:)
+   real, allocatable              :: CT(:)
+   real, allocatable              :: RIB(:)
+   real, allocatable              :: ZETA(:)
+   real, allocatable              :: WS(:)
+   integer, allocatable           :: IWATER(:)
+   real, allocatable              :: PSMB(:)
+   real, allocatable              :: PSL(:)
+   integer                        :: niter
 
-    integer                        :: CHOOSEMOSFC
-    integer                        :: CHOOSEZ0
-
-   integer                         :: Z0_FORMULATION
-   real                            :: SCALE4Z0
-   real                            :: SCALE4ZVG
-   real                            :: SCALE4Z0_u
-   real                            :: MIN_VEG_HEIGHT 
+   integer                        :: CHOOSEZ0
+   real                           :: SCALE4Z0
+   real                           :: SCALE4ZVG
+   real                           :: SCALE4Z0_u
+   real                           :: MIN_VEG_HEIGHT 
    
    ! Offline mode
    type(OFFLINE_WRAP) :: wrap
-   logical :: is_OFFLINE
+   integer :: OFFLINE_MODE
    integer                        ::  comm, mype
 
 !=============================================================================
@@ -3087,12 +3124,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Get component's offline mode from its pvt internal state
     call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
     VERIFY_(status)
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     
     ! For the OFFLINE case, first update some diagnostic vars
-    if (is_OFFLINE) then
+    if (OFFLINE_MODE /=0) then
        call MAPL_TimerOn(MAPL, "-RUN0")
        call RUN0(gc, import, export, clock, rc)
        call MAPL_TimerOff(MAPL, "-RUN0")
@@ -3106,14 +3143,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                                                       RC=STATUS )
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, Z0_FORMULATION,Label="Z0_FORMULATION:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
@@ -3311,7 +3341,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------------------------------
 
    VEG = nint(ITY(:))
-   ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
+   _ASSERT((count(VEG>NTYPS.or.VEG<1)==0),'needs informative message')
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -3401,9 +3431,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Compute the three surface exchange coefficients
 !-------------------------------------------------
 
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
-
    call MAPL_TimerOn(MAPL,"-SURF")
    if(CHOOSEMOSFC.eq.0) then
    WW(:,N) = 0.
@@ -3464,11 +3491,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated( TH)) TH      = TH  + CH(:,N)*TC(:,N)*FR(:,N)
       if(associated( QH)) QH      = QH  + CQ(:,N)*QC(:,N)*FR(:,N)
       if(associated(Z0H)) Z0H     = Z0H + ZT             *FR(:,N)
-      if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
       if(associated(VNT)) VNT     = VNT + UUU            *FR(:,N)
 
       WW(:,N) = max(CH(:,N)*(TC(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZE)/TA + MAPL_VIREPS*CQ(:,N)*(QC(:,N)-QA),0.0)
       WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
+      if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
 
    end do SUBTILES
 
@@ -3562,11 +3589,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Alarm)                :: ALARM
 
     integer :: IM,JM
-    real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
-                                    !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-    integer :: CHOOSEMOSFC
     integer :: incl_Louis_extra_derivs
-    integer                        :: Z0_FORMULATION
     real                           :: SCALE4ZVG
     real                           :: SCALE4Z0_u
     real                            :: MIN_VEG_HEIGHT
@@ -3594,17 +3617,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, Z0_FORMULATION, Label="Z0_FORMULATION:", DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
     VERIFY_(STATUS)
@@ -3912,6 +3927,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTBC002
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
+        real, pointer, dimension(:)   :: WATERTABLED
+        real, pointer, dimension(:)   :: FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -3940,7 +3957,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: ghflxsno, ghflxtskin
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
-        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1
+        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
 	real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
 	real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
 	real,pointer,dimension(:) :: VSUVR, VSUVF
@@ -4010,21 +4027,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical                     :: solalarmison
         logical                     :: debugzth
 
-        real,pointer,dimension(:)   :: VISDF
-        real,pointer,dimension(:)   :: NIRDF
+        real,pointer,dimension(:), save   :: VISDF=>null()
+        real,pointer,dimension(:), save   :: NIRDF=>null()
         character (len=ESMF_MAXSTR) :: VISDFFILE
         character (len=ESMF_MAXSTR) :: VISDFtpl
         character (len=ESMF_MAXSTR) :: NIRDFFILE
         character (len=ESMF_MAXSTR) :: NIRDFtpl
         real                        :: FAC
 
-        real,parameter              :: PRECIPFRAC=1.0
         real                        :: DT
         integer                     :: NTILES
-        integer                     :: I, N
-        integer                     :: AEROSOL_DEPOSITION
-        integer                     :: N_CONST_LAND4SNWALB
-        integer                     :: DO_GOSWIM
+        integer                     :: I, N 
 
 	! dummy variables for call to get snow temp
 
@@ -4038,21 +4051,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef DBG_CATCH_INPUTS
         ! vars for debugging purposes
-        type(ESMF_Grid)                 :: TILEGRID
-        type (MAPL_LocStream)           :: LOCSTREAM
-        integer, pointer                :: mask(:)
         integer                         :: nt
-        integer, save                   :: unit_i=0
         logical, save                   :: firsttime=.true.
+        integer, save                   :: unit_i=0
         integer                         :: unit
-	integer 			:: NT_GLOBAL
-
 #endif
+        integer :: NT_GLOBAL
 
         ! Offline case
 
         type(OFFLINE_WRAP)          :: wrap
-        logical                     :: is_OFFLINE
+        integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
         ! un-adelterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
@@ -4060,7 +4069,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         integer                     :: ens_id_width
 
-!#sqz_for_ldas_coupling
+!#for_ldas_coupling
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
         type (CATCH_WRAP)                       :: wrap2
 
@@ -4090,6 +4099,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:) :: sndzn1_incr
         real, pointer, dimension(:) :: sndzn2_incr
         real, pointer, dimension(:) :: sndzn3_incr
+        real, allocatable, dimension(:) :: global_tmp_incr, local_tmp_incr
 
         real, pointer, dimension(:,:) :: ghtcnt_incr
         real, pointer, dimension(:,:) :: wesnn_incr
@@ -4097,16 +4107,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:,:) :: sndzn_incr
 
         type(ESMF_Field)              :: Field
-        integer                       :: unit
         type(ESMF_Grid)               :: TILEGRID
         type(MAPL_LocStream)          :: LOCSTREAM
         integer, pointer              :: mask(:)
-        type(ESMF_ALARM)              :: LDAS_ALARM, CORRECTOR_ALARM
+        type(ESMF_ALARM)              :: LDAS_ALARM, SEGMENT_ALARM
 
         character(len=ESMF_MAXSTR)    :: LDASINC_FILE_TMPL
         character(len=ESMF_MAXSTR)    :: LDASINC_FILE
         character(len=ESMF_MAXSTR)    :: DATE
-        integer                       :: nymd, nhms
         integer                       :: LDAS_INTERVAL
         integer                       :: LDAS_INCR
         logical                       :: fexist
@@ -4114,10 +4122,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=8)              :: cymd
         character(len=6)              :: chms
 
-        type(MAPL_NCIO)               :: InNCIO
+        type(Netcdf4_Fileformatter)   :: InFmt
+        type(FileMetadata)            :: InCfg
+        type(StringVariableMap), pointer :: variables
+        type(StringVariableMapIterator) :: var_iter
+        character(len=:), pointer :: vname
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
-        character(len=ESMF_MAXSTR)    :: vname
+        integer                       :: ldas_ens_id, ldas_first_ens_id
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4167,16 +4179,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-
         ! Get component's private internal state
         call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
         VERIFY_(status)
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! Component's offline mode
-        is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+        OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
         ! --------------------------------------------------------------------------
         ! Get parameters from generic state.
@@ -4195,41 +4204,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! Get name of albedo files from configuration
         ! --------------------------------------------------------------------------
-
+        call MAPL_GetResource ( MAPL, ldas_first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+        VERIFY_(STATUS)           
+        ldas_ens_id = ldas_first_ens_id
+        
         if(NUM_LDAS_ENSEMBLE > 1) then
            call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
            VERIFY_(STATUS)           
-           !comp_name should be catchxxxx
-           call MAPL_GetResource(MAPL   ,&
-              VISDFtpl                  ,&
-              label   = 'VISDF'//comp_name(6:6+ens_id_width-1)//'_FILE:',&
-              RC=STATUS )
-           call MAPL_GetResource(MAPL    ,&
-              NIRDFtpl                   ,&
-              label   = 'NIRDF'//comp_name(6:6+ens_id_width-1)//'_FILE:' ,&
-              RC=STATUS )
-
-           if (STATUS/=ESMF_SUCCESS) then
-              call MAPL_GetResource(MAPL     ,&
-                   VISDFtpl                  ,&
-                   label   = 'VISDF_FILE:'   ,&
-                   default = '../input/visdf%s.data'      ,&
-                   RC=STATUS )
-              VERIFY_(STATUS)
-
-              call MAPL_GetResource(MAPL       ,&
-                  NIRDFtpl                     ,&
-              label   = 'NIRDF_FILE:'          ,&
-              default = '../input/nirdf%s.data',&
-              RC=STATUS )
-              VERIFY_(STATUS)
+           !for GEOSldas comp_name should be catchxxxx
+           read(comp_name(6:6+ens_id_width-1), *) ldas_ens_id
         endif
-
-           call ESMF_CFIOStrTemplate(VISDFFILE, VISDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
-           VERIFY_(STATUS)
-           call ESMF_CFIOStrTemplate(NIRDFFILE, NIRDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
-           VERIFY_(STATUS) 
-        else
 
         call MAPL_GetResource(MAPL      ,&
              VISDFFILE                  ,&
@@ -4244,23 +4228,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              default = 'nirdf.dat'       ,&
              RC=STATUS )
         VERIFY_(STATUS)
-        endif
 
-        ! Get parameters to zero the deposition rate 
-        ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-	! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-        ! __________________________________________
-
-        call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
         call ESMF_VMGet(VM, localPet=mype, rc=status)
-        VERIFY_(STATUS)
-
-        ! GOSWIM ANOW_ALBEDO 
-        ! 0 : GOSWIM snow albedo scheme is turned off
-        ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
- 
-        call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)
  
         ! -----------------------------------------------------
@@ -4385,7 +4354,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'         ,RC=STATUS); VERIFY_(STATUS)
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
@@ -4430,11 +4399,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TPUST,  'TPUNST' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPSAT,  'TPSAT'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPWLT,  'TPWLT'  ,             RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, ASNOW, 'ASNOW', RC=STATUS); VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,             RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SHSNOW, 'SHSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,AVETSNOW,'AVETSNOW',           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,FRSAT,  'FRSAT'  ,             RC=STATUS); VERIFY_(STATUS)
@@ -4446,11 +4411,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TP4,    'TP4'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP5,    'TP5'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP6,    'TP6'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, EMIS, 'EMIS', RC=STATUS);   VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVR,  'ALBVR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBNR,  'ALBNR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4507,6 +4468,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WATERTABLED,'WATERTABLED',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FSWCHANGE,  'FSWCHANGE',  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
 
@@ -4529,8 +4492,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RSL2     (NTILES)) 
         allocate(SQSCAT   (NTILES))
         allocate(RDC      (NTILES))  
-        allocate(VISDF    (NTILES))
-        allocate(NIRDF    (NTILES))
+        if (.not. associated(VISDF)) allocate(VISDF(NTILES))
+        if (.not. associated(NIRDF)) allocate(NIRDF(NTILES))
 	allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
@@ -4575,6 +4538,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(SUMEV     (NTILES))
         allocate(FICE1     (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
+        allocate(FSW_CHANGE(NTILES))
         
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -4602,6 +4566,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
+        LAI0  = LAI
+ 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
@@ -4657,11 +4623,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! in the internal state and get their midmonth times
         ! ----------------------------------------------------------------------------------
 
-        call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
+        if (ldas_ens_id  == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSMEBLE = 1 ( by default)
+           call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+        endif
 
+        
         ! --------------------------------------------------------------------------
         ! retrieve the zenith angle
         ! --------------------------------------------------------------------------
@@ -4844,7 +4813,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RCONSTIT(:,:,1) = RDU001(:,:)
            RCONSTIT(:,:,2) = RDU002(:,:)
            RCONSTIT(:,:,3) = RDU003(:,:)
@@ -4927,7 +4896,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         DEDTC=0.0
         DHSDQA=0.0
 
-        if(is_OFFLINE) then
+        if(OFFLINE_MODE /=0) then
            do N=1,NUM_SUBTILES
               CFT   (:,N) = 1.0
               CFQ   (:,N) = 1.0
@@ -4963,6 +4932,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            end do
         end if
 
+        ! Compute DQS; make sure QC is between QA and QSAT; compute RA.
+        !
+        !   For energy conservation reasons, this code was moved from catchment.F90
+        !   to here by Andrea Molod ca. 2016.
+        !   Some 40 lines below, duplicate code was present within #ifdef LAND_UPD block
+        !   (later changed to "if (LAND_FIX)") and was removed in Jan 2022. 
+        !   - reichle, 14 Jan 2022.
+
         do N=1,NUM_SUBTILES
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
@@ -4971,7 +4948,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         end do
 
         QC(:,FSNW) = QSAT(:,FSNW)
-
         
 	! --------------------------------------------------------------------------
         ! get total solid precip
@@ -4983,9 +4959,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	! driver
 	! --------------------------------------------------------------------------
 
-        ASSERT_(count(PLS<0.)==0)
-        ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SLDTOT<0.)==0)
+        _ASSERT(count(PLS<0.)==0,'needs informative message')
+        _ASSERT(count(PCU<0.)==0,'needs informative message')
+        _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -5001,22 +4977,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         TILEZERO = 0.0
 
         call MAPL_TimerOn  ( MAPL, "-CATCH" )
-!#ifdef LAND_UPD
-        if (LAND_FIX) then
-! Andrea Molod (Oct 21, 2016):
- 
-	   do N=1,NUM_SUBTILES
-              DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N),PASCALS=.true., RAMP=0.0 )
-              QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
-              QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
-              RA (:,N) = RHO/CH(:,N)
-           end do
-	end if 
-!#endif
+
 #ifdef DBG_CATCH_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+        call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
         VERIFY_(STATUS)
 
         call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
@@ -5036,48 +5001,44 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, UUU,  mask=mask, rc=status); VERIFY_(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FTRN),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      ,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         
         call MAPL_VarWrite(unit, tilegrid, TA, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QA, mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, RA(:,FSAT),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FTRN),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FWLT),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, ZTH,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DRPAR,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DFPAR,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SWNETFREE,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SWNETSNOW,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, LWDNSRF, mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, PS*.01, mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, LAI0,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, GRN0,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, Z2CH,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5087,21 +5048,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, RDC, mask=mask, rc=status); VERIFY_(STATUS)
 
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT) , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FTRN) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,2)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,2)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FWLT) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW) , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FSNW) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
 
 ! params
         if (firsttime) then
@@ -5109,13 +5070,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            unit = GETFILE( "catch_params.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
 
-           NT_GLOBAL = size(mask)
-
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(PRECIPFRAC, UNIT)
+           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
+           call MAPL_VarWrite(unit, tilegrid, LONS, mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG, mask=mask, rc=status); VERIFY_(STATUS)
-
            call MAPL_VarWrite(unit, tilegrid, BF1,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF2,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF3,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5185,7 +5146,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            VERIFY_(STATUS)
 
         end if
-
+        DEALLOC_(mask)
 #endif
 
 ! Sanity Check to ensure IMPORT ITY from VEGDYN is consistent with INTERNAL ITY from CATCH
@@ -5199,10 +5160,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             VERIFY_(STATUS)
             call MAPL_CommsAllReduceMax ( VM, N, NMAX, 1, RC=STATUS )
             VERIFY_(STATUS)
-            if( NMAX.ne.0 ) then
-                print *, 'CATCH_INTERNAL_RST is NOT consistent with VEGDYN Data'
-            endif
-            ASSERT_(NMAX==0)
+            _ASSERT(NMAX==0,'CATCH_INTERNAL_RST is NOT consistent with VEGDYN Data')
             check_ity = .false.
         endif
 ! ----------------------------------------------------------------------------------------
@@ -5212,7 +5170,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_ConfigGetAttribute ( CF, latend, Label="PRINTLATEND:", DEFAULT=MAPL_UNDEF, RC=STATUS )
 ! ----------------------------------------------------------------------------------------
 
-!#sqz_for_ldas_coupling 
+!#for_ldas_coupling 
 !--------------------------------------------------------------------
 ! LDAS increments application to Catchment states during coupled run 
 !--------------------------------------------------------------------
@@ -5222,183 +5180,171 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         CATCH_INTERNAL_STATE => WRAP2%PTR
 
-        call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LDAS_INTERVAL:", &
-             DEFAULT=10800, RC=STATUS)
-        VERIFY_(STATUS)
-
         call MAPL_GetResource ( MAPL, LDAS_INCR, Label="LDAS_INCR:", &
              DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)
+        
         if(LDAS_INCR >0 )  then
 
-           call WRITE_PARALLEL(' LDAS_coupling: LDAS_INCR =1,apply correction')
-           ! get ADAS CORRECTOR ALARM 
-           call MAPL_StateAlarmGet(MAPL,CORRECTOR_ALARM,"CORRECTOR_ALARM",RC=STATUS)
+           ! LDAS increments are added *only* during the ADAS Corrector segment and not during the
+           ! subsequent Predictor segment.  This is controlled by SEGMENT_ALARM.
+           
+           ! get ADAS SEGMENT ALARM 
+           call MAPL_StateAlarmGet(MAPL,SEGMENT_ALARM,"SEGMENT_ALARM",RC=STATUS)
            VERIFY_(STATUS)
-
-           if(ESMF_AlarmIsRinging(CORRECTOR_ALARM, RC=STATUS)) then
-              !CALL WRITE_PARALLEL('C_ALARM ringing ') 
-              ! in ADAS corrector segment 
-              call ESMF_AlarmRingerOff(CORRECTOR_ALARM, RC=STATUS)
+           
+           if(ESMF_AlarmIsRinging(SEGMENT_ALARM, RC=STATUS)) then
+              ! segment switching point  
+              call ESMF_AlarmRingerOff(SEGMENT_ALARM, RC=STATUS)
               VERIFY_(STATUS)
-              ! handle LDAS switch during ADAS corrector segment 
-              if ( CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
+              ! handle LDAS corrector switch  
+              if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
                  CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .FALSE.
-                 !CALL WRITE_PARALLEL('C_ALARM ringing. Switching off LDAS corrector segment')
-              else
-                 CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .TRUE.
-                 !CALL WRITE_PARALLEL('C_ALARM ringing. Switching on LDAS corrector segment ')
               endif
 
-           endif ! CORRECTOR_ALARM ring 
+           endif ! SEGMENT_ALARM ring 
+
            if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
-              call WRITE_PARALLEL (' LDAS_coupling: LDAS_CORRECTOR true ' )
               ! field list 
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFSAT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFSAT_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,tcfsat_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFTRN_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFTRN_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,tcftrn_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFWLT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFWLT_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,tcfwlt_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFSAT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFSAT_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,qcfsat_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFTRN_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFTRN_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,qcftrn_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFWLT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFWLT_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,qcfwlt_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CAPAC_INCR",field=field,RC=STATUS) ;  VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,capac_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CATDEF_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CAPAC_INCR",  field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,capac_incr,RC=STATUS)  ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CATDEF_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,catdef_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"RZEXC_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,rzexc_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SRFEXC_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"RZEXC_INCR",  field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,rzexc_incr,RC=STATUS)  ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SRFEXC_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,srfexc_incr,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt1_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt1_incr,RC=STATUS); VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt2_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt2_incr,RC=STATUS); VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt3_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt3_incr,RC=STATUS); VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT4_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt4_incr,RC=STATUS) ;  VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt4_incr,RC=STATUS);  VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT5_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt5_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt5_incr,RC=STATUS); VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT6_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt6_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt6_incr,RC=STATUS); VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN1_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,wesnn1_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN2_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,wesnn2_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN3_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,wesnn3_incr,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,htsnnn1_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,htsnnn1_incr,RC=STATUS); VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,htsnnn2_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,htsnnn2_incr,RC=STATUS); VERIFY_(STATUS)
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,htsnnn3_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,htsnnn3_incr,RC=STATUS); VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN1_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,sndzn1_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN2_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,sndzn2_incr,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN3_INCR", field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,sndzn3_incr,RC=STATUS) ; VERIFY_(STATUS)
 
               ! get LDAS ALARM  
               call MAPL_StateAlarmGet(MAPL,LDAS_ALARM,"LDAS_ALARM",RC=STATUS)
               VERIFY_(STATUS)
+
               if(ESMF_AlarmIsRinging(LDAS_ALARM, RC=STATUS))then
 
                  call ESMF_AlarmRingerOff(LDAS_ALARM, RC=STATUS)
                  VERIFY_(STATUS)
 
-                 call WRITE_PARALLEL('LDAS_coupling: L_ALARM is ringing, checking for new LDAS increment file')
+                 call WRITE_PARALLEL('LDAS_coupling: LDAS_ALARM is ringing, checking for new LDAS increment file...')
 
                  ! get LDAS incr file name
                  call ESMF_TimeGet(CURRENT_TIME,timeString=DATE,RC=STATUS)
                  VERIFY_(STATUS)
-                 call WRITE_PARALLEL('LDAS_coupling: Current_time,DATE ' //trim(DATE))
-                 call strToInt(DATE,nymd,nhms)
-                 call WRITE_PARALLEL( nymd )
-                 call WRITE_PARALLEL( nhms )
                  call MAPL_GetResource(MAPL,LDASINC_FILE_TMPL,LABEL="LDASINC_FILE:",default="ldas_inc", RC=STATUS)
                  VERIFY_(STATUS)
 
                  cymd=DATE(1:4)//DATE(6:7)//DATE(9:10)
                  chms=DATE(12:13)//DATE(15:16)//DATE(18:19)
                  LDASINC_FILE=TRIM(LDASINC_FILE_TMPL)//'.'//cymd//'_'//chms
-                 call WRITE_PARALLEL('LDAS_coupling: LDASINC_FILE =' // trim(LDASINC_FILE))
+                 call WRITE_PARALLEL('LDAS_coupling: LDASINC_FILE=' // trim(LDASINC_FILE))
                  inquire(file=trim(LDASINC_FILE), exist=fexist)
 
                  if (fexist) then
                     call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
                     VERIFY_(STATUS)
-                    call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+                    call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
                     VERIFY_(STATUS)
                     call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
                     VERIFY_(STATUS)
 
+                    call InFmt%open(LDASINC_File,pFIO_READ,rc=status)
+                    VERIFY_(status)
+                    InCfg=InFmt%read(rc=status)
+                    VERIFY_(status)
+                    variables => InCfg%get_variables()
+                    var_iter = variables%begin()
+                    
+                    allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
+                    allocate(local_tmp_incr(NTILES), source = 0.0)
+                    
+                    do while (var_iter/=variables%end())
+                       vname => var_iter%key()
+                       if (MAPL_AM_I_Root(VM)) then
+                          call MAPL_VarRead ( InFmt,trim(vname), global_tmp_incr)
+                       endif
+                       call ArrayScatter(local_tmp_incr, global_tmp_incr, tilegrid, mask=mask, rc=status)
+                       VERIFY_(STATUS)
 
-                       call WRITE_PARALLEL('LDAS_coupling: load nc LDAS increment file')
-                       InNCIO = MAPL_NCIOOpen(LDASINC_FILE,rc=rc)
-                       call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-                       do nv=1,nVars
-                          call MAPL_NCIOGetVarName(InNCIO,nv,vname)
-                          call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
-                          if ( trim(vname) == "TCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfsat_incr)
-                          if ( trim(vname) == "TCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcftrn_incr)
-                          if ( trim(vname) == "TCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfwlt_incr)
-                          if ( trim(vname) == "QCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
-                          if ( trim(vname) == "QCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
-                          if ( trim(vname) == "QCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcfwlt_incr )
-                          if ( trim(vname) == "CAPAC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
-                          if ( trim(vname) == "CATDEF_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
-                          if ( trim(vname) == "RZEXC_INCR" )  &
-                               call MAPL_VarRead ( InNCIO,trim(vname), rzexc_incr )
-                          if ( trim(vname) == "SRFEXC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), srfexc_incr )
-                          if ( trim(vname) == "GHTCNT1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt1_incr )
-                          if ( trim(vname) == "GHTCNT2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt2_incr )
-                          if ( trim(vname) == "GHTCNT3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt3_incr )
-                          if ( trim(vname) == "GHTCNT4_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt4_incr )
-                          if ( trim(vname) == "GHTCNT5_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt5_incr )
-                          if ( trim(vname) == "GHTCNT6_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt6_incr )
-                          if ( trim(vname) == "WESNN1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn1_incr )
-                          if ( trim(vname) == "WESNN2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn2_incr )
-                          if ( trim(vname) == "WESNN3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn3_incr )
-                       enddo !nv
-
-
-                       call MAPL_NCIOClose(InNCIO)
-                       call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
-
-                    deallocate(mask)
-
+                       if ( trim(vname) == "TCFSAT_INCR" )   tcfsat_incr  = local_tmp_incr
+                       if ( trim(vname) == "TCFTRN_INCR" )   tcftrn_incr  = local_tmp_incr
+                       if ( trim(vname) == "TCFWLT_INCR" )   tcfwlt_incr  = local_tmp_incr
+                       if ( trim(vname) == "QCFSAT_INCR" )   qcfsat_incr  = local_tmp_incr
+                       if ( trim(vname) == "QCFTRN_INCR" )   qcftrn_incr  = local_tmp_incr
+                       if ( trim(vname) == "QCFWLT_INCR" )   qcfwlt_incr  = local_tmp_incr
+                       if ( trim(vname) == "CAPAC_INCR" )    capac_incr   = local_tmp_incr
+                       if ( trim(vname) == "CATDEF_INCR" )   catdef_incr  = local_tmp_incr
+                       if ( trim(vname) == "RZEXC_INCR" )    rzexc_incr   = local_tmp_incr
+                       if ( trim(vname) == "SRFEXC_INCR" )   srfexc_incr  = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT1_INCR" )  ghtcnt1_incr = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT2_INCR" )  ghtcnt2_incr = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT3_INCR" )  ghtcnt3_incr = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT4_INCR" )  ghtcnt4_incr = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT5_INCR" )  ghtcnt5_incr = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT6_INCR" )  ghtcnt6_incr = local_tmp_incr
+                       if ( trim(vname) == "WESNN1_INCR" )   wesnn1_incr  = local_tmp_incr
+                       if ( trim(vname) == "WESNN2_INCR" )   wesnn2_incr  = local_tmp_incr
+                       if ( trim(vname) == "WESNN3_INCR" )   wesnn3_incr  = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN1_INCR" )  htsnnn1_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN2_INCR" )  htsnnn2_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN3_INCR" )  htsnnn3_incr = local_tmp_incr
+                       if ( trim(vname) == "SNDZN1_INCR" )   sndzn1_incr  = local_tmp_incr
+                       if ( trim(vname) == "SNDZN2_INCR" )   sndzn2_incr  = local_tmp_incr
+                       if ( trim(vname) == "SNDZN3_INCR" )   sndzn3_incr  = local_tmp_incr
+                       
+                       call var_iter%next()
+                    enddo 
+                    
+                    call inFmt%close()
+                    deallocate(local_tmp_incr, global_tmp_incr)
+                    DEALLOC_(mask)
 
                     ! consolidate increment arrays  
                     allocate(ghtcnt_incr(6,NTILES))
-                    allocate(wesnn_incr(3,NTILES))
+                    allocate(wesnn_incr( 3,NTILES))
                     allocate(htsnnn_incr(3,NTILES))
-                    allocate(sndzn_incr(3,NTILES))
-
+                    allocate(sndzn_incr( 3,NTILES))
+                    
                     GHTCNT_INCR(1,:) = GHTCNT1_INCR
                     GHTCNT_INCR(2,:) = GHTCNT2_INCR
                     GHTCNT_INCR(3,:) = GHTCNT3_INCR
@@ -5418,41 +5364,42 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     SNDZN_INCR (2,:) = SNDZN2_INCR
                     SNDZN_INCR (3,:) = SNDZN3_INCR
 
-
-                    call WRITE_PARALLEL('LDAS_coupling: Calling apply_catch_incr ')
-
-                    call apply_catch_incr(NTILES,   &
-                         VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           &
-                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   &
+                    call apply_catch_incr(NTILES,                                                        &
+                         DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                            &
+                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4, bf1, bf2,     &
                          TCFSAT_INCR, TCFTRN_INCR, TCFWLT_INCR, QCFSAT_INCR, QCFTRN_INCR, QCFWLT_INCR,   &
-                         CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                       &
-                         GHTCNT_INCR, WESNN_INCR, HTSNNN_INCR, SNDZN_INCR,                       &
-                         TC(:,FSAT),TC(:,FTRN), TC(:,FWLT), QC(:,FSAT), QC(:,FTRN), QC(:,FWLT),  &
-                         CAPAC, CATDEF, RZEXC, SRFEXC,                                       &
+                         CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                               &
+                         GHTCNT_INCR, WESNN_INCR, HTSNNN_INCR, SNDZN_INCR,                               &
+                         TC(:,FSAT),TC(:,FTRN), TC(:,FWLT), QC(:,FSAT), QC(:,FTRN), QC(:,FWLT),          &
+                         CAPAC, CATDEF, RZEXC, SRFEXC,                                                   &
                          GHTCNT, WESNN, HTSNNN, SNDZN  )
-
+                    
                     deallocate(ghtcnt_incr,wesnn_incr,htsnnn_incr,sndzn_incr)
-
+                    
+                    call WRITE_PARALLEL('LDAS_coupling: Done loading and applying LDAS increments.')
+                                        
                  else
 
-                    call WRITE_PARALLEL('LDAS_coupling:  LDAS_incr file does not exist. No increment added.')
-
-                 endif !if LDAS_incr file exist  
-
+                    call WRITE_PARALLEL('LDAS_coupling: LDAS_INC file does not exist. No LDAS increments added.')
+                    
+                 endif ! if (fexist) [does LDAS_incr file exist?]  
+                 
               else
-                 !call WRITE_PARALLEL(' LDAS_coupling: LDAS_ALARM not ringing.')
-              endif ! if LDAS alarm  ring
-
+                 
+                 ! do nothing, LDAS_ALARM is not ringing
+                 
+              endif ! if LDAS alarm is ringing
+              
            endif ! if CatchInternalState%LDAS_CORRECTOR=.true.
-        endif ! if LDAS_INCR=1 
-!-------------------------------------------------------------------
+        endif ! if LDAS_INCR=1
+        
+        !-------------------------------------------------------------------
 !#----
-
 
         if (ntiles >0) then
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&
-             DT	      ,     PRECIPFRAC, cat_id, VEG, DZSF         ,&
+             DT,USE_FWET_FOR_RUNOFF,FWETC,FWETL, cat_id, VEG, DZSF,&
              PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
@@ -5512,17 +5459,30 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, SHACC   ,&
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-             TCSORIG1, TPSN1IN1, TPSN1OUT1                        ,&
+             TCSORIG1, TPSN1IN1, TPSN1OUT1,FSW_CHANGE             ,&
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
 
         end if
+        
+        ! Change units of TP1, TP2, .., TP6 export variables from Celsius to Kelvin.
+        ! This used to be done at the level the Surface GridComp.
+        ! With this change, gridded TSOIL[x] exports from Surface and tile-space TP[x] exports
+        ! from Catch are now consistently in units of Kelvin.
+        ! - rreichle, borescan, 6 Nov 2020
 
+        TP1 = TP1 + MAPL_TICE
+        TP2 = TP2 + MAPL_TICE
+        TP3 = TP3 + MAPL_TICE
+        TP4 = TP4 + MAPL_TICE
+        TP5 = TP5 + MAPL_TICE
+        TP6 = TP6 + MAPL_TICE
+                
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
-        if (is_OFFLINE) then
+        if (OFFLINE_MODE /=0) then
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
            TC(:,FWLT) = TC4_0
@@ -5607,7 +5567,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
 
-        if ( .not. is_OFFLINE) then
+        if (OFFLINE_MODE == 0) then
 !amm add correction term to latent heat diagnostics (HLATN is always allocated)
 !    this will impact the export LHLAND
         HLATN = HLATN - LHACC
@@ -5684,6 +5644,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if(associated(FSWCHANGE )) FSWCHANGE  = FSW_CHANGE
+        if(associated(WATERTABLED )) then
+           WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+        endif
 
         if(associated(TPSN1)) then
            where(WESNN(1,:)>0.)
@@ -5740,7 +5704,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 
@@ -5810,8 +5774,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(HSNACC   )
         deallocate(EVACC    )
         deallocate(SHACC    )
-        deallocate(VISDF    )
-        deallocate(NIRDF    )
+        !deallocate(VISDF    )
+        !deallocate(NIRDF    )
         deallocate(VSUVR    )
         deallocate(VSUVF    )
         deallocate(SNOVR    )
@@ -5847,6 +5811,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(RMELT )
         deallocate(FICE1 )
         deallocate(SLDTOT )
+        deallocate(FSW_CHANGE)
 
         RETURN_(ESMF_SUCCESS)
 
@@ -5924,11 +5889,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw2(:)=>null()
   real, pointer :: arw3(:)=>null()
   real, pointer :: arw4(:)=>null()
+  real, pointer :: bf1(:)=>null()
+  real, pointer :: bf2(:)=>null()
 
   !! Miscellaneous
   integer :: ntiles
   real, allocatable :: dummy(:)
-  real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
 
@@ -5955,11 +5921,13 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
+  ! Pointers to EXPOERTs
+  call MAPL_GetPointer(export, asnow, 'ASNOW', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(export, emis, 'EMIS', rc=status)
+  VERIFY_(status)
+
   ! Pointers to INTERNALs
-  call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, emis, 'EMIS', rc=status)
-  VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, fr, 'FR', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)
@@ -6016,6 +5984,10 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, arw4, 'ARW4', rc=status)
   VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf1, 'BF1', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf2, 'BF2', rc=status)
+  VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, srfexc, 'SRFEXC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, rzexc, 'RZEXC', rc=status)
@@ -6047,8 +6019,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Step 3: compute fr
 
   ! -step-1-
-  call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
-  VERIFY_(status)
   allocate(dzsf(ntiles), stat=status)
   VERIFY_(status)
   dzsf = SURFLAY
@@ -6071,11 +6041,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
        ! intent(in)
-       ntiles, nint(ity), dzsf, vgwmax, cdcr1, cdcr2,                           &
+       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4,                                                  &
+       arw1, arw2, arw3, arw4,bf1, bf2,                                         &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &

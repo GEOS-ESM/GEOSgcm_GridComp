@@ -27,7 +27,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
@@ -69,6 +69,14 @@ module GEOS_CICE4ColumnPhysGridComp
   integer, parameter :: NUM_SNOW_LAYERS    = 1
 
   logical ::      DUAL_OCEAN
+
+  type cice_state
+       integer:: CHOOSEMOSFC
+  end type cice_state
+
+  type cice_state_wrap
+      type(cice_state), pointer :: ptr
+  end type
 
   contains
 
@@ -114,6 +122,11 @@ module GEOS_CICE4ColumnPhysGridComp
     integer                                 :: NUM_ICE_LAYERS      ! set via resource parameter
     integer                                 :: NUM_ICE_CATEGORIES  ! set via resource parameter
     integer ::      iDUAL_OCEAN
+
+    type(cice_state_wrap) :: wrap
+    type(cice_state), pointer :: mystate
+    character(len=ESMF_MAXSTR)     :: SURFRC
+    type(ESMF_Config)              :: SCF
 
 !=============================================================================
 
@@ -1904,6 +1917,16 @@ module GEOS_CICE4ColumnPhysGridComp
 
 !EOS
 
+    allocate(mystate,stat=status)
+    VERIFY_(status)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (SCF, mystate%CHOOSEMOSFC, label='CHOOSEMOSFC:', DEFAULT=1, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
+    wrap%ptr => mystate
+    call ESMF_UserCompSetInternalState(gc, 'cice_private', wrap,status)
+    VERIFY_(status)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -2294,6 +2317,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer         :: PRES_ICE
    integer         :: CHOOSEMOSFC
    integer         :: CHOOSEZ0
+   type(cice_state_wrap) :: wrap
+   type(cice_state), pointer :: mystate
+
 !=============================================================================
 
 ! Begin... 
@@ -2337,8 +2363,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_UserCompGetInternalState(gc,'cice_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
+    CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
@@ -2662,7 +2690,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
             IDUM,            JDUM,         &    
             limit_aice_in=.true.)  
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FR(K,ICE:)    = FR_TMP(:)
        VOLICE(K,:)   = VOLICE_TMP(:)
@@ -2837,7 +2865,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(RET)) RET     = RET + RE(:  )*FR(:,N)
          if(associated(Z0O)) Z0O     = Z0O + Z0(:,N)*FR(:,N)
          if(associated(Z0H)) Z0H     = Z0H + ZT(:  )*FR(:,N)
-         if(associated(GST)) GST     = GST + WW(:,N)*FR(:,N)
          if(associated(VNT)) VNT     = VNT + UUU    *FR(:,N)
 
       !  Aggregate effective, CD-weighted, surface values of T and Q
@@ -2851,6 +2878,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       WW(:,N) = max(CH(:,N)*(TS(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ(:,N)*(QS(:,N)-QA),0.0)
       WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
+      if(associated(GST)) GST     = GST + WW(:,N)*FR(:,N)
       if(associated(QSAT2)) QSAT2(:,N) = 1.0/RHO*11637800.0*exp(-5897.8/TS(:,N))
 
    end do SUB_TILES
@@ -4800,7 +4828,7 @@ contains
           print*, 'CICE_PREP_THERMO: Failing at LAT = ', LATSD, 'LON = ', LONSD
        endif
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FRESHL(K)    = REAL(FRESHLDB(1),                     kind=MAPL_R4)
        FSALTL(K)    = REAL(FSALTLDB(1),                     kind=MAPL_R4)
@@ -5065,7 +5093,7 @@ contains
              print*, 'CICE_THERMO1: Failing at LAT = ', LATSD, 'LON = ', LONSD
           endif
 
-          ASSERT_(.not.L_STOP)
+          _ASSERT(.not.L_STOP,'needs informative message')
 
           ERGICE(K,:,NSUB)   = ERGICE_TMP(:)
           ERGSNO(K,:,NSUB)   = ERGSNO_TMP(:)
@@ -5288,7 +5316,7 @@ contains
              print*, 'CICE_THERMO2_STEP1: after linear_itd. Failing at LAT = ', LATSD, 'LON = ', LONSD
           endif
 
-          ASSERT_(.not.L_STOP)
+          _ASSERT(.not.L_STOP,'needs informative message')
 
        endif 
        
@@ -5321,7 +5349,7 @@ contains
           print*, 'CICE_THERMO2_STEP1: after add_new_ice. Failing at LAT = ', LATSD, 'LON = ', LONSD
        endif
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FRAZLN(K)   =  FRAZLNDB (1)     
 
@@ -5376,7 +5404,7 @@ contains
                          limit_aice_in=.true. &
                          ,punynum=puny)
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FR(K,ICE:)    = FR_TMP(:)
        VOLICE(K,:)   = VOLICE_TMP(:)
@@ -5576,7 +5604,7 @@ contains
              print*, 'CICE_THERMO2_STEP2: Failing at LAT = ', LATSD, 'LON = ', LONSD
           endif
 
-          ASSERT_(.not.L_STOP)
+          _ASSERT(.not.L_STOP,'needs informative message')
 
           FR(K,ICE:)    = FR_TMP(:)
           VOLICE(K,:)   = VOLICE_TMP(:)

@@ -13,7 +13,7 @@ module GEOS_LakeGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
@@ -24,17 +24,18 @@ module GEOS_LakeGridCompMod
   integer, parameter :: WATER = 2
   integer, parameter :: NUM_SUBTILES = 2
 
-  type T_LAKE_STATE
+  type lake_state
      private
+     integer:: CHOOSEMOSFC
      logical :: InitDone
      logical, pointer :: mask(:)
-     character(len=ESMF_MAXSTR) :: SSTFILE
-  end type T_LAKE_STATE
-  
-  type LAKE_WRAP
-     type (T_LAKE_STATE), pointer :: PTR
-  end type LAKE_WRAP
-  
+     character(len=ESMF_MAXSTR) :: sstfile
+  end type lake_state
+
+  type lake_state_wrap
+      type(lake_state), pointer :: ptr
+  end type
+
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -80,11 +81,15 @@ module GEOS_LakeGridCompMod
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
-! Local vars
-    type (T_LAKE_STATE), pointer           :: LAKE_INTERNAL_STATE
-    type (LAKE_wrap)                       :: WRAP
+    type(lake_state_wrap) :: wrap
+    type(lake_state), pointer :: mystate
+    character(len=ESMF_MAXSTR)     :: SURFRC
+    type(ESMF_Config)              :: SCF
+    type (MAPL_MetaComp), pointer   :: MAPL
+    type(ESMF_Config)              :: CF
 
 !=============================================================================
+               !_VERIFY(status)
 
 ! Begin...
 
@@ -845,6 +850,23 @@ module GEOS_LakeGridCompMod
 
 !EOS
 
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_Get(MAPL,cf=cf,RC=STATUS )
+    VERIFY_(STATUS)
+
+    allocate(mystate,stat=status)
+    VERIFY_(status)
+    mystate%InitDone = .false.
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (SCF, mystate%CHOOSEMOSFC, label='CHOOSEMOSFC:', DEFAULT=1, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
+    wrap%ptr => mystate
+    call ESMF_UserCompSetInternalState(gc, 'lake_private', wrap,status)
+    VERIFY_(status)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -854,22 +876,6 @@ module GEOS_LakeGridCompMod
     call MAPL_TimerAdd(GC,    name="RUN2"  ,RC=STATUS)
     VERIFY_(STATUS)
   
-
-! Allocate this instance of the internal state and put it in wrapper.
-! -------------------------------------------------------------------
-
-    allocate( LAKE_INTERNAL_STATE, stat=STATUS )
-    VERIFY_(STATUS)
-    LAKE_INTERNAL_STATE%InitDone = .false.
-    WRAP%PTR => LAKE_INTERNAL_STATE
-
-! Save pointer to the wrapped internal state in the GC
-! ----------------------------------------------------
-
-    call ESMF_UserCompSetInternalState ( GC, 'LAKE_STATE',wrap,status )
-    VERIFY_(STATUS)
-
-
 ! Set generic init and final methods
 ! ----------------------------------
 
@@ -913,8 +919,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type (MAPL_MetaComp), pointer   :: MAPL
   type (ESMF_State       )            :: INTERNAL
-  type (ESMF_Alarm       )            :: ALARM
-  type (ESMF_Config      )            :: CF
 
 ! pointers to export
 
@@ -1013,6 +1017,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    integer                        :: CHOOSEMOSFC
    integer                        :: CHOOSEZ0
+   type(lake_state_wrap) :: wrap
+   type(lake_state), pointer :: mystate
+
 !=============================================================================
 
 ! Begin... 
@@ -1046,8 +1053,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
+    CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
@@ -1210,9 +1219,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOV2M))  MOV2M = 0.0
 
    do N=1,NUM_SUBTILES
-
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
 
    if(CHOOSEMOSFC.eq.0) then
 
@@ -1555,10 +1561,9 @@ contains
    real, allocatable :: SST(:)
    character(len=ESMF_MAXSTR) :: maskfile
    real, parameter :: tice = MAPL_TICE - 1.8
+   type(lake_state_wrap) :: wrap
+   type(lake_state), pointer :: mystate
 
-   type (T_LAKE_STATE), pointer           :: LAKE_INTERNAL_STATE
-   type (LAKE_WRAP)                       :: wrap
-   
 !  Begin...
 !----------
 
@@ -1727,24 +1732,23 @@ contains
     DATALAKE = (DLK /= 0)
 
     if (datalake) then
-        call ESMF_UserCompGetInternalState(GC, 'LAKE_STATE', wrap, status)
-        VERIFY_(STATUS)
-
-        LAKE_INTERNAL_STATE => WRAP%PTR
 
         ! next section is done only once. We do it here since the Initalize
         ! method of this component defaults to MAPL_GenericInitialize
         
-        if (.not. LAKE_INTERNAL_STATE%InitDone) then
-           LAKE_INTERNAL_STATE%InitDone = .true.
-           call MAPL_GetResource ( MAPL, LAKE_INTERNAL_STATE%SSTFILE, &
+        if (.not. mystate%InitDone) then
+           call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
+           VERIFY_(status)
+           mystate => wrap%ptr
+           mystate%InitDone = .true.
+           call MAPL_GetResource ( MAPL, mystate%sstfile, &
                 Label="LAKE_SST_FILE:", DEFAULT="sst.data", RC=STATUS)
            VERIFY_(STATUS)
 
            ! Initialize a mask where we apply the SST from Reynolds/Ostia
-           allocate(LAKE_INTERNAL_STATE%mask(NT), stat=status); VERIFY_(STATUS)
+           allocate(mystate%mask(NT), stat=status); VERIFY_(STATUS)
 
-           LAKE_INTERNAL_STATE%mask = .false.
+           mystate%mask = .false.
            
            call MAPL_GetResource ( MAPL, MASKFILE, &
                 Label="DATALAKE_MASK_FILE:", DEFAULT="DataLakeMask.data", RC=STATUS)
@@ -1754,18 +1758,18 @@ contains
            ! we might decide later to use a different strategy (for example
            ! Santha suggested lat-lon based description)
 
-           call DataLakeReadMask(MAPL, LAKE_INTERNAL_STATE%mask, &
+           call DataLakeReadMask(MAPL, mystate%mask, &
                 maskfile, RC=status)
            VERIFY_(STATUS)
         end if
 
 
        allocate(SST(NT), stat=status); VERIFY_(STATUS)
-       call MAPL_ReadForcing(MAPL, 'SST', LAKE_INTERNAL_STATE%SSTFILE,&
+       call MAPL_ReadForcing(MAPL, 'SST', mystate%sstfile,&
             CURRENT_TIME, SST, ON_TILES=.true., RC=STATUS)
        VERIFY_(STATUS)
 
-       where(LAKE_INTERNAL_STATE%mask)
+       where(mystate%mask)
           TS(:,WATER) = SST
           TS(:,ICE)   = TICE
        end where

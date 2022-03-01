@@ -46,7 +46,7 @@
       contains
 
 ! **************************************************************************
-      subroutine rrtmg_sw_ini(cpdair)
+      subroutine rrtmg_sw_ini
 ! **************************************************************************
 !
 !  Original version:   Michael J. Iacono; February, 2004
@@ -61,10 +61,6 @@
       use parrrsw, only : mg, nbndsw, ngptsw
       use rrsw_tbl, only: ntbl, tblint, pade, bpade, tau_tbl, exp_tbl
       use rrsw_vsn, only: hvrini, hnamini
-
-      real, intent(in) :: cpdair     ! Specific heat capacity of dry air
-                                              ! at constant pressure at 273 K
-                                              ! (J kg-1 K-1)
 
 ! ------- Local -------
 
@@ -88,7 +84,7 @@
       hvrini = '$Revision$'
 
 ! Initialize model data
-      call swdatinit(cpdair)
+      call swdatinit
       call swcmbdat              ! g-point interval reduction data
       call swaerpr               ! aerosol optical properties
       call swcldpr               ! cloud optical properties
@@ -175,22 +171,18 @@
       end subroutine rrtmg_sw_ini
 
 !***************************************************************************
-      subroutine swdatinit(cpdair)
+      subroutine swdatinit
 !***************************************************************************
 
 ! --------- Modules ----------
 
-      use rrsw_con, only: heatfac, grav, planck, boltz, &
+      use rrsw_con, only: grav, planck, boltz, &
                           clight, avogad, alosmt, gascon, radcn1, radcn2, &
-                          sbcnst, secdy 
+                          sbcnst
       use rrsw_vsn
 
       save 
  
-      real, intent(in) :: cpdair     ! Specific heat capacity of dry air
-                                              ! at constant pressure at 273 K
-                                              ! (J kg-1 K-1)
-
 ! Shortwave spectral band limits (wavenumbers)
       wavenum1(:) = (/2600., 3250., 4000., 4650., 5150., 6150., 7700., &
                       8050.,12850.,16000.,22650.,29000.,38000.,  820./)
@@ -228,8 +220,6 @@
                                               ! (cm K)
       sbcnst = 5.670400e-04                ! Stefan-Boltzmann constant
                                               ! (W cm-2 K-4)
-      secdy = 8.6400e4                     ! Number of seconds per day
-                                              ! (s d-1)
 !
 !     units are generally cgs
 !
@@ -237,29 +227,6 @@
 !     They were previously obtained from the relations:
 !          radcn1 = 2.*planck*clight*clight*1.e-07
 !          radcn2 = planck*clight/boltz
-
-!     Heatfac is the factor by which delta-flux / delta-pressure is
-!     multiplied, with flux in W/m-2 and pressure in mbar, to get 
-!     the heating rate in units of degrees/day.  It is equal to:
-!     Original value:
-!           (g)x(#sec/day)x(1e-5)/(specific heat of air at const. p)
-!           Here, cpdair (1.004) is in units of J g-1 K-1, and the 
-!           constant (1.e-5) converts mb to Pa and g-1 to kg-1.
-!        =  (9.8066)(86400)(1e-5)/(1.004)
-!      heatfac = 8.4391
-!
-!     Modified value for consistency with CAM3:
-!           (g)x(#sec/day)x(1e-5)/(specific heat of air at const. p)
-!           Here, cpdair (1.00464) is in units of J g-1 K-1, and the
-!           constant (1.e-5) converts mb to Pa and g-1 to kg-1.
-!        =  (9.80616)(86400)(1e-5)/(1.00464)
-!      heatfac = 8.43339130434
-!
-!     Calculated value (from constants above and input cpdair)
-!        (grav) x (#sec/day) / (specific heat of dry air at const. p x 1.e2)
-!           Here, cpdair is in units of J kg-1 K-1, and the constant (1.e2) 
-!           converts mb to Pa when heatfac is multiplied by W m-2 mb-1. 
-      heatfac = grav * secdy / (cpdair * 1.e2)
 
       end subroutine swdatinit
 

@@ -22,7 +22,7 @@ module GEOS_SatsimGridCompMod
 #define USE_MAPL_UNDEF
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
 
   use gettau
@@ -105,6 +105,7 @@ contains
     integer, pointer              :: ungridded_dims(:) => null()
     character(len=ESMF_MAXSTR)    :: exportName(1)
     type(MAPL_VarSpec), pointer :: ExportSpec(:) => null()
+    logical :: found
    
 !=============================================================================
 
@@ -2362,8 +2363,10 @@ contains
 ! parse resource file for masks
     CF = ESMF_ConfigCreate(rc=status)
     VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile ( CF,'SatSim.rc',rc=status)
-    if (status == ESMF_SUCCESS) then
+    inquire(file='SatSim.rc',exist=found)
+    if (found) then
+       call ESMF_ConfigLoadFile ( CF,'SatSim.rc',rc=status)
+       VERIFY_(STATUS) 
        call ESMF_ConfigGetDim(CF, nLines,nCols, LABEL='Masked_Exports::',RC=STATUS)
        if (status== ESMF_SUCCESS) then
           self%nmask_vars = nLines
@@ -3008,6 +3011,11 @@ contains
     integer  :: use_satsim, use_satsim_isccp, use_satsim_modis, use_satsim_lidar, use_satsim_radar, use_satsim_misr
     integer  :: ncolumns
 
+    character(len=ESMF_MAXSTR) :: GRIDNAME
+    character(len=5)           :: imchar
+    character(len=2)           :: dateline
+    integer                    :: imsize,nn
+
 !  Begin...
 !----------
       Iam = trim(COMP_NAME) // 'Sim_Driver'
@@ -3039,8 +3047,18 @@ contains
     call MAPL_GetResource(MAPL,USE_SATSIM_MISR,LABEL="USE_SATSIM_MISR:",default=0,   RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL,Ncolumns,LABEL="SATSIM_NCOLUMNS:",default=30,   RC=STATUS)
+    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
     VERIFY_(STATUS)
+    GRIDNAME =  AdjustL(GRIDNAME)
+    nn = len_trim(GRIDNAME)
+    dateline = GRIDNAME(nn-1:nn)
+    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
+    read(imchar,*) imsize
+    if(dateline.eq.'CF') imsize = imsize*4
+    associate (default_Ncolumns => MIN(30,MAX(1,INT(4*5760*4/imsize))) )
+      call MAPL_GetResource(MAPL,Ncolumns,LABEL="SATSIM_NCOLUMNS:",default=default_Ncolumns,  RC=STATUS)
+      VERIFY_(STATUS)
+    end associate
 
     call MAPL_GetResource(MAPL,Npoints_it,LABEL="SATSIM_POINTS_PER_ITERATION:",default=-999,   RC=STATUS)
     VERIFY_(STATUS)
