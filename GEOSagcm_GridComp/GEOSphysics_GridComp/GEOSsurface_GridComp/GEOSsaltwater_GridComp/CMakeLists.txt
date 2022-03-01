@@ -2,10 +2,11 @@ esma_set_this()
 
 set (srcs
   GEOS_CICE4ColumnPhysGridComp.F90 GEOS_OpenWaterGridComp.F90
-  GEOS_SaltWaterGridComp.F90 GEOS_SimpleSeaiceGridComp.F90)
+  GEOS_SaltWaterGridComp.F90 GEOS_SimpleSeaiceGridComp.F90
+  GEOS_ObioGridComp.F90)
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL LANL_cice)
+  DEPENDENCIES GEOS_Shared MAPL CICE4)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 

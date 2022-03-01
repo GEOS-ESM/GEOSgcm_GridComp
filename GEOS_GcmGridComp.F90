@@ -584,7 +584,6 @@ contains
                          'OUSTAR3','PS     ',                       &
                          'HI     ','TI     ','SI     ' ,            &
                          'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
-                         'CO2SC  ','DUDP   ','DUWT   ','DUSD   ',   &
                          'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
                          'DRNIR'  , 'DFNIR',                        &
                          'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
@@ -593,46 +592,13 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_TerminateImport( GC,                                 &
-          SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
-                         'RH    ', 'OZ    ', 'WV    '/),            &
-          CHILD      = OGCM,                                        &
-          RC=STATUS  )
-     VERIFY_(STATUS)
 
-     call MAPL_TerminateImport    ( GC,   &
-          SHORT_NAME = (/'UU'/),                                    &
-          CHILD      = OGCM,                                        &
-          RC=STATUS  )
-     VERIFY_(STATUS)
 
      if (DO_OBIO/=0) then
-      do k=1, 33
-         write(unit = suffix, fmt = '(i2.2)') k
-         call MAPL_TerminateImport( GC,           &
-            SHORT_NAME = [ character(len=(8)) ::  &
-               'TAUA_'//suffix,                   &
-               'ASYMP_'//suffix,                  &
-               'SSALB_'//suffix ],                &
-            CHILD      = OGCM,                    &
-            RC=STATUS  )
-         VERIFY_(STATUS)
-      enddo
+      call OBIO_TerminateImports(DO_DATAATM, RC)
      end if
 
-     if(DO_DATAATM==0) then
-        call MAPL_TerminateImport    ( GC,                             &
-             SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),         &
-             CHILD      = OGCM,                                        &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-        call MAPL_TerminateImport    ( GC,                             &
-             SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),                &
-             CHILD      = OGCM,                                        &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-     else
+     if(DO_DATAATM /= 0) then
         call MAPL_TerminateImport    ( GC,   & 
              SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
              'VI     ','TAUXBOT','TAUYBOT'/),         &
@@ -716,9 +682,68 @@ contains
 
 
     RETURN_(ESMF_SUCCESS)
-  
-  end subroutine SetServices
 
+    contains
+
+      subroutine OBIO_TerminateImports(DO_DATAATM, RC)
+
+        integer,                    intent(IN   ) ::  DO_DATAATM 
+        integer, optional,          intent(  OUT) ::  RC  
+
+        character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_TerminateImports"
+        integer                                   :: STATUS
+        integer          :: k
+
+        call MAPL_TerminateImport    ( GC,     &
+           SHORT_NAME = [character(len=7) ::   &
+              'CO2SC  ','DUDP   ','DUWT   ','DUSD   '],&  
+           CHILD      = OGCM,                  &
+           RC=STATUS  )
+        VERIFY_(STATUS)        
+
+        call MAPL_TerminateImport( GC,                               &
+           SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
+                          'RH    ', 'OZ    ', 'WV    '/),            &
+           CHILD      = OGCM,                                        &
+           RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_TerminateImport    ( GC,                           &
+           SHORT_NAME = (/'UU'/),                                    &
+           CHILD      = OGCM,                                        &
+           RC=STATUS  )
+        VERIFY_(STATUS)
+
+        do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
+         call MAPL_TerminateImport( GC,           &    
+            SHORT_NAME = [ character(len=(8)) ::  &
+               'TAUA_'//suffix,                   &    
+               'ASYMP_'//suffix,                  &    
+               'SSALB_'//suffix ],                &    
+            CHILD      = OGCM,                    &    
+            RC=STATUS  )
+         VERIFY_(STATUS)
+        enddo
+
+        if(DO_DATAATM==0) then
+          call MAPL_TerminateImport    ( GC,                         &
+               SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),     &
+               CHILD      = OGCM,                                    &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+
+          call MAPL_TerminateImport    ( GC,                         &
+               SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),            &
+               CHILD      = OGCM,                                    &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+        end if
+
+        RETURN_(ESMF_SUCCESS)
+      end subroutine OBIO_TerminateImports
+
+  end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1339,50 +1364,7 @@ contains
    VERIFY_(STATUS)
 
    if(DO_OBIO/=0) then
-      call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
-           (/'UU'/),                                     &
-           RC=STATUS )
-      VERIFY_(STATUS)
-
-      call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
-           (/'CO2SC'/),                                  &
-           RC=STATUS )
-      VERIFY_(STATUS)
-
-      do k=1, 33
-         write(unit = suffix, fmt = '(i2.2)') k
-         call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
-            [ character(len=8) ::                         &
-               'TAUA_'//suffix,                           &
-               'ASYMP_'//suffix,                          &
-               'SSALB_'//suffix] ,                        &
-            RC=STATUS)
-         VERIFY_(STATUS)
-      enddo
-
-      call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'DUDP', 'DUWT', 'DUSD'/),             &
-              RC=STATUS )
-      VERIFY_(STATUS)
-
-      call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &
-                        (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
-                          'OZ    ', 'WV    '/),                             &
-                        RC=STATUS)
-      VERIFY_(STATUS)
-         
-      if(DO_DATAATM==0) then
-         
-         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),                           &
-              RC=STATUS )
-         VERIFY_(STATUS)
-         
-         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'FSWBAND  ', 'FSWBANDNA'/),               &
-              RC=STATUS )
-         VERIFY_(STATUS)
-      endif
+     call AllocateExports_OBIO(DO_DATAATM, RC)
    endif
 
    call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', 'DW      ', &
@@ -1452,6 +1434,62 @@ contains
      RETURN_(ESMF_SUCCESS)
 
    end subroutine AllocateExports_UGD
+
+   subroutine AllocateExports_OBIO(DO_DATAATM, RC)
+
+     integer,                    intent(IN   ) ::  DO_DATAATM 
+     integer, optional,          intent(  OUT) ::  RC  
+
+     integer                                   :: STATUS
+     integer          :: k
+
+     call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &    
+          (/'UU'/),                                     &    
+          RC=STATUS )
+     VERIFY_(STATUS)
+
+     call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &    
+          (/'CO2SC'/),                                  &    
+          RC=STATUS )
+     VERIFY_(STATUS)
+
+     do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+           [ character(len=8) ::                         &    
+              'TAUA_'//suffix,                           &    
+              'ASYMP_'//suffix,                          &    
+              'SSALB_'//suffix] ,                        &    
+           RC=STATUS)
+        VERIFY_(STATUS)
+     enddo
+
+     call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &    
+             (/'DUDP', 'DUWT', 'DUSD'/),             &    
+             RC=STATUS )
+     VERIFY_(STATUS)
+
+     call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &    
+                       (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
+                         'OZ    ', 'WV    '/),                             &    
+                       RC=STATUS)
+     VERIFY_(STATUS)
+     
+     if(DO_DATAATM==0) then 
+        call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &    
+             (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),                           &    
+             RC=STATUS )
+        VERIFY_(STATUS)
+     
+        call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &    
+             (/'FSWBAND  ', 'FSWBANDNA'/),               &    
+             RC=STATUS )
+        VERIFY_(STATUS)
+     endif
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine AllocateExports_OBIO
+
  end subroutine Initialize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2043,56 +2081,7 @@ contains
        VERIFY_(STATUS)
 
        if(DO_OBIO/=0) then
-          call DO_A2O(GIM(OGCM),'UU'     ,expSKIN,'UU'     , RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
-          VERIFY_(STATUS)
-          do k=1, 33
-             write(unit = suffix, fmt = '(i2.2)') k
-             call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
-             VERIFY_(STATUS)
-          enddo
-
-          call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
-          VERIFY_(STATUS)
-
-          call DO_A2O(GIM(OGCM), 'CCOVM', expSKIN, 'CCOVM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'CDREM', expSKIN, 'CDREM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'RLWPM', expSKIN, 'RLWPM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'CLDTCM', expSKIN, 'CLDTCM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'RH', expSKIN, 'RH', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'OZ', expSKIN, 'OZ', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
-          VERIFY_(STATUS)
-          if(DO_DATAATM==0) then
-             call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'OCDP', expSKIN, 'OCDP', RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'OCWT', expSKIN, 'OCWT', RC=STATUS)
-             VERIFY_(STATUS)
-
-             call DO_A2O_UGD(GIM(OGCM), 'FSWBAND',   expSKIN, 'FSWBAND',   RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'FSWBANDNA', expSKIN, 'FSWBANDNA', RC=STATUS)
-             VERIFY_(STATUS)
-          endif
+          call OBIO_A2O(DO_DATAATM, RC)
        endif
        call MAPL_TimerOff(MAPL,"--A2O"  )
        
@@ -2193,7 +2182,6 @@ contains
 
      endif
      RETURN_(ESMF_SUCCESS)
-
    end subroutine RUN_OCEAN
 
    subroutine RUN_WAVES(rc)
@@ -2310,6 +2298,70 @@ contains
      RETURN_(ESMF_SUCCESS)
 
    end subroutine RUN_WAVES
+
+   subroutine OBIO_A2O(DO_DATAATM, RC)
+
+     integer,                    intent(IN   ) ::  DO_DATAATM 
+     integer, optional,          intent(  OUT) ::  RC  
+
+     integer                                   :: STATUS
+     integer          :: k
+
+     call DO_A2O(GIM(OGCM),'UU'     ,expSKIN,'UU'     , RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
+     VERIFY_(STATUS)
+
+     do k=1, 33
+       write(unit = suffix, fmt = '(i2.2)') k
+       call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
+       VERIFY_(STATUS)
+     enddo
+
+     call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
+     VERIFY_(STATUS)
+
+     call DO_A2O(GIM(OGCM), 'CCOVM', expSKIN, 'CCOVM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'CDREM', expSKIN, 'CDREM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'RLWPM', expSKIN, 'RLWPM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'CLDTCM', expSKIN, 'CLDTCM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'RH', expSKIN, 'RH', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'OZ', expSKIN, 'OZ', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
+     VERIFY_(STATUS)
+
+     if(DO_DATAATM==0) then
+       call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'OCDP', expSKIN, 'OCDP', RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'OCWT', expSKIN, 'OCWT', RC=STATUS)
+       VERIFY_(STATUS)
+
+       call DO_A2O_UGD(GIM(OGCM), 'FSWBAND',   expSKIN, 'FSWBAND',   RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'FSWBANDNA', expSKIN, 'FSWBANDNA', RC=STATUS)
+       VERIFY_(STATUS)
+     endif
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine OBIO_A2O
 
    subroutine DO_A2O(STATEO,NAMEO,STATEA,NAMEA,RC)
      type(ESMF_State)          , intent(INOUT) ::  STATEO

@@ -1,6 +1,5 @@
 # Note that directory and library name do not correspond!
 esma_set_this (OVERRIDE GEOS_SurfaceShared)
-esma_add_subdirectories (Raster)
 
 set (resource_files
     GEOS_SurfaceGridComp.rc
@@ -14,5 +13,6 @@ set (srcs
   StieglitzSnow.F90
   SurfParams.F90)
 
-esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL)
+esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL
+TYPE SHARED)
 #target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${FREAL4}>)

@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set (alldirs
-  @GEOSchem_GridComp
+  GEOSchem_GridComp
   GEOSmoist_GridComp
   GEOSsurface_GridComp
   GEOSturbulence_GridComp
