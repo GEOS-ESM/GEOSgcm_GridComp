@@ -2230,9 +2230,6 @@ contains
       integer :: IM_World, JM_World, Gdims(3)
       integer, dimension(IM,JM) :: Ig, Jg
 
-      ! gridcolum presence of liq and ice clouds (ncol,nlay)
-      real(wp), dimension(:,:), allocatable :: clwp, ciwp
-
       ! a column random number generator
 #ifdef HAVE_MKL
       type(ty_rng_mklvsl_plus) :: rng
@@ -2261,8 +2258,8 @@ contains
       real(wp), parameter :: ptop_increase_OK_fraction = 0.01_wp
       real(wp), parameter :: tmin_increase_OK_Kelvin   = 10.0_wp
 
-      ! block size for column processing
-      ! set for efficiency from resource file
+      ! block size for column processing for efficiency
+      ! set from resource file
       integer :: rrtmgp_blockSize
 
 ! For Aerosol
@@ -2273,10 +2270,6 @@ contains
       real, pointer, dimension(:,:,:)     :: BUFIMP_AEROSOL_SSA => null()
       real, pointer, dimension(:,:,:)     :: BUFIMP_AEROSOL_ASY => null()
       real, allocatable, dimension(:,:,:) :: BUF_AEROSOL
-
-      ! CPU Topology information for RRTMGPU
-      ! ------------------------------------
-      integer        :: CoresPerNode
 
       character(len=ESMF_MAXSTR)      :: NAME
 
@@ -2953,9 +2946,9 @@ contains
         DEFAULT='rrtmgp-data-sw.nc',__RC__)
       if (.not. rrtmgp_state%initialized) then
         ! gas_concs needed only to access required gas names
-        call MAPL_TimerOn(MAPL, name="--RRTMGP_IO_GAS", __RC__)
+        call MAPL_TimerOn(MAPL,"--RRTMGP_IO_GAS", __RC__)
         call load_and_init(rrtmgp_state%k_dist,trim(k_dist_file),gas_concs)
-        call MAPL_TimerOff(MAPL, name="--RRTMGP_IO_GAS", __RC__)
+        call MAPL_TimerOff(MAPL,"--RRTMGP_IO_GAS", __RC__)
         if (.not. rrtmgp_state%k_dist%source_is_external()) then
           TEST_('RRTMGP-SW: does not seem to be SW')
         endif
@@ -3041,19 +3034,9 @@ contains
       _ASSERT(top_at_1, 'unexpected vertical ordering')
 
       ! layer pressure thicknesses used for cloud water path calculations
-      ! (better to do before any KLUGE to top pressure)
+      ! (do before any KLUGE to top pressure so optical paths wont be affected)
+      ! (also better to use these unKLUGED pressure intervals in t_lev calculation)
       dp_wp = p_lev(:,2:LM+1) - p_lev(:,1:LM)
-
-      ! dzmid(k) is separation [m] between midpoints of layers k and k+1 (sign not important, +ve here).
-      ! dz ~ RT/g x dp/p by hydrostatic eqn and ideal gas eqn. The jump from LAYER k to k+1 is centered
-      ! on LEVEL k+1 since the LEVEL indices are one-based.
-      allocate(t_lev(ncol),__STAT__)
-      do k = 1,LM-1
-        ! t_lev are interior interface temperatures at level k+1
-        t_lev = (t_lay(:,k) * dp_wp(:,k+1) + t_lay(:,k+1) * dp_wp(:,k)) / (dp_wp(:,k+1) + dp_wp(:,k))
-        dzmid(:,k) = t_lev * real(MAPL_RGAS/MAPL_GRAV,kind=wp) * (p_lay(:,k+1) - p_lay(:,k)) / p_lev(:,k+1)
-      end do
-      deallocate(t_lev,__STAT__)
 
       ! pmn: pressure KLUGE
       ! Because currently k_dist%press_ref_min ~ 1.005 > GEOS-5 ptop of 1.0 Pa.
@@ -3093,6 +3076,20 @@ contains
           TEST_('Found excessively cold model temperature for RRTMGP')
         endif
       endif
+
+      ! dzmid(k) is separation [m] between midpoints of layers k and k+1 (sign not important, +ve here).
+      ! dz ~ RT/g x dp/p by hydrostatic eqn and ideal gas eqn. The jump from LAYER k to k+1 is centered
+      ! on LEVEL k+1 since the LEVEL indices are one-based.
+      ! pmn: note that the dzmid calculation depends on the t_lev. Though t_lev is a temporary here, it
+      ! is an important variable in the LW, where its calculation must occur after the t_lay KLUGE. So,
+      ! for consistency with the LW, this t_lev and dzmid calculation is placed after the t_lay KLUGE.
+      allocate(t_lev(ncol),__STAT__)
+      do k = 1,LM-1
+        ! t_lev are interior interface temperatures at level k+1
+        t_lev = (t_lay(:,k) * dp_wp(:,k+1) + t_lay(:,k+1) * dp_wp(:,k)) / (dp_wp(:,k+1) + dp_wp(:,k))
+        dzmid(:,k) = t_lev * real(MAPL_RGAS/MAPL_GRAV,kind=wp) * (p_lay(:,k+1) - p_lay(:,k)) / p_lev(:,k+1)
+      end do
+      deallocate(t_lev,__STAT__)
 
       ! allocation of output arrays
       allocate(flux_up_clrsky (ncol,LM+1), flux_net_clrsky(ncol,LM+1), __STAT__)
@@ -3285,7 +3282,6 @@ contains
         ncols_block = rrtmgp_blockSize
 
         allocate(toa_flux(ncols_block,ngpt),                 __STAT__)
-        allocate(clwp(ncols_block,LM), ciwp(ncols_block,LM), __STAT__)
         allocate(alpha(ncols_block,LM-1),                    __STAT__)
         allocate(cld_mask(ncols_block,LM,ngpt),              __STAT__)
         if (cond_inhomo) then
@@ -3333,30 +3329,28 @@ contains
       ! loop over all blocks
       do b = 1,nBlocks
 
-        ! only the final block can be partial
+        ! only the FINAL block can be partial
         if (b == nBlocks .and. partial_block) then
           ncols_block = partial_blockSize
 
           if (b > 1) then
             ! one or more full blocks already processed
             deallocate(toa_flux,       __STAT__)
-            deallocate(clwp,ciwp,      __STAT__)
             deallocate(alpha,cld_mask, __STAT__)
             if (cond_inhomo) then
               deallocate(rcorr,zcw,    __STAT__)
             endif
           endif
 
-          allocate(toa_flux(ncols_block,ngpt),                 __STAT__)
-          allocate(clwp(ncols_block,LM), ciwp(ncols_block,LM), __STAT__)
-          allocate(alpha(ncols_block,LM-1),                    __STAT__)
-          allocate(cld_mask(ncols_block,LM,ngpt),              __STAT__)
+          allocate(toa_flux(ncols_block,ngpt),    __STAT__)
+          allocate(alpha(ncols_block,LM-1),       __STAT__)
+          allocate(cld_mask(ncols_block,LM,ngpt), __STAT__)
           if (cond_inhomo) then
-            allocate(rcorr(ncols_block,LM-1),                  __STAT__)
-            allocate(zcw(ncols_block,LM,ngpt),                 __STAT__)
+            allocate(rcorr(ncols_block,LM-1),     __STAT__)
+            allocate(zcw(ncols_block,LM,ngpt),    __STAT__)
           endif
 
-          ! there is an internal deallocation in the ty_optical_props routines
+          ! ty_optical_props routines have an internal deallocation
           select type (cloud_props_bnd)
             class is (ty_optical_props_2str)
               TEST_(cloud_props_bnd%alloc_2str(ncols_block,LM))
@@ -3380,7 +3374,7 @@ contains
               TEST_(optical_props%alloc_nstr(nmom,ncols_block,LM))
           end select
 
-        endif
+        endif  ! partial block
 
         ! prepare block
         colS = (b-1) * rrtmgp_blockSize + 1
@@ -3416,10 +3410,10 @@ contains
 
         ! Make band in-cloud optical props from cloud_optics and mean in-cloud cloud water paths.
         ! These can be scaled later to account for sub-gridscale condensate inhomogeneity.
-        clwp = real(QQ3(colS:colE,:,2),kind=wp) * dp_wp(colS:colE,:) * cwp_fac ! in-cloud [g/m2]
-        ciwp = real(QQ3(colS:colE,:,1),kind=wp) * dp_wp(colS:colE,:) * cwp_fac ! in-cloud [g/m2]
         error_msg = cloud_optics%cloud_optics( &
-          clwp, ciwp, real(RR3(colS:colE,:,2),kind=wp), real(RR3(colS:colE,:,1),kind=wp), &
+          real(QQ3(colS:colE,:,2),kind=wp) * dp_wp(colS:colE,:) * cwp_fac, &  ! [g/m2]
+          real(QQ3(colS:colE,:,1),kind=wp) * dp_wp(colS:colE,:) * cwp_fac, &  ! [g/m2]
+          real(RR3(colS:colE,:,2),kind=wp), real(RR3(colS:colE,:,1),kind=wp), &
           cloud_props_bnd)
         TEST_(error_msg)
 
@@ -3444,8 +3438,7 @@ contains
         endif
 
         ! generate McICA random numbers for block
-        ! Note: really only needed where cloud fraction > 0 (speedup?)
-        ! Also, perhaps later this can be parallelized?
+        ! Perhaps later this can be parallelized?
 #ifdef HAVE_MKL
         do isub = 1, ncols_block
           ! local 1d column index
@@ -3493,7 +3486,6 @@ contains
                 if (cld_frac <= 0.) then
                   cld_mask(isub,ilay,:) = .false.
                 else
-
                   ! subgrid-scale cloud mask
                   cld_mask(isub,ilay,:) = urand(:,ilay,isub) < cld_frac
 
@@ -3512,7 +3504,6 @@ contains
                         zcw_lookup(real(urand_cond(igpt,ilay,isub)),sigma_qcw)
                     end do
                   end if
-
                 end if
 
               end do
@@ -3644,7 +3635,7 @@ contains
       PARF(:) = PARF(:) + 0.5 * real(bnd_flux_dn_allsky (:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10))
 
       ! clean up
-      deallocate(tsi,mu0,sfc_alb_dir,sfc_alb_dif,__STAT__)
+      deallocate(tsi,mu0,sfc_alb_dir,sfc_alb_dif,toa_flux,__STAT__)
       deallocate(p_lay,t_lay,p_lev,dp_wp,dzmid,__STAT__)
       deallocate(flux_up_clrsky,flux_net_clrsky,__STAT__)
       deallocate(flux_up_allsky,flux_net_allsky,__STAT__)
@@ -3653,7 +3644,6 @@ contains
       if (cond_inhomo) then
         deallocate(rdl,urand_cond,zcw,__STAT__)
       endif
-      deallocate(clwp,ciwp,toa_flux,__STAT__)
       call cloud_optics%finalize()
       call cloud_props_gpt%finalize()
       call cloud_props_bnd%finalize()
@@ -3722,12 +3712,6 @@ contains
 
       ICEFLGSW = 3
       LIQFLGSW = 1
-
-      ! Get number of cores per node for RRTMG GPU
-      ! ------------------------------------------
-
-      ! Reuse the COMM from above
-      CoresPerNode = MAPL_CoresPerNodeGet(COMM, RC=STATUS)
 
       ! Normalize aerosol inputs
       ! ------------------------
