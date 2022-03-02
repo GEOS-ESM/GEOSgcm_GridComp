@@ -90,6 +90,8 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
 
+    call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run, __RC__)
+
 ! dummy import for testing comcurrent ens
 !    call MAPL_AddImportSpec ( gc,                                  &
 !         SHORT_NAME = 'DTDT',                                      &
@@ -312,5 +314,76 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
+  subroutine Run( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+    integer, optional,   intent(  out) :: RC     ! Error code
+
+ 
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)        :: IAm 
+    integer                           :: STATUS
+    character(len=ESMF_MAXSTR)        :: COMP_NAME
+    
+! Local derived type aliases
+
+    type (MAPL_MetaComp    ), pointer :: MAPL
+    type (ESMF_GridComp),      pointer  :: GCS(:)
+    type (ESMF_State),         pointer  :: GIM(:)
+    type (ESMF_State),         pointer  :: GEX(:)
+    
+!=============================================================================
+
+! Begin... 
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    Iam = "Run"
+    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
+    VERIFY_(STATUS)
+    Iam = trim(COMP_NAME) // trim(Iam)
+
+! Get my MAPL_MetaComp
+!---------------------
+
+    call MAPL_GetObjectFromGC( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+! Start the TOTAL timer
+!----------------------
+
+    call MAPL_TimerOn(MAPL,"TOTAL")
+    call MAPL_TimerOn(MAPL,"RUN")
+
+! Get esmf internal state from generic state.
+!-------------------------------------------
+
+    call MAPL_Get(MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__ )
+
+    call ESMF_GridCompRun(GCS(SDYN), importState=GIM(SDYN), exportState=GEX(SDYN), clock=CLOCK, PHASE=1, userRC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GenericRunCouplers( MAPL, CHILD=SDYN, CLOCK=clock, __RC__ )
+
+    call ESMF_GridCompRun(GCS(PHS), importState=GIM(PHS), exportState=GEX(PHS), clock=CLOCK, userRC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_GridCompRun(GCS(SDYN), importState=GIM(SDYN), exportState=GEX(SDYN), clock=CLOCK, PHASE=2, userRC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_TimerOff(MAPL,"RUN")
+    call MAPL_TimerOff(MAPL,"TOTAL")
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine Run
 end module GEOS_AgcmSimpleGridCompMod
 
