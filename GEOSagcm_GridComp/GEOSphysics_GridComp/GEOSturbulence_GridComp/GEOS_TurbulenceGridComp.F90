@@ -1990,6 +1990,22 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    if (DO_WAVES /= 0) then
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'SHFX_SPRAY',                           &
+           LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'LHFX_SPRAY',                           &
+           LONG_NAME       = 'latent_heat_contribution_from_sea_spray',   &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+    end if
+
 ! !INTERNAL STATE:
 
 !
@@ -2225,22 +2241,6 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                           &
        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
-
-    if (DO_WAVES /= 0) then
-        call MAPL_AddExportSpec(GC,                                  &
-           SHORT_NAME      = 'SHFX_SPRAY',                           &
-           LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
-           UNITS           = 'W m-2',                                &
-           DIMS            = MAPL_DimsHorzOnly,                      &
-           VLOCATION       = MAPL_VLocationNone,     __RC__)
-
-        call MAPL_AddExportSpec(GC,                                  &
-           SHORT_NAME      = 'LHFX_SPRAY',                           &
-           LONG_NAME       = 'latent_heat_contribution_from_sea_spray',   &
-           UNITS           = 'W m-2',                                &
-           DIMS            = MAPL_DimsHorzOnly,                      &
-           VLOCATION       = MAPL_VLocationNone,     __RC__)
-    end if
 #endif
 !
 ! End internal states for idealized SCM surface layer
