@@ -8,7 +8,8 @@ MODULE cesm_const_mod
    !!!  use shr_kind_mod
 
    !!!! integer(SHR_KIND_IN),parameter,private :: R8 = SHR_KIND_R8 ! rename for local readability only
-   integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
+   !!!! integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
+   integer,parameter :: r8 = kind(1.0) ! build precision
    !----------------------------------------------------------------------------
    ! physical constants (all data public)
    !----------------------------------------------------------------------------

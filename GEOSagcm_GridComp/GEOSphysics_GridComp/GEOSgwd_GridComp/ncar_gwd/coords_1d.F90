@@ -4,15 +4,13 @@ module coords_1d
 ! commonly used information derived from a collection of sets of 1-D
 ! coordinates.
 
-!use shr_kind_mod, only: r8 => shr_kind_r8
+use gw_utils, only: GW_PRC 
 
 implicit none
 private
 save
 
 public :: Coords1D
-
-integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
 
 type :: Coords1D
    ! Number of sets of coordinates in the object.
@@ -25,16 +23,16 @@ type :: Coords1D
    ! d-1 for dst and rdst.
 
    ! Cell interface coordinates.
-   real(r8), allocatable :: ifc(:,:)
+   real(GW_PRC), allocatable :: ifc(:,:)
    ! Coordinates at cell mid-points.
-   real(r8), allocatable :: mid(:,:)
+   real(GW_PRC), allocatable :: mid(:,:)
    ! Width of cells.
-   real(r8), allocatable :: del(:,:)
+   real(GW_PRC), allocatable :: del(:,:)
    ! Distance between cell midpoints.
-   real(r8), allocatable :: dst(:,:)
+   real(GW_PRC), allocatable :: dst(:,:)
    ! Reciprocals: 1/del and 1/dst.
-   real(r8), allocatable :: rdel(:,:)
-   real(r8), allocatable :: rdst(:,:)
+   real(GW_PRC), allocatable :: rdel(:,:)
+   real(GW_PRC), allocatable :: rdst(:,:)
  contains
    procedure :: section
    procedure :: finalize
@@ -50,12 +48,12 @@ contains
 ! Constructor to create an object from existing data.
 function new_Coords1D_from_fields(ifc, mid, del, dst, &
      rdel, rdst) result(coords)
-  real(r8),  intent(in) :: ifc(:,:)
-  real(r8),  intent(in) :: mid(:,:)
-  real(r8),  intent(in) :: del(:,:)
-  real(r8),  intent(in) :: dst(:,:)
-  real(r8),  intent(in) :: rdel(:,:)
-  real(r8),  intent(in) :: rdst(:,:)
+  real(GW_PRC),  intent(in) :: ifc(:,:)
+  real(GW_PRC),  intent(in) :: mid(:,:)
+  real(GW_PRC),  intent(in) :: del(:,:)
+  real(GW_PRC),  intent(in) :: dst(:,:)
+  real(GW_PRC),  intent(in) :: rdel(:,:)
+  real(GW_PRC),  intent(in) :: rdst(:,:)
   type(Coords1D) :: coords
 
   coords = allocate_coords(size(ifc, 1), size(ifc, 2) - 1)
@@ -72,17 +70,17 @@ end function new_Coords1D_from_fields
 ! Constructor if you only have interface coordinates; derives all the other
 ! fields.
 function new_Coords1D_from_int(ifc) result(coords)
-  real(r8),  intent(in) :: ifc(:,:)
+  real(GW_PRC),  intent(in) :: ifc(:,:)
   type(Coords1D) :: coords
 
   coords = allocate_coords(size(ifc, 1), size(ifc, 2) - 1)
 
   coords%ifc = ifc
-  coords%mid = 0.5_r8 * (ifc(:,:coords%d)+ifc(:,2:))
+  coords%mid = 0.5_GW_PRC * (ifc(:,:coords%d)+ifc(:,2:))
   coords%del = coords%ifc(:,2:) - coords%ifc(:,:coords%d)
   coords%dst = coords%mid(:,2:) - coords%mid(:,:coords%d-1)
-  coords%rdel = 1._r8/coords%del
-  coords%rdst = 1._r8/coords%dst
+  coords%rdel = 1._GW_PRC/coords%del
+  coords%rdst = 1._GW_PRC/coords%dst
 
 end function new_Coords1D_from_int
 
@@ -142,7 +140,7 @@ subroutine finalize(self)
 contains
 
   subroutine guarded_deallocate(array)
-    real(r8), allocatable :: array(:,:)
+    real(GW_PRC), allocatable :: array(:,:)
 
     if (allocated(array)) deallocate(array)
 

@@ -5,7 +5,7 @@ module gw_diffusion
 ! constituents and dry static energy due to gravity wave breaking.
 !
 
-use gw_utils, only: r8
+use gw_utils, only: GW_PRC
 use linear_1d_operators, only: TriDiagDecomp
 
 implicit none
@@ -40,60 +40,60 @@ subroutine gw_ediff(ncol, pver, ngwv, kbot, ktop, tend_level, &
   ! Per-column bottom index where tendencies are applied.
   integer, intent(in) :: tend_level(ncol)
   ! GW zonal wind tendencies at midpoint.
-  real(r8), intent(in) :: gwut(ncol,pver,-ngwv:ngwv)
+  real(GW_PRC), intent(in) :: gwut(ncol,pver,-ngwv:ngwv)
   ! Projection of wind at midpoints.
-  real(r8), intent(in) :: ubm(ncol,pver)
+  real(GW_PRC), intent(in) :: ubm(ncol,pver)
   ! Brunt-Vaisalla frequency.
-  real(r8), intent(in) :: nm(ncol,pver)
+  real(GW_PRC), intent(in) :: nm(ncol,pver)
 
   ! Density at interfaces.
-  real(r8), intent(in) :: rho(ncol,pver+1)
+  real(GW_PRC), intent(in) :: rho(ncol,pver+1)
   ! Time step.
-  real(r8), intent(in) :: dt
+  real(GW_PRC), intent(in) :: dt
   ! Inverse Prandtl number.
-  real(r8), intent(in) :: prndl
+  real(GW_PRC), intent(in) :: prndl
   ! Acceleration due to gravity.
-  real(r8), intent(in) :: gravit
+  real(GW_PRC), intent(in) :: gravit
   ! Pressure coordinates.
   type(Coords1D), intent(in) :: p
   ! Wave phase speeds for each column.
-  real(r8), intent(in) :: c(ncol,-ngwv:ngwv)
+  real(GW_PRC), intent(in) :: c(ncol,-ngwv:ngwv)
 
   ! Adjustment parameter for IGWs.
-  real(r8), intent(in), optional :: &
+  real(GW_PRC), intent(in), optional :: &
        ro_adjust(ncol,-ngwv:ngwv,pver+1)
 
 !-----------------------------Output Arguments-----------------------------
   ! Effective gw diffusivity at interfaces.
-  real(r8), intent(out) :: egwdffi(ncol,pver+1)
+  real(GW_PRC), intent(out) :: egwdffi(ncol,pver+1)
   ! LU decomposition.
   type(TriDiagDecomp), intent(out) :: decomp
 
 !-----------------------------Local Workspace------------------------------
 
   ! Effective gw diffusivity at midpoints.
-  real(r8) :: egwdffm(ncol,pver)
+  real(GW_PRC) :: egwdffm(ncol,pver)
   ! Temporary used to hold gw_diffusivity for one level and wavenumber.
-  real(r8) :: egwdff_lev(ncol)
+  real(GW_PRC) :: egwdff_lev(ncol)
   ! (dp/dz)^2 == (gravit*rho)^2
-  real(r8) :: dpidz_sq(ncol,pver+1)
+  real(GW_PRC) :: dpidz_sq(ncol,pver+1)
   ! Level and wave indices.
   integer :: k, l
 
   ! Density scale height.
-  real(r8), parameter :: dscale=7000._r8
+  real(GW_PRC), parameter :: dscale=7000._GW_PRC
 
 !--------------------------------------------------------------------------
 
-  egwdffi = 0._r8
-  egwdffm = 0._r8
+  egwdffi = 0._GW_PRC
+  egwdffm = 0._GW_PRC
 
   ! Calculate effective diffusivity at midpoints.
   do l = -ngwv, ngwv
      do k = ktop, kbot
 
         egwdff_lev = &
-             prndl * 0.5_r8 * gwut(:,k,l) * (c(:,l)-ubm(:,k)) / nm(:,k)**2
+             prndl * 0.5_GW_PRC * gwut(:,k,l) * (c(:,l)-ubm(:,k)) / nm(:,k)**2
 
         ! IGWs need ro_adjust factor.
         if (present(ro_adjust)) then
@@ -113,7 +113,7 @@ subroutine gw_ediff(ncol, pver, ngwv, kbot, ktop, tend_level, &
   ! Do not calculate diffusivities below level where tendencies are
   ! actually allowed.
   do k = ktop+1, kbot
-     where (k > tend_level) egwdffi(:,k) = 0.0_r8
+     where (k > tend_level) egwdffi(:,k) = 0.0_GW_PRC
   enddo
 
   ! Calculate (dp/dz)^2.
@@ -160,9 +160,9 @@ subroutine gw_diff_tend(ncol, pver, kbot, ktop, q, dt, decomp, dq)
   integer, intent(in) :: kbot, ktop
 
   ! Constituent to diffuse.
-  real(r8), intent(in) :: q(ncol,pver)
+  real(GW_PRC), intent(in) :: q(ncol,pver)
   ! Time step.
-  real(r8), intent(in) :: dt
+  real(GW_PRC), intent(in) :: dt
 
   ! LU decomposition.
   type(TriDiagDecomp), intent(in) :: decomp
@@ -170,16 +170,16 @@ subroutine gw_diff_tend(ncol, pver, kbot, ktop, q, dt, decomp, dq)
 !--------------------------Output Arguments--------------------------------
 
   ! Constituent tendencies.
-  real(r8), intent(out) :: dq(ncol,pver)
+  real(GW_PRC), intent(out) :: dq(ncol,pver)
 
 !--------------------------Local Workspace---------------------------------
 
   ! Temporary storage for constituent.
-  real(r8) :: qnew(ncol,pver)
+  real(GW_PRC) :: qnew(ncol,pver)
 
 !--------------------------------------------------------------------------
 
-  dq   = 0.0_r8
+  dq   = 0.0_GW_PRC
   qnew = q
 
   call decomp%left_div(qnew(:,ktop:kbot))

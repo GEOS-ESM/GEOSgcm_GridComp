@@ -6,6 +6,7 @@ module vdiff_lu_solver
 ! objects, and returns a TriDiagDecomp object that can be used to diffuse
 ! an array for one time step with the "left_div" method.
 
+use gw_utils, only: GW_PRC
 use coords_1d, only: Coords1D
 use linear_1d_operators, only: TriDiagOp, operator(+), TriDiagDecomp
 
@@ -16,9 +17,6 @@ save
 ! Public interfaces
 public :: vd_lu_decomp
 public :: fin_vol_lu_decomp
-
-! 8-byte real.
-integer, parameter :: r8 = selected_real_kind(12)
 
 contains
 
@@ -42,12 +40,12 @@ function vd_lu_decomp(dt, dp, coef_q,  coef_q_d, coef_q_d2, upper_bndry, &
   ! ---------------------- !
 
   ! Time step.
-  real(r8), intent(in) :: dt
+  real(GW_PRC), intent(in) :: dt
   ! Grid spacing (deltas).
-  real(r8), USE_CONTIGUOUS intent(in) :: dp(:,:)
+  real(GW_PRC), USE_CONTIGUOUS intent(in) :: dp(:,:)
 
   ! Coefficients for q, q', and q''.
-  real(r8), USE_CONTIGUOUS intent(in), optional :: coef_q(:,:), &
+  real(GW_PRC), USE_CONTIGUOUS intent(in), optional :: coef_q(:,:), &
        coef_q_d(:,:), coef_q_d2(:,:)
 
   ! Boundary conditions (optional, default to 0 flux through boundary).
@@ -70,7 +68,7 @@ function vd_lu_decomp(dt, dp, coef_q,  coef_q_d, coef_q_d2, upper_bndry, &
   ! ----------------------- !
 
   if (present(coef_q)) then
-     net_operator = diagonal_operator(1._r8 - dt*coef_q)
+     net_operator = diagonal_operator(1._GW_PRC - dt*coef_q)
   else
      net_operator = identity_operator(size(dp, 1), size(dp, 2) + 1)
   end if
@@ -125,7 +123,7 @@ function fin_vol_lu_decomp(dt, p, coef_q, coef_q_diff, coef_q_adv, &
   ! ---------------------- !
 
   ! Time step.
-  real(r8), intent(in) :: dt
+  real(GW_PRC), intent(in) :: dt
   ! Grid spacings.
   type(Coords1D), intent(in) :: p
 
@@ -134,7 +132,7 @@ function fin_vol_lu_decomp(dt, p, coef_q, coef_q_diff, coef_q_adv, &
   ! The sizes must be consistent among all the coefficients that are
   ! actually present, i.e. coef_q_diff and coef_q_adv should be one level
   ! bigger than coef_q and coef_q_weight, and have the same column number.
-  real(r8), USE_CONTIGUOUS intent(in), optional :: coef_q(:,:), &
+  real(GW_PRC), USE_CONTIGUOUS intent(in), optional :: coef_q(:,:), &
        coef_q_diff(:,:), coef_q_adv(:,:), coef_q_weight(:,:)
 
   ! Boundary conditions (optional, default to 0 flux through boundary).
@@ -190,7 +188,7 @@ function fin_vol_lu_decomp(dt, p, coef_q, coef_q_diff, coef_q_adv, &
   else
      call net_operator%lmult_as_diag(-dt)
   end if
-  call net_operator%add_to_diag(1._r8)
+  call net_operator%add_to_diag(1._GW_PRC)
 
   ! Decompose, grafting on an optional input decomp. The graft is a way to
   ! avoid re-calculating the ending (bottom) levels when the coefficients

@@ -1161,7 +1161,7 @@ contains
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'Q', 'DTDT_DC'/),                          &
+         SHORT_NAME  = (/'Q', 'DTDT_DC', 'DTDT_SC'/),              &
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
