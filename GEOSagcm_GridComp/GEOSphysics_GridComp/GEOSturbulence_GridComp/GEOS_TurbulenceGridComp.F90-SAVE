@@ -2951,7 +2951,7 @@ contains
      real                                :: MINTHICK
      real                                :: MINSHEAR
      real                                :: AKHMMAX
-     real                                :: C_B, LAMBDA_B, LOUIS_MEMORY
+     real                                :: C_B, LAMBDA_B, WSPD_MAX, LOUIS_MEMORY
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
@@ -3138,7 +3138,8 @@ contains
      call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=0.1,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,       RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.0,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=2.0,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, WSPD_MAX,     trim(COMP_NAME)//"_WSPD_MAX:",     default=15.0,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS); VERIFY_(STATUS)
@@ -3161,7 +3162,7 @@ contains
      else
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=5.0,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
      endif
@@ -4889,7 +4890,7 @@ contains
 
       call BELJAARS(IM, JM, LM, DT, &
                     LAMBDA_B, C_B,  &
-                    KPBL, &
+                    WSPD_MAX, KPBL, &
                     U, V, Z, AREA,  &
                     VARFLT, PLE,    &
                     BKV, BKUU, FKV  )
@@ -6329,7 +6330,7 @@ end subroutine RUN1
 
    subroutine BELJAARS(IM, JM, LM, DT, &
                        LAMBDA_B, C_B,  &
-                       KPBL, &
+                       WSPD_MAX, KPBL, &
                        U, V, Z, AREA,  &
                        VARFLT, PLE,    &
                        BKV, BKVV, FKV  )
@@ -6354,6 +6355,7 @@ end subroutine RUN1
       real,    intent(IN   )                    :: DT
       real,    intent(IN   )                    :: LAMBDA_B
       real,    intent(IN   )                    :: C_B
+      real,    intent(IN   )                    :: WSPD_MAX
 
       real,    intent(IN   ), dimension(:,:,: ) :: U
       real,    intent(IN   ), dimension(:,:,: ) :: V
@@ -6371,29 +6373,30 @@ end subroutine RUN1
       real, parameter ::      &
           dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
           dxmax_ss = 12000.0           ! maximum grid length for Beljaars
-                       ! a1 = (IH*kflt**n1)**-1 = (0.00102*0.00035**-1.9)**-1 = 0.00026615161
-                       ! a1 = 0.00026615161
-                       ! a2 = a1 * k1**(n1-n2) = a1 * 0.003**(-1.9 - -2.8) = a1 * 0.003**0.9 = a1 * 0.005363
-                       ! a2 = a1 * 0.005363 * 0.075924 = 1.08371722e-7
+                       ! (IH*kflt**n1)**-1 = (0.00102*0.00035**-1.9)**-1 = 0.00026615161
+                       ! a1=0.00026615161*VARFLT(i,j)
+                       ! k1**(n1-n2) = 0.003**(-1.9 - -2.8) = 0.003**0.9 = 0.005363
+                       ! a2=a1 * 0.005363 * 0.075924 * &
       real, parameter :: a2 = 1.08371722e-7
 
       do I = 1, IM
          do J = 1, JM
 #ifdef OLDGEOS
-            CBl = C_B*1.e-7*VARFLT(I,J)
+           ! Resolution sensitivity to disable Beljaars at <5km
+            CBl = C_B*1.e-7*MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(I,J))/(dxmax_ss-dxmin_ss))))
             Hefold = LAMBDA_B
 #else
-           ! Resolution sensitivity to disable Beljaars at <5km
-            CBl = C_B*a2*VARFLT(I,J)*MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
+            CBl=C_B * a2 * &
+               MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! Revise e-folding height based on PBL height and topographic std. dev.
             Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,nint(KPBL(i,j)))),LAMBDA_B)
 #endif
             do L = LM, 1, -1
                FKV(I,J,L) = 0.0
                if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold ) then
-                  FKV_temp = Z(I,J,L)/Hefold
-                  FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-                  FKV_temp = CBl*(FKV_temp/Hefold)*sqrt(U(I,J,L)**2+V(I,J,L)**2)
+                  FKV_temp = Z(I,J,L)*(1.0/Hefold)
+                  FKV_temp = VARFLT(I,J) * exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
+                  FKV_temp = (CBl/Hefold)*min( sqrt(U(I,J,L)**2+V(I,J,L)**2),WSPD_MAX )*FKV_temp
 
                   BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
                   BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp

@@ -1279,7 +1279,7 @@ contains
 !        end if
 !     end do
 !  LTS using TH at 3km abve surface
-      do k = 2,nlev
+      do k = nlev-1,2,-1
          if (z(i,j,k).gt.3000.0) then
            lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
            exit
