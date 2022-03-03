@@ -19,6 +19,8 @@ module CICE_GEOSPlugMod
 !USES:
   use ESMF
   use MAPL
+  use CICE_InitMod                 
+  use CICE_FinalMod                 
 
 
   implicit none
@@ -74,7 +76,6 @@ contains
     Iam = trim(COMP_NAME) // Iam
 
 !BOS
-
 
 
   !*CALLBACK*
@@ -280,14 +281,11 @@ contains
     call ESMF_VMGet(VM, mpiCommunicator=Comm, rc=STATUS)
     VERIFY_(STATUS)
 
-    call fms_init(Comm)
 
-! Init CICE infrastructure
+! Init CICE 
 !---------------
-
-    call constants_init
-    call field_manager_init
-    call set_calendar_type ( JULIAN)
+    ! BZ: need to properly initialze CICE's calendar??
+    call CICE_Initialize(Comm)
 
 
 ! Initialize CICE model
@@ -310,17 +308,6 @@ contains
     jsc  = Ocean_grid%jsc; jec  = Ocean_grid%jec
     jsd  = Ocean_grid%jsd; jed  = Ocean_grid%jed
 
-! -------
-! instead of:
-!   call mpp_get_compute_domain(Ocean%Domain, g_isc, g_iec, g_jsc, g_jec)
-!   g_isd  = Ocean_grid%isd_global;      g_jsd  = Ocean_grid%jsd_global
-!!  g_ied = ied +g_isd -1;               g_jed = jed +g_jsd -1               ! local + global -1
-!   g_ied = ied+(Ocean_grid%idg_offset); g_jed = jed+(Ocean_grid%jdg_offset)
-! do this:
-    call mpp_get_compute_domain(Ocean_grid%Domain%mpp_domain, g_isc, g_iec, g_jsc, g_jec)
-    call mpp_get_data_domain   (Ocean_grid%Domain%mpp_domain, g_isd, g_ied, g_jsd, g_jed)
-! -------
-
 ! Check local sizes of horizontal dimensions
 !--------------------------------------------
     call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
@@ -332,50 +319,7 @@ contains
     ASSERT_(counts(1)==IM)
     ASSERT_(counts(2)==JM)
 
-! Check run time surface current stagger option set in MOM_input 
-! to make sure it matches what is expected here
-!---------------------------------------------------------------
 
-    if (MAPL_AM_I_Root()) then
-     if ( (Ocean%stagger == AGRID) .or. (Ocean%stagger == BGRID_NE)) then
-       print *, ' Surface velocity stagger set in ocean model: (MOM6) AGRID or BGRID_NE. These are not supported, try CGRID_NE. Exiting!'
-       ASSERT_(.false.)
-     elseif (Ocean%stagger == CGRID_NE) then
-       print *, ' Surface velocity stagger set in ocean model: (MOM6) CGRID_NE.'
-     else
-       print *, ' Surface velocity stagger set in ocean model: (MOM6) is invalid, stopping.'
-       ASSERT_(.false.)
-     endif
-    endif
-
-! Allocate MOM flux bulletin board.
-!------------------------------------
-
-    allocate ( Boundary% u_flux          (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% v_flux          (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% t_flux          (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% q_flux          (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% salt_flux       (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% lw_flux         (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% sw_flux_vis_dir (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% sw_flux_vis_dif (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% sw_flux_nir_dir (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% sw_flux_nir_dif (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% lprec           (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% fprec           (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% runoff          (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% calving         (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% stress_mag      (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% ustar_berg      (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% area_berg       (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% mass_berg       (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% runoff_hflx     (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% calving_hflx    (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% p               (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% mi              (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% ice_rigidity    (g_isd:g_ied,g_jsd:g_jed), &
-                                                stat=STATUS )
-    VERIFY_(STATUS)
 
     !*CALLBACK*
     !=====================================================================================
@@ -416,11 +360,6 @@ contains
 ! Make sure exports neede by the parent prior to our run call are initialized
 !----------------------------------------------------------------------------
 
-    call MAPL_GetPointer(EXPORT, MASK,     'MOM_2D_MASK', alloc=.true., RC=STATUS)
-    VERIFY_(STATUS)
-
-! Get the 2-D MOM data
-!---------------------
 
 ! All Done
 !---------
@@ -680,17 +619,6 @@ contains
     call MAPL_TimerOn(MAPL,"TOTAL"   )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-! Get the Plug private internal state
-!--------------------------------------
-
-    CALL ESMF_UserCompGetInternalState( GC, 'MOM_MAPL_state', WRAP, STATUS )
-    VERIFY_(STATUS)
-
-    MOM_MAPL_internal_state => WRAP%PTR
-
-    Boundary => MOM_MAPL_internal_state%Ice_ocean_boundary
-    Ocean    => MOM_MAPL_internal_state%Ocean
-    Ocean_State => MOM_MAPL_internal_state%Ocean_State
 
 ! Set the times for MOM
 !----------------------
@@ -704,19 +632,8 @@ contains
          RC=STATUS )
     VERIFY_(STATUS)
 
-    Time = set_date(YEAR,MONTH,DAY,HR,MN,SC)
+    call CICE_Finalize !BZ: note save restarts is in ice_step??
 
-    call ocean_model_end (Ocean, Ocean_State, Time) ! SA: this also calls ocean_model_save_restart(...)
-
-    call diag_manager_end(Time )
-    call field_manager_end
-    call fms_io_exit
-
-
-    deallocate ( Ocean,                   STAT=STATUS); VERIFY_(STATUS)
-    deallocate ( Boundary,                STAT=STATUS); VERIFY_(STATUS)
-    deallocate ( MOM_MAPL_internal_state, STAT=STATUS); VERIFY_(STATUS)
-!
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
@@ -726,8 +643,6 @@ contains
 
     call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
     VERIFY_(STATUS)
-
-    call mpp_exit()
 
 ! All Done
 !---------
