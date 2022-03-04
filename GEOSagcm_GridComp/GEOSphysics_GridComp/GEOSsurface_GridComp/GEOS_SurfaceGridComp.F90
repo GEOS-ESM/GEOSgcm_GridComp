@@ -5955,9 +5955,9 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
        TAPER_PRECIP: if(USE_PP_TAPER/=0) then
-          call MAPL_GetResource ( MAPL, PP_TAPER_LAT_LOW , Label="PP_TAPER_LAT_LOW:" , DEFAULT=42.5, RC=STATUS)
+          call MAPL_GetResource ( MAPL, PP_TAPER_LAT_LOW , Label="PP_TAPER_LAT_LOW:" , DEFAULT=50.0, RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetResource ( MAPL, PP_TAPER_LAT_HIGH, Label="PP_TAPER_LAT_HIGH:", DEFAULT=62.5, RC=STATUS)
+          call MAPL_GetResource ( MAPL, PP_TAPER_LAT_HIGH, Label="PP_TAPER_LAT_HIGH:", DEFAULT=60.0, RC=STATUS)
           VERIFY_(STATUS)
 
           PP_TAPER_LAT_LOW  = PP_TAPER_LAT_LOW *(MAPL_PI/180.)
