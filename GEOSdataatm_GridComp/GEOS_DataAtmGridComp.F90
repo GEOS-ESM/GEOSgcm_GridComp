@@ -37,7 +37,6 @@ module GEOS_DataAtmGridCompMod
 
   integer            :: SURF
 
-  integer            :: NUM_ICE_CATEGORIES
   integer, parameter :: NUM_DUDP           = 5
   integer, parameter :: NUM_DUWT           = 5
   integer, parameter :: NUM_DUSD           = 5
@@ -50,11 +49,6 @@ module GEOS_DataAtmGridCompMod
   integer, parameter :: NB_CHOU_NIR = 3                        ! number of near-IR bands
   integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! total number of bands
 
-  integer, parameter :: NUM_3D_ICE_TRACERS=3
-  integer            :: NUM_ICE_LAYERS
-  integer, parameter :: NUM_SNOW_LAYERS=1
-
-  integer            :: NUM_SUBTILES
   integer, parameter :: ICE   = 1
   integer, parameter :: WATER = 2
   integer, parameter :: OBIO  = 3
@@ -148,17 +142,7 @@ module GEOS_DataAtmGridCompMod
           print *, 'Needs CICE Thermodynamics! You turned it off, so this run will now terminate!'
           ASSERT_(DO_CICE_THERMO == 0)
        endif
-
-!      call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
-!      VERIFY_(STATUS)
-!      call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-!      VERIFY_(STATUS)
-       
-!   else
-!      NUM_ICE_CATEGORIES = 1
-!      NUM_ICE_LAYERS     = 1
     endif
-!   NUM_SUBTILES = NUM_ICE_CATEGORIES + 1
 
 ! Ocean biology and chemistry: using OBIO or not?
 ! ------------------------------------------------
@@ -175,7 +159,6 @@ module GEOS_DataAtmGridCompMod
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,  Finalize, RC=STATUS )
     VERIFY_(STATUS)
-
 
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
@@ -248,26 +231,9 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Locals
 
   type (MAPL_MetaComp), pointer   :: MAPL => null()
-  real, pointer :: tmp(:,:) ! needed only to force allocation
-  type (ESMF_State),         pointer  :: GEX(:)
-  type (ESMF_Alarm) :: alarm, solarAlarm
-
-
-! integer                     :: K, N, Nsub, NT
-! real                        :: DTI
-! real                        :: ALBICEV, ALBSNOWV, ALBICEI, ALBSNOWI
-! real                        :: USTAR_MIN, AHMAX
-! real                        :: KSNO
-! real                        :: ICE_REF_SALINITY
-! real                        :: SNOWPATCH
-! real                        :: DALB_MLT
-
-
-! character(len=ESMF_MAXSTR)  :: CONDTYPE
-! character(len=ESMF_MAXSTR)  :: SHORTWAVE 
-
-! integer                     :: DO_POND
-! logical                     :: TR_POND
+  real, pointer                   :: tmp(:,:) ! needed only to force allocation
+  type (ESMF_State),    pointer   :: GEX(:)
+  type (ESMF_Alarm)               :: alarm, solarAlarm
 
 !  Begin...
 !----------
@@ -291,17 +257,6 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOn (MAPL,"TOTAL")
     call MAPL_TimerOn (MAPL,"INITIALIZE"  )
-
-!!! ALT this section below is not needed
-!+=======================================+
-!   call MAPL_Get(MAPL, HEARTBEAT = DTI, RC=STATUS)
-!   VERIFY_(STATUS)
-
-!   call MAPL_GetResource ( MAPL, DTI, Label="CICE_DT:", DEFAULT=DTI, RC=STATUS)
-!   VERIFY_(STATUS)
-!+=======================================+
-! all of CICE initialization is now done in GEOS_CICE4ColumnPhysGridComp.F90
-
 
     call MAPL_TimerOff(MAPL,"INITIALIZE"  )
     call MAPL_TimerOff(MAPL,"TOTAL")
@@ -345,7 +300,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code:
 
-! ! DESCRIPTION: Periodically refreshes the SST and Ice information.
+! ! DESCRIPTION: Periodically refreshes ...??
 
 !EOP
 
@@ -359,7 +314,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer       :: MAPL       => null()
+  type (MAPL_MetaComp),       pointer :: MAPL       => null()
   type (ESMF_GridComp),       pointer :: GCS(:)     => null()
   type (ESMF_State),          pointer :: GIM(:)     => null()
   type (ESMF_State),          pointer :: GEX(:)     => null()
@@ -432,11 +387,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get the time step
 ! -----------------
 
-!   call MAPL_GetResource (MAPL, DT, Label="RUN_DT:"        , __RC__)
-!   call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, __RC__)
-!   call MAPL_GetResource (MAPL, LATSO, Label="LATSO:", DEFAULT=70.0, __RC__)
-!   call MAPL_GetResource (MAPL, LONSO, Label="LONSO:", DEFAULT=70.0, __RC__)
-
 ! Get current time from clock
 !----------------------------
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, __RC__)
@@ -471,8 +421,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Read 10m temperature (K)
 !---------------------------------------------------
-    ! how about default T10 = 270+30*COS(LAT)
-!   call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__)
+!   call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__) ! how about default T10 = 270+30*COS(LAT)
     call MAPL_GetPointer(SurfImport, Tair, 'TA', __RC__)
     call MAPL_GetPointer(import, TA, 'TA', __RC__)
     Tair = TA
@@ -618,7 +567,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfExport, CQ, 'CQ', __RC__)
     call MAPL_GetPointer(SurfExport, CM, 'CM', __RC__)
 
-! Andrea:    -- Tskin can be the SST for this purpose – T foundation           - i think the export version is called HFLX
+! Andrea:    -- Tskin can be the SST for this purpose – T foundation   - i think the export version is called HFLX
 
 ! Andrea: are you sure about this??? Or is GEOS_QsatLQU(Tskin, PS)
     Qskin = GEOS_Qsat(Tskin, PS)
