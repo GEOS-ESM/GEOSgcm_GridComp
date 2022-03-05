@@ -451,7 +451,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Read 10m meridional wind speed (m s-1)
 !---------------------------------------------------
-    call ReadForcingData(impName='UA', frcName='U10', default=0., __RC__)
+    call ReadForcingData(impName='VA', frcName='V10', default=0., __RC__)
     call MAPL_GetPointer(SurfImport, Vair, 'VA', __RC__)
     Vair = merge(tsource = vair, fsource = 0.0, mask = (abs(vair) < 1000.0)); 
 
