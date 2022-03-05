@@ -37,9 +37,13 @@ module GEOS_DataAtmGridCompMod
 
   integer            :: SURF
 
-  integer, parameter :: NUM_DUDP           = 5
-  integer, parameter :: NUM_DUWT           = 5
-  integer, parameter :: NUM_DUSD           = 5
+  integer            :: DO_OBIO         ! default (=0) is to run without ocean bio and chem
+  integer, parameter :: DO_CO2SC  = 0
+  logical, parameter :: DO_GOSWIM = .false.
+
+  integer, parameter :: NUM_DUDP = 5
+  integer, parameter :: NUM_DUWT = 5
+  integer, parameter :: NUM_DUSD = 5
   integer, parameter :: NUM_BCDP = 2                           ! number of Black Carbon 
   integer, parameter :: NUM_BCWT = 2
   integer, parameter :: NUM_OCDP = 2                           ! number of Organic Carbon 
@@ -103,7 +107,6 @@ module GEOS_DataAtmGridCompMod
     type (ESMF_Config)                      :: CF
     integer                                 :: DO_CICE_THERMO  ! default (=1) is to run with CICE
     type (MAPL_MetaComp),  pointer          :: MAPL
-    integer                                 :: DO_OBIO         ! default (=0) is to run without ocean bio and chem
 
 !=============================================================================
 
@@ -330,7 +333,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, dimension(:,:), pointer             :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin
   real, dimension(:,:), pointer             :: DRPARN, DFPARN, DRNIRN, DFNIRN, DRUVRN, DFUVRN
 
-  logical :: DO_OBIO, DO_CO2SC, DO_GOSWIM
 
 ! Andrea: do we need these????
   real, parameter :: FRUVR          = 0.07
@@ -347,6 +349,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, parameter ::  KNIR          = 340.6
 
   real, parameter :: alb            = 0.066
+
 
 ! pointers to import - none
 ! internal pointers to tile variables ???
@@ -435,7 +438,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        print *, 'High Tair', tair
     end if
 #endif
-    
 
 ! Read 10m specific humidity (kg kg-1)
 !---------------------------------------------------
@@ -532,21 +534,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4
     call SetVarToZero('BLW', __RC__)
-
-! Andrea: do we need this?
-    if((DO_OBIO/=0).OR. (DO_CO2SC /= 0)) then
-!            SHORT_NAME         = 'CO2SC',                             &
-                 ! ungridded dims NB_CHOU
-!            SHORT_NAME         = 'FSWBAND',                           &
-!            SHORT_NAME         = 'FSWBANDNA',                         &
-    endif
-
-!ALT: this is not done yet.
-!SA:  seems we do not need it?!
-    if (DO_GOSWIM) then
-       ! BUNDLE
-!        SHORT_NAME         = 'AERO_DP',                           &
-    end if
     
     call SetVarToZero('DTSDT', __RC__)
 
@@ -603,145 +590,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read sea surface salinity (psu),
 !---------------------------------------------------
 
-! Andrea: dry and wet clay depositions???
-#ifdef LEFTOVER_FROM_OLD_CODE
-
-! Read Clay-Sized Dry Atmospheric Dust Depositions
-!-------------------------------------------------
-    do K = 1, NUM_DUDP
-       write(label,'(I3.3)') K
-       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUDP'//label//'_FILE:', default = 'none', RC=STATUS )
-       VERIFY_(STATUS)
-       if(trim(datafile) == 'none') then; dry_clay = 0.0
-       else
-          call MAPl_ReadForcing( MAPL, 'DUDP'//label, DATAFILE, CURRENTTIME, dry_clay, RC=STATUS )
-          VERIFY_(STATUS)
-       endif
-       if (associated(dry_clayx)) dry_clayx(:,K) = dry_clay
-    end do
-
-! Read Clay-Sized Wet Atmospheric Dust Depositions
-!-------------------------------------------------
-    do K = 1, NUM_DUWT
-       write(label,'(I3.3)') K
-       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUWT'//label//'_FILE:', default = 'none', RC=STATUS )
-       VERIFY_(STATUS)
-       if(trim(datafile) == 'none') then; wet_clay = 0.0
-       else
-          call MAPl_ReadForcing( MAPL, 'DUWT'//label, DATAFILE, CURRENTTIME, wet_clay, RC=STATUS )
-          VERIFY_(STATUS)
-       endif
-       if (associated(wet_clayx)) wet_clayx(:,K) = wet_clay
-    end do
-
-! Read Clay-Sized Sedimentary Atmospheric Dust Depositions
-!---------------------------------------------------------
-    do K = 1, NUM_DUSD
-       write(label,'(I3.3)') K
-       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUSD'//label//'_FILE:', default = 'none', RC=STATUS )
-       VERIFY_(STATUS)
-       if(trim(datafile) == 'none') then; sed_clay = 0.0
-       else
-          call MAPl_ReadForcing( MAPL, 'DUSD'//label, DATAFILE, CURRENTTIME, sed_clay, RC=STATUS )
-          VERIFY_(STATUS)
-       endif
-       if (associated(sed_clayx)) sed_clayx(:,K) = sed_clay
-    end do
-
-! Read Atmospheric Clouds (Atmospheric Optics)
-!---------------------------------------------
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CCOVM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; ccovm = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CCOVM', DATAFILE, CURRENTTIME, ccovm, RC=STATUS )
-        VERIFY_(STATUS)
-    endif; 
-
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CLDTCM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; cldtcm = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CLDTCM', DATAFILE, CURRENTTIME, cldtcm, RC=STATUS )
-        VERIFY_(STATUS)
-    endif; 
-
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='RLWPM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; rlwpm = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'RLWPM', DATAFILE, CURRENTTIME, rlwpm, RC=STATUS )
-        VERIFY_(STATUS)
-    endif; 
-
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CDREM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; cdrem = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CDREM', DATAFILE, CURRENTTIME, cdrem, RC=STATUS )
-        VERIFY_(STATUS)
-    endif; 
-
-! Read Atmospheric Properties (Atmospheric Optics)
-!-------------------------------------------------
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='RH_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; rh = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'RH', DATAFILE, CURRENTTIME, rh, RC=STATUS )
-        VERIFY_(STATUS)
-    endif; 
-
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='OZ_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; oz = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'OZ', DATAFILE, CURRENTTIME, oz, RC=STATUS )
-        VERIFY_(STATUS)
-    endif; 
-
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='WV_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; wv = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'WV', DATAFILE, CURRENTTIME, wv, RC=STATUS )
-        VERIFY_(STATUS)
-    endif; 
-
-! Read Atmospheric Carbon Dioxide from Carbon Tracker (_2011_OI)
-!-----------------------------------------------------
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CO2SC_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
-    if(trim(datafile) == 'none') then; co2sc = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CO2SC', DATAFILE, CURRENTTIME, co2sc,  RC=STATUS )
-        VERIFY_(STATUS)
-    endif;
-    if ( associated(co2scx) ) co2scx = co2sc
-
-
-! Read MODIS Aerosols (Atmospheric Optics)
-!-----------------------------------------
-
-    do k=1, 33
-     write(unit = suffix, fmt = '(i2.2)') k
-     call MAPL_GetResource( MAPL, DATAfile, LABEL='TAUA_FILE:', default = 'none', RC=STATUS )
-     VERIFY_(STATUS)
-     if(trim(datafile) == 'none') then; taua = 0.0
-     else; call MAPL_ReadForcing( MAPL, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, taua, RC=STATUS)
-         VERIFY_(STATUS)
-     endif;
-     ataua(k)%b => taua
-
-     call MAPL_GetResource( MAPL, DATAfile, LABEL='ASYMP_FILE:', default = 'none', RC=STATUS )
-     VERIFY_(STATUS)
-     if(trim(datafile) == 'none') then; asymp = 0.0
-     else; call MAPL_ReadForcing( MAPL, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, asymp, RC=STATUS)
-         VERIFY_(STATUS)
-     endif;  
-     aasymp(k)%b => asymp
-
-     call MAPL_GetResource( MAPL, DATAfile, LABEL='SSALB_FILE:', default = 'none', RC=STATUS )
-     VERIFY_(STATUS)
-     if(trim(datafile) == 'none') then; ssalb = 0.0
-     else; call MAPL_ReadForcing( MAPL, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ssalb, RC=STATUS)
-         VERIFY_(STATUS)
-     endif;
-     assalb(k)%b => ssalb
-    enddo
-#endif
+!  do anything that relates to OBIO via call to obio_extra
+!  ONLY if the user wants to run with OBIO, default is not to run it; see ABOVE SetServices
+   call obio_extra(DO_OBIO, DO_CO2SC, DO_GOSWIM,    &
+                   NUM_DUDP, NUM_DUWT, NUM_DUSD)
+! ------------------------------------------------
 
     deallocate(Uskin, Vskin, Qskin, __STAT__)
 
@@ -808,6 +661,172 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine SetVarToZero
 
+  subroutine obio_extra(DO_OBIO, DO_CO2SC, DO_GOSWIM, &
+                        NUM_DUDP, NUM_DUWT, NUM_DUSD)
+
+    integer, intent(IN) :: NUM_DUDP, NUM_DUWT, NUM_DUSD
+    integer, intent(IN) :: DO_OBIO, DO_CO2SC
+    logical, intent(IN) :: DO_GOSWIM
+
+    integer :: K
+
+! Andrea: dry and wet clay depositions???
+#ifdef LEFTOVER_FROM_OLD_CODE
+
+! Andrea: do we need this?
+    if((DO_OBIO/=0).OR. (DO_CO2SC /= 0)) then
+!            SHORT_NAME         = 'CO2SC',                             &
+                 ! ungridded dims NB_CHOU
+!            SHORT_NAME         = 'FSWBAND',                           &
+!            SHORT_NAME         = 'FSWBANDNA',                         &
+    endif
+
+!ALT: this is not done yet.
+!SA:  seems we do not need it?!
+    if (DO_GOSWIM) then
+       ! BUNDLE
+!        SHORT_NAME         = 'AERO_DP',                           &
+    end if
+
+!   Read Clay-Sized Dry Atmospheric Dust Depositions
+!-------------------------------------------------
+    do K = 1, NUM_DUDP
+       write(label,'(I3.3)') K
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUDP'//label//'_FILE:', default = 'none', RC=STATUS )
+       VERIFY_(STATUS)
+       if(trim(datafile) == 'none') then; dry_clay = 0.0
+       else
+          call MAPl_ReadForcing( MAPL, 'DUDP'//label, DATAFILE, CURRENTTIME, dry_clay, RC=STATUS )
+          VERIFY_(STATUS)
+       endif
+       if (associated(dry_clayx)) dry_clayx(:,K) = dry_clay
+    end do
+
+!   Read Clay-Sized Wet Atmospheric Dust Depositions
+!-------------------------------------------------
+    do K = 1, NUM_DUWT
+       write(label,'(I3.3)') K
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUWT'//label//'_FILE:', default = 'none', RC=STATUS )
+       VERIFY_(STATUS)
+       if(trim(datafile) == 'none') then; wet_clay = 0.0
+       else
+          call MAPl_ReadForcing( MAPL, 'DUWT'//label, DATAFILE, CURRENTTIME, wet_clay, RC=STATUS )
+          VERIFY_(STATUS)
+       endif
+       if (associated(wet_clayx)) wet_clayx(:,K) = wet_clay
+    end do
+
+!   Read Clay-Sized Sedimentary Atmospheric Dust Depositions
+!---------------------------------------------------------
+    do K = 1, NUM_DUSD
+       write(label,'(I3.3)') K
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUSD'//label//'_FILE:', default = 'none', RC=STATUS )
+       VERIFY_(STATUS)
+       if(trim(datafile) == 'none') then; sed_clay = 0.0
+       else
+          call MAPl_ReadForcing( MAPL, 'DUSD'//label, DATAFILE, CURRENTTIME, sed_clay, RC=STATUS )
+          VERIFY_(STATUS)
+       endif
+       if (associated(sed_clayx)) sed_clayx(:,K) = sed_clay
+    end do
+
+!   Read Atmospheric Clouds (Atmospheric Optics)
+!---------------------------------------------
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CCOVM_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; ccovm = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'CCOVM', DATAFILE, CURRENTTIME, ccovm, RC=STATUS )
+        VERIFY_(STATUS)
+    endif; 
+
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CLDTCM_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; cldtcm = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'CLDTCM', DATAFILE, CURRENTTIME, cldtcm, RC=STATUS )
+        VERIFY_(STATUS)
+    endif; 
+
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='RLWPM_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; rlwpm = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'RLWPM', DATAFILE, CURRENTTIME, rlwpm, RC=STATUS )
+        VERIFY_(STATUS)
+    endif; 
+
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CDREM_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; cdrem = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'CDREM', DATAFILE, CURRENTTIME, cdrem, RC=STATUS )
+        VERIFY_(STATUS)
+    endif; 
+
+!   Read Atmospheric Properties (Atmospheric Optics)
+!-------------------------------------------------
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='RH_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; rh = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'RH', DATAFILE, CURRENTTIME, rh, RC=STATUS )
+        VERIFY_(STATUS)
+    endif; 
+
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='OZ_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; oz = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'OZ', DATAFILE, CURRENTTIME, oz, RC=STATUS )
+        VERIFY_(STATUS)
+    endif; 
+
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='WV_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; wv = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'WV', DATAFILE, CURRENTTIME, wv, RC=STATUS )
+        VERIFY_(STATUS)
+    endif; 
+
+!   Read Atmospheric Carbon Dioxide from Carbon Tracker (_2011_OI)
+!-----------------------------------------------------
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CO2SC_FILE:', default = 'none', RC=STATUS )
+    VERIFY_(STATUS)
+    if(trim(datafile) == 'none') then; co2sc = 0.0; 
+    else; call MAPl_ReadForcing( MAPL, 'CO2SC', DATAFILE, CURRENTTIME, co2sc,  RC=STATUS )
+        VERIFY_(STATUS)
+    endif;
+    if ( associated(co2scx) ) co2scx = co2sc
+
+
+!   Read MODIS Aerosols (Atmospheric Optics)
+!-----------------------------------------
+
+    do k=1, 33
+     write(unit = suffix, fmt = '(i2.2)') k
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='TAUA_FILE:', default = 'none', RC=STATUS )
+     VERIFY_(STATUS)
+     if(trim(datafile) == 'none') then; taua = 0.0
+     else; call MAPL_ReadForcing( MAPL, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, taua, RC=STATUS)
+         VERIFY_(STATUS)
+     endif;
+     ataua(k)%b => taua
+
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='ASYMP_FILE:', default = 'none', RC=STATUS )
+     VERIFY_(STATUS)
+     if(trim(datafile) == 'none') then; asymp = 0.0
+     else; call MAPL_ReadForcing( MAPL, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, asymp, RC=STATUS)
+         VERIFY_(STATUS)
+     endif;  
+     aasymp(k)%b => asymp
+
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='SSALB_FILE:', default = 'none', RC=STATUS )
+     VERIFY_(STATUS)
+     if(trim(datafile) == 'none') then; ssalb = 0.0
+     else; call MAPL_ReadForcing( MAPL, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ssalb, RC=STATUS)
+         VERIFY_(STATUS)
+     endif;
+     assalb(k)%b => ssalb
+    enddo
+#endif
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine obio_extra
 
 end subroutine RUN
 !----------------------------------------------------------------------------------------------------------------------------------
