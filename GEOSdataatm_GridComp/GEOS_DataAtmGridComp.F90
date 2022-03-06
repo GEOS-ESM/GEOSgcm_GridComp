@@ -121,9 +121,86 @@ module GEOS_DataAtmGridCompMod
     Iam = trim(COMP_NAME) // Iam
 
     call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'PS',                     &
+      LONG_NAME = 'surface_pressure',        &
+      UNITS = 'Pa',                          &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'TA',                     &
       LONG_NAME = 'surface_air_temperature', &
       UNITS = 'K',                           &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'QA',                     &
+      LONG_NAME = 'surface_specific_humidity', &
+      UNITS = '1',                           &  ! convert to kg/kg?? or g/kg??
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'UA',                     &
+      LONG_NAME = '10-meter_eastward_wind',  &
+      UNITS = 'm s-1',                       &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'VA',                     &
+      LONG_NAME = '10-meter_northward_wind', &
+      UNITS = 'm s-1',                       &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'RUNOFF',                 &
+      LONG_NAME = 'overland_runoff_including_throughflow', &
+      UNITS = 'kg m-2 s-1',                  &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'PCU',                    &
+      LONG_NAME = 'convective_rainfall',     &
+      UNITS = 'kg m-2 s-1',                  &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'PLS',                    &
+      LONG_NAME = 'large_scale_rainfall',    &
+      UNITS = 'kg m-2 s-1',                  &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'SNO',                    &
+      LONG_NAME = 'snowfall',                &
+      UNITS = 'kg m-2 s-1',                  &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'LWGNTWTR',               &
+      LONG_NAME = 'open_water_net_downward_longwave_flux',                &
+      UNITS = 'W m-2',                       &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'LWTUP',                  &
+      LONG_NAME = 'upwelling_longwave_flux_at_toa', &
+      UNITS = 'W m-2',                       &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'SWGDWN',                 &
+      LONG_NAME = 'surface_incoming_shortwave_flux',&
+      UNITS = 'W m-2',                       &
       DIMS = MAPL_DimsHorzOnly,              &
       VLOCATION = MAPL_VLocationNone, RC=STATUS)
 
@@ -328,7 +405,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer                                   :: IM, JM
   real, dimension(:,:), allocatable         :: Uskin, Vskin, Qskin
-  real, dimension(:,:), allocatable, target :: swrad
+  real, dimension(:,:), allocatable, target :: swrad, lwdn
   real, dimension(:,:), pointer             :: PS, Tair, Qair, Uair, Vair, DZ, ALW, SPEED
   real, dimension(:,:), pointer             :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin
   real, dimension(:,:), pointer             :: DRPARN, DFPARN, DRNIRN, DFNIRN, DRUVRN, DFUVRN
@@ -354,7 +431,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! pointers to import - none
 ! internal pointers to tile variables ???
 
-  real, pointer, dimension(:,:) :: TA! => null()
+  real, pointer, dimension(:,:) :: TA       ! => null()
+  real, pointer, dimension(:,:) :: QA       ! => null()
+  real, pointer, dimension(:,:) :: UA       ! => null()
+  real, pointer, dimension(:,:) :: VA       ! => null()
+  real, pointer, dimension(:,:) :: RUNOFF   ! => null()
+  real, pointer, dimension(:,:) :: PCU      ! => null()
+  real, pointer, dimension(:,:) :: PLS      ! => null()
+  real, pointer, dimension(:,:) :: SNO      ! => null()
+  real, pointer, dimension(:,:) :: LWGNTWTR ! => null()
+  real, pointer, dimension(:,:) :: LWTUP    ! => null()
+  real, pointer, dimension(:,:) :: SWGDWN   ! => null()
 
 ! pointers to export - none???
 
@@ -420,7 +507,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read Sea Level Pressure (Pa)
 !---------------------------------------------------
     !ALT is this default too low?
-    call ReadForcingData(impName='PS', frcName='SLP', default=90000., __RC__)
+!   call ReadForcingData(impName='PS', frcName='SLP', default=90000., __RC__)
+    call MAPL_GetPointer(import, PS, 'PS', __RC__)
 
 ! Read 10m temperature (K)
 !---------------------------------------------------
@@ -441,33 +529,40 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Read 10m specific humidity (kg kg-1)
 !---------------------------------------------------
-    call ReadForcingData(impName='QA', frcName='Q10', default=2.0e-6, __RC__)
+!   call ReadForcingData(impName='QA', frcName='Q10', default=2.0e-6, __RC__)
+    call MAPL_GetPointer(SurfImport, Qair, 'QA', __RC__)
+    call MAPL_GetPointer(import, QA, 'QA', __RC__)
+    Qair = QA * 0.001 ! SA: convert g/Kg to Kg/Kg
 
 ! Read 10m zonal wind speed (m s-1)
 !---------------------------------------------------
-    call ReadForcingData(impName='UA', frcName='U10', default=0., __RC__)
+!   call ReadForcingData(impName='UA', frcName='U10', default=0., __RC__)
     call MAPL_GetPointer(SurfImport, Uair, 'UA', __RC__)
+    call MAPL_GetPointer(import, UA, 'UA', __RC__)
+    Uair = UA
     Uair = merge(tsource = uair, fsource = 0.0, mask = (abs(uair) < 1000.0)); 
 
 ! Read 10m meridional wind speed (m s-1)
 !---------------------------------------------------
-    call ReadForcingData(impName='VA', frcName='V10', default=0., __RC__)
+!   call ReadForcingData(impName='VA', frcName='V10', default=0., __RC__)
     call MAPL_GetPointer(SurfImport, Vair, 'VA', __RC__)
+    call MAPL_GetPointer(import, VA, 'VA', __RC__)
+    Vair = VA
     Vair = merge(tsource = vair, fsource = 0.0, mask = (abs(vair) < 1000.0)); 
 
     call MAPL_GetPointer(SurfImport, SPEED, 'SPEED', __RC__)
     SPEED = SQRT(Uair**2 + Vair**2)
 
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
     IM = size(Uair, 1)
     JM = size(Uair, 1)
-    allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
+    allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), lwdn(IM,JM), __STAT__)
 
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
     DZ = 50.0 ! meters
 
 ! River runoff    
-    call ReadForcingData(impName='DISCHARGE', frcName='RR', default=0., __RC__)
+!   call ReadForcingData(impName='DISCHARGE', frcName='RR', default=0., __RC__)
+    call MAPL_GetPointer(import, RUNOFF, 'RUNOFF', __RC__)
 
     !ALT: we should read topo, but for now over ocean this is fine
     call SetVarToZero('PHIS', __RC__)
@@ -487,14 +582,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Precipitation
 ! question for Andrea: the old code reads RAIN. How to partition into
 ! PCU and PLS? Right now all of RAIN goes into PCU (arbitralily chosen)
-    call ReadForcingData(impName='PCU', frcName='RAIN', default=0., __RC__)
-    call SetVarToZero('PLS', __RC__)
-    call ReadForcingData(impName='SNO', frcName='SNO', default=0., __RC__)
+! SA: above can be squashed, we can read PCU and PLS and add to get RAIN.
+!   call ReadForcingData(impName='PCU', frcName='RAIN', default=0., __RC__)
+    call MAPL_GetPointer(import, PCU,    'PCU',    __RC__)
+    call MAPL_GetPointer(import, PLS,    'PLS',    __RC__)
+!   RAIN = PCU + PLS
+!   call SetVarToZero('PLS', __RC__)
+
+!   call ReadForcingData(impName='SNO', frcName='SNO', default=0., __RC__)
+    call MAPL_GetPointer(import, SNO,    'SNO',    __RC__)
 
 ! Radiation
-    call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=100.0, __RC__)
+!   call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=100.0, __RC__)
+    call MAPL_GetPointer(import, LWGNTWTR, 'LWGNTWTR', __RC__)
+    call MAPL_GetPointer(import, LWTUP,    'LWTUP',    __RC__)
+    lwdn = LWGNTWTR + LWTUP
 
-    call ReadForcingData(swrad, frcName='SWRAD', default=0.200, __RC__)
+!   call ReadForcingData(swrad, frcName='SWRAD', default=0.200, __RC__)
+    call MAPL_GetPointer(import, SWGDWN, 'SWGDWN', __RC__)
+    swrad = SWGDWN
+
     call MAPL_GetPointer(SurfImport, DRPARN, 'DRPARN', __RC__)
     call MAPL_GetPointer(SurfImport, DFPARN, 'DFPARN', __RC__)
     call MAPL_GetPointer(SurfImport, DRNIRN, 'DRNIRN', __RC__)
@@ -532,7 +639,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     WHERE (Tskin < 250.0) Tskin = 250 ! some sanity, values are arbitrary
     WHERE (Tskin > 310.0) Tskin = 310.0  ! some sanity, values are arbitrary
 
-    ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4
+    ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4 ! SA: Note for AT: use LWTUP to set alw, after checking with Andrea, anyway you have net, upward LW.
     call SetVarToZero('BLW', __RC__)
     
     call SetVarToZero('DTSDT', __RC__)
@@ -548,7 +655,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, Qair, 'QA', __RC__)
     call MAPL_GetPointer(SurfImport, Uair, 'UA', __RC__)
     call MAPL_GetPointer(SurfImport, Vair, 'VA', __RC__)
-    call MAPL_GetPointer(SurfImport, PS, 'PS', __RC__)
+    call MAPL_GetPointer(SurfImport, PS,   'PS', __RC__)
 
     call MAPL_GetPointer(SurfExport, CT, 'CT', __RC__)
     call MAPL_GetPointer(SurfExport, CQ, 'CQ', __RC__)
@@ -573,6 +680,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     TAUX = CM * (Uskin - Uair)
     TAUY = CM * (Vskin - Vair)
 
+    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
 ! call Run (or, phase) 2 of Surface
     call ESMF_GridCompRun (GCS(SURF), importState=GIM(SURF), &
          exportState=GEX(SURF), clock=CLOCK, PHASE=2, userRC=status )
@@ -581,7 +689,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! by now Saltwater should be able to provide everything the ocean needs
 
 !-- still left to do
-! modify GCM to always get the sking from Saltwater
+! modify GCM to always get the skin from Saltwater
 ! modify Surface so we can pass discharge, salinity, etc
 
 ! === CHECK_EMAIL 12/22/20
@@ -596,7 +704,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                    NUM_DUDP, NUM_DUWT, NUM_DUSD)
 ! ------------------------------------------------
 
-    deallocate(Uskin, Vskin, Qskin, __STAT__)
+    deallocate(Uskin, Vskin, Qskin, swrad, lwdn, __STAT__)
 
 !  All done
 !-----------
