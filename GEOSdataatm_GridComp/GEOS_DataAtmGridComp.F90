@@ -423,7 +423,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, parameter :: FRNIRDIF       = 0.16
 
   real, parameter ::  KUVR          = 0.09
-  real, parameter ::  KNIR          = 340.6
 
   real, parameter :: alb            = 0.066
 
@@ -610,12 +609,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, DFUVRN, 'DFUVRN', __RC__)
 ! Andrea: Is partitioning OK here? Or something else?
 ! Direct vs duffuse, zenith angle, time of the day???
-    DRPARN = swrad*FRPAR*0.6
-    DFPARN = swrad*FRPAR*0.4
-    DRUVRN = swrad*FRUVR*0.6
-    DFUVRN = swrad*FRUVR*0.4
-    DRNIRN = swrad*FRNIRDIR
-    DFNIRN = swrad*FRNIRDIF
+    DRPARN = swrad*FRPAR*0.6*1.e-5!swrad*FRPAR*0.6
+    DFPARN = swrad*FRPAR*0.4*1.e-5!swrad*FRPAR*0.4
+    DRUVRN = swrad*FRUVR*0.6*1.e-5!swrad*FRUVR*0.6
+    DFUVRN = swrad*swrad*FRUVR*0.4*1.e-5!swrad*FRUVR*0.4
+    DRNIRN = swrad*FRNIRDIR*1.e-5!swrad*FRNIRDIR
+    DFNIRN = swrad*FRNIRDIF*1.e-5!swrad*FRNIRDIF
 
 ! Andrea: Tskin = TS? From previous time step?
 ! Andrea: do we need radiation vars computed before we call phase 1
@@ -639,7 +638,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     WHERE (Tskin < 250.0) Tskin = 250 ! some sanity, values are arbitrary
     WHERE (Tskin > 310.0) Tskin = 310.0  ! some sanity, values are arbitrary
 
-    ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4 ! SA: Note for AT: use LWTUP to set alw, after checking with Andrea, anyway you have net, upward LW.
+!   ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4 ! SA: Note for AT: use LWTUP to set alw, after checking with Andrea, anyway you have net, upward LW.
+    ALW = LWTUP
     call SetVarToZero('BLW', __RC__)
     
     call SetVarToZero('DTSDT', __RC__)
