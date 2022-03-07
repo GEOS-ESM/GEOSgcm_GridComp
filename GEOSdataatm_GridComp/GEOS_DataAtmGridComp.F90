@@ -627,16 +627,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
 
 #ifdef DEBUG
-    if (any(Tskin < 150.0)) then
-       print *, 'Low Tskin', tskin
-    end if
-    if (any(Tskin > 400.0)) then
-       print *, 'High Tskin', tskin
-    end if
+!   if (any(Tskin < 150.0)) then
+!      print *, 'Low Tskin', tskin
+!   end if
+!   if (any(Tskin > 400.0)) then
+!      print *, 'High Tskin', tskin
+!   end if
 #endif
  
-    WHERE (Tskin < 250.0) Tskin = 250 ! some sanity, values are arbitrary
-    WHERE (Tskin > 310.0) Tskin = 310.0  ! some sanity, values are arbitrary
+!   WHERE (Tskin < 250.0) Tskin = 250 ! some sanity, values are arbitrary
+!   WHERE (Tskin > 310.0) Tskin = 310.0  ! some sanity, values are arbitrary
 
 !   ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4 ! SA: Note for AT: use LWTUP to set alw, after checking with Andrea, anyway you have net, upward LW.
     ALW = LWTUP
