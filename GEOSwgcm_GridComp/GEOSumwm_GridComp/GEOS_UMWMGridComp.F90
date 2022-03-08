@@ -777,7 +777,7 @@ contains
     
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'MWL',                                  &
-            LONG_NAME      = 'mean_wavelength',                      &
+            LONG_NAME      = 'mean_wave_length',                     &
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
