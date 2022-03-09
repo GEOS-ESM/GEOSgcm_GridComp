@@ -4,7 +4,7 @@
 ##  Setting environment variables ##
 ####################################
 
-setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1`
+setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1 | cut -d' ' -f2`
 setenv workdir `pwd`
 setenv NC `head -1 clsm/mkCatchParam.log | cut -d'x' -f3 | cut -d'-' -f1`
 setenv NR `head -1 clsm/mkCatchParam.log | cut -d'y' -f2 | cut -d'-' -f1`
@@ -34,18 +34,13 @@ set NDVI_DATES="`printf '1216 0101 0116 0201 0216 0301 0316 0401 0416 0501 0516 
 ########################################
 set today=`date +%Y-%m-%d`
 set myusage=`head -1 clsm/mkCatchParam.log | tail -1`
-set f25tag=`head -2 clsm/mkCatchParam.log | tail -1 | cut -d':' -f2`
+#set f25tag=`head -2 clsm/mkCatchParam.log | tail -1 | cut -d':' -f2`
 set NTILES=`head -1 clsm/catchment.def | tail -1`
 set NGLOBAL=`head -1 til/${gfile}.til | cut -c1-12`
 set mygrid=`echo $myusage | cut -d'g' -f2 | cut -d '-' -f1`
-cvs status src/mkCatchParam.F90 > clsm/TagInfo
-#echo GMU_OCT10_SM >> clsm/TagInfo
-echo `head -7 clsm/TagInfo | tail -1` | cut -d':' -f2 | cut -d'(' -f1 > clsm/TagName
-set MYTAG=`head -1 clsm/TagName | tail -1`
-/bin/rm clsm/Tag*
 
-# Set Mask/Topo speifics
-########################
+# Set Mask/Topo specifics
+#########################
 set MYMASK=`head -6 clsm/mkCatchParam.log | tail -1`
 set NPfafs=291284
 
@@ -63,7 +58,7 @@ set toc_rout="`printf '\\n7. GLOBAL RUNOFF ROUTING MODEL DATA ..................
        The Mosaic types used for catchment surface elements are determined by computing\\n \
        the dominant Mosaic type of all 10-arcsec pixels within the catchment in question.\\n \
 \\n \
-       (b) Deriving Catchment-carbon (Catchment-CN) classes:\\n \
+       (b) Deriving Catchment-Carbon/Nitrogen (Catchment-CN) classes:\\n \
 \\n \
        The Common Land Model version 4 (CLM4: Oleson et al., 2010) utilizes 17 vegetation\\n \
        classes and the version 4.5 (CLM4.5: Oleson et al., 2013) uses 25 vegetation classes (Table 2).\\n \
@@ -170,15 +165,18 @@ endif
 # Set AGCM/SMAP specifics
 #########################
 set WGRID=AGCM
-set int_str1="`printf 'by overlaying the atmospheric grid on ${NPfafs} number of hydraulic catchments \\n in ${MYMASK} mask file.'`"
-set sec2_til="`printf 'area, longitude, latitude, ig, jg, cell_frac, integer,   & \\n \
-                    pfaf_code, pfaf_index, pfaf_frac'`"
+set int_str1="`printf 'by overlaying the atmospheric grid on ${NPfafs} hydraulic catchments \\n  in the ${MYMASK} mask file.'`"
+set sec2_til="`printf ' area, longitude, latitude, ig, jg, cell_frac'`"
 set pfafin_des="`printf 'catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order'`"  
 set pfaf_des="`printf 'Pfafstetter code of the hydrologic catchment'`"
 if( $MYMASK == GEOS5_10arcsec_mask  | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) set pfaf_des=`echo "${pfafin_des}"`
 set pfaf_dest=`echo "${pfaf_des}"`
-set sec2_til2="`printf ' (9)    area      [x EarthRadius^2 km2]  tile area\\n\
-        (10)   pfaf_frac [-]      fraction of the pfafstetter catchment\\n '`" 
+set sec2_til2="`printf '\\n \
+	 ** Since the purpose of this README file is to describe land parameters and land specific fields,\\n \
+	    above description is specific to type 100 land tiles. Other surface types use some of the columns\\n \
+	    to store different fields. For e.g. columns 8 and 9 in type 0 ocean tiles contains i-index and j-index\\n \
+	    of the ocean grid cell where the ocean tile is located while column 11 contains the fraction\\n \
+	    of the ocean grid cell. '`" 
 set rout_smap
 
 if(`echo $gfile | cut -d '_' -f1` == SMAP | $ease == EASE) then
@@ -241,7 +239,7 @@ if($mylai == GLASSA) then
        8-day climatology of LAI was computed from these data by temporally averaging over the 37-year period \\n \
        (by 8-day periods) on the 3-arcmin grid. Those climatological data  were aggregated over \\n \
        the pixels of each land element to derive a 8-day LAI\\n \
-       In order to fill gaps that may exist due to inconsistencies between LAI and GEOS5 masks as well as data gaps themselves\\n \
+       In order to fill gaps that may exist due to inconsistencies between the LAI and GEOS masks as well as data gaps themselves\\n \
        we constructed, at every time slice, a 1°×1° global gridded LAI dataset \\n \
        by spatially aggregating the finer resolution LAI climatological data. Missing \\n \
        LAI values in the finer resolution datasets were filled with the value for the \\n \
@@ -253,7 +251,7 @@ if($mylai == GLASSM) then
        8-day climatology of LAI was computed from these data by temporally averaging over the 18-year period \\n \
        (by 8-day periods) on the 3-arcmin grid. Those climatological data  were aggregated over \\n \
        the pixels of each land element to derive a 8-day LAI\\n \
-       In order to fill gaps that may exist due to inconsistencies between LAI and GEOS5 masks as well as data gaps themselves\\n \
+       In order to fill gaps that may exist due to inconsistencies between the LAI and GEOS masks as well as data gaps themselves\\n \
        we constructed, at every time slice, a 1°×1° global gridded LAI dataset \\n \
        by spatially aggregating the finer resolution LAI climatological data. Missing \\n \
        LAI values in the finer resolution datasets were filled with the value for the \\n \
@@ -278,7 +276,7 @@ if($mylai == MODIS | $mylai == MODGEO) then
        Preprocessing of the two datasets showed that each had potential flaws, \\n \
        with GEOLAND2 showing questionable seasonal cycles in Siberia, and MODIS \\n \
        showing questionable values over the rain forests. We thus decided to \\n \
-       produce a merged LAI data product for GEOS5 to avoid these potential \\n \
+       produce a merged LAI data product for GEOS to avoid these potential \\n \
        deficiencies. \\n \
 \\n \
        The first step in generating the merged product was computing a 10-day \\n \
@@ -343,6 +341,7 @@ set sec5_mod="`printf 'To compute the scaling factors, 30-arcsec 8-day composite
        element’s pixels to produce an 8-day climatology for the land element as a whole.'`"
 endif
 
+
 # Set soil specifics
 ####################
 set mysoil=`head -5 clsm/mkCatchParam.log | tail -1`
@@ -355,59 +354,55 @@ set mysoil=`head -5 clsm/mkCatchParam.log | tail -1`
 cat << _EOI_ > clsm/intro
 
 =====================================================================================
-||                                                                                 || 
-||                        Land Boundary Conditions for the                         ||
-||                                                                                 ||
-||            Goddard Earth Observing System Model  Version 5 (GEOS-5)             ||
-||										   ||
+                                                                                      
+                          Land Boundary Conditions for the                           
+                                                                                     
+                     Goddard Earth Observing System (GEOS) Model
+  										     
                           ${mygrid} Grid
-||                                                                                 ||
-||                             ----------------------                              ||
-||                                                                                 ||
-||                             Data File Descriptions			           ||
-||										   ||
-||										   ||
-||										   ||
-||         									   ||
-||										   ||
-|| _______________________________________________________________________________ ||
-||										   ||
-||                                         Global Modeling and Assimilation Office ||
-||                                                                 610.1 NASA/GSFC ||
-||										   ||
-||										   ||
-|| Author        : Sarith Mahanama (sarith.p.mahanama@nasa.gov)			   ||
-||										   ||
-|| Data Citation : Mahanama, S.P., R.D. Koster, G.K. Walker, L. Takacs, R.H.       ||
-||                 Reichle, G. de Lannoy, Q. Liu, B. Zhao, and M. Suarez (2015) :  ||
-||		   Land Boundary Conditions for the Goddard Earth Observing System ||
-||		   Model Version 5 (GEOS-5) Climate Modeling System -  Recent      ||
-||		   Updates and Data File Descriptions. NASA Technical Report Series||
-||		   on Global Modeling and Data Assimilation 104606, v39, 51pp.	   ||
-||                 URL: http://gmao.gsfc.nasa.gov/pubs/tm/                         ||
-||										   ||
-|| IMPORTANT UPDATE (5/4/2019) :						   ||
-||		In addition to the ASCII files mentioned in the text, following    ||
-||		two nc4 files also contain parameters that are needed by models.   ||
-||		More importantly, the restart utilities read parameters            ||
-||		from below 2 nc4 files instead the ASCII files.			   ||
-||										   ||
-||		(1) "catch_params.nc4" contains :				   ||
-||		OLD_ITY  (primary vegetation type Section 3.2.1) 		   ||
-||		BEE, PSIS, POROS, COND,	WPWET, DP2BR (Section 2.2.4)	           ||
-||		ATAU2,BTAU2,ATAU5,BTAU5 (Section 6.2.1) 			   ||
-||		GNU, TSA1,TSA2,TSB1,TSB2 (Section 6.2.2)			   ||
-||		BF1,BF2,BF3 (Section 6.2.3)					   ||
-||		ARS1,ARS2,ARS3,ARA1,ARA2,ARA3,ARA4,ARW1,ARW2,			   ||
-||		     ARW3,ARW4 (Section 6.2.4)					   ||
-||										   ||
-||		(1) "catchcn_params.nc4" contains :				   ||
-||		ITY (CLM-C_pt1, CLM-C_pt2, CLM-C_st1, CLM-C_st2 Section 3.3.3)     ||
-||		FVG (CLM-C_pf1, CLM-C_pf2,CLM-C_sf1, CLM-C_sf2 Section 3.3.3) 	   ||
-||		NDEP,BGALBVR, BGALBVF, BGALBNR, BGALBNF, T2_M, T2_S (Section 3.2.4)||
-||										   ||
-|| Date          : ${today}                                                      ||
-||										   ||
+                                                                                     
+                               ----------------------                                
+                                                                                     
+                               Data File Descriptions			             
+
+   _______________________________________________________________________________   
+  										     
+                                           Global Modeling and Assimilation Office   
+                                                                   610.1 NASA/GSFC   
+  										     
+  										     
+   Author        : Sarith Mahanama (sarith.p.mahanama@nasa.gov)			     
+  										     
+   Data Citation : Mahanama, S.P., R.D. Koster, G.K. Walker, L. Takacs, R.H.         
+                   Reichle, G. de Lannoy, Q. Liu, B. Zhao, and M. Suarez (2015) :    
+  		   Land Boundary Conditions for the Goddard Earth Observing System   
+  		   Model Version 5 (GEOS-5) Climate Modeling System -  Recent        
+  		   Updates and Data File Descriptions. NASA Technical Report Series  
+  		   on Global Modeling and Data Assimilation 104606, v39, 51pp.	     
+                   URL: http://gmao.gsfc.nasa.gov/pubs/                              
+  										     
+   IMPORTANT UPDATE (5/4/2019) :						     
+      In addition to the ASCII files mentioned in the text, the following two nc4    
+      files also contain the parameters that are needed by the land models.          
+      The restart utilities now read parameters from these nc4 files rather than     
+      from the ASCII files.			                                     
+      								                     
+      (1) "catch_params.nc4" contains:                                               
+            OLD_ITY                                                (Section 3.2.1)   
+            BEE, PSIS, POROS, COND, WPWET, DP2BR                   (Section 2.2.4)   
+            ATAU2, BTAU2, ATAU5, BTAU5                             (Section 6.2.1)   
+            GNU, TSA1, TSA2, TSB1, TSB2                            (Section 6.2.2)   
+            BF1, BF2, BF3                                          (Section 6.2.3)   
+            ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2,         	     
+            ARW3, ARW4                                             (Section 6.2.4)   
+      								                     
+      (2) "catchcn_params.nc4" contains: 				             
+            ITY (CLM-C_pt1, CLM-C_pt2, CLM-C_st1, CLM-C_st2)       (Section 3.3.3)   
+            FVG (CLM-C_pf1, CLM-C_pf2, CLM-C_sf1, CLM-C_sf2)       (Section 3.3.3)   
+            NDEP, BGALBVR, BGALBVF, BGALBNR, BGALBNF, T2_M, T2_S   (Section 3.2.4)   
+            							                     
+   Date          : ${today}                                                         
+  										     
 =====================================================================================
 
                                   TABLE OF CONTENTS
@@ -428,7 +423,7 @@ cat << _EOI_ > clsm/intro
    3.1 Data generation and processing chain
    3.2 Data files and images
 	3.2.1 Mosaic vegetation types and fractions
-        3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS5
+        3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS
 	3.2.3 CLM/CLM4.5 and CLM/CLM4.5-carbon vegetation types and fractions 
 	3.2.4 CLM Nitrogen Deposition, annual mean T2m, soil back ground albedo
 	3.2.5 CLM4.5 ABM, PEATF, GDP, HDM, and soil field capacity
@@ -466,20 +461,20 @@ cat << _EOI_ > clsm/intro
 	8.2.1 Country Code, US State Code, Country Name, State Name
    8.3 References
 
-APPENDIX I - mkCatchParam tag, input options, and log ............................ A1
+APPENDIX I - mkCatchParam input options and log ................................. A-I
 
 =====================================================================================
-====================================== PAGE  1 ======================================
+=================================== SECTION  1 ======================================
 =====================================================================================
 
 1. INTRODUCTION
 
    This directory contains land boundary data files that are needed by the land models in 
-   the GEOS-5 climate modeling system.  The catchment-tiles (computational units at the 
-   land surface) have been derived for the GEOS5 ${mygrid} grid 
-   `echo "$int_str1"`  The ${mygrid} 
-   grid comprises of ${NGLOBAL} number of tiles globally,  out of which ${NTILES} are 
-   catchment-tiles.
+   the GEOS climate modeling system.  The catchment-tiles (computational units at the 
+   land surface) have been derived for the GEOS ${mygrid} grid 
+   `echo "$int_str1"`  
+   The ${mygrid} grid comprises ${NGLOBAL} tiles globally, of which ${NTILES} 
+   are catchment-tiles.
 
    An ${NC}x${NR} integer array of tile indices is saved in Fortran binary file  
    "../rst/${gfile}.rst" in little-endian format. 
@@ -494,7 +489,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
    of seasonal variables are available in "plots" directory.  
 
 =====================================================================================
-====================================== PAGE  2 ======================================
+=================================== SECTION  2 ======================================
 =====================================================================================
 
 2. TOPOGRAPHY AND SOIL DATA
@@ -552,12 +547,12 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 across a given catchment land element to determine that catchment’s effective soil 
 	 depth.
 
-	 Sixteen ARC/GIS shapefiles were obtained from Xu et al. (2017). Canada and 
+	 For PEATMAP, sixteen ARC/GIS shapefiles were obtained from Xu et al. (2017). Canada and 
 	 Hokaido-Mongolia-NorthKorea provided peat fractions inside designated polygons. All 
 	 other regional shape files give exact perimeter of of the peatland. A global 30-arcsec
 	 raster array (43200x21600) of peatland fraction was constructed using those 16 shapefiles.
 	 Soil types derived on tiles are now further updated using the peatmap data. If the computed
-	 fractional coverage of peatland based on PEATMAP data at a given catchment-tile excceeds 0.3, 
+	 fractional coverage of peatland based on PEATMAP data at a given catchment-tile excceeds 0.5(?), 
 	 we assume the dominant soil type is as peatland. Soil hydraulic parameters for all
 	 peatland tiles are now obtained from Bechtold et al. (2019).
          
@@ -567,25 +562,24 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 file name: ../til/${gfile}.til
 	 The 8-line header is followed by ${NGLOBAL} number of rows.
 	 do n = 1,${NGLOBAL}
-	        read (10,*)type,`echo "${sec2_til}"`
+	        read ([UNIT],*) type,`echo "${sec2_til}"`
 	 end do
 	 
 	where for each tile:
 	 (1)    type      [-]      tile type (100-land; 19-lakes; 20-ice)
-	 (2)    longitude [degree] longitude at the centroid of the tile
-	 (3)    latitude  [degree] latitude at the centroid of the tile
-	 (4)    ig        [-]      i-index of the global grid cell where the tile is located
-	 (5)    jg        [-]      j-index of the global grid cell where the tile is located
-	 (6)    pfaf_code [-]      ${pfaf_dest} 
-	 (7)    pfaf_index[-]      ${pfafin_des} 
-	 (8)    cell_frac [-]      fraction of the global grid cell    
+         (2)    area      [x EarthRadius^2 km2]  tile area
+	 (3)    longitude [degree] longitude at the centroid of the tile
+	 (4)    latitude  [degree] latitude at the centroid of the tile
+	 (5)    ig        [-]      i-index of the atmospheric grid cell where the tile is located
+	 (6)    jg        [-]      j-index of the atmospheric grid cell where the tile is located
+	 (7)    cell_frac [-]      fraction of the atmospheric grid cell    
 	`echo "${sec2_til2}"`
        2.2.2 Western, eastern, southern, northern edges and mean elevation of tiles
 	 file name: catchment.def
-	 read (10,*) NTILES
+	 read ([UNIT],*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,5(2x,f9.4))') tile_index,pfaf_code,   &
-		min_lon,max_lon,min_lat,max_lat, mean_elevation (m) 
+		read ([UNIT],'(i10,i8,5(2x,f9.4))') tile_index, pfaf_code,   &
+		     min_lon, max_lon,min_lat, max_lat, mean_elevation 
          end do
 	 
 	 where for each tile:
@@ -600,10 +594,10 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 
        2.2.3 Tile topography - statistics of Compound Topographic Index (CTI) 
 	 file name: cti_stats.dat
-	 read (10,*) NTILES
+	 read ([UNIT],*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
-		cti_mean, cti_std, cti_min, cti_max, cti_skew
+		read ([UNIT],'(i10,i8,5(1x,f8.4),i5,e18.3)') tile_index, pfaf_code,   &
+                     cti_mean, cti_std, cti_min, cti_max, cti_skew, dummy, dummy
 	 enddo
 
 	 where for each tile:
@@ -624,10 +618,10 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 _EOI_
 if( $mysoil == HWSD ) then
 cat << _EOS1_ > clsm/soil
-		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
-		tile_index,pfaf_code,soil_class_top,soil_class_com,BEE,              &
-		PSIS,POROS,COND, WPWET, DP2BR, gravel,OrgCarbon_top,                 &
-		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top, PMAP
+		read ([UNIT],'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')       &
+                     tile_index, pfaf_code, soil_class_top, soil_class_com, BEE,                     &
+                     PSIS, POROS, COND, WPWET, DP2BR, gravel, OrgCarbon_top,                         &
+                     OrgCarbon_rz, sand_top, clay_top, sand_rz, clay_rz, WPWET_top, POROS_top, PMAP
 	 end do
 
 	 where for each tile:
@@ -656,7 +650,7 @@ cat << _EOS1_ > clsm/soil
 	 (17)	clay_rz [w%]	percentage clay in the root-zone layer (0-100cm)
 	 (18)	WPWET_top [-]	wilting point/porosity for the surface layer (0-30cm)
 	 (19)	POROS_top [m3/m3] soil moisture content at saturation in the surface layer (0-30cm)
-	 (20)   PMAP the fraction of cell covered bt PEATLAND
+	 (20)   PMAP [-] fraction of cell (tile?) covered by peatland
 
 
 	         ========================================================================
@@ -918,8 +912,8 @@ cat << _EOS1_ > clsm/soil
  		 13.333  3.333 83.333  1.123  2.3751 -1.1086  0.4422  0.0555  0.57369E-06
  		  6.667  6.667 86.667  1.123  2.6893 -1.0407  0.4470  0.0699  0.51317E-06
  		  3.333  3.333 93.333  1.123  2.2797 -1.3816  0.4436  0.0563  0.32091E-06
-                 PEAT   (N/A)         >=8.72  3.4130 -1.7600  0.8000  0.2162  0.78600E-06
-                 PEAT,Bechtold et al. PEATMAP 3.5000 -0.0300  0.9300  0.3672  0.28000E-06
+   Peat: HWSD    (N/A)  (N/A)  (N/A)  >=8.72  3.4130 -1.7600  0.8000  0.2162  0.78600E-06
+or Peat: PEATMAP (N/A)  (N/A)  (N/A)          3.5000 -0.0300  0.9300  0.3672  0.28000E-06  (Bechtold et al)
 		 ------------------------------------------------------------------------
 
 		 Table 1: Soil Hydraulic Properties for 253 soil classes (adapted from De 
@@ -944,14 +938,13 @@ cat << _EOS1_ > clsm/soil
 	    T. M. Munir, M.B. Nilsson, J. S. Price, M. Röhl, A. Schneider, and B. Tiemeyer, 2019. 
 	    PEAT-CLSM: A specific treatment of peatland hydrology in the NASA Catchment Land 
 	    Surface Model. J. Adv. Model. Earth Sys., 11, 2130-2162. doi: 10.1029/2018MS001574. 
-
 _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
- 		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4)')  &
-		tile_index,pfaf_code,soil_class_top,              &
-		soil_class_com,BEE, PSIS,POROS,COND,              &
-		WPWET,soildepth	
+ 		read ([UNIT],'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')       &
+                     tile_index, pfaf_code, soil_class_top,                 &
+	             soil_class_com,BEE, PSIS, POROS, COND,                 &
+		     WPWET, soildepth	
 	 end do
 
 	 where for each tile:
@@ -987,7 +980,7 @@ cat << _EOV1_ > clsm/veg1
 	    610.1 NASA/GSFC.
 
 =====================================================================================
-====================================== PAGE  3 ======================================
+=================================== SECTION  3 ======================================
 =====================================================================================
 
 3. VEGETATION CLASSIFICATION DATA
@@ -1019,9 +1012,9 @@ cat << _EOV1_ > clsm/veg1
        3.2.1 Mosaic vegetation types and fractions
 	 file name: mosaic_veg_typs_fracs
 	 do n = 1, ${NTILES}
-		read (10,*)tile_index,pfaf_code,   &
-		primary_veg_type,secondary_veg_type, primary_veg_frac,         &
-		secondary_veg_frac, canopy_height, ASCATZ0
+		read ([UNIT],(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)) tile_index, pfaf_code,  &
+		     primary_veg_type, secondary_veg_type, primary_veg_frac,                        &
+		     secondary_veg_frac, canopy_height, ASCATZ0
 	 end do
 
 	 where for each tile:
@@ -1039,12 +1032,12 @@ cat << _EOV1_ > clsm/veg1
 	 with Mosaic types: 1 - Broadleaf Evergreen; 2 - Broadleaf Deciduous; 3 - Needleleaf; 
 		4 - Grassland; 5 - Broadleaf Shrubs; 6 - Dwarf Trees 
 
-       3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS5
-       . file name: vegdyn.data or ../vegdyn_*.dat
+       3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS
+         file name: vegdyn.data or ../vegdyn_*.dat
          file format: fortran binaries, little_endian
-             read(10) (primary_veg_type(n),n=1,${NTILES})
-             read(10) (canopy_height   (n),n=1,${NTILES})
-	     read(10) (ASCATz0         (n),n=1,${NTILES})
+             read ([UNIT]) (primary_veg_type(n),n=1,${NTILES})
+             read ([UNIT]) (canopy_height   (n),n=1,${NTILES})
+	     read ([UNIT]) (ASCATz0         (n),n=1,${NTILES})
 	     
 _EOV1_
 if( $MYMASK == GEOS5_10arcsec_mask | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) then
@@ -1053,11 +1046,11 @@ cat << _EOV2_ > clsm/veg2
        3.2.3 CLM/CLM4.5, CLM/CLM4.5-carbon, CLM4.5 and CLM4.5-carbon vegetation types and fractions 
 	 file names: CLM_veg_typs_fracs and  CLM4.5_veg_typs_fracs
 	 do n = 1, ${NTILES} 
-	 read (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')       &
-            tile_index,pfaf_code,                    &
-	    CLM-C_pt1,CLM-C_pt2,CLM-C_st1,CLM-C_st2, &
-	    CLM-C_pf1,CLM-C_pf2,CLM-C_sf1,CLM-C_sf2, &
-	    CLM_pt, CLM_st, CLM_pf, CLM_sf
+	 read ([UNIT],'(2I10,4I3,4f7.2,2I3,2f7.2)')         &
+              tile_index, pfaf_code,                        &
+	      CLM-C_pt1, CLM-C_pt2, CLM-C_st1, CLM-C_st2,   &
+	      CLM-C_pf1, CLM-C_pf2, CLM-C_sf1, CLM-C_sf2,   &
+	      CLM_pt, CLM_st, CLM_pf, CLM_sf
 	 enddo
 
 	 where for each tile:
@@ -1128,8 +1121,8 @@ cat << _EOV2_ > clsm/veg2
        3.2.4 Nitrogen Deposition, annual mean 2m Tair, soil back gorund albedo
 	 file name: CLM_Ndep_SoilAlb
 	 do n = 1, ${NTILES}
-               read (10, '(f10.4,4f7.4,2f8.3)')    &
-               NDEP,BGALBVR, BGALBVF, BGALBNR, BGALBNF, T2_M, T2_S 
+               read ([UNIT], '(f10.4,4f7.4,2f8.3)')                             &
+                    NDEP, BGALBVR, BGALBVF, BGALBNR, BGALBNF, T2_M, T2_S 
 	enddo
 
 	Where for each tile:
@@ -1153,8 +1146,8 @@ cat << _EOV2_ > clsm/veg2
              population density (HDM)
          file name: CLM4.5_abm_peatf_gdp_hdm_fc
          do n = 1, ${NTILES}
-               read (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)') &
-               TID, CID, ABM, PEATF, GDP, HDM, FC
+               read ([UNIT],'(2I10, i3, f8.4, f8.2, f10.2, f8.4)') &
+                    TID, CID, ABM, PEATF, GDP, HDM, FC
          end do
 
          where for each tile:
@@ -1176,10 +1169,11 @@ cat << _EOV2_ > clsm/veg2
               data records are given below:
               `echo "${GSWP2_DATES}"`
 
-              Loop below through until the last data record:
-              read (10) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
-              Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-              read(10) (data(n),n=1,${NTILES})
+              do ii=1,N_avgperiod
+	         read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+	                       Year_End,  Month_End,  Day_End,  Hour_End,  Minute_End,  Secs_End (Float Numbers)
+	         read ([UNIT]) (data(n),n=1,${NTILES})
+	      end do
 
 _EOV2_
 endif
@@ -1194,7 +1188,7 @@ cat << _EOF0_ > clsm/README1
          `echo "${sec3_veg_cite}"`
          
 =====================================================================================
-====================================== PAGE  4 ======================================
+=================================== SECTION  4 ======================================
 =====================================================================================
 
 4. VEGETATION DYNAMIC DATA
@@ -1203,13 +1197,13 @@ cat << _EOF0_ > clsm/README1
 
          `echo "${sec4_lai}"`
 
-       The AVHRR NDVI3g data [third generation Global Inventory Modeling and Mapping Studies 
-       (GIMMS) Normalizeed difference vegetation index (NDVI) data derived from AVHRR images)] 
-       are available two times per month for a 35 year period spanning from 1981 to 2015 at
-       5-arcmin resolution (Pinzon et al., 2014). A NDVI climatology data set for the same
-       temporal resolution was constructed by temporally averaging over the 35-year period
-       on the 5×5 arcmin grid and then aggregating over the pixels of each land element to
-       derive NDVI climatology for that land element.
+         The AVHRR NDVI3g data [third generation Global Inventory Modeling and Mapping Studies 
+         (GIMMS) Normalizeed difference vegetation index (NDVI) data derived from AVHRR images)] 
+         are available two times per month for a 35 year period spanning from 1981 to 2015 at
+         5-arcmin resolution (Pinzon et al., 2014). A NDVI climatology data set for the same
+         temporal resolution was constructed by temporally averaging over the 35-year period
+         on the 5×5 arcmin grid and then aggregating over the pixels of each land element to
+         derive NDVI climatology for that land element.
 
    4.2 Data files and movies
 	4.2.1 Greenness Fraction [-] - [Movie 1 : "plots/GREEN.mp4"]
@@ -1221,10 +1215,11 @@ cat << _EOF0_ > clsm/README1
 	      data records are given below:
   	      `echo "${GSWP2_DATES}"`
 
-	      Loop below through until the last data record:
-	      read(10) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
-		Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-	      read(10) (data(n),n=1,${NTILES})
+              do ii=1,N_avgperiod
+	         read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+	                       Year_End,  Month_End,  Day_End,  Hour_End,  Minute_End,  Secs_End (Float Numbers)
+	         read ([UNIT]) (data(n),n=1,${NTILES})
+	      end do
 	    
 	4.2.2 Leaf Area Index (LAI) [m2/m2] - [Movie 2:"plots/LAI.mp4"; Figure 13: "plots/lai.jpg"]
  	  file name  : lai.dat (or ../lai_clim*.data)
@@ -1235,10 +1230,11 @@ cat << _EOF0_ > clsm/README1
 	      data records are given below:
   	      `echo "${MYLAIDATES}"`
 
-	      Loop below through until the last data record:
-	      read(10) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
-		Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-	      read(10) (data(n),n=1,${NTILES})
+              do ii=1,N_avgperiod
+	         read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+	                       Year_End,  Month_End,  Day_End,  Hour_End,  Minute_End,  Secs_End (Float Numbers)
+	         read ([UNIT]) (data(n),n=1,${NTILES})
+	      end do
 
       	4.2.3 Normalized Difference Vegetation Index (NDVI) [-]
 	  file name  : ndvi.dat (or ../ndvi_clim*.data)
@@ -1249,11 +1245,12 @@ cat << _EOF0_ > clsm/README1
 	      data records are given below:
   	      `echo "${NDVI_DATES}"`
 
-	      Loop below through until the last data record:
-	      read(10) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
-		Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-	      read(10) (data(n),n=1,${NTILES})
-
+              do ii=1,N_avgperiod
+	         read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+	                       Year_End,  Month_End,  Day_End,  Hour_End,  Minute_End,  Secs_End (Float Numbers)
+	         read ([UNIT]) (data(n),n=1,${NTILES})
+	      end do
+	    
    4.3 References
 	 Dirmeyer, P. and Oki, T. (2002): The Second Global Soil Wetness project (GSWP-2) 
 	    Science 2 and Implementation Plan. IGPO Publication Series No. 37, 64p.
@@ -1262,7 +1259,7 @@ cat << _EOF0_ > clsm/README1
          `echo "${sec4_geo_cite}"`
 
 =====================================================================================
-====================================== PAGE  5 ======================================
+=================================== SECTION  5 ======================================
 =====================================================================================
 
 5. SURFACE ALBEDO DATA
@@ -1282,7 +1279,7 @@ cat << _EOF0_ > clsm/README1
 
          Meanwhile, the SiB-based albedo scheme was run at a daily time step over a 1-year 
 	 period using the vegetation types, greenness fractions, and leaf area indices 
-	 established for GEOS-5 for a given distribution of land elements, as described 
+	 established for GEOS for a given distribution of land elements, as described 
 	 in sections 3 and 4 above.  Averaging the visible diffuse and near-infrared 
 	 diffuse albedos generated by the scheme over 8-day periods produced, in effect, 
 	 an 8-day ‘climatology’ of this particular scheme’s diffuse albedos.  The ratio 
@@ -1296,7 +1293,10 @@ cat << _EOF0_ > clsm/README1
 	                     
    5.2 Data files and movies 
        5.2.1 MODIS Albedo Climatology [Diffused, Visible (0.3_0.7) and Near-Infrared (0.7_5.0);
-             Note: GEOS5/CLSM does not read these data
+             Note: These data are not read into GEOS.  They are needed to derive the albedo
+                   scaling parameters (Section 5.2.2), which are used in conjunction with
+                   sun-angle dependent lookup values to achieve albedo values that match
+                   the MODIS climatology while preserving the diurnal cycle.  
          [Movie 3 : "plots/VISDF.mp4" (Diffused visible) and Movie 4 "plots/NIRDF.mp4" 
                    (Diffused infrared)]
 	 file names : ${AlbFileNames}
@@ -1307,11 +1307,12 @@ cat << _EOF0_ > clsm/README1
 	      data records are given below (MMDD):
   	      `echo "${MYALBDATES}"`
 
-	      Loop below through until the last data record:
-	      read(10) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
-		Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-	      read(10) (data(n),n=1,${NTILES})
-
+              do ii=1,N_avgperiod
+	         read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+	                       Year_End,  Month_End,  Day_End,  Hour_End,  Minute_End,  Secs_End (Float Numbers)
+	         read ([UNIT]) (data(n),n=1,${NTILES})
+	      end do
+	    
        5.2.2 MODIS Scale Parameters [Diffused, Visible (0.3_0.7) and Near-Infrared (0.7_5.0)]
 	 file names : visdf.dat/nirdf.dat (or ../visdf*dat and ../nirdf*dat)
 	 file format: fortran binaries, little_endian
@@ -1321,11 +1322,12 @@ cat << _EOF0_ > clsm/README1
 	      data records are given below:
   	      `echo "${MYALBDATES}"`
 
-	      Loop below through until the last data record:
-	      read(10) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
-		Year_End,Month_End,Day_End,Hour_End,Minute_End,Secs_End (Float Numbers)
-	      read(10) (data(n),n=1,${NTILES})
-
+              do ii=1,N_avgperiod
+	         read ([UNIT]) Year_Begin,Month_Begin,Day_Begin,Hour_Begin,Minute_Begin,Secs_Begin,
+	                       Year_End,  Month_End,  Day_End,  Hour_End,  Minute_End,  Secs_End (Float Numbers)
+	         read ([UNIT]) (data(n),n=1,${NTILES})
+	      end do
+	    
    5.3 References
          Gao, F., He, T., Wang, Z., Ghimire, B., Shuai, Y., Masek, J., Schaaf, C. and
 	    Williams, C. (2014): Multiscale climatological albedo look-up maps derived 
@@ -1340,7 +1342,7 @@ cat << _EOF0_ > clsm/README1
 	    model (SiB) for use within general circulation models, J. Atmos. Sci., 43, 505-531. 
 
 =====================================================================================
-====================================== PAGE  6 ======================================
+=================================== SECTION  6 ======================================
 =====================================================================================
 
 6. CATCHMENT LAND SURFACE MODEL PARAMETES
@@ -1366,8 +1368,8 @@ cat << _EOF0_ > clsm/README1
 	 surfexec and rzexec
 	 file name : tau_param.dat
          do n = 1, ${NTILES}
-		read (10,'(i8,i8,4f10.7)')    &
-			tile_index,pfaf_code,atau2,btau2,atau5,btau5
+		read ([UNIT],'(i10,i8,4f10.7)')                                           &
+		     tile_index, pfaf_code, atau2, btau2, atau5, btau5
 	 end do
 	 where:
 	 (1) atau2	atau2: Equation (17) for a 2cm surface layer [-]
@@ -1379,8 +1381,8 @@ cat << _EOF0_ > clsm/README1
 	 root zone and water table
 	 file name : ts.dat
    	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,4(2x,e13.7))')tile_index,pfaf_code,gnu,   &
-	             tsa1,tsa2,tsb1,tsb2
+		read ([UNIT],'(i10,i8,f5.2,4(2x,e13.7))') tile_index, pfaf_code,gnu,     &
+	             tsa1, tsa2, tsb1, tsb2
       	 end do
 
  	 where:
@@ -1392,7 +1394,7 @@ cat << _EOF0_ > clsm/README1
        6.2.3 Baseflow parameters
 	 file name : bf.dat
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,3(2x,e13.7))')tile_index,pfaf_code,gnu,bf1,bf2,bf3
+		read ([UNIT],'(i10,i8,f5.2,3(2x,e13.7))') tile_index, pfaf_code, gnu, bf1, bf2, bf3
 	 end do
 
 	 where:
@@ -1404,8 +1406,8 @@ cat << _EOF0_ > clsm/README1
        6.2.4 Area fractioning parameters
 	 file name : ar.new
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,11(2x,e13.7))')tile_index,pfaf_code,gnu,  &
-			ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4
+		read ([UNIT],'(i10,i8,f5.2,11(2x,e14.7))') tile_index, pfaf_code, gnu,  &
+		      ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4
 	 end do
 
 	 where:
@@ -1437,7 +1439,7 @@ if( $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask | $MYMASK
 cat << _EOF1_ > clsm/README2
 
 =====================================================================================
-====================================== PAGE  7 ======================================
+=================================== SECTION  7 ======================================
 =====================================================================================
 
 7. GLOBAL RUNOFF ROUTING MODEL DATA
@@ -1451,7 +1453,7 @@ cat << _EOF1_ > clsm/README2
 	 codes together allows the construction of a catchment network within the basin. 
 	 Verdin (2013) provided global raster arrays of global Level 12 Pfafstetter codes 
 	 at 1-arcmin resolution along with information on mean elevation.  These data sets 
-	 were used to build the global river channel network slated for use with GEOS-5. 
+	 were used to build the global river channel network slated for use with GEOS. 
 
          The steps used to generate the river network are as follows. Each catchment 
 	 (referred to in this discussion as CatchX) has up to two upstream catchments 
@@ -1500,12 +1502,12 @@ cat << _EOF1_ > clsm/README2
        7.2.1 Pafafstetter catchment connectivity, channel information
 	 file name : /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
 		    SRTM-TopoData/Pfafcatch-routing.dat
-	 read (10,*) NPfafs
+	 read ([UNIT],*) NPfafs
 	 do n = 1, ${NPfafs}
-		read (10,'(i8,i15,4(1x,f9.4),1x,e10.3,3(1x,e9.3),I8,6(1x,f9.4))')         &     
-                pfaf_index,pfaf_code,min_lon,max_lon,min_lat,max_lat, mean_elevation,     & 
-                cat_area,cum_area, length,ElevDiff, dnst_pfaf_index,DN_long, DN_lat,      &
-                UP_lon, UP_lat, mouth_lon, mouth_lat
+		read ([UNIT],'(i8,i15,4(1x,f9.4),1x,e10.3,4(1x,e9.3),I8,6(1x,f9.4))')            &     
+                     pfaf_index, pfaf_code, min_lon, max_lon, min_lat, max_lat, mean_elevation,  & 
+                     cat_area, cum_area, length,ElevDiff, dnst_pfaf_index, DN_long, DN_lat,      &
+                     UP_lon, UP_lat, mouth_lon, mouth_lat
          end do
 
          pfaf_index     [-] catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order
@@ -1528,6 +1530,7 @@ cat << _EOF1_ > clsm/README2
          mouth_lat [degree] latitude at the river mouth
 
 `echo "${rout_smap}"`
+
   7.3 References
 	 Verdin, K.L., and J.P. Verdin (1999). A topographical system for delineation 
 	    and codification of the Earths river basins. J. of Hydrology (218), 1-12.
@@ -1540,7 +1543,7 @@ endif
 cat << _EOF2_ > clsm/README3
 
 =====================================================================================
-====================================== PAGE  8 ======================================
+=================================== SECTION  8 ======================================
 =====================================================================================
 
 8. GLOBAL COUNTRY AND US STATE MAPS
@@ -1555,18 +1558,17 @@ cat << _EOF2_ > clsm/README3
 	 file name : country_and_state_code.data
 
 	 do n = 1, ${NTILES}
-		read (10,'(i8, 2I4, 1x, a48, a20)')         &     
-                tile_index, cnt_code, st_code, CNT_NAME, ST_NAME
+		read ([UNIT],'(i10, 2I4, 1x, a48, a20)')                    &     
+                     tile_index, cnt_code, st_code, CNT_NAME, ST_NAME
   
    8.3 References https://gadm.org
 
 =====================================================================================
-====================================== PAGE A1 ======================================
+=================================== SECTION A-I =====================================
 =====================================================================================
 
 APPENDIX I - mkCatchParam tag, input options, and log
 
-CVS TAG : $MYTAG
 
                                   mkCatchParam LOG
                                   ~~~~~~~~~~~~~~~~
@@ -1595,7 +1597,10 @@ mkdir -p clsm/plots
 
 cd clsm/plots/
 
-module load tool/idl-8.5
+module purge
+module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+source ../../bin/g5_modules
+module load idl/8.5
 
 idl  <<EOB
 
@@ -1610,6 +1615,6 @@ cd $workdir
 
 /bin/rm clsm/plots/clsm_plots.pro
 
-module unload tool/idl-8.5
+module purge
 
 

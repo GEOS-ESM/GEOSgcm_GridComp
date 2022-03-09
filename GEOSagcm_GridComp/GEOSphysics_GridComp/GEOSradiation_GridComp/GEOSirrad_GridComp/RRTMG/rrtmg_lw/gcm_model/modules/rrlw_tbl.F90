@@ -1,9 +1,7 @@
-      module rrlw_tbl
+module rrlw_tbl
 
-       !use parkind, only : im => kind , rb => kind 
-
-      implicit none
-      save
+   implicit none
+   save
 
 !------------------------------------------------------------------
 ! rrtmg_lw exponential lookup table arrays
@@ -31,16 +29,16 @@
 ! bpade  :  real   : Inverse of Pade constant   
 !------------------------------------------------------------------
 
-      integer , parameter :: ntbl = 10000
+   integer, parameter :: ntbl = 10000
 
-      real , parameter :: tblint = 10000.0 
+   real, parameter :: tblint = 10000.0 
 
-      real  , dimension(0:ntbl) :: tau_tbl
-      real  , dimension(0:ntbl) :: exp_tbl
-      real  , dimension(0:ntbl) :: tfn_tbl
+   real, dimension(0:ntbl) :: tau_tbl
+   real, dimension(0:ntbl) :: exp_tbl
+   real, dimension(0:ntbl) :: tfn_tbl
 
-      real , parameter :: pade = 0.278 
-      real  :: bpade
+   real, parameter :: pade = 0.278 
+   real :: bpade
 
-      end module rrlw_tbl
+end module rrlw_tbl
 

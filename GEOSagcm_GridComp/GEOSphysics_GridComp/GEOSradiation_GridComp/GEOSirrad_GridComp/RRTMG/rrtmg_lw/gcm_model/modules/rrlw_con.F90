@@ -1,9 +1,7 @@
-      module rrlw_con
+module rrlw_con
 
-       !use parkind, only : rb => kind 
-
-      implicit none
-      save
+   implicit none
+   save
 
 !------------------------------------------------------------------
 ! rrtmg_lw constants
@@ -18,6 +16,8 @@
 ! heatfac:  real   : flux to heating rate conversion factor
 !oneminus:  real   : 1.-1.e-6
 ! pi     :  real   : pi
+! d2r    :  real   : multiply by to convert degrees to radians
+! r2d    :  real   : multiply by to convert radians to degrees
 ! grav   :  real   : acceleration of gravity
 ! planck :  real   : planck constant
 ! boltz  :  real   : boltzmann constant
@@ -31,12 +31,18 @@
 !  secdy :  real   : seconds per day  
 !------------------------------------------------------------------
 
-      real  :: fluxfac, heatfac
-      real  :: oneminus, pi, grav
-      real  :: planck, boltz, clight
-      real  :: avogad, alosmt, gascon
-      real  :: radcn1, radcn2
-      real  :: sbcnst, secdy
+   real, parameter :: pi = 3.14159265358979323846d0
+   real, parameter :: d2r = pi / 180.
+   real, parameter :: r2d = 180. / pi
+   real, parameter :: oneminus = 1. - 1.e-6
+   real, parameter :: fluxfac = pi * 2.e4 
 
-      end module rrlw_con
+   real  :: heatfac
+   real  :: grav
+   real  :: planck, boltz, clight
+   real  :: avogad, alosmt, gascon
+   real  :: radcn1, radcn2
+   real  :: sbcnst, secdy
+
+end module rrlw_con
 
