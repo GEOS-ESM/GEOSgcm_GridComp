@@ -1372,6 +1372,7 @@ contains
 
 ! Local derived type aliases
 
+   type (ESMF_VM)                      :: VMG
    type (MAPL_MetaComp),      pointer  :: STATE
    type (ESMF_GridComp),      pointer  :: GCS(:)
    type (ESMF_State),         pointer  :: GIM(:)
@@ -1565,7 +1566,7 @@ contains
 ! -----------------------------------------------------------
 
     Iam = "Run"
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet ( GC, VM=VMG, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // trim(Iam)
 
