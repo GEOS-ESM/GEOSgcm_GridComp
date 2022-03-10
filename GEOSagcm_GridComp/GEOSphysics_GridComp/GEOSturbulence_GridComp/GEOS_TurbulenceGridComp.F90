@@ -230,6 +230,8 @@ contains
     character(len=ESMF_MAXSTR)              :: COMP_NAME
     type (ESMF_Config)                      :: CF
 
+    character(len=ESMF_MAXSTR)              :: FRIENDLIES_SHOC
+
 !=============================================================================
 
 ! Begin...
@@ -2385,13 +2387,17 @@ contains
     call ESMF_ConfigGetAttribute( CF, DO_SHOC, Label=trim(COMP_NAME)//"_DO_SHOC:", &
                                   default=0, RC=STATUS)
     VERIFY_(STATUS)
+    FRIENDLIES_SHOC = trim(COMP_NAME)
     if (DO_SHOC /= 0) then
+      FRIENDLIES_SHOC = 'DYNAMICS:TURBULENCE'
+    endif
+
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'TKESHOC',                                   &
        LONG_NAME  = 'turbulent_kinetic_energy_from_SHOC',        &
        UNITS      = 'm+2 s-2',                                   &
-       DEFAULT    = 0.0,                                           &
-       FRIENDLYTO = 'TURBULENCE:DYNAMICS',                             &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = FRIENDLIES_SHOC,                             &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -2411,7 +2417,7 @@ contains
        LONG_NAME  = 'variance_of_total_water_specific_humidity', &
        UNITS      = '1',                                         &
        DEFAULT    = 0.0,                                         &
-       FRIENDLYTO = 'TURBULENCE:DYNAMICS',                       &
+       FRIENDLYTO = FRIENDLIES_SHOC,                             &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -2421,11 +2427,10 @@ contains
        LONG_NAME  = 'third_moment_total_water_specific_humidity',&
        UNITS      = '1',                                         &
        DEFAULT    = 0.0,                                         &
-       FRIENDLYTO = 'TURBULENCE:DYNAMICS',                       &
+       FRIENDLYTO = FRIENDLIES_SHOC,                             &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
-    endif
 
 !EOS
 
@@ -2705,7 +2710,6 @@ contains
 !----- SHOC-related variables -----
     call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", &
                            default=0, RC=STATUS)
-    if (DO_SHOC /= 0) then
     call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, TKH,    'TKH',     RC=STATUS)
@@ -2714,7 +2718,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QT2,    'QT2',     RC=STATUS)
     VERIFY_(STATUS)
-    endif
 
 !
 ! edmf variables
