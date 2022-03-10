@@ -220,7 +220,7 @@ contains
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     integer, optional                  :: RC  ! return code
 !EOP
-
+    integer                            :: DO_SHOC
 !=============================================================================
 !
 ! ErrLog Variables
@@ -228,6 +228,7 @@ contains
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
+    type (ESMF_Config)                      :: CF
 
 !=============================================================================
 
@@ -237,7 +238,7 @@ contains
 ! ---------------------------------------
 
     Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
@@ -2381,6 +2382,10 @@ contains
        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
 
+    call ESMF_ConfigGetAttribute( CF, DO_SHOC, Label=trim(COMP_NAME)//"_DO_SHOC:", &
+                                  default=0, RC=STATUS)
+    VERIFY_(STATUS)
+    if (DO_SHOC /= 0) then
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'TKESHOC',                                   &
        LONG_NAME  = 'turbulent_kinetic_energy_from_SHOC',        &
@@ -2420,7 +2425,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
-
+    endif
 
 !EOS
 
@@ -2562,6 +2567,7 @@ contains
     real, dimension(:,:,:), pointer    :: DKSS, DKQQ, DKUU
 
 ! SHOC-related variables
+    integer                             :: DO_SHOC
     real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2
 
     real, dimension(:,:), pointer   :: EVAP, SH
@@ -2697,6 +2703,9 @@ contains
     VERIFY_(STATUS)
 
 !----- SHOC-related variables -----
+    call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", &
+                           default=0, RC=STATUS)
+    if (DO_SHOC /= 0) then
     call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, TKH,    'TKH',     RC=STATUS)
@@ -2705,6 +2714,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QT2,    'QT2',     RC=STATUS)
     VERIFY_(STATUS)
+    endif
 
 !
 ! edmf variables
@@ -4426,7 +4436,7 @@ contains
       end if ! TKE
 
       ! Update the higher order moments required for the ADG PDF
-      if (PDFSHAPE.eq.5) then
+      if ( (PDFSHAPE.eq.5) .AND. (DO_SHOC /= 0) ) then
       HL = T + (mapl_grav*Z - mapl_alhl*QLLS)/mapl_cp
       call update_moments(IM, JM, LM, DT, &
                           SH,             &  ! in
@@ -4710,7 +4720,7 @@ contains
       ! ---------------------------------------------------------
 
       KH(:,:,LM) = CT * (PLE(:,:,LM)/(MAPL_RGAS * TV(:,:,LM))) / Z(:,:,LM)
-      TKH(:,:,LM) = KH(:,:,LM)
+      if (DO_SHOC /= 0) TKH(:,:,LM) = KH(:,:,LM)
 
       KHFLX = KH
 
@@ -6379,15 +6389,26 @@ end subroutine RUN1
 
       do I = 1, IM
          do J = 1, JM
+#define OLDGEOS
 #ifdef OLDGEOS
             CBl = C_B*1.e-7*VARFLT(I,J)
-            Hefold = LAMBDA_B
+            do L = LM, 1, -1
+               FKV(I,J,L) = 0.0
+               if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B ) then
+                  FKV_temp = Z(I,J,L)/LAMBDA_B
+                  FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
+                  FKV_temp = CBl*(FKV_temp/LAMBDA_B)*min(5.0,sqrt(U(I,J,L)**2+V(I,J,L)**2))
+
+                  BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
+                  BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
+                  FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
+               end if
+            end do
 #else
            ! Resolution sensitivity to disable Beljaars at <5km
             CBl = C_B*a2*VARFLT(I,J)*MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! Revise e-folding height based on PBL height and topographic std. dev.
             Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,nint(KPBL(i,j)))),LAMBDA_B)
-#endif
             do L = LM, 1, -1
                FKV(I,J,L) = 0.0
                if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold ) then
@@ -6400,6 +6421,7 @@ end subroutine RUN1
                   FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
                end if
             end do
+#endif
          end do 
       end do 
 

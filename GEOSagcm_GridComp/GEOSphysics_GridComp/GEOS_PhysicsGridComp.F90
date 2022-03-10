@@ -3250,7 +3250,13 @@ contains
     if(DO_SKEB) deallocate(SKEBU_WT,SKEBV_WT)
 !-stochastic-physics
 
+    call MAPL_TimerOn(STATE,"PHYS_SYNC")
+    call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    call MAPL_TimerOff(STATE,"PHYS_SYNC")
+
     call MAPL_TimerOff(STATE,"RUN")
+
+
     call MAPL_TimerOff(STATE,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)

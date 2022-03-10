@@ -5283,10 +5283,10 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="-PRE_RAS"    ,RC=STATUS)
     VERIFY_(STATUS)
-!-srf-gf-scheme
     call MAPL_TimerAdd(GC,name="-GF"    ,RC=STATUS)
     VERIFY_(STATUS)
-!-srf-gf-scheme    
+  ! call MAPL_TimerAdd(GC,name="-GF_SYNC"    ,RC=STATUS)
+  ! VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="-RAS"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="--RAS_RUN"    ,RC=STATUS)
@@ -5299,6 +5299,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="--UWSHCU_LOOP1"    ,RC=STATUS)
     VERIFY_(STATUS)
+  ! call MAPL_TimerAdd(GC,name="--UWSHCU_SYNC"    ,RC=STATUS)
+  ! VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="-CLOUD"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="--CLOUD_RUN"    ,RC=STATUS)
@@ -9028,15 +9030,19 @@ contains
                                  ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF                  &
                                  ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF         &
                                  ,TPWI,TPWI_star,LFR_GF                             &
-				 ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d)!,CNV_TR)
+                                 ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d)!,CNV_TR)
                                                                    
          HHO      =  0.0
          HSO      =  0.0    
          irccode  = -99
          trdlx    =  1.0   
          KEX      =  1.E-04
-             
+            
          call MAPL_TimerOff(STATE,"-GF")
+
+        !call MAPL_TimerOn(STATE,"-GF_SYNC")
+        !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+        !call MAPL_TimerOff(STATE,"-GF_SYNC")
       ENDIF
 !-srf-gf-scheme 
 !=====================================================================================
@@ -9250,8 +9256,8 @@ contains
 
       call MAPL_TimerOff(STATE,"-POST_CNV")
 
-      call MAPL_TimerOn (STATE,"--UWSHCU")
       if (DOSHLW /= 0) then
+      call MAPL_TimerOn (STATE,"--UWSHCU")
 
       !  Call UW shallow convection
       !----------------------------------------------------------------
@@ -9357,6 +9363,12 @@ contains
 
       if (associated(CUSH_SC)) CUSH_SC = CUSH
 
+      call MAPL_TimerOff (STATE,"--UWSHCU")
+
+     !call MAPL_TimerOn(STATE,"-UWSHCU_SYNC")
+     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+     !call MAPL_TimerOff(STATE,"-UWSHCU_SYNC")
+
       else   ! if UW shallow scheme not called
 
         UMF_SC    = 0.
@@ -9374,9 +9386,6 @@ contains
 
       end if
       
-      call MAPL_TimerOff (STATE,"--UWSHCU")
-
-
       call MAPL_TimerOn(STATE,"-POST_CNV")
 
       !     Compute new mass loading for aerosols; CAR 12/19/08

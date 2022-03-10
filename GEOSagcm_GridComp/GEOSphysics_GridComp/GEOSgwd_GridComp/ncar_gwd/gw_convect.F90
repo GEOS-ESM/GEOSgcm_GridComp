@@ -216,14 +216,14 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   ! Min/max wavenumber for critical level filtering.
   integer :: Umini(ncol), Umaxi(ncol)
   ! Source level tau for a column.
-  real(GW_PRC) :: tau0(-band%ngwv:band%ngwv)
+  real(kind(1.d0)) :: tau0(-band%ngwv:band%ngwv)
   ! Speed of convective cells relative to storm.
   real(GW_PRC) :: CS(ncol)
   ! Index to shift spectra relative to ground.
   integer :: shift
 
   ! Averaging length.
-  real(GW_PRC), parameter :: AL = 1.0e5
+  real(kind(1.d0)), parameter :: AL = 1.0e5
 
   !----------------------------------------------------------------------
   ! Initialize tau array
@@ -387,7 +387,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
         end if
 
         ! Adjust magnitude.
-        tau0 = tau0*q0(i)*q0(i)/AL
+        tau0 = tau0*DBLE(q0(i)**2)/AL
 
         ! Adjust for critical level filtering.
         tau0(Umini(i):Umaxi(i)) = 0.0
