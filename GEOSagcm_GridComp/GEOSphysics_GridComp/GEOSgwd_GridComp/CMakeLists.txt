@@ -11,7 +11,6 @@ set (srcs
   ncar_gwd/vdiff_lu_solver.F90
   ncar_gwd/coords_1d.F90
   ncar_gwd/gw_utils.F90
-  ncar_gwd/gw_diffusion.F90
   ncar_gwd/gw_common.F90
   ncar_gwd/gw_convect.F90
   ncar_gwd/gw_rdg.F90

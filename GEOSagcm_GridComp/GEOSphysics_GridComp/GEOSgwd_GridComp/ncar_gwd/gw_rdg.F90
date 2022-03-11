@@ -87,7 +87,7 @@ contains
 subroutine gw_rdg_init (gw_dc, fcrit2, wavelength, pgwv)
 #include <netcdf.inc>
 
-  real(GW_PRC), intent(in) :: gw_dc,fcrit2,wavelength
+  real, intent(in) :: gw_dc,fcrit2,wavelength
   integer, intent(in)  :: pgwv
 
   !==============================================
@@ -138,47 +138,47 @@ subroutine gw_rdg_ifc( &
    integer,          intent(in) :: pver         ! Intfc Vertical dimension
    integer,          intent(in) :: pcnst        ! constituent dimension
    integer,          intent(in) :: n_rdg
-   real(GW_PRC),         intent(in) :: dt           ! Time step.
+   real,         intent(in) :: dt           ! Time step.
 
-   real(GW_PRC),         intent(in) :: u(ncol,pver)    ! Midpoint zonal winds. ( m s-1)
-   real(GW_PRC),         intent(in) :: v(ncol,pver)    ! Midpoint meridional winds. ( m s-1)
-   real(GW_PRC),         intent(in) :: t(ncol,pver)    ! Midpoint temperatures. (K)
-   real(GW_PRC),         intent(in) :: delp(ncol,pver) ! Delta(interface pressures).
-   real(GW_PRC),         intent(in) :: rdelp(ncol,pver) ! inverse Delta.
-   real(GW_PRC),         intent(in) :: pmid(ncol,pver)   ! midpoint pressures.
-   real(GW_PRC),         intent(in) :: pint(ncol,pverp)  ! interface pressures.
-   real(GW_PRC),         intent(in) :: piln(ncol,pverp)  ! Log of interface pressures.
-   real(GW_PRC),         intent(in) :: zm(ncol,pver)   ! Midpoint altitudes above ground (m).
-   real(GW_PRC),         intent(in) :: zi(ncol,pverp) ! Interface altitudes above ground (m).
-   real(GW_PRC),         intent(in) :: kvtt(ncol,pverp) ! Molecular thermal diffusivity.
-   !!real(GW_PRC),         intent(in) :: q(ncol,pver,pcnst) ! Constituent array.
-   !!real(GW_PRC),         intent(in) :: dse(ncol,pver)  ! Dry static energy.
+   real,         intent(in) :: u(ncol,pver)    ! Midpoint zonal winds. ( m s-1)
+   real,         intent(in) :: v(ncol,pver)    ! Midpoint meridional winds. ( m s-1)
+   real,         intent(in) :: t(ncol,pver)    ! Midpoint temperatures. (K)
+   real,         intent(in) :: delp(ncol,pver) ! Delta(interface pressures).
+   real,         intent(in) :: rdelp(ncol,pver) ! inverse Delta.
+   real,         intent(in) :: pmid(ncol,pver)   ! midpoint pressures.
+   real,         intent(in) :: pint(ncol,pverp)  ! interface pressures.
+   real,         intent(in) :: piln(ncol,pverp)  ! Log of interface pressures.
+   real,         intent(in) :: zm(ncol,pver)   ! Midpoint altitudes above ground (m).
+   real,         intent(in) :: zi(ncol,pverp) ! Interface altitudes above ground (m).
+   real(GW_PRC), intent(in) :: kvtt(ncol,pverp) ! Molecular thermal diffusivity.
+   !!real,         intent(in) :: q(ncol,pver,pcnst) ! Constituent array.
+   !!real,         intent(in) :: dse(ncol,pver)  ! Dry static energy.
 
-   real(GW_PRC),         intent(in) :: nm(ncol,pver)   ! Midpoint altitudes above ground (m).
-   real(GW_PRC),         intent(in) :: ni(ncol,pverp) ! Interface altitudes above ground (m).
-   real(GW_PRC),         intent(in) :: rhoi(ncol,pverp) ! Interface altitudes above ground (m).
+   real(GW_PRC), intent(in) :: nm(ncol,pver)   ! Midpoint altitudes above ground (m).
+   real(GW_PRC), intent(in) :: ni(ncol,pverp) ! Interface altitudes above ground (m).
+   real(GW_PRC), intent(in) :: rhoi(ncol,pverp) ! Interface altitudes above ground (m).
 
-   real(GW_PRC),         intent(in) :: kwvrdg(ncol,n_rdg) ! horiz wavenumber.
-   real(GW_PRC),         intent(in) :: effrdg(ncol,n_rdg) ! efficiency factor of ridge scheme.
-   real(GW_PRC),         intent(in) :: hwdth(ncol,n_rdg) ! width of ridges.
-   real(GW_PRC),         intent(in) :: clngt(ncol,n_rdg) ! length of ridges.
-   real(GW_PRC),         intent(in) :: gbxar(ncol)      ! gridbox area
+   real,         intent(in) :: kwvrdg(ncol,n_rdg) ! horiz wavenumber.
+   real,         intent(in) :: effrdg(ncol,n_rdg) ! efficiency factor of ridge scheme.
+   real,         intent(in) :: hwdth(ncol,n_rdg) ! width of ridges.
+   real,         intent(in) :: clngt(ncol,n_rdg) ! length of ridges.
+   real,         intent(in) :: gbxar(ncol)      ! gridbox area
 
-   real(GW_PRC),         intent(in) :: mxdis(ncol,n_rdg) ! Height estimate for ridge (m).
-   real(GW_PRC),         intent(in) :: angll(ncol,n_rdg) ! orientation of ridges.
-   real(GW_PRC),         intent(in) :: anixy(ncol,n_rdg) ! Anisotropy parameter.
+   real,         intent(in) :: mxdis(ncol,n_rdg) ! Height estimate for ridge (m).
+   real,         intent(in) :: angll(ncol,n_rdg) ! orientation of ridges.
+   real,         intent(in) :: anixy(ncol,n_rdg) ! Anisotropy parameter.
 
-   real(GW_PRC),         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
-   logical,          intent(in) :: trpd_leewv
+   real,         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
+   logical,      intent(in) :: trpd_leewv
 
 
    ! OUTPUTS
    ! flx_heat was dimensioned pcols before: But who understands when to use ncol or pcols
-   real(GW_PRC),        intent(out) :: flx_heat(ncol)
-   real(GW_PRC),        intent(out) :: utrdg(ncol,pver)       ! Cum. zonal wind tendency
-   real(GW_PRC),        intent(out) :: vtrdg(ncol,pver)       ! Cum. meridional wind tendency
-   real(GW_PRC),        intent(out) :: ttrdg(ncol,pver)       ! Cum. temperature tendency
-   !!real(GW_PRC),        intent(out) :: qtrdg(ncol,pver,pcnst) ! Cum. consituent tendencies
+   real,         intent(out) :: flx_heat(ncol)
+   real(GW_PRC), intent(out) :: utrdg(ncol,pver)       ! Cum. zonal wind tendency
+   real(GW_PRC), intent(out) :: vtrdg(ncol,pver)       ! Cum. meridional wind tendency
+   real(GW_PRC), intent(out) :: ttrdg(ncol,pver)       ! Cum. temperature tendency
+   !!real,       intent(out) :: qtrdg(ncol,pver,pcnst) ! Cum. consituent tendencies
 
    !---------------------------Local storage-------------------------------
 
@@ -199,10 +199,6 @@ subroutine gw_rdg_ifc( &
    integer :: tend_level(ncol)
    integer :: bwv_level(ncol)
    integer :: tlb_level(ncol)
-
-   !real(GW_PRC) :: nm(ncol,pver)   ! Midpoint Brunt-Vaisalla frequencies (s-1).
-   !real(GW_PRC) :: ni(ncol,pverp) ! Interface Brunt-Vaisalla frequencies (s-1).
-   !real(GW_PRC) :: rhoi(ncol,pverp) ! Interface density (kg m-3).
 
    ! Projection of wind at midpoints and interfaces.
    real(GW_PRC) :: ubm(ncol,pver)
@@ -287,12 +283,12 @@ subroutine gw_rdg_ifc( &
    type='BETA'
 
    ! initialize accumulated momentum fluxes and tendencies
-   taurx = 0._GW_PRC
-   taury = 0._GW_PRC 
-   utrdg = 0._GW_PRC
-   vtrdg = 0._GW_PRC
-   ttrdg = 0._GW_PRC
-   flx_heat = 0._GW_PRC
+   taurx = 0.
+   taury = 0. 
+   utrdg = 0.
+   vtrdg = 0.
+   ttrdg = 0.
+   flx_heat = 0.
   
 !WMP pressure scaling from GEOS top 0.01mb to zfac_layer
    pint_adj = 1.0
@@ -329,9 +325,9 @@ subroutine gw_rdg_ifc( &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          effrdg(:,nn), c, kvtt, tau, utgw, vtgw, &
+          real(effrdg(:,nn),GW_PRC), c, kvtt, tau, utgw, vtgw, &
           ttgw, egwdffi, gwut, dttdf, dttke, &
-          kwvrdg=kwvrdg(:,nn), satfac_in=1._GW_PRC, tau_adjust=pint_adj)
+          kwvrdg=real(kwvrdg(:,nn),GW_PRC), satfac_in=1.0_GW_PRC, tau_adjust=pint_adj)
 
       ! Add the tendencies from each ridge to the totals.
       do k = 1, pver
@@ -410,29 +406,29 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   integer, intent(in) :: pver
 
   ! Interface pressures. (Pa)
-  real(GW_PRC), intent(in) :: pint(ncol,pver+1)
+  real, intent(in) :: pint(ncol,pver+1)
   ! Midpoint pressures. (Pa)
-  real(GW_PRC), intent(in) :: pmid(ncol,pver)
+  real, intent(in) :: pmid(ncol,pver)
   ! Delta Interface pressures. (Pa)
-  real(GW_PRC), intent(in) :: delp(ncol,pver)
+  real, intent(in) :: delp(ncol,pver)
 
 
   ! Midpoint zonal/meridional winds. ( m s-1)
-  real(GW_PRC), intent(in) :: u(ncol,pver), v(ncol,pver)
+  real, intent(in) :: u(ncol,pver), v(ncol,pver)
   ! Midpoint temperatures. (K)
-  real(GW_PRC), intent(in) :: t(ncol,pver)
+  real, intent(in) :: t(ncol,pver)
   ! Height estimate for ridge (m) [anisotropic orography].
-  real(GW_PRC), intent(in) :: mxdis(ncol)
+  real, intent(in) :: mxdis(ncol)
   ! Angle of ridge axis w/resp to north (degrees) [anisotropic orography].
-  real(GW_PRC), intent(in) :: angxy(ncol)
+  real, intent(in) :: angxy(ncol)
   ! Anisotropy parameter [anisotropic orography].
-  real(GW_PRC), intent(in) :: anixy(ncol)
+  real, intent(in) :: anixy(ncol)
   ! horiz wavenumber [anisotropic orography].
-  real(GW_PRC), intent(in) :: kwvrdg(ncol)
+  real, intent(in) :: kwvrdg(ncol)
   ! Isotropic source flag [anisotropic orography].
   integer, intent(in)  :: iso(ncol)
   ! Interface altitudes above ground (m).
-  real(GW_PRC), intent(in) :: zi(ncol,pver+1)
+  real, intent(in) :: zi(ncol,pver+1)
   ! Midpoint Brunt-Vaisalla frequencies (s-1).
   real(GW_PRC), intent(in) :: nm(ncol,pver)
 
@@ -472,18 +468,18 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   integer :: i, k
 
   ! Surface streamline displacement height (2*sgh).
-  real(GW_PRC) :: hdsp(ncol)
+  real :: hdsp(ncol)
 
   ! Difference in interface pressure across source region.
-  real(GW_PRC) :: dpsrc(ncol)
+  real :: dpsrc(ncol)
   ! Thickness of downslope wind region.
-  real(GW_PRC) :: ddw(ncol)
+  real :: ddw(ncol)
   ! Thickness of linear wave region.
-  real(GW_PRC) :: dwv(ncol)
+  real :: dwv(ncol)
   ! Wind speed in source region.
-  real(GW_PRC) :: wmsrc(ncol)
+  real :: wmsrc(ncol)
 
-  real(GW_PRC) :: ragl(ncol) 
+  real :: ragl(ncol) 
   
 !--------------------------------------------------------------------------
 ! Check that ngwav is equal to zero, otherwise end the job
@@ -504,7 +500,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   bwv_level = -1
   tlb_level = -1
 
-  tau(:,0,:) = 0.0_GW_PRC
+  tau(:,0,:) = 0.0
 
   ! Find depth of "source layer" for mountain waves
   ! i.e., between ground and mountain top
@@ -517,10 +513,10 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
      end do
   end do
 
-  rsrc = 0._GW_PRC
-  usrc = 0._GW_PRC 
-  vsrc = 0._GW_PRC
-  nsrc = 0._GW_PRC
+  rsrc = 0.
+  usrc = 0. 
+  vsrc = 0.
+  nsrc = 0.
   do i = 1, ncol
       do k = pver, src_level(i), -1
            rsrc(i) = rsrc(i) + pmid(i,k) / ( rair * t(i,k))* delp(i,k)
@@ -546,12 +542,12 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   ! Get the unit vector components
   ! Want agl=0 with U>0 to give xv=1
 
-  ragl = angxy * pi/180._GW_PRC
+  ragl = angxy * pi/180.
 
   ! protect from wierd "bad" angles 
   ! that may occur if hdsp is zero
   where( hdsp <= orohmin )
-     ragl = 0._GW_PRC
+     ragl = 0.
   end where
 
   yv   =-sin( ragl )
@@ -567,24 +563,24 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
 
   ! Project the local wind at midpoints into the on-ridge direction
   do k = 1, pver
-     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
+     ubm(:,k) = dot_2d(real(u(:,k),GW_PRC), real(v(:,k),GW_PRC), xv, yv)
   end do
   ubmsrc = dot_2d(usrc , vsrc , xv, yv)
 
   ! Ensure on-ridge wind is positive at source level
   do k = 1, pver
-     ubm(:,k) = sign( ubmsrc*0._GW_PRC+1._GW_PRC , ubmsrc ) *  ubm(:,k)
+     ubm(:,k) = sign( ubmsrc*0.+1. , ubmsrc ) *  ubm(:,k)
   end do
 
-                  ! Sean says just use 1._GW_PRC as 
+                  ! Sean says just use 1. as 
                   ! first argument
-  xv  = sign( ubmsrc*0._GW_PRC+1._GW_PRC , ubmsrc ) *  xv
-  yv  = sign( ubmsrc*0._GW_PRC+1._GW_PRC , ubmsrc ) *  yv
+  xv  = sign( ubmsrc*0.+1. , ubmsrc ) *  xv
+  yv  = sign( ubmsrc*0.+1. , ubmsrc ) *  yv
 
   ! Now make ubmsrc positive and protect
   ! against zero
   ubmsrc = abs(ubmsrc)
-  ubmsrc = max( 0.01_GW_PRC , ubmsrc )
+  ubmsrc = max( 0.01 , ubmsrc )
   
 
   ! The minimum stratification allowing GW behavior
@@ -598,7 +594,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   
   ! This needs to be made constistent with later
   ! treatment of nonhydrostatic effects.
-  m2src = ( (nsrc/(ubmsrc+0.01_GW_PRC))**2 - kwvrdg**2 ) /((nsrc/(ubmsrc+0.01_GW_PRC))**2)
+  m2src = ( (nsrc/(ubmsrc+0.01))**2 - kwvrdg**2 ) /((nsrc/(ubmsrc+0.01))**2)
 
 
   !-------------------------------------------------------------
@@ -645,7 +641,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
 
   ! Critical inverse Froude number
   !-----------------------------------------------
-  Fr1(:) = Fr_c * 1.00_GW_PRC
+  Fr1(:) = Fr_c * 1.00
   Frx(:) = hdsp(:)*nsrc(:)/abs( ubmsrc(:) ) / Fr_c
 
   if ( do_divstream ) then
@@ -673,15 +669,15 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   where( m2src > orom2min ) 
      ddw  = Fr2 * ( abs(ubmsrc) )/nsrc
   elsewhere
-     ddw  = 0._GW_PRC
+     ddw  = 0.
   endwhere
 
 
   ! If TLB is less than zero then obstacle is not
   ! high enough to produce an low-level diversion layer
   tlb = mxdis - ddw
-  where( tlb < 0._GW_PRC)
-     tlb = 0._GW_PRC
+  where( tlb < 0.)
+     tlb = 0.
   endwhere
   do k = pver, pver/2, -1
      do i = 1, ncol
@@ -697,12 +693,12 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   where( m2src > orom2min ) 
       dwv  = Fr1 * ( abs(ubmsrc) )/nsrc
   elsewhere
-     dwv  = -9.999e9_GW_PRC ! if weak strat - no waves
+     dwv  = -9.999e9 ! if weak strat - no waves
   endwhere
 
   bwv = mxdis - dwv
-  where(( bwv < 0._GW_PRC) .or. (dwv < 0._GW_PRC) )
-     bwv = 0._GW_PRC
+  where(( bwv < 0.) .or. (dwv < 0.) )
+     bwv = 0.
   endwhere
   do k = pver,1, -1
      do i = 1, ncol
@@ -724,7 +720,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   tend_level = pver
 
   ! No spectrum; phase speed is just 0.
-  c = 0._GW_PRC
+  c = 0.
 
   where( m2src < orom2min ) 
      tlb = mxdis
@@ -755,19 +751,19 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   ! Vertical dimension.
   integer, intent(in) :: pver
   ! Drag coefficient for low-level flow
-  real(GW_PRC), intent(in) :: rdg_cd_llb
+  real, intent(in) :: rdg_cd_llb
 
 
   ! Midpoint temperatures. (K)
-  real(GW_PRC), intent(in) :: t(ncol,pver)
+  real, intent(in) :: t(ncol,pver)
   ! Height estimate for ridge (m) [anisotropic orography].
-  real(GW_PRC), intent(in) :: mxdis(ncol)
+  real, intent(in) :: mxdis(ncol)
   ! Anisotropy parameter [0-1] [anisotropic orography].
-  real(GW_PRC), intent(in) :: anixy(ncol)
+  real, intent(in) :: anixy(ncol)
   ! Inverse cross-ridge lengthscale (m-1) [anisotropic orography].
-  real(GW_PRC), intent(in) :: kwvrdg(ncol)
+  real, intent(in) :: kwvrdg(ncol)
   ! Interface altitudes above ground (m).
-  real(GW_PRC), intent(in) :: zi(ncol,pver+1)
+  real, intent(in) :: zi(ncol,pver+1)
   ! Midpoint Brunt-Vaisalla frequencies (s-1).
   real(GW_PRC), intent(in) :: nm(ncol,pver)
   ! Interface Brunt-Vaisalla frequencies (s-1).
@@ -817,14 +813,14 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
 
   ! ubsrcx introduced to account for situations with high shear, strong strat.
   do i = 1, ncol
-        ubsrcx(i)    = max( ubmsrc(i)  , 0._GW_PRC )
+        ubsrcx(i)    = max( ubmsrc(i)  , 0. )
   end do
 
   do i = 1, ncol
      if ( m2src(i) > orom2min )   then 
         hdspwv(i) = min( mxdis(i) , Fr1(i) * ubsrcx(i) / nsrc(i) )
      else
-        hdspwv(i) = 0._GW_PRC
+        hdspwv(i) = 0.
      end if
   end do
   
@@ -833,7 +829,7 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
         if ( m2src(i) > orom2min )   then 
            hdspdw(i) = min( mxdis(i) , Fr2(i) * ubsrcx(i) / nsrc(i) )
         else
-           hdspdw(i) = 0._GW_PRC
+           hdspdw(i) = 0.
         end if
      end do
   else
@@ -842,7 +838,7 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
         if ( m2src(i) > orom2min )   then 
            hdspdw(i) = mxdis(i) 
         else
-           hdspdw(i) = 0._GW_PRC
+           hdspdw(i) = 0.
         end if
      end do
   end if
@@ -870,14 +866,14 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
         taudsw(i) = kwvrdg(i) * ( hdspdw(i)**2 ) * rsrc(i) * nsrc(i) &
              * ubsrcx(i)
      else
-        tauoro(i) = 0._GW_PRC
-        taudsw(i) = 0._GW_PRC
+        tauoro(i) = 0.
+        taudsw(i) = 0.
      end if
   end do
 
   if (do_divstream) then
      do i = 1, ncol
-           taulin(i) = 0._GW_PRC
+           taulin(i) = 0.
      end do
   !---------------------------------------
   ! Need linear drag when divstream is not used
@@ -888,7 +884,7 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
            taulin(i) = kwvrdg(i) * ( mxdis(i)**2 ) * rsrc(i) * nsrc(i) &
                 * ubsrcx(i)
         else
-           taulin(i) = 0._GW_PRC
+           taulin(i) = 0.
         end if
      end do
   end if
@@ -896,12 +892,12 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   if ( do_divstream ) then
   ! Amplify DSW between Frx=1. and Frx=Frx1
      do i = 1,ncol
-        dswamp=0._GW_PRC
+        dswamp=0.
         BetaMax   = C_BetaMax_DS * anixy(i)      
-        if ( (Frx(i)>1._GW_PRC).and.(Frx(i)<=Frx1)) then
-           dswamp = (Frx(i)-1._GW_PRC)*(Frx1-Frx(i))/(0.25_GW_PRC*(Frx1-1._GW_PRC)**2)
+        if ( (Frx(i)>1.).and.(Frx(i)<=Frx1)) then
+           dswamp = (Frx(i)-1.)*(Frx1-Frx(i))/(0.25*(Frx1-1.)**2)
         end if
-        taudsw(i) = (1._GW_PRC + BetaMax*dswamp)*taudsw(i)
+        taudsw(i) = (1. + BetaMax*dswamp)*taudsw(i)
      end do
   else
   !-------------------
@@ -909,18 +905,18 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   !--------------------
      do i = 1, ncol
         BetaMax   = C_BetaMax_SM * anixy(i)      
-        if ( (Frx(i) >=1._GW_PRC) .and. (Frx(i) < 1.5_GW_PRC) ) then
-           dswamp = 2._GW_PRC * BetaMax * (Frx(i) -1._GW_PRC)
-        else if ( ( Frx(i) >= 1.5_GW_PRC ) .and. (Frx(i) < 3._GW_PRC ) ) then
-           dswamp = ( 1._GW_PRC + BetaMax - (0.666_GW_PRC**2) ) * ( 0.666_GW_PRC*(3._GW_PRC - Frx(i) ))**2  & 
-                      + ( 1._GW_PRC / Frx(i) )**2  -1._GW_PRC
+        if ( (Frx(i) >=1.) .and. (Frx(i) < 1.5) ) then
+           dswamp = 2. * BetaMax * (Frx(i) -1.)
+        else if ( ( Frx(i) >= 1.5 ) .and. (Frx(i) < 3. ) ) then
+           dswamp = ( 1. + BetaMax - (0.666**2) ) * ( 0.666*(3. - Frx(i) ))**2  & 
+                      + ( 1. / Frx(i) )**2  -1.
         else
-           dswamp    = 0._GW_PRC      
+           dswamp    = 0.      
         end if
-        if ( (Frx(i) >=1._GW_PRC) .and. (Frx(i) < 3._GW_PRC) ) then
-          taudsw(i) = (1._GW_PRC + dswamp )*taulin(i) - tauoro(i)
+        if ( (Frx(i) >=1.) .and. (Frx(i) < 3.) ) then
+          taudsw(i) = (1. + dswamp )*taulin(i) - tauoro(i)
         else
-          taudsw(i) = 0._GW_PRC   
+          taudsw(i) = 0.   
         endif
         ! This code defines "taudsw" as SUM of freely-propagating
         ! waves +DSW enhancement. Different than in SM2000
@@ -941,9 +937,9 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
         endwhere
         ! low-level form drag on obstacle. Quantity kwvrdg (~1/b) appears for consistency
         ! with tauoro and taudsw forms. Should be weighted by L*b/A_g before applied to flow.
-        where ( ( zi(i,:) < tlb(i) ) .and. ( zi(i,:) >= 0._GW_PRC ) )
+        where ( ( zi(i,:) < tlb(i) ) .and. ( zi(i,:) >= 0. ) )
              tau(i,0,:) =  taudsw(i) +  &
-                           Coeff_LB(i) * kwvrdg(i) * rsrc(i) * 0.5_GW_PRC * (ubsrcx(i)**2) * ( tlb(i) - zi(i,:) )
+                           Coeff_LB(i) * kwvrdg(i) * rsrc(i) * 0.5 * (ubsrcx(i)**2) * ( tlb(i) - zi(i,:) )
         endwhere
  
         if (do_smooth_regimes) then
@@ -961,9 +957,9 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
      else     !----------------------------------------------
              ! This block allows low-level dynamics to occur
              ! even if m2 is less than orom2min
-        where ( ( zi(i,:) < tlb(i) ) .and. ( zi(i,:) >= 0._GW_PRC ) )
+        where ( ( zi(i,:) < tlb(i) ) .and. ( zi(i,:) >= 0. ) )
                tau(i,0,:) =  taudsw(i) +  &
-                   Coeff_LB(i) * kwvrdg(i) * rsrc(i) * 0.5_GW_PRC * &
+                   Coeff_LB(i) * kwvrdg(i) * rsrc(i) * 0.5 * &
                    (ubsrcx(i)**2) * ( tlb(i) - zi(i,:) )
         endwhere
      endif
@@ -975,9 +971,9 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
      k=src_level(i)
      if ( ni(i,k) > orostratmin ) then
          tausat    =  (Fr_c**2) * kwvrdg(i) * rhoi(i,k) * ubsrcx(i)**3 / &
-              (1._GW_PRC*ni(i,k)) 
+              (1.*ni(i,k)) 
      else
-         tausat = 0._GW_PRC
+         tausat = 0.
      endif 
      tau(i,0,src_level(i)) = min( tauoro(i), tausat ) 
   end do
@@ -987,9 +983,9 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   ! Final clean-up. Do nothing if obstacle less than orohmin
   do i = 1, ncol
      if ( mxdis(i) < orohmin ) then
-        tau(i,0,:) = 0._GW_PRC 
-        tauoro(i)  = 0._GW_PRC
-        taudsw(i)  = 0._GW_PRC
+        tau(i,0,:) = 0. 
+        tauoro(i)  = 0.
+        taudsw(i)  = 0.
      endif 
   end do
 
@@ -1022,9 +1018,9 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   integer, intent(in) :: pver
 
   ! Horz wavenumber for ridge (1/m) [anisotropic orography].
-  real(GW_PRC), intent(in) :: kwvrdg(ncol)
+  real, intent(in) :: kwvrdg(ncol)
   ! Interface altitudes above ground (m).
-  real(GW_PRC), intent(in) :: zi(ncol,pver+1)
+  real, intent(in) :: zi(ncol,pver+1)
   ! Midpoint Brunt-Vaisalla frequencies (s-1).
   real(GW_PRC), intent(in) :: nm(ncol,pver)
   ! Interface Brunt-Vaisalla frequencies (s-1).
@@ -1053,14 +1049,14 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   ! Surface streamline displacement height for downslope wind regime.
   real(GW_PRC), intent(in) :: hdspdw(ncol)
   ! Ridge height.
-  real(GW_PRC), intent(in) :: mxdis(ncol)
+  real, intent(in) :: mxdis(ncol)
 
 
   ! Wave breaking level
   real(GW_PRC), intent(out) :: wbr(ncol)
 
   logical, intent(in), optional :: ldo_trapped_waves
-  real(GW_PRC), intent(in), optional :: wdth_kwv_scale_in
+  real, intent(in), optional :: wdth_kwv_scale_in
 
   !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -1088,19 +1084,19 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   if (present(wdth_kwv_scale_in)) then
      wdth_kwv_scale = wdth_kwv_scale_in
   else
-     wdth_kwv_scale = 1._GW_PRC
+     wdth_kwv_scale = 1.
   endif
 
   ! Calculate vertical wavenumber**2
   !---------------------------------
-  m2 = (nm  / (abs(ubm)+.01_GW_PRC))**2
+  m2 = (nm  / (abs(ubm)+.01))**2
   do k=pver,1,-1
      m2(:,k) = m2(:,k) - non_hydro*(wdth_kwv_scale*kwvrdg)**2
      ! sweeping up, zero out m2 above first occurence
      ! of m2(:,k)<=0
      kp1=min( k+1, pver )
-     where( (m2(:,k) <= 0.0_GW_PRC ).or.(m2(:,kp1) <= 0.0_GW_PRC ) )
-        m2(:,k) = 0._GW_PRC
+     where( (m2(:,k) <= 0.0 ).or.(m2(:,kp1) <= 0.0 ) )
+        m2(:,k) = 0.
      endwhere
   end do
 
@@ -1120,23 +1116,23 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   ! Identify top edge of layer in which phswkb reaches 3*pi/2
   ! - approximately the "breaking level"
   !----------------------------------------------------------
-  wbr(:)=0._GW_PRC
-  wbrx(:)=0._GW_PRC
+  wbr(:)=0.
+  wbrx(:)=0.
   if (do_smooth_regimes) then
      do k=pver,1,-1
-     where( (phswkb(:,k+1)<1.5_GW_PRC*pi).and.(phswkb(:,k)>=1.5_GW_PRC*pi) & 
+     where( (phswkb(:,k+1)<1.5*pi).and.(phswkb(:,k)>=1.5*pi) & 
             .and.(hdspdw(:)>hdspwv(:)) )
         wbr(:)  = zi(:,k)  
         ! Extrapolation to make regime
         ! transitions smoother
-        wbrx(:) = zi(:,k)   - ( phswkb(:,k) -  1.5_GW_PRC*pi ) &
-                            / ( m2(:,k) + 1.e-6_GW_PRC )
+        wbrx(:) = zi(:,k)   - ( phswkb(:,k) -  1.5*pi ) &
+                            / ( m2(:,k) + 1.e-6 )
         src_level(:) = k-1
      endwhere
      end do
   else
      do k=pver,1,-1
-     where( (phswkb(:,k+1)<1.5_GW_PRC*pi).and.(phswkb(:,k)>=1.5_GW_PRC*pi) & 
+     where( (phswkb(:,k+1)<1.5*pi).and.(phswkb(:,k)>=1.5*pi) & 
             .and.(hdspdw(:)>hdspwv(:)) )
         wbr(:)  = zi(:,k)
         src_level(:) = k
@@ -1149,7 +1145,7 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   !----------------------------------------------------------
   if (do_adjust_tauoro) then 
      do i = 1,ncol
-        if (wbr(i) > 0._GW_PRC ) then
+        if (wbr(i) > 0. ) then
             tausat(i) = (Fr_c**2) * kwvrdg(i)  * rhoi( i, src_level(i) ) & 
                       * abs(ubi(i , src_level(i) ))**3  &
                       / ni( i , src_level(i) ) 
@@ -1200,14 +1196,14 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   ! Identify top edge of layer in which Scorer param drops below 0
   ! - approximately the "turning level"
   !----------------------------------------------------------
-     trn(:)=1.e8_GW_PRC
+     trn(:)=1.e8
      trn_level(:) = 0 ! pver+1
-     where( m2(:,pver)<= 0._GW_PRC )
+     where( m2(:,pver)<= 0. )
          trn(:) = zi(:,pver)
          trn_level(:) = pver
      endwhere
      do k=pver-1,1,-1
-        where( (m2(:,k+1)> 0._GW_PRC).and.(m2(:,k)<= 0._GW_PRC) )
+        where( (m2(:,k+1)> 0.).and.(m2(:,k)<= 0.) )
            trn(:) = zi(:,k)
            trn_level(:) = k
         endwhere
@@ -1217,12 +1213,12 @@ subroutine gw_rdg_break_trap(ncol, pver, &
      ! Case: Turning below mountain top
         if ( (trn(i) < mxdis(i)).and.(trn_level(i)>=1) ) then
             tau(i,0,:) =  tau(i,0,:) - max( tauoro(i),taudsw(i) )
-            tau(i,0,:) =  max( tau(i,0,:) , 0._GW_PRC )
-            tau(i,0,1:tlb_level(i))=0._GW_PRC
+            tau(i,0,:) =  max( tau(i,0,:) , 0. )
+            tau(i,0,1:tlb_level(i))=0.
             src_level(i) = 1 ! disable any more tau calculation
         end if
         ! Case: Turning but no breaking
-        if ( (wbr(i) == 0._GW_PRC ).and.(trn(i)>mxdis(i)).and.(trn_level(i)>=1) ) then
+        if ( (wbr(i) == 0. ).and.(trn(i)>mxdis(i)).and.(trn_level(i)>=1) ) then
            where ( ( zi(i,:) <= trn(i) ) .and. ( zi(i,:) >= bwv(i) ) )
                tau(i,0,:) =  tauoro(i) * &
                              ( trn(i) - zi(i,:) ) / &
@@ -1231,7 +1227,7 @@ subroutine gw_rdg_break_trap(ncol, pver, &
            src_level(i) = 1 ! disable any more tau calculation
         end if
         ! Case: Turning AND breaking. Turning ABOVE breaking
-        if ( (wbr(i) > 0._GW_PRC ).and.(trn(i) >= wbr(i)).and.(trn_level(i)>=1) ) then
+        if ( (wbr(i) > 0. ).and.(trn(i) >= wbr(i)).and.(trn_level(i)>=1) ) then
            where ( ( zi(i,:) <= trn(i) ) .and. ( zi(i,:) >= wbr(i) ) )
                tau(i,0,:) =   tauoro(i) * &
                              ( trn(i) - zi(i,:) ) / &
@@ -1240,8 +1236,8 @@ subroutine gw_rdg_break_trap(ncol, pver, &
            src_level(i) = 1 ! disable any more tau calculation
         end if
         ! Case: Turning AND breaking. Turning BELOW breaking
-        if ( (wbr(i) > 0._GW_PRC ).and.(trn(i) < wbr(i)).and.(trn_level(i)>=1) ) then
-           tauoro(i) = 0._GW_PRC
+        if ( (wbr(i) > 0. ).and.(trn(i) < wbr(i)).and.(trn_level(i)>=1) ) then
+           tauoro(i) = 0.
            where ( ( zi(i,:) < wbr(i) ) .and. ( zi(i,:) >= tlb(i) ) )
                tau(i,0,:) =  tauoro(i) + (taudsw(i)-tauoro(i)) * &
                              ( wbr(i) - zi(i,:) ) / &

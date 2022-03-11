@@ -1,13 +1,10 @@
 module gw_common
 
+use gw_utils, only: GW_PRC, midpoint_interp
 !
 ! This module contains code common to different gravity wave
 ! parameterizations.
-  !
-
-use gw_utils, only: GW_PRC
-use coords_1d, only: Coords1D
-
+!
 implicit none
 private
 save
@@ -16,7 +13,7 @@ save
 
 public :: GWBand
 
-public :: gw_newtonian_set
+!public :: gw_newtonian_set
 public :: gw_common_init
 public :: gw_prof
 public :: gw_drag_prof
@@ -43,7 +40,6 @@ integer, parameter :: west = 1
 integer, parameter :: east = 2
 integer, parameter :: south = 3
 integer, parameter :: north = 4
-
 
 !++jtb (03/2020)
 ! Some physical constants used by GW codes
@@ -131,10 +127,10 @@ contains
 function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
   ! Used directly to set the type's components.
   integer, intent(in) :: ngwv
-  real(GW_PRC), intent(in) :: dc
-  real(GW_PRC), intent(in) :: fcrit2
+  real, intent(in) :: dc
+  real, intent(in) :: fcrit2
   ! Wavelength in meters.
-  real(GW_PRC), intent(in) :: wavelength
+  real, intent(in) :: wavelength
 
   ! Output.
   type(GWBand) :: band
@@ -165,12 +161,12 @@ subroutine gw_common_init(   &
 
   logical,  intent(in) :: tau_0_ubc_in
   integer,  intent(in) :: ktop_in
-  real(GW_PRC), intent(in) :: gravit_in
-  real(GW_PRC), intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
-  real(GW_PRC), intent(in) :: cpair_in      ! Heat cap. for dry air (J kg-1 K-1)
-  real(GW_PRC), intent(in) :: prndl_in
-  real(GW_PRC), intent(in) :: qbo_hdepth_scaling_in
-  real(GW_PRC), intent(in) :: hr_cf_in
+  real, intent(in) :: gravit_in
+  real, intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
+  real, intent(in) :: cpair_in      ! Heat cap. for dry air (J kg-1 K-1)
+  real, intent(in) :: prndl_in
+  real, intent(in) :: qbo_hdepth_scaling_in
+  real, intent(in) :: hr_cf_in
   ! Report any errors from this routine.
   character(len=*), intent(out) :: errstring
 
@@ -203,19 +199,17 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   ! The parameterization is assumed to operate only where water vapor
   ! concentrations are negligible in determining the density.
   !-----------------------------------------------------------------------
-  use gw_utils, only: midpoint_interp
   !------------------------------Arguments--------------------------------
   ! Column and vertical dimensions.
   integer, intent(in) :: ncol,pver
   ! Pressure coordinates.
-  !type(Coords1D), intent(in) :: p
-  real(GW_PRC), intent(in) :: pmid(ncol,pver) 
-  real(GW_PRC), intent(in) :: pint(ncol,pver+1) 
+  real, intent(in) :: pmid(ncol,pver) 
+  real, intent(in) :: pint(ncol,pver+1) 
 
   ! Specific heat of dry air, constant pressure.
   !real(GW_PRC), intent(in) :: cpair
   ! Midpoint temperatures.
-  real(GW_PRC), intent(in) :: t(ncol,pver)
+  real, intent(in) :: t(ncol,pver)
 
   ! Interface density.
   real(GW_PRC), intent(out) :: rhoi(ncol,pver+1)
@@ -253,7 +247,7 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   end do
 
   ! Interior points use centered differences.
-  ti(:,2:pver) = midpoint_interp(t)
+  ti(:,2:pver) = midpoint_interp(real(t,GW_PRC))
   do k = 2, pver
      do i = 1, ncol
         rhoi(i,k) = pint(i,k) / (rair*ti(i,k))
@@ -299,7 +293,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !        tendency
   !-----------------------------------------------------------------------
 
-  use gw_diffusion, only: gw_ediff, gw_diff_tend
   use linear_1d_operators, only: TriDiagDecomp
 
   !------------------------------Arguments--------------------------------
@@ -309,12 +302,11 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   type(GWBand), intent(in) :: band
   ! Pressure coordinates.
   ! Interface pressures.
-  real(GW_PRC), intent(in) :: pint(ncol,pver+1)
+  real, intent(in) :: pint(ncol,pver+1)
   ! Delta Interface pressures.
-  real(GW_PRC), intent(in) :: delp(ncol,pver)
+  real, intent(in) :: delp(ncol,pver)
   ! Inverse of Delta Interface pressures.
-  real(GW_PRC), intent(in) :: rdelp(ncol,pver)
-      !type(Coords1D), intent(in) :: p
+  real, intent(in) :: rdelp(ncol,pver)
   ! Level from which gravity waves are propagated upward.
   integer, intent(in) :: src_level(ncol)
   ! Lowest level where wind tendencies are calculated.
@@ -324,12 +316,12 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! and adjustments to tau below that level.
 
   ! Time step.
-  real(GW_PRC), intent(in) :: dt
+  real, intent(in) :: dt
 
   ! Midpoint and interface temperatures.
-  real(GW_PRC), intent(in) :: t(ncol,pver)
+  real, intent(in) :: t(ncol,pver)
   ! Log of interface pressures.
-  real(GW_PRC), intent(in) :: piln(ncol,pver+1)
+  real, intent(in) :: piln(ncol,pver+1)
   ! Interface densities.
   real(GW_PRC), intent(in) :: rhoi(ncol,pver+1)
   ! Midpoint and interface Brunt-Vaisalla frequencies.
@@ -735,6 +727,7 @@ subroutine momentum_flux(tend_level, taucd, um_flux, vm_flux)
 end subroutine momentum_flux
 
 
+#ifdef NOT_USED
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine gw_newtonian_set( pver, pref, alpha )
 
@@ -810,5 +803,6 @@ use interpolate_data, only: lininterp
 
 
 end subroutine gw_newtonian_set
+#endif
 
 end module gw_common

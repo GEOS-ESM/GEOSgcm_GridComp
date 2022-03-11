@@ -4,8 +4,6 @@ module coords_1d
 ! commonly used information derived from a collection of sets of 1-D
 ! coordinates.
 
-use gw_utils, only: GW_PRC 
-
 implicit none
 private
 save
@@ -23,16 +21,16 @@ type :: Coords1D
    ! d-1 for dst and rdst.
 
    ! Cell interface coordinates.
-   real(GW_PRC), allocatable :: ifc(:,:)
+   real, allocatable :: ifc(:,:)
    ! Coordinates at cell mid-points.
-   real(GW_PRC), allocatable :: mid(:,:)
+   real, allocatable :: mid(:,:)
    ! Width of cells.
-   real(GW_PRC), allocatable :: del(:,:)
+   real, allocatable :: del(:,:)
    ! Distance between cell midpoints.
-   real(GW_PRC), allocatable :: dst(:,:)
+   real, allocatable :: dst(:,:)
    ! Reciprocals: 1/del and 1/dst.
-   real(GW_PRC), allocatable :: rdel(:,:)
-   real(GW_PRC), allocatable :: rdst(:,:)
+   real, allocatable :: rdel(:,:)
+   real, allocatable :: rdst(:,:)
  contains
    procedure :: section
    procedure :: finalize
@@ -48,12 +46,12 @@ contains
 ! Constructor to create an object from existing data.
 function new_Coords1D_from_fields(ifc, mid, del, dst, &
      rdel, rdst) result(coords)
-  real(GW_PRC),  intent(in) :: ifc(:,:)
-  real(GW_PRC),  intent(in) :: mid(:,:)
-  real(GW_PRC),  intent(in) :: del(:,:)
-  real(GW_PRC),  intent(in) :: dst(:,:)
-  real(GW_PRC),  intent(in) :: rdel(:,:)
-  real(GW_PRC),  intent(in) :: rdst(:,:)
+  real,  intent(in) :: ifc(:,:)
+  real,  intent(in) :: mid(:,:)
+  real,  intent(in) :: del(:,:)
+  real,  intent(in) :: dst(:,:)
+  real,  intent(in) :: rdel(:,:)
+  real,  intent(in) :: rdst(:,:)
   type(Coords1D) :: coords
 
   coords = allocate_coords(size(ifc, 1), size(ifc, 2) - 1)
@@ -70,17 +68,17 @@ end function new_Coords1D_from_fields
 ! Constructor if you only have interface coordinates; derives all the other
 ! fields.
 function new_Coords1D_from_int(ifc) result(coords)
-  real(GW_PRC),  intent(in) :: ifc(:,:)
+  real,  intent(in) :: ifc(:,:)
   type(Coords1D) :: coords
 
   coords = allocate_coords(size(ifc, 1), size(ifc, 2) - 1)
 
   coords%ifc = ifc
-  coords%mid = 0.5_GW_PRC * (ifc(:,:coords%d)+ifc(:,2:))
+  coords%mid = 0.5 * (ifc(:,:coords%d)+ifc(:,2:))
   coords%del = coords%ifc(:,2:) - coords%ifc(:,:coords%d)
   coords%dst = coords%mid(:,2:) - coords%mid(:,:coords%d-1)
-  coords%rdel = 1._GW_PRC/coords%del
-  coords%rdst = 1._GW_PRC/coords%dst
+  coords%rdel = 1./coords%del
+  coords%rdst = 1./coords%dst
 
 end function new_Coords1D_from_int
 
@@ -140,7 +138,7 @@ subroutine finalize(self)
 contains
 
   subroutine guarded_deallocate(array)
-    real(GW_PRC), allocatable :: array(:,:)
+    real, allocatable :: array(:,:)
 
     if (allocated(array)) deallocate(array)
 

@@ -16,9 +16,9 @@ public :: gw_oro_ifc
 public :: gw_oro_src
 public :: gw_oro_init
 
-real(GW_PRC),parameter :: PI      = 3.14159265358979323846_GW_PRC  ! pi
+real,parameter :: PI      = 3.14159265358979323846  ! pi
 
-real(GW_PRC) :: gw_oro_south_fac
+real :: gw_oro_south_fac
 
 contains
 
@@ -29,7 +29,7 @@ subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac)
 #include <netcdf.inc>
 
   type(GWBand), intent(inout) :: band
-  real(GW_PRC), intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac
+  real, intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac
   integer, intent(in)  :: pgwv
 
   
@@ -66,21 +66,21 @@ subroutine gw_oro_src(ncol,pver, band, &
   !type(Coords1D), intent(in) :: p
 
   ! Interface pressures. (Pa)
-  real(GW_PRC), intent(in) :: pint(ncol,pver+1)
+  real, intent(in) :: pint(ncol,pver+1)
   ! Midpoint pressures. (Pa)
-  real(GW_PRC), intent(in) :: pmid(ncol,pver)
+  real, intent(in) :: pmid(ncol,pver)
   ! Delta Interface pressures. (Pa)
-  real(GW_PRC), intent(in) :: delp(ncol,pver)
+  real, intent(in) :: delp(ncol,pver)
 
 
   ! Midpoint zonal/meridional winds.
-  real(GW_PRC), intent(in) :: u(ncol,pver), v(ncol,pver)
+  real, intent(in) :: u(ncol,pver), v(ncol,pver)
   ! Midpoint temperatures.
-  real(GW_PRC), intent(in) :: t(ncol,pver)
+  real, intent(in) :: t(ncol,pver)
   ! Standard deviation of orography.
-  real(GW_PRC), intent(in) :: sgh(ncol)
+  real, intent(in) :: sgh(ncol)
   ! Midpoint altitudes.
-  real(GW_PRC), intent(in) :: zm(ncol,pver)
+  real, intent(in) :: zm(ncol,pver)
   ! Midpoint Brunt-Vaisalla frequencies.
   real(GW_PRC), intent(in) :: nm(ncol,pver)
 
@@ -119,9 +119,9 @@ subroutine gw_oro_src(ncol,pver, band, &
 
   ! Limiters (min/max values)
   ! min surface displacement height for orographic waves
-  real(GW_PRC), parameter :: orohmin = 10._GW_PRC
+  real(GW_PRC), parameter :: orohmin = 10.
   ! min wind speed for orographic waves
-  real(GW_PRC), parameter :: orovmin = 2._GW_PRC
+  real(GW_PRC), parameter :: orovmin = 2.
 
 !--------------------------------------------------------------------------
 ! Average the basic state variables for the wave source over the depth of
@@ -132,7 +132,7 @@ subroutine gw_oro_src(ncol,pver, band, &
 ! Reduces to the bottom midpoint values when sgh=0, such as over ocean.
 !--------------------------------------------------------------------------
 
-  hdsp = 2.0_GW_PRC * sgh
+  hdsp = 2.0 * sgh
 
   k = pver
   src_level = k-1
@@ -173,7 +173,7 @@ subroutine gw_oro_src(ncol,pver, band, &
 
   ! Project the local wind at midpoints onto the source wind.
   do k = 1, pver
-     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
+     ubm(:,k) = dot_2d(real(u(:,k),GW_PRC), real(v(:,k),GW_PRC), xv, yv)
   end do
 
   ! Compute the interface wind projection by averaging the midpoint winds.
@@ -188,10 +188,10 @@ subroutine gw_oro_src(ncol,pver, band, &
   do i = 1, ncol
      if ((ubi(i,pver+1) > orovmin) .and. (hdsp(i) > orohmin)) then
         sghmax = band%fcrit2 * (ubi(i,pver+1) / nsrc(i))**2
-        tauoro(i) = 0.5_GW_PRC * band%kwv * min(hdsp(i)**2, sghmax) * &
+        tauoro(i) = 0.5 * band%kwv * min(hdsp(i)**2, sghmax) * &
              rsrc(i) * nsrc(i) * ubi(i,pver+1)
      else
-        tauoro(i) = 0._GW_PRC
+        tauoro(i) = 0.
         src_level(i) = pver
      end if
   end do
@@ -199,7 +199,7 @@ subroutine gw_oro_src(ncol,pver, band, &
   ! Set the phase speeds and wave numbers in the direction of the source
   ! wind. Set the source stress magnitude (positive only, note that the
   ! sign of the stress is the same as (c-u).
-  tau = 0._GW_PRC
+  tau = 0.
   do k = pver, minval(src_level), -1
      where (src_level <= k) tau(:,0,k+1) = tauoro
   end do
@@ -208,7 +208,7 @@ subroutine gw_oro_src(ncol,pver, band, &
   tend_level = pver
 
   ! No spectrum; phase speed is just 0.
-  c = 0._GW_PRC
+  c = 0.
 
 end subroutine gw_oro_src
 
@@ -237,37 +237,37 @@ subroutine gw_oro_ifc( band, &
    type(GWBand),     intent(in) :: band         ! I hate this variable  ... it just hides information from view
    integer,          intent(in) :: ncol         ! number of atmospheric columns
    integer,          intent(in) :: pver         ! number of vertical layers
-   real(GW_PRC),         intent(in) :: dt           ! Time step.
-   real(GW_PRC),         intent(in) :: effgw_oro
+   real,         intent(in) :: dt           ! Time step.
+   real,         intent(in) :: effgw_oro
 
-   real(GW_PRC),         intent(in) :: u(ncol,pver)      ! Midpoint zonal winds. ( m s-1)
-   real(GW_PRC),         intent(in) :: v(ncol,pver)      ! Midpoint meridional winds. ( m s-1)
-   real(GW_PRC),         intent(in) :: t(ncol,pver)      ! Midpoint temperatures. (K)
-   real(GW_PRC),         intent(in) :: piln(ncol,pver+1) ! Log of interface pressures.
-   real(GW_PRC),         intent(in) :: pmid(ncol,pver)   ! Midpoint pressures. (Pa)
-   real(GW_PRC),         intent(in) :: pint(ncol,pver+1) ! Interface pressures. (Pa)
-   real(GW_PRC),         intent(in) :: delp(ncol,pver)   ! Layer pressures thickness. (Pa)
-   real(GW_PRC),         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
-   real(GW_PRC),         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
-   real(GW_PRC),         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
-   real(GW_PRC),         intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
-   real(GW_PRC),         intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
-   real(GW_PRC),         intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
-   real(GW_PRC),         intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
+   real,         intent(in) :: u(ncol,pver)      ! Midpoint zonal winds. ( m s-1)
+   real,         intent(in) :: v(ncol,pver)      ! Midpoint meridional winds. ( m s-1)
+   real,         intent(in) :: t(ncol,pver)      ! Midpoint temperatures. (K)
+   real,         intent(in) :: piln(ncol,pver+1) ! Log of interface pressures.
+   real,         intent(in) :: pmid(ncol,pver)   ! Midpoint pressures. (Pa)
+   real,         intent(in) :: pint(ncol,pver+1) ! Interface pressures. (Pa)
+   real,         intent(in) :: delp(ncol,pver)   ! Layer pressures thickness. (Pa)
+   real,         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
+   real,         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
+   real,         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
+   real(GW_PRC), intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
+   real(GW_PRC), intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
+   real(GW_PRC), intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
+   real(GW_PRC), intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
 !++jtb 3/2020
-   !!! real(GW_PRC),         intent(in) :: q(:,:,:)          ! Constituent array.
-   !!! real(GW_PRC),         intent(in) :: dse(ncol,pver)    ! Dry static energy.
+   !!! real,         intent(in) :: q(:,:,:)          ! Constituent array.
+   !!! real,         intent(in) :: dse(ncol,pver)    ! Dry static energy.
 
-   real(GW_PRC),         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
-   real(GW_PRC),         intent(in) :: lats(ncol)      ! latitudes
+   real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
+   real,         intent(in) :: lats(ncol)      ! latitudes
 
 
    !! type(physics_ptend), intent(inout):: ptend   ! Parameterization net tendencies.
 
-   real(GW_PRC),        intent(out) :: flx_heat(ncol)
-   real(GW_PRC),        intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
-   real(GW_PRC),        intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
-   real(GW_PRC),        intent(out) :: ttgw(ncol,pver)       ! temperature tendency
+   real,         intent(out) :: flx_heat(ncol)
+   real(GW_PRC), intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
+   real(GW_PRC), intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
+   real(GW_PRC), intent(out) :: ttgw(ncol,pver)       ! temperature tendency
 
    !---------------------------Local storage-------------------------------
 
@@ -358,7 +358,7 @@ subroutine gw_oro_ifc( band, &
 
 
      do i = 1, ncol
-        if (lats(i) < 0._GW_PRC) then
+        if (lats(i) < 0.) then
            tau(i,:,:) = tau(i,:,:) * gw_oro_south_fac
         end if
      end do
@@ -380,7 +380,7 @@ subroutine gw_oro_ifc( band, &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke)
 
-     flx_heat(:ncol) = 0._GW_PRC
+     flx_heat(:ncol) = 0.
 
      
 end subroutine gw_oro_ifc
@@ -437,16 +437,16 @@ end subroutine endrun
 ! Short routine to get the indices of a set of values rounded to their
 ! nearest points on a grid.
 function index_of_nearest(x, grid) result(idx)
-  real(GW_PRC), intent(in) :: x(:)
-  real(GW_PRC), intent(in) :: grid(:)
+  real, intent(in) :: x(:)
+  real, intent(in) :: grid(:)
 
   integer :: idx(size(x))
 
-  real(GW_PRC) :: interfaces(size(grid)-1)
+  real :: interfaces(size(grid)-1)
   integer :: i, n
 
   n = size(grid)
-  interfaces = (grid(:n-1) + grid(2:))/2._GW_PRC
+  interfaces = (grid(:n-1) + grid(2:))/2.
 
   idx = 1
   do i = 1, n-1

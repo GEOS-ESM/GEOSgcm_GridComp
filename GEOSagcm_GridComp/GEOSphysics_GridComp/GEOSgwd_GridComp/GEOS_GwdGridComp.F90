@@ -70,7 +70,6 @@ module GEOS_GwdGridCompMod
   use gw_convect, only : gw_beres_init, BeresSourceDesc
   use gw_common, only: GWBand, gw_common_init
   use gw_drag_ncar, only: gw_intr_ncar
-  use gw_utils, only: GW_PRC
 
   use gw_drag, only: gw_intr
 #endif
@@ -827,14 +826,14 @@ contains
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
     character(len=ESMF_MAXSTR)     :: ERRstring
 
-    real(GW_PRC) :: NCAR_PRNDL
-    real(GW_PRC) :: NCAR_QBO_HDEPTH_SCALING
-    integer      :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
-    real(GW_PRC) :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
-    real(GW_PRC) :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
-    real(GW_PRC) :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
-    real(GW_PRC) :: NCAR_ORO_SOUTH_FAC
-    real(GW_PRC) :: NCAR_HR_CF
+    real    :: NCAR_PRNDL
+    real    :: NCAR_QBO_HDEPTH_SCALING
+    integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
+    real    :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
+    real    :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
+    real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
+    real    :: NCAR_ORO_SOUTH_FAC
+    real    :: NCAR_HR_CF
 
     logical :: NCAR_DC_BERES, NCAR_SC_BERES
 !=============================================================================
@@ -863,17 +862,17 @@ contains
 
       !++jtb 03/2020
       !-----------------------------------
-         call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50_GW_PRC, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.5_GW_PRC, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.5, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=30.0_GW_PRC, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=30.0, RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_common_init( .FALSE. , 1 , & 
-                              1.0_GW_PRC * MAPL_GRAV , &
-                              1.0_GW_PRC * MAPL_RGAS , &
-                              1.0_GW_PRC * MAPL_CP , &
+                              1.0 * MAPL_GRAV , &
+                              1.0 * MAPL_RGAS , &
+                              1.0 * MAPL_CP , &
                               NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, NCAR_HR_CF, ERRstring )
 
          ! Beres Scheme File
@@ -882,34 +881,34 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,           RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5_GW_PRC,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0_GW_PRC,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5_GW_PRC, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
 
         ! Beres DeepCu
          call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_dc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             70000.0_GW_PRC, 1000.0_GW_PRC, .TRUE., NCAR_DC_BERES)
+                             70000.0, 1000.0, .TRUE., NCAR_DC_BERES)
         ! Beres ShallowCu
          call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_sc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             90000.0_GW_PRC, 0.0_GW_PRC, .FALSE., NCAR_SC_BERES)
+                             90000.0, 0.0, .FALSE., NCAR_SC_BERES)
 
          ! Orographic Scheme
          call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5_GW_PRC,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0_GW_PRC,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5_GW_PRC, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0_GW_PRC,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,  RC=STATUS)
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
@@ -1770,17 +1769,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          VERIFY_(STATUS)
          call MAPL_TimerOff(MAPL,"-INTR_NCAR")
 
-          ! Use GEOS GWD only for Extratropical background sources...
-          DUDT_GWD_GEOS = 0.0
-          DVDT_GWD_GEOS = 0.0
-          DTDT_GWD_GEOS = 0.0
-          TAUXB_TMP_GEOS = 0.0
-          TAUYB_TMP_GEOS = 0.0
-          DUDT_ORG_GEOS = 0.0
-          DVDT_ORG_GEOS = 0.0
-          DTDT_ORG_GEOS = 0.0
-          TAUXO_TMP_GEOS = 0.0
-          TAUYO_TMP_GEOS = 0.0
+         ! Use GEOS GWD only for Extratropical background sources...
+         DUDT_GWD_GEOS = 0.0
+         DVDT_GWD_GEOS = 0.0
+         DTDT_GWD_GEOS = 0.0
+         TAUXB_TMP_GEOS = 0.0
+         TAUYB_TMP_GEOS = 0.0
+         DUDT_ORG_GEOS = 0.0
+         DVDT_ORG_GEOS = 0.0
+         DTDT_ORG_GEOS = 0.0
+         TAUXO_TMP_GEOS = 0.0
+         TAUYO_TMP_GEOS = 0.0
          call MAPL_TimerOn(MAPL,"-INTR_GEOS")
          if ( (GEOS_EFFGWORO /= 0.0) .OR. (GEOS_EFFGWBKG /= 0.0) ) then
           call gw_intr   (IM*JM,      LM,         DT,                  &
