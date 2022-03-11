@@ -285,7 +285,9 @@ contains
 ! Init CICE 
 !---------------
     ! BZ: need to properly initialze CICE's calendar??
-    call CICE_Initialize(Comm)
+    call cice_init1(Comm)
+    call cice_init2
+
 
 
 ! Initialize CICE model
@@ -329,19 +331,7 @@ contains
     !
     call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
 
-    ! create and add some fields to the callback state (i.e. SURFSTATE)
-    block
-      type(ESMF_Field) :: fld
-      type (ESMF_Grid) :: grid
-
-      call ESMF_GridCompGet(gc, grid=grid, __RC__)
-      fld = MAPL_FieldCreateEmpty('surface_ice_temperature', grid, __RC__)
-      call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsHorzOnly,          &
-           location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0,        &
-           ungrid=[NUM_ICE_CATEGORIES], __RC__)
-      call MAPL_StateAdd(SURFST, fld, __RC__)
-    end block
-
+    call LoadSurfaceStates(SURFST, __RC__)
     !=====================================================================================
 
 
@@ -365,7 +355,44 @@ contains
 !---------
 
     RETURN_(ESMF_SUCCESS)
+
+contains
+
+  subroutine LoadSurfaceStates(SURFST, RC)
+
+! !ARGUMENTS:
+    type(ESMF_State), intent(INOUT)    :: SURFST
+    integer, optional, intent(OUT)     :: RC
+
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)         :: IAm
+    integer                            :: STATUS
+
+    type(ESMF_Field)                   :: fld
+    type (ESMF_Grid)                   :: grid
+
+! Get the component name and set-up traceback handle.
+! -----------------------------------------------------
+    Iam = trim(comp_name) // "LoadSurfaceStates"
+
+
+    ! create and add some fields to the callback state (i.e. SURFSTATE)
+    call ESMF_GridCompGet(gc, grid=grid, __RC__)
+    fld = MAPL_FieldCreateEmpty('surface_ice_temperature', grid, __RC__)
+    call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsHorzOnly,              &
+           location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0,          &
+           ungrid=[NUM_ICE_CATEGORIES], __RC__)
+    call MAPL_StateAdd(SURFST, fld, __RC__)
+
+    RETURN_(ESMF_SUCCESS)
+    
+  end subroutine LoadSurfaceStates 
+
   end subroutine Initialize
+
+
 
 
 !=================================================================================
