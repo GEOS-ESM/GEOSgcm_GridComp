@@ -2237,20 +2237,21 @@ contains
 #endif
       integer, dimension(:), allocatable :: seeds
 
-      ! uniform random numbers needed by mcICA (ngpt,nlay,cols)
-      real(wp), dimension(:,:,:), allocatable :: urand, urand_cond
+      ! uniform random numbers needed by mcICA (ngpt,nlay,rrtmgp_blocksize)
+      real(wp), dimension(:,:,:), allocatable :: &
+        urand, urand_aux, urand_cond, urand_cond_aux
 
-      ! Cloud mask for overlap scheme (cols,nlay,ngpt)
+      ! Cloud mask for overlap scheme (ncols_block,nlay,ngpt)
       logical,  dimension(:,:,:), allocatable :: cld_mask
 
-      ! sub-gridscale condensate scaling for overlap scheme (cols,nlay,ngpt)
+      ! sub-gridscale condensate scaling for overlap scheme (ncols_block,nlay,ngpt)
       real(wp), dimension(:,:,:), allocatable :: zcw
 
       ! correlation length scales [m] for cloud presence and condensate (ncol)
       real, dimension(:), allocatable :: adl, rdl
 
       ! binomial probability of maximum overlap (cf. random overlap)
-      ! for cloud presence and condensate (cols,nlay-1)
+      ! for cloud presence and condensate (ncols_block,nlay-1)
       real(wp), dimension(:,:), allocatable :: alpha, rcorr
 
       ! TEMP ... see below
@@ -3273,8 +3274,10 @@ contains
       ! subset of columns (rrtmgp_blockSize) since column index is last
       allocate(urand(ngpt,LM,rrtmgp_blocksize),__STAT__)
       if (gen_mro) then
+        allocate(urand_aux(ngpt,LM,rrtmgp_blocksize),__STAT__)
         if (cond_inhomo) then
-          allocate(urand_cond(ngpt,LM,rrtmgp_blocksize),__STAT__)
+          allocate(urand_cond    (ngpt,LM,rrtmgp_blocksize),__STAT__)
+          allocate(urand_cond_aux(ngpt,LM,rrtmgp_blocksize),__STAT__)
         end if
       end if
 
@@ -3467,8 +3470,11 @@ contains
           ! draw the random numbers for the column
           urand(:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
           if (gen_mro) then
-            if (cond_inhomo) urand_cond(:,:,isub) = &
-              reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+            urand_aux(:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+            if (cond_inhomo) then
+              urand_cond    (:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+              urand_cond_aux(:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+            endif
           end if
           ! free the rng
           call rng%end()
@@ -3491,9 +3497,13 @@ contains
           case ("GEN_MAX_RAN_OVERLAP")
             ! a scheme like Oreopoulos et al. 2012 (doi:10.5194/acp-12-9097-2012) in which both
             ! cloud presence and cloud condensate are separately generalized maximum-random:
-            TEST_(sampled_urand_gen_max_ran(urand(:,:,1:ncols_block),alpha))
+            error_msg = sampled_urand_gen_max_ran(alpha, &
+              urand(:,:,1:ncols_block),urand_aux(:,:,1:ncols_block))
+            TEST_(error_msg)
             if (cond_inhomo) then
-              TEST_(sampled_urand_gen_max_ran(urand_cond(:,:,1:ncols_block),rcorr))
+              error_msg = sampled_urand_gen_max_ran(rcorr, &
+                urand_cond(:,:,1:ncols_block),urand_cond_aux(:,:,1:ncols_block))
+              TEST_(error_msg)
             end if
             do isub = 1,ncols_block
               icol = colS + isub - 1
@@ -3662,9 +3672,9 @@ contains
       deallocate(bnd_flux_dn_allsky,bnd_flux_net_allsky,bnd_flux_dir_allsky,__STAT__)
       deallocate(seeds,urand,cld_mask,__STAT__)
       if (gen_mro) then
-        deallocate(adl,alpha,__STAT__)
+        deallocate(adl,alpha,urand_aux,__STAT__)
         if (cond_inhomo) then
-          deallocate(rdl,rcorr,urand_cond,zcw,__STAT__)
+          deallocate(rdl,rcorr,urand_cond,urand_cond_aux,zcw,__STAT__)
         endif
       end if
       call cloud_optics%finalize()
