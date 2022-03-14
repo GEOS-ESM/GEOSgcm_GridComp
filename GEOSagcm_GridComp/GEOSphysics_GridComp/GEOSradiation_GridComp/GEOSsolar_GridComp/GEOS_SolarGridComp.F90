@@ -2213,7 +2213,8 @@ contains
       class(ty_optical_props_arry), allocatable :: optical_props
 
       ! RRTMGP locals
-      logical :: top_at_1, partial_block, need_aer_optical_props, cond_inhomo
+      logical :: top_at_1, partial_block, need_aer_optical_props
+      logical :: gen_mro, cond_inhomo
       integer :: nbnd, ngpt, nmom, icergh
       integer :: ib, b, nBlocks, colS, colE, ncols_block, &
                  partial_blockSize, icol, isub, ilay, igpt
@@ -3169,20 +3170,23 @@ contains
         MAPL, cloud_overlap_type, "RRTMGP_CLOUD_OVERLAP_TYPE_SW:", &
         DEFAULT='GEN_MAX_RAN_OVERLAP', __RC__)
 
-      ! condensate inhomogeneity?
-      if (cloud_overlap_type == "GEN_MAX_RAN_OVERLAP") then
+      ! GEN_MAX_RAN_OVERLAP uses correlation lengths
+      !   and possibly inhomogeneous condensate
+      gen_mro = (cloud_overlap_type == "GEN_MAX_RAN_OVERLAP")
+      if (gen_mro) then
+
+        ! condensate inhomogeneous?
         ! see RadiationGC initialization
         cond_inhomo = condensate_inhomogeneous()
-      else
-        cond_inhomo = .false.
-      end if
 
-      ! Compute decorrelation length scales [m]
-      allocate(adl(ncol),__STAT__)
-      call correlation_length_cloud_fraction(ncol, ncol, doy, alat, adl)
-      if (cond_inhomo) then
-         allocate(rdl(ncol),__STAT__)
-         call correlation_length_condensate(ncol, ncol, doy, alat, rdl)
+        ! Compute decorrelation length scales [m]
+        allocate(adl(ncol),__STAT__)
+        call correlation_length_cloud_fraction(ncol, ncol, doy, alat, adl)
+        if (cond_inhomo) then
+          allocate(rdl(ncol),__STAT__)
+          call correlation_length_condensate(ncol, ncol, doy, alat, rdl)
+        endif
+
       endif
 
       ! ===============================================================================
@@ -3268,8 +3272,10 @@ contains
       ! for random numbers, for efficiency, reserve the maximum possible
       ! subset of columns (rrtmgp_blockSize) since column index is last
       allocate(urand(ngpt,LM,rrtmgp_blocksize),__STAT__)
-      if (cond_inhomo) then
-        allocate(urand_cond(ngpt,LM,rrtmgp_blocksize),__STAT__)
+      if (gen_mro) then
+        if (cond_inhomo) then
+          allocate(urand_cond(ngpt,LM,rrtmgp_blocksize),__STAT__)
+        end if
       end if
 
       ! number of FULL blocks by integer division
@@ -3282,11 +3288,13 @@ contains
         ncols_block = rrtmgp_blockSize
 
         allocate(toa_flux(ncols_block,ngpt),                 __STAT__)
-        allocate(alpha(ncols_block,LM-1),                    __STAT__)
         allocate(cld_mask(ncols_block,LM,ngpt),              __STAT__)
-        if (cond_inhomo) then
-          allocate(rcorr(ncols_block,LM-1),                  __STAT__)
-          allocate(zcw(ncols_block,LM,ngpt),                 __STAT__)
+        if (gen_mro) then
+          allocate(alpha(ncols_block,LM-1),                  __STAT__)
+          if (cond_inhomo) then
+            allocate(rcorr(ncols_block,LM-1),                __STAT__)
+            allocate(zcw(ncols_block,LM,ngpt),               __STAT__)
+          endif
         endif
 
         ! in-cloud cloud optical props
@@ -3335,19 +3343,24 @@ contains
 
           if (b > 1) then
             ! one or more full blocks already processed
-            deallocate(toa_flux,       __STAT__)
-            deallocate(alpha,cld_mask, __STAT__)
-            if (cond_inhomo) then
-              deallocate(rcorr,zcw,    __STAT__)
+            deallocate(toa_flux,      __STAT__)
+            deallocate(cld_mask,      __STAT__)
+            if (gen_mro) then
+              deallocate(alpha,       __STAT__)
+              if (cond_inhomo) then
+                deallocate(rcorr,zcw, __STAT__)
+              endif
             endif
           endif
 
           allocate(toa_flux(ncols_block,ngpt),    __STAT__)
-          allocate(alpha(ncols_block,LM-1),       __STAT__)
           allocate(cld_mask(ncols_block,LM,ngpt), __STAT__)
-          if (cond_inhomo) then
-            allocate(rcorr(ncols_block,LM-1),     __STAT__)
-            allocate(zcw(ncols_block,LM,ngpt),    __STAT__)
+          if (gen_mro) then
+            allocate(alpha(ncols_block,LM-1),     __STAT__)
+            if (cond_inhomo) then
+              allocate(rcorr(ncols_block,LM-1),   __STAT__)
+              allocate(zcw(ncols_block,LM,ngpt),  __STAT__)
+            endif
           endif
 
           ! ty_optical_props routines have an internal deallocation
@@ -3426,15 +3439,17 @@ contains
         ! exponential inter-layer correlations
         ! [alpha|rcorr](k) is correlation between layers k and k+1
         ! dzmid(k) is separation between midpoints of layers k and k+1
-        do ilay = 1,LM-1
-          ! cloud fraction correlation
-          alpha(:,ilay) = exp(-abs(dzmid(colS:colE,ilay))/real(adl(colS:colE),kind=wp))
-        enddo
-        if (cond_inhomo) then
+        if (gen_mro) then
           do ilay = 1,LM-1
-            ! condensate correlation
-            rcorr(:,ilay) = exp(-abs(dzmid(colS:colE,ilay))/real(rdl(colS:colE),kind=wp))
+            ! cloud fraction correlation
+            alpha(:,ilay) = exp(-abs(dzmid(colS:colE,ilay))/real(adl(colS:colE),kind=wp))
           enddo
+          if (cond_inhomo) then
+            do ilay = 1,LM-1
+              ! condensate correlation
+              rcorr(:,ilay) = exp(-abs(dzmid(colS:colE,ilay))/real(rdl(colS:colE),kind=wp))
+            enddo
+          endif
         endif
 
         ! generate McICA random numbers for block
@@ -3451,7 +3466,10 @@ contains
           call rng%init(VSL_BRNG_PHILOX4X32X10,seeds)
           ! draw the random numbers for the column
           urand(:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
-          if (cond_inhomo) urand_cond(:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+          if (gen_mro) then
+            if (cond_inhomo) urand_cond(:,:,isub) = &
+              reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+          end if
           ! free the rng
           call rng%end()
         end do
@@ -3508,6 +3526,7 @@ contains
 
               end do
             end do
+
           case default
             TEST_('RRTMGP_SW: unknown cloud overlap')
         end select
@@ -3519,8 +3538,9 @@ contains
         ! since tau for each phase is linear in the phase's water path
         ! and since the scaling zcw applies equally to both phases, the
         ! total g-point optical thickness tau will scale with zcw.
-        if (cond_inhomo) then
-          where (cld_mask) cloud_props_gpt%tau = cloud_props_gpt%tau * zcw
+        if (gen_mro) then
+          if (cond_inhomo) &
+            where (cld_mask) cloud_props_gpt%tau = cloud_props_gpt%tau * zcw
         end if
 
         call MAPL_TimerOff(MAPL,"--RRTMGP_MCICA",__RC__)
@@ -3640,10 +3660,13 @@ contains
       deallocate(flux_up_clrsky,flux_net_clrsky,__STAT__)
       deallocate(flux_up_allsky,flux_net_allsky,__STAT__)
       deallocate(bnd_flux_dn_allsky,bnd_flux_net_allsky,bnd_flux_dir_allsky,__STAT__)
-      deallocate(adl,seeds,urand,cld_mask,__STAT__)
-      if (cond_inhomo) then
-        deallocate(rdl,urand_cond,zcw,__STAT__)
-      endif
+      deallocate(seeds,urand,cld_mask,__STAT__)
+      if (gen_mro) then
+        deallocate(adl,alpha,__STAT__)
+        if (cond_inhomo) then
+          deallocate(rdl,rcorr,urand_cond,zcw,__STAT__)
+        endif
+      end if
       call cloud_optics%finalize()
       call cloud_props_gpt%finalize()
       call cloud_props_bnd%finalize()
