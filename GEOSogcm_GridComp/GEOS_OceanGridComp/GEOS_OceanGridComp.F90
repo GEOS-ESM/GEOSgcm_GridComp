@@ -2,10 +2,10 @@
 
 #include "MAPL_Generic.h"
 
-module GuestOcean_GridCompMod
+module GEOS_OceanGridCompMod
 
 !BOP
-! !MODULE: GuestOcean_GridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
+! !MODULE: GEOS_OceanGridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
 
 ! !USES:
   use ESMF
@@ -135,7 +135,7 @@ contains
        end select
     endif
 
-    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, RC=STATUS )
+    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, __RC__ )
     DUAL_OCEAN = iDUAL_OCEAN /= 0
 
     OCNd = 0
@@ -1386,4 +1386,4 @@ contains
 
   end subroutine Run
 
-end module GuestOcean_GridCompMod
+end module GEOS_OceanGridCompMod

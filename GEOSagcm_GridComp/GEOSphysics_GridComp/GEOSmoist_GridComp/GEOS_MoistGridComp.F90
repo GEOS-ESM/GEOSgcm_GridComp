@@ -5750,7 +5750,7 @@ contains
       real, allocatable, dimension(:,:,:)  ::  FQAl, FQAI, QCNTOT, FQA
       real, dimension(IM,JM,LM)  ::  QTOT, QL_TOT, QI_TOT, CFX, QRAIN_CN, QSNOW_CN,  &
                                                  CNV_NDROP_X, CNV_NICE_X, CNV_MFD_X, CNV_DQLDT_X, &
-                                                 CNV_PRC3_X ,  CNV_UPDF_X  
+                                                 CNV_PRC3_X ,  CNV_UPDF_X , NWFA 
        
               
       real, dimension(IM,JM)  :: ZPBL
@@ -5908,7 +5908,7 @@ contains
       real (ESMF_KIND_R8)       :: tauxr8, fsoot_drop, fdust_drop, sigma_nuc_r8, rh1_r8, frachet_dust, &
                                    frachet_bc, frachet_org, frachet_ss
       logical                   :: ismarine, is_stable, use_average_v                  
-      real                      :: Nct, Wct, DX, ksa1, Xscale
+      real                      :: Nct, Wct, DX, ksa1, Xscale, nfaux
       real, dimension(IM,JM)    :: dum2d
 
 
@@ -6414,11 +6414,11 @@ contains
       call MAPL_GetResource(STATE, NPRE_FRAC,      'NPRE_FRAC:',      DEFAULT= -1.0,   RC=STATUS) !Fraction of preexisting ice affecting ice nucleationn            
       call MAPL_GetResource(STATE, CLDPARAMS%MIN_LTS,'LTS_LOW:',      DEFAULT= 20.0,   RC=STATUS) !lower LTS for morphology correction
       call MAPL_GetResource(STATE, LTS_UP,         'LTS_UP:',         DEFAULT= 22.0,   RC=STATUS) !Upper LTS for morphology correction
-      call MAPL_GetResource(STATE, MIN_EXP,        'MIN_EXP:',        DEFAULT= 0.5,   RC=STATUS) !Exponent of the relation CFA=CFV^n
+      call MAPL_GetResource(STATE, MIN_EXP,        'MIN_EXP:',        DEFAULT= 1.0,   RC=STATUS) !Exponent of the relation CFA=CFV^n
       call MAPL_GetResource(STATE, MAX_EXP,        'MAX_EXP:',        DEFAULT= 1.0,   RC=STATUS) !Exponent of the relation CFA=CFV^n
       call MAPL_GetResource(STATE, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    RC=STATUS) !Set to > 0 to use an average velocity for activation
       call MAPL_GetResource(STATE, AUTSC,          'AUT_SCALE:',      DEFAULT= 0.5,    RC=STATUS) !scale factor for critical size for drizzle      call MAPL_GetResource(STATE, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    RC=STATUS) !Set to > 0 to use an average velocity for activation
-      call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 4.0, RC=STATUS) !Ice autoconversion time scale
+      call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 2.0, RC=STATUS) !Ice autoconversion time scale
       call MAPL_GetResource(STATE, TMAXLL,         'TMAXLL:',         DEFAULT= 250.0,  RC=STATUS) !Liquid clouds min T
       call MAPL_GetResource(STATE, CCN_PARAM,      'CCNPARAM:',       DEFAULT= 2.0,    RC=STATUS) !CCN activation param
       call MAPL_GetResource(STATE, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    RC=STATUS) !IN param
@@ -6449,8 +6449,8 @@ contains
           
       call MAPL_GetResource(STATE, USE_NATURE_WSUB,     'USE_NAT_WSUB:',     DEFAULT= 1.0  ,RC=STATUS) !greater than zero reads wsub from nature run	             
       call MAPL_GetResource(STATE, DCS, 'DCS:', default=350.0e-6, RC=STATUS )
-      call MAPL_GetResource(STATE, CLDPARAMS%DISP_FACTOR_LIQ,         'DISP_FACTOR_LIQ:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the droplet/ice crystal number in convective detrainment 
-      call MAPL_GetResource(STATE, CLDPARAMS%DISP_FACTOR_ICE,         'DISP_FACTOR_ICE:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the droplet/ice crystal number in convective detrainment 
+      call MAPL_GetResource(STATE, CLDPARAMS%SCALE_NCPL_UW,         'SCALE_NCPL_UW:',     DEFAULT= 0.0,   RC=STATUS) ! Scales the droplet number in shallow detrainment 
+      call MAPL_GetResource(STATE, CLDPARAMS%SCALE_NCPI_UW,         'SCALE_NCPI_UW:',     DEFAULT= 0.0,   RC=STATUS) ! Scales the ice crystal number in shallow detrainment 
       
       call MAPL_GetResource( STATE, RRTMG_IRRAD ,'USE_RRTMG_IRRAD:', DEFAULT=0.0, RC=STATUS)
       VERIFY_(STATUS)
@@ -8033,10 +8033,14 @@ contains
                  buffer(:,:,:,n,8) = aci_f_organic
 
               end do ACTIVATION_PROPERTIES
+              
+              
+              NWFA = 0.0  ! number concentration of water-friendly aerosol
 
               do k = 1, LM
                  do j = 1, JM
                     do i = 1, IM
+                       nfaux = 0.0
                        do n = 1, n_modes
                           AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1)
                           AeroProps(i,j,k)%dpg(n)   = buffer(i,j,k,n,2)
@@ -8046,7 +8050,13 @@ contains
                           AeroProps(i,j,k)%fdust(n) = buffer(i,j,k,n,6)
                           AeroProps(i,j,k)%fsoot(n) = buffer(i,j,k,n,7)
                           AeroProps(i,j,k)%forg(n)  = buffer(i,j,k,n,8)
+                          
+                          if (AeroProps(i,j,k)%kap(n) .gt. 0.4) then 
+                            nfaux =  nfaux + AeroProps(i,j,k)%num(n)
+                          end if
+                           
                        end do
+                       NWFA(I, J, K)  =  nfaux
                        AeroProps(i,j,k)%nmods       = n_modes                 ! no need of a 3D field: aero provider specific
                     end do
                  end do
@@ -9550,7 +9560,7 @@ contains
               DT_RASP           , &
               QRAIN_CN          , & !grid av
               QSNOW_CN          , &
-              KCBL, LTS,  CONVPAR_OPTION)              
+              KCBL, LTS,  NWFA, CONVPAR_OPTION)              
       
 
         ! Fill DTDT_MACRO diagnostic
@@ -10930,7 +10940,7 @@ contains
 				   wparc_cgw(1, k)= max(WSUB_NATURE(I, J, K)*BKGTAU*BKGTAU, 0.0)!BKG accounts for unresolved vertical velocity at 7 km				  
 				   wparc_gw(1, k) = 0.0
 
-                        end if 
+            end if 
 
                              swparc(1, K)=sqrt(wparc_gw(1, K)+wparc_turb(1, K)+ wparc_cgw(1, K))
  
@@ -11156,7 +11166,7 @@ contains
               DT_RASP , &
               QRAIN_CN, & !grid av
               QSNOW_CN, &
-              KCBL, LTS,  CONVPAR_OPTION)
+              KCBL, LTS, NWFA,  CONVPAR_OPTION)
 
 
       
@@ -12447,9 +12457,17 @@ do K= 1, LM
            -  MAPL_ALHF*( CN_SNR  + LS_SNR  + AN_SNR + SC_SNR )*DT_MOIST
 
       if (associated(DCPTE  ))   DCPTE   = (  SUM(  MAPL_CP*TEMP *MASS , 3) - DCPTE )/DT_MOIST 
-      if (associated(CWP    ))   CWP     = SUM( ( QLCN+QLLS+QICN+QILS+QRAIN+QSNOW+QGRAUPEL )*MASS , 3 )
-      if (associated(LWP    ))   LWP     = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
-      if (associated(IWP    ))   IWP     = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
+      
+      if(adjustl(CLDMICRO)/="2MOMENT") then      
+        if (associated(CWP    ))   CWP     = SUM( ( QLCN+QLLS+QICN+QILS+QRAIN+QSNOW+QGRAUPEL )*MASS , 3 )
+        if (associated(LWP    ))   LWP     = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
+        if (associated(IWP    ))   IWP     = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
+      else
+        if (associated(CWP    ))   CWP     = SUM( ( QLCN+QLLS+QICN+QILS)*MASS , 3 )
+        if (associated(LWP    ))   LWP     = SUM( ( QLCN+QLLS) *MASS , 3 )
+        if (associated(IWP    ))   IWP     = SUM( ( QICN+QILS ) *MASS , 3 )
+      end if 
+      
       if (associated(CCWP   ))   CCWP    = SUM(   CNV_QC *MASS , 3 )
       if (associated(TPW    ))   TPW     = SUM(   Q1         *MASS , 3 )
       if (associated(RH2    ))   RH2     = max(MIN( Q1/GEOS_QSAT (TH1*PK, PLO) , 1.02 ),0.0)

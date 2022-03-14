@@ -1326,7 +1326,7 @@ subroutine contact_freezing (microp_uniform, t, p, rndst, nacon, &
          taux=t(i)-3.0
          taux=max(taux-273.15, -40.0)
          nsdust=max(exp(-0.517*taux + 8.934) -3.76e6, 0.0) !From Niemand 2012 (restricts nuc to T<-12 C)
-         nssoot=max(1.0e4*exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012)
+         nssoot=max(7.463*exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012)
         
         
         frz_eff(1:mdust-1) =  nsdust 
