@@ -12,7 +12,7 @@ if ( NOT BUILD_MIT_OCEAN )
 else()
   esma_add_library (${this}
     SRCS GEOS_OceanGridComp.F90
-    SUBCOMPONENTS MIT_GEOS5PlugMod
+    SUBCOMPONENTS MIT_GEOS5PlugMod GEOSdatasea_GridComp
     DEPENDENCIES GEOSdatasea_GridComp MAPL
     INCLUDES ${INC_ESMF})
 endif()
