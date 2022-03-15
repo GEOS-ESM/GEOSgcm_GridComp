@@ -2465,7 +2465,9 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Moist Processes
@@ -2485,7 +2487,9 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
     call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
@@ -2515,9 +2519,13 @@ contains
    
     I=SURF
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
+    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"1")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1")
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"1_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Aerosol/Chemistry Stage 1
@@ -2530,10 +2538,14 @@ contains
 
     I=CHEM
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
+    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"1")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1")
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"1_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Turbulence Stage 1
@@ -2552,9 +2564,13 @@ contains
 
     I=TURBL
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
+    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"1")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1")
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"1_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Surface Stage 2
@@ -2577,10 +2593,14 @@ contains
 
     I=SURF
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
+    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"2")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2")
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"2_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Turbulence Stage 2
@@ -2593,10 +2613,14 @@ contains
 
     I=TURBL
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
+    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"2")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2")
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"2_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Aerosol/Chemistry Stage 2
@@ -2609,19 +2633,21 @@ contains
       TFORRAD  =  TFORCHEM
     endif
 
-!-srf-gf-scheme
     if(SYNCTQ.ge.1. .AND. DXDT_BL==1) then
        DTDT_BL=(TFORRAD-DTDT_BL)/DT
        DQDT_BL=(QV-DQDT_BL)/DT
     endif
-!-srf-gf-scheme
 
     I=CHEM   
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
+    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"2")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2")
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"2_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Radiation
@@ -2632,7 +2658,9 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"_SYNC")
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 !AMM
@@ -3249,10 +3277,6 @@ contains
     if(DO_SPPT) deallocate(TMP,RNDPERT)
     if(DO_SKEB) deallocate(SKEBU_WT,SKEBV_WT)
 !-stochastic-physics
-
-    call MAPL_TimerOn(STATE,"PHYS_SYNC")
-    call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    call MAPL_TimerOff(STATE,"PHYS_SYNC")
 
     call MAPL_TimerOff(STATE,"RUN")
 
