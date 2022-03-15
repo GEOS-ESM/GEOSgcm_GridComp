@@ -13,21 +13,11 @@ save
 
 public :: GWBand
 
-!public :: gw_newtonian_set
 public :: gw_common_init
 public :: gw_prof
 public :: gw_drag_prof
 public :: qbo_hdepth_scaling
 public :: hr_cf
-
-!++jtb 
-!  These go away for now (3/26/20)
-!public :: calc_taucd, momentum_flux, momentum_fixer
-!public :: energy_change, energy_fixer
-!public :: coriolis_speed, adjust_inertial
-!--
-
-!public :: pver
 
 public :: west, east, north, south
 public :: pi
@@ -701,7 +691,7 @@ end subroutine gw_drag_prof
 
 !==========================================================================
 
-
+#ifdef NOT_USED
 !==========================================================================
 ! Calculate the amount of momentum conveyed from below the gravity wave
 ! region, to the region where gravity waves are calculated.
@@ -726,8 +716,6 @@ subroutine momentum_flux(tend_level, taucd, um_flux, vm_flux)
 
 end subroutine momentum_flux
 
-
-#ifdef NOT_USED
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine gw_newtonian_set( pver, pref, alpha )
 

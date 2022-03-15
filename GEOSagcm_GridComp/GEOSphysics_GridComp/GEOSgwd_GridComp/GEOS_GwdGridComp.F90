@@ -835,7 +835,11 @@ contains
     real    :: NCAR_ORO_SOUTH_FAC
     real    :: NCAR_HR_CF
 
-    logical :: NCAR_DC_BERES, NCAR_SC_BERES
+    logical :: NCAR_DC_BERES
+    real    :: NCAR_DC_BERES_SRC_LEVEL
+    logical :: NCAR_SC_BERES
+    real    :: NCAR_SC_BERES_SRC_LEVEL
+
 !=============================================================================
 
    ! Begin...
@@ -891,13 +895,17 @@ contains
         ! Beres DeepCu
          call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., RC=STATUS)
          VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, RC=STATUS)
+         VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_dc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             70000.0, 1000.0, .TRUE., NCAR_DC_BERES)
+                             NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_DC_BERES)
         ! Beres ShallowCu
          call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., RC=STATUS)
          VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, RC=STATUS)
+         VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_sc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             90000.0, 0.0, .FALSE., NCAR_SC_BERES)
+                             NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_SC_BERES)
 
          ! Orographic Scheme
          call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           RC=STATUS)

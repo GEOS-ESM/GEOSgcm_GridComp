@@ -5,7 +5,7 @@ module gw_convect
 ! gw_drag in May 2013.
 !
 
-  use gw_utils, only: GW_PRC, get_unit_vector, dot_2d, midpoint_interp
+  use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof, hr_cf 
 
   use MAPL_ConstantsMod, only: MAPL_RGAS, MAPL_CP, MAPL_GRAV
@@ -19,8 +19,8 @@ public :: gw_beres_ifc
 public :: gw_beres_src
 public :: gw_beres_init
 
-real,parameter :: PI      = 3.14159265358979323846 ! pi
-real,    parameter :: TNDMAX  = 500. / 86400.  ! maximum wind tendency
+real, parameter :: PI      = 3.14159265358979323846 ! pi
+real, parameter :: TNDMAX  = 500. / 86400.  ! maximum wind tendency
 
 type :: BeresSourceDesc
    logical :: active
@@ -36,9 +36,9 @@ type :: BeresSourceDesc
    integer :: maxh
    integer :: maxuh
    ! Heating depths [m].
-   real, allocatable :: hd(:)
+   real(GW_R8), allocatable :: hd(:)
    ! Table of source spectra.
-   real, allocatable :: mfcc(:,:,:)
+   real(GW_R8), allocatable :: mfcc(:,:,:)
 end type BeresSourceDesc
 
 
@@ -63,7 +63,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
   logical, intent(in) :: storm_shift, active
 
   ! Stuff for Beres convective gravity wave source.
-  real(kind(1.d0)), allocatable :: mfcc(:,:,:), hdcc(:)
+  real(GW_R8), allocatable :: mfcc(:,:,:), hdcc(:)
   integer  :: hd_mfcc , mw_mfcc, ps_mfcc, ngwv_file, ps_mfcc_mid
 
   ! Vars needed by NetCDF operators
@@ -131,7 +131,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
   
     ! While not currently documented in the file, it uses kilometers. Convert
     ! to meters.
-    desc%hd = hdcc *1000.
+    desc%hd = hdcc * 1000.0_GW_R8
 
     desc%spectrum_source = spectrum_source
 
@@ -205,25 +205,25 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   real(GW_PRC) :: uconv(ncol), vconv(ncol)
 
   ! Maximum heating rate.
-  real :: q0(ncol)
+  real(GW_PRC) :: q0(ncol)
 
   ! Bottom/top heating range index.
   integer  :: boti(ncol), topi(ncol)
   ! Index for looking up heating depth dimension in the table.
   integer  :: hd_idx(ncol)
   ! Mean wind in heating region.
-  real :: uh(ncol)
+  real(GW_PRC) :: uh(ncol)
   ! Min/max wavenumber for critical level filtering.
   integer :: Umini(ncol), Umaxi(ncol)
   ! Source level tau for a column.
-  real(kind(1.d0)) :: tau0(-band%ngwv:band%ngwv)
+  real(GW_PRC) :: tau0(-band%ngwv:band%ngwv)
   ! Speed of convective cells relative to storm.
-  real :: CS(ncol)
+  real(GW_PRC) :: CS(ncol)
   ! Index to shift spectra relative to ground.
   integer :: shift
 
   ! Averaging length.
-  real(kind(1.d0)), parameter :: AL = 1.0e5
+  real(GW_PRC), parameter :: AL = 1.0e5
 
   !----------------------------------------------------------------------
   ! Initialize tau array
@@ -283,7 +283,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
               topi(i) = k
            else
               ! First spot where heating rate is no longer positive.
-              if (.not. (netdt(i,k) > 0.0)) topi(i) = k
+              if (netdt(i,k) <= 0.0) topi(i) = k
            end if
         end if
      end do
@@ -479,13 +479,6 @@ subroutine gw_beres_ifc( band, &
    real(GW_PRC) :: xv(ncol)
    real(GW_PRC) :: yv(ncol)
 
-   ! Averages over source region.
-   real(GW_PRC) :: ubmsrc(ncol) ! On-ridge wind.
-   real(GW_PRC) :: usrc(ncol)   ! Zonal wind.
-   real(GW_PRC) :: vsrc(ncol)   ! Meridional wind.
-   real(GW_PRC) :: nsrc(ncol)   ! B-V frequency.
-   real(GW_PRC) :: rsrc(ncol)   ! Density.
-
    ! Heating depth [m] and maximum heating in each column.
    real(GW_PRC) :: hdepth(ncol), maxq0(ncol)
 
@@ -527,7 +520,7 @@ subroutine gw_beres_ifc( band, &
      end where
 
      do k = 0, pver
-        ! sprectrum source index
+        ! spectrum source index
         if (pref(k+1) < desc%spectrum_source) desc%k = k+1
      end do
 
@@ -553,6 +546,7 @@ subroutine gw_beres_ifc( band, &
           effgw, c, kvtt, tau, utgw, vtgw, &
           ttgw, egwdffi, gwut, dttdf, dttke, tau_adjust=pint_adj)
 
+#ifdef SKIP
 ! GEOS efficiency and energy/momentum adjustments
   ktop=1
   do i=1,ncol
@@ -619,6 +613,7 @@ subroutine gw_beres_ifc( band, &
     end do
 
   end do  ! i=1,ncol
+#endif
 
    flx_heat(:ncol) = 0.0
 
@@ -686,16 +681,16 @@ end subroutine endrun
 ! Short routine to get the indices of a set of values rounded to their
 ! nearest points on a grid.
 function index_of_nearest(x, grid) result(idx)
-  real(GW_PRC), intent(in) :: x(:)
-  real        , intent(in) :: grid(:)
+  real(GW_PRC),     intent(in) :: x(:)
+  real(GW_R8 ), intent(in) :: grid(:)
 
   integer :: idx(size(x))
 
-  real(GW_PRC) :: interfaces(size(grid)-1)
+  real(GW_R8 ) :: interfaces(size(grid)-1)
   integer :: i, n
 
   n = size(grid)
-  interfaces = (grid(:n-1) + grid(2:))/2.0_GW_PRC
+  interfaces = (grid(:n-1) + grid(2:))/2.d0
 
   idx = 1
   do i = 1, n-1
