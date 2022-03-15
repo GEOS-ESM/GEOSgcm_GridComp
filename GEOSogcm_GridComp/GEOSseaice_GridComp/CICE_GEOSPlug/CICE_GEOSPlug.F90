@@ -370,25 +370,67 @@ contains
     character(len=ESMF_MAXSTR)         :: IAm
     integer                            :: STATUS
 
-    type(ESMF_Field)                   :: fld
-    type (ESMF_Grid)                   :: grid
+    type(ESMF_Grid)                    :: grid
 
 ! Get the component name and set-up traceback handle.
 ! -----------------------------------------------------
     Iam = trim(comp_name) // "LoadSurfaceStates"
 
-
     ! create and add some fields to the callback state (i.e. SURFSTATE)
     call ESMF_GridCompGet(gc, grid=grid, __RC__)
-    fld = MAPL_FieldCreateEmpty('surface_ice_temperature', grid, __RC__)
-    call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsHorzOnly,              &
-           location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0,          &
-           ungrid=[NUM_ICE_CATEGORIES], __RC__)
-    call MAPL_StateAdd(SURFST, fld, __RC__)
+    call AddSurfField('TSKINICE', SURFST, GRID, 
+                     UGRID=NUM_ICE_CATEGORIES, __RC__)
+    call AddSurfField('EVAP', SURFST, GRID, 
+                     UGRID=NUM_ICE_CATEGORIES, __RC__)
+    call AddSurfField('net_surf_flux', SURFST, GRID, 
+                     UGRID=NUM_ICE_CATEGORIES, __RC__)
+    call AddSurfField('derivative_of_net_surf_flux', SURFST, GRID, 
+                     UGRID=NUM_ICE_CATEGORIES, __RC__)
+    call AddSurfField('SNOW',  SURFST, GRID,  __RC__)
+    call AddSurfField('DRPAR', SURFST, GRID,  __RC__)
+    call AddSurfField('DFPAR', SURFST, GRID,  __RC__)
+    call AddSurfField('DRNIR', SURFST, GRID,  __RC__)
+    call AddSurfField('DFNIR', SURFST, GRID,  __RC__)
+    call AddSurfField('DRUVR', SURFST, GRID,  __RC__)
+    call AddSurfField('DFUVR', SURFST, GRID,  __RC__)
 
     RETURN_(ESMF_SUCCESS)
     
   end subroutine LoadSurfaceStates 
+
+  subroutine AddSurfField(FLD_NAME, SURFST, GRID, UGRID, RC)
+
+! !ARGUMENTS:
+    character(len=ESMF_MAXSTR)         :: FLD_NAME
+    type(ESMF_State), intent(INOUT)    :: SURFST
+    type (ESMF_Grid), intent(IN)       :: GRID
+    integer, optional, intent(IN)      :: UGRID
+    integer, optional, intent(OUT)     :: RC
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)         :: IAm
+    integer                            :: STATUS
+
+    type(ESMF_Field)                   :: fld
+
+    Iam = trim(comp_name) // "AddSurfField"
+
+    fld = MAPL_FieldCreateEmpty(FLD_NAME, GRID, __RC__)
+    if (present(UGRID)) then 
+       call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsHorzOnly,           &
+           location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0,          &
+           ungrid=[UGRID], __RC__)
+    else
+       call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsHorzOnly,           &
+           location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0,          &
+           __RC__)
+    endif
+    call MAPL_StateAdd(SURFST, fld, __RC__)
+
+    RETURN_(ESMF_SUCCESS)
+  
+  end subroutine AddSurfField  
 
   end subroutine Initialize
 
