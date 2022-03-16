@@ -1,6 +1,6 @@
 module gw_common
 
-use gw_utils, only: GW_PRC, midpoint_interp
+use gw_utils, only: GW_PRC, GW_R8, midpoint_interp
 !
 ! This module contains code common to different gravity wave
 ! parameterizations.
@@ -14,9 +14,12 @@ save
 public :: GWBand
 
 public :: gw_common_init
+public :: gw_newtonian_set
 public :: gw_prof
 public :: gw_drag_prof
 public :: qbo_hdepth_scaling
+public :: calc_taucd, momentum_flux, momentum_fixer
+public :: energy_momentum_adjust, energy_change, energy_fixer
 public :: hr_cf
 
 public :: west, east, north, south
@@ -35,25 +38,25 @@ integer, parameter :: north = 4
 ! Some physical constants used by GW codes
 !-----------------------------------------
 ! 3.14159...
-real(GW_PRC), parameter :: pi = acos(-1._GW_PRC)
+real(GW_R8), parameter :: pi = acos(-1._GW_R8)
 ! Acceleration due to gravity.
-real(GW_PRC), protected :: gravit = huge(1._GW_PRC)
+real(GW_R8), protected :: gravit = huge(1._GW_R8)
 ! Gas constant for dry air.
-real(GW_PRC), protected :: rair = huge(1._GW_PRC)
+real(GW_R8), protected :: rair = huge(1._GW_R8)
 ! Specific heat for dry air.
-real(GW_PRC), protected :: cpair = huge(1._GW_PRC)
+real(GW_R8), protected :: cpair = huge(1._GW_R8)
 ! rair/gravit
-real(GW_PRC) :: rog = huge(1._GW_PRC)
+real(GW_R8) :: rog = huge(1._GW_R8)
 
 
 ! Scaling factor for generating QBO
-real(GW_PRC), protected :: qbo_hdepth_scaling
+real(GW_R8), protected :: qbo_hdepth_scaling
 ! Whether or not to enforce an upper boundary condition of tau = 0.
 logical :: tau_0_ubc = .false.
 ! Inverse Prandtl number.
-real(GW_PRC) :: prndl
+real(GW_R8) :: prndl
 ! Heating rate conversion factor
-real(GW_PRC), protected :: hr_cf
+real(GW_R8), protected :: hr_cf
 
 
 !
@@ -64,27 +67,27 @@ real(GW_PRC), protected :: hr_cf
 integer :: ktop = huge(1)
 
 ! Background diffusivity.
-real(GW_PRC), parameter :: dback = 0.05_GW_PRC
+real(GW_R8), parameter :: dback = 0.05_GW_R8
 
 
 ! Newtonian cooling coefficients.
-real(GW_PRC), allocatable :: alpha(:)
+real, allocatable :: alpha(:)
 
 !
 ! Limits to keep values reasonable.
 !
 
 ! Minimum non-zero stress.
-real(GW_PRC), parameter :: taumin = 1.e-10_GW_PRC
+real(GW_R8), parameter :: taumin = 1.e-10_GW_R8
 ! Maximum wind tendency from stress divergence (before efficiency applied).
 !! 400 m/s/day
-!real(GW_PRC), parameter :: tndmax = 400._GW_PRC / 86400._GW_PRC
+!real(GW_R8), parameter :: tndmax = 400._GW_R8 / 86400._GW_R8
 ! 80 m/s/day
-real(GW_PRC), parameter :: tndmax = 80._GW_PRC / 86400._GW_PRC
+real(GW_R8), parameter :: tndmax = 80._GW_R8 / 86400._GW_R8
 ! Maximum allowed change in u-c (before efficiency applied).
-real(GW_PRC), parameter :: umcfac = 0.5_GW_PRC
+real(GW_R8), parameter :: umcfac = 0.5_GW_R8
 ! Minimum value of (u-c)**2.
-real(GW_PRC), parameter :: ubmc2mn = 0.01_GW_PRC
+real(GW_R8), parameter :: ubmc2mn = 0.01_GW_R8
 
 ! Type describing a band of wavelengths into which gravity waves can be
 ! emitted.
@@ -138,7 +141,7 @@ function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
   band%cref = [( dc * l, l = -ngwv, ngwv )]
 
   ! Wavenumber and effective wavenumber come from the wavelength.
-  band%kwv = 2._GW_PRC*pi / wavelength
+  band%kwv = 2._GW_R8*pi / wavelength
   band%effkwv = band%fcrit2 * band%kwv
 
 end function new_GWBand
@@ -196,8 +199,6 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   real, intent(in) :: pmid(ncol,pver) 
   real, intent(in) :: pint(ncol,pver+1) 
 
-  ! Specific heat of dry air, constant pressure.
-  !real(GW_PRC), intent(in) :: cpair
   ! Midpoint temperatures.
   real, intent(in) :: t(ncol,pver)
 
@@ -211,15 +212,15 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   integer :: i,k
 
   ! dt/dp
-  real(GW_PRC) :: dtdp
+  real(GW_R8) :: dtdp
   ! Brunt-Vaisalla frequency squared.
-  real(GW_PRC) :: n2
+  real(GW_R8) :: n2
 
   ! Interface temperature.
-  real(GW_PRC) :: ti(ncol,pver+1)
+  real(GW_R8) :: ti(ncol,pver+1)
 
   ! Minimum value of Brunt-Vaisalla frequency squared.
-  real(GW_PRC), parameter :: n2min = 5.e-5_GW_PRC
+  real(GW_R8), parameter :: n2min = 5.e-5_GW_R8
 
   !------------------------------------------------------------------------
   ! Determine the interface densities and Brunt-Vaisala frequencies.
@@ -237,12 +238,12 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   end do
 
   ! Interior points use centered differences.
-  ti(:,2:pver) = midpoint_interp(real(t,GW_PRC))
+  ti(:,2:pver) = midpoint_interp(real(t,GW_R8))
   do k = 2, pver
      do i = 1, ncol
         rhoi(i,k) = pint(i,k) / (rair*ti(i,k))
         dtdp = (t(i,k)-t(i,k-1)) / ( pmid(i,k)-pmid(i,k-1) ) ! * p%rdst(i,k-1)
-        n2 = gravit*gravit/ti(i,k) * (1._GW_PRC/cpair - rhoi(i,k)*dtdp)
+        n2 = gravit*gravit/ti(i,k) * (1._GW_R8/cpair - rhoi(i,k)*dtdp)
         ni(i,k) = sqrt(max(n2min, n2))
      end do
   end do
@@ -268,7 +269,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, tau,  utgw,  vtgw, &
-     ttgw,  egwdffi,   gwut, dttdf, dttke, ro_adjust, tau_adjust, &
+     ttgw,  gwut, ro_adjust, tau_adjust, &
      kwvrdg, satfac_in, lapply_effgw_in )
 
   !-----------------------------------------------------------------------
@@ -323,38 +324,31 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Tendency efficiency.
   real(GW_PRC), intent(in) :: effgw(ncol)
   ! Wave phase speeds for each column.
-  real(GW_PRC), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_R8), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
   ! Molecular thermal diffusivity.
   real(GW_PRC), intent(in) :: kvtt(ncol,pver+1)
 
 !++jtb 
 ! remove q and dse for now (3/26/20)
   ! Constituent array.
-  !real(GW_PRC), intent(in) :: q(:,:,:)
+  !real(GW_R8), intent(in) :: q(:,:,:)
   ! Dry static energy.
-  !real(GW_PRC), intent(in) :: dse(ncol,pver)
+  !real(GW_R8), intent(in) :: dse(ncol,pver)
 !--jtb
 
   ! Wave Reynolds stress.
-  real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_R8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Zonal/meridional wind tendencies.
   real(GW_PRC), intent(out) :: utgw(ncol,pver), vtgw(ncol,pver)
   ! Gravity wave heating tendency.
   real(GW_PRC), intent(out) :: ttgw(ncol,pver)
 !++jtb 3/2020
   ! Gravity wave constituent tendency.
-  !real(GW_PRC), intent(out) :: qtgw(:,:,:)
+  !real(GW_R8), intent(out) :: qtgw(:,:,:)
 !--jtb
 
-  ! Effective gravity wave diffusivity at interfaces.
-  real(GW_PRC), intent(out) :: egwdffi(ncol,pver+1)
-
   ! Gravity wave wind tendency for each wave.
-  real(GW_PRC), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
-
-  ! Temperature tendencies from diffusion and kinetic energy.
-  real(GW_PRC), intent(out) :: dttdf(ncol,pver)
-  real(GW_PRC), intent(out) :: dttke(ncol,pver)
+  real(GW_R8), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
 
   ! Adjustment parameter for IGWs.
   real(GW_PRC), intent(in), optional :: &
@@ -385,40 +379,38 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   integer :: kbot_tend, kbot_src
 
   ! "Total" and saturation diffusivity.
-  real(GW_PRC) :: d(ncol)
+  real(GW_R8) :: d(ncol)
   ! Imaginary part of vertical wavenumber.
-  real(GW_PRC) :: mi(ncol)
+  real(GW_R8) :: mi(ncol)
   ! Stress after damping.
-  real(GW_PRC) :: taudmp(ncol)
+  real(GW_R8) :: taudmp(ncol)
   ! Saturation stress.
-  real(GW_PRC) :: tausat(ncol)
+  real(GW_R8) :: tausat(ncol)
   ! (ub-c) and (ub-c)**2
-  real(GW_PRC) :: ubmc(ncol), ubmc2(ncol)
+  real(GW_R8) :: ubmc(ncol), ubmc2(ncol)
   ! Temporary ubar tendencies (overall, and at wave l).
-  real(GW_PRC) :: ubt(ncol,pver), ubtl(ncol)
-  real(GW_PRC) :: wrk(ncol)
+  real(GW_R8) :: ubt(ncol,pver), ubtl(ncol)
+  real(GW_R8) :: wrk(ncol)
   ! Ratio used for ubt tndmax limiting.
-  real(GW_PRC) :: ubt_lim_ratio(ncol)
+  real(GW_R8) :: ubt_lim_ratio(ncol)
   ! Temporary effkwv
-  real(GW_PRC) :: effkwv(ncol)
+  real(GW_R8) :: effkwv(ncol)
 
   ! saturation factor. Defaults to 2.0
   ! unless overidden by satfac_in
-  real(GW_PRC) :: satfac
+  real(GW_R8) :: satfac
+
+  real(GW_R8) :: near_zero = tiny(1.0_GW_R8)
 
   logical :: lapply_effgw
 
   ! LU decomposition.
   type(TriDiagDecomp) :: decomp
 
-
-  allocate( alpha(pver+1) )
-  alpha(:)=0._GW_PRC
-
   if (present(satfac_in)) then
      satfac = satfac_in
   else
-     satfac = 2._GW_PRC
+     satfac = 2.0
   endif
 
   ! Default behavior is to apply effgw and
@@ -439,24 +431,19 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Initialize gravity wave drag tendencies to zero.
 
-  utgw = 0._GW_PRC
-  vtgw = 0._GW_PRC
-
-  gwut = 0._GW_PRC
-
-  dttke = 0._GW_PRC
-  ttgw = 0._GW_PRC
-  egwdffi=0._GW_PRC
-  dttdf=0._GW_PRC
+  utgw    = 0.0
+  vtgw    = 0.0
+  gwut    = 0.0
+  ttgw    = 0.0
 
   ! Workaround floating point exception issues on Intel by initializing
   ! everything that's first set in a where block.
-  mi = 0._GW_PRC
-  taudmp = 0._GW_PRC
-  tausat = 0._GW_PRC
-  ubmc = 0._GW_PRC
-  ubmc2 = 0._GW_PRC
-  wrk = 0._GW_PRC
+  mi     = 0.0
+  taudmp = 0.0
+  tausat = 0.0
+  ubmc   = 0.0
+  ubmc2  = 0.0
+  wrk    = 0.0
 
   if (present(kwvrdg)) then
     effkwv = kwvrdg
@@ -482,8 +469,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
         do i=1,ncol
 
-        tausat(i) = 0.0_GW_PRC
-        taudmp(i) = 0.0_GW_PRC
+        tausat(i) = 0.0
+        taudmp(i) = 0.0
 
         if (src_level(i) >= k) then
 
@@ -493,7 +480,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           ubmc(i) = ubi(i,k) - c(i,l)
 
           ! Test to see if u-c has the same sign here as the level below.
-          if (ubmc(i) > 0.0_GW_PRC .eqv. ubi(i,k+1) > c(i,l)) then
+          if (ubmc(i) > 0.0 .eqv. ubi(i,k+1) > c(i,l)) then
               tausat(i) = abs(effkwv(i) * rhoi(i,k) * ubmc(i)**3 / &
                  (satfac*ni(i,k)))
              if (present(ro_adjust)) &
@@ -507,15 +494,15 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           ! reduced by damping. The sign of the stress must be the same as
           ! at the level below.
           ubmc2(i) = max(ubmc(i)**2, ubmc2mn)
-          mi(i) = ni(i,k) / (2._GW_PRC * effkwv(i) * ubmc2(i)) * &  ! Is this 2._GW_PRC related to satfac?
+          mi(i) = ni(i,k) / (2.0 * effkwv(i) * ubmc2(i)) * &  ! Is this 2.0 related to satfac?
                  (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
-          wrk(i) = -2._GW_PRC*mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
-          wrk(i) = max( wrk(i), -200._GW_PRC ) * exp(wrk(i))
+          wrk(i) = -2.0*mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
+          wrk(i) = max( wrk(i), -200.0 ) * exp(wrk(i))
           taudmp(i) = tau(i,l,k+1) * exp(wrk(i))
           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
           ! we limit tau, so instead limit the arrays used to set it.
-          if (tausat(i) <= taumin) tausat(i) = 0._GW_PRC
-          if (taudmp(i) <= taumin) taudmp(i) = 0._GW_PRC
+          if (tausat(i) <= taumin) tausat(i) = 0.0
+          if (taudmp(i) <= taumin) taudmp(i) = 0.0
           tau(i,l,k) = min(taudmp(i), tausat(i))
 
         endif
@@ -525,7 +512,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   end do
   
   ! Force tau at the top of the model to zero, if requested.
-  if (tau_0_ubc) tau(:,:,ktop) = 0._GW_PRC
+  if (tau_0_ubc) tau(:,:,ktop) = 0.0
 
   ! Apply efficiency to completed stress profile.
   if (lapply_effgw) then
@@ -549,12 +536,12 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Loop over levels from top to bottom
 !$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
-!$OMP                                  gwut,ubt,xv,yv,lapply_effgw,ubt_lim_ratio,tend_level) &
+!$OMP                                  gwut,ubt,xv,yv,lapply_effgw,ubt_lim_ratio,tend_level,near_zero) &
 !$OMP                          private(k,l,i,ubtl)
   do k = ktop, kbot_tend
 
      ! Accumulate the mean wind tendency over wavenumber.
-     ubt(:,k) = 0.0_GW_PRC
+     ubt(:,k) = 0.0
 
      do l = -band%ngwv, band%ngwv    ! loop over wave
 
@@ -602,11 +589,11 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
            ubt_lim_ratio(i) = tndmax/abs(ubt(i,k))
            ubt(i,k) = ubt_lim_ratio(i) * ubt(i,k)
           else
-           ubt_lim_ratio(i) = 1._GW_PRC
+           ubt_lim_ratio(i) = 1.0
           end if
         end do
      else
-        ubt_lim_ratio = 1._GW_PRC
+        ubt_lim_ratio = 1.0
      end if
 
      
@@ -621,8 +608,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! issues.
         !--------------------------------------------------
         do i=1,ncol
-         if ( abs(gwut(i,k,l)) < 1.e-15_GW_PRC ) then
-           gwut(i,k,l) = 0._GW_PRC
+         if ( abs(gwut(i,k,l)) < near_zero ) then
+           gwut(i,k,l) = 0.0
          end if   
          if (k <= tend_level(i)) then
            tau(i,l,k+1) = tau(i,l,k) + & 
@@ -674,25 +661,178 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Evaluate second temperature tendency term: Conversion of kinetic
   ! energy into thermal.
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,dttke,ubm,c,gwut) &
+!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ttgw,ubm,c,gwut) &
 !$OMP                          private(k,l)
   do k = ktop, kbot_tend
      do l = -band%ngwv, band%ngwv
-        dttke(:,k) = dttke(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
+        ttgw(:,k) = ttgw(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
      end do
   end do
-
-  ttgw = dttke / cpair
-
-deallocate( alpha )
+  ttgw = ttgw / cpair
 
 end subroutine gw_drag_prof
 
 
 !==========================================================================
 
-#ifdef NOT_USED
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine gw_newtonian_set( pver, pref )
+
+use interpolate_data, only: lininterp
+
+  integer,  intent(in)  :: pver
+  real, intent(in)  :: pref( pver+1 )
+  
+  ! Levels of pre-calculated Newtonian cooling (1/day).
+  ! The following profile is digitized from:
+  ! Wehrbein and Leovy (JAS, 39, 1532-1544, 1982) figure 5
+
+  integer :: k
+  integer, parameter :: nalph = 71
+
+  real :: alpha0(nalph) = [ &
+       0.1,         0.1,         0.1,         0.1,         &    
+       0.1,         0.1,         0.1,         0.1,         &    
+       0.1,         0.1,         0.10133333,  0.104,       &
+       0.108,       0.112,       0.116,       0.12066667,  &    
+       0.126,       0.132,       0.138,       0.144,       &    
+       0.15133333,  0.16,        0.17,        0.18,        &    
+       0.19,        0.19933333,  0.208,       0.216,       &    
+       0.224,       0.232,       0.23466667,  0.232,       &
+       0.224,       0.216,       0.208,       0.20133333,  &    
+       0.196,       0.192,       0.188,       0.184,       &    
+       0.18266667,  0.184,       0.188,       0.192,       &    
+       0.196,       0.19333333,  0.184,       0.168,       &    
+       0.152,       0.136,       0.12133333,  0.108,       &
+       0.096,       0.084,       0.072,       0.061,       &    
+       0.051,       0.042,       0.033,       0.024,       &    
+       0.017666667, 0.014,       0.013,       0.012,       &    
+       0.011,       0.010333333, 0.01,        0.01,        &    
+       0.01,        0.01,        0.01                         &                 
+       ]
+
+  ! Pressure levels that were used to calculate alpha0 (hPa).
+  real :: palph(nalph) = [ &
+       2.06115E-06, 2.74280E-06, 3.64988E-06, 4.85694E-06, &
+       6.46319E-06, 8.60065E-06, 1.14450E-05, 1.52300E-05, &
+       2.02667E-05, 2.69692E-05, 3.58882E-05, 4.77568E-05, &
+       6.35507E-05, 8.45676E-05, 0.000112535, 0.000149752, &
+       0.000199277, 0.000265180, 0.000352878, 0.000469579, &
+       0.000624875, 0.000831529, 0.00110653,  0.00147247,  &
+       0.00195943,  0.00260744,  0.00346975,  0.00461724,  &
+       0.00614421,  0.00817618,  0.0108801,   0.0144783,   &
+       0.0192665,   0.0256382,   0.0341170,   0.0453999,   &
+       0.0604142,   0.0803939,   0.106981,    0.142361,    &    
+       0.189442,    0.252093,    0.335463,    0.446404,    &    
+       0.594036,    0.790490,    1.05192,     1.39980,     &    
+       1.86273,     2.47875,     3.29851,     4.38936,     &    
+       5.84098,     7.77266,     10.3432,     13.7638,     &    
+       18.3156,     24.3728,     32.4332,     43.1593,     &    
+       57.4326,     76.4263,     101.701,     135.335,     &    
+       180.092,     239.651,     318.907,     424.373,     &    
+       564.718,     751.477,     1000.                        &                 
+       ]
+
+  ! pre-calculated newtonian damping:
+  !     * convert to 1/s
+  !     * ensure it is not smaller than 1e-6
+  !     * convert palph from hpa to pa
+  do k=1,nalph
+     alpha0(k) = alpha0(k) / 86400.0
+     alpha0(k) = max(alpha0(k), 1.e-6)
+     palph(k) = palph(k)*1.e2
+  end do
+
+  allocate (alpha(pver+1))
+  ! interpolate to current vertical grid and obtain alpha
+  call lininterp (alpha0, palph, nalph , alpha, pref, pver+1)
+
+end subroutine gw_newtonian_set
+
 !==========================================================================
+
+! Calculate Reynolds stress for waves propagating in each cardinal
+! direction.
+
+function calc_taucd(ncol, pver, ngwv, tend_level, tau, c, xv, yv, ubi) &
+     result(taucd)
+
+  ! Column and gravity wave wavenumber dimensions.
+  integer, intent(in) :: ncol, pver, ngwv
+  ! Lowest level where wind tendencies are calculated.
+  integer, intent(in) :: tend_level(:)
+  ! Wave Reynolds stress.
+  real(GW_R8), intent(in) :: tau(:,-ngwv:,:)
+  ! Wave phase speeds for each column.
+  real(GW_R8), intent(in) :: c(:,-ngwv:)
+  ! Unit vectors of source wind (zonal and meridional components).
+  real(GW_PRC), intent(in) :: xv(:), yv(:)
+  ! Projection of wind at interfaces.
+  real(GW_PRC), intent(in) :: ubi(:,:)
+
+  real(GW_PRC) :: taucd(ncol,pver+1,4)
+
+  ! Indices.
+  integer :: i, k, l
+
+  ! ubi at tend_level.
+  real(GW_PRC) :: ubi_tend(ncol)
+
+  ! Signed wave Reynolds stress.
+  real(GW_PRC) :: tausg(ncol)
+
+  ! Reynolds stress for waves propagating behind and forward of the wind.
+  real(GW_PRC) :: taub(ncol)
+  real(GW_PRC) :: tauf(ncol)
+
+  taucd = 0._GW_PRC
+  tausg = 0._GW_PRC
+
+  ubi_tend = (/ (ubi(i,tend_level(i)+1), i = 1, ncol) /)
+
+  do k = ktop, maxval(tend_level)+1
+
+     taub = 0._GW_PRC
+     tauf = 0._GW_PRC
+
+     do l = -ngwv, ngwv
+        where (k-1 <= tend_level)
+
+           tausg = sign(tau(:,l,k), c(:,l)-ubi(:,k))
+
+           where ( c(:,l) < ubi_tend )
+              taub = taub + tausg
+           elsewhere
+              tauf = tauf + tausg
+           end where
+
+        end where
+     end do
+
+     where (k-1 <= tend_level)
+        where (xv > 0._GW_PRC)
+           taucd(:,k,east) = tauf * xv
+           taucd(:,k,west) = taub * xv
+        elsewhere
+           taucd(:,k,east) = taub * xv
+           taucd(:,k,west) = tauf * xv
+        end where
+
+        where ( yv > 0._GW_PRC)
+           taucd(:,k,north) = tauf * yv
+           taucd(:,k,south) = taub * yv
+        elsewhere
+           taucd(:,k,north) = taub * yv
+           taucd(:,k,south) = tauf * yv
+        end where
+     end where
+
+  end do
+
+end function calc_taucd
+
+!==========================================================================
+
 ! Calculate the amount of momentum conveyed from below the gravity wave
 ! region, to the region where gravity waves are calculated.
 subroutine momentum_flux(tend_level, taucd, um_flux, vm_flux)
@@ -716,81 +856,208 @@ subroutine momentum_flux(tend_level, taucd, um_flux, vm_flux)
 
 end subroutine momentum_flux
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine gw_newtonian_set( pver, pref, alpha )
+!==========================================================================
 
-use interpolate_data, only: lininterp
+! Subtracts a change in momentum in the gravity wave levels from wind
+! tendencies in lower levels, ensuring momentum conservation.
+subroutine momentum_fixer(ncol, pver, tend_level, p, um_flux, vm_flux, utgw, vtgw)
 
-  integer,  intent(in)  :: pver
-  real(GW_PRC), intent(in)  :: pref( pver+1 )
-  
-  ! Interpolated Newtonian cooling coefficients.
-  real(GW_PRC), intent(out) :: alpha(pver+1)
+  integer, intent(in) :: ncol, pver
+  ! Bottom stress level.
+  integer, intent(in) :: tend_level(ncol)
+  ! Pressure coordinates.
+  real(GW_PRC), intent(in) :: p(ncol,pver+1)
+  ! Components of momentum change sourced from the bottom.
+  real(GW_PRC), intent(in) :: um_flux(ncol), vm_flux(ncol)
+  ! Wind tendencies.
+  real(GW_PRC), intent(inout) :: utgw(ncol,pver), vtgw(ncol,pver)
 
-  ! Levels of pre-calculated Newtonian cooling (1/day).
-  ! The following profile is digitized from:
-  ! Wehrbein and Leovy (JAS, 39, 1532-1544, 1982) figure 5
+  ! Indices.
+  integer :: i, k
+  ! Reciprocal of total mass.
+  real(GW_PRC) :: rdm(ncol)
 
-  integer :: k
-  integer, parameter :: nalph = 71
-  real(GW_PRC) :: alpha0(nalph) = [ &
-       0.1_GW_PRC,         0.1_GW_PRC,         0.1_GW_PRC,         0.1_GW_PRC,         &
-       0.1_GW_PRC,         0.1_GW_PRC,         0.1_GW_PRC,         0.1_GW_PRC,         &
-       0.1_GW_PRC,         0.1_GW_PRC,         0.10133333_GW_PRC,  0.104_GW_PRC,       &
-       0.108_GW_PRC,       0.112_GW_PRC,       0.116_GW_PRC,       0.12066667_GW_PRC,  &
-       0.126_GW_PRC,       0.132_GW_PRC,       0.138_GW_PRC,       0.144_GW_PRC,       &
-       0.15133333_GW_PRC,  0.16_GW_PRC,        0.17_GW_PRC,        0.18_GW_PRC,        &
-       0.19_GW_PRC,        0.19933333_GW_PRC,  0.208_GW_PRC,       0.216_GW_PRC,       &
-       0.224_GW_PRC,       0.232_GW_PRC,       0.23466667_GW_PRC,  0.232_GW_PRC,       &
-       0.224_GW_PRC,       0.216_GW_PRC,       0.208_GW_PRC,       0.20133333_GW_PRC,  &
-       0.196_GW_PRC,       0.192_GW_PRC,       0.188_GW_PRC,       0.184_GW_PRC,       &
-       0.18266667_GW_PRC,  0.184_GW_PRC,       0.188_GW_PRC,       0.192_GW_PRC,       &
-       0.196_GW_PRC,       0.19333333_GW_PRC,  0.184_GW_PRC,       0.168_GW_PRC,       &
-       0.152_GW_PRC,       0.136_GW_PRC,       0.12133333_GW_PRC,  0.108_GW_PRC,       &
-       0.096_GW_PRC,       0.084_GW_PRC,       0.072_GW_PRC,       0.061_GW_PRC,       &
-       0.051_GW_PRC,       0.042_GW_PRC,       0.033_GW_PRC,       0.024_GW_PRC,       &
-       0.017666667_GW_PRC, 0.014_GW_PRC,       0.013_GW_PRC,       0.012_GW_PRC,       &
-       0.011_GW_PRC,       0.010333333_GW_PRC, 0.01_GW_PRC,        0.01_GW_PRC,        &
-       0.01_GW_PRC,        0.01_GW_PRC,        0.01_GW_PRC                         &
-       ]
-
-  ! Pressure levels that were used to calculate alpha0 (hPa).
-  real(GW_PRC) :: palph(nalph) = [ &
-       2.06115E-06_GW_PRC, 2.74280E-06_GW_PRC, 3.64988E-06_GW_PRC, 4.85694E-06_GW_PRC, &
-       6.46319E-06_GW_PRC, 8.60065E-06_GW_PRC, 1.14450E-05_GW_PRC, 1.52300E-05_GW_PRC, &
-       2.02667E-05_GW_PRC, 2.69692E-05_GW_PRC, 3.58882E-05_GW_PRC, 4.77568E-05_GW_PRC, &
-       6.35507E-05_GW_PRC, 8.45676E-05_GW_PRC, 0.000112535_GW_PRC, 0.000149752_GW_PRC, &
-       0.000199277_GW_PRC, 0.000265180_GW_PRC, 0.000352878_GW_PRC, 0.000469579_GW_PRC, &
-       0.000624875_GW_PRC, 0.000831529_GW_PRC, 0.00110653_GW_PRC,  0.00147247_GW_PRC,  &
-       0.00195943_GW_PRC,  0.00260744_GW_PRC,  0.00346975_GW_PRC,  0.00461724_GW_PRC,  &
-       0.00614421_GW_PRC,  0.00817618_GW_PRC,  0.0108801_GW_PRC,   0.0144783_GW_PRC,   &
-       0.0192665_GW_PRC,   0.0256382_GW_PRC,   0.0341170_GW_PRC,   0.0453999_GW_PRC,   &
-       0.0604142_GW_PRC,   0.0803939_GW_PRC,   0.106981_GW_PRC,    0.142361_GW_PRC,    &
-       0.189442_GW_PRC,    0.252093_GW_PRC,    0.335463_GW_PRC,    0.446404_GW_PRC,    &
-       0.594036_GW_PRC,    0.790490_GW_PRC,    1.05192_GW_PRC,     1.39980_GW_PRC,     &
-       1.86273_GW_PRC,     2.47875_GW_PRC,     3.29851_GW_PRC,     4.38936_GW_PRC,     &
-       5.84098_GW_PRC,     7.77266_GW_PRC,     10.3432_GW_PRC,     13.7638_GW_PRC,     &
-       18.3156_GW_PRC,     24.3728_GW_PRC,     32.4332_GW_PRC,     43.1593_GW_PRC,     &
-       57.4326_GW_PRC,     76.4263_GW_PRC,     101.701_GW_PRC,     135.335_GW_PRC,     &
-       180.092_GW_PRC,     239.651_GW_PRC,     318.907_GW_PRC,     424.373_GW_PRC,     &
-       564.718_GW_PRC,     751.477_GW_PRC,     1000._GW_PRC                        &
-       ]
-
-  ! pre-calculated newtonian damping:
-  !     * convert to 1/s
-  !     * ensure it is not smaller than 1e-6
-  !     * convert palph from hpa to pa
-  do k=1,nalph
-     alpha0(k) = alpha0(k) / 86400._GW_PRC
-     alpha0(k) = max(alpha0(k), 1.e-6_GW_PRC)
-     palph(k) = palph(k)*1.e2_GW_PRC
+  ! Total mass from ground to source level: rho*dz = dp/gravit
+  do i = 1, ncol
+     rdm(i) = gravit/(p(i,pver+1)-p(i,tend_level(i)+1))
   end do
 
-  ! interpolate to current vertical grid and obtain alpha
-  call lininterp (alpha0  ,palph, nalph , alpha  , pref , pver+1)
+  do k = minval(tend_level)+1, pver
+     where (k > tend_level)
+        utgw(:,k) = utgw(:,k) + -um_flux*rdm
+        vtgw(:,k) = vtgw(:,k) + -vm_flux*rdm
+     end where
+  end do
+  
+end subroutine momentum_fixer
 
+!==========================================================================
 
-end subroutine gw_newtonian_set
-#endif
+! Calculate the change in total energy from tendencies up to this point.
+subroutine energy_change(ncol,pver, dt, pdel, u, v, dudt, dvdt, dsdt, de)
 
+  integer, intent(in) :: ncol, pver
+  ! Time step.
+  real, intent(in) :: dt
+  ! Pressure coordinates.
+  real, intent(in) :: pdel(ncol,pver+1)
+  ! Winds at start of time step.
+  real, intent(in) :: u(ncol,pver), v(ncol,pver)
+  ! Wind tendencies.
+  real, intent(in) :: dudt(ncol,pver), dvdt(ncol,pver)
+  ! Heating tendency.
+  real, intent(in) :: dsdt(ncol,pver)
+  ! Change in energy.
+  real, intent(out) :: de(ncol)
+
+  ! Level index.
+  integer :: k
+
+  ! Net gain/loss of total energy in the column.
+  de = 0.0
+  do k = 1, pver
+     de = de + pdel(:,k)/gravit * (dsdt(:,k) + &
+          dudt(:,k)*(u(:,k)+dudt(:,k)*0.5*dt) + &
+          dvdt(:,k)*(v(:,k)+dvdt(:,k)*0.5*dt) )
+  end do
+
+end subroutine energy_change
+
+!==========================================================================
+
+! Subtract change in energy from the heating tendency in the levels below
+! the gravity wave region.
+subroutine energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
+
+  integer, intent(in) :: ncol, pver
+  ! Bottom stress level.
+  integer, intent(in) :: tend_level(ncol)
+  ! Pressure coordinates.
+  real, intent(in) :: pint(ncol,pver+1)
+  ! Change in energy.
+  real, intent(in) :: de(ncol)
+  ! Heating tendency.
+  real, intent(inout) :: ttgw(ncol,pver)
+
+  ! Column/level indices.
+  integer :: i, k
+  ! Energy change to apply divided by all the mass it is spread across.
+  real :: de_dm(ncol)
+
+  do i = 1, ncol
+     de_dm(i) = -de(i)*gravit/(pint(i,pver+1)-pint(i,tend_level(i)+1))
+  end do
+
+  ! Subtract net gain/loss of total energy below tend_level.
+  do k = minval(tend_level)+1, pver
+     where (k > tend_level)
+        ttgw(:,k) = ttgw(:,k) + de_dm
+     end where
+  end do
+
+end subroutine energy_fixer
+
+!==========================================================================
+
+subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
+                               effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
+
+  integer, intent(in) :: ncol, pver, kbot
+  ! Wavelengths.
+  type(GWBand), intent(in) :: band
+  ! Pressure interfaces.
+  real, intent(in) :: pint(ncol,pver+1)
+  ! Pressure thickness.
+  real, intent(in) :: delp(ncol,pver)
+  ! Wave phase speeds for each column.
+  real(GW_R8), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
+  ! Wave Reynolds stress.
+  real(GW_R8), intent(in) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  ! Efficiency
+  real, intent(in) :: effgw(ncol)
+  ! Temperature and winds
+  real, intent(in) :: t(ncol,pver), ubm(ncol,pver), ubi(ncol,pver)
+  ! projected winds.
+  real, intent(in) :: xv(ncol), yv(ncol)
+  ! Tendencies.
+  real, intent(inout) :: utgw(ncol,pver)
+  real, intent(inout) :: vtgw(ncol,pver)
+  real, intent(inout) :: ttgw(ncol,pver)
+
+  real :: zlb,pm,rhom,cmu,fpmx,fpmy,fe,fpe,fpml,fpel,fpmt,fpet,dusrcl,dvsrcl,dtsrcl
+  real :: utfac,uhtmax
+  integer  :: ktop
+
+  ! Level index.
+  integer :: i,k,l
+
+! GEOS efficiency and energy/momentum adjustments
+  ktop=1
+  do i=1,ncol
+! Calculate launch level height
+    zlb = 0.
+    do k = ktop+1, pver
+       if (k >= kbot+1) then
+! Define layer pressure and density
+          pm   = (pint(i,k-1)+pint(i,k))*0.5
+          rhom = pm/(rair*t(i,k))
+          zlb  = zlb + delp(i,k)/rair/rhom
+       end if
+    end do
+   !-----------------------------------------------------------------------
+   ! Calculates energy and momentum flux profiles
+   !-----------------------------------------------------------------------
+    do l = -band%ngwv, band%ngwv
+       do k = ktop, pver
+          if ( k <= kbot ) then
+             cmu  = c(i,l)-ubi(i,k)
+             fpmx =        sign(1.0,cmu)*tau(i,l,k)*xv(i)*effgw(i)
+             fpmy =        sign(1.0,cmu)*tau(i,l,k)*yv(i)*effgw(i)
+             fe   =    cmu*sign(1.0,cmu)*tau(i,l,k)      *effgw(i)
+             fpe  = c(i,l)*sign(1.0,cmu)*tau(i,l,k)      *effgw(i)
+             if (k == kbot) then
+                fpml = fpmx*xv(i)+fpmy*yv(i)
+                fpel = fpe
+             end if
+             if (k == ktop) then
+                fpmt = fpmx*xv(i)+fpmy*yv(i)
+                fpet = fpe
+             end if
+          end if
+          if (k >= kbot+1) then
+! Define layer pressure and density
+             pm   = (pint(i,k-1)+pint(i,k))*0.5
+             rhom = pm/(rair*t(i,k))
+! Compute sub-source tendencies
+             dusrcl = - (fpml-fpmt)/(rhom*zlb)*xv(i)
+             dvsrcl = - (fpml-fpmt)/(rhom*zlb)*yv(i)
+             dtsrcl = -((fpel-fpet)-ubm(i,k)*(fpml-fpmt))/  &
+                              (rhom*zlb*cpair)
+! Add sub-source wind and temperature tendencies
+             utgw(i,k) = utgw(i,k) + dusrcl
+             vtgw(i,k) = vtgw(i,k) + dvsrcl
+             ttgw(i,k) = ttgw(i,k) + dtsrcl
+          end if
+       end do
+    end do
+   !-----------------------------------------------------------------------
+   ! Adjust efficiency factor to prevent unrealistically strong forcing
+   !-----------------------------------------------------------------------
+    uhtmax = 0.0
+    utfac  = 1.0
+    do k = ktop, pver
+       uhtmax = max(sqrt(utgw(i,k)**2 + vtgw(i,k)**2), uhtmax)
+    end do
+    if (uhtmax > tndmax) utfac = tndmax/uhtmax
+    do k = ktop, pver
+       utgw(i,k) = utgw(i,k)*utfac
+       vtgw(i,k) = vtgw(i,k)*utfac
+       ttgw(i,k) = ttgw(i,k)*utfac
+    end do
+
+  end do  ! i=1,ncol
+
+end subroutine energy_momentum_adjust 
+
+!==========================================================================
 end module gw_common

@@ -5,7 +5,7 @@ module gw_oro
 ! gw_drag in May 2013.
 !
 
-  use gw_utils, only: GW_PRC, get_unit_vector, dot_2d, midpoint_interp
+  use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, rair, gw_drag_prof 
 
 implicit none
@@ -90,13 +90,13 @@ subroutine gw_oro_src(ncol,pver, band, &
   integer, intent(out) :: tend_level(ncol)
 
   ! Wave Reynolds stress.
-  real(GW_PRC), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_R8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Projection of wind at midpoints and interfaces.
   real(GW_PRC), intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
   real(GW_PRC), intent(out) :: xv(ncol), yv(ncol)
   ! Phase speeds.
-  real(GW_PRC), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_R8), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
 
   !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -222,17 +222,7 @@ subroutine gw_oro_ifc( band, &
    delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
    sgh, lats, &
-   utgw,vtgw,ttgw, flx_heat)
-
-   !!!use coords_1d,  only: Coords1D
-   !!!use gw_convect,     only: gw_beres_src
-
-!!use cesm_const_mod,   only: pi=>shr_const_pi    !, cl=>shr_kind_cl
-!!! use gw_common,  only: gw_drag_prof 
-!use coords_1d,  only: Coords1D
-!++ jtb 3/2020
-!! use cesm_physics_types,  only: physics_ptend
-!! use cesm_constituent, only: pcnst
+   utgw,vtgw,ttgw)
 
    type(GWBand),     intent(in) :: band         ! I hate this variable  ... it just hides information from view
    integer,          intent(in) :: ncol         ! number of atmospheric columns
@@ -254,17 +244,11 @@ subroutine gw_oro_ifc( band, &
    real(GW_PRC), intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
    real(GW_PRC), intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
    real(GW_PRC), intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
-!++jtb 3/2020
-   !!! real,         intent(in) :: q(:,:,:)          ! Constituent array.
-   !!! real,         intent(in) :: dse(ncol,pver)    ! Dry static energy.
 
    real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
    real,         intent(in) :: lats(ncol)      ! latitudes
 
 
-   !! type(physics_ptend), intent(inout):: ptend   ! Parameterization net tendencies.
-
-   real,         intent(out) :: flx_heat(ncol)
    real(GW_PRC), intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
    real(GW_PRC), intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
    real(GW_PRC), intent(out) :: ttgw(ncol,pver)       ! temperature tendency
@@ -273,11 +257,11 @@ subroutine gw_oro_ifc( band, &
 
    integer :: k, m, nn
 
-   real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
+   real(GW_R8), allocatable :: tau(:,:,:)  ! wave Reynolds stress
    ! gravity wave wind tendency for each wave
-   real(GW_PRC), allocatable :: gwut(:,:,:)
+   real(GW_R8), allocatable :: gwut(:,:,:)
    ! Wave phase speeds for each column
-   real(GW_PRC), allocatable :: c(:,:)
+   real(GW_R8), allocatable :: c(:,:)
 
    ! Efficiency for a gravity wave source.
    real(GW_PRC) :: effgw(ncol)
@@ -295,44 +279,7 @@ subroutine gw_oro_ifc( band, &
    real(GW_PRC) :: xv(ncol)
    real(GW_PRC) :: yv(ncol)
 
-   ! Averages over source region.
-   real(GW_PRC) :: ubmsrc(ncol) ! On-ridge wind.
-   real(GW_PRC) :: usrc(ncol)   ! Zonal wind.
-   real(GW_PRC) :: vsrc(ncol)   ! Meridional wind.
-   real(GW_PRC) :: nsrc(ncol)   ! B-V frequency.
-   real(GW_PRC) :: rsrc(ncol)   ! Density.
-
-
-   ! Wave Reynolds stresses at source level
-   real(GW_PRC) :: tauoro(ncol)
-   real(GW_PRC) :: taudsw(ncol)
-
-   ! Wave breaking level
-   real(GW_PRC) :: wbr(ncol)
-
-   !!! real(GW_PRC) :: qtgw(ncol,pver,pcnst) ! constituents tendencies
-
-   ! Heating depth [m] and maximum heating in each column.
-   real(GW_PRC) :: hdepth(ncol), maxq0(ncol)
-
-   ! Effective gravity wave diffusivity at interfaces.
-   real(GW_PRC) :: egwdffi(ncol,pver+1)
-
-   ! Temperature tendencies from diffusion and kinetic energy.
-   real(GW_PRC) :: dttdf(ncol,pver)
-   real(GW_PRC) :: dttke(ncol,pver)
-
-   ! Wave stress in zonal/meridional direction
-   real(GW_PRC) :: taurx(ncol,pver+1)
-   real(GW_PRC) :: taurx0(ncol,pver+1)
-   real(GW_PRC) :: taury(ncol,pver+1)
-   real(GW_PRC) :: taury0(ncol,pver+1)
-
    real(GW_PRC) :: pint_adj(ncol,pver+1)
-
-   ! Energy change used by fixer.
-   real(GW_PRC) :: de(ncol)
-   logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
 
    character(len=1) :: cn
    character(len=9) :: fname(4)
@@ -363,26 +310,13 @@ subroutine gw_oro_ifc( band, &
         end if
      end do
 
-!    pint_adj = 1.0
-!WMP pressure scaling from GEOS top 0.01mb to 0.5mb
-!    where (pint < 50.0)
-!     !pint_adj = (pint/50.0)**3
-!      pint_adj = 1./19. * &
-!                 ((atan( (2.*(pint-1.0)/(50-1.0)-1.) * &
-!                 tan(20.*PI/21.-0.5*PI) ) + 0.5*PI) * 21./PI - 1.)
-!    endwhere
-!WMP pressure scaling from GEOS
-
      ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          effgw,c,          kvtt,  tau,  utgw,  vtgw, &
-          ttgw, egwdffi,  gwut, dttdf, dttke)
+          effgw, c,         kvtt,  tau,  utgw,  vtgw, &
+          ttgw, gwut)
 
-     flx_heat(:ncol) = 0.
-
-     
 end subroutine gw_oro_ifc
 
 

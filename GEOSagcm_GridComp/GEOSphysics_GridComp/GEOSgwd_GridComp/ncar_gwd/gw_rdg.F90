@@ -5,8 +5,10 @@ module gw_rdg
 ! extracted from gw_drag in May 2013.
 !
 !use shr_const_mod, only: pi => shr_const_pi
-use gw_common, only: gw_drag_prof, GWBand, pi,cpair,rair
-use gw_utils, only:  GW_PRC, dot_2d, midpoint_interp
+use gw_common, only: gw_drag_prof, GWBand, pi,cpair,rair, &
+                     calc_taucd, momentum_flux, momentum_fixer, &
+                     energy_change, energy_fixer
+use gw_utils, only:  GW_PRC, GW_R8, dot_2d, midpoint_interp
 
 
 implicit none
@@ -130,7 +132,8 @@ subroutine gw_rdg_ifc( &
    hwdth, clngt, gbxar, &
    mxdis, angll, anixy, &
    rdg_cd_llb, trpd_leewv, &
-   flx_heat, utrdg, vtrdg, ttrdg )
+   utrdg, vtrdg, ttrdg, &
+   flx_heat )
 
    !!character(len=5), intent(in) :: type         ! BETA or GAMMA
    integer,          intent(in) :: ncol         ! number of atmospheric columns
@@ -173,22 +176,21 @@ subroutine gw_rdg_ifc( &
 
 
    ! OUTPUTS
-   ! flx_heat was dimensioned pcols before: But who understands when to use ncol or pcols
-   real,         intent(out) :: flx_heat(ncol)
    real(GW_PRC), intent(out) :: utrdg(ncol,pver)       ! Cum. zonal wind tendency
    real(GW_PRC), intent(out) :: vtrdg(ncol,pver)       ! Cum. meridional wind tendency
    real(GW_PRC), intent(out) :: ttrdg(ncol,pver)       ! Cum. temperature tendency
    !!real,       intent(out) :: qtrdg(ncol,pver,pcnst) ! Cum. consituent tendencies
+   real(GW_PRC), intent(inout) :: flx_heat(ncol)       ! Energy change
 
    !---------------------------Local storage-------------------------------
 
    integer :: k, m, nn, icnst
 
-   real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
+   real(GW_R8), allocatable :: tau(:,:,:)  ! wave Reynolds stress
    ! gravity wave wind tendency for each wave
-   real(GW_PRC), allocatable :: gwut(:,:,:)
+   real(GW_R8), allocatable :: gwut(:,:,:)
    ! Wave phase speeds for each column
-   real(GW_PRC), allocatable :: c(:,:)
+   real(GW_R8), allocatable :: c(:,:)
 
    ! Isotropic source flag [anisotropic orography].
    integer  :: isoflag(ncol)
@@ -242,28 +244,21 @@ subroutine gw_rdg_ifc( &
    ! Wave breaking level
    real(GW_PRC) :: wbr(ncol)
 
+   ! Momentum fluxes used by fixer.
+   real(GW_PRC) :: um_flux(ncol), vm_flux(ncol)
+
+   ! Energy change used by fixer.
+   real(GW_PRC) :: de(ncol)
+
+   ! Reynolds stress for waves propagating in each cardinal direction.
+   real(GW_PRC) :: taucd(ncol,pver+1,4)
+
    real(GW_PRC) :: utgw(ncol,pver)       ! zonal wind tendency
    real(GW_PRC) :: vtgw(ncol,pver)       ! meridional wind tendency
    real(GW_PRC) :: ttgw(ncol,pver)       ! temperature tendency
 #ifdef CAM
    real(GW_PRC) :: qtgw(ncol,pver,pcnst) ! constituents tendencies
 #endif
-
-   ! Effective gravity wave diffusivity at interfaces.
-   real(GW_PRC) :: egwdffi(ncol,pverp)
-
-   ! Temperature tendencies from diffusion and kinetic energy.
-   real(GW_PRC) :: dttdf(ncol,pver)
-   real(GW_PRC) :: dttke(ncol,pver)
-
-   ! Wave stress in zonal/meridional direction
-   real(GW_PRC) :: taurx(ncol,pverp)
-   real(GW_PRC) :: taurx0(ncol,pverp)
-   real(GW_PRC) :: taury(ncol,pverp)
-   real(GW_PRC) :: taury0(ncol,pverp)
-
-   ! Energy change used by fixer.
-   real(GW_PRC) :: de(ncol)
 
    real(GW_PRC) :: pint_adj(ncol,pver+1)
    real(GW_PRC) :: zfac_layer
@@ -283,12 +278,9 @@ subroutine gw_rdg_ifc( &
    type='BETA'
 
    ! initialize accumulated momentum fluxes and tendencies
-   taurx = 0.
-   taury = 0. 
    utrdg = 0.
    vtrdg = 0.
    ttrdg = 0.
-   flx_heat = 0.
   
 !WMP pressure scaling from GEOS top 0.01mb to zfac_layer
    pint_adj = 1.0
@@ -326,22 +318,36 @@ subroutine gw_rdg_ifc( &
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           real(effrdg(:,nn),GW_PRC), c, kvtt, tau, utgw, vtgw, &
-          ttgw, egwdffi, gwut, dttdf, dttke, &
+          ttgw, gwut, &
           kwvrdg=real(kwvrdg(:,nn),GW_PRC), satfac_in=1.0_GW_PRC, tau_adjust=pint_adj)
 
-      ! Add the tendencies from each ridge to the totals.
-      do k = 1, pver
-         utrdg(:,k) = utrdg(:,k) + utgw(:,k)
-         vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
-         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
-      end do
+   ! call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
+   !                    effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
 
-      do k = 1, pver+1
-         taurx0(:,k) =  tau(:,0,k)*xv
-         taury0(:,k) =  tau(:,0,k)*yv
-         taurx(:,k)  =  taurx(:,k) + taurx0(:,k)
-         taury(:,k)  =  taury(:,k) + taury0(:,k)
-      end do
+   ! ! Project stress into directional components.
+   ! taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
+
+   ! ! Find momentum flux, and use it to fix the wind tendencies below
+   ! ! the gravity wave region.
+   ! call momentum_flux(tend_level, taucd, um_flux, vm_flux)
+   ! call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
+
+     ! Add the tendencies from each ridge to the totals.
+     do k = 1, pver
+        utrdg(:,k) = utrdg(:,k) + utgw(:,k)
+        vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
+     end do
+
+   ! ! Find energy change in the current state, and use fixer to apply
+   ! ! the difference in lower levels.
+   ! call energy_change(ncol, pver, dt, delp, u, v, utrdg, vtrdg, ttrdg+ttgw, de)
+   ! call energy_fixer(ncol, pver, tend_level, pint, de-flx_heat, ttgw)
+   ! flx_heat=de
+
+     ! Add the tendencies from each ridge to the totals.
+     do k = 1, pver
+        ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
+     end do
 
 #ifdef CAM
 ! disable tracer mixing in GW for now.
@@ -356,12 +362,6 @@ subroutine gw_rdg_ifc( &
 #endif
 
    end do ! end of loop over multiple ridges
-
-   ! Calculate energy change for output to CAM's energy checker.
-   !call energy_change(dt, p, u, v, ptend%u(:ncol,:), &
-   !       ptend%v(:ncol,:), ptend%s(:ncol,:), de)
-   !flx_heat(:ncol) = de
-
 
    if (trim(type) == 'BETA') then
       fname(1) = 'TAUGWX'
@@ -453,13 +453,13 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
 
 
   ! Wave Reynolds stress.
-  real(GW_PRC), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_R8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Projection of wind at midpoints and interfaces.
   real(GW_PRC), intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
   real(GW_PRC), intent(out) :: xv(ncol), yv(ncol)
   ! Phase speeds.
-  real(GW_PRC), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_R8), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
   ! Froude numbers for flow/drag regimes
   real(GW_PRC), intent(out) :: Fr1(ncol), Fr2(ncol), Frx(ncol)
 
@@ -775,7 +775,7 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   integer, intent(inout) :: src_level(ncol)
 
   ! Wave Reynolds stress.
-  real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_R8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Top of low-level flow layer.
   real(GW_PRC), intent(inout) :: tlb(ncol)
   ! Bottom of linear wave region.
@@ -1030,7 +1030,7 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   integer, intent(inout) :: src_level(ncol), tlb_level(ncol)
 
   ! Wave Reynolds stress.
-  real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_R8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Wave Reynolds stresses at source.
   real(GW_PRC), intent(inout) :: taudsw(ncol),tauoro(ncol)
   ! Projection of wind at midpoints and interfaces.

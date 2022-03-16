@@ -168,11 +168,10 @@ contains
     real(GW_PRC) :: ubm(pcols,pver)                    ! projection of wind at midpoints
     real(GW_PRC) :: xv(pcols)                          ! unit vectors of source wind (x)
     real(GW_PRC) :: yv(pcols)                          ! unit vectors of source wind (y)
-    real(GW_PRC) :: kvtt(pcols,pver+1) ! Molecular thermal diffusivity.
+    real(GW_PRC) :: kvtt(pcols,pver+1)                 ! Molecular thermal diffusivity.
 
     real(GW_PRC) :: maxq0(pcols),hdepth(pcols)
-
-    real         :: flx_heat(pcols)
+    real(GW_PRC) :: flx_heat(pcols)
 
     real         :: rdg_cd_llb
     integer      :: pverp, pcnst
@@ -190,6 +189,7 @@ contains
     dudt_gwd_dev(:,:) = 0.
     dvdt_gwd_dev(:,:) = 0.
     kvtt(:,:)  = 0.
+    flx_heat(:) = 0.0
 
     call gw_prof (pcols , pver, pint_dev , pmid_dev , t_dev , rhoi, nm, ni )
 
@@ -209,8 +209,7 @@ contains
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        ht_dc_dev,beres_dc_desc,rlat_dev, &
-       utgw, vtgw, ttgw, &
-       flx_heat)
+       utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw
@@ -225,8 +224,7 @@ contains
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        ht_sc_dev,beres_sc_desc,rlat_dev, &
-       utgw, vtgw, ttgw, &
-       flx_heat)
+       utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw
@@ -247,8 +245,7 @@ contains
          hwdth_dev, clngt_dev, gbxar_dev, &
          mxdis_dev, angll_dev, anixy_dev, &
          rdg_cd_llb, trpd_leewv, &
-         flx_heat, &
-         utgw, vtgw, ttgw )
+         utgw, vtgw, ttgw, flx_heat)
      else
        call gw_oro_ifc( oro_band, &
          pcols, pver, dt , effgworo,  &
@@ -258,8 +255,7 @@ contains
          zm_dev, zi, &
          nm, ni, rhoi, kvtt,  &
          sgh_dev   ,rlat_dev, &
-         utgw, vtgw, ttgw, &
-         flx_heat)
+         utgw, vtgw, ttgw)
      endif
      dudt_org_dev = utgw
      dvdt_org_dev = vtgw

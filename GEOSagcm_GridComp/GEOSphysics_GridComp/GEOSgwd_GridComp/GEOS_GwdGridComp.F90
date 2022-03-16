@@ -68,7 +68,7 @@ module GEOS_GwdGridCompMod
   use gw_rdg, only : gw_rdg_init
   use gw_oro, only : gw_oro_init
   use gw_convect, only : gw_beres_init, BeresSourceDesc
-  use gw_common, only: GWBand, gw_common_init
+  use gw_common, only: GWBand, gw_common_init, gw_newtonian_set
   use gw_drag_ncar, only: gw_intr_ncar
 
   use gw_drag, only: gw_intr
@@ -821,6 +821,9 @@ contains
 
     type (MAPL_MetaComp),      pointer  :: MAPL
 
+    integer                             :: IM, JM
+    real, pointer, dimension(:,:)       :: LATS
+
 ! NCAR GWD variables
 
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
@@ -864,8 +867,9 @@ contains
       call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
       VERIFY_(STATUS)
 
-      !++jtb 03/2020
-      !-----------------------------------
+      call MAPL_Get(MAPL, IM=IM, JM=JM, LATS=LATS, RC=STATUS)
+      VERIFY_(STATUS)
+
          call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.5, RC=STATUS)
@@ -898,14 +902,14 @@ contains
          call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_dc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_DC_BERES)
+                             NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_DC_BERES, IM*JM, LATS)
         ! Beres ShallowCu
          call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_sc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_SC_BERES)
+                             NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_SC_BERES, IM*JM, LATS)
 
          ! Orographic Scheme
          call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           RC=STATUS)
@@ -1729,10 +1733,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            EFFRDG(:,:,nrdg) = NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
          enddo
 
-         if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
-          IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-          call Write_Profile(   GBXAR_TMP      , AREA, ESMFGRID, 'GBXAR')
-          do nrdg = 1, NCAR_NRDG
+         if (FIRST_RUN) then
+           call gw_newtonian_set(LM, PREF)
+           if (NCAR_NRDG > 0) then
+            IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
+            call Write_Profile(   GBXAR_TMP      , AREA, ESMFGRID, 'GBXAR')
+            do nrdg = 1, NCAR_NRDG
              IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
              call Write_Profile(MXDIS(:,:,nrdg), AREA, ESMFGRID, 'MXDIS')
              call Write_Profile(ANGLL(:,:,nrdg), AREA, ESMFGRID, 'ANGLL')
@@ -1741,7 +1747,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              call Write_Profile(HWDTH(:,:,nrdg), AREA, ESMFGRID, 'HWDTH')
              call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
              call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
-          enddo
+            enddo
+          endif
           FIRST_RUN = .false.
          endif
 
