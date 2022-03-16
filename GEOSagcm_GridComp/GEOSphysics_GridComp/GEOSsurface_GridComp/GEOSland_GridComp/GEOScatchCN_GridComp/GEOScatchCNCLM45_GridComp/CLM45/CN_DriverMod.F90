@@ -29,7 +29,7 @@ module CN_DriverMod
 #else
   use CNDecompCascadeMod_CENTURY, only : init_decompcascade
 #endif
-  use catch_constants,   only: DZTC=>CATCH_DZTC, DZGT=>CATCH_DZGT
+  use catch_constants,   only: DZTSURF=>CATCH_DZTSURF, DZGT=>CATCH_DZGT
   use SurfParams,        only: LAND_FIX
 !  use update_model_para4cn, only : LocalTileID, upd_tileid   ! useful for debugging
 
@@ -230,7 +230,7 @@ contains
   real, pointer :: psisat(:,:)       !soil water potential at saturation for CN code (MPa)
   real, pointer :: psiwilt(:)        !root-zone soil water potential at wilting point (MPa)
   real, pointer :: soilpsi(:,:)      !soil water potential in each soil layer (MPa)
-  real, pointer :: h2osoi_liq(:,:)     !column liquid water (kg/m2) (new)
+  real, pointer :: h2osoi_liq(:,:)   !column liquid water (kg/m2) (new)
   real, pointer :: wf(:)             !soil water as frac. of whc for top 0.05 m
   real, pointer :: wf2(:)            !soil water as frac. of whc for top 0.17 m
   real, pointer :: qflx_drain(:)     !sub-surface runoff (mm H2O /s)
@@ -639,7 +639,7 @@ contains
 ! ----------------
     t_soisno(n,1) = tp1(nc)       ! soil layer temperature (K)
     t_grnd(n) = tgw(nc,nz)        ! ground surface temperature (K)
-    tsoi17(n) = (DZTC*tgw(nc,nz)+(DZGT(1)-DZTC)*tp1(nc)+(0.17-DZGT(1))*tp2(nc))/0.17        ! soil temperature in top 17cm of soil (Kelvin)
+    tsoi17(n) = (DZTSURF*tgw(nc,nz)+(DZGT(1)-DZTSURF)*tp1(nc)+(0.17-DZGT(1))*tp2(nc))/0.17        ! soil temperature in top 17cm of soil (Kelvin)
                                                                 ! fzeng: tgw is for the top 5cm; tp1 is for the 2nd 5cm; tp2 is for the next 10cm
                                                                 ! see Koster et al., 2000, JGR
                                                                 ! The depths are hard coded here. Improve this?  
