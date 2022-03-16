@@ -11,7 +11,7 @@ save
 ! Real kind for gravity wave parameterization.
 integer,public,parameter :: GW_R4 = SELECTED_REAL_KIND(6,37)
 integer,public,parameter :: GW_R8 = SELECTED_REAL_KIND(15,307)
-integer,public,parameter :: GW_PRC = GW_R8
+integer,public,parameter :: GW_PRC = GW_R4
 
 ! Public interface
 
