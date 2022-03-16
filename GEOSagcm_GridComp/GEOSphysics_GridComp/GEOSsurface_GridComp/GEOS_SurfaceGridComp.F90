@@ -1889,6 +1889,24 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'PRTILE',                    &
+    LONG_NAME          = 'precipitation_on_tiles',    &
+    UNITS              = 'kg m-2 s-1',                &
+    DIMS               = MAPL_DimsHorzVert,           &
+    VLOCATION          = MAPL_VLocationCenter,        &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'TPSURFTILE',                    &
+    LONG_NAME          = 'surface_temperature_on_tiles',  &
+    UNITS              = 'K',                         &
+    DIMS               = MAPL_DimsHorzVert,           &
+    VLOCATION          = MAPL_VLocationCenter,        &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPLAND',                    &
     LONG_NAME          = 'rate_of_spurious_land_energy_source',&
     UNITS              = 'W m-2',                     &
@@ -5358,6 +5376,8 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: SPLANDTILE       => NULL()
     real, pointer, dimension(:) :: SPWATRTILE       => NULL()
     real, pointer, dimension(:) :: SPSNOWTILE       => NULL()
+    real, pointer, dimension(:,:,:) :: PRTILE         => NULL()
+    real, pointer, dimension(:,:,:) :: TPSURFTILEX    => NULL()
     real, pointer, dimension(:,:) :: RDU001TILE     => NULL()
     real, pointer, dimension(:,:) :: RDU002TILE     => NULL()
     real, pointer, dimension(:,:) :: RDU003TILE     => NULL()
@@ -6195,6 +6215,8 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , WATERTABLED, 'WATERTABLED', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , FSWCHANGE  , 'FSWCHANGE',   RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetPointer(EXPORT  , PRTILE,      'PRTILE',   RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TPSURFTILEX, 'TPSURFTILE',   RC=STATUS); VERIFY_(STATUS)
 
     IF(LSM_CHOICE > 1) THEN
        call MAPL_GetPointer(EXPORT  , CNLAI   , 'CNLAI'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6514,6 +6536,8 @@ module GEOS_SurfaceGridCompMod
        frzrfltile = frzrfltile * het_precip_fac
     end if
 
+    if (associated(prtile).and.IM.eq.1) prtile(1,1,1:NT) = pcutile+plstile+snofltile+icefltile+frzrfltile
+
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
           call MAPL_LocStreamTransform(LOCSTREAM, DUDPTILE(:,K), DUDP(:,:,K), RC=STATUS); VERIFY_(STATUS)
@@ -6828,6 +6852,8 @@ module GEOS_SurfaceGridCompMod
        call DOTYPE(I,RC=STATUS)
        VERIFY_(STATUS)
     end do
+
+    if (associated(tpsurftilex).and.IM.eq.1) tpsurftilex(1,1,1:NT) = tpsurftile
 
 ! Create the Discharge for the ocean. This is an import of 
 !  Saltwater, which simply makes a copy to an export.

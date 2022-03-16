@@ -10,7 +10,7 @@ module GEOS_HetPrecipGridCompMod
 
   public SetServices
   ! some module variables
-  integer, parameter :: NPDF=24
+  integer, parameter :: NPDF=28
   integer, parameter :: SECONDS_PER_DAY = 24*3600 ! should be 86400
 
   real :: rho ! autocorrelation
