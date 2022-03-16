@@ -9939,6 +9939,7 @@ ENDIF
                if( TRIM(CHEM_name (ispc)) == 'sulfur'   .or. &
                    
                    TRIM(CHEM_name (ispc)(1:len_trim('ss') )) == 'ss'  .or. & ! 'seasalt' 
+                   TRIM(CHEM_name (ispc)(1:len_trim('SS') )) == 'SS'  .or. & ! 'seasalt 2G' 
                    
                    TRIM(CHEM_name (ispc)) == 'SO2'      .or. &
                    TRIM(CHEM_name (ispc)) == 'SO4'      .or. &
