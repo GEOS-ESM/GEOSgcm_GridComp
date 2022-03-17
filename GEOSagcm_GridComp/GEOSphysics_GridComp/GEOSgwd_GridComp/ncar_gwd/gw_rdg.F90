@@ -8,7 +8,7 @@ module gw_rdg
 use gw_common, only: gw_drag_prof, GWBand, pi,cpair,rair, &
                      calc_taucd, momentum_flux, momentum_fixer, &
                      energy_change, energy_fixer
-use gw_utils, only:  GW_PRC, GW_R8, dot_2d, midpoint_interp
+use gw_utils, only:  GW_PRC, dot_2d, midpoint_interp
 
 
 implicit none
@@ -29,14 +29,14 @@ logical            :: do_divstream
 !===========================================
 ! Amplification factor - 1.0 for
 ! high-drag/windstorm regime
-real(GW_PRC), protected :: C_BetaMax_DS
+real, protected :: C_BetaMax_DS
 
 ! Max Ratio Fr2:Fr1 - 1.0
-real(GW_PRC), protected :: C_GammaMax
+real, protected :: C_GammaMax
 
 ! Normalized limits  for Fr2(Frx) function
-real(GW_PRC), protected :: Frx0
-real(GW_PRC), protected :: Frx1
+real, protected :: Frx0
+real, protected :: Frx1
 
 
 !===========================================
@@ -44,14 +44,14 @@ real(GW_PRC), protected :: Frx1
 !===========================================
 ! Amplification factor - 1.0 for
 ! high-drag/windstorm regime
-real(GW_PRC), protected :: C_BetaMax_SM
+real, protected :: C_BetaMax_SM
 
 
 
 ! NOTE: Critical inverse Froude number Fr_c is 
 ! 1./(SQRT(2.)~0.707 in SM2000
 ! (should be <= 1)
-real(GW_PRC), protected :: Fr_c
+real, protected :: Fr_c
 
 
 logical :: do_smooth_regimes
@@ -61,13 +61,13 @@ logical :: do_backward_compat
 
 ! Limiters (min/max values)
 ! min surface displacement height for orographic waves (m)
-real(GW_PRC), protected :: orohmin
+real, protected :: orohmin
 ! min wind speed for orographic waves
-real(GW_PRC), protected :: orovmin
+real, protected :: orovmin
 ! min stratification allowing wave behavior
-real(GW_PRC), protected :: orostratmin
+real, protected :: orostratmin
 ! min stratification allowing wave behavior
-real(GW_PRC), protected :: orom2min
+real, protected :: orom2min
 
 
 ! Some description of GW spectrum
@@ -153,13 +153,13 @@ subroutine gw_rdg_ifc( &
    real,         intent(in) :: piln(ncol,pverp)  ! Log of interface pressures.
    real,         intent(in) :: zm(ncol,pver)   ! Midpoint altitudes above ground (m).
    real,         intent(in) :: zi(ncol,pverp) ! Interface altitudes above ground (m).
-   real(GW_PRC), intent(in) :: kvtt(ncol,pverp) ! Molecular thermal diffusivity.
+   real, intent(in) :: kvtt(ncol,pverp) ! Molecular thermal diffusivity.
    !!real,         intent(in) :: q(ncol,pver,pcnst) ! Constituent array.
    !!real,         intent(in) :: dse(ncol,pver)  ! Dry static energy.
 
-   real(GW_PRC), intent(in) :: nm(ncol,pver)   ! Midpoint altitudes above ground (m).
-   real(GW_PRC), intent(in) :: ni(ncol,pverp) ! Interface altitudes above ground (m).
-   real(GW_PRC), intent(in) :: rhoi(ncol,pverp) ! Interface altitudes above ground (m).
+   real, intent(in) :: nm(ncol,pver)   ! Midpoint altitudes above ground (m).
+   real, intent(in) :: ni(ncol,pverp) ! Interface altitudes above ground (m).
+   real, intent(in) :: rhoi(ncol,pverp) ! Interface altitudes above ground (m).
 
    real,         intent(in) :: kwvrdg(ncol,n_rdg) ! horiz wavenumber.
    real,         intent(in) :: effrdg(ncol,n_rdg) ! efficiency factor of ridge scheme.
@@ -176,21 +176,21 @@ subroutine gw_rdg_ifc( &
 
 
    ! OUTPUTS
-   real(GW_PRC), intent(out) :: utrdg(ncol,pver)       ! Cum. zonal wind tendency
-   real(GW_PRC), intent(out) :: vtrdg(ncol,pver)       ! Cum. meridional wind tendency
-   real(GW_PRC), intent(out) :: ttrdg(ncol,pver)       ! Cum. temperature tendency
+   real, intent(out) :: utrdg(ncol,pver)       ! Cum. zonal wind tendency
+   real, intent(out) :: vtrdg(ncol,pver)       ! Cum. meridional wind tendency
+   real, intent(out) :: ttrdg(ncol,pver)       ! Cum. temperature tendency
    !!real,       intent(out) :: qtrdg(ncol,pver,pcnst) ! Cum. consituent tendencies
-   real(GW_PRC), intent(inout) :: flx_heat(ncol)       ! Energy change
+   real, intent(inout) :: flx_heat(ncol)       ! Energy change
 
    !---------------------------Local storage-------------------------------
 
    integer :: k, m, nn, icnst
 
-   real(GW_R8), allocatable :: tau(:,:,:)  ! wave Reynolds stress
+   real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
    ! gravity wave wind tendency for each wave
-   real(GW_R8), allocatable :: gwut(:,:,:)
+   real(GW_PRC), allocatable :: gwut(:,:,:)
    ! Wave phase speeds for each column
-   real(GW_R8), allocatable :: c(:,:)
+   real(GW_PRC), allocatable :: c(:,:)
 
    ! Isotropic source flag [anisotropic orography].
    integer  :: isoflag(ncol)
@@ -203,65 +203,65 @@ subroutine gw_rdg_ifc( &
    integer :: tlb_level(ncol)
 
    ! Projection of wind at midpoints and interfaces.
-   real(GW_PRC) :: ubm(ncol,pver)
-   real(GW_PRC) :: ubi(ncol,pverp)
+   real :: ubm(ncol,pver)
+   real :: ubi(ncol,pverp)
 
    ! Unit vectors of source wind (zonal and meridional components).
-   real(GW_PRC) :: xv(ncol)
-   real(GW_PRC) :: yv(ncol)
+   real :: xv(ncol)
+   real :: yv(ncol)
 
    ! Averages over source region.
-   real(GW_PRC) :: ubmsrc(ncol) ! On-ridge wind.
-   real(GW_PRC) :: usrc(ncol)   ! Zonal wind.
-   real(GW_PRC) :: vsrc(ncol)   ! Meridional wind.
-   real(GW_PRC) :: nsrc(ncol)   ! B-V frequency.
-   real(GW_PRC) :: rsrc(ncol)   ! Density.
+   real :: ubmsrc(ncol) ! On-ridge wind.
+   real :: usrc(ncol)   ! Zonal wind.
+   real :: vsrc(ncol)   ! Meridional wind.
+   real :: nsrc(ncol)   ! B-V frequency.
+   real :: rsrc(ncol)   ! Density.
 
    ! normalized wavenumber
-   real(GW_PRC) :: m2src(ncol)
+   real :: m2src(ncol)
 
    ! Top of low-level flow layer.
-   real(GW_PRC) :: tlb(ncol)
+   real :: tlb(ncol)
 
    ! Bottom of linear wave region.
-   real(GW_PRC) :: bwv(ncol)
+   real :: bwv(ncol)
 
    ! Froude numbers for flow/drag regimes
-   real(GW_PRC) :: Fr1(ncol)
-   real(GW_PRC) :: Fr2(ncol)
-   real(GW_PRC) :: Frx(ncol)
+   real :: Fr1(ncol)
+   real :: Fr2(ncol)
+   real :: Frx(ncol)
 
    ! Wave Reynolds stresses at source level
-   real(GW_PRC) :: tauoro(ncol)
-   real(GW_PRC) :: taudsw(ncol)
+   real :: tauoro(ncol)
+   real :: taudsw(ncol)
 
    ! Surface streamline displacement height for linear waves.
-   real(GW_PRC) :: hdspwv(ncol)
+   real :: hdspwv(ncol)
 
    ! Surface streamline displacement height for downslope wind regime.
-   real(GW_PRC) :: hdspdw(ncol)
+   real :: hdspdw(ncol)
 
    ! Wave breaking level
-   real(GW_PRC) :: wbr(ncol)
+   real :: wbr(ncol)
 
    ! Momentum fluxes used by fixer.
-   real(GW_PRC) :: um_flux(ncol), vm_flux(ncol)
+   real :: um_flux(ncol), vm_flux(ncol)
 
    ! Energy change used by fixer.
-   real(GW_PRC) :: de(ncol)
+   real :: de(ncol)
 
    ! Reynolds stress for waves propagating in each cardinal direction.
-   real(GW_PRC) :: taucd(ncol,pver+1,4)
+   real :: taucd(ncol,pver+1,4)
 
-   real(GW_PRC) :: utgw(ncol,pver)       ! zonal wind tendency
-   real(GW_PRC) :: vtgw(ncol,pver)       ! meridional wind tendency
-   real(GW_PRC) :: ttgw(ncol,pver)       ! temperature tendency
+   real :: utgw(ncol,pver)       ! zonal wind tendency
+   real :: vtgw(ncol,pver)       ! meridional wind tendency
+   real :: ttgw(ncol,pver)       ! temperature tendency
 #ifdef CAM
-   real(GW_PRC) :: qtgw(ncol,pver,pcnst) ! constituents tendencies
+   real :: qtgw(ncol,pver,pcnst) ! constituents tendencies
 #endif
 
-   real(GW_PRC) :: pint_adj(ncol,pver+1)
-   real(GW_PRC) :: zfac_layer
+   real :: pint_adj(ncol,pver+1)
+   real :: zfac_layer
 
    logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
 
@@ -317,9 +317,9 @@ subroutine gw_rdg_ifc( &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          real(effrdg(:,nn),GW_PRC), c, kvtt, tau, utgw, vtgw, &
+          effrdg(:,nn), c, kvtt, tau, utgw, vtgw, &
           ttgw, gwut, &
-          kwvrdg=real(kwvrdg(:,nn),GW_PRC), satfac_in=1.0_GW_PRC, tau_adjust=pint_adj)
+          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
 
    ! call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
    !                    effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
@@ -430,7 +430,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   ! Interface altitudes above ground (m).
   real, intent(in) :: zi(ncol,pver+1)
   ! Midpoint Brunt-Vaisalla frequencies (s-1).
-  real(GW_PRC), intent(in) :: nm(ncol,pver)
+  real, intent(in) :: nm(ncol,pver)
 
   ! Indices of top gravity wave source level and lowest level where wind
   ! tendencies are allowed.
@@ -439,29 +439,29 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   integer, intent(out) :: bwv_level(ncol),tlb_level(ncol)
 
   ! Averages over source region.
-  real(GW_PRC), intent(out) :: nsrc(ncol) ! B-V frequency.
-  real(GW_PRC), intent(out) :: rsrc(ncol) ! Density.
-  real(GW_PRC), intent(out) :: usrc(ncol) ! Zonal wind.
-  real(GW_PRC), intent(out) :: vsrc(ncol) ! Meridional wind.
-  real(GW_PRC), intent(out) :: ubmsrc(ncol) ! On-ridge wind.
+  real, intent(out) :: nsrc(ncol) ! B-V frequency.
+  real, intent(out) :: rsrc(ncol) ! Density.
+  real, intent(out) :: usrc(ncol) ! Zonal wind.
+  real, intent(out) :: vsrc(ncol) ! Meridional wind.
+  real, intent(out) :: ubmsrc(ncol) ! On-ridge wind.
   ! Top of low-level flow layer.
-  real(GW_PRC), intent(out) :: tlb(ncol)
+  real, intent(out) :: tlb(ncol)
   ! Bottom of linear wave region.
-  real(GW_PRC), intent(out) :: bwv(ncol)
+  real, intent(out) :: bwv(ncol)
   ! normalized wavenumber
-  real(GW_PRC), intent(out) :: m2src(ncol)
+  real, intent(out) :: m2src(ncol)
 
 
   ! Wave Reynolds stress.
-  real(GW_R8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_PRC), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Projection of wind at midpoints and interfaces.
-  real(GW_PRC), intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
+  real, intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
-  real(GW_PRC), intent(out) :: xv(ncol), yv(ncol)
+  real, intent(out) :: xv(ncol), yv(ncol)
   ! Phase speeds.
-  real(GW_R8), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_PRC), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
   ! Froude numbers for flow/drag regimes
-  real(GW_PRC), intent(out) :: Fr1(ncol), Fr2(ncol), Frx(ncol)
+  real, intent(out) :: Fr1(ncol), Fr2(ncol), Frx(ncol)
 
   !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -563,7 +563,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
 
   ! Project the local wind at midpoints into the on-ridge direction
   do k = 1, pver
-     ubm(:,k) = dot_2d(real(u(:,k),GW_PRC), real(v(:,k),GW_PRC), xv, yv)
+     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
   end do
   ubmsrc = dot_2d(usrc , vsrc , xv, yv)
 
@@ -765,41 +765,41 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   ! Interface altitudes above ground (m).
   real, intent(in) :: zi(ncol,pver+1)
   ! Midpoint Brunt-Vaisalla frequencies (s-1).
-  real(GW_PRC), intent(in) :: nm(ncol,pver)
+  real, intent(in) :: nm(ncol,pver)
   ! Interface Brunt-Vaisalla frequencies (s-1).
-  real(GW_PRC), intent(in) :: ni(ncol,pver+1)
+  real, intent(in) :: ni(ncol,pver+1)
   ! Interface density (kg m-3).
-  real(GW_PRC), intent(in) :: rhoi(ncol,pver+1)
+  real, intent(in) :: rhoi(ncol,pver+1)
 
   ! Indices of top gravity wave source level
   integer, intent(inout) :: src_level(ncol)
 
   ! Wave Reynolds stress.
-  real(GW_R8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Top of low-level flow layer.
-  real(GW_PRC), intent(inout) :: tlb(ncol)
+  real, intent(inout) :: tlb(ncol)
   ! Bottom of linear wave region.
-  real(GW_PRC), intent(inout) :: bwv(ncol)
+  real, intent(inout) :: bwv(ncol)
   ! surface stress from linear waves.
-  real(GW_PRC), intent(out) :: tauoro(ncol)
+  real, intent(out) :: tauoro(ncol)
   ! surface stress for downslope wind regime.
-  real(GW_PRC), intent(out) :: taudsw(ncol)
+  real, intent(out) :: taudsw(ncol)
 
   ! Surface streamline displacement height for linear waves.
-  real(GW_PRC), intent(out) :: hdspwv(ncol)
+  real, intent(out) :: hdspwv(ncol)
   ! Surface streamline displacement height for downslope wind regime.
-  real(GW_PRC), intent(out) :: hdspdw(ncol)
+  real, intent(out) :: hdspdw(ncol)
 
 
 
   ! Froude numbers for flow/drag regimes
-  real(GW_PRC), intent(in) :: Fr1(ncol), Fr2(ncol),Frx(ncol)
+  real, intent(in) :: Fr1(ncol), Fr2(ncol),Frx(ncol)
 
   ! Averages over source region.
-  real(GW_PRC), intent(in) :: m2src(ncol) ! normalized non-hydro wavenumber
-  real(GW_PRC), intent(in) :: nsrc(ncol)  ! B-V frequency.
-  real(GW_PRC), intent(in) :: rsrc(ncol)  ! Density.
-  real(GW_PRC), intent(in) :: ubmsrc(ncol) ! On-ridge wind.
+  real, intent(in) :: m2src(ncol) ! normalized non-hydro wavenumber
+  real, intent(in) :: nsrc(ncol)  ! B-V frequency.
+  real, intent(in) :: rsrc(ncol)  ! Density.
+  real, intent(in) :: ubmsrc(ncol) ! On-ridge wind.
 
 
   !logical, intent(in), optional :: forcetlb
@@ -808,8 +808,8 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   ! Column and level indices.
   integer :: i, k
 
-  real(GW_PRC) :: Coeff_LB(ncol),tausat,ubsrcx(ncol),dswamp
-  real(GW_PRC) :: taulin(ncol),BetaMax
+  real :: Coeff_LB(ncol),tausat,ubsrcx(ncol),dswamp
+  real :: taulin(ncol),BetaMax
 
   ! ubsrcx introduced to account for situations with high shear, strong strat.
   do i = 1, ncol
@@ -1022,38 +1022,38 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   ! Interface altitudes above ground (m).
   real, intent(in) :: zi(ncol,pver+1)
   ! Midpoint Brunt-Vaisalla frequencies (s-1).
-  real(GW_PRC), intent(in) :: nm(ncol,pver)
+  real, intent(in) :: nm(ncol,pver)
   ! Interface Brunt-Vaisalla frequencies (s-1).
-  real(GW_PRC), intent(in) :: ni(ncol,pver+1)
+  real, intent(in) :: ni(ncol,pver+1)
 
   ! Indices of gravity wave sources.
   integer, intent(inout) :: src_level(ncol), tlb_level(ncol)
 
   ! Wave Reynolds stress.
-  real(GW_R8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Wave Reynolds stresses at source.
-  real(GW_PRC), intent(inout) :: taudsw(ncol),tauoro(ncol)
+  real, intent(inout) :: taudsw(ncol),tauoro(ncol)
   ! Projection of wind at midpoints and interfaces.
-  real(GW_PRC), intent(in) :: ubm(ncol,pver)
-  real(GW_PRC), intent(in) :: ubi(ncol,pver+1)
+  real, intent(in) :: ubm(ncol,pver)
+  real, intent(in) :: ubi(ncol,pver+1)
   ! Interface density (kg m-3).
-  real(GW_PRC), intent(in) :: rhoi(ncol,pver+1)
+  real, intent(in) :: rhoi(ncol,pver+1)
 
   ! Top of low-level flow layer.
-  real(GW_PRC), intent(in) :: tlb(ncol)
+  real, intent(in) :: tlb(ncol)
   ! Bottom of linear wave region.
-  real(GW_PRC), intent(in) :: bwv(ncol)
+  real, intent(in) :: bwv(ncol)
 
   ! Surface streamline displacement height for linear waves.
-  real(GW_PRC), intent(in) :: hdspwv(ncol)
+  real, intent(in) :: hdspwv(ncol)
   ! Surface streamline displacement height for downslope wind regime.
-  real(GW_PRC), intent(in) :: hdspdw(ncol)
+  real, intent(in) :: hdspdw(ncol)
   ! Ridge height.
   real, intent(in) :: mxdis(ncol)
 
 
   ! Wave breaking level
-  real(GW_PRC), intent(out) :: wbr(ncol)
+  real, intent(out) :: wbr(ncol)
 
   logical, intent(in), optional :: ldo_trapped_waves
   real, intent(in), optional :: wdth_kwv_scale_in
@@ -1061,11 +1061,11 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   !---------------------------Local Storage-------------------------------
   ! Column and level indices.
   integer :: i, k, kp1, non_hydro
-  real(GW_PRC):: m2(ncol,pver),delz(ncol),tausat(ncol),trn(ncol)
-  real(GW_PRC):: wbrx(ncol)
-  real(GW_PRC):: phswkb(ncol,pver+1)
+  real:: m2(ncol,pver),delz(ncol),tausat(ncol),trn(ncol)
+  real:: wbrx(ncol)
+  real:: phswkb(ncol,pver+1)
   logical :: lldo_trapped_waves
-  real(GW_PRC):: wdth_kwv_scale
+  real:: wdth_kwv_scale
   ! Indices of important levels.
   integer :: trn_level(ncol)
 

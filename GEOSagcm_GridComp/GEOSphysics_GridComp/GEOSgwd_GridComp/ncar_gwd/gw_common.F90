@@ -1,6 +1,6 @@
 module gw_common
 
-use gw_utils, only: GW_PRC, GW_R8, midpoint_interp
+use gw_utils, only: GW_PRC, midpoint_interp
 !
 ! This module contains code common to different gravity wave
 ! parameterizations.
@@ -38,25 +38,25 @@ integer, parameter :: north = 4
 ! Some physical constants used by GW codes
 !-----------------------------------------
 ! 3.14159...
-real(GW_R8), parameter :: pi = acos(-1._GW_R8)
+real(GW_PRC), parameter :: pi = acos(-1._GW_PRC)
 ! Acceleration due to gravity.
-real(GW_R8), protected :: gravit = huge(1._GW_R8)
+real(GW_PRC), protected :: gravit = huge(1._GW_PRC)
 ! Gas constant for dry air.
-real(GW_R8), protected :: rair = huge(1._GW_R8)
+real(GW_PRC), protected :: rair = huge(1._GW_PRC)
 ! Specific heat for dry air.
-real(GW_R8), protected :: cpair = huge(1._GW_R8)
+real(GW_PRC), protected :: cpair = huge(1._GW_PRC)
 ! rair/gravit
-real(GW_R8) :: rog = huge(1._GW_R8)
+real(GW_PRC) :: rog = huge(1._GW_PRC)
 
 
 ! Scaling factor for generating QBO
-real(GW_R8), protected :: qbo_hdepth_scaling
+real(GW_PRC), protected :: qbo_hdepth_scaling
 ! Whether or not to enforce an upper boundary condition of tau = 0.
 logical :: tau_0_ubc = .false.
 ! Inverse Prandtl number.
-real(GW_R8) :: prndl
+real(GW_PRC) :: prndl
 ! Heating rate conversion factor
-real(GW_R8), protected :: hr_cf
+real(GW_PRC), protected :: hr_cf
 
 
 !
@@ -67,7 +67,7 @@ real(GW_R8), protected :: hr_cf
 integer :: ktop = huge(1)
 
 ! Background diffusivity.
-real(GW_R8), parameter :: dback = 0.05_GW_R8
+real(GW_PRC), parameter :: dback = 0.05_GW_PRC
 
 
 ! Newtonian cooling coefficients.
@@ -78,16 +78,16 @@ real, allocatable :: alpha(:)
 !
 
 ! Minimum non-zero stress.
-real(GW_R8), parameter :: taumin = 1.e-10_GW_R8
+real(GW_PRC), parameter :: taumin = 1.e-10_GW_PRC
 ! Maximum wind tendency from stress divergence (before efficiency applied).
 !! 400 m/s/day
-!real(GW_R8), parameter :: tndmax = 400._GW_R8 / 86400._GW_R8
+!real(GW_PRC), parameter :: tndmax = 400._GW_PRC / 86400._GW_PRC
 ! 80 m/s/day
-real(GW_R8), parameter :: tndmax = 80._GW_R8 / 86400._GW_R8
+real(GW_PRC), parameter :: tndmax = 80._GW_PRC / 86400._GW_PRC
 ! Maximum allowed change in u-c (before efficiency applied).
-real(GW_R8), parameter :: umcfac = 0.5_GW_R8
+real(GW_PRC), parameter :: umcfac = 0.5_GW_PRC
 ! Minimum value of (u-c)**2.
-real(GW_R8), parameter :: ubmc2mn = 0.01_GW_R8
+real(GW_PRC), parameter :: ubmc2mn = 0.01_GW_PRC
 
 ! Type describing a band of wavelengths into which gravity waves can be
 ! emitted.
@@ -97,15 +97,15 @@ type :: GWBand
    ! Dimension of the spectrum.
    integer :: ngwv
    ! Delta between nearest phase speeds [m/s].
-   real(GW_PRC) :: dc
+   real :: dc
    ! Reference speeds [m/s].
-   real(GW_PRC), allocatable :: cref(:)
+   real, allocatable :: cref(:)
    ! Critical Froude number, squared (usually 1, but CAM3 used 0.5).
-   real(GW_PRC) :: fcrit2
+   real :: fcrit2
    ! Horizontal wave number [1/m].
-   real(GW_PRC) :: kwv
+   real :: kwv
    ! Effective horizontal wave number [1/m] (fcrit2*kwv).
-   real(GW_PRC) :: effkwv
+   real :: effkwv
 end type GWBand
 
 interface GWBand
@@ -141,7 +141,7 @@ function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
   band%cref = [( dc * l, l = -ngwv, ngwv )]
 
   ! Wavenumber and effective wavenumber come from the wavelength.
-  band%kwv = 2._GW_R8*pi / wavelength
+  band%kwv = 2._GW_PRC*pi / wavelength
   band%effkwv = band%fcrit2 * band%kwv
 
 end function new_GWBand
@@ -203,24 +203,24 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   real, intent(in) :: t(ncol,pver)
 
   ! Interface density.
-  real(GW_PRC), intent(out) :: rhoi(ncol,pver+1)
+  real, intent(out) :: rhoi(ncol,pver+1)
   ! Midpoint and interface Brunt-Vaisalla frequencies.
-  real(GW_PRC), intent(out) :: nm(ncol,pver), ni(ncol,pver+1)
+  real, intent(out) :: nm(ncol,pver), ni(ncol,pver+1)
 
   !---------------------------Local Storage-------------------------------
   ! Column and level indices.
   integer :: i,k
 
   ! dt/dp
-  real(GW_R8) :: dtdp
+  real(GW_PRC) :: dtdp
   ! Brunt-Vaisalla frequency squared.
-  real(GW_R8) :: n2
+  real(GW_PRC) :: n2
 
   ! Interface temperature.
-  real(GW_R8) :: ti(ncol,pver+1)
+  real(GW_PRC) :: ti(ncol,pver+1)
 
   ! Minimum value of Brunt-Vaisalla frequency squared.
-  real(GW_R8), parameter :: n2min = 5.e-5_GW_R8
+  real(GW_PRC), parameter :: n2min = 5.e-5_GW_PRC
 
   !------------------------------------------------------------------------
   ! Determine the interface densities and Brunt-Vaisala frequencies.
@@ -238,12 +238,12 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   end do
 
   ! Interior points use centered differences.
-  ti(:,2:pver) = midpoint_interp(real(t,GW_R8))
+  ti(:,2:pver) = midpoint_interp(real(t,GW_PRC))
   do k = 2, pver
      do i = 1, ncol
         rhoi(i,k) = pint(i,k) / (rair*ti(i,k))
         dtdp = (t(i,k)-t(i,k-1)) / ( pmid(i,k)-pmid(i,k-1) ) ! * p%rdst(i,k-1)
-        n2 = gravit*gravit/ti(i,k) * (1._GW_R8/cpair - rhoi(i,k)*dtdp)
+        n2 = gravit*gravit/ti(i,k) * (1._GW_PRC/cpair - rhoi(i,k)*dtdp)
         ni(i,k) = sqrt(max(n2min, n2))
      end do
   end do
@@ -314,58 +314,58 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Log of interface pressures.
   real, intent(in) :: piln(ncol,pver+1)
   ! Interface densities.
-  real(GW_PRC), intent(in) :: rhoi(ncol,pver+1)
+  real, intent(in) :: rhoi(ncol,pver+1)
   ! Midpoint and interface Brunt-Vaisalla frequencies.
-  real(GW_PRC), intent(in) :: nm(ncol,pver), ni(ncol,pver+1)
+  real, intent(in) :: nm(ncol,pver), ni(ncol,pver+1)
   ! Projection of wind at midpoints and interfaces.
-  real(GW_PRC), intent(in) :: ubm(ncol,pver), ubi(ncol,pver+1)
+  real, intent(in) :: ubm(ncol,pver), ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
-  real(GW_PRC), intent(in) :: xv(ncol), yv(ncol)
+  real, intent(in) :: xv(ncol), yv(ncol)
   ! Tendency efficiency.
-  real(GW_PRC), intent(in) :: effgw(ncol)
+  real, intent(in) :: effgw(ncol)
   ! Wave phase speeds for each column.
-  real(GW_R8), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_PRC), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
   ! Molecular thermal diffusivity.
-  real(GW_PRC), intent(in) :: kvtt(ncol,pver+1)
+  real, intent(in) :: kvtt(ncol,pver+1)
 
 !++jtb 
 ! remove q and dse for now (3/26/20)
   ! Constituent array.
-  !real(GW_R8), intent(in) :: q(:,:,:)
+  !real(GW_PRC), intent(in) :: q(:,:,:)
   ! Dry static energy.
-  !real(GW_R8), intent(in) :: dse(ncol,pver)
+  !real(GW_PRC), intent(in) :: dse(ncol,pver)
 !--jtb
 
   ! Wave Reynolds stress.
-  real(GW_R8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Zonal/meridional wind tendencies.
-  real(GW_PRC), intent(out) :: utgw(ncol,pver), vtgw(ncol,pver)
+  real, intent(out) :: utgw(ncol,pver), vtgw(ncol,pver)
   ! Gravity wave heating tendency.
-  real(GW_PRC), intent(out) :: ttgw(ncol,pver)
+  real, intent(out) :: ttgw(ncol,pver)
 !++jtb 3/2020
   ! Gravity wave constituent tendency.
-  !real(GW_R8), intent(out) :: qtgw(:,:,:)
+  !real(GW_PRC), intent(out) :: qtgw(:,:,:)
 !--jtb
 
   ! Gravity wave wind tendency for each wave.
-  real(GW_R8), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
+  real(GW_PRC), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
 
   ! Adjustment parameter for IGWs.
-  real(GW_PRC), intent(in), optional :: &
+  real, intent(in), optional :: &
        ro_adjust(ncol,-band%ngwv:band%ngwv,pver+1)
 
   ! Adjustment parameter for TAU.
-  real(GW_PRC), intent(in), optional :: &
+  real, intent(in), optional :: &
        tau_adjust(ncol,pver+1)
 
   ! Diagnosed horizontal wavenumber for ridges.
-  real(GW_PRC), intent(in), optional :: &
+  real, intent(in), optional :: &
        kwvrdg(ncol)
 
   ! Factor for saturation calculation. Here backwards 
   ! compatibility. I believe it should be 1.0 (jtb). 
   ! Looks like it has been 2.0 for a while in CAM.
-  real(GW_PRC), intent(in), optional :: &
+  real, intent(in), optional :: &
        satfac_in
 
   logical, intent(in), optional :: lapply_effgw_in
@@ -379,28 +379,28 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   integer :: kbot_tend, kbot_src
 
   ! "Total" and saturation diffusivity.
-  real(GW_R8) :: d(ncol)
+  real(GW_PRC) :: d(ncol)
   ! Imaginary part of vertical wavenumber.
-  real(GW_R8) :: mi(ncol)
+  real(GW_PRC) :: mi(ncol)
   ! Stress after damping.
-  real(GW_R8) :: taudmp(ncol)
+  real(GW_PRC) :: taudmp(ncol)
   ! Saturation stress.
-  real(GW_R8) :: tausat(ncol)
+  real(GW_PRC) :: tausat(ncol)
   ! (ub-c) and (ub-c)**2
-  real(GW_R8) :: ubmc(ncol), ubmc2(ncol)
+  real(GW_PRC) :: ubmc(ncol), ubmc2(ncol)
   ! Temporary ubar tendencies (overall, and at wave l).
-  real(GW_R8) :: ubt(ncol,pver), ubtl(ncol)
-  real(GW_R8) :: wrk(ncol)
+  real(GW_PRC) :: ubt(ncol,pver), ubtl(ncol)
+  real(GW_PRC) :: wrk(ncol)
   ! Ratio used for ubt tndmax limiting.
-  real(GW_R8) :: ubt_lim_ratio(ncol)
+  real(GW_PRC) :: ubt_lim_ratio(ncol)
   ! Temporary effkwv
-  real(GW_R8) :: effkwv(ncol)
+  real(GW_PRC) :: effkwv(ncol)
 
   ! saturation factor. Defaults to 2.0
   ! unless overidden by satfac_in
-  real(GW_R8) :: satfac
+  real(GW_PRC) :: satfac
 
-  real(GW_R8) :: near_zero = tiny(1.0_GW_R8)
+  real(GW_PRC) :: near_zero = tiny(1.0_GW_PRC)
 
   logical :: lapply_effgw
 
@@ -762,38 +762,38 @@ function calc_taucd(ncol, pver, ngwv, tend_level, tau, c, xv, yv, ubi) &
   ! Lowest level where wind tendencies are calculated.
   integer, intent(in) :: tend_level(:)
   ! Wave Reynolds stress.
-  real(GW_R8), intent(in) :: tau(:,-ngwv:,:)
+  real(GW_PRC), intent(in) :: tau(:,-ngwv:,:)
   ! Wave phase speeds for each column.
-  real(GW_R8), intent(in) :: c(:,-ngwv:)
+  real(GW_PRC), intent(in) :: c(:,-ngwv:)
   ! Unit vectors of source wind (zonal and meridional components).
-  real(GW_PRC), intent(in) :: xv(:), yv(:)
+  real, intent(in) :: xv(:), yv(:)
   ! Projection of wind at interfaces.
-  real(GW_PRC), intent(in) :: ubi(:,:)
+  real, intent(in) :: ubi(:,:)
 
-  real(GW_PRC) :: taucd(ncol,pver+1,4)
+  real :: taucd(ncol,pver+1,4)
 
   ! Indices.
   integer :: i, k, l
 
   ! ubi at tend_level.
-  real(GW_PRC) :: ubi_tend(ncol)
+  real :: ubi_tend(ncol)
 
   ! Signed wave Reynolds stress.
-  real(GW_PRC) :: tausg(ncol)
+  real :: tausg(ncol)
 
   ! Reynolds stress for waves propagating behind and forward of the wind.
-  real(GW_PRC) :: taub(ncol)
-  real(GW_PRC) :: tauf(ncol)
+  real :: taub(ncol)
+  real :: tauf(ncol)
 
-  taucd = 0._GW_PRC
-  tausg = 0._GW_PRC
+  taucd = 0.
+  tausg = 0.
 
   ubi_tend = (/ (ubi(i,tend_level(i)+1), i = 1, ncol) /)
 
   do k = ktop, maxval(tend_level)+1
 
-     taub = 0._GW_PRC
-     tauf = 0._GW_PRC
+     taub = 0.
+     tauf = 0.
 
      do l = -ngwv, ngwv
         where (k-1 <= tend_level)
@@ -810,7 +810,7 @@ function calc_taucd(ncol, pver, ngwv, tend_level, tau, c, xv, yv, ubi) &
      end do
 
      where (k-1 <= tend_level)
-        where (xv > 0._GW_PRC)
+        where (xv > 0.)
            taucd(:,k,east) = tauf * xv
            taucd(:,k,west) = taub * xv
         elsewhere
@@ -818,7 +818,7 @@ function calc_taucd(ncol, pver, ngwv, tend_level, tau, c, xv, yv, ubi) &
            taucd(:,k,west) = tauf * xv
         end where
 
-        where ( yv > 0._GW_PRC)
+        where ( yv > 0.)
            taucd(:,k,north) = tauf * yv
            taucd(:,k,south) = taub * yv
         elsewhere
@@ -840,9 +840,9 @@ subroutine momentum_flux(tend_level, taucd, um_flux, vm_flux)
   ! Bottom stress level.
   integer, intent(in) :: tend_level(:)
   ! Projected stresses.
-  real(GW_PRC), intent(in) :: taucd(:,:,:)
+  real, intent(in) :: taucd(:,:,:)
   ! Components of momentum change sourced from the bottom.
-  real(GW_PRC), intent(out) :: um_flux(:), vm_flux(:)
+  real, intent(out) :: um_flux(:), vm_flux(:)
 
   integer :: i
 
@@ -866,16 +866,16 @@ subroutine momentum_fixer(ncol, pver, tend_level, p, um_flux, vm_flux, utgw, vtg
   ! Bottom stress level.
   integer, intent(in) :: tend_level(ncol)
   ! Pressure coordinates.
-  real(GW_PRC), intent(in) :: p(ncol,pver+1)
+  real, intent(in) :: p(ncol,pver+1)
   ! Components of momentum change sourced from the bottom.
-  real(GW_PRC), intent(in) :: um_flux(ncol), vm_flux(ncol)
+  real, intent(in) :: um_flux(ncol), vm_flux(ncol)
   ! Wind tendencies.
-  real(GW_PRC), intent(inout) :: utgw(ncol,pver), vtgw(ncol,pver)
+  real, intent(inout) :: utgw(ncol,pver), vtgw(ncol,pver)
 
   ! Indices.
   integer :: i, k
   ! Reciprocal of total mass.
-  real(GW_PRC) :: rdm(ncol)
+  real :: rdm(ncol)
 
   ! Total mass from ground to source level: rho*dz = dp/gravit
   do i = 1, ncol
@@ -970,9 +970,9 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
   ! Pressure thickness.
   real, intent(in) :: delp(ncol,pver)
   ! Wave phase speeds for each column.
-  real(GW_R8), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_PRC), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
   ! Wave Reynolds stress.
-  real(GW_R8), intent(in) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_PRC), intent(in) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Efficiency
   real, intent(in) :: effgw(ncol)
   ! Temperature and winds

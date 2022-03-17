@@ -251,27 +251,36 @@ contains
      VERIFY_(STATUS)
 
 ! from moist
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_DC',                               & 
-             LONG_NAME ='T tendency due to deep convection',     &
-             UNITS     ='K s-1',                                 &
-             DIMS      = MAPL_DimsHorzVert,                      &
-             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-        VERIFY_(STATUS)  
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_SC',                               &
-             LONG_NAME ='T tendency due to shallow convection',  &
-             UNITS     ='K s-1',                                 &
-             DIMS      = MAPL_DimsHorzVert,                      &
-             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-        VERIFY_(STATUS)
-!WMP: Updated this to be the T tendency due to convection...
-!JTB: This was moved (3/25/2020) from imports for NCEP GWD, because 
-!     new NCAR code will use it for testing of Beres scheme. Not 
-!     sure this is what Beres scheme should actually be using, but OK
-!     for now until tuning begins. 
-!     from this we can compute QMAX (column maximum value)
-!     and KTOP, KBOT near the location of QMAX
+     call MAPL_AddImportSpec(GC,                              &
+         SHORT_NAME='DTDT_DC',                               & 
+         LONG_NAME ='T tendency due to deep convection',     &
+         UNITS     ='K s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                      &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+     VERIFY_(STATUS)  
+     call MAPL_AddImportSpec(GC,                              &
+         SHORT_NAME='DTDT_SC',                               &
+         LONG_NAME ='T tendency due to shallow convection',  &
+         UNITS     ='K s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                      &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME = 'DQLDT_micro',                                   &
+         LONG_NAME = 'total_liq_water_tendency_due_to_largescale',       &
+         UNITS     = 'kg kg-1 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME= 'DQIDT_micro',                                   &
+         LONG_NAME = 'total_ice_water_tendency_due_to_largescale',       &
+         UNITS     = 'kg kg-1 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+     VERIFY_(STATUS)
 
 ! !EXPORT STATE:
   
@@ -837,7 +846,7 @@ contains
     real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
     real    :: NCAR_ORO_SOUTH_FAC
     real    :: NCAR_HR_CF
-
+    real    :: NCAR_TAUBGND
     logical :: NCAR_DC_BERES
     real    :: NCAR_DC_BERES_SRC_LEVEL
     logical :: NCAR_SC_BERES
@@ -895,21 +904,22 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
-
+         call MAPL_GetResource( MAPL, NCAR_TAUBGND,        Label="NCAR_TAUBGND:",        default=15.0, RC=STATUS)
+         VERIFY_(STATUS)
         ! Beres DeepCu
          call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_dc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_DC_BERES, IM*JM, LATS)
+                             NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_TAUBGND, NCAR_DC_BERES, IM*JM, LATS)
         ! Beres ShallowCu
          call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_sc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_SC_BERES, IM*JM, LATS)
+                             NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_TAUBGND, NCAR_SC_BERES, IM*JM, LATS)
 
          ! Orographic Scheme
          call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           RC=STATUS)
@@ -1096,6 +1106,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
       !++jtb Array for moist deep & shallow conv heating
       real, pointer, dimension(:,:,:)  :: HT_dc, HT_sc
+      ! Arrays for QL and QI condensate tendencies from Moist
+      real, pointer, dimension(:,:,:)  :: QLDT_mst, QIDT_mst
       !++jtb pointers for NCAR Orographic GWP
       !     (in Internal State)
       real, pointer, dimension(:,:,:)  :: MXDIS
@@ -1224,17 +1236,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to inputs
 !---------------------
 
-      call MAPL_GetPointer( IMPORT, PLE,    'PLE',     RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, T,      'T',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, Q,      'Q',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, U,      'U',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, V,      'V',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, SGH,    'SGH',     RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, PREF,   'PREF',    RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, AREA,   'AREA',    RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, VARFLT, 'VARFLT',  RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, HT_dc,  'DTDT_DC', RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, HT_sc,  'DTDT_SC', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, PLE,      'PLE',     RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, T,        'T',       RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, Q,        'Q',       RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, U,        'U',       RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, V,        'V',       RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, SGH,      'SGH',     RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, PREF,     'PREF',    RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, AREA,     'AREA',    RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, HT_sc,    'DTDT_SC', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT_micro', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT_micro', RC=STATUS ); VERIFY_(STATUS)
 
 ! Allocate/refer to the outputs
 !------------------------------
@@ -1770,7 +1784,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call gw_intr_ncar(IM*JM,    LM,         DT,     NCAR_NRDG,   &
               beres_dc_desc, beres_sc_desc, beres_band, oro_band,     &
               PLE,       T,          U,          V,                   &
-              HT_dc,     HT_sc,                                       &
+              HT_dc,     HT_sc,      QLDT_mst+QIDT_mst,               &
               SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
               ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &

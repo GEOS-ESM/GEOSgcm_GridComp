@@ -5,7 +5,7 @@ module gw_oro
 ! gw_drag in May 2013.
 !
 
-  use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
+  use gw_utils, only: GW_PRC, get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, rair, gw_drag_prof 
 
 implicit none
@@ -82,7 +82,7 @@ subroutine gw_oro_src(ncol,pver, band, &
   ! Midpoint altitudes.
   real, intent(in) :: zm(ncol,pver)
   ! Midpoint Brunt-Vaisalla frequencies.
-  real(GW_PRC), intent(in) :: nm(ncol,pver)
+  real, intent(in) :: nm(ncol,pver)
 
   ! Indices of top gravity wave source level and lowest level where wind
   ! tendencies are allowed.
@@ -90,38 +90,38 @@ subroutine gw_oro_src(ncol,pver, band, &
   integer, intent(out) :: tend_level(ncol)
 
   ! Wave Reynolds stress.
-  real(GW_R8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_PRC), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Projection of wind at midpoints and interfaces.
-  real(GW_PRC), intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
+  real, intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
-  real(GW_PRC), intent(out) :: xv(ncol), yv(ncol)
+  real, intent(out) :: xv(ncol), yv(ncol)
   ! Phase speeds.
-  real(GW_R8), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_PRC), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
 
   !---------------------------Local Storage-------------------------------
   ! Column and level indices.
   integer :: i, k
 
   ! Surface streamline displacement height (2*sgh).
-  real(GW_PRC) :: hdsp(ncol)
+  real :: hdsp(ncol)
   ! Max orographic standard deviation to use.
-  real(GW_PRC) :: sghmax
+  real :: sghmax
   ! c=0 stress from orography.
-  real(GW_PRC) :: tauoro(ncol)
+  real :: tauoro(ncol)
   ! Averages over source region.
-  real(GW_PRC) :: nsrc(ncol) ! B-V frequency.
-  real(GW_PRC) :: rsrc(ncol) ! Density.
-  real(GW_PRC) :: usrc(ncol) ! Zonal wind.
-  real(GW_PRC) :: vsrc(ncol) ! Meridional wind.
+  real :: nsrc(ncol) ! B-V frequency.
+  real :: rsrc(ncol) ! Density.
+  real :: usrc(ncol) ! Zonal wind.
+  real :: vsrc(ncol) ! Meridional wind.
 
   ! Difference in interface pressure across source region.
-  real(GW_PRC) :: dpsrc(ncol)
+  real :: dpsrc(ncol)
 
   ! Limiters (min/max values)
   ! min surface displacement height for orographic waves
-  real(GW_PRC), parameter :: orohmin = 10.
+  real, parameter :: orohmin = 10.
   ! min wind speed for orographic waves
-  real(GW_PRC), parameter :: orovmin = 2.
+  real, parameter :: orovmin = 2.
 
 !--------------------------------------------------------------------------
 ! Average the basic state variables for the wave source over the depth of
@@ -173,7 +173,7 @@ subroutine gw_oro_src(ncol,pver, band, &
 
   ! Project the local wind at midpoints onto the source wind.
   do k = 1, pver
-     ubm(:,k) = dot_2d(real(u(:,k),GW_PRC), real(v(:,k),GW_PRC), xv, yv)
+     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
   end do
 
   ! Compute the interface wind projection by averaging the midpoint winds.
@@ -240,31 +240,31 @@ subroutine gw_oro_ifc( band, &
    real,         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
    real,         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
    real,         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
-   real(GW_PRC), intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
-   real(GW_PRC), intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
-   real(GW_PRC), intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
-   real(GW_PRC), intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
+   real, intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
+   real, intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
+   real, intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
+   real, intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
 
    real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
    real,         intent(in) :: lats(ncol)      ! latitudes
 
 
-   real(GW_PRC), intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
-   real(GW_PRC), intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
-   real(GW_PRC), intent(out) :: ttgw(ncol,pver)       ! temperature tendency
+   real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
+   real, intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
+   real, intent(out) :: ttgw(ncol,pver)       ! temperature tendency
 
    !---------------------------Local storage-------------------------------
 
    integer :: k, m, nn
 
-   real(GW_R8), allocatable :: tau(:,:,:)  ! wave Reynolds stress
+   real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
    ! gravity wave wind tendency for each wave
-   real(GW_R8), allocatable :: gwut(:,:,:)
+   real(GW_PRC), allocatable :: gwut(:,:,:)
    ! Wave phase speeds for each column
-   real(GW_R8), allocatable :: c(:,:)
+   real(GW_PRC), allocatable :: c(:,:)
 
    ! Efficiency for a gravity wave source.
-   real(GW_PRC) :: effgw(ncol)
+   real :: effgw(ncol)
 
    ! Indices of top gravity wave source level and lowest level where wind
    ! tendencies are allowed.
@@ -272,14 +272,14 @@ subroutine gw_oro_ifc( band, &
    integer :: tend_level(ncol)
 
    ! Projection of wind at midpoints and interfaces.
-   real(GW_PRC) :: ubm(ncol,pver)
-   real(GW_PRC) :: ubi(ncol,pver+1)
+   real :: ubm(ncol,pver)
+   real :: ubi(ncol,pver+1)
 
    ! Unit vectors of source wind (zonal and meridional components).
-   real(GW_PRC) :: xv(ncol)
-   real(GW_PRC) :: yv(ncol)
+   real :: xv(ncol)
+   real :: yv(ncol)
 
-   real(GW_PRC) :: pint_adj(ncol,pver+1)
+   real :: pint_adj(ncol,pver+1)
 
    character(len=1) :: cn
    character(len=9) :: fname(4)

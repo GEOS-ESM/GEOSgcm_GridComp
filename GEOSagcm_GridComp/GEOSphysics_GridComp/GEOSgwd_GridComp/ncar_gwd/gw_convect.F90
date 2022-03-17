@@ -23,7 +23,6 @@ public :: gw_beres_init
 
 real, parameter :: PI      = 3.14159265358979323846 ! pi
 real, parameter :: TNDMAX  = 500. / 86400.  ! maximum wind tendency
-real, parameter :: TAUBGND = 3.2 * 0.001    ! background source strength (/TAUSCAL)
 real, parameter :: rad2deg = 180./PI
 
 type :: BeresSourceDesc
@@ -33,18 +32,18 @@ type :: BeresSourceDesc
    ! Index for level where wind speed is used as the source speed.
    integer :: k
    ! Heating depths below this value [m] will be ignored.
-   real(GW_PRC) :: min_hdepth
+   real :: min_hdepth
    ! Source for wave spectrum
-   real(GW_PRC) :: spectrum_source
+   real :: spectrum_source
    ! Table bounds, for convenience. (Could be inferred from shape(mfcc).)
    integer :: maxh
    integer :: maxuh
    ! Heating depths [m].
-   real(GW_PRC), allocatable :: hd(:)
+   real, allocatable :: hd(:)
    ! Table of source spectra.
-   real(GW_PRC), allocatable :: mfcc(:,:,:)
+   real, allocatable :: mfcc(:,:,:)
    ! Forced background for extratropics
-   real(GW_PRC), allocatable :: taubck(:,:)
+   real, allocatable :: taubck(:,:)
 end type BeresSourceDesc
 
 
@@ -54,7 +53,7 @@ contains
 
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
-                          spectrum_source, min_hdepth, storm_shift, active, ncol, lats)
+                          spectrum_source, min_hdepth, storm_shift, taubgnd, active, ncol, lats)
 #include <netcdf.inc>
 
   character(len=*), intent(in) :: file_name
@@ -64,7 +63,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
-  real, intent(in) :: spectrum_source, min_hdepth
+  real, intent(in) :: spectrum_source, min_hdepth, taubgnd
   logical, intent(in) :: storm_shift, active
   real, intent(in) :: lats(ncol)
 
@@ -143,11 +142,11 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
   
     ! While not currently documented in the file, it uses kilometers. Convert
     ! to meters.
-    desc%hd = hdcc * 1000.0_GW_PRC
+    desc%hd = hdcc * 1000.0
 
-    desc%spectrum_source = REAL(spectrum_source,GW_PRC)
+    desc%spectrum_source = spectrum_source
 
-    desc%min_hdepth = REAL(min_hdepth,GW_PRC)
+    desc%min_hdepth = min_hdepth
 
     desc%storm_shift=storm_shift
 
@@ -184,7 +183,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        else if (latdeg >=  60.) then
          flat_gw =  0.50*exp(-((abs(latdeg)-60.)/70.)**2)
        end if
-       desc%taubck(i,:) = TAUBGND*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
+       desc%taubck(i,:) = taubgnd*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
     enddo
   end if
     
@@ -192,7 +191,7 @@ end subroutine gw_beres_init
 
 !------------------------------------
 subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
-     netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
+     dqcdt, netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth, maxq0, lats)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
@@ -221,6 +220,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
   ! Midpoint zonal/meridional winds.
   real, intent(in) :: u(ncol,pver), v(ncol,pver)
+  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+  real, intent(in) :: dqcdt(ncol,pver)
   ! Heating rate due to convection.
   real, intent(in) :: netdt(:,:)
   ! Midpoint altitudes.
@@ -234,45 +235,45 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   integer, intent(out) :: tend_level(ncol)
 
   ! Wave Reynolds stress.
-  real(GW_R8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  real(GW_PRC), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Projection of wind at midpoints and interfaces.
-  real(GW_PRC), intent(out) :: ubm(ncol,pver)
-  real(GW_PRC), intent(out) :: ubi(ncol,pver+1)
+  real, intent(out) :: ubm(ncol,pver)
+  real, intent(out) :: ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
-  real(GW_PRC), intent(out) :: xv(ncol), yv(ncol)
+  real, intent(out) :: xv(ncol), yv(ncol)
   ! Phase speeds.
-  real(GW_R8), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
+  real(GW_PRC), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
 
   ! Heating depth [m] and maximum heating in each column.
-  real(GW_PRC), intent(out) :: hdepth(ncol), maxq0(ncol)
+  real, intent(out) :: hdepth(ncol), maxq0(ncol)
 
 !---------------------------Local Storage-------------------------------
   ! Column and level indices.
   integer :: i, k
 
   ! Zonal/meridional wind at roughly the level where the convection occurs.
-  real(GW_PRC) :: uconv(ncol), vconv(ncol)
+  real :: uconv(ncol), vconv(ncol)
 
   ! Maximum heating rate.
-  real(GW_R8) :: q0(ncol)
+  real(GW_PRC) :: q0(ncol)
 
   ! Bottom/top heating range index.
   integer  :: boti(ncol), topi(ncol)
   ! Index for looking up heating depth dimension in the table.
   integer  :: hd_idx(ncol)
   ! Mean wind in heating region.
-  real(GW_R8) :: uh(ncol)
+  real(GW_PRC) :: uh(ncol)
   ! Min/max wavenumber for critical level filtering.
   integer :: Umini(ncol), Umaxi(ncol)
   ! Source level tau for a column.
-  real(GW_R8) :: tau0(-band%ngwv:band%ngwv)
+  real(GW_PRC) :: tau0(-band%ngwv:band%ngwv)
   ! Speed of convective cells relative to storm.
-  real(GW_R8) :: CS(ncol)
+  real(GW_PRC) :: CS(ncol)
   ! Index to shift spectra relative to ground.
   integer :: shift
 
   ! Averaging length.
-  real(GW_PRC), parameter :: AL = 1.0e5
+  real, parameter :: AL = 1.0e5
 
   !----------------------------------------------------------------------
   ! Initialize tau array
@@ -296,7 +297,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
   ! Project the local wind at midpoints onto the source wind.
   do k = 1, pver
-     ubm(:,k) = dot_2d(real(u(:,k),GW_PRC), real(v(:,k),GW_PRC), xv, yv)
+     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
   end do
 
   ! Compute the interface wind projection by averaging the midpoint winds.
@@ -341,10 +342,10 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   end do
 
   ! Heating depth in m.
-  hdepth = [ ( (REAL(zm(i,topi(i)),GW_PRC)-REAL(zm(i,boti(i)),GW_PRC)), i = 1, ncol ) ]
+  hdepth = [ ( (zm(i,topi(i))-zm(i,boti(i))), i = 1, ncol ) ]
 
   ! J. Richter: this is an effective reduction of the GW phase speeds (needed to drive the QBO)
-  hdepth = hdepth*REAL(qbo_hdepth_scaling,GW_PRC)
+  hdepth = hdepth*qbo_hdepth_scaling
 
   hd_idx = index_of_nearest(hdepth, desc%hd)
 
@@ -436,16 +437,16 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
         end if
 
         ! Adjust magnitude.
-        tau0 = tau0*DBLE(q0(i)**2)/AL
+        tau0 = tau0*(q0(i)**2)/AL
 
         ! Adjust for critical level filtering.
         tau0(Umini(i):Umaxi(i)) = 0.0
  
-        tau(i,:,topi(i)+1) = REAL(tau0,GW_PRC)
+        tau(i,:,topi(i)+1) = tau0
 
-     else ! heating depth above min and not at the pole
+     elseif (dqcdt(i,desc%k) > 1.e-8) then ! frontal region (large-scale forcing)
 
-      ! include forced background stress in extra tropics
+      ! include forced background stress in extra tropical large-scale systems
        ! Set the phase speeds and wave numbers in the direction of the source wind.
        ! Set the source stress magnitude (positive only, note that the sign of the 
        ! stress is the same as (c-u).
@@ -477,6 +478,7 @@ subroutine gw_beres_ifc( band, &
    ncol, pver, dt, effgw_dp,  &
    u, v, t, pref, pint, delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
+   dqcdt, &
    netdt,desc,lats, &
    utgw,vtgw,ttgw,flx_heat)
 
@@ -490,6 +492,7 @@ subroutine gw_beres_ifc( band, &
    real,         intent(in) :: u(ncol,pver)      ! Midpoint zonal winds. ( m s-1)
    real,         intent(in) :: v(ncol,pver)      ! Midpoint meridional winds. ( m s-1)
    real,         intent(in) :: t(ncol,pver)      ! Midpoint temperatures. (K)
+   real,         intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
    real,         intent(in) :: netdt(ncol,pver)  ! Convective heating rate (K s-1)
    real,         intent(in) :: pref(pver+1)      ! Reference pressure at interfaces (Pa !!! )
    real,         intent(in) :: piln(ncol,pver+1) ! Log of interface pressures.
@@ -498,39 +501,39 @@ subroutine gw_beres_ifc( band, &
    real,         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
    real,         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
    real,         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
-   real(GW_PRC), intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
-   real(GW_PRC), intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
-   real(GW_PRC), intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
-   real(GW_PRC), intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
+   real, intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
+   real, intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
+   real, intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
+   real, intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
 
    real,         intent(in) :: lats(ncol)      ! latitudes
 
-   real(GW_PRC), intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
-   real(GW_PRC), intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
-   real(GW_PRC), intent(out) :: ttgw(ncol,pver)       ! temperature tendency
-   real(GW_PRC), intent(inout) :: flx_heat(ncol)        ! Energy change
+   real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
+   real, intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
+   real, intent(out) :: ttgw(ncol,pver)       ! temperature tendency
+   real, intent(inout) :: flx_heat(ncol)        ! Energy change
 
    !---------------------------Local storage-------------------------------
 
    integer :: k, m, nn
 
-   real(GW_R8), allocatable :: tau(:,:,:)  ! wave Reynolds stress
+   real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
    ! gravity wave wind tendency for each wave
-   real(GW_R8), allocatable :: gwut(:,:,:)
+   real(GW_PRC), allocatable :: gwut(:,:,:)
    ! Wave phase speeds for each column
-   real(GW_R8), allocatable :: c(:,:)
+   real(GW_PRC), allocatable :: c(:,:)
 
    ! Efficiency for a gravity wave source.
-   real(GW_PRC) :: effgw(ncol)
+   real :: effgw(ncol)
 
    ! Momentum fluxes used by fixer.
-   real(GW_PRC) :: um_flux(ncol), vm_flux(ncol)
+   real :: um_flux(ncol), vm_flux(ncol)
 
    ! Energy change used by fixer.
-   real(GW_PRC) :: de(ncol)
+   real :: de(ncol)
 
    ! Reynolds stress for waves propagating in each cardinal direction.
-   real(GW_PRC) :: taucd(ncol,pver+1,4)
+   real :: taucd(ncol,pver+1,4)
 
    ! Indices of top gravity wave source level and lowest level where wind
    ! tendencies are allowed.
@@ -538,18 +541,18 @@ subroutine gw_beres_ifc( band, &
    integer :: tend_level(ncol)
 
    ! Projection of wind at midpoints and interfaces.
-   real(GW_PRC) :: ubm(ncol,pver)
-   real(GW_PRC) :: ubi(ncol,pver+1)
+   real :: ubm(ncol,pver)
+   real :: ubi(ncol,pver+1)
 
    ! Unit vectors of source wind (zonal and meridional components).
-   real(GW_PRC) :: xv(ncol)
-   real(GW_PRC) :: yv(ncol)
+   real :: xv(ncol)
+   real :: yv(ncol)
 
    ! Heating depth [m] and maximum heating in each column.
-   real(GW_PRC) :: hdepth(ncol), maxq0(ncol)
+   real :: hdepth(ncol), maxq0(ncol)
 
-   real(GW_PRC) :: pint_adj(ncol,pver+1)
-   real(GW_PRC) :: zfac_layer
+   real :: pint_adj(ncol,pver+1)
+   real :: zfac_layer
 
    logical, parameter :: gw_apply_tndmax = .TRUE.!- default .TRUE. for Anisotropic: "Sean" limiters
 
@@ -581,7 +584,7 @@ subroutine gw_beres_ifc( band, &
 
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band , desc, &
-          u, v, netdt, zm, src_level, tend_level, tau, &
+          u, v, dqcdt, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats)
 
 !WMP pressure scaling from GEOS top 0.01mb to zfac_layer
@@ -615,9 +618,9 @@ subroutine gw_beres_ifc( band, &
    ! call energy_fixer(ncol, pver, tend_level, pint, de-flx_heat, ttgw)
    ! flx_heat=de
 
-   ! call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
-   !                           effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
-
+     call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
+                               effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
+ 
    deallocate(tau, gwut, c)
 
 end subroutine gw_beres_ifc
@@ -682,12 +685,12 @@ end subroutine endrun
 ! Short routine to get the indices of a set of values rounded to their
 ! nearest points on a grid.
 function index_of_nearest(x, grid) result(idx)
-  real(GW_PRC),     intent(in) :: x(:)
-  real(GW_PRC ), intent(in) :: grid(:)
+  real,     intent(in) :: x(:)
+  real, intent(in) :: grid(:)
 
   integer :: idx(size(x))
 
-  real(GW_PRC ) :: interfaces(size(grid)-1)
+  real :: interfaces(size(grid)-1)
   integer :: i, n
 
   n = size(grid)

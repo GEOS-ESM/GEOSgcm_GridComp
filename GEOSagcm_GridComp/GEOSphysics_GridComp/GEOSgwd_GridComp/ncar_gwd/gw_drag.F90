@@ -19,7 +19,6 @@ module gw_drag_ncar
   use gw_oro, only     : gw_oro_ifc
   use gw_convect, only : BeresSourceDesc, gw_beres_ifc
   use gw_common, only  : GWBand,gw_prof
-  use gw_utils, only   : GW_PRC
 
   !save
   private                          ! Make default type private to the module
@@ -61,7 +60,7 @@ contains
   subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,              &    
           beres_dc_desc, beres_sc_desc, beres_band,   oro_band,                      &
           pint_dev,      t_dev,         u_dev,        v_dev,                         &
-          ht_dc_dev,     ht_sc_dev,     &
+          ht_dc_dev,     ht_sc_dev,     dqcdt_dev,                                   &
           sgh_dev,       mxdis_dev,     hwdth_dev,    clngt_dev,  angll_dev,         &
           anixy_dev,     gbxar_dev,     kwvrdg_dev,   effrdg_dev, pref_dev,          & 
           pmid_dev,      pdel_dev,      rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
@@ -94,6 +93,7 @@ contains
     real,    intent(in   ) :: v_dev(pcols,pver)        ! meridional wind at layers
     real,    intent(in   ) :: ht_dc_dev(pcols,pver)    ! DeepCu heating in layers
     real,    intent(in   ) :: ht_sc_dev(pcols,pver)    ! ShallowCu heating in layers
+    real,    intent(in   ) :: dqcdt_dev(pcols,pver)    ! Condensate tendencies due to large-scale
     real,    intent(in   ) :: sgh_dev(pcols)           ! standard deviation of orography
 !++jtb 01/25/21 New topo vars
     real,    intent(in   ) :: mxdis_dev(pcols,nrdg)     ! obstacle/ridge height 
@@ -154,24 +154,24 @@ contains
     integer :: ksrc                     ! index of top interface of source region
     integer :: ksrcmn                   ! min value of ksrc
 
-    real(GW_PRC) :: ttgw(pcols,pver)            ! temperature tendency
-    real(GW_PRC) :: utgw(pcols,pver)            ! zonal wind tendency
-    real(GW_PRC) :: vtgw(pcols,pver)            ! meridional wind tendency
+    real :: ttgw(pcols,pver)            ! temperature tendency
+    real :: utgw(pcols,pver)            ! zonal wind tendency
+    real :: vtgw(pcols,pver)            ! meridional wind tendency
 
     real         :: zi(pcols,pver+1)                   ! interface heights above ground
-    real(GW_PRC) :: ni(pcols,pver+1)                   ! interface Brunt-Vaisalla frequency
-    real(GW_PRC) :: nm(pcols,pver)                     ! midpoint Brunt-Vaisalla frequency
+    real :: ni(pcols,pver+1)                   ! interface Brunt-Vaisalla frequency
+    real :: nm(pcols,pver)                     ! midpoint Brunt-Vaisalla frequency
     !!!real    :: rdpldv                              ! 1/dp across low level divergence region
-    real(GW_PRC) :: rhoi(pcols,pver+1)                 ! interface density
-    real(GW_PRC) :: ti(pcols,pver+1)                   ! interface temperature
-    real(GW_PRC) :: ubi(pcols,pver+1)                  ! projection of wind at interfaces
-    real(GW_PRC) :: ubm(pcols,pver)                    ! projection of wind at midpoints
-    real(GW_PRC) :: xv(pcols)                          ! unit vectors of source wind (x)
-    real(GW_PRC) :: yv(pcols)                          ! unit vectors of source wind (y)
-    real(GW_PRC) :: kvtt(pcols,pver+1)                 ! Molecular thermal diffusivity.
+    real :: rhoi(pcols,pver+1)                 ! interface density
+    real :: ti(pcols,pver+1)                   ! interface temperature
+    real :: ubi(pcols,pver+1)                  ! projection of wind at interfaces
+    real :: ubm(pcols,pver)                    ! projection of wind at midpoints
+    real :: xv(pcols)                          ! unit vectors of source wind (x)
+    real :: yv(pcols)                          ! unit vectors of source wind (y)
+    real :: kvtt(pcols,pver+1)                 ! Molecular thermal diffusivity.
 
-    real(GW_PRC) :: maxq0(pcols),hdepth(pcols)
-    real(GW_PRC) :: flx_heat(pcols)
+    real :: maxq0(pcols),hdepth(pcols)
+    real :: flx_heat(pcols)
 
     real         :: rdg_cd_llb
     integer      :: pverp, pcnst
@@ -208,6 +208,7 @@ contains
        pdel_dev , rpdel_dev, lnpint_dev, &
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
+       dqcdt_dev, &
        ht_dc_dev,beres_dc_desc,rlat_dev, &
        utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
@@ -223,6 +224,7 @@ contains
        pdel_dev , rpdel_dev, lnpint_dev, &
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
+       dqcdt_dev, &
        ht_sc_dev,beres_sc_desc,rlat_dev, &
        utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
