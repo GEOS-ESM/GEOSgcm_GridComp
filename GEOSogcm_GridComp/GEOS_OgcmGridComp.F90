@@ -783,9 +783,9 @@ contains
   if (ocean_extData) then
     if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
       if (ocean_sssData) then
-        call MAPL_TerminateImport    ( GC, ["DATA_SST","DATA_SSS", "DATA_ICE","DATA_KPAR"], [ocean,ocean,seaice,orad], RC=STATUS  )
+        call MAPL_TerminateImport    ( GC, ["DATA_SST ","DATA_SSS ", "DATA_ICE ","DATA_KPAR"], [ocean,ocean,seaice,orad], RC=STATUS  )
       else ! no (None) data_sss
-        call MAPL_TerminateImport    ( GC, ["DATA_SST",            "DATA_ICE","DATA_KPAR"], [ocean,      seaice,orad], RC=STATUS  )
+        call MAPL_TerminateImport    ( GC, ["DATA_SST ",             "DATA_ICE ","DATA_KPAR"], [ocean,      seaice,orad], RC=STATUS  )
       endif
     else ! we get real ocean and sea ice in case of coupled model, and only data KPAR is used.
       call MAPL_TerminateImport    ( GC, ["DATA_KPAR"], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
