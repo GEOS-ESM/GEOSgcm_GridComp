@@ -627,6 +627,14 @@ module GEOS_SimpleSeaiceGridCompMod
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
 
+     call MAPL_AddExportSpec(GC,                         &
+        SHORT_NAME         = 'TSKINICE',                    &
+        LONG_NAME          = 'snow_or_ice_surface_temperature',&
+        UNITS              = 'K'                         ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                                      RC=STATUS  )
+
 !  !INTERNAL STATE:
 
      call MAPL_AddInternalSpec(GC,                           &
@@ -1905,6 +1913,7 @@ contains
    real, pointer, dimension(:  )  :: SWNDICE => null()
    real, pointer, dimension(:  )  :: LWNDICE => null()
    real, pointer, dimension(:  )  :: FSURF   => null()
+   real, pointer, dimension(:  )  :: TSKINICE=> null()
 
    real, pointer, dimension(:  )  :: DELTS  => null()
    real, pointer, dimension(:  )  :: DELQS  => null()
@@ -2116,6 +2125,7 @@ contains
    call MAPL_GetPointer(EXPORT,SWNDICE, 'SWNDICE' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRI    , 'FRACI'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TSKINICE, 'TSKINICE',   RC=STATUS); VERIFY_(STATUS)
 
    call MAPL_GetPointer(EXPORT,DRUVRTHRU  , 'PENUVR'     ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DFUVRTHRU  , 'PENUVF'     ,    RC=STATUS); VERIFY_(STATUS)
@@ -2366,6 +2376,7 @@ contains
     if(associated(HLWUP  )) HLWUP   = ALW 
     if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW
 
+    if(associated(TSKINICE)) TSKINICE = TI
 
     if(associated(LWNDICE)) then 
           where( FI>0.0 ) 
