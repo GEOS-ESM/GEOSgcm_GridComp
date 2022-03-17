@@ -391,15 +391,6 @@ module GEOS_SaltwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
  
-     call MAPL_AddExportSpec(GC,                         &
-        SHORT_NAME         = 'TSKINICE',                    &
-        LONG_NAME          = 'snow_or_ice_surface_temperature',&
-        UNITS              = 'K'                         ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                                      RC=STATUS  )
-     VERIFY_(STATUS)
-
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRACI',                             &
         LONG_NAME          = 'ice_covered_fraction_of_tile',      &
@@ -823,6 +814,8 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, RC=STATUS)
   VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINICE'  , CHILD_ID =   ICE, RC=STATUS)
   VERIFY_(STATUS)
 
 ! Atmosphere-Ocean Fluxes
@@ -1758,7 +1751,6 @@ contains
    call MAPL_GetPointer(EXPORT,HLWUP  , 'HLWUP'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWNDSRF, 'LWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWNDSRF, 'SWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TSKINI , 'TSKINICE',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRI    , 'FRACI'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRW    , 'FRACW'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,PENUVR , 'PENUVR'  ,    RC=STATUS); VERIFY_(STATUS)
@@ -1839,13 +1831,6 @@ contains
       endif
    enddo
 
-   if(DO_CICE_THERMO /= 0) then
-      if(associated(TSKINI)) then
-         call MAPL_GetPointer(GEX(ICE), dummy, 'ISTSFC' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-      endif
-   endif
-
 ! Call the childrens' RUN2
 !-------------------------
 
@@ -1874,16 +1859,6 @@ contains
     if(associated(FRI)) FRI = FRNEW(:,  ICE)
     if(associated(FRW)) FRW = FRNEW(:,WATER)
 
-    if(associated(TSKINI)) then
-       if(DO_CICE_THERMO /= 0) then
-          call MAPL_GetPointer(GEX(ICE), TSKINI, 'ISTSFC' ,  RC=STATUS)
-          VERIFY_(STATUS)
-          TSKINI = TSKINI + MAPL_TICE ! convert to K
-       else
-          call MAPL_GetPointer(GEX(ICE), TSKINI, 'TSKINI' ,  RC=STATUS)
-          VERIFY_(STATUS)
-       endif
-    endif
 
                             EMISS   = 0.0
                             ALBVR   = 0.0
