@@ -19,5 +19,4 @@ set (srcs
   ncar_gwd/gw_drag.F90
   )
 
-esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL)
-target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
+esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL esmf NetCDF::NetCDF_Fortran)
