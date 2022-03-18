@@ -61,6 +61,9 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_OBIO
   integer            :: DO_DATAATM
 
+  logical          :: ocean_extData
+  logical          :: ocean_sssData
+
 !if DO_OBIO =/ 0
   integer, parameter :: NUM_DUDP = 5
   integer, parameter :: NUM_DUWT = 5
@@ -201,6 +204,12 @@ contains
        _ASSERT(DO_DATAICE    /=0,'needs informative message')
        _ASSERT(DO_OBIO       ==0,'needs informative message')
     end if
+
+    call MAPL_GetResource (MAPL,   ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+    if (DO_DATASEAONLY==1) then ! Fake-ocean (i.e., data ocean). 
+                                ! This check is strictly for sss only because of data kpar that is used when DO_DATASEAONLY == 0.
+      call MAPL_GetResource (MAPL, ocean_sssData,  Label="OCEAN_SSS_DATA:",  DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+    endif
 
 ! Set the Run and initialize entry points
 !----------------------------------------
@@ -769,9 +778,21 @@ contains
   end if
 
 ! Children's imports are in the ocean grid and are all satisfied
-!   by OGCM from exchange grid quantities.
+! by OGCM from exchange grid quantities.
   
-  call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
+  if (ocean_extData) then
+    if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
+      if (ocean_sssData) then
+        call MAPL_TerminateImport    ( GC, ["DATA_SST ","DATA_SSS ", "DATA_ICE ","DATA_KPAR"], [ocean,ocean,seaice,orad], RC=STATUS  )
+      else ! no (None) data_sss
+        call MAPL_TerminateImport    ( GC, ["DATA_SST ",             "DATA_ICE ","DATA_KPAR"], [ocean,      seaice,orad], RC=STATUS  )
+      endif
+    else ! we get real ocean and sea ice in case of coupled model, and only data KPAR is used.
+      call MAPL_TerminateImport    ( GC, ["DATA_KPAR"], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
+    endif
+  else
+    call MAPL_TerminateImport ( GC, ALL=.true., __RC__)
+  endif
 
 ! Set the Profiling timers
 ! ------------------------

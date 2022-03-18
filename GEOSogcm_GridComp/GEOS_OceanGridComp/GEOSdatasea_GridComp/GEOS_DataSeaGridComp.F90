@@ -23,6 +23,9 @@ module GEOS_DataSeaGridCompMod
 
   public SetServices
 
+  logical          :: ocean_extData
+  logical          :: ocean_sssData
+
 ! !DESCRIPTION:
 ! 
 !   {\tt GEOS\_DataSea} is a gridded component that reads the 
@@ -72,6 +75,8 @@ module GEOS_DataSeaGridCompMod
 
 ! Local derived type aliases
 
+    type (MAPL_MetaComp    ), pointer   :: MAPL => null()
+
 !=============================================================================
 
 ! Begin...
@@ -84,13 +89,19 @@ module GEOS_DataSeaGridCompMod
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
-
 ! Set the Run entry point
 ! -----------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource (MAPL,   ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+
+    ! This new SSS data feature will be ExtData based ONLY; No SSS data would set sss=30, as it was done with binary SST data
+    call MAPL_GetResource (MAPL,   ocean_sssData,  Label="OCEAN_SSS_DATA:",  DEFAULT=.FALSE.,   __RC__ ) ! .TRUE. or .FALSE.
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -101,6 +112,24 @@ module GEOS_DataSeaGridCompMod
 ! None. Its only job is to simply export: SST, SSS, US, VS
 
 !  !Export state:
+
+  if (ocean_extData) then
+    call MAPL_AddImportSpec(GC,              &
+      SHORT_NAME = 'DATA_SST',               &
+      LONG_NAME = 'sea_surface_temperature', &
+      UNITS = 'K',                           &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+  endif
+
+  if (ocean_sssData) then
+    call MAPL_AddImportSpec(GC,           &
+      SHORT_NAME = 'DATA_SSS',            &
+      LONG_NAME = 'sea_surface_salinity', &
+      UNITS = 'PSU',                      &
+      DIMS = MAPL_DimsHorzOnly,           &
+      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+  endif
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'UW',                                &
@@ -166,8 +195,6 @@ module GEOS_DataSeaGridCompMod
   
   end subroutine SetServices
 
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !BOP
@@ -187,7 +214,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code:
 
-! !DESCRIPTION: Periodically refreshes the SST and Ice information.
+! !DESCRIPTION: Periodically refreshes the SST, sea ice and optionally SSS from dataset(s).
 
 !EOP
 
@@ -203,11 +230,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (MAPL_MetaComp),     pointer   :: MAPL
   type (ESMF_Time)                    :: CurrentTime
   character(len=ESMF_MAXSTR)          :: DATASeaFILE
-! character(len=ESMF_MAXSTR)          :: DATASeaSalFILE
   integer                             :: IFCST
   logical                             :: FCST
   integer                             :: adjSST
-  real, pointer, dimension(:,:)       :: SST
+  real, pointer, dimension(:,:)       :: SST   => null()
+  real, pointer, dimension(:,:)       :: SSS   => null()
   integer                             :: IM
   integer                             :: JM
   real                                :: TICE
@@ -228,6 +255,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! pointers to import
 
    real, pointer, dimension(:,:)  :: FI
+
+   real, pointer, dimension(:,:) :: data_sst => null()
+   real, pointer, dimension(:,:) :: data_sss => null()
 
 !  Begin...
 !----------
@@ -254,81 +284,81 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Pointers to Imports
 !--------------------
-    call MAPL_GetPointer(IMPORT,      FI  , 'FRACICE'  , RC=STATUS)
-    VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,      FI  , 'FRACICE'  , RC=STATUS)
+   VERIFY_(STATUS)
 
 !  Pointers to Exports
 !---------------------
 
-    call MAPL_GetPointer(EXPORT,      UW  , 'UW'       , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,      VW  , 'VW'       , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,      TW  , 'TW'       , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,      SW  , 'SW'       , RC=STATUS)
-    VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,      UW  , 'UW'       , RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,      VW  , 'VW'       , RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,      TW  , 'TW'       , RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,      SW  , 'SW'       , RC=STATUS)
+   VERIFY_(STATUS)
 
 ! Set current time and calendar
 !------------------------------
 
-    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, RC=STATUS)
-    VERIFY_(STATUS)
+   call ESMF_ClockGet(CLOCK, currTime=CurrentTime, RC=STATUS)
+   VERIFY_(STATUS)
 
-! Get the SST bcs file name from the resource file
-!-------------------------------------------------
-
-    call MAPL_GetResource(MAPL,DATASeaFILE,LABEL="DATA_SST_FILE:", RC=STATUS)
-    VERIFY_(STATUS)
-
-! Get the SSS bcs file name from the resource file
-!-------------------------------------------------
-
-!   call MAPL_GetResource(MAPL,DATASeaSalFILE,LABEL="DATA_SSS_FILE:",  RC=STATUS)
-!   VERIFY_(STATUS)
+   if (.not. ocean_extData) then
+     ! Get the SST bcs file name from the resource file
+     ! -------------------------------------------------
+     call MAPL_GetResource(MAPL,DATASeaFILE,LABEL="DATA_SST_FILE:", RC=STATUS)
+     VERIFY_(STATUS)
+   endif
 
 ! In atmospheric forecast mode we do not have future SST and SSS
 !--------------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0,    RC=STATUS)
-    VERIFY_(STATUS)
+   call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0,    RC=STATUS)
+   VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL,adjSST,LABEL="SST_ADJ_UND_ICE:",default=0,    RC=STATUS)
-    VERIFY_(STATUS)
+   call MAPL_GetResource(MAPL,adjSST,LABEL="SST_ADJ_UND_ICE:",default=0,    RC=STATUS)
+   VERIFY_(STATUS)
 
-    FCST = IFCST==1
-
-! SST is usually Reynolds/OSTIA SST or bulk SST
-!------------------------------------------------
+   FCST = IFCST==1
 
    call MAPL_Get(MAPL, IM=IM, JM=JM, RC=STATUS)
    VERIFY_(STATUS)
+
+! SST is usually Reynolds/OSTIA SST or bulk SST
+!------------------------------------------------
 
    allocate(SST(IM,JM), stat=STATUS)
    VERIFY_(STATUS)
 
 ! SSS is usually bulk SSS
-!--------------------------
+!-------------------------
 
-!  allocate(SSS(IM, JM), stat=STATUS)
-!  VERIFY_(STATUS)
+  if (ocean_sssData) then
+    allocate(SSS(IM, JM), stat=STATUS); VERIFY_(STATUS)
+  endif
 
-!  Update the friendly skin values
-!---------------------------------
+!  Update data
+!-------------
 
    call MAPL_TimerOn(MAPL,"-UPDATE" )
 
 !  Read bulk SST from retrieval
 !------------------------------
 
-   call MAPL_ReadForcing(MAPL,'SST',DATASeaFILE, CURRENTTIME, SST, INIT_ONLY=FCST, RC=STATUS)
-   VERIFY_(STATUS)
+   if (ocean_extData) then
+     call MAPL_GetPointer(import, data_sst, 'DATA_SST', __RC__)
+     sst = data_sst ! netcdf variable
 
-!  Read bulk SSS from retrieval
-!------------------------------
+     if (ocean_sssData) then  ! and bulk SSS (from retrieval)
+       call MAPL_GetPointer(import, data_sss, 'DATA_SSS', __RC__)
+       SSS = data_sss ! netcdf variable
+     endif
 
-!  call MAPL_ReadForcing(MAPL,'SSS',DATASeaSalFILE, CURRENTTIME, SSS, INIT_ONLY=FCST, RC=STATUS)
-!  VERIFY_(STATUS)
+   else ! binary
+     call MAPL_ReadForcing(MAPL,'SST',DATASeaFILE, CURRENTTIME, sst, INIT_ONLY=FCST, __RC__)
+   endif
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )
 
@@ -339,6 +369,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(VW)) VW = 0.0
 
    TICE   = MAPL_TICE-1.8
+
    if (adjSST == 1) then
       SST = max(SST, TICE)
       SST = (1.-FI)*SST+FI*TICE
@@ -384,15 +415,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    end if
 
    if(associated(SW)) then
-      SW = 30.0       ! SA: for now
-!     SW = SSS        ! SA: every SST data point must have SSS (in PSU) as well
+     if (ocean_sssData) then
+       SW = SSS        ! SA: every SST data point must have SSS (in PSU) as well
+     else
+       SW = 30.0       ! SA: for now
+     end if
    end if
 
 ! Clean-up
 !---------
 
    deallocate(SST,     STAT=STATUS); VERIFY_(STATUS)
-!  deallocate(SSS,     STAT=STATUS); VERIFY_(STATUS)
+   if (ocean_sssData) then
+     deallocate(SSS,   STAT=STATUS); VERIFY_(STATUS)
+   endif
 
 !  All done
 !-----------
