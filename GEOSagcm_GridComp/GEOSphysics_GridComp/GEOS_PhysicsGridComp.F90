@@ -1137,7 +1137,9 @@ contains
 !----------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'PCU ','PLS ','SNO ','ICE ','FRZR'/),     &
+         SHORT_NAME  = (/'PCU    ', 'PLS    ', 'SNO    ',          &
+                         'ICE    ', 'FRZR   ', 'TPREC  ',          &
+                         'CN_PRCP' /),                             &
          DST_ID      = SURF,                                       &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1198,8 +1200,8 @@ contains
 ! -----------------
 
      call MAPL_AddConnectivity ( GC,                              &
-        SHORT_NAME  = (/ 'Q       ',  'RH2     ', 'CN_PRCP ',     &
-                         'TPREC   ',  'SNO     ', 'DQDT    ',     &
+        SHORT_NAME  = (/ 'Q       ',  'RH2     ',                 &
+                                      'SNO     ', 'DQDT    ',     &
                          'FCLD    ',  'LS_PRCP ', 'CNV_MFC ',     &
                          'CNV_MFD ',  'QL      ', 'PFL_CN  ',     &
                          'PFL_LSAN',  'PFI_CN  ', 'PFI_LSAN',     &
@@ -1235,7 +1237,8 @@ contains
                          'CN       ', 'RHOS     ', 'WET2     ',   &
                          'SNOMAS   ', 'SNOWDP   ', 'ITY      ',   &
                          'LHFX     ', 'Q2M      ', 'Q10M     ',   &
-                         'T10M     ', 'WCSF     '             /), &
+                         'T10M     ', 'WCSF     ', 'CN_PRCP  ',   &
+                         'PRECTOT  '                          /), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
                                                        RC=STATUS  )
