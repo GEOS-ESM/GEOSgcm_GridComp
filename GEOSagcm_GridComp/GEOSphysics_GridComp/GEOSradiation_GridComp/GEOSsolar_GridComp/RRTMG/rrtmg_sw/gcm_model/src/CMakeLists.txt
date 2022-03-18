@@ -40,7 +40,6 @@ foreach (file ${k_g_srcs})
 endforeach ()
 
 esma_add_library (${this} SRCS ${srcs} ${k_g_srcs}
-   DEPENDENCIES GEOS_Shared MAPL RRTMG_SW_mods GEOS_RadiationShared)
-target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
+  DEPENDENCIES GEOS_Shared MAPL RRTMG_SW_mods GEOS_RadiationShared esmf NetCDF::NetCDF_Fortran)
 
 
