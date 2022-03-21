@@ -46,89 +46,65 @@ list( APPEND CICE6_SRCS
    icepack/columnphysics/icepack_zbgc.F90
    icepack/columnphysics/icepack_zbgc_shared.F90
    icepack/columnphysics/icepack_zsalinity.F90
-cicecore/shared/ice_arrays_column.F90
-cicecore/shared/ice_calendar.F90
-cicecore/shared/ice_constants.F90
-cicecore/shared/ice_distribution.F90
-cicecore/shared/ice_domain_size.F90
-cicecore/shared/ice_fileunits.F90
-cicecore/shared/ice_init_column.F90
-cicecore/shared/ice_kinds_mod.F90
-cicecore/shared/ice_restart_column.F90
-cicecore/shared/ice_restart_shared.F90
-cicecore/shared/ice_spacecurve.F90
-cicecore/cicedynB/dynamics/ice_dyn_eap.F90
-cicecore/cicedynB/dynamics/ice_dyn_shared.F90
-cicecore/cicedynB/dynamics/ice_transport_driver.F90
-cicecore/cicedynB/dynamics/ice_dyn_evp_1d.F90
-cicecore/cicedynB/dynamics/ice_transport_remap.F90
-cicecore/cicedynB/dynamics/ice_dyn_vp.F90
-cicecore/cicedynB/dynamics/ice_dyn_evp.F90
-cicecore/cicedynB/general/ice_init.F90
-cicecore/cicedynB/general/ice_state.F90
-cicecore/cicedynB/general/ice_flux_bgc.F90
-cicecore/cicedynB/general/ice_step_mod.F90
-cicecore/cicedynB/general/ice_forcing_bgc.F90
-cicecore/cicedynB/general/ice_flux.F90
-cicecore/cicedynB/general/ice_forcing.F90
-cicecore/cicedynB/analysis/ice_diagnostics_bgc.F90
-cicecore/cicedynB/analysis/ice_history_drag.F90
-cicecore/cicedynB/analysis/ice_history_shared.F90
-cicecore/cicedynB/analysis/ice_history_mechred.F90
-cicecore/cicedynB/analysis/ice_history_bgc.F90
-cicecore/cicedynB/analysis/ice_history.F90
-cicecore/cicedynB/analysis/ice_history_fsd.F90
-cicecore/cicedynB/analysis/ice_diagnostics.F90
-cicecore/cicedynB/analysis/ice_history_snow.F90
-cicecore/cicedynB/analysis/ice_history_pond.F90
-cicecore/cicedynB/infrastructure/ice_domain.F90
-cicecore/cicedynB/infrastructure/ice_grid.F90
-cicecore/cicedynB/infrastructure/ice_restoring.F90
-cicecore/cicedynB/infrastructure/ice_restart_driver.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_global_reductions.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_reprosum.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_exit.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_timers.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_communicate.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_broadcast.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_gather_scatter.F90
-cicecore/cicedynB/infrastructure/comm/mpi/ice_boundary.F90
-cicecore/cicedynB/infrastructure/io/io_netcdf/ice_restart.F90
-cicecore/cicedynB/infrastructure/io/io_netcdf/ice_history_write.F90
-cicecore/cicedynB/infrastructure/ice_blocks.F90
-cicecore/cicedynB/infrastructure/ice_read_write.F90
-
-
-#  choose above set CICE6_INFRA interface
-   config_src/infra/${CICE6_INFRA}/MOM_coms_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_constants.F90
-   config_src/infra/${CICE6_INFRA}/MOM_couplertype_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_cpu_clock_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_data_override_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_diag_manager_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_domain_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_ensemble_manager_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_error_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_interp_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_io_infra.F90
-   config_src/infra/${CICE6_INFRA}/MOM_time_manager.F90
+   cicecore/shared/ice_arrays_column.F90
+   cicecore/shared/ice_calendar.F90
+   cicecore/shared/ice_constants.F90
+   cicecore/shared/ice_distribution.F90
+   cicecore/shared/ice_domain_size.F90
+   cicecore/shared/ice_fileunits.F90
+   cicecore/shared/ice_init_column.F90
+   cicecore/shared/ice_kinds_mod.F90
+   cicecore/shared/ice_restart_column.F90
+   cicecore/shared/ice_restart_shared.F90
+   cicecore/shared/ice_spacecurve.F90
+   cicecore/cicedynB/dynamics/ice_dyn_eap.F90
+   cicecore/cicedynB/dynamics/ice_dyn_shared.F90
+   cicecore/cicedynB/dynamics/ice_transport_driver.F90
+   cicecore/cicedynB/dynamics/ice_dyn_evp_1d.F90
+   cicecore/cicedynB/dynamics/ice_transport_remap.F90
+   cicecore/cicedynB/dynamics/ice_dyn_vp.F90
+   cicecore/cicedynB/dynamics/ice_dyn_evp.F90
+   cicecore/cicedynB/general/ice_init.F90
+   cicecore/cicedynB/general/ice_state.F90
+   cicecore/cicedynB/general/ice_flux_bgc.F90
+   cicecore/cicedynB/general/ice_step_mod.F90
+   cicecore/cicedynB/general/ice_forcing_bgc.F90
+   cicecore/cicedynB/general/ice_flux.F90
+   cicecore/cicedynB/general/ice_forcing.F90
+   cicecore/cicedynB/analysis/ice_diagnostics_bgc.F90
+   cicecore/cicedynB/analysis/ice_history_drag.F90
+   cicecore/cicedynB/analysis/ice_history_shared.F90
+   cicecore/cicedynB/analysis/ice_history_mechred.F90
+   cicecore/cicedynB/analysis/ice_history_bgc.F90
+   cicecore/cicedynB/analysis/ice_history.F90
+   cicecore/cicedynB/analysis/ice_history_fsd.F90
+   cicecore/cicedynB/analysis/ice_diagnostics.F90
+   cicecore/cicedynB/analysis/ice_history_snow.F90
+   cicecore/cicedynB/analysis/ice_history_pond.F90
+   cicecore/cicedynB/infrastructure/ice_domain.F90
+   cicecore/cicedynB/infrastructure/ice_grid.F90
+   cicecore/cicedynB/infrastructure/ice_restoring.F90
+   cicecore/cicedynB/infrastructure/ice_restart_driver.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_global_reductions.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_reprosum.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_exit.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_timers.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_communicate.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_broadcast.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_gather_scatter.F90
+   cicecore/cicedynB/infrastructure/comm/mpi/ice_boundary.F90
+   cicecore/cicedynB/infrastructure/io/io_netcdf/ice_restart.F90
+   cicecore/cicedynB/infrastructure/io/io_netcdf/ice_history_write.F90
+   cicecore/cicedynB/infrastructure/ice_blocks.F90
+   cicecore/cicedynB/infrastructure/ice_read_write.F90
 )
 
 list( APPEND CICE6_SRCS
-   config_src/drivers/FMS_cap/MOM_surface_forcing_gfdl.F90
-   config_src/drivers/FMS_cap/ocean_model_MOM.F90
-   # oda
-   config_src/external/ODA_hooks/kdtree.f90
-   config_src/external/ODA_hooks/ocean_da_core.F90
-   config_src/external/ODA_hooks/ocean_da_types.F90
-   config_src/external/ODA_hooks/write_ocean_obs.F90
-   # tracer
-   config_src/external/GFDL_ocean_BGC/FMS_coupler_util.F90
-   config_src/external/GFDL_ocean_BGC/generic_tracer.F90
-   config_src/external/GFDL_ocean_BGC/generic_tracer_utils.F90
-   # drifters-particles
-   config_src/external/drifters/MOM_particles.F90
-   config_src/external/drifters/MOM_particles_types.F90
+   # a single c source file
+   cicecore/cicedynB/infrastructure/ice_shr_reprosum86.c
+   # drivers for mapl: ls -1 cicecore/drivers/mapl/geos/*0
+   cicecore/drivers/mapl/geos/CICE_FinalMod.F90
+   cicecore/drivers/mapl/geos/CICE_InitMod.F90
 )
 
 
