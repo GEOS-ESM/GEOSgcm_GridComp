@@ -10,6 +10,5 @@ set (alldirs
 esma_add_library (${this}
   SRCS GEOS_RadiationGridComp.F90
   SUBCOMPONENTS ${alldirs}
-  DEPENDENCIES MAPL GEOS_Shared
-  INCLUDES ${INC_ESMF})
+  DEPENDENCIES MAPL GEOS_Shared esmf)
 
