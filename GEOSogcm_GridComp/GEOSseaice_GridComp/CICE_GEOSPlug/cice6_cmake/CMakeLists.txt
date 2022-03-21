@@ -105,6 +105,7 @@ list( APPEND CICE6_SRCS
    # drivers for mapl: ls -1 cicecore/drivers/mapl/geos/*0
    cicecore/drivers/mapl/geos/CICE_FinalMod.F90
    cicecore/drivers/mapl/geos/CICE_InitMod.F90
+   cicecore/drivers/mapl/geos/CICE_RunMod.F90
 )
 
 

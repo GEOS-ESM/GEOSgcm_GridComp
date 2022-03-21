@@ -21,6 +21,7 @@ module CICE_GEOSPlugMod
   use MAPL
   use CICE_InitMod                 
   use CICE_FinalMod                 
+  use CICE_RunMod                 
 
 
   implicit none
@@ -290,39 +291,6 @@ contains
 
 
 
-! Initialize CICE model
-!-----------------------
-
-    Ocean%is_ocean_pe = .true.
-    call ocean_model_init  (Ocean, Ocean_state, Time, Time, iwind_stagger)
- 
-    MOM_MAPL_internal_state%Ocean_State => Ocean_State
-
-    call ocean_model_init_sfc(Ocean_state, Ocean)
-
-! Get the ocean grid and sizes of global and computational domains
-!-----------------------------------------------------------------
-
-    call get_ocean_grid (Ocean_state, Ocean_grid)
-    isc  = Ocean_grid%isc; iec  = Ocean_grid%iec
-    isd  = Ocean_grid%isd; ied  = Ocean_grid%ied
-
-    jsc  = Ocean_grid%jsc; jec  = Ocean_grid%jec
-    jsd  = Ocean_grid%jsd; jed  = Ocean_grid%jed
-
-! Check local sizes of horizontal dimensions
-!--------------------------------------------
-    call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
-    VERIFY_(STATUS)
-
-    IM=iec-isc+1
-    JM=jec-jsc+1
-
-    ASSERT_(counts(1)==IM)
-    ASSERT_(counts(2)==JM)
-
-
-
     !*CALLBACK*
     !=====================================================================================
     call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
@@ -403,9 +371,9 @@ contains
 ! !ARGUMENTS:
     character(len=ESMF_MAXSTR)         :: FLD_NAME
     type(ESMF_State), intent(INOUT)    :: SURFST
-    type (ESMF_Grid), intent(IN)       :: GRID
-    integer, optional, intent(IN)      :: UGRID
-    integer, optional, intent(OUT)     :: RC
+    type(ESMF_Grid),     intent(IN)    :: GRID
+    integer, optional,   intent(IN)    :: UGRID
+    integer, optional,  intent(OUT)    :: RC
 
 ! ErrLog Variables
 
@@ -587,38 +555,17 @@ contains
 ! Aliases to MOM types
 !---------------------
 
-    Boundary    => MOM_MAPL_internal_state%Ice_ocean_boundary
-    Ocean       => MOM_MAPL_internal_state%Ocean
-    Ocean_State => MOM_MAPL_internal_state%Ocean_State
-
-! Get domain size
-!----------------
-
-! -------
-! do this:
-    call mpp_get_compute_domain(Ocean%Domain, isc, iec, jsc, jec)
-! instead of:
-!   call get_ocean_grid (Ocean_state, Ocean_grid)
-!   isc  = Ocean_grid%isc; iec  = Ocean_grid%iec
-!   jsc  = Ocean_grid%jsc; jec  = Ocean_grid%jec
-! -------
-
-    IM=iec-isc+1
-    JM=jec-jsc+1
-
-! Temporaries with MOM default reals
-!-----------------------------------
-
-    allocate(U(IM,JM   ),    stat=STATUS); VERIFY_(STATUS)
-    allocate(V(IM,JM   ),    stat=STATUS); VERIFY_(STATUS)
-    allocate(cos_rot(IM,JM), stat=STATUS); VERIFY_(STATUS)
-    allocate(sin_rot(IM,JM), stat=STATUS); VERIFY_(STATUS)
-
-! Get IMPORT pointers
-!--------------------
-
     call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'  ,    RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'  ,    RC=STATUS); VERIFY_(STATUS)
+
+
+    call cice_set_dynamic_forcing(TAUX, TAUY)
+
+
+    call CICE_Run
+
+! Get exports needed by GEOS
+!---------------------
 
 
     call MAPL_TimerOff(MAPL,"RUN"   )
