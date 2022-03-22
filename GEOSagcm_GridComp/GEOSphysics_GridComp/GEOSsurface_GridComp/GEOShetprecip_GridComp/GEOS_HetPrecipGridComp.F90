@@ -117,13 +117,12 @@ contains
     type (MAPL_MetaComp), pointer :: MAPL
     type (ESMF_State) :: INTERNAL
     type (MAPL_LocStream) :: LocStream
-    integer :: RUN_DT
-    real :: DT
+    real :: DT, TAU_HETPR
     integer :: IM, JM, NT, I
     real, pointer :: qvar(:) => null()
     real :: totalArea
     integer, pointer :: tiletypes(:) => null()
-    integer :: STEPS_PER_HOUR
+
 
     call MAPL_GenericInitialize(GC, IMPORT, EXPORT, CLOCK, __RC__)
 
@@ -152,12 +151,10 @@ contains
     ! get DT
     call MAPL_GetResource(MAPL, DT, Label="RUN_DT:", __RC__)
 
-    RUN_DT = nint(DT)
-    ! compute number of steps in an hour
-    STEPS_PER_HOUR = 3600/RUN_DT
+    ! get autocorrelation timescale
+    call MAPL_GetResource(MAPL, TAU_HETPR, Label="HETPRECIP_TAU:", default=3600., __RC__)
 
-    ! autocorrelation for 1 hour
-    RHO = (1.0/E) **(1.0/STEPS_PER_HOUR)
+    RHO = (1.0/E) **(1.0*DT/TAU_HETPR)
     SQRHO = SQRT(1.0-RHO**2)
 
 ! pdf / cdf
