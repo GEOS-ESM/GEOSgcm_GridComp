@@ -50,6 +50,6 @@ esma_add_library (${this}
   TYPE SHARED)
 
 if (is_openmp)
-  target_compile_options(${this} PRIVATE ${OpenMP_Fortran_FLAGS})
+  target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran)
 endif ()
 
