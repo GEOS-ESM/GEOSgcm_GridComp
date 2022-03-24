@@ -20,6 +20,8 @@ module GEOS_UMWMGridCompMod
 
     use UMWM_module,        only: umwm_isGlobal      => isGlobal,      &
                                   umwm_restart       => restart,       &
+                                  umwm_gridfromfile  => gridfromfile,  &
+                                  umwm_topofromfile  => topofromfile,  &
                                   umwm_fillEstuaries => fillEstuaries, &
                                   umwm_fillLakes     => fillLakes
 
@@ -131,6 +133,9 @@ module GEOS_UMWMGridCompMod
                                   umwm_remap         => remap,         &
                                   umwm_initialize    => init
 
+    use umwm_mpi,           only: umwm_exchange_halo => exchange_halo
+
+    use umwm_io,            only: umwm_gatherfield   => gatherfield
 
     use UMWM_source_functions, only: umwm_s_in       => sin_d12,       &
                                      umwm_s_ds       => sds_d12,       &
@@ -158,7 +163,10 @@ module GEOS_UMWMGridCompMod
     use bl_seaspray_mod,    only: mabl_sea_spray     => online_spray
 
 
-    use, intrinsic :: ISO_FORTRAN_ENV
+    use UMWM_module,        only: umwm_nproc         => nproc
+
+    use, intrinsic :: iso_fortran_env
+    use, intrinsic :: ieee_arithmetic
 
     implicit none
     private
@@ -166,7 +174,7 @@ module GEOS_UMWMGridCompMod
     character(len=*), parameter :: UMWM_CONFIG_FILE = 'UMWM.rc'
 
     real, parameter :: FRACTION_ICE_SUPPRESS_WAVES = 0.8
-    real, parameter :: NORTH_POLE_CAP_LATITUDE = 89.0
+    real, parameter :: NORTH_POLE_CAP_LATITUDE = 88.0
 
 
 !   Private state
@@ -387,7 +395,7 @@ contains
             VLOCATION      = MAPL_VLocationNone,                     &
             ADD2EXPORT     = .true.,                                 &
             RESTART        = MAPL_RestartOptional,                   &
-            DEFAULT        = tiny(0.0),               __RC__)
+            DEFAULT        = 0.0,                    __RC__)
 
 !       call MAPL_AddInternalSpec(GC,                                &
 !           SHORT_NAME     = 'WM_K',                                 &
@@ -711,6 +719,20 @@ contains
             SHORT_NAME     = 'DW',                                   &
             LONG_NAME      = 'bathymetry',                           &
             UNITS          = 'm',                                    &
+            DIMS           = MAPL_DimsHorzOnly,                      &
+            VLOCATION      = MAPL_VLocationNone,      __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+            SHORT_NAME     = 'LON2D',                                &
+            LONG_NAME      = 'longitude',                            &
+            UNITS          = 'degrees',                              &
+            DIMS           = MAPL_DimsHorzOnly,                      &
+            VLOCATION      = MAPL_VLocationNone,      __RC__)
+
+       call MAPL_AddExportSpec(GC,                                   &
+            SHORT_NAME     = 'LAT2D',                                &
+            LONG_NAME      = 'latitude',                             &
+            UNITS          = 'degrees',                              &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,      __RC__)
 
@@ -1041,8 +1063,10 @@ contains
         call MAPL_TimerAdd(GC, name='--WM_S_IN'    , __RC__)
         call MAPL_TimerAdd(GC, name='--WM_S_DS'    , __RC__)
         call MAPL_TimerAdd(GC, name='--WM_S_NL'    , __RC__)
+        call MAPL_TimerAdd(GC, name='--WM_S_ICE'   , __RC__)
         call MAPL_TimerAdd(GC, name='--WM_SOURCE'  , __RC__)
         call MAPL_TimerAdd(GC, name='--WM_STRESS'  , __RC__)
+        call MAPL_TimerAdd(GC, name='--WM_EXCHANGE_HALO', __RC__)
         call MAPL_TimerAdd(GC, name='-WM_DIAG'     , __RC__)
         call MAPL_TimerAdd(GC, name='-WM_GET'      , __RC__)
         call MAPL_TimerAdd(GC, name='-SEA_SPRAY' , __RC__)
@@ -1101,8 +1125,6 @@ contains
       type (WaveModel_Wrap)           :: wrap
 
 ! Local Variables
-
-
 
       integer               :: COMM ! MPI communicator from VM
       integer               :: myPE
@@ -1286,6 +1308,9 @@ contains
       real, pointer, dimension(:,:) :: WM_VW => null()
       real, pointer, dimension(:,:) :: WM_DW => null()
 
+      real, pointer, dimension(:,:) :: WM_LON2D => null()
+      real, pointer, dimension(:,:) :: WM_LAT2D => null()
+
       real, pointer, dimension(:,:) :: WM_FRACICE => null()
 
       !
@@ -1354,13 +1379,13 @@ contains
 
 ! Local derived type aliases
 
-      type(WaveModel_State), pointer  :: self => null()
-      type(WaveModel_Wrap)            :: wrap
+      type(WaveModel_State), pointer:: self => null()
+      type(WaveModel_Wrap)          :: wrap
 
-      type(MAPL_MetaComp), pointer :: MAPL
-      type (ESMF_State)            :: INTERNAL
-      type(ESMF_Grid)              :: GRID
-      type(ESMF_VM)                :: VM
+      type(MAPL_MetaComp), pointer  :: MAPL
+      type(ESMF_State)              :: INTERNAL
+      type(ESMF_Grid)               :: GRID
+      type(ESMF_VM)                 :: VM
 
 ! Local global variables
 
@@ -1376,12 +1401,15 @@ contains
 
       integer :: time_substeps
 
-      integer :: ii, NT
+      integer :: ii
       integer :: i, j
       integer :: o, p
-      integer :: isd, ied, jsd, jed  ! halo indexes
-      integer :: isc, iec, jsc, jec  ! comp indexes
-      real, allocatable, dimension(:,:) :: hvar    ! 2d halo buffer
+
+      real, allocatable, dimension(:,:) :: tmp_global   ! global 2d buffer
+      real, allocatable, dimension(:,:) :: tmp_global_x ! global 2d buffer (x-component)
+      real, allocatable, dimension(:,:) :: tmp_global_y ! global 2d buffer (y-component)
+      real, allocatable, dimension(:,:) :: tmp_local    ! local  2d buffer
+      real, allocatable, dimension(:)   :: tmp_unroll   ! global 1d buffer 
 
       real    :: tau_, tau_form_, tau_skin_
 
@@ -1448,7 +1476,7 @@ contains
 
       call ESMF_VMGetCurrent(VM, __RC__)
 
-      call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=myPE, petCount=nPEs,  __RC__)
+      call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=myPE, petCount=nPEs, __RC__)
 
 ! Get my internal private state
 ! -----------------------------
@@ -1496,9 +1524,11 @@ contains
           print *, 'DEBUG::UMWM  VW      = ', minval(VW), maxval(VW)
           print *, 'DEBUG::UMWM  W10N    = ', minval(sqrt(U10N*U10N + V10N*V10N)), maxval(sqrt(U10N*U10N + V10N*V10N))
           print *, 'DEBUG::UMWM  FRACICE = ', minval(FRACICE), maxval(FRACICE)
+          print *, 'DEBUG::UMWM  TS      = ', minval(TS), maxval(TS)
+          print *, 'DEBUG::UMWM  TSKINW  = ', minval(TSKINW), maxval(TSKINW)
 
-          print *, 'DEBUG::UMWM   E      = ', minval(WM_E), maxval(WM_E)
-          print *, 'DEBUG::UMWM   UST    = ', minval(WM_USTAR), maxval(WM_USTAR)
+          print *, 'DEBUG::UMWM   E      = ', minval(WM_E, mask=(WM_E/=MAPL_UNDEF)), maxval(WM_E, mask=(WM_E/=MAPL_UNDEF))
+          print *, 'DEBUG::UMWM   UST    = ', minval(WM_USTAR, mask=(WM_USTAR/=MAPL_UNDEF)), maxval(WM_USTAR,mask=(WM_USTAR/=MAPL_UNDEF))
       end if
 
 
@@ -1519,6 +1549,9 @@ contains
       call MAPL_GetPointer(EXPORT, WM_VW,        'VW',       __RC__)
 
       call MAPL_GetPointer(EXPORT, WM_DW,        'DW',        __RC__)
+
+      call MAPL_GetPointer(EXPORT, WM_LON2D,     'LON2D',     __RC__)
+      call MAPL_GetPointer(EXPORT, WM_LAT2D,     'LAT2D',     __RC__)
 
       call MAPL_GetPointer(EXPORT, WM_NUW,       'NUW',       __RC__)
      
@@ -1609,13 +1642,17 @@ contains
       ! sea-ice
       if (associated(WM_FRACICE))    WM_FRACICE = FRACICE
 
+      ! grid
+      if (associated(WM_LON2D))      WM_LON2D = (180.0/MAPL_PI) * LONS
+      if (associated(WM_LAT2D))      WM_LAT2D = (180.0/MAPL_PI) * LATS
+
 
 ! Call UMWM PHYSICS
 ! -----------------
       if (MAPL_AM_I_Root()) write (OUTPUT_UNIT,*) 'DEBUG::UMWM  WM physics...'
 
 
-! Wave model physics 
+! Wave model
 ! -----------------------------------------------------
 !   0. get ocean currents, etc...
 
@@ -1636,13 +1673,15 @@ contains
 !  99. interface with AGCM
 
 
-      call MAPL_TimerOn(MAPL, '--WM_SET' )
+      call MAPL_TimerOn(MAPL, '-WM_SET' )
 
 
 ! 1. Initialize UMWM
 ! ------------------------------------------------------
-      umwm_isGlobal  = .true.
-      umwm_restart   = .true.
+      umwm_isGlobal     = .true.
+      umwm_restart      = .true.
+      umwm_gridfromfile = .true.
+      umwm_topofromfile = .true.
 
       umwm_fillEstuaries = .false.
       umwm_fillLakes     = .false.
@@ -1681,79 +1720,38 @@ contains
       umwm_sbp_fac   = self%sbp_fac
 
 
-      ! prep halo
-      umwm_mm = IM + 2    ! domain size in x
-      umwm_nm = JM + 2    ! domain size in y
+      allocate(tmp_local(IM, JM), __STAT__)
+      allocate(tmp_global(IM_world, JM_world), __STAT__)
+      allocate(tmp_unroll(IM_world*JM_world),  __STAT__) 
 
-      ! comp indexes
-      isc = lbound(LATS, 1)
-      iec = ubound(LATS, 1)
-      jsc = lbound(LATS, 2) 
-      jec = ubound(LATS, 2)
+      umwm_mm = IM_world  ! domain size in x
+      umwm_nm = JM_world  ! domain size in y
 
-      ! halo indexes
-      isd = isc - 1
-      ied = iec + 1
-      jsd = jsc - 1
-      jed = jec + 1
-
-      NT = (ied-isd+1)*(jed-jsd+1)
-
-      ! 2d buffer for halo transform
-      allocate(hvar(isd:ied,jsd:jed), __STAT__)
-
-
-      call umwm_environment('INIT')
+      call umwm_environment('init')
 
       call umwm_alloc(1)
 
-    
-      ! coordinates
-      hvar = MAPL_UNDEF
-      hvar(isc:iec,jsc:jec) = LONS(:,:)
-      call ESMFL_Halo(GRID, hvar, __RC__)
-      if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-      if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-      if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-      if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-      umwm_lon = (180.0/MAPL_PI) * hvar
+      ! global grid
+      call set_global_2d(tmp_global, LONS, VM, GRID, __RC__)
+      umwm_lon = (180.0/MAPL_PI) * tmp_global
 
-      hvar = MAPL_UNDEF
-      hvar(isc:iec,jsc:jec) = LATS(:,:)
-      call ESMFL_Halo(GRID, hvar, __RC__)
-      if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-      if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-      if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-      if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-      umwm_lat = (180.0/MAPL_PI) * hvar
- 
+      call set_global_2d(tmp_global, LATS, VM, GRID, __RC__) 
+      umwm_lat = (180.0/MAPL_PI) * tmp_global
+
 
       ! ocean depth
-      hvar = MAPL_UNDEF
-      hvar(isc:iec,jsc:jec) = DW(:,:)
-      call ESMFL_Halo(GRID, hvar, __RC__)
-      if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-      if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-      if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-      if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-      umwm_d_2d = hvar
+      tmp_local = DW
+      where ( (180.0/MAPL_PI) * LATS > NORTH_POLE_CAP_LATITUDE) tmp_local = tiny(0.0)
+      call set_global_2d(umwm_d_2d, tmp_local, VM, GRID, RC)
 
+      ! maskout the North pole by treating it as land points
+      !!!where (umwm_lat > NORTH_POLE_CAP_LATITUDE) umwm_d_2d = tiny(umwm_d_2d)
 
-      ! maskout the North pole by treating it as land pints 
-      where (umwm_lat > NORTH_POLE_CAP_LATITUDE) umwm_d_2d = tiny(umwm_d_2d)
-
-      ! ...also mask out sea ice
-      hvar = MAPL_UNDEF
-      hvar(isc:iec,jsc:jec) = FRACICE(:,:)
-      call ESMFL_Halo(GRID, hvar, __RC__)
-
-      if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-      if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-      if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-      if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-
-      where (hvar >=  FRACTION_ICE_SUPPRESS_WAVES) umwm_d_2d = tiny(umwm_d_2d)
-
+      ! ...also mask out cells with high sea-ice fraction
+      !tmp_local = FRACICE
+      !where (tmp_local == MAPL_UNDEF) tmp_local = 0.0
+      !call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__)
+      !where (tmp_global >= FRACTION_ICE_SUPPRESS_WAVES) umwm_d_2d = tiny(umwm_d_2d)
 
       call umwm_grid()             !!! TODO: all arrays are time invariant, no need to do math at every time step
       call umwm_masks()
@@ -1763,13 +1761,7 @@ contains
       call umwm_alloc(2)
       call umwm_remap()
 
-      ! NOTE - treatment of estuaries and isolated sea points is not
-      !        an issue for the WM physics, also it is not active
-      !        in the offline runs, so we do not have to do anything
-      !        here
-
       call MAPL_TimerOff(MAPL, '-WM_SET' )
-
 
 
       UMWM_WAVE_MODEL: if (.true.) then !!! umwm_im > 0 .or. .true.) then
@@ -1777,79 +1769,49 @@ contains
           call MAPL_TimerOn(MAPL, '-WM_SET' )
 
           ! wind speed
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = WM_WIND_10N(:,:)
-          call ESMFL_Halo(GRID, hvar, __RC__)
-          if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-          if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-          if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-          if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-          umwm_wspd = umwm_remap_mn2i(hvar)
+          call set_global_2d(tmp_global, WM_WIND_10N, VM, GRID, __RC__)
+          umwm_wspd = umwm_remap_mn2i(tmp_global)
 
 
           ! wind direction
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = atan2(V10N, U10N)
-          call ESMFL_Halo(GRID, hvar, __RC__)
-          if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-          if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-          if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-          if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-          umwm_wdir = umwm_remap_mn2i(hvar)
+          call set_global_2d(tmp_global, atan2(V10N, U10N), VM, GRID, __RC__)
+          umwm_wdir = umwm_remap_mn2i(tmp_global)
 
           ! air density
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = RHOS
-          call ESMFL_Halo(GRID, hvar, __RC__)
-          if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-          if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-          if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-          if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-          umwm_rhoa = umwm_remap_mn2i(hvar)
+          call set_global_2d(tmp_global, RHOS, VM, GRID, __RC__)
+          umwm_rhoa = umwm_remap_mn2i(tmp_global)
 
-          ! water viscosity
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = TS
-          call ESMFL_Halo(GRID, hvar, __RC__)
-          if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-          if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-          if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-          if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-          ! temperature dependent water viscosity assuming salinity of ...
-          hvar = ( -1.04166667e-05*(hvar-273.15)**3 + &
-                    1.19142857e-03*(hvar-273.15)**2 + &
-                   -5.99654762e-02*(hvar-273.15)    + &
-                    1.85338571e+00 ) * 1e-6
-          umwm_nu_water_ = umwm_remap_mn2i(hvar)
+          ! temperature dependent water viscosity assuming salinity of 35g/kg
+          call seawater_viscosity(tmp_local, TS, 35e-3, MAPL_RHO_SEAWATER, __RC__)
+          call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__)
+          tmp_unroll = umwm_remap_mn2i(tmp_global)
+          umwm_nu_water_ = tmp_unroll(umwm_istart:umwm_iend)
+          !!!umwm_nu_water_ = (1.2 + umwm_nproc/200.0)*1e-6
 
 
           ! ocean currents
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = UW(:,:)
-          call ESMFL_Halo(GRID, hvar, __RC__)
-          where (hvar == MAPL_UNDEF) hvar = 0.0   ! TODO: this is fine for land points, but what about the halo corners?
-          umwm_uc = umwm_remap_mn2i(hvar)         !       use the averaged of the two physical-values, similarly to 2D ocean depth?
+          tmp_local = UW
+          where (tmp_local == MAPL_UNDEF) tmp_local = 0.0
+          call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__) 
+          umwm_uc = umwm_remap_mn2i(tmp_global)
 
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = VW(:,:)
-          call ESMFL_Halo(GRID, hvar, __RC__)
-          where (hvar == MAPL_UNDEF) hvar = 0.0   ! TODO: this is fine for land points, but what about the halo corners?
-          umwm_vc = umwm_remap_mn2i(hvar)         !       use the averaged of the two physical-values, similarly to 2D ocean depth?
+          tmp_local = VW
+          where (tmp_local == MAPL_UNDEF) tmp_local = 0.0
+          call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__)
+          umwm_vc = umwm_remap_mn2i(tmp_global)         
 
           ! sea ice
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = FRACICE(:,:)
-          call ESMFL_Halo(GRID, hvar, __RC__)
-          if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-          if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-          if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-          if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-          umwm_fice = umwm_remap_mn2i(hvar)
+          tmp_local = FRACICE
+          where (tmp_local == MAPL_UNDEF) tmp_local = 0.0
+          where (tmp_local  > 1.0) tmp_local = 1.0
+          where (tmp_local <= 0.0) tmp_local = tiny(0.0)     
+          call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__)
+          umwm_fice = umwm_remap_mn2i(tmp_global)
 
           ! water density
-          umwm_rhow   = MAPL_RHO_SEAWATER
-          umwm_rhow0  = MAPL_RHO_SEAWATER
-          umwm_rhorat = umwm_rhoa / umwm_rhow
+          umwm_rhow   = MAPL_RHO_SEAWATER      ! constant value, no need to gather/broadcast
+          umwm_rhow0  = MAPL_RHO_SEAWATER      ! ...dito
+          umwm_rhorat = umwm_rhoa / umwm_rhow  ! ...dito
     
           call MAPL_TimerOff(MAPL, '-WM_SET' )
     
@@ -1865,114 +1827,92 @@ contains
           ! wave emergy
           do p = 1, umwm_pm
               do o = 1, umwm_om
-    
-                  hvar = MAPL_UNDEF
-                  hvar(isc:iec,jsc:jec) = WM_E(:,:,o,p)
-                  call ESMFL_Halo(GRID, hvar, __RC__)
-    
-                  if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-                  if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-                  if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-                  if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-    
-                  ii = 1
-                  do j = jsd, jed
-                      do i = isd, ied
-                          if (umwm_mask(i-isd+1,j-jsd+1) == 1) then
-                              umwm_e(o,p,ii) = hvar(i,j)
-                              ii = ii + 1
-                          end if
-                      end do
-                  end do
-                  
-                  ASSERT_(ii-1 == umwm_iend-umwm_istart+1)
-
+                  where (WM_E(:,:,o,p) == MAPL_UNDEF) WM_E(:,:,o,p) = 0.0
+                  call set_global_2d(tmp_global, WM_E(:,:,o,p), VM, GRID, __RC__)
+                  tmp_unroll = umwm_remap_mn2i(tmp_global)
+                  umwm_e(o,p,umwm_istart:umwm_iend) = tmp_unroll(umwm_istart:umwm_iend)
               end do
           end do
 
           ! friction velocity
-          hvar = MAPL_UNDEF
-          hvar(isc:iec,jsc:jec) = WM_USTAR
-          call ESMFL_Halo(GRID, hvar, __RC__)
-
-          if (hvar(isd,jsd) == MAPL_UNDEF) hvar(isd,jsd) = 0.5*(hvar(isd+1,jsd) + hvar(isd,jsd+1))
-          if (hvar(ied,jed) == MAPL_UNDEF) hvar(ied,jed) = 0.5*(hvar(ied-1,jed) + hvar(ied,jed-1))
-          if (hvar(isd,jed) == MAPL_UNDEF) hvar(isd,jed) = 0.5*(hvar(isd,jed-1) + hvar(isd+1,jed))
-          if (hvar(ied,jsd) == MAPL_UNDEF) hvar(ied,jsd) = 0.5*(hvar(ied-1,jsd) + hvar(ied,jsd+1))
-
-          ii = 1
-          do j = jsd, jed
-              do i = isd, ied
-                  if (umwm_mask(i-isd+1,j-jsd+1) == 1) then
-                      umwm_ustar(ii) = hvar(i,j)
-                      ii = ii + 1
-                  end if
-              end do
-          end do
-          
-          ASSERT_(ii-1 == umwm_iend-umwm_istart+1)
+          where (WM_USTAR == MAPL_UNDEF) WM_USTAR = 0.0
+          call set_global_2d(tmp_global, WM_USTAR, VM, GRID, __RC__)
+          tmp_unroll = umwm_remap_mn2i(tmp_global)
+          umwm_ustar = tmp_unroll(umwm_istart:umwm_iend)
 
           call MAPL_TimerOff(MAPL, '-WM_SET' )
 
-    
     
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
               write (*, '(A)'   ) 'UMWM is initialized'
           end if 
     
-      
           call MAPL_TimerOn(MAPL, '-WM_RUN' )
+          
           umwm_sumt = 0.0
-          umwm_dtamin = self%dt/self%n_split   ! set explicitly the time step
-    
           time_substeps = 0
 
-          call MAPL_TimerOn(MAPL,  '--WM_PHYSICS' )
+          ADVANCE_IN_TIME: do while (umwm_sumt < umwm_dtg)
 
-          PHYSICS_TIME_INTEGRATION: do while ((umwm_sumt < umwm_dtg) .and. (time_substeps < self%max_substeps))
+              call MAPL_TimerOn(MAPL,  '--WM_PHYSICS' )
 
 #ifdef DEBUG
               if (MAPL_AM_I_ROOT()) write (*, '(A)'   ) 'UMWM integrate source functions...'
 #endif
 
-              call MAPL_TimerOn(MAPL,  '--WM_S_IN' )
+              call MAPL_TimerOn(MAPL,  '--WM_S_IN')
               call umwm_s_in()           ! compute source input term Sin
-              call MAPL_TimerOff(MAPL, '--WM_S_IN' )
+              call MAPL_TimerOff(MAPL, '--WM_S_IN')
     
-              call MAPL_TimerOn(MAPL,  '--WM_S_DS' )
+              call MAPL_TimerOn(MAPL,  '--WM_S_DS')
               call umwm_s_ds()           ! compute source dissipation term Sds
-              call MAPL_TimerOff(MAPL, '--WM_S_DS' )
+              call MAPL_TimerOff(MAPL, '--WM_S_DS')
     
-              call MAPL_TimerOn(MAPL,  '--WM_S_NL' )
+              call MAPL_TimerOn(MAPL,  '--WM_S_NL')
               call umwm_s_nl()           ! compute non-linear source term Snl
-              call MAPL_TimerOff(MAPL, '--WM_S_NL' ) 
+              call MAPL_TimerOff(MAPL, '--WM_S_NL') 
    
               call MAPL_TimerOn(MAPL,  '--WM_S_ICE')
               call umwm_s_ice()          ! compute sea ice attenuation term Sice
               call MAPL_TimerOff(MAPL, '--WM_S_ICE') 
    
 
-              call MAPL_TimerOn(MAPL,  '--WM_SOURCE' )
+              call MAPL_TimerOn(MAPL,  '--WM_SOURCE')
               call umwm_source()         ! integrate source functions
-              call MAPL_TimerOff(MAPL, '--WM_SOURCE' ) 
+              call MAPL_TimerOff(MAPL, '--WM_SOURCE') 
 
-              ! non-negative energy
-!!!           where (umwm_e < 0.0) umwm_e = tiny(umwm_e)
+              call MAPL_TimerOn(MAPL,  '--WM_EXCHANGE_HALO') 
+              call umwm_exchange_halo()  ! exchange halo points
+              call MAPL_TimerOff(MAPL, '--WM_EXCHANGE_HALO')
+
+              call MAPL_TimerOff(MAPL,  '--WM_PHYSICS' )
+
+
+              call MAPL_TimerOn(MAPL, '--WM_DYNAMICS')
+
+              call umwm_propagation() 
+              umwm_e(:,:,umwm_istart:umwm_iend) = umwm_ef(:,:,umwm_istart:umwm_iend)
+
+
+              call umwm_refraction() 
+              umwm_e(:,:,umwm_istart:umwm_iend) = umwm_ef(:,:,umwm_istart:umwm_iend)
+
+              call MAPL_TimerOff(MAPL, '--WM_DYNAMICS') 
+
 
               call MAPL_TimerOn(MAPL,  '--WM_STRESS' )
               call umwm_stress_('atm')   ! compute wind stress and drag coefficient
               call umwm_stress_('ocn')   ! compute stress into ocean top and bottom
               call MAPL_TimerOff(MAPL, '--WM_STRESS' )
 
-              time_substeps = time_substeps + 1
 
+              time_substeps = time_substeps + 1
 #ifdef DEBUG
               if (MAPL_AM_I_ROOT()) write (*, '(F5.3)'   ) umwm_sumt/umwm_dtg
 #endif
+          end do ADVANCE_IN_TIME   
 
-          end do PHYSICS_TIME_INTEGRATION
-
-          call MAPL_TimerOff(MAPL,  '--WM_PHYSICS' )
+          call MAPL_TimerOff(MAPL, '-WM_RUN' )
 
 #ifdef DEBUG
           if (self%verbose) print *, 'DEBUG::UMWM  time substeps =', time_substeps
@@ -1981,56 +1921,11 @@ contains
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
               write (*, '(A)'   ) 'UMWM time integration is done for this time step.'
           end if
-   
-
-          call MAPL_TimerOn(MAPL, '--WM_DYNAMICS')
-
-          umwm_dtg = self%dt
-          umwm_dta = self%dt                      ! TODO: double check
-           
-
-!!!       TODO: time integration based on CFL
-!!!             use umwm_advection_init::dtamin to split the model time step
-!!!             keep in mind that the loop needs to include setting the 1D energy array
-!!!       N_timesteps = max(1, self%dt / umwm_dtamin)
-!!!       TIME_INTEGRATION: do steps = 1, N_timesteps
-
-#if (0)
-          ! update UMWM ef, note that the spatial indexes slice is needed
-          umwm_ef(:,:,umwm_istart:umwm_iend) = umwm_e(:,:,umwm_istart:umwm_iend)
-#endif   
-          ! non-negative energy
-!!!       where (umwm_e  < 0.0) umwm_e  = tiny(umwm_e)
-!!!       where (umwm_ef < 0.0) umwm_ef = tiny(umwm_ef)
-
-          call umwm_propagation() 
-          umwm_e(:,:,umwm_istart:umwm_iend) = umwm_ef(:,:,umwm_istart:umwm_iend)
-
-!!!       where (umwm_e  < 0.0) umwm_e  = tiny(umwm_e)
-!!!       where (umwm_ef < 0.0) umwm_ef = tiny(umwm_ef)
-
-          call umwm_refraction() 
-          umwm_e(:,:,umwm_istart:umwm_iend) = umwm_ef(:,:,umwm_istart:umwm_iend)
-
-!!!       where (umwm_e  < 0.0) umwm_e  = tiny(umwm_e)
-!!!       where (umwm_ef < 0.0) umwm_ef = tiny(umwm_ef)
-
-!!!       TODO
-!!!       end do TIME_INTEGRATION
-
-          call MAPL_TimerOff(MAPL, '--WM_DYNAMICS') 
-
-
-
-          call MAPL_TimerOn(MAPL,  '--WM_STRESS' )
-          call umwm_stress_('atm')   ! compute wind stress and drag coefficient
-!!!       call umwm_stress_('ocn')   ! compute stress into ocean top and bottom
-          call MAPL_TimerOff(MAPL, '--WM_STRESS' )
-
+            
 
           call MAPL_TimerOn(MAPL, '-WM_DIAG')
 
-    !!!   call umwm_stokes_drift()
+!!!       call umwm_stokes_drift()
           call umwm_diag()
     
           call MAPL_TimerOff(MAPL, '-WM_DIAG')
@@ -2046,184 +1941,244 @@ contains
         
           do p = 1, umwm_pm
               do o = 1, umwm_om
+                  call umwm_gatherfield(umwm_e(o,p,umwm_istart:umwm_iend), tmp_global)
+                  call ArrayScatter(WM_E(:,:,o,p), tmp_global, GRID, __RC__)
+                  where (isnan(WM_E(:,:,o,p))) WM_E(:,:,o,p) = MAPL_UNDEF
+              end do
+          end do
+  
+          
+          call umwm_gatherfield(umwm_ustar, tmp_global)
+          call ArrayScatter(WM_USTAR, tmp_global, GRID, __RC__ )
+          where (isnan(WM_USTAR)) WM_USTAR = MAPL_UNDEF
 
-                  hvar = MAPL_UNDEF
-                  ii   = 1
-  
-                  do j = jsd, jed
-                      do i = isd, ied
-                          if (umwm_mask(i-isd+1,j-jsd+1) == 1) then
-                              hvar(i,j) = umwm_e(o,p,ii)
-                              ii = ii + 1
-                          else
-                              hvar(i,j) = 0.0 
-                          end if
-                      end do
-                  end do
-  
-                  WM_E(:,:,o,p) = hvar(isc:iec,jsc:jec)
-              end do
-          end do
-  
-  
-          hvar = MAPL_UNDEF
-          ii   = 1
-  
-          do j = jsd, jed
-              do i = isd, ied
-                  if (umwm_mask(i-isd+1,j-jsd+1) == 1) then
-                      hvar(i,j) = umwm_ustar(ii)
-                      ii = ii + 1
-                  else
-                      hvar(i,j) = 0.0
-                  end if
-              end do
-          end do
-  
-          WM_USTAR(:,:) = hvar(isc:iec,jsc:jec)
-  
-      
           call MAPL_TimerOff(MAPL, '-WM_GET' )
  
 
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
-              print *, 'DEBUG::UMWM  _E      = ', minval(WM_E), maxval(WM_E)
-              print *, 'DEBUG::UMWM  _UST    = ', minval(WM_USTAR), maxval(WM_USTAR)
+              print *, 'DEBUG::UMWM  _E      = ', minval(WM_E, mask=(WM_E/=MAPL_UNDEF)), maxval(WM_E, mask=(WM_E/=MAPL_UNDEF))
+              print *, 'DEBUG::UMWM  _UST    = ', minval(WM_USTAR, mask=(WM_USTAR/=MAPL_UNDEF)), maxval(WM_USTAR, mask=(WM_USTAR/=MAPL_UNDEF))
           end if
-
-
 
       end if UMWM_WAVE_MODEL
 
 
       if (associated(WM_NUW)) then
-          call diagnostics(WM_NUW,  umwm_nu_water_, RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_nu_water_, tmp_global)
+          call ArrayScatter(WM_NUW, tmp_global, GRID, __RC__)
+          where (isnan(WM_NUW)) WM_NUW = MAPL_UNDEF
       end if
 
       if (associated(WM_SWH)) then
-          call diagnostics(WM_SWH,  umwm_ht,        RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_ht, tmp_global)
+          call ArrayScatter(WM_SWH, tmp_global, GRID, __RC__ )
+          where (isnan(WM_SWH)) WM_SWH = MAPL_UNDEF
       end if
 
       if (associated(WM_SWHS)) then
-          call diagnostics(WM_SWHS, umwm_hts,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_hts, tmp_global)
+          call ArrayScatter(WM_SWHS, tmp_global, GRID, __RC__ )
+          where (isnan(WM_SWHS)) WM_SWHS = MAPL_UNDEF
       end if
  
       if (associated(WM_SWHW)) then
-          call diagnostics(WM_SWHW, umwm_htw,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_htw, tmp_global)
+          call ArrayScatter(WM_SWHW, tmp_global, GRID, __RC__ )
+          where (isnan(WM_SWHW)) WM_SWHW = MAPL_UNDEF
       end if
 
       if (associated(WM_MWP)) then
-          call diagnostics(WM_MWP,  umwm_mwp,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_mwp, tmp_global)
+          call ArrayScatter(WM_MWP, tmp_global, GRID, __RC__ )
+          where (isnan(WM_MWP)) WM_MWP = MAPL_UNDEF
       end if
 
       if (associated(WM_MWD)) then
-          call diagnostics(WM_MWD,  umwm_mwd,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_mwd, tmp_global)
+          call ArrayScatter(WM_MWD, tmp_global, GRID, __RC__ )
+          where (isnan(WM_MWD)) WM_MWD = MAPL_UNDEF
       end if
 
       if (associated(WM_MSS)) then
-          call diagnostics(WM_MSS,  umwm_mss,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_mss, tmp_global)
+          call ArrayScatter(WM_MSS, tmp_global, GRID, __RC__ )
+          where (isnan(WM_MSS)) WM_MSS = MAPL_UNDEF
       end if
 
       if (associated(WM_MWL)) then
-          call diagnostics(WM_MWL,  umwm_mwl,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_mwl, tmp_global)
+          call ArrayScatter(WM_MWL, tmp_global, GRID, __RC__ )
+          where (isnan(WM_MWL)) WM_MWL = MAPL_UNDEF
       end if
 
       if (associated(WM_DWD)) then
-          call diagnostics(WM_DWD,  umwm_dwd,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_dwd, tmp_global)
+          call ArrayScatter(WM_DWD, tmp_global, GRID, __RC__ )
+          where (isnan(WM_DWD)) WM_DWD = MAPL_UNDEF
       end if
 
       if (associated(WM_DWL)) then
-          call diagnostics(WM_DWL,  umwm_dwl,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_dwl, tmp_global)
+          call ArrayScatter(WM_DWL, tmp_global, GRID, __RC__ )
+          where (isnan(WM_DWL)) WM_DWL = MAPL_UNDEF
       end if
 
       if (associated(WM_DWP)) then
-          call diagnostics(WM_DWP,  umwm_dwp,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_dwp, tmp_global)
+          call ArrayScatter(WM_DWP, tmp_global, GRID, __RC__ )
+          where (isnan(WM_DWP)) WM_DWP = MAPL_UNDEF
       end if
 
       if (associated(WM_DCP0)) then
-          call diagnostics(WM_DCP0, umwm_dcp0,      RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_dcp0, tmp_global)
+          call ArrayScatter(WM_DCP0, tmp_global, GRID, __RC__ )
+          where (isnan(WM_DCP0)) WM_DCP0 = MAPL_UNDEF
       end if
 
       if (associated(WM_DCG0)) then
-          call diagnostics(WM_DCG0, umwm_dcg0,      RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_dcg0, tmp_global)
+          call ArrayScatter(WM_DCG0, tmp_global, GRID, __RC__ )
+          where (isnan(WM_DCG0)) WM_DCG0 = MAPL_UNDEF
       end if
 
       if (associated(WM_DCP)) then
-          call diagnostics(WM_DCP,  umwm_dcp,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_dcp, tmp_global)
+          call ArrayScatter(WM_DCP, tmp_global, GRID, __RC__ )
+          where (isnan(WM_DCP)) WM_DCP = MAPL_UNDEF
       end if
 
       if (associated(WM_DCG)) then
-          call diagnostics(WM_DCG,  umwm_dcg,       RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_dcg, tmp_global)
+          call ArrayScatter(WM_DCG, tmp_global, GRID, __RC__ )
+          where (isnan(WM_DCG)) WM_DCG = MAPL_UNDEF
       end if
 
       if (associated(WM_CD)) then
-          call diagnostics(WM_CD,   umwm_cd,        RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_cd, tmp_global)
+          call ArrayScatter(WM_CD, tmp_global, GRID, __RC__ )
+          where (isnan(WM_CD)) WM_CD = MAPL_UNDEF
       end if
 
       if (associated(WM_TAU)) then
-          call diagnostics(WM_TAU, sqrt(umwm_taux**2 + umwm_tauy**2), RC=STATUS)
-          VERIFY_(STATUS)
+          allocate(tmp_global_x(IM_world, JM_world), __STAT__)
+          allocate(tmp_global_y(IM_world, JM_world), __STAT__)
+
+          call umwm_gatherfield(umwm_taux, tmp_global_x)
+          call umwm_gatherfield(umwm_tauy, tmp_global_y)
+
+          where(isnan(tmp_global_x) .or. isnan(tmp_global_x))
+              tmp_global = MAPL_UNDEF
+          elsewhere
+              tmp_global = sqrt(tmp_global_x**2 + tmp_global_y**2)
+          end where
+
+          call ArrayScatter(WM_TAU, tmp_global, GRID, __RC__ )
+          
+          deallocate(tmp_global_x)
+          deallocate(tmp_global_y)
       end if
 
       if (associated(WM_TAU_FORM)) then
-          call diagnostics(WM_TAU_FORM, sqrt(umwm_taux_form**2 + &
-                                             umwm_tauy_form**2), RC=STATUS)
-          VERIFY_(STATUS)
+          allocate(tmp_global_x(IM_world, JM_world), __STAT__)
+          allocate(tmp_global_y(IM_world, JM_world), __STAT__)
+
+          call umwm_gatherfield(umwm_taux_form, tmp_global_x)
+          call umwm_gatherfield(umwm_tauy_form, tmp_global_y)
+
+          where(isnan(tmp_global_x) .or. isnan(tmp_global_x))
+              tmp_global = MAPL_UNDEF
+          elsewhere
+              tmp_global = sqrt(tmp_global_x**2 + tmp_global_y**2)
+          end where
+
+          call ArrayScatter(WM_TAU_FORM, tmp_global, GRID, __RC__ )
+          
+          deallocate(tmp_global_x)
+          deallocate(tmp_global_y)
       end if
 
       if (associated(WM_TAU_SKIN)) then
-          call diagnostics(WM_TAU_SKIN, sqrt(umwm_taux_skin**2 + &
-                                             umwm_tauy_skin**2), RC=STATUS)
-          VERIFY_(STATUS)
+          allocate(tmp_global_x(IM_world, JM_world), __STAT__)
+          allocate(tmp_global_y(IM_world, JM_world), __STAT__)
+
+          call umwm_gatherfield(umwm_taux_skin, tmp_global_x)
+          call umwm_gatherfield(umwm_tauy_skin, tmp_global_y)
+
+          where(isnan(tmp_global_x) .or. isnan(tmp_global_x))
+              tmp_global = MAPL_UNDEF
+          elsewhere
+              tmp_global = sqrt(tmp_global_x**2 + tmp_global_y**2)
+          end where
+
+          call ArrayScatter(WM_TAU_SKIN, tmp_global, GRID, __RC__ )
+          
+          deallocate(tmp_global_x)
+          deallocate(tmp_global_y)
       end if
 
       if (associated(WM_EDF)) then
-          call diagnostics(WM_EDF, sqrt(umwm_epsx_ocn**2 + umwm_epsy_ocn**2), RC=STATUS)
-          VERIFY_(STATUS)
+          allocate(tmp_global_x(IM_world, JM_world), __STAT__)
+          allocate(tmp_global_y(IM_world, JM_world), __STAT__)
+
+          call umwm_gatherfield(umwm_epsx_ocn, tmp_global_x)
+          call umwm_gatherfield(umwm_epsy_ocn, tmp_global_y)
+
+          where(isnan(tmp_global_x) .or. isnan(tmp_global_x))
+              tmp_global = MAPL_UNDEF
+          elsewhere
+              tmp_global = sqrt(tmp_global_x**2 + tmp_global_y**2)
+          end where
+
+          call ArrayScatter(WM_EDF, tmp_global, GRID, __RC__ )
+          
+          deallocate(tmp_global_x)
+          deallocate(tmp_global_y)
       end if
 
       if (associated(WM_EDFX)) then
-          call diagnostics(WM_EDFX, umwm_epsx_ocn, RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_epsx_ocn, tmp_global)
+          call ArrayScatter(WM_EDFX, tmp_global, GRID, __RC__ )
+          where (isnan(WM_EDFX)) WM_EDFX = MAPL_UNDEF
       end if
 
       if (associated(WM_EDFY)) then
-          call diagnostics(WM_EDFY, umwm_epsy_ocn, RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_epsy_ocn, tmp_global)
+          call ArrayScatter(WM_EDFY, tmp_global, GRID, __RC__ )
+          where (isnan(WM_EDFY)) WM_EDFY = MAPL_UNDEF
       end if
 
       if (associated(WM_EGF)) then
-          call diagnostics(WM_EGF, sqrt(umwm_epsx_atm**2 + umwm_epsy_atm**2), RC=STATUS)
-          VERIFY_(STATUS)
+          allocate(tmp_global_x(IM_world, JM_world), __STAT__)
+          allocate(tmp_global_y(IM_world, JM_world), __STAT__)
+
+          call umwm_gatherfield(umwm_epsx_atm, tmp_global_x)
+          call umwm_gatherfield(umwm_epsy_atm, tmp_global_y)
+
+          where(isnan(tmp_global_x) .or. isnan(tmp_global_x))
+              tmp_global = MAPL_UNDEF
+          elsewhere
+              tmp_global = sqrt(tmp_global_x**2 + tmp_global_y**2)
+          end where
+
+          call ArrayScatter(WM_EGF, tmp_global, GRID, __RC__ )
+          
+          deallocate(tmp_global_x)
+          deallocate(tmp_global_y)
       end if
 
       if (associated(WM_EGFX)) then
-          call diagnostics(WM_EGFX, umwm_epsx_atm, RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_epsx_atm, tmp_global)
+          call ArrayScatter(WM_EGFX, tmp_global, GRID, __RC__ )
+          where (isnan(WM_EGFX)) WM_EGFX = MAPL_UNDEF
       end if
 
       if (associated(WM_EGFY)) then
-          call diagnostics(WM_EGFY, umwm_epsy_atm, RC=STATUS)
-          VERIFY_(STATUS)
+          call umwm_gatherfield(umwm_epsy_atm, tmp_global)
+          call ArrayScatter(WM_EGFY, tmp_global, GRID, __RC__ )
+          where (isnan(WM_EGFY)) WM_EGFY = MAPL_UNDEF
       end if
 
-
+#if (0)
       DIAGNOSTICS_CHARNOCK: if (associated(WM_CHARNOCK)) then
           hvar = MAPL_UNDEF
           ii   = 1
@@ -2273,14 +2228,14 @@ contains
           where (FRACICE > FRACTION_ICE_SUPPRESS_WAVES) WM_Z0 = 1.0e-3
 
       end if DIAGNOSTICS_Z0
-
+#endif
 
 ! Free the memory used by UMWM
 ! -----------------------------
       call umwm_dealloc() 
+      call umwm_environment('stop') 
 
-
-
+#if (0)
 ! MABL sea spray parameterization, Bao et al, 2011
 ! ------------------------------------------------
     call MAPL_TimerOn(MAPL, '-SEA_SPRAY')
@@ -2423,16 +2378,17 @@ contains
 
    end if DIAGNOSTICS_SPRAY_FLUXES
 
-   call MAPL_TimerOn(MAPL, '-SEA_SPRAY')
+   call MAPL_TimerOff(MAPL, '-SEA_SPRAY')
 
-
+!!!!! *******
+#endif
 
 
 
 ! Stop the timers
 ! ---------------
 
-      call MAPL_TimerOff(MAPL, '-RUN',  __RC__)
+      call MAPL_TimerOff(MAPL, 'RUN',  __RC__)
       call MAPL_TimerOff(MAPL, 'TOTAL', __RC__)
 
 ! All Done
@@ -2508,7 +2464,7 @@ contains
 ! ----------------
 
       call MAPL_TimerOn(MAPL, 'TOTAL',     __RC__)
-      call MAPL_TimerOn(MAPL, '-FINALIZE', __RC__)
+      call MAPL_TimerOn(MAPL, 'FINALIZE', __RC__)
 
 ! Get parameters from generic state.
 ! ----------------------------------
@@ -2535,11 +2491,11 @@ contains
 
       call MAPL_MemUtilsWrite(VM, 'GEOSUMWM_GridComp:BeforeGEOS_UMWM_FINALIZE', __RC__)
 
-      call MAPL_TimerOn(MAPL, '--UMWM_FINALIZE', __RC__)
+      call MAPL_TimerOn(MAPL, '-WM_FINALIZE', __RC__)
 
       !call GEOS_UMWM_FINALIZE( ... , __RC__)
 
-      call MAPL_TimerOff(MAPL, '--UMWM_FINALIZE', __RC__)
+      call MAPL_TimerOff(MAPL, '-WM_FINALIZE', __RC__)
 
       call MAPL_MemUtilsWrite(VM, 'GEOSUMWM_GridComp:AfterGEOS_UMWM_FINALIZE', __RC__)
 
@@ -2567,27 +2523,26 @@ contains
 
 
 
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !BOP
 
-! ! IROUTINE: DIAGNOSTICS -- maps internal UMWM 1D variables into 2D arrays,
-! !                          can be used to update the GEOS diagnostics
+! ! IROUTINE: set_global_2d -- gather a GEOS 2D variable into a global 2D array,
+! !                            used to update/set the UMWM forcings
 
 ! !INTERFACE:
 
-   subroutine diagnostics(var2d, var1d, RC)
-
-      use UMWM_module, only: umwm_mask => mask
+   subroutine set_global_2d(var_global, var_local, VM, GRID, RC)
 
       implicit none
 
 ! !ARGUMENTS:
 
-      real, dimension(:), intent(in ) :: var1d
-      real, dimension(:,:), intent(out) :: var2d
+      real, dimension(:,:), intent(in ) :: var_local
+      real, dimension(:,:), intent(out) :: var_global
+
+      type(ESMF_Grid), intent(in)       :: GRID
+      type(ESMF_VM), intent(in)         :: VM
 
       integer, intent(out) :: RC
 
@@ -2602,178 +2557,88 @@ contains
 
 
 ! Local Variables
-      integer :: isc, iec, jsc, jec
-      integer :: isd, ied, jsd, jed
+!     none
 
-      integer :: i, j, ii
-
-      real, allocatable, dimension(:,:) :: hvar
-
-
-      Iam = 'UMWM::diagnostics()'
-      
-      ! comp indexes
-      isc = lbound(var2d, 1)
-      iec = ubound(var2d, 1)
-      jsc = lbound(var2d, 2) 
-      jec = ubound(var2d, 2)
-
-      ! halo indexes
-      isd = isc - 1
-      ied = iec + 1
-      jsd = jsc - 1
-      jed = jec + 1
-
-      allocate(hvar(isd:ied, jsd:jed), __STAT__)
-
-      hvar = MAPL_UNDEF
-      ii   = 1
-
-      do j = jsd, jed
-          do i = isd, ied
-              if (umwm_mask(i-isd+1,j-jsd+1) == 1) then
-                  hvar(i,j) = var1d(ii)
-                  ii = ii + 1
-              else
-                  hvar(i,j) = MAPL_UNDEF
-              end if
-          end do
-      end do
-
-      var2d(:,:) = hvar(isc:iec,jsc:jec)
+      Iam = 'UMWMGridComp::set_global_2d()'
+     
+      call ArrayGather(var_local, var_global, GRID, __RC__)
+      call MAPL_CommsBcast(VM, DATA=var_global, N=size(var_global), ROOT=0, __RC__) 
 
       RETURN_(ESMF_SUCCESS)
 
-  end subroutine diagnostics
+  end subroutine set_global_2d
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!BOP
+
+! ! IROUTINE: seawater_viscosity
+! ! 
+
+! !INTERFACE:
+
+   subroutine seawater_viscosity(nu, T, S, rho, RC)
+
+      implicit none
+
+! !ARGUMENTS:
+
+      real, dimension(:,:), intent(in ) :: T      ! temperature of water, K
+      real,                 intent(in ) :: S      ! salinity, kg/kg
+      real,                 intent(in ) :: rho    ! density of water, kg/m3
+      real, dimension(:,:), intent(out) :: nu     ! kinematic viscosity, m2/s
+
+      integer, intent(out) :: RC
+
+! ! DESCRIPTION: parameterization of kinematic sea water viscosity -- 
+! !              based on Thermophysical properties of seawater: 
+! !              A review of existing correlations and data, Desalination and Water Treatment, 
+! !              Vol. 16, pp.354-380, April 2010.
+! !              ...with corrections from http://web.mit.edu/seawater/ and 
+! !              http://web.mit.edu/lienhard/www/Thermophysical_properties_of_seawater-DWT-16-354-2010.pdf
+
+
+!EOP
+
+! ErrLog Variables
+
+      character(len=ESMF_MAXSTR) :: Iam
+      integer :: STATUS
+
+
+! Local Variables
+!     
+      real, allocatable, dimension(:,:) :: Tc
+      real, allocatable, dimension(:,:) :: mu_w
+      real, allocatable, dimension(:,:) :: A, B
+      
+      
+      Iam = 'UMWMGridComp::seawater_viscosity()'
+     
+      allocate(Tc,   mold=T, __STAT__)
+      allocate(mu_w, mold=T, __STAT__)
+      allocate(A,    mold=T, __STAT__)
+      allocate(B,    mold=T, __STAT__)
+
+      Tc = max(0.0, T - 273.15)
+      
+      ! dynamic viscosity of pure water, IAPWS 2008
+      mu_w = 4.2844e-5 + 1.0/(0.157*(Tc + 64.993)**2 - 91.296)
+      
+      A = 1.541 + 1.998e-2*Tc - 9.520e-5*Tc**2
+      B = 7.974 - 7.561e-2*Tc + 4.724e-4*Tc**2
+
+      nu = mu_w*(1 + A*S + B*S**2)/rho
+
+      RETURN_(ESMF_SUCCESS)
+
+  end subroutine seawater_viscosity
+
+
+
 
 end module GEOS_UMWMGridCompMod
 
 
-
-
-
-
-
-
-
-#if (0)
-   subroutine Put_UMWM_Input (INPUT_NAME, INPUT, GRID, IM_world, JM_world, RC)
-
-      implicit none
-
-      character(len=*), intent(in)        :: INPUT_NAME
-      real, pointer, dimension(:,:)       :: INPUT
-      type(ESMF_Grid), intent(in)         :: GRID
-      integer, intent(in)                 :: IM_world
-      integer, intent(in)                 :: JM_world 
-
-      integer, optional, intent(  out)    :: RC     ! Error code:
-
-      ! This contains the INPUT from every PE on a global array
-      ! that every PE sees
-      real, dimension(IM_world, JM_world) :: tmp_global
-
-      ! These are tmp_global masked with zeroes for UMWM
-      real, dimension(IM_world, JM_world) :: tmp_masked
-
-      tmp_global = 0.0
-      tmp_masked = 0.0
-
-      ! Gather distributed import into global variables...
-      ! --------------------------------------------------
-
-      call ArrayGather(INPUT, tmp_global, GRID, __RC__)
-
-      ! ... and gathered variables only on root, so broadcast
-      ! -----------------------------------------------------
-
-      call MAPL_CommsBcast(VM, DATA=tmp_global, &
-                           N=size(tmp_global),  &
-                           ROOT=0, __RC__)
-
-      ! Wavewatch can have instabilities if we send MAPL_UNDEF
-      ! and it is used. So, set MAPL_UNDEF to 0.0 in a masked
-      ! variable (we keep the global version set to MAPL_UNDEF
-      ! so we can "remask" the output of UMWM)
-      ! ------------------------------------------------------
-
-      where (tmp_global == MAPL_UNDEF) 
-         tmp_masked = 0.0
-      elsewhere 
-         tmp_masked = tmp_global
-      endwhere
-
-      ! Now put the masked array into the Wavewatch data
-      ! ------------------------------------------------
-
-      call GEOS_UMWM_Put(INPUT_NAME, tmp_masked, RC=STATUS)
-      VERIFY_(STATUS)
-
-      ! All Done
-      ! --------
-
-      RETURN_(ESMF_SUCCESS)
-
-   end subroutine Put_UMWM_Input
-
-   subroutine Get_UMWM_Output (INPUT, OUTPUT, INPUTMASK, GRID, IM_world, JM_world, RC)
-
-      implicit none
-
-      character(len=*), intent(in)        :: INPUT
-      real, pointer, dimension(:,:)       :: OUTPUT
-      logical, dimension(:,:), intent(in) :: INPUTMASK
-      type(ESMF_Grid), intent(in)         :: GRID
-      integer, intent(in)                 :: IM_world
-      integer, intent(in)                 :: JM_world 
-
-
-      integer, optional, intent(  out) :: RC     ! Error code:
-
-      ! This contains output from UMWM on the global grid, but only
-      ! with that processor's section of the world filled
-      real, dimension(IM_world, JM_world) :: tmp_globallocal
-
-      ! This is tmp_globallocal gathered together filling the world
-      real, dimension(IM_world, JM_world) :: tmp_global
-
-      tmp_globallocal = 0.0
-      tmp_global = 0.0
-
-      ! Fill the exports
-      ! ----------------
-
-      call GEOS_UMWM_Get(INPUT, tmp_globallocal, RC=STATUS)
-      VERIFY_(STATUS)
-
-      ! W3S2XY only returns each processor's data on the global grid, 
-      ! it does not accumulate the data globally. Here we reduce the
-      ! data using a MAPL call.
-      ! NOTE: For some outputs, this might need to be a Sum rather 
-      !       than a Max. Max works here as Z0 is never less than 0.
-      !       But if a field could be negative, you'd want to sum
-      !       against a 0 general fill.
-      ! -------------------------------------------------------------
-
-      call MAPL_CommsAllReduceMax(VM, tmp_globallocal, tmp_global, size(tmp_globallocal), __RC__)
-
-      ! Now scatter global output to each processor correctly
-      ! -----------------------------------------------------
-
-      call ArrayScatter(OUTPUT, tmp_global, GRID, __RC__)
-
-      ! Now that the data is scattered, mask out the parts with UNDEF that were
-      ! undefined on the input arrays. INPUTMASK is set against the winds at
-      ! present.
-      ! -----------------------------------------------------------------------
-
-      where (.not. INPUTMASK) OUTPUT = MAPL_UNDEF
-
-      ! All Done
-      ! --------
-
-      RETURN_(ESMF_SUCCESS)
-
-   end subroutine Get_UMWM_Output
-#endif
 

@@ -1,9 +1,10 @@
 esma_set_this (OVERRIDE umwm)
 
-add_compile_definitions(GEOS)
+add_compile_definitions(MPI ESMF GEOS)
 
 list (APPEND UMWM_SRCS
    src/umwm_mpi.F90 
+   src/umwm_io.F90
    src/umwm_util.F90 
    src/umwm_module.F90
    src/umwm_constants.F90 
@@ -26,11 +27,13 @@ include_directories (${INC_ESMF} ${INC_NETCDF})
 
 esma_add_library (${this} 
    SRCS ${SRCS}
-   DEPENDENCIES MAPL
+#  DEPENDENCIES MAPL
 )
 
 target_include_directories (${this} 
    PUBLIC ${INC_ESMF} ${INC_NETCDF}
 )
 
-#install(PROGRAMS build_rivernetwork.py DESTINATION bin)
+target_compile_options (${this} PRIVATE "-ftrapuv")
+#target_link_libraries (${this} PRIVATE ${NETCDF_LIBRARIES}  ${MPI_Fortran_LIBRARIES} MPI:MPI_LIBS)
+
