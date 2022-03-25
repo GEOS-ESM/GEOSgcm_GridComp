@@ -17,8 +17,8 @@ my ($surflay, $rsttime, $grpID, $numtasks, $walltime, $rescale, $qos, $partition
 my ($mk_catch_j, $mk_catch_log, $weminIN, $weminOUT, $weminDFLT);
 my ($zoom);
 
-# mk_catchcn job and log file names
-#----------------------------------
+# mk_catch job and log file names (also applies to catchcn)
+#----------------------------------------------------------
 $mk_catch_j   = "mk_catch.j";
 $mk_catch_log = "mk_catch.log";
 
@@ -376,11 +376,11 @@ option flags
    -wemin weminIN   minimum snow water equivalent threshold for input catch/cn [$weminDFLT]
    -wemout weminOUT minimum snow water equivalent threshold for output catch/cn [$weminDFLT]
    -route           create the route internal restart
-
-   -surflay n       number of surface layers (catch & catchcn)
+   -surflay n       thickness [mm] of surface soil moisture layer (catch & catchcn) 
+                       Ganymed-3 and earlier: SURFLAY=20 
+                       Ganymed-4 and later  : SURFLAY=50 
    -rsttime n10     restart time in format, yyyymmddhh (catchcn) or yyyymm (route)
    -grpID grpID     group ID for batch submittal (catchcn)
-
    -ntasks nt       number of tasks to assign to catchcn batch job [112]
    -walltime wt     walltime in format \"hh:mm:ss\" for catchcn batch job [1:00:00]
    -rescale
