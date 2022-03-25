@@ -76,7 +76,103 @@ contains
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
+
+! Set the Initialize, Run, Finalize entry points
+! ----------------------------------------------
+
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, RC=status)
+    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        RC=status)
+    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   RC=status)
+    VERIFY_(STATUS)
+    !call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     RC=status)
+    !VERIFY_(STATUS)
+
+! Set the state variable specs.
+! -----------------------------
+
 !BOS
+  call MAPL_AddImportSpec(GC,                            &
+         LONG_NAME          = 'eastward_stress_on_ice'            ,&
+         UNITS              = 'N m-2'                             ,&
+         SHORT_NAME         = 'TAUX'                              ,&
+         DIMS               = MAPL_DimsHorzOnly                   ,&
+         VLOCATION          = MAPL_VLocationNone                  ,&
+         RESTART            = MAPL_RestartSkip,                    &
+                                           RC=STATUS          )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                            &
+         LONG_NAME          = 'northward_stress_on_ice',           &
+         UNITS              = 'N m-2'                             ,&
+         SHORT_NAME         = 'TAUY'                              ,&
+         DIMS               = MAPL_DimsHorzOnly                   ,&
+         VLOCATION          = MAPL_VLocationNone                  ,&
+         RESTART            = MAPL_RestartSkip,                    &
+                                           RC=STATUS          )
+  VERIFY_(STATUS)
+
+
+  call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'UW',                                &
+         LONG_NAME          = 'water_skin_eastward_velocity',      &
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         DEFAULT            = 0.0,                                 &
+         RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'VW',                                &
+         LONG_NAME          = 'water_skin_northward_velocity',&
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         DEFAULT            = 0.0,                                 &
+         RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'UWB',                                &
+         LONG_NAME          = 'water_skin_eastward_velocity', &
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         DEFAULT            = 0.0,                                 &
+         RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'VWB',                                &
+         LONG_NAME          = 'water_skin_northward_velocity',&
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         DEFAULT            = 0.0,                                 &
+         RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'SLV',                           &
+         LONG_NAME          = 'sea_level_with_ice_loading',     &
+         UNITS              = 'm',                                 &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         DEFAULT            = 0.0,                                 &
+         RC=status  )
+  VERIFY_(status)
+
+  call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'FROCEAN',                           &
+         LONG_NAME          = 'fraction_of_gridbox_covered_by_skin',&
+         UNITS              = '1',                                 &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RESTART            = MAPL_RestartSkip,                    &
+         RC=status  )
+  VERIFY_(status)
 
 
   !*CALLBACK*
@@ -96,21 +192,8 @@ contains
 
  !=================================================================================
 
-
-
 !EOS
 
-! Set the Initialize, Run, Finalize entry points
-! ----------------------------------------------
-
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, RC=status)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        RC=status)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   RC=status)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     RC=status)
-    VERIFY_(STATUS)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -191,13 +274,6 @@ contains
 
     type(ESMF_State)                       :: SURFST
 
-    type(ice_ocean_boundary_type), pointer :: Boundary                => null()
-    type(ocean_public_type),       pointer :: Ocean                   => null()
-    type(ocean_state_type),        pointer :: Ocean_State             => null()
-    type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state => null()
-    type(MOM_MAPLWrap_Type)                :: wrap
-
-    type(ocean_grid_type),         pointer :: Ocean_grid              => null()
 
     REAL_, pointer                         :: TW  (:,:)        => null()
     REAL_, pointer                         :: SW  (:,:)        => null()
@@ -259,22 +335,15 @@ contains
 ! Allocate this instance of the internal state and wrap
 ! -----------------------------------------------------
 
-    allocate ( MOM_MAPL_internal_state, stat=status )
-    VERIFY_(STATUS)
+    !allocate ( MOM_MAPL_internal_state, stat=status )
+    !VERIFY_(STATUS)
 
-    wrap%ptr => MOM_MAPL_internal_state
 
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
-    call ESMF_UserCompSetInternalState ( GC, 'MOM_MAPL_state', WRAP, STATUS )
-    VERIFY_(STATUS)
 
-    allocate ( Boundary, stat=STATUS); VERIFY_(STATUS)
-    allocate ( Ocean,    stat=STATUS); VERIFY_(STATUS)
 
-    MOM_MAPL_internal_state%Ice_ocean_boundary => Boundary
-    MOM_MAPL_internal_state%Ocean              => Ocean
 
 ! FMS initialization using the communicator from the VM
 !------------------------------------------------------
