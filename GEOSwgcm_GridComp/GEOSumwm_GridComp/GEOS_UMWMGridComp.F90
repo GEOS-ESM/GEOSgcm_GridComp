@@ -1411,27 +1411,27 @@ contains
       real, allocatable, dimension(:,:) :: tmp_local    ! local  2d buffer
       real, allocatable, dimension(:)   :: tmp_unroll   ! global 1d buffer 
 
-      real    :: tau_, tau_form_, tau_skin_
+      real :: tau_, tau_form_, tau_skin_
 
       real, pointer, dimension(:,:) :: LATS => NULL()
       real, pointer, dimension(:,:) :: LONS => NULL()
 
       ! MABL sea spray
-      real    :: spray_hss
-      real    :: spray_hll
-      real    :: spray_hwave
-      real    :: spray_cwave
-      real    :: spray_p
-      real    :: spray_usr
-      real    :: spray_massf
-      real    :: spray_hs_tot
-      real    :: spray_hl_tot
-      real    :: spray_usr_new
-      real    :: spray_S_bar1
-      real    :: spray_z_r
-      real    :: spray_omega
-      real    :: spray_alpha
-      real    :: spray_vfm
+      real :: spray_hss
+      real :: spray_hll
+      real :: spray_hwave
+      real :: spray_cwave
+      real :: spray_p
+      real :: spray_usr
+      real :: spray_massf
+      real :: spray_hs_tot
+      real :: spray_hl_tot
+      real :: spray_usr_new
+      real :: spray_S_bar1
+      real :: spray_z_r
+      real :: spray_omega
+      real :: spray_alpha
+      real :: spray_vfm
 
       real, parameter :: SPRAY_SOURCE_STRENGTH = 0.4
       real, parameter :: SPRAY_FEEDBACK        = 0.2
@@ -1559,7 +1559,7 @@ contains
 
 
       ! wave model diagnostics
-      call MAPL_GetPointer(EXPORT, WM_SWH,       'SWH', alloc=.true.,  __RC__)
+      call MAPL_GetPointer(EXPORT, WM_SWH,       'SWH',       alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_SWHS,      'SWHS',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_SWHW,      'SWHW',      __RC__)
    
@@ -1572,24 +1572,24 @@ contains
       call MAPL_GetPointer(EXPORT, WM_DWP,       'DWP',       __RC__)
       call MAPL_GetPointer(EXPORT, WM_DCP0,      'DCP0',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_DCG0,      'DCG0',      __RC__)
-      call MAPL_GetPointer(EXPORT, WM_DCP,       'DCP',    alloc=.true.,  __RC__)
+      call MAPL_GetPointer(EXPORT, WM_DCP,       'DCP',       alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_DCG,       'DCG',       __RC__)
   
   
       call MAPL_GetPointer(EXPORT, WM_Z0,        'Z0',        __RC__)
       call MAPL_GetPointer(EXPORT, WM_CD,        'CD',        __RC__)
   
-      call MAPL_GetPointer(EXPORT, WM_TAU,       'TAU',       __RC__)
+      call MAPL_GetPointer(EXPORT, WM_TAU,       'TAU',       alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUX,      'TAUX',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUY,      'TAUY',      __RC__)
-      call MAPL_GetPointer(EXPORT, WM_TAU_FORM,  'TAU_FORM',  __RC__)
+      call MAPL_GetPointer(EXPORT, WM_TAU_FORM,  'TAU_FORM',  alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUX_FORM, 'TAUX_FORM', __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUY_FORM, 'TAUY_FORM', __RC__)
-      call MAPL_GetPointer(EXPORT, WM_TAU_SKIN,  'TAU_SKIN',  __RC__)
+      call MAPL_GetPointer(EXPORT, WM_TAU_SKIN,  'TAU_SKIN',  alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUX_SKIN, 'TAUX_SKIN', __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUY_SKIN, 'TAUY_SKIN', __RC__)
 
-      call MAPL_GetPointer(EXPORT, WM_EDF,       'EDF',    alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, WM_EDF,       'EDF',       alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_EDFX,      'EDFX',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_EDFY,      'EDFY',      __RC__)
 
@@ -1597,20 +1597,20 @@ contains
       call MAPL_GetPointer(EXPORT, WM_EGFX,      'EGFX',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_EGFY,      'EGFY',      __RC__)
 
-      call MAPL_GetPointer(EXPORT, WM_CHARNOCK,  'CHARNOCK', alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, WM_CHARNOCK,  'CHARNOCK',  alloc=.true., __RC__)
 
       ! sea spray diagnostics
-      call MAPL_GetPointer(EXPORT, WM_EDFP,      'EDFP',        alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, WM_EDFP,      'EDFP',      alloc=.true., __RC__)
 
       call MAPL_GetPointer(EXPORT, WM_LHFX,      'LHFX',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_SHFX,      'SHFX',      __RC__)
 
-      call MAPL_GetPointer(EXPORT, LHFX_TURB,    'LHFX_TURB' , alloc=.true.,  __RC__)
-      call MAPL_GetPointer(EXPORT, SHFX_TURB,    'SHFX_TURB' , alloc=.true.,  __RC__)
-      call MAPL_GetPointer(EXPORT, LHFX_TOT,     'LHFX_TOT'  , alloc=.true.,  __RC__)
-      call MAPL_GetPointer(EXPORT, SHFX_TOT,     'SHFX_TOT'  , alloc=.true.,  __RC__)
-      call MAPL_GetPointer(EXPORT, LHFX_SPRAY,   'LHFX_SPRAY', alloc=.true.,  __RC__)
-      call MAPL_GetPointer(EXPORT, SHFX_SPRAY,   'SHFX_SPRAY', alloc=.true.,  __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_TURB,    'LHFX_TURB' , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_TURB,    'SHFX_TURB' , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_TOT,     'LHFX_TOT'  , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_TOT,     'SHFX_TOT'  , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_SPRAY,   'LHFX_SPRAY', alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_SPRAY,   'SHFX_SPRAY', alloc=.true., __RC__)
 
 
 ! Sanity diagnostics
@@ -1842,7 +1842,7 @@ contains
 
           call MAPL_TimerOff(MAPL, '-WM_SET' )
 
-    
+
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
               write (*, '(A)'   ) 'UMWM is initialized'
           end if 
@@ -1921,13 +1921,13 @@ contains
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
               write (*, '(A)'   ) 'UMWM time integration is done for this time step.'
           end if
-            
+ 
 
           call MAPL_TimerOn(MAPL, '-WM_DIAG')
 
 !!!       call umwm_stokes_drift()
           call umwm_diag()
-    
+ 
           call MAPL_TimerOff(MAPL, '-WM_DIAG')
 
 
@@ -2178,43 +2178,34 @@ contains
           where (isnan(WM_EGFY)) WM_EGFY = MAPL_UNDEF
       end if
 
-#if (0)
+      !TODO: implement in UMWM rather than in GEOS
       DIAGNOSTICS_CHARNOCK: if (associated(WM_CHARNOCK)) then
-          hvar = MAPL_UNDEF
-          ii   = 1
+          do j = 1, JM
+              do i = 1, IM 
+                  tau_      = WM_TAU(i,j)
+                  tau_form_ = WM_TAU_FORM(i,j)
+                  tau_skin_ = WM_TAU_SKIN(i,j)
 
-          do j = jsd, jed
-              do i = isd, ied
-                  if (umwm_mask(i-isd+1,j-jsd+1) == 1) then
-
-                      tau_      = sqrt(umwm_taux(ii)**2 + umwm_tauy(ii)**2)
-                      tau_form_ = sqrt(umwm_taux_form(ii)**2 + umwm_tauy_form(ii)**2)
-                      tau_skin_ = sqrt(umwm_taux_skin(ii)**2 + umwm_tauy_skin(ii)**2)
-
-                      ! TODO: need to make sure that this behaves well numerically
+                  if (tau_ /= MAPL_UNDEF) then
                       if (tau_ > tiny(tau_)) then
-                          if (tau_form_ > 0.9999*tau_) tau_form_ = 0.9999*tau_
-                          hvar(i,j) = self%charnock_sf / sqrt(1 - tau_form_/tau_)
+                          WM_CHARNOCK(i,j) = self%charnock_sf / sqrt(1 - min(0.99, tau_form_/tau_))
                       else
-                          hvar(i,j) = 0.0185
+                          WM_CHARNOCK(i,j) = 0.0185
                       end if
-
-                      ii = ii + 1
                   else
-                      hvar(i,j) = MAPL_UNDEF
+                      WM_CHARNOCK(i,j) = MAPL_UNDEF
                   end if
+
               end do
           end do
 
-          WM_CHARNOCK(:,:) = hvar(isc:iec,jsc:jec)
           where (FRACICE > FRACTION_ICE_SUPPRESS_WAVES) WM_CHARNOCK = 0.0
 
           !TODO : temporary workaround until W2A recognizes MAPL_UNDEF
           where (WM_CHARNOCK == MAPL_UNDEF) WM_CHARNOCK = 0.0
-
       end if DIAGNOSTICS_CHARNOCK
 
-
+#if (0)
       DIAGNOSTICS_Z0: if (associated(WM_Z0)) then
 
           WM_Z0 = MAPL_UNDEF
