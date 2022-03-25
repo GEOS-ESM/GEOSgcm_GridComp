@@ -106,6 +106,7 @@ list( APPEND CICE6_SRCS
    cicecore/drivers/mapl/geos/CICE_FinalMod.F90
    cicecore/drivers/mapl/geos/CICE_InitMod.F90
    cicecore/drivers/mapl/geos/CICE_RunMod.F90
+   cicecore/drivers/mapl/geos/ice_prescribed_mod.F90
 )
 
 
