@@ -2228,7 +2228,7 @@ contains
       call umwm_dealloc() 
       call umwm_environment('stop') 
 
-#if (0)
+
 ! MABL sea spray parameterization, Bao et al, 2011
 ! ------------------------------------------------
     call MAPL_TimerOn(MAPL, '-SEA_SPRAY')
@@ -2272,8 +2272,8 @@ contains
       SHFX_SPRAY = MAPL_UNDEF
       LHFX_SPRAY = MAPL_UNDEF
 
-      do j = jsc, jec
-          do i = isc, iec
+      do j = 1, JM
+          do i = 1, IM
 
           if ((WM_USTAR(i,j) > 1e-2)   .and. &
               (WM_WIND_10M(i,j) > 1.0) .and. &
@@ -2372,10 +2372,6 @@ contains
    end if DIAGNOSTICS_SPRAY_FLUXES
 
    call MAPL_TimerOff(MAPL, '-SEA_SPRAY')
-
-!!!!! *******
-#endif
-
 
 
 ! Stop the timers
