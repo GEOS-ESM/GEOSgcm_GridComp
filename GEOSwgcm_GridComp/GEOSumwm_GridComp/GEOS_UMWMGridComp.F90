@@ -2180,6 +2180,7 @@ contains
 
       !TODO: implement in UMWM rather than in GEOS
       DIAGNOSTICS_CHARNOCK: if (associated(WM_CHARNOCK)) then
+
           do j = 1, JM
               do i = 1, IM 
                   tau_      = WM_TAU(i,j)
@@ -2203,9 +2204,10 @@ contains
 
           !TODO : temporary workaround until W2A recognizes MAPL_UNDEF
           where (WM_CHARNOCK == MAPL_UNDEF) WM_CHARNOCK = 0.0
+
       end if DIAGNOSTICS_CHARNOCK
 
-#if (0)
+
       DIAGNOSTICS_Z0: if (associated(WM_Z0)) then
 
           WM_Z0 = MAPL_UNDEF
@@ -2219,7 +2221,7 @@ contains
           where (FRACICE > FRACTION_ICE_SUPPRESS_WAVES) WM_Z0 = 1.0e-3
 
       end if DIAGNOSTICS_Z0
-#endif
+
 
 ! Free the memory used by UMWM
 ! -----------------------------
