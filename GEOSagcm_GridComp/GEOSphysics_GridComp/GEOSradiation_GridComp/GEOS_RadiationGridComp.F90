@@ -494,6 +494,10 @@ module GEOS_RadiationGridCompMod
 ! type (ESMF_State),         pointer  :: GIM(:)
 ! type (ESMF_Config)                  :: CF
 
+! Condensate inhomogeneity type from resource file
+
+  integer :: ih
+
 ! Correlation length parameters from resource file
 
   real :: aam1, aam2, aam30, aam4
@@ -533,9 +537,13 @@ module GEOS_RadiationGridCompMod
 ! RRTMG[P] SW or LW being used. Dont bother for now.
 !---------------------------------------------------------------------
 
-! Set up RRTMG[P] condensate inhomogeneity tables
+! Set up RRTMG[P] sub-gridscale condensate inhomogeneity tables
+! ih == 0: homogeneous
+! ih == 1: inhomogeneous, beta  distribution
+! ih == 2: inhomogeneous, gamma distribution
 
-    call set_inhomogeneity(1)
+    call MAPL_GetResource(MAPL,ih,LABEL="RAD_CONDENSATE_INHOMOGENEITY:",default=1,__RC__)
+    call set_inhomogeneity(ih)
 
 ! Set RRTMG[P] cloud subcolumn generator correlation length parameters to non-default values
 ! from MAPL resource parameters. Comment out to just use defaults in module cloud_subcol_gen.

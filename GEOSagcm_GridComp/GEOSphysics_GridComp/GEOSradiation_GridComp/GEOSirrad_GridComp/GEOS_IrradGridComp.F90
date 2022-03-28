@@ -1329,7 +1329,7 @@ contains
 
    character(len=ESMF_MAXSTR), pointer :: AEROSOLS(:)
 
-   integer :: i, j, K, L, YY, DOY
+   integer :: i, j, K, L, YY, DOY, ibinary
 
    real, dimension (IM,JM)         :: T2M   !  fractional cover of sub-grid regions
    real, dimension (IM,JM,NS)      :: FS    !  fractional cover of sub-grid regions
@@ -1341,7 +1341,7 @@ contains
    real, dimension (IM,JM,LM,4)    :: CWC   !  in-cloud cloud water mixing ratio
    real, dimension (IM,JM,LM,4)    :: REFF  !  effective radius of cloud particles
    real, dimension (IM,JM,LM,10)   :: TAUDIAG
-   real, dimension (IM,JM,LM)      :: RH, PL
+   real, dimension (IM,JM,LM)      :: RH, PL, FCLD
 
 ! Local Aerosol Variables
 ! -----------------------
@@ -1539,10 +1539,10 @@ contains
    real, pointer, dimension(:    )   :: PREF
    real, pointer, dimension(:,:  )   :: TS
    real, pointer, dimension(:,:  )   :: EMIS
-   real, pointer, dimension(:,:,:)   :: PLE, T,  Q,  O3
+   real, pointer, dimension(:,:,:)   :: PLE, T, Q, O3
    real, pointer, dimension(:,:,:)   :: CH4, N2O, CFC11, CFC12, HCFC22
-   real, pointer, dimension(:,:,:)   :: QL,  QI, QR, QS
-   real, pointer, dimension(:,:,:)   :: RI,  RL, RR, RS, FCLD
+   real, pointer, dimension(:,:,:)   :: QL, QI, QR, QS
+   real, pointer, dimension(:,:,:)   :: RI, RL, RR, RS, FCLD_IN
    real, pointer, dimension(:,:,:,:) :: RAERO
    real, pointer, dimension(:,:,:)   :: QAERO
 
@@ -1606,13 +1606,20 @@ contains
    call MAPL_GetPointer(IMPORT, CFC11,  'CFC11',  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, CFC12,  'CFC12',  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, HCFC22, 'HCFC22', RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT, FCLD,   'FCLD',   RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT, FCLD_IN,'FCLD',   RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, EMIS,   'EMIS',   RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, PREF,   'PREF',   RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, TS,     'TS',     RC=STATUS); VERIFY_(STATUS)
 
    PL = 0.5*(PLE(:,:,:UBOUND(PLE,3)-1)+PLE(:,:,LBOUND(PLE,3)+1:))
    RH = Q/GEOS_QSAT(T,PL,PASCALS=.true.)
+
+   ! make a copy of 'FCLD' so can optionally change it without changing import state
+   FCLD = FCLD_IN
+
+   ! Option to force binary clouds for LW
+   call MAPL_GetResource(MAPL,ibinary,"RADLW_BINARY_CLOUDS:",DEFAULT=0,__RC__)
+   if (ibinary /= 0) where (FCLD > 0.) FCLD = 1.
 
 ! Get trace gases concentrations by volume (pppv) from configuration
 !-------------------------------------------------------------------
@@ -3105,6 +3112,7 @@ contains
         if (calc_clrnoa) then
           fluxes_clrnoa%flux_up => flux_up_clrnoa(colS:colE,:)
           fluxes_clrnoa%flux_dn => flux_dn_clrnoa(colS:colE,:)
+!PMN      write(*,*) '>>> rte_lw clean clear-sky'
           error_msg = rte_lw( &
             clean_optical_props, &
             top_at_1, sources, emis_sfc(:,colS:colE), &
@@ -3147,6 +3155,7 @@ contains
           ! clean all-sky RT
           fluxes_allnoa%flux_up => flux_up_allnoa(colS:colE,:)
           fluxes_allnoa%flux_dn => flux_dn_allnoa(colS:colE,:)
+!PMN      write(*,*) '>>> rte_lw clean all-sky'
           error_msg = rte_lw( &
             clean_optical_props, &
             top_at_1, sources, emis_sfc(:,colS:colE), &
@@ -3168,6 +3177,7 @@ contains
             if (calc_clrsky) then
               fluxes_clrsky%flux_up => flux_up_clrsky(colS:colE,:)
               fluxes_clrsky%flux_dn => flux_dn_clrsky(colS:colE,:)
+!PMN          write(*,*) '>>> rte_lw dirty clear-sky'
               error_msg = rte_lw( &
                 dirty_optical_props, &
                 top_at_1, sources, emis_sfc(:,colS:colE), &
@@ -3185,6 +3195,7 @@ contains
               ! dirty all-sky RT
               fluxes_allsky%flux_up => flux_up_allsky(colS:colE,:)
               fluxes_allsky%flux_dn => flux_dn_allsky(colS:colE,:)
+!PMN          write(*,*) '>>> rte_lw dirty all-sky'
               error_msg = rte_lw( &
                 dirty_optical_props, &
                 top_at_1, sources, emis_sfc(:,colS:colE), &

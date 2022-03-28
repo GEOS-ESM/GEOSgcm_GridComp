@@ -2279,6 +2279,7 @@ contains
       integer :: NumVars
       integer :: L, L1, LN, J, J1, JN, NA, K
       integer :: NumLit, Num2do
+      integer :: ibinary
 
       real, pointer :: QQ3(:,:,:), RR3(:,:,:), ptr3(:,:,:)
       real, pointer :: ptr2(:,:), RH(:,:), PL(:,:), O3(:,:), PLTMP(:,:)
@@ -2823,6 +2824,10 @@ contains
          FSCU => FSCUA
       FSWBAND => FSWBANDA
       end if
+
+      ! Option to force binary clouds for SW
+      call MAPL_GetResource(MAPL,ibinary,"RADSW_BINARY_CLOUDS:",DEFAULT=0,__RC__)
+      if (ibinary /= 0) where (CL > 0.) CL = 1.
 
       ! Prepare auxilliary variables
       ! ----------------------------
