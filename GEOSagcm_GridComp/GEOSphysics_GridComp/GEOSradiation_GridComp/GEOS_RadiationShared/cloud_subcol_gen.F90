@@ -18,6 +18,18 @@ module cloud_subcol_gen
    ! cloud output explicit by changing to a logical cldy_stoch in {true,false},
    ! which may permit some exterior efficiency improvements.
 
+   ! PMN 2022/01: Original version only worked for layer ordering from 1=bottom
+   ! upward. New version auto-detects vertical ordering and works for either. 
+   ! See details under generate_stochastic_clouds() and clearCounts_threeBand().
+   ! NB: The POPULATION statistics of the subcolumn ensemble should not depend
+   ! on the vertical ordering. But if you want an exact SAMPLE replication of
+   ! a generation (such as the bottom-up generation used in RRTMG) then you
+   ! should ensure the same input ordering (in the RRTMG case, by reversing the
+   ! vertical ordering from the GEOS-5 top-down ordering BEFORE input to these
+   ! routines). Otherwise (i.e. if POPULATION statistics equivalence is OK)
+   ! then save time by avoiding any explicit array re-ordering and let the
+   ! auto-detect feature do its job.
+
    use cloud_condensate_inhomogeneity, only: &
       condensate_inhomogeneous, zcw_lookup
    use iso_fortran_env, only : error_unit
@@ -156,7 +168,7 @@ contains
    ! of the initial seeding on each gridcolumn's PRNG stream. As such, it provides a
    ! way of generating a different set of random numbers for say LW and SW at the same
    ! timetep, when the layer pressures <play> used for seed generation are the same.
-   ! For example, LW can be run with [1,2,3,4] and SW with [4,2,1,3]. 
+   ! For example, LW can be run with [1,2,3,4] and SW with [4,3,2,1]. 
    ! NOTE: Using the same seed_order for LW and SW still does not mean using the "same
    ! subcolumn cloud ensemble" because the number of subcolumns (g-points) in LW and SW
    ! differ. Also, of course, McICA .ne. ICA, meaning that each subcolumn in McICA gets
@@ -167,6 +179,14 @@ contains
    ! seeds for LW and SW will create an unwanted correlation of some sort, they can use
    ! a different seed_order for each. 
    !
+   ! Vertical ordering:
+   ! The ordering is determined by play(1,1) > play(nlay,1) for surface=1 upward, and vica
+   ! versa. Either vertical ordering is permitted, but the generation always proceeds from
+   ! layer 1 to layer nlay. That shouldn't matter in a statistical sense. The seed order
+   ! does NOT need to be changed depending on the vertical ordering. The four layers nearest
+   ! the surface are always used (in the seed_order sense). Of course, the vertical ordering
+   ! of all profile inputs (zmid,play,cldfrac,ciwp,clwp) should be the same, and the output
+   ! vertical ordering (of [cldy|ciwp|clwp]_stoch) is the same as the input ordering.
    !---------------------------------------------------------------------------------------
 
       integer, intent(in) :: dncol                 ! Dimensioned number of gridcols
@@ -174,6 +194,8 @@ contains
       integer, intent(in) :: nsubcol               ! #Subcols to generate / gridcol
       integer, intent(in) :: nlay                  ! Number of model layers
 
+      ! Note: only absolute layer separations, abs(zmid(k1,:)-zmid(k2,:)), matter
+      ! so "zero-reference" of zmid is not important
       real,    intent(in) :: zmid    (nlay,dncol)  ! Height of midpoints [m]
       real,    intent(in) :: alat         (dncol)  ! Latitude of gridcolumn [radians]
       integer, intent(in) :: doy                   ! Day of year
@@ -206,6 +228,9 @@ contains
 
       ! ----- Locals -----
 
+      ! vertical ordering
+      logical :: surface_at_one
+
       ! correlation length for cloud presence and condensate
       real, dimension(dncol) :: adl, rdl
 
@@ -234,6 +259,9 @@ contains
 
       ! indices
       integer :: icol, isubcol, ilay, n
+
+      ! detect vertical ordering
+      surface_at_one = (play(1,1) > play(nlay,1))
 
       ! save for speed
       cond_inhomo = condensate_inhomogeneous()
@@ -284,12 +312,13 @@ contains
       do icol = 1,ncol
 
          ! exponential inter-layer correlations ...
+         ! [alpha|rcorr](k) is correlation between layers k and k-1
          do ilay = 2,nlay
-            alpha(ilay) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / adl(icol) )
+            alpha(ilay) = exp( -abs(zmid(ilay,icol)-zmid(ilay-1,icol)) / adl(icol) )
          enddo
          if (cond_inhomo) then
             do ilay = 2,nlay
-               rcorr(ilay) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / rdl(icol) )
+               rcorr(ilay) = exp( -abs(zmid(ilay,icol)-zmid(ilay-1,icol)) / rdl(icol) )
             enddo
          endif
 
@@ -345,7 +374,12 @@ contains
          ! pseed.
 
          ! isolate lower pressures for seeding
-         pseed = play(1:4,icol) * 100.  ! [Pa]
+         if (surface_at_one) then
+            pseed = play(1:4,icol)
+         else
+            pseed = play(nlay:nlay-3:-1,icol)
+         end if
+         pseed = pseed * 100.  ! [Pa]
 
          ! PMN 2021-11-12: Try [daPa=decaPascals] instead.
          ! pseed = play(1:4,icol) * 10.  ! [daPa]
@@ -557,9 +591,24 @@ contains
    ! ----------------------------------------------------------------
    ! Count clear subcolumns per gridcolumn for whole column
    !   and for three pressure bands.
-   ! layers [1,         cloudLM] are in low  pressure band
-   ! layers [cloudLM+1, cloudMH] are in mid  pressure band
-   ! layers [cloudMH+1, nlay   ] are in high pressure band
+   ! Verical ordering is auto-detected via:
+   !    cloudLM < cloudMH => surface at level 1
+   !    cloudLM > cloudMH => surface at level nlay
+   ! and concomitant layer definitions:
+   !    layers [1,         cloudLM] are in low  pressure band
+   !    layers [cloudLM+1, cloudMH] are in mid  pressure band
+   !    layers [cloudMH+1, nlay   ] are in high pressure band
+   !    for surface at level 1,
+   !    with cloudLM = nlay - LCLDLM + 1
+   !    and  cloudMH = nlay - LCLDMH + 1,
+   ! and
+   !    layers [1,       cloudMH-1] are in high pressure band
+   !    layers [cloudMH, cloudLM-1] are in mid  pressure band
+   !    layers [cloudLM, nlay     ] are in low  pressure band
+   !    for surface at level nlay (TOA at level 1)
+   !    with cloudLM = LCLDLM
+   !    and  cloudMH = LCLDMH,
+   ! all in terms of GEOS-5's LCLDLM and LCLDMH (TOA at level 1).
    ! ----------------------------------------------------------------
 
       integer, intent(in)  :: dncol              ! Dimensioned number of gridcols
@@ -597,41 +646,101 @@ contains
             if (.not. cloud_found) &
                clearCnts(1,icol) = clearCnts(1,icol) + 1
 
-            ! high pressure band
-            cloud_found = .false.
-            do ilay = cloudMH+1, nlay
-               if (cldy_stoch(ilay,isubcol,icol)) then 
-                  cloud_found = .true.
-                  exit
-               endif
-            enddo
-            if (.not. cloud_found) &
-               clearCnts(2,icol) = clearCnts(2,icol) + 1
-
-            ! mid pressure band
-            cloud_found = .false.
-            do ilay = cloudLM+1, cloudMH
-               if (cldy_stoch(ilay,isubcol,icol)) then 
-                  cloud_found = .true.
-                  exit
-               endif
-            enddo
-            if (.not. cloud_found) &
-               clearCnts(3,icol) = clearCnts(3,icol) + 1
-
-            ! low pressure band
-            cloud_found = .false.
-            do ilay = 1, cloudLM
-               if (cldy_stoch(ilay,isubcol,icol)) then 
-                  cloud_found = .true.
-                  exit
-               endif
-            enddo
-            if (.not. cloud_found) &
-               clearCnts(4,icol) = clearCnts(4,icol) + 1
-
          enddo  ! subcolumns
       enddo  ! gridcolumns
+   
+      if (cloudLM < cloudMH) then
+
+         ! surface at level 1 ordering ...
+
+         do icol = 1,ncol
+            do isubcol = 1,nsubcol
+
+               ! low pressure band
+               cloud_found = .false.
+               do ilay = 1, cloudLM
+                  if (cldy_stoch(ilay,isubcol,icol)) then 
+                     cloud_found = .true.
+                     exit
+                  endif
+               enddo
+               if (.not. cloud_found) &
+                  clearCnts(4,icol) = clearCnts(4,icol) + 1
+   
+               ! mid pressure band
+               cloud_found = .false.
+               do ilay = cloudLM+1, cloudMH
+                  if (cldy_stoch(ilay,isubcol,icol)) then 
+                     cloud_found = .true.
+                     exit
+                  endif
+               enddo
+               if (.not. cloud_found) &
+                  clearCnts(3,icol) = clearCnts(3,icol) + 1
+
+               ! high pressure band
+               cloud_found = .false.
+               do ilay = cloudMH+1, nlay
+                  if (cldy_stoch(ilay,isubcol,icol)) then 
+                     cloud_found = .true.
+                     exit
+                  endif
+               enddo
+               if (.not. cloud_found) &
+                  clearCnts(2,icol) = clearCnts(2,icol) + 1
+
+            enddo  ! subcolumns
+         enddo  ! gridcolumns
+
+      elseif (cloudLM > cloudMH) then
+
+         ! TOA at level 1 ordering ...
+
+         do icol = 1,ncol
+            do isubcol = 1,nsubcol
+   
+               ! high pressure band
+               cloud_found = .false.
+               do ilay = 1, cloudMH-1
+                  if (cldy_stoch(ilay,isubcol,icol)) then 
+                     cloud_found = .true.
+                     exit
+                  endif
+               enddo
+               if (.not. cloud_found) &
+                  clearCnts(2,icol) = clearCnts(2,icol) + 1
+
+               ! mid pressure band
+               cloud_found = .false.
+               do ilay = cloudMH, cloudLM-1
+                  if (cldy_stoch(ilay,isubcol,icol)) then 
+                     cloud_found = .true.
+                     exit
+                  endif
+               enddo
+               if (.not. cloud_found) &
+                  clearCnts(3,icol) = clearCnts(3,icol) + 1
+
+               ! low pressure band
+               cloud_found = .false.
+               do ilay = cloudLM, nlay
+                  if (cldy_stoch(ilay,isubcol,icol)) then 
+                     cloud_found = .true.
+                     exit
+                  endif
+               enddo
+               if (.not. cloud_found) &
+                  clearCnts(4,icol) = clearCnts(4,icol) + 1
+
+            enddo  ! subcolumns
+         enddo  ! gridcolumns
+
+      else
+
+        write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        error stop 'invalid pressure super-layers!'
+
+      end if
    
    end subroutine clearCounts_threeBand
 

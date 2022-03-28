@@ -43,8 +43,8 @@ module rmTinyCatchParaMod
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
   INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
-  logical, public, save     :: process_peat = .true.
-  logical, public, save     :: jpl_height   = .true.
+  logical, public, save     :: use_PEATMAP = .true.
+  logical, public, save     :: jpl_height  = .true.
   character*8, public, save :: LAIBCS  = 'MODGEO'
   character*4, public, save :: SOILBCS = 'HWSD'
   character*6, public, save :: MODALB  = 'MODIS2'
@@ -85,43 +85,43 @@ contains
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS1'
        GNU     = 2.17
-       process_peat = .false.
-       jpl_height   = .false.
+       use_PEATMAP = .false.
+       jpl_height  = .false.
 
     case ("GM4", "ICA")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS2'
-       process_peat = .false.
-       jpl_height   = .false.
+       use_PEATMAP = .false.
+       jpl_height  = .false.
 
     case ("NL3")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
-       process_peat = .false.
-       jpl_height   = .false.
+       use_PEATMAP = .false.
+       jpl_height  = .false.
 
      case ("NL4")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'      
-       process_peat = .false.
-       jpl_height   = .true.
+       use_PEATMAP = .false.
+       jpl_height  = .true.
 
-     case ("NL4p")
+     case ("NL5")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
-       process_peat = .true.
-       jpl_height   = .true.
+       use_PEATMAP = .true.
+       jpl_height  = .true.
 
-    case ("DEF")
+    case ("DEV")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
-       process_peat = .true.
-       jpl_height   = .true.
+       use_PEATMAP = .true.
+       jpl_height  = .true.
        
     end select
              
@@ -3584,7 +3584,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       
 !c-------------------------------------------------------------------------
 
-      if(process_peat) then 
+      if(use_PEATMAP) then 
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap' 
       else
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
@@ -3608,7 +3608,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          write (fout,'(i2.2,i2.2,i4.4)')nint(a_sand(n)),nint(a_clay(n)),nint(100*a_oc(n))
 
          if(n == n_SoilClasses) then 
-            if(process_peat) then
+            if(use_PEATMAP) then
                open (120,file=trim(losfile)//trim(fout)//'.peat',  &
                     form='formatted',status='old')
             else
@@ -3673,7 +3673,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	     form='formatted',status='unknown')  
  
      endif 
-       fout='clsm/soil_param.dat'
+
+     fout='clsm/soil_param.dat'
  	open (42,file=fout,action='write',        &
 	     form='formatted',status='unknown')       
 
@@ -3762,7 +3763,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            write(*,*)'Warnning 1: pfafstetter mismatched' 
            stop
         endif
-        if((process_peat).and.(soil_class_top(n) == 253)) then
+        if((use_PEATMAP).and.(soil_class_top(n) == 253)) then
            meanlu = 9.3
            stdev  = 0.12
            minlu  = 8.5
@@ -3833,7 +3834,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !$OMP        taberr1,taberr2,normerr1,normerr2,         &
 !$OMP        taberr3,taberr4,normerr3,normerr4,         &
 !$OMP        gwatdep,gwan,grzexcn,gfrc,soil_class_com,  &
-!$OMP        n_threads, low_ind, upp_ind, process_peat )&
+!$OMP        n_threads, low_ind, upp_ind, use_PEATMAP ) &
 !$OMP PRIVATE(k,li,ui,n,i,watdep,wan,rzexcn,frc,ST,AC,  &
 !$OMP COESKEW,profdep)
 
@@ -3883,7 +3884,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       if(soil_class_com(n) == 253) then
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
-         if(process_peat) then
+         if(use_PEATMAP) then
             
             ars1(n) = -7.9514018e-03
             ars2(n) = 6.2297356e-02 

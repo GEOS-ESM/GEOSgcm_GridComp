@@ -61,7 +61,9 @@ module GEOS_CatchCNCLM40GridCompMod
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
-  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
+  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
+       catch_calc_zbar, catch_calc_watertabled, irrigation_rate, &
+       gndtmp
 
 implicit none
 private
@@ -3731,7 +3733,25 @@ subroutine SetServices ( GC, RC )
        SHORT_NAME         = 'RMELTOC002'                ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'WATERTABLED'               ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'FSWCHANGE'                 ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+      RC=STATUS  ) 
   VERIFY_(STATUS)
 
 !EOS
@@ -4891,6 +4911,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
         real, pointer, dimension(:)   :: IRRIGRATE
+        real, pointer, dimension(:)   :: WATERTABLED
+        real, pointer, dimension(:)   :: FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -4919,7 +4941,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: ghflxsno, ghflxtskin
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
-        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1
+        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
 	real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
 	real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
 	real,pointer,dimension(:) :: VSUVR, VSUVF
@@ -5527,15 +5549,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,CNLAI41, 'CNLAI41' ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNLAI42, 'CNLAI42' ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNLAI43, 'CNLAI43' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU003,'RMELTDU003',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU004,'RMELTDU004',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU005,'RMELTDU005',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTBC001,'RMELTBC001',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU003,'RMELTDU003',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU004,'RMELTDU004',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU005,'RMELTDU005',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTBC001,'RMELTBC001',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',       RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WATERTABLED ,'WATERTABLED',    RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FSWCHANGE   , 'FSWCHANGE',     RC=STATUS); VERIFY_(STATUS)
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
@@ -5870,6 +5894,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	allocate(fveg2     (NTILES))
         allocate(FICE1     (NTILES)) 
         allocate(SLDTOT    (NTILES)) 
+        allocate(FSW_CHANGE(NTILES))
 
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -6251,13 +6276,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            end do
         end if
 
+        ! Compute DQS; make sure QC is between QA and QSAT; compute RA.
+        !
+        !   Some 1,000 lines below, duplicate code was present and removed in Jan 2022. 
+        !   - reichle, 14 Jan 2022.
+        
         do N=1,NUM_SUBTILES
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
            QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
            RA (:,N) = RHO/CH(:,N)
         end do
-
 
         QC(:,FSNW) = QSAT(:,FSNW)
 
@@ -6413,9 +6442,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
-call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
-                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,              &
-                              srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc )
+    call catch_calc_soil_moist( ntiles, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,      &
+         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,              &
+         srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc )
                               
 ! obtain saturated canopy resistance following Farquhar, CLM4 implementation    
 
@@ -6541,9 +6570,11 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
 ! soil temperatures
 ! -----------------
-      zbar = -sqrt(1.e-20+catdef(n)/bf1(n))+bf2(n)
+       
+      ! zbar function - reichle, 29 Jan 2022 (minus sign applied in call to GNDTMP)
+      ZBAR = catch_calc_zbar( bf1(n), bf2(n), catdef(n) )  
       HT(:)=GHTCNT(:,N)
-      CALL GNDTMP_CN(poros(n),zbar,ht,frice,tp,soilice)
+      CALL GNDTMP(poros(n),-1.*zbar,ht,frice,tp,soilice)  ! note minus sign for zbar
 
       ! At the CatchCNGridComp level, tp1, tp2, .., tp6 are export variables in units of Kelvin,
       ! - rreichle & borescan, 6 Nov 2020
@@ -6562,7 +6593,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
 ! baseflow
 ! --------
-      zbar = sqrt(1.e-20+catdef(n)/bf1(n))-bf2(n)
       bflow(n) = (1.-frice)*1000.* &
     	    cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
       IF(catdef(n) >= cdcr1(n)) bflow(n) = 0.
@@ -7289,9 +7319,9 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
     
     IF ((RUN_IRRIG /= 0).AND.(ntiles >0))  THEN  
        
-       CALL CATCH_CALC_SOIL_MOIST (                                     &
-            NTILES,VEG1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,   &
-            ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,     &
+       CALL CATCH_CALC_SOIL_MOIST (                                         &
+            NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,            &
+            ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2, &
             srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
 	    
        call irrigation_rate (IRRIG_METHOD,                                 & 
@@ -7302,17 +7332,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        PLSIN = PLS + IRRIGRATE
        
     ENDIF
-
-
-! Andrea Molod (Oct 21, 2016):
- 
-        do N=1,NUM_SUBTILES
-           DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N),PASCALS=.true., RAMP=0.0 )
-           QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
-           QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
-           RA (:,N) = RHO/CH(:,N)
-        end do
-
+    
 #ifdef DBG_CNLSM_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
         VERIFY_(STATUS)
@@ -7562,7 +7582,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
                 TSURF                                                ,&
                 SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
                 LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-                TCSORIG1, TPSN1IN1, TPSN1OUT1                        ,&
+                TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE            ,&
                 TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
                 QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
                 RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
@@ -7786,6 +7806,10 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if(associated(FSWCHANGE))  FSWCHANGE  = FSW_CHANGE
+        if(associated(WATERTABLED)) then
+           WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+        endif
 
         if(associated(TPSN1OUT)) then
            where(WESNN(1,:)>0.)
@@ -7970,7 +7994,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         deallocate(TOTDEPOS )
         deallocate(RMELT    )
         deallocate(FICE1    )
-        deallocate(SLDTOT )
+        deallocate(SLDTOT   )
+        deallocate(FSW_CHANGE)
         deallocate(   btran )
         deallocate(     wgt )
         deallocate(     bt1 )
@@ -8487,11 +8512,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
        ! intent(in)
-       ntiles, nint(veg1), dzsf, vgwmax, cdcr1, cdcr2,                           &
+       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4,                                                  &
+       arw1, arw2, arw3, arw4, bf1, bf2,                                        &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &

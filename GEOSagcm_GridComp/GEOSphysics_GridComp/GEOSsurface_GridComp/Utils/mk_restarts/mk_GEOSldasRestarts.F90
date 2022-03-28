@@ -201,7 +201,11 @@ PROGRAM mk_GEOSldasRestarts
         stop
      endif
 
-     if (index(model,'45') /=0) clm45 = .true.
+     if (index(model,'45') /=0) then
+       clm45 = .true.
+       VAR_COL = VAR_COL_CLM45
+       VAR_PFT = VAR_PFT_CLM45
+     endif
      catch_scaler = 'Scale_CatchCN'
   else
      catch_scaler = 'Scale_Catch'
@@ -1417,7 +1421,7 @@ contains
           if(clm45) then
             open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
             do n=1,ntiles
-              read (30,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, j, abm(n), peatf(n), &
+              read (30, *) i, j, abm(n), peatf(n), &
                      gdp(n), hdm(n), fc(n)
             end do
             CLOSE (30, STATUS = 'KEEP')
@@ -1474,7 +1478,7 @@ contains
                 read (29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
                      CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
                 
-                read (30,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, j, abm(n), peatf(n), &
+                read (30, *) i, j, abm(n), peatf(n), &
                      gdp(n), hdm(n), fc(n)
              endif
           endif          
