@@ -74,7 +74,7 @@ contains
          wlcl, qtsrc, thlsrc, thvlsrc, tkeavg, cldtop, wu_inv,      &
          qtu_inv, thlu_inv, thvu_inv, uu_inv, vu_inv, xc_inv,       &
 #endif
-         frc_rasn_2d, dotransport,shlwparams)
+         dotransport,shlwparams)
 
       implicit none
 
@@ -85,7 +85,6 @@ contains
       integer, intent(in)   :: dotransport              ! Transport tracers [1 true]
       real   , intent(in)   :: dt                       ! moist heartbeat [s]
 
-      real,   intent(in)    :: frc_rasn_2d(idim)
       real,   intent(in)    :: pifc0_inv(idim,k0+1)     !  Environmental pressure at the interfaces [ Pa ]
       real,   intent(in)    :: zifc0_inv(idim,k0+1)     !  Environmental height at the interfaces   [ m ]
       real,   intent(in)    :: exnifc0_inv(idim,k0+1)   !  Exner function at the interfaces
@@ -101,7 +100,7 @@ contains
       real,   intent(in)    :: th0_inv(idim,k0)         !  Environmental temperature [ K ]
       real,   intent(in)    :: tke_inv(idim,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
                                                         !  at the previous time step [ fraction ]
-      real, intent(in)    :: kpbl_inv(idim)               !  Height of PBL [ m ]
+      integer, intent(in) :: kpbl_inv(idim)               !  Height of PBL [ m ]
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)              ! convective tracer
@@ -273,7 +272,7 @@ contains
          exnifc0(:idim,k)    = exnifc0_inv(:idim,k_inv)
       end do
 
-      kpbl = int(kpbl_inv)
+      kpbl = kpbl_inv
 
       do i = 1,idim
 !        cnvtrmax(i) = min(300.,max(0.,maxval(cnvtr(i,:))))
@@ -296,7 +295,7 @@ contains
            thlsrc, thvlsrc, tkeavg, cldtop, wu, qtu,        &
            thlu, thvu, uu, vu, xc, trten,                   & 
 #endif
-           frc_rasn_2d, dotransport,shlwparams )
+           dotransport,shlwparams )
 
       ! Reverse again
 
@@ -395,7 +394,7 @@ contains
          thvlsrc_out, tkeavg_out, cldhgt_out, wu_out, qtu_out,     &
          thlu_out, thvu_out, uu_out, vu_out, xc_out, trten_out,    &
 #endif
-         frc_rasn_in, dotransport,shlwparams )  
+         dotransport,shlwparams )  
 
     ! ------------------------------------------------------------ !
     !                                                              !  
@@ -426,7 +425,6 @@ contains
       integer, intent(in)  :: dotransport        ! Transport tracers [1 true]
       real,    intent(in)  :: dt                 ! Timestep [s]
 
-      real, intent(in)    :: frc_rasn_in(idim)
       real, intent(in)    :: pifc0_in(   idim,0:k0 )  ! Environmental pressure at interfaces [Pa]
       real, intent(in)    :: zifc0_in(   idim,0:k0 )  ! Environmental height at interfaces [m]
       real, intent(in)    :: exnifc0_in( idim,0:k0 )  ! Exner function at interfaces
@@ -940,6 +938,7 @@ contains
     real :: epsvarw      !  Variance of w at PBL top by meso-scale component [m2/s2]          
     real :: PGFc         !  This is used for calculating vertical variations cumulus  
                          !  'u' & 'v' by horizontal PGF during upward motion [no unit]
+    real :: frc_rasn
 
 !!! TEMPORARY:  should be ncnst array of minimum values for all constituents
     real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
@@ -959,7 +958,6 @@ contains
     ! --------------------------------------------------------------------------- !    
 
     real :: criqc
-    real :: frc_rasn
     real :: rdrop
 
    ! ------------------------ !
@@ -989,7 +987,7 @@ contains
     PGFc      = shlwparams%PGFc     !  This is used for calculating vertical variations cumulus  
                                     !  'u' & 'v' by horizontal PGF during upward motion [no unit]
     criqc     = shlwparams%criqc
-   !frc_rasn  = shlwparams%frc_rasn
+    frc_rasn  = shlwparams%frc_rasn
     rdrop     = shlwparams%rdrop
     thlsrc_fac = shlwparams%thlsrc_fac
     qtsrc_fac  = shlwparams%qtsrc_fac
@@ -1144,7 +1142,6 @@ contains
          tke(1:k0)       = tke_in(i,1:k0)
 !         pblh            = pblh_in(i)
          cush            = cush_inout(i)
-         frc_rasn        = frc_rasn_in(i)
 
          if (dotransport.eq.1) then
          do m = 1,ncnst   ! loop over tracers

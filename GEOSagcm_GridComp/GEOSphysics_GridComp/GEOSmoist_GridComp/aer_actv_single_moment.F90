@@ -4,7 +4,7 @@ MODULE Aer_Actv_Single_Moment
       USE MAPL_ConstantsMod, only: MAPL_PI  
 !-------------------------------------------------------------------------------------------------------------------------
       IMPLICIT NONE
-      PUBLIC ::  Aer_Actv_1M_interface,  INT_USE_AEROSOL_NN, USE_AEROSOL_NN
+      PUBLIC ::  Aer_Actv_1M_interface, USE_AEROSOL_NN
       PRIVATE
        real*8, parameter :: zero_par  =  1.0D-20
        real*8, parameter :: ai        =  0.0000594D0
@@ -23,7 +23,6 @@ MODULE Aer_Actv_Single_Moment
        real, parameter :: NN_OCEAN    =  30.0e6
        real, parameter :: NN_MIN      = NN_OCEAN
 
-       INTEGER  :: INT_USE_AEROSOL_NN
        LOGICAL  :: USE_AEROSOL_NN
       CONTAINS          
 
@@ -31,14 +30,15 @@ MODULE Aer_Actv_Single_Moment
 !>----------------------------------------------------------------------------------------------------------------------
 
       SUBROUTINE Aer_Actv_1M_interface(IM,JM,LM,nmodes, t,plo,zlo,zle, qlcn, qicn, qlls, qils &
-                                      , kpblin,zws, omega,FRLAND ,AeroProps, NACTL,NACTI)
+                                      , kpbl,zws, omega,FRLAND ,AeroProps, NACTL,NACTI)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM,nmodes
       TYPE(AerProps), dimension (IM,JM,LM),intent(in )  :: AeroProps
       real, dimension (IM,JM,LM)  ,intent(in ) :: t,plo,omega,zlo, qlcn, qicn, qlls, qils
       real, dimension (IM,JM,0:LM),intent(in ) :: zle
-      real, dimension (IM,JM)     ,intent(in ) :: zws,kpblin,FRLAND
-      
+      real, dimension (IM,JM)     ,intent(in ) :: zws,FRLAND
+      integer, dimension (IM,JM)  ,intent(in ) :: kpbl     
+ 
       real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI
       
       real(8), dimension (IM,JM,LM,nmodes) ::nact 
@@ -61,12 +61,12 @@ MODULE Aer_Actv_Single_Moment
       DO j=1,JM
         Do i=1,IM 
         !------check this
-             kcb = nint(kpblin(i, j))
+             kcb = kpbl(i,j)
         !------check this
              
              naer_cb(i,j) = zero_par
-	     !DO K=LM,kcb,-1
-	     k=min(kcb-1,LM-1); IF(K==0) stop "K==0- aer-act"
+             !DO K=LM,kcb,-1
+             k=min(kcb-1,LM-1); IF(K==0) stop "K==0- aer-act"
              tk           = DBLE(T(i,j,k))           ! K
              press        = DBLE(plo(i,j,k))*100.D0  ! Pa     
              air_den      = press*28.8d-3/8.31d0/tk  ! kg/m3
@@ -75,17 +75,17 @@ MODULE Aer_Actv_Single_Moment
                 naer_cb(i,j)= naer_cb(i,j) + DBLE(AeroProps(i,j,k)%num(n)) * air_den         
                 naer_cb(i,j)= naer_cb(i,j)* 1.d+6  ! #/cm3
                 naer_cb(i,j)= max(1.0d-1,min(naer_cb(i,j),100.0))
-				
-	     ENDDO
+                                
+             ENDDO
       ENDDO;ENDDO!;ENDDO
      
       DO k=LM,1,-1
        DO j=1,JM
         Do i=1,IM
               
-	      tk		 = DBLE(T(i,j,k))	                  ! K
-              press		 = DBLE(plo(i,j,k))*100.D0		  ! Pa   
-              air_den		 = press*28.8d-3/8.31d0/tk		  ! kg/m3
+              tk                 = DBLE(T(i,j,k))                          ! K
+              press                 = DBLE(plo(i,j,k))*100.D0                  ! Pa   
+              air_den                 = press*28.8d-3/8.31d0/tk                  ! kg/m3
               qc                 = DBLE(qicn(i,j,k)+qils(i,j,k))*1.D+3    ! g/kg
               ql                 = DBLE(qlcn(i,j,k)+qlls(i,j,k))*1.D+3    ! g/kg
               
@@ -94,7 +94,7 @@ MODULE Aer_Actv_Single_Moment
                 wupdraft           = -9.81*air_den*DBLE(omega(i,j,k))          ! m/s - grid-scale only              
                 
                 !--in the boundary layer, add Wstar
-                if(k >= nint(kpblin(i, j)) .and. k < LM)  wupdraft = wupdraft+DBLE(zws(i,j)) 
+                if(k >= kpbl(i,j) .and. k < LM)  wupdraft = wupdraft+DBLE(zws(i,j)) 
 
                 IF(wupdraft > 0.1 .AND. wupdraft < 100.) THEN 
 
@@ -126,18 +126,18 @@ MODULE Aer_Actv_Single_Moment
                      NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
                 
  
-		ENDIF ! tk>245
+                ENDIF ! tk>245
                ENDIF   ! updraft > 0.1
                ENDIF   ! 100*plo > 34000.0
               
 
                IF( tk <= 268.0D0) then
-	        IF( (QC >= 0.5) .and. (QL >= 0.5)) then
+                IF( (QC >= 0.5) .and. (QL >= 0.5)) then
                       ! Number of activated IN following deMott (2010) [#/m3]  
                          NACTI(i,j,k) = real((1.e+3*ai*((273.16-tk)**bi) *  (naer_cb(i,j))**(ci*(273.16-tk)+di)),4)  !#/m3
-  		ELSE   !tk<243
+                  ELSE   !tk<243
                       ! Number of activated IN following Wyser  
-	      
+              
                  WC    = air_den*QC  !kg/m3
                  if (WC >= tiny(1.0d0)) then
                     BB     =  -2. + log10(1000.*WC/50.)*(1.e-3*(273.15-tk)**1.5)
@@ -146,13 +146,13 @@ MODULE Aer_Actv_Single_Moment
                  end if
                  BB     = MIN((MAX(BB,-6.)),-2.)  
 
-		 RAUX   = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+                 RAUX   = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
                  RAUX   = (betai + (gamai + deltai * RAUX**3)**0.5)**0.33333
                  NACTI(i,j,k) = real((3.* WC)/(4.*MAPL_PI*densic*(1.D-6*RAUX)**3),4)  !#/m3
-	       
-		ENDIF  !Mixed phase
+               
+                ENDIF  !Mixed phase
 
-	       ENDIF ! tk<=268
+               ENDIF ! tk<=268
                !
                !
                !-- fix limit for NACTL/NACTI

@@ -130,7 +130,6 @@ contains
     type (EXTDATA_wrap)                 :: ExtDataWrap
     type (MAPL_MetaComp),  pointer      :: MAPL
     character(len=ESMF_MAXSTR)          :: ReplayMode
-    character(len=ESMF_MAXSTR)          :: CONVPAR_OPTION
     character(len=ESMF_MAXSTR)          :: AERO_PROVIDER
     logical                             :: rplRegular
 
@@ -207,15 +206,6 @@ contains
 
 ! Get/Set Default RUN Parameters used by Multiple Gridded Components
 !-------------------------------------------------------------------
-    call MAPL_GetResource( MAPL, CONVPAR_OPTION, Label="CONVPAR_OPTION:", default="NULL", RC=STATUS)
-    VERIFY_(STATUS)
-    if( trim(CONVPAR_OPTION) == "NULL" ) then
-             CONVPAR_OPTION  =  "RAS"
-        call MAPL_ConfigSetAttribute(  CF, CONVPAR_OPTION, Label="CONVPAR_OPTION:", RC=STATUS)
-        VERIFY_(STATUS)
-        IF(MAPL_AM_I_ROOT()) PRINT *,'Setting CONVPAR_OPTION to ',trim(CONVPAR_OPTION)
-    endif
-
     call MAPL_GetResource( MAPL, AERO_PROVIDER, Label="AERO_PROVIDER:", default="NULL", RC=STATUS)
     VERIFY_(STATUS)
     if( trim(AERO_PROVIDER) == "NULL" ) then

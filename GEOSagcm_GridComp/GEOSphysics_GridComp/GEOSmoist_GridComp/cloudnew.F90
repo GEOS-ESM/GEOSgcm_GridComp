@@ -52,11 +52,9 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: PP_dev
    real, allocatable, dimension(:,:), device :: EXNP_dev
    real, allocatable, dimension(:,:), device :: PPE_dev
+   real, allocatable, dimension(:  ), device :: FRLAND_dev
    real, allocatable, dimension(:,:), device :: KH_dev
    real, allocatable, dimension(:  ), device :: DTS_dev
-   real, allocatable, dimension(:  ), device :: SNOMAS_dev
-   real, allocatable, dimension(:  ), device :: FRLANDICE_dev
-   real, allocatable, dimension(:  ), device :: FRLAND_dev
    real, allocatable, dimension(:,:), device :: RMFDTR_dev
    real, allocatable, dimension(:,:), device :: QLWDTR_dev
    real, allocatable, dimension(:,:), device :: U_dev
@@ -64,7 +62,6 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: QST3_dev
    real, allocatable, dimension(:,:), device :: DZET_dev
    real, allocatable, dimension(:,:), device :: QDDF3_dev
-   real, allocatable, dimension(:  ), device :: TEMPOR_dev
    real, allocatable, dimension(:  ), device :: CNV_FRACTION_dev
    real, allocatable, dimension(:  ), device :: TROPP_dev
 
@@ -368,8 +365,6 @@ contains
          ZZ_dev           , &
          PPE_dev          , &
          EXNP_dev         , &
-         SNOMAS_dev       , &
-         FRLANDICE_dev    , &
          FRLAND_dev       , &
          KH_dev           , &
          mf_frc_dev       , &
@@ -471,7 +466,7 @@ contains
          PDF_RQTTH_dev, PDF_RWTH_dev, PDF_RWQT_dev, &
 #endif
          WTHV2_dev, wql_dev, &
-         TEMPOR_dev, DOSHLW, &
+         DOSHLW, &
          NACTL_dev,    &
          NACTI_dev,    &
          CONVPAR_OPTION )
@@ -495,8 +490,6 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: ZZ_dev      ! ZLO
       real, intent(in   ), dimension(IRUN,0:LM) :: PPE_dev     ! CNV_PLE
       real, intent(in   ), dimension(IRUN,  LM) :: EXNP_dev    ! PK
-      real, intent(in   ), dimension(IRUN     ) :: SNOMAS_dev  ! SNOMAS
-      real, intent(in   ), dimension(IRUN     ) :: FRLANDICE_dev  ! FRLANDICE
       real, intent(in   ), dimension(IRUN     ) :: FRLAND_dev  ! FRLAND
       real, intent(in   ), dimension(IRUN,0:LM) :: KH_dev      ! KH
       real, intent(in   ), dimension(IRUN,  LM) :: mf_frc_dev  !
@@ -646,8 +639,7 @@ contains
 !!$      real, intent(  out), dimension(IRUN,  LM) :: CURAINMOVE_dev ! CURAINMOVE
 !!$      real, intent(  out), dimension(IRUN,  LM) :: CUSNOWMOVE_dev ! CUSNOWMOVE
 
-      real, intent(in   ), dimension(IRUN     ) :: TEMPOR_dev  ! TEMPOR
-      INTEGER, INTENT(IN) :: DOSHLW
+      LOGICAL, INTENT(IN) :: DOSHLW
       character(LEN=*), INTENT(IN)              :: CONVPAR_OPTION
 
 #endif
@@ -971,21 +963,18 @@ contains
                   QLW_LS_dev(I,K), & 
                   QLW_AN_dev(I,K), &
                   QIW_LS_dev(I,K), &
-                  QIW_AN_dev(I,K), &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I))
+                  QIW_AN_dev(I,K))
             ELSE
             CALL meltfrz (         &
                   DT             , &
                   TEMP           , &
                   QLW_LS_dev(I,K), & 
-                  QIW_LS_dev(I,K), &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I))
+                  QIW_LS_dev(I,K))
             CALL meltfrz (         &
                   DT             , &
                   TEMP           , &
                   QLW_AN_dev(I,K), & 
-                  QIW_AN_dev(I,K), &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I))
+                  QIW_AN_dev(I,K))
             ENDIF
 
             FRZ_TT_dev(I,K) = ( QIW_AN_dev(I,K) + QIW_LS_dev(I,K) - FRZ_TT_dev(I,K) ) / DT
@@ -1015,7 +1004,6 @@ contains
                   CLDFRC_dev(I,K), & 
                   ANVFRC_dev(I,K), &
                   QST3_dev(I,K)  , &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I), &
                   CONVPAR_OPTION )
 
             DCNVi_dev(I,K) = ( QIW_AN_dev(I,K) - DCNVi_dev(I,K) ) / DT
@@ -1104,8 +1092,7 @@ contains
                   PDF_RWQT_dev(I,K),   &
 #endif
                   WTHV2_dev(I,K),      &
-                  wql_dev(I,K),        &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I) ) 
+                  wql_dev(I,K))
             else
             call hystpdf(          &
                   DT             , &
@@ -1119,8 +1106,7 @@ contains
                   QIW_AN_dev(I,K), &
                   TEMP           , &
                   CLDFRC_dev(I,K), & 
-                  ANVFRC_dev(I,K), &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I)  )
+                  ANVFRC_dev(I,K))
             endif
 
             LSPDFLIQNEW = QLW_LS_dev(I,K) - LSPDFLIQNEW
@@ -1478,7 +1464,7 @@ contains
             end if
         ENDIF
 
-        if(DOSHLW==1) THEN 
+        if(DOSHLW) THEN 
             ! Shallow convective
             ! ------------------
 
@@ -1899,9 +1885,9 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine meltfrz( DT, TE, QL, QI, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
+   subroutine meltfrz( DT, TE, QL, QI )
 
-      real, intent(in)    :: DT, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
+      real, intent(in)    :: DT
       real, intent(inout) :: TE,QL,QI
 
       real  :: fQi,dQil
@@ -1912,7 +1898,7 @@ contains
 
       ! freeze liquid
       if ( TE <= MAPL_TICE ) then
-         fQi  = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         fQi  = ice_fraction( TE )
          taufrz = 1000.
          dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
          dQil = max(  0., dQil )
@@ -1942,11 +1928,10 @@ contains
          QCL      , &
          QAL      , &
          QCI      , &
-         QAI      , &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
+         QAI      )
 
       real ,   intent(inout) :: TE,QCL,QCI,QAL,QAI
-      real ,   intent(in   ) :: Dt,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
+      real ,   intent(in   ) :: Dt
       real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQA
       integer                :: n
       integer, parameter     :: MaxIterations=5
@@ -1964,7 +1949,7 @@ contains
       convergence: do n=1,MaxIterations
 
       ! melt ice using ICE_FRACTION
-      fQi = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+      fQi = ice_fraction( TE )
       if ( (fQi < 1.0) .and. (TE > MAPL_TICE) ) then
          DQmax = (TE-MAPL_TICE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QITOT*(1.0-fQi)
@@ -1976,7 +1961,7 @@ contains
       end if
 
       ! freeze liquid using ICE_FRACTION 
-      fQi = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+      fQi = ice_fraction( TE )
       if ( (fQi > 0.0) .and. (TE <= MAPL_TICE) ) then
          DQmax = (MAPL_TICE-TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QLTOT *(1.0 - EXP( -Dt * fQi / taufrz ) )
@@ -2056,13 +2041,12 @@ contains
          PDF_RWQT,   &
 #endif
          WTHV2,      &
-         WQL,        &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         WQL )
 
       real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: pdfshape
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
-      real, intent(in)    :: NL,NI,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
+      real, intent(in)    :: NL,NI
       real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
 #ifdef PDFDIAG
       real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
@@ -2128,7 +2112,7 @@ contains
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         fQi = ice_fraction( TEp, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         fQi = ice_fraction( TEp )
 
          if(pdfflag.lt.2) then
 
@@ -2195,7 +2179,7 @@ contains
                                  WQL,          &
                                  CFn)
 
-           fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+           fQi = ice_fraction( TEn )
 
          endif
 
@@ -2220,7 +2204,6 @@ contains
                  NIv              , &
                  DQCALL           , &
                  fQi              , & 
-                 CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
                  .false.)
          ENDIF
 
@@ -2263,7 +2246,7 @@ contains
       QCo = QCn
       QVo = QVn
       TEo = TEn
-      fQi = ice_fraction( TEo, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+      fQi = ice_fraction( TEo )
 
       ! Update prognostic variables.  Deal with special case of AF=1
       ! Temporary variables QCo, QAo become updated grid means.
@@ -2366,10 +2349,9 @@ contains
          QAi         , &
          TE          , &
          CF          , &
-         AF          , &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
+         AF          )
 
-      real, intent(in)    :: DT,ALPHA,PL,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
+      real, intent(in)    :: DT,ALPHA,PL
       integer, intent(in) :: pdfshape
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF
 
@@ -2445,7 +2427,7 @@ contains
          DQS  = DQSAT( TEn, PL, QSAT=QSn )
 
          TEp = TEn
-         fQi = ice_fraction( TEp, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         fQi = ice_fraction( TEp )
 
          sigmaqt1  = ALPHA*QSn
          sigmaqt2  = ALPHA*QSn
@@ -2730,13 +2712,12 @@ contains
          CF      , &
          AF      , &
          QS      , &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
          CONVPAR_OPTION )
 
       !INPUTS:
       !
       !       ICEPARAM: 0-1  controls how strongly new conv condensate is partitioned in ice-liquid
-      !                 1 means partitioning follows ice_fraction(TE,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND). 0 means all new condensate is
+      !                 1 means partitioning follows ice_fraction(TE). 0 means all new condensate is
       !                 liquid 
       !
       !       SCLM_*: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
@@ -2750,7 +2731,6 @@ contains
       real, intent(inout) :: TE
       real, intent(inout) :: AF,QV
       real, intent(inout) :: QLA, QIA
-      real, intent(in)    :: CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
       character(LEN=*), INTENT(IN) :: CONVPAR_OPTION
 
       real :: TEND,QVx,QCA,fQi
@@ -2765,7 +2745,7 @@ contains
 
       !Addition of condensate from Deep Convection
       TEND = DCF*iMASS
-      fQi  = ICEPARAM*ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+      fQi  = ICEPARAM*ice_fraction( TE )
       QLA  = QLA + (1.0-fQi)* TEND*DT
       QIA  = QIA +    fQi   * TEND*DT
 
@@ -3864,8 +3844,8 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   function ICE_FRACTION (TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND
+   function ICE_FRACTION (TEMP) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP
       real             :: ICEFRCTm, ICEFRCTo, ICEFRCT
       real             :: tc, ptc 
 
@@ -3873,10 +3853,6 @@ contains
       tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
       ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-     !ICEFRCTm = MAX(0.0,MIN(1.0,1.0 - (1.0/(1.0 + exp(-1*ptc)))))
-     !ICEFRCTo = MAX(0.0,MIN(1.0,1.0 - (1.0/(1.0 + exp(-1*ptc)**4))))
-     !! Combine MODIS polynomial with a tropical oceans version 
-     !ICEFRCT = (ICEFRCTo**0.125)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
 
    end function ICE_FRACTION
 
@@ -4119,7 +4095,6 @@ contains
          NI               , & 
          DQALL            , &
          FQI  ,    &
-         CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND, &
          needs_preexisting )
 
       real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
@@ -4127,7 +4102,6 @@ contains
       real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
       real ,  intent(in)    :: CF, AF, NL, NI
       real, intent (out) :: FQI
-      real, intent(in) :: CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND
       logical, intent (in)  :: needs_preexisting
       
       real  :: DC, TEFF,QCm,DEP, &
@@ -4158,7 +4132,7 @@ contains
 
       else !mixed phase or ice clouds
 
-         FQI   = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         FQI   = ice_fraction( TE )
          
          QVINC=  QV 
          QSLIQ  = QSATLQ(         &
