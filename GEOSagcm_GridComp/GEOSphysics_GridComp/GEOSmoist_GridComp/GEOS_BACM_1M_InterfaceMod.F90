@@ -13,8 +13,9 @@ module GEOS_BACM_1M_InterfaceMod
   use ESMF
   use MAPL
   use GEOS_UtilsMod
-  use aer_cloud, only: AerProps
+  use aer_cloud
   use Aer_Actv_Single_Moment, only: Aer_Actv_1M_interface, USE_AEROSOL_NN, R_AIR
+  use CLOUDNEW, only: PROGNO_CLOUD
 
   implicit none
 
