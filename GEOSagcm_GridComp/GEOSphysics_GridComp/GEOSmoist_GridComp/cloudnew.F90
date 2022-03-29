@@ -8,7 +8,6 @@ module cloudnew
 #ifndef _CUDA
    use GEOS_UtilsMod,     only: QSAT=>GEOS_Qsat, DQSAT=>GEOS_DQsat, &
          QSATLQ=>GEOS_QsatLQU, QSATIC=>GEOS_QsatICE
-   use CLDPARAMS
 #else
    use cudafor
    ! NOTE: GPUs use the QSAT and DQSAT at the end of this module
@@ -29,9 +28,84 @@ module cloudnew
 
    implicit none
 
+      type CLDPARAM_TYPE
+           real               :: CNV_BETA              ! 1
+           real               :: ANV_BETA              ! 2
+           real               :: LS_BETA               ! 3
+           real               :: RH_CRIT               ! 4
+           real               :: AUTOC_LS              ! 5
+           real               :: QC_CRIT_LS            ! 6
+           real               :: ACCRETION             ! 7
+           real               :: RAIN_REVAP_FAC        ! 8
+           real               :: VOL_TO_FRAC           ! 9
+           real               :: SUPERSAT              ! 10
+           real               :: SHEAR_EVAP_FAC        ! 11
+           real               :: MIN_ALLOW_CCW         ! 12
+           real               :: CCW_EVAP_EFF          ! 13
+           real               :: CCI_EVAP_EFF          ! 13
+           real               :: NSUB_AUTOCONV         ! 14
+           real               :: LS_SUND_INTER         ! 15
+           real               :: LS_SUND_COLD          ! 16
+           real               :: LS_SUND_TEMP1         ! 17
+           real               :: ANV_SUND_INTER        ! 18
+           real               :: ANV_SUND_COLD         ! 19
+           real               :: ANV_SUND_TEMP1        ! 20
+           real               :: ANV_TO_LS_TIME        ! 21
+           real               :: CCN_OCEAN             ! 22
+           real               :: CCN_LAND              ! 23
+           real               :: NCCN_ANVIL_NULL       ! 24
+           real               :: NCCN_PBL_NULL         ! 25
+           real               :: DISABLE_RAD           ! 26
+           real               :: ICE_SETTLE            ! 27
+           real               :: ANV_ICEFALL           ! 28
+           real               :: LS_ICEFALL            ! 29
+           real               :: REVAP_OFF_P           ! 30
+           real               :: CNV_ENVF              ! 31
+           real               :: ANV_ENVF              ! 31
+           real               :: SC_ENVF               ! 31
+           real               :: LS_ENVF               ! 31
+           real               :: WRHODEP               ! 32
+           real               :: ICE_RAMP              ! 33
+           real               :: CNV_ICEPARAM          ! 34
+           real               :: CNV_ICEFRPWR          ! 35
+           real               :: CNV_DDRF              ! 36
+           real               :: ANV_DDRF              ! 37
+           real               :: LS_DDRF               ! 38
+           real               :: AUTOC_ANV             ! 39
+           real               :: QC_CRIT_ANV           ! 40
+           real               :: TANHRHCRIT            ! 41
+           real               :: MINRHCRIT             ! 42
+           real               :: MAXRHCRIT             ! 43
+           real               :: PRECIPRAD             ! 44
+           real               :: TURNRHCRIT            ! 45
+           real               :: MAXRHCRITLAND         ! 46
+           real               :: FR_LS_WAT             ! 47
+           real               :: FR_LS_ICE             ! 48
+           real               :: FR_AN_WAT             ! 49
+           real               :: FR_AN_ICE             ! 50
+           real               :: MIN_RL                ! 51
+           real               :: MIN_RI                ! 52
+           real               :: MAX_RL                ! 53
+           real               :: MAX_RI                ! 54
+           real               :: FAC_RL                ! 55
+           real               :: FAC_RI                ! 56
+           real               :: SNOW_REVAP_FAC        ! 57
+           real               :: PDFSHAPE              ! 58
+           real               :: TURNRHCRIT_UP         ! 59
+           real               :: SLOPERHCRIT           ! 60
+           real               :: MIN_LTS               ! 61
+           integer            :: CFPBL_EXP             ! 62
+           real               :: DISP_FACTOR_LIQ       ! 63
+           real               :: DISP_FACTOR_ICE       ! 63
+           real               :: SCLM_SHALLOW          ! 63
+           real               :: SCLM_DEEP             ! 63
+      endtype CLDPARAM_TYPE
+      type (CLDPARAM_TYPE) :: CLDPARAMS
+
 #ifndef _CUDA
    private
 
+   PUBLIC CLDPARAMS
    PUBLIC PROGNO_CLOUD
    PUBLIC ICE_FRACTION
    PUBLIC fix_up_clouds
@@ -88,7 +162,6 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: RAD_QR_dev
    real, allocatable, dimension(:,:), device :: RAD_QS_dev
    real, allocatable, dimension(:,:), device :: RAD_QG_dev
-   real, allocatable, dimension(:,:), device :: QPLS_dev
    real, allocatable, dimension(:,:), device :: CLDREFFL_dev
    real, allocatable, dimension(:,:), device :: CLDREFFI_dev
    real, allocatable, dimension(:  ), device :: PRELS_dev
@@ -405,7 +478,6 @@ contains
          RAD_QR_dev       , &
          RAD_QS_dev       , &
          RAD_QG_dev       , &
-         QPLS_dev         , &
          CLDREFFL_dev     , &
          CLDREFFI_dev     , &
          PRELS_dev        , &
@@ -420,7 +492,6 @@ contains
          SNRCU_dev        , &
          SNRAN_dev        , &
          SNRSC_dev        , &
-         CLDPARAMS        , &
          minrhcrit        , &
          maxrhcrit        , &
          turnrhcrit       , &
@@ -477,7 +548,6 @@ contains
       integer, intent(in   ), value :: LM
       real   , intent(in   ), value :: DT
 #else
-      type (CLDPARAM_TYPE), intent(in)          :: CLDPARAMS
       real, intent(in   ), dimension(IRUN)      :: minrhcrit,maxrhcrit,turnrhcrit 
 
       integer, intent(in   )                    :: IRUN ! IM*JM
@@ -511,7 +581,7 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: SC_QIWDTR_dev  ! DQIDTSHLW
       real, intent(inout), dimension(IRUN,  LM) :: QRN_SC_dev     ! SHLW_PRC3
       real, intent(inout), dimension(IRUN,  LM) :: QSN_SC_dev     ! SHLW_SNO3
-      real, intent(inout), dimension(IRUN,  LM) :: SC_UPDFRC_dev  ! UPDFSHLW
+      real, intent(in   ), dimension(IRUN,  LM) :: SC_UPDFRC_dev  ! UPDFSHLW
       real, intent(in   ), dimension(IRUN,  LM) :: U_dev  ! U1
       real, intent(in   ), dimension(IRUN,  LM) :: V_dev  ! V1
       real, intent(inout), dimension(IRUN,  LM) :: TH_dev ! TH1
@@ -529,7 +599,6 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: RAD_QR_dev ! QRAIN
       real, intent(  out), dimension(IRUN,  LM) :: RAD_QS_dev ! QSNOW
       real, intent(  out), dimension(IRUN,  LM) :: RAD_QG_dev ! QGRAUPEL
-      real, intent(  out), dimension(IRUN,  LM) :: QPLS_dev ! QPLS
       real, intent(  out), dimension(IRUN,  LM) :: CLDREFFL_dev ! CLDREFFL
       real, intent(  out), dimension(IRUN,  LM) :: CLDREFFI_dev ! CLDREFFI
       real, intent(  out), dimension(IRUN     ) :: PRELS_dev ! LS_PRC2
@@ -818,7 +887,6 @@ contains
             RAD_QR_dev(I,K)     = 0.
             RAD_QS_dev(I,K)     = 0.
             RAD_QG_dev(I,K)     = 0.
-            QPLS_dev(I,K)       = 0.
             RAD_CLDFRC_dev(I,K) = 0.
             CLDREFFL_dev(I,K)   = 0.
             CLDREFFI_dev(I,K)   = 0.
@@ -1616,9 +1684,9 @@ contains
                if (VFALLRN.NE.0.) then
                   QRN_ALL = QRN_ALL + PFL_LS_dev(I,K)/VFALLRN
                end if
-               if (VFALLRN.NE.0. .AND. VFALLSN.NE.0.) then
-                  QPLS_dev(I,K) = QPLS_dev(I,K) + PFL_LS_dev(I,K)/VFALLRN + PFI_LS_dev(I,K)/VFALLSN
-               end if 
+             ! if (VFALLRN.NE.0. .AND. VFALLSN.NE.0.) then
+             !    QPLS_dev(I,K) = QPLS_dev(I,K) + PFL_LS_dev(I,K)/VFALLRN + PFI_LS_dev(I,K)/VFALLSN
+             ! end if 
             end if
 
             IF ( (QLW_LS_dev(I,K)+QLW_AN_dev(I,K)) > tiny(0.00) ) THEN
