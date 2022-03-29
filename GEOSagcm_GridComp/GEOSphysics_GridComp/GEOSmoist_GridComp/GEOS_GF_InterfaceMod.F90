@@ -40,6 +40,8 @@ module GEOS_GF_InterfaceMod
   end type FRIENDLIES_TYPE
   type (FRIENDLIES_TYPE) FRIENDLIES
 
+  integer :: USE_GF2020
+
   public :: GF_Setup, GF_Initialize, GF_Run
 
 contains
@@ -275,6 +277,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
 
+#ifdef NODISABLE
+
     call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR', RC=STATUS); VERIFY_(STATUS)
 
          if (STOCHASTIC_CNV /= 0) then
@@ -395,6 +399,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF         &
                                  ,TPWI,TPWI_star,LFR_GF                             &
                                  ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d,CNV_TR)
+#endif
 
     call MAPL_TimerOff (MAPL,"--GF")
 

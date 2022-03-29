@@ -12,6 +12,8 @@ module GEOS_GFDL_1M_InterfaceMod
 
   use ESMF
   use MAPL
+  use aer_cloud, only: AerProps
+  use Aer_Actv_Single_Moment, only: Aer_Actv_1M_interface, USE_AEROSOL_NN, R_AIR
   use gfdl2_cloud_microphys_mod
 
   implicit none
@@ -179,6 +181,24 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
     VERIFY_(STATUS)                                                      
 
+    call MAPL_AddInternalSpec(GC,                               &
+         SHORT_NAME = 'NACTL',                                  &
+         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &           
+         UNITS      = 'm-3',                                    &
+         RESTART    = MAPL_RestartSkip,                         &  
+         DIMS       = MAPL_DimsHorzVert,                        &
+         VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                               &
+         SHORT_NAME = 'NACTI',                                  &
+         LONG_NAME  = 'activ aero # conc ice phase for 1-mom',  &
+         UNITS      = 'm-3',                                    &
+         RESTART    = MAPL_RestartSkip,                         &
+         DIMS       = MAPL_DimsHorzVert,                        &
+         VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_TimerAdd(GC, name="--GFDL_1M", RC=STATUS)
     VERIFY_(STATUS)
 
@@ -189,8 +209,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     integer, optional                   :: RC  ! return code
 
     type (ESMF_Grid )                   :: GRID
-    type (ESMF_State),         pointer  :: GIM(:)
-    type (ESMF_State),         pointer  :: GEX(:)
     type (ESMF_State)                   :: INTERNAL
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
@@ -198,9 +216,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_Get ( MAPL, LM=LM, GIM=GIM, GEX=GEX, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -221,8 +236,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     VERIFY_(STATUS)
     call aer_cloud_init()
     call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for GFDL_1M")
-
-    call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GFDL_1M_Initialize
 
@@ -275,6 +288,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
+
+#ifdef NODISABLE
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
@@ -746,6 +761,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (associated(DVDT_micro) ) DVDT_micro  = (V1 - DVDT_micro - V1     ) / DT_MOIST
          if (associated(DTDT_micro) ) DTDT_micro  = (TH1*PK - DTDT_micro      ) / DT_MOIST
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
+#endif
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 

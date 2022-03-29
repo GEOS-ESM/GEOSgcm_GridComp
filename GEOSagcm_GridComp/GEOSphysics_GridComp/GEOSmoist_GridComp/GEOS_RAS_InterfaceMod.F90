@@ -80,6 +80,8 @@ subroutine RAS_Initialize (MAPL, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
 
+#ifdef NODISABLE
+
       call MAPL_GetResource(MAPL, RAS_NO_NEG,              'RAS_NO_NEG:', default=.FALSE. , RC=STATUS)
       call MAPL_GetResource(MAPL, RASPARAMS%CUFRICFAC,     'CUFRICFAC:',      DEFAULT= 1.000, RC=STATUS)
       call MAPL_GetResource(MAPL, RASPARAMS%SHR_LAMBDA_FAC,'SHR_LAMBDA_FAC:', DEFAULT= 0.05,  RC=STATUS)
@@ -121,6 +123,7 @@ subroutine RAS_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, CBL_TPERT,               'CBL_TPERT:',       DEFAULT=-1.0   , RC=STATUS)
       call MAPL_GetResource(MAPL, CBL_TPERT_MXOCN,         'CBL_TPERT_MXOCN:', DEFAULT= 2.0   , RC=STATUS)
       call MAPL_GetResource(MAPL, CBL_TPERT_MXLND,         'CBL_TPERT_MXLND:', DEFAULT= 0.0   , RC=STATUS)
+#endif
 
 end subroutine RAS_Initialize
 
@@ -174,6 +177,8 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
+
+#ifdef NODISABLE
 
       IRAS       = nint(LONS*100)
       JRAS       = nint(LATS*100)
@@ -333,6 +338,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       if(associated(RCCODE )) RCCODE  = 1.0*IRCCODE
       if(associated(TRIEDLV)) TRIEDLV = TRDLX
       if(associated(TVEX   )) TVEX     = SUM( (MAPL_CP*TEMP + MAPL_ALHL*Q)*MASS, 3 )
+#endif
 
     call MAPL_TimerOff(MAPL,"--RAS")
 

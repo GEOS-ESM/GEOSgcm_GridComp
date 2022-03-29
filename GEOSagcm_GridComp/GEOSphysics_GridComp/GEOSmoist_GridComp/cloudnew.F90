@@ -54,7 +54,6 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: PPE_dev
    real, allocatable, dimension(:  ), device :: FRLAND_dev
    real, allocatable, dimension(:,:), device :: KH_dev
-   real, allocatable, dimension(:  ), device :: DTS_dev
    real, allocatable, dimension(:,:), device :: RMFDTR_dev
    real, allocatable, dimension(:,:), device :: QLWDTR_dev
    real, allocatable, dimension(:,:), device :: U_dev
@@ -379,7 +378,6 @@ contains
          w3_dev           , &
          qt3_dev          , &
          hl3_dev          , &
-         DTS_dev          , &
          RMFDTR_dev       , &
          QLWDTR_dev       , &              
          QRN_CU_dev       , &
@@ -504,7 +502,6 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: w3_dev   !
       real, intent(in   ), dimension(IRUN,  LM) :: qt3_dev  !
       real, intent(in   ), dimension(IRUN,  LM) :: hl3_dev  !
-      real, intent(in   ), dimension(IRUN     ) :: DTS_dev     ! DTS
       real, intent(in   ), dimension(IRUN,  LM) :: RMFDTR_dev  ! CNV_MFD
       real, intent(in   ), dimension(IRUN,  LM) :: QLWDTR_dev  ! CNV_DQLDT
       real, intent(inout), dimension(IRUN,  LM) :: QRN_CU_dev  ! CNV_PRC3 IS THIS INTENT IN?

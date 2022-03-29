@@ -114,41 +114,27 @@ contains
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
-
     ! Set the Init entry point
-    call MAPL_GridCompSetEntryPoint ( GC,  ESMF_METHOD_INITIALIZE,  Initialize, RC=status )
-    VERIFY_(STATUS)
-
-    ! Get the configuration from the component
     !-----------------------------------------
-
-    call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
+    call MAPL_GridCompSetEntryPoint ( GC,  ESMF_METHOD_INITIALIZE,  Initialize, RC=status )
     VERIFY_(STATUS)
 
     ! Set the Run entry point
     ! -----------------------
-
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,  &
-         RC=STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=status )
     VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute( CF, IQVAINC, Label='ALLOW_MOIST_AINC_UPDATE:',   default=0,        RC=STATUS)
+    ! Get the configuration from the component
+    !-----------------------------------------
+    call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
     VERIFY_(STATUS)
-    if ( IQVAINC/=0 ) then
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  AINC_UPDATE, &
-            RC=STATUS)
-       VERIFY_(STATUS)
-    endif
 
     ! Set the state variable specs.
     ! -----------------------------
-
-    call ESMF_ConfigGetAttribute ( CF, DT, Label="RUN_DT:",                                   RC=STATUS)
+    call ESMF_ConfigGetAttribute( CF, DT,       Label="RUN_DT:",                              RC=STATUS)
     VERIFY_(STATUS)
-
     call ESMF_ConfigGetAttribute( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(DT), RC=STATUS)
     VERIFY_(STATUS)
-
     call ESMF_ConfigGetAttribute( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -160,8 +146,6 @@ contains
                adjustl(CONVPAR_OPTION)=="GF" .or. &
                adjustl(CONVPAR_OPTION)=="NONE"
     _ASSERT( LCONVPAR, 'Unsupported Deep Convection Option' )
-    if (adjustl(CONVPAR_OPTION)=="RAS") call RAS_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF" ) call  GF_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
 
     ! Inititialize shallow convective parameterizations (Options: UW or NONE)
     !----------------------------------------------------------------------
@@ -170,22 +154,25 @@ contains
     LSHALLOW = adjustl(SHALLOW_OPTION)=="UW" .or. &
                adjustl(SHALLOW_OPTION)=="NONE"
     _ASSERT( LSHALLOW, 'Unsupported Shallow Convection Option' )
-    if (adjustl(SHALLOW_OPTION)=="UW") call UW_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
 
     ! Inititialize cloud microphysics (Options: BACM_1M, MGB2_2M or GFDL_1M)
     !--------------------------------------------------------------
     call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICRO:",  default="GFDL_1M", RC=STATUS)
     VERIFY_(STATUS)
-    LCLDMICRO = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
-                adjustl(CLDMICR_OPTION)=="MGB2_2M" .or. &
-                adjustl(CLDMICR_OPTION)=="GFDL_1M"
-    _ASSERT( LCLDMICRO, 'Unsupported Cloud Microphysics Option' )
+    LCLDMICR = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
+               adjustl(CLDMICR_OPTION)=="MGB2_2M" .or. &
+               adjustl(CLDMICR_OPTION)=="GFDL_1M"
+    _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
+
+
+    if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
 
     ! !INTERNAL STATE:
-
     ! contained in InterfaceMods
 
     ! !IMPORT STATE:
@@ -1978,6 +1965,38 @@ contains
          LONG_NAME ='shallow_convective_precipitation',            &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='LS_SNR',                                     &
+         LONG_NAME ='nonanvil_large_scale_snow',          &
+         UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'AN_SNR',                                     &
+         LONG_NAME = 'anvil_snow',                         &
+         UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='CN_SNR',                                     &
+         LONG_NAME ='convective_snow',                    &
+         UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='SC_SNR',                                    &
+         LONG_NAME ='shallow_convective_snow',            &
+         UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -4977,22 +4996,6 @@ contains
 
     ENDIF
 
-    call MAPL_AddExportSpec(GC,                               &
-    SHORT_NAME         = 'NACTL',                             &
-    LONG_NAME          = 'activ aero # conc liq phase for 1-mom',              & 
-    UNITS              = 'm-3',                               &
-    DIMS               = MAPL_DimsHorzVert,                   &
-    VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-    SHORT_NAME         = 'NACTI',                             &
-    LONG_NAME          = 'activ aero # conv ice phase for 1-mom',               & 
-    UNITS              = 'm-3',                               &
-    DIMS               = MAPL_DimsHorzVert,                   &
-    VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
-    VERIFY_(STATUS)
-
     !EOS
 
     ! Set the Profiling timers
@@ -5111,22 +5114,17 @@ contains
 
     ! Get parameters from generic state.
     !-----------------------------------
-
-    call MAPL_Get ( MAPL, LM=LM, GIM=GIM, GEX=GEX, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
-    VERIFY_(STATUS)
-
     call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-
-    call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE, Label="UPDATE_PRECIP_TYPE:",  default=.TRUE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
 
-    if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
 
     ! All done
     !---------

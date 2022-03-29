@@ -253,8 +253,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     integer, optional                   :: RC  ! return code
 
     type (ESMF_Grid )                   :: GRID
-    type (ESMF_State),         pointer  :: GIM(:)
-    type (ESMF_State),         pointer  :: GEX(:)
     type (ESMF_State)                   :: INTERNAL
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
@@ -262,9 +260,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     real DCS, QCVAR_, WBFFACTOR, NC_CST, NI_CST, NG_CST, MUI_CST
     logical  :: nccons, nicons, ngcons, do_graupel
     real(ESMF_KIND_R8)  Dcsr8, qcvarr8,  micro_mg_berg_eff_factor_in, ncnstr8, ninstr8, ngnstr8, mui_cnstr8
-
-    call MAPL_Get ( MAPL, GIM=GIM, GEX=GEX, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
-    VERIFY_(STATUS)
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
@@ -276,6 +271,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QW,       'QW'      , RC=STATUS); VERIFY_(STATUS)
     QW = Q+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
+
+#ifdef NODISABLE
 
     call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=350.0e-6, RC=STATUS )
     VERIFY_(STATUS)
@@ -351,6 +348,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, CLDPARAMS%DISP_FACTOR_ICE,         'DISP_FACTOR_ICE:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the droplet/ice crystal number in convective detrainment 
 
     call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
+#endif
 
 end subroutine MGB2_2M_Initialize
 
@@ -403,6 +401,8 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
+
+#ifdef NODISABLE
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
@@ -1792,6 +1792,7 @@ do K= 1, LM
       call MAPL_TimerOff (MAPL,"---CLDMICRO", RC=STATUS)
 
          !=======================================================================
+#endif
 
    call MAPL_TimerOff(MAPL,"--MGB2_2M",RC=STATUS); VERIFY_(STATUS)
 

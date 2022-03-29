@@ -179,6 +179,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
 
+#ifdef NODISABLE
+
     call MAPL_GetPointer(INTERNAL, CUSH, 'CUSH', RC=STATUS); VERIFY_(STATUS) 
 
       !  Call UW shallow convection
@@ -272,6 +274,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         SC_MSE = dum2d
       end if
       if (associated(CUSH_SC)) CUSH_SC = CUSH
+#endif
 
     call MAPL_TimerOff (MAPL,"--UW")
 

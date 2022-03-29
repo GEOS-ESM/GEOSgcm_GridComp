@@ -13,7 +13,8 @@ module GEOS_BACM_1M_InterfaceMod
   use ESMF
   use MAPL
   use GEOS_UtilsMod
-  use Aer_Actv_Single_Moment,only: Aer_Actv_1M_interface, USE_AEROSOL_NN
+  use aer_cloud, only: AerProps
+  use Aer_Actv_Single_Moment, only: Aer_Actv_1M_interface, USE_AEROSOL_NN, R_AIR
 
   implicit none
 
@@ -213,6 +214,24 @@ subroutine BACM_1M_Setup (GC, CF, RC)
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
     VERIFY_(STATUS)                                                      
 
+    call MAPL_AddInternalSpec(GC,                               &
+         SHORT_NAME = 'NACTL',                                  &
+         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
+         UNITS      = 'm-3',                                    &
+         RESTART    = MAPL_RestartSkip,                         &
+         DIMS       = MAPL_DimsHorzVert,                        &
+         VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                               &
+         SHORT_NAME = 'NACTI',                                  &
+         LONG_NAME  = 'activ aero # conc ice phase for 1-mom',  &           
+         UNITS      = 'm-3',                                    &
+         RESTART    = MAPL_RestartSkip,                         &  
+         DIMS       = MAPL_DimsHorzVert,                        &
+         VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_TimerAdd(GC, name="--BACM_1M", RC=STATUS)
     VERIFY_(STATUS)
 
@@ -223,8 +242,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     integer, optional                   :: RC  ! return code
 
     type (ESMF_Grid )                   :: GRID
-    type (ESMF_State),         pointer  :: GIM(:)
-    type (ESMF_State),         pointer  :: GEX(:)
     type (ESMF_State)                   :: INTERNAL
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QW
@@ -236,7 +253,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     integer                    :: LM
     real                       :: tmprh, TMP_ICEFALL
 
-    call MAPL_Get ( MAPL, LM=LM, GIM=GIM, GEX=GEX, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
+    call MAPL_Get ( MAPL, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -366,24 +383,18 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: I, J, L
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
+    logical                         :: USE_AERO_BUFFER
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
 
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, KH
-    real, pointer, dimension(:,:)   :: FRLAND, TROPP, CAPE, KPBLSC
-    real, pointer, dimension(:,:,:) :: HL2,       &
-                                       HL3,       &
-                                       QT2,       &
-                                       QT3,       &
-                                       W2,        &
-                                       W3,        &
-                                       HLQT,      &
-                                       WQT,       &
-                                       WQL,       &
-                                       WHL,       &
-                                       EDMF_FRC
+    real, pointer, dimension(:,:)   :: FRLAND, TS, DTSX, TROPP, CAPE, SH, EVAP, KPBLSC
+    real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
+    real, pointer, dimension(:,:,:) :: OMEGA, NACTL, NACTI
+    real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQLDT, CNV_PRC3, CNV_UPDF
+    real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
     ! Local
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
@@ -403,10 +414,37 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     character(len=2)                    :: dateline
     integer                             :: imsize,nn
     real                                :: tmprhO, tmprhL
+    type(ESMF_State)                    :: AERO_ACI
+    type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
     ! Exports
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
     real, pointer, dimension(:,:,:) :: DUDT_micro, DVDT_micro, DTDT_micro
- 
+    real, pointer, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
+    real, pointer, dimension(:,:,:) :: CLDREFFL, CLDREFFI 
+    real, pointer, dimension(:,:,:) :: RHX
+    real, pointer, dimension(:,:,:) :: REV_CN, REV_SC, REV_AN, REV_LS
+    real, pointer, dimension(:,:,:) :: RSU_CN, RSU_SC, RSU_AN, RSU_LS
+    real, pointer, dimension(:,:,:) :: ACLL_CN, ACLL_SC, ACLL_AN, ACLL_LS
+    real, pointer, dimension(:,:,:) :: ACIL_CN, ACIL_SC, ACIL_AN, ACIL_LS
+    real, pointer, dimension(:,:,:) :: PFL_CN, PFL_SC, PFL_AN, PFL_LS
+    real, pointer, dimension(:,:,:) :: PFI_CN, PFI_SC, PFI_AN, PFI_LS
+    real, pointer, dimension(:,:,:) :: DLPDF, DIPDF, DLFIX, DIFIX
+    real, pointer, dimension(:,:,:) :: AUT, EVAPC, SUBLC, SDM
+    real, pointer, dimension(:,:,:) :: VFALLICE_AN, VFALLICE_LS
+    real, pointer, dimension(:,:,:) :: VFALLWAT_AN, VFALLWAT_LS
+    real, pointer, dimension(:,:,:) :: VFALLRN_AN, VFALLRN_LS, VFALLRN_CN, VFALLRN_SC
+    real, pointer, dimension(:,:,:) :: VFALLSN_AN, VFALLSN_LS, VFALLSN_CN, VFALLSN_SC
+    real, pointer, dimension(:,:,:) :: FRZ_TT, FRZ_PP
+    real, pointer, dimension(:,:,:) :: DCNVL, DCNVI
+    real, pointer, dimension(:,:,:) :: ALPHT, ALPH1, ALPH2
+    real, pointer, dimension(:,:,:) :: CFPDF, RHCLR
+    real, pointer, dimension(:,:,:) :: DQRL, PDF_A, WTHV2
+    real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
+    real, pointer, dimension(:,:  ) :: LS_ARF,  CN_ARF,  AN_ARF,  SC_ARF
+    real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
+    real, pointer, dimension(:,:,:) :: NCPL_VOL, NCPI_VOL
+    real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
+
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
 
@@ -442,6 +480,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, CLLS,     'CLLS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NACTL,    'NACTL'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NACTI,    'NACTI'   , RC=STATUS); VERIFY_(STATUS)
 
     ! Import State
     call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
@@ -461,9 +501,14 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, QT2,     'QT2'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, QT3,     'QT3'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, HLQT,    'HLQT'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TROPP,   'TROPP'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, CAPE,    'CAPE'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, KPBLSC,  'KPBL_SC' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
+    call   ESMF_StateGet(IMPORT, 'AERO_ACI', AERO_ACI, __RC__)
 
     ! Allocatables
      ! Edge variables 
@@ -480,6 +525,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( QDDF3(IM,JM,LM  ) )
     ALLOCATE ( DQST3(IM,JM,LM  ) )
     ALLOCATE (  QST3(IM,JM,LM  ) )
+    ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! 2D Variables
     ALLOCATE ( CNV_FRACTION (IM,JM) )
     ALLOCATE ( turnrhcrit2D (IM,JM) )
@@ -500,6 +546,16 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     T        = TH*PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+
+
+    ! Aerosol callbacks and activation
+    call MAPL_TimerOn (MAPL,"---ACTIV")
+    call MAPL_GetResource(MAPL,USE_AERO_BUFFER, 'USE_AERO_BUFFER:', DEFAULT=.TRUE., RC=STATUS)
+    ALLOCATE (AeroProps(IM,JM,LM))
+    call Aer_Actv_1M_interface(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+                               SH, EVAP, KPBLSC, OMEGA, FRLAND, USE_AERO_BUFFER, &
+                               AeroProps, AERO_ACI, NACTL, NACTI)
+    call MAPL_TimerOff(MAPL,"---ACTIV")
 
     WHERE ( ZL0 < 3000. )
        QDDF3 = -( ZL0-3000. ) * ZL0 * MASS
@@ -560,9 +616,9 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDT_micro, 'DQLDT_micro'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQADT_micro, 'DQADT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DUDT_micro, 'DUDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DVDT_micro, 'DVDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTDT_micro, 'DTDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DUDT_micro, 'DUDT_micro'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_micro, 'DVDT_micro'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DTDT_micro, 'DTDT_micro'       , RC=STATUS); VERIFY_(STATUS)
     if (associated(DQVDT_micro)) DQVDT_micro = Q
     if (associated(DQLDT_micro)) DQLDT_micro = QLLS + QLCN
     if (associated(DQIDT_micro)) DQIDT_micro = QILS + QICN
@@ -571,23 +627,102 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (associated(DVDT_micro) ) DVDT_micro  = V
     if (associated(DTDT_micro) ) DTDT_micro  = T
 
-    ! Export and/or sratch Variable
+    ! Imports which are Exports from local siblings
+    ! DeepCu
+    call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD '  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_DQLDT,  'CNV_DQLDT' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  RC=STATUS); VERIFY_(STATUS)
+    ! ShallowCu
+    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SHLW_PRC3,  'SHLW_PRC3' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SHLW_SNO3,  'SHLW_SNO3' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  ,  RC=STATUS); VERIFY_(STATUS)
+    ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QV,   'QV'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QL,   'QL'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QI,   'QI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RAD_QR,   'QR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RAD_QS,   'QS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RAD_QG,   'QQ'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFL, 'RL'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFI, 'RI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! Exports passed to be filled in progno_cloud
+    call MAPL_GetPointer(EXPORT, LS_PRCP,  'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CN_PRCP,  'CN_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AN_PRCP,  'AN_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SC_PRCP,  'SC_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, LS_ARF,   'LS_ARF'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CN_ARF,   'CN_ARF'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AN_ARF,   'AN_ARF'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SC_ARF,   'SC_ARF'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, LS_SNR,   'LS_SNR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CN_SNR,   'CN_SNR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AN_SNR,   'AN_SNR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SC_SNR,   'SC_SNR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RHX   ,   'RHX'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, REV_CN,   'REV_CN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, REV_SC,   'REV_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, REV_AN,   'REV_AN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, REV_LS,   'REV_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RSU_CN,   'RSU_CN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RSU_SC,   'RSU_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RSU_AN,   'RSU_AN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RSU_LS,   'RSU_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACLL_CN,  'ACRLL_CN', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACLL_SC,  'ACRLL_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACLL_AN,  'ACRLL_AN', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACLL_LS,  'ACRLL_LS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACIL_CN,  'ACRIL_CN', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACIL_SC,  'ACRIL_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACIL_AN,  'ACRIL_AN', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ACIL_LS,  'ACRIL_LS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFL_CN,   'PFL_CN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFL_SC,   'PFL_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFL_AN,   'PFL_AN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFL_LS,   'PFL_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFI_CN,   'PFI_CN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFI_SC,   'PFI_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFI_AN,   'PFI_AN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFI_LS,   'PFI_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DLPDF,    'DLPDF'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DIPDF,    'DIPDF'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DLFIX,    'DLFIX'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DIFIX,    'DIFIX'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AUT,      'AUT'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, EVAPC,    'EVAPC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SDM,      'SDM'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLICE_AN, 'VFALLICE_AN' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLICE_LS, 'VFALLICE_LS' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLWAT_AN, 'VFALLWAT_AN' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLWAT_LS, 'VFALLWAT_LS' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLRN_AN,  'VFALLRN_AN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLRN_LS,  'VFALLRN_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLRN_CN,  'VFALLRN_CN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLRN_SC,  'VFALLRN_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLSN_AN,  'VFALLSN_AN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLSN_LS,  'VFALLSN_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLSN_CN,  'VFALLSN_CN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFALLSN_SC,  'VFALLSN_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SUBLC,     'SUBLC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FRZ_TT,    'FRZ_TT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FRZ_PP,    'FRZ_PP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DCNVL,     'DCNVL'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DCNVI,     'DCNVI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ALPHT,     'ALPHT'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ALPH1,     'ALPH1'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ALPH2,     'ALPH2'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CFPDF,     'CFPDF'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RHCLR,     'RHCLR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQRL,      'DQRL'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_A,     'PDF_A'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, WTHV2,     'WTHV2'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, WQL,       'WQL'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
-         SC_SNR = 0.0
-         SC_PRC2 = 0.0
-         SC_ARFX = 0.0
-         REV_SC_X = 0.0
-         RSU_SC_X = 0.0
-         PFL_SC_X = 0.0
-         PFI_SC_X = 0.0
-
-         call  PROGNO_CLOUD (                    &
+         call  PROGNO_CLOUD (     &
               IM*JM, LM         , &
               DT_MOIST          , &
               LATS              , &
@@ -605,19 +740,18 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               HLQT              , &   ! <- turb
               W2                , &   ! <- turb
               W3                , &   ! <- turb
-              QT3               , &
-              HL3               , &
-              DTS               , &
-              CNV_MFD           , &   ! <- ras
-              CNV_DQLDT         , &   ! <- ras              
-              CNV_PRC3          , &   ! <- ras   
-              CNV_UPDF          , &   ! <- ras
+              QT3               , &   ! <- turb
+              HL3               , &   ! <- turb
+              CNV_MFD           , &   ! <- deep
+              CNV_DQLDT         , &   ! <- deep              
+              CNV_PRC3          , &   ! <- deep   
+              CNV_UPDF          , &   ! <- deep
               MFD_SC            , &   ! <- shlw   
               QLDET_SC          , &   ! <- shlw   
               QIDET_SC          , &   ! <- shlw   
               SHLW_PRC3         , &   ! <- shlw   
               SHLW_SNO3         , &   ! <- shlw   
-              UFRC_SC           , &   ! <- shlw   
+              CUFRC_SC*0.5      , &   ! <- shlw   
               U                 , &
               V                 , &
               TH                , &
@@ -632,20 +766,19 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               RAD_QV            , &
               RAD_QL            , &
               RAD_QI            , &
-              QRN               , &
-              QSN               , &
+              RAD_QR            , &
+              RAD_QS            , &
               RAD_QG            , &
-              QPLS              , &
               CLDREFFL          , &
               CLDREFFI          , &
-              LS_PRC2           , &
-              CN_PRC2           , &
-              AN_PRC2           , &
-              SC_PRC2           , &
-              LS_ARFX           , &
-              CN_ARFX           , &
-              AN_ARFX           , &
-              SC_ARFX           , &
+              LS_PRCP           , &
+              CN_PRCP           , &
+              AN_PRCP           , &
+              SC_PRCP           , &
+              LS_ARF            , &
+              CN_ARF            , &
+              AN_ARF            , &
+              SC_ARF            , &
               LS_SNR            , &
               CN_SNR            , &
               AN_SNR            , &
@@ -660,138 +793,104 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               CNV_FRACTION      , &
               TROPP             , &
                                 ! Diagnostics
-              RHX_X             , &
-              REV_LS_X          , &
-              REV_AN_X          , &
-              REV_CN_X          , &
-              REV_SC_X          , &
-              RSU_LS_X          , &
-              RSU_AN_X          , &
-              RSU_CN_X          , &
-              RSU_SC_X          , &
-              ACLL_CN_X,ACIL_CN_X   , &
-              ACLL_AN_X,ACIL_AN_X   , &
-              ACLL_LS_X,ACIL_LS_X   , &
-              ACLL_SC_X,ACIL_SC_X   , &
-              PFL_CN_X,PFI_CN_X     , &
-              PFL_AN_X,PFI_AN_X     , &
-              PFL_LS_X,PFI_LS_X     , &
-              PFL_SC_X,PFI_SC_X     , &
-              DLPDF_X,DIPDF_X,DLFIX_X,DIFIX_X,    &
-              AUT_X, EVAPC_X , SDM_X , SUBLC_X ,  &
-              FRZ_TT_X, DCNVL_X, DCNVi_X,       &
-              ALPHT_X, ALPH1_X, ALPH2_X, CFPDF_X, &
-              RHCLR_X,                      &
-              DQRL_X, FRZ_PP_X,               &
-              VFALLICE_AN_X,VFALLICE_LS_X,    &
-              VFALLWAT_AN_X,VFALLWAT_LS_X,    &
-              VFALLSN_AN_X,VFALLSN_LS_X,VFALLSN_CN_X,VFALLSN_SC_X,  &
-              VFALLRN_AN_X,VFALLRN_LS_X,VFALLRN_CN_X,VFALLRN_SC_X,  &
+              RHX               , &
+              REV_LS            , &
+              REV_AN            , &
+              REV_CN            , &
+              REV_SC            , &
+              RSU_LS            , &
+              RSU_AN            , &
+              RSU_CN            , &
+              RSU_SC            , &
+              ACLL_CN  ,ACIL_CN , &
+              ACLL_AN  ,ACIL_AN , &
+              ACLL_LS  ,ACIL_LS , &
+              ACLL_SC  ,ACIL_SC , &
+               PFL_CN  , PFI_CN , &
+               PFL_AN  , PFI_AN , &
+               PFL_LS  , PFI_LS , &
+               PFL_SC  , PFI_SC , &
+              DLPDF    ,DIPDF   , &
+              DLFIX    ,DIFIX   , &
+              AUT, EVAPC, SDM, SUBLC,  &
+              FRZ_TT, DCNVL, DCNVI, &
+              ALPHT, ALPH1, ALPH2,  &
+              CFPDF, RHCLR, DQRL, FRZ_PP,  &
+              VFALLICE_AN  ,VFALLICE_LS  , &
+              VFALLWAT_AN  ,VFALLWAT_LS  , &
+               VFALLSN_AN  , VFALLSN_LS  ,VFALLSN_CN  ,VFALLSN_SC  ,  &
+               VFALLRN_AN  , VFALLRN_LS  ,VFALLRN_CN  ,VFALLRN_SC  ,  &
               PDF_A, &
-#ifdef PDFDIAG
-              PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
-              PDF_SIGTH1, PDF_SIGTH2, PDF_TH1, PDF_TH2, &
-              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
-              PDF_RQTTH, PDF_RWTH, PDF_RWQT,            &
-#endif
               WTHV2, WQL, &
-              adjustl(SHALLOW_OPTION)=="UW",   &
+              .TRUE., &
               NACTL,    &
               NACTI,    &
-              CONVPAR_OPTION )
-
-         VERIFY_(STATUS)
-
-         if (associated(PDF_AX)) PDF_AX = PDF_A
+              "GF" )
 
          if (USE_AEROSOL_NN) then
-           CFX =100.*PLmb*r_air/T !density times conversion factor
-           NCPL = NACTL/CFX ! kg-1
-           NCPI = NACTI/CFX ! kg-1
+           NCPL_VOL = NACTL/(100.*PLmb*R_AIR/T) ! kg-1
+           NCPI_VOL = NACTI/(100.*PLmb*R_AIR/T) ! kg-1
          else
-           NCPL = 0.
-           NCPI = 0.
+           NCPL_VOL = 0.
+           NCPI_VOL = 0.
          endif
 
-         !-----------------------------------------
-         !! kluge in some skewness for PBL clouds 
-         !! where DTS:=TS-TSFCAIR > 0. i.e., unstable
-         RAD_QV   = max( Q1 , 0. )
-
+         call MAPL_GetPointer(EXPORT, DTSX, 'DTSX', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         DTSX = TS - TH(:,:,LM)*PK(:,:,LM) + (MAPL_GRAV/MAPL_CP)*ZL0(:,:,LM)
          if (CLDPARAMS%CFPBL_EXP > 1.0) then
-          CFPBL = RAD_CF
-          do L = 1,LM
-             where( (KH(:,:,L-1) > 5.) .AND. (DTS > 0.) )
-                CFPBL(:,:,L) = RAD_CF(:,:,L)**CLDPARAMS%CFPBL_EXP
-             endwhere
-          enddo
-          where( CFPBL > 0.0 )
-             RAD_QL = RAD_QL*(RAD_CF/CFPBL)
-             RAD_QI = RAD_QI*(RAD_CF/CFPBL)
-             QRN    = QRN   *(RAD_CF/CFPBL)
-             QSN    = QSN   *(RAD_CF/CFPBL)
-          endwhere
-          RAD_CF = CFPBL
+           TMP3D = RAD_CF
+           do L = 1,LM
+              where( (KH(:,:,L-1) > 5.) .AND. (DTSX> 0.) )
+                 TMP3D(:,:,L) = RAD_CF(:,:,L)**CLDPARAMS%CFPBL_EXP
+              endwhere
+           enddo
+           where( TMP3D > 0.0 )
+              RAD_QL = RAD_QL*(RAD_CF/TMP3D)
+              RAD_QI = RAD_QI*(RAD_CF/TMP3D)
+              RAD_QR = RAD_QR*(RAD_CF/TMP3D)
+              RAD_QS = RAD_QS*(RAD_CF/TMP3D)
+              RAD_QG = RAD_QG*(RAD_CF/TMP3D)
+           endwhere
+           RAD_CF = TMP3D
          endif
-
+         RAD_QV = MAX( Q      , 0.0   )
          RAD_QL = MIN( RAD_QL , 0.001 )  ! Still a ridiculously large
          RAD_QI = MIN( RAD_QI , 0.001 )  ! value.
-         QRN    = MIN( QRN   , 0.01 )  ! value.
-         QSN    = MIN( QSN   , 0.01 )  ! value.
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+         RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
+         RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
+         RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
          ! Set rain water for radiation to 0 if preciprad flag is off (set to 0)
          if(CLDPARAMS%PRECIPRAD.eq.0.) then
             RAD_QR = 0.
             RAD_QS = 0.
             RAD_QG = 0.
-         else
-            RAD_QR = QRN
-            RAD_QS = QSN
          endif
 
-         if (associated(QRTOT)) QRTOT = QRN*RAD_CF
-         if (associated(QSTOT)) QSTOT = QSN*RAD_CF
-         if (associated(QGTOT)) QGTOT = 0.0
+         !Calculate CFICE and CFLIQ exports 
+         call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', RC=STATUS); VERIFY_(STATUS)
+         if (associated(CFICE)) then
+           CFICE=0.0
+           WHERE (RAD_QI .gt. 1.0e-12)
+              CFICE=RAD_CF*RAD_QI/(RAD_QL+RAD_QI)
+           END WHERE
+           CFICE=MAX(MIN(CFICE, 1.0), 0.0)
+         endif
+         if (associated(CFICE)) then
+           call MAPL_GetPointer(EXPORT, CFLIQ, 'CFLIQ', RC=STATUS); VERIFY_(STATUS)
+           CFLIQ=0.0
+           WHERE (RAD_QL .gt. 1.0e-12)
+              CFLIQ=RAD_CF*RAD_QL/(RAD_QL+RAD_QI)
+           END WHERE
+           CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
+         endif
 
-         if (associated(QPTOTLS)) QPTOTLS = QPLS
-
-         !Calculate CFICE and CFLIQ 
-         CFLIQ=0.0
-         CFICE=0.0
-         QTOT= QICN+QILS+QLCN+QLLS
-         QL_TOT = QLCN+QLLS
-         QI_TOT = QICN+QILS
-         WHERE (QTOT .gt. 1.0e-12)
-            CFLIQ=RAD_CF*QL_TOT/QTOT
-            CFICE=RAD_CF*QI_TOT/QTOT
-         END WHERE
-         CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
-         CFICE=MAX(MIN(CFICE, 1.0), 0.0)
-
-         !======================================================================================================================
-         !===========================Clean stuff and send it to radiation ======================================================
-         !======================================================================================================================
-
-         where (QI_TOT .le. 0.0)
-            CFICE =0.0
-            NCPI=0.0
-            CLDREFFI = MAPL_UNDEF
-         end where
-         where (QL_TOT .le. 0.0)
-            CFLIQ =0.0
-            NCPL  =0.0
-            CLDREFFL = MAPL_UNDEF
-         end where
-
-         if (associated(DQVDT_micro)) DQVDT_micro = (Q1 - DQVDT_micro         ) / DT_MOIST
+         if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
          if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
          if (associated(DQIDT_micro)) DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST
          if (associated(DQADT_micro)) DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
-         if (associated(DUDT_micro) ) DUDT_micro  = (U1 - DUDT_micro - U1) / DT_MOIST
-         if (associated(DVDT_micro) ) DVDT_micro  = (V1 - DVDT_micro - V1) / DT_MOIST
-         if (associated(DTDT_micro) ) DTDT_micro  = (TH1*PK - DTDT_micro) / DT_MOIST
+         if (associated(DUDT_micro) ) DUDT_micro  = ( U          -  DUDT_micro) / DT_MOIST
+         if (associated(DVDT_micro) ) DVDT_micro  = ( V          -  DVDT_micro) / DT_MOIST
+         if (associated(DTDT_micro) ) DTDT_micro  = (TH*PK       -  DTDT_micro) / DT_MOIST
 
     call MAPL_TimerOff (MAPL,"--BACM_1M")
 
