@@ -1,5 +1,17 @@
 !  $Id$
 
+#define _DEALLOC(A) \
+    if(associated(A))then; \
+          if(MAPL_ShmInitialized)then; \
+              call MAPL_SyncSharedMemory(rc=STATUS); \
+              call MAPL_DeAllocNodeArray(A,rc=STATUS); \
+           else; \
+              deallocate(A,stat=STATUS); \
+           endif; \
+       _VERIFY(STATUS); \
+       NULLIFY(A); \
+    endif
+
 #include "MAPL_Generic.h"
 
 
@@ -1733,13 +1745,14 @@ contains
 
     if (datalake) then
 
+       call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
+       VERIFY_(status)
+       mystate => wrap%ptr
+
         ! next section is done only once. We do it here since the Initalize
         ! method of this component defaults to MAPL_GenericInitialize
         
         if (.not. mystate%InitDone) then
-           call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
-           VERIFY_(status)
-           mystate => wrap%ptr
            mystate%InitDone = .true.
            call MAPL_GetResource ( MAPL, mystate%sstfile, &
                 Label="LAKE_SST_FILE:", DEFAULT="sst.data", RC=STATUS)
@@ -1986,13 +1999,13 @@ subroutine DataLakeReadMask(mapl, msk, maskfile, rc)
   implicit none
   ! arguments
   type (MAPL_MetaComp), pointer  :: MAPL
-  logical, intent(OUT)           :: msk(:)
+  logical, intent(INOUT)           :: msk(:)
   character(len=*), intent(IN)   :: maskfile
   integer, optional, intent(OUT) :: rc
 
   ! errlog vars
   integer :: status
-  character(len=ESMF_MAXSTR), parameter :: Iam='DataLakeRedMask'
+  character(len=ESMF_MAXSTR), parameter :: Iam='DataLakeReadMask'
   
   ! local vars
   integer                       :: unit
@@ -2011,7 +2024,7 @@ subroutine DataLakeReadMask(mapl, msk, maskfile, rc)
   call MAPL_TileMaskGet(tilegrid, tilemask, rc=status)
   VERIFY_(STATUS)
 
-  nt = size(tilemask)
+  nt = size(msk)
   allocate(imask(nt), stat=status)
 
   unit = GETFILE( maskfile, form="unformatted", RC=STATUS )
@@ -2025,8 +2038,7 @@ subroutine DataLakeReadMask(mapl, msk, maskfile, rc)
 
   msk = (imask /= 0.0)
   deallocate(imask)
-  deallocate(tilemask)
-
+  _DEALLOC(tilemask)
 
   RETURN_(ESMF_SUCCESS)
 end subroutine DataLakeReadMask
