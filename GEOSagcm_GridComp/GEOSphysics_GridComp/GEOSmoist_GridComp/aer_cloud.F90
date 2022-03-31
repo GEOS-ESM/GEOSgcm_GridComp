@@ -29,7 +29,7 @@
     
     type :: AerProps            
 	sequence 
-          real,  dimension(nsmx_par)  :: num !Num conc m-3
+          real, dimension(nsmx_par)  :: num !Num conc m-3
           real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
     	  real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
 	  real, dimension(nsmx_par)  :: den  !dry density , Kg m-3

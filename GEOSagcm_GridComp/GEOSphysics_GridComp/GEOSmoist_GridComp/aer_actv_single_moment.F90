@@ -15,8 +15,8 @@ MODULE Aer_Actv_Single_Moment
        integer,public,parameter :: AER_R8 = SELECTED_REAL_KIND(15,307)
        integer,public,parameter :: AER_PR = AER_R8
 
-       real        , parameter :: R_AIR     = 3.47e-3 !m3 Pa kg-1K-1
-       real(AER_PR), parameter :: zero_par  =  tiny(real(0.0,AER_PR)) ! smallest non-zero value
+       real        , parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
+       real(AER_PR), parameter :: zero_par  =  1.e-6   ! small non-zero value
        real(AER_PR), parameter :: ai        =  0.0000594D0
        real(AER_PR), parameter :: bi        =  3.33D0
        real(AER_PR), parameter :: ci        =  0.0264D0
@@ -266,21 +266,21 @@ MODULE Aer_Actv_Single_Moment
 
                 IF(wupdraft > 0.1 .AND. wupdraft < 100.) THEN 
 
-                ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,zero_par)    ! unit: [m-3]
-                rg   (1:n_modes)    =   1.e+6*max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5,zero_par)  ! unit: [um]
-                sig0 (1:n_modes)    =   AeroProps(i,j,k)%sig(1:n_modes)                          ! unit: [um]
-                bibar(1:n_modes)    =   MAX(zero_par,AeroProps(i,j,k)%kap(1:n_modes))                 
+                ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
+                rg   (1:n_modes)    =   max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5*1.e6, zero_par)  ! unit: [um]
+                sig0 (1:n_modes)    =       AeroProps(i,j,k)%sig(1:n_modes)                      ! unit: [um]
+                bibar(1:n_modes)    =   max(AeroProps(i,j,k)%kap(1:n_modes),          zero_par)                 
               
                 IF( tk >= 245.0) then   
-                     call GetActFrac(n_modes                 &
-                                    ,ni(1:n_modes)           &  
-                                    ,rg(1:n_modes)           & 
-                                    ,sig0(1:n_modes)         &  
-                                    ,tk                     &
-                                    ,press                  & 
-                                    ,wupdraft               & 
-                                    ,nact(1:n_modes)         &
-                                    ,bibar(1:n_modes)        &
+                     call GetActFrac(           n_modes    &
+                                    ,      ni(1:n_modes)   &  
+                                    ,      rg(1:n_modes)   & 
+                                    ,    sig0(1:n_modes)   &  
+                                    ,      tk              &
+                                    ,   press              & 
+                                    ,wupdraft              & 
+                                    ,    nact(1:n_modes)   &
+                                    ,   bibar(1:n_modes)   &
                                     )
                      
                      numbinit     = 0.
