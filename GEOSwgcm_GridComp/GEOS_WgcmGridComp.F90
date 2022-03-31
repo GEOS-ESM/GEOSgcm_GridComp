@@ -18,6 +18,8 @@ module GEOS_WgcmGridCompMod
     use GEOS_UMWMGridCompMod,      only : UMWM_SetServices => SetServices 
     use GEOS_WaveWatchGridCompMod, only :  WW3_SetServices => SetServices
 
+    use bl_seaspray_mod, only : mabl_sea_spray => online_spray
+
     use, intrinsic :: ISO_FORTRAN_ENV
 
     implicit none
@@ -362,21 +364,97 @@ contains
             CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
-            SHORT_NAME     = 'SHFX_SPRAY',                             &
+            SHORT_NAME     = 'WM_USTAR',                             &
             CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
-            SHORT_NAME     = 'LHFX_SPRAY',                             &
+            SHORT_NAME     = 'SWH',                                  &
             CHILD_ID       = WM,                     __RC__)
 
+        call MAPL_AddExportSpec(GC,                                  &
+            SHORT_NAME     = 'DCP',                                  &
+            CHILD_ID       = WM,                     __RC__)
+
+!        call MAPL_AddExportSpec(GC,                                  &
+!            SHORT_NAME     = 'EDF',                                  &
+!            CHILD_ID       = WM,                     __RC__)
+
+
+
+        !
+        ! Sea spray diagnostics
+        !
+        call MAPL_AddExportSpec(GC,                                  &
+            SHORT_NAME     = 'EDFP',                                 &
+            LONG_NAME      = 'wave_energy_dissipation_flux_parameterized', &
+            UNITS          = 'kg s-3',                               &
+            DIMS           = MAPL_DimsHorzOnly,                      &
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+            LONG_NAME      = 'sensible_heat_flux_from_turbulence',   &
+            UNITS          = 'W m-2',                                &
+            SHORT_NAME     = 'SHFX',                                 &
+            DIMS           = MAPL_DimsHorzOnly,                      &
+            VLOCATION      = MAPL_VLocationNone,     __RC__) 
+
+        call MAPL_AddExportSpec(GC,                                  &
+            LONG_NAME      = 'total_latent_energy_flux',             &
+            UNITS          = 'W m-2',                                &
+            SHORT_NAME     = 'LHFX',                                 &
+            DIMS           = MAPL_DimsHorzOnly,                      &
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'SHFX_TURB',                            &
+           LONG_NAME       = 'sensible_heat_carried_by_turbulence',  &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'LHFX_TURB',                            &
+           LONG_NAME       = 'latent_heat_carried_by_turbulence',    &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+ 
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'SHFX_TOT',                             &
+           LONG_NAME       = 'sensible_heat_medited_by_seaspray',    &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'LHFX_TOT',                             &
+           LONG_NAME       = 'latent_heat_mediated_by_seaspray',     &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'SHFX_SPRAY',                           &
+           LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'LHFX_SPRAY',                           &
+           LONG_NAME       = 'latent_heat_contribution_from_sea_spray',   &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
 
 
 ! Set the Profiling timers
 ! ------------------------
 
-        call MAPL_TimerAdd(GC, name='TOTAL'        , __RC__)
+        call MAPL_TimerAdd(GC, name='TOTAL'       , __RC__)
         call MAPL_TimerAdd(GC, name='INITIALIZE'  , __RC__)
         call MAPL_TimerAdd(GC, name='RUN'         , __RC__)
+        call MAPL_TimerAdd(GC, name='-SEA_SPRAY'  , __RC__)
         call MAPL_TimerAdd(GC, name='FINALIZE'    , __RC__)
 
 
@@ -568,23 +646,77 @@ contains
       type(ESMF_Grid)                :: GRID
       type(ESMF_VM)                  :: VM
 
-! Local Variables
+      type (ESMF_GridComp), pointer  :: GCS(:)
+      type (ESMF_State),    pointer  :: GIM(:)
+      type (ESMF_State),    pointer  :: GEX(:)
 
+
+! Pointers from Import state       
+      real, pointer, dimension(:,:) :: U10M => null()
+      real, pointer, dimension(:,:) :: V10M => null()
+      real, pointer, dimension(:,:) :: RHOS => null()
+      real, pointer, dimension(:,:) :: PS   => null()
+      real, pointer, dimension(:,:) :: TS   => null()
+      real, pointer, dimension(:,:) :: T10M => null()
+      real, pointer, dimension(:,:) :: RH2M => null()
+      real, pointer, dimension(:,:) :: FRACI=> null()
+
+      real, pointer, dimension(:,:) :: LHFX => null()
+      real, pointer, dimension(:,:) :: SHFX => null()
 
 ! Pointers to my Export state
 
-      real, pointer, dimension(:,:) :: z0 => null()
-      real, pointer, dimension(:,:) :: charnock => null()
+      real, pointer, dimension(:,:) :: WM_USTAR
+      real, pointer, dimension(:,:) :: WM_SWH
+      real, pointer, dimension(:,:) :: WM_DCP
+      real, pointer, dimension(:,:) :: WM_EDF
+
+      !
+      ! Sea spray diagnostics
+      !
+      real, pointer, dimension(:,:) :: WM_EDFP      => null()
+
+      real, pointer, dimension(:,:) :: WM_LHFX      => null()
+      real, pointer, dimension(:,:) :: WM_SHFX      => null()
+
+      real, pointer, dimension(:,:) :: SHFX_TURB    => null()
+      real, pointer, dimension(:,:) :: LHFX_TURB    => null()
+      real, pointer, dimension(:,:) :: SHFX_TOT     => null()
+      real, pointer, dimension(:,:) :: LHFX_TOT     => null()
+      real, pointer, dimension(:,:) :: SHFX_SPRAY   => null()
+      real, pointer, dimension(:,:) :: LHFX_SPRAY   => null()
 
 ! Pointers to child's Export state
+!     N/A
 
-      real, pointer, dimension(:,:) :: z0rlen => null()
-      real, pointer, dimension(:,:) :: charno => null()
+! Local variables
+      integer :: IM, JM
+      integer :: i, j
+! MABL sea spray
+      real :: spray_hss
+      real :: spray_hll
+      real :: spray_hwave
+      real :: spray_cwave
+      real :: spray_p
+      real :: spray_usr
+      real :: spray_massf
+      real :: spray_hs_tot
+      real :: spray_hl_tot
+      real :: spray_usr_new
+      real :: spray_S_bar1
+      real :: spray_z_r
+      real :: spray_omega
+      real :: spray_alpha
+      real :: spray_vfm
 
-      type (ESMF_GridComp),      pointer  :: GCS(:)
-      type (ESMF_State),         pointer  :: GIM(:)
-      type (ESMF_State),         pointer  :: GEX(:)
-      
+      real, parameter :: SPRAY_SOURCE_STRENGTH = 0.4
+      real, parameter :: SPRAY_FEEDBACK        = 0.2
+ 
+! TODO: need to be consistent across the wave models; move to a config file
+      real, parameter :: FRACTION_ICE_SUPPRESS_WAVES = 0.8
+      real, parameter :: NORTH_POLE_CAP_LATITUDE = 88.0
+
+
 
 !=============================================================================
 
@@ -609,9 +741,10 @@ contains
       call MAPL_TimerOn(MAPL, 'TOTAL', __RC__)
       call MAPL_TimerOn(MAPL, 'RUN',  __RC__)
 
-! Get parameters from generic state.
-! ----------------------------------
-      call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__)
+
+! Get parameters from generic state
+! ---------------------------------
+      call MAPL_Get (MAPL, IM=IM, JM=JM, GCS=GCS, GIM=GIM, GEX=GEX, __RC__)
 
 
 ! Get my internal private state
@@ -621,19 +754,184 @@ contains
 
       self => wrap%ptr
 
-! Get pointers to inputs
-! ----------------------
-#if (0)
-      call MAPL_GetPointer(IMPORT, U10M,   'U10M',    __RC__)
-      call MAPL_GetPointer(IMPORT, V10M,   'V10M',    __RC__)
-      call MAPL_GetPointer(IMPORT, FRACI, 'FRACI',    __RC__)
-#endif
 
-!      if (MAPL_AM_I_Root()) write (OUTPUT_UNIT,*) 'DEBUG::WGCM  Run...'
-
+! Run children (specific WM)
+! --------------------------
       call MAPL_GenericRunChildren (GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
 
-!      if (MAPL_AM_I_Root()) write (OUTPUT_UNIT,*) 'DEBUG::WGCM  ...done.'
+
+! MABL sea spray parameterization, Bao et al, 2011
+! ------------------------------------------------
+    call MAPL_TimerOn(MAPL, '-SEA_SPRAY')
+
+! Get pointers to inputs
+! ----------------------
+      call MAPL_GetPointer(IMPORT, U10M,   'U10M',    __RC__)
+      call MAPL_GetPointer(IMPORT, V10M,   'V10M',    __RC__)
+      call MAPL_GetPointer(IMPORT, T10M,   'T10M',    __RC__)
+      call MAPL_GetPointer(IMPORT, RH2M,   'RH2M',    __RC__)
+      call MAPL_GetPointer(IMPORT, RHOS,   'RHOS',    __RC__)
+      call MAPL_GetPointer(IMPORT, TS,     'TS',      __RC__)
+      call MAPL_GetPointer(IMPORT, PS,     'PS',      __RC__)
+      call MAPL_GetPointer(IMPORT, FRACI,  'FRACI',   __RC__)
+      call MAPL_GetPointer(IMPORT, LHFX,   'LHFX',    __RC__)
+      call MAPL_GetPointer(IMPORT, SHFX,   'SH',      __RC__)
+
+
+      call MAPL_GetPointer(EXPORT, WM_USTAR,   'WM_USTAR',  __RC__)
+      call MAPL_GetPointer(EXPORT, WM_SWH,     'SWH',       __RC__)
+      call MAPL_GetPointer(EXPORT, WM_DCP,     'DCP',       __RC__)
+!     call MAPL_GetPointer(EXPORT, WM_EDF,     'EDF',       __RC__)
+      
+      call MAPL_GetPointer(EXPORT, WM_LHFX,    'LHFX',      __RC__)
+      call MAPL_GetPointer(EXPORT, WM_SHFX,    'SHFX',      __RC__)
+
+      ! sea spray diagnostics
+      call MAPL_GetPointer(EXPORT, WM_EDFP,    'EDFP',       alloc=.true., __RC__)
+
+      call MAPL_GetPointer(EXPORT, LHFX_TURB,  'LHFX_TURB' , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_TURB,  'SHFX_TURB' , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_TOT,   'LHFX_TOT'  , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_TOT,   'SHFX_TOT'  , alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_SPRAY, 'LHFX_SPRAY', alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_SPRAY, 'SHFX_SPRAY', alloc=.true., __RC__)
+
+! Sanity diagnostics
+! ------------------
+
+      ! heat fluxes
+      if (associated(WM_LHFX))    WM_LHFX = LHFX
+      if (associated(WM_SHFX))    WM_SHFX = SHFX
+
+    
+    PARAMETERIZED_ENERGY_DISSIPATION_FLUX: if (associated(WM_EDFP)) then
+         
+         WM_EDFP = 1.0*(-0.4+0.25*sqrt(U10M**2 + V10M**2))  ! cEwave
+         where (WM_USTAR /= MAPL_UNDEF)
+             WM_EDFP = (RHOS/MAPL_RHOWTR) * WM_EDFP*WM_USTAR**2
+         elsewhere
+             WM_EDFP = 0.0
+         end where
+
+         where (WM_EDFP < 0.0 .and. WM_USTAR /= MAPL_UNDEF)
+             WM_EDFP = (RHOS/MAPL_RHOWTR) * 3.5 * WM_USTAR**3.5            
+         end where
+         
+         WM_EDFP = WM_EDFP  * MAPL_RHOWTR  ! convert units from 'm3 s-3' to match the units of EDF 'kg s-3'
+
+    end if PARAMETERIZED_ENERGY_DISSIPATION_FLUX
+
+
+
+    DIAGNOSTICS_SPRAY_FLUXES: if ( associated(SHFX_SPRAY) .or. &
+                                   associated(LHFX_SPRAY) ) then
+      
+      ASSERT_(associated(SHFX_SPRAY))
+      ASSERT_(associated(LHFX_SPRAY))
+
+      ASSERT_(associated(SHFX_TURB))
+      ASSERT_(associated(LHFX_TURB))
+
+      ASSERT_(associated(SHFX_TOT))
+      ASSERT_(associated(LHFX_TOT))
+
+      SHFX_TOT   = SHFX
+      LHFX_TOT   = LHFX
+      SHFX_TURB  = SHFX
+      LHFX_TURB  = LHFX
+      SHFX_SPRAY = 0.0
+      LHFX_SPRAY = 0.0
+
+      do j = 1, JM
+          do i = 1, IM
+
+          if ( (WM_USTAR(i,j) /= MAPL_UNDEF) .and. &
+               (WM_SWH(i,j) > 0.1) .and. &
+               (FRACI(i,j) < FRACTION_ICE_SUPPRESS_WAVES) ) then
+
+              spray_hss   = SHFX(i,j)     ! SHWTR
+              spray_hll   = LHFX(i,j)     ! HLATWTR
+              spray_hwave = WM_SWH(i,j)
+              spray_cwave = WM_DCP(i,j)
+#if(0)
+              spray_p     = 3 * WM_EDF(i,j)  / MAPL_RHOWTR   ! the factor 3 is to agree with EDFP
+#else
+              spray_p     =     WM_EDFP(i,j) / MAPL_RHOWTR
+#endif
+              spray_usr   = WM_USTAR(i,j)
+              
+              
+              call mabl_sea_spray(SPRAY_SOURCE_STRENGTH, &
+                                  SPRAY_FEEDBACK,        &
+                                  sqrt(U10M(i,j)**2 + V10M(i,j)**2), &
+                                  10.0,                  &
+                                  TS(i,j)   - 273.15,    &  ! T:=(TSKINW!=MAPL_UNDEF)?TSKINW:TS
+                                  T10M(i,j) - 273.15,    &
+                                  min(RH2M(i,j) * 0.01, 0.99),   &  ! s = ...?
+                                  PS(i,j)   * 0.01,      &
+                                  spray_hss,             &
+                                  spray_hll,             &
+                                  spray_hwave,           &
+                                  spray_cwave,           &
+                                  spray_p,               &
+                                  spray_usr,             &
+                                  spray_massf,           &
+                                  spray_hs_tot,          &
+                                  spray_hl_tot,          &
+                                  spray_usr_new,         &
+                                  spray_S_bar1,          &
+                                  spray_z_r,             &
+                                  spray_omega,           &
+                                  spray_alpha,           &
+                                  spray_vfm)
+
+              if (abs(spray_hss - SHFX(i,j)) > tiny(spray_hss) .or. &
+                  abs(spray_hll - LHFX(i,j)) > tiny(spray_hll)) then
+                  print *, 'DEBUG::WAVES_PHYS  ***Heat Fluxes do not match after SPRAY()'
+              end if    
+   
+              SHFX_TURB(i,j)  = spray_hss
+              LHFX_TURB(i,j)  = spray_hll
+
+              SHFX_SPRAY(i,j) = (spray_hs_tot - spray_hss) * (1 - FRACI(i,j))
+              LHFX_SPRAY(i,j) = (spray_hl_tot - spray_hll) * (1 - FRACI(i,j))
+
+              SHFX_TOT(i,j)   = spray_hss + (spray_hs_tot - spray_hss) * (1 - FRACI(i,j))
+              LHFX_TOT(i,j)   = spray_hll + (spray_hl_tot - spray_hll) * (1 - FRACI(i,j))
+          end if
+
+
+          if (abs(SHFX_SPRAY(i,j)) > 1e2 .or. abs(LHFX_SPRAY(i,j)) > 1e2) then
+              print *, SHFX_SPRAY(i,j),   &
+                       LHFX_SPRAY(i,j),   &
+                       sqrt(U10M(i,j)**2 + V10M(i,j)**2), &
+                       TS(i,j)  - 273.15, & 
+                       T10M(i,j)- 273.15, &
+                       RH2M(i,j) * 0.01,  &  ! s = ...?
+                       PS(i,j)   * 0.01,  &
+                       WM_SWH(i,j),       &
+                       WM_DCP(i,j),       &
+#if(0)
+                       WM_EDF(i,j)
+#else
+                       WM_EDFP(i,j)
+#endif
+          end if
+
+          end do
+      end do
+       
+#ifdef DEBUG
+      print *, ' *** DEBUG   WM:SH_SPRAY = ', minval(SHFX_SPRAY), maxval(SHFX_SPRAY)
+      print *, ' *** DEBUG   WM:LH_SPRAY = ', minval(LHFX_SPRAY), maxval(LHFX_SPRAY)
+#endif
+
+
+   end if DIAGNOSTICS_SPRAY_FLUXES
+
+   call MAPL_TimerOff(MAPL, '-SEA_SPRAY')
+
+
 
 ! Stop the timers
 ! ---------------

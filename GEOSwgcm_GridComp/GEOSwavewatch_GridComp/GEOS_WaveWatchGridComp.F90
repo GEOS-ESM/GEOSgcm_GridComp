@@ -209,39 +209,34 @@ contains
 ! !EXPORT STATE:
         ! Name change: 'charno', 'z0rlen' 
         call MAPL_AddExportSpec(GC,                                  &
-             SHORT_NAME     = 'CHARNOCK',                             &
-             LONG_NAME      = 'wave_model_charnock_coefficient',      &
-             UNITS          = '1',                                    &
-             DIMS           = MAPL_DimsHorzOnly,                      &
-             VLOCATION      = MAPL_VLocationNone,     __RC__) 
+             SHORT_NAME    = 'CHARNOCK',                             &
+             LONG_NAME     = 'wave_model_charnock_coefficient',      &
+             UNITS         = '1',                                    &
+             DIMS          = MAPL_DimsHorzOnly,                      &
+             VLOCATION     = MAPL_VLocationNone,     __RC__) 
      
         call MAPL_AddExportSpec(GC,                                  &
-             SHORT_NAME     = 'Z0',                                   &
-             LONG_NAME      = 'surface_roughness',                    &
-             UNITS          = 'm',                                    &
-             DIMS           = MAPL_DimsHorzOnly,                      &
-             VLOCATION      = MAPL_VLocationNone,     __RC__) 
- 
- 
-        !
-        ! Sea spray diagnostics
-        !
-        call MAPL_AddExportSpec(GC,                                  &
-           SHORT_NAME      = 'SHFX_SPRAY',                           &
-           LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
-           UNITS           = 'W m-2',                                &
-           DIMS            = MAPL_DimsHorzOnly,                      &
-           VLOCATION       = MAPL_VLocationNone,     __RC__)
+             SHORT_NAME    = 'Z0',                                   &
+             LONG_NAME     = 'surface_roughness',                    &
+             UNITS         = 'm',                                    &
+             DIMS          = MAPL_DimsHorzOnly,                      &
+             VLOCATION     = MAPL_VLocationNone,     __RC__) 
+
 
         call MAPL_AddExportSpec(GC,                                  &
-           SHORT_NAME      = 'LHFX_SPRAY',                           &
-           LONG_NAME       = 'latent_heat_contribution_from_sea_spray',   &
-           UNITS           = 'W m-2',                                &
-           DIMS            = MAPL_DimsHorzOnly,                      &
-           VLOCATION       = MAPL_VLocationNone,     __RC__)
+             SHORT_NAME    = 'WM_USTAR',                             &
+             CHILD_ID      = WW3GC,                  __RC__)
 
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'DCP',                                  &
+             CHILD_ID      = WW3GC,                  __RC__)
 
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'SWH',                                  &
+             CHILD_ID      = WW3GC,                  __RC__)
 
+ 
+ 
 
 ! Set the Profiling timers
 ! ------------------------
@@ -543,15 +538,6 @@ contains
       real, pointer, dimension(:,:) :: z0 => null()
       real, pointer, dimension(:,:) :: charnock => null()
 
-      !
-      ! Sea spray diagnostics
-      !
-
-      real, pointer, dimension(:,:) :: SHFX_SPRAY   => null()
-      real, pointer, dimension(:,:) :: LHFX_SPRAY   => null()
-
-
-      
 
 ! Pointers to child's Export state
 
@@ -693,21 +679,6 @@ contains
       if(associated(charnock)) charnock = charno(isc:iec, jsc:jec)
 #endif
 
-
-
-      call MAPL_GetPointer(EXPORT, LHFX_SPRAY, 'LHFX_SPRAY', alloc=.true., __RC__)
-      call MAPL_GetPointer(EXPORT, SHFX_SPRAY, 'SHFX_SPRAY', alloc=.true., __RC__)
-
-      DIAGNOSTICS_SPRAY_FLUXES: if ( associated(SHFX_SPRAY) .or. &
-                                     associated(LHFX_SPRAY) ) then
-      
-          ASSERT_(associated(SHFX_SPRAY))
-          ASSERT_(associated(LHFX_SPRAY))
-
-          SHFX_SPRAY = 0.0*MAPL_UNDEF
-          LHFX_SPRAY = 0.0*MAPL_UNDEF
-      end if DIAGNOSTICS_SPRAY_FLUXES
-  
 
 ! Stop the timers
 ! ---------------

@@ -5,13 +5,8 @@ esma_add_subdirectories(
   umwm_cmake
   )
 
-set_property(
-  SOURCE bl_seaspray.F90
-  PROPERTY COMPILE_DEFINITIONS GEOS
-  )
-
 esma_add_library (${this}
-  SRCS bl_seaspray.F90 GEOS_UMWMGridComp.F90
+  SRCS GEOS_UMWMGridComp.F90
   DEPENDENCIES MAPL umwm
   INCLUDES ${INC_ESMF}
   )

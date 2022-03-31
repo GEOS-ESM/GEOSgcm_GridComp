@@ -11,8 +11,13 @@ set (resource_files
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_WgcmGridComp.F90)
 
+  set_property(
+    SOURCE bl_seaspray.F90
+    PROPERTY COMPILE_DEFINITIONS GEOS
+    )
+
   esma_add_library (${this}
-    SRCS GEOS_WgcmGridComp.F90
+    SRCS bl_seaspray.F90 GEOS_WgcmGridComp.F90
     SUBCOMPONENTS ${alldirs}
     DEPENDENCIES MAPL 
     INCLUDES ${INC_ESMF}
