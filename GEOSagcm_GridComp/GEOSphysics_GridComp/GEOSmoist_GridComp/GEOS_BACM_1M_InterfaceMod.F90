@@ -46,7 +46,6 @@ module GEOS_BACM_1M_InterfaceMod
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
   logical :: USE_AERO_BUFFER
-  logical :: PRECIPRAD
   real    :: MINRHCRITLND
   real    :: MINRHCRITOCN
   real    :: MAXRHCRITLND
@@ -270,7 +269,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_ICE,      'FR_AN_ICE:',      DEFAULT= 0.0     )
 
     call MAPL_GetResource( MAPL, USE_AERO_BUFFER,          'USE_AERO_BUFFER:',  DEFAULT=.TRUE. )
-    call MAPL_GetResource( MAPL, PRECIPRAD,                'PRECIPRAD:',        DEFAULT=.FALSE.)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN,         'CNV_FRACTION_MIN:', DEFAULT=  500.0)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX,         'CNV_FRACTION_MAX:', DEFAULT= 1500.0)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP,         'CNV_FRACTION_EXP:', DEFAULT=    1.0)
@@ -373,6 +371,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
     real, pointer, dimension(:,:  ) :: CAPE, INHB
     real, pointer, dimension(:,:,:) :: BYNCY
+    real, pointer, dimension(:,:,:) :: PTR3D
+    real, pointer, dimension(:,:  ) :: PTR2D
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -530,6 +530,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     else
         CNV_FRACTION = 1
     endif
+    call MAPL_GetPointer(EXPORT, PTR2D, 'CNV_FRC', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PTR2D)) PTR2D = CNV_FRACTION
 
     ! Export Tendencies
     call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro'      , RC=STATUS); VERIFY_(STATUS)
@@ -548,28 +550,18 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (associated(DTDT_micro) ) DTDT_micro  = T
 
     ! Imports which are Exports from local siblings
-    ! DeepCu
-    call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD '  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_DQLDT,  'CNV_DQLDT' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  RC=STATUS); VERIFY_(STATUS)
-    _ASSERT(          associated(CNV_MFD),   'CNV_MFD   undefined' )
-    _ASSERT(          associated(CNV_DQLDT), 'CNV_DQLDT undefined' )
-    _ASSERT(          associated(CNV_PRC3),  'CNV_PRC3  undefined' )
-    _ASSERT(          associated(CNV_UPDF),  'CNV_UPDF  undefined' )
-    ! ShallowCu
-    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SHLW_PRC3,  'SHLW_PRC3' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SHLW_SNO3,  'SHLW_SNO3' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  ,  RC=STATUS); VERIFY_(STATUS)
-    _ASSERT(          associated(MFD_SC),    'MFD_SC    undefined' ) 
-    _ASSERT(          associated(QLDET_SC),  'QLDET_SC  undefined' )
-    _ASSERT(          associated(QIDET_SC),  'QIDET_SC  undefined' )
-    _ASSERT(          associated(SHLW_PRC3), 'SHLW_PRC3 undefined' )
-    _ASSERT(          associated(SHLW_SNO3), 'SHLW_SNO3 undefined' )
-    _ASSERT(          associated(CUFRC_SC),  'CUFRC_SC  undefined' )
+    ! DeepCu : default to 0.0 in MAPL if not running DeepCu
+    call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD '  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_DQLDT,  'CNV_DQLDT' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! ShallowCu : default to 0.0 in MAPL if not running ShallowCu
+    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SHLW_PRC3,  'SHLW_PRC3' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SHLW_SNO3,  'SHLW_SNO3' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QV,   'QV'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -780,12 +772,28 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
          RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
-         ! Set rain water for radiation to 0 if preciprad flag is off (set to 0)
-         if(PRECIPRAD.eq.0.) then
-            RAD_QR = 0.
-            RAD_QS = 0.
-            RAD_QG = 0.
-         endif
+
+         call MAPL_GetPointer(EXPORT, PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP + &
+                                        LS_SNR  + CN_SNR  + AN_SNR  + SC_SNR
+
+         call MAPL_GetPointer(EXPORT, PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = CN_PRCP + SC_PRCP
+
+         call MAPL_GetPointer(EXPORT, PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = LS_PRCP + AN_PRCP
+
+         call MAPL_GetPointer(EXPORT, PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = LS_SNR + CN_SNR + AN_SNR + SC_SNR
+
+         call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = 0.0
+
+         call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = 0.0
+
+         call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (TH*PK, PLmb) , 1.02 ),0.0)
 
          call MAPL_GetPointer(EXPORT, NCPL_VOL, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
          if (associated(NCPL_VOL)) then
@@ -822,6 +830,12 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
+
+         call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = TH
+
+         call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = MAPL_CP*TH*PK + MAPL_GRAV*ZL0
 
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
          if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST

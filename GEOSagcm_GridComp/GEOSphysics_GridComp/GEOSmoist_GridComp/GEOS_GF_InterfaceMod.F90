@@ -250,7 +250,12 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: LATS
 
     ! Required Exports (connectivities to moist siblings)
-    real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQLDT, CNV_PRC3, CNV_UPDF
+    real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_MFC, CNV_CVW, CNV_QC, CNV_DQLDT, CNV_PRC3, CNV_UPDF
+    real, pointer, dimension(:,:,:) :: DTDT_DC
+
+    ! Exports
+    real, pointer, dimension(:,:,:) :: PTR3D
+    real, pointer, dimension(:,:  ) :: PTR2D
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -280,10 +285,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DT_MOIST = DT_R8
 
     ! Required Exports (connectivities to moist siblings)
-    call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD '  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_MFC,    'CNV_MFC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_CVW,    'CNV_CVW'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_QC,     'CNV_QC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_DQLDT,  'CNV_DQLDT' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTDT_DC,    'DTDT_DC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
 #ifdef NODISABLE
 
@@ -408,6 +417,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,TPWI,TPWI_star,LFR_GF                             &
                                  ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d,CNV_TR)
 #endif
+
+    call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST
 
     call MAPL_TimerOff (MAPL,"--GF")
 

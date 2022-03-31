@@ -223,39 +223,23 @@ contains
      VERIFY_(STATUS)                                                                          
 
     call MAPL_AddImportSpec(GC,                           &
-        SHORT_NAME ='QLLS',                                       &
-        LONG_NAME  ='mass_fraction_of_large_scale_cloud_liquid_water', &
+        SHORT_NAME ='QL',                                       &
+        LONG_NAME  ='mass_fraction_of_cloud_liquid_water', &
         UNITS      ='1',                                          &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                           &
-        SHORT_NAME ='QLCN',                                       &
-        LONG_NAME  ='mass_fraction_of_convective_cloud_liquid_water', &
-        UNITS      ='1',                                          &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                           &
-        SHORT_NAME ='QILS',                                       &
-        LONG_NAME  ='mass_fraction_of_large_scale_cloud_ice_water', &
-        UNITS      ='1',                                          &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                           &
-        SHORT_NAME ='QICN',                                       &
-        LONG_NAME  ='mass_fraction_of_convective_cloud_ice_water', &
+        SHORT_NAME ='QI',                                       &
+        LONG_NAME  ='mass_fraction_of_cloud_ice_water', &
         UNITS      ='1',                                          &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME ='QRTOT',                                      &
+        SHORT_NAME ='QR',                                         &
         LONG_NAME  ='mass_fraction_of_falling_rain',              &
         UNITS      ='kg kg-1',                                    &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -263,7 +247,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME ='QSTOT',                                      &
+        SHORT_NAME ='QS',                                         &
         LONG_NAME  ='mass_fraction_of_falling_snow',              &
         UNITS      ='kg kg-1',                                    &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -271,7 +255,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME ='QGTOT',                                      &
+        SHORT_NAME ='QG',                                         &
         LONG_NAME  ='mass_fraction_of_falling_graupel',           &
         UNITS      ='kg kg-1',                                    &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -2828,10 +2812,9 @@ contains
 ! These are the gen-u-ine import arrays in GEOS-5 dimensions
 ! PLE and ZLE are indexed 0:LM 
       real, pointer, dimension(:,:,:) :: T, PLE, QV, FCLD, ZLE
-      real, pointer, dimension(:,:,:) :: RDFL, RDFI, QLLS, QILS, QLCN, QICN
+      real, pointer, dimension(:,:,:) :: RDFL, RDFI 
       real, pointer, dimension(:,:,:) :: RDFR, RDFS, RDFG
-      real, pointer, dimension(:,:,:) :: QRTOT, QSTOT, QGTOT
-      real, dimension(IM,JM,LM) :: QLTOT, QITOT
+      real, pointer, dimension(:,:,:) :: QLTOT, QITOT, QRTOT, QSTOT, QGTOT
       real, pointer, dimension(:,:) :: MCOSZ,FRLAND,TS,FROCEAN
 
 ! These are the same, in logical 2 dimensions for icarus's sake
@@ -2840,7 +2823,7 @@ contains
 
 ! These are the same, converted to upside-down and 2d 
       real, dimension(IM*JM,LM) :: TCOSP, PLOCOSP, QVCOSP, FCLDCOSP
-      real, dimension(IM*JM,LM) :: RDFLCOSP, RDFICOSP, QLLSCOSP, QILSCOSP, QLCNCOSP, QICNCOSP
+      real, dimension(IM*JM,LM) :: RDFLCOSP, RDFICOSP
       real, dimension(IM*JM,LM) :: QLTOTCOSP, QITOTCOSP
       real, dimension(IM*JM,LM) :: QRTOTCOSP, QSTOTCOSP, QGTOTCOSP
       real, dimension(IM*JM,LM) :: RDFRCOSP, RDFSCOSP, RDFGCOSP
@@ -3099,14 +3082,12 @@ contains
       call MAPL_GetPointer(IMPORT, RDFR, 'RR'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, RDFS, 'RS'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, RDFG, 'RG'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, FCLD, 'FCLD'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QLLS, 'QLLS', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QILS, 'QILS', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QLCN, 'QLCN', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QICN, 'QICN', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QRTOT , 'QRTOT', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QSTOT , 'QSTOT', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QGTOT , 'QGTOT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, FCLD, 'FCLD'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, QLTOT, 'QL'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, QITOT, 'QI'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, QRTOT, 'QR'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, QSTOT, 'QS'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, QGTOT, 'QG'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, MCOSZ, 'MCOSZ', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FRLAND,'FRLAND', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FROCEAN,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
@@ -3392,9 +3373,6 @@ contains
 ! The following are convective terms, which we don't want now
       CCA           	= 0.0
 
-      QLTOT = QLLS +  QLCN
-      QITOT = QILS +  QICN
-
 ! the following is in lieu of 
 !      where(FCLD.gt.0.)
 ! to avoid stupid high cwc, which makes for stupid high dtau_s, which
@@ -3587,8 +3565,6 @@ contains
       QRTOTCOSP  = reshape( QRTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QSTOTCOSP  = reshape( QSTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QGTOTCOSP  = reshape( QGTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
-      QLCNCOSP  = reshape( QLCN(:,:,LM:1:-1), (/ IM*JM , LM /) )
-      QICNCOSP  = reshape( QICN(:,:,LM:1:-1), (/ IM*JM , LM /) )
       PLECOSP  = reshape( PLE(:,:,LM:0:-1), (/ IM*JM , LM+1 /) )
       ZLECOSP = ZLE2D(:,LM:0:-1)
       MCOSZCOSP = reshape( MCOSZ , (/ IM*JM /) )

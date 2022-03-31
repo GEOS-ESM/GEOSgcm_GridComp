@@ -1053,15 +1053,12 @@ contains
 ! Radiation Imports
 !-------------------
 
-     call MAPL_AddConnectivity ( GC,                                  &
-         SHORT_NAME  = (/'QV   ','QL   ','QI   ','QR   ','QS   ',     &
-                         'QLLS ','QILS ','QLCN ','QICN ',             &
-                         'QRTOT','QSTOT','QGTOT',                     &
-                         'RL   ','RR   ','RI   ','RS   ','RG   ',     &
-                         'FCLD ' /),  &
-         DST_ID      = RAD,                                           &
-         SRC_ID      = MOIST,                                         &
-                                                           RC=STATUS  )
+     call MAPL_AddConnectivity ( GC,                            &
+         SHORT_NAME  = (/  'QV','QL','QI','QR','QS','QG',      &
+                         'FCLD','RL','RI','RR','RS','RG' /),   &
+         DST_ID      = RAD,                                     &
+         SRC_ID      = MOIST,                                   &
+                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1171,22 +1168,19 @@ contains
 ! Chemistry Imports
 ! -----------------
 
-     call MAPL_AddConnectivity ( GC,                              &
-        SHORT_NAME  = (/ 'Q       ',  'RH2     ', 'CN_PRCP ',     &
-                         'TPREC   ',  'SNO     ', 'DQDT    ',     &
-                         'FCLD    ',  'LS_PRCP ', 'CNV_MFC ',     &
-                         'CNV_MFD ',  'QL      ', 'PFL_CN  ',     &
-                         'PFL_LSAN',  'PFI_CN  ', 'PFI_LSAN',     &
-                         'QCTOT   ',  'CNV_QC  ',                 &
-                         'QLTOT   ',  'QLCN    ', 'QICN    ',     &
-                         'DQLDT   ',  'QITOT   ', 'REV_CN  ',     &
-                         'REV_LS  ',  'REV_AN  ', 'LFR_GCC ',     &
-                                      'DQIDT   ', 'QI      ',     &
-                         'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
-                         'QILS    ',  'DQRL    ', 'CNV_FRC ',     &
-                         'RI      ',  'RL      '            /),   &
-        DST_ID      = CHEM,                                       &
-        SRC_ID      = MOIST,                                      &
+     call MAPL_AddConnectivity ( GC,                                      &
+        SHORT_NAME  = (/ 'RL      ',  'QL      ', 'QLTOT   ', 'DQLDT   ', &
+                         'RI      ',  'QI      ', 'QITOT   ', 'DQIDT   ', &
+                         'QLCN    ',  'QLLS    ', 'PFL_CN  ', 'PFL_LSAN', &
+                         'QICN    ',  'QILS    ', 'PFI_CN  ', 'PFI_LSAN', &
+                         'FCLD    ',  'QCTOT   ', 'CNV_QC  ',             &
+                         'REV_LS  ',  'REV_AN  ', 'REV_CN  ',             &
+                         'CN_PRCP ',  'LS_PRCP ', 'TPREC   ', 'SNO     ', &
+                         'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
+                         'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
+                         'LFR_GCC ',  'RH2     ' /),                      &
+        DST_ID      = CHEM,                                               &
+        SRC_ID      = MOIST,                                              &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 

@@ -154,6 +154,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Required Exports (connectivities to moist siblings)
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
+    real, pointer, dimension(:,:,:) :: DTDT_SC
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -184,6 +185,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Required Exports (connectivities to moist siblings)
     call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SHLW_PRC3,  'SHLW_PRC3' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)

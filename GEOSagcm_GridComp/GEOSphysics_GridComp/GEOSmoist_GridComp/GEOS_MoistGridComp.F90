@@ -953,30 +953,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'QRTOT',                                      &
-         LONG_NAME  = 'mass_fraction_of_falling_rain',              &
-         UNITS      = 'kg kg-1',                                    &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'QSTOT',                                      &
-         LONG_NAME  = 'mass_fraction_of_falling_snow',              &
-         UNITS      = 'kg kg-1',                                    &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'QGTOT',                                      &
-         LONG_NAME  = 'mass_fraction_of_falling_graupel',           &
-         UNITS      = 'kg kg-1',                                    &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME = 'QPTOTLS',                                    &
          LONG_NAME  = 'mass_fraction_of_large_scale_falling_precip', & 
          UNITS      = 'kg kg-1',                                    &
@@ -985,7 +961,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                              &
-         SHORT_NAME = 'DTHDT ',                                     &
+         SHORT_NAME = 'DTHDT',                                     &
          LONG_NAME = 'pressure_weighted_potential_temperature_tendency_due_to_moist',&
          UNITS     = 'Pa K s-1',                                   &
          DIMS      = MAPL_DimsHorzVert,                           &
@@ -1057,6 +1033,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DQADT ',                                      &
+         LONG_NAME = 'total_cloud_tendency_due_to_moist',       &
+         UNITS     = 'kg kg-1 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DQLDT ',                                      &
          LONG_NAME = 'total_liq_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
@@ -1072,6 +1057,22 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DQRDT',                                         &
+         LONG_NAME ='QRAIN tendency due to moist ',               &
+         UNITS     ='kg kg-1 s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DQSDT',                                         &
+         LONG_NAME ='QSNOW tendency due to moist ',               &
+         UNITS     ='kg kg-1 s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -4396,62 +4397,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DTDT_moist',                                         & 
-         LONG_NAME ='T tendency due to moist',               &
-         UNITS     ='K s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)  
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DQVDT_moist',                                         &
-         LONG_NAME ='QV tendency due to moist ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DQLDT_moist',                                         &
-         LONG_NAME ='QL tendency due to moist ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DQIDT_moist',                                         &
-         LONG_NAME ='QI tendency due to moist ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DQADT_moist',                                         &
-         LONG_NAME ='QA tendency due to moist ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DQRDT_moist',                                         &
-         LONG_NAME ='QRAIN tendency due to moist ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DQSDT_moist',                                         &
-         LONG_NAME ='QSNOW tendency due to moist ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DTDT_DC',                                         &
          LONG_NAME ='T tendency due to deep convection',               &
          UNITS     ='K s-1',                                           &
@@ -4984,8 +4929,6 @@ contains
     ! Set the Profiling timers
     ! ------------------------
 
-    call MAPL_TimerAdd(GC,name="DRIVER" ,RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="-PRE_CNV"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="-POST_CNV"    ,RC=STATUS)
@@ -5156,6 +5099,18 @@ contains
     type (ESMF_Alarm   )            :: ALARM
 
     ! Local variables
+    real, pointer, dimension(:,:,:) :: PTR3D
+    real, pointer, dimension(:,:  ) :: PTR2D
+
+    ! Internals
+    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
+
+    ! Imports
+    real, pointer, dimension(:,:,:) :: TH, U, V
+
+    ! Exports
+    real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT 
+    real, pointer, dimension(:,:,:) :: DTHDT, DUDT, DVDT
 
     !=============================================================================
 
@@ -5179,10 +5134,44 @@ contains
     ! If its time, call run methods
     ! --------------------------------------------
 
-    call MAPL_Get( STATE, RUNALARM = ALARM, RC=STATUS ) ; VERIFY_(STATUS)
+    call MAPL_Get( STATE, RUNALARM = ALARM, &
+                   INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ) ; VERIFY_(STATUS)
+
     if ( ESMF_AlarmIsRinging( ALARM, RC=STATUS) ) then
 
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS) ; VERIFY_(STATUS)
+
+       ! Internal State
+       call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, QLLS,     'QLLS'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, QLCN,     'QLCN'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, CLCN,     'CLCN'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, CLLS,     'CLLS'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
+
+
+       ! Import State
+       call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
+
+       ! Export Tendencies
+       call MAPL_GetPointer(EXPORT,  DQDT,  'DQDT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, DQIDT, 'DQIDT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, DQLDT, 'DQLDT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, DQADT, 'DQADT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT,  DUDT,  'DUDT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT,  DVDT,  'DVDT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, DTHDT, 'DTHDT'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated( DQDT))  DQDT = Q
+       if (associated(DQLDT)) DQLDT = QLLS + QLCN
+       if (associated(DQIDT)) DQIDT = QILS + QICN
+       if (associated(DQADT)) DQADT = CLLS + CLCN
+       if (associated( DUDT))  DUDT = U
+       if (associated( DVDT))  DVDT = V
+       if (associated(DTHDT)) DTHDT = TH
+
 
        if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5190,6 +5179,19 @@ contains
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+
+       ! Export Tendencies
+       if (associated( DQDT))  DQDT =  DQDT -  Q
+       if (associated(DQLDT)) DQLDT = DQLDT - (QLLS + QLCN)
+       if (associated(DQIDT)) DQIDT = DQIDT - (QILS + QICN)
+       if (associated(DQADT)) DQADT = DQADT - (CLLS + CLCN)
+       if (associated( DUDT))  DUDT =  DUDT -  U
+       if (associated( DVDT))  DVDT =  DVDT -  V
+       if (associated(DTHDT)) DTHDT = DTHDT -  TH
+
+       ! Exports
+       call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = 0.0
 
     endif
 
