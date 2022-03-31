@@ -1737,7 +1737,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_GetPointer( INTERNAL, EFFRDG, 'EFFRDG', RC=STATUS )
          VERIFY_(STATUS)
 
-         GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)*(MAPL_RADIUS/1000.) ! transform to km^2
+         GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
          WHERE (ANGLL < -180)
            ANGLL = 0.0
          END WHERE
@@ -1749,20 +1749,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
          if (FIRST_RUN) then
            call gw_newtonian_set(LM, PREF)
-           if (NCAR_NRDG > 0) then
-            IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-            call Write_Profile(   GBXAR_TMP      , AREA, ESMFGRID, 'GBXAR')
-            do nrdg = 1, NCAR_NRDG
-             IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
-             call Write_Profile(MXDIS(:,:,nrdg), AREA, ESMFGRID, 'MXDIS')
-             call Write_Profile(ANGLL(:,:,nrdg), AREA, ESMFGRID, 'ANGLL')
-             call Write_Profile(ANIXY(:,:,nrdg), AREA, ESMFGRID, 'ANIXY')
-             call Write_Profile(CLNGT(:,:,nrdg), AREA, ESMFGRID, 'CLNGT')
-             call Write_Profile(HWDTH(:,:,nrdg), AREA, ESMFGRID, 'HWDTH')
-             call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
-             call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
-            enddo
-          endif
+         ! if (NCAR_NRDG > 0) then
+         !  IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
+         !  call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
+         !  do nrdg = 1, NCAR_NRDG
+         !   IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
+         !   call Write_Profile(MXDIS(:,:,nrdg),  AREA, ESMFGRID, 'MXDIS')
+         !   call Write_Profile(ANGLL(:,:,nrdg),  AREA, ESMFGRID, 'ANGLL')
+         !   call Write_Profile(ANIXY(:,:,nrdg),  AREA, ESMFGRID, 'ANIXY')
+         !   call Write_Profile(CLNGT(:,:,nrdg),  AREA, ESMFGRID, 'CLNGT')
+         !   call Write_Profile(HWDTH(:,:,nrdg),  AREA, ESMFGRID, 'HWDTH')
+         !   call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
+         !   call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
+         !  enddo
+         !endif
           FIRST_RUN = .false.
          endif
 

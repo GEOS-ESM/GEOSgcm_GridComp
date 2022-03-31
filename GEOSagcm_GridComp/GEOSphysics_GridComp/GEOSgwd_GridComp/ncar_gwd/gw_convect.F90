@@ -72,9 +72,8 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
   integer  :: hd_mfcc , mw_mfcc, ps_mfcc, ngwv_file, ps_mfcc_mid
 
   ! For forced background extratropical wave speed
-  real    :: c0 (-band%ngwv:band%ngwv)      ! wave phase speeds
   real    :: c4, latdeg, flat_gw
-  real    :: cw4(-band%ngwv:band%ngwv)      ! wave phase speeds
+  real, allocatable :: c0(:), cw4(:)
   integer :: i, kc
 
   ! Vars needed by NetCDF operators
@@ -152,6 +151,8 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
     ! Intialize forced background wave speeds
     allocate(desc%taubck(ncol,-band%ngwv:band%ngwv))
+    allocate(c0(-band%ngwv:band%ngwv))
+    allocate(cw4(-band%ngwv:band%ngwv))
     desc%taubck = 0.0
     c0  = 0.0
     cw4 = 0.0
@@ -185,6 +186,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        end if
        desc%taubck(i,:) = taubgnd*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
     enddo
+    deallocate( c0, cw4 )
   end if
     
 end subroutine gw_beres_init
