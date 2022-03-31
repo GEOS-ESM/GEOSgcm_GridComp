@@ -95,7 +95,6 @@ contains
 
     integer      :: RFRSHINT
     integer      :: AVRGNINT
-    integer      :: IQVAINC
     real         :: DT
   
     logical :: LCONVPAR
@@ -597,22 +596,6 @@ contains
          REFRESH_INTERVAL   = RFRSHINT,                                 &
          RC=STATUS  )
     VERIFY_(STATUS)
-
-    if ( IQVAINC /=0 ) then
-       ! The following import is only for offline purposes
-       ! NOTE: This is only used in offline applications so when adding new 
-       !       fields to IMPORT state the suggestion is to add them BEFORE
-       !       this state - unlike the usual procedure of always appending
-       !       to the end of the state.
-       call MAPL_AddImportSpec(GC,                                    &
-            SHORT_NAME = 'QVAINC',                                    &
-            LONG_NAME  = 'specific_humidity_analysis_increment',      &
-            UNITS      = 'kg kg-1',                                   &
-            default    = 0.0,                                         &
-            DIMS       = MAPL_DimsHorzVert,                           &
-            VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-       VERIFY_(STATUS)                                                                          
-    endif
 
    call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'T',                                         &

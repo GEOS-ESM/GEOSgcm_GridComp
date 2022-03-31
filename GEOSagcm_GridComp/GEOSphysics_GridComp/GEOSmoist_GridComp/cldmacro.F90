@@ -8,7 +8,6 @@ module cldmacro
    ! preliminary calculations for the two-moment cloud microphysics.  
    !=======================================================================
 
-   use CLDPARAMS
    use GEOS_UtilsMod,     only:QSAT=>GEOS_Qsat, DQSAT=>GEOS_DQsat, &
          QSATLQ=>GEOS_QsatLQU, QSATIC=>GEOS_QsatICE
 
@@ -23,8 +22,6 @@ module cldmacro
    use MAPL_BaseMod,      only: MAPL_UNDEF
 
    implicit none
-
-     
 
    private
 
@@ -161,7 +158,6 @@ contains
          PRECU_dev        , &
          CUARF_dev        , &
          SNRCU_dev        , &
-         CLDPARAMS        , &
          QST3_dev         , &
          DZET_dev         , &
          CNV_FRACTION_dev , &
@@ -196,8 +192,6 @@ contains
          QSNOW_CN, &
          KCBL, LTS_ , &
          CONVPAR_OPTION  )       
-
-      type (CLDPARAM_TYPE), intent(in)          :: CLDPARAMS
 
       integer, intent(in   )                    :: IRUN ! IM*JM
       integer, intent(in   )                    :: LM   ! LM
@@ -316,6 +310,7 @@ contains
 
       logical :: use_autoconv_timescale
 
+#ifdef CLDPARAMS
       CNV_BETA      = CLDPARAMS%CNV_BETA  ! Area factor for convective rain showers (non-dim)
       ANV_BETA      = CLDPARAMS%ANV_BETA  ! Area factor for anvil rain showers (non-dim)
       LS_BETA       = CLDPARAMS%LS_BETA   ! Area factor for Large Scale rain showers (non-dim)
@@ -376,6 +371,8 @@ contains
       turnrhcrit_upper = CLDPARAMS%TURNRHCRIT_UP
       sloperhcrit= CLDPARAMS%SLOPERHCRIT
       min_lts = CLDPARAMS%MIN_LTS
+#endif
+
       use_autoconv_timescale = .false.
       QRN_XS = 0.0
       QSN_XS = 0.0
@@ -2132,8 +2129,6 @@ subroutine hystpdf_new( &
   
        ELSEIF(ITYPE == ICE) THEN
 
-        IF ((adjustl(CLDMICRO)=="GFDL") .or. (adjustl(CLDMICRO)=="2MOMENT"))  THEN
-
          RHO = 100.*PL / (MAPL_RGAS*TE )
          !- ice water content
          WC = RHO*max(QC, 1.0e-9)  !kg/m3
@@ -2165,24 +2160,6 @@ subroutine hystpdf_new( &
             !if((PL<300. .and. PL>200.) .and. (QC>1.e-6)) print*,"GOCRI=", RHO*QC,TE,NNI, RADIUS* 1.e+6
          ENDIF
   
-        ELSE ! CLDMICRO =1MOMENT
-
-            !------ice cloud effective radius ----- [klaus wyser, 1998]
-            !- air density (kg/m^3)
-            RHO = 100.*PL / (MAPL_RGAS*TE )
-            !- ice water content
-            iwl = RHO*QC* 1.e+3  !g/m3
-            if(iwl<1.0e-6 .or. TE>273.0) then
-             RADIUS = 5.0*1.e-6
-            else
-             BB     = -2. + log10(iwl/50.)*(1.e-3*(273.15-max(210.15,TE))**1.5)
-             RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
-             RADIUS =RADIUS * 1.e-6 !- convert to meter
-             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);call flush(6)
-            endif
-
-        ENDIF ! CLDMICRO
-
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
       ENDIF

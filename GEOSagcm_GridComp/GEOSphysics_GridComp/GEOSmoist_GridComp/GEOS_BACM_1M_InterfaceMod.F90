@@ -13,6 +13,7 @@ module GEOS_BACM_1M_InterfaceMod
   use ESMF
   use MAPL
   use GEOS_UtilsMod
+  use GEOSmoist_Process_Library
   use aer_cloud
   use Aer_Actv_Single_Moment, only: Aer_Actv_1M_interface, USE_AEROSOL_NN, R_AIR
   use CLOUDNEW, only: CLDPARAMS, PROGNO_CLOUD
@@ -21,8 +22,9 @@ module GEOS_BACM_1M_InterfaceMod
 
   private
 
-  character(len=ESMF_MAXSTR)              :: IAm
-  integer                                 :: STATUS
+  character(len=ESMF_MAXSTR)        :: COMP_NAME
+  character(len=ESMF_MAXSTR)        :: IAm
+  integer                           :: STATUS
 
   ! specify how to handle friendlies with DYN:TRB:CHM:ANA
   type FRIENDLIES_TYPE
@@ -37,7 +39,19 @@ module GEOS_BACM_1M_InterfaceMod
   end type FRIENDLIES_TYPE
   type (FRIENDLIES_TYPE) FRIENDLIES
 
-  character(len=ESMF_MAXSTR)        :: COMP_NAME
+  ! Local resource variables
+  integer :: imsize
+  integer :: CFPBL_EXP
+  real    :: CNV_FRACTION_MIN
+  real    :: CNV_FRACTION_MAX
+  real    :: CNV_FRACTION_EXP
+  logical :: USE_AERO_BUFFER
+  logical :: PRECIPRAD
+  real    :: MINRHCRITLND
+  real    :: MINRHCRITOCN
+  real    :: MAXRHCRITLND
+  real    :: MAXRHCRITOCN
+  real    :: TURNRHCRIT
 
   public :: BACM_1M_Setup, BACM_1M_Initialize, BACM_1M_Run
 
@@ -176,9 +190,9 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     character(len=ESMF_MAXSTR) :: GRIDNAME
     character(len=4)           :: imchar
     character(len=2)           :: dateline
-    integer                    :: imsize,nn
+    integer                    :: nn
     integer                    :: LM
-    real                       :: tmprh, TMP_ICEFALL
+    real                       :: tmprhL, tmprhO, TMP_ICEFALL
 
     call MAPL_Get ( MAPL, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
@@ -196,29 +210,8 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call aer_cloud_init()
     call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for BACM_1M")
 
-    call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
-    GRIDNAME =  AdjustL(GRIDNAME)
-    nn = len_trim(GRIDNAME)
-    dateline = GRIDNAME(nn-1:nn)
-    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-    read(imchar,*) imsize
-    if(dateline.eq.'CF') imsize = imsize*4
-
-    call MAPL_GetResource( MAPL, CLDPARAMS%MIN_LTS,        'LTS_LOW:',        DEFAULT= 20.0    ) ! lower LTS for morphology correction
-    call MAPL_GetResource( MAPL, CLDPARAMS%DISP_FACTOR_LIQ,'DISP_FACTOR_LIQ:',DEFAULT= 1.0     ) ! Scales the droplet/ice crystal number in convective detrainment 
-    call MAPL_GetResource( MAPL, CLDPARAMS%DISP_FACTOR_ICE,'DISP_FACTOR_ICE:',DEFAULT= 1.0     ) ! Scales the droplet/ice crystal number in convective detrainment 
-    tmprh = CEILING(100.0*(1.0-min(0.20, max(0.01, 0.1*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0
-    call MAPL_GetResource( MAPL, CLDPARAMS%MINRHCRIT,      'MINRHCRIT:'    ,  DEFAULT=tmprh    )
-    call MAPL_GetResource( MAPL, CLDPARAMS%MAXRHCRIT,      'MAXRHCRIT:'    ,  DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%MAXRHCRITLAND,  'MAXRHCRITLAND:',  DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%TANHRHCRIT,     'TANHRHCRIT:'   ,  DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:'   ,  DEFAULT= -999.0  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%TURNRHCRIT_UP,  'TURNRHCRIT_UP:',  DEFAULT= 300.0   )
-    call MAPL_GetResource( MAPL, CLDPARAMS%SLOPERHCRIT,    'SLOPERHCRIT:',    DEFAULT= 20.0    )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 1.0e-3  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%CNV_ICEPARAM,   'CNV_ICEPARAM:',   DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%SCLM_DEEP,      'SCLM_DEEP:',      DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%SCLM_SHALLOW,   'SCLM_SHALLOW:',   DEFAULT= 2.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 2.0     )
@@ -229,13 +222,9 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%QC_CRIT_LS,     'QC_CRIT_LS:',     DEFAULT= 8.0e-4  )
     call MAPL_GetResource( MAPL, CLDPARAMS%ACCRETION,      'ACCRETION:',      DEFAULT= 2.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%RAIN_REVAP_FAC, 'RAIN_REVAP_FAC:', DEFAULT= 1.00    )
-    call MAPL_GetResource( MAPL, CLDPARAMS%VOL_TO_FRAC,    'VOL_TO_FRAC:',    DEFAULT= -1.0    )
-    call MAPL_GetResource( MAPL, CLDPARAMS%SUPERSAT,       'SUPERSAT:',       DEFAULT= 0.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%SHEAR_EVAP_FAC, 'SHEAR_EVAP_FAC:', DEFAULT= 1.3     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%MIN_ALLOW_CCW,  'MIN_ALLOW_CCW:',  DEFAULT= 1.0e-9  )
+    call MAPL_GetResource( MAPL, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%AUTOC_LS,       'AUTOC_LS:',       DEFAULT= 1.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%AUTOC_ANV,      'AUTOC_ANV:',      DEFAULT= 1.0e-3  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%NSUB_AUTOCONV,  'NSUB_AUTOCONV:',  DEFAULT= 20.     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_SUND_INTER,  'LS_SUND_INTER:',  DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_SUND_COLD,   'LS_SUND_COLD:',   DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_SUND_TEMP1,  'LS_SUND_TEMP1:',  DEFAULT= 230.    )
@@ -248,7 +237,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%DISABLE_RAD,    'DISABLE_RAD:',    DEFAULT= 0.      )
     call MAPL_GetResource( MAPL, CLDPARAMS%REVAP_OFF_P,    'REVAP_OFF_P:',    DEFAULT= 2000.   )
     call MAPL_GetResource( MAPL, CLDPARAMS%ICE_RAMP,       'ICE_RAMP:',       DEFAULT= -27.0   )
-    call MAPL_GetResource( MAPL, CLDPARAMS%CNV_ICEFRPWR,   'CNV_ICEFRPWR:',   DEFAULT= 4.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%CNV_DDRF,       'CNV_DDRF:',       DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_DDRF,       'ANV_DDRF:',       DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
@@ -272,8 +260,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT=  2.5e-6 )
     call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 60.0e-6 )
-    call MAPL_GetResource( MAPL, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%CNV_ENVF,       'CNV_ENVF:',       DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ENVF,       'ANV_ENVF:',       DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%SC_ENVF,        'SC_ENVF:',        DEFAULT= 1.0     )
@@ -282,7 +268,30 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_WAT,      'FR_AN_WAT:',      DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_LS_ICE,      'FR_LS_ICE:',      DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_ICE,      'FR_AN_ICE:',      DEFAULT= 0.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%CFPBL_EXP,      'CFPBL_EXP:',      DEFAULT= 1       )
+
+    call MAPL_GetResource( MAPL, USE_AERO_BUFFER,          'USE_AERO_BUFFER:',  DEFAULT=.TRUE. )
+    call MAPL_GetResource( MAPL, PRECIPRAD,                'PRECIPRAD:',        DEFAULT=.FALSE.)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN,         'CNV_FRACTION_MIN:', DEFAULT=  500.0)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX,         'CNV_FRACTION_MAX:', DEFAULT= 1500.0)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP,         'CNV_FRACTION_EXP:', DEFAULT=    1.0)
+    call MAPL_GetResource( MAPL, CFPBL_EXP,                'CFPBL_EXP:',        DEFAULT= 1     )
+
+    call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS)
+    VERIFY_(STATUS)
+    GRIDNAME =  AdjustL(GRIDNAME)
+    nn = len_trim(GRIDNAME)
+    dateline = GRIDNAME(nn-1:nn)
+    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
+    read(imchar,*) imsize
+    if(dateline.eq.'CF') imsize = imsize*4
+
+    tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
+    tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
+    call MAPL_GetResource( MAPL, MINRHCRITLND,             'MINRHCRITLND:',   DEFAULT=tmprhL   )
+    call MAPL_GetResource( MAPL, MINRHCRITOCN,             'MINRHCRITOCN:',   DEFAULT=tmprhO   )
+    call MAPL_GetResource( MAPL, MAXRHCRITLND,             'MAXRHCRITOCN:',   DEFAULT= 1.0     )
+    call MAPL_GetResource( MAPL, MAXRHCRITOCN,             'MAXRHCRITLND:',   DEFAULT= 1.0     )
+    call MAPL_GetResource( MAPL, TURNRHCRIT,               'TURNRHCRIT:',     DEFAULT= -999.0  )
 
 end subroutine BACM_1M_Initialize
 
@@ -310,14 +319,13 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: I, J, L
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
-    logical                         :: USE_AERO_BUFFER
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
 
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, KH
-    real, pointer, dimension(:,:)   :: FRLAND, TS, DTSX, TROPP, CAPE, SH, EVAP, KPBLSC
+    real, pointer, dimension(:,:)   :: FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
     real, pointer, dimension(:,:,:) :: OMEGA, NACTL, NACTI
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQLDT, CNV_PRC3, CNV_UPDF
@@ -333,15 +341,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
     real, allocatable, dimension(:,:)   :: CNV_FRACTION
     real, allocatable, dimension(:,:)   :: TMP2D
-    real                                :: CNV_FRACTION_MIN
-    real                                :: CNV_FRACTION_MAX
-    real                                :: CNV_FRACTION_EXP
-    character(len=ESMF_MAXSTR)          :: GRIDNAME
-    character(len=4)                    :: imchar
-    character(len=2)                    :: dateline
-    integer                             :: imsize,nn
-    real                                :: tmprhO, tmprhL
-    type(ESMF_State)                    :: AERO_ACI
+    type(ESMF_State)                    :: AERO
     type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
     ! Exports
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
@@ -371,6 +371,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
     real, pointer, dimension(:,:,:) :: NCPL_VOL, NCPI_VOL
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
+    real, pointer, dimension(:,:  ) :: CAPE, INHB
+    real, pointer, dimension(:,:,:) :: BYNCY
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -430,18 +432,17 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, HLQT,    'HLQT'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TROPP,   'TROPP'   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, CAPE,    'CAPE'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, KPBLSC,  'KPBL_SC' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
-    call   ESMF_StateGet(IMPORT, 'AERO_ACI', AERO_ACI, __RC__)
+    call   ESMF_StateGet(IMPORT, 'AERO', AERO, __RC__)
 
     ! Allocatables
      ! Edge variables 
-    ALLOCATE ( ZLE0 (IM,JM,LM+1) )
-    ALLOCATE ( PLEmb(IM,JM,LM+1) )
-    ALLOCATE ( PKE  (IM,JM,LM+1) )
+    ALLOCATE ( ZLE0 (IM,JM,0:LM) )
+    ALLOCATE ( PLEmb(IM,JM,0:LM) )
+    ALLOCATE ( PKE  (IM,JM,0:LM) )
      ! Layer variables
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
@@ -463,13 +464,13 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Derived States
     PLEmb    =  PLE*.01
     PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
-    PLmb     = 0.5*(PLEmb(:,:,1:LM) + PLEmb(:,:,2:LM+1))
+    PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
     PK       = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
-    DO L=1,LM+1
+    DO L=0,LM
        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
     END DO
-    ZL0      = 0.5*(ZLE0(:,:,1:LM) + ZLE0(:,:,2:LM+1) ) ! Layer Height (m) above the surface
-    DZET     =     (ZLE0(:,:,1:LM) - ZLE0(:,:,2:LM+1) ) ! Layer thickness (m)
+    ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
+    DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
     T        = TH*PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
@@ -481,7 +482,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (AeroProps(IM,JM,LM))
     call Aer_Actv_1M_interface(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                                SH, EVAP, KPBLSC, OMEGA, FRLAND, USE_AERO_BUFFER, &
-                               AeroProps, AERO_ACI, NACTL, NACTI)
+                               AeroProps, AERO, NACTL, NACTI)
     call MAPL_TimerOff(MAPL,"---ACTIV")
 
     WHERE ( ZL0 < 3000. )
@@ -494,30 +495,22 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        QDDF3(:,:,L) = QDDF3(:,:,L) / TMP2D
     END DO
 
-    call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
-    GRIDNAME =  AdjustL(GRIDNAME)
-    nn = len_trim(GRIDNAME)
-    dateline = GRIDNAME(nn-1:nn)
-    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-    read(imchar,*) imsize
-    if(dateline.eq.'CF') imsize = imsize*4
-    tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
-    tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
     do J=1,JM
        do I=1,IM
-          if (CLDPARAMS%TURNRHCRIT .LT. 0) then
+          if (TURNRHCRIT .LT. 0) then
              turnrhcrit2D(I,J) = PLmb(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
-             minrhcrit2D(I,J) = tmprhO             *(1.0-FRLAND(I,J)) + tmprhL                 *FRLAND(I,J)
-             maxrhcrit2D(I,J) = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
           else
-             turnrhcrit2D(I,J) = MIN( CLDPARAMS%TURNRHCRIT , CLDPARAMS%TURNRHCRIT-(1020-PLEmb(i,j,LM)) )
-             minrhcrit2D(I,J) = CLDPARAMS%MINRHCRIT
-             maxrhcrit2D(I,J) = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
+             turnrhcrit2D(I,J) = MIN( TURNRHCRIT , TURNRHCRIT-(1020-PLEmb(i,j,LM)) )
           endif
+          minrhcrit2D(I,J) = MINRHCRITOCN*(1.0-FRLAND(I,J)) + MINRHCRITLND*FRLAND(I,J)     
+          maxrhcrit2D(I,J) = MAXRHCRITOCN*(1.0-FRLAND(I,J)) + MAXRHCRITLND*FRLAND(I,J)
        end do
     end do
 
+    call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, INHB,    'INHB'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
     call MAPL_GetResource(MAPL,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
@@ -532,7 +525,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     endif
     if (CNV_FRACTION_EXP > 1.0) then
         CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
-    elseif (CNV_FRACTION_EXP > 0.0) then
+    elseif ( (CNV_FRACTION_EXP > 0.0) .and. (CNV_FRACTION_EXP /= 1.0) ) then
         CNV_FRACTION = 1.0-(1.0-CNV_FRACTION)**(1.0/CNV_FRACTION_EXP)
     else
         CNV_FRACTION = 1
@@ -584,7 +577,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, RAD_QI,   'QI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QR,   'QR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QS,   'QS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, RAD_QG,   'QQ'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RAD_QG,   'QG'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFL, 'RL'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFI, 'RI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Exports passed to be filled in progno_cloud
@@ -763,21 +756,13 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               NACTI,    &
               "GF" )
 
-         if (USE_AEROSOL_NN) then
-           NCPL_VOL = NACTL/(100.*PLmb*R_AIR/T) ! kg-1
-           NCPI_VOL = NACTI/(100.*PLmb*R_AIR/T) ! kg-1
-         else
-           NCPL_VOL = 0.
-           NCPI_VOL = 0.
-         endif
-
          call MAPL_GetPointer(EXPORT, DTSX, 'DTSX', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          DTSX = TS - TH(:,:,LM)*PK(:,:,LM) + (MAPL_GRAV/MAPL_CP)*ZL0(:,:,LM)
-         if (CLDPARAMS%CFPBL_EXP > 1.0) then
+         if (CFPBL_EXP > 1) then
            TMP3D = RAD_CF
            do L = 1,LM
               where( (KH(:,:,L-1) > 5.) .AND. (DTSX> 0.) )
-                 TMP3D(:,:,L) = RAD_CF(:,:,L)**CLDPARAMS%CFPBL_EXP
+                 TMP3D(:,:,L) = RAD_CF(:,:,L)**CFPBL_EXP
               endwhere
            enddo
            where( TMP3D > 0.0 )
@@ -796,13 +781,30 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
          ! Set rain water for radiation to 0 if preciprad flag is off (set to 0)
-         if(CLDPARAMS%PRECIPRAD.eq.0.) then
+         if(PRECIPRAD.eq.0.) then
             RAD_QR = 0.
             RAD_QS = 0.
             RAD_QG = 0.
          endif
 
-         !Calculate CFICE and CFLIQ exports 
+         call MAPL_GetPointer(EXPORT, NCPL_VOL, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
+         if (associated(NCPL_VOL)) then
+           if (USE_AEROSOL_NN) then
+             NCPL_VOL = NACTL/(100.*PLmb*R_AIR/T) ! kg-1
+           else
+             NCPL_VOL = 0.
+           endif
+         endif
+
+         call MAPL_GetPointer(EXPORT, NCPI_VOL, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
+         if (associated(NCPI_VOL)) then
+           if (USE_AEROSOL_NN) then
+             NCPI_VOL = NACTI/(100.*PLmb*R_AIR/T) ! kg-1
+           else
+             NCPI_VOL = 0.
+           endif
+         endif
+
          call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', RC=STATUS); VERIFY_(STATUS)
          if (associated(CFICE)) then
            CFICE=0.0
@@ -811,8 +813,9 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            CFICE=MAX(MIN(CFICE, 1.0), 0.0)
          endif
+
+         call MAPL_GetPointer(EXPORT, CFLIQ, 'CFLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(CFICE)) then
-           call MAPL_GetPointer(EXPORT, CFLIQ, 'CFLIQ', RC=STATUS); VERIFY_(STATUS)
            CFLIQ=0.0
            WHERE (RAD_QL .gt. 1.0e-12)
               CFLIQ=RAD_CF*RAD_QL/(RAD_QL+RAD_QI)

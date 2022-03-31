@@ -16,7 +16,7 @@ MODULE Aer_Actv_Single_Moment
        integer,public,parameter :: AER_PR = AER_R8
 
        real        , parameter :: R_AIR     = 3.47e-3 !m3 Pa kg-1K-1
-       real(AER_PR), parameter :: zero_par  =  1.0D-20
+       real(AER_PR), parameter :: zero_par  =  tiny(real(0.0,AER_PR)) ! smallest non-zero value
        real(AER_PR), parameter :: ai        =  0.0000594D0
        real(AER_PR), parameter :: bi        =  3.33D0
        real(AER_PR), parameter :: ci        =  0.0264D0
@@ -71,7 +71,6 @@ MODULE Aer_Actv_Single_Moment
       real, pointer, dimension(:,:,:) :: aci_f_dust
       real, pointer, dimension(:,:,:) :: aci_f_soot
       real, pointer, dimension(:,:,:) :: aci_f_organic
-      logical                         :: implements_aerosol_activation_properties
       character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
       integer                         :: ACI_STATUS
       REAL                            :: aux1,aux2,aux3,hfs,hfl
@@ -90,11 +89,10 @@ MODULE Aer_Actv_Single_Moment
               end do
           end do
       end do    
+      NACTL    = 0.
+      NACTI    = 0.
 
-      call ESMF_AttributeGet(aero_aci, name='implements_aerosol_activation_properties_method', &
-                                       value=implements_aerosol_activation_properties, __RC__)
-
-      if (implements_aerosol_activation_properties) then
+      if (USE_AEROSOL_NN) then
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -109,7 +107,7 @@ MODULE Aer_Actv_Single_Moment
               allocate(aero_aci_modes(n_modes), __STAT__)
               call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
      
-              call ESMF_AttributeGet(aero_aci, name='air_pressure', value=aci_field_name, __RC__)
+              call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
               if (aci_field_name /= '') then
                   call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
                   aci_ptr_3d = PLE
@@ -210,12 +208,6 @@ MODULE Aer_Actv_Single_Moment
               end if
 
               deallocate(aero_aci_modes, __STAT__)
-              deallocate(          sig0, __STAT__)
-              deallocate(            rg, __STAT__)
-              deallocate(            ni, __STAT__)
-              deallocate(         bibar, __STAT__)
-              deallocate(          nact, __STAT__)
-          end if
 
 !----- aerosol activation (single-moment uphysics)      
       do j = 1, JM
@@ -232,8 +224,6 @@ MODULE Aer_Actv_Single_Moment
 
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
       numbinit = 0.
-      NACTL    = 0.
-      NACTI    = 0.
       WC       = 0.
       BB       = 0.
       RAUX     = 0.
@@ -276,10 +266,10 @@ MODULE Aer_Actv_Single_Moment
 
                 IF(wupdraft > 0.1 .AND. wupdraft < 100.) THEN 
 
-                ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,real(1.e-20,AER_PR)) ! unit: [m-3]
-                rg   (1:n_modes)    =   1.e+6*max(1.0e-10,AeroProps(i,j,k)%dpg(1:n_modes)*0.5+00)         ! unit: [um]
-                sig0 (1:n_modes)    =   AeroProps(i,j,k)%sig(1:n_modes)                                   ! unit: [um]
-                bibar(1:n_modes)    =   MAX(0.00001,AeroProps(i,j,k)%kap(1:n_modes))                 
+                ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,zero_par)    ! unit: [m-3]
+                rg   (1:n_modes)    =   1.e+6*max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5,zero_par)  ! unit: [um]
+                sig0 (1:n_modes)    =   AeroProps(i,j,k)%sig(1:n_modes)                          ! unit: [um]
+                bibar(1:n_modes)    =   MAX(zero_par,AeroProps(i,j,k)%kap(1:n_modes))                 
               
                 IF( tk >= 245.0) then   
                      call GetActFrac(n_modes                 &
@@ -336,12 +326,13 @@ MODULE Aer_Actv_Single_Moment
 
         ENDDO;ENDDO;ENDDO
 
-      else
-          ! options: 
-          !     *) set aerosol concentrations to 0.0, i.e., no aerosol
-          !     *) raise an exception if aerosol is required!
-          NACTL    = 0.
-          NACTI    = 0.
+        deallocate(   rg, __STAT__)
+        deallocate(   ni, __STAT__)
+        deallocate(bibar, __STAT__)
+        deallocate( nact, __STAT__)
+
+      end if
+
       end if
 
       END SUBROUTINE Aer_Actv_1M_interface

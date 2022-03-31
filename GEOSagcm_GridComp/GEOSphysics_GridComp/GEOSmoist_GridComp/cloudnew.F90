@@ -37,13 +37,9 @@ module cloudnew
            real               :: QC_CRIT_LS            ! 6
            real               :: ACCRETION             ! 7
            real               :: RAIN_REVAP_FAC        ! 8
-           real               :: VOL_TO_FRAC           ! 9
-           real               :: SUPERSAT              ! 10
-           real               :: SHEAR_EVAP_FAC        ! 11
-           real               :: MIN_ALLOW_CCW         ! 12
+           real               :: SNOW_REVAP_FAC        ! 57
            real               :: CCW_EVAP_EFF          ! 13
            real               :: CCI_EVAP_EFF          ! 13
-           real               :: NSUB_AUTOCONV         ! 14
            real               :: LS_SUND_INTER         ! 15
            real               :: LS_SUND_COLD          ! 16
            real               :: LS_SUND_TEMP1         ! 17
@@ -53,8 +49,6 @@ module cloudnew
            real               :: ANV_TO_LS_TIME        ! 21
            real               :: CCN_OCEAN             ! 22
            real               :: CCN_LAND              ! 23
-           real               :: NCCN_ANVIL_NULL       ! 24
-           real               :: NCCN_PBL_NULL         ! 25
            real               :: DISABLE_RAD           ! 26
            real               :: ICE_SETTLE            ! 27
            real               :: ANV_ICEFALL           ! 28
@@ -66,19 +60,11 @@ module cloudnew
            real               :: LS_ENVF               ! 31
            real               :: WRHODEP               ! 32
            real               :: ICE_RAMP              ! 33
-           real               :: CNV_ICEPARAM          ! 34
-           real               :: CNV_ICEFRPWR          ! 35
            real               :: CNV_DDRF              ! 36
            real               :: ANV_DDRF              ! 37
            real               :: LS_DDRF               ! 38
            real               :: AUTOC_ANV             ! 39
            real               :: QC_CRIT_ANV           ! 40
-           real               :: TANHRHCRIT            ! 41
-           real               :: MINRHCRIT             ! 42
-           real               :: MAXRHCRIT             ! 43
-           real               :: PRECIPRAD             ! 44
-           real               :: TURNRHCRIT            ! 45
-           real               :: MAXRHCRITLAND         ! 46
            real               :: FR_LS_WAT             ! 47
            real               :: FR_LS_ICE             ! 48
            real               :: FR_AN_WAT             ! 49
@@ -89,14 +75,7 @@ module cloudnew
            real               :: MAX_RI                ! 54
            real               :: FAC_RL                ! 55
            real               :: FAC_RI                ! 56
-           real               :: SNOW_REVAP_FAC        ! 57
            real               :: PDFSHAPE              ! 58
-           real               :: TURNRHCRIT_UP         ! 59
-           real               :: SLOPERHCRIT           ! 60
-           real               :: MIN_LTS               ! 61
-           integer            :: CFPBL_EXP             ! 62
-           real               :: DISP_FACTOR_LIQ       ! 63
-           real               :: DISP_FACTOR_ICE       ! 63
            real               :: SCLM_SHALLOW          ! 63
            real               :: SCLM_DEEP             ! 63
       endtype CLDPARAM_TYPE
@@ -240,13 +219,8 @@ module cloudnew
    real,    constant :: C_ACC
    real,    constant :: C_EV_R
    real,    constant :: C_EV_S
-   real,    constant :: CLDVOL2FRC
-   real,    constant :: RHSUP_ICE
-   real,    constant :: SHR_EVAP_FAC
-   real,    constant :: MIN_CLD_WATER
    real,    constant :: CCW_EVP_EFF
    real,    constant :: CCI_EVP_EFF
-   integer, constant :: NSMAX
    real,    constant :: LS_SDQV2
    real,    constant :: LS_SDQV3
    real,    constant :: LS_SDQVT1
@@ -267,8 +241,6 @@ module cloudnew
    real,    constant :: LSENVFC
    real,    constant :: WRHODEP
    real,    constant :: T_ICE_ALL
-   real,    constant :: CNVICEPARAM
-   integer, constant :: ICEFRPWR
    real,    constant :: CNVDDRFC
    real,    constant :: ANVDDRFC
    real,    constant :: LSDDRFC
@@ -282,7 +254,6 @@ module cloudnew
    real,    constant :: MAX_RI
    real,    constant :: FAC_RL
    real,    constant :: FAC_RI
-   real,    constant :: CFPBL_EXP
    integer, constant :: PDFFLAG
    real,    constant :: SCLM_SHALLOW
    real,    constant :: SCLM_DEEP
@@ -361,13 +332,8 @@ module cloudnew
    real    :: C_ACC
    real    :: C_EV_R
    real    :: C_EV_S
-   real    :: CLDVOL2FRC
-   real    :: RHSUP_ICE
-   real    :: SHR_EVAP_FAC
-   real    :: MIN_CLD_WATER
    real    :: CCW_EVP_EFF
    real    :: CCI_EVP_EFF
-   integer :: NSMAX
    real    :: LS_SDQV2
    real    :: LS_SDQV3
    real    :: LS_SDQVT1
@@ -388,15 +354,12 @@ module cloudnew
    real    :: LSENVFC
    real    :: WRHODEP
    real    :: T_ICE_ALL
-   real    :: CNVICEPARAM
-   integer :: ICEFRPWR
    real    :: CNVDDRFC
    real    :: ANVDDRFC
    real    :: SCDDRFC
    real    :: LSDDRFC
-   real    :: MIN_RI, MAX_RI, FAC_RI, MIN_RL, MAX_RL, FAC_RL, CFPBL_EXP
+   real    :: MIN_RI, MAX_RI, FAC_RI, MIN_RL, MAX_RL, FAC_RL
    integer :: FR_LS_WAT, FR_LS_ICE, FR_AN_WAT, FR_AN_ICE
-   real    :: maxrhcritland
    integer :: pdfflag
    real    :: SCLM_DEEP, SCLM_SHALLOW
 #endif
@@ -778,13 +741,8 @@ contains
          C_ACC         = CLDPARAMS%ACCRETION
          C_EV_R        = CLDPARAMS%RAIN_REVAP_FAC
          C_EV_S        = CLDPARAMS%SNOW_REVAP_FAC
-         CLDVOL2FRC    = CLDPARAMS%VOL_TO_FRAC
-         RHSUP_ICE     = CLDPARAMS%SUPERSAT
-         SHR_EVAP_FAC  = CLDPARAMS%SHEAR_EVAP_FAC
-         MIN_CLD_WATER = CLDPARAMS%MIN_ALLOW_CCW
          CCW_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
          CCI_EVP_EFF   = CLDPARAMS%CCI_EVAP_EFF
-         NSMAX         = INT( CLDPARAMS%NSUB_AUTOCONV  )
          LS_SDQV2      = CLDPARAMS%LS_SUND_INTER
          LS_SDQV3      = CLDPARAMS%LS_SUND_COLD
          LS_SDQVT1     = CLDPARAMS%LS_SUND_TEMP1
@@ -805,8 +763,6 @@ contains
          LSENVFC       = CLDPARAMS%LS_ENVF
          WRHODEP       = CLDPARAMS%WRHODEP
          T_ICE_ALL     = CLDPARAMS%ICE_RAMP + T_ICE_MAX
-         CNVICEPARAM   = CLDPARAMS%CNV_ICEPARAM
-         ICEFRPWR      = INT( CLDPARAMS%CNV_ICEFRPWR )
          CNVDDRFC      = CLDPARAMS%CNV_DDRF
          ANVDDRFC      = CLDPARAMS%ANV_DDRF
          LSDDRFC       = CLDPARAMS%LS_DDRF
@@ -820,7 +776,6 @@ contains
          MAX_RI        = CLDPARAMS%MAX_RI
          FAC_RL        = CLDPARAMS%FAC_RL
          FAC_RI        = CLDPARAMS%FAC_RI
-         CFPBL_EXP     = CLDPARAMS%CFPBL_EXP
          PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
          SCLM_SHALLOW  = CLDPARAMS%SCLM_SHALLOW
          SCLM_DEEP     = CLDPARAMS%SCLM_DEEP
@@ -1051,7 +1006,6 @@ contains
 
             CALL cnvsrc (          &  
                   DT             , &
-                  CNVICEPARAM    , &
                   SCLM_DEEP      , &
                   SCLM_SHALLOW   , &
                   MASS           , & 
@@ -2759,7 +2713,6 @@ contains
 #endif
    subroutine cnvsrc( & 
          DT      , &
-         ICEPARAM, &
          SCLM_DEEP, &
          SCLM_SHALLOW, &
          MASS    , &
@@ -2781,15 +2734,11 @@ contains
 
       !INPUTS:
       !
-      !       ICEPARAM: 0-1  controls how strongly new conv condensate is partitioned in ice-liquid
-      !                 1 means partitioning follows ice_fraction(TE). 0 means all new condensate is
-      !                 liquid 
-      !
       !       SCLM_*: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
       !                 by fuzziness of cloud boundaries and existence of PDF of condensates (for choices
       !                 0.-1.0) or by subgrid layering (for choices >1.0) 
 
-      real, intent(in)    :: DT,ICEPARAM,SCLM_DEEP,SCLM_SHALLOW
+      real, intent(in)    :: DT,SCLM_DEEP,SCLM_SHALLOW
       real, intent(in)    :: MASS,iMASS,QS
       real, intent(in)    :: DMF,PL
       real, intent(in)    :: DCF,CF,DCIFshlw,DCLFshlw,DMFshlw
@@ -2810,7 +2759,7 @@ contains
 
       !Addition of condensate from Deep Convection
       TEND = DCF*iMASS
-      fQi  = ICEPARAM*ice_fraction( TE )
+      fQi  = ice_fraction( TE )
       QLA  = QLA + (1.0-fQi)* TEND*DT
       QIA  = QIA +    fQi   * TEND*DT
 
@@ -3122,7 +3071,6 @@ contains
       CALL SUNDQ3_ICE3(TE, SUNDQV2, SUNDQV3, SUNDQT1, F2, F3 )
 
       C00x  = C_00 * F2 * F3
-      !QCcrx = LWCRIT / ( F2 * F3 )
       iQCcrx = F2 * F3 / LWCRIT
 
       if ( ( F > 0.) .and. ( QC > 0. ) )then

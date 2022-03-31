@@ -152,6 +152,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
 
+    ! Required Exports (connectivities to moist siblings)
+    real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
+
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
 
@@ -178,6 +181,14 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
+
+    ! Required Exports (connectivities to moist siblings)
+    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SHLW_PRC3,  'SHLW_PRC3' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SHLW_SNO3,  'SHLW_SNO3' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
 #ifdef NODISABLE
 
