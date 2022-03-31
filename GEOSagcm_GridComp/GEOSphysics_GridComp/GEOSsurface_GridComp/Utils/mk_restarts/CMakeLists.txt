@@ -2,10 +2,13 @@ esma_set_this ()
 
 set(srcs
   getids.F90
+  CatchmentRst.F90
+  CatchmentCNRst.F90
 )
 
 set (exe_srcs
   Scale_Catch.F90
+  ScaleCatch.F90
   Scale_CatchCN.F90
   cv_SaltRestart.F90
   SaltIntSplitter.F90
@@ -20,10 +23,10 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL esmf NetCDF::NetCDF_Fortran)
+  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran)
 
 foreach (src ${exe_srcs})
-  string (REGEX REPLACE ".F90" "" exe ${src})
+  string (REGEX REPLACE ".F90" ".x" exe ${src})
   ecbuild_add_executable (
     TARGET ${exe}
     SOURCES ${src}
