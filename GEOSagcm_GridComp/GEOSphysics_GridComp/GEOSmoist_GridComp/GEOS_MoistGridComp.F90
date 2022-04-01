@@ -4341,6 +4341,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DUDT_macro',                                         &
+         LONG_NAME ='U tendency due to macrophysics ',               &
+         UNITS     ='m s-2',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DVDT_macro',                                         &
+         LONG_NAME ='V tendency due to macrophysics ',               &
+         UNITS     ='m s-2',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DTDT_macro',                                         & 
          LONG_NAME ='T tendency due to macrophysics ',               &
          UNITS     ='K s-1',                                           &
@@ -4391,6 +4407,14 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DQSDT_macro',                                         &
          LONG_NAME ='QSNOW tendency due to macrophysics ',               &
+         UNITS     ='kg kg-1 s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DQGDT_macro',                                         &
+         LONG_NAME ='QGRAUPEL tendency due to macrophysics ',               &
          UNITS     ='kg kg-1 s-1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -5097,6 +5121,9 @@ contains
     type (ESMF_Config  )            :: CF
     type (ESMF_State   )            :: INTERNAL
     type (ESMF_Alarm   )            :: ALARM
+    type (ESMF_TimeInterval)        :: TINT
+    real(ESMF_KIND_R8)              :: DT_R8
+    real                            :: DT_MOIST
 
     ! Local variables
     real, pointer, dimension(:,:,:) :: PTR3D
@@ -5106,11 +5133,11 @@ contains
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
 
     ! Imports
-    real, pointer, dimension(:,:,:) :: TH, U, V
+    real, pointer, dimension(:,:,:) :: TH, U, V, W
 
     ! Exports
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT 
-    real, pointer, dimension(:,:,:) :: DTHDT, DUDT, DVDT
+    real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
 
     !=============================================================================
 
@@ -5137,6 +5164,10 @@ contains
     call MAPL_Get( STATE, RUNALARM = ALARM, &
                    INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ) ; VERIFY_(STATUS)
 
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    DT_MOIST = DT_R8
+
     if ( ESMF_AlarmIsRinging( ALARM, RC=STATUS) ) then
 
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS) ; VERIFY_(STATUS)
@@ -5150,28 +5181,29 @@ contains
        call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-
        ! Import State
        call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
 
        ! Export Tendencies
        call MAPL_GetPointer(EXPORT,  DQDT,  'DQDT'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, DQIDT, 'DQIDT'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, DQLDT, 'DQLDT'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, DQADT, 'DQADT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, DTHDT, 'DTHDT'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,  DUDT,  'DUDT'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,  DVDT,  'DVDT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DTHDT, 'DTHDT'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT,  DWDT,  'DWDT'  , RC=STATUS); VERIFY_(STATUS)
        if (associated( DQDT))  DQDT = Q
        if (associated(DQLDT)) DQLDT = QLLS + QLCN
        if (associated(DQIDT)) DQIDT = QILS + QICN
        if (associated(DQADT)) DQADT = CLLS + CLCN
+       if (associated(DTHDT)) DTHDT = TH
        if (associated( DUDT))  DUDT = U
        if (associated( DVDT))  DVDT = V
-       if (associated(DTHDT)) DTHDT = TH
-
+       if (associated( DWDT))  DWDT = W
 
        if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5181,13 +5213,14 @@ contains
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 
        ! Export Tendencies
-       if (associated( DQDT))  DQDT =  DQDT -  Q
-       if (associated(DQLDT)) DQLDT = DQLDT - (QLLS + QLCN)
-       if (associated(DQIDT)) DQIDT = DQIDT - (QILS + QICN)
-       if (associated(DQADT)) DQADT = DQADT - (CLLS + CLCN)
-       if (associated( DUDT))  DUDT =  DUDT -  U
-       if (associated( DVDT))  DVDT =  DVDT -  V
-       if (associated(DTHDT)) DTHDT = DTHDT -  TH
+       if (associated( DQDT))  DQDT = ( Q            -  DQDT)/DT_MOIST
+       if (associated(DQLDT)) DQLDT = ((QLLS + QLCN) - DQLDT)/DT_MOIST
+       if (associated(DQIDT)) DQIDT = ((QILS + QICN) - DQIDT)/DT_MOIST
+       if (associated(DQADT)) DQADT = ((CLLS + CLCN) - DQADT)/DT_MOIST
+       if (associated(DTHDT)) DTHDT = ( TH           - DTHDT)/DT_MOIST
+       if (associated( DUDT))  DUDT = ( U            -  DUDT)/DT_MOIST
+       if (associated( DVDT))  DVDT = ( V            -  DVDT)/DT_MOIST
+       if (associated( DWDT))  DWDT = ( W            -  DWDT)/DT_MOIST
 
        ! Exports
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)

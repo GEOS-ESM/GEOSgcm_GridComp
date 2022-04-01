@@ -1960,7 +1960,7 @@ contains
    character(len=ESMF_MAXSTR),pointer  :: GCNames(:)
    character(len=ESMF_MAXSTR)          :: DUMMY
    integer                             :: I, L, K, N
-   integer                             :: IM, JM, LM, KM, NQ
+   integer                             :: IM, JM, LM, NQ
    integer                             :: ISPPT,ISKEB
    logical                             :: DO_SPPT,DO_SKEB
    logical                             :: NEED_TOT
@@ -1972,7 +1972,7 @@ contains
    real                                :: SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
   
-   real, pointer, dimension(:,:,:)     :: S, T, ZLE, TH, PLE, PK, U, V, W
+   real, pointer, dimension(:,:,:)     :: S, T, ZLE, PLE, PK, U, V, W
    real, pointer, dimension(:,:,:)     :: DM, DPI, TOT, FRI, TTN, STN,TMP
    real, pointer, dimension(:,:,:)     :: QV, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
    real, pointer, dimension(:,:,:)     :: ptr3d
@@ -2009,7 +2009,6 @@ contains
    real, pointer, dimension(:,:,:)     :: FTU, FTV
    real, pointer, dimension(:,:,:)     :: INTDIS, TOPDIS
    real, pointer, dimension(:,:  )     :: SRFDIS
-   real, pointer, dimension(:,:  )     :: TAUX, TAUY, CM
 
    real, pointer, dimension(:,:  )     :: DQVDTPHYINT, DQLDTPHYINT, DQIDTPHYINT, DOXDTPHYINT
    real, pointer, dimension(:,:  )     :: DQVDTTRBINT, DQVDTMSTINT, DQVDTCHMINT
@@ -2017,15 +2016,11 @@ contains
    real, pointer, dimension(:,:  )     :: PERAD,PETRB,PEMST,PEFRI,PEGWD,PECUF
    real, pointer, dimension(:,:  )     :: PEPHY
    real, pointer, dimension(:,:  )     :: KEPHY
-   real, pointer, dimension(:,:  )     :: KETND
    real, pointer, dimension(:,:  )     :: AREA
 
    real*8, allocatable, dimension(:,:)   :: sumq
    real,   allocatable, dimension(:,:)   :: psdry
    real*8, allocatable, dimension(:,:,:) :: ple_new
-   real*8                                :: psdry_old
-   real*8                                :: psdry_new
-   real*8                                :: psdry_dif
 
    integer :: NWAT
    character(len=ESMF_MAXSTR), allocatable  :: NAMES(:)
@@ -2039,7 +2034,7 @@ contains
    real, pointer, dimension(:,:)       :: UA, VA, TFORSURF
    real, pointer, dimension(:,:,:)     :: SFORTURB, THFORTURB, TFORTURB
    real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
-   real, allocatable, dimension(:,:,:) :: HGT, DTAFTURB
+   real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
    real, allocatable, dimension(:,:)   :: qs,pmean,DTSURFAFTURB
@@ -2216,16 +2211,6 @@ contains
      allocate(  psdry( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
      allocate(   sumq( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
      allocate( ple_new(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
-
-#if debug
-     sumq = 0.0_8
-     do L=1,lm
-        sumq = sumq + ( qv(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L) )*( PLE(:,:,L)-PLE(:,:,L-1) )
-     enddo
-     psdry(:,:) = ple(:,:,LM) - sumq(:,:)
-     call MAPL_AreaMean( psdry_old, psdry, area, grid, rc=STATUS )
-     VERIFY_(STATUS)
-#endif
 
 ! Pointers to Exports
 !--------------------

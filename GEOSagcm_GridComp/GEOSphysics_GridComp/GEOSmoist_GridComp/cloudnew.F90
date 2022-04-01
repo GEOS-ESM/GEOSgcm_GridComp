@@ -91,7 +91,7 @@ module cloudnew
    PUBLIC pdffrac
    PUBLIC pdfcondensate
    PUBLIC RADCOUPLE
-   PUBLIC hystpdf, hystpdf_new
+   PUBLIC hystpdf_new
    PUBLIC cnvsrc
    PUBLIC meltfrz, meltfrz_inst
    PUBLIC evap3, subl3
@@ -1063,7 +1063,6 @@ contains
             LSPDFICENEW = QIW_LS_dev(I,K)
             LSPDFFRACNEW= CLDFRC_dev(I,K)
 
-            IF(USE_AEROSOL_NN) THEN
             call hystpdf_new(      &
                   DT             , &
                   ALPHA          , &
@@ -1111,22 +1110,8 @@ contains
                   PDF_RWQT_dev(I,K),   &
 #endif
                   WTHV2_dev(I,K),      &
-                  wql_dev(I,K))
-            else
-            call hystpdf(          &
-                  DT             , &
-                  ALPHA          , &
-                  PDFFLAG        , &
-                  PP_dev(I,K)    , &
-                  Q_dev(I,K)     , &
-                  QLW_LS_dev(I,K), &
-                  QLW_AN_dev(I,K), &
-                  QIW_LS_dev(I,K), &
-                  QIW_AN_dev(I,K), &
-                  TEMP           , &
-                  CLDFRC_dev(I,K), & 
-                  ANVFRC_dev(I,K))
-            endif
+                  wql_dev(I,K),        &
+                  USE_AEROSOL_NN)
 
             LSPDFLIQNEW = QLW_LS_dev(I,K) - LSPDFLIQNEW
             LSPDFICENEW = QIW_LS_dev(I,K) - LSPDFICENEW
@@ -2060,7 +2045,8 @@ contains
          PDF_RWQT,   &
 #endif
          WTHV2,      &
-         WQL )
+         WQL,        &
+         USE_AERO_NN )
 
       real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: pdfshape
@@ -2074,6 +2060,7 @@ contains
                              PDF_RHLQT,  PDF_RWHL, PDF_RWQT
 #endif
       real, intent(out)   :: WTHV2, WQL
+      logical, intent(in) :: USE_AERO_NN
 
       ! internal arrays
       real :: QCO, QVO, CFO, QAO, TAU,HL
@@ -2202,7 +2189,7 @@ contains
 
          endif
 
-         IF(USE_AEROSOL_NN) THEN
+         IF(USE_AERO_NN) THEN
            DQCALL = QCn - QCp
            CF  = CFn * ( 1.-AF)
            Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
@@ -2351,249 +2338,6 @@ contains
       end if
 
    end subroutine hystpdf_new
-
-
-#ifdef _CUDA
-   attributes(device) &
-#endif
-   subroutine hystpdf( &
-         DT          , &
-         ALPHA       , &
-         PDFSHAPE    , &
-         PL          , &
-         QV          , &
-         QCl         , &
-         QAl         , &
-         QCi         , &
-         QAi         , &
-         TE          , &
-         CF          , &
-         AF          )
-
-      real, intent(in)    :: DT,ALPHA,PL
-      integer, intent(in) :: pdfshape
-      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF
-
-      ! internal arrays
-      real :: QCO, QVO, CFO, QAO, TAU
-      real :: QT, QMX, QMN, DQ, QVtop, sigmaqt1, sigmaqt2
-
-      real :: TEO,QSx,DQsx,QS,DQs
-
-      real :: TEp, QSp, CFp, QVp, QCp
-      real :: TEn, QSn, CFn, QVn, QCn
-
-      real :: QCx, QVx, CFx, QAx, QC, QA, fQi, fQi_A
-      real :: dQAi, dQAl, dQCi, dQCl 
-
-      real :: tmpARR
-      real :: ALHX
-      ! internal scalars
-      integer :: N
-
-      QC = QCl + QCi
-      QA = QAl + QAi
-
-      if ( QA > 0.0 ) then
-         fQi_A = QAi / QA 
-      else
-         fQi_A = 0.0
-      end if
-
-      TEo = TE
-
-      DQSx  = DQSAT( TEo, PL, QSAT=QSx )
-
-      if ( AF < 1.0 ) then
-         tmpARR = 1./(1.-AF)
-      else
-         tmpARR = 0.0
-      end if
-
-      CFx = CF*tmpARR
-      QCx = QC*tmpARR
-      QVx = ( QV - QSx*AF )*tmpARR
-
-      if ( AF >= 1.0 ) then
-         QVx = QSx*1.e-4 
-      end if
-
-
-      if ( AF > 0. ) then
-         QAx = QA/AF
-      else
-         QAx = 0.
-      end if
-
-      QT  = QCx + QVx
-
-      TEp = TEo
-      QSn = QSx
-      TEn = TEo
-      CFn = CFx
-      QVn = QVx
-      QCn = QCx
-
-      DQS = DQSx
-
-      do n=1,4
-
-         QSp = QSn
-         QVp = QVn
-         QCp = QCn
-         CFp = CFn
-
-         DQS  = DQSAT( TEn, PL, QSAT=QSn )
-
-         TEp = TEn
-         fQi = ice_fraction( TEp )
-
-         sigmaqt1  = ALPHA*QSn
-         sigmaqt2  = ALPHA*QSn
-
-!! WMP - 2018-05-17 - This section of code is repetitive (so skip it)....
-#ifdef SKIP_WMP
-         if(pdfflag.eq.2) then
-! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*QSn (alpha is half width)
-! for triangular, skewed r : sigmaqt1 < sigmaqt2
-! try: skewed right below 500 mb
-!!!       if(pl.lt.500.) then
-          sigmaqt1  = ALPHA*QSn
-          sigmaqt2  = ALPHA*QSn
-!!!       else
-!!!       sigmaqt1  = 2*ALPHA*QSn*0.4
-!!!       sigmaqt2  = 2*ALPHA*QSn*0.6
-!!!       endif
-         endif
-#endif
-
-         call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,QSn,CFn)
-         call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,QSn,QCn)
-
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         ! These lines represent adjustments
-         ! to anvil condensate due to the 
-         ! assumption of a stationary TOTAL 
-         ! water PDF subject to a varying 
-         ! QSAT value during the iteration
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-         if ( AF > 0. ) then
-            QAo = QAx  ! + QSx - QS 
-         else
-            QAo = 0.
-         end if
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-
-         if(pdfflag.eq.1) then
-          QCn = QCp + ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX/MAPL_CP)
-         elseif(pdfflag.eq.2) then
-! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
-! for now, just use relaxation of 1/2.
-          if (n.ne.4) QCn = QCp + ( QCn - QCp ) *0.5
-         endif
-         QVn = QVp - (QCn - QCp)
-
-         TEn = TEp + (1.0-fQi)*(MAPL_ALHL/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF ) &
-               +      fQi* (MAPL_ALHS/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF )
-
-      enddo ! qsat iteration
-
-         CFo = CFn
-         CF = CFn
-         QCo = QCn
-         QVo = QVn
-         TEo = TEn
-
-      ! Update prognostic variables.  Deal with special case of AF=1
-      ! Temporary variables QCo, QAo become updated grid means.
-      if ( AF < 1.0 ) then
-         CF  = CFo * ( 1.-AF)
-         QCo = QCo * ( 1.-AF)
-         QAo = QAo *   AF  
-      else
-
-         ! Special case AF=1, i.e., box filled with anvil. 
-         !   - Note: no guarantee QV_box > QS_box
-
-         CF  = 0.          ! Remove any other cloud
-         QAo = QA  + QC    ! Add any LS condensate to anvil type
-         QCo = 0.          ! Remove same from LS   
-
-         QT  = QAo + QV    ! Total water
-
-         ! Now set anvil condensate to any excess of total water 
-         ! over QSx (saturation value at top)
-         QAo = MAX( QT - QSx, 0. )
-      end if
-
-      ! Now take {\em New} condensate and partition into ice and liquid
-      ! taking care to keep both >=0 separately. New condensate can be
-      ! less than old, so $\Delta$ can be < 0.
-
-      QCx   = QCo - QC
-      dQCl  = (1.0-fQi)*QCx
-      dQCi  =    fQi  * QCx
-
-      if ((QCl+dQCl)<0.) then
-         dQCi = dQCi + (QCl+dQCl)
-         dQCl = -QCl !== dQCl - (QCl+dQCl)
-      end if
-      if ((QCi+dQCi)<0.) then
-         dQCl = dQCl + (QCi+dQCi)
-         dQCi = -QCi !== dQCi - (QCi+dQCi)
-      end if
-
-      QAx   = QAo - QA
-      dQAl  = QAx ! (1.0-fQi)*QAx
-      dQAi  = 0.  !  fQi  * QAx
-
-      if ((QAl+dQAl)<0.) then
-         dQAi = dQAi + (QAl+dQAl)
-         dQAl = -QAl
-      end if
-      if ((QAi+dQAi)<0.) then
-         dQAl = dQAl + (QAi+dQAi)
-         dQAi = -QAi 
-      end if
-
-      ! Clean-up cloud if fractions are too small
-      if ( AF < 1.e-5 ) then
-         dQAi = -QAi
-         dQAl = -QAl
-      end if
-      if ( CF < 1.e-5 ) then
-         dQCi = -QCi
-         dQCl = -QCl
-      end if
-
-      QAi    = QAi + dQAi
-      QAl    = QAl + dQAl
-      QCi    = QCi + dQCi
-      QCl    = QCl + dQCl
-      QV     = QV  - ( dQAi+dQCi+dQAl+dQCl) 
-
-
-      !!TE  = TE + (MAPL_ALHS/MAPL_CP)*(dQAi+dQCi) + (MAPL_ALHL/MAPL_CP)*(dQAl+dQCl)
-      TE  = TE + (MAPL_ALHL*( dQAi+dQCi+dQAl+dQCl)+MAPL_ALHF*(dQAi+dQCi))/ MAPL_CP
-
-      ! We need to take care of situations where QS moves past QA
-      ! during QSAT iteration. This should be only when QA/AF is small
-      ! to begin with. Effect is to make QAo negative. So, we 
-      ! "evaporate" offending QAs
-      !
-      ! We get rid of anvil fraction also, although strictly
-      ! speaking, PDF-wise, we should not do this.
-      if ( QAo <= 0. ) then
-         QV  = QV + QAi + QAl
-         TE  = TE - (MAPL_ALHS/MAPL_CP)*QAi - (MAPL_ALHL/MAPL_CP)*QAl
-         QAi = 0.
-         QAl = 0.
-         AF  = 0.  
-      end if
-
-   end subroutine hystpdf
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #ifdef _CUDA
