@@ -22,6 +22,7 @@ module CICE_GEOSPlugMod
   use CICE_InitMod                 
   use CICE_FinalMod                 
   use CICE_RunMod                 
+  use ice_import_export
 
 
   implicit none
@@ -241,23 +242,15 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)         :: IAm
-    integer                            :: STATUS
-    character(len=ESMF_MAXSTR)         :: COMP_NAME
+    character(len=ESMF_MAXSTR)             :: IAm
+    integer                                :: STATUS
+    character(len=ESMF_MAXSTR)             :: COMP_NAME
 
 ! Locals
 
-    integer                                :: counts(7)
-    integer                                :: Comm
-    integer                                :: isc,iec,jsc,jec
-    integer                                :: isd,ied,jsd,jed
-    integer                                :: IM, JM
-    integer                                :: g_isc,g_iec,g_jsc,g_jec
-    integer                                :: g_isd,g_ied,g_jsd,g_jed
-
     integer                                :: YEAR,MONTH,DAY,HR,MN,SC
 
-! Locals with MOM types
+! Locals 
 
     type(time_type)                        :: Time
     type(time_type)                        :: DT
@@ -275,8 +268,6 @@ contains
     type(ESMF_State)                       :: SURFST
 
 
-    REAL_, pointer                         :: TW  (:,:)        => null()
-    REAL_, pointer                         :: SW  (:,:)        => null()
     REAL_, pointer                         :: AREA(:,:)        => null()
     REAL_, pointer                         :: MASK(:,:)        => null()
 
@@ -335,9 +326,6 @@ contains
 ! Allocate this instance of the internal state and wrap
 ! -----------------------------------------------------
 
-    !allocate ( MOM_MAPL_internal_state, stat=status )
-    !VERIFY_(STATUS)
-
 
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
@@ -357,8 +345,6 @@ contains
     ! BZ: need to properly initialze CICE's calendar??
     call cice_init1(Comm)
     call cice_init2
-
-
 
     !*CALLBACK*
     !=====================================================================================
@@ -509,26 +495,11 @@ contains
 
 ! Locals
 
-    type(ice_ocean_boundary_type), pointer :: Boundary                 => null()
-    type(ocean_public_type),       pointer :: Ocean                    => null()
-    type(ocean_state_type),        pointer :: Ocean_State              => null()
-    type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state  => null()
-    type(MOM_MAPLWrap_Type)                :: wrap
 
 !   type(ocean_grid_type),         pointer :: Ocean_grid               => null()
 
 ! Required exports
 
-    REAL_, pointer                     :: TW    (:,:)        => null()
-    REAL_, pointer                     :: SW    (:,:)        => null()
-    REAL_, pointer                     :: UW    (:,:)        => null()
-    REAL_, pointer                     :: VW    (:,:)        => null()
-    REAL_, pointer                     :: UWB   (:,:)        => null()
-    REAL_, pointer                     :: VWB   (:,:)        => null()
-    REAL_, pointer                     :: SLV   (:,:)        => null()
-    REAL_, pointer                     :: FRAZIL(:,:)        => null()
-    REAL_, pointer                     :: MELT_POT(:,:)      => null()
-    REAL_, pointer                     :: FRZMLT(:,:)        => null()
     REAL_, pointer                     :: MASK  (:,:)        => null()
     REAL_, pointer                     :: AREA  (:,:)        => null()
 
@@ -538,46 +509,15 @@ contains
 ! Imports
     REAL_, pointer                     :: TAUX(:,:)          => null()
     REAL_, pointer                     :: TAUY(:,:)          => null()
-    REAL_, pointer                     :: PS  (:,:)          => null()
-    REAL_, pointer                     :: PICE(:,:)          => null()
-    REAL_, pointer                     :: LWFLX(:,:)         => null()
-    REAL_, pointer                     :: SHFLX(:,:)         => null()
-    REAL_, pointer                     :: QFLUX(:,:)         => null()
-    REAL_, pointer                     :: RAIN(:,:)          => null()
-    REAL_, pointer                     :: SNOW(:,:)          => null()
-    REAL_, pointer                     :: SFLX(:,:)          => null()
-    REAL_, pointer                     :: PENUVR(:,:)        => null()
-    REAL_, pointer                     :: PENPAR(:,:)        => null()
-    REAL_, pointer                     :: PENUVF(:,:)        => null()
-    REAL_, pointer                     :: PENPAF(:,:)        => null()
-    REAL_, pointer                     :: DRNIR(:,:)         => null()
-    REAL_, pointer                     :: DFNIR(:,:)         => null()
-    REAL_, pointer                     :: DISCHARGE(:,:)     => null()
-    REAL_, pointer                     :: AICE(:,:)          => null()
-    REAL_, pointer                     :: TAUXBOT(:,:)       => null()
-    REAL_, pointer                     :: TAUYBOT(:,:)       => null()
 
 ! Temporaries
 
-    real, allocatable                  :: U (:,:),  V(:,:)
-    real, allocatable                  :: cos_rot(:,:)
-    real, allocatable                  :: sin_rot(:,:)
-
     integer                            :: IM, JM
-
-    integer                            :: steady_state_ocean = 0       ! SA: Per Atanas T, "name" of this var is misleading
-                                                                       ! We run ocean model only when it = 0
-
-    character(len=7)                   :: pres_loading                 ! yes or no
-
-    integer                            :: isc,iec,jsc,jec
 
     integer                            :: YEAR,MONTH,DAY,HR,MN,SC
     type(time_type)                    :: Time
     type(time_type)                    :: DT
 
-    real                               :: pice_scaling = 1.0
-    integer                            :: DT_OCEAN
 
 
     REAL_, pointer, dimension(:,:)     :: LATS  => null()
@@ -616,25 +556,28 @@ contains
 ! Get the Plug private internal state
 !--------------------------------------
 
-    CALL ESMF_UserCompGetInternalState( GC, 'MOM_MAPL_state', WRAP, STATUS )
-    VERIFY_(STATUS)
 
-    MOM_MAPL_internal_state => WRAP%PTR
-
-! Aliases to MOM types
+! 
 !---------------------
 
     call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'  ,    RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'  ,    RC=STATUS); VERIFY_(STATUS)
 
 
-    call cice_set_dynamic_forcing(TAUX, TAUY)
+    call ice_import_thermo2()
+
+    call ice_import_dyna(TAUX, TAUY)
 
 
     call CICE_Run
 
 ! Get exports needed by GEOS
 !---------------------
+
+    call ice_export_thermo2
+
+    call ice_export_dyna
+
 
 
     call MAPL_TimerOff(MAPL,"RUN"   )
@@ -667,11 +610,6 @@ contains
 
     type(MAPL_MetaComp),           pointer :: MAPL
     type(ESMF_Time)                        :: MyTime
-    type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state => null()
-    type(MOM_MAPLWrap_Type)                :: wrap
-    type(ocean_public_type),       pointer :: Ocean                   => null()
-    type(ocean_state_type),        pointer :: Ocean_State             => null()
-    type(ice_ocean_boundary_type), pointer :: Boundary                => null()
 
 ! ErrLog Variables
 
@@ -679,7 +617,7 @@ contains
     integer                          :: STATUS
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
-! Locals with MOM types
+! Locals 
 
     type(time_type)                  :: Time
     integer                          :: YEAR,MONTH,DAY,HR,MN,SC
@@ -705,7 +643,7 @@ contains
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
 
-! Set the times for MOM
+! Set the times for CICE
 !----------------------
 
     call ESMF_ClockGet( CLOCK, currTime=MyTime, RC=STATUS)
@@ -734,6 +672,45 @@ contains
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Finalize
+
+
+  !*CALLBACK*
+  !=====================================================================================
+  subroutine thermo_coupling(state, rc)
+!     implicit none
+
+  !! Arguments
+  !! ---------
+     type(ESMF_State)                      :: state
+     integer, intent(out)                  :: rc
+
+!EOP
+
+     real, dimension(:,:,:), pointer         :: ts
+! ErrLog Variables
+
+     integer                                 :: STATUS
+     character(len=ESMF_MAXSTR), parameter   :: IAm=' thermo_coupling'
+
+     !call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
+
+     ! unpack fields and send them to cice
+     call ice_import_thermo1
+     
+     ! let cice update surface temperature and fluxes 
+     call ice_fast_physics     
+
+     ! export the relevant fields from cice
+     call ice_export_thermo1
+
+     ! pack them back into state 
+
+     RETURN_(ESMF_SUCCESS)
+
+  end subroutine thermo_coupling
+
+  !=====================================================================================
+
 
 !====================================================================
 
