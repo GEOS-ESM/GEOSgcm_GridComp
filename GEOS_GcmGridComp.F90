@@ -39,6 +39,7 @@ module GEOS_GcmGridCompMod
   integer            :: DO_OBIO
   integer            :: DO_DATASEA
   integer            :: DO_WAVES
+  integer            :: DO_SEA_SPRAY
 
 !=============================================================================
 
@@ -206,6 +207,8 @@ contains
     call MAPL_GetResource ( MAPL, DO_DATASEA,  Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_WAVES,    Label="USE_WAVES:",           DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY,Label="USE_SEA_SPRAY:",       DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
@@ -2280,15 +2283,16 @@ contains
      call DO_W2A(SRC, DST, NAME='CHARNOCK',    RC=STATUS)
      VERIFY_(STATUS)
 
-     ! aliases
-     SRC => GCM_INTERNAL_STATE%WGCM_EXP
-     DST => GCM_INTERNAL_STATE%TURB_IMP
+     if (DO_SEA_SPRAY /= 0) then
+         ! aliases
+         SRC => GCM_INTERNAL_STATE%WGCM_EXP
+         DST => GCM_INTERNAL_STATE%TURB_IMP
 
-     call DO_W2A(SRC, DST, NAME='SHFX_SPRAY',  RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_W2A(SRC, DST, NAME='LHFX_SPRAY',  RC=STATUS)
-     VERIFY_(STATUS)
-
+         call DO_W2A(SRC, DST, NAME='SHFX_SPRAY',  RC=STATUS)
+         VERIFY_(STATUS)
+         call DO_W2A(SRC, DST, NAME='LHFX_SPRAY',  RC=STATUS)
+         VERIFY_(STATUS)
+     end if
 
      call MAPL_TimerOff(MAPL,"--W2A"  )
 

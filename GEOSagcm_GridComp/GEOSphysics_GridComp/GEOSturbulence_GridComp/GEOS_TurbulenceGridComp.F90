@@ -2650,7 +2650,7 @@ contains
     call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    if (DO_WAVES /= 0) then
+    if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
         call MAPL_GetPointer(IMPORT, SH_SPR,   'SHFX_SPRAY',    RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT, LH_SPR,   'LHFX_SPRAY',    RC=STATUS)
