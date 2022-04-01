@@ -206,9 +206,9 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_DATASEA,  Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_WAVES,    Label="USE_WAVES:",           DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_WAVES,    Label="USE_WAVES:",           DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY,Label="USE_SEA_SPRAY:",       DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY,Label="USE_SEA_SPRAY:",       DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )

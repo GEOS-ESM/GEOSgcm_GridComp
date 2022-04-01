@@ -250,10 +250,10 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set the Run entry points
@@ -600,7 +600,7 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    if (DO_WAVES /= 0) then
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
        call MAPL_AddImportSpec(GC,                                    &
             SHORT_NAME         = 'SHFX_SPRAY',                        &
             LONG_NAME          = 'sensible_heat_contribution_from_sea_spray', &
@@ -1990,7 +1990,7 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    if (DO_WAVES /= 0) then
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
         call MAPL_AddExportSpec(GC,                                  &
            SHORT_NAME      = 'SHFX_SPRAY',                           &
            LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
@@ -2644,13 +2644,13 @@ contains
     VERIFY_(STATUS)
 
 ! Sea spray
-    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
         call MAPL_GetPointer(IMPORT, SH_SPR,   'SHFX_SPRAY',    RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT, LH_SPR,   'LHFX_SPRAY',    RC=STATUS)
@@ -5030,7 +5030,7 @@ contains
     call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
     call ESMF_StateGet(IMPORT, 'TRG',    TRG,    RC=STATUS); VERIFY_(STATUS)
 
-    if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
        call MAPL_GetPointer(IMPORT, SH_SPRAY_, 'SHFX_SPRAY',   RC=STATUS)
        VERIFY_(STATUS)
 
@@ -5256,7 +5256,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
 #endif
        end if
 
-       if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
+       if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
           if(NAME=='S') SF = SF + SH_SPRAY
           if(NAME=='Q') SF = SF + LH_SPRAY/MAPL_ALHL
        end if
@@ -5272,7 +5272,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
           endif
        end if
 
-       if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
+       if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
           if(NAME=='S') SX(:,:,LM) = SX(:,:,LM) + (SH_SPRAY/(DP(:,:,LM)/MAPL_GRAV))*DT
           if(NAME=='Q') SX(:,:,LM) = SX(:,:,LM) + (LH_SPRAY/(MAPL_ALHL*DP(:,:,LM)/MAPL_GRAV))*DT
        end if
