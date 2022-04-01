@@ -6,7 +6,7 @@
 !     Reference:
 !          Bao et al., Mon Wea Rev, 2011. 10.1175/MWR-D-11-00007.1
 !
-!     Code was email by Jian-Wen Bao to Santha Akella on 02/17/2015
+!     Code was provided by Jian-Wen Bao on 02/17/2015
 !-------------------------------------------------------------------
 !  Input variables
 !
@@ -33,8 +33,9 @@
 !--------------------------------------------------------
      
 
-!!!! MAT This was the original program to drive this !!!!
-
+!--------------------------------------------------------
+! Example:
+!
 !     real UU,ZU,Ts,Ta,MR,Patm,hwave,cwave,p,usr,hss_GFDL,hll_GFDL
 !     real usr_new,fxh_seaspray,fxe_seaspray
 !     real s,hss,hll,massf,hs_tot,hl_tot
@@ -47,7 +48,7 @@
 !     sourcestrength_tune = 0.4 ! Scales droplet mass flux, 0.5 = midway between Anreas/Fairall and de Leeuw
 !     feedback_tune = 0.2       ! Doesn't change droplet contribution to enthalphy flux, but changes balance
 !                               ! between droplet Hs and Hl
-
+!
 !     UU = 50.                  ! Wind speed
 !     ZU = 25.                  ! Reference height for bulk data
 !     Ts = 29.                  ! SST
@@ -61,12 +62,13 @@
 !     call execute_spray_param (sourcestrength_tune,feedback_tune,UU,ZU,
 !    &             Ts,Ta,s,Patm,hss,hll,hwave,cwave,p,usr,massf,hs_tot,
 !    &             hl_tot,usr_new,S_bar1,z_r,omega,alpha,vfm)
-
+!
 !     print *, 'hss (W/m^2) = ', hss, 'hss_spray (W/m^2) = ', hs_tot
 !     print *, 'hll (W/m^2) = ', hll, 'hll_spray (W/m^2) = ', hl_tot
 !     print *, 'usr (m/s)   = ', usr, 'usr_spray (m/s)   = ', usr_new
-
+!
 !     end
+!--------------------------------------------------------
 
       implicit none
 
