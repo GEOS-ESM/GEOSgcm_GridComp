@@ -1,5 +1,3 @@
-!  $Id$
-
 #include "MAPL_Generic.h"
 
 module GEOS_SolarGridCompMod
@@ -13,17 +11,17 @@ module GEOS_SolarGridCompMod
 ! !DESCRIPTION:
 ! 
 ! {\tt GEOS\_SolarGridCompMod} is an ESMF/MAPL gridded component that performs
-!  a broadband calculation of shortwave radiative fluxes for use as a
-!  solar radiation parameterization in atmospheric models on a sphere. \newline
+! a broadband calculation of shortwave radiative fluxes for use as a solar
+! radiation parameterization in atmospheric models on a sphere. \newline
 ! 
-! {\em Scientific Basis:} The radiative transfer calculation is based on M-D Chou shortwave
-! parameterization. The basic reference for the scheme is:
-! Chou and Suarez 1999: A Solar Radiation Parameterization for Atmospheric Studies,
-! NASA-TM-1999-104606, Vol 15. An updated version of this report can be
-! found in SolarDoc.pdf in this directory. \newline
+! {\em Scientific Basis:} The radiative transfer calculation is based on the
+! M-D Chou shortwave parameterization. The basic reference for the scheme is:
+! Chou and Suarez 1999: A Solar Radiation Parameterization for Atmospheric
+! Studies, NASA-TM-1999-104606, Vol 15. An updated version of this report
+! can be found in SolarDoc.pdf in this directory. \newline
 !
-! The parameterization treats direct and diffuse fluxes of solar 
-! radiation in eight spectral bands:  
+! The parameterization treats direct and diffuse fluxes of solar radiation
+! in eight spectral bands:  
 ! \begin{verbatim}
 !        in the uv region :
 !           index  1 for the 0.225-0.285 micron band
@@ -38,142 +36,124 @@ module GEOS_SolarGridCompMod
 !           index  8 for the 2.270-3.850 micron band
 ! \end{verbatim}
 ! It includes gaseous absorption due to water vapor, ozone, CO$_2$, and
-! molecular oxygen and the effects of molecular scattering,
-! as well as multiple scattering due to clouds and aerosols. 
+! molecular oxygen and the effects of molecular scattering, as well as
+! multiple scattering due to clouds and aerosols. \newline
 !
-! It allows clouds to occur in any layer and 
-! horizontal cloud cover fractions must be specified 
-! for all layers; clear layers
-! simply have a fraction of zero. Vertically, the layers are 
-! assumed to be filled by cloud. To simplify the treatment of
-! cloud effects, the model layers,
-! are grouped into three super layers. Effective cloud properties are then
-! parameterized by assuming that clouds are maximally overlapped within the super layers
-! and randomly overlapped between the super layers.  The  
-! optical properties of cloud particles depend on the liquid, ice, and rain mixing ratios,
-! as well as on spatially dependent effective radii for the three species.
-! These are all inputs to the component. \newline
+! It allows clouds to occur in any layer and horizontal cloud cover fractions
+! must be specified for all layers; clear layers simply have a zero fraction.
+! Vertically, the layers are assumed to be filled by cloud. To simplify the
+! treatment of cloud effects, the model layers, are grouped into three super
+! layers. Effective cloud properties are then parameterized by assuming that
+! clouds are maximally overlapped within the super layers and randomly over-
+! lapped between the super layers.  The optical properties of cloud particles
+! depend on the liquid, ice, and rain mixing ratios, as well as on spatially
+! dependent effective radii for the three species. These are all inputs to
+! the Gridded Component. \newline
 !
-!  The parameterization can include the effects of an arbitrary
-!  number of aerosol species.
-!  Aerosol optical thickness, single-scattering albedo, and asymmetry
-!  factor must be determined as functions of height and spectral band
-!  for each species. \newline
-!
+! The parameterization can include the effects of an arbitrary number of
+! aerosol species. Aerosol optical thickness, single-scattering albedo, and
+! asymmetry factor must be determined as functions of height and spectral
+! band for each species. \newline
 !
 ! {\em Code Implementation:} \newline
 ! 
-!  {\tt GEOS\_SolarGridCompMod} is an encapsulation of Chou's plug-compatible
-!  SORAD Fortran routine in a MAPL/ESMF gridded component (GC). 
-!  It follows the standard rules for an ESMF/MAPL GCs.
-!  It operates on the ESMF grid that appears in the
-!  gridded component. This grid must
-!  be present in the GC and properly initialized before Initialize
-!  is called. The only restrictions on the grid are that it be 3-dimensional
-!  with two horizontal and one vertical dimension and
-!  with only the horizontal dimensions decomposed. The vertical dimension
-!  is also assumed to the the thrid dimension of the Fortran arrays and
-!  is indexed from the top down. No particular vertical coordinate is assumed,
-!  rather the 3-dimensional field of air pressure at the layer interfaces is 
-!  a required Import. \newline
+! {\tt GEOS\_SolarGridCompMod} is an encapsulation of Chou's plug-compatible
+! SORAD Fortran routine in a MAPL/ESMF gridded component (GC). It follows the
+! standard rules for an ESMF/MAPL GCs. It operates on the ESMF grid that
+! appears in the gridded component. This grid must be present in the GC and
+! properly initialized before Initialize is called. The only restrictions on
+! the grid are that it be 3-dimensional with two horizontal and one vertical
+! dimension and with only the horizontal dimensions decomposed. The vertical
+! dimension is also assumed to the the third dimension of the Fortran arrays
+! and is indexed from the top down. No particular vertical coordinate is
+! assumed, rather the 3-dimensional field of air pressure at the layer
+! interfaces is a required Import. \newline
 !
-!  This module contains only SetServices and Run methods. 
-!  The Initialize and Finalize methods
-!  being defaulted to the MAPL\_Generic versions. 
-!  The SetServices method is the only public
-!  entity. There are no public types or data. \newline
+! This module contains only SetServices and Run methods. The Initialize 
+! and Finalize methods being defaulted to the MAPL\_Generic versions. The
+! SetServices method is the only public entity. There are no public types
+! or data. \newline
 !
-!  The contents of the Import, Export, and Internal States are explicitly
-!  described in SetServices and in tables in this documentation.
-!  All quantities in these states are in either ESMF Fields or Bundles,
-!  and all share a common grid---the ESMF grid in the gridded component
-!  at the time Initialize (MAPL\_GenericInitialize, in this case) was called.
-!  All outputs appearing in the Export state are optional and are 
-!  filled only if they have been allocated. All filled Exports are valid
-!  for the time interval on the GC's clock when the run method is invoked.
-!  Imports can be from either an instantaneous or a time-averaged state of the
-!  atmosphere. All Imports are read-only; none are Friendly.
-!  Most imports are simple ESMF Fields containing 2- or 
-!  3-dimensional quantities, such as temperature and humidity, needed in
-!  the flux calculation. Non-cloud aerosol amounts are the exception; they 
-!  appear in an ESMF Bundle.  \newline 
+! The contents of the Import, Export, and Internal States are explicitly
+! described in SetServices and in tables in this documentation. All quantities
+! in these states are in either ESMF Fields or Bundles, and all share a common
+! grid---the ESMF grid in the gridded component at the time Initialize (in this
+! case, MAPL\_GenericInitialize) was called. All outputs appearing in the Export
+! state are optional and are filled only if they have been allocated. All filled
+! Exports are valid for the time interval on the GC's clock when the run method
+! is invoked. Imports can be from either an instantaneous or a time-averaged
+! state of the atmosphere. All Imports are read-only; none are Friendly. Most
+! imports are simple ESMF Fields containing 2- or 3-dimensional quantities,
+! such as temperature and humidity, needed in the flux calculation. Non-cloud
+! aerosol amounts are the exception; they appear in an ESMF Bundle. \newline 
 !
-!  The net (+ve downward) fluxes on the Export state are defined at the layer
-!  interfaces, which are indexed from the top of the atmosphere (L=0)
-!  to the surface. Incident fluxes
-!  at the surface also appear in the Export state; these are separated
-!  into direct (beam) and diffuse fluxes for three spectral bands
-!  (uv, par, nir), as defined in the table above.  \newline
+! The net (+ve downward) fluxes on the Export state are defined at the layer
+! interfaces, which are indexed from the top of the atmosphere (L=0) to the
+! surface. Incident fluxes at the surface also appear in the Export state;
+! these are separated into direct (beam) and diffuse fluxes for three spectral
+! bands (uv, par, nir), as defined in the table above. \newline
 !
-!  The full transfer calculation is done infrequently and 
-!  its results kept in the Internal state. 
-!  The frequency of full calculations is controlled
-!  by an alarm whose interval can be set
-!  from a value in the configuration and whose origin is taken as the 
-!  beginning of the run.
-!  For the full calculations, solar fluxes are computed based on
-!  mean zenith angles averaged over sun positions for a 
-!  given period (the long interval, which can be specified in 
-!  the configuration) beyond the
-!  current time on the input clock. On every call to the Run method,
-!  whatever the state of the alarm that controls the full calculation,
-!  the sun's position
-!  is updated to the mean position for the clock's current interval
-!  and fluxes are updated based on normalized fluxes computed during
-!  the previous full transfer calculation, but using
-!  the TOA insolation for the current time on the clock. Because of this
-!  intermittent scheme, checkpoint-restart sequences are seamless
-!  only when interrupted at the time of the full calculation.\newline
+! The full transfer calculation is done infrequently and its results kept in
+! the Internal state. The frequency of full calculations is controlled by an
+! alarm whose interval can be set from a value in the configuration and whose
+! origin is taken as the beginning of the run. For the full calculations, solar
+! fluxes are computed based on mean zenith angles averaged over sun positions
+! for a given period (the long interval, which can be specified in the config-
+! uration) beyond the current time on the input clock. On every call to the Run
+! method, whatever the state of the alarm that controls the full calculation,
+! the sun's position is updated to the mean position for the clock's current
+! interval and fluxes are updated based on normalized fluxes computed during
+! the previous full transfer calculation, but using the TOA insolation for the
+! current time on the clock. Because of this intermittent scheme, checkpoint-
+! restart sequences are seamless only when interrupted at the time of the full
+! calculation. \newline
 !
-!  The calculation relies in MAPL's Astronomy layer, which in turn 
-!  assumes that the ESMF grid can be queried for latitude and longitude
-!  coordinates. \newline
+! The calculation relies in MAPL's Astronomy layer, which in turn  assumes that
+! the ESMF grid can be queried for latitude and longitude coordinates. \newline
 !
 ! {\em Configuration:} \newline
 !  
-!  Like all MAPL GCs, {\tt GEOS\_SolarGridCompMod} assumes that the configuration
-!  in the ESMF GC is open and treats it as an environment from which it can
-!  {\em at any time} read control information. It uses MAPL rules for scanning this
-!  configuration.
+! Like all MAPL GCs, {\tt GEOS\_SolarGridCompMod} assumes that the configuration
+! in the ESMF GC is open and treats it as an environment from which it can {\em
+! at any time} read control information. It uses MAPL rules for scanning this
+! configuration.
 !\begin{verbatim}
 !
-!VARIABLE             DESCRIPTION           UNITS      DEFAULT   NOTES
+! VARIABLE             DESCRIPTION           UNITS      DEFAULT   NOTES
 !
-!RUN_DT:              Short time interval   (seconds)  none   
-!DT:                  Long time interval    (seconds)  RUN_DT
-!AVGR:                Averaging interval    (seconds)  DT
-!PRS_LOW_MID_CLOUDS:  Interface pressure    (Pa)       70000.
-!                     between the low and
-!                     middle cloud layers
-!PRS_MID_HIGH_CLOUDS: Interface pressure    (Pa)       40000.
-!                     between the high and
-!                     middle cloud layers
-!SOLAR_CONSTANT:                            (W m-2)    none      Use -1 for time-dependent values
-!CO2:                 CO2 concentration     (ppmv)     none      Use -1 for time-dependent values
+! RUN_DT:              Short time interval   (seconds)  none   
+! DT:                  Long time interval    (seconds)  RUN_DT
+! AVGR:                Averaging interval    (seconds)  DT
+! PRS_LOW_MID_CLOUDS:  Interface pressure    (Pa)       70000.
+!                      between the low and
+!                      middle cloud layers
+! PRS_MID_HIGH_CLOUDS: Interface pressure    (Pa)       40000.
+!                      between the high and
+!                      middle cloud layers
+! SOLAR_CONSTANT:                            (W m-2)    none      Use -1 for time-dependent values
+! CO2:                 CO2 concentration     (ppmv)     none      Use -1 for time-dependent values
 !
 !\end{verbatim}
-!
 !
 ! !BUGS:
 !
 !\end{verbatim} 
 !\begin{itemize} 
-!    \item Aerosol properties for each aerosol in the Bundle are obtained by
-!    calling a global method (Get\_AeroOptProp) that must recognize
-!    the aerosol by its Field name in the Bundle. This is a placeholder
-!    for a scheme in which each Field carries with it a method for computing
-!    its aerosol's optical properties.
+!  \item Aerosol properties for each aerosol in the Bundle are obtained by calling a global
+!  method (Get\_AeroOptProp) that must recognize the aerosol by its Field name in the Bundle.
+!  This is a placeholder for a scheme in which each Field carries with it a method for
+!  computing its aerosol's optical properties.
 !
-!    \item The grid must have two horizontal dimensions and they must be the inner dimensions
-!    of Fortran arrays.
+!  \item The grid must have two horizontal dimensions and they must be the inner dimensions
+!  of Fortran arrays.
 !
-!    \item The load-balancing relies on the grid describing a sphere. Everything
-!    works for non-spherical grids but the load-balancing should be disabled
-!    and this can be done only by going into the code.
+!  \item The load-balancing relies on the grid describing a sphere. Everything works for
+!  non-spherical grids but the load-balancing should be disabled and this can be done only
+!  by going into the code.
 !\end{itemize} 
-! \begin{verbatim}
+!\begin{verbatim}
 !
-!   */  
+! */  
 
 ! !USES:
 
@@ -217,7 +197,6 @@ module GEOS_SolarGridCompMod
         AIG_UV, AWG_UV, ARG_UV,  XK_IR,  RY_IR, AIB_NIR, &
         AWB_NIR, ARB_NIR, AIA_NIR, AWA_NIR, ARA_NIR, AIG_NIR, &
         AWG_NIR, ARG_NIR, HK_UV, HK_IR
-
 #else
   use soradmod, only: SORAD
 #endif
@@ -289,35 +268,33 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS
-    character(len=ESMF_MAXSTR)              :: COMP_NAME
+    character(len=ESMF_MAXSTR) :: IAm
+    character(len=ESMF_MAXSTR) :: COMP_NAME
+    integer                    :: STATUS
 
 ! Local derived type aliases
 
-    type (ESMF_Config          )            :: CF
+    type (ESMF_Config)         :: CF
 
 ! Locals
 
-    integer      :: RUN_DT
-    integer      :: MY_STEP
-    integer      :: ACCUMINT
-    real         :: DT
+    integer :: RUN_DT
+    integer :: MY_STEP
+    integer :: ACCUMINT
+    real    :: DT
 
-    logical      :: USE_RRTMGP, USE_RRTMG, USE_CHOU
-    real         :: RFLAG
-    integer      :: NUM_BANDS_SOLAR
+    logical :: USE_RRTMGP, USE_RRTMG, USE_CHOU
+    real    :: RFLAG
+    integer :: NUM_BANDS_SOLAR
 
     type (ty_RRTMGP_state), pointer :: rrtmgp_state => null()
     type (ty_RRTMGP_wrap)           :: wrap
 
+    integer :: n
+
 !=============================================================================
 
-! Begin...
-
-! Get my name and set-up traceback handle
-! ---------------------------------------
-
+    ! Get my name and set-up traceback handle
     call ESMF_GridCompGet(GC, NAME=COMP_NAME, __RC__)
     Iam = trim(COMP_NAME) // 'SetServices'
 
@@ -327,46 +304,40 @@ contains
     call ESMF_UserCompSetInternalState(GC, 'RRTMGP_state', wrap, status)
     VERIFY_(status)
 
-! Get the configuration
-! ---------------------
-
+    ! Get the configuration
     call ESMF_GridCompGet(GC, CONFIG=CF, __RC__)
 
-! Get the intervals; "heartbeat" must exist
-! -----------------------------------------
-
+    ! Get the intervals; "heartbeat" must exist
     call ESMF_ConfigGetAttribute(CF, DT, Label="RUN_DT:", __RC__)
     RUN_DT = nint(DT)
 
-! Refresh interval defaults to heartbeat.
-! ---------------------------------------
-
+    ! Refresh interval defaults to heartbeat.
     call ESMF_ConfigGetAttribute(CF, DT, Label=trim(COMP_NAME)//"_DT:", default=DT, __RC__)
     MY_STEP = nint(DT)
 
-! Averaging interval defaults to refresh interval.
-!-------------------------------------------------
-
+    ! Averaging interval defaults to refresh interval.
     call ESMF_ConfigGetAttribute(CF, DT, Label=trim(COMP_NAME)//'Avrg:', default=DT, __RC__)
     ACCUMINT = nint(DT)
 
-! Decide which radiation to use
-! RRTMGP dominates RRTMG dominates Chou-Suarez
-! Chou-Suarez is the default if nothing else asked for in Resource file
-! Needed in SetServices because we Export a per-band flux and the
-!   number of bands differs between codes.
-!----------------------------------------------------------------------
+    ! Decide which radiation to use for thermodynamics state evolution
+    ! RRTMGP dominates RRTMG dominates Chou-Suarez
+    ! Chou-Suarez is the default if nothing else asked for in Resource file
+    ! Needed in SetServices because we Export a per-band flux and the
+    !   number of bands differs between codes.
+    !----------------------------------------------------------------------
 
     USE_RRTMGP = .false.
     USE_RRTMG  = .false.
     USE_CHOU   = .false.
     call ESMF_ConfigGetAttribute(CF, RFLAG, LABEL='USE_RRTMGP_SORAD:', DEFAULT=0., __RC__)
-    USE_RRTMGP = RFLAG /= 0.0
+    USE_RRTMGP = RFLAG /= 0.
     if (.not. USE_RRTMGP) then
       call ESMF_ConfigGetAttribute(CF, RFLAG, LABEL='USE_RRTMG_SORAD:', DEFAULT=0., __RC__)
-      USE_RRTMG = RFLAG /= 0.0
+      USE_RRTMG = RFLAG /= 0.
       USE_CHOU  = .not.USE_RRTMG
     end if
+    n = count([USE_CHOU,USE_RRTMG,USE_RRTMGP])
+    _ASSERT(n==1, 'must select exactly one SW code for state evolution')
 
     ! Set number of solar bands
     if (USE_RRTMGP) then
@@ -696,7 +667,6 @@ contains
 
 
 !  !EXPORT STATE:
-  
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='net_downward_shortwave_flux_in_air',                     &
@@ -1202,7 +1172,6 @@ contains
        SHORT_NAME = 'SLRSUFCNA',                                             &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
-!END CAR
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_outgoing_shortwave_flux',                           &
@@ -1231,7 +1200,6 @@ contains
        SHORT_NAME = 'OSRCNA',                                                &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
-!END CAR
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_net_downward_shortwave_flux',                       &
@@ -1338,10 +1306,65 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                                      &
         VLOCATION  = MAPL_VLocationNone,                               __RC__)
 
+!   PMN: Not implemented yet
+!   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!   !!! Normalised REFRESH dioagnostics from each SW code !!!
+!   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!   ! Chou-Suarez
+!   ! ===========
+
+!   call MAPL_AddExportSpec(GC,                                              &
+!      LONG_NAME  = 'Chou_Suarez_normalized_toa_outgoing_shortwave_flux_REFRESH',  &
+!      UNITS      = '1',                                                     &
+!      SHORT_NAME = 'REFCS_OSRN',                                            &
+!      DIMS       = MAPL_DimsHorzOnly,                                       &
+!      VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+!   call MAPL_AddExportSpec(GC,                                              &
+!      LONG_NAME  = 'Chou_Suarez_normalized_surface_net_downward_shortwave_flux_REFRESH', &
+!      UNITS      = '1',                                                     &
+!      SHORT_NAME = 'REFCS_RSRSN',                                           &
+!      DIMS       = MAPL_DimsHorzOnly,                                       &
+!      VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+!   ! RRTMG
+!   ! =====
+
+!   call MAPL_AddExportSpec(GC,                                              &
+!      LONG_NAME  = 'RRTMG_normalized_toa_outgoing_shortwave_flux_REFRESH',  &
+!      UNITS      = '1',                                                     &
+!      SHORT_NAME = 'REFRG_OSRN',                                            &
+!      DIMS       = MAPL_DimsHorzOnly,                                       &
+!      VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+!   call MAPL_AddExportSpec(GC,                                              &
+!      LONG_NAME  = 'RRTMG_normalized_surface_net_downward_shortwave_flux_REFRESH', &
+!      UNITS      = '1',                                                     &
+!      SHORT_NAME = 'REFRG_RSRSN',                                           &
+!      DIMS       = MAPL_DimsHorzOnly,                                       &
+!      VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+!   ! RRTMGP
+!   ! ======
+
+!   call MAPL_AddExportSpec(GC,                                              &
+!      LONG_NAME  = 'RRTMGP_normalized_toa_outgoing_shortwave_flux_REFRESH', &
+!      UNITS      = '1',                                                     &
+!      SHORT_NAME = 'REFRP_OSRN',                                            &
+!      DIMS       = MAPL_DimsHorzOnly,                                       &
+!      VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+!   call MAPL_AddExportSpec(GC,                                              &
+!      LONG_NAME  = 'RRTMGP_normalized_surface_net_downward_shortwave_flux_REFRESH', &
+!      UNITS      = '1',                                                     &
+!      SHORT_NAME = 'REFRP_RSRSN',                                           &
+!      DIMS       = MAPL_DimsHorzOnly,                                       &
+!      VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
 !EOS
 
-! Set the Profiling timers
-! ------------------------
+    ! Set the Profiling timers
 
     call MAPL_TimerAdd(GC, name="PRELIMS"                 , __RC__)
     call MAPL_TimerAdd(GC, name="REFRESH"                 , __RC__)
@@ -1375,9 +1398,7 @@ contains
     call MAPL_TimerAdd(GC, name="-MISC"                   , __RC__)
     call MAPL_TimerAdd(GC, name="UPDATE"                  , __RC__)
     
-! Set Run method and use generic init and final methods
-! -----------------------------------------------------
-
+    ! Set Run method and use generic init and final methods
     call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN, Run, __RC__)
     call MAPL_GenericSetServices    (GC, __RC__)
 
@@ -1400,7 +1421,7 @@ contains
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional,   intent(  out) :: RC     ! Error code:
+    integer, optional,   intent(  out) :: RC     ! Error code
 ! /*
 ! !DESCRIPTION: Each time the Run method is called it fills all Exports for
 !   which an allocated pointer is available. Exports are filled from the
@@ -1415,21 +1436,27 @@ contains
 !
 !   A simple load balancing scheme is used that evens work between antipodal
 !   processors. \newline 
+!
+!   PMN: Not implemented yet ...
+!   April 2022. PMN. Modifications to allow multiple radiation codes to be
+!   called in refresh for diagnostic comparison purposes. Only one radiation
+!   code (chosen by USE_{CHOU|RRTMG|RRTMGP}) updates the internal state, but
+!   requested REFRESH-frequency EXPORT diagnostics REF{CS|RG|RP}_* are calc-
+!   ulated using the corresponding radiation code (CS:Chou-Suarez, RG:RRTMG,
+!   RP:RRTMGP) as necessary. \newline
+!
 ! \newline
 ! */
 
 ! !BUGS:
 !
 !\end{verbatim} 
-!
 ! \begin{itemize}
 !  \item Deciding on the correct behavior for intermitent calls can be tricky.
-!
 !  \item Load-balancing communication needs to be upgraded to most up-to-date
 !  ESMF machine model. 
 ! \end{itemize}
-!
-! \begin{verbatim}
+!\begin{verbatim}
 !
 
 !EOP
@@ -1438,14 +1465,14 @@ contains
 ! ErrLog Variables
 
     character(len=ESMF_MAXSTR)          :: IAm
-    integer                             :: STATUS
     character(len=ESMF_MAXSTR)          :: COMP_NAME
+    integer                             :: STATUS
 
 ! Local derived type aliases
 
-    type (MAPL_MetaComp),     pointer   :: MAPL
-    type (ESMF_Grid        )            :: ESMFGRID
-    type (ESMF_Config      )            :: CF
+    type (MAPL_MetaComp), pointer       :: MAPL
+    type (ESMF_Grid)                    :: ESMFGRID
+    type (ESMF_Config)                  :: CF
 
     type (ty_RRTMGP_state), pointer     :: rrtmgp_state => null()
     type (ty_RRTMGP_wrap)               :: wrap
@@ -1492,16 +1519,17 @@ contains
     real, allocatable, dimension(:,:,:,:) :: AEROSOL_SSA
     real, allocatable, dimension(:,:,:,:) :: AEROSOL_ASY
 
-    integer            :: band
-    logical            :: implements_aerosol_optics
-    logical            :: USE_RRTMGP, USE_RRTMGP_IRRAD
-    logical            :: USE_RRTMG , USE_RRTMG_IRRAD
-    logical            :: USE_CHOU  , USE_CHOU_IRRAD
-    real               :: RFLAG
-    integer            :: NUM_BANDS_SOLAR, NUM_BANDS, TOTAL_RAD_BANDS
+    integer :: band
+    logical :: implements_aerosol_optics
+    logical :: USE_RRTMGP, USE_RRTMGP_IRRAD, NEED_RRTMGP
+    logical :: USE_RRTMG,  USE_RRTMG_IRRAD,  NEED_RRTMG
+    logical :: USE_CHOU,   USE_CHOU_IRRAD,   NEED_CHOU
+    integer :: NUM_BANDS_SOLAR, NUM_BANDS, TOTAL_RAD_BANDS
+    real    :: RFLAG
 
     integer, parameter :: BANDS_SOLAR_OFFSET = 0
 
+! PMN these three are redundant ... remove with zero diff test later
     integer, parameter :: NB_CHOU  = 8         ! Num bands in SORAD calcs for Chou
     integer, parameter :: NB_RRTMG = 14        ! Num bands in SORAD calcs for RRTMG
     integer, parameter :: NB_RRTMGP = 14       ! Num bands in SORAD calcs for RRTMGP
@@ -1511,10 +1539,9 @@ contains
     integer, parameter :: NB_RRTMGP_IRRAD = 16 ! Num bands in IRRAD calcs for RRTMGP
 
     integer :: CalledLast
-    integer :: LCLDMH
-    integer :: LCLDLM
-    integer :: K
+    integer :: LCLDMH, LCLDLM
     integer :: YY, DOY
+    integer :: K
     real    :: CO2
     real    :: PRS_LOW_MID
     real    :: PRS_MID_HIGH
@@ -1525,8 +1552,8 @@ contains
     logical :: REFRESH_FLUXES
     logical :: UPDATE_FIRST
 
-    real, external                  :: getco2
-    character(len=ESMF_MAXSTR)      :: MSGSTRING
+    real, external :: getco2
+    character(len=ESMF_MAXSTR) :: MSGSTRING
 
     real, save :: CO2_0, SC_0, MG_0, SB_0
     data          CO2_0 /0.0/, SC_0/0.0/, MG_0/0.0/, SB_0/0.0/
@@ -1542,25 +1569,17 @@ contains
 
 !=============================================================================
 
-! Begin... 
-
-! Get the target components name and set-up traceback handle.
-! -----------------------------------------------------------
-
+    ! Get the target components name and set-up traceback handle.
     call ESMF_GridCompGet (GC, name=COMP_NAME, GRID=ESMFGRID, __RC__ )
     Iam = trim(COMP_NAME) // "Run"
 
-! Get my internal MAPL_Generic state
-!-----------------------------------
-
+    ! Get my internal MAPL_Generic state
     call MAPL_GetObjectFromGC (GC, MAPL, __RC__)
 
     call MAPL_TimerOn (MAPL,"TOTAL"  ,__RC__)
     call MAPL_TimerOn (MAPL,"PRELIMS",__RC__)
 
-! Get parameters from generic state.
-!-----------------------------------
-
+    ! Get parameters from generic state.
     call MAPL_Get(MAPL,                                &
          IM                  = IM,                     &
          JM                  = JM,                     &
@@ -1575,36 +1594,29 @@ contains
          EXPORTspec          = ExportSpec,             &
          INTERNAL_ESMF_STATE = INTERNAL,         __RC__)
 
-! Get parameters from configuration
-!----------------------------------
-    
+    ! Get parameters from configuration
     call MAPL_GetResource (MAPL, PRS_LOW_MID,  'PRS_LOW_MID_CLOUDS:' , DEFAULT=70000., __RC__)
     call MAPL_GetResource (MAPL, PRS_MID_HIGH, 'PRS_MID_HIGH_CLOUDS:', DEFAULT=40000., __RC__)
     call MAPL_GetResource (MAPL, CO2,          'CO2:',                                 __RC__)
     call MAPL_GetResource (MAPL, SC,           'SOLAR_CONSTANT:',                      __RC__)
     call MAPL_GetResource (MAPL, SUNFLAG,      'SUN_FLAG:',            DEFAULT=0,      __RC__)
 
-! Should we load balance solar radiation?
-! For the single-column model, we always use the
-! DATMO DYCORE. If this is our DYCORE, turn off
-! load balancing.
-!---------------------------------------------
-
+    ! Should we load balance solar radiation?
+    ! For the single-column model, we always use the DATMO DYCORE.
+    ! If this is our DYCORE, turn off load balancing.
+    !---------------------------------------------
     call MAPL_GetResource (MAPL, DYCORE, 'DYCORE:', __RC__)
     call MAPL_GetResource (MAPL, SOLAR_LOAD_BALANCE, 'SOLAR_LOAD_BALANCE:', DEFAULT=1, __RC__)
-
     if (adjustl(DYCORE)=="DATMO" .OR. SOLAR_LOAD_BALANCE==0) then
        LoadBalance = .FALSE. 
     else
        LoadBalance = .TRUE.
     end if
 
-! Use time-varying co2
-!---------------------
-
+    ! Use time-varying co2
+    !---------------------
     call ESMF_ClockGet(CLOCK, currTIME=CURRENTTIME,       __RC__)
     call ESMF_TimeGet (CURRENTTIME, YY=YY, DayOfYear=DOY, __RC__)
-
     if(CO2<0.0) then
        CO2 = GETCO2(YY,DOY)
        write(MSGSTRING,'(A,I4,A,I3,A,e12.5)') &
@@ -1620,35 +1632,39 @@ contains
        call ESMF_LogWrite(MSGSTRING, ESMF_LOGMSG_INFO, __RC__)
     end if
 
-! Decide which radiation to use
-! RRTMGP dominates RRTMG dominates Chou-Suarez
-! Chou-Suarez is the default if nothing else asked for in Resource file
-! These USE_ flags are shared globally by contained SORADCORE() and Update_Flx()
-!----------------------------------------------------------------------
+    ! Decide which radiation to use for thermodynamics state evolution
+    ! RRTMGP dominates RRTMG dominates Chou-Suarez
+    ! Chou-Suarez is the default if nothing else asked for in Resource file
+    ! These USE_ flags are shared globally by contained SORADCORE() and Update_Flx()
+    !----------------------------------------------------------------------
 
     ! first for SORAD
     USE_RRTMGP = .false.
     USE_RRTMG  = .false.
     USE_CHOU   = .false.
-    call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_SORAD:', DEFAULT=0.0, __RC__)
-    USE_RRTMGP = RFLAG /= 0.0
+    call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_SORAD:', DEFAULT=0., __RC__)
+    USE_RRTMGP = RFLAG /= 0.
     if (.not. USE_RRTMGP) then
-      call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_SORAD:', DEFAULT=0.0, __RC__)
-      USE_RRTMG = RFLAG /= 0.0
+      call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_SORAD:', DEFAULT=0., __RC__)
+      USE_RRTMG = RFLAG /= 0.
       USE_CHOU  = .not.USE_RRTMG
     end if
+    k = count([USE_CHOU,USE_RRTMG,USE_RRTMGP])
+    _ASSERT(k==1, 'must select exactly one SW code for state evolution')
 
     ! then IRRAD
     USE_RRTMGP_IRRAD = .false.
     USE_RRTMG_IRRAD  = .false.
     USE_CHOU_IRRAD   = .false.
-    call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_IRRAD:', DEFAULT=0.0, __RC__)
-    USE_RRTMGP_IRRAD = RFLAG /= 0.0
+    call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMGP_IRRAD:', DEFAULT=0., __RC__)
+    USE_RRTMGP_IRRAD = RFLAG /= 0.
     if (.not. USE_RRTMGP_IRRAD) then
-      call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_IRRAD:', DEFAULT=0.0, __RC__)
-      USE_RRTMG_IRRAD = RFLAG /= 0.0
+      call MAPL_GetResource( MAPL, RFLAG ,'USE_RRTMG_IRRAD:', DEFAULT=0., __RC__)
+      USE_RRTMG_IRRAD = RFLAG /= 0.
       USE_CHOU_IRRAD  = .not.USE_RRTMG_IRRAD
     end if
+    k = count([USE_CHOU_IRRAD,USE_RRTMG_IRRAD,USE_RRTMGP_IRRAD])
+    _ASSERT(k==1, 'must select exactly one LW code for state evolution')
 
     ! Set number of solar bands
     if (USE_RRTMGP) then
@@ -1680,19 +1696,26 @@ contains
          write (*,*) "    IRRAD RRTMG: ", USE_RRTMGP_IRRAD, USE_RRTMG_IRRAD, USE_CHOU_IRRAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      _ASSERT(.FALSE.,'Total number of radiatiuon bands is inconsistent!')
+      _ASSERT(.FALSE.,'Total number of radiation bands is inconsistent!')
    end if
 
 ! Decide how to do solar forcing
 !-------------------------------
 
     call MAPL_GetResource (MAPL, SolCycFileName, "SOLAR_CYCLE_FILE_NAME:", DEFAULT='/dev/null', __RC__)
-
     if(SolCycFileName /= '/dev/null') THEN
 
-       call MAPL_GetResource( MAPL, USE_NRLSSI2, "USE_NRLSSI2:", DEFAULT=.TRUE., __RC__)
+       ! Solar forcing is from NRL SSI2 file for RRTMG[P].
+       ! For chou-Suarez, the typical forcing is from internal tables, but a special 
+       ! file forcing is also possible.
 
+       call MAPL_GetResource( MAPL, USE_NRLSSI2, "USE_NRLSSI2:", DEFAULT=.TRUE., __RC__)
        if (USE_NRLSSI2) then
+
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         !!! Use NRL SSI2 forcing file !!!
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
          _ASSERT(USE_RRTMG .or. USE_RRTMGP, 'only RRTMG[P] can use NRLSSI2 currently')
 
          call MAPL_GetResource (MAPL, PersistSolar, "PERSIST_SOLAR:", DEFAULT=.TRUE., __RC__)
@@ -1724,7 +1747,9 @@ contains
             HK_IR_TEMP(K,:)=HK_IR_OLD(K,:)*(HK(5+K)/sum(HK_IR_OLD(K,:)))
          end do
        end if
-    else if(SC<0.0) then
+
+    else if (SC<0.0) then
+
        call MAPL_SunGetSolarConstant (CURRENTTIME, SC, HK, __RC__)
 
        HK_UV_TEMP = HK(:5)
