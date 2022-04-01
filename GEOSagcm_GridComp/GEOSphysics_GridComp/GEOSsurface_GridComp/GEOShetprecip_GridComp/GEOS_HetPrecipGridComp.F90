@@ -122,7 +122,8 @@ contains
     real, pointer :: qvar(:) => null()
     real :: totalArea
     integer, pointer :: tiletypes(:) => null()
-
+    integer, allocatable :: the_seed(:)
+    integer :: seed_len
 
     call MAPL_GenericInitialize(GC, IMPORT, EXPORT, CLOCK, __RC__)
 
@@ -199,9 +200,23 @@ contains
     ! optioanally deal with seeding the random number generator
     ! ...TBD...
 
+    call random_seed(SIZE=seed_len)
+    allocate(THE_SEED(seed_len))
+
+    THE_SEED(1)=1
+    THE_SEED(2)=5
+
+    ! Gfortran uses longer seeds, so fill the rest with zero
+    if (seed_len > 2) THE_SEED(3:) = 0
+
+    call random_seed(PUT=THE_SEED)
+
+
     if (all(qvar == 0.0)) then
        call RANDOM_NORMAL(qvar)
     end if
+
+    deallocate(THE_SEED)
 
     _RETURN(ESMF_SUCCESS)
   end subroutine Initialize
@@ -303,10 +318,10 @@ contains
     end do
 
     ! bring the partial sum to the "middle" of the last ranked tile
-    do n = 1,NT
-       itile = krank(n)
-       psum(itile) =  psum(itile) - 0.5*norm_tile_area(itile)
-    end do
+!    do n = 1,NT
+!       itile = krank(n)
+!       psum(itile) =  psum(itile) - 0.5*norm_tile_area(itile)
+!    end do
 
     ! Note psum is the same variable as qranked in Randy's IDL code
 
