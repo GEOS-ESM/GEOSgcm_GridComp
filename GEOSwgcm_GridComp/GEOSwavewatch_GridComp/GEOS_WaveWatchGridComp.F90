@@ -224,7 +224,7 @@ contains
 
 
         call MAPL_AddExportSpec(GC,                                  &
-             SHORT_NAME    = 'WM_USTAR',                             &
+             SHORT_NAME    = 'USTAR',                                &
              CHILD_ID      = WW3GC,                  __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
@@ -233,6 +233,10 @@ contains
 
         call MAPL_AddExportSpec(GC,                                  &
              SHORT_NAME    = 'SWH',                                  &
+             CHILD_ID      = WW3GC,                  __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'EDF',                                  &
              CHILD_ID      = WW3GC,                  __RC__)
 
  

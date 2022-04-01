@@ -383,7 +383,7 @@ contains
 !  !INTERNAL STATE:
 
         call MAPL_AddInternalSpec(GC,                                &
-            SHORT_NAME     = 'WM_E',                                 &
+            SHORT_NAME     = 'E',                                    &
             LONG_NAME      = 'sea_surface_wave_energy_spectrum',     &
             UNITS          = 'm4 rad-1',                             &
             DIMS           = MAPL_DimsHorzOnly,                      &
@@ -405,7 +405,7 @@ contains
 !           DEFAULT        = 1.0,                    __RC__)
 
         call MAPL_AddInternalSpec(GC,                                &
-            SHORT_NAME     = 'WM_USTAR',                             &
+            SHORT_NAME     = 'USTAR',                                &
             LONG_NAME      = 'friction_velocity_of_air',             &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
@@ -1358,8 +1358,8 @@ contains
 
 ! Get pointers to inputs
 ! ----------------------
-      call MAPL_GetPointer(INTERNAL, WM_E,     'WM_E',        __RC__)
-      call MAPL_GetPointer(INTERNAL, WM_USTAR, 'WM_USTAR',    __RC__)
+      call MAPL_GetPointer(INTERNAL, WM_E,     'E',        __RC__)
+      call MAPL_GetPointer(INTERNAL, WM_USTAR, 'USTAR',    __RC__)
 
       ! AGCM     
       call MAPL_GetPointer(IMPORT, U10N,    'U10N',    __RC__)

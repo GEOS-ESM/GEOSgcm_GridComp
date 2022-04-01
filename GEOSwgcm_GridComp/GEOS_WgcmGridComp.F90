@@ -364,7 +364,7 @@ contains
             CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
-            SHORT_NAME     = 'WM_USTAR',                             &
+            SHORT_NAME     = 'USTAR',                                &
             CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
@@ -375,9 +375,9 @@ contains
             SHORT_NAME     = 'DCP',                                  &
             CHILD_ID       = WM,                     __RC__)
 
-!        call MAPL_AddExportSpec(GC,                                  &
-!            SHORT_NAME     = 'EDF',                                  &
-!            CHILD_ID       = WM,                     __RC__)
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME     = 'EDF',                                  &
+             CHILD_ID       = WM,                     __RC__)
 
 
 
@@ -692,6 +692,7 @@ contains
 ! Local variables
       integer :: IM, JM
       integer :: i, j
+
 ! MABL sea spray
       real :: spray_hss
       real :: spray_hll
@@ -709,12 +710,13 @@ contains
       real :: spray_alpha
       real :: spray_vfm
 
+      integer :: DO_SEA_SPRAY
+
       real, parameter :: SPRAY_SOURCE_STRENGTH = 0.4
       real, parameter :: SPRAY_FEEDBACK        = 0.2
  
 ! TODO: need to be consistent across the wave models; move to a config file
       real, parameter :: FRACTION_ICE_SUPPRESS_WAVES = 0.8
-      real, parameter :: NORTH_POLE_CAP_LATITUDE = 88.0
 
 
 
@@ -757,12 +759,14 @@ contains
 
 ! Run children (specific WM)
 ! --------------------------
-      call MAPL_GenericRunChildren (GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-
+      call MAPL_GenericRunChildren (GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+      VERIFY_(STATUS)
 
 ! MABL sea spray parameterization, Bao et al, 2011
 ! ------------------------------------------------
     call MAPL_TimerOn(MAPL, '-SEA_SPRAY')
+
+    call MAPL_GetResource( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=1, __RC__)
 
 ! Get pointers to inputs
 ! ----------------------
@@ -778,23 +782,23 @@ contains
       call MAPL_GetPointer(IMPORT, SHFX,   'SH',      __RC__)
 
 
-      call MAPL_GetPointer(EXPORT, WM_USTAR,   'WM_USTAR',  __RC__)
+      call MAPL_GetPointer(EXPORT, WM_USTAR,   'USTAR',     __RC__)
       call MAPL_GetPointer(EXPORT, WM_SWH,     'SWH',       __RC__)
       call MAPL_GetPointer(EXPORT, WM_DCP,     'DCP',       __RC__)
-!     call MAPL_GetPointer(EXPORT, WM_EDF,     'EDF',       __RC__)
+      call MAPL_GetPointer(EXPORT, WM_EDF,     'EDF',       __RC__)
       
       call MAPL_GetPointer(EXPORT, WM_LHFX,    'LHFX',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_SHFX,    'SHFX',      __RC__)
 
       ! sea spray diagnostics
-      call MAPL_GetPointer(EXPORT, WM_EDFP,    'EDFP',       alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, WM_EDFP,    'EDFP',      __RC__)
 
-      call MAPL_GetPointer(EXPORT, LHFX_TURB,  'LHFX_TURB' , alloc=.true., __RC__)
-      call MAPL_GetPointer(EXPORT, SHFX_TURB,  'SHFX_TURB' , alloc=.true., __RC__)
-      call MAPL_GetPointer(EXPORT, LHFX_TOT,   'LHFX_TOT'  , alloc=.true., __RC__)
-      call MAPL_GetPointer(EXPORT, SHFX_TOT,   'SHFX_TOT'  , alloc=.true., __RC__)
-      call MAPL_GetPointer(EXPORT, LHFX_SPRAY, 'LHFX_SPRAY', alloc=.true., __RC__)
-      call MAPL_GetPointer(EXPORT, SHFX_SPRAY, 'SHFX_SPRAY', alloc=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_TURB,  'LHFX_TURB' , alloc=(DO_SEA_SPRAY/=0), __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_TURB,  'SHFX_TURB' , alloc=(DO_SEA_SPRAY/=0), __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_TOT,   'LHFX_TOT'  , alloc=(DO_SEA_SPRAY/=0), __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_TOT,   'SHFX_TOT'  , alloc=(DO_SEA_SPRAY/=0), __RC__)
+      call MAPL_GetPointer(EXPORT, LHFX_SPRAY, 'LHFX_SPRAY', alloc=(DO_SEA_SPRAY/=0), __RC__)
+      call MAPL_GetPointer(EXPORT, SHFX_SPRAY, 'SHFX_SPRAY', alloc=(DO_SEA_SPRAY/=0), __RC__)
 
 ! Sanity diagnostics
 ! ------------------
@@ -853,10 +857,15 @@ contains
               spray_hll   = LHFX(i,j)     ! HLATWTR
               spray_hwave = WM_SWH(i,j)
               spray_cwave = WM_DCP(i,j)
-#if(0)
+#if(1)
               spray_p     = 3 * WM_EDF(i,j)  / MAPL_RHOWTR   ! the factor 3 is to agree with EDFP
+
+              ! protect against negative energy dissipation flux 
+              if (spray_p < 0) then
+                  spray_p = RHOS(i,j) * 3.5 * WM_USTAR(i,j)**3.5
+              end if    
 #else
-              spray_p     =     WM_EDFP(i,j) / MAPL_RHOWTR
+              spray_p     = WM_EDFP(i,j) / MAPL_RHOWTR
 #endif
               spray_usr   = WM_USTAR(i,j)
               
@@ -901,7 +910,7 @@ contains
           end if
 
 
-          if (abs(SHFX_SPRAY(i,j)) > 1e2 .or. abs(LHFX_SPRAY(i,j)) > 1e2) then
+          if (abs(SHFX_SPRAY(i,j)) > 2e2 .or. abs(LHFX_SPRAY(i,j)) > 2e2) then
               print *, SHFX_SPRAY(i,j),   &
                        LHFX_SPRAY(i,j),   &
                        sqrt(U10M(i,j)**2 + V10M(i,j)**2), &
@@ -911,7 +920,7 @@ contains
                        PS(i,j)   * 0.01,  &
                        WM_SWH(i,j),       &
                        WM_DCP(i,j),       &
-#if(0)
+#if(1)
                        WM_EDF(i,j)
 #else
                        WM_EDFP(i,j)
