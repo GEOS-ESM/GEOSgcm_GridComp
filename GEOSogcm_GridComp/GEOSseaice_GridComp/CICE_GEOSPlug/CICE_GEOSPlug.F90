@@ -13,7 +13,7 @@ module CICE_GEOSPlugMod
 ! !MODULE: CICE_GEOSPlugMod -- to couple with CICE6 and later.
 
 !DESCRIPTION:
-! A  MAPL/ESMF Gridded Component that acts as a coupler for CICE6 and any future versions.
+! A  MAPL/ESMF Gridded Component that acts as a coupler for CICE6.
 !
 
 !USES:
@@ -30,8 +30,6 @@ module CICE_GEOSPlugMod
 
   !PUBLIC MEMBER FUNCTIONS:
   public :: SetServices
-
-
 
 contains
 
