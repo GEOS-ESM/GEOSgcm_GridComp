@@ -4477,7 +4477,8 @@ contains
        end if
 
       KPBLMIN  = count(PREF < 50000.)
-
+      if (KPBLMIN == 0) KPBLMIN=LM-1
+ 
                             ZPBL = MAPL_UNDEF
       if (associated(PPBL)) PPBL = MAPL_UNDEF
 
@@ -4526,7 +4527,7 @@ contains
 
 
      ! Calc KPBL using surface turbulence, for use in shallow scheme
-      KPBL_SC = MAPL_UNDEF
+      KPBL_SC = LM-1
 
       do I = 1, IM
          do J = 1, JM
@@ -4544,7 +4545,7 @@ contains
                end if
             end do
             if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
-               KPBL_SC(I,J) = float(LM)
+               KPBL_SC(I,J) = float(LM-1)
             endif
          end do
       end do
@@ -4700,6 +4701,9 @@ contains
 
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
       KPBL = MAX(KPBL,float(KPBLMIN))
+      WHERE(KPBL == 0.0) 
+         KPBL=LM-1
+      END WHERE
 
       if (associated(PPBL)) then
          do I = 1, IM

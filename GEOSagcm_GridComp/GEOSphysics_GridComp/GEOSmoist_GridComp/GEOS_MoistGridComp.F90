@@ -27,8 +27,10 @@ module GEOS_MoistGridCompMod
   use GEOS_GF_InterfaceMod
   use GEOS_UW_InterfaceMod
 
-  USE Aer_Actv_Single_Moment,only: Aer_Actv_1M_interface, USE_AEROSOL_NN
-  USE Lightning_mod, only: HEMCO_FlashRate
+  use aer_cloud
+  use Aer_Actv_Single_Moment,only: Aer_Actv_1M_interface, USE_AEROSOL_NN
+  use Lightning_mod, only: HEMCO_FlashRate
+  use GEOSmoist_Process_Library
 
   implicit none
 
@@ -41,6 +43,9 @@ module GEOS_MoistGridCompMod
   logical :: DEBUG = .false.
   logical :: LDIAGNOSE_PRECIP_TYPE
   logical :: LUPDATE_PRECIP_TYPE
+  logical :: USE_AERO_BUFFER
+  real    :: CCN_OCN
+  real    :: CCN_LND
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -4725,13 +4730,6 @@ contains
     IF(CONVPAR_OPTION=='GF') THEN
 
        call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'DTRDT_GF',                                    &
-         LONG_NAME  = 'tendency_of_tracer_due_GF',        &
-         UNITS      = 'kg kg-1 s-1',                                  &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)    
-       call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'DQDT_GF',                                    &
          LONG_NAME  = 'tendency_of_spec_humidity_due_GF',        &
          UNITS      = 'kg kg-1 s-1',                                  &
@@ -5069,6 +5067,16 @@ contains
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
+    if (USE_AEROSOL_NN) then
+      call MAPL_GetResource( MAPL, USE_AERO_BUFFER , 'USE_AERO_BUFFER:' , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
+      call aer_cloud_init()
+      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
+    else
+      call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS)
+    endif
+
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
@@ -5117,7 +5125,7 @@ contains
 
     ! Local derived type aliases
 
-    type (MAPL_MetaComp), pointer   :: STATE
+    type (MAPL_MetaComp), pointer   :: MAPL
     type (ESMF_Config  )            :: CF
     type (ESMF_State   )            :: INTERNAL
     type (ESMF_Alarm   )            :: ALARM
@@ -5126,18 +5134,28 @@ contains
     real                            :: DT_MOIST
 
     ! Local variables
-    real, pointer, dimension(:,:,:) :: PTR3D
-    real, pointer, dimension(:,:  ) :: PTR2D
+    real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0, PK
+    real, allocatable, dimension(:,:,:) :: PLmb,  ZL0,  T
+    type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
-
+    real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
-    real, pointer, dimension(:,:,:) :: TH, U, V, W
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, W
+    real, pointer, dimension(:,:)   :: FRLAND, SH, EVAP, KPBL
+    real, pointer, dimension(:,:,:) :: OMEGA
+    type(ESMF_State)                :: AERO
+    type(ESMF_FieldBundle)          :: TR
 
     ! Exports
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT 
     real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
+    real, pointer, dimension(:,:,:) :: PTR3D
+    real, pointer, dimension(:,:  ) :: PTR2D
+
+    integer :: IM,JM,LM
+    integer :: I, J, L
 
     !=============================================================================
 
@@ -5154,15 +5172,18 @@ contains
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, STATE, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS) ; VERIFY_(STATUS)
 
-    call MAPL_TimerOn (STATE,"TOTAL")
+    call MAPL_TimerOn (MAPL,"TOTAL")
 
     ! If its time, call run methods
     ! --------------------------------------------
 
-    call MAPL_Get( STATE, RUNALARM = ALARM, &
-                   INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ) ; VERIFY_(STATUS)
+    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+         RUNALARM = ALARM,             &
+         INTERNAL_ESMF_STATE=INTERNAL, &
+         RC=STATUS )
+    VERIFY_(STATUS)
 
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
@@ -5180,12 +5201,43 @@ contains
        call MAPL_GetPointer(INTERNAL, CLLS,     'CLLS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NACTL,   'NACTL'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NACTI,   'NACTI'  , RC=STATUS); VERIFY_(STATUS)
 
        ! Import State
+       call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, KPBL,    'KPBL'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
+       call   ESMF_StateGet(IMPORT,'AERO',    AERO     , RC=STATUS); VERIFY_(STATUS)
+       call   ESMF_StateGet(IMPORT,'MTR',     TR       , RC=STATUS); VERIFY_(STATUS)
+
+       ! Allocatables
+        ! Edge variables 
+       ALLOCATE ( ZLE0 (IM,JM,0:LM) )
+       ALLOCATE ( PLEmb(IM,JM,0:LM) )
+        ! Layer variables
+       ALLOCATE ( ZL0  (IM,JM,LM  ) )
+       ALLOCATE ( PLmb (IM,JM,LM  ) )
+       ALLOCATE ( PK   (IM,JM,LM  ) )
+       ALLOCATE ( T    (IM,JM,LM  ) )
+
+       ! Derived States
+       PLEmb    =  PLE*.01
+       PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
+       PK       = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
+       DO L=0,LM
+          ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
+       END DO
+       ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
+       T        = TH*PK
 
        ! Export Tendencies
        call MAPL_GetPointer(EXPORT,  DQDT,  'DQDT'  , RC=STATUS); VERIFY_(STATUS)
@@ -5205,6 +5257,24 @@ contains
        if (associated( DVDT))  DVDT = V
        if (associated( DWDT))  DWDT = W
 
+       ! Get tracers and activation
+       call MAPL_TimerOn (MAPL,"---ACTIV")
+       ! Update convective tracers
+       call CNV_Tracers_Init(TR, RC)
+       if (USE_AEROSOL_NN) then
+         ALLOCATE (AeroProps(IM,JM,LM))
+         call Aer_Actv_1M_interface(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+                                    SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
+                                    AeroProps, AERO, NACTL, NACTI)
+         DEALLOCATE (AeroProps)
+       else
+         do L=1,LM
+           NACTL(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
+           NACTI(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
+         end do
+       endif
+       call MAPL_TimerOff(MAPL,"---ACTIV")
+
        if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5212,7 +5282,7 @@ contains
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 
-       ! Export Tendencies
+       ! Export Total Moist Tendencies
        if (associated( DQDT))  DQDT = ( Q            -  DQDT)/DT_MOIST
        if (associated(DQLDT)) DQLDT = ((QLLS + QLCN) - DQLDT)/DT_MOIST
        if (associated(DQIDT)) DQIDT = ((QILS + QICN) - DQIDT)/DT_MOIST
@@ -5228,7 +5298,7 @@ contains
 
     endif
 
-    call MAPL_TimerOff(STATE,"TOTAL")
+    call MAPL_TimerOff(MAPL,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)
 

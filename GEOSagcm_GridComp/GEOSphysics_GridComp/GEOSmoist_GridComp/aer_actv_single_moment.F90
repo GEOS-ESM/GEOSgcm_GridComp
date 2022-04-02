@@ -77,7 +77,7 @@ MODULE Aer_Actv_Single_Moment
 
       integer :: n_modes
       REAL :: numbinit
-      integer :: i,j,k,n,kcb,rc
+      integer :: i,j,k,n,kcb,kpblmin,rc
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Actv_1M_interface"
       integer                                 :: STATUS
@@ -227,12 +227,14 @@ MODULE Aer_Actv_Single_Moment
       WC       = 0.
       BB       = 0.
       RAUX     = 0.
-            
+           
       !--- determing aerosol number concentration at cloud base
       DO j=1,JM
         Do i=1,IM 
         !------check this
-             kcb = NINT(kpbl(i,j))
+             kpblmin = count(plo(i,j,:) <= 500.0)
+             if (kpblmin == 0) kpblmin=LM-1
+             kcb = MAX(NINT(kpbl(i,j)),kpblmin)
         !------check this
              naer_cb(i,j) = zero_par
              k=min(kcb-1,LM-1); IF(K==0) stop "K==0- aer-act"

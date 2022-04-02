@@ -7,6 +7,7 @@
 
 module GEOSmoist_Process_Library
 
+  use ESMF
   use MAPL
 
   implicit none
@@ -33,9 +34,95 @@ module GEOSmoist_Process_Library
   real, parameter :: aewc = 0.13*(3./(4.*MAPL_PI*RHO_W*1.e3))**r13
   real, parameter :: aeic = 0.13*(3./(4.*MAPL_PI*RHO_I*1.e3))**r13
 
+  ! Tracer Bundle things for convection
+  type CNV_Tracer_Type
+      real, pointer              :: Q(:,:,:) => null()
+      real                       :: fscav = 0.0
+      real                       :: Vect_Hcts(4)
+      character(len=ESMF_MAXSTR) :: QNAME ! Tracer Name
+      character(len=ESMF_MAXSTR) :: CNAME ! Component Name
+  end type CNV_Tracer_Type
+  type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
+
+  public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
 
   contains
+
+  subroutine CNV_Tracers_Init(TR, RC)
+    type (ESMF_FieldBundle), intent(inout) :: TR
+    integer,       optional, intent(inout) :: RC
+   ! Local
+    type (ESMF_Field) :: FIELD
+    integer :: TotalTracers, FriendlyTracers
+    logical :: isPresent, isFriendly
+    integer :: ind, N, F
+    character(len=ESMF_MAXSTR), pointer, dimension(:) :: QNAMES
+    character(len=ESMF_MAXSTR) :: QNAME
+
+    call ESMF_FieldBundleGet(TR, FieldCount=TotalTracers, RC=STATUS); VERIFY_(STATUS)
+    allocate(QNAMES(TotalTracers), stat=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldBundleGet(TR, fieldNameList=QNAMES, RC=STATUS); VERIFY_(STATUS)
+    FriendlyTracers = 0
+    do N=1,TotalTracers
+       QNAME = trim(QNAMES(N))
+       call ESMF_FieldBundleGet(TR, fieldName=trim(QNAME), Field=FIELD, RC=STATUS); VERIFY_(STATUS)
+       call ESMF_AttributeGet  (FIELD, "FriendlyToMOIST",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+       if(isPresent) then
+          call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
+          if (isFriendly) FriendlyTracers = FriendlyTracers + 1 
+       end if
+    enddo
+
+    ! see if we need to allocate
+    if (allocated(CNV_Tracers)) then
+      ASSERT_( size(CNV_Tracers) == FriendlyTracers )
+    else
+      ! fill CNV_Tracers
+      allocate( CNV_Tracers(FriendlyTracers), stat=STATUS); VERIFY_(STATUS)
+      F = 0
+      do N=1,TotalTracers
+         QNAME = trim(QNAMES(N))
+         call ESMF_FieldBundleGet(TR, fieldName=trim(QNAME), Field=FIELD, RC=STATUS); VERIFY_(STATUS)
+         call ESMF_AttributeGet  (FIELD, "FriendlyToMOIST",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+         if(isPresent) then
+            call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
+            if (isFriendly) then
+               ! Iterate the friendly index
+               !-------------------------------
+               F = F + 1
+               ! Get items scavenging fraction
+               !-------------------------------
+               CNV_Tracers(F)%fscav = 0.0
+               call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+               if(isPresent) then
+                  call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", CNV_Tracers(F)%fscav, RC=STATUS); VERIFY_(STATUS)
+               end if
+              ! Get items for the wet removal parameterization for gases based on the Henry's Law
+              !-------------------------------------------------------------------------------------
+              CNV_Tracers(F)%Vect_Hcts(:)=-99.
+              call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent,  RC=STATUS); VERIFY_(STATUS)
+              if (isPresent) then
+                 call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
+              end if
+              ! Get component and tracer names
+              !-------------------------------------------------------------------------------------
+              ind= index(QNAME, '::')
+              if (ind > 0) then
+                 CNV_Tracers(F)%CNAME = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
+                 CNV_Tracers(F)%QNAME = trim(QNAME(ind+2:))
+              end if
+              ! Get pointer to friendly tracers
+              !-----------------------------------------
+              call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
+            end if
+         end if
+      enddo
+    end if
+
+    deallocate(QNAMES)
+
+  end subroutine CNV_Tracers_Init
 
   function ICE_FRACTION_3D (TEMP) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:,:,:)

@@ -14,8 +14,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
-  use aer_cloud
-  use Aer_Actv_Single_Moment, only: Aer_Actv_1M_interface, USE_AEROSOL_NN, R_AIR
+  use Aer_Actv_Single_Moment, only: USE_AEROSOL_NN, R_AIR
   use cloudnew, only: hystpdf_new
   use gfdl2_cloud_microphys_mod
 
@@ -52,7 +51,6 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
-  logical :: USE_AERO_BUFFER
   real    :: MINRHCRITLND
   real    :: MINRHCRITOCN
   real    :: MAXRHCRITLND
@@ -61,8 +59,6 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: SCLM_SHALLOW
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
-  real    :: CCN_OCN
-  real    :: CCN_LND
   integer :: PDFSHAPE
   real    :: ANV_ICEFALL 
   real    :: LS_ICEFALL
@@ -288,8 +284,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, SCLM_SHALLOW    , 'SCLM_SHALLOW:'    , DEFAULT= 2.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF    , 'CCW_EVAP_EFF:'    , DEFAULT= 4.0e-3, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF    , 'CCI_EVAP_EFF:'    , DEFAULT= 1.0e-3, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -300,16 +296,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
-
-    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
-    if (USE_AEROSOL_NN) then
-      call MAPL_GetResource( MAPL, USE_AERO_BUFFER , 'USE_AERO_BUFFER:' , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
-      call aer_cloud_init()
-      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for GFDL_1M")
-    else
-      call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS)
-    endif
 
 end subroutine GFDL_1M_Initialize
 
@@ -355,8 +341,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
     real, allocatable, dimension(:,:)   :: CNV_FRACTION
     real, allocatable, dimension(:,:)   :: TMP2D
-    type(ESMF_State)                    :: AERO
-    type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
     ! Exports
     real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR
@@ -379,7 +363,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real    :: tmpminrhcrit, tmpmaxrhcrit, turnrhcrit_up
     real    :: ALPHAl, ALPHAu, ALPHA, RHCRIT
     integer :: IM,JM,LM
-    integer                         :: I, J, L
+    integer :: I, J, L
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -445,7 +429,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
-    call   ESMF_StateGet(IMPORT, 'AERO', AERO, __RC__)
 
     ! Allocatables
      ! Edge variables 
@@ -499,21 +482,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
     iMASS    = 1.0/MASS
-
-    ! Aerosol callbacks and activation
-    call MAPL_TimerOn (MAPL,"---ACTIV")
-    if (USE_AEROSOL_NN) then
-      ALLOCATE (AeroProps(IM,JM,LM))
-      call Aer_Actv_1M_interface(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                                 SH, EVAP, KPBLSC, OMEGA, FRLAND, USE_AERO_BUFFER, &
-                                 AeroProps, AERO, NACTL, NACTI)
-    else
-      do L=1,LM
-        NACTL(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
-        NACTI(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
-      end do
-    endif
-    call MAPL_TimerOff(MAPL,"---ACTIV")
 
     do J=1,JM
        do I=1,IM
@@ -906,24 +874,20 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          enddo
 
       ! Exports
-         call MAPL_GetPointer(EXPORT, PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = LS_PRCP + &!+ CN_PRCP + SC_PRCP + &
-                                        LS_SNR     !+ CN_SNR  + AN_SNR  + SC_SNR
-
-         call MAPL_GetPointer(EXPORT, PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = 0.0 !CN_PRCP + SC_PRCP
-
          call MAPL_GetPointer(EXPORT, PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = LS_PRCP 
+         if (associated(PTR2D)) PTR2D = PTR2D + LS_PRCP
+
+         call MAPL_GetPointer(EXPORT, PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = PTR2D + PRCP_RAIN + PRCP_SNOW + PRCP_ICE + PRCP_GRAUPEL
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = LS_SNR !+ CN_SNR + AN_SNR + SC_SNR
+         if (associated(PTR2D)) PTR2D = PTR2D + PRCP_SNOW
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = 0.0
+         if (associated(PTR2D)) PTR2D = PTR2D + PRCP_ICE
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = 0.0
+         if (associated(PTR2D)) PTR2D = PTR2D + 0.0
 
          call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (TH*PK, PLmb) , 1.02 ),0.0)

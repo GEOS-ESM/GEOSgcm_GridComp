@@ -45,7 +45,6 @@ module GEOS_BACM_1M_InterfaceMod
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
-  logical :: USE_AERO_BUFFER
   real    :: MINRHCRITLND
   real    :: MINRHCRITOCN
   real    :: MAXRHCRITLND
@@ -204,11 +203,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QW,       'QW'      , RC=STATUS); VERIFY_(STATUS)
     QW = Q+QLLS+QLCN+QILS+QICN
 
-    call MAPL_GetResource(MAPL,USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=.TRUE., RC=STATUS )
-    VERIFY_(STATUS)
-    call aer_cloud_init()
-    call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for BACM_1M")
-
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 1.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%SCLM_DEEP,      'SCLM_DEEP:',      DEFAULT= 1.0     )
@@ -268,7 +262,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_LS_ICE,      'FR_LS_ICE:',      DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_ICE,      'FR_AN_ICE:',      DEFAULT= 0.0     )
 
-    call MAPL_GetResource( MAPL, USE_AERO_BUFFER,          'USE_AERO_BUFFER:',  DEFAULT=.TRUE. )
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN,         'CNV_FRACTION_MIN:', DEFAULT=  500.0)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX,         'CNV_FRACTION_MAX:', DEFAULT= 1500.0)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP,         'CNV_FRACTION_EXP:', DEFAULT=    1.0)
@@ -474,16 +467,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     T        = TH*PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
-
-
-    ! Aerosol callbacks and activation
-    call MAPL_TimerOn (MAPL,"---ACTIV")
-    call MAPL_GetResource(MAPL,USE_AERO_BUFFER, 'USE_AERO_BUFFER:', DEFAULT=.TRUE., RC=STATUS)
-    ALLOCATE (AeroProps(IM,JM,LM))
-    call Aer_Actv_1M_interface(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                               SH, EVAP, KPBLSC, OMEGA, FRLAND, USE_AERO_BUFFER, &
-                               AeroProps, AERO, NACTL, NACTI)
-    call MAPL_TimerOff(MAPL,"---ACTIV")
 
     WHERE ( ZL0 < 3000. )
        QDDF3 = -( ZL0-3000. ) * ZL0 * MASS
@@ -768,23 +751,24 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP + &
-                                        LS_SNR  + CN_SNR  + AN_SNR  + SC_SNR
+         if (associated(PTR2D)) PTR2D = PTR2D + LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP + &
+                                                LS_SNR  + AN_SNR  + CN_SNR  + SC_SNR
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = CN_PRCP + SC_PRCP
+         if (associated(PTR2D)) PTR2D = PTR2D + CN_PRCP + SC_PRCP + &
+                                                CN_SNR  + SC_SNR
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = LS_PRCP + AN_PRCP
+         if (associated(PTR2D)) PTR2D = PTR2D + LS_PRCP + AN_PRCP
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = LS_SNR + CN_SNR + AN_SNR + SC_SNR
+         if (associated(PTR2D)) PTR2D = PTR2D + LS_SNR + CN_SNR + AN_SNR + SC_SNR
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = 0.0
+         if (associated(PTR2D)) PTR2D = PTR2D + 0.0
 
          call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = 0.0
+         if (associated(PTR2D)) PTR2D =PTR2D +  0.0
 
          call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (TH*PK, PLmb) , 1.02 ),0.0)

@@ -13,15 +13,13 @@ MODULE ConvPar_GF_GEOS5
 !
 USE module_gate
 USE MAPL
-!USE MAPL_ConstantsMod ! - only for GATE soundings
-!
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
-!.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
+USE GEOSmoist_Process_Library, ONLY: CNV_Tracers
 
  IMPLICIT NONE
  PRIVATE
  PUBLIC  gf_geos5_interface, maxiens, icumulus_gf, closure_choice, deep, shal, mid &
-        ,use_scale_dep,dicycle,tau_deep,tau_mid,hcts                       &
+        ,use_scale_dep,dicycle,tau_deep,tau_mid                            &
         ,use_tracer_transp, use_tracer_scaven,use_memory,convection_tracer &
         ,use_flux_form,use_tracer_evap,downdraft,use_fct                   &
         ,use_rebcb, vert_discr, satur_calc, clev_grid, apply_sub_mp, alp1  &
@@ -250,16 +248,12 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  INTEGER           ,DIMENSION(MAX_NSPEC)    ::  CHEM_NAME_MASK,CHEM_NAME_MASK_EVAP
  REAL              ,DIMENSION(MAX_NSPEC)    ::  CHEM_ADJ_AUTOC
  INTEGER :: ispc_CO
- TYPE Hcts_vars
-   REAL :: hstar,dhr,ak0,dak
- END TYPE Hcts_vars
- TYPE (Hcts_vars), ALLOCATABLE :: Hcts(:)
 
  INTEGER :: whoami_all, JCOL
 
 CONTAINS
 !---------------------------------------------------------------------------------------------------
-  SUBROUTINE GF_GEOS5_INTERFACE(mxp,myp,mzp,mtp,ITRCR,LONS,LATS,DT_MOIST          &
+  SUBROUTINE GF_GEOS5_INTERFACE(mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
                                ,T, PLE, PLO, ZLE, ZLO, PK,  U, V, OMEGA , KH      &
                                ,TH1, Q1, U1, V1 ,QLCN ,QICN,QLLS,QILS, CNPCPRATE  &
                                ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQLDT ,ENTLAM     &
@@ -275,7 +269,6 @@ CONTAINS
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
                                ,NCPL, NCPI, CNV_NICE, CNV_NDROP,CNV_FICE,CLDMICRO &
-                               ,TRACER,FSCAV,CNAMES,QNAMES,DTRDT_GF               &
                                ,RSU_CN,REV_CN, PFI_CN, PFL_CN                     &
                                ,TPWI,TPWI_star,LIGHTN_DENS                        &    
                                ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d                   &
@@ -285,7 +278,7 @@ CONTAINS
     !INCLUDE "mpif.h"
     CHARACTER(len=*),INTENT(IN) :: CLDMICRO !set two-moment microphysics
 
-    INTEGER ,INTENT(IN) :: mxp,myp,mzp,mtp,ITRCR
+    INTEGER ,INTENT(IN) :: mxp,myp,mzp
 
     REAL                             ,INTENT(IN)   :: DT_moist  
 
@@ -315,17 +308,13 @@ CONTAINS
                                                      ,CNV_UPDF, CNV_CVW, CNV_QC,CLCN,ENTLAM&
                                                      ,CNV_NICE, CNV_NDROP, CNV_FICE
     !-for debug purposes
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: DQDT_GF,DTDT_GF,MUPDP,MDNDP,MUPSH,MUPMD ,DTRDT_GF
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: DQDT_GF,DTDT_GF,MUPDP,MDNDP,MUPSH,MUPMD
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(INOUT):: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(INOUT):: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
                                                      ,TPWI, TPWI_star 
 
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: CNPCPRATE ,LIGHTN_DENS
     REAL   ,DIMENSION(MXP,MYP)                     :: VAR2d,ZKBCON
-
-    REAL   ,DIMENSION(mxp,myp,mzp,itrcr) ,INTENT(INOUT)   :: TRACER  !=XHO in grid_moist_comp.f90
-    REAL   ,DIMENSION(itrcr)             ,INTENT(IN   )   :: FSCAV
-    CHARACTER(len=*)  ,DIMENSION(mtp)    ,INTENT(IN   )   :: CNAMES,QNAMES
 
     REAL   ,DIMENSION(mxp,myp,mzp)                        :: frct_liq
 
@@ -383,7 +372,6 @@ CONTAINS
 
     REAL,  ALLOCATABLE, DIMENSION(:,:,:,:) :: SRC_CHEM ! tracer mixing ratio tendencies from the parameterized convection
     
-    REAL,  DIMENSION(mtp)       :: FSCAV_INT
     CHARACTER(LEN=100)          :: AER_CHEM_MECH
 
     REAL,    DIMENSION(mxp,myp) :: CONPRR
@@ -434,6 +422,9 @@ CONTAINS
     CHARACTER(len=10) :: ENV_SETTING='DEFAULT'! ! 'CURRENT'/'DEFAULT'
     INTEGER, PARAMETER :: itest=1!3 
     REAL :: RL, RI, disp_factor,x1,x2
+    INTEGER :: mtp
+
+    mtp = size(CNV_Tracers)
 
     !--- to reproduce model behavior when using single-moment and version X0039_p5/f525_p5_fp of Dec 2019
     IF(ZERO_DIFF == 1) THEN
@@ -521,7 +512,7 @@ CONTAINS
     ENDIF
     IF(USE_TRACER_TRANSP==1) THEN
       AER_CHEM_MECH='GOCART' !in the future set as intent(in) from MoistGridComp
-      CALL interface_aerchem(mtp,itrcr,aer_chem_mech, cnames,qnames, fscav, fscav_int)
+      CALL interface_aerchem(mtp,aer_chem_mech)
     ENDIF
 
     !
@@ -610,10 +601,6 @@ CONTAINS
        ENDDO
       ENDDO
      ENDDO
-     !.. !- Tracer transport/scavenging section
-     IF(USE_TRACER_TRANSP==1) THEN
-       where(TRACER<=0.0) TRACER = mintracer
-     ENDIF
     ELSEIF(trim(env_setting)=='DEFAULT') then
      !-2nd setting: environmental state is that one before any tendency
      !- is applied (i.e, at begin of each time step).
@@ -674,10 +661,6 @@ CONTAINS
       ENDDO
      ENDDO
      !
-     !- Tracer transport/scavenging section
-     IF(USE_TRACER_TRANSP==1) THEN       
-       where(TRACER<=0.0) TRACER = mintracer
-     ENDIF
     ELSE
      stop 'unknown env_setting at convpar_gf_geos5.F90'
     ENDIF
@@ -706,7 +689,6 @@ CONTAINS
                      ,ims,ime, jms,jme, kms,kme   &
                      ,its,ite, jts,jte, kts,kte   &
                      ,flip        &
-                     ,fscav_int   &
                      ,mynum       &
                      ,dt_moist    &
                      ,dx2d        &
@@ -737,8 +719,6 @@ CONTAINS
                      ,mp_liq      &
                      ,mp_cf       &
                      ,curr_rvap   &
-                     !--- atmos composition state
-                     ,TRACER      & !- note: uses GEOS-5 data structure
                      !---- forcings---
                      ,buoy_exc    &
                      ,gsf_t       &
@@ -890,22 +870,17 @@ CONTAINS
           DO i=1,mxp
             IF(do_this_column(i,j) == 0) CYCLE
             DO k=1,mzp
-              !-special array for output of CO tendency
-              DTRDT_GF(i,j,k)=SRC_CHEM(ispc_CO,flip(k),i,j)
-
               !- update tracer mass mixing ratios
               DO ispc=1,mtp
 
-                 TRACER(i,j,k,ispc)=TRACER(i,j,k,ispc)+ DT_moist * SRC_CHEM(ispc,flip(k),i,j) * CHEM_NAME_MASK(ispc)!
+                 CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) * CHEM_NAME_MASK(ispc)!
 
                  !-- final check for negative tracer mass mixing ratio
-                 TRACER(i,j,k,ispc)=max(mintracer, TRACER(i,j,k,ispc))
+                 CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
               ENDDO
             ENDDO
           ENDDO
         ENDDO
-        !-- final check for negative tracer mass mixing ratio
-        !where (TRACER < mintracer) TRACER = mintracer
         
       ENDIF
 
@@ -1076,7 +1051,6 @@ ENDIF
   !
   !--- cold pool/"convection tracer"
   IF(CONVECTION_TRACER==1) THEN
-           DTRDT_GF=0. !temporary   for output only       
            DO j=1,myp
             DO i=1,mxp
               
@@ -1107,9 +1081,6 @@ ENDIF
                 !- 'continuity' equation = ADV + SRC - SINK
                 CNV_TR (i,j,k) = CNV_TR (i,j,k)  + src_cnvtr  - snk_cnvtr 
 
-                !temporary for output only
-                DTRDT_GF(i,j,k)=SRC_BUOY(flip(k),i,j)
-                
               ENDDO
             ENDDO
            ENDDO
@@ -1175,7 +1146,6 @@ ENDIF
               ,ims,ime, jms,jme, kms,kme              &
               ,its,ite, jts,jte, kts,kte              &
               ,flip                                   &
-              ,FSCAV                                  &
               ,mynum                 &
               ,dt                    &
               ,dx2d                  &
@@ -1206,7 +1176,6 @@ ENDIF
               ,mp_liq                &     
               ,mp_cf                 &
               ,curr_rvap             &
-              ,TRACER                &!-note: uses GEOS-5 data structure
 
               !---- forcings---
               ,buoy_exc              &
@@ -1272,8 +1241,6 @@ ENDIF
 
    INTEGER, INTENT(IN), dimension(mzp) :: flip
    
-   REAL:: FSCAV(mtp)
-
    REAL,    DIMENSION(kts:kte,its:ite,jts:jte), INTENT(IN)  ::       &
                                                           zm,        &
                                                           zt,        &
@@ -1328,8 +1295,6 @@ ENDIF
                                                    ,sub_mpql   & 
                                                    ,sub_mpcf    
 
-   !-***** TRACER has different data structure   (i,j,k,ispc) *********
-   REAL,    DIMENSION(its:ite,jts:jte,kts:kte,mtp), INTENT(IN )  :: TRACER
    !-***** rchemcuten uses the GF data structure (ispc,k,i,j) *********
    REAL,    DIMENSION(mtp,kts:kte,its:ite,jts:jte), INTENT(OUT)  :: rchemcuten
  
@@ -1571,7 +1536,7 @@ ENDIF
           kr=k !+1
           !- atmos composition
           DO ispc=1,mtp
-             se_chem(ispc,i,k) = max(mintracer, TRACER(i,j,flip(kr),ispc))
+             se_chem(ispc,i,k) = max(CNV_Tracers(ispc)%Q(i,j,flip(kr)),mintracer)
           ENDDO
         ENDDO
       ENDDO
@@ -1592,22 +1557,7 @@ ENDIF
        if(CLEV_GRID == 0) stop "use_gate requires CLEV_GRID 1 or 2"
        if(USE_TRACER_TRANSP==1) then
           ispc_CO=1
-          if( .not. allocated(Hcts)) ALLOCATE(Hcts(mtp))
           CHEM_NAME_MASK (:) = 1 
-          !--- dummy initization FSCAV
-          DO i=1,mtp
-              !FSCAV(i) = 0.1  !km^-1
-
-              FSCAV(i) = 1.e-5  !km^-1
-              Hcts(i)%hstar  = 0.0 !8.300e+4! 2.4E+3 !59.
-              Hcts(i)%dhr    = 0.0 !7400.   !5000.  !4200.
-              Hcts(i)%ak0    = 0.0
-              Hcts(i)%dak    = 0.0
-              ! H2O2      0.00000      8.300e+4    7400.00000       0.00000       0.00000
-              ! HNO3      0.00000      2.100e+5    8700.00000       0.00000       0.00000
-              ! NH3       0.00000      59.00000    4200.00000       0.00000       0.00000
-              ! SO2       0.00000      2.400e+3    5000.00000       0.00000       0.00000
-          ENDDO
           DO i=its,itf
               se_chem(1:mtp,i,kts:kpbli(i)-1) = 1.+1.e-6
               DO k=kpbli(i),kte
@@ -1891,7 +1841,7 @@ endif
        ENDIF
        !
 
-       CALL CUP_gf(its,ite,kts,kte, itf,ktf, mtp, nmp, FSCAV  &
+       CALL CUP_gf(its,ite,kts,kte, itf,ktf, mtp, nmp &
                   ,cumulus_type  (plume)            &
                   ,closure_choice(plume)            &
                   ,cum_entr_rate (plume)            &
@@ -2158,7 +2108,7 @@ loop1:  do n=1,maxiens
     END SUBROUTINE GF_GEOS5_DRV
 !---------------------------------------------------------------------------------------------------
 
-    SUBROUTINE CUP_gf(its,ite,kts,kte ,itf,ktf, mtp, nmp , FSCAV   &
+    SUBROUTINE CUP_gf(its,ite,kts,kte ,itf,ktf, mtp, nmp &
                      ,cumulus           &
                      ,ichoice           &
                      ,entr_rate_input   &
@@ -2468,8 +2418,6 @@ loop1:  do n=1,maxiens
      real,    dimension (its:ite,9) :: xff_shal
 
     !- atmos composition arrays
-     real, dimension (mtp ),               intent (in)    ::   fscav
-!    real, dimension (mtp,its:ite,kts:kte),intent (in)    ::   se_chem
      real, dimension (mtp,its:ite,kts:kte),intent (inout) ::   se_chem
      real, dimension (mtp,its:ite,kts:kte),intent (inout) ::   out_chem
 
@@ -5019,12 +4967,12 @@ ENDIF
 ! a) chem - updraft
    !- note: here "sc_up_chem" stores the total in-cloud tracer mixing ratio (i.e., including the portion
    !        embedded in the condensates).
-   call get_incloud_sc_chem_up(cumulus,FSCAV,mtp,se_chem,se_cup_chem,sc_up_chem,pw_up_chem,tot_pw_up_chem      &
+   call get_incloud_sc_chem_up(cumulus,mtp,se_chem,se_cup_chem,sc_up_chem,pw_up_chem,tot_pw_up_chem      &
                              ,zo_cup,rho,po,po_cup,qrco,tempco,pwo,zuo,up_massentro,up_massdetro               &
                              ,vvel2d,vvel1d,start_level,k22,kbcon,ktop,klcl,ierr,xland,itf,ktf,its,ite, kts,kte)
 
 ! b) chem - downdraft
-   call get_incloud_sc_chem_dd(cumulus,FSCAV,mtp,se_chem,se_cup_chem,sc_dn_chem,pw_dn_chem ,pw_up_chem,sc_up_chem &
+   call get_incloud_sc_chem_dd(cumulus,mtp,se_chem,se_cup_chem,sc_dn_chem,pw_dn_chem ,pw_up_chem,sc_up_chem &
                              ,tot_pw_up_chem,tot_pw_dn_chem                                                       & 
                              ,zo_cup,rho,po_cup,qrcdo,pwdo,pwevo,edto,zdo,dd_massentro,dd_massdetro ,pwavo,pwo     &
                              ,jmin,ierr,itf,ktf,its,ite, kts,kte)
@@ -10374,7 +10322,7 @@ ENDIF
   end function auto_rk
 
 !------------------------------------------------------------------------------------
-  SUBROUTINE get_incloud_sc_chem_up(cumulus,fscav,mtp,se,se_cup,sc_up,pw_up,tot_pw_up_chem&
+  SUBROUTINE get_incloud_sc_chem_up(cumulus,mtp,se,se_cup,sc_up,pw_up,tot_pw_up_chem&
                                    ,z_cup,rho,po,po_cup  &
                                    ,qrco,tempco,pwo,zuo,up_massentro,up_massdetro,vvel2d,vvel1d  &
                                    ,start_level,k22,kbcon,ktop,klcl,ierr,xland,itf,ktf,its,ite, kts,kte)
@@ -10384,7 +10332,6 @@ ENDIF
      integer                               ,intent (in)  :: mtp
      integer, dimension (its:ite)          ,intent (in)  :: ierr ,kbcon,ktop,k22,klcl,start_level
      character *(*)                        ,intent (in)  :: cumulus
-     real, dimension (mtp)                 ,intent (in)  :: FSCAV
      real, dimension (mtp ,its:ite,kts:kte),intent (in)  :: se,se_cup
      real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,po_cup,qrco,tempco,pwo,zuo &
                                                            ,up_massentro,up_massdetro,po     
@@ -10486,11 +10433,11 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
             w_upd = vvel2d(i,k) 
             
             do ispc = 1,mtp
-                IF(fscav(ispc) > 1.e-6) THEN ! aerosol scavenging
+                IF(CNV_Tracers(ispc)%fscav > 1.e-6) THEN ! aerosol scavenging
                                         
                     !--formulation 1 as in GOCART with RAS conv_par
                     if(USE_TRACER_SCAVEN==1) & 
-                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- FSCAV(ispc) * (dz/1000.))))
+                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- CNV_Tracers(ispc)%fscav  * (dz/1000.))))
         
                     !--formulation 2 as in GOCART                    
                     if(USE_TRACER_SCAVEN==2) & 
@@ -10508,7 +10455,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                     sc_up(ispc,i,k) = sc_up(ispc,i,k) - pw_up(ispc,i,k)
 
                     !
-                ELSEIF(Hcts(ispc)%hstar>1.e-6) THEN ! tracer gas phase scavenging
+                ELSEIF(CNV_Tracers(ispc)%Vect_Hcts(1)>1.e-6) THEN ! tracer gas phase scavenging
 
                     !--- equilibrium tracer concentration - Henry's law
                     henry_coef=henry(ispc,tempco(i,k),rho(i,k))
@@ -10592,15 +10539,15 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
  
   !-taking into account the acid dissociation constant
   ! ak=ak0*exp(dak*(1/t-1/298))
-  corrh=1.+Hcts(ispc)%ak0 * exp(Hcts(ispc)%dak * tcorr)/hplus
+  corrh=1.+CNV_Tracers(ispc)%Vect_Hcts(3) * exp(CNV_Tracers(ispc)%Vect_Hcts(4) * tcorr)/hplus
 
   !-- for concentration in mol[specie]/mol[air] - Eq 5 in 'Compilation of Henry's law constants (version 4.0) for
   !-- water as solvent, R. Sander, ACP 2015'.
-  henry_coef =  Hcts(ispc)%hstar* exp(Hcts(ispc)%dhr*tcorr) * fct * corrh
+  henry_coef =  CNV_Tracers(ispc)%Vect_Hcts(1) * exp(CNV_Tracers(ispc)%Vect_Hcts(2)*tcorr) * fct * corrh
 
   END FUNCTION henry
 !---------------------------------------------------------------------------------------------------
-  SUBROUTINE get_incloud_sc_chem_dd(cumulus,FSCAV,mtp,se,se_cup,sc_dn,pw_dn ,pw_up,sc_up                          &
+  SUBROUTINE get_incloud_sc_chem_dd(cumulus,mtp,se,se_cup,sc_dn,pw_dn ,pw_up,sc_up                          &
                                    ,tot_pw_up_chem,tot_pw_dn_chem                                                 &
                                    ,z_cup,rho,po_cup,qrcdo,pwdo,pwevo,edto,zdo,dd_massentro,dd_massdetro,pwavo,pwo &
                                    ,jmin,ierr,itf,ktf,its,ite, kts,kte)
@@ -10611,7 +10558,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      integer, dimension (its:ite)          ,intent (in)  :: ierr ,jmin
      character *(*)                        ,intent (in)  :: cumulus
      real, dimension (mtp ,its:ite,kts:kte),intent (in)  :: se,se_cup,pw_up,sc_up
-     real, dimension (mtp)                 ,intent (in)  :: FSCAV
      real, dimension (its:ite)             ,intent (in)  :: edto,pwavo,pwevo
      real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,po_cup&
                        ,qrcdo,pwdo,zdo,dd_massentro,dd_massdetro,pwo
@@ -10704,14 +10650,10 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      ENDDO
     END SUBROUTINE get_incloud_sc_chem_dd
 !---------------------------------------------------------------------------------------------------
-    subroutine interface_aerchem(mtp,itrcr,aer_chem_mech, cnames,qnames, fscav, fscav_int)
+    subroutine interface_aerchem(mtp,aer_chem_mech)
       IMPLICIT NONE
-      INTEGER, INTENT(IN) :: mtp,ITRCR
-      CHARACTER(len=*),                INTENT(IN)   :: AER_CHEM_MECH
-      CHARACTER(len=*),DIMENSION(mtp) ,INTENT(IN)   :: CNAMES,QNAMES
-      REAL            ,DIMENSION(ITRCR) ,INTENT(IN) :: FSCAV
-
-      REAL,    DIMENSION(mtp) , INTENT(OUT)   :: FSCAV_INT
+      INTEGER, INTENT(IN) :: mtp
+      CHARACTER(len=*), INTENT(IN) :: AER_CHEM_MECH
       !-local vars
       INTEGER :: ispc, len_ACM, len_spc, irun=0
       CHARACTER(len=100) :: TMP_AER_NAME
@@ -10724,9 +10666,8 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
       IF(AER_CHEM_MECH=='GOCART') then
        len_ACM=len(TRIM(AER_CHEM_MECH))
        do ispc=1,mtp
-           FSCAV_INT(ispc)   = fscav(ispc)
-           len_spc           = len(TRIM(cnames(ispc)))
-           CHEM_name (ispc)  = TRIM(qnames(ispc))!(len_ACM+1:len_spc))
+           len_spc           = len(TRIM(CNV_Tracers(ispc)%cname))
+           CHEM_name (ispc)  = TRIM(CNV_Tracers(ispc)%qname)
            if(TRIM(CHEM_name (ispc)) == 'CO') ispc_CO=ispc
 
            !-the tracers below are not being transported :
@@ -10752,14 +10693,12 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                                                   )THEN
 
           CALL get_HenrysLawCts(TRIM(CHEM_name (ispc)), &
-                                Hcts(ispc)%hstar,Hcts(ispc)%dhr,Hcts(ispc)%ak0,Hcts(ispc)%dak)
+                                CNV_Tracers(ispc)%Vect_Hcts(1), &
+                                CNV_Tracers(ispc)%Vect_Hcts(2), &
+                                CNV_Tracers(ispc)%Vect_Hcts(3), &
+                                CNV_Tracers(ispc)%Vect_Hcts(4))
          ENDIF
        ENDDO
-        !***   all tracers not having wet deposition _must_ have all Hcts reset to zero here.
-        !.. WHERE( Hcts(:)%hstar == -1.) Hcts(:)%hstar = 0.
-        !.. WHERE( Hcts(:)%dhr   == -1.) Hcts(:)%dhr   = 0.
-        !.. WHERE( Hcts(:)%ak0   == -1.) Hcts(:)%ak0   = 0.
-        !.. WHERE( Hcts(:)%dak   == -1.) Hcts(:)%dak   = 0.
       !-----------------------------------------------------------------------------------------
       ENDIF
       return
@@ -10771,8 +10710,9 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
          write(10,*)"================= table of tracers in the GF conv transport ==================="
          write(10,*)" SPC,  CHEM_NAME,  FSCAV          - the four Henrys law cts  -   Transport Flag - kc adjust"
          do ispc=1,mtp
-          write(10,121) ispc,trim(chem_name(ispc)), FSCAV_INT(ispc),Hcts(ispc)%hstar &
-                       ,Hcts(ispc)%dhr,Hcts(ispc)%ak0,Hcts(ispc)%dak, CHEM_NAME_MASK(ispc),CHEM_ADJ_AUTOC (ispc)
+          write(10,121) ispc,trim(chem_name(ispc)), CNV_Tracers(ispc)%fscav ,CNV_Tracers(ispc)%Vect_Hcts(1) &
+                       ,CNV_Tracers(ispc)%Vect_Hcts(2),CNV_Tracers(ispc)%Vect_Hcts(3),CNV_Tracers(ispc)%Vect_Hcts(4) &
+                       ,CHEM_NAME_MASK(ispc),CHEM_ADJ_AUTOC (ispc)
           if( CHEM_NAME_MASK     (ispc) == 1) then
             print*,"GF is doing transp and wet removal of: ",trim(chem_name(ispc))
             call flush(6)
