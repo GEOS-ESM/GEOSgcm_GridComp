@@ -31,7 +31,7 @@ module GEOS_mkiauGridCompMod
      private
      class (AbstractRegridder), pointer :: ANA2BKG_regridder => null()
      class (AbstractRegridder), pointer :: BKG2ANA_regridder => null()
-     type(ESMF_Grid)            :: GRIDana    ! Analysis    Data using Horizontal:ANA  Vertical:BKG 
+     type(ESMF_Grid)            :: GRIDana    ! Analysis    Data using Horizontal:ANA  Vertical:BKG
      type(ESMF_Grid)            :: GRIDrep    ! Replay File Data using Horizontal:ANA  Vertical:ANA
      integer                    :: IM
      integer                    :: JM
@@ -48,7 +48,7 @@ module GEOS_mkiauGridCompMod
 !=============================================================================
 
 ! !DESCRIPTION:
-! 
+!
 !
 
 !EOP
@@ -70,7 +70,7 @@ contains
 
 ! ! DESCRIPTION: This version uses the MAPL_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -86,7 +86,7 @@ contains
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
     type (MAPL_MetaComp),         pointer   :: MAPL
-    type (T_MKIAU_STATE),         pointer   :: mkiau_internal_state 
+    type (T_MKIAU_STATE),         pointer   :: mkiau_internal_state
     type (MKIAU_wrap)                       :: wrap
     type (ESMF_Config)                      :: CF
 
@@ -164,7 +164,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'DELP',                                      &
          LONG_NAME  = 'air_pressure_thickness',                    &
@@ -173,7 +173,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'TV',                                        &
          LONG_NAME  = 'virtual_air_temperature',                   &
@@ -182,7 +182,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'U',                                         &
          LONG_NAME  = 'eastward_wind',                             &
@@ -191,7 +191,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'V',                                         &
          LONG_NAME  = 'northward_wind',                            &
@@ -326,7 +326,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'DELPBKG',                                   &
          LONG_NAME  = 'air_pressure_thickness_of_background',      &
@@ -335,7 +335,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'TVBKG',                                     &
          LONG_NAME  = 'virtual_air_temperature_of_background',     &
@@ -344,7 +344,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'UBKG',                                      &
          LONG_NAME  = 'eastward_wind_of_background',               &
@@ -354,7 +354,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'VBKG',                                      &
          LONG_NAME  = 'northward_wind_of_background',              &
@@ -373,7 +373,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
- 
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'O3PPMVBKG',                                 &
          LONG_NAME  = 'ozone_volume_mixing_ratio_of_background',   &
@@ -419,7 +419,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    
+
 ! Internal State (None)
 ! ---------------------
 
@@ -446,7 +446,7 @@ contains
     allocate( mkiau_internal_state, stat=status )
     VERIFY_(STATUS)
     wrap%ptr => mkiau_internal_state
- 
+
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
@@ -460,7 +460,7 @@ contains
     VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 
@@ -476,7 +476,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -642,7 +642,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: nymdm2,nhmsm2
   integer                             :: NX,NY,IMG,JMG
   integer                             :: method
-  integer                             :: DIMS(ESMF_MAXGRIDDIM) 
+  integer                             :: DIMS(ESMF_MAXGRIDDIM)
   integer                             :: JCAP,LMP1
   logical                             :: dowindfix
   logical                             :: doremap
@@ -673,13 +673,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: vm_comm
   integer                             :: IHAVEAINC
 
-  type (T_MKIAU_STATE), pointer       :: mkiau_internal_state 
+  type (T_MKIAU_STATE), pointer       :: mkiau_internal_state
   type (MKIAU_wrap)                   :: wrap
   logical                             :: refresh_internal_state
   logical                             :: bkg2anaConsrv
   logical                             :: ana2bkgConsrv
   character(len=ESMF_MAXSTR)          :: imstr, jmstr, gridAnaName
- 
+
   logical                             :: first
   data                                   first /.true./
   logical                             :: NEED_BUNDLE1
@@ -695,12 +695,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: NEED_BUNDLEM2
   data                                   NEED_BUNDLEM2 /.true./
 
-  integer nsecf 
+  integer nsecf
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1071,7 +1071,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
          VERIFY_(STATUS)
        end block
-         
+
        mkiau_internal_state%im      =   IMana_World
        mkiau_internal_state%jm      =   JMana_World
        mkiau_internal_state%lm      =   LMana
@@ -1114,7 +1114,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call ESMF_VmGet(VM, mpicommunicator=vm_comm, rc=status)
     VERIFY_(STATUS)
-   
+
     ANA2BKG => mkiau_internal_state%ANA2BKG_regridder
     BKG2ANA => mkiau_internal_state%BKG2ANA_regridder
 
@@ -1294,7 +1294,7 @@ CONTAINS
         du=uptr
         dv=vptr
     endif
- 
+
 !   Calculate 3d-pressure change
 !   -----------------------------
     dple(:,:,0) = 0.0
@@ -1330,17 +1330,17 @@ CONTAINS
 
 ! *****************************************************************************
 
-    allocate( phis_bkg(IM,JM)      )
-    allocate(   ts_bkg(IM,JM)      )
-    allocate(   ps_bkg(IM,JM)      )
-    allocate(    u_bkg(IM,JM,1:LM) )
-    allocate(    v_bkg(IM,JM,1:LM) )
-    allocate(    t_bkg(IM,JM,1:LM) )
-    allocate(   tv_bkg(IM,JM,1:LM) )
-    allocate(    q_bkg(IM,JM,1:LM) )
-    allocate(   o3_bkg(IM,JM,1:LM) )
-    allocate (  dp_bkg(IM,JM,1:LM) )
-    allocate(  ple_bkg(IM,JM,0:LM) )
+    allocate( phis_bkg(IM,JM)     , source = 0.0 )
+    allocate(   ts_bkg(IM,JM)     , source = 0.0 )
+    allocate(   ps_bkg(IM,JM)     , source = 0.0 )
+    allocate(    u_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(    v_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(    t_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(   tv_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(    q_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(   o3_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(   dp_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(  ple_bkg(IM,JM,0:LM), source = 0.0 )
 
 ! **********************************************************************
 ! ****      Transform Import Data (ie. BKG.ETA) to ANA Grid         ****
@@ -1495,8 +1495,8 @@ CONTAINS
         FILE_TIMEP0 = REPLAY_TIMEP0
     endif
 
-    if( currTime /= REPLAY_TIMEP0 ) then 
-        if( NEED_BUNDLEM1 ) then 
+    if( currTime /= REPLAY_TIMEP0 ) then
+        if( NEED_BUNDLEM1 ) then
             RBUNDLEM1 = ESMF_FieldBundleCreate( RC=STATUS)
             VERIFY_(STATUS)
             if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
@@ -1515,7 +1515,7 @@ CONTAINS
         endif
 
         if( REPLAY_TIME_INTERP == "CUBIC" ) then
-            if( NEED_BUNDLEP1 ) then 
+            if( NEED_BUNDLEP1 ) then
                 RBUNDLEP1 = ESMF_FieldBundleCreate( RC=STATUS)
                 VERIFY_(STATUS)
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
@@ -1533,7 +1533,7 @@ CONTAINS
                 FILE_TIMEP1 = REPLAY_TIMEP1
             endif
 
-            if( NEED_BUNDLEM2 ) then 
+            if( NEED_BUNDLEM2 ) then
                 RBUNDLEM2 = ESMF_FieldBundleCreate( RC=STATUS)
                 VERIFY_(STATUS)
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
@@ -1590,34 +1590,34 @@ CONTAINS
 ! ****     Get Pointers to Internal STATE (ANA.ETA) from BUNDLE     ****
 ! **********************************************************************
 
-    allocate ( phis_ana(IM,JM)      )
-    allocate (   ts_ana(IM,JM)      )
-    allocate (   ps_ana(IM,JM)      )
-    allocate (   du_fix(IM,JM,  LM) )
-    allocate (   dv_fix(IM,JM,  LM) )
-    allocate (    u_ana(IM,JM,  LM) )
-    allocate (    v_ana(IM,JM,  LM) )
-    allocate (    t_ana(IM,JM,  LM) )
-    allocate (  thv_ana(IM,JM,  LM) )
-    allocate (    q_ana(IM,JM,  LM) )
-    allocate (   o3_ana(IM,JM,  LM) )
-    allocate (   pk_ana(IM,JM,  LM) )
-    allocate (  ple_ana(IM,JM,0:LM) )
-    allocate (  pke_ana(IM,JM,0:LM) )
+    allocate ( phis_ana(IM,JM)     , source = 0.0 )
+    allocate (   ts_ana(IM,JM)     , source = 0.0 )
+    allocate (   ps_ana(IM,JM)     , source = 0.0 )
+    allocate (   du_fix(IM,JM,  LM), source = 0.0 )
+    allocate (   dv_fix(IM,JM,  LM), source = 0.0 )
+    allocate (    u_ana(IM,JM,  LM), source = 0.0 )
+    allocate (    v_ana(IM,JM,  LM), source = 0.0 )
+    allocate (    t_ana(IM,JM,  LM), source = 0.0 )
+    allocate (  thv_ana(IM,JM,  LM), source = 0.0 )
+    allocate (    q_ana(IM,JM,  LM), source = 0.0 )
+    allocate (   o3_ana(IM,JM,  LM), source = 0.0 )
+    allocate (   pk_ana(IM,JM,  LM), source = 0.0 )
+    allocate (  ple_ana(IM,JM,0:LM), source = 0.0 )
+    allocate (  pke_ana(IM,JM,0:LM), source = 0.0 )
 
-    allocate (   dp_rep(IM,JM,  LMana) )
-    allocate (    u_rep(IM,JM,  LMana) )
-    allocate (    v_rep(IM,JM,  LMana) )
-    allocate (    t_rep(IM,JM,  LMana) )
-    allocate (  thv_rep(IM,JM,  LMana) )
-    allocate (    q_rep(IM,JM,  LMana) )
-    allocate (   o3_rep(IM,JM,  LMana) )
-    allocate (   pk_rep(IM,JM,  LMana) )
-    allocate (  ple_rep(IM,JM,0:LMana) )
-    allocate (  pke_rep(IM,JM,0:LMana) )
+    allocate (   dp_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    u_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    v_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    t_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (  thv_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    q_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (   o3_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (   pk_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (  ple_rep(IM,JM,0:LMana), source = 0.0 )
+    allocate (  pke_rep(IM,JM,0:LMana), source = 0.0 )
 
-    allocate ( ak_rep(0:LMana) )
-    allocate ( bk_rep(0:LMana) )
+    allocate ( ak_rep(0:LMana), source = 0.0 )
+    allocate ( bk_rep(0:LMana), source = 0.0 )
 
     doremap = (trim(cremap).eq.'YES') .or. (LMana.ne.LMbkg)
 
@@ -2171,7 +2171,7 @@ CONTAINS
          call MAPL_TimerON(MAPL,"--WINDFIX")
          call windfix ( u_ana,v_ana,ple_ana,                            &
                         u_bkg,v_bkg,ple_bkg,im,jm,LMbkg,VM,GRIDana,method, &
-                        vintdiva,vintdivb,vintdivc                      )           
+                        vintdiva,vintdivb,vintdivc                      )
          call MAPL_TimerOFF(MAPL,"--WINDFIX")
     endif
 
@@ -2198,7 +2198,7 @@ CONTAINS
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,  dts, 'DTSDT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    
+
     call MAPL_GetPointer(export,duwindfix, 'DUWINDFIX', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,dvwindfix, 'DVWINDFIX', alloc=.TRUE., RC=STATUS)
@@ -2488,7 +2488,7 @@ CONTAINS
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -2514,14 +2514,14 @@ CONTAINS
 
     real, pointer, dimension(:,:)       :: ptr2d
     real, pointer, dimension(:,:,:)     :: ptr3d
- 
+
     integer                             :: I, N, fieldRank
     type(ESMF_FieldStatus_Flag)         :: fieldStatus
     character (len=ESMF_MAXSTR), allocatable  :: itemNameList(:)
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -2742,7 +2742,7 @@ CONTAINS
      real             :: va(:,:,:)
      type (ESMF_VM)   :: VM
      type (ESMF_Grid) :: GRID
-     integer          :: DIMS(ESMF_MAXGRIDDIM) 
+     integer          :: DIMS(ESMF_MAXGRIDDIM)
      integer          :: IM,JM,LM,IMG,JMG
      integer          :: vm_comm
 
@@ -2756,7 +2756,7 @@ CONTAINS
      integer                        :: RC,STATUS
 
      IAM = "POLEFIX"
-    
+
      call ESMF_VMGet  (VM, localpet=myid, RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
@@ -2765,7 +2765,7 @@ CONTAINS
      JMG = DIMS(2)
      LM  = DIMS(3)
      DL  = 2*MAPL_PI/IMG
-     
+
      allocate( uglo(IMG,JMG) )
      allocate( vglo(IMG,JMG) )
      allocate( sinl(IMG)     )
@@ -3060,7 +3060,7 @@ CONTAINS
   end subroutine spectrans_vectorglob
 
   subroutine spectrans_scalar(im,jm,lm,var,jcap,GRID,RC)
-  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized 
+  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized
   integer, intent(in)                      :: im,jm,lm
   integer, intent(in)                      :: jcap
   real, intent(inout), dimension(im,jm,lm) :: var
@@ -3126,7 +3126,7 @@ CONTAINS
   end function check_list_
 
   subroutine spectrans_scalarpar(im,jm,lm,var,jcap,GRID,RC)
-  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized 
+  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized
   integer, intent(in)                      :: im,jm,lm
   integer, intent(in)                      :: jcap
   real, intent(inout), dimension(im,jm,lm) :: var
@@ -3171,7 +3171,7 @@ CONTAINS
   ! perform scalar spectral transform on global data
   ! assuming calling routine already intitalized the spectral filter
   subroutine spectrans_scalarglob(InGlob,OutGLob,jcap,RC)
-  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized 
+  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized
   integer, intent(in)                      :: jcap
   real, intent(inout), dimension(:,:,:   ) :: InGlob
   real, intent(inout), dimension(:,:,:   ) :: OutGlob
@@ -3252,7 +3252,7 @@ CONTAINS
 !*                  GODDARD LABORATORY FOR ATMOSPHERES                 *
 !***********************************************************************
 
-      use GEOS_GmapMod, only: gmap     
+      use GEOS_GmapMod, only: gmap
       implicit none
       integer  im,jm,LM_in,LM_out
 
@@ -3311,13 +3311,13 @@ CONTAINS
 
 ! Construct Input Heights
 ! -----------------------
-      pke_in(:,:,:) = ple_in(:,:,:)**kappa 
+      pke_in(:,:,:) = ple_in(:,:,:)**kappa
 
       phi_in(:,:,LM_in+1) = phis_in(:,:)
       do L=LM_in,1,-1
       phi_in(:,:,L) = phi_in(:,:,L+1) + cp*thv_in(:,:,L)*( pke_in(:,:,L+1)-pke_in(:,:,L) )
       enddo
-      
+
 ! Compute new surface pressure consistent with output topography
 ! --------------------------------------------------------------
       do j=1,jm
@@ -3350,7 +3350,7 @@ CONTAINS
           enddo
       endif
 
-      pke_out(:,:,:) = ple_out(:,:,:)**kappa 
+      pke_out(:,:,:) = ple_out(:,:,:)**kappa
 
 ! Map original fv state onto new eta grid
 ! ---------------------------------------
