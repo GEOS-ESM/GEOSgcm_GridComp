@@ -205,8 +205,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 1.0e-3  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%SCLM_DEEP,      'SCLM_DEEP:',      DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%SCLM_SHALLOW,   'SCLM_SHALLOW:',   DEFAULT= 2.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 2.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_BETA,       'ANV_BETA:',       DEFAULT= 4.0     )
@@ -336,7 +334,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
     ! Exports
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
-    real, pointer, dimension(:,:,:) :: DUDT_micro, DVDT_micro, DTDT_micro
+    real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro, DTHDT_micro
     real, pointer, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
     real, pointer, dimension(:,:,:) :: CLDREFFL, CLDREFFI 
     real, pointer, dimension(:,:,:) :: RHX
@@ -515,16 +513,18 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDT_micro, 'DQLDT_micro'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQADT_micro, 'DQADT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DUDT_micro, 'DUDT_micro'       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DVDT_micro, 'DVDT_micro'       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DTDT_micro, 'DTDT_micro'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTHDT_micro, 'DTHDT_micro'      , RC=STATUS); VERIFY_(STATUS)
     if (associated(DQVDT_micro)) DQVDT_micro = Q
     if (associated(DQLDT_micro)) DQLDT_micro = QLLS + QLCN
     if (associated(DQIDT_micro)) DQIDT_micro = QILS + QICN
     if (associated(DQADT_micro)) DQADT_micro = CLLS + CLCN
-    if (associated(DUDT_micro) ) DUDT_micro  = U
-    if (associated(DVDT_micro) ) DVDT_micro  = V
-    if (associated(DTDT_micro) ) DTDT_micro  = T
+    if (associated( DUDT_micro))  DUDT_micro  = U
+    if (associated( DVDT_micro))  DVDT_micro  = V
+    if (associated( DTDT_micro))  DTDT_micro  = T
+    if (associated(DTHDT_micro)) DTHDT_micro  = TH
 
     ! Imports which are Exports from local siblings
     ! DeepCu : default to 0.0 in MAPL if not running DeepCu
@@ -749,48 +749,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
          RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
-
-         call MAPL_GetPointer(EXPORT, PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = PTR2D + LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP + &
-                                                LS_SNR  + AN_SNR  + CN_SNR  + SC_SNR
-
-         call MAPL_GetPointer(EXPORT, PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = PTR2D + CN_PRCP + SC_PRCP + &
-                                                CN_SNR  + SC_SNR
-
-         call MAPL_GetPointer(EXPORT, PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = PTR2D + LS_PRCP + AN_PRCP
-
-         call MAPL_GetPointer(EXPORT, PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = PTR2D + LS_SNR + CN_SNR + AN_SNR + SC_SNR
-
-         call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = PTR2D + 0.0
-
-         call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D =PTR2D +  0.0
-
-         call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (TH*PK, PLmb) , 1.02 ),0.0)
-
-         call MAPL_GetPointer(EXPORT, NCPL_VOL, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
-         if (associated(NCPL_VOL)) then
-           if (USE_AEROSOL_NN) then
-             NCPL_VOL = NACTL/(100.*PLmb*R_AIR/T) ! kg-1
-           else
-             NCPL_VOL = 0.
-           endif
-         endif
-
-         call MAPL_GetPointer(EXPORT, NCPI_VOL, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
-         if (associated(NCPI_VOL)) then
-           if (USE_AEROSOL_NN) then
-             NCPI_VOL = NACTI/(100.*PLmb*R_AIR/T) ! kg-1
-           else
-             NCPI_VOL = 0.
-           endif
-         endif
-
+         ! Cloud fraction exports
          call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', RC=STATUS); VERIFY_(STATUS)
          if (associated(CFICE)) then
            CFICE=0.0
@@ -799,7 +758,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            CFICE=MAX(MIN(CFICE, 1.0), 0.0)
          endif
-
          call MAPL_GetPointer(EXPORT, CFLIQ, 'CFLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(CFICE)) then
            CFLIQ=0.0
@@ -809,19 +767,14 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR3D)) PTR3D = TH
-
-         call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR3D)) PTR3D = MAPL_CP*TH*PK + MAPL_GRAV*ZL0
-
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
          if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
          if (associated(DQIDT_micro)) DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST
          if (associated(DQADT_micro)) DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
-         if (associated(DUDT_micro) ) DUDT_micro  = ( U          -  DUDT_micro) / DT_MOIST
-         if (associated(DVDT_micro) ) DVDT_micro  = ( V          -  DVDT_micro) / DT_MOIST
-         if (associated(DTDT_micro) ) DTDT_micro  = (TH*PK       -  DTDT_micro) / DT_MOIST
+         if (associated( DUDT_micro))  DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
+         if (associated( DVDT_micro))  DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
+         if (associated( DTDT_micro))  DTDT_micro = (TH*PK       -  DTDT_micro) / DT_MOIST
+         if (associated(DTHDT_micro)) DTHDT_micro = (TH          - DTHDT_micro) / DT_MOIST
 
     call MAPL_TimerOff (MAPL,"--BACM_1M")
 

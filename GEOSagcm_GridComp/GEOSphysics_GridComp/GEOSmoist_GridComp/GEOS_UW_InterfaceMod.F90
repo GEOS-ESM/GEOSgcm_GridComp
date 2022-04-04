@@ -48,6 +48,8 @@ module GEOS_UW_InterfaceMod
   endtype SHLWPARAM_TYPE
   type   (SHLWPARAM_TYPE) :: SHLWPARAMS
 
+  real    :: SCLM_SHALLOW
+
   private
 
   character(len=ESMF_MAXSTR)              :: IAm
@@ -126,6 +128,8 @@ subroutine UW_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 8.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, SCLM_SHALLOW    , 'SCLM_SHALLOW:'    , DEFAULT= 2.0   , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine UW_Initialize
 
@@ -211,7 +215,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
 #ifdef UWDIAG 
             QCU_SC, QLU_SC,                               & ! DIAG ONLY 
-            QIU_SC, CBMF_SC, DQCDT_SC, CNT_SC, CNB_SC,    &
+            QIU_SC, CBMF_SC, DQADT_SC, CNT_SC, CNB_SC,    &
             CIN_SC, PLCL_SC, PLFC_SC, PINV_SC, PREL_SC,   &
             PBUP_SC, WLCL_SC, QTSRC_SC, THLSRC_SC,        &
             THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, WUP_SC,     &
@@ -287,6 +291,18 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         SC_MSE = dum2d
       end if
       if (associated(CUSH_SC)) CUSH_SC = CUSH
+
+
+       ! add shallow convective ice/liquid source
+        QLCN = QLCN + QLDET_SC*iMASS*DT_MOIST
+        QICN = QICN + QIDET_SC*iMASS*DT_MOIST
+       ! Tiedtke-style anvil fraction !!
+        TMP3D= DCM_SC*SCLM_SHALLOW*iMASS
+        CLCN = CLCN + TMP3D*DT_MOIST
+        CLCN = MIN( CLCN , 1.0 )
+      ! add ShallowCu rain/snow tendencies
+        QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
+        QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
 #endif
 
     call MAPL_TimerOff (MAPL,"--UW")

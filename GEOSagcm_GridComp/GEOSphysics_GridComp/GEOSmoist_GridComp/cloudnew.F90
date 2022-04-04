@@ -76,8 +76,6 @@ module cloudnew
            real               :: FAC_RL                ! 55
            real               :: FAC_RI                ! 56
            real               :: PDFSHAPE              ! 58
-           real               :: SCLM_SHALLOW          ! 63
-           real               :: SCLM_DEEP             ! 63
       endtype CLDPARAM_TYPE
       type (CLDPARAM_TYPE) :: CLDPARAMS
 
@@ -255,8 +253,6 @@ module cloudnew
    real,    constant :: FAC_RL
    real,    constant :: FAC_RI
    integer, constant :: PDFFLAG
-   real,    constant :: SCLM_SHALLOW
-   real,    constant :: SCLM_DEEP
 
    ! Parameters for Internal DQSAT
    ! -----------------------------
@@ -361,7 +357,6 @@ module cloudnew
    real    :: MIN_RI, MAX_RI, FAC_RI, MIN_RL, MAX_RL, FAC_RL
    integer :: FR_LS_WAT, FR_LS_ICE, FR_AN_WAT, FR_AN_ICE
    integer :: pdfflag
-   real    :: SCLM_DEEP, SCLM_SHALLOW
 #endif
 
    real, parameter :: ESFAC        = MAPL_H2OMW/MAPL_AIRMW
@@ -777,8 +772,6 @@ contains
          FAC_RL        = CLDPARAMS%FAC_RL
          FAC_RI        = CLDPARAMS%FAC_RI
          PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
-         SCLM_SHALLOW  = CLDPARAMS%SCLM_SHALLOW
-         SCLM_DEEP     = CLDPARAMS%SCLM_DEEP
 #endif
 
       use_autoconv_timescale = .false.
@@ -1006,8 +999,6 @@ contains
 
             CALL cnvsrc (          &  
                   DT             , &
-                  SCLM_DEEP      , &
-                  SCLM_SHALLOW   , &
                   MASS           , & 
                   iMASS          , &
                   PP_dev(I,K)    , &
@@ -2457,8 +2448,6 @@ contains
 #endif
    subroutine cnvsrc( & 
          DT      , &
-         SCLM_DEEP, &
-         SCLM_SHALLOW, &
          MASS    , &
          iMASS   , &
          PL      , &
@@ -2477,12 +2466,8 @@ contains
          CONVPAR_OPTION )
 
       !INPUTS:
-      !
-      !       SCLM_*: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
-      !                 by fuzziness of cloud boundaries and existence of PDF of condensates (for choices
-      !                 0.-1.0) or by subgrid layering (for choices >1.0) 
 
-      real, intent(in)    :: DT,SCLM_DEEP,SCLM_SHALLOW
+      real, intent(in)    :: DT
       real, intent(in)    :: MASS,iMASS,QS
       real, intent(in)    :: DMF,PL
       real, intent(in)    :: DCF,CF,DCIFshlw,DCLFshlw,DMFshlw
@@ -2501,26 +2486,28 @@ contains
       !Minimum allowed env RH
       minrhx    = 0.001  
 
-      !Addition of condensate from Deep Convection
-      TEND = DCF*iMASS
-      fQi  = ice_fraction( TE )
-      QLA  = QLA + (1.0-fQi)* TEND*DT
-      QIA  = QIA +    fQi   * TEND*DT
+    ! Handled in Convection Schemes
+    ! !Addition of condensate from Deep Convection
+    ! TEND = DCF*iMASS
+    ! fQi  = ice_fraction( TE )
+    ! QLA  = QLA + (1.0-fQi)* TEND*DT
+    ! QIA  = QIA +    fQi   * TEND*DT
+    ! ! dont forget that conv cond has never frozen !!!!
+    ! IF(ADJUSTL(CONVPAR_OPTION) /= 'GF') TE   = TE +   (MAPL_ALHS-MAPL_ALHL) * fQi * TEND*DT/MAPL_CP
 
-      ! dont forget that conv cond has never frozen !!!!
-      IF(ADJUSTL(CONVPAR_OPTION) /= 'GF') TE   = TE +   (MAPL_ALHS-MAPL_ALHL) * fQi * TEND*DT/MAPL_CP
-
-      ! add shallow convective ice/liquid source
-      QLA = QLA + DCLFshlw*iMASS*DT
-      QIA = QIA + DCIFshlw*iMASS*DT
+    ! Handled in Convection Schemes
+    ! ! add shallow convective ice/liquid source
+    ! QLA = QLA + DCLFshlw*iMASS*DT
+    ! QIA = QIA + DCIFshlw*iMASS*DT
 
       QCA  = QLA + QIA
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !! Tiedtke-style anvil fraction !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      TEND=(DMF*SCLM_DEEP + DMFshlw*SCLM_SHALLOW)*iMASS
-      AF = AF + TEND*DT
+    ! Handled in Convection Schemes
+    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! !! Tiedtke-style anvil fraction !!
+    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! TEND=(DMF*SCLM_DEEP + DMFshlw*SCLM_SHALLOW)*iMASS
+    ! AF = AF + TEND*DT
       AF = MIN( AF , 0.99 )
 
       ! where ( (AF+CF) > 1.00 )

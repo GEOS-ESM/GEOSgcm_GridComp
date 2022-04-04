@@ -46,8 +46,10 @@ MODULE Aer_Actv_Single_Moment
       integer, intent(in)::IM,JM,LM
       TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
       type(ESMF_State)            ,intent(inout) :: aero_aci
-      real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,plo,omega,zlo, qlcn, qicn, qlls, qils
-      real, dimension (IM,JM,0:LM),intent(in ) :: ple,zle
+      real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! hPa
+      real, dimension (IM,JM,0:LM),intent(in ) :: ple ! hPa
+      real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,omega,zlo, qlcn, qicn, qlls, qils
+      real, dimension (IM,JM,0:LM),intent(in ) :: zle
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
       real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl     
       logical                     ,intent(in ) :: USE_AERO_BUFFER
@@ -107,24 +109,6 @@ MODULE Aer_Actv_Single_Moment
               allocate(aero_aci_modes(n_modes), __STAT__)
               call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
      
-              call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
-              if (aci_field_name /= '') then
-                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                  aci_ptr_3d = PLE
-              end if
-
-              call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
-              if (aci_field_name /= '') then
-                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                  aci_ptr_3d = T
-              end if    
-
-              call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
-              if (aci_field_name /= '') then
-                  call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
-                  aci_ptr_2d = FRLAND
-              end if
-
               if (USE_AERO_BUFFER) then
                  allocate(buffer(im,jm,lm,n_modes,8), __STAT__)
               end if
@@ -212,7 +196,7 @@ MODULE Aer_Actv_Single_Moment
 !----- aerosol activation (single-moment uphysics)      
       do j = 1, JM
          do i = 1, IM
-            aux1=  PLE (i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)
+            aux1=  100*PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)
             hfs = -SH  (i,j) ! W m^-2
             hfl = -EVAP(i,j) ! kg m^-2 s^-1
             aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)

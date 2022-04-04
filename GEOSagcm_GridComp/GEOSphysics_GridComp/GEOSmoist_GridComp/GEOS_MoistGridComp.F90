@@ -28,9 +28,10 @@ module GEOS_MoistGridCompMod
   use GEOS_UW_InterfaceMod
 
   use aer_cloud
-  use Aer_Actv_Single_Moment,only: Aer_Actv_1M_interface, USE_AEROSOL_NN
+  use Aer_Actv_Single_Moment
   use Lightning_mod, only: HEMCO_FlashRate
   use GEOSmoist_Process_Library
+  use GEOS_UtilsMod
 
   implicit none
 
@@ -161,7 +162,7 @@ contains
 
     ! Inititialize cloud microphysics (Options: BACM_1M, MGB2_2M or GFDL_1M)
     !--------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICRO:",  default="GFDL_1M", RC=STATUS)
+    call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="GFDL_1M", RC=STATUS)
     VERIFY_(STATUS)
     LCLDMICR = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M" .or. &
@@ -1020,24 +1021,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DTHDTCN',                                     &
-         LONG_NAME = 'potential_temperature_tendency_due_to_convection',&
-         UNITS     = 'K s-1',                                       &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DQDTCN',                                      &
-         LONG_NAME = 'specific_humidity_tendency_due_to_convection',&
-         UNITS     = 'kg kg-1 s-1',                                 &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DQADT ',                                      &
          LONG_NAME = 'total_cloud_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
@@ -1081,12 +1064,11 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DQCDTCN ',                                    &
-         LONG_NAME = 'condensate_tendency_due_to_convection',       &
-         UNITS     = 'kg kg-1 s-1',                                 &
+         SHORT_NAME='DQGDT',                                         &
+         LONG_NAME ='QGRAUPEL tendency due to moist ',               &
+         UNITS     ='kg kg-1 s-1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
-         RC=STATUS  )
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -1293,7 +1275,7 @@ contains
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DQCDT_SC',                             &
+         SHORT_NAME = 'DQADT_SC',                             &
          LONG_NAME  = 'shallow_cumulus_condensate_tendency',            &
          UNITS      = 'kg kg-1 s-1',                               &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -1954,6 +1936,14 @@ contains
          LONG_NAME ='shallow_convective_precipitation',            &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='CNPCPRATE',                                  &
+         LONG_NAME ='convective_precipitation_from_GF',            &
+         UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -3991,7 +3981,6 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
-
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DTDT_micro',                                         & 
          LONG_NAME ='T tendency due to microphysics ',               &
@@ -3999,6 +3988,14 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)  
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DTHDT_micro',                                         &
+         LONG_NAME ='TH tendency due to microphysics ',               &
+         UNITS     ='K s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DUDT_micro',                                         &
@@ -4015,7 +4012,6 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
-
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TVQX1',                                        & 
@@ -4370,6 +4366,14 @@ contains
     VERIFY_(STATUS)  
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DTHDT_macro',                                         &
+         LONG_NAME ='TH tendency due to macrophysics ',               &
+         UNITS     ='K s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DQVDT_macro',                                         &
          LONG_NAME ='QV tendency due to macrophysics ',               &
          UNITS     ='kg kg-1 s-1',                                           &
@@ -4434,6 +4438,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DTHDT_DC',                                         &
+         LONG_NAME ='TH tendency due to deep convection',               &
+         UNITS     ='K s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DQVDT_DC',                                         &
          LONG_NAME ='QV tendency due to deep convection ',               &
          UNITS     ='kg kg-1 s-1',                                           &
@@ -4464,14 +4476,6 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='DTDTCN',                                         & 
-         LONG_NAME ='T tendency due to convection',               &
-         UNITS     ='K s-1',                                           &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)  
 
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME ='FRZPP_LS',                                                 &
@@ -4951,27 +4955,13 @@ contains
     ! Set the Profiling timers
     ! ------------------------
 
-    call MAPL_TimerAdd(GC,name="-PRE_CNV"    ,RC=STATUS)
+    call MAPL_TimerAdd(GC,name="---CONV_TRACERS"    ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="-POST_CNV"    ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="-CLOUD"    ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="---ACTIV"    ,RC=STATUS)
+    call MAPL_TimerAdd(GC,name="---AERO_ACTIVATE"   ,RC=STATUS)
     VERIFY_(STATUS)    
     call MAPL_TimerAdd(GC,name="---CLDMACRO"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="---CLDMACRO"    ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="--USE_AEROSOL_NN1"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="--USE_AEROSOL_NN2"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="-MISC1"    ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="-MISC2"    ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="-MISC3"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="--FLASH"    ,RC=STATUS)
     VERIFY_(STATUS)
@@ -5149,8 +5139,11 @@ contains
     type(ESMF_FieldBundle)          :: TR
 
     ! Exports
-    real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT 
+    real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT 
     real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
+    real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
+    real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
+    real, pointer, dimension(:,:  ) :: CNPCPRATE 
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -5239,28 +5232,14 @@ contains
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
        T        = TH*PK
 
-       ! Export Tendencies
-       call MAPL_GetPointer(EXPORT,  DQDT,  'DQDT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DQIDT, 'DQIDT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DQLDT, 'DQLDT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DQADT, 'DQADT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DTHDT, 'DTHDT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,  DUDT,  'DUDT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,  DVDT,  'DVDT'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,  DWDT,  'DWDT'  , RC=STATUS); VERIFY_(STATUS)
-       if (associated( DQDT))  DQDT = Q
-       if (associated(DQLDT)) DQLDT = QLLS + QLCN
-       if (associated(DQIDT)) DQIDT = QILS + QICN
-       if (associated(DQADT)) DQADT = CLLS + CLCN
-       if (associated(DTHDT)) DTHDT = TH
-       if (associated( DUDT))  DUDT = U
-       if (associated( DVDT))  DVDT = V
-       if (associated( DWDT))  DWDT = W
 
-       ! Get tracers and activation
-       call MAPL_TimerOn (MAPL,"---ACTIV")
-       ! Update convective tracers
+       ! Extract convective tracers from the TR bundle
+       call MAPL_TimerOn (MAPL,"---CONV_TRACERS")
        call CNV_Tracers_Init(TR, RC)
+       call MAPL_TimerOff(MAPL,"---CONV_TRACERS")
+
+       ! Get aerosol activation properties
+       call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
          ALLOCATE (AeroProps(IM,JM,LM))
          call Aer_Actv_1M_interface(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
@@ -5273,7 +5252,19 @@ contains
            NACTI(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
          end do
        endif
-       call MAPL_TimerOff(MAPL,"---ACTIV")
+       call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
+
+       ! Reset Precip & Snow Exports to 0.0
+       call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); LS_PRCP = 0.0
+       call MAPL_GetPointer(EXPORT, AN_PRCP, 'AN_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); AN_PRCP = 0.0
+       call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); CN_PRCP = 0.0
+       call MAPL_GetPointer(EXPORT, SC_PRCP, 'SC_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); SC_PRCP = 0.0
+       call MAPL_GetPointer(EXPORT, LS_SNR , 'LS_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); LS_SNR  = 0.0
+       call MAPL_GetPointer(EXPORT, AN_SNR , 'AN_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); AN_SNR  = 0.0
+       call MAPL_GetPointer(EXPORT, CN_SNR , 'CN_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); CN_SNR  = 0.0
+       call MAPL_GetPointer(EXPORT, SC_SNR , 'SC_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); SC_SNR  = 0.0
+       ! Precip done in DeepCu
+       call MAPL_GetPointer(EXPORT, CNPCPRATE, 'CNPCPRATE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); CNPCPRATE = 0.0
 
        if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5283,16 +5274,165 @@ contains
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 
        ! Export Total Moist Tendencies
-       if (associated( DQDT))  DQDT = ( Q            -  DQDT)/DT_MOIST
-       if (associated(DQLDT)) DQLDT = ((QLLS + QLCN) - DQLDT)/DT_MOIST
-       if (associated(DQIDT)) DQIDT = ((QILS + QICN) - DQIDT)/DT_MOIST
-       if (associated(DQADT)) DQADT = ((CLLS + CLCN) - DQADT)/DT_MOIST
-       if (associated(DTHDT)) DTHDT = ( TH           - DTHDT)/DT_MOIST
-       if (associated( DUDT))  DUDT = ( U            -  DUDT)/DT_MOIST
-       if (associated( DVDT))  DVDT = ( V            -  DVDT)/DT_MOIST
-       if (associated( DWDT))  DWDT = ( W            -  DWDT)/DT_MOIST
+       call MAPL_GetPointer(EXPORT, DUDT, 'DUDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DUDT)) then
+          DUDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DUDT = DUDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DUDT = DUDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DUDT = DUDT + PTR3D
+       endif
 
-       ! Exports
+       call MAPL_GetPointer(EXPORT, DVDT, 'DVDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DVDT)) then
+          DVDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DVDT = DVDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DVDT = DVDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DVDT = DVDT + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, DTHDT, 'DTHDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DTHDT)) then
+          DTHDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
+          DTHDT = DTHDT*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)) ! Pressure weighted tendency
+       endif
+
+       call MAPL_GetPointer(EXPORT, DQDT, 'DQDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DQDT)) then
+          DQDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQDT = DQDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQDT = DQDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQDT = DQDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQDT = DQDT + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, DQLDT, 'DQLDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DQLDT)) then
+          DQLDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, DQIDT, 'DQIDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DQIDT)) then
+          DQIDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, DQRDT, 'DQRDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DQRDT)) then
+          DQRDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, DQSDT, 'DQSDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DQSDT)) then
+          DQSDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, DQGDT, 'DQGDT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(DQGDT)) then
+          DQGDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, DQADT, 'DQADT'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(DQADT)) then
+          DQADT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQADT = DQADT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQADT = DQADT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQADT = DQADT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQADT = DQADT + PTR3D
+       endif
+
+       ! Combine Precip Exports
+       call MAPL_GetPointer(EXPORT, PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP + &
+                                          LS_SNR  + AN_SNR  + CN_SNR  + SC_SNR  + &
+                                          CNPCPRATE, 0.0)
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = MAX(CN_PRCP + SC_PRCP + &
+                                          CN_SNR  + SC_SNR  + &
+                                          CNPCPRATE, 0.0)
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP, 0.0)
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = MAX(LS_SNR + CN_SNR + AN_SNR + SC_SNR, 0.0)
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = 0.0
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = 0.0
+
+       ! Temperature exports
+       call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = TH
+       call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = MAPL_CP*TH*PK + MAPL_GRAV*ZL0
+
+       ! RH Export
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (TH*PK, PLmb) , 1.02 ),0.0)
+
+       ! Aerosol activation exports
+       call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/T) ! kg-1
+       call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/T) ! kg-1
+
+       ! Lightning Exports
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = 0.0
 

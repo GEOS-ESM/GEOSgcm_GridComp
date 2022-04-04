@@ -254,7 +254,7 @@ USE GEOSmoist_Process_Library, ONLY: CNV_Tracers
 CONTAINS
 !---------------------------------------------------------------------------------------------------
   SUBROUTINE GF_GEOS5_INTERFACE(mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
-                               ,T, PLE, PLO, ZLE, ZLO, PK,  U, V, OMEGA , KH      &
+                               ,PLE, PLO, ZLE, ZLO, PK,  OMEGA , KH      &
                                ,TH1, Q1, U1, V1 ,QLCN ,QICN,QLLS,QILS, CNPCPRATE  &
                                ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQLDT ,ENTLAM     &
                                ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN,CLLS     &
@@ -290,7 +290,7 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: SIGMA_DEEP, SIGMA_MID
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE,ZLE,PLE_DYN_IN
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: T ,U ,V ,ZLO ,PLO ,PK ,OMEGA, KH       &
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO ,PLO ,PK ,OMEGA, KH       &
                                                      ,RADSW  ,RADLW  ,DQDT_BL  ,DTDT_BL      &
                                                      ,QV_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                                      ,DTDTDYN,DQVDTDYN
@@ -516,12 +516,16 @@ CONTAINS
     ENDIF
 
     !
+    !- 3-d input data
+    !- current temperature T1 (after dyn+every physics process called before moist)
+    T1 = PK * TH1
+    !
     !- 2-d input data
     aot500  (:,:) = 0.1  ! #
     !- as moist is called before surface, at the 1st time step all arrays
     !- from surface are zero
     if(maxval(T2m) < 1.e-6) then
-       temp2m   (:,:) = T  (:,:,mzp) ! Kelvin
+       temp2m   (:,:) = T1(:,:,mzp) ! Kelvin
     else
        temp2m   (:,:) = T2M(:,:) ! or TA(:,:) ! Kelvin
     endif
@@ -529,7 +533,7 @@ CONTAINS
     sflux_r  (:,:) = EVAP(:,:) ! kg m-2 s-1
     !- sensible heat flux (sh) comes in W m-2, below it is converted to K m s-1
     !-(air_dens_sfc = ple(:,:,mzp)/( 287.04*TA(:,:)*(1.+0.608*QA(:,:)))))
-    sflux_t  (:,:) = SH  (:,:) /(1004. * ple(:,:,mzp)/(287.04*T(:,:,mzp)*(1.+0.608*Q1(:,:,mzp)))) ! K m s-1
+    sflux_t  (:,:) = SH  (:,:) /(1004. * ple(:,:,mzp)/(287.04*T1(:,:,mzp)*(1.+0.608*Q1(:,:,mzp)))) ! K m s-1
     !- topography height  (m)
     topt     (:,:) = PHIS(:,:)/MAPL_GRAV
     !- land/ocean fraction: land if < 1 ,ocean if = 1
@@ -552,8 +556,6 @@ CONTAINS
     ENDDO
     !
     !- 3-d input data
-    !- current temperature T1 (after dyn+every physics process called before moist)
-    T1 = PK * TH1
     !- any var with index "1" (and omega and pk) are already updated with dynamics
     !  tendencies and everything else (from physics) that was called before moist
     !
@@ -786,7 +788,7 @@ CONTAINS
         DO j=1,myp
           DO i=1,mxp
             DO k=1,mzp
-                 frct_liq(i,j,k) = fract_liq_f(T(i,j,k))
+                 frct_liq(i,j,k) = fract_liq_f(T1(i,j,k))
         ENDDO;ENDDO;ENDDO
       ENDIF 
       !-- update GEOS-5 model state with the feedback from cumulus convection
@@ -1000,7 +1002,7 @@ ENDIF
          DO i=1,mxp
           DO k=1,mzp 
 
-             tem1 = T(i,j,k)             
+             tem1 = T1(i,j,k)             
              RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
              RL =   min(max(RL, 10.0), 30.0)*1.e-6              
              RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
@@ -10685,21 +10687,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
            if(trim(chem_name(ispc)(1:3)) == "BCp") CHEM_ADJ_AUTOC     (ispc) = 1.0
            if(trim(chem_name(ispc)(1:3)) == "SO4") CHEM_ADJ_AUTOC     (ispc) = 1.0
        enddo
-      !-----------------------------------------------------------------------------------------
-      !---temporary section to fill Henrys cts for N2O and CH4 of PCHEM chemical mechanism
-       do ispc=1,mtp
-         IF (TRIM(CHEM_name (ispc)) == 'N2O' .or. &
-             TRIM(CHEM_name (ispc)) == 'CH4'      &
-                                                  )THEN
-
-          CALL get_HenrysLawCts(TRIM(CHEM_name (ispc)), &
-                                CNV_Tracers(ispc)%Vect_Hcts(1), &
-                                CNV_Tracers(ispc)%Vect_Hcts(2), &
-                                CNV_Tracers(ispc)%Vect_Hcts(3), &
-                                CNV_Tracers(ispc)%Vect_Hcts(4))
-         ENDIF
-       ENDDO
-      !-----------------------------------------------------------------------------------------
       ENDIF
       return
       !IF( MAPL_AM_I_ROOT() .and. irun == 0)THEN
