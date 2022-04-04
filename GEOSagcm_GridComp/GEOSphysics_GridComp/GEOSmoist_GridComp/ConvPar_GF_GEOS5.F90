@@ -247,7 +247,8 @@ USE GEOSmoist_Process_Library
  CHARACTER(len=100),DIMENSION(MAX_NSPEC)    ::  CHEM_NAME
  INTEGER           ,DIMENSION(MAX_NSPEC)    ::  CHEM_NAME_MASK,CHEM_NAME_MASK_EVAP
  REAL              ,DIMENSION(MAX_NSPEC)    ::  CHEM_ADJ_AUTOC
- INTEGER :: ispc_CO
+
+ INTEGER :: ispc_CO ! Only valid for USE_GATE, not for GOES runs
 
  INTEGER :: whoami_all, JCOL
 
@@ -872,10 +873,10 @@ CONTAINS
               !- update tracer mass mixing ratios
               DO ispc=1,mtp
 
-               ! CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) * CHEM_NAME_MASK(ispc)
+                 CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) * CHEM_NAME_MASK(ispc)
 
                  !-- final check for negative tracer mass mixing ratio
-               ! CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
+                 CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
               ENDDO
             ENDDO
           ENDDO
@@ -10657,7 +10658,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
       !-local vars
       INTEGER :: ispc, len_ACM, len_spc, irun=0
       CHARACTER(len=100) :: TMP_AER_NAME
-      ispc_CO             = 1
       CHEM_NAME_MASK      = 1
       CHEM_NAME_MASK_EVAP = 1
       CHEM_ADJ_AUTOC      = 1.0
@@ -10668,44 +10668,9 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
        do ispc=1,mtp
            len_spc           = len(TRIM(CNV_Tracers(ispc)%cname))
            CHEM_name (ispc)  = TRIM(CNV_Tracers(ispc)%qname)
-           if(TRIM(CHEM_name (ispc)) == 'CO') ispc_CO=ispc
-
-           !-the tracers below are not being transported :
-           if(trim(chem_name(ispc)) == "NCPI"    ) CHEM_NAME_MASK     (ispc) = 0
-           if(trim(chem_name(ispc)) == "NCPL"    ) CHEM_NAME_MASK     (ispc) = 0
-           if(trim(chem_name(ispc)) == "QGRAUPEL") CHEM_NAME_MASK     (ispc) = 0
-           if(trim(chem_name(ispc)) == "QRAIN"   ) CHEM_NAME_MASK     (ispc) = 0
-           if(trim(chem_name(ispc)) == "QSNOW"   ) CHEM_NAME_MASK     (ispc) = 0
-          !if(trim(chem_name(ispc)) == "QW"      ) CHEM_NAME_MASK     (ispc) = 0
-          !if(trim(chem_name(ispc)) == "QW"      ) CHEM_NAME_MASK_EVAP(ispc) = 0
-
-           if(trim(chem_name(ispc)(1:3)) == "du0") CHEM_ADJ_AUTOC     (ispc) = 1.0
-           if(trim(chem_name(ispc)(1:3)) == "ss0") CHEM_ADJ_AUTOC     (ispc) = 1.0
-           if(trim(chem_name(ispc)(1:3)) == "OCp") CHEM_ADJ_AUTOC     (ispc) = 1.0
-           if(trim(chem_name(ispc)(1:3)) == "BCp") CHEM_ADJ_AUTOC     (ispc) = 1.0
-           if(trim(chem_name(ispc)(1:3)) == "SO4") CHEM_ADJ_AUTOC     (ispc) = 1.0
        enddo
       ENDIF
-      return
-      !IF( MAPL_AM_I_ROOT() .and. irun == 0)THEN
-         irun = 1
-         print*,"=========================================================================";call flush(6)
-         print*," the following tracers will be transport by GF scheme                    ";call flush(6)
-        
-         write(10,*)"================= table of tracers in the GF conv transport ==================="
-         write(10,*)" SPC,  CHEM_NAME,  FSCAV          - the four Henrys law cts  -   Transport Flag - kc adjust"
-         do ispc=1,mtp
-          write(10,121) ispc,trim(chem_name(ispc)), CNV_Tracers(ispc)%fscav ,CNV_Tracers(ispc)%Vect_Hcts(1) &
-                       ,CNV_Tracers(ispc)%Vect_Hcts(2),CNV_Tracers(ispc)%Vect_Hcts(3),CNV_Tracers(ispc)%Vect_Hcts(4) &
-                       ,CHEM_NAME_MASK(ispc),CHEM_ADJ_AUTOC (ispc)
-          if( CHEM_NAME_MASK     (ispc) == 1) then
-            print*,"GF is doing transp and wet removal of: ",trim(chem_name(ispc))
-            call flush(6)
-          endif
-         enddo
-         print*,"=========================================================================";call flush(6)
-121         format(1x,I4,A10,5F14.5,I4,F14.5)
-      !ENDIF
+
    END SUBROUTINE interface_aerchem
 
 !-----------------------------------------------------------------------------------------      
