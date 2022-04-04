@@ -40,8 +40,10 @@ module GEOS_LakeGridCompMod
      private
      integer:: CHOOSEMOSFC
      logical :: InitDone
-     logical, pointer :: mask(:)
+     logical, pointer :: mask(:) => null()
+     real :: tol_frice
      character(len=ESMF_MAXSTR) :: sstfile
+     character(len=ESMF_MAXSTR) :: DataFrtFile
   end type lake_state
 
   type lake_state_wrap
@@ -1570,9 +1572,9 @@ contains
 
    logical :: datalake
    integer :: dlk
-   real, allocatable :: SST(:)
+   real, allocatable :: DATA_SST(:), DATA_FR(:)
    character(len=ESMF_MAXSTR) :: maskfile
-   real, parameter :: tice = MAPL_TICE - 1.8
+   real, parameter :: Tfreeze = MAPL_TICE - 1.8
    type(lake_state_wrap) :: wrap
    type(lake_state), pointer :: mystate
 
@@ -1743,11 +1745,17 @@ contains
     VERIFY_(STATUS)
     DATALAKE = (DLK /= 0)
 
-    if (datalake) then
+    call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
 
-       call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
-       VERIFY_(status)
-       mystate => wrap%ptr
+    ! Initialize a mask where we could apply the SST/FR from Reynolds/Ostia
+    if (.not. associated(mystate%mask)) then
+       allocate(mystate%mask(NT), stat=status); VERIFY_(STATUS)
+       mystate%mask = .false.
+    end if
+           
+    if (datalake) then
 
         ! next section is done only once. We do it here since the Initalize
         ! method of this component defaults to MAPL_GenericInitialize
@@ -1757,12 +1765,13 @@ contains
            call MAPL_GetResource ( MAPL, mystate%sstfile, &
                 Label="LAKE_SST_FILE:", DEFAULT="sst.data", RC=STATUS)
            VERIFY_(STATUS)
+           call MAPL_GetResource ( MAPL, mystate%dataFrtFile, &
+                Label="LAKE_FRT_FILE:", DEFAULT="fraci.data", RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_GetResource ( MAPL, mystate%tol_frice, &
+                Label="LAKE_TOL_FRICE:", DEFAULT=1.0e-2, RC=STATUS)
+           VERIFY_(STATUS)
 
-           ! Initialize a mask where we apply the SST from Reynolds/Ostia
-           allocate(mystate%mask(NT), stat=status); VERIFY_(STATUS)
-
-           mystate%mask = .false.
-           
            call MAPL_GetResource ( MAPL, MASKFILE, &
                 Label="DATALAKE_MASK_FILE:", DEFAULT="DataLakeMask.data", RC=STATUS)
            VERIFY_(STATUS)
@@ -1777,17 +1786,28 @@ contains
         end if
 
 
-       allocate(SST(NT), stat=status); VERIFY_(STATUS)
+       allocate(DATA_SST(NT), DATA_FR(NT), stat=status); VERIFY_(STATUS)
        call MAPL_ReadForcing(MAPL, 'SST', mystate%sstfile,&
-            CURRENT_TIME, SST, ON_TILES=.true., RC=STATUS)
+            CURRENT_TIME, DATA_SST, ON_TILES=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_ReadForcing(MAPL, 'FR', mystate%dataFrtFile,&
+            CURRENT_TIME, DATA_FR, ON_TILES=.true., RC=STATUS)
        VERIFY_(STATUS)
 
-       where(mystate%mask)
-          TS(:,WATER) = SST
-          TS(:,ICE)   = TICE
+       where(mystate%mask) ! we are operating over great lakes and Caspian sea (set by mask)
+          TS(:,WATER) = DATA_SST
+          where(data_fr > mystate%tol_frice) !have lake ice
+             TS(:,ICE)   = Tfreeze
+             FR(:,WATER) = DATA_FR
+             FR(:,ICE)   = 1.0-DATA_FR
+          elsewhere ! water
+             ! we are not changing TS(:,ICE)
+             FR(:,WATER) = 1.0
+             FR(:,ICE)   = 0.0
+          end where
        end where
 
-       deallocate(SST)
+       deallocate(DATA_SST, DATA_FR)
     end if
 
     do N=1,NUM_SUBTILES
@@ -1825,7 +1845,7 @@ contains
 ! Update surface temperature and moisture
 !----------------------------------------
 
-       TS(:,N) = TS(:,N) + DTS
+       where(.not.mystate%mask) TS(:,N) = TS(:,N) + DTS
        DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
        QS(:,N) = QS(:,N) + DQS  
 
@@ -1849,6 +1869,7 @@ contains
 ! Update Ice fraction
 !--------------------
     do I=1,NT
+       if(mystate%mask(i)) cycle 
        if    (TS(I,ICE)>MAPL_TICE .and. FR(I,ICE)>0.0) then
           ! MELT
           FR(I,WATER) = 1.0
