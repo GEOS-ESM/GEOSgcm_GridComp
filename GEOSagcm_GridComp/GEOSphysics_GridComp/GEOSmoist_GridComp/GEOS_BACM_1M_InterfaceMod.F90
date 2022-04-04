@@ -498,9 +498,9 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
        END WHERE
     endif
-    if (CNV_FRACTION_EXP > 1.0) then
+    if (CNV_FRACTION_EXP >= 1.0) then
         CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
-    elseif ( (CNV_FRACTION_EXP > 0.0) .and. (CNV_FRACTION_EXP /= 1.0) ) then
+    elseif (CNV_FRACTION_EXP > 0.0) then
         CNV_FRACTION = 1.0-(1.0-CNV_FRACTION)**(1.0/CNV_FRACTION_EXP)
     else
         CNV_FRACTION = 1

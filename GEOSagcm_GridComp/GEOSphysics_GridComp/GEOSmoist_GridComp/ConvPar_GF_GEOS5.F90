@@ -14,7 +14,7 @@ MODULE ConvPar_GF_GEOS5
 USE module_gate
 USE MAPL
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
-USE GEOSmoist_Process_Library, ONLY: CNV_Tracers
+USE GEOSmoist_Process_Library
 
  IMPLICIT NONE
  PRIVATE
@@ -254,7 +254,7 @@ USE GEOSmoist_Process_Library, ONLY: CNV_Tracers
 CONTAINS
 !---------------------------------------------------------------------------------------------------
   SUBROUTINE GF_GEOS5_INTERFACE(mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
-                               ,PLE, PLO, ZLE, ZLO, PK,  OMEGA , KH      &
+                               ,PLE, PLO, ZLE, ZLO, PK,  OMEGA , KH               &
                                ,TH1, Q1, U1, V1 ,QLCN ,QICN,QLLS,QILS, CNPCPRATE  &
                                ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQLDT ,ENTLAM     &
                                ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN,CLLS     &
@@ -264,7 +264,8 @@ CONTAINS
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
                                ,KPBLIN                                            &
                                ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
-                               ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD,MDNDP           &
+                               ,DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF                   &
+                               ,MUPDP,MUPSH,MUPMD,MDNDP                           &
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
@@ -283,11 +284,10 @@ CONTAINS
     REAL                             ,INTENT(IN)   :: DT_moist  
 
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: FRLAND ,AREA ,USTAR ,TSTAR ,QSTAR &
-                                                          ,T2M ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS  &
-                                                          ,LONS,LATS &
-                                                          ,STOCHASTIC_SIG
+                                                     ,T2M ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS  &
+                                                     ,LONS,LATS &
+                                                     ,STOCHASTIC_SIG
     INTEGER,DIMENSION(mxp,myp)       ,INTENT(IN)   :: KPBLIN
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: SIGMA_DEEP, SIGMA_MID
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE,ZLE,PLE_DYN_IN
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO ,PLO ,PK ,OMEGA, KH       &
@@ -295,28 +295,32 @@ CONTAINS
                                                      ,QV_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                                      ,DTDTDYN,DQVDTDYN
 
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: TH1,Q1,U1,V1,QLCN ,QICN, NCPL, NCPI    &
-                                                     ,QLLS,QILS,CLLS
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: RSU_CN,REV_CN,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d 
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: TH1,Q1,U1,V1,QLCN,QICN,NCPL,NCPI    &
+                                                                  ,QLLS,QILS,CLLS,CLCN
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(INOUT):: PFI_CN, PFL_CN
-
-    REAL   ,DIMENSION(mxp,myp,mzp)                 :: CNV_TR  
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: CNV_TR  
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(INOUT):: TPWI, TPWI_star
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: CNV_MFC
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: CNV_MF0 ,CNV_PRC3,CNV_MFD,CNV_DQLDT  &
-                                                     ,CNV_UPDF, CNV_CVW, CNV_QC,CLCN,ENTLAM&
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: CNV_MF0 , CNV_PRC3 , CNV_MFD , CNV_DQLDT  &
+                                                     ,CNV_UPDF, CNV_CVW  , CNV_QC  , ENTLAM&
                                                      ,CNV_NICE, CNV_NDROP, CNV_FICE
-    !-for debug purposes
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: DQDT_GF,DTDT_GF,MUPDP,MDNDP,MUPSH,MUPMD
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(INOUT):: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(INOUT):: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
-                                                     ,TPWI, TPWI_star 
-
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: CNPCPRATE ,LIGHTN_DENS
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: RSU_CN,REV_CN
+    !- Tendencies
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF
+    !-for debug purposes
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: SIGMA_DEEP, SIGMA_MID
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d  
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: MUPDP,MDNDP,MUPSH,MUPMD
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+
+   ! Local
     REAL   ,DIMENSION(MXP,MYP)                     :: VAR2d,ZKBCON
 
-    REAL   ,DIMENSION(mxp,myp,mzp)                        :: frct_liq
+    REAL   ,DIMENSION(mxp,myp,mzp)                 :: frct_liq
 
     INTEGER      :: ims,ime, jms,jme, kms,kme,    &
                     its,ite, jts,jte, kts,kte,    &
@@ -805,24 +809,17 @@ CONTAINS
           DO k=1,mzp ! in the future, limit the vertical loop to ktop (DO k=mzp,flip(ktop),-1)?
               !- convert from d temp/dt to d theta/dt using PK => d theta/dt = (1/pk)*d temp/dt
               !- (think if PK must be the current one _or_ at the begin of the time step
-              TH1(i,j,k) = TH1(i,j,k) + DT_moist * SRC_T(flip(k),i,j) / PK(i,j,k)
+            ! TH1(i,j,k) = TH1(i,j,k) + DT_moist * SRC_T(flip(k),i,j) / PK(i,j,k)
 
-              Q1 (i,j,k) = Q1 (i,j,k) + DT_moist * SRC_Q(flip(k),i,j)
-              Q1 (i,j,k) = max(smallerQV, Q1 (i,j,k))
+            ! Q1 (i,j,k) = Q1 (i,j,k) + DT_moist * SRC_Q(flip(k),i,j)
+            ! Q1 (i,j,k) = max(smallerQV, Q1 (i,j,k))
               !
               !- simple splitting of condensate tendency into liq/ice phases
               !- these are 'anvil' mixing ratio and not 'grid-scale' mix ratio
-              !- (the convective source will be applied in progno_cloud, routine "consrc")
-              ! QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * frct_liq(i,j,k)
-              ! QICN (i,j,k) = QICN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * (1.0-frct_liq(i,j,k))
+              !- (the convective source must be applied in an external routine)
+            !   QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * frct_liq(i,j,k)
+            !   QICN (i,j,k) = QICN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * (1.0-frct_liq(i,j,k))
 
-              if(ITEST==3) then
-               !- simple splitting of condensate tendency into liq/ice phases
-               !- these are 'grid-scale' mix ratio
-               !- (the convective source will be set to zero, see below)
-               QLLS (i,j,k) = QLLS (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) *  frct_liq(i,j,k)
-               QILS (i,j,k) = QILS (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) *  (1.-frct_liq(i,j,k))
-              endif
          ENDDO
          !--- sublimation/evaporation tendencies (kg/kg/s)
          DO k=1,mzp
@@ -842,8 +839,8 @@ CONTAINS
           DO i=1,mxp
             IF(do_this_column(i,j) == 0) CYCLE
             DO k=1,mzp
-              U1 (i,j,k) = U1 (i,j,k) + DT_moist * SRC_U(flip(k),i,j)
-              V1 (i,j,k) = V1 (i,j,k) + DT_moist * SRC_V(flip(k),i,j)
+            ! U1 (i,j,k) = U1 (i,j,k) + DT_moist * SRC_U(flip(k),i,j)
+            ! V1 (i,j,k) = V1 (i,j,k) + DT_moist * SRC_V(flip(k),i,j)
             ENDDO
           ENDDO
         ENDDO
@@ -855,12 +852,12 @@ CONTAINS
           DO i=1,mxp
             IF(do_this_column(i,j) == 0) CYCLE
             DO k=1,mzp
-              QLLS (i,j,k) = QLLS (i,j,k) + DT_moist * SUB_MPQL(LSMP,flip(k),i,j)
-              QILS (i,j,k) = QILS (i,j,k) + DT_moist * SUB_MPQI(LSMP,flip(k),i,j)
-              CLLS (i,j,k) = CLLS (i,j,k) + DT_moist * SUB_MPCF(LSMP,flip(k),i,j)
-              QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SUB_MPQL(CNMP,flip(k),i,j)
-              QICN (i,j,k) = QICN (i,j,k) + DT_moist * SUB_MPQI(CNMP,flip(k),i,j)
-              CLCN (i,j,k) = CLCN (i,j,k) + DT_moist * SUB_MPCF(CNMP,flip(k),i,j)
+           !  QLLS (i,j,k) = QLLS (i,j,k) + DT_moist * SUB_MPQL(LSMP,flip(k),i,j)
+           !  QILS (i,j,k) = QILS (i,j,k) + DT_moist * SUB_MPQI(LSMP,flip(k),i,j)
+           !  CLLS (i,j,k) = CLLS (i,j,k) + DT_moist * SUB_MPCF(LSMP,flip(k),i,j)
+           !  QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SUB_MPQL(CNMP,flip(k),i,j)
+           !  QICN (i,j,k) = QICN (i,j,k) + DT_moist * SUB_MPQI(CNMP,flip(k),i,j)
+           !  CLCN (i,j,k) = CLCN (i,j,k) + DT_moist * SUB_MPCF(CNMP,flip(k),i,j)
             ENDDO
           ENDDO
         ENDDO
@@ -875,10 +872,10 @@ CONTAINS
               !- update tracer mass mixing ratios
               DO ispc=1,mtp
 
-                 CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) * CHEM_NAME_MASK(ispc)!
+               ! CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) * CHEM_NAME_MASK(ispc)
 
                  !-- final check for negative tracer mass mixing ratio
-                 CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
+               ! CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
               ENDDO
             ENDDO
           ENDDO
@@ -927,10 +924,8 @@ CONTAINS
                 !- special treatment for CNV_DQLDT: 'convective_condensate_source',  UNITS     = 'kg m-2 s-1',
                 !- SRC_CI contains contributions from deep, shallow,... . So, do not need to be accumulated over  CNV_DQLDT
                 !- note the SRC_CI has different array structure (k,i,j) _not_ (i,j,k)
-                if(ITEST /= 3) & 
-                CNV_DQLDT(i,j,k)=  SRC_CI(flip(k),i,j)*DZ * air_dens !units: kg[w]/(kg[air] s) * m * kg[air]/m^3 = kg[w]/(m^2 s)
+                CNV_DQLDT(i,j,k)=  SRC_CI(flip(k),i,j) * DZ * air_dens !units: kg[w]/(kg[air] s) * m * kg[air]/m^3 = kg[w]/(m^2 s)
 
-               !CNV_DQLDT(i,j,k)=  SRC_CI(flip(k),i,j)*DM(i,j,k)     !units: kg[w]/(kg[air] s) * m * kg[air]/m^3 = kg[w]/(m^2 s)
                 !
                 !-'detraining_mass_flux',UNITS     = 'kg m-2 s-1',  
                 CNV_MFD (i,j,k) = CNV_MFD (i,j,k) + ( up_massdetr5d(i,j,flip(k),IENS) )
@@ -940,7 +935,7 @@ CONTAINS
                 CNV_MF0 (i,j,k) = CNV_MF0 (i,j,k) + zup5d(i,j,flip(k),IENS)
 
                 !-convective mass flux [kg m^{-2} s^{-1}] - with downdrafts
-                ! CNV_MFC (i,j,k) = CNV_MFC (i,j,k) +  ( zup5d(i,j,flip(k),IENS) + edt4d(i,j,IENS)*  zdn5d(i,j,flip(k),IENS))
+             !!!CNV_MFC (i,j,k) = CNV_MFC (i,j,k) +  ( zup5d(i,j,flip(k),IENS) + edt4d(i,j,IENS)*  zdn5d(i,j,flip(k),IENS))
 
                 !---only updraft
                 CNV_MFC (i,j,k) = CNV_MFC (i,j,k) + zup5d(i,j,flip(k),IENS) 
@@ -979,13 +974,13 @@ IF(ITEST==2) THEN
 
                 !-'convective_cloud_area_fraction', adimensional
                 !- Tiedtke formulation
-                CLCN(i,j,k) = CLCN(i,j,k) + (1.0-CLCN(i,j,k))*(up_massdetr5d(i,j,flip(k),IENS) &
-                                          * DT_moist/(DZ*air_dens)+CNV_UPDF(i,j,k))
+             !  CLCN(i,j,k) = CLCN(i,j,k) + (1.0-CLCN(i,j,k))*(up_massdetr5d(i,j,flip(k),IENS) &
+             !                            * DT_moist/(DZ*air_dens)+CNV_UPDF(i,j,k))
 
                 !- Chab&Bechtold 2002/2005 formulation
                 ! CLCN(i,j,k) = CLCN(i,j,k) + (1.0-CLCN(i,j,k))*(conv_cld_fr5d(i,j,flip(k),IENS)+CNV_UPDF(i,j,k))
                 !
-                CLCN(i,j,k) = max(0.,min(CLCN(i,j,k),0.99))
+             !  CLCN(i,j,k) = max(0.,min(CLCN(i,j,k),0.99))
 ENDIF
 !----------------------------------------------------------------------------------------------------
              ENDDO
@@ -1015,14 +1010,14 @@ ENDIF
              disp_factor =  10.0 ! used to account somehow for the size dist
  
              !-outputs 
-             QLCN (i,j,k) = QLCN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
-             QICN (i,j,k) = QICN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * tem1
+          !  QLCN (i,j,k) = QLCN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
+          !  QICN (i,j,k) = QICN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * tem1
 
              SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
-             SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
+             SRC_NI(flip(k),i,j) = SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
 
-             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist *SRC_NL(flip(k),i,j)                
-             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
+          !  NCPL (i,j,k) = NCPL (i,j,k) + DT_moist *SRC_NL(flip(k),i,j)                
+          !  NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
              CNV_FICE (i, j, k)   =   tem1
 
              DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
@@ -1045,9 +1040,9 @@ ENDIF
 
                 DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
                 air_dens = 100.*plo_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
-                CLCN(i,j,k) = CLCN(i,j,k) + (1.0-CLCN(i,j,k))*(up_massdetr5d(i,j,flip(k),iens) &
-                                          * dt_moist/(dz*air_dens)+CNV_UPDF(i,j,k))
-                CLCN(i,j,k) = max(0.,min(CLCN(i,j,k),0.99))                          
+           !    CLCN(i,j,k) = CLCN(i,j,k) + (1.0-CLCN(i,j,k))*(up_massdetr5d(i,j,flip(k),iens) &
+           !                              * dt_moist/(dz*air_dens)+CNV_UPDF(i,j,k))
+           !    CLCN(i,j,k) = max(0.,min(CLCN(i,j,k),0.99))                          
         ENDDO; ENDDO; ENDDO; ENDDO
   ENDIF !2 moment
   !
@@ -1126,9 +1121,12 @@ ENDIF
       where(ierr4d>1)ierr4d=0
       DO j=1,myp
        DO i=1,mxp
-         DQDT_GF(i,j,1:mzp)=SRC_Q(flip(1):flip(mzp):-1,i,j)!note SQR_Q is (k,i,j)
-         DTDT_GF(i,j,1:mzp)=SRC_T(flip(1):flip(mzp):-1,i,j)!note SQR_T is (k,i,j)
-
+        !- Tendencies
+         DTDT_GF(i,j,1:mzp)=SRC_T(flip(1):flip(mzp):-1,i,j)
+         DQDT_GF(i,j,1:mzp)=SRC_Q(flip(1):flip(mzp):-1,i,j)
+         DUDT_GF(i,j,1:mzp)=SRC_U(flip(1):flip(mzp):-1,i,j)
+         DVDT_GF(i,j,1:mzp)=SRC_V(flip(1):flip(mzp):-1,i,j)
+        !- Error codes
          ERRDP(i,j)=float(ierr4d(i,j,DEEP))
          ERRSH(i,j)=float(ierr4d(i,j,SHAL))
          ERRMD(i,j)=float(ierr4d(i,j,MID ))
@@ -11939,17 +11937,8 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
    real, parameter  :: max_temp = 46. !Celsius
    SELECT CASE(FRAC_MODIS)
    
-   CASE (1) 
-       temp = temp2-273.16 !Celsius
-       temp = min(max_temp,max(-max_temp,temp))
-       ptc  = 7.6725 + 1.0118*temp + 0.1422*temp**2 + & 
-                 0.0106*temp**3 + 3.39e-4 * temp**4    + &
-                   3.95e-6 * temp**5
-       fract_liq_f = 1./(1.+exp(-ptc)) 
-   
-!WMP skew ice fraction for deep convective clouds
-!      fract_liq_f = fract_liq_f**4
-!WMP 
+   CASE (1)
+       fract_liq_f = ICE_FRACTION(temp2)  
    CASE DEFAULT 
        fract_liq_f =  min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
 

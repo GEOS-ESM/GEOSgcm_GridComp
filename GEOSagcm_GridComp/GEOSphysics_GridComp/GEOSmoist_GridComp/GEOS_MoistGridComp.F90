@@ -4730,9 +4730,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
     
-!-srf-gf-scheme
-    IF(CONVPAR_OPTION=='GF') THEN
-
        call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'DQDT_GF',                                    &
          LONG_NAME  = 'tendency_of_spec_humidity_due_GF',        &
@@ -4743,6 +4740,20 @@ contains
        call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'DTDT_GF',                                    &
          LONG_NAME  = 'tendency_of_temp_due_GF',        &
+         UNITS      = 'K s-1',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'DUDT_GF',                                    &
+         LONG_NAME  = 'tendency_of_zonal_wind_due_GF',        &
+         UNITS      = 'kg kg-1 s-1',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'DVDT_GF',                                    &
+         LONG_NAME  = 'tendency_of_meridional_wind_due_GF',        &
          UNITS      = 'K s-1',                                  &
          DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -4947,8 +4958,6 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
         VERIFY_(STATUS)
-
-    ENDIF
 
     !EOS
 

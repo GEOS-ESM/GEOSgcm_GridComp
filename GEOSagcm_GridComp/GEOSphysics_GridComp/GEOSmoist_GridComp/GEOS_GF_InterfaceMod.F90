@@ -288,10 +288,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Required Exports (connectivities to moist siblings)
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_MFC, CNV_CVW, CNV_QC, CNV_DQLDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: DTDT_DC, DTHDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
-
+    ! GF Tendencies
+    real, pointer, dimension(:,:,:) :: DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF
     ! Exports
     real, pointer, dimension(:,:,:) :: CNV_MF0, ENTLAM
-    real, pointer, dimension(:,:,:) :: DQDT_GF,DTDT_GF,MUPDP,MDNDP,MUPSH,MUPMD
+    real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD
     real, pointer, dimension(:,:,:) :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d
     real, pointer, dimension(:,:  ) :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
     real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
@@ -414,6 +415,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_DQLDT,  'CNV_DQLDT' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! GF Tendencies
+    call MAPL_GetPointer(EXPORT, DQDT_GF,    'DQDT_GF'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTDT_GF,    'DTDT_GF'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DUDT_GF,    'DUDT_GF'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DVDT_GF,    'DVDT_GF'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Exports used below
     call MAPL_GetPointer(EXPORT, CNV_MF0,    'CNV_MF0'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -425,8 +431,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     TPWI       = SUM( Q*MASS, 3 )
     TPWI_star  = SUM( GEOS_QSAT(T,PLmb)*MASS, 3 )
     call MAPL_GetPointer(EXPORT, LFR_GF   ,'LFR_GF'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQDT_GF  ,'DQDT_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTDT_GF  ,'DTDT_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MUPDP    ,'MUPDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MDNDP    ,'MDNDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MUPSH    ,'MUPSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
@@ -511,7 +515,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
                                  ,NINT(KPBL)                                        &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
-                                 ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD,MDNDP           &
+                                 ,DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF                   &
+                                 ,MUPDP,MUPSH,MUPMD,MDNDP                           &
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
@@ -520,23 +525,18 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
 
-    ! Update T
-    T = TH*PK
-    ! add DeepCu QL/QI to Convective
-    TMP3D=DT_MOIST*CNV_DQLDT/MASS
+    ! add tendencies
+    U  = U + DUDT_GF*DT_MOIST
+    V  = V + DVDT_GF*DT_MOIST
+    Q  = Q + DQDT_GF*DT_MOIST
+    T  = T + DTDT_GF*DT_MOIST
+    TH = T/PK
+    ! add DeepCu QL/QI/CF to Convective
+    TMP3D= CNV_DQLDT*DT_MOIST/MASS
     fQi  = ICE_FRACTION( T )
-    QLCN = QLCN + (1.0-fQi)*TMP3D
-    QICN = QICN +      fQi *TMP3D
-    ! Tiedtke-style anvil fraction !!
+    QLCN =      QLCN + (1.0-fQi)*TMP3D
+    QICN =      QICN +      fQi *TMP3D
     CLCN = MIN( CLCN + CNV_MFD*SCLM_DEEP*DT_MOIST/MASS, 1.0 )
-    ! GF includes this in CNPCPRATE so let's leave this alone for now
-    ! ! add DeepCu rain/snow
-    !   where (T < MAPL_TICE) !SNOW
-    !      QSNOW = QSNOW + CNV_PRC3*DT_MOIST/MASS
-    !      T  = T  + CNV_PRC3*(MAPL_ALHS-MAPL_ALHL) / (MASS*MAPL_CP)
-    !   else where ! RAIN
-    !      QRAIN = QRAIN + CNV_PRC3*DT_MOIST/MASS
-    !   end where
 
     ! Fill tendencies
     if(associated( DTDT_DC))  DTDT_DC=( T          -  DTDT_DC)/DT_MOIST
