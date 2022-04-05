@@ -9,7 +9,7 @@ set (srcs
   partition_pdf.F90 wv_sat_methods.F90
   GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90
   GEOS_GF_InterfaceMod.F90 ConvPar_GF_GEOS5.F90 module_gate.F90 
-  GEOS_UW_InterfaceMod.F90 SHLWPARAMS.F90 uwshcu.F90
+  GEOS_UW_InterfaceMod.F90 uwshcu.F90
   aer_actv_single_moment.F90
   GEOS_MoistGridComp.F90
   # files that are sometimes present?

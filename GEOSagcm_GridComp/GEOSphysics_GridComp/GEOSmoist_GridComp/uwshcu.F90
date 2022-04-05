@@ -6,7 +6,7 @@ module uwshcu
    use MAPL,     only: MAPL_UNDEF
 
    use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT
-   use SHLWPARAMS
+   use GEOSmoist_Process_Library
    use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
                                 MAPL_GRAV , MAPL_ALHS , &
                                 MAPL_ALHL , MAPL_ALHF , &
@@ -16,8 +16,40 @@ module uwshcu
 
    implicit none
 
+  type SHLWPARAM_TYPE
+     integer  :: niter_xc           ! Number xc iterations
+     integer  :: iter_cin           ! Number iterations for implicit CIN
+     integer  :: use_CINcin         ! if true, calc CIN thru L..
+     integer  :: use_self_detrain   ! 
+     integer  :: use_momenflx       ! Perform momentum transport
+     integer  :: use_cumpenent      ! Cumulative penetrative entrainment
+     integer  :: scverbose          ! activate print statements
+     integer  :: windsrcavg         ! Source air uses PBL mean momentum
+     real     :: rpen               ! Penentrative entrainment factor
+     real     :: rle
+     real     :: rkm                ! Factor controlling lateral mixing rate
+     real     :: mixscale           ! Controls vertical structure of mixing
+     real     :: detrhgt            ! Mixing rate increases above this height
+     real     :: rkfre              ! Vertical velocity fraction of tke
+     real     :: rmaxfrac           ! Maximum core updraft fraction
+     real     :: mumin1             ! 
+     real     :: rbuoy              ! Non-hydro pressure effect on updraft
+     real     :: rdrag              ! Drag coefficient
+     real     :: epsvarw            ! Variance of PBL w by mesoscale
+     real     :: PGFc               ! Pressure gradient force
+     real     :: criqc              ! Updraft maximum condensate 
+     real     :: frc_rasn           ! Precip fraction of expelled condensate
+     real     :: kevp               ! Evaporative efficiency
+     real     :: rdrop              ! liquid drop radius
+     real     :: thlsrc_fac         ! Scaling factor for thlsrc perturbation
+     real     :: qtsrc_fac          ! Scaling factor for qtsrc perturbation
+     real     :: qtsrchgt           ! Interpolation height for total water source
+     integer  :: cridist_opt
+  endtype SHLWPARAM_TYPE
+  type   (SHLWPARAM_TYPE) :: SHLWPARAMS
+
    private
-   public compute_uwshcu_inv
+   public compute_uwshcu_inv, SHLWPARAMS
 
    real, parameter :: xlv   = MAPL_ALHL             ! Latent heat of vaporization
    real, parameter :: xlf   = MAPL_ALHF             ! Latent heat of fusion
@@ -58,11 +90,11 @@ contains
    END FUNCTION
 
 
-   subroutine compute_uwshcu_inv(idim, k0, ncnst, dt,pmid0_inv,     & ! INPUT
+   subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
          th0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,      & 
-         cush, tr0_inv,                                             & ! INOUT
+         cush,                                                      & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, thten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
@@ -74,14 +106,13 @@ contains
          wlcl, qtsrc, thlsrc, thvlsrc, tkeavg, cldtop, wu_inv,      &
          qtu_inv, thlu_inv, thvu_inv, uu_inv, vu_inv, xc_inv,       &
 #endif
-         dotransport,shlwparams)
+         dotransport)
 
       implicit none
 
 
       integer, intent(in)   :: idim                     ! Number of columns
       integer, intent(in)   :: k0                       ! Number of levels  
-      integer, intent(in)   :: ncnst                    ! Number of tracers 
       integer, intent(in)   :: dotransport              ! Transport tracers [1 true]
       real   , intent(in)   :: dt                       ! moist heartbeat [s]
 
@@ -105,7 +136,6 @@ contains
       real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)              ! convective tracer
       real, intent(in)    :: frland(idim)             ! land fraction
-      real, intent(inout) :: tr0_inv(idim,k0,ncnst)   !  Environmental tracers [ #, kg/kg ]
       real, intent(inout) :: cush(idim)               !  Convective scale height [m]
 
       real, intent(out)   :: umf_inv(idim,k0+1)       !  Updraft mass flux at interfaces [kg/m2/s]
@@ -165,8 +195,6 @@ contains
       real, intent(out)   :: cldtop(idim)
 #endif
 
-      type(shlwparam_type), intent(in) :: shlwparams
-
   !----- Local variables -----
       real              :: pifc0(idim,0:k0)         !  Environmental pressure at the interfaces [ Pa ]
       real              :: zifc0(idim,0:k0)         !  Environmental height at the interfaces   [ m ]
@@ -182,7 +210,7 @@ contains
       real              :: qi0(idim,k0)             !  Environmental ice specific humidity [ kg/kg ]
       real              :: th0(idim,k0)             !  Environmental temperature [ K ]
       real              :: tke(idim,0:k0)           !  Turbulent kinetic energy [ m2 s-2 ] 
-      real              :: tr0(idim,k0,ncnst)       !  Environmental tracers [ #, kg/kg ]
+      real, allocatable :: tr0(:,:,:)               !  Environmental tracers [ #, kg/kg ]
       real              :: umf(idim,0:k0)           !  Updraft mass flux at the interfaces [ kg/m2/s ]
       real              :: dcm(idim,k0)             !  Detrained cloudy air mass
       real              :: qvten(idim,k0)           !  Tendency of water vapor specific humidity [ kg/kg/s ]
@@ -239,7 +267,12 @@ contains
       integer           :: k_inv                    !  Vertical index for incoming fields [ no ]
       integer           :: m                        !  Tracer index [ no ]
       integer           :: kpbl(idim)
+      integer           :: ncnst, IM, JM
 
+      ncnst = size(CNV_Tracers)
+      IM = size(CNV_Tracers(1)%Q,1)
+      JM = size(CNV_Tracers(1)%Q,2)
+      allocate(tr0(idim,k0,ncnst))
 
       ! flip mid-level variables
       do k = 1, k0
@@ -255,7 +288,7 @@ contains
          qi0(:idim,k)        = qi0_inv(:idim,k_inv)
          th0(:idim,k)        = th0_inv(:idim,k_inv)
          do m = 1, ncnst
-            tr0(:idim,k,m)   = tr0_inv(:idim,k_inv,m)
+            tr0(:idim,k,m)   = reshape(CNV_Tracers(m)%Q(:,:,k_inv), (/idim/))
          enddo
       enddo
 
@@ -295,7 +328,7 @@ contains
            thlsrc, thvlsrc, tkeavg, cldtop, wu, qtu,        &
            thlu, thvu, uu, vu, xc, trten,                   & 
 #endif
-           dotransport,shlwparams )
+           dotransport )
 
       ! Reverse again
 
@@ -352,8 +385,9 @@ contains
          if (dotransport.eq.1) then
          do m = 1, ncnst
             do i=1,idim
-               tr0_inv(i,k_inv,m)   = MAX(mintracer,tr0(i,k,m))
+               tr0(i,k,m)   = MAX(mintracer,tr0(i,k,m))
             enddo
+            CNV_Tracers(m)%Q(:,:,k_inv) = reshape(tr0(:,k,m), (/IM,JM/))
 #ifdef UWDIAG
             trten_inv(:idim,k_inv,m) = trten(:idim,k,m)            
 #endif
@@ -394,7 +428,7 @@ contains
          thvlsrc_out, tkeavg_out, cldhgt_out, wu_out, qtu_out,     &
          thlu_out, thvu_out, uu_out, vu_out, xc_out, trten_out,    &
 #endif
-         dotransport,shlwparams )  
+         dotransport)  
 
     ! ------------------------------------------------------------ !
     !                                                              !  
@@ -500,8 +534,6 @@ contains
       real, intent(out)   :: cldhgt_out(idim)
       real, intent(out)   :: xc_out(idim,k0)
 #endif
-
-      type(shlwparam_type), intent(in) :: shlwparams
 
     !
     ! Internal Output Variables
@@ -2348,7 +2380,7 @@ contains
        ! ------------------------------------------------------------------------ !
 
          scaleh = tscaleh
-         if( tscaleh .lt. 0.0 ) scaleh = 1000.
+         if( tscaleh .le. 0.0 ) scaleh = 1000.
 
 
      ! Save time : Set iter_scaleh = 1. This will automatically use 'cush' from the previous time step
@@ -2642,10 +2674,10 @@ contains
           ! ------------------------------------------------------------------------ !
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
-            if (mixscale.ne.0.0) then
+            if (min(scaleh,mixscale).ne.0.0) then
 !              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
               rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-            else if (mixscale.eq.0.0) then
+            else
               rei(k) = ( 0.5 * rkm / min(1500.,zmid0(k)) / g /rhomid0j )       ! Jason-2_0 version
             end if
 

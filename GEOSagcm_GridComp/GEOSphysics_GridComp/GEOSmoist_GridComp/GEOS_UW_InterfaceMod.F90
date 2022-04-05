@@ -12,42 +12,11 @@ module GEOS_UW_InterfaceMod
 
   use ESMF
   use MAPL
+  use UWSHCU   ! using module that contains uwshcu code
 
   implicit none
 
   integer USE_TRACER_TRANSP_UW      ! transport tracers in UW
-  type SHLWPARAM_TYPE
-     integer  :: niter_xc           ! Number xc iterations
-     integer  :: iter_cin           ! Number iterations for implicit CIN
-     integer  :: use_CINcin         ! if true, calc CIN thru L..
-     integer  :: use_self_detrain   ! 
-     integer  :: use_momenflx       ! Perform momentum transport
-     integer  :: use_cumpenent      ! Cumulative penetrative entrainment
-     integer  :: scverbose          ! activate print statements
-     integer  :: windsrcavg         ! Source air uses PBL mean momentum
-     real     :: rpen               ! Penentrative entrainment factor
-     real     :: rle
-     real     :: rkm                ! Factor controlling lateral mixing rate
-     real     :: mixscale           ! Controls vertical structure of mixing
-     real     :: detrhgt            ! Mixing rate increases above this height
-     real     :: rkfre              ! Vertical velocity fraction of tke
-     real     :: rmaxfrac           ! Maximum core updraft fraction
-     real     :: mumin1             ! 
-     real     :: rbuoy              ! Non-hydro pressure effect on updraft
-     real     :: rdrag              ! Drag coefficient
-     real     :: epsvarw            ! Variance of PBL w by mesoscale
-     real     :: PGFc               ! Pressure gradient force
-     real     :: criqc              ! Updraft maximum condensate 
-     real     :: frc_rasn           ! Precip fraction of expelled condensate
-     real     :: kevp               ! Evaporative efficiency
-     real     :: rdrop              ! liquid drop radius
-     real     :: thlsrc_fac         ! Scaling factor for thlsrc perturbation
-     real     :: qtsrc_fac          ! Scaling factor for qtsrc perturbation
-     real     :: qtsrchgt           ! Interpolation height for total water source
-     integer  :: cridist_opt
-  endtype SHLWPARAM_TYPE
-  type   (SHLWPARAM_TYPE) :: SHLWPARAMS
-
   real    :: SCLM_SHALLOW
 
   private
@@ -125,7 +94,7 @@ subroutine UW_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 2.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 8.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
 
@@ -140,7 +109,39 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code:
 
-    ! Local derived type aliases
+    ! Internals
+    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
+    real, pointer, dimension(:,:,:) :: QRAIN, QSNOW
+    real, pointer, dimension(:,:)   :: CUSH
+
+    ! Imports
+    real, pointer, dimension(:,:)   :: FRLAND, SH, EVAP, KPBL_SC
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, TKE
+
+    ! allocatable derived quantities
+    real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
+    real,    allocatable, dimension(:,:,:) :: PL, PK, PKE, DP
+    real,    allocatable, dimension(:,:,:) :: MASS
+    real,    allocatable, dimension(:,:,:) :: T
+    real,    allocatable, dimension(:,:,:) :: TMP3D
+    real,    allocatable, dimension(:,:)   :: TMP2D
+
+    ! Required Exports (connectivities to moist siblings)
+    real, pointer, dimension(:,:)   :: CNPCPRATE
+
+    ! Exports
+    real, pointer, dimension(:,:,:) :: CUFRC_SC
+    real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC
+    real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
+    real, pointer, dimension(:,:,:) ::  DTDT_SC, DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
+                                       DQIDT_SC, DQLDT_SC
+    real, pointer, dimension(:,:,:) :: DUDT_SC, DVDT_SC, &
+                                       ENTR_SC, DETR_SC, QLDET_SC, &
+                                       QIDET_SC, QLENT_SC, QIENT_SC, &
+                                       QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
+    real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC
+    real, pointer, dimension(:,:,:) :: PTR3D
+    real, pointer, dimension(:,:)   :: PTR2D
 
     type (MAPL_MetaComp), pointer   :: MAPL
     type (ESMF_Config  )            :: CF
@@ -152,13 +153,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local variables
 
+    integer                         :: I, J, L
     integer                         :: IM,JM,LM
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
-
-    ! Required Exports (connectivities to moist siblings)
-    real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
-    real, pointer, dimension(:,:,:) :: DTDT_SC
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -187,26 +185,94 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
 
+    ! Internals
+    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
+
+    ! Imports
+    call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TH        ,'TH'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, KPBL_SC   ,'KPBL_SC'   ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TKE       ,'TKE'       ,RC=STATUS); VERIFY_(STATUS)
+
+    ! Allocatables
+     ! Edge variables 
+    ALLOCATE ( ZLE0 (IM,JM,0:LM) )
+    ALLOCATE ( PKE  (IM,JM,0:LM) )
+     ! Layer variables
+    ALLOCATE ( ZL0  (IM,JM,LM  ) )
+    ALLOCATE ( PL   (IM,JM,LM  ) )
+    ALLOCATE ( PK   (IM,JM,LM  ) )
+    ALLOCATE ( T    (IM,JM,LM  ) )
+    ALLOCATE ( DP   (IM,JM,LM  ) )
+    ALLOCATE ( MASS (IM,JM,LM  ) )
+    ALLOCATE ( TMP3D(IM,JM,LM  ) )
+     ! 2D Variables
+    ALLOCATE ( TMP2D  (IM,JM) )
+
+    ! Derived States
+    PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
+    PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
+    PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
+    DO L=0,LM
+       ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
+    END DO
+    ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
+    T        = TH*PK
+    DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
+    MASS     = DP/MAPL_GRAV
+
     ! Required Exports (connectivities to moist siblings)
-    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SHLW_PRC3,  'SHLW_PRC3' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SHLW_SNO3,  'SHLW_SNO3' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! Exports
+    call MAPL_GetPointer(EXPORT, UMF_SC,     'UMF_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DCM_SC,     'DCM_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQVDT_SC,   'DQVDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_SC,   'DQIDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDT_SC,   'DQLDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQRDT_SC,   'DQRDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQSDT_SC,   'DQSDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTHDT_SC,   'DTHDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_SC,    'ENTR_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DETR_SC,    'DETR_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QLSUB_SC,   'QLSUB_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QISUB_SC,   'QISUB_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SC_NDROP,   'SC_NDROP'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SC_NICE,    'SC_NICE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, TPERT_SC,   'TPERT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QPERT_SC,   'QPERT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QTFLX_SC,   'QTFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
-#ifdef NODISABLE
-
-    call MAPL_GetPointer(INTERNAL, CUSH, 'CUSH', RC=STATUS); VERIFY_(STATUS) 
 
       !  Call UW shallow convection
       !----------------------------------------------------------------
-      call compute_uwshcu_inv(IDIM, K0, ITRCR, DT_MOIST,  & ! IN
-            PLO*100., ZLO, PK, PLE, ZLE, PKE, DP,         &
-            U1, V1, Q1, QLLS, QILS, TH1, TKE, KPBL_SC,    &
-            SH, EVAP, CNVPRCP, FRLAND,                    &
-            CUSH, XHO,                                    & ! INOUT
+      call compute_uwshcu_inv(IM*JM, LM,       DT_MOIST,  & ! IN
+            PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
+            U, V, Q, QLLS, QILS, TH, TKE, NINT(KPBL_SC),  &
+            SH, EVAP, CNPCPRATE, FRLAND,                  &
+            CUSH,                                         & ! INOUT
             UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
             DTHDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,         &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
@@ -222,23 +288,32 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             QTUP_SC, THLUP_SC, THVUP_SC, UUP_SC, VUP_SC,  &
             XC_SC,                                        &
 #endif 
-            USE_TRACER_TRANSP_UW, SHLWPARAMS )
+            USE_TRACER_TRANSP_UW)
+
       !  Apply tendencies
       !--------------------------------------------------------------
-      Q1  = Q1  + DQVDT_SC * DT_MOIST    ! note this adds to the convective
-      TH1 = TH1 + DTHDT_SC * DT_MOIST    !  tendencies calculated below
-      U1  = U1  + DUDT_SC * DT_MOIST
-      V1  = V1  + DVDT_SC * DT_MOIST
-      if (associated(DTDT_SC)) DTDT_SC = DTHDT_SC*PK
+        Q  = Q  + DQVDT_SC * DT_MOIST    ! note this adds to the convective
+        TH = TH + DTHDT_SC * DT_MOIST    !  tendencies calculated below
+        U  = U  +  DUDT_SC * DT_MOIST
+        V  = V  +  DVDT_SC * DT_MOIST
+      !  Update the temperature tendency
+      !--------------------------------------------------------------
+        DTDT_SC = DTHDT_SC*PK
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
-      where (DETR_SC.ne.MAPL_UNDEF)
-        MFD_SC = 0.5*(UMF_SC(:,:,1:LM)+UMF_SC(:,:,0:LM-1))*DETR_SC*DP
-      elsewhere
-        MFD_SC = 0.0
-      end where
+        where (DETR_SC.ne.MAPL_UNDEF)
+          MFD_SC = 0.5*(UMF_SC(:,:,1:LM)+UMF_SC(:,:,0:LM-1))*DETR_SC*DP
+        elsewhere
+          MFD_SC = 0.0
+        end where
+       ! Tiedtke-style cloud fraction !!
+        TMP3D= DCM_SC*SCLM_SHALLOW/MASS
+        CLCN = CLCN + TMP3D*DT_MOIST
+        CLCN = MIN( CLCN , 1.0 )
       !  Convert detrained water units before passing to cloud
       !---------------------------------------------------------------
+        call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         QLENT_SC = 0.
         QIENT_SC = 0.
         WHERE (QLDET_SC.lt.0.)
@@ -249,61 +324,61 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QIENT_SC = QIDET_SC
           QIDET_SC = 0.
         END WHERE
+       ! add detrained shallow convective ice/liquid source
+        QLCN = QLCN + QLDET_SC*DT_MOIST
+        QICN = QICN + QIDET_SC*DT_MOIST
+       ! scale the detrained fluxes before exporting
         QLDET_SC = QLDET_SC*MASS
         QIDET_SC = QIDET_SC*MASS
       !  Apply condensate tendency from subsidence, and sink from
       !  condensate entrained into shallow updraft. 
-      !  Detrained condensate added in microphysics below.
       !-------------------------------------------------------------
         QLLS = QLLS + (QLSUB_SC+QLENT_SC)*DT_MOIST
         QILS = QILS + (QISUB_SC+QIENT_SC)*DT_MOIST
-      !  Calculate updraft core fraction from cumulus fraction.
-      !  CUFRC is assumed in compute_uwshcu to be twice updraft frac
-      !--------------------------------------------------------------
-      UFRC_SC = 0.5 * CUFRC_SC
       !  Number concentrations for 2-moment microphysics
       !--------------------------------------------------------------
-      SC_NDROP = SC_NDROP*MASS
-      SC_NICE = SC_NICE*MASS
+        SC_NDROP = SC_NDROP*MASS
+        SC_NICE  = SC_NICE *MASS
       !  Precipitation
       !--------------------------------------------------------------
-      SHLW_PRC3 = DQRDT_SC    ! [kg/kg/s]
-      SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
-      if (associated(SC_QT)) then
-        ! column integral of UW total water tendency, for checking conservation
-        dum2d = 0.
-        DO K = 1,LM
-           dum2d = dum2d + (DQSDT_SC(:,:,k)+DQRDT_SC(:,:,k)+DQVDT_SC(:,:,k) &
-                         + QLENT_SC(:,:,k)+QLSUB_SC(:,:,k)+QIENT_SC(:,:,k)  &
-                         + QISUB_SC(:,:,k))*MASS(:,:,k)+QLDET_SC(:,:,k)     &
-                         + QIDET_SC(:,:,k)
-        END DO
-        SC_QT = dum2d
-      end if
-      if (associated(SC_MSE)) then
-        ! column integral of UW moist static energy tendency
-        dum2d = 0.
-        DO K = 1,LM
-           dum2d = dum2d + (MAPL_CP*DTHDT_SC(:,:,k)*PK(:,:,k) &
-                         + MAPL_ALHL*DQVDT_SC(:,:,k)          &
-                         - MAPL_ALHF*DQIDT_SC(:,:,k))*MASS(:,:,k)
-        END DO
-        SC_MSE = dum2d
-      end if
-      if (associated(CUSH_SC)) CUSH_SC = CUSH
-
-
-       ! add shallow convective ice/liquid source
-        QLCN = QLCN + QLDET_SC*iMASS*DT_MOIST
-        QICN = QICN + QIDET_SC*iMASS*DT_MOIST
-       ! Tiedtke-style anvil fraction !!
-        TMP3D= DCM_SC*SCLM_SHALLOW*iMASS
-        CLCN = CLCN + TMP3D*DT_MOIST
-        CLCN = MIN( CLCN , 1.0 )
+        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
+        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
       ! add ShallowCu rain/snow tendencies
-        QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
-        QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
-#endif
+        if (SHLWPARAMS%FRC_RASN > 0.0) then
+          call MAPL_GetPointer(INTERNAL, QRAIN,  'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(INTERNAL, QSNOW,  'QSNOW'   , RC=STATUS); VERIFY_(STATUS)
+          QRAIN = QRAIN + DQRDT_SC*DT_MOIST
+          QSNOW = QSNOW + DQSDT_SC*DT_MOIST
+        endif
+
+        call MAPL_GetPointer(EXPORT, PTR2D, 'SC_QT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+        ! column integral of UW total water tendency, for checking conservation
+        TMP2D = 0.
+        DO L = 1,LM
+           TMP2D = TMP2D + ( DQSDT_SC(:,:,L)+DQRDT_SC(:,:,L)+DQVDT_SC(:,:,L) &
+                         +   QLENT_SC(:,:,L)+QLSUB_SC(:,:,L)+QIENT_SC(:,:,L) &
+                         +   QISUB_SC(:,:,L) )*MASS(:,:,L) &
+                         +  QLDET_SC(:,:,L)+QIDET_SC(:,:,L)
+        END DO
+        PTR2D = TMP2D
+        end if
+        call MAPL_GetPointer(EXPORT, PTR2D, 'SC_MSE', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+        ! column integral of UW moist static energy tendency
+        TMP2D = 0.
+        DO L = 1,LM
+           TMP2D = TMP2D + (MAPL_CP  *DTHDT_SC(:,:,L)*PK(:,:,L) &
+                         +  MAPL_ALHL*DQVDT_SC(:,:,L)          &
+                         -  MAPL_ALHF*DQIDT_SC(:,:,L))*MASS(:,:,L)
+        END DO
+        PTR2D = TMP2D
+        end if
+
+        call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) PTR2D = CUSH
 
     call MAPL_TimerOff (MAPL,"--UW")
 
