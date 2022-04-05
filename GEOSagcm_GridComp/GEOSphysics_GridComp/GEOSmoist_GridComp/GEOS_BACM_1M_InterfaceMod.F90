@@ -510,14 +510,14 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (associated(PTR2D)) PTR2D = CNV_FRACTION
 
     ! Export Tendencies
-    call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQLDT_micro, 'DQLDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQADT_micro, 'DQADT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_micro, 'DTHDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDT_micro, 'DQLDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQADT_micro, 'DQADT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTHDT_micro, 'DTHDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (associated(DQVDT_micro)) DQVDT_micro = Q
     if (associated(DQLDT_micro)) DQLDT_micro = QLLS + QLCN
     if (associated(DQIDT_micro)) DQIDT_micro = QILS + QICN
