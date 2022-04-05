@@ -85,7 +85,7 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
     ! !INTERNAL STATE:
 
       FRIENDLIES%QV       = "DYNAMICS:TURBULENCE:CHEMISTRY:ANALYSIS"
-      FRIENDLIES%QW       = "DYNAMICS:TURBULENCE"
+      FRIENDLIES%QW       = "TURBULENCE"
       FRIENDLIES%CLLS     = "DYNAMICS"
       FRIENDLIES%CLCN     = "DYNAMICS"
       FRIENDLIES%QLLS     = "DYNAMICS:TURBULENCE"
@@ -648,6 +648,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     call MAPL_TimerOn(MAPL,"---CLDMICRO")
     ! Zero-out microphysics tendencies
+    call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDT_micro, 'DQLDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQADT_micro, 'DQADT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQRDT_micro, 'DQRDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQSDT_micro, 'DQSDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQGDT_micro, 'DQGDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTHDT_micro, 'DTHDT_micro'      , RC=STATUS); VERIFY_(STATUS)
     if (associated(DQVDT_micro)) DQVDT_micro = Q
     if (associated(DQLDT_micro)) DQLDT_micro = QLLS + QLCN
     if (associated(DQIDT_micro)) DQIDT_micro = QILS + QICN
