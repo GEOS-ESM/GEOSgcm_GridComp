@@ -76,9 +76,12 @@ program maskLakes
 !  convert tile lat/lon to Ostia grid indices
   do n=1,nl
      i = nint((lons(n)-x0)/dx)
-     j = nint((lats(n)-y0)/dy)
-     _ASSERT(i>0 .and. i<=im)
-     _ASSERT(j>0 .and. j<=jm)
+     j = nint((lats(n)-y0)/dy)+1
+     i = mod(i+im,im)+1
+     if (i<=0 .or. j<=0) print *,i,j,n,lats(n),lons(n)
+     if (i>im .or. j>jm) print *,i,j,n,lats(n),lons(n)
+     _ASSERT(i>0 .and. i<im)
+     _ASSERT(j>0 .and. j<jm)
 
      if(omask(i,j) /= 0.0) then 
         mask(n) = 1.0
