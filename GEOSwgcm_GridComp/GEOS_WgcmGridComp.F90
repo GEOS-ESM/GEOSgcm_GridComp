@@ -694,12 +694,14 @@ contains
       integer :: i, j
 
 ! MABL sea spray
+      real :: spray_edf_factor
       real :: spray_hss
       real :: spray_hll
       real :: spray_hwave
       real :: spray_cwave
       real :: spray_p
       real :: spray_usr
+      real :: spray_w10m
       real :: spray_massf
       real :: spray_hs_tot
       real :: spray_hl_tot
@@ -846,11 +848,22 @@ contains
       SHFX_SPRAY = 0.0
       LHFX_SPRAY = 0.0
 
+      if (self%wave_model == wave_model_umwm) then
+          ! scale up UMWM:EDF to agree with EDFP and WW3
+          spray_edf_factor = 3.0
+      else
+          spray_edf_factor = 1.0
+      end if 
+
       do j = 1, JM
           do i = 1, IM
+          
+          spray_w10m = sqrt(U10M(i,j)**2 + V10M(i,j)**2)
 
-          if ( (WM_USTAR(i,j) /= MAPL_UNDEF) .and. &
-               (WM_SWH(i,j) > 0.1) .and. &
+          if ( (spray_w10m > 7.0) .and. &
+               (WM_USTAR(i,j) /= MAPL_UNDEF) .and. &
+               (WM_DCP(i,j) /= MAPL_UNDEF) .and. &
+               (WM_SWH(i,j) > 0.5) .and. &
                (FRACI(i,j) < FRACTION_ICE_SUPPRESS_WAVES) ) then
 
               spray_hss   = SHFX(i,j)     ! SHWTR
@@ -858,12 +871,16 @@ contains
               spray_hwave = WM_SWH(i,j)
               spray_cwave = WM_DCP(i,j)
 #if(1)
-              spray_p     = 3 * WM_EDF(i,j)  / MAPL_RHOWTR   ! the factor 3 is to agree with EDFP
+              spray_p = spray_edf_factor * WM_EDF(i,j)  / MAPL_RHOWTR   ! the factor 3 is to agree with EDFP
 
               ! protect against negative energy dissipation flux 
               if (spray_p < 0) then
                   spray_p = RHOS(i,j) * 3.5 * WM_USTAR(i,j)**3.5
-              end if    
+              end if
+
+              if (spray_p < tiny(spray_p)) then
+                  cycle
+              end if
 #else
               spray_p     = WM_EDFP(i,j) / MAPL_RHOWTR
 #endif
@@ -872,7 +889,7 @@ contains
               
               call mabl_sea_spray(SPRAY_SOURCE_STRENGTH, &
                                   SPRAY_FEEDBACK,        &
-                                  sqrt(U10M(i,j)**2 + V10M(i,j)**2), &
+                                  spray_w10m,            &
                                   10.0,                  &
                                   TS(i,j)   - 273.15,    &  ! T:=(TSKINW!=MAPL_UNDEF)?TSKINW:TS
                                   T10M(i,j) - 273.15,    &
@@ -913,6 +930,7 @@ contains
           if (abs(SHFX_SPRAY(i,j)) > 2e2 .or. abs(LHFX_SPRAY(i,j)) > 2e2) then
               print *, SHFX_SPRAY(i,j),   &
                        LHFX_SPRAY(i,j),   &
+                       WM_USTAR(i,j),     &
                        sqrt(U10M(i,j)**2 + V10M(i,j)**2), &
                        TS(i,j)  - 273.15, & 
                        T10M(i,j)- 273.15, &
