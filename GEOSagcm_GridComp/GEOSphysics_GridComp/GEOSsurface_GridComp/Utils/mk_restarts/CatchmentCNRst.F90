@@ -13,7 +13,19 @@ module CatchmentCNRstMod
   use CatchmentRstMod, only : CatchmentRst
   implicit none
 
-  type, extends(CatchmentRst) :: CatchmentCNRst
+  integer, parameter :: nveg  =  integer, parameter :: nveg    = 4
+  integer, parameter :: nzone = 3
+  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
+  integer, parameter :: npft    = 19
+  integer, parameter :: npft_clm45    = 19
+  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column 
+
+ type, extends(CatchmentRst) :: CatchmentCNRst
+     logical :: isCLM45
+     integer :: VAR_COL
+     integer :: VAR_PFT
      real, allocatable ::    cnity(:,:)
      real, allocatable ::    fvg(:,:)
      real, allocatable ::    tg(:,:)
@@ -33,7 +45,8 @@ module CatchmentCNRstMod
      real, allocatable ::    PEATF   (:) 
   contains
      procedure :: write_nc4
-     procedure :: allocatecn   
+     procedure :: allocate_cn   
+     procedure :: add_bcs_to_rst   
   endtype CatchmentCNRst
 
   interface CatchmentCNRst
@@ -42,7 +55,7 @@ module CatchmentCNRstMod
 
 contains
 
-  function CatchmentCNRst_create(filename,cnclm,rc) result (catch)
+  function CatchmentCNRst_create(filename, cnclm, rc) result (catch)
     type(CatchmentCNRst) :: catch
     character(*), intent(in) :: filename
     character(*), intent(in) :: cnclm
@@ -60,10 +73,23 @@ contains
      if (filetype /= 0) then
         _ASSERT( .false., "CatchmentCN only support nc4 file restart")
      endif
-     
+
+     catch%isCLM45 = .false.
      call formatter%open(filename, pFIO_READ, __RC__)
      meta   = formatter%read(__RC__)
      ntiles = meta%get_dimension('tile', __RC__)
+     catch%ntiles = ntiles
+     if (index(cnclm, '40' /=0) then
+        catch%VAR_COL = VAR_COL_CLM40
+        catch%VAR_PFT = VAR_PFT_CLM40
+     endif
+     if (index(cnclm, '45' /=0) then
+        catch%VAR_COL = VAR_COL_CLM45
+        catch%VAR_PFT = VAR_PFT_CLM45
+        catch%isCLM45 = .true.
+     endif
+
+     call catch%allocate_cn(__RC__)
      call catch%read_shared_nc4(formatter, __RC__)
 
      myVariable => meta%get_variable("ITY")
@@ -86,7 +112,7 @@ contains
      myVariable => meta%get_variable("CNCOL")
      dname => myVariable%get_ith_dimension(2)
      dim1 = meta%get_dimension(dname)
-     if(index(cnclm,'45') /=0) then
+     if( catch%isCLM45) then
         call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
         call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
         call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
@@ -113,24 +139,19 @@ contains
      if (present(rc)) rc =0
    end function CatchmentCNRst_Create
 
-   subroutine write_nc4(this, filename, meta, cnclm, rc)
+   subroutine write_nc4(this, filename, meta, rc)
      class(CatchmentCNRst), intent(inout):: this
      character(*), intent(in) :: filename
      type(FileMetadata), intent(inout) :: meta
-     character(*), intent(in) :: cnclm
      integer, optional, intent(out):: rc
 
      type(Netcdf4_fileformatter) :: formatter
      integer :: status
      character(256) :: Iam = "write_nc4"
-     logical :: clm45
      integer :: i,j, dim1,dim2
      real, dimension (:), allocatable :: var
      type(Variable), pointer :: myVariable
      character(len=:), pointer :: dname
-
-     clm45 = .false.
-     if (index(cnclm,'45') /=0) clm45 = .true.
 
      call formatter%create(filename, __RC__)
      call formatter%write(meta, __RC__)
@@ -186,7 +207,7 @@ contains
         call MAPL_VarWrite(formatter,"RZMM",var,offset1=j)
      end do
 
-     if (clm45) then
+     if (this%isCLM45) then
         do j=1,dim1
            call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
         enddo
@@ -224,13 +245,17 @@ contains
      _RETURN(_SUCCESS)
    end subroutine write_nc4
 
-   subroutine allocatecn(this, ntiles, ncol, npft, rc)
+   subroutine allocate_cn(this, ncol, npft, rc)
      class(CatchmentCNRst), intent(inout) :: this
-     integer, intent(in) :: ntiles,ncol,npft
+     integer, intent(in) :: ncol,npft
      integer, optional, intent(out):: rc
      integer :: status
 
-     call this%CatchmentRst%allocate(ntiles, __RC__)
+     ntiles = this%ntiles
+     ncol = nzone* this%VAR_COL 
+     npft = nzone*nveg*this%VAR_PFT
+
+     call this%CatchmentRst%allocate_catch(__RC__)
 
      allocate(this%cnity(ntiles,4))
      allocate(this%fvg(ntiles,4))
@@ -251,5 +276,272 @@ contains
      allocate(this%PEATF(ntiles))
      _RETURN(_SUCCESS)
    end subroutine allocatecn
+
+   SUBROUTINE add_bcs_to_rst (this, SURFLAY, DataDir,rc)
+    class(CatchmentCNRst), intent(inout) :: this
+    real, intent (in)                    :: SURFLAY
+    character(*), intent (in)            :: DataDir
+    integer, optional, intent(out) :: rc
+    real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
+    real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
+    real, allocatable :: CLMC45_pf1(:), CLMC45_pf2(:), CLMC45_sf1(:), CLMC45_sf2(:)
+    real, allocatable :: CLMC45_pt1(:), CLMC45_pt2(:), CLMC45_st1(:), CLMC45_st2(:)    
+    real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
+    real, allocatable :: T2(:), var1(:), hdm(:), fc(:), gdp(:), peatf(:)
+    integer, allocatable :: ity(:), abm (:)
+    integer       :: STATUS, ntiles, uit27, unit28, unit29, unit30
+    integer       :: idum, i,j,n, ib, nv
+    real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
+    logical       :: NEWLAND
+    logical       :: file_exists
+
+    type(NetCDF4_Fileformatter) :: CatchCNFmt
+    character*256        :: Iam = "add_bcs"
+ 
+    call this%CatchmentRst%add_bcs(surflay, DataDir, __RC__)
+    ntiles = this%ntiles
+    allocate (BVISDR(ntiles),  BVISDF(ntiles),  BNIRDR(ntiles)  )
+    allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )    
+    allocate (CLMC_pf1(ntiles), CLMC_pf2(ntiles), CLMC_sf1(ntiles))
+    allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
+    allocate (CLMC45_pf1(ntiles), CLMC45_pf2(ntiles), CLMC45_sf1(ntiles))
+    allocate (CLMC45_sf2(ntiles), CLMC45_pt1(ntiles), CLMC45_pt2(ntiles))
+    allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
+    allocate (CLMC45_st1(ntiles), CLMC45_st2(ntiles))
+    allocate (hdm(ntiles), fc(ntiles), gdp(ntiles))
+    allocate (peatf(ntiles), abm(ntiles), var1(ntiles)
+
+    inquire(file = trim(DataDir)//'/catchcn_params.nc4', exist=file_exists)
+    inquire(file = trim(DataDir)//"CLM_veg_typs_fracs"   ,exist=NewLand )
+    _ASSERT(Newland, "catchcn should get bc from newland")
+
+    if(file_exists) then
+       call CatchCNFmt%Open(trim(DataDir)//'/catchcn_params.nc4', pFIO_READ, __RC__)    
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP, __RC__)
+       call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2, __RC__)
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1, __RC__)     !  30
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2, __RC__)     !  31
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3, __RC__)     !  32
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4, __RC__)     !  33
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1, __RC__)     !  34
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2, __RC__)     !  35
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3, __RC__)     !  36
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4, __RC__)     !  37
+       call CatchCNFmt%close()
+    else
+
+       open(newunit=unit27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
+       open(newunit=unit28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
+
+       do n=1,ntiles
+          read (unit27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
+                CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
+             
+          read (unit28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
+          if(this%isCLM45) then
+          endif
+       end do
+       
+       CLOSE (unit27, STATUS = 'KEEP')
+       CLOSE (unit28, STATUS = 'KEEP')
+
+    endif
+
+    if (this%isCLM45 ) then
+
+      open(newunit=unit29, file=trim(DataDir)//'CLM4.5_veg_typs_fracs',form='formatted')
+      open(newunit=unit30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
+      do n=1,ntiles
+         read (unit29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
+                   CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
+         read (unit30, *) i, j, abm(n), peatf(n), &
+               gdp(n), hdm(n), fc(n)
+      end do
+      CLOSE (unit29, STATUS = 'KEEP')
+      CLOSE (unit30, STATUS = 'KEEP')
+    endif
+    
+    do n=1,ntiles
+      BVISDR(n) = amax1(1.e-6, BVISDR(n))
+      BVISDF(n) = amax1(1.e-6, BVISDF(n))
+      BNIRDR(n) = amax1(1.e-6, BNIRDR(n))
+      BNIRDF(n) = amax1(1.e-6, BNIRDF(n))
+
+      ! convert % to fractions
+      
+      CLMC_pf1(n) = CLMC_pf1(n) / 100.
+      CLMC_pf2(n) = CLMC_pf2(n) / 100.
+      CLMC_sf1(n) = CLMC_sf1(n) / 100.
+      CLMC_sf2(n) = CLMC_sf2(n) / 100.
+      
+      fvg(1) = CLMC_pf1(n)
+      fvg(2) = CLMC_pf2(n)
+      fvg(3) = CLMC_sf1(n)
+      fvg(4) = CLMC_sf2(n)
+      
+      BARE = 1.      
+      
+      DO NV = 1, NVEG
+         BARE = BARE - FVG(NV)! subtract vegetated fractions 
+      END DO
+      
+      if (BARE /= 0.) THEN
+         IB = MAXLOC(FVG(:),1)
+         FVG (IB) = FVG(IB) + BARE ! This also corrects all cases sum ne 0.
+      ENDIF
+      
+      CLMC_pf1(n) = fvg(1)
+      CLMC_pf2(n) = fvg(2)
+      CLMC_sf1(n) = fvg(3)
+      CLMC_sf2(n) = fvg(4)
+    enddo
+
+    if(this%isCLM45) then
+       do n =1, ntiles
+         CLMC45_pf1(n) = CLMC45_pf1(n) / 100.
+         CLMC45_pf2(n) = CLMC45_pf2(n) / 100.
+         CLMC45_sf1(n) = CLMC45_sf1(n) / 100.
+         CLMC45_sf2(n) = CLMC45_sf2(n) / 100.
+         
+         fvg(1) = CLMC45_pf1(n)
+         fvg(2) = CLMC45_pf2(n)
+         fvg(3) = CLMC45_sf1(n)
+         fvg(4) = CLMC45_sf2(n)
+         
+         BARE = 1.      
+         
+         DO NV = 1, NVEG
+            BARE = BARE - fvg(NV)! subtract vegetated fractions 
+         END DO
+         
+         if (BARE /= 0.) THEN
+            IB = MAXLOC(fvg(:),1)
+            fvg (IB) = fvg(IB) + BARE ! This also corrects all cases sum ne 0.
+         ENDIF
+         
+         CLMC45_pf1(n) = fvg(1)
+         CLMC45_pf2(n) = fvg(2)
+         CLMC45_sf1(n) = fvg(3)
+         CLMC45_sf2(n) = fvg(4)
+      enddo
+    endif
+       
+    NDEP = NDEP * 1.e-9
+    
+    ! prevent trivial fractions
+    ! -------------------------
+    do n = 1,ntiles
+       if(CLMC_pf1(n) <= 1.e-4) then
+          CLMC_pf2(n) = CLMC_pf2(n) + CLMC_pf1(n)
+          CLMC_pf1(n) = 0.
+       endif
+       
+       if(CLMC_pf2(n) <= 1.e-4) then
+          CLMC_pf1(n) = CLMC_pf1(n) + CLMC_pf2(n)
+          CLMC_pf2(n) = 0.
+       endif
+       
+       if(CLMC_sf1(n) <= 1.e-4) then
+          if(CLMC_sf2(n) > 1.e-4) then
+             CLMC_sf2(n) = CLMC_sf2(n) + CLMC_sf1(n)
+          else if(CLMC_pf2(n) > 1.e-4) then
+             CLMC_pf2(n) = CLMC_pf2(n) + CLMC_sf1(n)
+          else if(CLMC_pf1(n) > 1.e-4) then
+             CLMC_pf1(n) = CLMC_pf1(n) + CLMC_sf1(n)
+          else
+             stop 'fveg3'
+          endif
+          CLMC_sf1(n) = 0.
+       endif
+       
+       if(CLMC_sf2(n) <= 1.e-4) then
+          if(CLMC_sf1(n) > 1.e-4) then
+             CLMC_sf1(n) = CLMC_sf1(n) + CLMC_sf2(n)
+          else if(CLMC_pf2(n) > 1.e-4) then
+             CLMC_pf2(n) = CLMC_pf2(n) + CLMC_sf2(n)
+          else if(CLMC_pf1(n) > 1.e-4) then
+             CLMC_pf1(n) = CLMC_pf1(n) + CLMC_sf2(n)
+          else
+             stop 'fveg4'
+          endif
+          CLMC_sf2(n) = 0.
+       endif
+     enddo 
+     if (this%isCLM45) then
+        do n = 1, ntiles
+          if(CLMC45_pf1(n) <= 1.e-4) then
+             CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_pf1(n)
+             CLMC45_pf1(n) = 0.
+          endif
+          
+          if(CLMC45_pf2(n) <= 1.e-4) then
+             CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_pf2(n)
+             CLMC45_pf2(n) = 0.
+          endif
+          
+          if(CLMC45_sf1(n) <= 1.e-4) then
+             if(CLMC45_sf2(n) > 1.e-4) then
+                CLMC45_sf2(n) = CLMC45_sf2(n) + CLMC45_sf1(n)
+             else if(CLMC45_pf2(n) > 1.e-4) then
+                CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_sf1(n)
+             else if(CLMC45_pf1(n) > 1.e-4) then
+                CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_sf1(n)
+             else
+                stop 'fveg3'
+             endif
+             CLMC45_sf1(n) = 0.
+          endif
+          
+          if(CLMC45_sf2(n) <= 1.e-4) then
+             if(CLMC45_sf1(n) > 1.e-4) then
+                CLMC45_sf1(n) = CLMC45_sf1(n) + CLMC45_sf2(n)
+             else if(CLMC45_pf2(n) > 1.e-4) then
+                CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_sf2(n)
+             else if(CLMC45_pf1(n) > 1.e-4) then
+                CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_sf2(n)
+             else
+                stop 'fveg4'
+             endif
+             CLMC45_sf2(n) = 0.
+          endif
+       enddo
+    endif
+     
+    this%cnity(:,1) = CLMC_pt1
+    this%cnity(:,2) = CLMC_pt2
+    this%cnity(:,3) = CLMC_st1
+    this%cnity(:,4) = CLMC_st2
+    this%fvg(:,1) = CLMC_pf1
+    this%fvg(:,2) = CLMC_pf2
+    this%fvg(:,3) = CLMC_sf1
+    this%fvg(:,4) = CLMC_sf2
+    
+    this%ndep = ndep
+    this%t2   = t2
+    this%BGALBVR = BVISDR
+    this%BGALBVF = BVISDF
+    this%BGALBNR = BNIRDR
+    this%BGALBNF = BNIRDF
+ 
+    if(this%isCLM45) then
+       this%abm       = real(abm)
+       this%fieldcap  = fc
+       this%hdm       = hdm
+       this%gdp       = gdp
+       this%peatf     = peatf
+     endif
+
+     deallocate (BVISDR,  BVISDF,  BNIRDR  )
+     deallocate (BNIRDF,      T2,    NDEP  )    
+     deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
+     deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
+     deallocate (CLMC_st1,CLMC_st2)
+
+     _RETURN(_SUCCESS)
+  END SUBROUTINE add_bcs_to_rst
 
 end module CatchmentCNRstMod
