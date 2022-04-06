@@ -414,6 +414,7 @@ contains
     call AddSurfField('DFNIR', SURFST, GRID,  __RC__)
     call AddSurfField('DRUVR', SURFST, GRID,  __RC__)
     call AddSurfField('DFUVR', SURFST, GRID,  __RC__)
+    call AddSurfField('COSZ',  SURFST, GRID,  __RC__)
 
     RETURN_(ESMF_SUCCESS)
     

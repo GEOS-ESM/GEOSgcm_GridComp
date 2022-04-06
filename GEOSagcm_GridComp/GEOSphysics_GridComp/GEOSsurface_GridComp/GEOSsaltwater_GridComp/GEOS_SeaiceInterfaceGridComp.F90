@@ -2307,7 +2307,8 @@ contains
    real,               allocatable    :: DRPARTHRU     (:,:)
    real,               allocatable    :: DFPARTHRU     (:,:)
 
-   real,               allocatable    :: FSURF         (:) ! 
+   real,               allocatable    :: FSURF         (:,:) ! non-solar part 
+   real,               allocatable    :: DFSURFDTS     (:,:) ! 
 
 
 
@@ -2462,6 +2463,13 @@ contains
 
     TS => TI
 
+
+
+    allocate(    FSURF(size(TS,1),   size(TS,2), __STAT__) 
+    allocate(DFSURFDTS(size(TS,1),   size(TS,2), __STAT__) 
+    allocate(   TS_OLD(size(TS,1),   size(TS,2), __STAT__) 
+
+
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------
 
@@ -2478,7 +2486,6 @@ contains
     VERIFY_(STATUS)
 
 
-    FR_OLD     = FRCICE   ! FRCICE is initialized by above subroutine CICE_PREP_THERMO
     TS_OLD     = TS
 
 
@@ -2677,12 +2684,9 @@ contains
 
     call MAPL_TimerOn(MAPL,   "-Thermo1")
 
-! 1st Step of LANL CICE Thermodynamics
 ! ------------------------------------
 
     categories_th1_: do N=ICE, NUM_SUBTILES   ! Loop over ice catgories. 
-
-          NSUB = N 
 
           CFT = (CH(:,N)/CTATM)
           CFQ = (CQ(:,N)/CQATM)
@@ -2699,22 +2703,13 @@ contains
                endwhere   
           endif
 
-          call CICE_THERMO1(N,NSUB,NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR8TMP,TS,         &
-                           ERGICE,ERGSNO,TAUXBOT,TAUYBOT,TBOT,ISWABS,SSWABS,             &
-                           DO_POND,FBOT,RSIDE,PCU,PLS,FSURF,                             &
-                           FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
-                           MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
-                           VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
-                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,RC=STATUS)
-          VERIFY_(STATUS)                 
+          FSURF(:,N)      = LWDNSRF - SHF - LHF - (ALW + BLW*TS(:,N))
+          DFSURFDTS(:,N)  = SHD + EVD * MAPL_ALHS + BLW
 
 !         Some aggregation of fluxes to the Ocean has to be done now, before using in step2
 
-          FRESHL   = FRESHL   + FRESHN *FR8(:,N)
-          FSALTL   = FSALTL   + FSALTN *FR8(:,N)
-          FHOCNL   = FHOCNL   + FHOCNN *FR8(:,N)
 
-          NEWICEERG = NEWICEERG + (FCONDBOT(:,NSUB) - FBOT) * FR8(:,N)
+          !NEWICEERG = NEWICEERG + (FCONDBOT(:,NSUB) - FBOT) * FR8(:,N)
 
 !         Update surface temperature and moisture
 !         ----------------------------------------
@@ -2822,8 +2817,9 @@ contains
 
     call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, __RC__)
 
-    call RegridA2O_2d(TS, SURFST, 'surface_ice_temperature',     &
-                      XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(       TS, SURFST, 'TSKINICE' , XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(    FSURF, SURFST, 'FSURF'    , XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(DFSURFDTS, SURFST, 'DFSURFDTS', XFORM_A2O, locstreamO, __RC__)
 
     ! ** execute the sea ice thermo coupling method
     call ESMF_MethodExecute(SURFST, label="thermo_coupling", userRC=AS_STATUS, RC=STATUS)
@@ -2831,6 +2827,8 @@ contains
     VERIFY_(STATUS)
 
     allocate(AS_PTR_2D(size(TS,1),size(TS,2)), __STAT__)
+
+
     call RegridO2A_2d(AS_PTR_2D, SURFST, 'surface_ice_temperature', &
          XFORM_O2A, locstreamO, __RC__)
 
@@ -3128,7 +3126,7 @@ contains
     integer, optional, intent(OUT) :: rc
 
     real, pointer, dimension(:,:,:) :: PTR_3D  => null()
-    real, pointer, dimension(:) :: ptrO  => null()
+    real, pointer, dimension(:)     :: ptrO    => null()
     integer :: status
     integer :: k, nc, nt
 
