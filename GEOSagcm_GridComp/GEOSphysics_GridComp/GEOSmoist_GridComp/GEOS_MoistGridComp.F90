@@ -4430,6 +4430,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DUDT_DC',                                         &
+         LONG_NAME ='U-wind tendency due to deep convection',               &
+         UNITS     ='m s-2',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DVDT_DC',                                         &
+         LONG_NAME ='V-wind tendency due to deep convection',               &
+         UNITS     ='K s-2',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DTDT_DC',                                         &
          LONG_NAME ='T tendency due to deep convection',               &
          UNITS     ='K s-1',                                           &
@@ -5286,6 +5302,8 @@ contains
        call MAPL_GetPointer(EXPORT, DUDT, 'DUDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DUDT)) then
           DUDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DUDT = DUDT + PTR3D
           call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DUDT = DUDT + PTR3D
           call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5297,6 +5315,8 @@ contains
        call MAPL_GetPointer(EXPORT, DVDT, 'DVDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DVDT)) then
           DVDT = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DVDT = DVDT + PTR3D
           call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DVDT = DVDT + PTR3D
           call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5414,7 +5434,11 @@ contains
                                           CNPCPRATE, 0.0)
 
        call MAPL_GetPointer(EXPORT, PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP, 0.0)
+       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP + &
+                                          LS_SNR  + AN_SNR, 0.0)
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'RAIN', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP, 0.0)
 
        call MAPL_GetPointer(EXPORT, PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = MAX(LS_SNR + CN_SNR + AN_SNR + SC_SNR, 0.0)

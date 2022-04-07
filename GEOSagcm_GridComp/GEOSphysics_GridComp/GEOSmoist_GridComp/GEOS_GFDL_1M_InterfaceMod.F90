@@ -14,14 +14,10 @@ module GEOS_GFDL_1M_InterfaceMod
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
-  use Aer_Actv_Single_Moment, only: USE_AEROSOL_NN, R_AIR
-  use cloudnew, only: hystpdf_new
+  use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
 
   implicit none
-
-  logical :: LHYDROSTATIC
-  logical :: LPHYS_HYDROSTATIC
 
   private
 
@@ -66,6 +62,9 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: FAC_RI
   real    :: MIN_RI
   real    :: MAX_RI
+  logical :: LHYDROSTATIC
+  logical :: LPHYS_HYDROSTATIC
+  real    :: SYNCTQ
 
   public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
 
@@ -85,7 +84,7 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
     ! !INTERNAL STATE:
 
       FRIENDLIES%QV       = "DYNAMICS:TURBULENCE:CHEMISTRY:ANALYSIS"
-      FRIENDLIES%QW       = "TURBULENCE"
+      FRIENDLIES%QW       = "TURBULENCE:"//trim(COMP_NAME)
       FRIENDLIES%CLLS     = "DYNAMICS"
       FRIENDLIES%CLCN     = "DYNAMICS"
       FRIENDLIES%QLLS     = "DYNAMICS:TURBULENCE"
@@ -292,6 +291,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SYNCTQ          , 'SYNCTQ:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GFDL_1M_Initialize
 
@@ -325,10 +325,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
-    real, allocatable, dimension(:,:,:) :: DQST3, QST3, fQi, T
+    real, allocatable, dimension(:,:,:) :: DQST3, QST3, T
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
+    real, allocatable, dimension(:,:,:) :: FQC, FQL, FQI
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
@@ -354,7 +355,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: PTR2D
 
     ! Local variables
-    real    :: tmpminrhcrit, tmpmaxrhcrit, turnrhcrit_up
+    real    :: turnrhcrit_up
     real    :: ALPHAl, ALPHAu, ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L
@@ -441,7 +442,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( iMASS(IM,JM,LM  ) )
     ALLOCATE ( DQST3(IM,JM,LM  ) )
     ALLOCATE (  QST3(IM,JM,LM  ) )
-    ALLOCATE (   fQi(IM,JM,LM  ) )
+    ALLOCATE (   FQC(IM,JM,LM  ) )
+    ALLOCATE (   FQL(IM,JM,LM  ) )
+    ALLOCATE (   FQI(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! Local tendencies
     ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
@@ -566,17 +569,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            do I=1,IM
        ! Send the condensates through the pdf after convection
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-             tmpminrhcrit = minrhcrit2D(I,J)
-             tmpmaxrhcrit = maxrhcrit2D(I,J)
-             ALPHA = tmpmaxrhcrit
+             ALPHA = maxrhcrit2D(I,J)
            ! lower turn from maxrhcrit
              if (PLmb(i,j,l) .le. turnrhcrit2D(I,J)) then
-                ALPHAl = tmpminrhcrit
+                ALPHAl = minrhcrit2D(I,J)
              else
                 if (L.eq.LM) then
-                   ALPHAl = tmpmaxrhcrit
+                   ALPHAl = maxrhcrit2D(I,J)
                 else
-                   ALPHAl = tmpminrhcrit + (tmpmaxrhcrit-tmpminrhcrit)/(19.) * &
+                   ALPHAl = minrhcrit2D(I,J) + (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
                            ((atan( (2.*(PLmb(i,j,l)-turnrhcrit2D(I,J))/min(100., PLEmb(i,j,LM)-turnrhcrit2D(I,J))-1.) * &
                            tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                 endif
@@ -585,9 +586,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              turnrhcrit_up = TROPP(i,j)/100.0
              IF (turnrhcrit_up == MAPL_UNDEF) turnrhcrit_up = 100.
              if (PLmb(i,j,l) .le. turnrhcrit_up) then
-                ALPHAu = tmpmaxrhcrit
+                ALPHAu = maxrhcrit2D(I,J)
              else
-                ALPHAu = tmpmaxrhcrit - (tmpmaxrhcrit-tmpminrhcrit)/(19.) * &
+                ALPHAu = maxrhcrit2D(I,J) - (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
                         ((atan( (2.*(PLmb(i,j,l)-turnrhcrit_up)/( turnrhcrit2D(I,J)-turnrhcrit_up)-1.) * &
                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
              endif
@@ -695,17 +696,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             do I=1,IM
        ! Send the condensates through the pdf after convection
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-             tmpminrhcrit = minrhcrit2D(I,J)
-             tmpmaxrhcrit = maxrhcrit2D(I,J)
-             ALPHA = tmpmaxrhcrit
+             ALPHA = maxrhcrit2D(I,J)
            ! lower turn from maxrhcrit
              if (PLmb(i,j,l) .le. turnrhcrit2D(I,J)) then
-                ALPHAl = tmpminrhcrit
+                ALPHAl = minrhcrit2D(I,J)
              else
                 if (L.eq.LM) then
-                   ALPHAl = tmpmaxrhcrit
+                   ALPHAl = maxrhcrit2D(I,J)
                 else
-                   ALPHAl = tmpminrhcrit + (tmpmaxrhcrit-tmpminrhcrit)/(19.) * &
+                   ALPHAl = minrhcrit2D(I,J) + (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
                            ((atan( (2.*(PLmb(i,j,l)-turnrhcrit2D(I,J))/min(100., PLEmb(i,j,LM)-turnrhcrit2D(I,J))-1.) * &
                            tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                 endif
@@ -714,16 +713,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              turnrhcrit_up = TROPP(i,j)/100.0
              IF (turnrhcrit_up == MAPL_UNDEF) turnrhcrit_up = 100.
              if (PLmb(i,j,l) .le. turnrhcrit_up) then
-                ALPHAu = tmpmaxrhcrit
+                ALPHAu = maxrhcrit2D(I,J)
              else
-                ALPHAu = tmpmaxrhcrit - (tmpmaxrhcrit-tmpminrhcrit)/(19.) * &
+                ALPHAu = maxrhcrit2D(I,J) - (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
                         ((atan( (2.*(PLmb(i,j,l)-turnrhcrit_up)/( turnrhcrit2D(I,J)-turnrhcrit_up)-1.) * &
                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
              endif
            ! combine and limit
              ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
              RHCRIT = 1.0 - ALPHA
-             call hystpdf_new( &
+             call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
                       PDFSHAPE       , &
@@ -772,6 +771,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = QSNOW
         ! GRAUPEL
          RAD_QG = QGRAUPEL
+     ! Save CNV/TOT ratios
+        ! Cloud
+         FQC =  MIN(1.0,MAX(CLCN/MAX(RAD_CF,1.e-5),0.0))
+        ! Liquid
+         FQL =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
+        ! Ice
+         FQI =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
         ! Execute GFDL_1M microphysics
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI]
@@ -806,7 +812,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = RAD_CF + DQADTmic * DT_MOIST
      ! Redistribute CN/LS CF/QL/QI
-         call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
+         CLCN = MIN(FQC*RAD_CF,1.0)
+         CLLS = MAX(MIN(RAD_CF-CLCN,1.0),0.0)
+         QLCN = FQL*RAD_QL
+         QLLS =     RAD_QL-QLCN
+         QICN = FQI*RAD_QI
+         QILS =     RAD_QI-QICN
+     !!! call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
          PRCP_SNOW    = MAX(PRCP_SNOW    / 86400.0, 0.0)

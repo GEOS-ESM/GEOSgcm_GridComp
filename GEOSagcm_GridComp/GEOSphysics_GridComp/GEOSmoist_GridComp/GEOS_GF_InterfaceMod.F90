@@ -14,20 +14,8 @@ module GEOS_GF_InterfaceMod
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
-  use Aer_Actv_Single_Moment, only: R_AIR
-  use ConvPar_GF_GEOS5, only: GF_GEOS5_INTERFACE, MAXIENS, ICUMULUS_GF, CLOSURE_CHOICE, DEEP, SHAL, MID &
-                             ,USE_SCALE_DEP,DICYCLE,TAU_DEEP,TAU_MID                                    &
-                             ,USE_TRACER_TRANSP, USE_TRACER_SCAVEN,USE_MEMORY,CONVECTION_TRACER         &
-                             ,USE_FLUX_FORM,USE_TRACER_EVAP,DOWNDRAFT,USE_FCT                           &
-                             ,USE_REBCB, VERT_DISCR, SATUR_CALC, CLEV_GRID, APPLY_SUB_MP, ALP1          &
-                             ,SGS_W_TIMESCALE, LIGHTNING_DIAG,AUTOCONV, BC_METH,OVERSHOOT,USE_WETBULB   &
-                             ,C1,C0_DEEP, QRC_CRIT,LAMBAU_DEEP,LAMBAU_SHDN,C0_MID                       &
-                             ,CUM_MAX_EDT_LAND,CUM_MAX_EDT_OCEAN, CUM_HEI_DOWN_LAND, CUM_HEI_DOWN_OCEAN &
-                             ,CUM_HEI_UPDF_LAND,CUM_HEI_UPDF_OCEAN,USE_MOMENTUM_TRANSP,CUM_ENTR_RATE    &
-                             ,ZERO_DIFF,MOIST_TRIGGER,FRAC_MODIS,MAX_TQ_TEND,CUM_FADJ_MASSFLX           &
-                             ,CUM_USE_EXCESS,CUM_AVE_LAYER,ADV_TRIGGER,EVAP_FIX,USE_SMOOTH_PROF         &
-                             ,OUTPUT_SOUND,TAU_OCEA_CP,TAU_LAND_CP,USE_CLOUD_DISSIPATION,USE_SMOOTH_TEND&
-                             ,BETA_SH,C0_SHAL,USE_LINEAR_SUBCL_MF,CAP_MAXS
+  use Aer_Actv_Single_Moment
+  use ConvPar_GF_GEOS5
 
   implicit none
 
@@ -45,6 +33,7 @@ module GEOS_GF_InterfaceMod
   integer :: USE_GF2020
   logical :: STOCHASTIC_CNV
   real    :: SCLM_DEEP
+  real    :: SYNCTQ
 
   public :: GF_Setup, GF_Initialize, GF_Run
 
@@ -133,7 +122,7 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, USE_GF2020                  , 'USE_GF2020:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     IF(USE_GF2020==1) THEN
        call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -227,7 +216,8 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
     ENDIF
-    call MAPL_GetResource( MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SYNCTQ          , 'SYNCTQ:'          , DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GF_Initialize
 
@@ -254,6 +244,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: IM,JM,LM
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
+    real                            :: minrhx
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
@@ -278,7 +269,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! allocatable derived quantities
     real,    allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real,    allocatable, dimension(:,:,:) :: PLmb, PK, ZL0
-    real,    allocatable, dimension(:,:,:) :: MASS, fQi
+    real,    allocatable, dimension(:,:,:) :: MASS, fQi, QST3
     real,    allocatable, dimension(:,:,:) :: T
     integer, allocatable, dimension(:,:)   :: SEEDINI   
     real,    allocatable, dimension(:,:)   :: SEEDCNV 
@@ -287,7 +278,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Required Exports (connectivities to moist siblings)
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_MFC, CNV_CVW, CNV_QC, CNV_DQLDT, CNV_PRC3, CNV_UPDF
-    real, pointer, dimension(:,:,:) :: DTDT_DC, DTHDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
+    real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DTHDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
     ! GF Tendencies
     real, pointer, dimension(:,:,:) :: DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF
     ! Exports
@@ -389,6 +380,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( T    (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( fQi  (IM,JM,LM  ) )
+    ALLOCATE ( QST3 (IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! 2D Variables
     ALLOCATE ( SEEDINI(IM,JM) )
@@ -526,25 +518,61 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
 
     ! add tendencies
-    U  = U + DUDT_GF*DT_MOIST
-    V  = V + DVDT_GF*DT_MOIST
-    Q  = Q + DQDT_GF*DT_MOIST
-    T  = T + DTDT_GF*DT_MOIST
-    TH = T/PK
-    ! add DeepCu QL/QI/CF to Convective
-    TMP3D= CNV_DQLDT*DT_MOIST/MASS
-    fQi  = ICE_FRACTION( T )
-    QLCN =      QLCN + (1.0-fQi)*TMP3D
-    QICN =      QICN +      fQi *TMP3D
-    CLCN = MIN( CLCN + CNV_MFD*SCLM_DEEP*DT_MOIST/MASS, 1.0 )
+    if (SYNCTQ > 0.0) then
+      U  = U + DUDT_GF*DT_MOIST
+      V  = V + DVDT_GF*DT_MOIST
+      Q  = Q + DQDT_GF*DT_MOIST
+      T  = T + DTDT_GF*DT_MOIST
+      TH = T/PK
+    endif   
 
-    ! Fill tendencies
-    if(associated( DTDT_DC))  DTDT_DC=( T          -  DTDT_DC)/DT_MOIST
-    if(associated(DTHDT_DC)) DTHDT_DC=( TH         - DTHDT_DC)/DT_MOIST
-    if(associated(DQVDT_DC)) DQVDT_DC=( Q          - DQVDT_DC)/DT_MOIST
-    if(associated(DQLDT_DC)) DQLDT_DC=((QLLS+QLCN) - DQLDT_DC)/DT_MOIST
-    if(associated(DQIDT_DC)) DQIDT_DC=((QILS+QICN) - DQIDT_DC)/DT_MOIST
-    if(associated(DQADT_DC)) DQADT_DC=((CLLS+CLCN) - DQADT_DC)/DT_MOIST
+      ! add DeepCu QL/QI/CF to Convective
+      TMP3D= CNV_DQLDT*DT_MOIST/MASS
+      fQi  = ICE_FRACTION( T )
+      QLCN =      QLCN + (1.0-fQi)*TMP3D
+      QICN =      QICN +      fQi *TMP3D
+      CLCN = MIN( CLCN + CNV_MFD*SCLM_DEEP*DT_MOIST/MASS, 1.0 )
+      ! fix 'anvil' cloud fraction 
+      TMP3D = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+      TMP3D = QST3
+      WHERE (CLCN < 1.0)
+         TMP3D = ( Q - QST3 * CLCN )/(1.-CLCN)
+      END WHERE
+      minrhx = 0.001
+      WHERE ( (( TMP3D - minrhx*QST3 ) < 0.0 ) .AND. (CLCN > 0.0) )
+         CLCN = (Q  - minrhx*QST3 )/( QST3*(1.0-minrhx) )
+      END WHERE
+
+    if (SYNCTQ > 0.0) then
+      ! If still cant make suitable env RH then destroy anvil
+      WHERE ( CLCN < 0.0 )
+         CLCN = 0.
+         Q    = Q + QLCN + QICN
+         T    = T - (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
+         QLCN = 0.
+         QICN = 0.
+      END WHERE
+      ! Fill tendencies
+      if(associated( DUDT_DC))  DUDT_DC=( T          -  DUDT_DC)/DT_MOIST
+      if(associated( DVDT_DC))  DVDT_DC=( T          -  DVDT_DC)/DT_MOIST
+      if(associated( DTDT_DC))  DTDT_DC=( T          -  DTDT_DC)/DT_MOIST
+      if(associated(DTHDT_DC)) DTHDT_DC=( TH         - DTHDT_DC)/DT_MOIST
+      if(associated(DQVDT_DC)) DQVDT_DC=( Q          - DQVDT_DC)/DT_MOIST
+      if(associated(DQLDT_DC)) DQLDT_DC=((QLLS+QLCN) - DQLDT_DC)/DT_MOIST
+      if(associated(DQIDT_DC)) DQIDT_DC=((QILS+QICN) - DQIDT_DC)/DT_MOIST
+      if(associated(DQADT_DC)) DQADT_DC=((CLLS+CLCN) - DQADT_DC)/DT_MOIST
+    else
+      TMP3D= CNV_DQLDT/MASS
+      fQi  = ICE_FRACTION( T )
+      if(associated( DUDT_DC))  DUDT_DC= DUDT_GF
+      if(associated( DVDT_DC))  DVDT_DC= DVDT_GF
+      if(associated( DTDT_DC))  DTDT_DC= DTDT_GF
+      if(associated(DTHDT_DC)) DTHDT_DC= DTDT_GF/PK
+      if(associated(DQVDT_DC)) DQVDT_DC= DQDT_GF
+      if(associated(DQLDT_DC)) DQLDT_DC= (1.0-fQi)*TMP3D
+      if(associated(DQIDT_DC)) DQIDT_DC=      fQi *TMP3D
+      if(associated(DQADT_DC)) DQADT_DC= CNV_MFD*SCLM_DEEP/MASS
+    endif
 
     call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST
