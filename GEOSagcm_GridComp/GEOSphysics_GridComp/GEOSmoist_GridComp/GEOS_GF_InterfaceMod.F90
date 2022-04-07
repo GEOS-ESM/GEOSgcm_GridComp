@@ -33,7 +33,6 @@ module GEOS_GF_InterfaceMod
   integer :: USE_GF2020
   logical :: STOCHASTIC_CNV
   real    :: SCLM_DEEP
-  real    :: SYNCTQ
 
   public :: GF_Setup, GF_Initialize, GF_Run
 
@@ -217,7 +216,6 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
     ENDIF
     call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SYNCTQ          , 'SYNCTQ:'          , DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GF_Initialize
 
@@ -460,12 +458,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_NICE , 'CNV_NICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
 
     ! Initialize tendencies
+    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTHDT_DC,   'DTHDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    if(associated( DUDT_DC))  DUDT_DC=U
+    if(associated( DVDT_DC))  DVDT_DC=V
     if(associated( DTDT_DC))  DTDT_DC=T
     if(associated(DTHDT_DC)) DTHDT_DC=TH
     if(associated(DQVDT_DC)) DQVDT_DC=Q
@@ -518,14 +520,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
 
     ! add tendencies
-    if (SYNCTQ > 0.0) then
       U  = U + DUDT_GF*DT_MOIST
       V  = V + DVDT_GF*DT_MOIST
       Q  = Q + DQDT_GF*DT_MOIST
       T  = T + DTDT_GF*DT_MOIST
       TH = T/PK
-    endif   
-
       ! add DeepCu QL/QI/CF to Convective
       TMP3D= CNV_DQLDT*DT_MOIST/MASS
       fQi  = ICE_FRACTION( T )
@@ -542,8 +541,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       WHERE ( (( TMP3D - minrhx*QST3 ) < 0.0 ) .AND. (CLCN > 0.0) )
          CLCN = (Q  - minrhx*QST3 )/( QST3*(1.0-minrhx) )
       END WHERE
-
-    if (SYNCTQ > 0.0) then
       ! If still cant make suitable env RH then destroy anvil
       WHERE ( CLCN < 0.0 )
          CLCN = 0.
@@ -553,26 +550,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QICN = 0.
       END WHERE
       ! Fill tendencies
-      if(associated( DUDT_DC))  DUDT_DC=( T          -  DUDT_DC)/DT_MOIST
-      if(associated( DVDT_DC))  DVDT_DC=( T          -  DVDT_DC)/DT_MOIST
+      if(associated( DUDT_DC))  DUDT_DC=( U          -  DUDT_DC)/DT_MOIST
+      if(associated( DVDT_DC))  DVDT_DC=( V          -  DVDT_DC)/DT_MOIST
       if(associated( DTDT_DC))  DTDT_DC=( T          -  DTDT_DC)/DT_MOIST
       if(associated(DTHDT_DC)) DTHDT_DC=( TH         - DTHDT_DC)/DT_MOIST
       if(associated(DQVDT_DC)) DQVDT_DC=( Q          - DQVDT_DC)/DT_MOIST
       if(associated(DQLDT_DC)) DQLDT_DC=((QLLS+QLCN) - DQLDT_DC)/DT_MOIST
       if(associated(DQIDT_DC)) DQIDT_DC=((QILS+QICN) - DQIDT_DC)/DT_MOIST
       if(associated(DQADT_DC)) DQADT_DC=((CLLS+CLCN) - DQADT_DC)/DT_MOIST
-    else
-      TMP3D= CNV_DQLDT/MASS
-      fQi  = ICE_FRACTION( T )
-      if(associated( DUDT_DC))  DUDT_DC= DUDT_GF
-      if(associated( DVDT_DC))  DVDT_DC= DVDT_GF
-      if(associated( DTDT_DC))  DTDT_DC= DTDT_GF
-      if(associated(DTHDT_DC)) DTHDT_DC= DTDT_GF/PK
-      if(associated(DQVDT_DC)) DQVDT_DC= DQDT_GF
-      if(associated(DQLDT_DC)) DQLDT_DC= (1.0-fQi)*TMP3D
-      if(associated(DQIDT_DC)) DQIDT_DC=      fQi *TMP3D
-      if(associated(DQADT_DC)) DQADT_DC= CNV_MFD*SCLM_DEEP/MASS
-    endif
 
     call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST

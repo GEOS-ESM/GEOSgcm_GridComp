@@ -29,7 +29,6 @@ module GEOS_BACM_1M_InterfaceMod
   ! specify how to handle friendlies with DYN:TRB:CHM:ANA
   type FRIENDLIES_TYPE
          character(len=ESMF_MAXSTR) :: QV
-         character(len=ESMF_MAXSTR) :: QW
          character(len=ESMF_MAXSTR) :: CLLS
          character(len=ESMF_MAXSTR) :: CLCN
          character(len=ESMF_MAXSTR) :: QLLS
@@ -68,7 +67,6 @@ subroutine BACM_1M_Setup (GC, CF, RC)
     ! !INTERNAL STATE:
 
       FRIENDLIES%QV       = "DYNAMICS:TURBULENCE:CHEMISTRY:ANALYSIS"
-      FRIENDLIES%QW       = "TURBULENCE:"//trim(COMP_NAME)
       FRIENDLIES%CLLS     = "DYNAMICS"
       FRIENDLIES%CLCN     = "DYNAMICS"
       FRIENDLIES%QLLS     = "DYNAMICS:TURBULENCE"
@@ -148,7 +146,6 @@ subroutine BACM_1M_Setup (GC, CF, RC)
          LONG_NAME  = 'mass_fraction_of_wet_air',                  &
          UNITS      = 'kg kg-1',                                   &
          RESTART    = MAPL_RestartSkip,                            &
-         FRIENDLYTO = trim(FRIENDLIES%QW),                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
     VERIFY_(STATUS)                                                      

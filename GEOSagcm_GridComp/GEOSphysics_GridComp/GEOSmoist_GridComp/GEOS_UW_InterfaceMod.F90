@@ -18,7 +18,6 @@ module GEOS_UW_InterfaceMod
 
   integer USE_TRACER_TRANSP_UW      ! transport tracers in UW
   real    :: SCLM_SHALLOW
-  real    :: SYNCTQ
 
   private
 
@@ -100,7 +99,6 @@ subroutine UW_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, SCLM_SHALLOW    , 'SCLM_SHALLOW:'    , DEFAULT= 2.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SYNCTQ          , 'SYNCTQ:'          , DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine UW_Initialize
 
@@ -294,12 +292,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       !  Apply tendencies
       !--------------------------------------------------------------
-        if (SYNCTQ > 0.0) then
         Q  = Q  + DQVDT_SC * DT_MOIST    ! note this adds to the convective
         TH = TH + DTHDT_SC * DT_MOIST    !  tendencies calculated below
         U  = U  +  DUDT_SC * DT_MOIST
         V  = V  +  DVDT_SC * DT_MOIST
-        endif
       !  Update the temperature tendency
       !--------------------------------------------------------------
         DTDT_SC = DTHDT_SC*PK

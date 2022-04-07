@@ -27,7 +27,6 @@ module GEOS_GFDL_1M_InterfaceMod
   ! specify how to handle friendlies with DYN:TRB:CHM:ANA
   type FRIENDLIES_TYPE
          character(len=ESMF_MAXSTR) :: QV
-         character(len=ESMF_MAXSTR) :: QW
          character(len=ESMF_MAXSTR) :: CLLS
          character(len=ESMF_MAXSTR) :: CLCN
          character(len=ESMF_MAXSTR) :: QLLS
@@ -64,7 +63,6 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: MAX_RI
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
-  real    :: SYNCTQ
 
   public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
 
@@ -84,7 +82,6 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
     ! !INTERNAL STATE:
 
       FRIENDLIES%QV       = "DYNAMICS:TURBULENCE:CHEMISTRY:ANALYSIS"
-      FRIENDLIES%QW       = "TURBULENCE:"//trim(COMP_NAME)
       FRIENDLIES%CLLS     = "DYNAMICS"
       FRIENDLIES%CLCN     = "DYNAMICS"
       FRIENDLIES%QLLS     = "DYNAMICS:TURBULENCE"
@@ -197,7 +194,6 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          LONG_NAME  = 'mass_fraction_of_wet_air',                  &
          UNITS      = 'kg kg-1',                                   &
          RESTART    = MAPL_RestartSkip,                            &
-         FRIENDLYTO = trim(FRIENDLIES%QW),                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
     VERIFY_(STATUS)                                                      
@@ -291,7 +287,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, SYNCTQ          , 'SYNCTQ:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GFDL_1M_Initialize
 
