@@ -39,16 +39,6 @@ subroutine UW_Setup (GC, CF, RC)
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
-    call MAPL_AddInternalSpec(GC,                                   &
-         SHORT_NAME ='PDF_A',                                       &
-          LONG_NAME = 'SHOC_PDF_relative_area_fraction',            &
-         UNITS      ='1',                                           &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationCenter,                         &
-         DEFAULT= 0.5,                                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddInternalSpec(GC,                                    &
          SHORT_NAME ='CUSH',                                         &
          LONG_NAME  = 'Cumulus_scale_height_from_UW_shlw_convection',&
@@ -133,10 +123,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CUFRC_SC
     real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC
     real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
-    real, pointer, dimension(:,:,:) ::  DTDT_SC, DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
-                                       DQIDT_SC, DQLDT_SC
-    real, pointer, dimension(:,:,:) :: DUDT_SC, DVDT_SC, &
-                                       ENTR_SC, DETR_SC, QLDET_SC, &
+    real, pointer, dimension(:,:,:) :: DTDT_SC, DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
+                                       DUDT_SC,  DVDT_SC, DQIDT_SC, DQLDT_SC, DQADT_SC
+    real, pointer, dimension(:,:,:) :: ENTR_SC, DETR_SC, QLDET_SC, &
                                        QIDET_SC, QLENT_SC, QIENT_SC, &
                                        QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
     real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC
@@ -248,6 +237,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQLDT_SC,   'DQLDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQRDT_SC,   'DQRDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQSDT_SC,   'DQSDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQADT_SC,   'DQADT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTHDT_SC,   'DTHDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -281,7 +271,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
 #ifdef UWDIAG 
             QCU_SC, QLU_SC,                               & ! DIAG ONLY 
-            QIU_SC, CBMF_SC, DQADT_SC, CNT_SC, CNB_SC,    &
+            QIU_SC, CBMF_SC, SHL_DQCDT, CNT_SC, CNB_SC,   &
             CIN_SC, PLCL_SC, PLFC_SC, PINV_SC, PREL_SC,   &
             PBUP_SC, WLCL_SC, QTSRC_SC, THLSRC_SC,        &
             THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, WUP_SC,     &
@@ -307,8 +297,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           MFD_SC = 0.0
         end where
        ! Tiedtke-style cloud fraction !!
-        TMP3D= DCM_SC*SCLM_SHALLOW/MASS
-        CLCN = CLCN + TMP3D*DT_MOIST
+        DQADT_SC= DCM_SC*SCLM_SHALLOW/MASS
+        CLCN = CLCN + DQADT_SC*DT_MOIST
         CLCN = MIN( CLCN , 1.0 )
       !  Convert detrained water units before passing to cloud
       !---------------------------------------------------------------

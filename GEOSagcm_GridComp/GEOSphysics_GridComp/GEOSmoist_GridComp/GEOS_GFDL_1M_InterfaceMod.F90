@@ -314,7 +314,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, W, KH
     real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
-    real, pointer, dimension(:,:,:) :: PDF_A, WTHV2
+    real, pointer, dimension(:,:,:) :: WTHV2
     real, pointer, dimension(:,:,:) :: OMEGA
     ! Local
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0
@@ -344,6 +344,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: RHX, REV_LS, RSU_LS
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
+    real, pointer, dimension(:,:,:) :: PDF_A
     real, pointer, dimension(:,:  ) :: CAPE, INHB
     real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:,:) :: PTR3D

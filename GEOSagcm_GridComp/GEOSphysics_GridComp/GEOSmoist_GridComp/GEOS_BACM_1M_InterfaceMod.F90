@@ -308,12 +308,12 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
-
+    real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, KH
     real, pointer, dimension(:,:)   :: FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
-    real, pointer, dimension(:,:,:) :: OMEGA, NACTL, NACTI
+    real, pointer, dimension(:,:,:) :: OMEGA
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQLDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
     ! Local
@@ -351,7 +351,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: DCNVL, DCNVI
     real, pointer, dimension(:,:,:) :: ALPHT, ALPH1, ALPH2
     real, pointer, dimension(:,:,:) :: CFPDF, RHCLR
-    real, pointer, dimension(:,:,:) :: DQRL, PDF_A, WTHV2
+    real, pointer, dimension(:,:,:) :: DQRL, WTHV2
+    real, pointer, dimension(:,:,:) :: PDF_A
     real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
     real, pointer, dimension(:,:  ) :: LS_ARF,  CN_ARF,  AN_ARF,  SC_ARF
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR

@@ -33,7 +33,7 @@ USE GEOSmoist_Process_Library
         ,cum_fadj_massflx, cum_use_excess, cum_ave_layer, adv_trigger      &
         ,use_smooth_prof, evap_fix,output_sound,use_cloud_dissipation      &
         ,use_smooth_tend,GF_convpar_init,beta_sh,c0_shal                   &
-        ,use_linear_subcl_mf,cap_maxs
+        ,use_linear_subcl_mf,cap_maxs,CNV_2MOM
  
  PUBLIC GF_GEOS5_DRV,make_DropletNumber ,make_IceNumber,fract_liq_f &
        ,use_gustiness, use_random_num, dcape_threshold
@@ -172,6 +172,9 @@ USE GEOSmoist_Process_Library
  REAL    :: beta_sh               = 2.2   
  INTEGER :: use_linear_subcl_mf   = 1
  REAL    :: cap_maxs              = 50.
+
+ LOGICAL :: CNV_2MOM = .FALSE.
+
  !------------------- internal variables  -------------------
 
  !-- turn ON/OFF deep/shallow/mid plumes
@@ -255,8 +258,9 @@ USE GEOSmoist_Process_Library
 CONTAINS
 !---------------------------------------------------------------------------------------------------
   SUBROUTINE GF_GEOS5_INTERFACE(mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
-                               ,PLE, PLO, ZLE, ZLO, PK,  OMEGA , KH               &
-                               ,TH1, Q1, U1, V1 ,QLCN ,QICN,QLLS,QILS, CNPCPRATE  &
+                               ,PLE, PLO, ZLE, ZLO, PK, MASS, OMEGA , KH          &
+                               ,T1, TH1, Q1, U1, V1 ,QLCN ,QICN,QLLS,QILS         &
+                               ,CNPCPRATE                                         &
                                ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQLDT ,ENTLAM     &
                                ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN,CLLS     &
                                ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
@@ -270,15 +274,13 @@ CONTAINS
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
-                               ,NCPL, NCPI, CNV_NICE, CNV_NDROP,CNV_FICE,CLDMICRO &
+                               ,NCPL, NCPI, CNV_NICE, CNV_NDROP,CNV_FICE          &
                                ,RSU_CN,REV_CN, PFI_CN, PFL_CN                     &
                                ,TPWI,TPWI_star,LIGHTN_DENS                        &    
                                ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d                   &
                                ,CNV_TR)
 
     IMPLICIT NONE
-    !INCLUDE "mpif.h"
-    CHARACTER(len=*),INTENT(IN) :: CLDMICRO !set two-moment microphysics
 
     INTEGER ,INTENT(IN) :: mxp,myp,mzp
 
@@ -291,12 +293,12 @@ CONTAINS
     INTEGER,DIMENSION(mxp,myp)       ,INTENT(IN)   :: KPBLIN
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE,ZLE,PLE_DYN_IN
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO ,PLO ,PK ,OMEGA, KH       &
-                                                     ,RADSW  ,RADLW  ,DQDT_BL  ,DTDT_BL      &
-                                                     ,QV_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO ,PLO ,PK , MASS ,OMEGA, KH       &
+                                                     ,RADSW  ,RADLW  ,DQDT_BL  ,DTDT_BL    &
+                                                     ,QV_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN &
                                                      ,DTDTDYN,DQVDTDYN
 
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: TH1,Q1,U1,V1,QLCN,QICN,NCPL,NCPI    &
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: T1,TH1,Q1,U1,V1,QLCN,QICN,NCPL,NCPI    &
                                                                   ,QLLS,QILS,CLLS,CLCN
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(INOUT):: PFI_CN, PFL_CN
@@ -420,8 +422,8 @@ CONTAINS
               ,conv_cld_fr5d
 
     !-----------local var in GEOS-5 data structure
-    REAL,  DIMENSION(mxp, myp, mzp) :: T1, ZLO_N,PLO_N,PK_N,TH_N,Q_N,T_N,U_N,V_N,DM
-    REAL,  DIMENSION(mxp,myp,0:mzp) :: ZLE_N,PLE_N
+    REAL,  DIMENSION(mxp, myp, mzp) :: ZLO_N,PLO_N,PK_N,MASS_N
+    REAL,  DIMENSION(mxp,myp,0:mzp) :: ZLE_N
     INTEGER :: status,alloc_stat ,wantrank=-99999
     REAL    :: tem1,dz,air_dens, src_cnvtr,snk_cnvtr,dz_int,tau_cp
     CHARACTER(len=10) :: ENV_SETTING='DEFAULT'! ! 'CURRENT'/'DEFAULT'
@@ -521,10 +523,6 @@ CONTAINS
     ENDIF
 
     !
-    !- 3-d input data
-    !- current temperature T1 (after dyn+every physics process called before moist)
-    T1 = PK * TH1
-    !
     !- 2-d input data
     aot500  (:,:) = 0.1  ! #
     !- as moist is called before surface, at the 1st time step all arrays
@@ -565,22 +563,19 @@ CONTAINS
     !  tendencies and everything else (from physics) that was called before moist
     !
     IF(trim(env_setting)=='CURRENT') then
-     PLO_N = PLO
-     T_N   = T1
-     DM = ( PLE(:,:,1:mzp)-PLE(:,:,0:mzp-1) )*(1./MAPL_GRAV)
      !- 1st setting: enviromental state is the one already modified by dyn + physics
      DO j=1,myp
       DO i=1,mxp
        DO k=1,mzp
         temp  (k,i,j) = T1    (i,j,flip(k))
-        press (k,i,j) = PLO   (i,j,flip(k))*100. !Pa
+        press (k,i,j) = PLO   (i,j,flip(k))!Pa
         rvap  (k,i,j) = Q1    (i,j,flip(k))! 
         up    (k,i,j) = U1    (i,j,flip(k))! already @ A-grid (m/s)
         vp    (k,i,j) = V1    (i,j,flip(k))! already @ A-grid (m/s)
         wp    (k,i,j) = OMEGA (i,j,flip(k))! Pa/s
         zt3d  (k,i,j) = ZLO   (i,j,flip(k))! mid -layer level
         zm3d  (k,i,j) = ZLE   (i,j,flip(k))! edge-layer level 
-        dm3d  (k,i,j) = DM    (i,j,flip(k))
+        dm3d  (k,i,j) = MASS  (i,j,flip(k))
         khloc (k,i,j) = KH    (i,j,flip(k))
         curr_rvap(k,i,j) = Q1 (i,j,flip(k))!current rvap
         
@@ -618,42 +613,33 @@ CONTAINS
      !- depending on what was called before this subroutine, "Q" may be already
      !- changed from what it was just after dynamics phase 1. To solve this issue,
      !- "Q" just after dynamics is saved in the var named "QV_DYN_IN" in "GEOS_AgcmGridComp.F90".
-     Q_N   =  QV_DYN_IN
-     T_N   =   T_DYN_IN
-     U_N   =   U_DYN_IN
-     V_N   =   V_DYN_IN
-     PLE_N = PLE_DYN_IN
-
-     DM = ( PLE_N(:,:,1:mzp)-PLE_N(:,:,0:mzp-1) )*(1./MAPL_GRAV)
-    !DM = ( PLE  (:,:,1:mzp)-PLE  (:,:,0:mzp-1) )*(1./MAPL_GRAV)
-     call get_vars(mzp,mxp,myp,Q_N,T_N,PLE_N,ZLE_N,ZLO_N,PLO_N,PK_N,TH_N)
-     !
+     MASS_N = ( PLE_DYN_IN(:,:,1:mzp)-PLE_DYN_IN(:,:,0:mzp-1) )*(1./MAPL_GRAV)
+     call get_vars(mzp,mxp,myp,QV_DYN_IN,T_DYN_IN,PLE_DYN_IN,ZLE_N,ZLO_N,PLO_N,PK_N)
      DO j=1,myp
       DO i=1,mxp
        DO k=1,mzp
-        !
-        temp       (k,i,j) = T_N   (i,j,flip(k))! (K)
-        press      (k,i,j) = PLO_N (i,j,flip(k))*100.! (Pa) @ mid-layer level
-        rvap       (k,i,j) = Q_N   (i,j,flip(k))! water vapor mix ratio
-        up         (k,i,j) = U_N   (i,j,flip(k))! already @ A-grid (m/s)
-        vp         (k,i,j) = V_N   (i,j,flip(k))! already @ A-grid (m/s)
-        wp         (k,i,j) = OMEGA (i,j,flip(k))! (Pa/s)
-        zt3d       (k,i,j) = ZLO_N (i,j,flip(k))! mid -layer level (m)
-        zm3d       (k,i,j) = ZLE_N (i,j,flip(k))! edge-layer level (m)
-        dm3d       (k,i,j) = DM    (i,j,flip(k))
-        khloc      (k,i,j) = KH    (i,j,flip(k))
-        curr_rvap  (k,i,j) = Q1    (i,j,flip(k)) ! current rvap (dyn+phys) 
-        mp_ice(lsmp,k,i,j) = QILS  (i,j,flip(k))
-        mp_liq(lsmp,k,i,j) = QLLS  (i,j,flip(k))   
-        mp_cf (lsmp,k,i,j) = CLLS  (i,j,flip(k))  
-        mp_ice(cnmp,k,i,j) = QICN  (i,j,flip(k))
-        mp_liq(cnmp,k,i,j) = QLCN  (i,j,flip(k))   
-        mp_cf (cnmp,k,i,j) = CLCN  (i,j,flip(k))  
+        temp       (k,i,j) = T_DYN_IN   (i,j,flip(k))! (K)
+        press      (k,i,j) = PLO_N      (i,j,flip(k))! (Pa) @ mid-layer level
+        rvap       (k,i,j) = QV_DYN_IN  (i,j,flip(k))! water vapor mix ratio
+        up         (k,i,j) = U_DYN_IN   (i,j,flip(k))! already @ A-grid (m/s)
+        vp         (k,i,j) = V_DYN_IN   (i,j,flip(k))! already @ A-grid (m/s)
+        wp         (k,i,j) = OMEGA      (i,j,flip(k))! (Pa/s)
+        zt3d       (k,i,j) = ZLO_N      (i,j,flip(k))! mid -layer level (m)
+        zm3d       (k,i,j) = ZLE_N      (i,j,flip(k))! edge-layer level (m)
+        dm3d       (k,i,j) = MASS_N     (i,j,flip(k))
+        khloc      (k,i,j) = KH         (i,j,flip(k))
+        curr_rvap  (k,i,j) = Q1         (i,j,flip(k)) ! current rvap (dyn+phys) 
+        mp_ice(lsmp,k,i,j) = QILS       (i,j,flip(k))
+        mp_liq(lsmp,k,i,j) = QLLS       (i,j,flip(k))   
+        mp_cf (lsmp,k,i,j) = CLLS       (i,j,flip(k))  
+        mp_ice(cnmp,k,i,j) = QICN       (i,j,flip(k))
+        mp_liq(cnmp,k,i,j) = QLCN       (i,j,flip(k))   
+        mp_cf (cnmp,k,i,j) = CLCN       (i,j,flip(k))  
        ENDDO
       ENDDO
      ENDDO
      !- sfc pressure (Pa)
-     sfc_press(:,:) = PLE_N(:,:,mzp)
+     sfc_press(:,:) = PLE_DYN_IN(:,:,mzp)
      !- Grid and sub-grid scale forcings for convection
      DO j=1,myp
       DO i=1,mxp
@@ -920,7 +906,7 @@ CONTAINS
               DO k=mzp,flip(ktop4d(i,j,IENS))-1,-1
 
                 DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
-                air_dens = 100.*plo_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
+                air_dens = plo_n(i,j,k)/(287.04*T1(i,j,k)*(1.+0.608*Q1(i,j,k)))
 
                 !- special treatment for CNV_DQLDT: 'convective_condensate_source',  UNITS     = 'kg m-2 s-1',
                 !- SRC_CI contains contributions from deep, shallow,... . So, do not need to be accumulated over  CNV_DQLDT
@@ -992,7 +978,7 @@ ENDIF
       ENDDO
   ENDIF
 
-  IF(adjustl(CLDMICRO) =="2MOMENT") then 
+  IF(CNV_2MOM) then 
     !- we adjust convective cloud condensate and number here
         DO j=1,myp
          DO i=1,mxp
@@ -1021,13 +1007,12 @@ ENDIF
           !  NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
              CNV_FICE (i, j, k)   =   tem1
 
-             DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
-             air_dens = 100.*PLO_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
-                                              
-             if (CNV_MFD (i,j,k)  .gt. 0.) then 
-                CNV_NICE (i,j,k)=   SRC_NI(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
-                CNV_NDROP(i,j,k)=   SRC_NL(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
-             endif 
+          !  DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
+          !  air_dens = PLO(i,j,k)/(287.04*T1(i,j,k)*(1.+0.608*Q1(i,j,k)))
+          !  if (CNV_MFD (i,j,k)  .gt. 0.) then 
+          !     CNV_NICE (i,j,k)=   SRC_NI(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
+          !     CNV_NDROP(i,j,k)=   SRC_NL(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
+          !  endif 
           ENDDO
          ENDDO 
         ENDDO
@@ -1039,8 +1024,8 @@ ENDIF
              if(ierr4d(i,j,IENS) .ne. 0) cycle
              DO k=mzp,flip(ktop4d(i,j,IENS))-1,-1
 
-                DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
-                air_dens = 100.*plo_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
+           !    DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
+           !    air_dens = plo(i,j,k)/(287.04*T(i,j,k)*(1.+0.608*Q(i,j,k)))
            !    CLCN(i,j,k) = CLCN(i,j,k) + (1.0-CLCN(i,j,k))*(up_massdetr5d(i,j,flip(k),iens) &
            !                              * dt_moist/(dz*air_dens)+CNV_UPDF(i,j,k))
            !    CLCN(i,j,k) = max(0.,min(CLCN(i,j,k),0.99))                          
@@ -1060,7 +1045,7 @@ ENDIF
                 snk_cnvtr =  dt_moist * abs(CNV_TR (i,j,k))/tau_cp
 
                 !DZ          = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
-                !air_dens = 100.*PLO_N(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
+                !air_dens = PLO_N(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
                 !
                 !- downdraft convective mass flux [kg m^{-2} s^{-1}]
                 ! iens =?
@@ -8162,52 +8147,28 @@ ENDIF
  END SUBROUTINE set_index_loops
 !------------------------------------------------------------------------------------
 
- SUBROUTINE get_vars(LM,mxp,myp,Q,T,PLE,ZLE,ZLO,PLO,PK,TH)
+ SUBROUTINE get_vars(LM,mxp,myp,Q,T,PLE,ZLE,ZLO,PLO,PK)
      implicit none
      integer, intent(in) :: LM,mxp,myp
      real, intent(in) , Dimension(mxp,myp,0:LM) :: PLE
      real, intent(in) , Dimension(mxp,myp,LM)   :: T,Q
 
      real, intent(OUT), Dimension(mxp,myp,0:LM) :: ZLE
-     real, intent(OUT), Dimension(mxp,myp,LM)   :: ZLO,PLO,PK,TH
+     real, intent(OUT), Dimension(mxp,myp,LM)   :: ZLO,PLO,PK
 
-    !-local var
-     real, parameter:: MAPL_GRAV   = 9.80665                ! m^2/s
-     real, parameter:: MAPL_AIRMW  = 28.965                 ! kg/Kmole
-     real, parameter:: MAPL_H2OMW  = 18.015                 ! kg/Kmole
-     real, parameter:: MAPL_RUNIV  = 8314.47                ! J/(Kmole K)
-     real, parameter:: MAPL_RDRY   = MAPL_RUNIV/MAPL_AIRMW  ! J/(kg K)
-     real, parameter:: MAPL_CPDRY  = 3.5*MAPL_RDRY          ! J/(kg K)
-     real, parameter:: MAPL_KAPPA  = MAPL_RDRY/MAPL_CPDRY   ! (2.0/7.0)
-     real, parameter:: MAPL_EPSILON= MAPL_H2OMW/MAPL_AIRMW  ! --
-     real, parameter:: MAPL_RGAS   = MAPL_RDRY              ! J/(kg K) (DEPRECATED)
-     real, parameter:: MAPL_CP     = MAPL_RGAS/MAPL_KAPPA   ! J/(kg K) (DEPRECATED)
-     real, parameter:: MAPL_VIREPS = 1.0/MAPL_EPSILON-1.0   !          (DEPRECATED)
      INTEGER :: L
-     real, Dimension(mxp,myp,0:LM) :: CNV_PLE,PKE
+     real, Dimension(mxp,myp,0:LM) :: PKE
 
-      CNV_PLE  = PLE*.01
-      PLO      = 0.5*(CNV_PLE(:,:,0:LM-1) +  CNV_PLE(:,:,1:LM  ) )
-      PKE      = (CNV_PLE/1000.)**(MAPL_RGAS/MAPL_CP)
-      PK       = (PLO/1000.)**(MAPL_RGAS/MAPL_CP)
-      TH       = T/PK
+      PLO      = 0.5*(PLE(:,:,0:LM-1) +  PLE(:,:,1:LM  ) )
+      PKE      = (PLE/MAPL_P00)**(MAPL_RGAS/MAPL_CP)
+      PK       = (PLO/MAPL_P00)**(MAPL_RGAS/MAPL_CP)
 
       ZLE(:,:,LM) = 0.
       do L=LM,1,-1
-         ZLE(:,:,L-1) = TH (:,:,L) * (1.+MAPL_VIREPS*Q(:,:,L))
+         ZLE(:,:,L-1) = (T(:,:,L)/PK(:,:,L)) * (1.+MAPL_VIREPS*Q(:,:,L))
          ZLO(:,:,L  ) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PKE(:,:,L)-PK (:,:,L  ) ) * ZLE(:,:,L-1)
          ZLE(:,:,L-1) = ZLO(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PK (:,:,L)-PKE(:,:,L-1) ) * ZLE(:,:,L-1)
       end do
-      
-      !.. IF( MAPL_AM_I_ROOT()) then
-           !.. print*,"1get-vars =============================================================="
-           !.. do L=LM,1,-1
-               !.. print*,"PLE/PLO",L,PLO(1,1,L),PLE(1,1,L) 
-           !.. end do
-           !.. print*,"PLE/PLO",0,PLO(1,1,1),PLE(1,1,0) 
-           !.. print*,"2get-vars =============================================================="
-           !.. call flush(6)
-      !.. ENDIF
       
  END SUBROUTINE get_vars
 

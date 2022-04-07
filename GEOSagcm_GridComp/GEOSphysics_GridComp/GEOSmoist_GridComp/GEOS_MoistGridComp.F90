@@ -1072,7 +1072,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME= 'CNV_DQLDT ',                                  &
+         SHORT_NAME= 'SHL_DQCDT',                                  &
+         LONG_NAME = 'shallow_cu_condensate_source',                &
+         UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME= 'CNV_DQCDT',                                  &
          LONG_NAME = 'convective_condensate_source',                &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzVert,                            &
