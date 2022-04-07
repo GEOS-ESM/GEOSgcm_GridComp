@@ -4527,7 +4527,7 @@ contains
 
 
      ! Calc KPBL using surface turbulence, for use in shallow scheme
-      KPBL_SC = LM-1
+      KPBL_SC = MAPL_UNDEF
 
       do I = 1, IM
          do J = 1, JM
@@ -4545,7 +4545,7 @@ contains
                end if
             end do
             if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
-               KPBL_SC(I,J) = float(LM-1)
+               KPBL_SC(I,J) = float(LM)
             endif
          end do
       end do

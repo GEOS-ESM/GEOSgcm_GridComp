@@ -131,7 +131,7 @@ contains
       real,   intent(in)    :: th0_inv(idim,k0)         !  Environmental temperature [ K ]
       real,   intent(in)    :: tke_inv(idim,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
                                                         !  at the previous time step [ fraction ]
-      integer, intent(in) :: kpbl_inv(idim)               !  Height of PBL [ m ]
+      real, intent(in)    :: kpbl_inv(idim)           !  Height of PBL [ m ]
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)              ! convective tracer
@@ -305,7 +305,7 @@ contains
          exnifc0(:idim,k)    = exnifc0_inv(:idim,k_inv)
       end do
 
-      kpbl = kpbl_inv
+      kpbl = int(kpbl_inv)
 
       do i = 1,idim
 !        cnvtrmax(i) = min(300.,max(0.,maxval(cnvtr(i,:))))

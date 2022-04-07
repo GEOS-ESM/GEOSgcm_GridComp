@@ -5175,9 +5175,7 @@ contains
     ! Exports
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT 
     real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
-    real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
-    real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
-    real, pointer, dimension(:,:  ) :: CNPCPRATE 
+    real, pointer, dimension(:,:  ) :: TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -5288,18 +5286,6 @@ contains
        endif
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
 
-       ! Reset Precip & Snow Exports to 0.0
-       call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); LS_PRCP = 0.0
-       call MAPL_GetPointer(EXPORT, AN_PRCP, 'AN_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); AN_PRCP = 0.0
-       call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); CN_PRCP = 0.0
-       call MAPL_GetPointer(EXPORT, SC_PRCP, 'SC_PRCP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); SC_PRCP = 0.0
-       call MAPL_GetPointer(EXPORT, LS_SNR , 'LS_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); LS_SNR  = 0.0
-       call MAPL_GetPointer(EXPORT, AN_SNR , 'AN_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); AN_SNR  = 0.0
-       call MAPL_GetPointer(EXPORT, CN_SNR , 'CN_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); CN_SNR  = 0.0
-       call MAPL_GetPointer(EXPORT, SC_SNR , 'SC_SNR' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); SC_SNR  = 0.0
-       ! Precip done in DeepCu
-       call MAPL_GetPointer(EXPORT, CNPCPRATE, 'CNPCPRATE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); CNPCPRATE = 0.0
-
        if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5308,42 +5294,43 @@ contains
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 
        ! Export Total Moist Tendencies
+
        call MAPL_GetPointer(EXPORT, DUDT, 'DUDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DUDT)) then
           DUDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_DC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DUDT = DUDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DUDT = DUDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DUDT = DUDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DUDT = DUDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DVDT, 'DVDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DVDT)) then
           DVDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_DC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DVDT = DVDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DVDT = DVDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DVDT = DVDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DVDT = DVDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DTHDT, 'DTHDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DTHDT)) then
           DTHDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_DC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
           DTHDT = DTHDT*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)) ! Pressure weighted tendency
        endif
@@ -5351,106 +5338,171 @@ contains
        call MAPL_GetPointer(EXPORT, DQDT, 'DQDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DQDT)) then
           DQDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_DC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQDT = DQDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQDT = DQDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQDT = DQDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQDT = DQDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DQLDT, 'DQLDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DQLDT)) then
           DQLDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_DC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DQIDT, 'DQIDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DQIDT)) then
           DQIDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_DC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DQRDT, 'DQRDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DQRDT)) then
           DQRDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DQSDT, 'DQSDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DQSDT)) then
           DQSDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DQGDT, 'DQGDT', RC=STATUS); VERIFY_(STATUS)
        if (associated(DQGDT)) then
           DQGDT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
        endif
 
        call MAPL_GetPointer(EXPORT, DQADT, 'DQADT'  , RC=STATUS); VERIFY_(STATUS)
        if (associated(DQADT)) then
           DQADT = 0.0
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_DC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_DC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQADT = DQADT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_SC'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQADT = DQADT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_macro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQADT = DQADT + PTR3D
-          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_micro', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQADT = DQADT + PTR3D
        endif
 
        ! Combine Precip Exports
-       call MAPL_GetPointer(EXPORT, PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP + &
-                                          LS_SNR  + AN_SNR  + CN_SNR  + SC_SNR  + &
-                                          CNPCPRATE, 0.0)
 
-       call MAPL_GetPointer(EXPORT, PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = MAX(CN_PRCP + SC_PRCP + &
-                                          CN_SNR  + SC_SNR  + &
-                                          CNPCPRATE, 0.0)
+       call MAPL_GetPointer(EXPORT, TPREC, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+       if (associated(TPREC)) then
+          TPREC = 0.0
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) TPREC = TPREC + PTR2D
+          TPREC = MAX(TPREC, 0.0)
+       endif
 
-       call MAPL_GetPointer(EXPORT, PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP + &
-                                          LS_SNR  + AN_SNR, 0.0)
+       call MAPL_GetPointer(EXPORT, PCU, 'PCU', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PCU)) then
+          PCU = 0.0
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PCU = PCU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PCU = PCU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PCU = PCU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PCU = PCU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PCU = PCU + PTR2D
+          PCU = MAX(PCU, 0.0)
+       endif
 
-       call MAPL_GetPointer(EXPORT, PTR2D, 'RAIN', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = MAX(LS_PRCP + AN_PRCP + CN_PRCP + SC_PRCP, 0.0)
+       call MAPL_GetPointer(EXPORT, PLS, 'PLS', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PLS)) then
+          PLS = 0.0
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PLS = PLS + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PLS = PLS + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PLS = PLS + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PLS = PLS + PTR2D
+          PLS = MAX(PLS, 0.0)
+       endif
 
-       call MAPL_GetPointer(EXPORT, PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = MAX(LS_SNR + CN_SNR + AN_SNR + SC_SNR, 0.0)
+       call MAPL_GetPointer(EXPORT, RAIN, 'RAIN', RC=STATUS); VERIFY_(STATUS)
+       if (associated(RAIN)) then
+          RAIN = 0.0
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN = RAIN + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN = RAIN + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN = RAIN + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN = RAIN + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN = RAIN + PTR2D
+          RAIN = MAX(RAIN, 0.0)
+       endif
+
+       call MAPL_GetPointer(EXPORT, SNOW, 'SNO', RC=STATUS); VERIFY_(STATUS)
+       if (associated(SNOW)) then
+          SNOW = 0.0
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) SNOW = SNOW + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) SNOW = SNOW + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) SNOW = SNOW + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) SNOW = SNOW + PTR2D
+          SNOW = MAX(SNOW, 0.0)
+       endif
 
        call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = 0.0

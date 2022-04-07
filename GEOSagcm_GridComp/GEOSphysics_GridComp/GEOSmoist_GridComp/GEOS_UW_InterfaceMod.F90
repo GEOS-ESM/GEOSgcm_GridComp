@@ -229,19 +229,20 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    ! Exports
-    call MAPL_GetPointer(EXPORT, UMF_SC,     'UMF_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DCM_SC,     'DCM_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! Tendency Export
+    call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DTHDT_SC,   'DTHDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQVDT_SC,   'DQVDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_SC,   'DQIDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDT_SC,   'DQLDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQRDT_SC,   'DQRDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQSDT_SC,   'DQSDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQADT_SC,   'DQADT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_SC,   'DTHDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! Exports
+    call MAPL_GetPointer(EXPORT, UMF_SC,     'UMF_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DCM_SC,     'DCM_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ENTR_SC,    'ENTR_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DETR_SC,    'DETR_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QLSUB_SC,   'QLSUB_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -255,12 +256,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
-
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM,       DT_MOIST,  & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
-            U, V, Q, QLLS, QILS, TH, TKE, NINT(KPBL_SC),  &
+            U, V, Q, QLLS, QILS, TH, TKE, KPBL_SC,        &
             SH, EVAP, CNPCPRATE, FRLAND,                  &
             CUSH,                                         & ! INOUT
             UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
