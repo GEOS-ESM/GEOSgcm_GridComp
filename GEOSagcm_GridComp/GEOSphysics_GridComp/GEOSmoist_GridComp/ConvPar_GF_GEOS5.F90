@@ -3038,7 +3038,7 @@ l_SIG:DO fase = 1,2
              !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
               sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1750.))
               if (stochastic_sig(i) /= 1.0) then
-                sig(i) = sig(i)**(stochastic_sig(i)*MAX(0.9,0.9*sig(i)))              
+                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))              
               endif
               sig(i)= max(0.001,min(sig(i),1.))
              enddo
