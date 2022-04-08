@@ -268,7 +268,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0
     real,    allocatable, dimension(:,:,:) :: PL, PK, ZL0
     real,    allocatable, dimension(:,:,:) :: MASS, fQi, QST3
-    real,    allocatable, dimension(:,:,:) :: T
+    real,    allocatable, dimension(:,:,:) :: T, KE
     integer, allocatable, dimension(:,:)   :: SEEDINI   
     real,    allocatable, dimension(:,:)   :: SEEDCNV 
     real,    allocatable, dimension(:,:,:) :: TMP3D
@@ -373,6 +373,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( PL   (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
     ALLOCATE ( T    (IM,JM,LM  ) )
+    ALLOCATE ( KE   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( fQi  (IM,JM,LM  ) )
     ALLOCATE ( QST3 (IM,JM,LM  ) )
@@ -392,6 +393,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     T        = TH*PK
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+    KE       = (V**2+U**2)
 
     ! Required Exports (connectivities to moist siblings)
     call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -469,16 +471,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR2D)) PTR2D = SEEDCNV
 
-    !-initialize/reset output arrays 
-    CNV_MF0  =0.0 ! 'cloud_base_mass_flux'              - 'kg m-2 s-1'
-    CNV_MFD  =0.0 ! 'detraining_mass_flux',             - 'kg m-2 s-1'    
-    CNV_MFC  =0.0 ! 'cumulative_mass_flux',             - 'kg m-2 s-1'   
-    CNV_CVW  =0.0 ! 'updraft_vertical_velocity',        - 'hPa s-1', 
-    CNV_QC   =0.0 ! 'grid_mean_convective_condensate',  - 'kg kg-1',   
-    CNV_UPDF =0.0 ! 'updraft_areal_fraction',           - '1', 
-    ENTLAM   =0.0 ! 'entrainment parameter',            - 'm-1',  
-    CNV_PRC3 =0.0 ! 'convective_precipitation           - 'kg m-2 s-1'
-
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pq
          call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,DT_MOIST                       &
@@ -504,7 +496,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Fill the TH tendency
       DTHDT_DC = DTDT_DC/PK
-    ! add state tendencies
+    ! add tendencies to the moist import state
       U  = U  +  DUDT_DC*DT_MOIST
       V  = V  +  DVDT_DC*DT_MOIST
       Q  = Q  + DQVDT_DC*DT_MOIST
@@ -520,6 +512,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       QLCN =         QLCN + DQLDT_DC*DT_MOIST
       QICN =         QICN + DQIDT_DC*DT_MOIST
       CLCN = MAX(MIN(CLCN + DQADT_DC*DT_MOIST, 1.0), 0.0)
+
 #ifdef SKIP
       ! fix 'anvil' cloud fraction 
       TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
@@ -540,6 +533,17 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QICN = 0.
       END WHERE
 #endif
+
+    ! Heating from cumulus friction
+    call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+    if(associated(PTR3D)) then
+        KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
+        TMP3D = 1.e-4 ! KEX
+        TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
+        do L=1,LM
+           PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
+        end do
+    end if
 
     call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST

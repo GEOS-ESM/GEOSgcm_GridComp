@@ -765,6 +765,15 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
+         ! Clean up Relative Humidity where RH > 110%
+         DQST3 = GEOS_DQSAT(TH*PK, PLmb, QSAT=QST3)
+         where ( Q > 1.1*QST3 )
+            TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
+         elsewhere
+            TMP3D = 0.0
+         endwhere
+         Q  =  Q - TMP3D
+         TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
 
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
          if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST

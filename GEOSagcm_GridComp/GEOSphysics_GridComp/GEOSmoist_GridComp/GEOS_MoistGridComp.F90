@@ -5175,6 +5175,7 @@ contains
     ! Exports
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT 
     real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
+    real, pointer, dimension(:,:,:) :: DPDTMST, PFL_LSAN, PFI_LSAN
     real, pointer, dimension(:,:  ) :: TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
@@ -5418,6 +5419,46 @@ contains
           if (associated(PTR3D)) DQADT = DQADT + PTR3D
        endif
 
+       call MAPL_GetPointer(EXPORT, DPDTMST, 'DPDTMST'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(DPDTMST)) then
+          DPDTMST = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_CN'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_SC'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_AN'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_LS'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_CN'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_SC'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_AN'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_LS'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:,:,0:LM-1)-PTR3D(:,:,1:LM)
+          DPDTMST = MAPL_GRAV * DPDTMST
+        endif
+
+       call MAPL_GetPointer(EXPORT, PFL_LSAN, 'PFL_LSAN'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PFL_LSAN)) then
+          PFL_LSAN = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_AN'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) PFL_LSAN = PFL_LSAN + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_LS'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) PFL_LSAN = PFL_LSAN + PTR3D
+       endif
+
+       call MAPL_GetPointer(EXPORT, PFI_LSAN, 'PFI_LSAN'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PFI_LSAN)) then
+          PFI_LSAN = 0.0
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_AN'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) PFI_LSAN = PFI_LSAN + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_LS'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) PFI_LSAN = PFI_LSAN + PTR3D
+       endif
+
        ! Combine Precip Exports
 
        call MAPL_GetPointer(EXPORT, TPREC, 'TPREC', RC=STATUS); VERIFY_(STATUS)
@@ -5531,9 +5572,9 @@ contains
 
        ! Aerosol activation exports
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/T) ! kg-1
+       if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/(TH*PK)) ! kg-1
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/T) ! kg-1
+       if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/(TH*PK)) ! kg-1
 
        ! Lightning Exports
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)

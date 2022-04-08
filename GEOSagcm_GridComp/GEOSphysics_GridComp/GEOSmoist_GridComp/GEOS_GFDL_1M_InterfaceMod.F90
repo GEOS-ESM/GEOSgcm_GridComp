@@ -324,7 +324,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
-    real, allocatable, dimension(:,:,:) :: FQC, FQL, FQI
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
@@ -438,9 +437,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( iMASS(IM,JM,LM  ) )
     ALLOCATE ( DQST3(IM,JM,LM  ) )
     ALLOCATE (  QST3(IM,JM,LM  ) )
-    ALLOCATE (   FQC(IM,JM,LM  ) )
-    ALLOCATE (   FQL(IM,JM,LM  ) )
-    ALLOCATE (   FQI(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! Local tendencies
     ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
@@ -774,14 +770,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = QSNOW
         ! GRAUPEL
          RAD_QG = QGRAUPEL
-     ! Save CNV/TOT ratios
-        ! Cloud
-         FQC =  MIN(1.0,MAX(CLCN/MAX(RAD_CF,1.e-5),0.0))
-        ! Liquid
-         FQL =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
-        ! Ice
-         FQI =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
-        ! Execute GFDL_1M microphysics
+        ! Run the driver
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI]
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI)/1.e6, &
@@ -815,13 +804,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = RAD_CF + DQADTmic * DT_MOIST
      ! Redistribute CN/LS CF/QL/QI
-         CLCN = MIN(FQC*RAD_CF,1.0)
-         CLLS = MAX(MIN(RAD_CF-CLCN,1.0),0.0)
-         QLCN = FQL*RAD_QL
-         QLLS =     RAD_QL-QLCN
-         QICN = FQI*RAD_QI
-         QILS =     RAD_QI-QICN
-     !!! call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
+         call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
          PRCP_SNOW    = MAX(PRCP_SNOW    / 86400.0, 0.0)
@@ -881,6 +864,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            PTR3D=MAX(MIN(PTR3D, 1.0), 0.0)
          endif
+         ! Clean up Relative Humidity where RH > 110%
+         DQST3 = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+         where ( Q > 1.1*QST3 )
+            TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
+         elsewhere
+            TMP3D = 0.0
+         endwhere
+         Q  =  Q - TMP3D
+         T  =  T + (MAPL_ALHL/MAPL_CP)*TMP3D
+         TH =  T / PK
 
          ! Update microphysics tendencies
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
