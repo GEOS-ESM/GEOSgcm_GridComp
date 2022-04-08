@@ -490,7 +490,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, AREA, USTAR, TSTAR, QSTAR, T2M            &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
-                                 ,NINT(KPBL)                                        &
+                                 ,KPBL                                              &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
                                  ,MUPDP,MUPSH,MUPMD,MDNDP                           &

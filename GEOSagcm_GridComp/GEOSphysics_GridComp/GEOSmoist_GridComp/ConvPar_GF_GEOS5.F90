@@ -290,7 +290,7 @@ CONTAINS
                                                      ,T2M ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS  &
                                                      ,LONS,LATS &
                                                      ,STOCHASTIC_SIG
-    INTEGER,DIMENSION(mxp,myp)       ,INTENT(IN)   :: KPBLIN
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: KPBLIN
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE,ZLE,PLE_DYN_IN
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO ,PLO ,PK , MASS ,OMEGA, KH       &
@@ -550,8 +550,8 @@ CONTAINS
     !-pbl heigth index
     DO j=1,myp
      DO i=1,mxp
-       if (KPBLIN(i,j) /= 0) then
-          kpbl(i,j) = max(1, flip(min(KPBLIN(i,j), mzp)))
+       if (KPBLIN(i,j) /= 0.0) then
+          kpbl(i,j) = flip(INT(KPBLIN(i,j)))
        else
           kpbl(i,j) = 1
        endif

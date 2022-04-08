@@ -342,7 +342,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QRAIN = QRAIN + DQRDT_SC*DT_MOIST
           QSNOW = QSNOW + DQSDT_SC*DT_MOIST
         endif
-
+      ! Other exports
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_QT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) then
         ! column integral of UW total water tendency, for checking conservation

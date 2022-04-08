@@ -4477,8 +4477,7 @@ contains
        end if
 
       KPBLMIN  = count(PREF < 50000.)
-      if (KPBLMIN == 0) KPBLMIN=LM-1
- 
+
                             ZPBL = MAPL_UNDEF
       if (associated(PPBL)) PPBL = MAPL_UNDEF
 
@@ -4701,9 +4700,6 @@ contains
 
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
       KPBL = MAX(KPBL,float(KPBLMIN))
-      WHERE(KPBL == 0.0) 
-         KPBL=LM-1
-      END WHERE
 
       if (associated(PPBL)) then
          do I = 1, IM
