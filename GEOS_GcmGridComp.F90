@@ -551,6 +551,17 @@ contains
        VERIFY_(STATUS)
     endif
 
+  
+    if (DO_CICE_THERMO == 2) then  
+       call MAPL_AddConnectivity ( GC,                              &
+            SHORT_NAME  = (/'SURFSTATE'/),                          &
+            DST_ID = AGCM,                                          &
+            SRC_ID = OGCM,                                          &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
+
+
 ! Next vars are explicitly connected through exchange grid transforms Run
 !---------------------------------------------------------------------------
 
