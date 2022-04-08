@@ -408,6 +408,7 @@ contains
     call AddSurfField('derivative_of_net_surf_flux', SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('SNOW',  SURFST, GRID,  __RC__)
+    call AddSurfField('RAIN',  SURFST, GRID,  __RC__)
     call AddSurfField('DRPAR', SURFST, GRID,  __RC__)
     call AddSurfField('DFPAR', SURFST, GRID,  __RC__)
     call AddSurfField('DRNIR', SURFST, GRID,  __RC__)

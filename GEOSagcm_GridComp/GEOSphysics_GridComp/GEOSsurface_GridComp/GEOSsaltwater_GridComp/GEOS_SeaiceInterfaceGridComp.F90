@@ -1296,7 +1296,7 @@ module GEOS_SeaiceInterfaceGridComp
 
 !BOP
 
-! !IROUTINE: Initialize -- Initialize method for the GEOS CICE Thermodynamic
+! !IROUTINE: Initialize -- Initialize method for the GEOS Seaice Interface Grid Comp
 
 ! !INTERFACE:
 
@@ -1310,9 +1310,6 @@ module GEOS_SeaiceInterfaceGridComp
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code
 
-! !DESCRIPTION: The Initialize method of the CICE thermodynamics Gridded Component.
-!   It then does a Generic\_Initialize and also CICE data structures 
-
 !EOP
 
 ! ErrLog Variables
@@ -1322,7 +1319,6 @@ module GEOS_SeaiceInterfaceGridComp
     character(len=ESMF_MAXSTR)          :: COMP_NAME
 
     integer                             :: NUM_SUBTILES        ! = NUM_ICE_CATEGORIES 
-    integer                             :: NUM_ICE_LAYERS      ! set via resource parameter
     integer                             :: NUM_ICE_CATEGORIES  ! set via resource parameter
     
 ! Local derived type aliases
@@ -1330,17 +1326,7 @@ module GEOS_SeaiceInterfaceGridComp
     type (MAPL_MetaComp    ), pointer   :: MAPL => null()
 
     real                                :: DTI
-    real                                :: ALBICEV, ALBSNOWV, ALBICEI, ALBSNOWI
-    real                                :: USTAR_MIN, AHMAX
-    real                                :: KSNO
-    real                                :: ICE_REF_SALINITY
-    real                                :: SNOWPATCH 
-    real                                :: DALB_MLT 
 
-    character(len=ESMF_MAXSTR)          :: CONDTYPE
-    character(len=ESMF_MAXSTR)          :: SHORTWAVE 
-
-    integer                             :: DO_POND
     integer                             :: PRES_ICE
 
 !=============================================================================
@@ -2309,6 +2295,8 @@ contains
 
    real,               allocatable    :: FSURF         (:,:) ! non-solar part 
    real,               allocatable    :: DFSURFDTS     (:,:) ! 
+   real,               allocatable    :: EVAPN         (:,:) ! 
+   real,               allocatable    :: RAIN          (:)   !
 
 
 
@@ -2465,10 +2453,18 @@ contains
 
 
 
-    allocate(    FSURF(size(TS,1),   size(TS,2), __STAT__) 
-    allocate(DFSURFDTS(size(TS,1),   size(TS,2), __STAT__) 
-    allocate(   TS_OLD(size(TS,1),   size(TS,2), __STAT__) 
+    allocate(    FSURF(size(TS,1),   size(TS,2)), __STAT__) 
+    allocate(DFSURFDTS(size(TS,1),   size(TS,2)), __STAT__) 
+    allocate(    EVAPN(size(TS,1),   size(TS,2)), __STAT__) 
+    allocate(   TS_OLD(size(TS,1),   size(TS,2)), __STAT__) 
 
+    allocate(    RAIN(size(TS,1)),  __STAT__) 
+
+
+! Aggregate imports if required
+!-----------------------------------
+
+    RAIN = PLS + PCU
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------
@@ -2705,6 +2701,7 @@ contains
 
           FSURF(:,N)      = LWDNSRF - SHF - LHF - (ALW + BLW*TS(:,N))
           DFSURFDTS(:,N)  = SHD + EVD * MAPL_ALHS + BLW
+          EVAPN(:,N)      = EVP !!! check the sign
 
 !         Some aggregation of fluxes to the Ocean has to be done now, before using in step2
 
@@ -2817,9 +2814,20 @@ contains
 
     call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, __RC__)
 
-    call RegridA2O_2d(       TS, SURFST, 'TSKINICE' , XFORM_A2O, locstreamO, __RC__)
-    call RegridA2O_2d(    FSURF, SURFST, 'FSURF'    , XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(       TS, SURFST,  'TSKINICE', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(    FSURF, SURFST,     'FSURF', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(DFSURFDTS, SURFST, 'DFSURFDTS', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(    EVAPN, SURFST,      'EVAP', XFORM_A2O, locstreamO, __RC__)
+
+    call RegridA2O_1d(     RAIN, SURFST,      'RAIN', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(      SNO, SURFST,      'SNOW', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(      ZTH, SURFST,      'COSZ', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(    DRPAR, SURFST,     'DRPAR', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(    DFPAR, SURFST,     'DFPAR', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(    DRNIR, SURFST,     'DRNIR', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(    DFNIR, SURFST,     'DFNIR', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(    DRUVR, SURFST,     'DRUVR', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(    DFUVR, SURFST,     'DFUVR', XFORM_A2O, locstreamO, __RC__)
 
     ! ** execute the sea ice thermo coupling method
     call ESMF_MethodExecute(SURFST, label="thermo_coupling", userRC=AS_STATUS, RC=STATUS)
@@ -3056,56 +3064,15 @@ contains
 
     call MAPL_TimerOff(MAPL,    "-Albedo")
 
-    deallocate(TRCRTYPE)
-    deallocate(TRACERS)
-    deallocate(TF)
-    deallocate(MELTLN)
-    deallocate(FRAZLN)
-    deallocate(FRESHN)
-    deallocate(FRESHL)
-    deallocate(FSALTN)
-    deallocate(FSALTL)
-    deallocate(FHOCNN)
-    deallocate(FHOCNL)
-    deallocate(RSIDE)
-    deallocate(FSWTHRU)
-    deallocate(FCOND)
-    deallocate(FCONDBOT)
-    deallocate(TBOT)
-    deallocate(FBOT)
-    deallocate(ALBVRN)
-    deallocate(ALBNRN)
-    deallocate(ALBVFN)
-    deallocate(ALBNFN)
-    deallocate(FSWSFC)
-    deallocate(FSWINT)
-    deallocate(ISWABS)
-    deallocate(SSWABS)
-    deallocate(MELTT)
-    deallocate(MELTS)
-    deallocate(MELTB)
-    deallocate(CONGEL)
-    deallocate(SNOICE)
-    deallocate(TS_OLD)
+    deallocate(     TS_OLD,      __STAT__)
+    deallocate(      FSURF,      __STAT__)
+    deallocate(  DFSURFDTS,      __STAT__)
+    deallocate(      EVAPN,      __STAT__)
+    deallocate(       RAIN,      __STAT__)
+
     deallocate(ALBIN)
     deallocate(ALBSN)
     deallocate(ALBPND)
-    deallocate(DRUVRTHRU)
-    deallocate(DFUVRTHRU)
-    deallocate(DRPARTHRU)
-    deallocate(DFPARTHRU)
-    deallocate(TOTALFLUX)
-    deallocate(NEWICEERG)
-    deallocate(SBLX)
-    deallocate(FSURF)
-    deallocate(AICENINIT)
-    deallocate(VICENINIT)
-    deallocate(FR8TMP)
-    deallocate(FRCICE)
-    deallocate(FR_OLD)
-    deallocate(VOLSNO_OLD)
-    deallocate(VOLICE_OLD)
-    deallocate(VOLICE_DELTA)
 
 !  All done
 !-----------
@@ -3117,6 +3084,36 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   !=========CALLBACK==============
+  subroutine RegridA2O_1d(ptr_1d, state, name, xform, locstream, rc)
+    real :: ptr_1d(:)
+    type (ESMF_State) :: state
+    character(len=*) :: name
+    type (MAPL_LocStreamXform), intent(IN) :: xform
+    type (MAPL_LocStream), intent(IN) :: locstream
+    integer, optional, intent(OUT) :: rc
+
+    real, pointer, dimension(:,:)   :: PTR_2d  => null()
+    real, pointer, dimension(:)     :: ptrO    => null()
+    integer :: status
+    integer :: k, nc, nt
+
+    call MAPL_LocStreamGet(LocStream, nt_local=nt, __RC__)
+!@@    if(NT == 0) then
+!@@        RETURN_(ESMF_SUCCESS)
+!@@    endif
+    call MAPL_GetPointer(state, ptr_2d, name, __RC__)
+
+    allocate(ptrO(NT), __STAT__)
+    !
+    !   !perform locstreamTrans_T2T+T2G(ts) => tsg (tile)
+    !
+    call MAPL_LocStreamTransform( ptrO, XFORM, PTR_1D, __RC__)
+    call MAPL_LocStreamTransform( locStream, PTR_2D(:,:), ptrO, __RC__)
+    deallocate (ptrO)
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine RegridA2O_1d
+
   subroutine RegridA2O_2d(ptr_2d, state, name, xform, locstream, rc)
     real :: ptr_2d(:,:)
     type (ESMF_State) :: state
