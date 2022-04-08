@@ -5510,6 +5510,15 @@ contains
        call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = 0.0
 
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QLTOT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLLS+QLCN
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QITOT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLLS+QLCN
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLLS+CLCN
+
        ! Temperature exports
        call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = TH

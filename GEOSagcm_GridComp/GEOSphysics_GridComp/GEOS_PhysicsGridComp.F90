@@ -1171,11 +1171,10 @@ contains
      call MAPL_AddConnectivity ( GC,                                      &
         SHORT_NAME  = (/ 'RL      ',  'QL      ', 'QLTOT   ', 'DQLDT   ', &
                          'RI      ',  'QI      ', 'QITOT   ', 'DQIDT   ', &
-                         'QLCN    ',  'QLLS    ', 'PFL_CN  ', 'PFL_LSAN', &
-                         'QICN    ',  'QILS    ', 'PFI_CN  ', 'PFI_LSAN', &
+                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN',             &
+                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN',             &
                          'FCLD    ',  'QCTOT   ', 'CNV_QC  ',             &
-                         'REV_LS  ',  'REV_AN  ', 'REV_CN  ',             &
-                         'CN_PRCP ',  'LS_PRCP ', 'TPREC   ', 'SNO     ', &
+                         'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
                          'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
                          'LFR_GCC ',  'RH2     ' /),                      &
@@ -1183,6 +1182,15 @@ contains
         SRC_ID      = MOIST,                                              &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                                      &
+        SRC_NAME    = 'PCU',                                              &
+        DST_NAME    = 'CN_PRCP',                                          &
+        DST_ID      = CHEM,                                               &
+        SRC_ID      = MOIST,                                              &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
 
      call MAPL_AddConnectivity ( GC,                              &
          SHORT_NAME  = (/'ZPBL','PPBL'/),                         &

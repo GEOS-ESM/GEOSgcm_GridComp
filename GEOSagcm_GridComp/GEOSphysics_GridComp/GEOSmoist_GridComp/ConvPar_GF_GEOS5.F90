@@ -11867,7 +11867,6 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
        fract_liq_f = ICE_FRACTION(temp2)  
    CASE DEFAULT 
        fract_liq_f =  min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
-
    END SELECT
 
  END FUNCTION

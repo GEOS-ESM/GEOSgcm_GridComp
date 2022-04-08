@@ -896,6 +896,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (associated(DTHDT_micro)) DTHDT_micro = ( TH         - DTHDT_micro) / DT_MOIST
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
 
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
+
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
 end subroutine GFDL_1M_Run

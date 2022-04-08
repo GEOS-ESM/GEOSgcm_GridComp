@@ -513,8 +513,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! update DeepCu QL/QI/CF tendencies
       TMP3D= CNV_DQCDT/MASS
       fQi  = ICE_FRACTION( T )
-      DQIDT_DC = (1.0-fQi)*TMP3D
-      DQLDT_DC =      fQi *TMP3D
+      DQLDT_DC = (1.0-fQi)*TMP3D
+      DQIDT_DC =      fQi *TMP3D
       DQADT_DC = CNV_MFD*SCLM_DEEP/MASS
     ! add QI/QL/CL tendencies
       QLCN =         QLCN + DQLDT_DC*DT_MOIST
