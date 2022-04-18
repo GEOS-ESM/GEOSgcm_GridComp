@@ -4916,7 +4916,7 @@ contains
 
             ! first guess taue from direct surface transmission
             ! currently cant handle underflow to zero of direct beam
-            !   or a completely transperant atmosphere (b_taue zero)
+            !   or a completely transparent atmosphere (b_taue zero)
             bmtrans = min(max(UVRR(i)/UVR_TDN(i),0.),1.)
             if (bmtrans > 0.) then
               b_taue = -ZT(i)*log(bmtrans)
