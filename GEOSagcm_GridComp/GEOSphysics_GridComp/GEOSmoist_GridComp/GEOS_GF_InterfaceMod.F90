@@ -32,6 +32,7 @@ module GEOS_GF_InterfaceMod
 
   integer :: USE_GF2020
   logical :: STOCHASTIC_CNV
+  real    :: STOCH_TOP, STOCH_BOT
   real    :: SCLM_DEEP
 
   public :: GF_Setup, GF_Initialize, GF_Run
@@ -81,7 +82,7 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)           ,'SHALLOW:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)            ,'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)        ,'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)        ,'CLOSURE_SHALLOW:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)        ,'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)         ,'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)         ,'ENTR_DP:'               ,default= 1.e-4,RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)         ,'ENTR_SH:'               ,default= 2.e-3,RC=STATUS );VERIFY_(STATUS)
@@ -89,11 +90,8 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)      ,'FADJ_MASSFLX_DP:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)      ,'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)       ,'FADJ_MASSFLX_MD:'       ,default= 0.5,  RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)        ,'USE_EXCESS_DP:'         ,default= 2,    RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)        ,'USE_EXCESS_SH:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)         ,'USE_EXCESS_MD:'         ,default= 2,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP           ,'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN           ,'USE_TRACER_SCAVEN:'     ,default= 2,    RC=STATUS );VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN           ,'USE_TRACER_SCAVEN:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_SCALE_DEP               ,'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP         ,'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, DICYCLE                     ,'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -118,6 +116,7 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, CAP_MAXS                    , 'CAP_MAXS:'             ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_GF2020                  , 'USE_GF2020:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     IF(USE_GF2020==1) THEN
+       call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -133,11 +132,13 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF           , 'USE_SMOOTH_PROF:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'        ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'        ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'        ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'       ,default= 2,     RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'       ,default= 2,     RC=STATUS );VERIFY_(STATUS)
        if(AUTOCONV == 1) then 
           call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'             ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'              ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
@@ -169,6 +170,7 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
    ELSE
+       call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 5400., RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
@@ -184,16 +186,18 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'          ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF           , 'USE_SMOOTH_PROF:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'            ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'             ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'              ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'             ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, QRC_CRIT                  , 'QRC_CRIT:'            ,default= 2.e-4, RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, C1                        , 'C1:'                  ,default= 1.e-3, RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       ,'AVE_LAYER_DP:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       ,'AVE_LAYER_SH:'         ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        ,'AVE_LAYER_MD:'         ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'        ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'        ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'        ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
@@ -213,9 +217,13 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
     ENDIF
-    call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, GF_ENV_SETTING     , 'GF_ENV_SETTING:'  , DEFAULT= 'DYNAMICS' , RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 6.0       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.125     , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GF_Initialize
 
@@ -277,6 +285,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Required Exports (connectivities to moist siblings)
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_MFC, CNV_CVW, CNV_QC, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DTHDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
+    real, pointer, dimension(:,:  ) :: CNV_FRC
     ! Exports
     real, pointer, dimension(:,:,:) :: CNV_MF0, ENTLAM
     real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD
@@ -403,6 +412,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_DQCDT,  'CNV_DQCDT' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_FRC,    'CNV_FRC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Exports used below
     call MAPL_GetPointer(EXPORT, CNV_MF0,    'CNV_MF0'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -464,7 +474,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
        SEEDCNV = MAX(MIN(SEEDINI/1000000.0,1.0),0.0)
-       SEEDCNV = SEEDCNV*(1.75-0.5)+0.5
+       SEEDCNV = CNV_FRC*(1.0-(1.0-SEEDCNV)**2)*(STOCH_TOP-STOCH_BOT)+STOCH_BOT
     else
        SEEDCNV = 1.0
     endif

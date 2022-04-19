@@ -60,6 +60,8 @@ MODULE Aer_Actv_Single_Moment
       real(AER_PR), dimension (IM,JM)  :: naer_cb, zws
       real(AER_PR)                     :: wupdraft,tk,press,air_den,QC,QL,WC,BB,RAUX
 
+      integer, dimension (IM,JM) :: kpbli
+
       real, dimension(:,:,:,:,:), allocatable :: buffer
 
       character(len=ESMF_MAXSTR)      :: aci_field_name
@@ -79,7 +81,7 @@ MODULE Aer_Actv_Single_Moment
 
       integer :: n_modes
       REAL :: numbinit
-      integer :: i,j,k,n,kcb,kpblmin,rc
+      integer :: i,j,k,n,rc
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Actv_1M_interface"
       integer                                 :: STATUS
@@ -94,6 +96,8 @@ MODULE Aer_Actv_Single_Moment
       NACTL    = 0.
       NACTI    = 0.
 
+      kpbli = MAX(MIN(NINT(kpbl),LM-1),1)
+      
       if (USE_AEROSOL_NN) then
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
@@ -200,7 +204,7 @@ MODULE Aer_Actv_Single_Moment
             hfs = -SH  (i,j) ! W m^-2
             hfl = -EVAP(i,j) ! kg m^-2 s^-1
             aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
-            aux3=  ZLE(i,j,NINT(kpbl(i,j)))           ! pbl height (m)
+            aux3=  ZLE(i,j,kpbli(i,j))           ! pbl height (m)
             !-convective velocity scale W* (m/s)
             ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
             ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s           
@@ -215,13 +219,8 @@ MODULE Aer_Actv_Single_Moment
       !--- determing aerosol number concentration at cloud base
       DO j=1,JM
         Do i=1,IM 
-        !------check this
-             kpblmin = count(plo(i,j,:) <= 500.0)
-             if (kpblmin == 0) kpblmin=LM-1
-             kcb = MAX(NINT(kpbl(i,j)),kpblmin)
-        !------check this
+             k            = kpbli(i,j)
              naer_cb(i,j) = zero_par
-             k=min(kcb-1,LM-1); IF(K==0) stop "K==0- aer-act"
              tk           = T(i,j,k)              ! K
              press        = plo(i,j,k)*100.0      ! Pa     
              air_den      = press*28.8e-3/8.31/tk ! kg/m3
@@ -248,7 +247,7 @@ MODULE Aer_Actv_Single_Moment
                 wupdraft           = -9.81*air_den*omega(i,j,k)     ! m/s - grid-scale only              
                 
                 !--in the boundary layer, add Wstar
-                if(k >= NINT(kpbl(i,j)) .and. k < LM)  wupdraft = wupdraft+zws(i,j) 
+                if(k >= kpbli(i,j) .and. k < LM)  wupdraft = wupdraft+zws(i,j) 
 
                 IF(wupdraft > 0.1 .AND. wupdraft < 100.) THEN 
 

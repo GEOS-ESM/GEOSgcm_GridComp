@@ -47,6 +47,9 @@ module GEOS_MoistGridCompMod
   logical :: USE_AERO_BUFFER
   real    :: CCN_OCN
   real    :: CCN_LND
+  real    :: CNV_FRACTION_MIN
+  real    :: CNV_FRACTION_MAX
+  real    :: CNV_FRACTION_EXP
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -5086,10 +5089,11 @@ contains
 
     ! Get parameters from generic state.
     !-----------------------------------
-    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 0.125 , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
@@ -5159,9 +5163,9 @@ contains
 
     ! Local variables
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0, PK
-    real, allocatable, dimension(:,:,:) :: PLmb,  ZL0,  T
+    real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET,  T
+    real, allocatable, dimension(:,:,:) :: QST3, DQST3
     type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
-
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
@@ -5171,12 +5175,14 @@ contains
     real, pointer, dimension(:,:,:) :: OMEGA
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
-
     ! Exports
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT 
     real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
     real, pointer, dimension(:,:,:) :: DPDTMST, PFL_LSAN, PFI_LSAN
     real, pointer, dimension(:,:  ) :: TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR
+    real, pointer, dimension(:,:,:) :: BYNCY
+    real, pointer, dimension(:,:  ) :: CAPE, INHB
+    real, pointer, dimension(:,:  ) :: CNV_FRC
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -5251,9 +5257,12 @@ contains
        ALLOCATE ( PLEmb(IM,JM,0:LM) )
         ! Layer variables
        ALLOCATE ( ZL0  (IM,JM,LM  ) )
+       ALLOCATE ( DZET (IM,JM,LM  ) )
        ALLOCATE ( PLmb (IM,JM,LM  ) )
        ALLOCATE ( PK   (IM,JM,LM  ) )
        ALLOCATE ( T    (IM,JM,LM  ) )
+       ALLOCATE ( DQST3(IM,JM,LM  ) )
+       ALLOCATE (  QST3(IM,JM,LM  ) )
 
        ! Derived States
        PLEmb    =  PLE*.01
@@ -5263,8 +5272,29 @@ contains
           ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
        END DO
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
+       DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        T        = TH*PK
+       DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
+       ! These may be used by children
+       call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, INHB,    'INHB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
+       CNV_FRC = 0.0
+       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
+         WHERE (CAPE .ne. MAPL_UNDEF)
+            CNV_FRC =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
+         END WHERE
+       endif
+       if (CNV_FRACTION_EXP >= 1.0) then
+          CNV_FRC = CNV_FRC**CNV_FRACTION_EXP
+       elseif (CNV_FRACTION_EXP > 0.0) then
+          CNV_FRC = 1.0-(1.0-CNV_FRC)**(1.0/CNV_FRACTION_EXP)
+       else
+          CNV_FRC = 1
+       endif
 
        ! Extract convective tracers from the TR bundle
        call MAPL_TimerOn (MAPL,"---CONV_TRACERS")

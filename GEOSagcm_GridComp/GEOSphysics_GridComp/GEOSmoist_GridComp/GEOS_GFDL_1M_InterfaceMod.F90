@@ -43,9 +43,6 @@ module GEOS_GFDL_1M_InterfaceMod
 
   ! Local resource variables
   integer :: imsize
-  real    :: CNV_FRACTION_MIN
-  real    :: CNV_FRACTION_MAX
-  real    :: CNV_FRACTION_EXP
   real    :: MINRHCRITLND
   real    :: MINRHCRITOCN
   real    :: MAXRHCRITLND
@@ -275,9 +272,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF    , 'CCW_EVAP_EFF:'    , DEFAULT= 4.0e-3, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF    , 'CCI_EVAP_EFF:'    , DEFAULT= 1.0e-3, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 0.25  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -328,11 +322,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
-    real, allocatable, dimension(:,:)   :: CNV_FRACTION
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Exports
     real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
-    real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR
+    real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, CNV_FRC
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro
     real, pointer, dimension(:,:,:) ::  DUDT_macro,  DVDT_macro,  DTDT_macro, DTHDT_macro
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro, DQRDT_micro, DQSDT_micro, DQGDT_micro
@@ -344,8 +337,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PDF_A
-    real, pointer, dimension(:,:  ) :: CAPE, INHB
-    real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -450,7 +441,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
-    ALLOCATE ( CNV_FRACTION (IM,JM) )
     ALLOCATE ( turnrhcrit2D (IM,JM) )
     ALLOCATE ( minrhcrit2D  (IM,JM) )
     ALLOCATE ( maxrhcrit2D  (IM,JM) )
@@ -480,27 +470,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do
     end do
 
-    call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, INHB,    'INHB'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
-
-    CNV_FRACTION = 0.0
-    if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-       WHERE (CAPE .ne. MAPL_UNDEF)
-          CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
-       END WHERE
-    endif
-    if (CNV_FRACTION_EXP >= 1.0) then
-        CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
-    elseif (CNV_FRACTION_EXP > 0.0) then
-        CNV_FRACTION = 1.0-(1.0-CNV_FRACTION)**(1.0/CNV_FRACTION_EXP)
-    else
-        CNV_FRACTION = 1
-    endif
-    call MAPL_GetPointer(EXPORT, PTR2D, 'CNV_FRC', RC=STATUS); VERIFY_(STATUS)
-    if (associated(PTR2D)) PTR2D = CNV_FRACTION
-
     ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QV,   'QV'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -511,6 +480,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, RAD_QG,   'QG'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFL, 'RL'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFI, 'RI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! This export MUST have been filled in the GridComp
+    call MAPL_GetPointer(EXPORT, CNV_FRC,      'CNV_FRC'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Exports  required below
     call MAPL_GetPointer(EXPORT, EVAPC,        'EVAPC'        , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SUBLC,        'SUBLC'        , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -780,7 +751,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! Input fields
                                T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
                              ! constant inputs
-                               AREA, DT_MOIST, FRLAND, CNV_FRACTION, &
+                               AREA, DT_MOIST, FRLAND, CNV_FRC, &
                                ANV_ICEFALL, LS_ICEFALL, &
                              ! Output rain re-evaporation and sublimation
                                REV_LS, RSU_LS, & 
