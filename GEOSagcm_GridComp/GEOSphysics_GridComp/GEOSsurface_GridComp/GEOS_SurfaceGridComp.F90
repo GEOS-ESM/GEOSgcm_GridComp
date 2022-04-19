@@ -2,7 +2,7 @@
 !  $Id$
 
 #include "MAPL_Generic.h"
-
+#define DEBUG_DATAATM
 !=============================================================================
 module GEOS_SurfaceGridCompMod
 
@@ -2916,6 +2916,35 @@ module GEOS_SurfaceGridCompMod
 
   END IF
 
+#ifdef DEBUG_DATAATM
+    call MAPL_AddExportSpec(GC,                              &
+        SHORT_NAME         = 'LWDNSRF',                           &
+        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        UNITS              = 'W m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                              &
+        SHORT_NAME         = 'ALW',                               &
+        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        UNITS              = 'W m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                              &
+        SHORT_NAME         = 'BLW',                               &
+        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        UNITS              = 'W m-2 K-1',                         &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+#endif
+
 ! !INTERNAL STATE:
 
 !  These are here only because they are passed between run1 and run2.
@@ -3090,16 +3119,17 @@ module GEOS_SurfaceGridCompMod
 ! the children; but our children do not talk to each other, only to us
 ! --------------------------------------------------------------------
 
-    call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
-    VERIFY_(STATUS)
-#ifndef AQUA_PLANET
-    call MAPL_TerminateImport    ( GC, CHILD = LAKE,    RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_TerminateImport    ( GC, CHILD = LANDICE, RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_TerminateImport    ( GC, CHILD = LAND,    RC=STATUS  )
-    VERIFY_(STATUS)
-#endif
+    call MAPL_TerminateImport    ( GC, ALL=.true.,   __RC__)
+!    call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
+!    VERIFY_(STATUS)
+!#ifndef AQUA_PLANET
+!    call MAPL_TerminateImport    ( GC, CHILD = LAKE,    RC=STATUS  )
+!    VERIFY_(STATUS)
+!    call MAPL_TerminateImport    ( GC, CHILD = LANDICE, RC=STATUS  )
+!    VERIFY_(STATUS)
+!    call MAPL_TerminateImport    ( GC, CHILD = LAND,    RC=STATUS  )
+!    VERIFY_(STATUS)
+!#endif
 
 ! Set the Profiling timers
 ! ------------------------
@@ -5505,6 +5535,14 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , ALW     , 'ALW'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , BLW     , 'BLW'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , DTSDT   , 'DTSDT' ,   RC=STATUS); VERIFY_(STATUS)
+#ifdef DEBUG_DATAATM
+    call MAPL_GetPointer(EXPORT, tmp, 'LWDNSRF', __RC__)
+    if (associated(tmp)) tmp=lwdnsrf
+    call MAPL_GetPointer(EXPORT, tmp, 'ALW', __RC__)
+    if (associated(tmp)) tmp=alw
+    call MAPL_GetPointer(EXPORT, tmp, 'BLW', __RC__)
+    if (associated(tmp)) tmp=blw
+#endif
 
 ! Horizontal dimensions needed to allocate local arrays
 !------------------------------------------------------
@@ -7685,6 +7723,19 @@ module GEOS_SurfaceGridCompMod
        if(associated( QSTAR)) QSTAR = (EVAP       + DEVAP*DQS)/(RHOS*FAC)
     end if
 
+    if (DO_DATAATM) then
+       ! dataAtm operates only on "saltwater" tiles. 
+       ! we need to handle grid boxes withot any ocean
+       ! and avoid division by 0
+       where (CN == MAPL_Undef)
+          CM = 0.01
+          CT = 0.01
+          CQ = 0.01
+          CN = 0.01
+          D0 = 0.0
+       end where
+    end if
+
     FAC = sqrt(CN)/MAPL_KARMAN
     Z0  = max((DZ-D0),10.)/(exp(1.0/FAC)-1.0)
 
@@ -7856,6 +7907,7 @@ module GEOS_SurfaceGridCompMod
 
 ! Clean-up
 !---------
+
 
     deallocate(TMP)
     deallocate(TTM)

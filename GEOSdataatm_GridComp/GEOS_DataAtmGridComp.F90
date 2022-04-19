@@ -116,8 +116,7 @@ module GEOS_DataAtmGridCompMod
 ! ---------------------------------------
 
     Iam = "SetServices"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, __RC__ )
     Iam = trim(COMP_NAME) // Iam
 
     call MAPL_AddImportSpec(GC,              &
@@ -125,93 +124,100 @@ module GEOS_DataAtmGridCompMod
       LONG_NAME = 'surface_pressure',        &
       UNITS = 'Pa',                          &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'TA',                     &
       LONG_NAME = 'surface_air_temperature', &
       UNITS = 'K',                           &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'QA',                     &
       LONG_NAME = 'surface_specific_humidity', &
       UNITS = '1',                           &  ! convert to kg/kg?? or g/kg??
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'UA',                     &
       LONG_NAME = '10-meter_eastward_wind',  &
       UNITS = 'm s-1',                       &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'VA',                     &
       LONG_NAME = '10-meter_northward_wind', &
       UNITS = 'm s-1',                       &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'RUNOFF',                 &
       LONG_NAME = 'overland_runoff_including_throughflow', &
       UNITS = 'kg m-2 s-1',                  &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'PCU',                    &
       LONG_NAME = 'convective_rainfall',     &
       UNITS = 'kg m-2 s-1',                  &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'PLS',                    &
       LONG_NAME = 'large_scale_rainfall',    &
       UNITS = 'kg m-2 s-1',                  &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'SNO',                    &
       LONG_NAME = 'snowfall',                &
       UNITS = 'kg m-2 s-1',                  &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'LWGNTWTR',               &
       LONG_NAME = 'open_water_net_downward_longwave_flux',                &
       UNITS = 'W m-2',                       &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'LWTUP',                  &
       LONG_NAME = 'upwelling_longwave_flux_at_toa', &
       UNITS = 'W m-2',                       &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'SWGDWN',                 &
       LONG_NAME = 'surface_incoming_shortwave_flux',&
       UNITS = 'W m-2',                       &
       DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, RC=STATUS)
+      VLOCATION = MAPL_VLocationNone, __RC__)
+
+! Internal
+    call MAPL_AddInternalSpec(GC,              &
+      SHORT_NAME = 'TS',                     &
+      LONG_NAME = 'surface_temperature', &
+      UNITS = 'K',                           &
+      DIMS = MAPL_DimsHorzOnly,              &
+      VLOCATION = MAPL_VLocationNone, __RC__)
+
 
 ! Get my MAPL_Generic state
 !--------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, __RC__)
 
-    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=1, __RC__)
 
 ! Get constants from CF
 ! ---------------------
@@ -227,23 +233,18 @@ module GEOS_DataAtmGridCompMod
 ! Ocean biology and chemistry: using OBIO or not?
 ! ------------------------------------------------
 
-    call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, __RC__)
 
 ! Set the Initialize and Run entry points
 ! ---------------------------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,  Finalize, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run, __RC__)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,  Finalize, __RC__)
 
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
-    SURF = MAPL_AddChild(GC, NAME='SURFACE', SS=SurfSetServices, RC=STATUS)
-    VERIFY_(STATUS)
+    SURF = MAPL_AddChild(GC, NAME='SURFACE', SS=SurfSetServices, __RC__)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -263,20 +264,15 @@ module GEOS_DataAtmGridCompMod
 ! Set generic init and final methods
 ! ----------------------------------
 
-    call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="RUN"       ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="FINALIZE"  ,RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="INITIALIZE", __RC__)
+    call MAPL_TimerAdd(GC,    name="RUN"       , __RC__)
+    call MAPL_TimerAdd(GC,    name="FINALIZE"  , __RC__)
 
     ! This call is needed only when we use ReadForcing.
     ! If we switch to use ExtData, next line has be commented out
-    call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
-    VERIFY_(STATUS)
+    call MAPL_TerminateImport    ( GC, ALL=.true., __RC__ )
 
-    call MAPL_GenericSetServices    ( GC, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GenericSetServices    ( GC, __RC__)
 
     RETURN_(ESMF_SUCCESS)
   
@@ -311,9 +307,12 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Locals
 
   type (MAPL_MetaComp), pointer   :: MAPL => null()
-  real, pointer                   :: tmp(:,:) ! needed only to force allocation
-  type (ESMF_State),    pointer   :: GEX(:)
-  type (ESMF_Alarm)               :: alarm, solarAlarm
+  type (ESMF_GridComp), pointer   :: GCS(:) => null()
+  type (MAPL_LocStream)           :: LOCSTREAM
+  type (MAPL_LocStream)           :: EXCH
+  real, pointer :: tmp(:,:) ! needed only to force allocation
+  type (ESMF_State),         pointer  :: GEX(:)
+  type (ESMF_Alarm) :: alarm, solarAlarm
 
 !  Begin...
 !----------
@@ -322,8 +321,7 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, name=COMP_NAME, __RC__)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -338,13 +336,26 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOn (MAPL,"TOTAL")
     call MAPL_TimerOn (MAPL,"INITIALIZE"  )
 
+!!! ALT this section below is not needed
+!+=======================================+
+! Change the location stream to just the ocean part
+!--------------------------------------------------
+
+    call MAPL_Get (MAPL, GCS=GCS, __RC__ )
+
+    call MAPL_Get(MAPL, EXCHANGEGRID=EXCH, __RC__ )
+
+    call MAPL_LocStreamCreate(LOCSTREAM, EXCH, NAME='OCEAN', &
+                                       MASK=(/MAPL_OCEAN/), __RC__ )
+
+    call MAPL_ExchangeGridSet(GCS(SURF), LOCSTREAM, __RC__)
+
     call MAPL_TimerOff(MAPL,"INITIALIZE"  )
     call MAPL_TimerOff(MAPL,"TOTAL")
 
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  __RC__)
 
-!ALT: At this point all the children (i.e. Surface) and grand-childrean 
+!ALT: At this point all the children (i.e. Surface) and grand-children 
 ! have been initialized
 !
 ! we are now mimicking connections in Physics to force allocation
@@ -390,8 +401,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: STATUS
   character(len=ESMF_MAXSTR)          :: COMP_NAME
 
-  integer                             :: DO_CICE_THERMO  ! default (=1) is to run with CICE
-
 ! Locals
 
   type (MAPL_MetaComp),       pointer :: MAPL       => null()
@@ -406,10 +415,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                                   :: IM, JM
   real, dimension(:,:), allocatable         :: Uskin, Vskin, Qskin
   real, dimension(:,:), allocatable, target :: swrad, lwdn
-  real, dimension(:,:), pointer             :: PS, Tair, Qair, Uair, Vair, DZ, ALW, SPEED
-  real, dimension(:,:), pointer             :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin
+  real, dimension(:,:), pointer             :: PS, PSsurf, Tair, Qair, Uair, Vair, DZ, ALW, BLW, SPEED
+  real, dimension(:,:), pointer             :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin, lwdnsrf
   real, dimension(:,:), pointer             :: DRPARN, DFPARN, DRNIRN, DFNIRN, DRUVRN, DFUVRN
 
+  real, allocatable, dimension(:,:) :: ZTH
+  real, allocatable, dimension(:,:) :: SLR
+  real,    pointer, dimension(:,:)    :: LATS     => NULL()
+  real,    pointer, dimension(:,:)    :: LONS     => NULL()
+  real                                :: SC, MG, SB
+  logical                             :: USE_NRLSSI2
+  character(len=ESMF_MAXPATHLEN) :: SolCycFileName
+  logical :: PersistSolar
+  type (MAPL_SunOrbit)                :: ORBIT
+  type (ESMF_TimeInterval)            :: DELT
 
 ! Andrea: do we need these????
   real, parameter :: FRUVR          = 0.07
@@ -443,6 +462,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:,:) :: SWGDWN   ! => null()
 
 ! pointers to export - none???
+! pointers to internal
+  real, pointer, dimension(:,:) :: TS
+  type(ESMF_STATE) :: internal
 
 ! Andrea: OBSERVE????
 !  logical, dimension(1) :: OBSERVE
@@ -450,6 +472,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    real, parameter :: HW_hack = 2.
    logical :: firsttime = .true.
+
+   real :: TAU_TS
+   real :: DT
 
 !  Begin...
 !----------
@@ -481,12 +506,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, __RC__)
 
     call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__ )
+    call MAPL_Get (MAPL, INTERNAL_ESMF_STATE = INTERNAL, __RC__)
+
+    call MAPL_Get(MAPL, HEARTBEAT = DT, __RC__)
+    call MAPL_GetResource ( MAPL, DT, Label="DT:", DEFAULT=DT, __RC__)
+    call MAPL_GetResource ( MAPL, TAU_TS, Label="TAU_TS:", DEFAULT=7200.0, __RC__)
 
 ! Pointers to Imports
 !--------------------
 
 ! Pointers to Internals
 !----------------------
+    call MAPL_GetPointer(Internal, Tskin, 'TS', __RC__)
 
 !  Pointers to Exports ????
 !---------------------
@@ -497,7 +528,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get children and their im/ex states from my generic state.
 !----------------------------------------------------------
     call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCNAMES=GCNAMES, __RC__)
-    VERIFY_(STATUS)
+    call MAPL_Get(MAPL, IM=IM, JM=JM, LATS=LATS, LONS=LONS, ORBIT=ORBIT,__RC__)
+
+    allocate( ZTH  (IM,JM), __STAT__)
+    allocate( SLR  (IM,JM), __STAT__)
 
 !  !IMPORT STATE:
     SurfImport => GIM(SURF)
@@ -506,8 +540,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read Sea Level Pressure (Pa)
 !---------------------------------------------------
     !ALT is this default too low?
-!   call ReadForcingData(impName='PS', frcName='SLP', default=90000., __RC__)
+!    call ReadForcingData(impName='PS', frcName='SLP', default=90000., __RC__)
     call MAPL_GetPointer(import, PS, 'PS', __RC__)
+    call MAPL_GetPointer(SurfImport, PSsurf, 'PS', __RC__)
+    PSsurf = PS 
 
 ! Read 10m temperature (K)
 !---------------------------------------------------
@@ -516,22 +552,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(import, TA, 'TA', __RC__)
     Tair = TA
 
-#define DEBUG
-#ifdef DEBUG
-    if (any(Tair < 150.0)) then
-       print *, 'Low Tair', tair
-    end if
-    if (any(Tair > 400.0)) then
-       print *, 'High Tair', tair
-    end if
-#endif
-
 ! Read 10m specific humidity (kg kg-1)
 !---------------------------------------------------
 !   call ReadForcingData(impName='QA', frcName='Q10', default=2.0e-6, __RC__)
     call MAPL_GetPointer(SurfImport, Qair, 'QA', __RC__)
     call MAPL_GetPointer(import, QA, 'QA', __RC__)
-    Qair = QA * 0.001 ! SA: convert g/Kg to Kg/Kg
+!    Qair = QA * 0.001 ! SA: convert g/Kg to Kg/Kg
+    Qair = QA
 
 ! Read 10m zonal wind speed (m s-1)
 !---------------------------------------------------
@@ -595,11 +622,51 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=100.0, __RC__)
     call MAPL_GetPointer(import, LWGNTWTR, 'LWGNTWTR', __RC__)
     call MAPL_GetPointer(import, LWTUP,    'LWTUP',    __RC__)
+    call MAPL_GetPointer(SurfImport, lwdnsrf, 'LWDNSRF', __RC__)
+
     lwdn = LWGNTWTR + LWTUP
 
 !   call ReadForcingData(swrad, frcName='SWRAD', default=0.200, __RC__)
     call MAPL_GetPointer(import, SWGDWN, 'SWGDWN', __RC__)
     swrad = SWGDWN
+
+    ! get sw at the TOA (next few lines are copy-and-paste from Surface)
+
+! Get the insolation and zenith angle on grid and tiles
+!------------------------------------------------------
+
+    call ESMF_ClockGet(CLOCK,     TIMESTEP=DELT, __RC__)
+    DELT = DELT * NINT((86400./DT)) ! emulate daily Solar
+
+    call MAPL_SunGetInsolation(LONS, LATS,      &
+              ORBIT, ZTH, SLR, &
+              INTV  = DELT,    &
+              CLOCK = CLOCK,   &
+              __RC__ )
+
+    call MAPL_GetResource( MAPL, SC, 'SOLAR_CONSTANT:', __RC__)
+    call MAPL_GetResource( MAPL, SolCycFileName, "SOLAR_CYCLE_FILE_NAME:", DEFAULT='/dev/null', __RC__)
+
+    if(SolCycFileName /= '/dev/null') THEN
+
+       call MAPL_GetResource( MAPL, USE_NRLSSI2, "USE_NRLSSI2:", DEFAULT=.TRUE., __RC__)
+
+       if (USE_NRLSSI2) then
+          call MAPL_GetResource( MAPL, PersistSolar, "PERSIST_SOLAR:", DEFAULT=.TRUE., __RC__)
+          call MAPL_SunGetSolarConstant(CLOCK,trim(SolCycFileName),SC,MG,SB,PersistSolar=PersistSolar,__RC__)
+       else
+          call MAPL_SunGetSolarConstant(CLOCK,trim(SolCycFileName),SC,__RC__)
+       endif
+    else if(SC<0.0) then
+       call MAPL_SunGetSolarConstant(CURRENTTIME,SC,__RC__)
+    end if
+
+!    where (zth <= 0.0 .or. slr == 0.0)
+    where (zth <= 1.0e-6)
+       swrad = 0.0
+    elsewhere
+       swrad = swrad / (sc*slr) 
+    end where
 
     call MAPL_GetPointer(SurfImport, DRPARN, 'DRPARN', __RC__)
     call MAPL_GetPointer(SurfImport, DFPARN, 'DFPARN', __RC__)
@@ -607,44 +674,44 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, DFNIRN, 'DFNIRN', __RC__)
     call MAPL_GetPointer(SurfImport, DRUVRN, 'DRUVRN', __RC__)
     call MAPL_GetPointer(SurfImport, DFUVRN, 'DFUVRN', __RC__)
+
 ! Andrea: Is partitioning OK here? Or something else?
 ! Direct vs duffuse, zenith angle, time of the day???
-    DRPARN = swrad*FRPAR*0.6*1.e-5!swrad*FRPAR*0.6
-    DFPARN = swrad*FRPAR*0.4*1.e-5!swrad*FRPAR*0.4
-    DRUVRN = swrad*FRUVR*0.6*1.e-5!swrad*FRUVR*0.6
-    DFUVRN = swrad*swrad*FRUVR*0.4*1.e-5!swrad*FRUVR*0.4
-    DRNIRN = swrad*FRNIRDIR*1.e-5!swrad*FRNIRDIR
-    DFNIRN = swrad*FRNIRDIF*1.e-5!swrad*FRNIRDIF
+    DRPARN = swrad*FRPAR*0.6
+    DFPARN = swrad*FRPAR*0.4
+    DRUVRN = swrad*FRUVR*0.6
+    DFUVRN = swrad*FRUVR*0.4
+    DRNIRN = swrad*FRNIRDIR
+    DFNIRN = swrad*FRNIRDIF
+
+!@@   print *,'DEBUG:min/max DRPARN',minval(DRPARN),maxval(DRPARN)
 
 ! Andrea: Tskin = TS? From previous time step?
 ! Andrea: do we need radiation vars computed before we call phase 1
-    call MAPL_GetPointer(SurfExport, Tskin, 'TS', __RC__)
+!@    call MAPL_GetPointer(SurfExport, Tskin, 'TS_FOUND', __RC__)
+!@    call MAPL_GetPointer(SurfExport, Tskin, 'TS', __RC__)
+
     call MAPL_GetPointer(SurfImport, ALW, 'ALW', __RC__)
+    call MAPL_GetPointer(SurfImport, BLW, 'BLW', __RC__)
 
     if (firsttime) then
        firsttime = .false.
-       Tskin = Tair
+       Tskin = TA
     end if
 
-#ifdef DEBUG
-!   if (any(Tskin < 150.0)) then
-!      print *, 'Low Tskin', tskin
-!   end if
-!   if (any(Tskin > 400.0)) then
-!      print *, 'High Tskin', tskin
-!   end if
-#endif
- 
-!   WHERE (Tskin < 250.0) Tskin = 250 ! some sanity, values are arbitrary
-!   WHERE (Tskin > 310.0) Tskin = 310.0  ! some sanity, values are arbitrary
+   BLW = 4*MAPL_STFBOL * Tskin**3
+   ALW = MAPL_STFBOL * Tskin**4 - BLW*Tskin
 
-!   ALW = -MAPL_STFBOL * Tskin ** 4 ! ie., sigma t^4 ! SA: Note for AT: use LWTUP to set alw, after checking with Andrea, anyway you have net, upward LW.
-    ALW = LWTUP
-    call SetVarToZero('BLW', __RC__)
+   lwdnsrf = 0.0
+   where(LWGNTWTR /=  MAPL_Undef)
+      lwdnsrf = -(LWGNTWTR - MAPL_STFBOL * Tskin**4)
+   end where
+
+!    call SetVarToZero('BLW', __RC__)
     
     call SetVarToZero('DTSDT', __RC__)
 
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
+!!!    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
 ! call Run (or, phase) 1 of Surface
     call ESMF_GridCompRun (GCS(SURF), importState=GIM(SURF), &
          exportState=GEX(SURF), clock=CLOCK, PHASE=1, userRC=status )
@@ -675,18 +742,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, TAUX, 'TAUX', __RC__)
     call MAPL_GetPointer(SurfImport, TAUY, 'TAUY', __RC__)
 
-    SH = 0*CT * MAPL_CP * (Tskin - Tair)
+    SH = CT * MAPL_CP * (Tskin - Tair)
     EVAP = CQ * (Qskin - Qair) 
     TAUX = CM * (Uskin - Uair)
     TAUY = CM * (Vskin - Vair)
 
-    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
+!!!    if (mapl_am_i_root()) PRINT*, __FILE__, __LINE__
 ! call Run (or, phase) 2 of Surface
     call ESMF_GridCompRun (GCS(SURF), importState=GIM(SURF), &
          exportState=GEX(SURF), clock=CLOCK, PHASE=2, userRC=status )
     VERIFY_(status)
 
 ! by now Saltwater should be able to provide everything the ocean needs
+    call MAPL_GetPointer(SurfExport, TS, 'TS', __RC__)
+
+   WHERE (TS /= MAPL_Undef)   Tskin = Tskin + (TS - Tskin) * DT / (DT + TAU_TS)
 
 !-- still left to do
 ! modify GCM to always get the skin from Saltwater
@@ -800,12 +870,10 @@ contains
 !-------------------------------------------------
     do K = 1, NUM_DUDP
        write(label,'(I3.3)') K
-       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUDP'//label//'_FILE:', default = 'none', RC=STATUS )
-       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUDP'//label//'_FILE:', default = 'none', __RC__ )
        if(trim(datafile) == 'none') then; dry_clay = 0.0
        else
-          call MAPl_ReadForcing( MAPL, 'DUDP'//label, DATAFILE, CURRENTTIME, dry_clay, RC=STATUS )
-          VERIFY_(STATUS)
+          call MAPl_ReadForcing( MAPL, 'DUDP'//label, DATAFILE, CURRENTTIME, dry_clay, __RC__ )
        endif
        if (associated(dry_clayx)) dry_clayx(:,K) = dry_clay
     end do
@@ -814,12 +882,10 @@ contains
 !-------------------------------------------------
     do K = 1, NUM_DUWT
        write(label,'(I3.3)') K
-       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUWT'//label//'_FILE:', default = 'none', RC=STATUS )
-       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUWT'//label//'_FILE:', default = 'none', __RC__ )
        if(trim(datafile) == 'none') then; wet_clay = 0.0
        else
-          call MAPl_ReadForcing( MAPL, 'DUWT'//label, DATAFILE, CURRENTTIME, wet_clay, RC=STATUS )
-          VERIFY_(STATUS)
+          call MAPl_ReadForcing( MAPL, 'DUWT'//label, DATAFILE, CURRENTTIME, wet_clay, __RC__ )
        endif
        if (associated(wet_clayx)) wet_clayx(:,K) = wet_clay
     end do
@@ -828,76 +894,58 @@ contains
 !---------------------------------------------------------
     do K = 1, NUM_DUSD
        write(label,'(I3.3)') K
-       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUSD'//label//'_FILE:', default = 'none', RC=STATUS )
-       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, DATAfile, LABEL='DUSD'//label//'_FILE:', default = 'none', __RC__ )
        if(trim(datafile) == 'none') then; sed_clay = 0.0
        else
-          call MAPl_ReadForcing( MAPL, 'DUSD'//label, DATAFILE, CURRENTTIME, sed_clay, RC=STATUS )
-          VERIFY_(STATUS)
+          call MAPl_ReadForcing( MAPL, 'DUSD'//label, DATAFILE, CURRENTTIME, sed_clay, __RC__ )
        endif
        if (associated(sed_clayx)) sed_clayx(:,K) = sed_clay
     end do
 
 !   Read Atmospheric Clouds (Atmospheric Optics)
 !---------------------------------------------
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CCOVM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CCOVM_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; ccovm = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CCOVM', DATAFILE, CURRENTTIME, ccovm, RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'CCOVM', DATAFILE, CURRENTTIME, ccovm, __RC__ )
     endif; 
 
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CLDTCM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CLDTCM_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; cldtcm = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CLDTCM', DATAFILE, CURRENTTIME, cldtcm, RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'CLDTCM', DATAFILE, CURRENTTIME, cldtcm, __RC__ )
     endif; 
 
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='RLWPM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='RLWPM_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; rlwpm = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'RLWPM', DATAFILE, CURRENTTIME, rlwpm, RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'RLWPM', DATAFILE, CURRENTTIME, rlwpm, __RC__ )
     endif; 
 
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CDREM_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CDREM_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; cdrem = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CDREM', DATAFILE, CURRENTTIME, cdrem, RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'CDREM', DATAFILE, CURRENTTIME, cdrem, __RC__ )
     endif; 
 
 !   Read Atmospheric Properties (Atmospheric Optics)
 !-------------------------------------------------
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='RH_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='RH_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; rh = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'RH', DATAFILE, CURRENTTIME, rh, RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'RH', DATAFILE, CURRENTTIME, rh, __RC__ )
     endif; 
 
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='OZ_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='OZ_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; oz = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'OZ', DATAFILE, CURRENTTIME, oz, RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'OZ', DATAFILE, CURRENTTIME, oz, __RC__ )
     endif; 
 
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='WV_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='WV_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; wv = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'WV', DATAFILE, CURRENTTIME, wv, RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'WV', DATAFILE, CURRENTTIME, wv, __RC__ )
     endif; 
 
 !   Read Atmospheric Carbon Dioxide from Carbon Tracker (_2011_OI)
 !-----------------------------------------------------
-    call MAPL_GetResource( MAPL, DATAfile, LABEL='CO2SC_FILE:', default = 'none', RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DATAfile, LABEL='CO2SC_FILE:', default = 'none', __RC__ )
     if(trim(datafile) == 'none') then; co2sc = 0.0; 
-    else; call MAPl_ReadForcing( MAPL, 'CO2SC', DATAFILE, CURRENTTIME, co2sc,  RC=STATUS )
-        VERIFY_(STATUS)
+    else; call MAPl_ReadForcing( MAPL, 'CO2SC', DATAFILE, CURRENTTIME, co2sc,  __RC__ )
     endif;
     if ( associated(co2scx) ) co2scx = co2sc
 
@@ -907,27 +955,21 @@ contains
 
     do k=1, 33
      write(unit = suffix, fmt = '(i2.2)') k
-     call MAPL_GetResource( MAPL, DATAfile, LABEL='TAUA_FILE:', default = 'none', RC=STATUS )
-     VERIFY_(STATUS)
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='TAUA_FILE:', default = 'none', __RC__ )
      if(trim(datafile) == 'none') then; taua = 0.0
-     else; call MAPL_ReadForcing( MAPL, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, taua, RC=STATUS)
-         VERIFY_(STATUS)
+     else; call MAPL_ReadForcing( MAPL, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, taua, __RC__)
      endif;
      ataua(k)%b => taua
 
-     call MAPL_GetResource( MAPL, DATAfile, LABEL='ASYMP_FILE:', default = 'none', RC=STATUS )
-     VERIFY_(STATUS)
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='ASYMP_FILE:', default = 'none', __RC__ )
      if(trim(datafile) == 'none') then; asymp = 0.0
-     else; call MAPL_ReadForcing( MAPL, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, asymp, RC=STATUS)
-         VERIFY_(STATUS)
+     else; call MAPL_ReadForcing( MAPL, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, asymp, __RC__)
      endif;  
      aasymp(k)%b => asymp
 
-     call MAPL_GetResource( MAPL, DATAfile, LABEL='SSALB_FILE:', default = 'none', RC=STATUS )
-     VERIFY_(STATUS)
+     call MAPL_GetResource( MAPL, DATAfile, LABEL='SSALB_FILE:', default = 'none', __RC__ )
      if(trim(datafile) == 'none') then; ssalb = 0.0
-     else; call MAPL_ReadForcing( MAPL, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ssalb, RC=STATUS)
-         VERIFY_(STATUS)
+     else; call MAPL_ReadForcing( MAPL, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ssalb, __RC__)
      endif;
      assalb(k)%b => ssalb
     enddo
@@ -989,17 +1031,14 @@ end subroutine RUN
 ! -----------------------------------------------------------
 
     Iam = "Finalize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
-    VERIFY_(STATUS)
-    Iam = trim(comp_name) // Iam
+    call ESMF_GridCompGet( gc, NAME=comp_name, __RC__)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, __RC__)
 
-    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=0, __RC__)
 
 ! Profilers
 !----------
@@ -1015,8 +1054,7 @@ end subroutine RUN
 ! Generic Finalize
 ! ------------------
     
-    call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
+    call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, __RC__)
 
 
 ! All Done
