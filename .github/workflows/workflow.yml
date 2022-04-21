@@ -35,10 +35,10 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - name: Checkout GCM
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: GEOS-ESM/GEOSgcm
-          fetch-depth: 1
+          ref: release/MAPL-v3
       - name: Versions etc.
         run: |
           gfortran --version
@@ -48,8 +48,6 @@ jobs:
       - name: Mepo clone external repos
         run: |
           mepo clone
-          mepo status
-          mepo develop GEOSgcm_GridComp GEOSgcm_App
           mepo status
       - name: Update GEOSgcm_GridComp branch
         if: github.head_ref != 'main' && github.head_ref != 'develop'
