@@ -695,7 +695,7 @@ contains
      !call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
 
      ! unpack fields and send them to cice
-     call ice_import_thermo1
+     call ice_import_thermo1(state, rc=rc)
      
      ! let cice update surface temperature and fluxes 
      call ice_fast_physics     
