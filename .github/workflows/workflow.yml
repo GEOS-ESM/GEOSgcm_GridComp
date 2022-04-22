@@ -17,7 +17,7 @@ jobs:
     if: "!contains(github.event.pull_request.labels.*.name, '0 diff trivial')"
     runs-on: ubuntu-latest
     container: 
-      image: gmao/ubuntu20-geos-env-mkl:v6.2.8-openmpi_4.0.6-gcc_11.2.0
+      image: gmao/ubuntu20-geos-env-mkl:v7.0.0-openmpi_4.1.2-gcc_11.2.0
       credentials:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -35,10 +35,10 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - name: Checkout GCM
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: GEOS-ESM/GEOSgcm
-          fetch-depth: 1
+          ref: release/MAPL-v3
       - name: Versions etc.
         run: |
           gfortran --version
@@ -48,8 +48,6 @@ jobs:
       - name: Mepo clone external repos
         run: |
           mepo clone
-          mepo status
-          mepo develop GEOSgcm_GridComp GEOSgcm_App
           mepo status
       - name: Update GEOSgcm_GridComp branch
         if: github.head_ref != 'main' && github.head_ref != 'develop'
