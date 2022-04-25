@@ -3606,8 +3606,8 @@ contains
 
    else
 
-      ! Something is wrong. We've selected neither Chou or RRTMG
-      _ASSERT(.false.,'needs informative message')
+      ! Something is wrong. We've selected neither Chou or RRTMG[P]
+      _ASSERT(.false.,'No LW radiation code selected!')
 
    end if SCHEME
 
