@@ -108,7 +108,7 @@ module GEOS_SolarGridCompMod
 ! restart sequences are seamless only when interrupted at the time of the full
 ! calculation. \newline
 !
-! The calculation relies in MAPL's Astronomy layer, which in turn  assumes that
+! The calculation relies in MAPL's Astronomy layer, which in turn assumes that
 ! the ESMF grid can be queried for latitude and longitude coordinates. \newline
 !
 ! {\em Configuration:} \newline
@@ -159,6 +159,7 @@ module GEOS_SolarGridCompMod
 
   use ESMF
   use MAPL
+  use WOA_Eddington_Rayleigh_Mod
 
   ! for RRTMGP
   use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
@@ -220,9 +221,6 @@ module GEOS_SolarGridCompMod
   INTEGER, PARAMETER :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
   INTEGER, PARAMETER :: NB_RRTMG    = 14
   INTEGER, PARAMETER :: NB_RRTMGP   = 14
-
-#define PACKIT   1
-#define UNPACKIT 2
 
 !EOP
 
@@ -665,6 +663,244 @@ contains
        UNGRIDDED_DIMS = (/ NUM_BANDS_SOLAR /),                               &
        VLOCATION      = MAPL_VLocationNone,                            __RC__)
 
+    ! Advanced Flux Update (AFU) Internals
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'Hogan_and_Bozzo_atmospheric_transmission',              &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'HBATMTRN',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'Hogan_and_Bozzo_atmospheric_reflectance',               &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'HBATMRFL',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'normalized_UVR_TOA_downwelling_flux',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_TDN',                                               &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'UV_Eddington_Rayleigh_effective_optical_thickness',     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_TAUE',                                              &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                                         &
+       LONG_NAME  = 'UV_one_minus_Eddington_Rayleigh_effective_single_scattering_albedo', &
+       UNITS      = '1',                                                                  &
+       SHORT_NAME = 'UVR_SSAEC',                                                          &
+       DEFAULT    = MAPL_UNDEF,                                                           &
+       DIMS       = MAPL_DimsHorzOnly,                                                    &
+       VLOCATION  = MAPL_VLocationNone,                                             __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'UV_Eddington_asymmetry_parameter',                      &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_ASYED',                                             &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'UV_Rayleigh_fraction',                                  &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_FRAY',                                              &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'UV_normalized_flux_RMS_error',                          &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_FRMSE',                                             &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'normalized_PAR_TOA_downwelling_flux',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_TDN',                                               &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'Visible_Eddington_Rayleigh_effective_optical_thickness',&
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_TAUE',                                              &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                                              &
+       LONG_NAME  = 'Visible_one_minus_Eddington_Rayleigh_effective_single_scattering_albedo', &
+       UNITS      = '1',                                                                       &
+       SHORT_NAME = 'PAR_SSAEC',                                                               &
+       DEFAULT    = MAPL_UNDEF,                                                                &
+       DIMS       = MAPL_DimsHorzOnly,                                                         &
+       VLOCATION  = MAPL_VLocationNone,                                                  __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'Visible_Eddington_asymmetry_parameter',                 &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_ASYED',                                             &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'Visible_Rayleigh_fraction',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_FRAY',                                              &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'Visible_normalized_flux_RMS_error',                     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_FRMSE',                                             &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'normalized_NIR_TOA_downwelling_flux',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_TDN',                                               &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'near_IR_Eddington_Rayleigh_effective_optical_thickness',&
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_TAUE',                                              &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                                              &
+       LONG_NAME  = 'near_IR_one_minus_Eddington_Rayleigh_effective_single_scattering_albedo', &
+       UNITS      = '1',                                                                       &
+       SHORT_NAME = 'NIR_SSAEC',                                                               &
+       DEFAULT    = MAPL_UNDEF,                                                                &
+       DIMS       = MAPL_DimsHorzOnly,                                                         &
+       VLOCATION  = MAPL_VLocationNone,                                                  __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'near_IR_Eddington_asymmetry_parameter',                 &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_ASYED',                                             &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'near_IR_Rayleigh_fraction',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_FRAY',                                              &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'near_IR_normalized_flux_RMS_error',                     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_FRMSE',                                             &
+       DEFAULT    = MAPL_UNDEF,                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+! pmn extras
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'mean_cosine_of_the_solar_zenith_angle_REFRESH',         &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'MCOSZ_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'MCOSZ_used_in_ultraviolet_REFRESH',                     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_MCOSZ_REF',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'MCOSZ_used_in_par_REFRESH',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_MCOSZ_REF',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'MCOSZ_used_in_nearinfrared_REFRESH',                    &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_MCOSZ_REF',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'analyze_optics_info_in_ultraviolet',                    &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_AINFO',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'analyze_optics_info_in_par',                            &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_AINFO',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'analyze_optics_info_in_nearinfrared',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_AINFO',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'surface_albedo_for_visible_beam_REFRESH',               &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBVR_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'surface_albedo_for_visible_diffuse_REFRESH',            &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBVF_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'surface_albedo_for_near_infrared_beam_REFRESH',         &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBNR_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'surface_albedo_for_near_infrared_diffuse_REFRESH',      &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBNF_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
 !  !EXPORT STATE:
 
@@ -870,6 +1106,71 @@ contains
        LONG_NAME  = 'surface_downwelling_nearinfrared_diffuse_flux',         &
        UNITS      = 'W m-2',                                                 &
        SHORT_NAME = 'DFNIR',                                                 &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    ! Advanced Flux Update (AFU) Exports from UPDATE (heartbeat)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_downwelling_ultraviolet_beam_flux_AFU',         &
+       UNITS      = 'W m-2',                                                 &
+       SHORT_NAME = 'DRUVR_AFU',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_downwelling_ultraviolet_diffuse_flux_AFU',      &
+       UNITS      = 'W m-2',                                                 &
+       SHORT_NAME = 'DFUVR_AFU',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_downwelling_par_beam_flux_AFU',                 &
+       UNITS      = 'W m-2',                                                 &
+       SHORT_NAME = 'DRPAR_AFU',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_downwelling_par_diffuse_flux_AFU',              &
+       UNITS      = 'W m-2',                                                 &
+       SHORT_NAME = 'DFPAR_AFU',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_downwelling_nearinfrared_beam_flux_AFU',        &
+       UNITS      = 'W m-2',                                                 &
+       SHORT_NAME = 'DRNIR_AFU',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_downwelling_nearinfrared_diffuse_flux_AFU',     &
+       UNITS      = 'W m-2',                                                 &
+       SHORT_NAME = 'DFNIR_AFU',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'MCOSZ_used_in_ultraviolet_AFU',                         &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_MCOSZ_AFU',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'MCOSZ_used_in_par_AFU',                                 &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_MCOSZ_AFU',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'MCOSZ_used_in_nearinfrared_AFU',                        &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_MCOSZ_AFU',                                         &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                __RC__)
 
@@ -1306,6 +1607,227 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                                      &
         VLOCATION  = MAPL_VLocationNone,                               __RC__)
 
+    ! Advanced Flux Update (AFU) Exports from REFRESH
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Hogan_and_Bozzo_atmospheric_transmission',              &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'HBATMTRN',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Hogan_and_Bozzo_atmospheric_reflectance',               &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'HBATMRFL',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'normalized_UVR_TOA_downwelling_flux',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_TDN',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'UV_Eddington_Rayleigh_effective_optical_thickness',     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_TAUE',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                                           &
+       LONG_NAME  = 'UV_one_minus_Eddington_Rayleigh_effective_single_scattering_albedo', &
+       UNITS      = '1',                                                                  &
+       SHORT_NAME = 'UVR_SSAEC',                                                          &
+       DIMS       = MAPL_DimsHorzOnly,                                                    &
+       VLOCATION  = MAPL_VLocationNone,                                             __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'UV_Eddington_asymmetry_parameter',                      &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_ASYED',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'UV_Rayleigh_fraction',                                  &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_FRAY',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'UV_normalized_flux_RMS_error',                          &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_FRMSE',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'normalized_PAR_TOA_downwelling_flux',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_TDN',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Visible_Eddington_Rayleigh_effective_optical_thickness',&
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_TAUE',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                                                &
+       LONG_NAME  = 'Visible_one_minus_Eddington_Rayleigh_effective_single_scattering_albedo', &
+       UNITS      = '1',                                                                       &
+       SHORT_NAME = 'PAR_SSAEC',                                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                                         &
+       VLOCATION  = MAPL_VLocationNone,                                                  __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Visible_Eddington_asymmetry_parameter',                 &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_ASYED',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Visible_Rayleigh_fraction',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_FRAY',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Visible_normalized_flux_RMS_error',                     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_FRMSE',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'normalized_NIR_TOA_downwelling_flux',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_TDN',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'near_IR_Eddington_Rayleigh_effective_optical_thickness',&
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_TAUE',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                                                &
+       LONG_NAME  = 'near_IR_one_minus_Eddington_Rayleigh_effective_single_scattering_albedo', &
+       UNITS      = '1',                                                                       &
+       SHORT_NAME = 'NIR_SSAEC',                                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                                         &
+       VLOCATION  = MAPL_VLocationNone,                                                  __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'near_IR_Eddington_asymmetry_parameter',                 &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_ASYED',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'near_IR_Rayleigh_fraction',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_FRAY',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'near_IR_normalized_flux_RMS_error',                     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_FRMSE',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+! pmn extras
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'mean_cosine_of_the_solar_zenith_angle_REFRESH',         &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'MCOSZ_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'MCOSZ_used_in_ultraviolet_REFRESH',                     &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_MCOSZ_REF',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'MCOSZ_used_in_par_REFRESH',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_MCOSZ_REF',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'MCOSZ_used_in_nearinfrared_REFRESH',                    &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_MCOSZ_REF',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'analyze_optics_info_in_ultraviolet',                    &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'UVR_AINFO',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'analyze_optics_info_in_par',                            &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PAR_AINFO',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'analyze_optics_info_in_nearinfrared',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'NIR_AINFO',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_albedo_for_visible_beam_REFRESH',               &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBVR_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_albedo_for_visible_diffuse_REFRESH',            &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBVF_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_albedo_for_near_infrared_beam_REFRESH',         &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBNR_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'surface_albedo_for_near_infrared_diffuse_REFRESH',      &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'ALBNF_REF',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                __RC__)
+
 !   PMN: Not implemented yet
 !   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !   !!! Normalised REFRESH dioagnostics from each SW code !!!
@@ -1369,6 +1891,7 @@ contains
     call MAPL_TimerAdd(GC, name="PRELIMS"                 , __RC__)
     call MAPL_TimerAdd(GC, name="REFRESH"                 , __RC__)
     call MAPL_TimerAdd(GC, name="-AEROSOLS"               , __RC__)
+    call MAPL_TimerAdd(GC, name="-AFU"                    , __RC__)
     call MAPL_TimerAdd(GC, name="-SORAD"                  , __RC__)
     call MAPL_TimerAdd(GC, name="--SORAD_RUN"             , __RC__)
     call MAPL_TimerAdd(GC, name="--SORAD_DATA"            , __RC__)
@@ -1380,7 +1903,6 @@ contains
     call MAPL_TimerAdd(GC, name="--RRTMG_RUN"             , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMG_INIT"            , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMG_FLIP"            , __RC__)
-
     call MAPL_TimerAdd(GC, name="-RRTMGP"                 , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_IO_GAS"         , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_IO_CLOUDS"      , __RC__)
@@ -1389,7 +1911,6 @@ contains
     call MAPL_TimerAdd(GC, name="--RRTMGP_GAS_OPTICS"     , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_RT"             , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_POST"           , __RC__)
-
     call MAPL_TimerAdd(GC, name="-BALANCE"                , __RC__)
     call MAPL_TimerAdd(GC, name="--CREATE"                , __RC__)
     call MAPL_TimerAdd(GC, name="--DISTRIBUTE"            , __RC__)
@@ -1491,19 +2012,8 @@ contains
     real, pointer, dimension(:,:)       :: LONS
     real, pointer, dimension(:,:)       :: LATS
 
-    real, pointer, dimension(:,:,:)     :: FSWNA, FSWUNA, FSWDNA
-    real, pointer, dimension(:,:,:)     :: FSCNA, FSCUNA, FSCDNA
-    real, pointer, dimension(:,:,:)     :: FSWBANDNA
-
-    real, pointer, dimension(:,:  )     :: RSRNA, RSRSNA, OSRNA,  SLRSFNA,  SLRSUFNA
-    real, pointer, dimension(:,:  )     :: RSCNA, RSCSNA, OSRCNA, SLRSFCNA, SLRSUFCNA
-
-    real, pointer, dimension(:,:  )     :: DFUVRN, DRUVRN
-    real, pointer, dimension(:,:  )     :: DFPARN, DRPARN
-    real, pointer, dimension(:,:  )     :: DFNIRN, DRNIRN
-    real, pointer, dimension(:,:  )     ::  DFUVR,  DRUVR
-    real, pointer, dimension(:,:  )     ::  DFPAR,  DRPAR
-    real, pointer, dimension(:,:  )     ::  DFNIR,  DRNIR
+    real, pointer, dimension(:,:,:)     :: ptr3d
+    real, pointer, dimension(:,:  )     :: ptr2d, ptr2d_
 
     type (ESMF_State)                     :: AERO
     character(len=ESMF_MAXSTR)            :: AS_FIELD_NAME   
@@ -1567,6 +2077,15 @@ contains
     logical                        :: USE_NRLSSI2
     logical                        :: PersistSolar
 
+    logical :: do_no_aero_calc, do_AFU_calc
+
+    ! list of strings facility
+    integer :: i
+    type S_
+      character(len=:), allocatable :: str
+    end type S_
+    type(S_), allocatable :: list(:)
+
 !=============================================================================
 
     ! Get the target components name and set-up traceback handle.
@@ -1614,7 +2133,6 @@ contains
     end if
 
     ! Use time-varying co2
-    !---------------------
     call ESMF_ClockGet(CLOCK, currTIME=CURRENTTIME,       __RC__)
     call ESMF_TimeGet (CURRENTTIME, YY=YY, DayOfYear=DOY, __RC__)
     if(CO2<0.0) then
@@ -1675,9 +2193,8 @@ contains
       NUM_BANDS_SOLAR = NB_CHOU
     end if
 
-! Test to see if AGCM.rc is set up correctly for the Radiation selected
-!----------------------------------------------------------------------
-
+    ! Test to see if AGCM.rc is set up correctly for the Radiation selected
+    !----------------------------------------------------------------------
     call MAPL_GetResource (MAPL, NUM_BANDS ,'NUM_BANDS:', __RC__)
 
     TOTAL_RAD_BANDS = NUM_BANDS_SOLAR
@@ -1699,8 +2216,8 @@ contains
       _ASSERT(.FALSE.,'Total number of radiation bands is inconsistent!')
    end if
 
-! Decide how to do solar forcing
-!-------------------------------
+   ! Decide how to do solar forcing
+   !-------------------------------
 
     call MAPL_GetResource (MAPL, SolCycFileName, "SOLAR_CYCLE_FILE_NAME:", DEFAULT='/dev/null', __RC__)
     if(SolCycFileName /= '/dev/null') THEN
@@ -1774,14 +2291,11 @@ contains
        HK_IR_TEMP = HK_IR_OLD
     end if
 
+    ! Determine the model level separating high-middle and low-middle clouds
+    !-----------------------------------------------------------------------
 
-! We use the reference pressures to separate high, middle, and low clouds.
-!-------------------------------------------------------------------------
-
+    ! Use the reference pressures to separate high, middle, and low clouds.
     call MAPL_GetPointer(IMPORT, PREF, 'PREF', __RC__)
-
-! Determine the model level separating high-middle and low-middle clouds
-!-----------------------------------------------------------------------
 
     _ASSERT(PRS_MID_HIGH > PREF(1)     , 'mid-high pressure band boundary too high!')
     _ASSERT(PRS_LOW_MID  > PRS_MID_HIGH, 'pressure band misordering!')
@@ -1814,32 +2328,31 @@ contains
     !    layers [LCLDMH, LCLDLM-1] are in mid  pressure band
     !    layers [LCLDLM, LM      ] are in low  pressure band
 
-    call MAPL_TimerOff(MAPL,"PRELIMS",__RC__)
+    ! do an Advanced Flux Update calculation?
+    ! ---------------------------------------
+    call MAPL_GetResource (MAPL, do_AFU_calc, "DO_AFU_CALC:", DEFAULT=.FALSE., __RC__)
 
-! Determine calling sequence
-! This getresource is a kludge for now and needs to be fixed 
-! in the spec, because GC needs this info to 
-! know when to set the alarm, last or first step of interval
-! right now it is always the last, which is only correct for called_last=1.
-!---------------------------
-
-    call MAPL_TimerOn (MAPL,"UPDATE",__RC__) 
+    ! Determine calling sequence ...
+    ! This getresource is a kludge for now and needs to be fixed in the spec,
+    ! because GC needs this info to know when to set the alarm, last or first
+    ! step of interval. Right now it is always the last, which is only correct
+    ! for called_last=1.
+    !---------------------------
 
     call MAPL_GetResource (MAPL, CalledLast, 'CALLED_LAST:', default=1, __RC__)
     UPDATE_FIRST = CalledLast /= 0
 
-! Update the Sun position and weigh the export variables
-! --------------------------------------------------------
-   
+    call MAPL_TimerOff(MAPL,"PRELIMS",__RC__)
+
+    ! Update the Sun position and weigh the export variables
     if (UPDATE_FIRST) then
+       call MAPL_TimerOn  (MAPL,"UPDATE",__RC__) 
        call UPDATE_EXPORT (IM,JM,LM,__RC__) 
+       call MAPL_TimerOff (MAPL,"UPDATE",__RC__)
     end if
 
-    call MAPL_TimerOff (MAPL,"UPDATE",__RC__)
-
-! If its time, refresh the internal state
-! ---------------------------------------
-
+    ! Periodically, refresh the internal state with a full solar calculation
+    ! ----------------------------------------------------------------------
     REFRESH_FLUXES = ESMF_AlarmIsRinging (ALARM, __RC__)
        
     REFRESH: if ( REFRESH_FLUXES ) then
@@ -1859,9 +2372,8 @@ contains
           call ESMF_TimeIntervalSet(INTDT, s=0, __RC__)
        end if
 
-! Get optical properties of radiatively active aerosols.
-! ------------------------------------------------------
-
+       ! Get optical properties of radiatively active aerosols
+       ! -----------------------------------------------------
        call MAPL_TimerOn (MAPL,"-AEROSOLS", __RC__)
 
        call ESMF_StateGet(IMPORT, 'AERO', AERO, __RC__)
@@ -1871,190 +2383,186 @@ contains
 
        RADIATIVELY_ACTIVE_AEROSOLS: if (implements_aerosol_optics) then
 
-           ! set RH for aerosol optics
-           call ESMF_AttributeGet(AERO, name='relative_humidity_for_aerosol_optics', &
-                                        value=AS_FIELD_NAME, __RC__)
+          ! set RH for aerosol optics
+          call ESMF_AttributeGet(AERO, name='relative_humidity_for_aerosol_optics', &
+                                       value=AS_FIELD_NAME, __RC__)
 
-           if (AS_FIELD_NAME /= '') then
-               call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE', __RC__)
-               call MAPL_GetPointer(IMPORT, AS_PTR_Q,   'QV',  __RC__)
-               call MAPL_GetPointer(IMPORT, AS_PTR_T,   'T',   __RC__)
+          if (AS_FIELD_NAME /= '') then
+             call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE', __RC__)
+             call MAPL_GetPointer(IMPORT, AS_PTR_Q,   'QV',  __RC__)
+             call MAPL_GetPointer(IMPORT, AS_PTR_T,   'T',   __RC__)
 
-               allocate(AS_ARR_RH(IM,JM,LM), AS_ARR_PL(IM,JM,LM), __STAT__)
-               AS_ARR_PL = 0.5*(AS_PTR_PLE(:,:,1:LM) + AS_PTR_PLE(:,:,0:LM-1))
-               AS_ARR_RH = AS_PTR_Q / MAPL_EQSAT(AS_PTR_T, PL=AS_ARR_PL)
+             allocate(AS_ARR_RH(IM,JM,LM), AS_ARR_PL(IM,JM,LM), __STAT__)
+             AS_ARR_PL = 0.5*(AS_PTR_PLE(:,:,1:LM) + AS_PTR_PLE(:,:,0:LM-1))
+             AS_ARR_RH = AS_PTR_Q / MAPL_EQSAT(AS_PTR_T, PL=AS_ARR_PL)
      
-               call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-               AS_PTR_3D = AS_ARR_RH
-      
-               deallocate(AS_ARR_RH, AS_ARR_PL, __STAT__)
-           end if
+             call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+             AS_PTR_3D = AS_ARR_RH
+     
+             deallocate(AS_ARR_RH, AS_ARR_PL, __STAT__)
+          end if
 
-           ! set PLE for aerosol optics
-           call ESMF_AttributeGet(AERO, name='air_pressure_for_aerosol_optics', &
-                                        value=AS_FIELD_NAME, __RC__)
+          ! set PLE for aerosol optics
+          call ESMF_AttributeGet(AERO, name='air_pressure_for_aerosol_optics', &
+                                       value=AS_FIELD_NAME, __RC__)
 
-           if (AS_FIELD_NAME /= '') then
-               call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE', __RC__)
-               call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-               AS_PTR_3D = AS_PTR_PLE
-           end if
+          if (AS_FIELD_NAME /= '') then
+             call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE', __RC__)
+             call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+             AS_PTR_3D = AS_PTR_PLE
+          end if
 
-           ! allocate memory for total aerosol ext, ssa and asy at all solar bands
-           allocate(AEROSOL_EXT(IM,JM,LM,NUM_BANDS_SOLAR), &
-                    AEROSOL_SSA(IM,JM,LM,NUM_BANDS_SOLAR), &
-                    AEROSOL_ASY(IM,JM,LM,NUM_BANDS_SOLAR), __STAT__)
+          ! allocate memory for total aerosol ext, ssa and asy at all solar bands
+          allocate(AEROSOL_EXT(IM,JM,LM,NUM_BANDS_SOLAR), &
+                   AEROSOL_SSA(IM,JM,LM,NUM_BANDS_SOLAR), &
+                   AEROSOL_ASY(IM,JM,LM,NUM_BANDS_SOLAR), __STAT__)
 
-           AEROSOL_EXT = 0.
-           AEROSOL_SSA = 0.
-           AEROSOL_ASY = 0.
+          AEROSOL_EXT = 0.
+          AEROSOL_SSA = 0.
+          AEROSOL_ASY = 0.
 
-           ! compute aerosol optics at all solar bands
-           SOLAR_BANDS: do band = 1, NUM_BANDS_SOLAR
-               call ESMF_AttributeSet(AERO, name='band_for_aerosol_optics', &
-                                           value=(BANDS_SOLAR_OFFSET+band), __RC__)
+          ! compute aerosol optics at all solar bands
+          SOLAR_BANDS: do band = 1, NUM_BANDS_SOLAR
+             call ESMF_AttributeSet(AERO, name='band_for_aerosol_optics', &
+                                          value=(BANDS_SOLAR_OFFSET+band), __RC__)
 
-               ! execute the aero provider's optics method 
-               call ESMF_MethodExecute(AERO, label="aerosol_optics", userRC=AS_STATUS, RC=STATUS)
-               VERIFY_(AS_STATUS)
-               VERIFY_(STATUS)
+             ! execute the aero provider's optics method 
+             call ESMF_MethodExecute(AERO, label="aerosol_optics", userRC=AS_STATUS, RC=STATUS)
+             VERIFY_(AS_STATUS)
+             VERIFY_(STATUS)
 
-               ! EXT from AERO_PROVIDER
-               call ESMF_AttributeGet(AERO, name='extinction_in_air_due_to_ambient_aerosol', &
-                                            value=AS_FIELD_NAME, __RC__)
-               if (AS_FIELD_NAME /= '') then
-                   call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-                   if (associated(AS_PTR_3D)) AEROSOL_EXT(:,:,:,band) = AS_PTR_3D
-               end if
+             ! EXT from AERO_PROVIDER
+             call ESMF_AttributeGet(AERO, name='extinction_in_air_due_to_ambient_aerosol', &
+                                          value=AS_FIELD_NAME, __RC__)
+             if (AS_FIELD_NAME /= '') then
+                call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+                if (associated(AS_PTR_3D)) AEROSOL_EXT(:,:,:,band) = AS_PTR_3D
+             end if
 
-               ! SSA from AERO_PROVIDER
-               call ESMF_AttributeGet(AERO, name='single_scattering_albedo_of_ambient_aerosol', &
-                                            value=AS_FIELD_NAME, __RC__)
-               if (AS_FIELD_NAME /= '') then
-                   call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-                   if (associated(AS_PTR_3D)) AEROSOL_SSA(:,:,:,band) = AS_PTR_3D
-               end if
+             ! SSA from AERO_PROVIDER
+             call ESMF_AttributeGet(AERO, name='single_scattering_albedo_of_ambient_aerosol', &
+                                          value=AS_FIELD_NAME, __RC__)
+             if (AS_FIELD_NAME /= '') then
+                call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+                if (associated(AS_PTR_3D)) AEROSOL_SSA(:,:,:,band) = AS_PTR_3D
+             end if
 
-               ! ASY from AERO_PROVIDER
-               call ESMF_AttributeGet(AERO, name='asymmetry_parameter_of_ambient_aerosol', &
-                                            value=AS_FIELD_NAME, __RC__)
-               if (AS_FIELD_NAME /= '') then
-                   call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-                   if (associated(AS_PTR_3D)) AEROSOL_ASY(:,:,:,band) = AS_PTR_3D
-               end if    
-           end do SOLAR_BANDS
+             ! ASY from AERO_PROVIDER
+             call ESMF_AttributeGet(AERO, name='asymmetry_parameter_of_ambient_aerosol', &
+                                          value=AS_FIELD_NAME, __RC__)
+             if (AS_FIELD_NAME /= '') then
+                call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+                if (associated(AS_PTR_3D)) AEROSOL_ASY(:,:,:,band) = AS_PTR_3D
+             end if    
+          end do SOLAR_BANDS
 
        end if RADIATIVELY_ACTIVE_AEROSOLS
 
        call MAPL_TimerOff(MAPL,"-AEROSOLS", __RC__)
 
-! No-aerosol calculations if requested.
-!--------------------------------------
+       ! Optional without-aerosol diagnostics
+       ! ------------------------------------
 
-       call MAPL_GetPointer(EXPORT, FSWNA,     'FSWNA',     __RC__)
-       call MAPL_GetPointer(EXPORT, FSCNA,     'FSCNA',     __RC__)
-       call MAPL_GetPointer(EXPORT, FSWUNA,    'FSWUNA',    __RC__)
-       call MAPL_GetPointer(EXPORT, FSCUNA,    'FSCUNA',    __RC__)
-       call MAPL_GetPointer(EXPORT, FSWDNA,    'FSWDNA',    __RC__)
-       call MAPL_GetPointer(EXPORT, FSCDNA,    'FSCDNA',    __RC__)
-       call MAPL_GetPointer(EXPORT, FSWBANDNA, 'FSWBANDNA', __RC__)
+       ! this line temporarily needed because of compiler bug
+       allocate(list(1)); list(1) = S_('dummy')
 
-       call MAPL_GetPointer(EXPORT, RSRSNA,    'RSRSNA',    __RC__)
-       call MAPL_GetPointer(EXPORT, RSCSNA,    'RSCSNA',    __RC__)
-       call MAPL_GetPointer(EXPORT, RSRNA,     'RSRNA',     __RC__)
-       call MAPL_GetPointer(EXPORT, RSCNA,     'RSCNA',     __RC__)
-       call MAPL_GetPointer(EXPORT, OSRNA,     'OSRNA',     __RC__)
-       call MAPL_GetPointer(EXPORT, OSRCNA,    'OSRCNA',    __RC__)
-       call MAPL_GetPointer(EXPORT, SLRSFNA,   'SLRSFNA',   __RC__)
-       call MAPL_GetPointer(EXPORT, SLRSFCNA,  'SLRSFCNA',  __RC__)
-       call MAPL_GetPointer(EXPORT, SLRSUFNA,  'SLRSUFNA',  __RC__)
-       call MAPL_GetPointer(EXPORT, SLRSUFCNA, 'SLRSUFCNA', __RC__)
-       
-       if( associated(FSWNA)     .or. associated(FSCNA)     .or.  &
-           associated(FSWDNA)    .or. associated(FSCDNA)    .or.  &
-           associated(FSWUNA)    .or. associated(FSCUNA)    .or.  &
-           associated(FSWBANDNA) .or.                             &
-           associated(RSRNA)     .or. associated(RSCNA)     .or.  &
-           associated(RSRSNA)    .or. associated(RSCSNA)    .or.  &
-           associated(OSRNA)     .or. associated(OSRCNA)    .or.  &
-           associated(SLRSFNA)   .or. associated(SLRSFCNA)  .or.  &
-           associated(SLRSUFNA)  .or. associated(SLRSUFCNA)       &
-       ) then
-           call SORADCORE(IM,JM,LM,            &
-                NO_AERO  = .true.,             &
-                CURRTIME = CURRENTTIME+INTDT,  &
-                LoadBalance = LoadBalance,     &
-                __RC__)
+       ! are without-aerosol exports requested?
+       do_no_aero_calc = .false.
+       list = [S_('FSWNA'), S_('FSWUNA'), S_('FSWDNA'), &
+               S_('FSCNA'), S_('FSCUNA'), S_('FSWDNA'), &
+               S_('FSWBANDNA')]
+       do i = 1, size(list)
+         call MAPL_GetPointer( EXPORT, ptr3d, list(i)%str, __RC__)
+         do_no_aero_calc = (do_no_aero_calc .or. associated(ptr3d))
+       end do
+       list = [S_('RSRNA'), S_('RSRSNA'), S_('OSRNA') , &
+               S_('RSCNA'), S_('RSCSNA'), S_('OSRCNA'), &
+               S_('SLRSFNA'),  S_('SLRSUFNA'), &
+               S_('SLRSFCNA'), S_('SLRSUFCNA')]
+       do i = 1, size(list)
+         call MAPL_GetPointer( EXPORT, ptr2d, list(i)%str, __RC__)
+         do_no_aero_calc = (do_no_aero_calc .or. associated(ptr2d))
+       end do
+
+       if (do_no_aero_calc) then
+
+          ! do a calculation without aerosols:
+          !   this just sets the no-aerosol internals ---
+          !   the exports are derived from the internals in update_export()
+          call SORADCORE(IM,JM,LM,            &
+               NO_AERO  = .true.,             &
+               CURRTIME = CURRENTTIME+INTDT,  &
+               LoadBalance = LoadBalance,     &
+               __RC__)
        else
-          ! no aerosol exports not requested, so set no aerosol
-          ! normalized internals to zero.
-          call MAPL_GetPointer(INTERNAL, FSWNA,     'FSWNAN',     __RC__)
-          call MAPL_GetPointer(INTERNAL, FSWUNA,    'FSWUNAN',    __RC__)
-          call MAPL_GetPointer(INTERNAL, FSCNA,     'FSCNAN',     __RC__)
-          call MAPL_GetPointer(INTERNAL, FSCUNA,    'FSCUNAN',    __RC__)
-          call MAPL_GetPointer(INTERNAL, FSWBANDNA, 'FSWBANDNAN', __RC__)
-          FSWNA = 0.0
-          FSCNA = 0.0
-          FSWUNA = 0.0
-          FSCUNA = 0.0
-          FSWBANDNA = 0.0
+
+          ! otherwise, zero the no-aerosol internals
+          list = [S_('FSWNAN'), S_('FSWUNAN'), &
+                  S_('FSCNAN'), S_('FSCUNAN'), S_('FSWBANDNAN')]
+          do i = 1, size(list)
+            call MAPL_GetPointer( INTERNAL, ptr3d, list(i)%str, __RC__)
+            ptr3d = 0.
+          end do
+
        end if
 
-! Regular with-aerosol calculations
-! ---------------------------------
-
+       ! Regular with-aerosol calculations
+       ! ---------------------------------
        call SORADCORE(IM,JM,LM,                    &
                       NO_AERO  = .false.,          &
                       CURRTIME = CURRENTTIME+INTDT,&
                       LoadBalance = LoadBalance,   &
                       __RC__)
 
-       ! Clean up aerosol optical properties.
-
+       ! Clean up aerosol optical properties
+       ! -----------------------------------
        if (implements_aerosol_optics) then
            deallocate(AEROSOL_EXT, __STAT__)
            deallocate(AEROSOL_SSA, __STAT__)
            deallocate(AEROSOL_ASY, __STAT__)
        end if
 
-       ! Export normalized internals if requested.
+       ! Export normalized internals if requested
+       ! ----------------------------------------
 
-       call MAPL_GetPointer(INTERNAL, DRUVRN, 'DRUVRN', __RC__)
-       call MAPL_GetPointer(INTERNAL, DFUVRN, 'DFUVRN', __RC__)
-       call MAPL_GetPointer(INTERNAL, DRPARN, 'DRPARN', __RC__)
-       call MAPL_GetPointer(INTERNAL, DFPARN, 'DFPARN', __RC__)
-       call MAPL_GetPointer(INTERNAL, DRNIRN, 'DRNIRN', __RC__)
-       call MAPL_GetPointer(INTERNAL, DFNIRN, 'DFNIRN', __RC__)
+       ! surface downwelling normalized fluxes
+       list = [S_('DRUVRN'), S_('DRPARN'), S_('DRNIRN'),                                            &
+               S_('DFUVRN'), S_('DFPARN'), S_('DFNIRN')]
+       do i = 1, size(list)
+         call MAPL_GetPointer( INTERNAL, ptr2d, list(i)%str, __RC__)
+         call MAPL_GetPointer( EXPORT,  ptr2d_, list(i)%str, __RC__)
+         if (associated( ptr2d_)) ptr2d_ = ptr2d
+       end do
 
-       call MAPL_GetPointer(EXPORT  , DRUVR,  'DRUVRN', __RC__)
-       call MAPL_GetPointer(EXPORT  , DFUVR,  'DFUVRN', __RC__)
-       call MAPL_GetPointer(EXPORT  , DRPAR,  'DRPARN', __RC__)
-       call MAPL_GetPointer(EXPORT  , DFPAR,  'DFPARN', __RC__)
-       call MAPL_GetPointer(EXPORT  , DRNIR,  'DRNIRN', __RC__)
-       call MAPL_GetPointer(EXPORT  , DFNIR,  'DFNIRN', __RC__)
-
-       if (associated(DRUVR)) DRUVR = DRUVRN
-       if (associated(DFUVR)) DFUVR = DFUVRN
-       if (associated(DRPAR)) DRPAR = DRPARN
-       if (associated(DFPAR)) DFPAR = DFPARN
-       if (associated(DRNIR)) DRNIR = DRNIRN
-       if (associated(DFNIR)) DFNIR = DFNIRN
+       ! and Advanced Flux Update (AFU) internals
+!TODO ... some can probably be pure diagnostics as per CLDxxSW now that Int -> Out
+       if (do_AFU_calc) then
+          call MAPL_TimerOn (MAPL,"-AFU",__RC__)
+          list = [S_('HBATMTRN'), S_('HBATMRFL'),                                                      &
+                  S_('UVR_TDN'), S_('UVR_TAUE'), S_('UVR_SSAEC'), S_('UVR_ASYED'), S_('UVR_FRAY'),     &
+                  S_('PAR_TDN'), S_('PAR_TAUE'), S_('PAR_SSAEC'), S_('PAR_ASYED'), S_('PAR_FRAY'),     &
+                  S_('NIR_TDN'), S_('NIR_TAUE'), S_('NIR_SSAEC'), S_('NIR_ASYED'), S_('NIR_FRAY'),     &
+                  S_('MCOSZ_REF'), S_('ALBVR_REF'), S_('ALBVF_REF'), S_('ALBNR_REF'), S_('ALBNF_REF'), &
+                  S_('UVR_MCOSZ_REF'), S_('PAR_MCOSZ_REF'), S_('NIR_MCOSZ_REF'),                       &
+                  S_('UVR_AINFO'    ), S_('PAR_AINFO'    ), S_('NIR_AINFO'    ),                       &
+                  S_('UVR_FRMSE'    ), S_('PAR_FRMSE'    ), S_('NIR_FRMSE'    )]
+          do i = 1, size(list)
+            call MAPL_GetPointer( INTERNAL, ptr2d, list(i)%str, __RC__)
+            call MAPL_GetPointer( EXPORT,  ptr2d_, list(i)%str, __RC__)
+            if (associated(ptr2d_)) ptr2d_ = ptr2d
+          end do
+          call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+       end if
 
        call MAPL_TimerOff(MAPL,"REFRESH",__RC__)
     endif REFRESH
 
-
-! Update the Sun position and weigh the export variables
-! --------------------------------------------------------
-    
+    ! Update the Sun position and weigh the export variables
     if (.not.UPDATE_FIRST) then
        call MAPL_TimerOn  (MAPL,"UPDATE",__RC__)
        call UPDATE_EXPORT (IM,JM,LM,     __RC__)
        call MAPL_TimerOff (MAPL,"UPDATE",__RC__)
     end if
-
-! All done
-!---------
 
     call MAPL_TimerOff (MAPL,"TOTAL",__RC__)
     RETURN_(ESMF_SUCCESS)
@@ -2136,55 +2644,57 @@ contains
       ! cosine solar zenith angle used by REFRESH
       real, pointer, dimension(:,:)   :: COSZSW
 
-!  DAYTIME ONLY COPY OF VARIABLES
+      ! Daytime ONLY copy of variables
+      ! ------------------------------
 
-      real, pointer, dimension(:  )   :: ALBNR,ALBNF,ALBVR,ALBVF,ZT,SLR1D, &
-                                         UVRR,UVRF,PARR,PARF,NIRR,NIRF,Ig1D,Jg1D, &
-                                         CLDTS,CLDHS,CLDMS,CLDLS, &
-                                         TAUTP,TAUHP,TAUMP,TAULP
-      real, pointer, dimension(:,:,:) :: FCLD,TAUI,TAUW,CLIN,RRL,RRI,RQI,RQL,RQR
-      real, pointer, dimension(:,:,:) :: DP, PLL
-      real, pointer, dimension(:,:,:) :: RAERO
-      real, pointer, dimension(:,:)   :: T, Q, OX, PLE, CL, QL, QI, QR, QS, &
-                                         RL, RI, RR, RS, FSW, FSC, FSWA, FSCA
-      real, pointer, dimension(:,:)   :: ALBIMP, ALBINT
-                                         
-      real, pointer, dimension(:,:)   :: FSWU     ! Flux shortwave up all-sky
-      real, pointer, dimension(:,:)   :: FSCU     ! Flux shortwave up clear-sky
-      real, pointer, dimension(:,:)   :: FSWUA    ! Flux shortwave up all-sky no aerosol
-      real, pointer, dimension(:,:)   :: FSCUA    ! Flux shortwave up clear-sky no aerosol
-      real, pointer, dimension(:,:)   :: FSWBAND  ! Flux shortwave surface per band
-      real, pointer, dimension(:,:)   :: FSWBANDA ! Flux shortwave surface per band no aerosol
-                                         
-      integer :: ICEFLGSW        ! Flag for ice particle specification
-      integer :: LIQFLGSW        ! Flag for liquid droplet specification
+      ! inputs
+      real, pointer, dimension(:,:)   :: PLE, CH4, N2O, T, Q, OX, CL, &
+                                         QL, QI, QR, QS, RL, RI, RR, RS
+      real, pointer, dimension(:)     :: TS, ALBNR, ALBNF, ALBVR, ALBVF, &
+                                         Ig1D, Jg1D, ALAT, SLR1D, ZT
 
-      real, pointer, dimension(:  )       :: ALAT
-      real, pointer, dimension(:  )       :: TS
-      real, pointer, dimension(:,:)       :: CH4, N2O
-      real, allocatable, dimension(:,:)   :: SWUFLXR, SWDFLXR, SWUFLXCR, SWDFLXCR
+      ! outputs
+      real, pointer, dimension(:,:)   :: FSW, FSC, FSWA, FSCA, FSWU, FSCU, FSWUA, FSCUA, &
+                                         FSWBAND, FSWBANDA
+      real, pointer, dimension(:)     :: UVRR, UVRF, PARR, PARF, NIRR, NIRF, &
+                                         CLDTS, CLDHS, CLDMS, CLDLS, &
+                                         TAUTP, TAUHP, TAUMP, TAULP
+      real, pointer, dimension(:)     :: HBATMTRN, HBATMRFL, &
+                                         UVR_TDN, UVR_TAUE, UVR_SSAEC, UVR_ASYED, UVR_FRAY, &
+                                         PAR_TDN, PAR_TAUE, PAR_SSAEC, PAR_ASYED, PAR_FRAY, &
+                                         NIR_TDN, NIR_TAUE, NIR_SSAEC, NIR_ASYED, NIR_FRAY, &
+                                         MCOSZ_REF, ALBVR_REF, ALBVF_REF, ALBNR_REF, ALBNF_REF, &
+                                         UVR_MCOSZ_REF, PAR_MCOSZ_REF, NIR_MCOSZ_REF, &
+                                         UVR_AINFO,     PAR_AINFO,     NIR_AINFO,     &
+                                         UVR_FRMSE,     PAR_FRMSE,     NIR_FRMSE
 
-      real, allocatable, dimension(:,:)   :: TLEV, TLEV_R, PLE_R
-      real, allocatable, dimension(:,:)   :: FCLD_R, CLIQWP, CICEWP, RELIQ, REICE
+      ! variables for RRTMG code
+      ! ------------------------
 
+      integer :: ICEFLGSW  ! Flag for ice particle specification
+      integer :: LIQFLGSW  ! Flag for liquid droplet specification
+
+      real,    allocatable, dimension(:,:)   :: TLEV, TLEV_R, PLE_R
+      real,    allocatable, dimension(:,:)   :: FCLD_R, CLIQWP, CICEWP, RELIQ, REICE
       real,    allocatable, dimension(:,:,:) :: TAUAER, SSAAER, ASMAER
-      real,    allocatable, dimension(:,:)   :: DPR, PL_R, T_R, Q_R, O2_R, O3_R, ZL_R
-      real,    allocatable, dimension(:,:)   :: CO2_R, CH4_R
+      real,    allocatable, dimension(:,:)   :: DPR, PL_R, ZL_R, T_R, Q_R, O2_R, O3_R, CO2_R, CH4_R
+
       integer, allocatable, dimension(:,:)   :: CLEARCOUNTS
-      real,    allocatable, dimension(:,:)   :: SWUFLX, SWDFLX, SWUFLXC, SWDFLXC
+      real,    allocatable, dimension(:,:)   :: SWUFLX,  SWDFLX,  SWUFLXC,  SWDFLXC
+      real,    allocatable, dimension(:,:)   :: SWUFLXR, SWDFLXR, SWUFLXCR, SWDFLXCR
       real,    allocatable, dimension(:)     :: NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R
 
       ! pmn: should we update these?
-      real, parameter :: O2   = 0.2090029E+00 ! preexisting
-      real, parameter :: N2   = 0.7906400E+00 ! approx from rrtmgp input file
-      real, parameter :: CO   = 0.0           ! currently zero
+      real, parameter :: O2 = 0.2090029E+00 ! preexisting
+      real, parameter :: N2 = 0.7906400E+00 ! approx from rrtmgp input file
+      real, parameter :: CO = 0.0           ! currently zero
 
       real    :: ADJES, DIST
       integer :: DYOFYR
       integer :: NCOL
       integer :: RPART, IAER, NORMFLX
 
-      real :: X
+!x    real :: X
 
       integer                   :: ISOLVAR
       real, dimension(2)        :: INDSOLVAR
@@ -2216,7 +2726,8 @@ contains
       real(wp), dimension(:),       allocatable         :: flux_dn_top
       real(wp), dimension(:,:),     allocatable, target :: flux_up_clrsky, flux_net_clrsky
       real(wp), dimension(:,:),     allocatable, target :: flux_up_allsky, flux_net_allsky
-      real(wp), dimension(:,:,:),   allocatable, target :: bnd_flux_dn_allsky, bnd_flux_net_allsky, bnd_flux_dir_allsky
+      real(wp), dimension(:,:,:),   allocatable, target :: bnd_flux_dn_allsky, bnd_flux_up_allsky, &
+                                                           bnd_flux_dir_allsky
 
       ! derived types for interacting with RRTMGP
       ! (cloud_optics generates cloud_props_bnd from loaded
@@ -2289,38 +2800,46 @@ contains
       ! set from resource file
       integer :: rrtmgp_blockSize
 
-! For Aerosol
-      integer :: in, idx, ibb, i
-      real, pointer, dimension(:,:,:) :: qaero, taua, ssaa, asya
+!x    integer :: in
 
+      ! For Aerosol
+      real, pointer, dimension(:,:,:)     :: taua, ssaa, asya
       real, pointer, dimension(:,:,:)     :: BUFIMP_AEROSOL_EXT => null()
       real, pointer, dimension(:,:,:)     :: BUFIMP_AEROSOL_SSA => null()
       real, pointer, dimension(:,:,:)     :: BUFIMP_AEROSOL_ASY => null()
       real, allocatable, dimension(:,:,:) :: BUF_AEROSOL
 
-      character(len=ESMF_MAXSTR)      :: NAME
-
-      integer :: dims
-      integer :: NumVars
-      integer :: L, L1, LN, J, J1, JN, NA, K
-      integer :: NumLit, Num2do
-      integer :: ibinary
-
+      ! LoadBalance and general
       real, pointer :: QQ3(:,:,:), RR3(:,:,:), ptr3(:,:,:)
       real, pointer :: ptr2(:,:), RH(:,:), PL(:,:), O3(:,:), PLTMP(:,:)
-
+      integer :: dims, NumLit, Num2do
+      integer :: L, L1, LN, J1, JN, NA, I, J, K
       character(len=ESMF_MAXSTR), allocatable :: NamesInp(:), NamesOut(:)
-      type (ESMF_FieldBundle)   :: AEROBUNDLE
       integer, allocatable      :: SlicesInp(:),SlicesOut(:)
       real, target, allocatable :: BufInp(:),BufOut(:)
       integer :: NumMax, NumInp, NumOut, HorzDims(2), BufLen
+      integer :: ibinary
+      real :: internalDefault
 
-! helper for testing RRTMGP error status on return;
+      ! For Advanced Flux Update (AFU)
+      ! ------------------------------
+      type(Eddington_Rayleigh_Optics) :: obkg
+      type(WOA_Eddington_Rayleigh) :: Ebkg, Eana
+      double precision :: b_taue, b_ssae, b_g_Ed, b_f_Ry
+      integer :: analyze_optics_info
+      logical :: do_AFU_analysis
+      double precision :: frmse
+      real :: bmtrans
+      real, allocatable, dimension(:,:) :: UVR_UPF, PAR_UPF, NIR_UPF
+      real, allocatable, dimension(:,:) :: UVR_DNB, PAR_DNB, NIR_DNB
+      real, allocatable, dimension(:,:) :: UVR_DNR, PAR_DNR, NIR_DNR
+      real, allocatable, dimension(:)   :: UVR_ALR, PAR_ALR, NIR_ALR
+      real, allocatable, dimension(:)   :: UVR_ALF, PAR_ALF, NIR_ALF
+      real, allocatable, dimension(:)   :: V1D
+
+! helper for testing RRTMGP error status on return
 ! allows line number reporting cf. original call method
 #define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; _ASSERT(.false.,"RRTMGP Error: "//trim(error_msg)); endif
-
-!  Begin...
-!----------
 
       IAm = trim(COMP_NAME)//"Soradcore"
       call MAPL_TimerOn(MAPL,"-MISC")
@@ -2552,8 +3071,8 @@ contains
                BUF_AEROSOL = MAPL_UNDEF
                do j=1,NUM_BANDS_SOLAR
                    BUF_AEROSOL = AEROSOL_EXT(:,:,:,j)
-                   call ReOrder(BufInp(L1 + (j-1)*LM*NumMax),BUF_AEROSOL,daytime,NumMax,&
-                        HorzDims,LM,PACKIT)
+                   call PackIt(BufInp(L1 + (j-1)*LM*NumMax),BUF_AEROSOL,daytime,NumMax,&
+                        HorzDims,LM)
                end do
                LN = L1 + NumMax*LM*NUM_BANDS_SOLAR - 1
                ptr3(1:NumMax,1:LM,1:NUM_BANDS_SOLAR) => BufInp(L1:LN)
@@ -2564,8 +3083,8 @@ contains
                BUF_AEROSOL = MAPL_UNDEF
                do j=1,NUM_BANDS_SOLAR
                    BUF_AEROSOL = AEROSOL_SSA(:,:,:,j)
-                   call ReOrder(BufInp(L1 + (j-1)*LM*NumMax),BUF_AEROSOL,daytime,NumMax,&
-                        HorzDims,LM,PACKIT)
+                   call PackIt(BufInp(L1 + (j-1)*LM*NumMax),BUF_AEROSOL,daytime,NumMax,&
+                        HorzDims,LM)
                end do
                LN = L1 + NumMax*LM*NUM_BANDS_SOLAR - 1
                ptr3(1:NumMax,1:LM,1:NUM_BANDS_SOLAR) => BufInp(L1:LN)
@@ -2576,8 +3095,8 @@ contains
                BUF_AEROSOL = MAPL_UNDEF
                do j=1,NUM_BANDS_SOLAR
                    BUF_AEROSOL = AEROSOL_ASY(:,:,:,j)
-                   call ReOrder(BufInp(L1 + (j-1)*LM*NumMax),BUF_AEROSOL,daytime,NumMax,&
-                        HorzDims,LM,PACKIT)
+                   call PackIt(BufInp(L1 + (j-1)*LM*NumMax),BUF_AEROSOL,daytime,NumMax,&
+                        HorzDims,LM)
                end do
                LN = L1 + NumMax*LM*NUM_BANDS_SOLAR - 1
                ptr3(1:NumMax,1:LM,1:NUM_BANDS_SOLAR) => BufInp(L1:LN)
@@ -2591,7 +3110,7 @@ contains
 
                   ! pack 3D imports
                   call ESMFL_StateGetPointerToData(IMPORT, ptr3, NamesInp(k), __RC__)
-                  call ReOrder(BufInp(L1),ptr3,daytime,NumMax,HorzDims,size(ptr3,3),PACKIT)
+                  call PackIt(BufInp(L1),ptr3,daytime,NumMax,HorzDims,size(ptr3,3))
 
                   LN = L1 + NumMax*size(ptr3,3) - 1
 
@@ -2599,19 +3118,19 @@ contains
 
                   ! pack auxilliary variables
                   if (NamesInp(k) == 'Ig') then
-                     call ReOrder(BufInp(L1),real(Ig),daytime,NumMax,HorzDims,1,PACKIT)
+                     call PackIt(BufInp(L1),real(Ig),daytime,NumMax,HorzDims,1)
                   else if (NamesInp(k) == 'Jg') then
-                     call ReOrder(BufInp(L1),real(Jg),daytime,NumMax,HorzDims,1,PACKIT)
+                     call PackIt(BufInp(L1),real(Jg),daytime,NumMax,HorzDims,1)
                   else if (NamesInp(k) == 'LATS') then
-                     call ReOrder(BufInp(L1),LATS,    daytime,NumMax,HorzDims,1,PACKIT)
+                     call PackIt(BufInp(L1),LATS,    daytime,NumMax,HorzDims,1)
                   else if (NamesInp(k) == 'SLR') then
-                     call ReOrder(BufInp(L1),SLR,     daytime,NumMax,HorzDims,1,PACKIT)
+                     call PackIt(BufInp(L1),SLR,     daytime,NumMax,HorzDims,1)
                   else if (NamesInp(k) == 'ZTH') then
-                     call ReOrder(BufInp(L1),ZTH,     daytime,NumMax,HorzDims,1,PACKIT)
+                     call PackIt(BufInp(L1),ZTH,     daytime,NumMax,HorzDims,1)
                   else 
                      ! pack 2D imports
                      call ESMFL_StateGetPointerToData(IMPORT, ptr2, NamesInp(k), __RC__)
-                     call ReOrder(BufInp(L1),ptr2,    daytime,NumMax,HorzDims,1,PACKIT)
+                     call PackIt(BufInp(L1),ptr2,    daytime,NumMax,HorzDims,1)
                   end if
 
                   LN = L1 + NumMax - 1
@@ -2827,6 +3346,68 @@ contains
             TAUMP     => ptr2(1:Num2do,1)               
          case('TAULOPAR')  
             TAULP     => ptr2(1:Num2do,1)               
+         case('HBATMTRN')
+            HBATMTRN  => ptr2(1:Num2do,1)
+         case('HBATMRFL')
+            HBATMRFL  => ptr2(1:Num2do,1)
+         case('UVR_TDN')
+            UVR_TDN     => ptr2(1:Num2do,1)
+         case('UVR_TAUE')
+            UVR_TAUE    => ptr2(1:Num2do,1)
+         case('UVR_SSAEC')
+            UVR_SSAEC   => ptr2(1:Num2do,1)
+         case('UVR_ASYED')
+            UVR_ASYED   => ptr2(1:Num2do,1)
+         case('UVR_FRAY')
+            UVR_FRAY    => ptr2(1:Num2do,1)
+         case('PAR_TDN')
+            PAR_TDN     => ptr2(1:Num2do,1)
+         case('PAR_TAUE')
+            PAR_TAUE    => ptr2(1:Num2do,1)
+         case('PAR_SSAEC')
+            PAR_SSAEC   => ptr2(1:Num2do,1)
+         case('PAR_ASYED')
+            PAR_ASYED   => ptr2(1:Num2do,1)
+         case('PAR_FRAY')
+            PAR_FRAY    => ptr2(1:Num2do,1)
+         case('NIR_TDN')
+            NIR_TDN     => ptr2(1:Num2do,1)
+         case('NIR_TAUE')
+            NIR_TAUE    => ptr2(1:Num2do,1)
+         case('NIR_SSAEC')
+            NIR_SSAEC   => ptr2(1:Num2do,1)
+         case('NIR_ASYED')
+            NIR_ASYED   => ptr2(1:Num2do,1)
+         case('NIR_FRAY')
+            NIR_FRAY    => ptr2(1:Num2do,1)
+         case('MCOSZ_REF')
+            MCOSZ_REF   => ptr2(1:Num2do,1)
+         case('ALBVR_REF')
+            ALBVR_REF   => ptr2(1:Num2do,1)
+         case('ALBVF_REF')
+            ALBVF_REF   => ptr2(1:Num2do,1)
+         case('ALBNR_REF')
+            ALBNR_REF   => ptr2(1:Num2do,1)
+         case('ALBNF_REF')
+            ALBNF_REF   => ptr2(1:Num2do,1)
+         case('UVR_MCOSZ_REF')
+            UVR_MCOSZ_REF => ptr2(1:Num2do,1)
+         case('PAR_MCOSZ_REF')
+            PAR_MCOSZ_REF => ptr2(1:Num2do,1)
+         case('NIR_MCOSZ_REF')
+            NIR_MCOSZ_REF => ptr2(1:Num2do,1)
+         case('UVR_AINFO')
+            UVR_AINFO     => ptr2(1:Num2do,1)
+         case('PAR_AINFO')
+            PAR_AINFO     => ptr2(1:Num2do,1)
+         case('NIR_AINFO')
+            NIR_AINFO     => ptr2(1:Num2do,1)
+         case('UVR_FRMSE')
+            UVR_FRMSE     => ptr2(1:Num2do,1)
+         case('PAR_FRMSE')
+            PAR_FRMSE     => ptr2(1:Num2do,1)
+         case('NIR_FRMSE')
+            NIR_FRMSE     => ptr2(1:Num2do,1)
          end select
 
       enddo OUTPUT_VARS_2
@@ -2835,19 +3416,18 @@ contains
 
 ! Do shortwave calculations on a list of soundings
 !-------------------------------------------------
-!-------------------------------------------------
 
       call MAPL_TimerOn(MAPL,"-MISC")
 
-      ! Point to correct outputs
-      ! ------------------------
+      ! save soon-to-be-calculated fluxes to correct set of internals
+      ! -------------------------------------------------------------
 
-      if(NO_AERO) then
-         FSW  => FSWA
-         FSC  => FSCA
-         FSWU => FSWUA
-         FSCU => FSCUA
-      FSWBAND => FSWBANDA
+      if (NO_AERO) then
+         FSW     => FSWA
+         FSC     => FSCA
+         FSWU    => FSWUA
+         FSCU    => FSCUA
+         FSWBAND => FSWBANDA
       end if
 
       ! Option to force binary clouds for SW
@@ -2895,6 +3475,40 @@ contains
 
       O3 = O3 * (MAPL_O3MW / MAPL_AIRMW)
       O3 = MAX(O3, 0.00)
+
+      ! Advanced Flux Update (AFU) variables
+      ! ------------------------------------
+      ! only do for regular aerosol-inclusive calculation
+
+      do_AFU_analysis = do_AFU_calc .and. .not. NO_AERO
+      if (do_AFU_analysis) then
+         call MAPL_TimerOn (MAPL,"-AFU",__RC__)
+
+         ! upwelling diffuse super-band fluxes
+         allocate(UVR_UPF(size(Q,1),size(Q,2)+1),__STAT__)
+         allocate(PAR_UPF(size(Q,1),size(Q,2)+1),__STAT__)
+         allocate(NIR_UPF(size(Q,1),size(Q,2)+1),__STAT__)
+
+         ! downwelling total (BOTH direct and diffuse) super-band fluxes
+         allocate(UVR_DNB(size(Q,1),size(Q,2)+1),__STAT__)
+         allocate(PAR_DNB(size(Q,1),size(Q,2)+1),__STAT__)
+         allocate(NIR_DNB(size(Q,1),size(Q,2)+1),__STAT__)
+
+         ! downwelling direct super-band fluxes
+         allocate(UVR_DNR(size(Q,1),size(Q,2)+1),__STAT__)
+         allocate(PAR_DNR(size(Q,1),size(Q,2)+1),__STAT__)
+         allocate(NIR_DNR(size(Q,1),size(Q,2)+1),__STAT__)
+
+         ! albedos actually used for super-bands
+         allocate(UVR_ALR(size(Q,1)),__STAT__)
+         allocate(PAR_ALR(size(Q,1)),__STAT__)
+         allocate(NIR_ALR(size(Q,1)),__STAT__)
+         allocate(UVR_ALF(size(Q,1)),__STAT__)
+         allocate(PAR_ALF(size(Q,1)),__STAT__)
+         allocate(NIR_ALF(size(Q,1)),__STAT__)
+
+         call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      end if
 
       ! ------------------
       ! Begin aerosol code
@@ -3127,7 +3741,7 @@ contains
       allocate(flux_up_clrsky (ncol,LM+1), flux_net_clrsky(ncol,LM+1), __STAT__)
       allocate(flux_up_allsky (ncol,LM+1), flux_net_allsky(ncol,LM+1), __STAT__)
       allocate(bnd_flux_dn_allsky (ncol,LM+1,nbnd), &
-               bnd_flux_net_allsky(ncol,LM+1,nbnd), &
+               bnd_flux_up_allsky (ncol,LM+1,nbnd), &
                bnd_flux_dir_allsky(ncol,LM+1,nbnd), __STAT__)
 
       ! =====================================================================================
@@ -3622,8 +4236,8 @@ contains
         fluxes_allsky%flux_up         => flux_up_allsky(colS:colE,:)
         fluxes_allsky%flux_net        => flux_net_allsky(colS:colE,:)
         fluxes_allsky%bnd_flux_dn     => bnd_flux_dn_allsky(colS:colE,:,:)
+        fluxes_allsky%bnd_flux_up     => bnd_flux_up_allsky(colS:colE,:,:)
         fluxes_allsky%bnd_flux_dn_dir => bnd_flux_dir_allsky(colS:colE,:,:)
-        fluxes_allsky%bnd_flux_net    => bnd_flux_net_allsky(colS:colE,:,:)
         error_msg = rte_sw( &
           optical_props, top_at_1, mu0(colS:colE), toa_flux, &
           sfc_alb_dir(:,colS:colE), sfc_alb_dif(:,colS:colE), &
@@ -3650,7 +4264,7 @@ contains
       do ib = 1, nbnd
         do k = 1, LM+1
           bnd_flux_dn_allsky (:,k,ib) = bnd_flux_dn_allsky (:,k,ib) / flux_dn_top(:)
-          bnd_flux_net_allsky(:,k,ib) = bnd_flux_net_allsky(:,k,ib) / flux_dn_top(:)
+          bnd_flux_up_allsky (:,k,ib) = bnd_flux_up_allsky (:,k,ib) / flux_dn_top(:)
           bnd_flux_dir_allsky(:,k,ib) = bnd_flux_dir_allsky(:,k,ib) / flux_dn_top(:)
         end do
       end do
@@ -3665,41 +4279,135 @@ contains
       FSW  = real(flux_net_allsky)
       ! surface net flux per band
       do ib = 1, nbnd
-        FSWBAND(:,ib) = real(bnd_flux_net_allsky(:,LM+1,ib))
+        FSWBAND(:,ib) = real(bnd_flux_dn_allsky(:,LM+1,ib) - bnd_flux_up_allsky(:,LM+1,ib))
       end do
-      ! surface direct and diffuse downward in super-bands
+
+      ! super-band aggregation ...
+      ! includes flux-weighted super-band albedos
       ! for *diffuse* downward must subtract direct (downward) from total downward
+      ! pmn: may later do this using a flux class extension??
+
       ! NIR bands (1-9: 820-12850 cm-1, 0.778-12.195 microns)
-      NIRR(:) = 0.; NIRF(:) = 0.
-      do ib=1,9
-        NIRR(:) = NIRR(:) + real(bnd_flux_dir_allsky(:,LM+1,ib))
-        NIRF(:) = NIRF(:) + real(bnd_flux_dn_allsky (:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib))
-      end do
+      if (do_AFU_analysis) then
+        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
+        NIR_DNB = 0.; NIR_DNR = 0.; NIR_UPF = 0.
+        NIR_ALR = 0.; NIR_ALF = 0.
+        do ib=1,9
+          NIR_DNB = NIR_DNB + real(bnd_flux_dn_allsky (:,:,ib))
+          NIR_DNR = NIR_DNR + real(bnd_flux_dir_allsky(:,:,ib))
+          NIR_UPF = NIR_UPF + real(bnd_flux_up_allsky (:,:,ib))
+          NIR_ALR = NIR_ALR + real(bnd_flux_dir_allsky(:,LM+1,ib) * sfc_alb_dir(ib,:))
+          NIR_ALF = NIR_ALF + real((bnd_flux_dn_allsky(:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib)) * sfc_alb_dif(ib,:))
+        end do
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      else
+        NIRR = 0.; NIRF = 0.
+        do ib=1,9
+          NIRR = NIRR + real(bnd_flux_dir_allsky(:,LM+1,ib))
+          NIRF = NIRF + real(bnd_flux_dn_allsky (:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib))
+        end do
+      endif
+
       ! PAR bands (11-12: 16000-29000 cm-1, 0.345-0.625 micron)
-      PARR(:) = 0.; PARF(:) = 0.
-      do ib=11,12
-        PARR(:) = PARR(:) + real(bnd_flux_dir_allsky(:,LM+1,ib))
-        PARF(:) = PARF(:) + real(bnd_flux_dn_allsky (:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib))
-      enddo
+      if (do_AFU_analysis) then
+        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
+        PAR_DNB = 0.; PAR_DNR = 0.; PAR_UPF = 0.
+        PAR_ALR = 0.; PAR_ALF = 0.
+        do ib=11,12
+          PAR_DNB = PAR_DNB + real(bnd_flux_dn_allsky (:,:,ib))
+          PAR_DNR = PAR_DNR + real(bnd_flux_dir_allsky(:,:,ib))
+          PAR_UPF = PAR_UPF + real(bnd_flux_up_allsky (:,:,ib))
+          PAR_ALR = PAR_ALR + real(bnd_flux_dir_allsky(:,LM+1,ib) * sfc_alb_dir(ib,:))
+          PAR_ALF = PAR_ALF + real((bnd_flux_dn_allsky(:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib)) * sfc_alb_dif(ib,:))
+        end do
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      else
+        PARR = 0.; PARF = 0.
+        do ib=11,12
+          PARR = PARR + real(bnd_flux_dir_allsky(:,LM+1,ib))
+          PARF = PARF + real(bnd_flux_dn_allsky (:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib))
+        end do
+      endif
+
       ! UVR bands (13-14: 29000-50000 cm-1, 0.200-0.345 micron)
-      UVRR(:) = 0.; UVRF(:) = 0.
-      do ib=13,14
-        UVRR(:) = UVRR(:) + real(bnd_flux_dir_allsky(:,LM+1,ib))
-        UVRF(:) = UVRF(:) + real(bnd_flux_dn_allsky (:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib))
-      enddo
+      if (do_AFU_analysis) then
+        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
+        UVR_DNB = 0.; UVR_DNR = 0.; UVR_UPF = 0.
+        UVR_ALR = 0.; UVR_ALF = 0.
+        do ib=13,14
+          UVR_DNB = UVR_DNB + real(bnd_flux_dn_allsky (:,:,ib))
+          UVR_DNR = UVR_DNR + real(bnd_flux_dir_allsky(:,:,ib))
+          UVR_UPF = UVR_UPF + real(bnd_flux_up_allsky (:,:,ib))
+          UVR_ALR = UVR_ALR + real(bnd_flux_dir_allsky(:,LM+1,ib) * sfc_alb_dir(ib,:))
+          UVR_ALF = UVR_ALF + real((bnd_flux_dn_allsky(:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib)) * sfc_alb_dif(ib,:))
+        end do
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      else
+        UVRR = 0.; UVRF = 0.
+        do ib=13,14
+          UVRR = UVRR + real(bnd_flux_dir_allsky(:,LM+1,ib))
+          UVRF = UVRF + real(bnd_flux_dn_allsky (:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib))
+        end do
+      endif
+
       ! Transition band (10, 12850-16000 cm-1, 0.625-0.778 micron)
       ! split half-and-half to PAR and NIR
-      NIRR(:) = NIRR(:) + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10))
-      PARR(:) = PARR(:) + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10))
-      NIRF(:) = NIRF(:) + 0.5 * real(bnd_flux_dn_allsky (:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10))
-      PARF(:) = PARF(:) + 0.5 * real(bnd_flux_dn_allsky (:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10))
+      if (do_AFU_analysis) then
+        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
+        NIR_DNB = NIR_DNB + 0.5 * real(bnd_flux_dn_allsky (:,:,10))
+        NIR_DNR = NIR_DNR + 0.5 * real(bnd_flux_dir_allsky(:,:,10))
+        NIR_UPF = NIR_UPF + 0.5 * real(bnd_flux_up_allsky (:,:,10))
+        PAR_DNB = PAR_DNB + 0.5 * real(bnd_flux_dn_allsky (:,:,10))
+        PAR_DNR = PAR_DNR + 0.5 * real(bnd_flux_dir_allsky(:,:,10))
+        PAR_UPF = PAR_UPF + 0.5 * real(bnd_flux_up_allsky (:,:,10))
+        NIR_ALR = NIR_ALR + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10) * sfc_alb_dir(10,:))
+        NIR_ALF = NIR_ALF + 0.5 * real((bnd_flux_dn_allsky(:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10)) * sfc_alb_dif(10,:))
+        PAR_ALR = PAR_ALR + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10) * sfc_alb_dir(10,:))
+        PAR_ALF = PAR_ALF + 0.5 * real((bnd_flux_dn_allsky(:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10)) * sfc_alb_dif(10,:))
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      else
+        NIRR = NIRR + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10))
+        PARR = PARR + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10))
+        NIRF = NIRF + 0.5 * real(bnd_flux_dn_allsky (:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10))
+        PARF = PARF + 0.5 * real(bnd_flux_dn_allsky (:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10))
+      end if
+
+      if (do_AFU_analysis) then
+        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
+
+        ! extract TOA downwelling super-band fluxes
+        ! (PMN: assume all direct for now)
+        UVR_TDN = UVR_DNR(:,1)
+        PAR_TDN = PAR_DNR(:,1)
+        NIR_TDN = NIR_DNR(:,1)
+
+        ! extract surface downwelling super-band fluxes
+        UVRR = UVR_DNR(:,LM+1)
+        UVRF = UVR_DNB(:,LM+1)-UVRR
+        PARR = PAR_DNR(:,LM+1)
+        PARF = PAR_DNB(:,LM+1)-PARR
+        NIRR = NIR_DNR(:,LM+1)
+        NIRF = NIR_DNB(:,LM+1)-NIRR
+
+        ! normalize flux weighted albedos
+        ! (note: if the downwelling surface flux is near zero,
+        !  the value of the albedo doesnt really matter much)
+        NIR_ALR = min(max( NIR_ALR / max(NIRR, 1.e-12), 0.),1.)
+        NIR_ALF = min(max( NIR_ALF / max(NIRF, 1.e-12), 0.),1.)
+        PAR_ALR = min(max( PAR_ALR / max(PARR, 1.e-12), 0.),1.)
+        PAR_ALF = min(max( PAR_ALF / max(PARF, 1.e-12), 0.),1.)
+        UVR_ALR = min(max( UVR_ALR / max(UVRR, 1.e-12), 0.),1.)
+        UVR_ALF = min(max( UVR_ALF / max(UVRF, 1.e-12), 0.),1.)
+
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      end if
 
       ! clean up
       deallocate(tsi,mu0,sfc_alb_dir,sfc_alb_dif,toa_flux,__STAT__)
       deallocate(p_lay,t_lay,p_lev,dp_wp,dzmid,__STAT__)
       deallocate(flux_up_clrsky,flux_net_clrsky,__STAT__)
       deallocate(flux_up_allsky,flux_net_allsky,__STAT__)
-      deallocate(bnd_flux_dn_allsky,bnd_flux_net_allsky,bnd_flux_dir_allsky,__STAT__)
+      deallocate(bnd_flux_dn_allsky,bnd_flux_up_allsky,bnd_flux_dir_allsky,__STAT__)
       deallocate(seeds,urand,cld_mask,__STAT__)
       if (gen_mro) then
         deallocate(adl,alpha,urand_aux,__STAT__)
@@ -3719,6 +4427,7 @@ contains
 
    else if (USE_RRTMG) then
 
+      ! regular RRTMG
       call MAPL_TimerOn(MAPL,"-RRTMG")
 
       NCOL = size(Q,1)
@@ -4101,6 +4810,244 @@ contains
       deallocate (O3)
       deallocate (TAUA, SSAA, ASYA)
 
+      ! ================================================================
+      ! bulk atmospheric characterization for Advanced Flux Update (AFU)
+      ! ================================================================
+
+      if (do_AFU_analysis) then
+        call MAPL_TimerOn (MAPL,"-AFU",__RC__)
+
+        ! whole of atmosphere transmissivity and reflectivity
+        ! following Hogan and Bozzo (2015), JAMES, vol. 7, pp. 836--853
+        ! -------------------------------------------------------------
+        allocate(V1D(size(Q,1)),__STAT__)
+        V1D = 1. - FSWU(:,LM+1)**2
+        HBATMTRN = ((FSW(:,LM+1) + FSWU(:,LM+1)) - FSWU(:,LM+1) * FSWU(:,1)) / V1D
+        HBATMRFL = (FSWU(:,1) - FSWU(:,LM+1) * (FSW(:,LM+1) + FSWU(:,LM+1))) / V1D
+        deallocate(V1D,__STAT__)
+
+        ! whole of atmosphere properties for each sunlit gridcolumn
+        ! ---------------------------------------------------------
+        ! Notes:
+        ! 1. All these points are already guaranteed sunlit. We have
+        ! already verified that all *_TDN are > 0 and /= MAPL_UNDEF.
+        ! 2. *_TDN fields are verified uniform except for round-off,
+        ! since they are super-band fractions of total TOA downward
+        ! solar flux.
+        ! 3. these sunlit points form a superset of those that are
+        ! used by each UPDATE that uses this REFRESH.
+
+        ! Notes on background optical state:
+        !   b_ssae, b_g_Ed and b_f_Ry are first guesses
+        ! Ideally the analysis system should be robust to initial guesses, but in
+        ! practise this may not be the case and multiple local minima may exist.
+        ! More work on optimal first guesses should be done based on the cloud
+        ! state, etc.
+        !   Regardless, a background f_Ry of 0.5 should be avoided, because it
+        ! seems to shut down lmdif exploration in f_Ry dimension. Currently we
+        ! use 0.25 for cloudy columns and 0.75 for clear columns. We also start
+        ! with a zero guess for g_Ed in each band.
+
+        ! (a) UV
+        UVR_TAUE  = MAPL_UNDEF
+        UVR_SSAEC = MAPL_UNDEF
+        UVR_ASYED = MAPL_UNDEF
+        UVR_FRAY  = MAPL_UNDEF
+        UVR_FRMSE = MAPL_UNDEF
+        UVR_MCOSZ_REF = ZT
+        UVR_AINFO = 1
+        do i = 1, size(Q,1)
+          if (ZT(i) >= mu0_min) then
+
+            ! first guess taue from direct surface transmission
+            ! currently cant handle underflow to zero of direct beam
+            !   or a completely transparent atmosphere (b_taue zero)
+            bmtrans = min(max(UVRR(i)/UVR_TDN(i),0.),1.)
+            if (bmtrans > 0.) then
+              b_taue = -ZT(i)*log(bmtrans)
+              if (b_taue > 0.0d0) then
+
+                ! make a background optical state:
+                b_ssae = 0.95d0; b_g_Ed = 0.0d0
+                if (any(CL(i,:) > 0.1d0)) then
+                  b_f_Ry = 0.25d0 ! "cloudy"
+                else
+                  b_f_Ry = 0.75d0 ! "clear"
+                end if
+                obkg = Eddington_Rayleigh_Optics( &
+                  b_taue, b_ssae, b_g_Ed, b_f_Ry, __RC__)
+
+                ! and use it to form background state
+                Ebkg = WOA_Eddington_Rayleigh( &
+                  obkg,                        &
+                  dble(UVR_TDN(i)),            &
+                  dble(     ZT(i)),            &
+                  dble(UVR_ALR(i)),            &
+                  dble(UVR_ALF(i)),      __RC__)
+
+                ! estimate a WOA_Eddington_Rayleigh with optics consistent
+                !   with the REFRESH fluxes calculated above
+                Eana = Ebkg%analyze_optics( &
+                  size(Q,2), dble(UVR_UPF(i,:)), dble(UVR_DNB(i,:)), dble(UVR_DNR(i,:)), &
+                  analyze_optics_info, frmse, rc=status)
+                UVR_AINFO(i) = analyze_optics_info
+
+                if (status == ESMF_SUCCESS) then
+                  ! load internal state (single precision)
+                  UVR_TAUE(i)  = Eana%optics%taue
+                  UVR_SSAEC(i) = 1.0d0 - Eana%optics%ssae
+                  UVR_ASYED(i) = Eana%optics%g_Ed
+                  UVR_FRAY(i)  = Eana%optics%f_Ry
+                  UVR_MCOSZ_REF(i) = Eana%mu0_used
+                  UVR_FRMSE(i) = frmse
+                end if
+
+              end if
+            end if
+          end if
+        end do ! over sunlit gridcols
+
+        ! (b) Visible
+        PAR_TAUE  = MAPL_UNDEF
+        PAR_SSAEC = MAPL_UNDEF
+        PAR_ASYED = MAPL_UNDEF
+        PAR_FRAY  = MAPL_UNDEF
+        PAR_FRMSE = MAPL_UNDEF
+        PAR_MCOSZ_REF = ZT
+        PAR_AINFO = 1
+        do i = 1, size(Q,1)
+          if (ZT(i) >= mu0_min) then
+
+            ! first guess taue from direct surface transmission
+            bmtrans = min(max(PARR(i)/PAR_TDN(i),0.),1.)
+            if (bmtrans > 0.) then
+              b_taue = -ZT(i)*log(bmtrans)
+              if (b_taue > 0.0d0) then
+
+                ! make a background optical state:
+                b_ssae = 0.95d0; b_g_Ed = 0.0d0
+                if (any(CL(i,:) > 0.1d0)) then
+                  b_f_Ry = 0.25d0 ! "cloudy"
+                else
+                  b_f_Ry = 0.75d0 ! "clear"
+                end if
+                obkg = Eddington_Rayleigh_Optics( &
+                  b_taue, b_ssae, b_g_Ed, b_f_Ry, __RC__)
+
+                ! and use it to form background state
+                Ebkg = WOA_Eddington_Rayleigh( &
+                  obkg,                        &
+                  dble(PAR_TDN(i)),            &
+                  dble(     ZT(i)),            &
+                  dble(PAR_ALR(i)),            &
+                  dble(PAR_ALF(i)),      __RC__)
+
+                ! estimate a WOA_Eddington_Rayleigh with optics consistent
+                !   with the REFRESH fluxes calculated above
+                Eana = Ebkg%analyze_optics( &
+                  size(Q,2), dble(PAR_UPF(i,:)), dble(PAR_DNB(i,:)), dble(PAR_DNR(i,:)), &
+                  analyze_optics_info, frmse, rc=status)
+                PAR_AINFO(i) = analyze_optics_info
+
+                if (status == ESMF_SUCCESS) then
+                  ! load internal state (single precision)
+                  PAR_TAUE(i)  = Eana%optics%taue
+                  PAR_SSAEC(i) = 1.0d0 - Eana%optics%ssae
+                  PAR_ASYED(i) = Eana%optics%g_Ed
+                  PAR_FRAY(i)  = Eana%optics%f_Ry
+                  PAR_MCOSZ_REF(i) = Eana%mu0_used
+                  PAR_FRMSE(i) = frmse
+                end if
+
+              end if
+            end if
+          end if
+        end do ! over sunlit gridcols
+
+        ! (c) Near-IR
+        NIR_TAUE  = MAPL_UNDEF
+        NIR_SSAEC = MAPL_UNDEF
+        NIR_ASYED = MAPL_UNDEF
+        NIR_FRAY  = MAPL_UNDEF
+        NIR_FRMSE = MAPL_UNDEF
+        NIR_MCOSZ_REF = ZT
+        NIR_AINFO = 1
+        do i = 1, size(Q,1)
+          if (ZT(i) >= mu0_min) then
+
+            ! first guess taue from direct surface transmission
+            bmtrans = min(max(NIRR(i)/NIR_TDN(i),0.),1.)
+            if (bmtrans > 0.) then
+              b_taue = -ZT(i)*log(bmtrans)
+              if (b_taue > 0.0d0) then
+
+                ! make a background optical state:
+                b_ssae = 0.80d0; b_g_Ed = 0.0d0
+                if (any(CL(i,:) > 0.1d0)) then
+                  b_f_Ry = 0.25d0 ! "cloudy"
+                else
+                  b_f_Ry = 0.75d0 ! "clear"
+                end if
+                obkg = Eddington_Rayleigh_Optics( &
+                  b_taue, b_ssae, b_g_Ed, b_f_Ry, __RC__)
+
+                ! and use it to form background state
+                Ebkg = WOA_Eddington_Rayleigh( &
+                  obkg,                        &
+                  dble(NIR_TDN(i)),            &
+                  dble(     ZT(i)),            &
+                  dble(NIR_ALR(i)),            &
+                  dble(NIR_ALF(i)),      __RC__)
+
+                ! estimate a WOA_Eddington_Rayleigh with optics consistent
+                !   with the REFRESH fluxes calculated above
+                Eana = Ebkg%analyze_optics( &
+                  size(Q,2), dble(NIR_UPF(i,:)), dble(NIR_DNB(i,:)), dble(NIR_DNR(i,:)), &
+                  analyze_optics_info, frmse, rc=status)
+                NIR_AINFO(i) = analyze_optics_info
+
+                if (status == ESMF_SUCCESS) then
+                  ! load internal state (single precision)
+                  NIR_TAUE(i)  = Eana%optics%taue
+                  NIR_SSAEC(i) = 1.0d0 - Eana%optics%ssae
+                  NIR_ASYED(i) = Eana%optics%g_Ed
+                  NIR_FRAY(i)  = Eana%optics%f_Ry
+                  NIR_MCOSZ_REF(i) = Eana%mu0_used
+                  NIR_FRMSE(i) = frmse
+                end if
+
+              end if
+            end if
+          end if
+        end do ! over sunlit gridcols
+
+        ! auxilliary TEMP variables
+        MCOSZ_REF = ZT
+        ALBVR_REF = ALBVR
+        ALBVF_REF = ALBVF
+        ALBNR_REF = ALBNR
+        ALBNF_REF = ALBNF
+
+        ! clean-up
+        deallocate(UVR_UPF, __STAT__)
+        deallocate(PAR_UPF, __STAT__)
+        deallocate(NIR_UPF, __STAT__)
+        deallocate(UVR_DNB, __STAT__)
+        deallocate(PAR_DNB, __STAT__)
+        deallocate(NIR_DNB, __STAT__)
+        deallocate(UVR_DNR, __STAT__)
+        deallocate(PAR_DNR, __STAT__)
+        deallocate(NIR_DNR, __STAT__)
+        deallocate(UVR_ALR, __STAT__)
+        deallocate(PAR_ALR, __STAT__)
+        deallocate(NIR_ALR, __STAT__)
+        deallocate(UVR_ALF, __STAT__)
+        deallocate(PAR_ALF, __STAT__)
+        deallocate(NIR_ALF, __STAT__)
+
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      end if
+
 ! Complete load balancing by retrieving work done remotely
 !---------------------------------------------------------
 
@@ -4112,63 +5059,52 @@ contains
 
       call MAPL_TimerOff(MAPL,"--RETRIEVE")
 
-! Unpack the results. ReOrder fills masked (night) locations with zero.
-!----------------------------------------------------------------------
+      ! Unpack the results. Fills "masked" (night) locations with default value from internal state
+      !--------------------------------------------------------------------------------------------
+      ! resulting internals are then contiguous versions
 
       L1 = 1
       OUTPUT_VARS_3: do k=1,NumOut
          if (SlicesOut(k) == 0) cycle
 
-         if (SlicesOut(k) > 1) then
-            ! internal 3D outputs
-            call ESMFL_StateGetPointerToData(INTERNAL, ptr3, NamesOut(k), __RC__)
-            call ReOrder(BufOut(L1),ptr3,daytime,NumMax,HorzDims,size(ptr3,3),UNPACKIT)
-         else if (k < NumOut-7) then
-            ! internal 2D outputs
-            call ESMFL_StateGetPointerToData(INTERNAL, ptr2, NamesOut(k), __RC__)
-            call ReOrder(BufOut(L1),ptr2,daytime,NumMax,HorzDims,1,UNPACKIT)
+         if (k < NumOut-7) then
+            ! internal outputs
+            call MAPL_VarSpecGet(InternalSpec(k), DEFAULT=internalDefault, __RC__)
+            if (SlicesOut(k) > 1) then
+               ! internal 3D outputs
+               call ESMFL_StateGetPointerToData(INTERNAL, ptr3, NamesOut(k), __RC__)
+               call UnPackIt(BufOut(L1),ptr3,daytime,NumMax,HorzDims,size(ptr3,3),internalDefault)
+            else
+               ! internal 2D outputs
+               call ESMFL_StateGetPointerToData(INTERNAL, ptr2, NamesOut(k), __RC__)
+               call UnPackIt(BufOut(L1),ptr2,daytime,NumMax,HorzDims,1,internalDefault)
+            end if
          else
             ! cloud fraction outputs (2D)
             if      (NamesOut(k) == "CLDTTSW") then
-               if (associated(CLDTTSW)) then
-                  call ReOrder(BufOut(L1),CLDTTSW,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) CLDTTSW = MAPL_UNDEF
-               end if
+               if (associated(CLDTTSW)) &
+                  call UnPackIt(BufOut(L1),CLDTTSW,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             else if (NamesOut(k) == "CLDHISW") then
-               if (associated(CLDHISW)) then
-                  call ReOrder(BufOut(L1),CLDHISW,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) CLDHISW = MAPL_UNDEF
-               end if
+               if (associated(CLDHISW)) &
+                  call UnPackIt(BufOut(L1),CLDHISW,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             else if (NamesOut(k) == "CLDMDSW") then
-               if (associated(CLDMDSW)) then
-                  call ReOrder(BufOut(L1),CLDMDSW,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) CLDMDSW = MAPL_UNDEF
-               end if
+               if (associated(CLDMDSW)) &
+                  call UnPackIt(BufOut(L1),CLDMDSW,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             else if (NamesOut(k) == "CLDLOSW") then
-               if (associated(CLDLOSW)) then
-                  call ReOrder(BufOut(L1),CLDLOSW,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) CLDLOSW = MAPL_UNDEF
-               end if
+               if (associated(CLDLOSW)) &
+                  call UnPackIt(BufOut(L1),CLDLOSW,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             else if (NamesOut(k) == "TAUTTPAR") then
-               if (associated(TAUTTPAR)) then
-                  call ReOrder(BufOut(L1),TAUTTPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) TAUTTPAR = MAPL_UNDEF
-               end if
+               if (associated(TAUTTPAR)) &
+                  call UnPackIt(BufOut(L1),TAUTTPAR,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             else if (NamesOut(k) == "TAUHIPAR") then
-               if (associated(TAUHIPAR)) then
-                  call ReOrder(BufOut(L1),TAUHIPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) TAUHIPAR = MAPL_UNDEF
-               end if
+               if (associated(TAUHIPAR)) &
+                  call UnPackIt(BufOut(L1),TAUHIPAR,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             else if (NamesOut(k) == "TAUMDPAR") then
-               if (associated(TAUMDPAR)) then
-                  call ReOrder(BufOut(L1),TAUMDPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) TAUMDPAR = MAPL_UNDEF
-               end if
+               if (associated(TAUMDPAR)) &
+                  call UnPackIt(BufOut(L1),TAUMDPAR,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             else if (NamesOut(k) == "TAULOPAR") then
-               if (associated(TAULOPAR)) then
-                  call ReOrder(BufOut(L1),TAULOPAR,daytime,NumMax,HorzDims,1,UNPACKIT)
-                  WHERE (.not.daytime) TAULOPAR = MAPL_UNDEF
-               end if
+               if (associated(TAULOPAR)) &
+                  call UnPackIt(BufOut(L1),TAULOPAR,daytime,NumMax,HorzDims,1,MAPL_UNDEF)
             end if
          end if
 
@@ -4634,25 +5570,25 @@ contains
       real, pointer, dimension(:,:  ) :: ALBEDO
       real, pointer, dimension(:,:  ) :: COSZ, MCOSZ
 
-      real, pointer, dimension(:,:,:)   :: FCLD,CLIN,RH
-      real, pointer, dimension(:,:,:)   :: DP, PL, PLL, AERO, T, Q, RAERO
-      real, pointer, dimension(:,:,:)   :: RRL,RRI,RRR,RRS
-      real, pointer, dimension(:,:,:)   :: RQL,RQI,RQR,RQS
+      real, pointer, dimension(:,:,:)   :: FCLD, CLIN, RH
+      real, pointer, dimension(:,:,:)   :: DP, PL, PLL, AERO, T, Q
+      real, pointer, dimension(:,:,:)   :: RRL, RRI, RRR, RRS
+      real, pointer, dimension(:,:,:)   :: RQL, RQI, RQR, RQS
       real, pointer, dimension(:,:,:,:) :: TAUCLD, HYDROMETS, REFF
-      real, pointer, dimension(:,:,:)   :: TAUI,TAUW,TAUR,TAUS
+      real, pointer, dimension(:,:,:)   :: TAUI, TAUW, TAUR, TAUS
 
       ! for efficiency
-      real, allocatable, dimension(:,:) :: aCLDL,aCLDM,aCLDH
-      real, allocatable, dimension(:,:) :: aTAUL,aTAUM,aTAUH
+      real, allocatable, dimension(:,:) :: aCLDL, aCLDM, aCLDH
+      real, allocatable, dimension(:,:) :: aTAUL, aTAUM, aTAUH
       real, allocatable, dimension(:,:) :: aCLDT
 
       real, dimension(LM  ) :: DUM1D
       real, dimension(LM,4) :: DUM2D
 
-      real, pointer, dimension(:,:)   :: TDUST,TSALT,TSO4,TBC,TOC
-      real, pointer, dimension(:,:)   :: CLDH,CLDM,CLDL,CLDT, &
-                                         TAUH,TAUM,TAUL,TAUT,TAUTX, &
-                                         CLDTMP,CLDPRS
+      real, pointer, dimension(:,:)   :: TDUST, TSALT, TSO4, TBC, TOC
+      real, pointer, dimension(:,:)   :: CLDH, CLDM, CLDL, CLDT, &
+                                         TAUH, TAUM, TAUL, TAUT, TAUTX, &
+                                         CLDTMP, CLDPRS
 
       ! super-layer RRTMG cloud fraction exports on heartbeat
       real, pointer, dimension(:,:)   :: CLDTTSWHB
@@ -4680,6 +5616,34 @@ contains
       real    :: FAC
       integer :: idx
       integer,external:: GetAeroIndex
+
+      ! -------------------
+      ! advance Flux Update
+      ! -------------------
+
+      ! import pointers
+      real, pointer, dimension(:,:) :: ALBDIR, ALBDIF
+
+      ! internal pointers
+      real, pointer, dimension(:,:) :: HBATMTRN, HBATMRFL
+      real, pointer, dimension(:,:) :: UVR_TDN, UVR_TAUE, UVR_SSAEC, UVR_ASYED, UVR_FRAY
+      real, pointer, dimension(:,:) :: PAR_TDN, PAR_TAUE, PAR_SSAEC, PAR_ASYED, PAR_FRAY
+      real, pointer, dimension(:,:) :: NIR_TDN, NIR_TAUE, NIR_SSAEC, NIR_ASYED, NIR_FRAY
+
+      ! export pointers
+      real, pointer, dimension(:,:) :: DFUVR_AFU, DFPAR_AFU, DFNIR_AFU
+      real, pointer, dimension(:,:) :: DRUVR_AFU, DRPAR_AFU, DRNIR_AFU
+      real, pointer, dimension(:,:) :: UVR_MCOSZ_AFU, PAR_MCOSZ_AFU, NIR_MCOSZ_AFU
+
+      ! locals
+      double precision :: FdirDnSFC, FdifDnSFC, dummy
+      type(Eddington_Rayleigh_Optics) :: oupd
+      type(WOA_Eddington_Rayleigh) :: Eupd
+      real, allocatable, dimension(:,:) :: DIR2D, DIF2D, MCZUS
+      logical :: do_AFU
+
+      ! end Advance Flux Update
+      ! -----------------------
 
       Iam  = trim(COMP_NAME)//"SolarUpdateExport"
 
@@ -4803,6 +5767,28 @@ contains
       call MAPL_GetPointer(EXPORT  , CLDMDSWHB,  'CLDMDSWHB',  __RC__)
       call MAPL_GetPointer(EXPORT  , CLDHISWHB,  'CLDHISWHB',  __RC__)
       call MAPL_GetPointer(EXPORT  , CLDTTSWHB,  'CLDTTSWHB',  __RC__)
+
+      if (do_AFU_calc) then
+        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
+        call MAPL_GetPointer( INTERNAL, HBATMTRN,  'HBATMTRN',   __RC__)
+        call MAPL_GetPointer( INTERNAL, HBATMRFL,  'HBATMRFL',   __RC__)
+        call MAPL_GetPointer( INTERNAL, UVR_TDN,   'UVR_TDN',    __RC__)
+        call MAPL_GetPointer( INTERNAL, UVR_TAUE,  'UVR_TAUE',   __RC__)
+        call MAPL_GetPointer( INTERNAL, UVR_SSAEC, 'UVR_SSAEC',  __RC__)
+        call MAPL_GetPointer( INTERNAL, UVR_ASYED, 'UVR_ASYED',  __RC__)
+        call MAPL_GetPointer( INTERNAL, UVR_FRAY,  'UVR_FRAY',   __RC__)
+        call MAPL_GetPointer( INTERNAL, PAR_TDN,   'PAR_TDN',    __RC__)
+        call MAPL_GetPointer( INTERNAL, PAR_TAUE,  'PAR_TAUE',   __RC__)
+        call MAPL_GetPointer( INTERNAL, PAR_SSAEC, 'PAR_SSAEC',  __RC__)
+        call MAPL_GetPointer( INTERNAL, PAR_ASYED, 'PAR_ASYED',  __RC__)
+        call MAPL_GetPointer( INTERNAL, PAR_FRAY,  'PAR_FRAY',   __RC__)
+        call MAPL_GetPointer( INTERNAL, NIR_TDN,   'NIR_TDN',    __RC__)
+        call MAPL_GetPointer( INTERNAL, NIR_TAUE,  'NIR_TAUE',   __RC__)
+        call MAPL_GetPointer( INTERNAL, NIR_SSAEC, 'NIR_SSAEC',  __RC__)
+        call MAPL_GetPointer( INTERNAL, NIR_ASYED, 'NIR_ASYED',  __RC__)
+        call MAPL_GetPointer( INTERNAL, NIR_FRAY,  'NIR_FRAY',   __RC__)
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      end if
 
       if (associated(FCLD)) FCLD = CLIN
 
@@ -5279,6 +6265,224 @@ contains
         end where
       end if
   
+      if (do_AFU_calc) then
+        call MAPL_TimerOn (MAPL,"-AFU",__RC__)
+
+        ! --------------------------
+        ! Advanced Flux Update (AFU)
+        ! --------------------------
+        ! Notes:
+        ! 1. Must default to non-AFU case where REFRESH AFU was unsuccessful,
+        ! or for UPDATEs that occur at beginning of run, before first REFRESH.
+        ! 2. Since REFRESH-calculated *_TDN fields are uniform to roundoff
+        ! and defined on a superset of the current sunlit points, there is
+        ! no need to shift the TDN for the current solar position.
+
+        ! SLR and ZTH are for current heartbeat
+        !+ASSERT_(all(SLR /= MAPL_UNDEF .and. SLR >= 0.))	! SLR defined & non-negative
+        !+ASSERT_(all(ZTH /= MAPL_UNDEF .and. ZTH >= 0.))	! ZTH defined & non-negative
+        !+ASSERT_(all(.not.(SLR > 0. .xor. ZTH > 0.))) 	        ! SLR & ZTH agree on +veness
+
+        if (associated(DRUVR_AFU) .or. associated(DFUVR_AFU)) then
+
+          allocate(DIR2D(IM,JM), __STAT__)
+          allocate(DIF2D(IM,JM), __STAT__)
+          allocate(MCZUS(IM,JM), __STAT__)
+
+!         call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBVR', __RC__)		! TODO <<<<<<<<<< and below
+!         call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBVF', __RC__)		! TODO <<<<<<<<<<
+          call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBVR_REF', __RC__)
+          call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBVF_REF', __RC__)
+
+          ! UVR_TDN (from REFRESH) is either undef or +ve
+          !+ASSERT_(all(UVR_TDN == MAPL_UNDEF .or. UVR_TDN > 0.))
+
+          do j = 1, JM  
+            do i = 1, IM
+
+              ! do an AFU if gridcol is currently sunlit and has a
+              ! REFRESH available with a successful flux analysis
+              do_AFU = (ZTH(i,j) > 0. .and. UVR_TAUE(i,j) /= MAPL_UNDEF) 
+
+              if (do_AFU) then
+                !+ASSERT_(UVR_TAUE(i,j) > 0.)
+                oupd = Eddington_Rayleigh_Optics( &
+                  dble(UVR_TAUE(i,j)),            &
+                  1.0d0-dble(UVR_SSAEC(i,j)),     &
+                  dble(UVR_ASYED(i,j)),           &
+                  dble(UVR_FRAY(i,j)),      __RC__)
+
+                !+ASSERT_(UVR_TDN(i,j) /= MAPL_UNDEF)
+                Eupd = WOA_Eddington_Rayleigh( &
+                  oupd,                        &
+                  dble(UVR_TDN(i,j)),          &
+                  dble(    ZTH(i,j)),          &
+                  dble( ALBDIR(i,j)),          &
+                  dble( ALBDIF(i,j)),    __RC__)
+
+                call Eupd%compute_fluxes( &
+                  1.0d0, FdirDnSFC, FdifDnSFC, dummy, &
+                  rc=status)
+                do_AFU = (status == ESMF_SUCCESS)
+
+                if (do_AFU) then
+                  DIR2D(i,j) = FdirDnSFC * SLR(i,j)
+                  DIF2D(i,j) = FdifDnSFC * SLR(i,j)
+                  MCZUS(i,j) = Eupd%mu0_used
+                end if
+              end if
+
+              if (.not. do_AFU) then
+                ! default to regular update
+                DIR2D(i,j) = DRUVRN(i,j) * SLR(i,j)
+                DIF2D(i,j) = DFUVRN(i,j) * SLR(i,j)
+                MCZUS(i,j) = ZTH(i,j)
+              end if
+
+            end do ! i
+          end do ! j
+
+          if (associated(DRUVR_AFU)) DRUVR_AFU = DIR2D
+          if (associated(DFUVR_AFU)) DFUVR_AFU = DIF2D
+          if (associated(UVR_MCOSZ_AFU)) UVR_MCOSZ_AFU = MCZUS
+          deallocate(DIR2D, DIF2D, MCZUS, __STAT__)
+
+        end if
+
+        if (associated(DRPAR_AFU) .or. associated(DFPAR_AFU)) then
+
+          allocate(DIR2D(IM,JM), __STAT__)
+          allocate(DIF2D(IM,JM), __STAT__)
+          allocate(MCZUS(IM,JM), __STAT__)
+
+!         call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBVR', __RC__)
+!         call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBVF', __RC__)
+          call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBVR_REF', __RC__)
+          call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBVF_REF', __RC__)
+
+          ! PAR_TDN (from REFRESH) is either undef or +ve
+          !+ASSERT_(all(PAR_TDN == MAPL_UNDEF .or. PAR_TDN > 0.))
+
+          do j = 1, JM  
+            do i = 1, IM
+
+              ! do an AFU if gridcol is currently sunlit and has a
+              ! REFRESH available with a successful flux analysis
+              do_AFU = (ZTH(i,j) > 0. .and. PAR_TAUE(i,j) /= MAPL_UNDEF) 
+
+              if (do_AFU) then
+                !+ASSERT_(PAR_TAUE(i,j) > 0.)
+                oupd = Eddington_Rayleigh_Optics( &
+                  dble(PAR_TAUE(i,j)),            &
+                  1.0d0-dble(PAR_SSAEC(i,j)),     &
+                  dble(PAR_ASYED(i,j)),           &
+                  dble(PAR_FRAY(i,j)),      __RC__)
+
+                !+ASSERT_(PAR_TDN(i,j) /= MAPL_UNDEF)
+                Eupd = WOA_Eddington_Rayleigh( &
+                  oupd,                        &
+                  dble(PAR_TDN(i,j)),          &
+                  dble(    ZTH(i,j)),          & 
+                  dble( ALBDIR(i,j)),          &
+                  dble( ALBDIF(i,j)),    __RC__)
+
+                call Eupd%compute_fluxes( &
+                  1.0d0, FdirDnSFC, FdifDnSFC, dummy, &
+                  rc=status)
+                do_AFU = (status == ESMF_SUCCESS)
+
+                if (do_AFU) then
+                  DIR2D(i,j) = FdirDnSFC * SLR(i,j)
+                  DIF2D(i,j) = FdifDnSFC * SLR(i,j)
+                  MCZUS(i,j) = Eupd%mu0_used
+                end if
+              end if
+
+              if (.not. do_AFU) then
+                ! default to regular update
+                DIR2D(i,j) = DRPARN(i,j) * SLR(i,j)
+                DIF2D(i,j) = DFPARN(i,j) * SLR(i,j)
+                MCZUS(i,j) = ZTH(i,j)
+              end if
+
+            end do ! i
+          end do ! j
+
+          if (associated(DRPAR_AFU)) DRPAR_AFU = DIR2D
+          if (associated(DFPAR_AFU)) DFPAR_AFU = DIF2D
+          if (associated(PAR_MCOSZ_AFU)) PAR_MCOSZ_AFU = MCZUS
+          deallocate(DIR2D, DIF2D, MCZUS, __STAT__)
+
+        end if
+
+        if (associated(DRNIR_AFU) .or. associated(DFNIR_AFU)) then
+
+          allocate(DIR2D(IM,JM), __STAT__)
+          allocate(DIF2D(IM,JM), __STAT__)
+          allocate(MCZUS(IM,JM), __STAT__)
+
+!         call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBNR', __RC__)
+!         call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBNF', __RC__)
+          call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBNR_REF', __RC__)
+          call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBNF_REF', __RC__)
+
+          ! NIR_TDN (from REFRESH) is either undef or +ve
+          !+ASSERT_(all(NIR_TDN == MAPL_UNDEF .or. NIR_TDN > 0.))
+
+          do j = 1, JM  
+            do i = 1, IM
+
+              ! do an AFU if gridcol is currently sunlit and has a
+              ! REFRESH available with a successful flux analysis
+              do_AFU = (ZTH(i,j) > 0. .and. NIR_TAUE(i,j) /= MAPL_UNDEF) 
+
+              if (do_AFU) then
+                !+ASSERT_(NIR_TAUE(i,j) > 0.)
+                oupd = Eddington_Rayleigh_Optics( &
+                  dble(NIR_TAUE(i,j)),            &
+                  1.0d0-dble(NIR_SSAEC(i,j)),     &
+                  dble(NIR_ASYED(i,j)),           &
+                  dble(NIR_FRAY(i,j)),      __RC__)
+
+                !+ASSERT_(NIR_TDN(i,j) /= MAPL_UNDEF)
+                Eupd = WOA_Eddington_Rayleigh( &
+                  oupd,                        &
+                  dble(NIR_TDN(i,j)),          &
+                  dble(    ZTH(i,j)),          &
+                  dble( ALBDIR(i,j)),          &
+                  dble( ALBDIF(i,j)),    __RC__)
+
+                call Eupd%compute_fluxes( &
+                  1.0d0, FdirDnSFC, FdifDnSFC, dummy, &
+                  rc=status)
+                do_AFU = (status == ESMF_SUCCESS)
+
+                if (do_AFU) then
+                  DIR2D(i,j) = FdirDnSFC * SLR(i,j)
+                  DIF2D(i,j) = FdifDnSFC * SLR(i,j)
+                  MCZUS(i,j) = Eupd%mu0_used
+                end if
+              end if
+
+              if (.not. do_AFU) then
+                ! default to regular update
+                DIR2D(i,j) = DRNIRN(i,j) * SLR(i,j)
+                DIF2D(i,j) = DFNIRN(i,j) * SLR(i,j)
+                MCZUS(i,j) = ZTH(i,j)
+              end if
+
+            end do ! i
+          end do ! j
+
+          if (associated(DRNIR_AFU)) DRNIR_AFU = DIR2D
+          if (associated(DFNIR_AFU)) DFNIR_AFU = DIF2D
+          if (associated(NIR_MCOSZ_AFU)) NIR_MCOSZ_AFU = MCZUS
+          deallocate(DIR2D, DIF2D, MCZUS, __STAT__)
+
+        end if
+
+        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+      end if
 
 ! Fill 3D FLuxes
 !---------------
@@ -5343,93 +6547,59 @@ contains
 
   end subroutine RUN
 
-subroutine PackLoc(A,B,MSK,LENA,LENB,MASKIT)
+  subroutine PackIt (Packed, UnPacked, MSK, Pdim, Udim, LM)
+    integer, intent(IN   ) :: Pdim, Udim(2), LM
+    real,    intent(INOUT) ::   Packed(Pdim,*)
+    real,    intent(IN   ) :: UnPacked(Udim(1),Udim(2),*)
+    logical, intent(IN   ) :: MSK(Udim(1),Udim(2))
 
-  implicit none
+    integer :: I, J, L, M
 
-  real,    intent(IN   ) :: A(LENA)
-  real,    intent(  OUT) :: B(LENB)
-  integer, intent(IN   ) :: LENA, LENB
-  logical, intent(IN   ) :: MSK(LENA), MASKIT
-
-  integer :: I, M
-
-  if (MASKIT) then
-     M = 1
-     do I = 1,LENA
-        if (MSK(I)) then
-           B(M) = A(I)
-           M = M+1
-           if (M>LENB) exit
-        end if
-     end do
-  else
-     if (LENA /= LENB) stop
-     B = A
-  end if
-
-end subroutine PackLoc
-
-subroutine UnPackLoc(A,B,MSK,F,LENA,LENB,MASKIT)
-
-   implicit none
-
-   real,    intent(IN   ) :: A(LENA), F
-   real,    intent(  OUT) :: B(LENB)
-   integer, intent(IN   ) :: LENA, LENB
-   logical, intent(IN   ) :: MSK(LENB), MASKIT
-
-   integer :: I, M
-
-   if(MASKIT) then
+    do L = 1,LM
       M = 1
-      do I = 1,LENB
-         if (MSK(I)) then
-            if (M>LENA) then
-               B(I) = F
-            else
-               B(I) = A(M)
-            end if
+      do J = 1,Udim(2)
+        do I = 1,Udim(1)
+          if (MSK(I,J)) then
+            Packed(M,L) = UnPacked(I,J,L)
             M = M+1
-         else
-            B(I) = F
-         end if
+          end if
+        end do
       end do
-   else
-      if (LENA /= LENB) stop
-      B = A
-   end if
+    end do
 
-end subroutine UnPackLoc
+  end subroutine PackIt
+
+  subroutine UnPackIt(Packed, UnPacked, MSK, Pdim, Udim, LM, DEFAULT)
+    integer, intent(IN   ) :: Pdim, Udim(2), LM
+    real,    intent(IN   ) ::   Packed(Pdim,*)
+    real,    intent(INOUT) :: UnPacked(Udim(1),Udim(2),*)
+    logical, intent(IN   ) :: MSK(Udim(1),Udim(2))
+    real, optional, intent(IN) :: DEFAULT
+
+    integer :: I, J, L, M
+    real :: usableDefault
+
+    if (PRESENT(DEFAULT)) then
+      usableDefault = DEFAULT
+    else
+      usableDefault = 0
+    end if
+
+    do L = 1,LM
+      M = 1
+      do J = 1,Udim(2)
+        do I = 1,Udim(1)
+          if (MSK(I,J)) then
+            Unpacked(I,J,L) = Packed(M,L)
+            M = M+1
+          else
+            UnPacked(I,J,L) = usableDefault
+          end if
+        end do
+      end do
+    end do
+
+  end subroutine UnPackIt
 
 end module GEOS_SolarGridCompMod
 
-subroutine ReOrder(Packed, UnPacked, MSK, Pdim, Udim, LM, DIR)
-  integer, intent(IN   ) :: Pdim, Udim(2), LM, DIR 
-  real,    intent(INOUT) ::   Packed(Pdim,*)
-  real,    intent(INOUT) :: UnPacked(Udim(1),Udim(2),*)
-  logical, intent(IN   ) :: MSK(Udim(1),Udim(2))
-
-  integer :: I, J, L, M
-
-  do L = 1,LM
-     M = 1
-     do J = 1,Udim(2)
-        do I = 1,Udim(1)
-           if (MSK(I,J)) then
-              if(DIR==PACKIT) then
-                 Packed(M,L) = UnPacked(I,J,L)
-              else
-                 Unpacked(I,J,L) = Packed(M,L)
-              end if
-              M = M+1
-           else
-              if(DIR/=PACKIT) then
-                 UnPacked(I,J,L) = 0
-              end if
-           end if
-        end do
-     end do
-  end do
-
-end subroutine ReOrder
