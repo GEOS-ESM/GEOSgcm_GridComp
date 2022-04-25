@@ -403,9 +403,9 @@ contains
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('EVAP', SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
-    call AddSurfField('net_surf_flux', SURFST, GRID, 
+    call AddSurfField('FSURF', SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
-    call AddSurfField('derivative_of_net_surf_flux', SURFST, GRID, 
+    call AddSurfField('DFSURFDTS', SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('SNOW',  SURFST, GRID,  __RC__)
     call AddSurfField('RAIN',  SURFST, GRID,  __RC__)
