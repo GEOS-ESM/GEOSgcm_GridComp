@@ -12,6 +12,7 @@ module GEOS_SeaIceGridCompMod
   use ESMF
   use MAPL
   use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices  => SetServices
+  use CICE_GEOSPlugMod,                  only : CICE6SeaIceSetServices  => SetServices
   use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices   => SetServices
   use ice_prescribed_mod,                only : ice_nudging
 
@@ -111,6 +112,8 @@ contains
        select case (trim(SEAICE_NAME))
           case ("CICE4")
              ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE4SeaIceSetServices, __RC__)
+          case ("CICE6")
+             ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE6SeaIceSetServices, __RC__)
           case default
              charbuf_ = "SEAICE_NAME: " // trim(SEAICE_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)

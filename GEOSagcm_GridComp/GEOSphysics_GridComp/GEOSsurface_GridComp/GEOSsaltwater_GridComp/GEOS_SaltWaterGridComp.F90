@@ -143,11 +143,14 @@ module GEOS_SaltwaterGridCompMod
     ! order is important !!!
     ! sea-ice first and openwater second 
     ! changing order requires also changing indices of ICE and WATER (sub-tiles at the top)
-    if(DO_CICE_THERMO /= 0) then
+    if(DO_CICE_THERMO == 0) then
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,    RC=STATUS)
+       VERIFY_(STATUS)
+    elseif(DO_CICE_THERMO == 1) then 
        I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=CICE4ColumnPhysSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,    RC=STATUS)
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SeaiceInterfaceSetServices, RC=STATUS)
        VERIFY_(STATUS)
     endif  
 
