@@ -11,8 +11,11 @@
 module GEOS_RAS_InterfaceMod
 
   use ESMF
-  use MAPL
-
+  use MAPL, r8 => MAPL_R8
+  use aer_cloud
+  use GEOS_UtilsMod
+  use RAS       ! using module that contains ras code
+  use RASPARAMS
   implicit none
 
   private
@@ -20,40 +23,40 @@ module GEOS_RAS_InterfaceMod
   character(len=ESMF_MAXSTR)              :: IAm
   integer                                 :: STATUS
 
-  type RASPARAM_TYPE
-      real               :: CUFRICFAC             ! 1
-      real               :: SHR_LAMBDA_FAC        ! 2
-
-      real               :: QC_CRIT_CN            ! 4
-      real               :: RASAL1                ! 5
-      real               :: RASAL2                ! 6
-      real               :: RASNCL                ! 7
-      real               :: LAMBDA_FAC            ! 8
-      real               :: LAMBMX_FAC            ! 9
-      real               :: MIN_DIAMETER          ! 10
-      real               :: CUFRICLAMBDA          ! 11
-      real               :: RDTLEXPON             ! 12
-      real               :: STRAPPING             ! 13
-      real               :: SDQV2                 ! 14
-      real               :: SDQV3                 ! 15
-      real               :: SDQVT1                ! 16
-      real               :: ACRITFAC              ! 17
-      real               :: HMINTRIGGER           ! 18
-      real               :: LLDISAGGXP            ! 19
-      real               :: PBLFRAC               ! 20
-      real               :: RASAUTORAMPB          ! 21
-      real               :: AUTOC_CN_ZDEP         ! 22
-      real               :: MAXDALLOWED_S         ! 23
-      real               :: MAXDALLOWED_D         ! 24
-      real               :: MAXDALLOWED_E         ! 25
-      real               :: RAS_RHMIN             ! 26
-      real               :: RAS_RHFULL            ! 27
-      real               :: CLDMICRO              ! 28
-      real               :: FDROP_DUST            ! 29
-      real               :: FDROP_SOOT            ! 30
-      real               :: FDROP_SEASALT         ! 31
-      real               :: RASAL_SLOPE
-  endtype RASPARAM_TYPE
+!  type RASPARAM_TYPE
+!      real               :: CUFRICFAC             ! 1
+!      real               :: SHR_LAMBDA_FAC        ! 2
+!
+!      real               :: QC_CRIT_CN            ! 4
+!      real               :: RASAL1                ! 5
+!      real               :: RASAL2                ! 6
+!      real               :: RASNCL                ! 7
+!      real               :: LAMBDA_FAC            ! 8
+!      real               :: LAMBMX_FAC            ! 9
+!      real               :: MIN_DIAMETER          ! 10
+!      real               :: CUFRICLAMBDA          ! 11
+!      real               :: RDTLEXPON             ! 12
+!      real               :: STRAPPING             ! 13
+!      real               :: SDQV2                 ! 14
+!      real               :: SDQV3                 ! 15
+!      real               :: SDQVT1                ! 16
+!      real               :: ACRITFAC              ! 17
+!      real               :: HMINTRIGGER           ! 18
+!      real               :: LLDISAGGXP            ! 19
+!      real               :: PBLFRAC               ! 20
+!      real               :: RASAUTORAMPB          ! 21
+!      real               :: AUTOC_CN_ZDEP         ! 22
+!      real               :: MAXDALLOWED_S         ! 23
+!      real               :: MAXDALLOWED_D         ! 24
+!      real               :: MAXDALLOWED_E         ! 25
+!      real               :: RAS_RHMIN             ! 26
+!      real               :: RAS_RHFULL            ! 27
+!      real               :: CLDMICRO              ! 28
+!      real               :: FDROP_DUST            ! 29
+!      real               :: FDROP_SOOT            ! 30
+!      real               :: FDROP_SEASALT         ! 31
+!      real               :: RASAL_SLOPE
+!  endtype RASPARAM_TYPE
   type   (RASPARAM_TYPE) :: RASPARAMS
 
   public :: RAS_Setup, RAS_Initialize, RAS_Run
@@ -64,7 +67,19 @@ subroutine RAS_Setup (GC, CF, RC)
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     type(ESMF_Config),   intent(inout) :: CF
     integer, optional                  :: RC  ! return code
-    character(len=ESMF_MAXSTR)         :: COMP_NAME
+
+    !EOP
+
+    !=============================================================================
+    !
+    ! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)              :: IAm
+    integer                                 :: STATUS
+    character(len=ESMF_MAXSTR)              :: COMP_NAME
+
+    integer      :: RFRSHINT
+    integer      :: AVRGNINT
 
     IAm = "GEOS_RAS_InterfaceMod"
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
@@ -109,6 +124,17 @@ subroutine RAS_Setup (GC, CF, RC)
          RC=STATUS  )
     VERIFY_(STATUS)                                                                          
 
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'ZLE',                                       &
+         LONG_NAME  = 'geopotential_height',                       &
+         UNITS      = 'm',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         AVERAGING_INTERVAL = AVRGNINT,                             &
+         REFRESH_INTERVAL   = RFRSHINT,                             &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME = 'KH',                                         &
          LONG_NAME  = 'scalar_diffusivity',                         &
@@ -126,6 +152,28 @@ subroutine RAS_Setup (GC, CF, RC)
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
+         AVERAGING_INTERVAL = AVRGNINT,                            &
+         REFRESH_INTERVAL   = RFRSHINT,                            &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                             &
+         SHORT_NAME = 'V',                                         &
+         LONG_NAME  = 'northward_wind',                            &
+         UNITS      = 'm s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         AVERAGING_INTERVAL = AVRGNINT,                            &
+         REFRESH_INTERVAL   = RFRSHINT,                            &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                             &
+         SHORT_NAME = 'U',                                         &
+         LONG_NAME  = 'eastward_wind',                             &
+         UNITS      = 'm s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
          RC=STATUS  )
@@ -384,13 +432,43 @@ subroutine RAS_Setup (GC, CF, RC)
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='ZLCL',                                        & 
+         LONG_NAME ='lifting_condensation_level',                  &
+         UNITS     ='m'  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='ZLFC',                                        & 
+         LONG_NAME ='level_of_free_convection',                    &
+         UNITS     ='m'  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
 end subroutine RAS_Setup
 
 subroutine RAS_Initialize (MAPL, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
 
-#ifdef NODISABLE
+    character(len=ESMF_MAXSTR) :: GRIDNAME
+    character(len=4)           :: imchar
+    character(len=2)           :: dateline
+    integer                    :: imsize,nn
+
+!#ifdef NODISABLE
+
+      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
+      VERIFY_(STATUS)
+      GRIDNAME =  AdjustL(GRIDNAME)
+      nn = len_trim(GRIDNAME)
+      dateline = GRIDNAME(nn-1:nn)
+      imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
+      read(imchar,*) imsize
+      if(dateline.eq.'CF') imsize = imsize*4
 
       call MAPL_GetResource(MAPL, RASPARAMS%CUFRICFAC,     'CUFRICFAC:',      DEFAULT= 1.000, RC=STATUS)
       call MAPL_GetResource(MAPL, RASPARAMS%SHR_LAMBDA_FAC,'SHR_LAMBDA_FAC:', DEFAULT= 0.05,  RC=STATUS)
@@ -426,7 +504,7 @@ subroutine RAS_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, RASPARAMS%RASAL_SLOPE ,  'RASAL_SLOPE:',     DEFAULT= 8000.0  ,  RC=STATUS)
       call MAPL_GetResource(MAPL, RASPARAMS%RAS_RHMIN ,    'RAS_RHMIN:',       DEFAULT= 0.5  ,  RC=STATUS)
       call MAPL_GetResource(MAPL, RASPARAMS%RAS_RHFULL,    'RAS_RHFULL:',      DEFAULT= 0.65 ,  RC=STATUS)
-#endif
+!#endif
 
 end subroutine RAS_Initialize
 
@@ -448,7 +526,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   
     ! Local variables
 
-    integer                         :: IM,JM,LM
+    integer                         :: IM, JM, LM, L, I, J, kii
     integer                         :: IDIM, IRUN, K0, ICMIN
     integer                         :: ITRCR,KSTRAP,CBL_METHOD,KCBLMIN,CLEANUP_RH
     real                            :: PMIN_DET
@@ -457,52 +535,45 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real                            :: CBL_TPERT, CBL_QPERT
     real                            :: CBL_TPERT_MXOCN,CBL_TPERT_MXLND
     real                            :: AUTOC_CN_OCN, AUTOC_CN_LAND
+    real                            :: FDROP_DUST
 
     !Whether to guard against negatives
     logical                         :: RAS_NO_NEG
 
-    ! These logicals are used to check if a pointer is associated. ALLOC means
-    ! "Do I need to allocate the pointer?"
-    logical :: ALLOC_CNV_DQLDT 
-    logical :: ALLOC_CNV_MF0   
-    logical :: ALLOC_CNV_MFD   
-    logical :: ALLOC_CNV_MFC
-    logical :: ALLOC_CNV_UPDF  
-    logical :: ALLOC_CNV_CVW  
-    logical :: ALLOC_CNV_QC 
-    logical :: ALLOC_ENTLAM
-    logical :: ALLOC_CNV_FICE  
-    logical :: ALLOC_CNV_NDROP 
-    logical :: ALLOC_CNV_NICE  
-    logical :: ALLOC_XHO
-    logical :: ALLOC_FSCAV
-    logical :: ALLOC_FSCAV_
-
     ! pointers
     real, pointer, dimension(:)     :: PREF
-    !     FSCAV is the Fraction of tracer scavanged per km (=0 no scavenging, =1 full scavenging)
-    real, pointer, dimension(:)     :: FSCAV_, ! holding array for all tracers
-    real, pointer, dimension(:)     :: FSCAV   ! container for friendly to moist tracers
-    real, pointer, dimension(:,:)   :: LONS
-    real, pointer, dimension(:,:)   :: LATS
-    real, pointer, dimension(:,:)   :: TS,SNOMAS,FRLAND
-    real, pointer, dimension(:,:)   :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
-    real, pointer, dimension(:,:,:) :: TH, PLE
-    real, pointer, dimension(:,:,:) :: Q, QLCN, CLCN, BYNCY, QICN
-    real, pointer, dimension(:,:,:) :: CNV_DQLDT, CNV_MF0, CNV_MFD , CNV_MFC
-    real, pointer, dimension(:,:,:) :: CNV_UPDF, CNV_CVW, CNV_QC
-    real, pointer, dimension(:,:,:) :: ENTLAM
-    real, pointer, dimension(:,:,:) :: RAS_ALPHA, RAS_TAU
-    real, pointer, dimension(:,:,:) :: CNV_FICE, CNV_NDROP, CNV_NICE
-    real, pointer, dimension(:,:,:,:) :: XHO
+    real, pointer, dimension(:    ) :: FSCAV      ! container for friendly to moist tracers
+    real, pointer, dimension(:,:)     :: LONS
+    real, pointer, dimension(:,:)     :: LATS
+    real, pointer, dimension(:,:)     :: TS,SNOMAS,FRLAND
+    real, pointer, dimension(:,:)     :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
+    real, pointer, dimension(:,:)     :: ZLCL, ZLFC
+    real, pointer, dimension(:,:)     :: TPERTI,KCBLI
+    real, pointer, dimension(:,:)     :: TVEX 
+    real, pointer, dimension(:,:)     :: MXDIAM
+    real, pointer, dimension(:,:,:)   :: TH, PLE
+    real, pointer, dimension(:,:,:)   :: Q, QLCN, CLCN, BYNCY, QICN
+    real, pointer, dimension(:,:,:)   :: CNV_DQLDT, CNV_MF0, CNV_MFD , CNV_MFC
+    real, pointer, dimension(:,:,:)   :: CNV_UPDF, CNV_CVW, CNV_QC
+    real, pointer, dimension(:,:,:)   :: ENTLAM
+    real, pointer, dimension(:,:,:)   :: RAS_ALPHA, RAS_TAU
+    real, pointer, dimension(:,:,:)   :: CNV_FICE, CNV_NDROP, CNV_NICE
+    real, pointer, dimension(:,:,:)   :: KH
+    real, pointer, dimension(:,:,:)   :: ZL0, V, U
+    real, pointer, dimension(:,:,:)   :: THOI,QHOI,QSSI,DQSI
+    real, pointer, dimension(:,:,:)   :: PLEI
+    real, pointer, dimension(:,:,:)   :: THRAS,URAS,VRAS
+    real, pointer, dimension(:,:)     ::  TRIEDLV
+    real, pointer, dimension(:,:,:)   :: RCCODE,QVRAS
 
     ! allocatable arrays
     real, allocatable, dimension(:)     :: SIGE
     real, allocatable, dimension(:,:)   :: RASPRCP
     real, allocatable, dimension(:,:)   :: ZCBLx, MXDIAMx
-    real, allocatable, dimension(:,:)   :: TPERT, QPERT, RAS2_2d
+    real, allocatable, dimension(:,:)   :: TPERT, QPERT, RASAL2_2d
     real, allocatable, dimension(:,:)   :: CNV_FRACTION
     real, allocatable, dimension(:,:)   :: CO_AUTO
+    real, allocatable, dimension(:,:)   :: QSSFC
     real, allocatable, dimension(:,:,:) :: DQS, QSS, PLO, ZLO, TEMP, PK
     real, allocatable, dimension(:,:,:) :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
     real, allocatable, dimension(:,:,:) :: WGT0, WGT1
@@ -510,14 +581,17 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: GZLE
     real, allocatable, dimension(:,:,:) :: PKE
     real, allocatable, dimension(:,:,:) :: CNV_PLE,ZLE
-    real, allocatable, dimension(:,:,:) :: KEX
+    real, allocatable, dimension(:,:)   :: KEX
+    real, allocatable, dimension(:,:,:) :: MASS
+    real, allocatable, dimension(:,:,:) :: XHO
+    real, allocatable, dimension(:,:) :: TRDLX
 
     integer, allocatable, dimension(:,:) :: IRAS, JRAS, KCBL ! Need IM and JM to initialize
     integer, allocatable, dimension(:,:) :: KLCL, KLFC, KPBL, KPBL_SC
     integer, allocatable, dimension(:,:,:) :: SEEDINI ! Need IM and JM to initialize
-    integer, allocatable, dimension(:,:,:) :: irccode
+    integer, allocatable, dimension(:,:,:) :: IRCCODE
 
-    type  (AerProps), dimension(:,:,:) :: AeroProps !Storages aerosol properties for activation 
+    type  (AerProps), allocatable, dimension(:,:,:) :: AeroProps !Storages aerosol properties for activation 
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -545,14 +619,14 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
 
-#ifdef NODISABLE
+!#ifdef NODISABLE
 
     ! get resources
 
     call MAPL_GetResource(MAPL, RAS_NO_NEG, 'RAS_NO_NEG:', default=.FALSE. , RC=STATUS)
-    call MAPL_GetResource(STATE, PMIN_DET, 'PMIN_DET', DEFAULT= 3000.0, RC=STATUS)
-    call MAPL_GetResource(STATE, CBL_METHOD, 'CBL_METHOD:', DEFAULT= 6, RC=STATUS)
-    call MAPL_GetResource(STATE, PMIN_CBL, 'PMIN_CBL', DEFAULT= 50000.0, RC=STATUS)
+    call MAPL_GetResource(MAPL, PMIN_DET, 'PMIN_DET', DEFAULT= 3000.0, RC=STATUS)
+    call MAPL_GetResource(MAPL, CBL_METHOD, 'CBL_METHOD:', DEFAULT= 6, RC=STATUS)
+    call MAPL_GetResource(MAPL, PMIN_CBL, 'PMIN_CBL', DEFAULT= 50000.0, RC=STATUS)
     call MAPL_GetResource(MAPL, CBL_QPERT, 'CBL_QPERT:', DEFAULT= 0.0, RC=STATUS)
     call MAPL_GetResource(MAPL, CBL_TPERT, 'CBL_TPERT:',       DEFAULT=-1.0   , RC=STATUS)
     call MAPL_GetResource(MAPL, CBL_TPERT_MXOCN, 'CBL_TPERT_MXOCN:', DEFAULT= 2.0   , RC=STATUS)
@@ -560,6 +634,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetResource(MAPL, CBL_QPERT, 'CBL_QPERT:', DEFAULT= 0.0   , RC=STATUS)
     call MAPL_GetResource(MAPL, AUTOC_CN_OCN, 'AUTOC_CN:', DEFAULT= 2.5e-3, RC=STATUS)
     call MAPL_GetResource(MAPL, AUTOC_CN_LAND, 'AUTOC_CN_LAND:', DEFAULT= AUTOC_CN_OCN, RC=STATUS)
+    call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    RC=STATUS) !Fraction of dust within droplets for immersion freezing
     
     ! get pointers
 
@@ -592,12 +667,15 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_FICE,  'CNV_FICE' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_NICE,  'CNV_NICE' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, ZL0,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ZLCL,     'ZLCL'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ZLFC,     'ZLFC'    , RC=STATUS); VERIFY_(STATUS)
 
     ! allocate arrays
-    ! if(.not.allocated(X)) allocate(X(IM,JM); VERIFY_(STATUS) 
-    ! if(.not.allocated(X)) allocate(X(IM,JM,LM)); VERIFY_(STATUS)
     if(.not.allocated(SEEDINI)) allocate(SEEDINI(IM,JM,2)); VERIFY_(STATUS)
-    if(.not.allocated(IRAS)) allocate(IRAS(IM,JM,)); VERIFY_(STATUS)
+    if(.not.allocated(IRAS)) allocate(IRAS(IM,JM)); VERIFY_(STATUS)
     if(.not.allocated(JRAS)) allocate(JRAS(IM,JM)); VERIFY_(STATUS)
     if(.not.allocated(SIGE)) allocate(SIGE(0:LM)); VERIFY_(STATUS)
     if(.not.allocated(KCBL)) allocate(KCBL(IM,JM)); VERIFY_(STATUS)
@@ -613,66 +691,38 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if(.not.allocated(ZLO)) allocate(ZLO(IM,JM,LM)); VERIFY_(STATUS)
     if(.not.allocated(TEMP)) allocate(TEMP(IM,JM,LM)); VERIFY_(STATUS)
     if(.not.allocated(PK)) allocate(PK(IM,JM,LM)); VERIFY_(STATUS)
-    if(.not.allocated(KLCL)) allocate(KLCL(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(KLFC)) allocate(KLFC(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(KPBL)) allocate(KPBL(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(KPBL_SC)) allocate(KPBL_SC(IM,JM); VERIFY_(STATUS) 
+    if(.not.allocated(KLCL)) allocate(KLCL(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(KLFC)) allocate(KLFC(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(KPBL)) allocate(KPBL(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(KPBL_SC)) allocate(KPBL_SC(IM,JM)); VERIFY_(STATUS) 
     if(.not.allocated(CNV_PLE)) allocate(CNV_PLE(IM,JM,0:LM)); VERIFY_(STATUS)
     if(.not.allocated(ZLE)) allocate(ZLE(IM,JM,0:LM)); VERIFY_(STATUS)
-    if(.not.allocated(ZCBLx)) allocate(ZCBLx(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(MXDIAMx)) allocate(MXDIAMx(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(TPERT)) allocate(TPERT(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(QPERT)) allocate(QPERT(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(CNV_FRACTION)) allocate(CNV_FRACTION(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(RAS2_2d)) allocate(RAS2_2d(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(CO_AUTO)) allocate(CO_AUTO(IM,JM); VERIFY_(STATUS) 
-    if(.not.allocated(GZLO)) allocate(GZLO(IM,JM,LM); VERIFY_(STATUS) )
+    if(.not.allocated(ZCBLx)) allocate(ZCBLx(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(MXDIAMx)) allocate(MXDIAMx(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(TPERT)) allocate(TPERT(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(QPERT)) allocate(QPERT(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(CNV_FRACTION)) allocate(CNV_FRACTION(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(RASAL2_2d)) allocate(RASAL2_2d(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(CO_AUTO)) allocate(CO_AUTO(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(GZLO)) allocate(GZLO(IM,JM,LM)); VERIFY_(STATUS)
     if(.not.allocated(GZLE)) allocate(GZLE(IM,JM,0:LM)); VERIFY_(STATUS) 
-    if(.not.allocated(HHO)) allocate(HHO(IM,JM,LM)); VERIFY_(STATUS) )
-    if(.not.allocated(HSO)) allocate(HSO(IM,JM,LM)); VERIFY_(STATUS) )
+    if(.not.allocated(HHO)) allocate(HHO(IM,JM,LM)); VERIFY_(STATUS)
+    if(.not.allocated(HSO)) allocate(HSO(IM,JM,LM)); VERIFY_(STATUS)
     if(.not.allocated(PKE)) allocate(PKE(IM,JM,0:LM)); VERIFY_(STATUS) 
     if(.not.allocated(CNV_PRC3)) allocate(CNV_PRC3(IM,JM,LM)); VERIFY_(STATUS) 
-    if(.not.allocated(RASPRCP) allocate(RASPRCP(IM,JM)); VERIFY_(STATUS)
-    if(.not.allocated(AeroProps) allocate(AeroProps(IM,JM,LM)); VERIFY_(STATUS)
-    if(.not.allocated(irccode) allocate(irccode(IM,JM,LM)); VERIFY_(STATUS)
-    if(.not.allocated(KEX) allocate(KEX(IM,JM,LM)); VERIFY_(STATUS) 
+    if(.not.allocated(RASPRCP)) allocate(RASPRCP(IM,JM)); VERIFY_(STATUS)
+    if(.not.allocated(AeroProps)) allocate(AeroProps(IM,JM,LM)); VERIFY_(STATUS)
+    if(.not.allocated(IRCCODE)) allocate(IRCCODE(IM,JM,LM)); VERIFY_(STATUS)
+    if(.not.allocated(KEX)) allocate(KEX(IM,JM)); VERIFY_(STATUS) 
+    if(.not.allocated(RASAL2_2d)) allocate(RASAL2_2d(IM,JM)); VERIFY_(STATUS)
+    if(.not.allocated(QSSFC)) allocate(QSSFC(IM,JM)); VERIFY_(STATUS)
+    if(.not.allocated(XHO)) allocate(XHO (IM,JM,ITRCR),stat=STATUS); VERIFY_(STATUS)
 
    ! initialize local variables
 
     ITRCR       = 0 ! This meeds to be before XHO is allocated.
     
-    ! Check which pointers need to be allocated.
-    ALLOC_CNV_DQLDT = .not.associated(CNV_DQLDT )
-    ALLOC_CNV_MF0   = .not.associated(CNV_MF0   )
-    ALLOC_CNV_MFD   = .not.associated(CNV_MFD   )
-    ALLOC_CNV_MFC   = .not.associated(CNV_MFC   )
-    ALLOC_CNV_UPDF  = .not.associated(CNV_UPDF  )
-    ALLOC_CNV_CVW   = .not.associated(CNV_CVW   )
-    ALLOC_CNV_QC    = .not.associated(CNV_QC    )
-    ALLOC_ENTLAM    = .not.associated(ENTLAM    )
-
-    ALLOC_CNV_FICE  = .not.associated(CNV_FICE)
-    ALLOC_CNV_NDROP = .not.associated(CNV_NDROP)
-    ALLOC_CNV_NICE  = .not.associated(CNV_NICE)           
-    ALLOC_XHO       = .not.associated(XHO)
-    ALLOC_FSCAV     = .not.associated(FSCAV)
-    ALLOC_FSCAV_     = .not.associated(FSCAV_)
-
-    ! allocate pointers !WDB Add stat and verify
-    if(ALLOC_CNV_DQLDT) allocate(CNV_DQLDT(IM,JM,LM))
-    if(ALLOC_CNV_MF0  ) allocate(CNV_MF0  (IM,JM,LM))
-    if(ALLOC_CNV_MFD  ) allocate(CNV_MFD  (IM,JM,LM))
-    if(ALLOC_CNV_MFC  ) allocate(CNV_MFC  (IM,JM,0:LM))
-    if(ALLOC_CNV_UPDF ) allocate(CNV_UPDF (IM,JM,LM))
-    if(ALLOC_CNV_CVW  ) allocate(CNV_CVW  (IM,JM,LM))
-    if(ALLOC_CNV_QC   ) allocate(CNV_QC   (IM,JM,LM))
-    if(ALLOC_ENTLAM   ) allocate(ENTLAM   (IM,JM,LM))
-    if(ALLOC_CNV_FICE  ) allocate (CNV_FICE (IM,JM,LM))
-    if(ALLOC_CNV_NDROP  ) allocate (CNV_NDROP (IM,JM,LM))
-    if(ALLOC_CNV_NICE  ) allocate (CNV_NICE (IM,JM,LM))              
-    if(ALLOC_XHO) allocate(XHO (IM,JM,LM,ITRCR),stat=STATUS)
-    if(ALLOC_FSCAV) allocate(FSCAV(ITRCR),stat=STATUS)
-    if(ALLOC_FSCAV_) allocate(FSCAV_(ITRCR),stat=STATUS)
+    if(.not.associated(FSCAV)) allocate(FSCAV(ITRCR),stat=STATUS)
 
     !  Copy incoming state vars to local arrays that will be adjusted
     !  by physics.  Untouched state vars will later be used for 
@@ -699,7 +749,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ENTLAM   = 0.0
     !-srf - placed here before the cumulus parameterizations are called.
     do L=LM,0,-1
-       ZLE(:,:,L) = ZL0(:,:,L) - ZL0(:,:,LM) 
+       ZLE(:,:,L) = ZL0(:,:,L) - ZL0(:,:,LM)
     end do
     do L=LM,1,-1
        ZLO(:,:,L) = 0.5*(ZLE(:,:,L-1) + ZLE(:,:,L))
@@ -714,7 +764,8 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     HHO      =  0.0
     HSO      =  0.0    
-    irccode  = -99
+    IRCCODE  = -99
+    TRDLX    = 1.0
 
     ! Some export work prior to doing calculations
     !---------------------------------------------
@@ -730,12 +781,12 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     IRAS       = nint(LONS*100)
     JRAS       = nint(LATS*100)
     RASPARAMS%CLDMICRO = 0.0
-    if(adjustl(CLDMICRO)=="MGB2_2M") then
-       RASPARAMS%CLDMICRO = 1.0
-       RASPARAMS%FDROP_DUST = FDROP_DUST
-       RASPARAMS%FDROP_SOOT = FDROP_SOOT
-       RASPARAMS%FDROP_SEASALT = SS_INFAC
-    endif
+!    if(adjustl(CLDMICRO)=="MGB2_2M") then !WDB Maybe, this block is unnecessary.
+!       RASPARAMS%CLDMICRO = 1.0
+!       RASPARAMS%FDROP_DUST = FDROP_DUST !WDB Note multiple statements.
+!       RASPARAMS%FDROP_SOOT = FDROP_SOOT
+!       RASPARAMS%FDROP_SEASALT = SS_INFAC
+!    endif
     SEEDINI(:,:,1) = 1000000 * ( 100*TEMP(:,:,LM)   - INT( 100*TEMP(:,:,LM) ) )
     SEEDINI(:,:,2) = 1000000 * ( 100*TEMP(:,:,LM-1) - INT( 100*TEMP(:,:,LM-1) ) )
 
@@ -947,7 +998,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            CLCN                 , &   ! -> upd if RAS-2 
            HHO                  , &
            HSO                  , &   ! -> diag
-           CNVPRCP              , &
+           RASPRCP              , &
 
            RASPARAMS            , & ! params
            RAS_NO_NEG           , &
@@ -965,9 +1016,9 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 !!!==============              
            ITRCR                , &
-           irccode              , &
+           IRCCODE              , &
            XHO = XHO            , &
-           TRIEDLEV_DIAG = trdlx, &
+           TRIEDLEV_DIAG = TRDLX, &
            FSCAV  = FSCAV       , &
            DISSKE = KEX           )
 
@@ -979,23 +1030,8 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       if(associated(RCCODE )) RCCODE  = 1.0*IRCCODE
       if(associated(TRIEDLV)) TRIEDLV = TRDLX
       if(associated(TVEX   )) TVEX     = SUM( (MAPL_CP*TEMP + MAPL_ALHL*Q)*MASS, 3 )
-#endif
-      ! deallocate the pointers for ExportGridSpec's
-      if(ALLOC_CNV_DQLDT) deallocate(CNV_DQLDT, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_MF0)   deallocate(CNV_MF0, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_MFD)   deallocate(CNV_MFD, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_MFC)   deallocate(CNV_MFC, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_TOPP)  deallocate(CNV_TOPP, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_UPDF)  deallocate(CNV_UPDF, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_CVW)   deallocate(CNV_CVW, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_QC)    deallocate(CNV_QC, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_ENTLAM)    deallocate(ENTLAM, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_FICE)  deallocate(CNV_FICE, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_NDROP) deallocate(CNV_NDROP, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_CNV_NICE)  deallocate(CNV_NICE, stat=STATUS); VERIFY_(STATUS)     
-      if(ALLOC_XHO)       deallocate(XHO, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_FSCAV)     deallocate(FSCAV, stat=STATUS); VERIFY_(STATUS)
-      if(ALLOC_FSCAV_)    deallocate(FSCAV_, stat=STATUS); VERIFY_(STATUS)
+!#endif
+      if(associated(FSCAV))     deallocate(FSCAV, stat=STATUS); VERIFY_(STATUS)
 
     call MAPL_TimerOff(MAPL,"--RAS")
 
@@ -1065,32 +1101,6 @@ function FINDLFC( BUOY, IM, JM, LM ) result( KLFC )
        end do
     end do
 end function FINDLFC
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-  function FINDLFC( BUOY, IM, JM, LM ) result( KLFC )
-    ! !DESCRIPTION: 
-    integer,                   intent(in)  :: IM, JM, LM
-    real, dimension(IM,JM,LM), intent(in)  :: BUOY
-
-    integer, dimension(IM,JM)              :: KLFC
-
-    integer                                :: I, J, L
-
-    do I = 1, IM
-       do J = 1, JM
-
-          KLFC(I,J) = 0    
-          do L = LM,1,-1
-             IF( BUOY(I,J,L) > 0. ) THEN 
-                KLFC(I,J) = L
-                EXIT
-             ENDIF
-          enddo
-
-       end do
-    end do
-  end function FINDLFC
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   function FINDPBL( KH, IM, JM, LM ) result( KPBL )
