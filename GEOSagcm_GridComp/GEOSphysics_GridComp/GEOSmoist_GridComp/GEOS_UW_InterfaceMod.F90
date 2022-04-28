@@ -367,6 +367,14 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         PTR2D = TMP2D
         end if
 
+       !--------------------------------------------------------------
+       !  For Now add ShallowCu contribution to total/detraining mass flux exports
+       !--------------------------------------------------------------
+        call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        PTR3D = PTR3D + UMF_SC
+        call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        PTR3D = PTR3D + MFD_SC
+
         call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = CUSH
 

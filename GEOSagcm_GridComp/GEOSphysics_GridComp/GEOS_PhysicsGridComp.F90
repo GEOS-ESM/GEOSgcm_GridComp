@@ -1171,14 +1171,21 @@ contains
      call MAPL_AddConnectivity ( GC,                                      &
         SHORT_NAME  = (/ 'RL      ',  'QL      ', 'QLTOT   ', 'DQLDT   ', &
                          'RI      ',  'QI      ', 'QITOT   ', 'DQIDT   ', &
-                         'QLCN    ',  'QLLS    ', 'PFL_CN  ', 'PFL_LSAN', &
-                         'QICN    ',  'QILS    ', 'PFI_CN  ', 'PFI_LSAN', &
+                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN',             &
+                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN',             &
                          'FCLD    ',  'QCTOT   ', 'CNV_QC  ',             &
-                         'REV_LS  ',  'REV_AN  ', 'REV_CN  ',             &
-                         'CN_PRCP ',  'LS_PRCP ', 'TPREC   ', 'SNO     ', &
+                         'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
                          'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
                          'LFR_GCC ',  'RH2     ' /),                      &
+        DST_ID      = CHEM,                                               &
+        SRC_ID      = MOIST,                                              &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                                      &
+        SRC_NAME    = 'PCU',                                              &
+        DST_NAME    = 'CN_PRCP',                                          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
                                                        RC=STATUS  )
@@ -1261,7 +1268,7 @@ contains
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-!-srf-gf-scheme
+
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'USTAR', 'TSTAR', 'QSTAR', 'T2M  ',       &
                          'Q2M  ', 'TA   ', 'QA   ', 'SH   ',       &
@@ -1271,7 +1278,6 @@ contains
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-!-srf-gf-scheme
 
 
     !-------------- DONIF Additional Moist Imports
@@ -1287,8 +1293,6 @@ contains
     !Aerosol
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'AERO'/),                           &
-!         SHORT_NAME  = (/'AERO_ACI  '/),                             &
-!         SHORT_NAME  = (/'AERO_ACI  ', 'AERO2G_ACI'/),                             &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
@@ -1308,48 +1312,50 @@ contains
          SRC_ID      =  GWD,                                      &
                                                         RC=STATUS  )
    VERIFY_(STATUS)
-     														
-    call MAPL_AddConnectivity ( GC,                                &
+
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUOROX'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  GWD,                                      &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
+   VERIFY_(STATUS)
   
-    call MAPL_AddConnectivity ( GC,                                &
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUOROY'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  GWD,                                      &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
+   VERIFY_(STATUS)
   
     
-    call MAPL_AddConnectivity ( GC,                                &
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'RADLW'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  RAD,                                      &
                                                        RC=STATUS  )
-    VERIFY_(STATUS)
+   VERIFY_(STATUS)
     
-      call MAPL_AddConnectivity ( GC,                                &
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'RADSW'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  RAD,                                      &
                                                        RC=STATUS  )
-    VERIFY_(STATUS)
+   VERIFY_(STATUS)
     
-    call MAPL_AddConnectivity ( GC,                                &
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'ALH'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  TURBL,                                      &
                                                         RC=STATUS  )
-    call MAPL_AddConnectivity ( GC,                                &
+   VERIFY_(STATUS)
+
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUX', 'TAUY'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  SURF,                                      &
                                                         RC=STATUS  )
 
-    VERIFY_(STATUS)
+   VERIFY_(STATUS)
     
 
 !EOP
@@ -2042,10 +2048,9 @@ contains
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
    real(kind=MAPL_R8), allocatable, dimension(:,:) ::  dpe
    real(kind=MAPL_R8), allocatable, dimension(:,:,:) :: dq
-!-srf-gf-scheme
+
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
    INTEGER, PARAMETER :: DXDT_BL=1
-!-srf-gf-scheme
  
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
@@ -2215,38 +2220,29 @@ contains
 ! Pointers to Exports
 !--------------------
 
-    call MAPL_GetPointer(EXPORT, DUDT,     'DUDT'    , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DVDT,     'DVDT'    , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DUDT,     'DUDT'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DVDT,     'DVDT'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DWDT,     'DWDT'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTDT,     'DTDT'    , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
-    call MAPL_GetPointer(EXPORT, DTDTTOT,  'DTDTTOT' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, DTDTTOT,  'DTDTTOT' , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
+    call MAPL_GetPointer(EXPORT, DTDTTOT,  'DTDTTOT' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTDTRAD,  'DTDTRAD' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DPDTPHY,  'DPDTPHY' , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DPDT,     'DPEDT'   , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DPDT,     'DPEDT'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DMDT,     'DMDT'    , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
-!   call MAPL_GetPointer(EXPORT, TIT,      'TIT'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TIT,      'TIT'     , alloc=.true.,RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
+    call MAPL_GetPointer(EXPORT, TIT,      'TIT'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TIM,      'TIM'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TIMFRIC,  'TIMFRIC' , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
-!   call MAPL_GetPointer(EXPORT, TIF,      'TIF'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TIF,      'TIF'     , alloc=.true.,RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
+    call MAPL_GetPointer(EXPORT, TIF,      'TIF'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FTU,      'FTU'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FTV,      'FTV'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, KEPHY,    'KEPHY',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEPHY,    'PEPHY',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PERAD,    'PERAD',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PETRB,    'PETRB',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEMST,    'PEMST',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEFRI,    'PEFRI',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEGWD,    'PEGWD',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PECUF,    'PECUF',    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, KEPHY,    'KEPHY'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEPHY,    'PEPHY'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PERAD,    'PERAD'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PETRB,    'PETRB'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEMST,    'PEMST'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEFRI,    'PEFRI'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEGWD,    'PEGWD'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PECUF,    'PECUF'   , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTMSTINT, 'DQVDTMSTINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDTMSTINT, 'DQLDTMSTINT', RC=STATUS); VERIFY_(STATUS)
@@ -2447,9 +2443,6 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Moist Processes
@@ -2469,9 +2462,6 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
     call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
@@ -2502,12 +2492,7 @@ contains
     I=SURF
 
     call MAPL_TimerOn(STATE,GCNames(I))
-    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"1")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1")
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"1_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Aerosol/Chemistry Stage 1
@@ -2521,13 +2506,8 @@ contains
     I=CHEM
 
     call MAPL_TimerOn(STATE,GCNames(I))
-    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"1")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1")
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"1_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Turbulence Stage 1
@@ -2547,12 +2527,7 @@ contains
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
-    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"1")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1")
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"1_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"1_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Surface Stage 2
@@ -2576,13 +2551,8 @@ contains
     I=SURF
 
     call MAPL_TimerOn(STATE,GCNames(I))
-    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"2")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2")
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"2_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Turbulence Stage 2
@@ -2596,13 +2566,8 @@ contains
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
-    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"2")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2")
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"2_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Aerosol/Chemistry Stage 2
@@ -2623,13 +2588,8 @@ contains
     I=CHEM   
 
     call MAPL_TimerOn(STATE,GCNames(I))
-    !call MAPL_TimerOn (STATE,TRIM(GCNames(I))//"2")
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2")
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"2_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"2_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Radiation
@@ -2640,9 +2600,6 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call MAPL_TimerOn(STATE,TRIM(GCNames(I))//"_SYNC")
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    !call MAPL_TimerOff(STATE,TRIM(GCNames(I))//"_SYNC")
     call MAPL_TimerOff(STATE,GCNames(I))
 
 !AMM
@@ -2690,7 +2647,7 @@ contains
 ! and may be friendly to dynamics.
 !---------------------------------------------------------------
 
-!    NEED_TOT = associated(DTDTTOT) .or. associated(DTDT)
+!   NEED_TOT = associated(DTDTTOT) .or. associated(DTDT)
     NEED_TOT = .TRUE.
     NEED_FRI = associated(    TIF) .or. NEED_TOT 
     NEED_TTN = associated(    TIM) .or. NEED_TOT 
@@ -2700,7 +2657,6 @@ contains
        allocate(FRI(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
        FRI         = INTDIS + TOPDIS
-    !  FRI(:,:,LM) = FRI(:,:,LM)  + SRFDIS ! Already included in Turbulence
     end if
 
     if(NEED_TTN) then

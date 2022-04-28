@@ -43,9 +43,6 @@ module GEOS_GFDL_1M_InterfaceMod
 
   ! Local resource variables
   integer :: imsize
-  real    :: CNV_FRACTION_MIN
-  real    :: CNV_FRACTION_MAX
-  real    :: CNV_FRACTION_EXP
   real    :: MINRHCRITLND
   real    :: MINRHCRITOCN
   real    :: MAXRHCRITLND
@@ -275,9 +272,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF    , 'CCW_EVAP_EFF:'    , DEFAULT= 4.0e-3, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF    , 'CCI_EVAP_EFF:'    , DEFAULT= 1.0e-3, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 0.25  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -324,16 +318,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
-    real, allocatable, dimension(:,:,:) :: FQC, FQL, FQI
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
-    real, allocatable, dimension(:,:)   :: CNV_FRACTION
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Exports
     real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
-    real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR
+    real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, CNV_FRC
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro
     real, pointer, dimension(:,:,:) ::  DUDT_macro,  DVDT_macro,  DTDT_macro, DTHDT_macro
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro, DQRDT_micro, DQSDT_micro, DQGDT_micro
@@ -345,8 +337,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PDF_A
-    real, pointer, dimension(:,:  ) :: CAPE, INHB
-    real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -438,9 +428,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( iMASS(IM,JM,LM  ) )
     ALLOCATE ( DQST3(IM,JM,LM  ) )
     ALLOCATE (  QST3(IM,JM,LM  ) )
-    ALLOCATE (   FQC(IM,JM,LM  ) )
-    ALLOCATE (   FQL(IM,JM,LM  ) )
-    ALLOCATE (   FQI(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! Local tendencies
     ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
@@ -454,7 +441,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
-    ALLOCATE ( CNV_FRACTION (IM,JM) )
     ALLOCATE ( turnrhcrit2D (IM,JM) )
     ALLOCATE ( minrhcrit2D  (IM,JM) )
     ALLOCATE ( maxrhcrit2D  (IM,JM) )
@@ -484,27 +470,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do
     end do
 
-    call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, INHB,    'INHB'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
-
-    CNV_FRACTION = 0.0
-    if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-       WHERE (CAPE .ne. MAPL_UNDEF)
-          CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
-       END WHERE
-    endif
-    if (CNV_FRACTION_EXP >= 1.0) then
-        CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
-    elseif (CNV_FRACTION_EXP > 0.0) then
-        CNV_FRACTION = 1.0-(1.0-CNV_FRACTION)**(1.0/CNV_FRACTION_EXP)
-    else
-        CNV_FRACTION = 1
-    endif
-    call MAPL_GetPointer(EXPORT, PTR2D, 'CNV_FRC', RC=STATUS); VERIFY_(STATUS)
-    if (associated(PTR2D)) PTR2D = CNV_FRACTION
-
     ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QV,   'QV'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -515,6 +480,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, RAD_QG,   'QG'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFL, 'RL'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFI, 'RI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! This export MUST have been filled in the GridComp
+    call MAPL_GetPointer(EXPORT, CNV_FRC,      'CNV_FRC'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Exports  required below
     call MAPL_GetPointer(EXPORT, EVAPC,        'EVAPC'        , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SUBLC,        'SUBLC'        , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -774,14 +741,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = QSNOW
         ! GRAUPEL
          RAD_QG = QGRAUPEL
-     ! Save CNV/TOT ratios
-        ! Cloud
-         FQC =  MIN(1.0,MAX(CLCN/MAX(RAD_CF,1.e-5),0.0))
-        ! Liquid
-         FQL =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
-        ! Ice
-         FQI =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
-        ! Execute GFDL_1M microphysics
+        ! Run the driver
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI]
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI)/1.e6, &
@@ -791,7 +751,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! Input fields
                                T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
                              ! constant inputs
-                               AREA, DT_MOIST, FRLAND, CNV_FRACTION, &
+                               AREA, DT_MOIST, FRLAND, CNV_FRC, &
                                ANV_ICEFALL, LS_ICEFALL, &
                              ! Output rain re-evaporation and sublimation
                                REV_LS, RSU_LS, & 
@@ -815,13 +775,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = RAD_CF + DQADTmic * DT_MOIST
      ! Redistribute CN/LS CF/QL/QI
-         CLCN = MIN(FQC*RAD_CF,1.0)
-         CLLS = MAX(MIN(RAD_CF-CLCN,1.0),0.0)
-         QLCN = FQL*RAD_QL
-         QLLS =     RAD_QL-QLCN
-         QICN = FQI*RAD_QI
-         QILS =     RAD_QI-QICN
-     !!! call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
+         call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
          PRCP_SNOW    = MAX(PRCP_SNOW    / 86400.0, 0.0)
@@ -881,6 +835,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            PTR3D=MAX(MIN(PTR3D, 1.0), 0.0)
          endif
+         ! Clean up Relative Humidity where RH > 110%
+         DQST3 = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+         where ( Q > 1.1*QST3 )
+            TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
+         elsewhere
+            TMP3D = 0.0
+         endwhere
+         Q  =  Q - TMP3D
+         T  =  T + (MAPL_ALHL/MAPL_CP)*TMP3D
+         TH =  T / PK
 
          ! Update microphysics tendencies
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
@@ -895,6 +859,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (associated( DTDT_micro))  DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
          if (associated(DTHDT_micro)) DTHDT_micro = ( TH         - DTHDT_micro) / DT_MOIST
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 

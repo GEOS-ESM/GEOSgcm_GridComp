@@ -41,9 +41,6 @@ module GEOS_BACM_1M_InterfaceMod
   ! Local resource variables
   integer :: imsize
   integer :: CFPBL_EXP
-  real    :: CNV_FRACTION_MIN
-  real    :: CNV_FRACTION_MAX
-  real    :: CNV_FRACTION_EXP
   real    :: MINRHCRITLND
   real    :: MINRHCRITOCN
   real    :: MAXRHCRITLND
@@ -256,11 +253,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_WAT,      'FR_AN_WAT:',      DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_LS_ICE,      'FR_LS_ICE:',      DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_ICE,      'FR_AN_ICE:',      DEFAULT= 0.0     )
-
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN,         'CNV_FRACTION_MIN:', DEFAULT=  500.0)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX,         'CNV_FRACTION_MAX:', DEFAULT= 1500.0)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP,         'CNV_FRACTION_EXP:', DEFAULT=    1.0)
-    call MAPL_GetResource( MAPL, CFPBL_EXP,                'CFPBL_EXP:',        DEFAULT= 1     )
+    call MAPL_GetResource( MAPL, CFPBL_EXP,                'CFPBL_EXP:',      DEFAULT= 1       )
 
     call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS)
     VERIFY_(STATUS)
@@ -314,7 +307,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
     real, pointer, dimension(:,:,:) :: OMEGA
-    real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQLDT, CNV_PRC3, CNV_UPDF
+    real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
     ! Local
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0
@@ -325,7 +318,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
-    real, allocatable, dimension(:,:)   :: CNV_FRACTION
     real, allocatable, dimension(:,:)   :: TMP2D
     type(ESMF_State)                    :: AERO
     type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
@@ -353,13 +345,12 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CFPDF, RHCLR
     real, pointer, dimension(:,:,:) :: DQRL, WTHV2
     real, pointer, dimension(:,:,:) :: PDF_A
+    real, pointer, dimension(:,:  ) :: CNV_FRC
     real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
     real, pointer, dimension(:,:  ) :: LS_ARF,  CN_ARF,  AN_ARF,  SC_ARF
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
     real, pointer, dimension(:,:,:) :: NCPL_VOL, NCPI_VOL
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
-    real, pointer, dimension(:,:  ) :: CAPE, INHB
-    real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -444,7 +435,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  QST3(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! 2D Variables
-    ALLOCATE ( CNV_FRACTION (IM,JM) )
     ALLOCATE ( turnrhcrit2D (IM,JM) )
     ALLOCATE ( minrhcrit2D  (IM,JM) )
     ALLOCATE ( maxrhcrit2D  (IM,JM) )
@@ -486,27 +476,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do
     end do
 
-    call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, INHB,    'INHB'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
-
-    CNV_FRACTION = 0.0
-    if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-       WHERE (CAPE .ne. MAPL_UNDEF)
-          CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
-       END WHERE
-    endif
-    if (CNV_FRACTION_EXP >= 1.0) then
-        CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
-    elseif (CNV_FRACTION_EXP > 0.0) then
-        CNV_FRACTION = 1.0-(1.0-CNV_FRACTION)**(1.0/CNV_FRACTION_EXP)
-    else
-        CNV_FRACTION = 1
-    endif
-    call MAPL_GetPointer(EXPORT, PTR2D, 'CNV_FRC', RC=STATUS); VERIFY_(STATUS)
-    if (associated(PTR2D)) PTR2D = CNV_FRACTION
-
     ! Export Tendencies
     call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -526,9 +495,11 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (associated(DTHDT_micro)) DTHDT_micro  = TH
 
     ! Imports which are Exports from local siblings
+    ! Required export MUST have been filled in GridComp
+    call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', RC=STATUS); VERIFY_(STATUS)
     ! DeepCu : default to 0.0 in MAPL if not running DeepCu
     call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD '  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_DQLDT,  'CNV_DQLDT' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_DQCDT,  'CNV_DQCDT' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! ShallowCu : default to 0.0 in MAPL if not running ShallowCu
@@ -641,7 +612,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               QT3               , &   ! <- turb
               HL3               , &   ! <- turb
               CNV_MFD           , &   ! <- deep
-              CNV_DQLDT         , &   ! <- deep              
+              CNV_DQCDT         , &   ! <- deep              
               CNV_PRC3          , &   ! <- deep   
               CNV_UPDF          , &   ! <- deep
               MFD_SC            , &   ! <- shlw   
@@ -687,7 +658,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               QST3              , &
               DZET              , &
               QDDF3             , &
-              CNV_FRACTION      , &
+              CNV_FRC           , &
               TROPP             , &
                                 ! Diagnostics
               RHX               , &
@@ -765,6 +736,15 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
+         ! Clean up Relative Humidity where RH > 110%
+         DQST3 = GEOS_DQSAT(TH*PK, PLmb, QSAT=QST3)
+         where ( Q > 1.1*QST3 )
+            TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
+         elsewhere
+            TMP3D = 0.0
+         endwhere
+         Q  =  Q - TMP3D
+         TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
 
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
          if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
