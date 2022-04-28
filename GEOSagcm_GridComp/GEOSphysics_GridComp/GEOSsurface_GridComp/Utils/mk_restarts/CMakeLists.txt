@@ -19,6 +19,7 @@ set (exe_srcs
   mk_LakeLandiceSaltRestarts.F90
   mk_RouteRestarts.F90
   mk_GEOSldasRestarts.F90
+  mk_CatchmentRestarts.F90
 )
 
 esma_add_library (${this}

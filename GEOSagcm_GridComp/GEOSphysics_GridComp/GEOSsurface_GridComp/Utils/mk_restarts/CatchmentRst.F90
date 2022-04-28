@@ -1,11 +1,14 @@
 #include "MAPL_Generic.h"
 
 module CatchmentRstMod
+  use mk_restarts_getidsMod
   use MAPL
+  use mpi
   use LSM_ROUTINES,      ONLY:          &
        catch_calc_soil_moist,           &
        catch_calc_tp,                   &
        catch_calc_ght
+
   USE CATCH_CONSTANTS,   ONLY:          &
        N_GT              => CATCH_N_GT, &
        DZGT              => CATCH_DZGT, &
@@ -16,8 +19,26 @@ module CatchmentRstMod
   integer           :: ftell
   external          :: ftell
 #endif
+  type :: scale_var 
+    real, allocatable :: catdef(:)
+    real, allocatable :: cdcr1 (:)
+    real, allocatable :: cdcr2 (:)
+    real, allocatable :: rzexc (:)
+    real, allocatable :: vgwmax(:)
+    real, allocatable :: ghtcnt1(:)
+    real, allocatable :: ghtcnt2(:)
+    real, allocatable :: ghtcnt3(:)
+    real, allocatable :: ghtcnt4(:)
+    real, allocatable :: ghtcnt5(:)
+    real, allocatable :: ghtcnt6(:)
+    real, allocatable :: poros(:)
+    real, allocatable :: sndzn3(:)
+  end type scale_var
+
   type :: CatchmentRst
      integer :: ntiles
+     type(FileMetadata) :: meta
+     character(len=:), allocatable  :: time !yyyymmddhhmm
      real, allocatable ::        bf1(:)
      real, allocatable ::        bf2(:)
      real, allocatable ::        bf3(:)
@@ -82,38 +103,47 @@ module CatchmentRstMod
      procedure :: write_shared_nc4
      procedure :: add_bcs_to_rst      
      procedure :: allocate_catch
+     procedure :: re_tile
+     procedure :: re_scale
+     procedure :: set_scale_var
   endtype CatchmentRst
 
   interface CatchmentRst
      module procedure CatchmentRst_Create
+     module procedure CatchmentRst_empty
   end interface
 
 contains
 
-  function CatchmentRst_create(filename, rc) result (catch)
-    type(CatchmentRst) :: catch
-    character(*), intent(in)           :: filename
-    integer, optional, intent(out) :: rc
-    integer :: status
-    character(len=256) :: Iam = "CatchmentRst_create"
-    type(Netcdf4_fileformatter) :: formatter
-    integer :: filetype, ntiles, unit
-    type(FileMetadata) :: meta
-    integer :: bpos, epos, n
+  function CatchmentRst_create(filename, time, rc) result (catch)
+     type(CatchmentRst) :: catch
+     character(*), intent(in)           :: filename
+     character(*), intent(in) :: time ! yyyymmddhhmm format
+     integer, optional, intent(out) :: rc
+     integer :: status
+     character(len=256) :: Iam = "CatchmentRst_create"
+     type(Netcdf4_fileformatter) :: formatter
+     integer :: filetype, ntiles, unit
+     type(FileMetadata) :: meta
+     integer :: bpos, epos, n
 
-    call MAPL_NCIOGetFileType(filename, filetype, __RC__)
+     catch%time = time
+     call MAPL_NCIOGetFileType(filename, filetype, __RC__)
 
      if(filetype == 0) then
        ! nc4 format
        call formatter%open(filename, pFIO_READ, __RC__)
-       meta   = formatter%read(__RC__)
        ntiles = meta%get_dimension('tile', __RC__)
-       this%ntiles = ntiles
+       catch%ntiles = ntiles
+       catch%meta   = formatter%read(__RC__)
        call catch%allocate_catch()
        call catch%read_shared_nc4(formatter, __RC__)
        call MAPL_VarRead(formatter,"OLD_ITY",catch%ity, __RC__)
        call formatter%close()
      else
+       !if ( .not. present(time)) then
+       !  _ASSERT(.false., 'Please provide time for binary catch, format yyyymmddhhmm')
+       !endif
        !GEOSldas binary
        open(newunit=unit, file=filename,  form='unformatted', action = 'read')
        bpos=0
@@ -121,12 +151,32 @@ contains
        epos = ftell(unit)          ! ending position of file pointer
        close(unit)
        ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
-       this%ntiles = ntiles
+       catch%ntiles = ntiles
+       catch%meta = create_meta(ntiles, time)
        call catch%allocate_catch()
        call catch%read_GEOSldas_rst_bin(filename, __RC__)
      endif
      _RETURN(_SUCCESS)
    end function CatchmentRst_Create
+
+  function CatchmentRst_empty(meta, time, rc) result (catch)
+     type(CatchmentRst) :: catch
+     character(*), intent(in) :: time
+     type(FileMetadata), intent(in) :: meta
+     
+     integer, optional, intent(out) :: rc
+     integer :: status
+     character(len=256) :: Iam = "CatchmentRst_create"
+     type(Netcdf4_fileformatter) :: formatter
+
+
+       ! nc4 format
+     catch%ntiles = meta%get_dimension('tile', __RC__)
+     catch%meta = meta 
+     catch%time = time
+     call catch%allocate_catch()
+     _RETURN(_SUCCESS)
+   end function CatchmentRst_empty
 
    subroutine read_GEOSldas_rst_bin(this, filename, rc)
       class(CatchmentRst), intent(inout) :: this
@@ -134,63 +184,63 @@ contains
       integer, optional, intent(out) :: rc
       integer :: unit
       open(newunit=unit, file=filename, form='unformatted', action='read')
-      read(unit) catch%      bf1
-      read(unit) catch%      bf2
-      read(unit) catch%      bf3
-      read(unit) catch%   vgwmax
-      read(unit) catch%    cdcr1
-      read(unit) catch%    cdcr2
-      read(unit) catch%     psis
-      read(unit) catch%      bee
-      read(unit) catch%    poros
-      read(unit) catch%    wpwet
-      read(unit) catch%     cond
-      read(unit) catch%      gnu
-      read(unit) catch%     ars1
-      read(unit) catch%     ars2
-      read(unit) catch%     ars3
-      read(unit) catch%     ara1
-      read(unit) catch%     ara2
-      read(unit) catch%     ara3
-      read(unit) catch%     ara4
-      read(unit) catch%     arw1
-      read(unit) catch%     arw2
-      read(unit) catch%     arw3
-      read(unit) catch%     arw4
-      read(unit) catch%     tsa1
-      read(unit) catch%     tsa2
-      read(unit) catch%     tsb1
-      read(unit) catch%     tsb2
-      read(unit) catch%     atau
-      read(unit) catch%     btau
-      read(unit) catch%      ity
-      read(unit) catch%       tc
-      read(unit) catch%       qc
-      read(unit) catch%    capac
-      read(unit) catch%   catdef
-      read(unit) catch%    rzexc
-      read(unit) catch%   srfexc
-      read(unit) catch%  ghtcnt1
-      read(unit) catch%  ghtcnt2
-      read(unit) catch%  ghtcnt3
-      read(unit) catch%  ghtcnt4
-      read(unit) catch%  ghtcnt5
-      read(unit) catch%  ghtcnt6
-      read(unit) catch%    tsurf
-      read(unit) catch%   wesnn1
-      read(unit) catch%   wesnn2
-      read(unit) catch%   wesnn3
-      read(unit) catch%  htsnnn1
-      read(unit) catch%  htsnnn2
-      read(unit) catch%  htsnnn3
-      read(unit) catch%   sndzn1
-      read(unit) catch%   sndzn2
-      read(unit) catch%   sndzn3
-      read(unit) catch%       ch
-      read(unit) catch%       cm
-      read(unit) catch%       cq
-      read(unit) catch%       fr
-      read(unit) catch%       ww
+      read(unit) this%      bf1
+      read(unit) this%      bf2
+      read(unit) this%      bf3
+      read(unit) this%   vgwmax
+      read(unit) this%    cdcr1
+      read(unit) this%    cdcr2
+      read(unit) this%     psis
+      read(unit) this%      bee
+      read(unit) this%    poros
+      read(unit) this%    wpwet
+      read(unit) this%     cond
+      read(unit) this%      gnu
+      read(unit) this%     ars1
+      read(unit) this%     ars2
+      read(unit) this%     ars3
+      read(unit) this%     ara1
+      read(unit) this%     ara2
+      read(unit) this%     ara3
+      read(unit) this%     ara4
+      read(unit) this%     arw1
+      read(unit) this%     arw2
+      read(unit) this%     arw3
+      read(unit) this%     arw4
+      read(unit) this%     tsa1
+      read(unit) this%     tsa2
+      read(unit) this%     tsb1
+      read(unit) this%     tsb2
+      read(unit) this%     atau
+      read(unit) this%     btau
+      read(unit) this%      ity
+      read(unit) this%       tc
+      read(unit) this%       qc
+      read(unit) this%    capac
+      read(unit) this%   catdef
+      read(unit) this%    rzexc
+      read(unit) this%   srfexc
+      read(unit) this%  ghtcnt1
+      read(unit) this%  ghtcnt2
+      read(unit) this%  ghtcnt3
+      read(unit) this%  ghtcnt4
+      read(unit) this%  ghtcnt5
+      read(unit) this%  ghtcnt6
+      read(unit) this%    tsurf
+      read(unit) this%   wesnn1
+      read(unit) this%   wesnn2
+      read(unit) this%   wesnn3
+      read(unit) this%  htsnnn1
+      read(unit) this%  htsnnn2
+      read(unit) this%  htsnnn3
+      read(unit) this%   sndzn1
+      read(unit) this%   sndzn2
+      read(unit) this%   sndzn3
+      read(unit) this%       ch
+      read(unit) this%       cm
+      read(unit) this%       cq
+      read(unit) this%       fr
+      read(unit) this%       ww
       close(unit)
       _RETURN(_SUCCESS)
    end subroutine read_GEOSldas_rst_bin
@@ -264,11 +314,9 @@ contains
       _RETURN(_SUCCESS)
    end subroutine
 
-   subroutine write_nc4 (this, filename, meta, cnclm, rc)
+   subroutine write_nc4 (this, filename, rc)
      class(CatchmentRst), intent(inout):: this
      character(*), intent(in) :: filename
-     type(FileMetaData), intent(inout) :: meta
-     character(*), intent(in) :: cnclm
      integer, optional, intent(out):: rc
 
      type(Netcdf4_fileformatter) :: formatter
@@ -276,7 +324,7 @@ contains
      character(256) :: Iam = "write_nc4"
 
      call formatter%create(filename, __RC__)
-     call formatter%write(meta, __RC__)
+     call formatter%write(this%meta, __RC__)
      call this%write_shared_nc4(formatter, __RC__)
      call MAPL_VarWrite(formatter,"OLD_ITY",this%ity)
      call formatter%close()
@@ -412,12 +460,13 @@ contains
      allocate( this%         fr(ntiles,4) )
      allocate( this%         ww(ntiles,4) )
      _RETURN(_SUCCESS)
-   end subroutine allocate
+   end subroutine allocate_catch
 
    ! This subroutine reads BCs from BCSDIR and hydrological varable
    subroutine add_bcs_to_rst(this, surflay, DataDir, rc)
       class(CatchmentRst), intent(inout) :: this
       real, intent(in) :: surflay
+      character(*), intent(in) :: DataDir
       integer, optional, intent(out) :: rc
 
       real, allocatable ::  DP2BR(:)
@@ -439,6 +488,39 @@ contains
 
       inquire(file = trim(DataDir)//'/catch_params.nc4', exist=file_exists)
       inquire(file = trim(DataDir)//"CLM_veg_typs_fracs",exist=NewLand )
+
+      if (size(this%ara1) /= this%ntiles ) then
+        ! it is just re-allocate
+        this%ity   = DP2BR
+        this%ARA1  = DP2BR      
+        this%ARA2  = DP2BR      
+        this%ARA3  = DP2BR      
+        this%ARA4  = DP2BR      
+        this%ARS1  = DP2BR      
+        this%ARS2  = DP2BR      
+        this%ARS3  = DP2BR      
+        this%ARW1  = DP2BR      
+        this%ARW2  = DP2BR      
+        this%ARW3  = DP2BR      
+        this%ARW4  = DP2BR      
+        this%ATAU  = DP2BR      
+        this%BTAU  = DP2BR      
+        this%PSIS  = DP2BR      
+        this%BEE   = DP2BR      
+        this%BF1   = DP2BR      
+        this%BF2   = DP2BR      
+        this%BF3   = DP2BR      
+        this%TSA1  = DP2BR      
+        this%TSA2  = DP2BR      
+        this%TSB1  = DP2BR      
+        this%TSB2  = DP2BR      
+        this%COND  = DP2BR      
+        this%WPWET = DP2BR      
+        this%POROS = DP2BR
+        this%VGWMAX = DP2BR
+        this%cdcr1 = DP2BR
+        this%cdcr2 = DP2BR
+      endif
 
       if(file_exists) then
         call CatchFmt%Open(trim(DataDir)//'/catch_params.nc4', pFIO_READ, __RC__)
@@ -541,5 +623,563 @@ contains
 
       _RETURN(_SUCCESS)
    end subroutine add_bcs_to_rst
+
+   type(FileMetadata) function create_meta(ntiles, t, rc) result(meta)
+     integer, intent(in) :: ntiles
+     character(*), intent(in) :: t ! yyyymmddmmhh format
+     integer, optional, intent(out) :: rc
+     character(64), dimension(58, 3) :: fields
+     integer :: n, status
+     character(:), allocatable :: s
+     type(Variable) :: var
+ 
+     fields(1,:)  = [character(len=64)::"ARA1"     ,  "shape_param_1"                            ,     "m+2 kg-1"]
+     fields(2,:)  = [character(len=64)::"ARA2"     ,  "shape_param_2"                            ,     "1"]
+     fields(3,:)  = [character(len=64)::"ARA3"     ,  "shape_param_3"                            ,     "m+2 kg-1"]
+     fields(4,:)  = [character(len=64)::"ARA4"     ,  "shape_param_4"                            ,     "1"]
+     fields(5,:)  = [character(len=64)::"ARS1"     ,  "wetness_param_1"                          ,     "m+2 kg-1"]
+     fields(6,:)  = [character(len=64)::"ARS2"     ,  "wetness_param_2"                          ,     "m+2 kg-1"]
+     fields(7,:)  = [character(len=64)::"ARS3"     ,  "wetness_param_3"                          ,     "m+4 kg-2"]
+     fields(8,:)  = [character(len=64)::"ARW1"     ,  "min_theta_param_1"                        ,     "m+2 kg-1"]
+     fields(9,:)  = [character(len=64)::"ARW2"     ,  "min_theta_param_2"                        ,     "m+2 kg-1"]
+     fields(10,:) = [character(len=64)::"ARW3"     ,  "min_theta_param_3"                        ,     "m+4 kg-2"]
+     fields(11,:) = [character(len=64)::"ARW4"     ,  "min_theta_param_4"                        ,     "1"]
+     fields(12,:) = [character(len=64)::"ATAU"     ,  "water_transfer_param_5"                   ,     "1"]
+     fields(13,:) = [character(len=64)::"BEE"      ,  "clapp_hornberger_b"                       ,     "1"]
+     fields(14,:) = [character(len=64)::"BF1"      ,  "topo_baseflow_param_1"                    ,     "kg m-4"]
+     fields(15,:) = [character(len=64)::"BF2"      ,  "topo_baseflow_param_2"                    ,     "m"]
+     fields(16,:) = [character(len=64)::"BF3"      ,  "topo_baseflow_param_3"                    ,     "log(m)"]
+     fields(17,:) = [character(len=64)::"BTAU"     ,  "water_transfer_param_6"                   ,     "1"]
+     fields(18,:) = [character(len=64)::"CAPAC"    ,  "interception_reservoir_capac"             ,     "kg m-2"]
+     fields(19,:) = [character(len=64)::"CATDEF"   ,  "catchment_deficit"                        ,     "kg m-2"]
+     fields(20,:) = [character(len=64)::"CDCR1"    ,  "moisture_threshold"                       ,     "kg m-2"]
+     fields(21,:) = [character(len=64)::"CDCR2"    ,  "max_water_content"                        ,     "kg m-2"]
+     fields(22,:) = [character(len=64)::"COND"     ,  "sfc_sat_hydraulic_conduct"                ,     "m s-1"]
+     fields(23,:) = [character(len=64)::"GHTCNT1"  ,  "soil_heat_content_layer_1"                ,     "J m-2"]
+     fields(24,:) = [character(len=64)::"GHTCNT2"  ,  "soil_heat_content_layer_2"                ,     "J_m-2"]
+     fields(25,:) = [character(len=64)::"GHTCNT3"  ,  "soil_heat_content_layer_3"                ,     "J m-2"]
+     fields(26,:) = [character(len=64)::"GHTCNT4"  ,  "soil_heat_content_layer_4"                ,     "J m-2"]
+     fields(27,:) = [character(len=64)::"GHTCNT5"  ,  "soil_heat_content_layer_5"                ,     "J m-2"]
+     fields(28,:) = [character(len=64)::"GHTCNT6"  ,  "soil_heat_content_layer_6"                ,     "J m-2"]
+     fields(29,:) = [character(len=64)::"GNU"      ,  "vertical_transmissivity"                  ,     "m-1"]
+     fields(20,:) = [character(len=64)::"HTSNNN1"  ,  "heat_content_snow_layer_1"                ,     "J m-2"]
+     fields(31,:) = [character(len=64)::"HTSNNN2"  ,  "heat_content_snow_layer_2"                ,     "J m-2"]
+     fields(32,:) = [character(len=64)::"HTSNNN3"  ,  "heat_content_snow_layer_3"                ,     "J m-2"]
+     fields(33,:) = [character(len=64)::"OLD_ITY"  ,  "Placeholder. Used to be vegetation_type." ,     "1"]
+     fields(34,:) = [character(len=64)::"POROS"    ,  "soil_porosity"                            ,     "1"]
+     fields(35,:) = [character(len=64)::"PSIS"     ,  "saturated_matric_potential"               ,     "m"]
+     fields(36,:) = [character(len=64)::"RZEXC"    ,  "root_zone_excess"                         ,     "kg m-2"]
+     fields(37,:) = [character(len=64)::"SNDZN1"   ,  "snow_depth_layer_1"                       ,     "m"]
+     fields(38,:) = [character(len=64)::"SNDZN2"   ,  "snow_depth_layer_2"                       ,     "m"]
+     fields(39,:) = [character(len=64)::"SNDZN3"   ,  "snow_depth_layer_3"                       ,     "m"]
+     fields(40,:) = [character(len=64)::"SRFEXC"   ,  "surface_excess"                           ,     "kg m-2"]
+     fields(41,:) = [character(len=64)::"TILE_ID"  ,  "catchment_tile_id"                        ,     "1"]
+     fields(42,:) = [character(len=64)::"TSA1"     ,  "water_transfer_param_1"                   ,     "1"]
+     fields(43,:) = [character(len=64)::"TSA2"     ,  "water_transfer_param_2"                   ,     "1"]
+     fields(44,:) = [character(len=64)::"TSB1"     ,  "water_transfer_param_3"                   ,     "1"]
+     fields(45,:) = [character(len=64)::"TSB2"     ,  "water_transfer_param_4"                   ,     "1"]
+     fields(46,:) = [character(len=64)::"TSURF"    ,  "mean_catchment_temp_incl_snw"             ,     "K"]
+     fields(47,:) = [character(len=64)::"VGWMAX"   ,  "max_rootzone_water_content"               ,     "kg m-2"]
+     fields(48,:) = [character(len=64)::"WESNN1"   ,  "snow_mass_layer_1"                        ,     "kg m-2"]
+     fields(49,:) = [character(len=64)::"WESNN2"   ,  "snow_mass_layer_2"                        ,     "kg m-2"]
+     fields(50,:) = [character(len=64)::"WESNN3"   ,  "snow_mass_layer_3"                        ,     "kg m-2"]
+     fields(51,:) = [character(len=64)::"WPWET"    ,  "wetness_at_wilting_point"                 ,     "1"]
+     fields(52,:) = [character(len=64)::"CH"       ,  "surface_heat_exchange_coefficient"        ,     "kg m-2 s-1"]
+     fields(53,:) = [character(len=64)::"CM"       ,  "surface_momentum_exchange_coefficient"    ,     "kg m-2 s-1"]
+     fields(54,:) = [character(len=64)::"CQ"       ,  "surface_moisture_exchange_coffiecient"    ,     "kg m-2 s-1"]
+     fields(55,:) = [character(len=64)::"FR"       ,  "subtile_fractions"                        ,     "1"]
+     fields(56,:) = [character(len=64)::"QC"       ,  "canopy_specific_humidity"                 ,     "kg kg-1"]
+     fields(57,:) = [character(len=64)::"TC"       ,  "canopy_temperature"                       ,     "K"]
+     fields(58,:) = [character(len=64)::"WW"       ,  "vertical_velocity_scale_squared"          ,     "m+2 s-2"]
+
+     call meta%add_dimension('tile', ntiles)
+     call meta%add_dimension('subtile', 4)
+     call meta%add_dimension('time',1)
+
+     do n = 1, 51
+        if (n >=52) then
+           var = Variable(type=pFIO_REAL32, dimensions='tile,subtile')
+        else
+           var = Variable(type=pFIO_REAL32, dimensions='tile')
+        endif
+        call var%add_attribute('long_name', trim(fields(n,2)))
+        call var%add_attribute('units', trim(fields(n,3)))
+        call meta%add_variable(trim(fields(n,1)), var)
+     enddo
+     var = Variable(type=pFIO_REAL32, dimensions='time')
+     s   = "minutes since "//t(1:4)//"-"//t(5:6)//"-"//t(7:8)//" "//t(9:10)//":"//t(11:12)//":00"
+     call var%add_attribute('units', s)
+     call meta%add_variable('time', var)
+     _RETURN(_SUCCESS)
+   end function create_meta
+
+   subroutine re_tile(this, InTileFile, OutBcsDir, OutTileFile, surflay, rc)
+     class(CatchmentRst), intent(inout) :: this
+     character(*), intent(in) :: InTileFile
+     character(*), intent(in) :: OutBcsDir
+     character(*), intent(in) :: OutTileFile
+     real, intent(in) :: surflay
+     integer, optional, intent(out) :: rc
+     integer :: status, in_ntiles, out_ntiles, myid, numprocs
+     real, allocatable :: var_out(:), tmp2d(:,:)
+     real   , allocatable , dimension (:) :: long, latg, lonc, latc, lonn,latt
+     integer, allocatable , dimension (:) :: low_ind, upp_ind, nt_local
+     integer, allocatable , dimension (:) :: Id_glb, id_loc, tid_offl
+     logical :: root_proc
+     integer :: mpierr, n, i, k, req
+     type(CatchmentRst) :: xgrid
+     type(FileMetadata) :: meta
+     character(*), parameter :: Iam = "Catchment::Re_tile"
+
+     open (10,file =trim(OutBcsDir)//"clsm/catchment.def",status='old',form='formatted')
+     read (10,*) out_ntiles
+     close (10, status = 'keep')
+
+     in_ntiles = this%ntiles
+
+     call this%meta%modify_dimension('tile', out_ntiles, __RC__)
+
+     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
+     call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
+     root_proc = .false.
+     if (myid == 0)  root_proc = .true.
+
+     if(root_proc) then
+       print *,'ntiles in BCs      : ',out_ntiles
+       print *,'ntiles in restarts : ',in_ntiles
+     endif
+
+     
+     ! Domain decomposition
+     ! --------------------
+
+     
+     allocate(low_ind (   numprocs))
+     allocate(upp_ind (   numprocs))
+     allocate(nt_local(   numprocs))
+     low_ind (:)    = 1
+     upp_ind (:)    = out_ntiles
+     nt_local(:)    = out_ntiles
+
+     if (numprocs > 1) then
+       do i = 1, numprocs - 1
+          upp_ind(i)   = low_ind(i) + (out_ntiles/numprocs) - 1
+          low_ind(i+1) = upp_ind(i) + 1
+          nt_local(i)  = upp_ind(i) - low_ind(i) + 1
+       end do
+       nt_local(numprocs) = upp_ind(numprocs) - low_ind(numprocs) + 1
+     endif
+
+     allocate (id_loc (nt_local (myid + 1)))
+     allocate (lonn   (nt_local (myid + 1)))
+     allocate (latt   (nt_local (myid + 1)))
+     allocate (lonc   (1:in_ntiles))
+     allocate (latc   (1:in_ntiles))
+     allocate (tid_offl (in_ntiles))
+
+     if (root_proc) then
+        allocate (long   (out_ntiles))
+        allocate (latg   (out_ntiles))
+        call ReadTileFile_RealLatLon ( OutTileFile, n, long, latg)
+        _ASSERT( n == out_ntiles, "Out tile number should match")
+        call ReadTileFile_RealLatLon ( InTileFile, n, lonc, latc)
+        _ASSERT( n == in_ntiles, "In tile number should match")
+     endif
+
+     do i = 1, in_ntiles
+        tid_offl(i)    = i
+     end do
+
+     ! create mapping, nearest
+     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+
+     do i = 1, numprocs
+       if((I == 1).and.(myid == 0)) then
+          lonn(:) = long(low_ind(i) : upp_ind(i))
+          latt(:) = latg(low_ind(i) : upp_ind(i))
+       else if (I > 1) then
+          if(I-1 == myid) then
+             ! receiving from root
+             call MPI_RECV(lonn,nt_local(i) , MPI_REAL, 0,995,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+             call MPI_RECV(latt,nt_local(i) , MPI_REAL, 0,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+          else if (myid == 0) then
+             ! root sends
+             call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
+             call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
+          endif
+       endif
+     enddo
+     if(root_proc) deallocate (long)
+
+     call MPI_BCAST(lonc,in_ntiles,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
+     call MPI_BCAST(latc,in_ntiles,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
+
+    ! --------------------------------------------------------------------------------
+    ! Here we create transfer index array to map offline restarts to output tile space
+    ! --------------------------------------------------------------------------------   
+
+    ! id_glb for hydrologic variable
+
+     call GetIds(lonc, latc, lonn, latt, id_loc, tid_offl)
+     if(root_proc)  allocate (id_glb  (out_ntiles))
+
+     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+
+     do i = 1, numprocs
+        if((I == 1).and.(myid == 0)) then
+           id_glb(low_ind(i) : upp_ind(i)) = Id_loc(:)
+        else if (I > 1) then
+           if(I-1 == myid) then
+              ! send to root
+              call MPI_ISend(id_loc,nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
+              call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
+           else if (myid == 0) then
+              ! root receives
+              call MPI_RECV(id_glb(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           endif
+        endif
+     end do
+
+     deallocate (id_loc)
+
+     this%ntiles = out_ntiles
+     if (root_proc)  then
+       ! regrid
+       var_out    = this%poros(id_glb(:))
+       this%poros = var_out
+
+       var_out   = this%cond(id_glb(:))
+       this%cond = var_out
+
+       var_out   = this%psis(id_glb(:))
+       this%psis = var_out
+
+       var_out  = this%bee(id_glb(:))
+       this%bee = var_out
+
+       var_out    = this%wpwet(id_glb(:))
+       this%wpwet = var_out
+
+       var_out   = this%gnu(id_glb(:))
+       this%gnu  = var_out
+
+       var_out      = this%vgwmax(id_glb(:))
+       this%vgwmax  = var_out
+
+       var_out   = this%bf1(id_glb(:))
+       this%bf1  = var_out
+
+       var_out   = this%bf2(id_glb(:))
+       this%bf2  = var_out
+
+       var_out   = this%bf3(id_glb(:))
+       this%bf3  = var_out
+
+       var_out     = this%cdcr1(id_glb(:))
+       this%cdcr1  = var_out
+
+       var_out     = this%cdcr2(id_glb(:))
+       this%cdcr2  = var_out
+
+       var_out     = this%ars1(id_glb(:))
+       this%ars1   = var_out
+
+       var_out     = this%ars2(id_glb(:))
+       this%ars2   = var_out
+
+       var_out     = this%ars3(id_glb(:))
+       this%ars3   = var_out
+
+       var_out     = this%ara1(id_glb(:))
+       this%ara1   = var_out
+
+       var_out     = this%ara2(id_glb(:))
+       this%ara2   = var_out
+
+       var_out     = this%ara3(id_glb(:))
+       this%ara3   = var_out
+
+       var_out     = this%ara4(id_glb(:))
+       this%ara4   = var_out
+
+       var_out     = this%arw1(id_glb(:))
+       this%arw1   = var_out
+
+       var_out     = this%arw2(id_glb(:))
+       this%arw2   = var_out
+
+       var_out     = this%arw4(id_glb(:))
+       this%arw4   = var_out
+
+       var_out     = this%tsa1(id_glb(:))
+       this%tsa1   = var_out
+
+       var_out     = this%tsa2(id_glb(:))
+       this%tsa2   = var_out
+
+       var_out     = this%tsb1(id_glb(:))
+       this%tsb1   = var_out
+
+       var_out     = this%tsb2(id_glb(:))
+       this%tsb2   = var_out
+
+       var_out     = this%atau(id_glb(:))
+       this%atau   = var_out
+
+       var_out     = this%btau(id_glb(:))
+       this%btau   = var_out
+
+       this%ity = [(k*1., k=1, out_ntiles)]
+
+       do k = 1, 3
+          tmp2d = this%tc
+          deallocate(this%tc)
+          allocate(this%tc(out_ntiles, 4))
+          this%tc(:,k) = tmp2d(id_glb(:),k)
+       enddo
+
+       do k = 1, 3
+          tmp2d = this%qc
+          deallocate(this%qc)
+          allocate(this%qc(out_ntiles, 4))
+          this%qc(:,k) = tmp2d(id_glb(:),k)
+       enddo
+
+       var_out      = this%capac(id_glb(:))
+       this%capac   = var_out
+
+       var_out       = this%catdef(id_glb(:))
+       this%catdef   = var_out
+
+       var_out       = this%rzexc(id_glb(:))
+       this%rzexc    = var_out
+
+       var_out       = this%SRFEXC(id_glb(:))
+       this%SRFEXC   = var_out
+
+       var_out       = this%GHTCNT1(id_glb(:))
+       this%GHTCNT1  = var_out
+
+       var_out       = this%GHTCNT2(id_glb(:))
+       this%GHTCNT2  = var_out
+
+       var_out       = this%GHTCNT3(id_glb(:))
+       this%GHTCNT3  = var_out
+       var_out       = this%GHTCNT4(id_glb(:))
+       this%GHTCNT4  = var_out
+
+       var_out       = this%GHTCNT5(id_glb(:))
+       this%GHTCNT5  = var_out
+
+       var_out       = this%GHTCNT6(id_glb(:))
+       this%GHTCNT6  = var_out
+
+       var_out       = this%WESNN1(id_glb(:))
+       this%WESNN1   = var_out
+
+       var_out       = this%WESNN2(id_glb(:))
+       this%WESNN2   = var_out
+
+       var_out       = this%WESNN3(id_glb(:))
+       this%WESNN3   = var_out
+
+       var_out       = this%HTSNNN1(id_glb(:))
+       this%HTSNNN1  = var_out
+
+       var_out       = this%HTSNNN2(id_glb(:))
+       this%HTSNNN2  = var_out
+
+       var_out       = this%HTSNNN3(id_glb(:))
+       this%HTSNNN3  = var_out
+
+       var_out       = this%SNDZN1(id_glb(:))
+       this%SNDZN1   = var_out
+
+       var_out       = this%SNDZN2(id_glb(:))
+       this%SNDZN2   = var_out
+
+       var_out       = this%SNDZN3(id_glb(:))
+       this%SNDZN3   = var_out
+
+       ! CH CM CQ FR WW
+       ! WW
+       deallocate(this%ww, this%cm, this%cq, this%fr, this%ch)
+       allocate(this%ww(out_ntiles,4), this%cm(out_ntiles,4), this%cq(out_ntiles,4))
+       allocate(this%fr(out_ntiles,4), this%ch(out_ntiles,4))
+       this%ww = 0.1
+       this%fr = 0.25
+       this%ch = 0.001
+       this%cm = 0.001
+       this%cq = 0.001
+     endif
+
+     _RETURN(_SUCCESS) 
+   end subroutine re_tile
+
+   subroutine re_scale(this, surflay, wemin_in, wemin_out, old,  rc)
+     class(CatchmentRst), intent(inout) :: this
+     real, intent(in) :: surflay
+     real, intent(in) :: wemin_in
+     real, intent(in) :: wemin_out
+     type(scale_var),   intent(in) :: old
+     integer, optional, intent(out) :: rc
+     integer :: ntiles
+
+     real,    allocatable, dimension(:)   :: dzsf, ar1, ar2, ar4
+     real,    allocatable, dimension(:,:) :: TP_IN, GHT_IN, FICE, TP_OUT
+     real,    allocatable, dimension(:)   :: swe_in, depth_in, areasc_in, areasc_out, depth_out
+
+     type(Netcdf4_fileformatter) :: formatter
+     integer :: i, filetype, n
+     integer :: status
+
+     ntiles =  this%ntiles
+
+     n =count((old%catdef .gt. old%cdcr1))
+
+     print*, "Scale tile and pesentile :", n,100*n/ntiles
+
+! Scale rxexc regardless of CDCR1, CDCR2 differences
+! --------------------------------------------------
+     this%rzexc  = old%rzexc * ( this%vgwmax / old%vgwmax )
+
+! Scale catdef regardless of whether CDCR2 is larger or smaller in the new situation
+! ----------------------------------------------------------------------------------
+     where (old%catdef .gt. old%cdcr1)
+
+        this%catdef = this%cdcr1 +              &
+                   ( old%catdef - old%cdcr1 ) / &
+                   ( old%cdcr2  - old%cdcr1 ) * &
+                   ( this%cdcr2 - this%cdcr1)
+     end where
+
+! Scale catdef also for the case where catdef le cdcr1.
+! -----------------------------------------------------
+     where( old%catdef .le. old%cdcr1)
+       this%catdef = old%catdef * (this%cdcr1 / old%cdcr1)
+     end where
+
+! Sanity Check (catch_calc_soil_moist() forces consistency betw. srfexc, rzexc, catdef)
+! ------------
+     print *, 'Performing Sanity Check ...'
+
+     dzsf = SURFLAY
+     allocate (   dzsf(ntiles) )
+     allocate (   ar1( ntiles) )
+     allocate (   ar2( ntiles) )
+     allocate (   ar4( ntiles) )
+
+     call catch_calc_soil_moist( ntiles, dzsf,                  &
+        this%vgwmax, this%cdcr1, this%cdcr2,                    &
+        this%psis,   this%bee,   this%poros, this%wpwet,        &
+        this%ars1,   this%ars2,  this%ars3,                     &
+        this%ara1,   this%ara2,  this%ara3,  this%ara4,         &
+        this%arw1,   this%arw2,  this%arw3,  this%arw4,         &
+        this%bf1,    this%bf2,                                  &
+        this%srfexc, this%rzexc, this%catdef,                   &
+        ar1,               ar2,              ar4 )
+
+
+     allocate (TP_IN  (N_GT, Ntiles))
+     allocate (GHT_IN (N_GT, Ntiles))
+     allocate (FICE   (N_GT, NTILES))
+     allocate (TP_OUT (N_GT, Ntiles))
+
+     GHT_IN (1,:) = old%ghtcnt1
+     GHT_IN (2,:) = old%ghtcnt2
+     GHT_IN (3,:) = old%ghtcnt3
+     GHT_IN (4,:) = old%ghtcnt4
+     GHT_IN (5,:) = old%ghtcnt5
+     GHT_IN (6,:) = old%ghtcnt6
+
+     call catch_calc_tp ( NTILES, old%poros, GHT_IN, tp_in, FICE)
+
+     do n = 1, ntiles
+        do i = 1, N_GT
+           call catch_calc_ght(dzgt(i), this%poros(n), tp_in(i,n), fice(i,n),  GHT_IN(i,n))
+        end do
+     end do
+
+     this%ghtcnt1 = GHT_IN (1,:)
+     this%ghtcnt2 = GHT_IN (2,:)
+     this%ghtcnt3 = GHT_IN (3,:)
+     this%ghtcnt4 = GHT_IN (4,:)
+     this%ghtcnt5 = GHT_IN (5,:)
+     this%ghtcnt6 = GHT_IN (6,:)
+
+! Deep soil temp sanity check
+! ---------------------------
+
+     call catch_calc_tp ( NTILES, this%poros, GHT_IN, tp_out, FICE)
+
+     print *, 'Percent tiles TP Layer 1 differ : ', 100.* count(ABS(tp_out(1,:) - tp_in(1,:)) > 1.e-5) /float (Ntiles)
+     print *, 'Percent tiles TP Layer 2 differ : ', 100.* count(ABS(tp_out(2,:) - tp_in(2,:)) > 1.e-5) /float (Ntiles)
+     print *, 'Percent tiles TP Layer 3 differ : ', 100.* count(ABS(tp_out(3,:) - tp_in(3,:)) > 1.e-5) /float (Ntiles)
+     print *, 'Percent tiles TP Layer 4 differ : ', 100.* count(ABS(tp_out(4,:) - tp_in(4,:)) > 1.e-5) /float (Ntiles)
+     print *, 'Percent tiles TP Layer 5 differ : ', 100.* count(ABS(tp_out(5,:) - tp_in(5,:)) > 1.e-5) /float (Ntiles)
+     print *, 'Percent tiles TP Layer 6 differ : ', 100.* count(ABS(tp_out(6,:) - tp_in(6,:)) > 1.e-5) /float (Ntiles)
+
+! SNOW scaling
+! ------------
+
+     if(abs(wemin_out-wemin_in) >1.e-6 ) then
+
+        allocate (swe_in     (Ntiles))
+        allocate (depth_in   (Ntiles))
+        allocate (depth_out  (Ntiles))
+        allocate (areasc_in  (Ntiles))
+        allocate (areasc_out (Ntiles))
+        swe_in    = this%wesnn1 + this%wesnn2 + this%wesnn3
+        depth_in  = this%sndzn1 + this%sndzn2 + this%sndzn3
+        areasc_in = min(swe_in/wemin_in, 1.)
+        areasc_out= min(swe_in/wemin_out,1.)
+
+        where (swe_in .gt. 0.)
+           where (areasc_in .lt. 1. .or. areasc_out .lt. 1.)
+           !      density_in= swe_in/(areasc_in *  depth_in + 1.e-20)
+           !      depth_out = swe_in/(areasc_out*density_in)
+             depth_out = areasc_in *  depth_in/(areasc_out + 1.e-20)
+             this%sndzn1 = depth_out/3.
+             this%sndzn2 = depth_out/3.
+             this%sndzn3 = depth_out/3.
+          endwhere
+        endwhere
+
+        print *, 'Snow scaling summary'
+        print *, '....................'
+        print *, 'Percent tiles SNDZ scaled : ', 100.* count (this%sndzn3 .ne. old%sndzn3) /float (count (this%sndzn3 > 0.))
+
+     endif
+
+ ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
+  ! -------------------------------------------------------------------------------
+
+     where ( (old%poros < PEATCLSM_POROS_THRESHOLD) .and. (this%poros >= PEATCLSM_POROS_THRESHOLD) )
+        this%catdef = 25.
+        this%rzexc  =  0.
+        this%srfexc =  0.
+     end where
+
+   end subroutine re_scale
+
+   subroutine set_scale_var(this, sca)
+     class(CatchmentRst), intent(in) :: this
+     type (scale_var), intent(out) :: sca
+     sca%catdef = this%catdef
+     sca%poros  = this%poros
+     sca%cdcr1  = this%cdcr1
+     sca%cdcr2  = this%cdcr2
+     sca%rzexc  = this%rzexc
+     sca%vgwmax = this%vgwmax
+     sca%sndzn3 = this%sndzn3
+     sca%ghtcnt1 = this%ghtcnt1
+     sca%ghtcnt2 = this%ghtcnt2
+     sca%ghtcnt3 = this%ghtcnt3
+     sca%ghtcnt4 = this%ghtcnt4
+     sca%ghtcnt5 = this%ghtcnt5
+     sca%ghtcnt6 = this%ghtcnt6
+   end subroutine set_scale_var 
 
 end module CatchmentRstMod
