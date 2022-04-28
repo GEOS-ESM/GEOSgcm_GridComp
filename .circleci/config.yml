@@ -1,35 +1,20 @@
 version: 2.1
 
 orbs:
-  circleci-tools: geos-esm/circleci-tools@0.11.0
+  ci: geos-esm/circleci-tools@1
 
 workflows:
   build-test:
     jobs:
-      - build-GEOSgcm:
+      # Build GEOSgcm
+      - ci/build:
           name: build-GEOSgcm-on-<< matrix.compiler >>
+          context:
+            - docker-hub-creds
           matrix:
             parameters:
               compiler: [gfortran, ifort]
-          context: 
-            - docker-hub-creds
-
-jobs:
-  build-GEOSgcm:
-    parameters:
-      compiler:
-        type: string
-    executor: circleci-tools/<< parameters.compiler >>
-    working_directory: /root/project
-    steps:
-      - circleci-tools/checkout_fixture
-      - circleci-tools/mepoclone
-      - circleci-tools/mepodevelop
-      - circleci-tools/checkout_if_exists
-      - circleci-tools/cmake:
-          compiler: << parameters.compiler >>
-      - circleci-tools/buildinstall
-      - circleci-tools/compress_artifacts
-      - store_artifacts:
-          path: /logfiles
-
+          repo: GEOSgcm
+          checkout_fixture: true
+          mepodevelop: true
+          persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
