@@ -4245,7 +4245,19 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            enddo
            ! record in file clsm/bad_sat_param.tiles
            write (41,*)n,k        ! n="bad" tile, k=tile from which parameters are taken
-           
+
+           ! Overwrite parms4file when filling in parameters from neighboring tile k.
+           ! For "good" tiles, keep parms4file as read earlier from catch_params.nc4,
+           ! which is why this must be done within the "then" block of the "if" statement.
+           ! This is necessary for backward 0-diff compatibility of catch_params.nc4.
+
+           parms4file (n,12) = BEE(k)
+           parms4file (n,16) = COND(k)
+           parms4file (n,18) = POROS(k)
+           parms4file (n,19) = PSIS(k)
+           parms4file (n,24) = wpwet(k)
+           parms4file (n,25) = soildepth(k)
+                                 
         else
            
            ! nominal case, all parameters are good
@@ -4275,7 +4287,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,                   &
              wpwet_surf(k),poros_surf(k), pmap(k)
         
-        ! record parameters for later writing into catch_params.nc4
+        ! record ar.new, bf.dat, and ts.dat parameters for later writing into catch_params.nc4
         
         if (allocated (parms4file)) then
            parms4file (n, 1) = ara1(k)
@@ -4289,20 +4301,14 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            parms4file (n, 9) = arw2(k)
            parms4file (n,10) = arw3(k)
            parms4file (n,11) = arw4(k)  
-           parms4file (n,12) = BEE(k)
            parms4file (n,13) = bf1(k)
            parms4file (n,14) = bf2(k)
            parms4file (n,15) = bf3(k)
-           parms4file (n,16) = COND(k)
            parms4file (n,17) = gnu
-           parms4file (n,18) = POROS(k)
-           parms4file (n,19) = PSIS(k)
            parms4file (n,20) = tsa1(k)
            parms4file (n,21) = tsa2(k)
            parms4file (n,22) = tsb1(k)
            parms4file (n,23) = tsb2(k)
-           parms4file (n,24) = wpwet(k)
-           parms4file (n,25) = soildepth(k)
         endif
      
 !obsolete20220428     endif               ! if (preserve_soiltype) then
