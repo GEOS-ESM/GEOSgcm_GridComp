@@ -3446,6 +3446,29 @@ contains
       O3 = O3 * (MAPL_O3MW / MAPL_AIRMW)
       O3 = MAX(O3, 0.00)
 
+      ! ------------------
+      ! Begin aerosol code
+      ! ------------------
+
+      allocate(TAUA(size(Q,1),size(Q,2),NUM_BANDS_SOLAR),__STAT__)
+      allocate(SSAA(size(Q,1),size(Q,2),NUM_BANDS_SOLAR),__STAT__)
+      allocate(ASYA(size(Q,1),size(Q,2),NUM_BANDS_SOLAR),__STAT__)
+
+      ! Zero out aerosol arrays.
+      ! If num_aero_vars == 0, these zeroes are then used inside the code.
+      TAUA = 0.
+      SSAA = 0.
+      ASYA = 0.
+
+      ! If we have aerosols, load them.
+      if (num_aero_vars > 0) then
+         TAUA = BUFIMP_AEROSOL_EXT
+         SSAA = BUFIMP_AEROSOL_SSA
+         ASYA = BUFIMP_AEROSOL_ASY
+      end if
+
+      call MAPL_TimerOff(MAPL,"-MISC")
+
       ! Advanced Flux Update (AFU) variables
       ! ------------------------------------
       ! only do for regular aerosol-inclusive calculation
@@ -3479,29 +3502,6 @@ contains
 
          call MAPL_TimerOff(MAPL,"-AFU",__RC__)
       end if
-
-      ! ------------------
-      ! Begin aerosol code
-      ! ------------------
-
-      allocate(TAUA(size(Q,1),size(Q,2),NUM_BANDS_SOLAR),__STAT__)
-      allocate(SSAA(size(Q,1),size(Q,2),NUM_BANDS_SOLAR),__STAT__)
-      allocate(ASYA(size(Q,1),size(Q,2),NUM_BANDS_SOLAR),__STAT__)
-
-      ! Zero out aerosol arrays.
-      ! If num_aero_vars == 0, these zeroes are then used inside the code.
-      TAUA = 0.
-      SSAA = 0.
-      ASYA = 0.
-
-      ! If we have aerosols, load them.
-      if (num_aero_vars > 0) then
-         TAUA = BUFIMP_AEROSOL_EXT
-         SSAA = BUFIMP_AEROSOL_SSA
-         ASYA = BUFIMP_AEROSOL_ASY
-      end if
-
-      call MAPL_TimerOff(MAPL,"-MISC")
 
       ! Call the requested Shortwave scheme
       ! -----------------------------------
@@ -4253,7 +4253,6 @@ contains
 
       ! NIR bands (1-9: 820-12850 cm-1, 0.778-12.195 microns)
       if (do_AFU_analysis) then
-        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
         NIR_DNB = 0.; NIR_DNR = 0.; NIR_UPF = 0.
         NIR_ALR = 0.; NIR_ALF = 0.
         do ib=1,9
@@ -4263,7 +4262,6 @@ contains
           NIR_ALR = NIR_ALR + real(bnd_flux_dir_allsky(:,LM+1,ib) * sfc_alb_dir(ib,:))
           NIR_ALF = NIR_ALF + real((bnd_flux_dn_allsky(:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib)) * sfc_alb_dif(ib,:))
         end do
-        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
       else
         NIRR = 0.; NIRF = 0.
         do ib=1,9
@@ -4274,7 +4272,6 @@ contains
 
       ! PAR bands (11-12: 16000-29000 cm-1, 0.345-0.625 micron)
       if (do_AFU_analysis) then
-        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
         PAR_DNB = 0.; PAR_DNR = 0.; PAR_UPF = 0.
         PAR_ALR = 0.; PAR_ALF = 0.
         do ib=11,12
@@ -4284,7 +4281,6 @@ contains
           PAR_ALR = PAR_ALR + real(bnd_flux_dir_allsky(:,LM+1,ib) * sfc_alb_dir(ib,:))
           PAR_ALF = PAR_ALF + real((bnd_flux_dn_allsky(:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib)) * sfc_alb_dif(ib,:))
         end do
-        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
       else
         PARR = 0.; PARF = 0.
         do ib=11,12
@@ -4295,7 +4291,6 @@ contains
 
       ! UVR bands (13-14: 29000-50000 cm-1, 0.200-0.345 micron)
       if (do_AFU_analysis) then
-        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
         UVR_DNB = 0.; UVR_DNR = 0.; UVR_UPF = 0.
         UVR_ALR = 0.; UVR_ALF = 0.
         do ib=13,14
@@ -4305,7 +4300,6 @@ contains
           UVR_ALR = UVR_ALR + real(bnd_flux_dir_allsky(:,LM+1,ib) * sfc_alb_dir(ib,:))
           UVR_ALF = UVR_ALF + real((bnd_flux_dn_allsky(:,LM+1,ib) - bnd_flux_dir_allsky(:,LM+1,ib)) * sfc_alb_dif(ib,:))
         end do
-        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
       else
         UVRR = 0.; UVRF = 0.
         do ib=13,14
@@ -4317,7 +4311,6 @@ contains
       ! Transition band (10, 12850-16000 cm-1, 0.625-0.778 micron)
       ! split half-and-half to PAR and NIR
       if (do_AFU_analysis) then
-        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
         NIR_DNB = NIR_DNB + 0.5 * real(bnd_flux_dn_allsky (:,:,10))
         NIR_DNR = NIR_DNR + 0.5 * real(bnd_flux_dir_allsky(:,:,10))
         NIR_UPF = NIR_UPF + 0.5 * real(bnd_flux_up_allsky (:,:,10))
@@ -4328,7 +4321,6 @@ contains
         NIR_ALF = NIR_ALF + 0.5 * real((bnd_flux_dn_allsky(:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10)) * sfc_alb_dif(10,:))
         PAR_ALR = PAR_ALR + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10) * sfc_alb_dir(10,:))
         PAR_ALF = PAR_ALF + 0.5 * real((bnd_flux_dn_allsky(:,LM+1,10) - bnd_flux_dir_allsky(:,LM+1,10)) * sfc_alb_dif(10,:))
-        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
       else
         NIRR = NIRR + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10))
         PARR = PARR + 0.5 * real(bnd_flux_dir_allsky(:,LM+1,10))
@@ -4337,7 +4329,6 @@ contains
       end if
 
       if (do_AFU_analysis) then
-        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
 
         ! extract TOA downwelling super-band fluxes
         ! (PMN: assume all direct for now)
@@ -4363,7 +4354,6 @@ contains
         UVR_ALR = min(max( UVR_ALR / max(UVRR, 1.e-12), 0.),1.)
         UVR_ALF = min(max( UVR_ALF / max(UVRF, 1.e-12), 0.),1.)
 
-        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
       end if
 
       ! clean up
@@ -5764,23 +5754,21 @@ contains
       call MAPL_GetPointer(EXPORT  , CLDTTSWHB,  'CLDTTSWHB',  __RC__)
 
       if (do_AFU_calc) then
-        call MAPL_TimerOn(MAPL,"-AFU",__RC__)
-        call MAPL_GetPointer( INTERNAL, UVR_TDN,   'UVR_TDN',    __RC__)
-        call MAPL_GetPointer( INTERNAL, UVR_TAUE,  'UVR_TAUE',   __RC__)
-        call MAPL_GetPointer( INTERNAL, UVR_SSAEC, 'UVR_SSAEC',  __RC__)
-        call MAPL_GetPointer( INTERNAL, UVR_ASYED, 'UVR_ASYED',  __RC__)
-        call MAPL_GetPointer( INTERNAL, UVR_FRAY,  'UVR_FRAY',   __RC__)
-        call MAPL_GetPointer( INTERNAL, PAR_TDN,   'PAR_TDN',    __RC__)
-        call MAPL_GetPointer( INTERNAL, PAR_TAUE,  'PAR_TAUE',   __RC__)
-        call MAPL_GetPointer( INTERNAL, PAR_SSAEC, 'PAR_SSAEC',  __RC__)
-        call MAPL_GetPointer( INTERNAL, PAR_ASYED, 'PAR_ASYED',  __RC__)
-        call MAPL_GetPointer( INTERNAL, PAR_FRAY,  'PAR_FRAY',   __RC__)
-        call MAPL_GetPointer( INTERNAL, NIR_TDN,   'NIR_TDN',    __RC__)
-        call MAPL_GetPointer( INTERNAL, NIR_TAUE,  'NIR_TAUE',   __RC__)
-        call MAPL_GetPointer( INTERNAL, NIR_SSAEC, 'NIR_SSAEC',  __RC__)
-        call MAPL_GetPointer( INTERNAL, NIR_ASYED, 'NIR_ASYED',  __RC__)
-        call MAPL_GetPointer( INTERNAL, NIR_FRAY,  'NIR_FRAY',   __RC__)
-        call MAPL_TimerOff(MAPL,"-AFU",__RC__)
+        call MAPL_GetPointer(INTERNAL, UVR_TDN,   'UVR_TDN',   __RC__)
+        call MAPL_GetPointer(INTERNAL, UVR_TAUE,  'UVR_TAUE',  __RC__)
+        call MAPL_GetPointer(INTERNAL, UVR_SSAEC, 'UVR_SSAEC', __RC__)
+        call MAPL_GetPointer(INTERNAL, UVR_ASYED, 'UVR_ASYED', __RC__)
+        call MAPL_GetPointer(INTERNAL, UVR_FRAY,  'UVR_FRAY',  __RC__)
+        call MAPL_GetPointer(INTERNAL, PAR_TDN,   'PAR_TDN',   __RC__)
+        call MAPL_GetPointer(INTERNAL, PAR_TAUE,  'PAR_TAUE',  __RC__)
+        call MAPL_GetPointer(INTERNAL, PAR_SSAEC, 'PAR_SSAEC', __RC__)
+        call MAPL_GetPointer(INTERNAL, PAR_ASYED, 'PAR_ASYED', __RC__)
+        call MAPL_GetPointer(INTERNAL, PAR_FRAY,  'PAR_FRAY',  __RC__)
+        call MAPL_GetPointer(INTERNAL, NIR_TDN,   'NIR_TDN',   __RC__)
+        call MAPL_GetPointer(INTERNAL, NIR_TAUE,  'NIR_TAUE',  __RC__)
+        call MAPL_GetPointer(INTERNAL, NIR_SSAEC, 'NIR_SSAEC', __RC__)
+        call MAPL_GetPointer(INTERNAL, NIR_ASYED, 'NIR_ASYED', __RC__)
+        call MAPL_GetPointer(INTERNAL, NIR_FRAY,  'NIR_FRAY',  __RC__)
       end if
 
       if (associated(FCLD)) FCLD = CLIN
