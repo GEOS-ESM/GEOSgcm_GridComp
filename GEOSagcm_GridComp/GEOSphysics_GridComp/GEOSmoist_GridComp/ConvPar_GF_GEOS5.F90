@@ -2596,6 +2596,35 @@ ENDIF
         cap_max_increment(i)=cap_max_inc
        enddo
 !
+!--- SCALE DEPENDENCE FACTOR (SIG), version new
+!
+      if( USE_SCALE_DEP == 0 ) sig(:)=1.
+      if( USE_SCALE_DEP == 1 ) then
+         if( cumulus == 'shallow') then
+            sig(:)=1.
+         else
+            do i=its,itf
+             sig(i) = 0.
+             if (stochastic_sig(i) < 0.0) then
+               ierr(i)=1
+               ierrc(i)='scale_dep renders convection insignificant'
+             endif
+             if(ierr(i) /= 0) cycle
+            !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
+             sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1750.))
+             if (stochastic_sig(i) /= 1.0) then
+               sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))
+             endif
+             sig(i)= max(0.1,min(sig(i),1.))
+             if(sig(i).le.0.1)then
+               ierr(i)=1
+               ierrc(i)='scale_dep renders convection insignificant'
+             endif
+             if(ierr(i) /= 0) cycle
+            enddo
+         endif
+      endif
+!
 !---  create a real random number in the interval [-use_random_num, +use_random_num]
 !
       if( cumulus == 'deep' .and. use_random_num > 1.e-6) then
@@ -2997,8 +3026,6 @@ loop0:       do k=kts,ktf
 !--- determine the vertical entrainment/detrainment rates, the level of convective cloud base -kbcon-
 !--- and the scale dependence factor (sig).
 
-l_SIG:DO fase = 1,2
-        IF(fase == 1) THEN
            !- default value for entrainmente re-scale
            rescale_entrain(:)=1.
            DO i=its,itf
@@ -3046,14 +3073,6 @@ l_SIG:DO fase = 1,2
                enddo
              endif
            ENDDO
-        ELSE  !- for 2nd fase (re-scale entrainemnt for the scale dependence approach, if required)
-           DO i=its,itf
-             if(ierr(i) /= 0 .or. rescale_entrain(i) < 1.0001) cycle
-             !-rescale entr/detrain associated with the scale dependence approach (see below)
-             entr_rate_2d(i,kts:ktf) = rescale_entrain(i)*entr_rate_2d(i,kts:ktf)
-             cd          (i,kts:ktf) = rescale_entrain(i)*cd          (i,kts:ktf)
-           enddo
-        ENDIF
 !
 !--- start_level
 !
@@ -3070,71 +3089,6 @@ l_SIG:DO fase = 1,2
                              ,qeso_cup,po,po_cup,zo_cup,heo,hkbo,qo,qeso,entr_rate_2d,hcot,k22,kbmax &
                              ,klcl,kbcon,ktop,depth_neg_buoy,frh_bcon,Tpert,start_level              &
                              ,use_excess,zqexec,ztexec,x_add_buoy,xland,itf,ktf,its,ite, kts,kte)
-
-        if( USE_SCALE_DEP == 0) then
-           sig(:)=1.; EXIT l_SIG
-        endif
-
-!
-!--- SCALE DEPENDENCE FACTOR (SIG), version new
-!
-        if( USE_SCALE_DEP == 1 ) then
-
-          if( cumulus == 'shallow') then
-             sig(:)=1.
-          else
-             do i=its,itf
-              sig(i) = 0.
-              if(ierr(i) /= 0) cycle
-             !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
-              sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1750.))
-              if (stochastic_sig(i) /= 1.0) then
-                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))
-              endif
-              sig(i)= max(0.001,min(sig(i),1.))
-             enddo
-          endif
-          !---- printout max/min (>0) sigma       ----------------
-          !check_sig(:)=sig(:)
-          !s1=maxval(check_sig)
-          !where(check_sig==0.)check_sig=1.
-          !s2=minval(check_sig)
-          !if(s1>0.0001)print*,"max/min sig=",s1,s2;call flush(6)
-          !--------------------------------------------------------
-          EXIT l_SIG
-         endif
-
-        if(fase == 2) EXIT l_SIG
-!
-!--- SCALE DEPENDENCE FACTOR (SIG), version original
-!
-        if( USE_SCALE_DEP == 2 ) then
-          !- get the effective entraiment between klcl and kbcon
-          do i=its,itf
-            sig(i) = 1.
-            IF(ierr(i) /= 0)cycle
-            effec_entrain=0.0
-            do k=klcl(i),kbcon(i)
-               dp = po_cup(i,k)-po_cup(i,k+1)
-               effec_entrain=effec_entrain+entr_rate_2d(i,k)*dp
-            enddo
-            effec_entrain=effec_entrain/(po_cup(i,klcl(i))-po_cup(i,kbcon(i)+1))
-
-            !- scale dependence factor
-            radius =0.2/effec_entrain
-            frh    =3.14*radius*radius/(dx(i)*dx(i))
-               !  print*,"frh1=",frh,effec_entrain,(1.-frh)**2
-            if(frh .gt. 0.7)then
-              frh=0.7
-              radius=sqrt(frh*dx(i)*dx(i)/3.14)! dx*sqrt(frh/3.14)
-              rescale_entrain(i) =(0.2/radius)/effec_entrain
-            endif
-            !- scale dependence factor
-            sig (i)=(1.-frh)**2
-            !print*,"FORM1=",sig(i),dx(i)
-          enddo
-         endif
-     ENDDO l_SIG ! fase/scale dependence loop
 
 !--- define entrainment/detrainment profiles for downdrafts
      if(ENTRNEW) then

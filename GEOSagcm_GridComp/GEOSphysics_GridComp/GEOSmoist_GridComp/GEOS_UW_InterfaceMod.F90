@@ -84,7 +84,7 @@ subroutine UW_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 2.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 8.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
 
@@ -335,36 +335,27 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
-      ! add ShallowCu rain/snow tendencies
-        if (SHLWPARAMS%FRC_RASN > 0.0) then
-          call MAPL_GetPointer(INTERNAL, QRAIN,  'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(INTERNAL, QSNOW,  'QSNOW'   , RC=STATUS); VERIFY_(STATUS)
-          QRAIN = QRAIN + DQRDT_SC*DT_MOIST
-          QSNOW = QSNOW + DQSDT_SC*DT_MOIST
-        endif
       ! Other exports
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_QT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) then
         ! column integral of UW total water tendency, for checking conservation
-        TMP2D = 0.
+        PTR2D = 0.
         DO L = 1,LM
-           TMP2D = TMP2D + ( DQSDT_SC(:,:,L)+DQRDT_SC(:,:,L)+DQVDT_SC(:,:,L) &
+           PTR2D = PTR2D + ( DQSDT_SC(:,:,L)+DQRDT_SC(:,:,L)+DQVDT_SC(:,:,L) &
                          +   QLENT_SC(:,:,L)+QLSUB_SC(:,:,L)+QIENT_SC(:,:,L) &
                          +   QISUB_SC(:,:,L) )*MASS(:,:,L) &
                          +  QLDET_SC(:,:,L)+QIDET_SC(:,:,L)
         END DO
-        PTR2D = TMP2D
         end if
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_MSE', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) then
         ! column integral of UW moist static energy tendency
-        TMP2D = 0.
+        PTR2D = 0.
         DO L = 1,LM
-           TMP2D = TMP2D + (MAPL_CP  *DTHDT_SC(:,:,L)*PK(:,:,L) &
+           PTR2D = PTR2D + (MAPL_CP  *DTHDT_SC(:,:,L)*PK(:,:,L) &
                          +  MAPL_ALHL*DQVDT_SC(:,:,L)          &
                          -  MAPL_ALHF*DQIDT_SC(:,:,L))*MASS(:,:,L)
         END DO
-        PTR2D = TMP2D
         end if
 
        !--------------------------------------------------------------

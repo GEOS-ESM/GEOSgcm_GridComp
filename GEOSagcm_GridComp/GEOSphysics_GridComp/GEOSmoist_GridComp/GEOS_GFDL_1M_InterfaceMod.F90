@@ -533,6 +533,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (associated(DQRDT_macro)) DQRDT_macro=QRAIN
     if (associated(DQSDT_macro)) DQSDT_macro=QSNOW
     if (associated(DQGDT_macro)) DQGDT_macro=QGRAUPEL
+      ! Include shallow precip condensates if present
+        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) then
+          QRAIN = QRAIN + PTR3D*DT_MOIST
+        endif
+        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) then 
+          QSNOW = QSNOW + PTR3D*DT_MOIST
+        endif
        ! pdf/evap/subl
         do L=1,LM
           do J=1,JM

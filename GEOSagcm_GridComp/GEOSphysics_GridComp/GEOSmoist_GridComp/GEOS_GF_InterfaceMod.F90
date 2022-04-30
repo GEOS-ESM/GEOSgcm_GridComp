@@ -474,7 +474,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
        SEEDCNV = MAX(MIN(SEEDINI/1000000.0,1.0),0.0)
-       SEEDCNV = CNV_FRC*(1.0-(1.0-SEEDCNV)**2)*(STOCH_TOP-STOCH_BOT)+STOCH_BOT
+       SEEDCNV = CNV_FRC * ((1.0-(1.0-SEEDCNV)**2)*(STOCH_TOP-STOCH_BOT)+STOCH_BOT)
     else
        SEEDCNV = 1.0
     endif

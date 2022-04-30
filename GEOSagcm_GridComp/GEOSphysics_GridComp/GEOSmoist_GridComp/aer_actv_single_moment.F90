@@ -112,6 +112,24 @@ MODULE Aer_Actv_Single_Moment
 
               allocate(aero_aci_modes(n_modes), __STAT__)
               call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
+
+              call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
+              if (aci_field_name /= '') then
+                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                  aci_ptr_3d = PLE
+              end if
+
+              call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
+              if (aci_field_name /= '') then
+                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                  aci_ptr_3d = T
+              end if
+
+              call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
+              if (aci_field_name /= '') then
+                  call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
+                  aci_ptr_2d = FRLAND
+              end if
      
               if (USE_AERO_BUFFER) then
                  allocate(buffer(im,jm,lm,n_modes,8), __STAT__)
