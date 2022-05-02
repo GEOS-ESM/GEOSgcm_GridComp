@@ -736,13 +736,14 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
-         ! Clean up Relative Humidity where RH > 110%
+         ! Rain-out and Relative Humidity where RH > 110%
          DQST3 = GEOS_DQSAT(TH*PK, PLmb, QSAT=QST3)
          where ( Q > 1.1*QST3 )
             TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
          elsewhere
             TMP3D = 0.0
          endwhere
+         LS_PRCP = LS_PRCP + SUM(TMP3D*MASS,3)/DT_MOIST
          Q  =  Q - TMP3D
          TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
 
@@ -754,6 +755,20 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (associated( DVDT_micro))  DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
          if (associated( DTDT_micro))  DTDT_micro = (TH*PK       -  DTDT_micro) / DT_MOIST
          if (associated(DTHDT_micro)) DTHDT_micro = (TH          - DTHDT_micro) / DT_MOIST
+
+         ! Compute DBZ radar reflectivity
+         call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D) .OR. associated(PTR2D)) then
+            call CALCDBZ(TMP3D,100*PLmb,TH*PK,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
+            if (associated(PTR3D)) PTR3D = TMP3D
+            if (associated(PTR2D)) then
+               PTR2D=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+            endif
+         endif
 
     call MAPL_TimerOff (MAPL,"--BACM_1M")
 

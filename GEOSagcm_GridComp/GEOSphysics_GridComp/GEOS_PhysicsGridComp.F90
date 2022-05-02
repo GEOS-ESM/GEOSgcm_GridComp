@@ -2426,10 +2426,8 @@ contains
      call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS)
     endif
 
-!-srf-gf-scheme
     call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
 
     if ( DOPHYSICS.eq.1. ) then
 

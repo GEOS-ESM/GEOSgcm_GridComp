@@ -1038,8 +1038,6 @@ contains
             ! impose a minimum amount of variability
             ALPHA    = MAX(  ALPHA , 1.0 - RH00 )
    
-            RHCRIT = 1.0 - ALPHA
-
             LSPDFLIQNEW = QLW_LS_dev(I,K)
             LSPDFICENEW = QIW_LS_dev(I,K)
             LSPDFFRACNEW= CLDFRC_dev(I,K)
@@ -1137,6 +1135,7 @@ contains
 
              ! 'Anvil' partition from RAS/Parameterized not done in hystpdf
 
+            RHCRIT = 1.0 ! Use 1.0 for evaporation
             call evap3(            &
                   DT             , &
                   CCW_EVP_EFF    , &
@@ -1151,6 +1150,7 @@ contains
                   NACTI_dev(I,K) , &
                   QST3_dev(I,K)  )  
 
+            RHCRIT = 1.0 - ALPHA
             call subl3(            &
                   DT             , & 
                   CCI_EVP_EFF    , &

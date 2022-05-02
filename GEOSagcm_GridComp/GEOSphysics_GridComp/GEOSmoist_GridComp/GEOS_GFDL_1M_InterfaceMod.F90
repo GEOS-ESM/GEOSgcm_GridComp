@@ -573,9 +573,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              endif
            ! combine and limit
              ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
-             RHCRIT = 1.0 - ALPHA
        ! evaporation/sublimation for CN/LS
              EVAPC(I,J,L) = Q(I,J,L)
+             RHCRIT = 1.0 ! Use 1.0 for evap
              call EVAP3 (         &
                   DT_MOIST      , &
                   CCW_EVAP_EFF  , &
@@ -591,6 +591,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    QST3(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
              SUBLC(I,J,L) =   Q(I,J,L)
+             RHCRIT = 1.0 - ALPHA
              call SUBL3 (        &
                   DT_MOIST      , &
                   CCI_EVAP_EFF  , &
@@ -844,13 +845,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE
            PTR3D=MAX(MIN(PTR3D, 1.0), 0.0)
          endif
-         ! Clean up Relative Humidity where RH > 110%
+         ! Rain-out and Relative Humidity where RH > 110%
          DQST3 = GEOS_DQSAT(T, PLmb, QSAT=QST3)
          where ( Q > 1.1*QST3 )
             TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
          elsewhere
             TMP3D = 0.0
          endwhere
+         LS_PRCP = LS_PRCP + SUM(TMP3D*MASS,3)/DT_MOIST
          Q  =  Q - TMP3D
          T  =  T + (MAPL_ALHL/MAPL_CP)*TMP3D
          TH =  T / PK
@@ -871,6 +873,20 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
+
+        ! Compute DBZ radar reflectivity
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D) .OR. associated(PTR2D)) then
+           call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,0)
+           if (associated(PTR3D)) PTR3D = TMP3D
+           if (associated(PTR2D)) then
+              PTR2D=-9999.0
+              DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                 PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+              END DO ; END DO ; END DO
+           endif
+        endif
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 

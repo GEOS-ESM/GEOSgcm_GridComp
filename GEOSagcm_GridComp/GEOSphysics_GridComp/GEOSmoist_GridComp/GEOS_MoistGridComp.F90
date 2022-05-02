@@ -5162,9 +5162,10 @@ contains
     real                            :: DT_MOIST
 
     ! Local variables
-    real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0, PK
+    real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET,  T
     real, allocatable, dimension(:,:,:) :: QST3, DQST3
+    real, allocatable, dimension(:,:)   :: TMP2D
     type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
@@ -5233,8 +5234,8 @@ contains
        call MAPL_GetPointer(INTERNAL, CLLS,     'CLLS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, NACTL,   'NACTL'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, NACTI,   'NACTI'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NACTL,   'NACTL'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NACTI,   'NACTI'    , RC=STATUS); VERIFY_(STATUS)
 
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
@@ -5263,6 +5264,8 @@ contains
        ALLOCATE ( T    (IM,JM,LM  ) )
        ALLOCATE ( DQST3(IM,JM,LM  ) )
        ALLOCATE (  QST3(IM,JM,LM  ) )
+       ALLOCATE ( MASS (IM,JM,LM  ) )
+       ALLOCATE ( TMP2D(IM,JM     ) )
 
        ! Derived States
        PLEmb    =  PLE*.01
@@ -5275,6 +5278,7 @@ contains
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        T        = TH*PK
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+       MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
 
        ! These may be used by children
        call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5323,6 +5327,12 @@ contains
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+
+       ! Clean up any negative specific humidity 
+       !-----------------------------------------
+       call FILLQ2ZERO(Q, MASS, TMP2D)
+       call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = TMP2D
 
        ! Export Total Moist Tendencies
 
