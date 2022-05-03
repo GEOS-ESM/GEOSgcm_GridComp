@@ -34,13 +34,12 @@ PROGRAM mk_CatchmentsRestarts
 
   call catch%re_tile(in_tilefile, out_bcsdir, out_tilefile, surflay, __RC__)
 
-  call catch%set_scale_var(old)
-
-  call catch%add_bcs_to_rst(surflay, out_bcsdir, rc)
-
-  call catch%re_scale(surflay, wemin_in, wemin_out, old, __RC__)
-
-  call catch%write_nc4(out_file, __RC__)
+  if (myid == 0) then
+    call catch%set_scale_var(old)
+    call catch%add_bcs_to_rst(surflay, out_bcsdir, rc)
+    call catch%re_scale(surflay, wemin_in, wemin_out, old, __RC__)
+    call catch%write_nc4(out_file, __RC__)
+  endif
 
   call MPI_FINALIZE(mpierr)
  
@@ -57,40 +56,52 @@ PROGRAM mk_CatchmentsRestarts
           case ('-h')
               call print_usage()
               call exit(0)
-          case ('-bcs_out')
+          case ('-out_bcs')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             out_bcsdir = trim(arg)
           case ('-time')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             YYYYMMDDHHMM = trim(arg)
-          case ('-dir_out')
+          case ('-out_dir')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             out_dir = trim(arg)
           case ('-model')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             model = trim(arg)
           case ('-surflay')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             read(arg,*)  surflay
-          case ('-tile_in')
+          case ('-in_tilefile')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             in_tilefile =  trim(arg)
-          case ('-tile_out')
+          case ('-out_tilefile')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             out_tilefile =  trim(arg)
-          case ('-rst_in')
+          case ('-in_rst')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             in_rstfile   =  trim(arg)
-          case ('-rst_out')
+          case ('-out_rst')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             out_rstfile   =  trim(arg)
-          case ('-wemin_in')
+          case ('-in_wemin')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             read(arg,*)  wemin_in
-          case ('-wemin_out')
+          case ('-out_wemin')
+            nxt = nxt + 1
             call getarg(nxt,arg)
             read(arg,*)  wemin_out
           case default
+            print*, trim(arg)
             call print_usage()
             print*, "wong command line"
             call exit(1)
@@ -111,16 +122,16 @@ PROGRAM mk_CatchmentsRestarts
 
      subroutine print_usage()
         print *,'   '
-        print *,'-bcs_out    : BC directory for output restart file'
-        print *,'-time       : time for restart, format (yyyymmddhhmm)' 
-        print *,'-dir_out    : directory for output restasrt file'
-        print *,'-model      : model ( catch, catchcnclm40, catchcnclm45)'
-        print *,'-surflay    : surflay value'
-        print *,'-wemin_in   : wemin for input restart'
-        print *,'-wemin_out  : wemin for output restart'
-        print *,'-tile_in    : tile_file for input  restart'
-        print *,'-tile_out   : tile_file for output restart, if none, it will search out_bcs'
-        print *,'-rst_in     : input restart file name'
-        print *,'-rst_out    : output restart file name'
+        print *,'-out_bcs        : BC directory for output restart file'
+        print *,'-time           : time for restart, format (yyyymmddhhmm)' 
+        print *,'-out_dir        : directory for output restasrt file'
+        print *,'-model          : model ( catch, catchcnclm40, catchcnclm45)'
+        print *,'-surflay        : surflay value'
+        print *,'-in_wemin       : wemin for input restart'
+        print *,'-out_wemin      : wemin for output restart'
+        print *,'-in_tilefile    : tile_file for input  restart'
+        print *,'-out_tilefile   : tile_file for output restart, if none, it will search out_bcs'
+        print *,'-in_rst         : input restart file name WITH path'
+        print *,'-out_rst        : output restart file name WITHOUT path'
      end subroutine  
 end program  

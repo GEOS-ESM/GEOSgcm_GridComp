@@ -96,6 +96,10 @@ module CatchmentRstMod
      real, allocatable ::         cq(:,:)
      real, allocatable ::         fr(:,:)
      real, allocatable ::         ww(:,:)
+    
+     ! intermediate
+     real, allocatable, dimension(:) :: lonc,latc,lonn,latt, long, latg
+
   contains
      procedure :: read_GEOSldas_rst_bin      
      procedure :: write_nc4      
@@ -125,20 +129,24 @@ contains
      type(Netcdf4_fileformatter) :: formatter
      integer :: filetype, ntiles, unit
      type(FileMetadata) :: meta
-     integer :: bpos, epos, n
+     integer :: bpos, epos, n, myid, mpierr
 
+     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
      catch%time = time
      call MAPL_NCIOGetFileType(filename, filetype, __RC__)
 
      if(filetype == 0) then
        ! nc4 format
        call formatter%open(filename, pFIO_READ, __RC__)
+       meta   = formatter%read(__RC__)
        ntiles = meta%get_dimension('tile', __RC__)
+       catch%meta   = meta
        catch%ntiles = ntiles
-       catch%meta   = formatter%read(__RC__)
-       call catch%allocate_catch()
-       call catch%read_shared_nc4(formatter, __RC__)
-       call MAPL_VarRead(formatter,"OLD_ITY",catch%ity, __RC__)
+       if (myid ==0) then
+          call catch%allocate_catch()
+          call catch%read_shared_nc4(formatter, __RC__)
+          call MAPL_VarRead(formatter,"OLD_ITY",catch%ity, __RC__)
+       endif
        call formatter%close()
      else
        !if ( .not. present(time)) then
@@ -153,8 +161,10 @@ contains
        ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
        catch%ntiles = ntiles
        catch%meta = create_meta(ntiles, time)
-       call catch%allocate_catch()
-       call catch%read_GEOSldas_rst_bin(filename, __RC__)
+       if (myid ==0) then
+          call catch%allocate_catch()
+          call catch%read_GEOSldas_rst_bin(filename, __RC__)
+       endif
      endif
      _RETURN(_SUCCESS)
    end function CatchmentRst_Create
@@ -165,16 +175,18 @@ contains
      type(FileMetadata), intent(in) :: meta
      
      integer, optional, intent(out) :: rc
-     integer :: status
+     integer :: status, myid, mpierr
      character(len=256) :: Iam = "CatchmentRst_create"
      type(Netcdf4_fileformatter) :: formatter
 
-
+     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
        ! nc4 format
      catch%ntiles = meta%get_dimension('tile', __RC__)
      catch%meta = meta 
      catch%time = time
-     call catch%allocate_catch()
+     if (myid ==0) then
+        call catch%allocate_catch()
+     endif
      _RETURN(_SUCCESS)
    end function CatchmentRst_empty
 
@@ -295,7 +307,9 @@ contains
      call MAPL_VarRead(formatter,"GHTCNT4",this%ghtcnt4, __RC__)
      call MAPL_VarRead(formatter,"GHTCNT5",this%ghtcnt5, __RC__)
      call MAPL_VarRead(formatter,"GHTCNT6",this%ghtcnt6, __RC__)
-     call MAPL_VarRead(formatter,"TSURF",this%tsurf, __RC__)
+     if (this%meta%has_variable('TSURF')) then
+       call MAPL_VarRead(formatter,"TSURF",this%tsurf, __RC__)
+     endif
      call MAPL_VarRead(formatter,"WESNN1",this%wesnn1, __RC__)
      call MAPL_VarRead(formatter,"WESNN2",this%wesnn2, __RC__)
      call MAPL_VarRead(formatter,"WESNN3",this%wesnn3, __RC__)
@@ -305,13 +319,22 @@ contains
      call MAPL_VarRead(formatter,"SNDZN1",this%sndzn1, __RC__)
      call MAPL_VarRead(formatter,"SNDZN2",this%sndzn2, __RC__)
      call MAPL_VarRead(formatter,"SNDZN3",this%sndzn3, __RC__)
-     call MAPL_VarRead(formatter,"CH",this%ch, __RC__)
-     call MAPL_VarRead(formatter,"CM",this%cm, __RC__)
-     call MAPL_VarRead(formatter,"CQ",this%cq, __RC__)
-     call MAPL_VarRead(formatter,"FR",this%fr, __RC__)
-     call MAPL_VarRead(formatter,"WW",this%ww, __RC__)
- 
-      _RETURN(_SUCCESS)
+     if (this%meta%has_variable('CH')) then
+       call MAPL_VarRead(formatter,"CH",this%ch, __RC__)
+     endif
+     if (this%meta%has_variable('CM')) then
+       call MAPL_VarRead(formatter,"CM",this%cm, __RC__)
+     endif
+     if (this%meta%has_variable('CQ')) then
+       call MAPL_VarRead(formatter,"CQ",this%cq, __RC__)
+     endif
+     if (this%meta%has_variable('FR')) then
+       call MAPL_VarRead(formatter,"FR",this%fr, __RC__)
+     endif
+     if (this%meta%has_variable('WW')) then
+       call MAPL_VarRead(formatter,"WW",this%ww, __RC__)
+     endif
+     _RETURN(_SUCCESS)
    end subroutine
 
    subroutine write_nc4 (this, filename, rc)
@@ -486,8 +509,8 @@ contains
 
       allocate (DP2BR(ntiles), ity(ntiles) )
 
-      inquire(file = trim(DataDir)//'/catch_params.nc4', exist=file_exists)
-      inquire(file = trim(DataDir)//"CLM_veg_typs_fracs",exist=NewLand )
+      inquire(file = trim(DataDir)//'/clsm/catch_params.nc4', exist=file_exists)
+      inquire(file = trim(DataDir)//"/clsm/CLM_veg_typs_fracs",exist=NewLand )
 
       if (size(this%ara1) /= this%ntiles ) then
         ! it is just re-allocate
@@ -523,7 +546,7 @@ contains
       endif
 
       if(file_exists) then
-        call CatchFmt%Open(trim(DataDir)//'/catch_params.nc4', pFIO_READ, __RC__)
+        call CatchFmt%Open(trim(DataDir)//'/clsm/catch_params.nc4', pFIO_READ, __RC__)
         call MAPL_VarRead ( CatchFmt ,'OLD_ITY', this%ITY, __RC__)
         call MAPL_VarRead ( CatchFmt ,'ARA1', this%ARA1, __RC__)
         call MAPL_VarRead ( CatchFmt ,'ARA2', this%ARA2, __RC__)
@@ -563,12 +586,12 @@ contains
         call MAPL_VarRead ( CatchFmt ,'POROS', this%POROS, __RC__)
         call CatchFmt%close()
       else
-        open(unit=21, file=trim(DataDir)//'mosaic_veg_typs_fracs',form='formatted')
-        open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
-        open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
-        open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
-        open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
-        open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
+        open(unit=21, file=trim(DataDir)//'/clsm/mosaic_veg_typs_fracs',form='formatted')
+        open(unit=22, file=trim(DataDir)//'/clsm//bf.dat'               ,form='formatted')
+        open(unit=23, file=trim(DataDir)//'/clsm/soil_param.dat'       ,form='formatted')
+        open(unit=24, file=trim(DataDir)//'/clsm/ar.new'               ,form='formatted')
+        open(unit=25, file=trim(DataDir)//'/clsm/ts.dat'               ,form='formatted')
+        open(unit=26, file=trim(DataDir)//'/clsm/tau_param.dat'        ,form='formatted')
 
         do n=1,ntiles
            ! W.J notes: CanopH is not used. If CLM_veg_typs_fracs exists, the read some dummy ???? Ask Sarith  
@@ -662,7 +685,7 @@ contains
      fields(27,:) = [character(len=64)::"GHTCNT5"  ,  "soil_heat_content_layer_5"                ,     "J m-2"]
      fields(28,:) = [character(len=64)::"GHTCNT6"  ,  "soil_heat_content_layer_6"                ,     "J m-2"]
      fields(29,:) = [character(len=64)::"GNU"      ,  "vertical_transmissivity"                  ,     "m-1"]
-     fields(20,:) = [character(len=64)::"HTSNNN1"  ,  "heat_content_snow_layer_1"                ,     "J m-2"]
+     fields(30,:) = [character(len=64)::"HTSNNN1"  ,  "heat_content_snow_layer_1"                ,     "J m-2"]
      fields(31,:) = [character(len=64)::"HTSNNN2"  ,  "heat_content_snow_layer_2"                ,     "J m-2"]
      fields(32,:) = [character(len=64)::"HTSNNN3"  ,  "heat_content_snow_layer_3"                ,     "J m-2"]
      fields(33,:) = [character(len=64)::"OLD_ITY"  ,  "Placeholder. Used to be vegetation_type." ,     "1"]
@@ -696,7 +719,7 @@ contains
      call meta%add_dimension('subtile', 4)
      call meta%add_dimension('time',1)
 
-     do n = 1, 51
+     do n = 1, 58
         if (n >=52) then
            var = Variable(type=pFIO_REAL32, dimensions='tile,subtile')
         else
@@ -707,7 +730,7 @@ contains
         call meta%add_variable(trim(fields(n,1)), var)
      enddo
      var = Variable(type=pFIO_REAL32, dimensions='time')
-     s   = "minutes since "//t(1:4)//"-"//t(5:6)//"-"//t(7:8)//" "//t(9:10)//":"//t(11:12)//":00"
+     s   = "minutes since "//t(1:4)//"-"//t(5:6)//"-"//t(7:8)//" "//t(9:10)//":00:00"
      call var%add_attribute('units', s)
      call meta%add_variable('time', var)
      _RETURN(_SUCCESS)
@@ -731,7 +754,7 @@ contains
      type(FileMetadata) :: meta
      character(*), parameter :: Iam = "Catchment::Re_tile"
 
-     open (10,file =trim(OutBcsDir)//"clsm/catchment.def",status='old',form='formatted')
+     open (10,file =trim(OutBcsDir)//"/clsm/catchment.def",status='old',form='formatted')
      read (10,*) out_ntiles
      close (10, status = 'keep')
 
@@ -782,6 +805,8 @@ contains
         allocate (latg   (out_ntiles))
         call ReadTileFile_RealLatLon ( OutTileFile, n, long, latg)
         _ASSERT( n == out_ntiles, "Out tile number should match")
+        this%long = long
+        this%latg = latg
         call ReadTileFile_RealLatLon ( InTileFile, n, lonc, latc)
         _ASSERT( n == in_ntiles, "In tile number should match")
      endif
@@ -821,6 +846,10 @@ contains
     ! --------------------------------------------------------------------------------   
 
     ! id_glb for hydrologic variable
+     this%lonc = lonc
+     this%latc = latc
+     this%lonn = lonn
+     this%latt = latt
 
      call GetIds(lonc, latc, lonn, latt, id_loc, tid_offl)
      if(root_proc)  allocate (id_glb  (out_ntiles))

@@ -8,7 +8,6 @@ set(srcs
 
 set (exe_srcs
   Scale_Catch.F90
-  ScaleCatch.F90
   Scale_CatchCN.F90
   cv_SaltRestart.F90
   SaltIntSplitter.F90

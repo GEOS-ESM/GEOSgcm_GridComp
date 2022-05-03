@@ -91,7 +91,7 @@ contains
     integer :: status
     type(Netcdf4_fileformatter) :: formatter
     integer :: filetype, ntiles, unit
-    integer :: j, dim1,dim2
+    integer :: j, dim1,dim2, myid, mpierr
     type(Variable), pointer :: myVariable
     character(len=:), pointer :: dname
     type(FileMetadata) :: meta
@@ -101,13 +101,15 @@ contains
      if (filetype /= 0) then
         _ASSERT( .false., "CatchmentCN only support nc4 file restart")
      endif
-
+  
+     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
+ 
      catch%isCLM45 = .false.
      call formatter%open(filename, pFIO_READ, __RC__)
-     meta   = formatter%read(__RC__)
-     ntiles = catch%meta%get_dimension('tile', __RC__)
+     meta  = formatter%read(__RC__)
+     ntiles = meta%get_dimension('tile', __RC__)
      catch%ntiles = ntiles
-     catch%meta = meta
+     catch%meta  = meta
      catch%time = time
      if (index(cnclm, '40') /=0) then
         catch%VAR_COL = VAR_COL_CLM40
@@ -119,53 +121,57 @@ contains
         catch%isCLM45 = .true.
      endif
 
-     call catch%allocate_cn(__RC__)
-     call catch%read_shared_nc4(formatter, __RC__)
+     if (myid == 0) then
+        call catch%allocate_cn(__RC__)
+        call catch%read_shared_nc4(formatter, __RC__)
 
-     myVariable => meta%get_variable("ITY")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     do j=1,dim1
-        call MAPL_VarRead(formatter,"ITY",catch%cnity(:,j),offset1=j, __RC__)
-        call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j, __RC__)
-     enddo
+        myVariable => meta%get_variable("ITY")
+        dname => myVariable%get_ith_dimension(2)
+        dim1 = meta%get_dimension(dname)
+        do j=1,dim1
+           call MAPL_VarRead(formatter,"ITY",catch%cnity(:,j),offset1=j, __RC__)
+           call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j, __RC__)
+        enddo
 
-     call MAPL_VarRead(formatter,"TG",catch%tg, __RC__)
-     call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID, __RC__)
-     call MAPL_VarRead(formatter,"NDEP",catch%ndep, __RC__)
-     call MAPL_VarRead(formatter,"CLI_T2M",catch%t2, __RC__)
-     call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR, __RC__)
-     call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF, __RC__)
-     call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR, __RC__)
-     call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF, __RC__)
+        call MAPL_VarRead(formatter,"TG",catch%tg, __RC__)
+        call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID, __RC__)
+        call MAPL_VarRead(formatter,"NDEP",catch%ndep, __RC__)
+        call MAPL_VarRead(formatter,"CLI_T2M",catch%t2, __RC__)
+        call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR, __RC__)
+        call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF, __RC__)
+        call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR, __RC__)
+        call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF, __RC__)
 
-     myVariable => meta%get_variable("CNCOL")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     if( catch%isCLM45) then
-        call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
-        call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
-        call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
-        call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
-        call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+        myVariable => meta%get_variable("CNCOL")
+        dname => myVariable%get_ith_dimension(2)
+        dim1 = meta%get_dimension(dname)
+        if( catch%isCLM45) then
+           call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
+           call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
+           call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
+           call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
+           call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+        endif
+        do j=1,dim1
+           call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
+        enddo
+        ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
+        ! (to be merged into the "develop" branch in late 2020):
+        ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
+        ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
+        ! resulting in bad values in the "regridded" (re-tiled) restart file. 
+        ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
+        ! - reichle, 23 Nov 2020
+        myVariable => meta%get_variable("CNPFT")
+        dname => myVariable%get_ith_dimension(2)
+        dim1 = meta%get_dimension(dname)
+        do j=1,dim1
+           call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j, __RC__)
+        enddo
      endif
-     do j=1,dim1
-        call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
-     enddo
-     ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
-     ! (to be merged into the "develop" branch in late 2020):
-     ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
-     ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
-     ! resulting in bad values in the "regridded" (re-tiled) restart file. 
-     ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
-     ! - reichle, 23 Nov 2020
-     myVariable => meta%get_variable("CNPFT")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     do j=1,dim1
-        call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j, __RC__)
-     enddo
+
      call formatter%close()
+
      if (present(rc)) rc =0
    end function CatchmentCNRst_Create
 
@@ -175,7 +181,7 @@ contains
     character(*), intent(in) :: cnclm
     character(*), intent(in) :: time
     integer, optional, intent(out) :: rc
-    integer :: status
+    integer :: status, myid, mpierr
     character(len=256) :: Iam = "CatchmentCNRst_empty"
 
      catch%isCLM45 = .false.
@@ -192,8 +198,9 @@ contains
         catch%isCLM45 = .true.
      endif
 
-     call catch%allocate_cn(__RC__)
-
+     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
+     if (myid ==0) call catch%allocate_cn(__RC__)
+     if(present(rc)) rc = 0
    end function CatchmentCNRst_empty
 
    subroutine write_nc4(this, filename, rc)
@@ -625,7 +632,7 @@ contains
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs
      logical :: root_proc
-     integer :: mpierr, n, i, k, req, st, myid, L, iv, nv,nz, var_col, var_pft
+     integer :: mpierr, n, i, k, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
 
@@ -667,7 +674,12 @@ contains
      allocate (CLMC_st2(nt_local (myid + 1)))
      allocate (ityp_offl (in_ntiles,nveg))
      allocate (fveg_offl (in_ntiles,nveg))
+     allocate (tid_offl(in_ntiles))
      allocate (id_loc_cn (nt_local (myid + 1),nveg))
+
+     do n = 1, in_ntiles
+        tid_offl(n) = n
+     enddo
 
      ! copy out the old fvg and cnity
 
@@ -684,7 +696,7 @@ contains
 
         call compute_dayx (                                     &
                 out_NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-                LATG, DAYX)
+                this%LATG, DAYX)
 
         ityp_tmp = this%cnity
         fveg_tmp = this%fvg
@@ -707,6 +719,7 @@ contains
            if((ityp_offl(N,4) == 0).and.(ityp_offl(N,3) /= 0)) ityp_offl(N,4) = ityp_offl(N,3)
        end do
     endif
+
     call MPI_BCAST(ityp_offl,size(ityp_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(fveg_offl,size(fveg_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)
 
@@ -724,6 +737,17 @@ contains
            call MPI_send(this%fvg(st,3),l,   MPI_REAL, i, i+6, MPI_COMM_WORLD, mpierr)
            call MPI_send(this%fvg(st,4),l,   MPI_REAL, i, i+7, MPI_COMM_WORLD, mpierr)
         enddo
+        st  = low_ind(1)
+        l   = nt_local(1)
+        ed  = st + l -1
+        CLMC_pt1 = this%cnity(st:ed,1)
+        CLMC_pt2 = this%cnity(st:ed,2)
+        CLMC_st1 = this%cnity(st:ed,3)
+        CLMC_st2 = this%cnity(st:ed,4)
+        CLMC_pf1 = this%fvg(st:ed,1)
+        CLMC_pf2 = this%fvg(st:ed,2)
+        CLMC_sf1 = this%fvg(st:ed,3)
+        CLMC_sf2 = this%fvg(st:ed,4)
      else
         call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, myid,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
         call MPI_RECV(CLMC_pt2,nt_local(myid+1) , MPI_REAL, 0, myid+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
@@ -735,7 +759,8 @@ contains
         call MPI_RECV(CLMC_sf2,nt_local(myid+1) , MPI_REAL, 0, myid+7, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
     endif
 
-    call GetIds(lonc,latc,lonn,latt,id_loc_cn, tid_offl, &
+    
+    call GetIds(this%lonc,this%latc,this%lonn,this%latt,id_loc_cn, tid_offl, &
              CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
              fveg_offl, ityp_offl)
 
