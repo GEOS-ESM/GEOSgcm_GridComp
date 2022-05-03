@@ -30,7 +30,10 @@ PROGRAM mkCatchParam
   
   include 'netcdf.inc'	
   
-  integer              :: NC = i_raster, NR = j_raster
+  ! The default is NC=i_raster=8640, NR=j_raster=4320 via "use rmTinyCatchParaMod", but
+  ! NC and NR are typically overwritten through command-line arguments "-x nx -y ny".
+ 
+  integer              :: NC = i_raster, NR = j_raster    
   character*4          :: LBSV = 'DEF'
   character*128        :: GridName = ''
   character*128        :: ARG, MaskFile

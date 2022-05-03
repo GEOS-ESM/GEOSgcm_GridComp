@@ -3586,6 +3586,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       
 !c-------------------------------------------------------------------------
 
+      ! SoilClasses-SoilHyd-TauParam.dat and SoilClasses-SoilHyd-TauParam.peatmap differ
+      ! only in the parameters for the peat class #253.  The file *.peatmap contains
+      ! the PEATCLSM parameters from Table 2 of Bechtold et al. 2019 (doi:10.1029/2018MS001574).
+      !
+      ! Note: K_s = COND*exp(-zks*gnu)   ==> with zks=2 and gnu=1, K_s = 0.135335*COND
+      !
+      !         K_s      COND     [m/s]
+      ! NLv4  7.86e-7   5.81e-6
+      ! NLv5  3.79e-6   2.80e-5   <== note *typo* in Table 2 of Bechtold et al. 2019, which erroneously lists K_s=2.8e-5
+
       if(use_PEATMAP) then 
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap' 
       else
