@@ -50,7 +50,7 @@ module GEOSmoist_Process_Library
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf
   public :: FILLQ2ZERO
-
+  public :: DIAGNOSE_PRECIP_TYPE
   contains
 
   subroutine CNV_Tracers_Init(TR, RC)
@@ -1850,5 +1850,151 @@ module GEOSmoist_Process_Library
     DEALLOCATE(TPW2)
     DEALLOCATE(TPWC)
   end subroutine FILLQ2ZERO
+
+  subroutine DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, PTYPE, PLE, TH, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
+    integer,                        intent(in   )  :: IM, JM, LM
+    real,    dimension(IM,JM),      intent(inout)  :: TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR
+    real,    dimension(IM,JM),      intent(  out)  :: PTYPE
+    real,    dimension(IM,JM,LM),   intent(in   )  :: TH, PK, ZL0
+    real,    dimension(IM,JM,0:LM), intent(in   )  :: PLE, PKE
+    logical,                        intent(in   )  :: LUPDATE_PRECIP_TYPE
+
+    integer :: I,J,L,KTOP
+    real    :: TL, NA, PA, PA2, TH_TOP, TH_BOT, TL_MEAN, Z_LAYER, ZTHICK
+
+         PTYPE(:,:) = 0 ! default PTYPE to rain
+         ! Surface Precip Type diagnostic
+         !
+         !   PTYPE = 0  => Rain
+         !   PTYPE = 1  => Freezing Rain
+         !   PTYPE = 2  => Ice Pellets (sleet)
+         !   PTYPE = 3  => Rain mixed with Snow
+         !   PTYPE = 4  => Snow
+         !
+         ! Based on Pierre Bourgouin, 1999, "A Method to Determine Precipitation Types"
+         !       in WEATHER AND FORECASTING Vol 15 pp 583-592
+         do J=1,JM
+         do I=1,IM
+          if (SNOW(I,J)+ICE(I,J)+FRZR(I,J) > 0.0) then ! Only diagnose where model has frozen precip
+           PTYPE(I,J) = 4 ! Start as snow
+           PA2 = -999
+           ! Sweep down the column from ~300mb looking for freezing/melting layers
+           KTOP = max(1,count(PLE(I,J,:) < 30000.))
+           do while (KTOP < LM)
+            NA = 0.0
+            PA = 0.0
+            TH_TOP  = TH(I,J,KTOP) ! Potential Temp at top of layer
+            TL_MEAN = 0.0 ! Layer mean absolute temperature
+            Z_LAYER = 0.0 ! Layer thickness
+            if (TH(I,J,KTOP)*PK(I,J,KTOP) > MAPL_TICE) then
+               do L=KTOP,LM-1
+                  KTOP = L
+                  TL = TH(I,J,L)*PK(I,J,L)
+                  if (TL > MAPL_TICE) then
+                      ZTHICK = TH(I,J,L) * (PKE(I,J,L) - PKE(I,J,L-1)) * MAPL_CP/MAPL_GRAV
+                      TL_MEAN = TL_MEAN + TL*ZTHICK
+                      Z_LAYER = Z_LAYER + ZTHICK
+                   else
+                      if (Z_LAYER > 0) then
+                         TL_MEAN = TL_MEAN/Z_LAYER
+                         TH_BOT = TH(I,J,L)
+                        ! Determine depth of the warm layer [Positive Area (PA)]
+                         PA = MAPL_CP*TL_MEAN*log( TH_TOP/TH_BOT )
+                      endif
+                      EXIT
+                   endif
+               enddo
+            else
+               do L=KTOP,LM-1
+                  KTOP = L
+                  TL = TH(I,J,L)*PK(I,J,L)
+                  if (TL <= MAPL_TICE) then
+                      ZTHICK = TH(I,J,L) * (PKE(I,J,L) - PKE(I,J,L-1)) * MAPL_CP/MAPL_GRAV
+                      TL_MEAN = TL_MEAN + TL*ZTHICK
+                      Z_LAYER = Z_LAYER + ZTHICK
+                  else
+                     if (Z_LAYER > 0) then
+                        TL_MEAN = TL_MEAN/Z_LAYER
+                        TH_BOT = TH(I,J,L)
+                       ! Determine depth of the freezing layer [Negative Area (NA)]
+                        NA = MAPL_CP*TL_MEAN*log( TH_TOP/TH_BOT )
+                     endif
+                     EXIT
+                  endif
+               enddo
+            endif
+            if (KTOP == LM-1) then
+               TL     = TH(I,J,LM)*PK(I,J,LM)
+               TH_BOT = (TL + (MAPL_GRAV/MAPL_CP)*ZL0(I,J,LM)) / PKE(I,J,LM)
+               ZTHICK = TH(I,J,LM) * (PKE(I,J,LM) - PKE(I,J,LM-1)) * MAPL_CP/MAPL_GRAV
+               TL_MEAN = TL_MEAN + TL*ZTHICK
+               Z_LAYER = Z_LAYER + ZTHICK
+               if (TL > MAPL_TICE) then
+                  if (Z_LAYER > 0) then
+                     TL_MEAN = TL_MEAN/Z_LAYER
+                     ! Determine depth of the warm layer [Positive Area (PA)]
+                     PA = MAPL_CP*TL_MEAN*log( TH_TOP/TH_BOT )
+                  endif
+               else
+                  if (Z_LAYER > 0) then
+                     TL_MEAN = TL_MEAN/Z_LAYER
+                     ! Determine depth of the freezing layer [Negative Area (NA)]
+                     NA = MAPL_CP*TL_MEAN*log( TH_TOP/TH_BOT )
+                  endif
+               endif
+               if (PTYPE(I,J) == 4) then ! No Warm layer found above the surface yet
+                 if (PA <  5.6) PTYPE(I,J) = 4 ! SNOW
+                 if (PA >= 5.6) PTYPE(I,J) = 3 ! Mix of Snow Ice and Rain
+                 if (PA > 13.2) PTYPE(I,J) = 0 ! RAIN
+               else
+                 if ( NA <  (46.0 + 0.66*PA2) ) PTYPE(I,J) = 1   ! Freezing Rain
+                 if ( NA >= (46.0 + 0.66*PA2) ) PTYPE(I,J) = 1.5 ! Freezing Rain & Ice Pellets (sleet)
+                 if ( NA >  (66.0 + 0.66*PA2) ) PTYPE(I,J) = 2   ! Ice Pellets (sleet)
+               endif
+               KTOP = LM
+            else
+               if (PA > 2.0) then ! Found a warm layer...
+                  if (PA <  5.6) PTYPE(I,J) = 4 ! SNOW
+                  if (PA >= 5.6) PTYPE(I,J) = 3 ! Mix of Snow and Rain
+                  if (PA > 13.2) PTYPE(I,J) = 0 ! RAIN
+                  PA2 = PA
+               else ! Found a freezing layer
+                  PA2 = 0
+                  if ( (PTYPE(I,J) <= 3) ) then
+                     if (NA > 50.0 ) PTYPE(I,J) = 1 ! Freezing Rain
+                     if (NA > 200.0) PTYPE(I,J) = 2 ! Ice Pellets (sleet)
+                  endif
+               endif
+            endif
+           enddo
+          endif
+         enddo
+         enddo
+
+      UPDATE_PTYPE: if (LUPDATE_PRECIP_TYPE) then
+         SNOW = 0.0
+         WHERE (PTYPE > 2)
+            SNOW = TPREC
+         END WHERE
+         ICE = 0.0
+         WHERE ( (PTYPE == 2) .OR. (PTYPE == 1.5) ) 
+            ICE = TPREC
+         END WHERE
+         FRZR = 0.0
+         WHERE (PTYPE == 1)
+            FRZR = TPREC
+         END WHERE
+         RAIN = 0.0
+         WHERE ( PTYPE < 1 )
+            RAIN = TPREC
+            RAIN_LS = MIN(RAIN_LS,TPREC)
+            RAIN_CU = MAX(TPREC-RAIN_LS,0.0)
+         ELSEWHERE
+            RAIN_LS = 0.0
+            RAIN_CU = 0.0
+         END WHERE
+      endif UPDATE_PTYPE
+
+  end subroutine DIAGNOSE_PRECIP_TYPE
 
 end module GEOSmoist_Process_Library

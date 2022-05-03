@@ -1108,10 +1108,26 @@ contains
 !----------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'PCU ','PLS ','SNO ','ICE ','FRZR'/),     &
+         SHORT_NAME  = (/'SNO','ICE','FRZR'/),     &
          DST_ID      = SURF,                                       &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+        SRC_NAME    = 'RAIN_CU',                                   &
+        DST_NAME    = 'PCU',                                       &
+        DST_ID      = SURF,                                        &
+        SRC_ID      = MOIST,                                       &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+        SRC_NAME    = 'RAIN_LS',                                   &
+        DST_NAME    = 'PLS',                                       &
+        DST_ID      = SURF,                                        &
+        SRC_ID      = MOIST,                                       &
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &

@@ -2081,6 +2081,30 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'RAIN_LS',                                         &
+         LONG_NAME = 'rainfall_large_scale',                                    &
+         UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'RAIN_CU',                                         &
+         LONG_NAME = 'rainfall_convective',                                    &
+         UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'RAIN',                                         &
+         LONG_NAME = 'rainfall',                                    &
+         UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'FRZR',                                         &
          LONG_NAME = 'freezing_rain_fall',                                    &
          UNITS     = 'kg m-2 s-1',                                  &
@@ -2097,7 +2121,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'SNO',                                         & 
+         SHORT_NAME = 'SNO',                                        & 
          LONG_NAME = 'snowfall',                                    &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
@@ -2121,14 +2145,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'RAIN',                                         &
-         LONG_NAME = 'rainfall',                                    &
-         UNITS     = 'kg m-2 s-1',                                  &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'KUCHERA_RATIO',                       &
          LONG_NAME = 'kuchera_snow_to_liquid_ratio',     &
          UNITS     = 'unitless',                                  &
@@ -2138,7 +2154,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'PCU',                                         & 
-         LONG_NAME = 'convective_rainfall',                         &
+         LONG_NAME = 'convective_precipitation',                         &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
@@ -2146,7 +2162,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'PLS',                                         & 
-         LONG_NAME = 'large_scale_rainfall',                        &
+         LONG_NAME = 'large_scale_precipitation',                        &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
@@ -5162,7 +5178,8 @@ contains
     real                            :: DT_MOIST
 
     ! Local variables
-    real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0, PK, MASS
+    real                                :: Tmax
+    real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET,  T
     real, allocatable, dimension(:,:,:) :: QST3, DQST3
     real, allocatable, dimension(:,:)   :: TMP2D
@@ -5180,7 +5197,7 @@ contains
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT 
     real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
     real, pointer, dimension(:,:,:) :: DPDTMST, PFL_LSAN, PFI_LSAN
-    real, pointer, dimension(:,:  ) :: TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR
+    real, pointer, dimension(:,:  ) :: PTYPE, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, RAIN_LS, RAIN_CU
     real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:  ) :: CAPE, INHB
     real, pointer, dimension(:,:  ) :: CNV_FRC
@@ -5256,6 +5273,7 @@ contains
         ! Edge variables 
        ALLOCATE ( ZLE0 (IM,JM,0:LM) )
        ALLOCATE ( PLEmb(IM,JM,0:LM) )
+       ALLOCATE ( PKE  (IM,JM,0:LM) )
         ! Layer variables
        ALLOCATE ( ZL0  (IM,JM,LM  ) )
        ALLOCATE ( DZET (IM,JM,LM  ) )
@@ -5269,6 +5287,7 @@ contains
 
        ! Derived States
        PLEmb    =  PLE*.01
+       PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
        PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
        PK       = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
        DO L=0,LM
@@ -5501,7 +5520,7 @@ contains
 
        ! Combine Precip Exports
 
-       call MAPL_GetPointer(EXPORT, TPREC, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, TPREC, 'TPREC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(TPREC)) then
           TPREC = 0.0
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
@@ -5555,7 +5574,29 @@ contains
           PLS = MAX(PLS, 0.0)
        endif
 
-       call MAPL_GetPointer(EXPORT, RAIN, 'RAIN', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, RAIN_LS, 'RAIN_LS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(RAIN_LS)) then
+          RAIN_LS = 0.0
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN_LS = RAIN_LS + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN_LS = RAIN_LS + PTR2D
+          RAIN_LS = MAX(RAIN_LS, 0.0)
+       endif
+
+       call MAPL_GetPointer(EXPORT, RAIN_CU, 'RAIN_CU', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(RAIN_CU)) then
+          RAIN_CU = 0.0
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN_CU = RAIN_CU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN_CU = RAIN_CU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) RAIN_CU = RAIN_CU + PTR2D
+          RAIN_CU = MAX(RAIN_CU, 0.0)
+       endif
+
+       call MAPL_GetPointer(EXPORT, RAIN, 'RAIN', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(RAIN)) then
           RAIN = 0.0
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
@@ -5571,7 +5612,7 @@ contains
           RAIN = MAX(RAIN, 0.0)
        endif
 
-       call MAPL_GetPointer(EXPORT, SNOW, 'SNO', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SNOW, 'SNO', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(SNOW)) then
           SNOW = 0.0
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'   , RC=STATUS); VERIFY_(STATUS)
@@ -5585,11 +5626,42 @@ contains
           SNOW = MAX(SNOW, 0.0)
        endif
 
-       call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = 0.0
+       call MAPL_GetPointer(EXPORT, ICE, 'ICE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(ICE)) ICE = 0.0
 
-       call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = 0.0
+       call MAPL_GetPointer(EXPORT, FRZR, 'FRZR', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(FRZR)) FRZR = 0.0
+
+     ! Diagnostic precip types: 
+       if (LUPDATE_PRECIP_TYPE .OR. LDIAGNOSE_PRECIP_TYPE) then
+          call MAPL_GetPointer(EXPORT, PTYPE, 'PTYPE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, &
+                                    PTYPE, PLE, TH, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
+       endif 
+     ! Get Kuchera snow:rain ratios
+       do I = 1,IM
+          do J = 1,JM
+              Tmax = 0.0
+              do L =  LM, 1, -1
+                 if (PLmb(I,J,L).gt.500.) then
+                    Tmax = MAX(Tmax,TH(I,J,L)*PK(I,J,L))
+                 end if
+              end do
+              if (Tmax <= 271.16) then
+                 TMP2D(I,J) = 12.0 + (271.16 - Tmax)
+              else
+                 TMP2D(I,J) = 12.0 + 2*(271.16 - Tmax)
+              end if
+              TMP2D(I,J) = max(0.0,TMP2D(I,J))
+          end do
+       end do
+       call MAPL_GetPointer(EXPORT, PTR2D,'KUCHERA_RATIO', RC=STATUS); VERIFY_(STATUS)
+       if(associated(PTR2D)) PTR2D=TMP2D
+     ! Accumulated precip totals (mm), apply KUCHERA_RATIO for SNOW
+       call MAPL_GetPointer(EXPORT, PTR2D,'SNOWTOTAL', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = TMP2D*DT_MOIST*(SNOW+ICE)
+       call MAPL_GetPointer(EXPORT, PTR2D,'PRECTOTAL', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = DT_MOIST*TPREC
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QLTOT', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = QLLS+QLCN
