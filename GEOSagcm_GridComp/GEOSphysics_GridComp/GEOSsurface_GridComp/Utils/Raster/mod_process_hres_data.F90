@@ -4881,8 +4881,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     
       fname='clsm/catchment.def'
       open (10,file=fname,status='old',action='read',form='formatted')
-
-!obsolete20220502      read(10,*) maxcat
+      read(10,*) maxcat     ! re-read header line
 
 !obsolete20220502      fname ='clsm/mosaic_veg_typs_fracs'
 !obsolete20220502      open (13,file=trim(fname),form='formatted',status='old',action = 'read')
