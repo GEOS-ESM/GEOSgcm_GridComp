@@ -4339,7 +4339,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       ! -------------------------------------------------------------------- 
       !
-      ! Read Woesten Soil Parameters and CLSM tau parameters for soil classes (1:253)
+      ! Read Woesten soil parameters and CLSM tau parameters for soil classes (1:253)
 
 	allocate(a_sand  (1:n_SoilClasses))
 	allocate(a_clay  (1:n_SoilClasses))
@@ -4379,7 +4379,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            action = 'read')
       read (11,'(a)')fout        ! read header line
 
-      do n =1,n_SoilClasses 
+      do n =1,n_SoilClasses
 
       	 read (11,'(4f7.3,4f8.4,e13.5,2f12.7,2f8.4,4f12.7)')a_sand(n),a_clay(n),a_silt(n),a_oc(n),a_bee(n),a_psis(n), &
               a_poros(n),a_wp(n),a_aksat(n),atau(n),btau(n),a_wpsurf(n),a_porosurf(n),atau_2cm(n),btau_2cm(n)
@@ -4396,9 +4396,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          ! "table_map"  is a 2-d array (100-by-3) that maps between overall soil class (1:252) and 
          !   (mineral_class 1:84, orgC_class).   "table_map" has no entry for the peat class #253.
 
-	 if(n <= nsoil_pcarbon(1))                              table_map(soil_class (min_percs),1) = n  
-	 if((n > nsoil_pcarbon(1)).and.(n <= nsoil_pcarbon(2))) table_map(soil_class (min_percs),2) = n  
-         if((n > nsoil_pcarbon(2)).and.(n <= nsoil_pcarbon(3))) table_map(soil_class (min_percs),3) = n 
+	 if( n <= nsoil_pcarbon(1))                              table_map(soil_class (min_percs),1) = n  
+	 if((n >  nsoil_pcarbon(1)).and.(n <= nsoil_pcarbon(2))) table_map(soil_class (min_percs),2) = n  
+         if((n >  nsoil_pcarbon(2)).and.(n <= nsoil_pcarbon(3))) table_map(soil_class (min_percs),3) = n 
 
       end do   ! n=1,n_SoilClasses
 
@@ -4406,8 +4406,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       ! ------------------------------------------------------------
       !
-      !  When Woesten Soil Parameters are not available for a particular Soil Class,
-      !  as defined by "tiny" triangles in HWSD soil triangle, Woesten Soil
+      !  When Woesten soil parameters are not available for a particular soil class,
+      !  as defined by "tiny" triangles in HWSD soil triangle, Woesten soil
       !  parameters from the nearest available "tiny" triangle will be substituted.
       !  For "tiny" triangles, see Fig 1b of De Lannoy et al. 2014 (doi:10.1002/2014MS000330).      
 
@@ -4567,10 +4567,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         ! determine aggregate/dominant orgC *top* layer soil class ("o_cl") of tile n
 
 	cFamily = 0.
-        factor  = 1.
+!!        factor  = 1.
 
 	do j=1,i
-           ! if(j <= i) factor = 1.
+           if(j <= i) factor = 1.
 	   if((ss_oc_all(j)*sf >=  cF_lim(1)).and. (ss_oc_all(j)*sf < cF_lim(2))) cFamily(1) = cFamily(1) + factor
 	   if((ss_oc_all(j)*sf >=  cF_lim(2)).and. (ss_oc_all(j)*sf < cF_lim(3))) cFamily(2) = cFamily(2) + factor
 	   if((ss_oc_all(j)*sf >=  cF_lim(3)).and. (ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + factor
@@ -4579,14 +4579,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 	if (sum(cFamily) == 0.) o_cl  = 1    ! default is o_cl=1 (if somehow no grid cell has top-layer orgC >=0.)
 
-        if (.not. use_PEATMAP) then
+!!        if (.not. use_PEATMAP) then
            
            ! assign dominant *top* layer org soil class (even if only a minority of the contributing 
            !   raster grid cells is peat)
 
            if (sum(cFamily)  > 0.) o_cl  = maxloc(cFamily, dim = 1)
 
-        else
+!!        else
+
+        if (use_PEATMAP) then
            
            ! PEATMAP: tile has *top* layer peat class only if more than 50% of the contributing 
            !   raster grid cells are peat (may loose some peat tiles w.r.t. non-PEATMAP bcs version)
@@ -4619,7 +4621,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         !       "where (oc_sub*sf >= cF_lim(4))                                                                                "
         !       "    oc_sub = NINT(8./sf)                                                                                      "
         !       "endwhere                                                                                                      "
-        !       For PEATMAP, the maxloc statement below should therefore result in o_clp = 1, 2, or 3 only (?)
+        !       For PEATMAP, in most cases the maxloc statement below should therefore result in o_clp = 1, 2, or 3 only, 
+        !       but orgC from the top layer pushes the profile average orgC above cF_lim(4) again, then o_clp=4 is possible.
 
 	if (sum(cFamily) == 0.) o_clp = 1
 	if (sum(cFamily)  > 0.) o_clp = maxloc(cFamily, dim = 1)        
@@ -4895,24 +4898,34 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          if ((soil_class_top (n) == -9999).or.(soil_class_com (n) == -9999)) then
 
             ! if com-layer has data, the issue is only with top-layer
-            ! -------------------------------------------------------
 
             if(soil_class_com (n) >= 1) soil_class_top (n) = soil_class_com (n)
 
-            ! if there is nothing, look for the neighbor
-            ! ------------------------------------------
-            
+            ! if there is nothing, look for the neighbor 
+            ! 
+            !  ^
+            !  |
+            !  | The comment above seems wrong; could have soil_class_top(n)>=1, unless
+            !      earlier soil_class_com was set equal to soil_class_top whenever
+            !      soil_class_top was available and soil_class_com was not. 
+
             if (soil_class_com (n) == -9999) then
+
+               ! Look for neighbor j (regardless of soil_class_top) and set both
+               ! soil_class_com(n) and soil_class_top(n) equal to the neighbor's 
+               ! soil_class_com(j).
+
                do k = 1, maxcat
                   j  = 0
                   i1 = n - k
                   i2 = n + k
-                  if((i1 >=     1).and.(soil_class_com (i1) >=1)) j = i1
-                  if((i2 <=maxcat).and.(soil_class_com (i2) >=1)) j = i2
+                  if((i1 >=     1).and.(soil_class_com (i1) >=1)) j = i1  ! tentatively use "lower" neighbor unless out of range
+                  if((i2 <=maxcat).and.(soil_class_com (i2) >=1)) j = i2  ! "upper" neighbor prevails unless out of range
 
                   if (j > 0) then
                      soil_class_com (n) = soil_class_com (j)
-                     soil_class_top (n) = soil_class_com (n)
+                     !soil_class_top (n) = soil_class_com (n)    
+                     soil_class_top (n) = soil_class_com (j)   ! should be faster/safer than usin gsoil_class_com(n)
                      grav_vec(n)        = grav_vec(j)
                      soc_vec(n)         = soc_vec (j)
                      poc_vec(n)         = poc_vec (j)

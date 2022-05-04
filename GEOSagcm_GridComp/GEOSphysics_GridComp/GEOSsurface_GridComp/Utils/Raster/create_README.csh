@@ -1575,18 +1575,26 @@ APPENDIX I - mkCatchParam tag, input options, and log
 
 _EOF2_
 
-cat << _EOF_ > clsm/back
+# Do NOT append "END OF README FILE" here.  This csh script does not know 
+#   the return status of the Fortran executables.  If a Fortran executable
+#   stops prematurely, the README file should not look finished.
+#   Maybe proper error handling can be added in the future.
+# -reichle, 3 May 2022
 
-=====================================================================================
-================================ END OF  README FILE ================================
-=====================================================================================
-
-_EOF_
+###cat << _EOF_ > clsm/back
+###
+###=====================================================================================
+###================================ END OF  README FILE ================================
+###=====================================================================================
+###
+###_EOF_
 
 sed -e "s/============================================================/ /g"    clsm/mkCatchParam.log > clsm/log
-cat clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/README3 clsm/log clsm/back >> clsm/README
+###cat clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/README3 clsm/log clsm/back >> clsm/README
+cat clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/README3 clsm/log >> clsm/README
 
-/bin/rm clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/README3 clsm/log clsm/back
+###/bin/rm clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/README3 clsm/log clsm/back
+/bin/rm clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/README3 clsm/log
 
 #################################################################################
 ##  Plotting maps of fixed parameters and making movies of seasonal parameters ##

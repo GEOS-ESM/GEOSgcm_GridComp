@@ -217,6 +217,15 @@ integer :: n_threads=1
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
        if (.not.file_exists) CALL open_landparam_nc4_files 
 
+       ! ******************************************************************************
+       !
+       ! IMPORTANT: The top-level make_bcs script should not allow this program to
+       !            run when ./clsm/ exists.  Consequently, across "Steps [xx]" below,
+       !            the "inquire()" statements should be obsolete, and the case 
+       !            "Using existing file" should never happen.
+       !
+       ! ******************************************************************************
+
        ! Creating catchment.def 
        ! ----------------------
        
@@ -371,7 +380,7 @@ integer :: n_threads=1
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)          
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           if (trim(LAIBCS) == 'GSWP2') then 
              call process_gswp2_veg (nc,nr,regrid,'grnFrac',gridnamer)
           else
@@ -390,7 +399,7 @@ integer :: n_threads=1
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           redo_modis = .true.
           
           if (trim(LAIBCS) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',gridnamer) 
@@ -439,7 +448,7 @@ integer :: n_threads=1
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           call gimms_clim_ndvi (nc,nr,gridnamer)
           write (log_file,'(a)')'         Done.'
        else
@@ -482,11 +491,13 @@ integer :: n_threads=1
        endif
        
        if(MODALB == 'MODIS2') then 
-          fname_tmp = 'clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat'
-          write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
-          inquire(file=trim(fname_tmp), exist=file_exists)          
-          if (.not.file_exists) then
-             write (log_file,'(a)')'         Creating file...'
+          fname_tmp  = 'clsm/AlbMap.WS.8-day.tile.0.3_0.7.dat'
+          fname_tmp2 = 'clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat'
+          write (log_file,'(a,a,a,a)')'         --> ', trim(fname_tmp), ', ', trim(fname_tmp2)
+          inquire(file=trim(fname_tmp ), exist=file_exists )          
+          inquire(file=trim(fname_tmp2), exist=file_exists2)          
+          if ((.not.file_exists).or.(.not.file_exists2)) then
+             write (log_file,'(a)')'         Creating files...'
              call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB,gridnamer)
              write (log_file,'(a)')'         Done.'
           else
@@ -515,7 +526,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp2), exist=file_exists2)
        if ((redo_modis).or.(.not.file_exists).or.(.not.file_exists2)) then
           !   if(.not.F25Tag) then
-          write (log_file,'(a)')'         Creating files...'
+          write (log_file,'(a)')'         Creating files... (resolution will be added to file name later)'
           call modis_scale_para_high (ease_grid,MODALB,gridnamet)
           !  else
           !     This option is for legacy sets like Fortuna 2.1
@@ -629,7 +640,7 @@ integer :: n_threads=1
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           call CLM45_clim_parameters (nc,nr,gridnamer)   
           write (log_file,'(a)')'         Done.'           
        else
