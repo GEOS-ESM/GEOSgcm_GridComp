@@ -5775,6 +5775,9 @@ contains
         call MAPL_GetPointer(EXPORT  , DFPAR_AFU, 'DFPAR_AFU', __RC__)
         call MAPL_GetPointer(EXPORT  , DRNIR_AFU, 'DRNIR_AFU', __RC__)
         call MAPL_GetPointer(EXPORT  , DFNIR_AFU, 'DFNIR_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , UVR_MCOSZ_AFU, 'UVR_MCOSZ_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , PAR_MCOSZ_AFU, 'PAR_MCOSZ_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , NIR_MCOSZ_AFU, 'NIR_MCOSZ_AFU', __RC__)
       end if
 
       if (associated(FCLD)) FCLD = CLIN
