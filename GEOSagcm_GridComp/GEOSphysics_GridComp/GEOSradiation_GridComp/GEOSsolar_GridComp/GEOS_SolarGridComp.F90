@@ -2143,7 +2143,7 @@ contains
          write (*,*) "    IRRAD RRTMG: ", USE_RRTMGP_IRRAD, USE_RRTMG_IRRAD, USE_CHOU_IRRAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      _ASSERT(.FALSE.,'Total number of radiation bands is inconsistent!')
+      _FAIL('Total number of radiation bands is inconsistent!')
    end if
 
    ! Decide how to do solar forcing
@@ -2780,7 +2780,7 @@ contains
 
 ! helper for testing RRTMGP error status on return
 ! allows line number reporting cf. original call method
-#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; _ASSERT(.false.,"RRTMGP Error: "//trim(error_msg)); endif
+#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; _FAIL("RRTMGP Error: "//trim(error_msg)); endif
 
       IAm = trim(COMP_NAME)//"Soradcore"
       call MAPL_TimerOn(MAPL,"-MISC")
@@ -2999,7 +2999,7 @@ contains
                SlicesInp(k) = 1
 
             case default
-               _ASSERT(.false.,'invalid dimension for SOLAR import')
+               _FAIL('invalid dimension for SOLAR import')
             end select
 
          end if
@@ -3247,7 +3247,7 @@ contains
          else if (dims == MAPL_DIMSHORZONLY) then
             SlicesOut(k) = 1            
          else
-            _ASSERT(.false.,'invalid dimensions for SOLAR output')
+            _FAIL('invalid dimensions for SOLAR output')
          end if
 
       enddo OUTPUT_VARS_1
@@ -4619,7 +4619,7 @@ contains
             write (*,*) "ISOLVAR==1 is currently unsupported as we have no"
             write (*,*) "way of correctly setting solcycfrac."
          end if
-         _ASSERT(.FALSE.,'RRTMG SW: ISOLVAR==1 currently unsupported')
+         _FAIL('RRTMG SW: ISOLVAR==1 currently unsupported')
       end if
 
       ! INDSOLVAR =  Facular and sunspot amplitude 
@@ -4764,7 +4764,7 @@ contains
 
    else
 
-      _ASSERT(.FALSE.,'unknown SW radiation scheme!')
+      _FAIL('unknown SW radiation scheme!')
 
    end if SCHEME
 
@@ -5385,7 +5385,7 @@ contains
       if (STATUS /= 0) then
          write (*,*) "Error code from SORAD kernel call: ", STATUS
          write (*,*) "Kernel Call failed: ", cudaGetErrorString(STATUS)
-         _ASSERT(.FALSE.,'needs informative message')
+         _FAIL('SORAD kernel fail')
       end if
 
       call MAPL_TimerOff(MAPL,"--SORAD_RUN",RC=STATUS)
@@ -5769,6 +5769,12 @@ contains
         call MAPL_GetPointer(INTERNAL, NIR_SSAEC, 'NIR_SSAEC', __RC__)
         call MAPL_GetPointer(INTERNAL, NIR_ASYED, 'NIR_ASYED', __RC__)
         call MAPL_GetPointer(INTERNAL, NIR_FRAY,  'NIR_FRAY',  __RC__)
+        call MAPL_GetPointer(EXPORT  , DRUVR_AFU, 'DRUVR_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , DFUVR_AFU, 'DFUVR_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , DRPAR_AFU, 'DRPAR_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , DFPAR_AFU, 'DFPAR_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , DRNIR_AFU, 'DRNIR_AFU', __RC__)
+        call MAPL_GetPointer(EXPORT  , DFNIR_AFU, 'DFNIR_AFU', __RC__)
       end if
 
       if (associated(FCLD)) FCLD = CLIN
