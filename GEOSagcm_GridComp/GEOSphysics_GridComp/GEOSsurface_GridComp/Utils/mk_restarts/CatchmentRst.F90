@@ -939,6 +939,9 @@ contains
        var_out     = this%arw2(id_glb(:))
        this%arw2   = var_out
 
+       var_out     = this%arw3(id_glb(:))
+       this%arw3   = var_out
+
        var_out     = this%arw4(id_glb(:))
        this%arw4   = var_out
 
@@ -962,17 +965,17 @@ contains
 
        this%ity = [(k*1., k=1, out_ntiles)]
 
+       tmp2d = this%tc
+       deallocate(this%tc)
+       allocate(this%tc(out_ntiles, 4))
        do k = 1, 3
-          tmp2d = this%tc
-          deallocate(this%tc)
-          allocate(this%tc(out_ntiles, 4))
           this%tc(:,k) = tmp2d(id_glb(:),k)
        enddo
 
+       tmp2d = this%qc
+       deallocate(this%qc)
+       allocate(this%qc(out_ntiles, 4))
        do k = 1, 3
-          tmp2d = this%qc
-          deallocate(this%qc)
-          allocate(this%qc(out_ntiles, 4))
           this%qc(:,k) = tmp2d(id_glb(:),k)
        enddo
 
@@ -996,6 +999,7 @@ contains
 
        var_out       = this%GHTCNT3(id_glb(:))
        this%GHTCNT3  = var_out
+
        var_out       = this%GHTCNT4(id_glb(:))
        this%GHTCNT4  = var_out
 
@@ -1094,8 +1098,7 @@ contains
 ! ------------
      print *, 'Performing Sanity Check ...'
 
-     dzsf = SURFLAY
-     allocate (   dzsf(ntiles) )
+     allocate (   dzsf(ntiles), source = SURFLAY )
      allocate (   ar1( ntiles) )
      allocate (   ar2( ntiles) )
      allocate (   ar4( ntiles) )
