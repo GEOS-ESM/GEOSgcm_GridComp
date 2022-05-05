@@ -1726,12 +1726,17 @@ contains
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/1,2/), (/NTILES,1/),CLMC_pt2)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/1,3/), (/NTILES,1/),CLMC_st1)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/1,4/), (/NTILES,1/),CLMC_st2)
-        
-        STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,1/), (/NTILES,1/),CLMC_pf1)
-        STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,2/), (/NTILES,1/),CLMC_pf2)
-        STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,3/), (/NTILES,1/),CLMC_sf1)
-        STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,4/), (/NTILES,1/),CLMC_sf2)
-        
+        if (clm45) then
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,1/), (/NTILES,1/),CLMC45_pf1)
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,2/), (/NTILES,1/),CLMC45_pf2)
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,3/), (/NTILES,1/),CLMC45_sf1)
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,4/), (/NTILES,1/),CLMC45_sf2)
+        else 
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,1/), (/NTILES,1/),CLMC_pf1)
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,2/), (/NTILES,1/),CLMC_pf2)
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,3/), (/NTILES,1/),CLMC_sf1)
+           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,4/), (/NTILES,1/),CLMC_sf2)
+        endif
 
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'NDEP'   ), (/1/), (/NTILES/),NDEP)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'CLI_T2M'), (/1/), (/NTILES/),T2)
