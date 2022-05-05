@@ -2016,10 +2016,18 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'FILLNQV',                                     & 
-         LONG_NAME = 'filling_of_negative_Q',          &
+         SHORT_NAME = 'FILLNQV_IN',                                     & 
+         LONG_NAME = 'filling_of_negative_Q_on_entry_to_moist',          &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'FILLNQV',                                     &
+         LONG_NAME = 'filling_of_negative_Q',          &
+         UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -2121,7 +2129,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'SNO',                                        & 
+         SHORT_NAME = 'SNO',                                         & 
          LONG_NAME = 'snowfall',                                    &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
@@ -5286,6 +5294,10 @@ contains
        ALLOCATE ( TMP2D(IM,JM     ) )
 
        ! Derived States
+       MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+       call FILLQ2ZERO(Q       , MASS, TMP2D)
+       call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV_IN', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = TMP2D
        PLEmb    =  PLE*.01
        PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
        PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
@@ -5346,12 +5358,6 @@ contains
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-
-       ! Clean up any negative specific humidity 
-       !-----------------------------------------
-       call FILLQ2ZERO(Q, MASS, TMP2D)
-       call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = TMP2D
 
        ! Export Total Moist Tendencies
 
@@ -5691,6 +5697,45 @@ contains
        ! Lightning Exports
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = 0.0
+
+    else
+
+       ! Internal State
+       call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
+       ! Import State
+       call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
+       ! Allocatables
+        ! Edge variables 
+       ALLOCATE ( ZLE0 (IM,JM,0:LM) )
+       ALLOCATE ( PLEmb(IM,JM,0:LM) )
+        ! Layer variables
+       ALLOCATE ( ZL0  (IM,JM,LM  ) )
+       ALLOCATE ( PLmb (IM,JM,LM  ) )
+       ALLOCATE ( PK   (IM,JM,LM  ) )
+       ALLOCATE ( T    (IM,JM,LM  ) )
+       ALLOCATE ( MASS (IM,JM,LM  ) )
+       ALLOCATE ( TMP2D(IM,JM     ) )
+       ! dervied states
+       MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+       call FILLQ2ZERO(Q, MASS, TMP2D)
+       call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV_IN', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = TMP2D
+       PLEmb    = PLE*.01
+       PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
+       PK       = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
+       DO L=0,LM
+          ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
+       END DO
+       ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
+       ! Make the TH & S export equal to the import for SYNCTQ
+       ! Temperature exports
+       call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = TH
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = MAPL_CP*TH*PK + MAPL_GRAV*ZL0
 
     endif
 

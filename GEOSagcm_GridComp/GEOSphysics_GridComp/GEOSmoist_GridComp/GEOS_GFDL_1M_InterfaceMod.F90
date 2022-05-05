@@ -828,6 +828,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             enddo
           enddo
          enddo
+         call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QI, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QR, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
          ! Cloud fraction exports
          call MAPL_GetPointer(EXPORT, PTR3D, 'CFICE', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
@@ -856,6 +863,20 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          Q  =  Q - TMP3D
          T  =  T + (MAPL_ALHL/MAPL_CP)*TMP3D
          TH =  T / PK
+
+         ! cleanup any negative QV/QC/CF
+         call FILLQ2ZERO(Q       , MASS, TMP2D)
+         call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = TMP2D
+         call FILLQ2ZERO(QLLS    , MASS, TMP2D)
+         call FILLQ2ZERO(QLCN    , MASS, TMP2D)
+         call FILLQ2ZERO(QILS    , MASS, TMP2D)
+         call FILLQ2ZERO(QICN    , MASS, TMP2D)
+         call FILLQ2ZERO(CLLS    , MASS, TMP2D)
+         call FILLQ2ZERO(CLCN    , MASS, TMP2D)
+         call FILLQ2ZERO(QRAIN   , MASS, TMP2D)
+         call FILLQ2ZERO(QSNOW   , MASS, TMP2D)
+         call FILLQ2ZERO(QGRAUPEL, MASS, TMP2D)
 
          ! Update microphysics tendencies
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST

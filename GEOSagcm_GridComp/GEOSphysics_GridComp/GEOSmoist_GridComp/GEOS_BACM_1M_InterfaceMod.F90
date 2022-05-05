@@ -713,7 +713,13 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            endwhere
            RAD_CF = TMP3D
          endif
-         RAD_QV = MAX( Q      , 0.0   )
+         call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QI, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QR, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
          RAD_QL = MIN( RAD_QL , 0.001 )  ! Still a ridiculously large
          RAD_QI = MIN( RAD_QI , 0.001 )  ! value.
          RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
@@ -746,6 +752,17 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          LS_PRCP = LS_PRCP + SUM(TMP3D*MASS,3)/DT_MOIST
          Q  =  Q - TMP3D
          TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
+
+         ! cleanup any negative QV/QC/CF
+         call FILLQ2ZERO(Q       , MASS, TMP2D)
+         call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR2D)) PTR2D = TMP2D
+         call FILLQ2ZERO(QLLS    , MASS, TMP2D)
+         call FILLQ2ZERO(QLCN    , MASS, TMP2D)
+         call FILLQ2ZERO(QILS    , MASS, TMP2D)
+         call FILLQ2ZERO(QICN    , MASS, TMP2D)
+         call FILLQ2ZERO(CLLS    , MASS, TMP2D)
+         call FILLQ2ZERO(CLCN    , MASS, TMP2D)
 
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
          if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST

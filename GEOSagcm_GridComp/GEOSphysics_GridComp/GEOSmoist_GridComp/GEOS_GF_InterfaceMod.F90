@@ -474,7 +474,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
        SEEDCNV = MAX(MIN(SEEDINI/1000000.0,1.0),0.0)
-       SEEDCNV = CNV_FRC * ((1.0-(1.0-SEEDCNV)**2)*(STOCH_TOP-STOCH_BOT)+STOCH_BOT)
+       SEEDCNV = (CNV_FRC-0.01) * ((1.0-(1.0-SEEDCNV)**2)*(STOCH_TOP-STOCH_BOT)+STOCH_BOT)
     else
        SEEDCNV = 1.0
     endif
@@ -523,7 +523,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       QICN =         QICN + DQIDT_DC*DT_MOIST
       CLCN = MAX(MIN(CLCN + DQADT_DC*DT_MOIST, 1.0), 0.0)
 
-#ifdef SKIP
       ! fix 'anvil' cloud fraction 
       TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
       TMP3D = QST3
@@ -542,21 +541,20 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QLCN = 0.
          QICN = 0.
       END WHERE
-#endif
 
-    ! Heating from cumulus friction
-    call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
-    if(associated(PTR3D)) then
-        KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
-        TMP3D = 1.e-4 ! KEX
-        TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
-        do L=1,LM
-           PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
-        end do
-    end if
+      ! Heating from cumulus friction
+      call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+      if(associated(PTR3D)) then
+          KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
+          TMP3D = 1.e-4 ! KEX
+          TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
+          do L=1,LM
+             PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
+          end do
+      end if
 
-    call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
-    if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST
+      call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
+      if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST
 
     call MAPL_TimerOff (MAPL,"--GF")
 
