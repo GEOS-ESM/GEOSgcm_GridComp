@@ -1,7 +1,7 @@
 #define I_AM_MAIN
 #include "MAPL_Generic.h"
 
-PROGRAM mk_CatchmentsRestarts
+PROGRAM mk_catchANDcnRestarts
 
   use mpi
   use MAPL
@@ -9,7 +9,6 @@ PROGRAM mk_CatchmentsRestarts
   use CatchmentCNRstMod
 
   implicit none
-  
   
   character(len=:), allocatable :: out_bcsdir, out_dir, in_tilefile, out_tilefile, YYYYMMDDHHMM
   character(len=:), allocatable :: model, in_rstfile, out_rstfile
@@ -119,6 +118,9 @@ PROGRAM mk_CatchmentsRestarts
      end subroutine
 
      subroutine print_usage()
+        print *,'   '
+        print *, 'This program can create catchment or catchmentCN restarts'
+        print *, 'depending on the command line option "model"             '
         print *,'   '
         print *,'-out_bcs        : BC directory for output restart file'
         print *,'-time           : time for restart, format (yyyymmddhhmm)' 
