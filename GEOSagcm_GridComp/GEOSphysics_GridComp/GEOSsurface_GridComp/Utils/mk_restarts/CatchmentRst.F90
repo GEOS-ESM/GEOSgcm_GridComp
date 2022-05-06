@@ -19,21 +19,6 @@ module CatchmentRstMod
   integer           :: ftell
   external          :: ftell
 #endif
-  type :: scale_var 
-    real, allocatable :: catdef(:)
-    real, allocatable :: cdcr1 (:)
-    real, allocatable :: cdcr2 (:)
-    real, allocatable :: rzexc (:)
-    real, allocatable :: vgwmax(:)
-    real, allocatable :: ghtcnt1(:)
-    real, allocatable :: ghtcnt2(:)
-    real, allocatable :: ghtcnt3(:)
-    real, allocatable :: ghtcnt4(:)
-    real, allocatable :: ghtcnt5(:)
-    real, allocatable :: ghtcnt6(:)
-    real, allocatable :: poros(:)
-    real, allocatable :: sndzn3(:)
-  end type scale_var
 
   type :: CatchmentRst
      integer :: ntiles
@@ -96,10 +81,23 @@ module CatchmentRstMod
      real, allocatable ::         cq(:,:)
      real, allocatable ::         fr(:,:)
      real, allocatable ::         ww(:,:)
-    
+     ! save old values for scale
+     real, allocatable :: old_catdef(:)
+     real, allocatable :: old_cdcr1 (:)
+     real, allocatable :: old_cdcr2 (:)
+     real, allocatable :: old_rzexc (:)
+     real, allocatable :: old_vgwmax(:)
+     real, allocatable :: old_ghtcnt1(:)
+     real, allocatable :: old_ghtcnt2(:)
+     real, allocatable :: old_ghtcnt3(:)
+     real, allocatable :: old_ghtcnt4(:)
+     real, allocatable :: old_ghtcnt5(:)
+     real, allocatable :: old_ghtcnt6(:)
+     real, allocatable :: old_poros(:)
+     real, allocatable :: old_sndzn3(:)
      ! intermediate
-     real, allocatable, dimension(:) :: lonc,latc,lonn,latt, long, latg
-
+     real, allocatable, dimension(:) :: lonc,latc,lonn,latt, latg
+     integer, allocatable, dimension(:) :: id_glb
   contains
      procedure :: read_GEOSldas_rst_bin      
      procedure :: write_nc4      
@@ -768,8 +766,8 @@ contains
      if (myid == 0)  root_proc = .true.
 
      if(root_proc) then
-       print *,'ntiles in BCs      : ',out_ntiles
-       print *,'ntiles in restarts : ',in_ntiles
+       print *,'ntiles in target BCs      : ',out_ntiles
+       print *,'ntiles in restarts        : ',in_ntiles
      endif
 
      
@@ -805,7 +803,6 @@ contains
         allocate (latg   (out_ntiles))
         call ReadTileFile_RealLatLon ( OutTileFile, n, long, latg)
         _ASSERT( n == out_ntiles, "Out tile number should match")
-        this%long = long
         this%latg = latg
         call ReadTileFile_RealLatLon ( InTileFile, n, lonc, latc)
         _ASSERT( n == in_ntiles, "In tile number should match")
@@ -876,6 +873,7 @@ contains
      this%ntiles = out_ntiles
      if (root_proc)  then
        ! regrid
+       this%id_glb = id_glb
        var_out    = this%poros(id_glb(:))
        this%poros = var_out
 
@@ -1046,17 +1044,18 @@ contains
        this%ch = 0.001
        this%cm = 0.001
        this%cq = 0.001
+
+       call this%set_scale_var()
      endif
 
      _RETURN(_SUCCESS) 
    end subroutine re_tile
 
-   subroutine re_scale(this, surflay, wemin_in, wemin_out, old,  rc)
+   subroutine re_scale(this, surflay, wemin_in, wemin_out,  rc)
      class(CatchmentRst), intent(inout) :: this
      real, intent(in) :: surflay
      real, intent(in) :: wemin_in
      real, intent(in) :: wemin_out
-     type(scale_var),   intent(in) :: old
      integer, optional, intent(out) :: rc
      integer :: ntiles
 
@@ -1070,28 +1069,28 @@ contains
 
      ntiles =  this%ntiles
 
-     n =count((old%catdef .gt. old%cdcr1))
+     n =count((this%old_catdef .gt. this%old_cdcr1))
 
      print*, "Scale tile and pesentile :", n,100*n/ntiles
 
 ! Scale rxexc regardless of CDCR1, CDCR2 differences
 ! --------------------------------------------------
-     this%rzexc  = old%rzexc * ( this%vgwmax / old%vgwmax )
+     this%rzexc  = this%old_rzexc * ( this%vgwmax / this%old_vgwmax )
 
 ! Scale catdef regardless of whether CDCR2 is larger or smaller in the new situation
 ! ----------------------------------------------------------------------------------
-     where (old%catdef .gt. old%cdcr1)
+     where (this%old_catdef .gt. this%old_cdcr1)
 
         this%catdef = this%cdcr1 +              &
-                   ( old%catdef - old%cdcr1 ) / &
-                   ( old%cdcr2  - old%cdcr1 ) * &
+                   ( this%old_catdef - this%old_cdcr1 ) / &
+                   ( this%old_cdcr2  - this%old_cdcr1 ) * &
                    ( this%cdcr2 - this%cdcr1)
      end where
 
 ! Scale catdef also for the case where catdef le cdcr1.
 ! -----------------------------------------------------
-     where( old%catdef .le. old%cdcr1)
-       this%catdef = old%catdef * (this%cdcr1 / old%cdcr1)
+     where( this%old_catdef .le. this%old_cdcr1)
+       this%catdef = this%old_catdef * (this%cdcr1 / this%old_cdcr1)
      end where
 
 ! Sanity Check (catch_calc_soil_moist() forces consistency betw. srfexc, rzexc, catdef)
@@ -1119,14 +1118,14 @@ contains
      allocate (FICE   (N_GT, NTILES))
      allocate (TP_OUT (N_GT, Ntiles))
 
-     GHT_IN (1,:) = old%ghtcnt1
-     GHT_IN (2,:) = old%ghtcnt2
-     GHT_IN (3,:) = old%ghtcnt3
-     GHT_IN (4,:) = old%ghtcnt4
-     GHT_IN (5,:) = old%ghtcnt5
-     GHT_IN (6,:) = old%ghtcnt6
+     GHT_IN (1,:) = this%old_ghtcnt1
+     GHT_IN (2,:) = this%old_ghtcnt2
+     GHT_IN (3,:) = this%old_ghtcnt3
+     GHT_IN (4,:) = this%old_ghtcnt4
+     GHT_IN (5,:) = this%old_ghtcnt5
+     GHT_IN (6,:) = this%old_ghtcnt6
 
-     call catch_calc_tp ( NTILES, old%poros, GHT_IN, tp_in, FICE)
+     call catch_calc_tp ( NTILES, this%old_poros, GHT_IN, tp_in, FICE)
 
      do n = 1, ntiles
         do i = 1, N_GT
@@ -1181,14 +1180,14 @@ contains
 
         print *, 'Snow scaling summary'
         print *, '....................'
-        print *, 'Percent tiles SNDZ scaled : ', 100.* count (this%sndzn3 .ne. old%sndzn3) /float (count (this%sndzn3 > 0.))
+        print *, 'Percent tiles SNDZ scaled : ', 100.* count (this%sndzn3 .ne. this%old_sndzn3) /float (count (this%sndzn3 > 0.))
 
      endif
 
  ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
   ! -------------------------------------------------------------------------------
 
-     where ( (old%poros < PEATCLSM_POROS_THRESHOLD) .and. (this%poros >= PEATCLSM_POROS_THRESHOLD) )
+     where ( (this%old_poros < PEATCLSM_POROS_THRESHOLD) .and. (this%poros >= PEATCLSM_POROS_THRESHOLD) )
         this%catdef = 25.
         this%rzexc  =  0.
         this%srfexc =  0.
@@ -1196,22 +1195,21 @@ contains
 
    end subroutine re_scale
 
-   subroutine set_scale_var(this, sca)
-     class(CatchmentRst), intent(in) :: this
-     type (scale_var), intent(out) :: sca
-     sca%catdef = this%catdef
-     sca%poros  = this%poros
-     sca%cdcr1  = this%cdcr1
-     sca%cdcr2  = this%cdcr2
-     sca%rzexc  = this%rzexc
-     sca%vgwmax = this%vgwmax
-     sca%sndzn3 = this%sndzn3
-     sca%ghtcnt1 = this%ghtcnt1
-     sca%ghtcnt2 = this%ghtcnt2
-     sca%ghtcnt3 = this%ghtcnt3
-     sca%ghtcnt4 = this%ghtcnt4
-     sca%ghtcnt5 = this%ghtcnt5
-     sca%ghtcnt6 = this%ghtcnt6
+   subroutine set_scale_var(this )
+     class(CatchmentRst), intent(inout) :: this
+     this%old_catdef = this%catdef
+     this%old_poros  = this%poros
+     this%old_cdcr1  = this%cdcr1
+     this%old_cdcr2  = this%cdcr2
+     this%old_rzexc  = this%rzexc
+     this%old_vgwmax = this%vgwmax
+     this%old_sndzn3 = this%sndzn3
+     this%old_ghtcnt1 = this%ghtcnt1
+     this%old_ghtcnt2 = this%ghtcnt2
+     this%old_ghtcnt3 = this%ghtcnt3
+     this%old_ghtcnt4 = this%ghtcnt4
+     this%old_ghtcnt5 = this%ghtcnt5
+     this%old_ghtcnt6 = this%ghtcnt6
    end subroutine set_scale_var 
 
 end module CatchmentRstMod

@@ -48,31 +48,31 @@ module CatchmentCNRstMod
      real, allocatable ::    HDM     (:)
      real, allocatable ::    GDP     (:)
      real, allocatable ::    PEATF   (:) 
-
-     real, allocatable :: bflowm(:)
-     real, allocatable :: totwatm(:)
-     real, allocatable :: tairm(:)
-     real, allocatable :: tpm(:)
-     real, allocatable :: cnsum(:)
-     real, allocatable :: sndzm(:)
-     real, allocatable :: asnowm(:)
-     real, allocatable :: ar1m(:)
-     real, allocatable :: rainfm(:)
-     real, allocatable :: rhm(:)
-     real, allocatable :: runsrfm(:)
-     real, allocatable :: snowfm(:)
-     real, allocatable :: windm(:)
-     real, allocatable :: tprec10d(:)
-     real, allocatable :: tprec60d(:)
-     real, allocatable :: t2m10d(:)
-     real, allocatable :: sfmcm(:)
-     real, allocatable :: psnsunm(:,:,:)
-     real, allocatable :: psnsham(:,:,:)
+     ! below is not necessary. It is not read. It is set to 0 during writing
+     !real, allocatable :: bflowm(:)
+     !real, allocatable :: totwatm(:)
+     !real, allocatable :: tairm(:)
+     !real, allocatable :: tpm(:)
+     !real, allocatable :: cnsum(:)
+     !real, allocatable :: sndzm(:)
+     !real, allocatable :: asnowm(:)
+     !real, allocatable :: ar1m(:)
+     !real, allocatable :: rainfm(:)
+     !real, allocatable :: rhm(:)
+     !real, allocatable :: runsrfm(:)
+     !real, allocatable :: snowfm(:)
+     !real, allocatable :: windm(:)
+     !real, allocatable :: tprec10d(:)
+     !real, allocatable :: tprec60d(:)
+     !real, allocatable :: t2m10d(:)
+     !real, allocatable :: sfmcm(:)
+     !real, allocatable :: psnsunm(:,:,:)
+     !real, allocatable :: psnsham(:,:,:)
      
   contains
      procedure :: write_nc4
      procedure :: allocate_cn   
-     procedure :: add_bcs_to_rst   
+     procedure :: add_bcs_to_cnrst   
      procedure :: re_tile
   endtype CatchmentCNRst
 
@@ -229,6 +229,7 @@ contains
      do j=1,dim1
         call MAPL_VarWrite(formatter,"ITY",this%cnity(:,j),offset1=j)
         call MAPL_VarWrite(formatter,"FVG",this%fvg(:,j),offset1=j)
+        call MAPL_VarWrite(formatter,"TG",this%tg(:,j),offset1=j)
      enddo
 
      call MAPL_VarWrite(formatter,"TILE_ID",this%TILE_ID)
@@ -253,8 +254,8 @@ contains
      enddo
 
      dim1 = meta%get_dimension('tile')
-     allocate (var (dim1))
-     var = 0.
+
+     allocate (var(dim1),source = 0.)
 
      call MAPL_VarWrite(formatter,"BFLOWM", var)
      call MAPL_VarWrite(formatter,"TOTWATM",var)
@@ -322,9 +323,10 @@ contains
 
      call this%CatchmentRst%allocate_catch(__RC__)
 
-     allocate(this%cnity(ntiles,4))
-     allocate(this%fvg(ntiles,4))
-     allocate(this%tg(ntiles,4))
+     ! W.Jiang notes : some varaiables are not allocated because they are set to zero directly during write
+     allocate(this%cnity(ntiles,nveg))
+     allocate(this%fvg(ntiles,nveg))
+     allocate(this%tg(ntiles,nveg))
      allocate(this%tgwm(ntiles,nzone))
      allocate(this%rzmm(ntiles,nzone))
      allocate(this%TILE_ID(ntiles))
@@ -344,15 +346,13 @@ contains
      _RETURN(_SUCCESS)
    end subroutine allocate_cn
 
-   SUBROUTINE add_bcs_to_rst (this, SURFLAY, DataDir,rc)
+   SUBROUTINE add_bcs_to_cnrst (this, SURFLAY, OutBcsDir,rc)
     class(CatchmentCNRst), intent(inout) :: this
     real, intent (in)                    :: SURFLAY
-    character(*), intent (in)            :: DataDir
+    character(*), intent (in)            :: OutBcsDir
     integer, optional, intent(out) :: rc
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
-    real, allocatable :: CLMC45_pf1(:), CLMC45_pf2(:), CLMC45_sf1(:), CLMC45_sf2(:)
-    real, allocatable :: CLMC45_pt1(:), CLMC45_pt2(:), CLMC45_st1(:), CLMC45_st2(:)    
     real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
     real, allocatable :: T2(:), var1(:), hdm(:), fc(:), gdp(:), peatf(:)
     integer, allocatable :: ity(:), abm (:)
@@ -364,27 +364,28 @@ contains
 
     type(NetCDF4_Fileformatter) :: CatchCNFmt
     character*256        :: Iam = "add_bcs"
+
+    open (10,file =trim(OutBcsDir)//"/clsm/catchment.def",status='old',form='formatted')
+    read (10,*) ntiles
+    close (10, status = 'keep')
  
-    ntiles = this%ntiles
-    call this%CatchmentRst%add_bcs_to_rst(surflay, DataDir, __RC__)
+    !ntiles = this%ntiles
+    !call this%CatchmentRst%add_bcs_to_rst(surflay, OutBcsDir, __RC__)
 
     allocate (BVISDR(ntiles),  BVISDF(ntiles),  BNIRDR(ntiles)  )
     allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )    
     allocate (CLMC_pf1(ntiles), CLMC_pf2(ntiles), CLMC_sf1(ntiles))
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
-    allocate (CLMC45_pf1(ntiles), CLMC45_pf2(ntiles), CLMC45_sf1(ntiles))
-    allocate (CLMC45_sf2(ntiles), CLMC45_pt1(ntiles), CLMC45_pt2(ntiles))
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
-    allocate (CLMC45_st1(ntiles), CLMC45_st2(ntiles))
     allocate (hdm(ntiles), fc(ntiles), gdp(ntiles))
     allocate (peatf(ntiles), abm(ntiles), var1(ntiles))
 
-    inquire(file = trim(DataDir)//'/catchcn_params.nc4', exist=file_exists)
-    inquire(file = trim(DataDir)//"CLM_veg_typs_fracs"   ,exist=NewLand )
+    inquire(file = trim(OutBcsDir)//'/clsm/catchcn_params.nc4', exist=file_exists)
+    inquire(file = trim(OutBcsDir)//'/clsm/CLM_veg_typs_fracs', exist=NewLand )
     _ASSERT(Newland, "catchcn should get bc from newland")
 
     if(file_exists) then
-       call CatchCNFmt%Open(trim(DataDir)//'/catchcn_params.nc4', pFIO_READ, __RC__)    
+       call CatchCNFmt%Open(trim(OutBcsDir)//'/clsm/catchcn_params.nc4', pFIO_READ, __RC__)    
        call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
        call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
        call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
@@ -402,16 +403,14 @@ contains
        call CatchCNFmt%close()
     else
 
-       open(newunit=unit27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
-       open(newunit=unit28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
+       open(newunit=unit27, file=trim(OutBcsDir)//'/clsm/CLM_veg_typs_fracs'   ,form='formatted')
+       open(newunit=unit28, file=trim(OutBcsDir)//'/clsm/CLM_NDep_SoilAlb_T2m' ,form='formatted')
 
        do n=1,ntiles
           read (unit27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
                 CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
              
           read (unit28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
-          if(this%isCLM45) then
-          endif
        end do
        
        CLOSE (unit27, STATUS = 'KEEP')
@@ -421,15 +420,11 @@ contains
 
     if (this%isCLM45 ) then
 
-      open(newunit=unit29, file=trim(DataDir)//'CLM4.5_veg_typs_fracs',form='formatted')
-      open(newunit=unit30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
+      open(newunit=unit30, file=trim(OutBcsDir)//'/clsm/CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
       do n=1,ntiles
-         read (unit29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
-                   CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
          read (unit30, *) i, j, abm(n), peatf(n), &
                gdp(n), hdm(n), fc(n)
       end do
-      CLOSE (unit29, STATUS = 'KEEP')
       CLOSE (unit30, STATUS = 'KEEP')
     endif
     
@@ -467,36 +462,6 @@ contains
       CLMC_sf1(n) = fvg(3)
       CLMC_sf2(n) = fvg(4)
     enddo
-
-    if(this%isCLM45) then
-       do n =1, ntiles
-         CLMC45_pf1(n) = CLMC45_pf1(n) / 100.
-         CLMC45_pf2(n) = CLMC45_pf2(n) / 100.
-         CLMC45_sf1(n) = CLMC45_sf1(n) / 100.
-         CLMC45_sf2(n) = CLMC45_sf2(n) / 100.
-         
-         fvg(1) = CLMC45_pf1(n)
-         fvg(2) = CLMC45_pf2(n)
-         fvg(3) = CLMC45_sf1(n)
-         fvg(4) = CLMC45_sf2(n)
-         
-         BARE = 1.      
-         
-         DO NV = 1, NVEG
-            BARE = BARE - fvg(NV)! subtract vegetated fractions 
-         END DO
-         
-         if (BARE /= 0.) THEN
-            IB = MAXLOC(fvg(:),1)
-            fvg (IB) = fvg(IB) + BARE ! This also corrects all cases sum ne 0.
-         ENDIF
-         
-         CLMC45_pf1(n) = fvg(1)
-         CLMC45_pf2(n) = fvg(2)
-         CLMC45_sf1(n) = fvg(3)
-         CLMC45_sf2(n) = fvg(4)
-      enddo
-    endif
        
     NDEP = NDEP * 1.e-9
     
@@ -539,53 +504,9 @@ contains
           CLMC_sf2(n) = 0.
         endif
      enddo 
-     if (this%isCLM45) then
-        do n = 1, ntiles
-          if(CLMC45_pf1(n) <= 1.e-4) then
-             CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_pf1(n)
-             CLMC45_pf1(n) = 0.
-          endif
-          
-          if(CLMC45_pf2(n) <= 1.e-4) then
-             CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_pf2(n)
-             CLMC45_pf2(n) = 0.
-          endif
-          
-          if(CLMC45_sf1(n) <= 1.e-4) then
-             if(CLMC45_sf2(n) > 1.e-4) then
-                CLMC45_sf2(n) = CLMC45_sf2(n) + CLMC45_sf1(n)
-             else if(CLMC45_pf2(n) > 1.e-4) then
-                CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_sf1(n)
-             else if(CLMC45_pf1(n) > 1.e-4) then
-                CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_sf1(n)
-             else
-                stop 'fveg3'
-             endif
-             CLMC45_sf1(n) = 0.
-          endif
-          
-          if(CLMC45_sf2(n) <= 1.e-4) then
-             if(CLMC45_sf1(n) > 1.e-4) then
-                CLMC45_sf1(n) = CLMC45_sf1(n) + CLMC45_sf2(n)
-             else if(CLMC45_pf2(n) > 1.e-4) then
-                CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_sf2(n)
-             else if(CLMC45_pf1(n) > 1.e-4) then
-                CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_sf2(n)
-             else
-                stop 'fveg4'
-             endif
-             CLMC45_sf2(n) = 0.
-          endif
-        enddo
-     endif
 
-     if (this%isCLM45) then
-       this%cnity = reshape([CLMC45_pt1,CLMC45_pt2,CLMC45_st1,CLMC45_st2],[ntiles,4])
-       this%fvg   = reshape([CLMC45_pf1,CLMC45_pf2,CLMC45_sf1,CLMC45_sf2],[ntiles,4])
-     else
-       this%cnity = reshape([CLMC_pt1,CLMC_pt2,CLMC_st1,CLMC_st2],[ntiles,4])
-       this%fvg   = reshape([CLMC_pf1,CLMC_pf2,CLMC_sf1,CLMC_sf2],[ntiles,4])
-     endif
+     this%cnity = reshape([CLMC_pt1,CLMC_pt2,CLMC_st1,CLMC_st2],[ntiles,4])
+     this%fvg   = reshape([CLMC_pf1,CLMC_pf2,CLMC_sf1,CLMC_sf2],[ntiles,4])
 
      this%ndep = ndep
      this%t2   = t2
@@ -609,7 +530,7 @@ contains
      deallocate (CLMC_st1,CLMC_st2)
 
      _RETURN(_SUCCESS)
-   end subroutine add_bcs_to_rst
+   end subroutine add_bcs_to_cnrst
 
    subroutine re_tile(this, InTileFile, OutBcsDir, OutTileFile, surflay, rc)
      class(CatchmentCNRst), intent(inout) :: this
@@ -619,20 +540,18 @@ contains
      real, intent(in)         :: surflay
      integer, optional, intent(out) :: rc
      
-     real   , allocatable, dimension (:) :: LATT, LONN, DAYX
-     real   , pointer , dimension (:) :: long, latg, lonc, latc
-     integer, allocatable, dimension (:) :: low_ind, upp_ind, nt_local
-     integer, allocatable, dimension (:) :: Id_glb, id_loc
+     real   , allocatable, dimension (:)   :: DAYX
+     integer, allocatable, dimension (:)   :: low_ind, upp_ind, nt_local
      integer, allocatable, dimension (:,:) :: Id_glb_cn, id_loc_cn
-     integer, allocatable, dimension (:) :: ld_reorder, tid_offl
-     real, allocatable, dimension (:)    :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
-         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum2
+     integer, allocatable, dimension (:)   :: tid_offl, id_loc
+     real, allocatable, dimension (:)      :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
+         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum2, var_dum3
      integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE
-     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl,  fveg_tmp,  ityp_tmp
+     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs
      logical :: root_proc
-     integer :: mpierr, n, i, k, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
+     integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
 
@@ -681,12 +600,8 @@ contains
         tid_offl(n) = n
      enddo
 
-     ! copy out the old fvg and cnity
-
      if (root_proc) then
 
-        allocate (ityp_tmp (in_ntiles,nveg))
-        allocate (fveg_tmp (in_ntiles,nveg))
         allocate (DAYX   (out_ntiles))
 
         READ(this%time(1:8),'(I8)') AGCM_DATE
@@ -698,13 +613,18 @@ contains
                 out_NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
                 this%LATG, DAYX)
 
-        ityp_tmp = this%cnity
-        fveg_tmp = this%fvg
+        ! save the old vaues dimension (in_ntiles, nv)
+        ityp_offl = this%cnity
+        fveg_offl = this%fvg
 
-        ityp_offl = ityp_tmp
-        fveg_offl = fveg_tmp
+        do n = 1, in_ntiles
+           do nv = 1,nveg
+              if(ityp_offl(n,nv)<0 .or. ityp_offl(n,nv)>npft)    stop 'ityp'
+              if(fveg_offl(n,nv)<0..or. fveg_offl(n,nv)>1.00001) stop 'fveg'
+           end do
 
-        do n = 1, size(ityp_offl,1)
+           if (nint(this%tile_id(n)) /= n) stop ("cannot assign ity_offl to cnity and fvg_offl to fvg")
+
            if((ityp_offl(N,3) == 0).and.(ityp_offl(N,4) == 0)) then
               if(ityp_offl(N,1) /= 0) then
                  ityp_offl(N,3) = ityp_offl(N,1)
@@ -725,17 +645,21 @@ contains
 
      if (root_proc ) then
 
+        ! after this call, the cnity and fvg is the dimension of (out_ntiles, nveg)
+        call this%add_bcs_to_cnrst(surflay, OutBcsDir, __RC__)
+
         do i = 1, numprocs -1
            st  = low_ind(i+1)
            l   = nt_local(i+1)
-           call MPI_send(this%cnity(st,1),l, MPI_REAL, i, i, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%cnity(st,2),l, MPI_REAL, i, i+1, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%cnity(st,3),l, MPI_REAL, i, i+2, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%cnity(st,4),l, MPI_REAL, i, i+3, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, i+4, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, i+5, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,3),l,   MPI_REAL, i, i+6, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,4),l,   MPI_REAL, i, i+7, MPI_COMM_WORLD, mpierr)
+           tag = i*numprocs
+           call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag, MPI_COMM_WORLD, mpierr)
+           call MPI_send(this%cnity(st,2),l, MPI_REAL, i, tag+1, MPI_COMM_WORLD, mpierr)
+           call MPI_send(this%cnity(st,3),l, MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
+           call MPI_send(this%cnity(st,4),l, MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
+           call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, tag+4, MPI_COMM_WORLD, mpierr)
+           call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+5, MPI_COMM_WORLD, mpierr)
+           call MPI_send(this%fvg(st,3),l,   MPI_REAL, i, tag+6, MPI_COMM_WORLD, mpierr)
+           call MPI_send(this%fvg(st,4),l,   MPI_REAL, i, tag+7, MPI_COMM_WORLD, mpierr)
         enddo
         st  = low_ind(1)
         l   = nt_local(1)
@@ -749,25 +673,30 @@ contains
         CLMC_sf1 = this%fvg(st:ed,3)
         CLMC_sf2 = this%fvg(st:ed,4)
      else
-        call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, myid,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_pt2,nt_local(myid+1) , MPI_REAL, 0, myid+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_st1,nt_local(myid+1) , MPI_REAL, 0, myid+2, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_st2,nt_local(myid+1) , MPI_REAL, 0, myid+3, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_pf1,nt_local(myid+1) , MPI_REAL, 0, myid+4, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_pf2,nt_local(myid+1) , MPI_REAL, 0, myid+5, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_sf1,nt_local(myid+1) , MPI_REAL, 0, myid+6, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_sf2,nt_local(myid+1) , MPI_REAL, 0, myid+7, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        tag = myid*numprocs
+        call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        call MPI_RECV(CLMC_pt2,nt_local(myid+1) , MPI_REAL, 0, tag+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        call MPI_RECV(CLMC_st1,nt_local(myid+1) , MPI_REAL, 0, tag+2, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        call MPI_RECV(CLMC_st2,nt_local(myid+1) , MPI_REAL, 0, tag+3, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        call MPI_RECV(CLMC_pf1,nt_local(myid+1) , MPI_REAL, 0, tag+4, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        call MPI_RECV(CLMC_pf2,nt_local(myid+1) , MPI_REAL, 0, tag+5, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        call MPI_RECV(CLMC_sf1,nt_local(myid+1) , MPI_REAL, 0, tag+6, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        call MPI_RECV(CLMC_sf2,nt_local(myid+1) , MPI_REAL, 0, tag+7, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
     endif
 
-    
+    call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+ 
+    if(root_proc) print*, "GetIDs...."
+
     call GetIds(this%lonc,this%latc,this%lonn,this%latt,id_loc_cn, tid_offl, &
              CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
              fveg_offl, ityp_offl)
 
+    call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+
     if(root_proc) allocate (id_glb_cn  (out_ntiles,nveg))
 
     allocate (id_loc (out_ntiles))
-    call MPI_Barrier(MPI_COMM_WORLD, STATUS)
     deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
     deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
 
@@ -798,6 +727,14 @@ contains
         allocate (var_off_pft (1: in_ntiles, 1 : nzone,1 : nveg, 1 : var_pft))
         allocate (var_dum2    (1:in_ntiles))
 
+        this%tile_id = [(i*1.0, i=1, out_ntiles)]
+
+        allocate (tg_tmp(out_ntiles, 4),source = 0.)
+        do i = 1, 3
+          tg_tmp(:,i) = this%tg(this%id_glb(:),i)
+        enddo        
+        this%tg = tg_tmp
+
         i = 1
         do nv = 1,VAR_COL
            do nz = 1,nzone
@@ -818,7 +755,9 @@ contains
 
         where(isnan(var_off_pft))  var_off_pft = 0.
         where(var_off_pft /= var_off_pft)  var_off_pft = 0.
-        print *, 'Writing regridded carbn'
+
+        print *, 'calculating regridded carbn'
+
         call regrid_carbon (out_NTILES, in_ntiles,id_glb_cn, &
                 DAYX, var_off_col,var_off_pft, ityp_offl, fveg_offl)
         deallocate (var_off_col,var_off_pft)
@@ -1261,198 +1200,163 @@ contains
         end do
      endif
 
-     VAR_DUM = 0.
-     deallocate(this%tgwm,this%rzmm)
-     allocate(this%tgwm(Ntiles, nzone), source = 0.)
-     allocate(this%rzmm(Ntiles, nzone), source = 0.)
-     if (this%isCLM45) then
-       deallocate(this%SFMM)
-       allocate(this%sfmm(ntiles, nzone), source =0.)
-     endif
-
-     this%bflowm  = var_dum
-     this%totwatm = var_dum
-     this%TAIRM   = var_dum
-     this%TPM     = var_dum
-
-     this%CNSUM = VAR_DUM
-     this%SNDZM = VAR_DUM
-     this%ASNOWM = VAR_DUM
-     if(this%isCLM45) then
-        this%AR1M   = VAR_DUM
-        this%RAINFM = VAR_DUM
-        this%RHM    = VAR_DUM
-        this%RUNSRFM= VAR_DUM
-        this%SNOWFM = VAR_DUM
-        this%WINDM  = VAR_DUM
-        this%TPREC10D=VAR_DUM
-        this%TPREC60D=VAR_DUM
-        this%T2M10D  =VAR_DUM
-     else
-        this%sfmcm = VAR_DUM
-     endif
-     deallocate(this%PSNSUNM, this%PSNSHAM)
-     allocate(this%PSNSUNM(Ntiles,nzone,nveg), source =0.)
-     allocate(this%PSNSHAM(Ntiles,nzone,nveg), source =0.)
-
      deallocate (var_col_out,var_pft_out)
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
      deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
 
     end subroutine regrid_carbon
 
-     subroutine compute_dayx (                               &
+    subroutine compute_dayx (                               &
        NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
        LATT, DAYX)
 
-    implicit none
+      implicit none
 
-    integer, intent (in) :: NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR
-    real, dimension (NTILES), intent (in)  :: LATT
-    real, dimension (NTILES), intent (out) :: DAYX
-    integer, parameter :: DT = 900
-    integer, parameter :: ncycle = 1461 ! number of days in a 4-year leap cycle (365*4 + 1)   
-    real, dimension(ncycle) :: zc, zs
-    integer :: dofyr, sec,YEARS_PER_CYCLE, DAYS_PER_CYCLE, year, iday, idayp1, nn, n
-    real    :: fac, YEARLEN, zsin, zcos, declin
+      integer, intent (in) :: NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR
+      real, dimension (NTILES), intent (in)  :: LATT
+      real, dimension (NTILES), intent (out) :: DAYX
+      integer, parameter :: DT = 900
+      integer, parameter :: ncycle = 1461 ! number of days in a 4-year leap cycle (365*4 + 1)   
+      real, dimension(ncycle) :: zc, zs
+      integer :: dofyr, sec,YEARS_PER_CYCLE, DAYS_PER_CYCLE, year, iday, idayp1, nn, n
+      real    :: fac, YEARLEN, zsin, zcos, declin
 
-    dofyr = AGCM_DD
-    if(AGCM_MM >  1) dofyr = dofyr + 31
-    if(AGCM_MM >  2) then
-       dofyr = dofyr + 28
-       if(mod(AGCM_YY,4) == 0) dofyr = dofyr + 1
-    endif
-    if(AGCM_MM >  3) dofyr = dofyr + 31
-    if(AGCM_MM >  4) dofyr = dofyr + 30
-    if(AGCM_MM >  5) dofyr = dofyr + 31
-    if(AGCM_MM >  6) dofyr = dofyr + 30
-    if(AGCM_MM >  7) dofyr = dofyr + 31
-    if(AGCM_MM >  8) dofyr = dofyr + 31
-    if(AGCM_MM >  9) dofyr = dofyr + 30
-    if(AGCM_MM > 10) dofyr = dofyr + 31
-    if(AGCM_MM > 11) dofyr = dofyr + 30
+      dofyr = AGCM_DD
+      if(AGCM_MM >  1) dofyr = dofyr + 31
+      if(AGCM_MM >  2) then
+         dofyr = dofyr + 28
+         if(mod(AGCM_YY,4) == 0) dofyr = dofyr + 1
+      endif
+      if(AGCM_MM >  3) dofyr = dofyr + 31
+      if(AGCM_MM >  4) dofyr = dofyr + 30
+      if(AGCM_MM >  5) dofyr = dofyr + 31
+      if(AGCM_MM >  6) dofyr = dofyr + 30
+      if(AGCM_MM >  7) dofyr = dofyr + 31
+      if(AGCM_MM >  8) dofyr = dofyr + 31
+      if(AGCM_MM >  9) dofyr = dofyr + 30
+      if(AGCM_MM > 10) dofyr = dofyr + 31
+      if(AGCM_MM > 11) dofyr = dofyr + 30
 
-    sec = AGCM_HR * 3600 - DT ! subtract DT to get time of previous physics step
-    fac = real(sec) / 86400.
+      sec = AGCM_HR * 3600 - DT ! subtract DT to get time of previous physics step
+      fac = real(sec) / 86400.
 
 
-    call orbit_create(zs,zc,ncycle) ! GEOS5 leap cycle routine
+      call orbit_create(zs,zc,ncycle) ! GEOS5 leap cycle routine
 
-    YEARLEN = 365.25
+      YEARLEN = 365.25
 
-    !  Compute length of leap cycle
-    !------------------------------
+      !  Compute length of leap cycle
+      !------------------------------
 
-    if(YEARLEN-int(YEARLEN) > 0.) then
-       YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
-    else
-       YEARS_PER_CYCLE = 1
-    endif
+      if(YEARLEN-int(YEARLEN) > 0.) then
+         YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
+      else
+         YEARS_PER_CYCLE = 1
+      endif
 
-    DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
+      DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
 
-    ! declination & daylength
-    ! -----------------------
+      ! declination & daylength
+      ! -----------------------
 
-    YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)
+      YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)
 
-    IDAY = YEAR*int(YEARLEN)+dofyr
-    IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
+      IDAY = YEAR*int(YEARLEN)+dofyr
+      IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
 
-    ZSin = ZS(IDAYP1)*FAC + ZS(IDAY)*(1.-FAC) !   sine of solar declination
-    ZCos = ZC(IDAYP1)*FAC + ZC(IDAY)*(1.-FAC) ! cosine of solar declination
+      ZSin = ZS(IDAYP1)*FAC + ZS(IDAY)*(1.-FAC) !   sine of solar declination
+      ZCos = ZC(IDAYP1)*FAC + ZC(IDAY)*(1.-FAC) ! cosine of solar declination
 
-    nn = 0
-    do n = 1,days_per_cycle
-       nn = nn + 1
-       if(nn > 365) nn = nn - 365
-       !     print *, 'cycle:',n,nn,asin(ZS(n))
-    end do
-    declin = asin(ZSin)
+      nn = 0
+      do n = 1,days_per_cycle
+         nn = nn + 1
+         if(nn > 365) nn = nn - 365
+         !     print *, 'cycle:',n,nn,asin(ZS(n))
+      end do
+      declin = asin(ZSin)
 
-    ! compute daylength on input tile space (accounts for any change in physics time step)  
-    !  do n = 1,ntiles_cn
-    !     fac = -(sin((latc(n)/zoom)*(MAPL_PI/180.))*zsin)/(cos((latc(n)/zoom)*(MAPL_PI/180.))*zcos)
-    !     fac = min(1.,max(-1.,fac))
-    !     dayl(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-    !  end do
+      ! compute daylength on input tile space (accounts for any change in physics time step)  
+      !  do n = 1,ntiles_cn
+      !     fac = -(sin((latc(n)/zoom)*(MAPL_PI/180.))*zsin)/(cos((latc(n)/zoom)*(MAPL_PI/180.))*zcos)
+      !     fac = min(1.,max(-1.,fac))
+      !     dayl(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
+      !  end do
 
-    ! compute daylength on output tile space (accounts for lat shift due to split & change in time step)
+      ! compute daylength on output tile space (accounts for lat shift due to split & change in time step)
 
-    do n = 1,ntiles
-       fac = -(sin(latt(n)*(MAPL_PI/180.))*zsin)/(cos(latt(n)*(MAPL_PI/180.))*zcos)
-       fac = min(1.,max(-1.,fac))
-       dayx(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-    end do
+      do n = 1,ntiles
+         fac = -(sin(latt(n)*(MAPL_PI/180.))*zsin)/(cos(latt(n)*(MAPL_PI/180.))*zcos)
+         fac = min(1.,max(-1.,fac))
+         dayx(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
+      end do
 
-    ! print *,'DAYX : ', minval(dayx),maxval(dayx), minval(latt), maxval(latt), zsin, zcos, dofyr, iday, idayp1, declin
+      ! print *,'DAYX : ', minval(dayx),maxval(dayx), minval(latt), maxval(latt), zsin, zcos, dofyr, iday, idayp1, declin
 
-  end subroutine compute_dayx
+    end subroutine compute_dayx
 
   ! *****************************************************************************
 
-   subroutine orbit_create(zs,zc,ncycle)
-    implicit none
+    subroutine orbit_create(zs,zc,ncycle)
+      implicit none
 
-     integer, intent(in) :: ncycle
-     real, intent(out), dimension(ncycle) :: zs, zc
+      integer, intent(in) :: ncycle
+      real, intent(out), dimension(ncycle) :: zs, zc
 
-     integer :: YEARS_PER_CYCLE, DAYS_PER_CYCLE
-     integer :: K, KP !, KM
-     real*8  :: T1, T2, T3, T4, FUN, Y, SOB, OMG, PRH, TT
-     real*8  :: YEARLEN
+      integer :: YEARS_PER_CYCLE, DAYS_PER_CYCLE
+      integer :: K, KP !, KM
+      real*8  :: T1, T2, T3, T4, FUN, Y, SOB, OMG, PRH, TT
+      real*8  :: YEARLEN
 
-     !  STATEMENT FUNCTION
+       !  STATEMENT FUNCTION
 
-     FUN(Y) = OMG*(1.0-ECCENTRICITY*cos(Y-PRH))**2
+      FUN(Y) = OMG*(1.0-ECCENTRICITY*cos(Y-PRH))**2
 
-     YEARLEN = 365.25
+      YEARLEN = 365.25
 
-     !  Factors involving the orbital parameters
-     !------------------------------------------
+       !  Factors involving the orbital parameters
+       !------------------------------------------
 
-     OMG  = (2.0*MAPL_PI/YEARLEN) / (sqrt(1.-ECCENTRICITY**2)**3)
-     PRH  = PERIHELION*(MAPL_PI/180.)
-     SOB  = sin(OBLIQUITY*(MAPL_PI/180.))
+      OMG  = (2.0*MAPL_PI/YEARLEN) / (sqrt(1.-ECCENTRICITY**2)**3)
+      PRH  = PERIHELION*(MAPL_PI/180.)
+      SOB  = sin(OBLIQUITY*(MAPL_PI/180.))
 
-     !  Compute length of leap cycle
-     !------------------------------
+       !  Compute length of leap cycle
+       !------------------------------
 
-     if(YEARLEN-int(YEARLEN) > 0.) then
-        YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
-     else
-        YEARS_PER_CYCLE = 1
-     endif
+      if(YEARLEN-int(YEARLEN) > 0.) then
+          YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
+      else
+          YEARS_PER_CYCLE = 1
+      endif
 
 
-     DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
+      DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
 
-     if(days_per_cycle /= ncycle) stop 'bad cycle'
+      if(days_per_cycle /= ncycle) stop 'bad cycle'
 
-     !   ZS:   Sine of declination
-     !   ZC:   Cosine of declination
+       !   ZS:   Sine of declination
+       !   ZC:   Cosine of declination
 
-     !  Begin integration at vernal equinox
+       !  Begin integration at vernal equinox
 
-     KP           = EQUINOX
-     TT           = 0.0
-     ZS(KP) = sin(TT)*SOB
-     ZC(KP) = sqrt(1.0-ZS(KP)**2)
+      KP           = EQUINOX
+      TT           = 0.0
+      ZS(KP) = sin(TT)*SOB
+      ZC(KP) = sqrt(1.0-ZS(KP)**2)
 
-     !  Integrate orbit for entire leap cycle using Runge-Kutta
+       !  Integrate orbit for entire leap cycle using Runge-Kutta
 
-     do K=2,DAYS_PER_CYCLE
-        T1 = FUN(TT       )
-        T2 = FUN(TT+T1*0.5)
-        T3 = FUN(TT+T2*0.5)
-        T4 = FUN(TT+T3    )
-        KP  = mod(KP,DAYS_PER_CYCLE) + 1
-        TT  = TT + (T1 + 2.0*(T2 + T3) + T4) / 6.0
-        ZS(KP) = sin(TT)*SOB
-        ZC(KP) = sqrt(1.0-ZS(KP)**2)
-     end do
-
-   end subroutine orbit_create
+      do K=2,DAYS_PER_CYCLE
+          T1 = FUN(TT       )
+          T2 = FUN(TT+T1*0.5)
+          T3 = FUN(TT+T2*0.5)
+          T4 = FUN(TT+T3    )
+          KP  = mod(KP,DAYS_PER_CYCLE) + 1
+          TT  = TT + (T1 + 2.0*(T2 + T3) + T4) / 6.0
+          ZS(KP) = sin(TT)*SOB
+          ZC(KP) = sqrt(1.0-ZS(KP)**2)
+      end do
+    end subroutine orbit_create
 
   end subroutine re_tile
 

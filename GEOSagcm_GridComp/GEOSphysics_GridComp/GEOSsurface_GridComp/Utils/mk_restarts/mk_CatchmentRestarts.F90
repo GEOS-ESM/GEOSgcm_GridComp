@@ -18,7 +18,6 @@ PROGRAM mk_CatchmentsRestarts
   integer  :: rc, status
   integer  :: myid, numprocs, mpierr
   class (CatchmentRst), allocatable :: catch
-  type (scale_var) :: old
  
   call MPI_INIT(mpierr)
   call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
@@ -35,9 +34,8 @@ PROGRAM mk_CatchmentsRestarts
   call catch%re_tile(in_tilefile, out_bcsdir, out_tilefile, surflay, __RC__)
 
   if (myid == 0) then
-    call catch%set_scale_var(old)
     call catch%add_bcs_to_rst(surflay, out_bcsdir, rc)
-    call catch%re_scale(surflay, wemin_in, wemin_out, old, __RC__)
+    call catch%re_scale(surflay, wemin_in, wemin_out, __RC__)
     call catch%write_nc4(out_file, __RC__)
   endif
 
