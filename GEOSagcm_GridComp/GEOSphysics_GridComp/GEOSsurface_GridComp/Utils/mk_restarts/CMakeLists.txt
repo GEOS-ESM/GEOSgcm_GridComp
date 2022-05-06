@@ -34,3 +34,12 @@ foreach (src ${exe_srcs})
 endforeach ()
 
 install(PROGRAMS mk_Restarts DESTINATION bin)
+foreach (src ${exe_srcs})
+  string (REGEX REPLACE ".F90" ".x" exe ${src})
+  string (REGEX REPLACE ".F90" ""  lname ${src})
+  install(CODE "execute_process( \
+    COMMAND ${CMAKE_COMMAND} -E create_symlink \
+    ${CMAKE_INSTALL_PREFIX}/bin/${exe} \
+    ${CMAKE_INSTALL_PREFIX}/bin/${lname}  \
+    )")
+endforeach ()
