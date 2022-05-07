@@ -106,13 +106,13 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Imports
     real, pointer, dimension(:,:)   :: FRLAND, SH, EVAP, KPBL_SC
-    real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, TKE
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, TKE
 
     ! allocatable derived quantities
     real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
     real,    allocatable, dimension(:,:,:) :: PL, PK, PKE, DP
     real,    allocatable, dimension(:,:,:) :: MASS
-    real,    allocatable, dimension(:,:,:) :: T
+    real,    allocatable, dimension(:,:,:) :: TH
     real,    allocatable, dimension(:,:,:) :: TMP3D
     real,    allocatable, dimension(:,:)   :: TMP2D
 
@@ -188,7 +188,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TH        ,'TH'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,RC=STATUS); VERIFY_(STATUS)
@@ -204,7 +204,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PL   (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
-    ALLOCATE ( T    (IM,JM,LM  ) )
+    ALLOCATE ( TH   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
@@ -219,7 +219,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-    T        = TH*PK
+    TH       = T/PK
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
 
@@ -284,6 +284,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !--------------------------------------------------------------
         Q  = Q  + DQVDT_SC * DT_MOIST    ! note this adds to the convective
         TH = TH + DTHDT_SC * DT_MOIST    !  tendencies calculated below
+        T  = TH*PK
         U  = U  +  DUDT_SC * DT_MOIST
         V  = V  +  DVDT_SC * DT_MOIST
       !  Update the temperature tendency

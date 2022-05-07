@@ -303,7 +303,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
-    real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, KH
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, KH
     real, pointer, dimension(:,:)   :: FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
     real, pointer, dimension(:,:,:) :: OMEGA
@@ -312,7 +312,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Local
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
-    real, allocatable, dimension(:,:,:) :: DZET,  T,   MASS
+    real, allocatable, dimension(:,:,:) :: DZET,  TH,  MASS
     real, allocatable, dimension(:,:,:) :: QDDF3, DQST3, QST3
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
@@ -395,7 +395,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Import State
     call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
@@ -428,7 +428,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
     ALLOCATE ( DZET (IM,JM,LM  ) )
-    ALLOCATE ( T    (IM,JM,LM  ) )
+    ALLOCATE ( TH   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( QDDF3(IM,JM,LM  ) )
     ALLOCATE ( DQST3(IM,JM,LM  ) )
@@ -450,7 +450,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
-    T        = TH*PK
+    TH       = T/PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
 
@@ -752,6 +752,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          LS_PRCP = LS_PRCP + SUM(TMP3D*MASS,3)/DT_MOIST
          Q  =  Q - TMP3D
          TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
+         T  = TH*PK
 
          ! cleanup any negative QV/QC/CF
          call FILLQ2ZERO(Q       , MASS, TMP2D)

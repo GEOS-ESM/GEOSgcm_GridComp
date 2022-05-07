@@ -50,6 +50,7 @@ module GEOS_MoistGridCompMod
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
+  real    :: HGT_SURFACE
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -351,8 +352,8 @@ contains
        VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'TH',                                        &
-         LONG_NAME  = 'potential_temperature',                     &
+         SHORT_NAME = 'T',                                         &
+         LONG_NAME  = 'temperature',                               &
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
@@ -493,8 +494,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                         &
          DATATYPE   = MAPL_StateItem,                               &
          RC=STATUS  )
-    VERIFY_(STATUS)      
-
+    VERIFY_(STATUS)
 
     !new imports required for Aer-Cloud Interactions
 
@@ -605,15 +605,6 @@ contains
          REFRESH_INTERVAL   = RFRSHINT,                                 &
          RC=STATUS  )
     VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'T',                                         &
-         LONG_NAME  = 'air_temperature',                           &
-         UNITS      = 'K',                                         &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                       &
-                                                        RC=STATUS  )
-   VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                    &
          SHORT_NAME = 'DTDTDYN',                                     &
@@ -3806,6 +3797,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='TMOIST',                                     &
+         LONG_NAME ='temperature_after_all_of_moist',   &
+         UNITS     ='K',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='TSURFACE',                                     &
+         LONG_NAME ='surface_temperature_after_all_of_moist',   &
+         UNITS     ='K',                                           &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME='SMOIST',                                      & 
          LONG_NAME ='dry_static_energy_after_all_of_moist',        &
          UNITS     ='m+2 s-2',                                     &
@@ -5118,6 +5125,7 @@ contains
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 0.125 , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, HGT_SURFACE,      'HGT_SURFACE:'     , DEFAULT= 50.0  , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
@@ -5188,7 +5196,7 @@ contains
     ! Local variables
     real                                :: Tmax
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
-    real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET,  T
+    real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3
     real, allocatable, dimension(:,:)   :: TMP2D
     type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
@@ -5196,7 +5204,7 @@ contains
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
-    real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, W
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
     real, pointer, dimension(:,:)   :: FRLAND, SH, EVAP, KPBL
     real, pointer, dimension(:,:,:) :: OMEGA
     type(ESMF_State)                :: AERO
@@ -5265,7 +5273,7 @@ contains
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
@@ -5287,7 +5295,6 @@ contains
        ALLOCATE ( DZET (IM,JM,LM  ) )
        ALLOCATE ( PLmb (IM,JM,LM  ) )
        ALLOCATE ( PK   (IM,JM,LM  ) )
-       ALLOCATE ( T    (IM,JM,LM  ) )
        ALLOCATE ( DQST3(IM,JM,LM  ) )
        ALLOCATE (  QST3(IM,JM,LM  ) )
        ALLOCATE ( MASS (IM,JM,LM  ) )
@@ -5307,7 +5314,6 @@ contains
        END DO
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
-       T        = TH*PK
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
 
@@ -5642,7 +5648,7 @@ contains
        if (LUPDATE_PRECIP_TYPE .OR. LDIAGNOSE_PRECIP_TYPE) then
           call MAPL_GetPointer(EXPORT, PTYPE, 'PTYPE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, &
-                                    PTYPE, PLE, TH, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
+                                    PTYPE, PLE, T, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
        endif 
      ! Get Kuchera snow:rain ratios
        do I = 1,IM
@@ -5650,7 +5656,7 @@ contains
               Tmax = 0.0
               do L =  LM, 1, -1
                  if (PLmb(I,J,L).gt.500.) then
-                    Tmax = MAX(Tmax,TH(I,J,L)*PK(I,J,L))
+                    Tmax = MAX(Tmax,T(I,J,L))
                  end if
               end do
               if (Tmax <= 271.16) then
@@ -5678,21 +5684,34 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = CLLS+CLCN
 
-       ! Temperature exports
-       call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = TH
-       call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MAPL_CP*TH*PK + MAPL_GRAV*ZL0
+       ! Fill temperature & RH exports
 
-       ! RH Export
+       call MAPL_GetPointer(EXPORT, PTR3D, 'TMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = T
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'TSURFACE', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then 
+         if ( HGT_SURFACE .gt. 0.0 ) then
+           call VertInterp(PTR2D,T,-ZLE0,-HGT_SURFACE, status)
+         else
+           PTR2D = T(:,:,LM)
+         endif
+       endif
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = T/PK
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = MAPL_CP*T + MAPL_GRAV*ZL0
+
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (TH*PK, PLmb) , 1.02 ),0.0)
+       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
        ! Aerosol activation exports
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/(TH*PK)) ! kg-1
+       if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/(T)) ! kg-1
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/(TH*PK)) ! kg-1
+       if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/(T)) ! kg-1
 
        ! Lightning Exports
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5705,7 +5724,7 @@ contains
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
        ! Allocatables
         ! Edge variables 
        ALLOCATE ( ZLE0 (IM,JM,0:LM) )
@@ -5714,7 +5733,6 @@ contains
        ALLOCATE ( ZL0  (IM,JM,LM  ) )
        ALLOCATE ( PLmb (IM,JM,LM  ) )
        ALLOCATE ( PK   (IM,JM,LM  ) )
-       ALLOCATE ( T    (IM,JM,LM  ) )
        ALLOCATE ( MASS (IM,JM,LM  ) )
        ALLOCATE ( TMP2D(IM,JM     ) )
        ! dervied states
@@ -5729,13 +5747,29 @@ contains
           ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
        END DO
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-       ! Make the TH & S export equal to the import for SYNCTQ
-       ! Temperature exports
+
+       ! Fill Temperature & RH exports
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'TMOIST', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = T
+
+       call MAPL_GetPointer(EXPORT, PTR2D, 'TSURFACE', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         if ( HGT_SURFACE .gt. 0.0 ) then
+           call VertInterp(PTR2D,T,-ZLE0,-HGT_SURFACE, status)
+         else
+           PTR2D = T(:,:,LM)
+         endif
+       endif
+ 
        call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = TH
+       if (associated(PTR3D)) PTR3D = T/PK
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MAPL_CP*TH*PK + MAPL_GRAV*ZL0
+       if (associated(PTR3D)) PTR3D = MAPL_CP*T + MAPL_GRAV*ZL0
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT(T, PLmb) , 1.02 ),0.0)
 
     endif
 

@@ -118,7 +118,7 @@ subroutine GF_Initialize (MAPL, RC)
     IF(USE_GF2020==1) THEN
        call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 7200., RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -221,9 +221,9 @@ subroutine GF_Initialize (MAPL, RC)
 
     call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 6.0       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.125     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .TRUE.    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 1.5       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.5       , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GF_Initialize
 
@@ -258,7 +258,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CNV_TR ! tracer memory
 
     ! Imports
-    real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, W, KH, OMEGA
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH, OMEGA
     real, pointer, dimension(:,:  ) :: FRLAND, AREA
     real, pointer, dimension(:,:,:) :: DQVDTDYN
     real, pointer, dimension(:,:,:) :: DTDTDYN
@@ -276,7 +276,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0
     real,    allocatable, dimension(:,:,:) :: PL, PK, ZL0
     real,    allocatable, dimension(:,:,:) :: MASS, fQi, QST3
-    real,    allocatable, dimension(:,:,:) :: T, KE
+    real,    allocatable, dimension(:,:,:) :: TH, KE
     integer, allocatable, dimension(:,:)   :: SEEDINI   
     real,    allocatable, dimension(:,:)   :: SEEDCNV 
     real,    allocatable, dimension(:,:,:) :: TMP3D
@@ -345,7 +345,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, AREA      ,'AREA'      ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TH        ,'TH'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, W         ,'W'         ,RC=STATUS); VERIFY_(STATUS)
@@ -381,7 +381,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PL   (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
-    ALLOCATE ( T    (IM,JM,LM  ) )
+    ALLOCATE ( TH   (IM,JM,LM  ) )
     ALLOCATE ( KE   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( fQi  (IM,JM,LM  ) )
@@ -400,7 +400,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-    T        = TH*PK
+    TH       = T/PK
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
     KE       = (V**2+U**2)
 
@@ -474,7 +474,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
        SEEDCNV = MAX(MIN(SEEDINI/1000000.0,1.0),0.0)
-       SEEDCNV = (CNV_FRC-0.01) * ((1.0-(1.0-SEEDCNV)**2)*(STOCH_TOP-STOCH_BOT)+STOCH_BOT)
+       SEEDCNV = (1.1*CNV_FRC - 0.1) * ((1.0-(1.0-SEEDCNV))*(STOCH_TOP-STOCH_BOT)+STOCH_BOT)
     else
        SEEDCNV = 1.0
     endif

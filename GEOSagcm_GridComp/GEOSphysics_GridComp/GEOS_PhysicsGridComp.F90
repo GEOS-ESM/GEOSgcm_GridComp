@@ -1050,6 +1050,13 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
+         DST_ID      = TURBL,                                      &
+         SRC_ID      = SURF,                                       &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! Radiation Imports
 !-------------------
 
@@ -1252,6 +1259,13 @@ contains
 ! Moist Imports
 !--------------
 
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'T'/),                                    &
+         DST_ID      = MOIST,                                      &
+         SRC_ID      = GWD,                                        &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddConnectivity ( GC,                                          &
          SHORT_NAME  = (/'KH           ', 'KPBL         ', 'KPBL_SC      ',     &
                          'TKE          ', 'TKESHOC      ', 'EDMF_FRC     ',     &
@@ -1274,13 +1288,6 @@ contains
          SHORT_NAME  = (/'SNOMAS   ','FRLAND   ','FROCEAN  ',      &
                          'FRLANDICE','FRACI    '/),                &
          DST_ID      = MOIST,                                      &
-         SRC_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
-         DST_ID      = TURBL,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
@@ -1421,20 +1428,6 @@ contains
           CHILD = MOIST,                   &
           RC=STATUS)
      VERIFY_(STATUS)
-
-!AMM terminate TH import to moist - will fill it here with value after gwd
-     if ( SYNCTQ.ge.1.) then
-       call MAPL_TerminateImport  ( GC,    &
-          SHORT_NAME = (/'T'/),            &
-          CHILD = MOIST,                   &
-          RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_TerminateImport  ( GC,    &
-          SHORT_NAME = (/'TH'/),           &
-          CHILD = MOIST,                   &
-          RC=STATUS)
-       VERIFY_(STATUS)
-     endif
 
 !AMM terminate T and TH import for chem - will fill it here with value after turb
      if ( SYNCTQ.eq.1.) then
@@ -2050,7 +2043,6 @@ contains
 
 
 !AMM
-   real, pointer, dimension(:,:,:)     :: TGWD, DTDTGWD, TFORMOIST, THFORMOIST
    real, pointer, dimension(:,:,:)     :: SAFTERMOIST, THAFMOIST
    real, pointer, dimension(:,:,:)     :: THFORCHEM, TFORCHEM, TFORRAD
    real, pointer, dimension(:,:)       :: UA, VA, TFORSURF
@@ -2401,18 +2393,13 @@ contains
 
     if ( SYNCTQ.ge.1. ) then
 
+!  WMP May-2022 - Beginning to remove SYNCTQ in favor of import/export connectivities
+
 !  AMM  1/24/14 - Code to sequentially update T after each child - get pointer to T in gwd export
 !                All control for this is here - children just have added exports to be used here
 
 ! Sequence here is to get all the needed pointers to import and export states of children
 
-!  get pointer to gwd export of updated T
-     call MAPL_GetPointer ( GEX(GWD),  TGWD,  'T',  alloc = .true.,  RC=STATUS);VERIFY_(STATUS)
-!  get pointer to gwd export of GWD DTDT - do this to force allocate it if we need it here
-     call MAPL_GetPointer ( GEX(GWD),  DTDTGWD,  'DTDT',  alloc = .true.,  RC=STATUS);VERIFY_(STATUS)
-!  get pointer to moist import TH (moist has an import T, but its never used in there) [T is now passed to GF]
-     call MAPL_GetPointer ( GIM(MOIST), TFORMOIST,   'T',  RC=STATUS)
-     call MAPL_GetPointer ( GIM(MOIST), THFORMOIST,  'TH', RC=STATUS)
 !  get pointer to moist export of updated TH and S after moist (S does not include PHIS yet)
      call MAPL_GetPointer ( GEX(MOIST), THAFMOIST,   'THMOIST', alloc = .true.,  RC=STATUS) 
      call MAPL_GetPointer ( GEX(MOIST), SAFTERMOIST, 'SMOIST',  alloc = .true.,  RC=STATUS) 
@@ -2463,13 +2450,6 @@ contains
 !----------------
 
     call Initialize_IncBundle_run(GIM(MOIST), EXPORT, MTRIinc, __RC__)
-
-!
-!  AMM - compute TH using T after GWD and write on moist import state TH
-    if ( SYNCTQ.ge.1. ) then
-      TFORMOIST = TGWD
-     THFORMOIST = TGWD / PK
-    endif
 
     I=MOIST
 

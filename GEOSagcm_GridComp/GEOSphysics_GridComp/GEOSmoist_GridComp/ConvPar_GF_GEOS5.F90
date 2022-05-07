@@ -2611,7 +2611,8 @@ ENDIF
              endif
              if(ierr(i) /= 0) cycle
             !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
-             sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1750.))
+            !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1750.))
+             sig(i)= 1.0-0.7500*exp(-0.25000*(dx(i)/6000.))
              if (stochastic_sig(i) /= 1.0) then
                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))
              endif

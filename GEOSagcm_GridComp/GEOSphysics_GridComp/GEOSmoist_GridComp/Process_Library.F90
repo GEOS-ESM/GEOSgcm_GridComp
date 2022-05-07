@@ -51,6 +51,8 @@ module GEOSmoist_Process_Library
   public :: hystpdf
   public :: FILLQ2ZERO
   public :: DIAGNOSE_PRECIP_TYPE
+  public :: VertInterp
+
   contains
 
   subroutine CNV_Tracers_Init(TR, RC)
@@ -1996,5 +1998,58 @@ module GEOSmoist_Process_Library
       endif UPDATE_PTYPE
 
   end subroutine DIAGNOSE_PRECIP_TYPE
+
+  subroutine VertInterp(v2,v3,ple,pp,rc)
+
+    real    , intent(OUT) :: v2(:,:)
+    real    , intent(IN ) :: v3(:,:,:)
+    real    , intent(IN ) :: ple(:,:,:)
+    real    , intent(IN ) :: pp
+    integer, optional, intent(OUT) :: rc
+
+    real, dimension(size(v2,1),size(v2,2)) :: al,PT,PB
+    integer k,km
+    logical edge
+
+    character*(10) :: Iam='VertInterp'
+
+    km   = size(ple,3)-1
+    edge = size(v3,3)==km+1
+
+    _ASSERT(edge .or. size(v3,3)==km,'needs informative message')
+
+    v2   = MAPL_UNDEF
+
+    if(EDGE) then
+       pb   = ple(:,:,km+1)
+       do k=km,1,-1
+          pt = ple(:,:,k)
+          if(all(pb<pp)) exit
+          where(pp>pt .and. pp<=pb)
+             al = (pb-pp)/(pb-pt)
+             v2 = v3(:,:,k)*al + v3(:,:,k+1)*(1.0-al)
+          end where
+          pb = pt
+       end do
+    else
+       pb = 0.5*(ple(:,:,km)+ple(:,:,km+1))
+       do k=km,2,-1
+          pt = 0.5*(ple(:,:,k-1)+ple(:,:,k))
+          if(all(pb<pp)) exit
+          where( (pp>pt.and.pp<=pb) )
+             al = (pb-pp)/(pb-pt)
+             v2 = v3(:,:,k-1)*al + v3(:,:,k)*(1.0-al)
+          end where
+          pb = pt
+       end do
+       pt = 0.5*(ple(:,:,km)+ple(:,:,km-1))
+       pb = 0.5*(ple(:,:,km)+ple(:,:,km+1))
+          where( (pp>pb.and.pp<=ple(:,:,km+1)) )
+             v2 = v3(:,:,km)
+          end where
+    end if
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine VertInterp
 
 end module GEOSmoist_Process_Library

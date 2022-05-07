@@ -305,7 +305,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
-    real, pointer, dimension(:,:,:) :: ZLE, PLE, TH, U, V, W, KH
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
     real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
     real, pointer, dimension(:,:,:) :: WTHV2
@@ -314,7 +314,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
-    real, allocatable, dimension(:,:,:) :: DQST3, QST3, T
+    real, allocatable, dimension(:,:,:) :: DQST3, QST3, TH
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
@@ -388,7 +388,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, AREA,    'AREA'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
@@ -422,7 +422,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( PK   (IM,JM,LM  ) )
     ALLOCATE ( DZET (IM,JM,LM  ) )
     ALLOCATE ( DZ   (IM,JM,LM  ) )
-    ALLOCATE ( T    (IM,JM,LM  ) )
+    ALLOCATE ( TH   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( iMASS(IM,JM,LM  ) )
@@ -456,7 +456,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
-    T        = TH*PK
+    TH       = T/PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
