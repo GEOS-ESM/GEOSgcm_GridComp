@@ -5648,7 +5648,7 @@ contains
        if (LUPDATE_PRECIP_TYPE .OR. LDIAGNOSE_PRECIP_TYPE) then
           call MAPL_GetPointer(EXPORT, PTYPE, 'PTYPE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, &
-                                    PTYPE, PLE, T, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
+                                    PTYPE, PLE, T/PK, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
        endif 
      ! Get Kuchera snow:rain ratios
        do I = 1,IM
