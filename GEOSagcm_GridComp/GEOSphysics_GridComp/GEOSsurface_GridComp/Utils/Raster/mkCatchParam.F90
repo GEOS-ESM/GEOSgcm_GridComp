@@ -281,19 +281,6 @@ integer :: n_threads=1
           endif
           write (log_file,'(a)')' '
 
-          tmpstring = 'Step 05: Vegetation types using ESA land cover (CatchCNCLM45)'
-          fname_tmp = 'clsm/CLM4.5_veg_typs_fracs'
-          write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
-          inquire(file=trim(fname_tmp), exist=file_exists) 
-          if (.not.file_exists) then
-             write (log_file,'(a)')'         Creating file...'
-             call ESA2CLM_45 (nc,nr,gridnamer)           
-             write (log_file,'(a)')'         Done.'           
-          else
-             write (log_file,'(a)')'         Using existing file.'
-          endif
-          write (log_file,'(a)')' '
-
        else
 
           tmpstring = 'Step 03: Vegetation types using IGBP SiB2 land cover (MOSAIC/Catch)'

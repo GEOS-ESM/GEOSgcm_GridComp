@@ -1043,8 +1043,8 @@ _EOV1_
 if( $MYMASK == GEOS5_10arcsec_mask | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) then
 cat << _EOV2_ > clsm/veg2
 
-       3.2.3 CLM/CLM4.5, CLM/CLM4.5-carbon, CLM4.5 and CLM4.5-carbon vegetation types and fractions 
-	 file names: CLM_veg_typs_fracs and  CLM4.5_veg_typs_fracs
+       3.2.3 CLM vegetation types and fractions 
+	 file names: CLM_veg_typs_fracs 
 	 do n = 1, ${NTILES} 
 	 read ([UNIT],'(2I10,4I3,4f7.2,2I3,2f7.2)')         &
               tile_index, pfaf_code,                        &
@@ -1075,11 +1075,11 @@ cat << _EOV2_ > clsm/veg2
 	 (13)CLM_pf [-]         CLM fraction of primary type
 	 (14)CLM_sf [-]         CLM fraction of secondary type
 
-	Please see below Table 2 for CLM (CLM4.5)  and CLM-Carbon (CLM4.5-Carbon) land cover classification
+	Please see below Table 2 for CLM  and CLM-Carbon land cover classification
 		
 	===================================================================================       
-	Land Cover                                         CLM (CLM4.5)	CLM-Carbon  Map
-								     (CLM4.5-Carbon)    
+	Land Cover                                         CLM CLM-Carbon  Map
+								         
 								Class	Class       Legend
 
 	-----------------------------------------------------------------------------------
@@ -1103,20 +1103,9 @@ cat << _EOV2_ > clsm/veg2
 	Warm c4 grass [moisture stress only]   			  -	    17      WC4Gm
 	Crop                                 			 16 	    18      CROP (-) 
 	Crop [moisture stress only]          			  -	    19      CROPm(-)
-        (C3_crop)                                               (16)       (18)     C3CROP                                 
-	(C3_irrigated)                                          (17)       (19)     C3IRR
-	(Corn)                                                  (18)       (20)     CORN
-	(Irrigated corn)                                        (19)       (21)     ICORN     
-	(Spring temperate cereal)                               (20)       (22)     STCER
-	(Irrigated spring temperate cereal)                     (21)       (23)     ISTCER
-	(winter temperate cereal)                               (22)       (24)     WTCER
-        (Irrigated winter temperate cereal)                     (23)       (25)     IWTCER
-	(Soybean)                                               (24)       (26)     SOYB
-	(Irrigated Soybean)                                     (25)       (27)     ISOYB
 	Water                                                    17          -
         -----------------------------------------------------------------------------------
 	         Table 2: CLM and CLM-Carbon land cover classification description.  
-                          CLM-4.5 and CLM-4.5-Carbon types are in brackets.
 
        3.2.4 Nitrogen Deposition, annual mean 2m Tair, soil back gorund albedo
 	 file name: CLM_Ndep_SoilAlb
