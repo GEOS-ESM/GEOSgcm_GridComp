@@ -819,7 +819,6 @@ cd ../
                     AlbMap* \
 		    plots \
                     CLM_veg_typs_fracs \
-                    CLM4.5_veg_typs_fracs \
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
                     CLM4.5_abm_peatf_gdp_hdm_fc \
@@ -1059,7 +1058,6 @@ cd ../
                     AlbMap* \
 		    plots \
                     CLM_veg_typs_fracs \
-                    CLM4.5_veg_typs_fracs \
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
                     CLM4.5_abm_peatf_gdp_hdm_fc \
@@ -1224,7 +1222,6 @@ cd ../
                     AlbMap* \
 		    plots \
                     CLM_veg_typs_fracs \
-                    CLM4.5_veg_typs_fracs \
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
                     CLM4.5_abm_peatf_gdp_hdm_fc \
@@ -1391,7 +1388,6 @@ cd ../
 			 pfaf_fractions.dat \
 			 plots \
                          CLM_veg_typs_fracs \
-                         CLM4.5_veg_typs_fracs \
                          mkCatchParam.log \
                          Grid2Catch_TransferData.nc \
                          CLM_NDep_SoilAlb_T2m \
