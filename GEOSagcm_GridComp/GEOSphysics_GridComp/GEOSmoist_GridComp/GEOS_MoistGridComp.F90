@@ -2080,15 +2080,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'RAIN_LS',                                         &
-         LONG_NAME = 'rainfall_large_scale',                                    &
+         SHORT_NAME = 'RAIN_STRAT',                                       &
+         LONG_NAME = 'rainfall_stratiform',                                    &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'RAIN_CU',                                         &
+         SHORT_NAME = 'RAIN_CONV',                                         &
          LONG_NAME = 'rainfall_convective',                                    &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
@@ -5213,7 +5213,7 @@ contains
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT 
     real, pointer, dimension(:,:,:) :: DTHDT, DUDT,  DVDT,  DWDT
     real, pointer, dimension(:,:,:) :: DPDTMST, PFL_LSAN, PFI_LSAN
-    real, pointer, dimension(:,:  ) :: PTYPE, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, RAIN_LS, RAIN_CU
+    real, pointer, dimension(:,:  ) :: PTYPE, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, RAIN_STRAT, RAIN_CONV
     real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:  ) :: CAPE, INHB
     real, pointer, dimension(:,:  ) :: CNV_FRC
@@ -5586,28 +5586,6 @@ contains
           PLS = MAX(PLS, 0.0)
        endif
 
-       call MAPL_GetPointer(EXPORT, RAIN_LS, 'RAIN_LS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(RAIN_LS)) then
-          RAIN_LS = 0.0
-          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) RAIN_LS = RAIN_LS + PTR2D
-          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) RAIN_LS = RAIN_LS + PTR2D
-          RAIN_LS = MAX(RAIN_LS, 0.0)
-       endif
-
-       call MAPL_GetPointer(EXPORT, RAIN_CU, 'RAIN_CU', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(RAIN_CU)) then
-          RAIN_CU = 0.0
-          call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) RAIN_CU = RAIN_CU + PTR2D
-          call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) RAIN_CU = RAIN_CU + PTR2D
-          call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) RAIN_CU = RAIN_CU + PTR2D
-          RAIN_CU = MAX(RAIN_CU, 0.0)
-       endif
-
        call MAPL_GetPointer(EXPORT, RAIN, 'RAIN', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(RAIN)) then
           RAIN = 0.0
@@ -5622,6 +5600,36 @@ contains
           call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) RAIN = RAIN + PTR2D
           RAIN = MAX(RAIN, 0.0)
+       endif
+
+       call MAPL_GetPointer(EXPORT, RAIN_STRAT, 'RAIN_STRAT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(RAIN_STRAT)) then
+          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
+             RAIN_STRAT = (1.0-CNV_FRC)*RAIN
+          else
+             RAIN_STRAT = 0.0
+             call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+             if (associated(PTR2D)) RAIN_STRAT = RAIN_STRAT + PTR2D
+             call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+             if (associated(PTR2D)) RAIN_STRAT = RAIN_STRAT + PTR2D
+             RAIN_STRAT = MAX(RAIN_STRAT, 0.0)
+          endif
+       endif
+
+       call MAPL_GetPointer(EXPORT, RAIN_CONV, 'RAIN_CONV', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(RAIN_CONV)) then
+          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
+             RAIN_CONV = CNV_FRC*RAIN
+          else
+             RAIN_CONV = 0.0
+             call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+             if (associated(PTR2D)) RAIN_CONV = RAIN_CONV + PTR2D
+             call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+             if (associated(PTR2D)) RAIN_CONV = RAIN_CONV + PTR2D
+             call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
+             if (associated(PTR2D)) RAIN_CONV = RAIN_CONV + PTR2D
+             RAIN_CONV = MAX(RAIN_CONV, 0.0)
+          endif
        endif
 
        call MAPL_GetPointer(EXPORT, SNOW, 'SNO', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5647,7 +5655,7 @@ contains
      ! Diagnostic precip types: 
        if (LUPDATE_PRECIP_TYPE .OR. LDIAGNOSE_PRECIP_TYPE) then
           call MAPL_GetPointer(EXPORT, PTYPE, 'PTYPE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-          call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, &
+          call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_STRAT, RAIN_CONV, RAIN, SNOW, ICE, FRZR, &
                                     PTYPE, PLE, T/PK, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
        endif 
      ! Get Kuchera snow:rain ratios
