@@ -1122,7 +1122,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
-        SRC_NAME    = 'RAIN_CU',                                   &
+        SRC_NAME    = 'RAIN_CONV',                                 &
         DST_NAME    = 'PCU',                                       &
         DST_ID      = SURF,                                        &
         SRC_ID      = MOIST,                                       &
@@ -1130,7 +1130,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
-        SRC_NAME    = 'RAIN_LS',                                   &
+        SRC_NAME    = 'RAIN_STRAT',                                &
         DST_NAME    = 'PLS',                                       &
         DST_ID      = SURF,                                        &
         SRC_ID      = MOIST,                                       &
@@ -2462,6 +2462,7 @@ contains
 
 ! Surface Stage 1
 !----------------
+  ! WMP - my assesment is that SURF, CHEM & TURBL need T imports just for Run1 from moist so those can be handled with connections
 
 !  AMM - Update TA for surf using TH after MOIST
     if ( SYNCTQ.ge.1. ) then
