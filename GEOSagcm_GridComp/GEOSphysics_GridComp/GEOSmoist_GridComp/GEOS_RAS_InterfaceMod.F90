@@ -55,94 +55,6 @@ subroutine RAS_Setup (GC, CF, RC)
 
     ! !IMPORT STATE:
 
-!    call MAPL_AddImportSpec(GC,                             &
-!         SHORT_NAME = 'TH',                                        &
-!         LONG_NAME  = 'potential_temperature',                     &
-!         UNITS      = 'K',                                         &
-!         DIMS       = MAPL_DimsHorzVert,                           &
-!         VLOCATION  = MAPL_VLocationCenter,                        &
-!         AVERAGING_INTERVAL = AVRGNINT,                            &
-!         REFRESH_INTERVAL   = RFRSHINT,                            &
-!         _RC  )
-!    _VERIFY(STATUS)
-!
-!    call MAPL_AddImportSpec(GC,                              &
-!         SHORT_NAME = 'PREF',                                       &
-!         LONG_NAME  = 'reference_air_pressure',                     &
-!         UNITS      = 'Pa',                                         &
-!         DIMS       = MAPL_DimsVertOnly,                            &
-!         VLOCATION  = MAPL_VLocationEdge,                           &
-!         AVERAGING_INTERVAL = AVRGNINT,                             &
-!         REFRESH_INTERVAL   = RFRSHINT,                             &
-!         _RC  )
-!    _VERIFY(STATUS)
-!
-!    call MAPL_AddImportSpec(GC,                              &
-!         SHORT_NAME = 'PLE',                                         &
-!         LONG_NAME  = 'air_pressure',                                &
-!         UNITS      = 'Pa',                                          &
-!         DIMS       = MAPL_DimsHorzVert,                            &
-!         VLOCATION  = MAPL_VLocationEdge,                           &
-!         AVERAGING_INTERVAL = AVRGNINT,                             &
-!         REFRESH_INTERVAL   = RFRSHINT,                             &
-!         _RC  )
-!    _VERIFY(STATUS)                                                                          
-!
-!    call MAPL_AddImportSpec(GC,                                    &
-!         SHORT_NAME = 'ZLE',                                       &
-!         LONG_NAME  = 'geopotential_height',                       &
-!         UNITS      = 'm',                                         &
-!         DIMS       =  MAPL_DimsHorzVert,                          &
-!         VLOCATION  =  MAPL_VLocationEdge,                         &
-!         AVERAGING_INTERVAL = AVRGNINT,                             &
-!         REFRESH_INTERVAL   = RFRSHINT,                             &
-!                                                        _RC  )
-!    _VERIFY(STATUS)
-!
-!    call MAPL_AddImportSpec(GC,                              &
-!         SHORT_NAME = 'KH',                                         &
-!         LONG_NAME  = 'scalar_diffusivity',                         &
-!         UNITS      = 'm+2 s-1',                                    &
-!         DIMS       = MAPL_DimsHorzVert,                            &
-!         VLOCATION  = MAPL_VLocationEdge,                           &
-!         AVERAGING_INTERVAL = AVRGNINT,                             &
-!         REFRESH_INTERVAL   = RFRSHINT,                             &
-!         _RC  )
-!    _VERIFY(STATUS)
-!
-!    call MAPL_AddImportSpec(GC,                             &
-!         SHORT_NAME = 'TS',                                        &
-!         LONG_NAME  = 'surface temperature',                       &
-!         UNITS      = 'K',                                         &
-!         DIMS       = MAPL_DimsHorzOnly,                           &
-!         VLOCATION  = MAPL_VLocationNone,                          &
-!         AVERAGING_INTERVAL = AVRGNINT,                            &
-!         REFRESH_INTERVAL   = RFRSHINT,                            &
-!         _RC  )
-!    _VERIFY(STATUS)
-!
-!    call MAPL_AddImportSpec(GC,                             &
-!         SHORT_NAME = 'V',                                         &
-!         LONG_NAME  = 'northward_wind',                            &
-!         UNITS      = 'm s-1',                                     &
-!         DIMS       = MAPL_DimsHorzVert,                           &
-!         VLOCATION  = MAPL_VLocationCenter,                        &
-!         AVERAGING_INTERVAL = AVRGNINT,                            &
-!         REFRESH_INTERVAL   = RFRSHINT,                            &
-!         _RC  )
-!    _VERIFY(STATUS)
-!
-!    call MAPL_AddImportSpec(GC,                             &
-!         SHORT_NAME = 'U',                                         &
-!         LONG_NAME  = 'eastward_wind',                             &
-!         UNITS      = 'm s-1',                                     &
-!         DIMS       = MAPL_DimsHorzVert,                           &
-!         VLOCATION  = MAPL_VLocationCenter,                        &
-!         AVERAGING_INTERVAL = AVRGNINT,                            &
-!         REFRESH_INTERVAL   = RFRSHINT,                            &
-!         _RC  )
-!    _VERIFY(STATUS)
-
     ! INTERNAL STATE:
 
     call MAPL_AddInternalSpec(GC,                                  &
@@ -155,274 +67,8 @@ subroutine RAS_Setup (GC, CF, RC)
          RESTART = MAPL_RestartSkip,                               &
          DEFAULT    = 0.0,   _RC)  
 
-!    call MAPL_AddInternalSpec(GC,                                       &
-!         SHORT_NAME = 'QLCN',                                           &
-!         LONG_NAME  = 'mass_fraction_of_convective_cloud_liquid_water', &
-!         UNITS      = 'kg kg-1',                                        &
-!         FRIENDLYTO = 'DYNAMICS:TURBULENCE',                            &
-!         DIMS       = MAPL_DimsHorzVert,                                &
-!         VLOCATION  = MAPL_VLocationCenter,                  _RC  )  
-!    _VERIFY(STATUS)                                                                          
-!
-!    call MAPL_AddInternalSpec(GC,                                    &
-!         SHORT_NAME = 'QICN',                                        &
-!         LONG_NAME  = 'mass_fraction_of_convective_cloud_ice_water', &
-!         UNITS      = 'kg kg-1',                                     &
-!         FRIENDLYTO = 'DYNAMICS:TURBULENCE',                         &
-!         DIMS       = MAPL_DimsHorzVert,                             &
-!         VLOCATION  = MAPL_VLocationCenter,               _RC  )  
-!    _VERIFY(STATUS)                                                                          
-!
-!    call MAPL_AddInternalSpec(GC,                                  &
-!         SHORT_NAME = 'CLCN',                                      &
-!         LONG_NAME  = 'convective_cloud_area_fraction',            &
-!         UNITS      = '1',                                         &
-!         FRIENDLYTO = 'DYNAMICS',                                  &
-!         DIMS       = MAPL_DimsHorzVert,                           &
-!         VLOCATION  = MAPL_VLocationCenter,             _RC  )  
-!    _VERIFY(STATUS)                                                                          
-
     ! EXPORT STATE:
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME= 'CNV_DQCDT ',                                  &
-!         LONG_NAME = 'convective_condensate_source',                &
-!         UNITS     = 'kg m-2 s-1',                                  &
-!         DIMS      = MAPL_DimsHorzVert,                            &
-!         VLOCATION = MAPL_VLocationCenter,                         &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME= 'CNV_MF0',                                     &
-!         LONG_NAME = 'cloud_base_mass_flux',                        &
-!         UNITS     = 'kg m-2 s-1',                                  &
-!         DIMS      = MAPL_DimsHorzVert,                            &
-!         VLOCATION = MAPL_VLocationCenter,                         &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               & 
-!         SHORT_NAME = 'CNV_MFD',                                     & 
-!         LONG_NAME = 'detraining_mass_flux',                        &
-!         UNITS     = 'kg m-2 s-1',                                  &    
-!         DIMS      = MAPL_DimsHorzVert,                            &  
-!         VLOCATION = MAPL_VLocationCenter,                         &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &                  
-!         SHORT_NAME = 'CNV_MFC',                                     & 
-!         LONG_NAME = 'cumulative_mass_flux',                        &
-!         UNITS     = 'kg m-2 s-1',                                  &
-!         DIMS      = MAPL_DimsHorzVert,                            &
-!         VLOCATION = MAPL_VLocationEdge,                           &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                                    &
-!         SHORT_NAME= 'CNV_PRC3 ',                                   &
-!         LONG_NAME = 'convective_precipitation_from_RAS',           &
-!         UNITS     = 'kg m-2 s-1',                                  &
-!         DIMS      = MAPL_DimsHorzVert,                            &
-!         VLOCATION = MAPL_VLocationCenter,                         &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME = 'CNV_UPDF',                                    &
-!         LONG_NAME = 'updraft_areal_fraction',                      &
-!         UNITS     = '1',                                           &
-!         DIMS      = MAPL_DimsHorzVert,                            &
-!         VLOCATION = MAPL_VLocationCenter,                         &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME = 'CNV_CVW',                                     &
-!         LONG_NAME = 'updraft_vertical_velocity',                   &
-!         UNITS     = 'hPa s-1',                                     &
-!         DIMS      = MAPL_DimsHorzVert,                            &
-!         VLOCATION = MAPL_VLocationCenter,                         &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME ='CNV_QC',                                      &
-!         LONG_NAME ='grid_mean_convective_condensate',             &
-!         UNITS     ='kg kg-1',                                     &
-!         DIMS      = MAPL_DimsHorzVert,                            &
-!         VLOCATION = MAPL_VLocationCenter,                         &
-!         _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME='ENTLAM',                                      &
-!         LONG_NAME ='entrainment parameter',                       &
-!         UNITS     ='m-1',                                  &
-!         DIMS       = MAPL_DimsHorzVert,                           &
-!         VLOCATION  = MAPL_VLocationCenter,             _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME='RAS_TIME',                                     & 
-!         LONG_NAME ='timescale_for_RAS_plumes',               &
-!         UNITS     ='s'  ,                                         &
-!         DIMS      = MAPL_DimsHorzOnly,                            & 
-!         VLOCATION = MAPL_VLocationNone,                _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME='RAS_TRG',                                     &
-!         LONG_NAME ='rh_trigger_for_RAS_plumes',               &
-!         UNITS     =''  ,                                         &
-!         DIMS      = MAPL_DimsHorzOnly,                            &
-!         VLOCATION = MAPL_VLocationNone,                _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME='RAS_TOKI',                                     &
-!         LONG_NAME ='tokioka_factor_for_RAS_plumes',               &
-!         UNITS     =''  ,                                         &
-!         DIMS      = MAPL_DimsHorzOnly,                            &
-!         VLOCATION = MAPL_VLocationNone,                _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME='RAS_PBL',                                     &
-!         LONG_NAME ='pbl_fraction_for_RAS_plumes',               &
-!         UNITS     =''  ,                                         &
-!         DIMS      = MAPL_DimsHorzOnly,                            &
-!         VLOCATION = MAPL_VLocationNone,                _RC  )
-!!    _VERIFY(STATUS)
-!
-!    call MAPL_AddExportSpec(GC,                               &
-!         SHORT_NAME='RAS_WFN',                                     &
-!         LONG_NAME ='RAS_work_function_before_scaling',               &
-!         UNITS     =''  ,                                         &
-!         DIMS      = MAPL_DimsHorzOnly,                            &
-!         VLOCATION = MAPL_VLocationNone,                _RC  )
-!!    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                          &
-!            SHORT_NAME='RAS_ALPHA',                                          & 
-!            LONG_NAME ='RAS relaxation parameter', &
-!            UNITS     ='1',                                             &
-!            DIMS      = MAPL_DimsHorzVert,                                  &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                        &
-!            SHORT_NAME='RAS_TAU',                                          & 
-!            LONG_NAME ='RAS total relaxation timescale',                   &
-!            UNITS     ='1',                                                &
-!            DIMS      = MAPL_DimsHorzVert,                                 &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                          &
-!            SHORT_NAME='CNV_FICE',                                          & 
-!            LONG_NAME ='Ice fraction in convective tower', &
-!            UNITS     ='1',                                             &
-!            DIMS      = MAPL_DimsHorzVert,                                  &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                          &
-!            SHORT_NAME='CNV_NDROP',                                          & 
-!            LONG_NAME ='Droplet number conc. in conv. detrainment', &
-!            UNITS     ='m-3',                                             &
-!            DIMS      = MAPL_DimsHorzVert,                                  &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                          &
-!            SHORT_NAME='CNV_NICE',                                          & 
-!            LONG_NAME ='Ice crystal number conc. in conv. detrainment', &
-!            UNITS     ='m-3',                                             &
-!            DIMS      = MAPL_DimsHorzVert,                                  &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                               &
-!            SHORT_NAME='BYNCY',                                       & 
-!            LONG_NAME ='buoyancy_of surface_parcel',                  &
-!            UNITS     ='m s-2',                                       &
-!            DIMS      = MAPL_DimsHorzVert,                            & 
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                    &
-!            SHORT_NAME='THOI',                                        & 
-!            LONG_NAME ='potential_temperature_before_ras',            &
-!            UNITS     ='K',                                           &
-!            DIMS      = MAPL_DimsHorzVert,                            &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                    &
-!            SHORT_NAME='QHOI',                                        & 
-!            LONG_NAME ='specific_humidity_before_ras',                &
-!            UNITS     ='kg kg-1',                                     &
-!            DIMS      = MAPL_DimsHorzVert,                            &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                    &
-!            SHORT_NAME='QSSI',                                        & 
-!            LONG_NAME ='saturation_specific_humidity_before_ras',     &
-!            UNITS     ='kg kg-1',                                     &
-!            DIMS      = MAPL_DimsHorzVert,                            &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                    &
-!            SHORT_NAME='DQSI',                                        & 
-!            LONG_NAME ='deriv_sat_specific_humidity_wrt_t_before_ras',&
-!            UNITS     ='kg kg-1 K-1',                                 &
-!            DIMS      = MAPL_DimsHorzVert,                            &
-!            VLOCATION = MAPL_VLocationCenter,              _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                    &
-!            SHORT_NAME='PLEI',                                        & 
-!            LONG_NAME ='air_pressure_before_ras',                     &
-!            UNITS     ='Pa',                                          &
-!            DIMS      = MAPL_DimsHorzVert,                            &
-!            VLOCATION = MAPL_VLocationEdge,                _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                    &
-!            SHORT_NAME='TPERTI',                                      & 
-!            LONG_NAME ='temperature_perturbation_before_ras',         &
-!            UNITS     ='K',                                           &
-!            DIMS      = MAPL_DimsHorzOnly,                            &
-!            VLOCATION = MAPL_VLocationNone,                _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                                    &
-!            SHORT_NAME='KCBLI',                                       & 
-!            LONG_NAME ='cloud_base_layer_before_ras',                 &
-!            UNITS     ='1',                                           &
-!            DIMS      = MAPL_DimsHorzOnly,                            &
-!            VLOCATION = MAPL_VLocationNone,                _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                               &
-!            SHORT_NAME='ZLCL',                                        & 
-!            LONG_NAME ='lifting_condensation_level',                  &
-!            UNITS     ='m'  ,                                         &
-!            DIMS      = MAPL_DimsHorzOnly,                            & 
-!            VLOCATION = MAPL_VLocationNone,                _RC  )
-!   !    _VERIFY(STATUS)
-!   
-!       call MAPL_AddExportSpec(GC,                               &
-!            SHORT_NAME='ZLFC',                                        & 
-!            LONG_NAME ='level_of_free_convection',                    &
-!            UNITS     ='m'  ,                                         &
-!            DIMS      = MAPL_DimsHorzOnly,                            & 
-!            VLOCATION = MAPL_VLocationNone,                _RC  )
-!   !    _VERIFY(STATUS)
-!
+
 end subroutine RAS_Setup
 
 subroutine RAS_Initialize (MAPL, RC)
@@ -484,87 +130,87 @@ subroutine RAS_Initialize (MAPL, RC)
 end subroutine RAS_Initialize
 
 subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
-    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional,   intent(  out) :: RC     ! Error code:
+    type(ESMF_GridComp), intent(inout)      :: GC     ! Gridded component 
+    type(ESMF_State),    intent(inout)      :: IMPORT ! Import state
+    type(ESMF_State),    intent(inout)      :: EXPORT ! Export state
+    type(ESMF_Clock),    intent(inout)      :: CLOCK  ! The clock
+    integer, optional,   intent(  out)      :: RC     ! Error code:
 
     ! Local derived type aliases
 
-    type (MAPL_MetaComp), pointer   :: MAPL
-    type (ESMF_Config  )            :: CF
-    type (ESMF_State   )            :: INTERNAL
-    type (ESMF_Alarm   )            :: ALARM
-    type (ESMF_TimeInterval)        :: TINT
-    real(ESMF_KIND_R8)              :: DT_R8
+    type (MAPL_MetaComp), pointer           :: MAPL
+    type (ESMF_Config  )                    :: CF
+    type (ESMF_State   )                    :: INTERNAL
+    type (ESMF_Alarm   )                    :: ALARM
+    type (ESMF_TimeInterval)                :: TINT
+    real(ESMF_KIND_R8)                      :: DT_R8
   
     ! Local variables
 
-    integer                         :: IM, JM, LM, L, I, J, kii
-    integer                         :: IDIM, IRUN, K0, ICMIN
-    integer                         :: ITRCR,KSTRAP,CBL_METHOD,KCBLMIN,CLEANUP_RH
-    real                            :: PMIN_DET
-    real                            :: PMIN_CBL
-    real                            :: DT_MOIST
-    real                            :: CBL_TPERT, CBL_QPERT
-    real                            :: CBL_TPERT_MXOCN,CBL_TPERT_MXLND
-    real                            :: AUTOC_CN_OCN, AUTOC_CN_LAND
-    real                            :: FDROP_DUST
+    integer                                 :: IM, JM, LM, L, I, J, kii
+    integer                                 :: IDIM, IRUN, K0, ICMIN
+    integer                                 :: ITRCR,KSTRAP,CBL_METHOD,KCBLMIN,CLEANUP_RH
+    real                                    :: PMIN_DET
+    real                                    :: PMIN_CBL
+    real                                    :: DT_MOIST
+    real                                    :: CBL_TPERT, CBL_QPERT
+    real                                    :: CBL_TPERT_MXOCN,CBL_TPERT_MXLND
+    real                                    :: AUTOC_CN_OCN, AUTOC_CN_LAND
+    real                                    :: FDROP_DUST
 
     !Whether to guard against negatives
-    logical                         :: RAS_NO_NEG
+    logical                                 :: RAS_NO_NEG
 
     ! pointers
-    real, pointer, dimension(:)     :: PREF
-    real, pointer, dimension(:    ) :: FSCAV      ! container for friendly to moist tracers
-    real, pointer, dimension(:,:)     :: LONS
-    real, pointer, dimension(:,:)     :: LATS
-    real, pointer, dimension(:,:)     :: TS,SNOMAS,FRLAND
-    real, pointer, dimension(:,:)     :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
-    real, pointer, dimension(:,:)     :: ZLCL, ZLFC
-    real, pointer, dimension(:,:)     :: TPERTI,KCBLI
-    real, pointer, dimension(:,:)     :: TVEX 
-    real, pointer, dimension(:,:)     :: MXDIAM
-    real, pointer, dimension(:,:,:)   :: TH, PLE
-    real, pointer, dimension(:,:,:)   :: Q, QLCN, CLCN, BYNCY, QICN
-    real, pointer, dimension(:,:,:)   :: CNV_DQCDT, CNV_MF0, CNV_MFD , CNV_MFC
-    real, pointer, dimension(:,:,:)   :: CNV_UPDF, CNV_CVW, CNV_QC
-    real, pointer, dimension(:,:,:)   :: ENTLAM
-    real, pointer, dimension(:,:,:)   :: RAS_ALPHA, RAS_TAU
-    real, pointer, dimension(:,:,:)   :: CNV_FICE, CNV_NDROP, CNV_NICE
-    real, pointer, dimension(:,:,:)   :: KH
-    real, pointer, dimension(:,:,:)   :: ZL0, V, U
-    real, pointer, dimension(:,:,:)   :: THOI,QHOI,QSSI,DQSI
-    real, pointer, dimension(:,:,:)   :: PLEI
-    real, pointer, dimension(:,:,:)   :: THRAS,URAS,VRAS
-    real, pointer, dimension(:,:)     ::  TRIEDLV
-    real, pointer, dimension(:,:,:)   :: RCCODE,QVRAS
-    real, pointer, dimension(:,:,:) :: CNV_TR
+    real, pointer, dimension(:)             :: PREF
+    real, pointer, dimension(:)             :: FSCAV      ! container for friendly to moist tracers
+    real, pointer, dimension(:,:)           :: LONS
+    real, pointer, dimension(:,:)           :: LATS
+    real, pointer, dimension(:,:)           :: TS,FRLAND
+    real, pointer, dimension(:,:)           :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
+    real, pointer, dimension(:,:)           :: ZLCL, ZLFC
+    real, pointer, dimension(:,:)           :: TPERTI,KCBLI
+    real, pointer, dimension(:,:)           :: TVEX 
+    real, pointer, dimension(:,:)           :: MXDIAM
+    real, pointer, dimension(:,:)           ::  TRIEDLV
+    real, pointer, dimension(:,:,:)         :: TH, PLE
+    real, pointer, dimension(:,:,:)         :: Q, QLCN, CLCN, BYNCY, QICN
+    real, pointer, dimension(:,:,:)         :: CNV_DQCDT, CNV_MF0, CNV_MFD , CNV_MFC
+    real, pointer, dimension(:,:,:)         :: CNV_UPDF, CNV_CVW, CNV_QC
+    real, pointer, dimension(:,:,:)         :: ENTLAM
+    real, pointer, dimension(:,:,:)         :: RAS_ALPHA, RAS_TAU
+    real, pointer, dimension(:,:,:)         :: CNV_FICE, CNV_NDROP, CNV_NICE
+    real, pointer, dimension(:,:,:)         :: KH
+    real, pointer, dimension(:,:,:)         :: ZL0, V, U
+    real, pointer, dimension(:,:,:)         :: THOI,QHOI,QSSI,DQSI
+    real, pointer, dimension(:,:,:)         :: PLEI
+    real, pointer, dimension(:,:,:)         :: THRAS,URAS,VRAS
+    real, pointer, dimension(:,:,:)         :: RCCODE,QVRAS
+    real, pointer, dimension(:,:,:)         :: CNV_TR
 
     ! allocatable arrays
-    real, allocatable, dimension(:)     :: SIGE
-    real, allocatable, dimension(:,:)   :: RASPRCP
-    real, allocatable, dimension(:,:)   :: ZCBLx, MXDIAMx
-    real, allocatable, dimension(:,:)   :: TPERT, QPERT, RASAL2_2d
-    real, allocatable, dimension(:,:)   :: CNV_FRACTION
-    real, allocatable, dimension(:,:)   :: CO_AUTO
-    real, allocatable, dimension(:,:)   :: QSSFC
-    real, allocatable, dimension(:,:,:) :: DQS, QSS, PLO, ZLO, TEMP, PK
-    real, allocatable, dimension(:,:,:) :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
-    real, allocatable, dimension(:,:,:) :: WGT0, WGT1
-    real, allocatable, dimension(:,:,:) :: GZLO, HHO,HSO
-    real, allocatable, dimension(:,:,:) :: GZLE
-    real, allocatable, dimension(:,:,:) :: PKE
-    real, allocatable, dimension(:,:,:) :: CNV_PLE,ZLE
-    real, allocatable, dimension(:,:)   :: KEX
-    real, allocatable, dimension(:,:,:) :: MASS
-    real, allocatable, dimension(:,:) :: TRDLX
+    real, allocatable, dimension(:)         :: SIGE
+    real, allocatable, dimension(:,:)       :: RASPRCP
+    real, allocatable, dimension(:,:)       :: ZCBLx, MXDIAMx
+    real, allocatable, dimension(:,:)       :: TPERT, QPERT, RASAL2_2d
+    real, allocatable, dimension(:,:)       :: CNV_FRACTION
+    real, allocatable, dimension(:,:)       :: CO_AUTO
+    real, allocatable, dimension(:,:)       :: QSSFC
+    real, allocatable, dimension(:,:)       :: TRDLX
+    real, allocatable, dimension(:,:,:)     :: DQS, QSS, PLO, ZLO, TEMP, PK
+    real, allocatable, dimension(:,:,:)     :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
+    real, allocatable, dimension(:,:,:)     :: WGT0, WGT1
+    real, allocatable, dimension(:,:,:)     :: GZLO, HHO,HSO
+    real, allocatable, dimension(:,:,:)     :: GZLE
+    real, allocatable, dimension(:,:,:)     :: PKE
+    real, allocatable, dimension(:,:,:)     :: CNV_PLE,ZLE
+    real, allocatable, dimension(:,:,:)     :: KEX
+    real, allocatable, dimension(:,:,:)     :: MASS
 
-    integer, allocatable, dimension(:,:) :: IRAS, JRAS, KCBL ! Need IM and JM to initialize
-    integer, allocatable, dimension(:,:) :: KLCL, KLFC, KPBL, KPBL_SC
-    integer, allocatable, dimension(:,:,:) :: SEEDINI ! Need IM and JM to initialize
-    integer, allocatable, dimension(:,:,:) :: IRCCODE
+    integer, allocatable, dimension(:,:)    :: IRAS, JRAS, KCBL ! Need IM and JM to initialize
+    integer, allocatable, dimension(:,:)    :: KLCL, KLFC, KPBL, KPBL_SC
+    integer, allocatable, dimension(:,:,:)  :: SEEDINI ! Need IM and JM to initialize
+    integer, allocatable, dimension(:,:,:)  :: IRCCODE
 
     type  (AerProps), allocatable, dimension(:,:,:) :: AeroProps !Storages aerosol properties for activation 
 
@@ -594,7 +240,6 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
 
-!#ifdef NODISABLE
 
     ! get resources
 
@@ -606,7 +251,6 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetResource(MAPL, CBL_TPERT, 'CBL_TPERT:',       DEFAULT=-1.0   , _RC)
     call MAPL_GetResource(MAPL, CBL_TPERT_MXOCN, 'CBL_TPERT_MXOCN:', DEFAULT= 2.0   , _RC)
     call MAPL_GetResource(MAPL, CBL_TPERT_MXLND, 'CBL_TPERT_MXLND:', DEFAULT= 0.0   , _RC)
-    call MAPL_GetResource(MAPL, CBL_QPERT, 'CBL_QPERT:', DEFAULT= 0.0   , _RC)
     call MAPL_GetResource(MAPL, AUTOC_CN_OCN, 'AUTOC_CN:', DEFAULT= 2.5e-3, _RC)
     call MAPL_GetResource(MAPL, AUTOC_CN_LAND, 'AUTOC_CN_LAND:', DEFAULT= AUTOC_CN_OCN, _RC)
     call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    _RC) !Fraction of dust within droplets for immersion freezing
@@ -618,7 +262,6 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, PLE, 'PLE' , _RC)
     call MAPL_GetPointer(EXPORT, BYNCY, 'BYNCY', ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(IMPORT, KH, 'KH', _RC)
-    ! frland =0.0
     call MAPL_GetPointer(IMPORT, TS, 'TS', _RC)
     call MAPL_GetPointer(INTERNAL, QLCN, 'QLCN', _RC)
     call MAPL_GetPointer(INTERNAL, QICN, 'QICN', _RC)
@@ -626,7 +269,6 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_MF0,  'CNV_MF0' , ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, CNV_MFD,  'CNV_MFD' , ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, CNV_MFC,  'CNV_MFC' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_MFD,  'CNV_MFD' , ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, CNV_UPDF, 'CNV_UPDF', ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, CNV_CVW,  'CNV_CVW' , ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, CNV_QC,   'CNV_QC'  , ALLOC=.TRUE., _RC)
@@ -649,6 +291,9 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, ZLFC,     'ZLFC'    , ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR', _RC)
     call MAPL_GetPointer(INTERNAL, Q, 'Q' , _RC)
+    call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, TVEX,     'TVEX'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MXDIAM,    'MXDIAM'    , RC=STATUS); VERIFY_(STATUS)
 
     ! allocate arrays
     if(.not.allocated(SEEDINI)) allocate(SEEDINI(IM,JM,2))
@@ -690,7 +335,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if(.not.allocated(RASPRCP)) allocate(RASPRCP(IM,JM))
     if(.not.allocated(AeroProps)) allocate(AeroProps(IM,JM,LM))
     if(.not.allocated(IRCCODE)) allocate(IRCCODE(IM,JM,LM))
-    if(.not.allocated(KEX)) allocate(KEX(IM,JM))
+    if(.not.allocated(KEX)) allocate(KEX(IM,JM,LM))
     if(.not.allocated(RASAL2_2d)) allocate(RASAL2_2d(IM,JM))
     if(.not.allocated(QSSFC)) allocate(QSSFC(IM,JM))
 !    if(.not.allocated(CNV_TR)) allocate(CNV_TR(IM,JM,ITRCR))
@@ -698,7 +343,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
    ! initialize local variables
 
     ITRCR       = 0 ! This meeds to be before CNV_TR is allocated.
-    
+    KEX = 0.0
     if(.not.associated(FSCAV)) allocate(FSCAV(ITRCR),stat=STATUS)
 
     !  Copy incoming state vars to local arrays that will be adjusted
@@ -721,6 +366,12 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     PLO      = 0.5*(CNV_PLE(:,:,0:LM-1) +  CNV_PLE(:,:,1:LM  ) )
     PKE      = (      PLE/MAPL_P00)**(MAPL_KAPPA)
     PK       = (100.0*PLO/MAPL_P00)**(MAPL_KAPPA)
+    TEMP     = TH1*PK
+
+    DQS      = GEOS_DQSAT(TEMP, PLO, qsat=QSS)
+
+    QSSFC    = GEOS_QSAT( TS , CNV_PLE(:,:,LM) )
+
     CNV_FRACTION = 0.0 
     CNV_PRC3 = 0.0    
     ENTLAM   = 0.0
@@ -1014,101 +665,101 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 end subroutine RAS_Run
 
-function FINDLCL( THM, QM, PL, PK, IM, JM, LM ) result( KLCL )
-! !DESCRIPTION: 
-    integer,                      intent(in) :: IM, JM, LM
-    real,    dimension(IM,JM,LM), intent(in) :: THM, QM
-    real,    dimension(IM,JM,LM), intent(in) :: PL, PK
-
-    integer, dimension(IM,JM)             :: KLCL
-
-    real, dimension(LM) :: TPCL, QSPCL
-    integer             :: I, J, L, KOFFSET
-
-    do I = 1, IM
-       do J = 1, JM
-
-          TPCL  = THM(I,J,LM) * PK(I,J,:)
-          QSPCL = GEOS_QSAT(TPCL, PL(I,J,:) )
-
-          KLCL(I,J) = 0
-
-          do L = LM,1,-1
-             if( QM(I,J,LM) >= QSPCL(L) ) then
-                KLCL(I,J) = L
-                exit
-             endif
-          enddo
-
-
-          !! ------------------------------------
-          !!   Disabled for Daedalus (e0203) merge
-          !! ------------------------------------
-          !!AMM      KOFFSET   = INT ( (LM - KLCL(I,J))/2 )   !! disable for Gan4_0
-          KOFFSET   = 0
-          KLCL(I,J) = MIN ( LM-1,  KLCL(I,J)+KOFFSET )
-          KLCL(I,J) = MAX (    2,  KLCL(I,J)+KOFFSET )
-
-       end do
-    end do
-
-end function FINDLCL
+    function FINDLCL( THM, QM, PL, PK, IM, JM, LM ) result( KLCL )
+    ! !DESCRIPTION: 
+        integer,                      intent(in) :: IM, JM, LM
+        real,    dimension(IM,JM,LM), intent(in) :: THM, QM
+        real,    dimension(IM,JM,LM), intent(in) :: PL, PK
+    
+        integer, dimension(IM,JM)             :: KLCL
+    
+        real, dimension(LM) :: TPCL, QSPCL
+        integer             :: I, J, L, KOFFSET
+    
+        do I = 1, IM
+           do J = 1, JM
+    
+              TPCL  = THM(I,J,LM) * PK(I,J,:)
+              QSPCL = GEOS_QSAT(TPCL, PL(I,J,:) )
+    
+              KLCL(I,J) = 0
+    
+              do L = LM,1,-1
+                 if( QM(I,J,LM) >= QSPCL(L) ) then
+                    KLCL(I,J) = L
+                    exit
+                 endif
+              enddo
+    
+    
+              !! ------------------------------------
+              !!   Disabled for Daedalus (e0203) merge
+              !! ------------------------------------
+              !!AMM      KOFFSET   = INT ( (LM - KLCL(I,J))/2 )   !! disable for Gan4_0
+              KOFFSET   = 0
+              KLCL(I,J) = MIN ( LM-1,  KLCL(I,J)+KOFFSET )
+              KLCL(I,J) = MAX (    2,  KLCL(I,J)+KOFFSET )
+    
+           end do
+        end do
+    
+    end function FINDLCL
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-function FINDLFC( BUOY, IM, JM, LM ) result( KLFC )
-    ! !DESCRIPTION: 
-    integer,                   intent(in)  :: IM, JM, LM
-    real, dimension(IM,JM,LM), intent(in)  :: BUOY
-
-    integer, dimension(IM,JM)              :: KLFC
-
-    integer                                :: I, J, L
-
-    do I = 1, IM
-       do J = 1, JM
-
-          KLFC(I,J) = 0    
-          do L = LM,1,-1
-             IF( BUOY(I,J,L) > 0. ) THEN 
-                KLFC(I,J) = L
-                EXIT
-             ENDIF
-          enddo
-
-       end do
-    end do
-end function FINDLFC
+    function FINDLFC( BUOY, IM, JM, LM ) result( KLFC )
+        ! !DESCRIPTION: 
+        integer,                   intent(in)  :: IM, JM, LM
+        real, dimension(IM,JM,LM), intent(in)  :: BUOY
+    
+        integer, dimension(IM,JM)              :: KLFC
+    
+        integer                                :: I, J, L
+    
+        do I = 1, IM
+           do J = 1, JM
+    
+              KLFC(I,J) = 0    
+              do L = LM,1,-1
+                 IF( BUOY(I,J,L) > 0. ) THEN 
+                    KLFC(I,J) = L
+                    EXIT
+                 ENDIF
+              enddo
+    
+           end do
+        end do
+    end function FINDLFC
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  function FINDPBL( KH, IM, JM, LM ) result( KPBL )
-    ! !DESCRIPTION: 
-    integer                    , intent(in) :: IM,JM,LM
-    real, dimension(IM,JM,0:LM), intent(in) :: KH
-
-    integer, dimension(IM,JM)               :: KPBL
-
-    integer                                 :: I, J, L
-    real                                    :: KHCRIT
-
-    KHCRIT = 2.0  ! m+2 s-1
-
-    do I = 1, IM
-       do J = 1, JM
-
-          KPBL(I,J) = LM    
-          do L = LM-1,1,-1
-             IF( ( KH(I,J,L) >= KHCRIT ).AND.( KH(I,J,L-1) < KHCRIT ) ) THEN ! "top" is between L and L-1
-                KPBL(I,J) = L+1   ! returned index for CBL q,t etc. is just below PBL top
-                EXIT
-             ENDIF
-          enddo
-
-          KPBL(I,J)=MIN( LM-1, KPBL(I,J) )      
-
-       end do
-    end do
-
-
-  end function FINDPBL
+    function FINDPBL( KH, IM, JM, LM ) result( KPBL )
+      ! !DESCRIPTION: 
+      integer                    , intent(in) :: IM,JM,LM
+      real, dimension(IM,JM,0:LM), intent(in) :: KH
+  
+      integer, dimension(IM,JM)               :: KPBL
+  
+      integer                                 :: I, J, L
+      real                                    :: KHCRIT
+  
+      KHCRIT = 2.0  ! m+2 s-1
+  
+      do I = 1, IM
+         do J = 1, JM
+  
+            KPBL(I,J) = LM    
+            do L = LM-1,1,-1
+               IF( ( KH(I,J,L) >= KHCRIT ).AND.( KH(I,J,L-1) < KHCRIT ) ) THEN ! "top" is between L and L-1
+                  KPBL(I,J) = L+1   ! returned index for CBL q,t etc. is just below PBL top
+                  EXIT
+               ENDIF
+            enddo
+  
+            KPBL(I,J)=MIN( LM-1, KPBL(I,J) )      
+  
+         end do
+      end do
+  
+  
+    end function FINDPBL
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module GEOS_RAS_InterfaceMod
