@@ -400,12 +400,6 @@ contains
         IRAS       = nint(LONS*100)
         JRAS       = nint(LATS*100)
         RASPARAMS%CLDMICRO = 0.0
-!        if(adjustl(CLDMICRO)=="MGB2_2M") then !WDB Maybe, this block is unnecessary.
-!            RASPARAMS%CLDMICRO = 1.0
-!            RASPARAMS%FDROP_DUST = FDROP_DUST
-!            RASPARAMS%FDROP_SOOT = FDROP_SOOT
-!            RASPARAMS%FDROP_SEASALT = SS_INFAC
-!        endif
         SEEDINI(:,:,1) = 1000000 * ( 100*TEMP(:,:,LM)   - INT( 100*TEMP(:,:,LM) ) )
         SEEDINI(:,:,2) = 1000000 * ( 100*TEMP(:,:,LM-1) - INT( 100*TEMP(:,:,LM-1) ) )
 
