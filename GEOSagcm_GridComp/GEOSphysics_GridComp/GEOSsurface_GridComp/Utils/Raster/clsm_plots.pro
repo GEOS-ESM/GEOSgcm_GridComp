@@ -620,7 +620,7 @@ make_movies, ncat, vec2grid, 'MODIS-NIR'
 END
 
 ; ==============================================================================
-;                                  CLM-Carbon classes    
+;                                  Catchment-CN classes    
 ; ==============================================================================
 
 PRO plot_carbon,ncat, tile_id
