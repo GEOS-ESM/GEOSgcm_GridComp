@@ -1302,6 +1302,15 @@ contains
     !
     !  2) writes out BCs and hydrological variables in catchcn_internal_rst (1:72). 
     !     output catchcn_internal_rst is nc4.
+    !
+    ! CHANGE LOG:
+    !
+    ! jkolassa, May 2022: Obsolete processing of CNCLM45 vegetation types/fractions is removed.
+    !                     Separate processing of CNCLM40 and CNCLM45 PFTs was initially implemented,
+    !                     as the underlying CLM4.0 and CLM4.5 models have different PFT distributions.
+    !                     The decision was made to use the same (CLM4.0-based) PFT distribution in both
+    !                     CNCLM40 and CNCLM45 and the obsolete processing of separate CNCLM45 types/fractions
+    !                     was removed.
 
     implicit none
     real, intent (in)                         :: SURFLAY
@@ -1309,9 +1318,7 @@ contains
     character(*), intent (in)                 :: MODEL, DataDir, InRestart
     integer, optional, intent(out) :: rc
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
-    real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
-    real, allocatable :: CLMC45_pf1(:), CLMC45_pf2(:), CLMC45_sf1(:), CLMC45_sf2(:)
-    real, allocatable :: CLMC45_pt1(:), CLMC45_pt2(:), CLMC45_st1(:), CLMC45_st2(:)    
+    real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)      
     real, allocatable :: BF1(:),   BF2(:),   BF3(:),  VGWMAX(:)
     real, allocatable :: CDCR1(:), CDCR2(:), PSIS(:), BEE(:) 
     real, allocatable :: POROS(:), WPWET(:), COND(:), GNU(:)
@@ -1346,10 +1353,7 @@ contains
     allocate (   ity(ntiles),  CanopH(ntiles)  )
     allocate (CLMC_pf1(ntiles), CLMC_pf2(ntiles), CLMC_sf1(ntiles))
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
-    allocate (CLMC45_pf1(ntiles), CLMC45_pf2(ntiles), CLMC45_sf1(ntiles))
-    allocate (CLMC45_sf2(ntiles), CLMC45_pt1(ntiles), CLMC45_pt2(ntiles))
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
-    allocate (CLMC45_st1(ntiles), CLMC45_st2(ntiles))
     allocate (hdm(ntiles), fc(ntiles), gdp(ntiles))
     allocate (peatf(ntiles), abm(ntiles), var1(ntiles), RITY(ntiles))
 
@@ -1441,7 +1445,6 @@ contains
           open(unit=27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
           open(unit=28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
           if(clm45) then
-             open(unit=29, file=trim(DataDir)//'CLM4.5_veg_typs_fracs',form='formatted')
              open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
           endif
        endif
@@ -1474,10 +1477,7 @@ contains
                   CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
              
              read (28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
-             if(clm45) then
-                read (29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
-                     CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
-                
+             if(clm45) then     
                 read (30, *) i, j, abm(n), peatf(n), &
                      gdp(n), hdm(n), fc(n)
              endif
@@ -1495,7 +1495,6 @@ contains
           CLOSE (27, STATUS = 'KEEP')
           CLOSE (28, STATUS = 'KEEP')
           if(clm45) then
-             CLOSE (29, STATUS = 'KEEP')
              CLOSE (30, STATUS = 'KEEP')
           endif
        endif
@@ -1557,35 +1556,6 @@ contains
           CLMC_sf1(n) = fvg(3)
           CLMC_sf2(n) = fvg(4)
           
-          if(CLM45) then
-             ! CLM 45
-             
-             CLMC45_pf1(n) = CLMC45_pf1(n) / 100.
-             CLMC45_pf2(n) = CLMC45_pf2(n) / 100.
-             CLMC45_sf1(n) = CLMC45_sf1(n) / 100.
-             CLMC45_sf2(n) = CLMC45_sf2(n) / 100.
-             
-             fvg(1) = CLMC45_pf1(n)
-             fvg(2) = CLMC45_pf2(n)
-             fvg(3) = CLMC45_sf1(n)
-             fvg(4) = CLMC45_sf2(n)
-             
-             BARE = 1.      
-             
-             DO NV = 1, NVEG
-                BARE = BARE - FVG(NV)! subtract vegetated fractions 
-             END DO
-             
-             if (BARE /= 0.) THEN
-                IB = MAXLOC(FVG(:),1)
-                FVG (IB) = FVG(IB) + BARE ! This also corrects all cases sum ne 0.
-             ENDIF
-             
-             CLMC45_pf1(n) = fvg(1)
-             CLMC45_pf2(n) = fvg(2)
-             CLMC45_sf1(n) = fvg(3)
-             CLMC45_sf2(n) = fvg(4)
-          endif
        endif
     enddo
 
@@ -1630,45 +1600,6 @@ contains
                 stop 'fveg4'
              endif
              CLMC_sf2(n) = 0.
-          endif
-         
-          if (clm45) then
-             ! CLM45
-             if(CLMC45_pf1(n) <= 1.e-4) then
-                CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_pf1(n)
-                CLMC45_pf1(n) = 0.
-             endif
-             
-             if(CLMC45_pf2(n) <= 1.e-4) then
-                CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_pf2(n)
-                CLMC45_pf2(n) = 0.
-             endif
-             
-             if(CLMC45_sf1(n) <= 1.e-4) then
-                if(CLMC45_sf2(n) > 1.e-4) then
-                   CLMC45_sf2(n) = CLMC45_sf2(n) + CLMC45_sf1(n)
-                else if(CLMC45_pf2(n) > 1.e-4) then
-                   CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_sf1(n)
-                else if(CLMC45_pf1(n) > 1.e-4) then
-                   CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_sf1(n)
-                else
-                   stop 'fveg3'
-                endif
-                CLMC45_sf1(n) = 0.
-             endif
-             
-             if(CLMC45_sf2(n) <= 1.e-4) then
-                if(CLMC45_sf1(n) > 1.e-4) then
-                   CLMC45_sf1(n) = CLMC45_sf1(n) + CLMC45_sf2(n)
-                else if(CLMC45_pf2(n) > 1.e-4) then
-                   CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_sf2(n)
-                else if(CLMC45_pf1(n) > 1.e-4) then
-                   CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_sf2(n)
-                else
-                   stop 'fveg4'
-                endif
-                CLMC45_sf2(n) = 0.
-             endif
           endif
        end do
     endif
@@ -1740,15 +1671,6 @@ contains
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BGALBNR'), (/1/), (/NTILES/),BNIRDR)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BGALBNF'), (/1/), (/NTILES/),BNIRDF)
         
-        if(CLM45) then
-
-           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ABM'     ), (/1/), (/NTILES/),real(ABM))
-           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FIELDCAP'), (/1/), (/NTILES/),FC)
-           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'HDM'     ), (/1/), (/NTILES/),HDM)
-           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'GDP'     ), (/1/), (/NTILES/),GDP)
-           STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'PEATF'   ), (/1/), (/NTILES/),PEATF)
-        endif
-
      else
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'OLD_ITY'), (/1/), (/NTILES/),real(ITY))
      endif
