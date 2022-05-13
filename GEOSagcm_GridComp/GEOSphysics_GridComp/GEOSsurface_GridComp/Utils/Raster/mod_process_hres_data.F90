@@ -9,12 +9,15 @@
 !
 ! CHANGE LOG:
 !
-! jkolassa May 2022: Obsolete mapping of ESA GlobCover data to CLM4.5 PFTs (subroutine ESA2CLM_45) is removed.
-!                    Separate mappings for CNCLM40 and CNCLM45 were initially implemented, as
-!                    the underlying CLM4.0 and CLM4.5 models have different plant functional types and 
-!                    distributions. The decision was made to use the same (CLM4.0-based) PFT
-!                    distribution for both CNCLM40 and CNCLM45 and the obsolete mapping to CLM4.5
-!                    PFTs was removed.
+! jkolassa, reichle, May 2022: 
+! The bcs file "CLM4.5_veg_typs_fracs" was not used in CatchmentCNCLM45 and is no longer
+! produced by make_bcs.
+! Separate mappings from ESA GlobCover to CatchmentCNCLM40 and CatchmentCNCLM45 PFTs
+! were initially implemented because the underlying CLM4.0 and CLM4.5 models have different
+! plant functional types and distributions. Ultimately, the decision was made to use the same 
+! (CLM4.0-based) PFT distribution for both CatchmentCNCLM40 and CatchmentCNCLM45, and the 
+! obsolete mapping of ESA GlobCover data to CLM4.5 PFTs (subroutine ESA2CLM_45) was removed.
+
 
 MODULE process_hres_data
 use rmTinyCatchParaMod
@@ -120,8 +123,8 @@ contains
     PCT_PFT_DBL(360:494,215:341,11) = PCT_PFT_DBL(360:494,215:341,11) + PCT_PFT_DBL(360:494,215:341, 7)
     PCT_PFT_DBL(360:494,215:341, 7) = 0.
 
-    ! CLM description (17)                                       CNCLM description (19)                                    
-    ! --------------------                                        -------------------------- 
+    ! CLM description (17)                                    CatchmentCNCLM description (19)        
+    ! --------------------                                    ------------------------------ 
 
     ! 'BARE'   1  	bare                                     (does not have bare soil)
     ! 'NLEt'   2 	needleleaf evergreen temperate tree    1

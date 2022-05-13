@@ -76,9 +76,9 @@ set toc_rout="`printf '\\n7. GLOBAL RUNOFF ROUTING MODEL DATA ..................
        Bare soil from the ESA land cover classification is mapped into the broadleaf deciduous \\n \
        shrub type, since bare soil is not an allowed type in our implementation.\\n \
 \\n \
-       Initially, a separate mapping of the ESA land cover classification to the (17) CLM4 PFTs and \\n \
+       Initially, a separate mapping of the ESA land cover classification to the (17) CLM4.0 PFTs and \\n \
        (25) CLM4.5 PFTs was implemented. However, the decision was made later to use\\n \
-       the same (CLM4-based) PFTs for both versions of the Catchment-CN model. Any processing \\n \
+       the same 17 (CLM4.0-based) PFTs for both CatchmentCNCLM40 and CatchmentCNCLM45. Any processing \\n \
        specific to CLM4.5 PFTs was removed. \\n \
 \\n \
        For Catchment-CN, the stress deciduous types (crop and temperate shrubs/grass) utilized \\n \
