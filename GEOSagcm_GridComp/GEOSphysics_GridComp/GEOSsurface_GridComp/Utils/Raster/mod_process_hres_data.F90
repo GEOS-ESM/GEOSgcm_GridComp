@@ -4559,7 +4559,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 	ss_clay_all (1+i:2*i) = data_vec4(i1:i2)  ! put sub layer info into next i elements (i+1:2*i)
 	ss_sand_all (1+i:2*i) = data_vec5(i1:i2)
-	ss_oc_all   (1+i:2*i) = data_vec6(i1:i2)	
+	ss_oc_all   (1+i:2*i) = data_vec6(i1:i2)  ! <-- oc_sub	
 
 
         ! -----------------------------------------------------------------------
@@ -4621,8 +4621,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         !       "where (oc_sub*sf >= cF_lim(4))                                                                                "
         !       "    oc_sub = NINT(8./sf)                                                                                      "
         !       "endwhere                                                                                                      "
-        !       For PEATMAP, in most cases the maxloc statement below should therefore result in o_clp = 1, 2, or 3 only, 
-        !       but orgC from the top layer pushes the profile average orgC above cF_lim(4) again, then o_clp=4 is possible.
+        !       For PEATMAP, the sub-layer weight of 2.33 should only count towards cFamily(1:3), and in most cases the 
+        !       maxloc statement below should therefore result in o_clp = 1, 2, or 3 only.  However, if the top-layer orgC
+        !       is peat for most contributing raster grid cells and the sub-layer orgC values are relatively evenly spread 
+        !       over orgC classes 1, 2, and 3, then maxloc(cFamily) can result in o_clp=4.
 
 	if (sum(cFamily) == 0.) o_clp = 1
 	if (sum(cFamily)  > 0.) o_clp = maxloc(cFamily, dim = 1)        
