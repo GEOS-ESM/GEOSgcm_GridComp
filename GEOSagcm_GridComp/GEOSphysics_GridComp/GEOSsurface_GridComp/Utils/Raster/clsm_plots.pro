@@ -761,7 +761,7 @@ image24 = BytArr(3, 700, 1000)
 image24[0,*,*] = r[snapshot]
 image24[1,*,*] = g[snapshot]
 image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM-Carbon_PRIM_veg_typs.jpg', image24, True=1, Quality=100
+Write_JPEG, 'CatchmentCN_PRIM_veg_typs.jpg', image24, True=1, Quality=100
 
 ; now plotting secondary
 thisDevice = !D.Name
@@ -805,7 +805,7 @@ image24 = BytArr(3, 700, 1000)
 image24[0,*,*] = r[snapshot]
 image24[1,*,*] = g[snapshot]
 image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM-Carbon_SEC_veg_typs.jpg', image24, True=1, Quality=100
+Write_JPEG, 'CatchmentCN_SEC_veg_typs.jpg', image24, True=1, Quality=100
 
 END
 
