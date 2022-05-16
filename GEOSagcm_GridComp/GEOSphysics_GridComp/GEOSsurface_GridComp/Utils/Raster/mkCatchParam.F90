@@ -23,7 +23,6 @@ PROGRAM mkCatchParam
 
   use rmTinyCatchParaMod
   use process_hres_data
-  use comp_CATCHCN_AlbScale_parameters, ONLY : albedo4catchcn
   !   use module_irrig_params, ONLY : create_irrig_params
 
   implicit none
@@ -665,7 +664,6 @@ integer :: n_threads=1
        !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
        !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
        
-       !   call albedo4catchcn (gridnamet)
        
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
