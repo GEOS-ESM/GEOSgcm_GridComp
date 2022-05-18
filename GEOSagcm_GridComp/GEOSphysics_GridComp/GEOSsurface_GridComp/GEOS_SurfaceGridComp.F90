@@ -1898,9 +1898,45 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'RITILE',                    &
+    LONG_NAME          = 'Richardson_number_on_tiles',&
+    UNITS              = '1',                         &
+    DIMS               = MAPL_DimsHorzVert,           &
+    VLOCATION          = MAPL_VLocationCenter,        &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'WGTTILE',                   &
+    LONG_NAME          = 'precipitation_weight_on_tiles',    &
+    UNITS              = '1',                         &
+    DIMS               = MAPL_DimsHorzVert,           &
+    VLOCATION          = MAPL_VLocationCenter,        &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'TPSURFTILE',                    &
     LONG_NAME          = 'surface_temperature_on_tiles',  &
     UNITS              = 'K',                         &
+    DIMS               = MAPL_DimsHorzVert,           &
+    VLOCATION          = MAPL_VLocationCenter,        &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'SHLANDTILE',                &
+    LONG_NAME          = 'sensible_heat_flux_on_tiles', &
+    UNITS              = 'W m-2',                     &
+    DIMS               = MAPL_DimsHorzVert,           &
+    VLOCATION          = MAPL_VLocationCenter,        &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'LHLANDTILE',                &
+    LONG_NAME          = 'latent_heat_flux_on_tiles', &
+    UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzVert,           &
     VLOCATION          = MAPL_VLocationCenter,        &
                                            RC=STATUS  )
@@ -3886,6 +3922,8 @@ module GEOS_SurfaceGridCompMod
 
 ! Pointers to gridded exports
 
+    real, pointer, dimension(:,:,:) :: RITILEX  => NULL()
+
     real, pointer, dimension(:,:) :: RI     => NULL()
     real, pointer, dimension(:,:) :: RE     => NULL()
     real, pointer, dimension(:,:) :: QDWL   => NULL()
@@ -4106,6 +4144,9 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , BSTAR , 'BSTAR' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , USTAR , 'USTAR' ,  RC=STATUS); VERIFY_(STATUS)
  
+
+    call MAPL_GetPointer(EXPORT  , RITILEX,     'RITILE',   RC=STATUS); VERIFY_(STATUS)
+
 ! These are force-allocated because run2 needs them or their space
 
     call MAPL_GetPointer(INTERNAL, TS    , 'TS'    ,  RC=STATUS); VERIFY_(STATUS)
@@ -4215,6 +4256,8 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(ITY    , ITYTILE    , NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RI    , RITILE      , NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RE    , RETILE      , NT, RC=STATUS); VERIFY_(STATUS)
+
+!  if (associated(ritilex).and.IM.eq.1) ritilex(1,1,1:NT) = RITILE
 
 ! If the child does not produce them, we want these zeroed.
 !---------------------------------------------------------
@@ -4446,6 +4489,7 @@ module GEOS_SurfaceGridCompMod
      endif
 
   endif          ! end of MO sfc layer if sequence
+
 
 ! Clean-up
 !---------
@@ -4689,6 +4733,7 @@ module GEOS_SurfaceGridCompMod
            call FILLOUT_TILE(GEX(type),   'RIT',   RITILE, XFORM, RC=STATUS)
            VERIFY_(STATUS)
         endif
+
        if(associated(RETILE)) then
            call FILLOUT_TILE(GEX(type),   'RET',   RETILE, XFORM, RC=STATUS)
            VERIFY_(STATUS)
@@ -4740,6 +4785,7 @@ module GEOS_SurfaceGridCompMod
         if(associated(MOT10MTILE)) then
            call FILLOUT_TILE(GEX(type), 'MOT10M', MOT10MTILE, XFORM, RC=STATUS)
            VERIFY_(STATUS)
+!           print *,'MOT10MTILE=',MOT10MTILE 
         end if
         if(associated(MOQ10MTILE)) then
            call FILLOUT_TILE(GEX(type), 'MOQ10M', MOQ10MTILE, XFORM, RC=STATUS)
@@ -5376,8 +5422,11 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: SPLANDTILE       => NULL()
     real, pointer, dimension(:) :: SPWATRTILE       => NULL()
     real, pointer, dimension(:) :: SPSNOWTILE       => NULL()
-    real, pointer, dimension(:,:,:) :: PRTILE         => NULL()
-    real, pointer, dimension(:,:,:) :: TPSURFTILEX    => NULL()
+    real, pointer, dimension(:,:,:) :: PRTILE       => NULL()
+    real, pointer, dimension(:,:,:) :: WGTTILE      => NULL()
+    real, pointer, dimension(:,:,:) :: TPSURFTILEX  => NULL()
+    real, pointer, dimension(:,:,:) :: SHLANDTILEX  => NULL()
+    real, pointer, dimension(:,:,:) :: LHLANDTILEX  => NULL()
     real, pointer, dimension(:,:) :: RDU001TILE     => NULL()
     real, pointer, dimension(:,:) :: RDU002TILE     => NULL()
     real, pointer, dimension(:,:) :: RDU003TILE     => NULL()
@@ -6216,7 +6265,10 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , FSWCHANGE  , 'FSWCHANGE',   RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT  , PRTILE,      'PRTILE',   RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , WGTTILE,     'WGTTILE',   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TPSURFTILEX, 'TPSURFTILE',   RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SHLANDTILEX, 'SHLANDTILE',   RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , LHLANDTILEX, 'LHLANDTILE',   RC=STATUS); VERIFY_(STATUS)
 
     IF(LSM_CHOICE > 1) THEN
        call MAPL_GetPointer(EXPORT  , CNLAI   , 'CNLAI'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6537,6 +6589,7 @@ module GEOS_SurfaceGridCompMod
     end if
 
     if (associated(prtile).and.IM.eq.1) prtile(1,1,1:NT) = pcutile+plstile+snofltile+icefltile+frzrfltile
+    if (associated(wgttile).and.IM.eq.1) wgttile(1,1,1:NT) = het_precip_fac
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
@@ -6853,7 +6906,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     end do
 
-    if (associated(tpsurftilex).and.IM.eq.1) tpsurftilex(1,1,1:NT) = tpsurftile
+!    if (associated(tpsurftilex).and.IM.eq.1) tpsurftilex(1,1,1:NT) = tpsurftile
 
 ! Create the Discharge for the ocean. This is an import of 
 !  Saltwater, which simply makes a copy to an export.
@@ -7559,6 +7612,10 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM,SHLAND,SHLANDTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
+
+!    if (associated(shlandtilex).and.IM.eq.1) shlandtilex(1,1,1:NT) = shlandtile
+!    if (associated(lhlandtilex).and.IM.eq.1) lhlandtilex(1,1,1:NT) = lhlandtile
+
     if(associated(SWLAND)) then
        call MAPL_LocStreamTransform( LOCSTREAM,SWLAND,SWLANDTILE, RC=STATUS) 
        VERIFY_(STATUS)
