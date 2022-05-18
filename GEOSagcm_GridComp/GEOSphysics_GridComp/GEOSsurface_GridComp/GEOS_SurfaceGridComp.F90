@@ -319,7 +319,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'UA',                                        &
-        LONG_NAME  = 'eastward_wind_bottom_level',                &
+        LONG_NAME  = 'surface_eastward_wind',                &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                            &
@@ -328,7 +328,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'VA',                                        &
-        LONG_NAME  = 'northward_wind_bottom_level',               &
+        LONG_NAME  = 'surface_northward_wind',               &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &

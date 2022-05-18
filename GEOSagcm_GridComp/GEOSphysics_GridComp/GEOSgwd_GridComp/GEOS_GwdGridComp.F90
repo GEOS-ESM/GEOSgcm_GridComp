@@ -2001,8 +2001,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated(SGH_EXP )) SGH_EXP  = SGH
     if(associated(PLE_EXP )) PLE_EXP  = PLE
     if(associated(Q_EXP   )) Q_EXP    = Q
-    if(associated(U_EXP   )) U_EXP    = U
-    if(associated(V_EXP   )) V_EXP    = V
+    if(associated(U_EXP   )) U_EXP    = U + DUDT_GWD*DT
+    if(associated(V_EXP   )) V_EXP    = V + DVDT_GWD*DT
 
 
 ! All done

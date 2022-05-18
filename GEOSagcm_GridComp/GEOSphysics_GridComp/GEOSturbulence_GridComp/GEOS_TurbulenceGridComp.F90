@@ -1834,9 +1834,36 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'zonal_wind_after_diffuse',                       &
+       UNITS      = 'm s-1',                                                     &
+       SHORT_NAME = 'UAFDIFFUSE',                                            &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'merdional_wind_after_diffuse',                       &
+       UNITS      = 'm s-1',                                                     &
+       SHORT_NAME = 'VAFDIFFUSE',                                            &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'dry_static_energy_after_diffuse',                       &
        UNITS      = 'K',                                                     &
        SHORT_NAME = 'SAFDIFFUSE',                                            &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'specific_humidity_after_diffuse',                       &
+       UNITS      = 'kg kg-1',                                                     &
+       SHORT_NAME = 'QAFDIFFUSE',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -5042,8 +5069,8 @@ contains
     integer :: SCM_SL, SCM_SL_FLUX
     real    :: SCM_SH, SCM_EVAP
 
-! AMM pointer to export of S after diffuse
-    real, dimension(:,:,:), pointer     :: SAFDIFFUSE
+    ! pointers to exports after diffuse
+    real, dimension(:,:,:), pointer     :: UAFDIFFUSE, VAFDIFFUSE, SAFDIFFUSE, QAFDIFFUSE
 
 #ifdef USE_SCM_SURF
     ! Get info for idealized SCM surface layer
@@ -5077,8 +5104,12 @@ contains
     call ESMF_StateGet(EXPORT, 'FSTAR',  FSTAR,  RC=STATUS); VERIFY_(STATUS)
     call ESMF_StateGet(EXPORT, 'DFSTAR', DFSTAR, RC=STATUS); VERIFY_(STATUS)
 
-! AMM pointer to export of S that diffuse sees
-    call MAPL_GetPointer(EXPORT, SAFDIFFUSE ,  'SAFDIFFUSE' , RC=STATUS); VERIFY_(STATUS)
+! Get pointers to exports of U,V and S that diffuse sees
+!  Required for SYNCTQ (ALLOC=.TRUE.)
+    call MAPL_GetPointer(EXPORT, UAFDIFFUSE ,  'UAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, VAFDIFFUSE ,  'VAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SAFDIFFUSE ,  'SAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QAFDIFFUSE ,  'QAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
 ! Count the firlds in TR...
 !--------------------------
@@ -5298,9 +5329,19 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        if(FRIENDLY) then
           S = SX
        end if
-!AMM sync up T and Q - so write on S after diffusion
+
+! Fill exports of U,V and S after diffusion
+      if( TYPE=='U' ) then
+          if(associated(UAFDIFFUSE)) UAFDIFFUSE = SX
+       endif
+      if( TYPE=='V' ) then
+          if(associated(VAFDIFFUSE)) VAFDIFFUSE = SX
+       endif
        if( TYPE=='S' ) then 
           if(associated(SAFDIFFUSE)) SAFDIFFUSE = SX
+       endif
+       if( TYPE=='Q' ) then
+          if(associated(QAFDIFFUSE)) QAFDIFFUSE = SX
        endif
 
 ! Compute the derivative of the surface flux wrt the surface value
@@ -5480,7 +5521,7 @@ end subroutine RUN1
       real, dimension(IM,JM,LM-1)         :: DF
       real, dimension(IM,JM,LM)           :: QT,SL,U,V,ZLO
       integer, allocatable                :: KK(:)
-! AMM pointer to export of S that update sees
+      !  pointers to export of S after update
       real, dimension(:,:,:), pointer     :: SAFUPDATE
 
 ! The following variables are for SHVC parameterization
@@ -5763,8 +5804,9 @@ end subroutine RUN1
 
       end if SHVC_INIT
 
-! AMM pointer to export of S that diffuse sees
-    call MAPL_GetPointer(EXPORT, SAFUPDATE ,  'SAFUPDATE' , RC=STATUS); VERIFY_(STATUS)
+! Get pointer to export S after update required for SYNCTQ (ALLOC=.TRUE.)
+!----------------------------------------------------
+    call MAPL_GetPointer(EXPORT, SAFUPDATE ,  'SAFUPDATE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
 ! Loop over all quantities to be diffused.
 !-----------------------------------------
@@ -6020,7 +6062,8 @@ end subroutine RUN1
          if(FRIENDLY) then
             S = SX
          end if
-!AMM sync up T and Q - so write on S after diffusion
+
+! Fill export uf S after update
        if( name=='S' ) then 
           if(associated(SAFUPDATE)) SAFUPDATE = SX
        endif

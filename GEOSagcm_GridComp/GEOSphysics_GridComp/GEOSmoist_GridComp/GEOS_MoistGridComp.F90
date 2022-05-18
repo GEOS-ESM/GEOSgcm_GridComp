@@ -3789,7 +3789,23 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='THMOIST',                                     & 
+         SHORT_NAME='UAFMOIST',                                     &
+         LONG_NAME ='zonal_wind_after_all_of_moist',   &
+         UNITS     ='m s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='VAFMOIST',                                     &
+         LONG_NAME ='meridional_wind_after_all_of_moist',   &
+         UNITS     ='m s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='THAFMOIST',                                     & 
          LONG_NAME ='potential_temperature_after_all_of_moist',   &
          UNITS     ='K',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -3797,7 +3813,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='TMOIST',                                     &
+         SHORT_NAME='TAFMOIST',                                     &
          LONG_NAME ='temperature_after_all_of_moist',   &
          UNITS     ='K',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -3805,15 +3821,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='TSURFACE',                                     &
-         LONG_NAME ='surface_temperature_after_all_of_moist',   &
-         UNITS     ='K',                                           &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+         SHORT_NAME='QAFMOIST',                                     &
+         LONG_NAME ='specific_humidity_after_all_of_moist',   &
+         UNITS     ='kg kg-1',                                     &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='SMOIST',                                      & 
+         SHORT_NAME='SAFMOIST',                                      & 
          LONG_NAME ='dry_static_energy_after_all_of_moist',        &
          UNITS     ='m+2 s-2',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -5692,25 +5708,29 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = CLLS+CLCN
 
-       ! Fill temperature & RH exports
+       ! Fill wind, temperature & RH exports needed for SYNCTQ
 
-       call MAPL_GetPointer(EXPORT, PTR3D, 'TMOIST', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTR3D, 'UAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = U
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'VAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = V
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'TAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = T
 
-       call MAPL_GetPointer(EXPORT, PTR2D, 'TSURFACE', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) then 
-         if ( HGT_SURFACE .gt. 0.0 ) then
-           call VertInterp(PTR2D,T,-ZLE0,-HGT_SURFACE, status)
-         else
-           PTR2D = T(:,:,LM)
-         endif
-       endif
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = Q
 
-       call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTR3D, 'THAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = T/PK
 
-       call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MAPL_CP*T + MAPL_GRAV*ZL0
+       call MAPL_GetPointer(EXPORT, PTR3D, 'SAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) then
+          do L=1,LM
+            PTR3D(:,:,L) = MAPL_CP*T(:,:,L) + MAPL_GRAV*(ZL0(:,:,L)+ZLE(:,:,LM))
+          enddo
+       endif
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
@@ -5728,10 +5748,12 @@ contains
     else
 
        ! Internal State
-       call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, Q,        'Q'    , RC=STATUS); VERIFY_(STATUS)
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
        ! Allocatables
         ! Edge variables 
@@ -5756,28 +5778,32 @@ contains
        END DO
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
 
-       ! Fill Temperature & RH exports
+       ! Fill Wind, Temperature & RH exports needed for SYNCTQ
 
-       call MAPL_GetPointer(EXPORT, PTR3D, 'TMOIST', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTR3D, 'UAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = U
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'VAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = V
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'TAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = T
-
-       call MAPL_GetPointer(EXPORT, PTR2D, 'TSURFACE', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) then
-         if ( HGT_SURFACE .gt. 0.0 ) then
-           call VertInterp(PTR2D,T,-ZLE0,-HGT_SURFACE, status)
-         else
-           PTR2D = T(:,:,LM)
-         endif
-       endif
+      
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = Q
  
-       call MAPL_GetPointer(EXPORT, PTR3D, 'THMOIST', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTR3D, 'THAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = T/PK
-
-       call MAPL_GetPointer(EXPORT, PTR3D, 'SMOIST', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MAPL_CP*T + MAPL_GRAV*ZL0
-
+       
+       call MAPL_GetPointer(EXPORT, PTR3D, 'SAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) then
+          do L=1,LM
+            PTR3D(:,:,L) = MAPL_CP*T(:,:,L) + MAPL_GRAV*(ZL0(:,:,L)+ZLE(:,:,LM))
+          enddo
+       endif
+       
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT(T, PLmb) , 1.02 ),0.0)
+       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
     endif
 

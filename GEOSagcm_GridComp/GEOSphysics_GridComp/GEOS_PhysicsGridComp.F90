@@ -178,7 +178,7 @@ contains
     call ESMF_ConfigGetAttribute (SCF, label='USE_CNNEE:', value=DO_CO2CNNEE,   DEFAULT=0, __RC__ ) 
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
-! AMM - get SYNCTQ flag from config to know whether to terminate some imports
+! Get SYNCTQ flag from config to know whether to terminate some imports
 ! ---------------------------------------------------------------------------
     call MAPL_GetResource ( MAPL, SYNCTQ, Label="SYNCTQ:", DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
@@ -1260,7 +1260,7 @@ contains
 !--------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'T'/),                                    &
+         SHORT_NAME  = (/'U','V','T'/),                            &
          DST_ID      = MOIST,                                      &
          SRC_ID      = GWD,                                        &
                                                         RC=STATUS  )
@@ -1394,10 +1394,10 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-!AMM terminate TA import - will fill it here with value after moist
+!AMM terminate imports to SURF for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = (/ 'TA ' /),        &
+          SHORT_NAME = (/ 'UA','VA','TA','QA','SPEED' /),        &
           CHILD      = SURF,               &
           RC=STATUS  )
        VERIFY_(STATUS)
@@ -1409,10 +1409,10 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-!AMM terminate T and TH imports to turb - will fill it here with value after moist
+!AMM terminate imports to turb for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = (/'T ','TH' /),     & 
+          SHORT_NAME = (/'U','V','T','TH' /),     & 
           CHILD      = TURBL,              &
           RC=STATUS  )
        VERIFY_(STATUS)
@@ -1429,7 +1429,7 @@ contains
           RC=STATUS)
      VERIFY_(STATUS)
 
-!AMM terminate T and TH import for chem - will fill it here with value after turb
+!AMM terminate imports to chem for SYNCTQ
      if ( SYNCTQ.eq.1.) then
        call MAPL_TerminateImport  ( GC,    &
           SHORT_NAME = (/'T ','TH'/),      &
@@ -1438,7 +1438,7 @@ contains
        VERIFY_(STATUS)
      endif
 
-!AMM terminate T import for RAD - will fill it here with value after turb
+!AMM terminate imports to RAD for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport  ( GC,    &
           SHORT_NAME = (/'T'/),            &     
@@ -2042,16 +2042,18 @@ contains
 
 
 
-!AMM
-   real, pointer, dimension(:,:,:)     :: SAFTERMOIST, THAFMOIST
-   real, pointer, dimension(:,:,:)     :: THFORCHEM, TFORCHEM, TFORRAD
-   real, pointer, dimension(:,:)       :: UA, VA, TFORSURF
-   real, pointer, dimension(:,:,:)     :: SFORTURB, THFORTURB, TFORTURB
-   real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
+! SYNCTQ & UV pointers
+   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
+   real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
+   real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
+   real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
+   real, pointer, dimension(:,:,:)     ::                      TFORRAD
+   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE, QAFDIFFUSE, SAFDIFFUSE, SAFUPDATE
+
    real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
-   real, allocatable, dimension(:,:)   :: qs,pmean,DTSURFAFTURB
+   real, allocatable, dimension(:,:)   :: qs,pmean
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
    real(kind=MAPL_R8), allocatable, dimension(:,:) ::  dpe
@@ -2384,55 +2386,21 @@ contains
        VERIFY_(STATUS)
     end if
 
-     call MAPL_GetPointer ( GIM(SURF),  UA,  'UA', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(SURF),  VA,  'VA', RC=STATUS)
-     VERIFY_(STATUS)
-
 !----------------------
 
-    if ( SYNCTQ.ge.1. ) then
+    if ( DOPHYSICS.eq.1. ) then
 
-!  WMP May-2022 - Beginning to remove SYNCTQ in favor of import/export connectivities
-
-!  AMM  1/24/14 - Code to sequentially update T after each child - get pointer to T in gwd export
-!                All control for this is here - children just have added exports to be used here
-
-! Sequence here is to get all the needed pointers to import and export states of children
-
-!  get pointer to moist export of updated TH and S after moist (S does not include PHIS yet)
-     call MAPL_GetPointer ( GEX(MOIST), THAFMOIST,   'THMOIST', alloc = .true.,  RC=STATUS) 
-     call MAPL_GetPointer ( GEX(MOIST), SAFTERMOIST, 'SMOIST',  alloc = .true.,  RC=STATUS) 
-!  get pointer to TA in surf import bundle
-     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA', RC=STATUS)
-!  get pointer to turb import state bundle and then to S in the bundle - used in diffuse
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS )
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS)
-!  get pointer to turb state imports of T and TH - used in refresh
-     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS)
-!  get pointer to turb export of S after run 1
-     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', alloc = .true.,  RC=STATUS) 
-!  get pointer to turb export of S after run 2
-     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE',  alloc = .true.,  RC=STATUS) 
-!  get pointer to T in rad import bundles
-     call MAPL_GetPointer ( GIM(RAD),  TFORRAD,    'T',  RC=STATUS)
-
-!  Will need PK to get from T to TH and back
+     if ( SYNCTQ.ge.1. ) then
+      !  Will need PK to get from T to TH and back
       allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
       PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
-    endif
-
-    if ( SYNCTQ.eq.1. ) then
-!  get pointer to T in chem import bundles
-     call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS)
-     call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS)
-    endif
-
-    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-
-    if ( DOPHYSICS.eq.1. ) then
+      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+         allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
+         do k = 1,LM+1
+           HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
+         enddo
+      endif
+     endif
 
 ! Gravity Wave Drag 
 !  (must be first to use Q from dynamics, 
@@ -2460,30 +2428,58 @@ contains
 
     call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
 
+!  SYNCTQ - Stage 1 SYNC of T/Q and U/V
+!--------------------------------------
+    if ( SYNCTQ.ge.1. ) then
+    ! From Moist
+     call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  TAFMOIST,  'TAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  QAFMOIST,  'QAFMOIST', RC=STATUS); VERIFY_(STATUS)
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+     else
+       UFORSURF = UAFMOIST(:,:,LM)
+       VFORSURF = VAFMOIST(:,:,LM)
+       TFORSURF = TAFMOIST(:,:,LM)
+       QFORSURF = QAFMOIST(:,:,LM)
+     endif
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    ! For CHEM
+     if ( SYNCTQ.eq.1. ) then
+       call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS); VERIFY_(STATUS)
+        TFORCHEM =  TAFMOIST
+       THFORCHEM = THAFMOIST
+     endif
+    ! For TURBL
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
+      UFORTURB =  UAFMOIST
+      VFORTURB =  VAFMOIST
+      TFORTURB =  TAFMOIST
+     THFORTURB = THAFMOIST
+      SFORTURB =  SAFMOIST
+    endif
+
 ! Surface Stage 1
 !----------------
-  ! WMP - my assesment is that SURF, CHEM & TURBL need T imports just for Run1 from moist so those can be handled with connections
 
-!  AMM - Update TA for surf using TH after MOIST
-    if ( SYNCTQ.ge.1. ) then
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
-       do k = 1,LM+1
-         HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
-       enddo
-       call VertInterp(TFORSURF,THAFMOIST*PK,-HGT,-HGT_SURFACE, status)
-     else
-       TFORSURF = THAFMOIST(:,:,LM)*PK(:,:,LM)
-     endif
-    endif
-
-!-srf-gf-scheme
-    if(SYNCTQ.ge.1. .AND. DXDT_BL==1) then
-       DTDT_BL=THAFMOIST*PK
-       DQDT_BL=QV
-    endif
-!-srf-gf-scheme
-   
     I=SURF
 
     call MAPL_TimerOn(STATE,GCNames(I))
@@ -2492,11 +2488,6 @@ contains
 
 ! Aerosol/Chemistry Stage 1
 !--------------------------
-
-    if ( SYNCTQ.eq.1. ) then
-     THFORCHEM = THAFMOIST
-      TFORCHEM = THAFMOIST*PK
-    endif
 
     I=CHEM
 
@@ -2508,40 +2499,55 @@ contains
 ! Turbulence Stage 1
 !-------------------
 
-!  AMM - compute S after MOIST ( use moist S export and add phi s) and stuff S into turb TR bundle
-!        write on turb imports of T and TH with values after moist
-
-    if ( SYNCTQ.ge.1. ) then
-     do k = 1,LM
-     SFORTURB(:,:,k) = SAFTERMOIST(:,:,k) + ZLE(:,:,LM) * MAPL_GRAV
-     enddo
-      TFORTURB = THAFMOIST*PK
-     THFORTURB = THAFMOIST
-    endif
-
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
+!  SYNCTQ - Stage 2 SYNC of T/Q and U/V
+!--------------------------------------
+    if ( SYNCTQ.ge.1. ) then
+    ! From TURBL Run 1
+     call MAPL_GetPointer ( GEX(TURBL), UAFDIFFUSE, 'UAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(TURBL), VAFDIFFUSE, 'VAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(TURBL), QAFDIFFUSE, 'QAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+    ! For TURBL
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
+      UFORTURB = UAFDIFFUSE
+      VFORTURB = VAFDIFFUSE
+     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
+      TFORTURB = TFORTURB + (SAFDIFFUSE-SFORTURB)/MAPL_CP
+     THFORTURB = TFORTURB/PK
+      SFORTURB = SAFDIFFUSE
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       call VertInterp(TFORSURF,TFORTURB,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+     else
+       TFORSURF =   TFORTURB(:,:,LM)
+       UFORSURF = UAFDIFFUSE(:,:,LM)
+       VFORSURF = VAFDIFFUSE(:,:,LM)
+       QFORSURF = QAFDIFFUSE(:,:,LM)
+     endif
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    endif
+
 ! Surface Stage 2
 !----------------
-
-    if ( SYNCTQ.ge.1. ) then
-!AMM - update TA for surface using turb updated S - assume change in S is all change in T
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       allocate(DTSURFAFTURB(IM,JM),stat=STATUS);VERIFY_(STATUS)
-       call VertInterp(DTSURFAFTURB,(SAFDIFFUSE-SFORTURB)/MAPL_CP,-HGT,-HGT_SURFACE, status)
-       TFORSURF = TFORTURB(:,:,LM) + DTSURFAFTURB
-       deallocate(DTSURFAFTURB)
-     else
-       TFORSURF = TFORTURB(:,:,LM) + ( SAFDIFFUSE(:,:,LM) - SFORTURB(:,:,LM) ) / MAPL_CP
-     endif
-! set THFORCHEM and TFORRAD using turb run 1 updated S - assume change in S is all change in T
-     if (SYNCTQ.eq.1.) THFORCHEM = THFORTURB + (SAFDIFFUSE -SFORTURB) / (PK * MAPL_CP)
-     TFORRAD = TFORTURB + (SAFDIFFUSE -SFORTURB) / MAPL_CP
-    endif
 
     I=SURF
 
@@ -2553,11 +2559,6 @@ contains
 ! Turbulence Stage 2
 !-------------------
 
-    if ( SYNCTQ.ge.1. ) then
-!AMM  update turb S import using S from the result of turb 1
-     SFORTURB = SAFDIFFUSE
-    endif
-
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
@@ -2565,20 +2566,24 @@ contains
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
+    if ( SYNCTQ.ge.1. ) then
+     ! From TURBL Stage 2 
+     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
+     ! For RAD
+     call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T', RC=STATUS); VERIFY_(STATUS)
+     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
+      TFORRAD = TFORTURB + (SAFUPDATE-SAFDIFFUSE)/MAPL_CP
+     ! For CHEM use the same T as CHEM
+     if ( SYNCTQ.eq.1. ) then
+       call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS); VERIFY_(STATUS)
+        TFORCHEM = TFORRAD
+       THFORCHEM = TFORRAD/PK
+     endif
+    endif
+
 ! Aerosol/Chemistry Stage 2
 !--------------------------
-
-    if ( SYNCTQ.eq.1. ) then
-!  AMM - Now Update T (for RAD) and T,TH (for CHEM) using S after turb run 2 assume change in S is all change in T
-     THFORCHEM = THFORCHEM + ( SAFUPDATE -SAFDIFFUSE ) / (PK * MAPL_CP)
-      TFORCHEM = THFORCHEM*PK
-      TFORRAD  =  TFORCHEM
-    endif
-
-    if(SYNCTQ.ge.1. .AND. DXDT_BL==1) then
-       DTDT_BL=(TFORRAD-DTDT_BL)/DT
-       DQDT_BL=(QV-DQDT_BL)/DT
-    endif
 
     I=CHEM   
 
@@ -2597,7 +2602,7 @@ contains
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
-!AMM
+! Clean up SYNTQ things
     if ( SYNCTQ.ge.1. ) then
       deallocate(PK)
       if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) deallocate(HGT)
@@ -3196,13 +3201,15 @@ contains
     if(associated(STN)) deallocate(STN)
 
 !-srf-gf-scheme
-    if(SYNCTQ.eq.0. .OR. DXDT_BL==2) then
+    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+    DQDT_BL = 0.
+    DTDT_BL = 0.
+    if(DXDT_BL==1) then
       !- save 'boundary layer' tendencies of Q and T for the convection scheme
-      DQDT_BL = DQVDTTRB
-      DTDT_BL = 0.
-      !- for SCM setup, TIT/TIF are not associated
-      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
-      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT    
+      if( associated(DQVDTTRB)) DQDT_BL = DQVDTTRB
+      if( associated(TIF     )) DTDT_BL = DTDT_BL + TIF
+      if( associated(TIT     )) DTDT_BL = DTDT_BL + TIT    
     endif
 !-srf-gf-scheme
 

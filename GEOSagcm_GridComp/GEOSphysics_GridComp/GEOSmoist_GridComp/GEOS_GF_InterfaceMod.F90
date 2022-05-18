@@ -217,7 +217,7 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
     ENDIF
-    call MAPL_GetResource(MAPL, GF_ENV_SETTING     , 'GF_ENV_SETTING:'  , DEFAULT= 'DYNAMICS' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, GF_ENV_SETTING     , 'GF_ENV_SETTING:'  , DEFAULT= 'CURRENT' , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
