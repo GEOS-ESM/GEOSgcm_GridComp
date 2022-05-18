@@ -10,15 +10,12 @@ module GEOS_HetPrecipGridCompMod
 
   public SetServices
   ! some module variables
-  integer, parameter :: NPDF=28
-  integer, parameter :: SECONDS_PER_DAY = 24*3600 ! should be 86400
+  integer, parameter :: SECONDS_PER_HOUR = 3600
 
   real :: rho ! autocorrelation
+
   real :: sqrho ! = sqrt(1-rho**2) autocorrelation
-  real :: pdfw(0:NPDF)
-  real :: pdfv(0:NPDF)
-  real :: cdfw(0:NPDF)
-  real :: cdfv(0:NPDF)
+
   real, pointer :: norm_tile_area(:) => null()
 
 contains
@@ -117,7 +114,7 @@ contains
     type (MAPL_MetaComp), pointer :: MAPL
     type (ESMF_State) :: INTERNAL
     type (MAPL_LocStream) :: LocStream
-    real :: DT, TAU_HETPR
+    real :: DT, TAU_HETPR, SEED_OPT
     integer :: IM, JM, NT, I
     real, pointer :: qvar(:) => null()
     real :: totalArea
@@ -155,39 +152,12 @@ contains
     ! get autocorrelation timescale
     call MAPL_GetResource(MAPL, TAU_HETPR, Label="HETPRECIP_TAU:", default=3600., __RC__)
 
+    call MAPL_GetResource(MAPL, SEED_OPT, Label="HETPRECIP_SEED:", default=5., __RC__)
+
     RHO = (1.0/E) **(1.0*DT/TAU_HETPR)
     SQRHO = SQRT(1.0-RHO**2)
 
-! pdf / cdf
-!ALT: This is direct port from Randy's idl code
-    ! piecewise fit to pdf of weights:
-    pdfw=[ 0.00793, 0.01790, 0.02253, 0.02837, 0.03572, 0.04496, &
-           0.05661, 0.07126, 0.08972, 0.11295, 0.14219, 0.17901, &
-           0.22536, 0.28371, 0.35717, 0.44965, 0.56607, 0.71264, &
-           0.89712, 1.12946, 1.42191, 1.79008, 2.25357, 2.83708, &
-           3.57167, 4.49647, 5.66072, 7.12643, 8.97164 ]
-    pdfv=[ 0.04172, 0.01285, 0.01469, 0.01668, 0.02590, 0.02158, &   ! 3-degree to 16km
-           0.02514, 0.02773, 0.03141, 0.03369, 0.03649, 0.04119, &
-           0.04404, 0.04917, 0.04951, 0.05514, 0.05683, 0.05903, &
-           0.05865, 0.05544, 0.05261, 0.04915, 0.04156, 0.03439, &
-           0.02713, 0.01960, 0.01271, 0.00767, 0.00349 ]
-!    pdfv=[ 0.00956, 0.00351, 0.00499, 0.00618, 0.00776, 0.00969, &  ! 0.5-degree to 16km
-!           0.01183, 0.01370, 0.01745, 0.02012, 0.02375, 0.02761, &
-!           0.03253, 0.03826, 0.04460, 0.05401, 0.06462, 0.07981, &
-!           0.09678, 0.13621, 0.09749, 0.08644, 0.05649, 0.03426, &
-!           0.01610, 0.00517, 0.00105, 0.00004, 0.0 ]
-!    pdfw=[ 0.1, 0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5, 1.7, 1.9, &
-!           2.1, 2.3, 2.5, 2.7, 2.9, 3.1, 3.3, 3.5, 3.7, 3.9, &
-!           4.1, 4.3, 4.5, 4.7, 4.9] ! weights
-!    pdfv=[.121,.128,.137,.139,.119, .081,.059,.041,.030,.025, &   ! original
-!          .019,.014,.012,.009,.007, .005,.003,.002,.001,.001, &
-!          .0008,.0006,.0004,.0002,.0001] ! probability density
-    pdfv=pdfv/sum(pdfv) ! scale to ensure it sums to unity
-    cdfv(0)=pdfv(0)
-    do i=1,NPDF
-       cdfv(i)=cdfv(i-1)+pdfv(i) ! construct CDF
-    end do
-    cdfv=cdfv/cdfv(NPDF) ! final scaling, just to be sure
+
 
     ! get qvar
 
@@ -197,20 +167,16 @@ contains
 
     call MAPL_GetPointer(INTERNAL, QVAR, 'QVAR', __RC__)
 
-    ! optioanally deal with seeding the random number generator
-    ! ...TBD...
-
     call random_seed(SIZE=seed_len)
     allocate(THE_SEED(seed_len))
 
-    THE_SEED(1)=1
-    THE_SEED(2)=5
+    THE_SEED(1) = INT(SEED_OPT)
+    THE_SEED(2) = 2*INT(SEED_OPT)
 
     ! Gfortran uses longer seeds, so fill the rest with zero
     if (seed_len > 2) THE_SEED(3:) = 0
 
     call random_seed(PUT=THE_SEED)
-
 
     if (all(qvar == 0.0)) then
        call RANDOM_NORMAL(qvar)
@@ -245,6 +211,10 @@ contains
     real :: total
     real, parameter :: xlo=log10(5e-2), xhi=log10(10.)
     real, parameter :: ylo=0.9, yhi=0.0, fracdrymax=0.95
+    real, parameter :: a1opt=0.4152, a2opt=0.9682 ! for relationship between CDF and precip. scaling
+    real, parameter :: piby2=3.14159/2.
+    real :: psum0
+    real :: alow, ahigh, aintegral1, aintegral2, aintegral
     real :: fracdry, yinterp
     real :: pperday
     integer :: NT
@@ -253,7 +223,8 @@ contains
     integer, allocatable :: krank(:)
     real, pointer :: psub(:) => null()
     real, allocatable :: psum(:)
-    real :: qfrac, wtx, wtpdf
+    real, allocatable :: lowerlimit(:)
+    real, allocatable :: upperlimit(:)
 
 
 ! Get my internal MAPL_Generic state
@@ -293,7 +264,7 @@ contains
 
 ! determine fracdry
 
-    pperday=log10(totalPrecip*SECONDS_PER_DAY)
+    pperday=log10(totalPrecip*SECONDS_PER_HOUR)
 
     yinterp=ylo+((pperday-xlo)/(xhi-xlo))*(yhi-ylo)
     if (pperday > xhi) yinterp = yhi
@@ -301,54 +272,47 @@ contains
     if(fracdry > fracdrymax) then 
        fracdry=fracdrymax
     end if
+!    fracdry = 0.   !!! Temporary test
 
     allocate(psum(NT), krank(NT), __STAT__)
+    allocate(lowerlimit(NT),upperlimit(NT), __STAT__ )
 
     ! sort QVAR
     call rankdata(nt, qvar, krank, __RC__)
+!    print *,'krank=',krank
 
-    ! compute a partial sum of tile areas in the ranked order
+    psum0=0.
+    ! compute a partial sum of tile areas in the ranked order;
+    ! also set lower and upper limits of integral calculation
     do n = 1,NT
        itile = krank(n)
-       if (n == 1) then
-          psum(itile) = norm_tile_area(itile)
-       else
-          psum(itile) = psum(krank(n-1)) + norm_tile_area(itile)
-       end if
+       lowerlimit(itile)=psum0
+       psum0 = psum0 + norm_tile_area(itile)
+       upperlimit(itile)=psum0      
     end do
 
-    ! bring the partial sum to the "middle" of the last ranked tile
-!    do n = 1,NT
-!       itile = krank(n)
-!       psum(itile) =  psum(itile) - 0.5*norm_tile_area(itile)
-!    end do
 
-    ! Note psum is the same variable as qranked in Randy's IDL code
-
-    ! use that and the cdfw/v to calculate heterogeneneous factor
+    ! a1opt*(tan(a2opt x)) is a fit to the CDF - precip. scaling factor 
+    ! relationship. Compute integral of a1opt*(tan(a2opt x)) analytically
 
     do n = 1,nt
        itile = krank(n)
-       if(psum(itile) < fracdry) then
+       if(upperlimit(itile) < fracdry) then
           psub(itile)=0.
        else
-          qfrac=(psum(itile)-fracdry)/(1.-fracdry)
+          alow=lowerlimit(itile)
+          if(lowerlimit(itile) < fracdry) alow=fracdry
+          ahigh=upperlimit(itile)
+
+          alow=(alow-fracdry)/(1.-fracdry)
+          ahigh=(ahigh-fracdry)/(1.-fracdry)
+
+          aintegral1=log(abs(1./cos(a2opt*ahigh*piby2))) ! natural logarithm
+          aintegral2=log(abs(1./cos(a2opt*alow*piby2)))
+          aintegral=(a1opt/(a2opt*piby2))*(aintegral1-aintegral2)
+          psub(itile)=aintegral/(norm_tile_area(itile)*(1.-fracdry))
 
           iopt=-1
-          do i=0,NPDF 
-             if(qfrac < cdfv(i)) cycle
-             iopt=i ! find location on CDF
-             if(iopt < NPDF) then
-                wtx=(qfrac-cdfv(iopt))/(cdfv(iopt+1)-cdfv(iopt))
-                wtpdf=pdfw(iopt)+wtx*(pdfw(iopt+1)-pdfw(iopt))
-                ! actual calculation of the subgrid precipitation factor
-                psub(itile)=wtpdf*(1.-fracdry)
-             else
-                !ALT: this logic need to be double checked
-                wtpdf=pdfw(iopt)
-                psub(itile)=wtpdf*(1.-fracdry)
-             endif
-          end do
        end if
      end do
 
@@ -363,6 +327,10 @@ contains
      end do
      _ASSERT(ilargest > 0, 'Could not find largest QVAR')
      if(total == 0.0) psub(ilargest) = 1.0
+
+     ! empirical rescaling to reduce time-mean precip bias
+!     print *,'factor=',(4.2*EXP(-25.*norm_tile_area)+0.6)
+!     psub = psub / (4.2*EXP(-25.*norm_tile_area)+0.6)
 
      ! scale the precip factor to make sure we preserve the grid box precip
 !ALT: old scaling, assumes uniform area tiles     total = sum(psub)/nt
