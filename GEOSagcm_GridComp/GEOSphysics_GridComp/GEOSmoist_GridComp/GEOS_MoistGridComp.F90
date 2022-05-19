@@ -5577,10 +5577,14 @@ contains
           PCU = 0.0
           call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PLS = PLS + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PLS = PLS + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
@@ -5593,11 +5597,7 @@ contains
           PLS = 0.0
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PLS = PLS + PTR2D
-          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) PLS = PLS + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'    , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) PLS = PLS + PTR2D
-          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PLS = PLS + PTR2D
           PLS = MAX(PLS, 0.0)
        endif
