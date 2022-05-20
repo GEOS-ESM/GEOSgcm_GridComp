@@ -399,7 +399,9 @@ contains
      call MAPL_VarWrite(formatter,"GHTCNT4",this%ghtcnt4)
      call MAPL_VarWrite(formatter,"GHTCNT5",this%ghtcnt5)
      call MAPL_VarWrite(formatter,"GHTCNT6",this%ghtcnt6)
-     call MAPL_VarWrite(formatter,"TSURF",this%tsurf)
+     if (this%meta%has_variable('TSURF')) then
+        call MAPL_VarWrite(formatter,"TSURF",this%tsurf)
+     endif
      call MAPL_VarWrite(formatter,"WESNN1",this%wesnn1)
      call MAPL_VarWrite(formatter,"WESNN2",this%wesnn2)
      call MAPL_VarWrite(formatter,"WESNN3",this%wesnn3)
@@ -409,11 +411,23 @@ contains
      call MAPL_VarWrite(formatter,"SNDZN1",this%sndzn1)
      call MAPL_VarWrite(formatter,"SNDZN2",this%sndzn2)
      call MAPL_VarWrite(formatter,"SNDZN3",this%sndzn3)
-     call MAPL_VarWrite(formatter,"CH",this%ch)
-     call MAPL_VarWrite(formatter,"CM",this%cm)
-     call MAPL_VarWrite(formatter,"CQ",this%cq)
-     call MAPL_VarWrite(formatter,"FR",this%fr)
-     call MAPL_VarWrite(formatter,"WW",this%ww)
+
+     if (this%meta%has_variable('CH')) then
+       call MAPL_VarWrite(formatter,"CH",this%ch)
+     endif
+     if (this%meta%has_variable('CM')) then
+       call MAPL_VarWrite(formatter,"CM",this%cm)
+     endif
+     if (this%meta%has_variable('CQ')) then
+       call MAPL_VarWrite(formatter,"CQ",this%cq)
+     endif
+     if (this%meta%has_variable('FR')) then
+       call MAPL_VarWrite(formatter,"FR",this%fr)
+     endif
+     if (this%meta%has_variable('WW')) then
+       call MAPL_VarWrite(formatter,"WW",this%ww)
+     endif
+
      _RETURN(_SUCCESS)
 
    end subroutine write_shared_nc4
@@ -465,7 +479,11 @@ contains
      allocate( this%    ghtcnt4(ntiles) )
      allocate( this%    ghtcnt5(ntiles) )
      allocate( this%    ghtcnt6(ntiles) )
-     allocate( this%      tsurf(ntiles) )
+     
+     if (this%meta%has_variable('TSURF')) then
+       allocate( this%      tsurf(ntiles) )
+     endif
+
      allocate( this%     wesnn1(ntiles) )
      allocate( this%     wesnn2(ntiles) )
      allocate( this%     wesnn3(ntiles) )
@@ -475,11 +493,22 @@ contains
      allocate( this%     sndzn1(ntiles) )
      allocate( this%     sndzn2(ntiles) )
      allocate( this%     sndzn3(ntiles) )
-     allocate( this%         ch(ntiles,4) )
-     allocate( this%         cm(ntiles,4) )
-     allocate( this%         cq(ntiles,4) )
-     allocate( this%         fr(ntiles,4) )
-     allocate( this%         ww(ntiles,4) )
+
+     if (this%meta%has_variable('CH')) then
+       allocate( this%         ch(ntiles,4) )
+     endif
+     if (this%meta%has_variable('CM')) then
+       allocate( this%         cm(ntiles,4) )
+     endif
+     if (this%meta%has_variable('CQ')) then
+       allocate( this%         cq(ntiles,4) )
+     endif
+     if (this%meta%has_variable('FR')) then
+       allocate( this%         fr(ntiles,4) )
+     endif
+     if (this%meta%has_variable('WW')) then
+       allocate( this%         ww(ntiles,4) )
+     endif
      _RETURN(_SUCCESS)
    end subroutine allocate_catch
 
@@ -1033,17 +1062,35 @@ contains
 
        var_out       = this%SNDZN3(id_glb(:))
        this%SNDZN3   = var_out
+    
+       !set tsurf to zero
+       if (this%meta%has_variable('TSURF')) then
+          var_out = 0.0
+          this%tsurf = var_out
+       endif
 
        ! CH CM CQ FR WW
        ! WW
-       deallocate(this%ww, this%cm, this%cq, this%fr, this%ch)
-       allocate(this%ww(out_ntiles,4), this%cm(out_ntiles,4), this%cq(out_ntiles,4))
-       allocate(this%fr(out_ntiles,4), this%ch(out_ntiles,4))
-       this%ww = 0.1
-       this%fr = 0.25
-       this%ch = 0.001
-       this%cm = 0.001
-       this%cq = 0.001
+       if(allocated(tmp2d)) deallocate(tmp2d)
+       allocate(tmp2d(out_ntiles,4))
+       tmp2d = 0.001
+       if (this%meta%has_variable('CH')) then
+          this%ch  = tmp2d
+       endif
+       if (this%meta%has_variable('CM')) then
+          this%cm  = tmp2d
+       endif
+       if (this%meta%has_variable('CQ')) then
+          this%cq  = tmp2d
+       endif
+       tmp2d = 0.25
+       if (this%meta%has_variable('FR')) then
+          this%fr  = tmp2d
+       endif
+       tmp2d = 0.1
+       if (this%meta%has_variable('WW')) then
+          this%ww  = tmp2d
+       endif
 
        call this%set_scale_var()
      endif
