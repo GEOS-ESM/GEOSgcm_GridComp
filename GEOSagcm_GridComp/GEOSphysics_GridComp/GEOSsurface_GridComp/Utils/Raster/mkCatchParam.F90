@@ -293,19 +293,6 @@ integer :: n_threads=1
           endif
           write (log_file,'(a)')' '
 
-          tmpstring = 'Step 05: Vegetation types using ESA land cover (CatchCNCLM45)'
-          fname_tmp = 'clsm/CLM4.5_veg_typs_fracs'
-          write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
-          inquire(file=trim(fname_tmp), exist=file_exists) 
-          if (.not.file_exists) then
-             write (log_file,'(a)')'         Creating file...'
-             call ESA2CLM_45 (nc,nr,gridnamer)           
-             write (log_file,'(a)')'         Done.'           
-          else
-             write (log_file,'(a)')'         Using existing file.'
-          endif
-          write (log_file,'(a)')' '
-
        else
 
           tmpstring = 'Step 03: Vegetation types using IGBP SiB2 land cover (MOSAIC/Catch)'
@@ -345,7 +332,7 @@ integer :: n_threads=1
        
        ! creating mapping arrays if necessary
                   
-       tmpstring = 'Step 06: Vegetation climatologies'
+       tmpstring = 'Step 05: Vegetation climatologies'
        write (log_file,'(a,a,a)') trim(tmpstring),' ', trim(LAIBCS)
        
        if((trim(LAIBCS) == 'MODGEO').or.(trim(LAIBCS) == 'GEOLAND2')) then 
@@ -466,7 +453,7 @@ integer :: n_threads=1
        ! MODIS1 data on native grid and produces 8/16-day MODIS Albedo climatology
 
 
-       tmpstring = 'Step 07: Albedo climatologies'
+       tmpstring = 'Step 06: Albedo climatologies'
        write (log_file,'(a,a,a)') trim(tmpstring),' ', trim(MODALB)
        
        if(MODALB == 'MODIS1') then 
@@ -513,7 +500,7 @@ integer :: n_threads=1
 
        ! ---------------------------------------------
 
-       tmpstring = 'Step 08: Albedo scale factors'
+       tmpstring = 'Step 07: Albedo scale factors'
        write (log_file,'(a,a,a)') trim(tmpstring),' ', trim(MODALB)
        
        ! NOTE: There are two files with albedo scale factors: "visdf.dat" and "nirdf.dat".
@@ -562,7 +549,7 @@ integer :: n_threads=1
        !  1) NGDC soil properties, 2) HWSD-STATSGO2 Soil Properties
        ! ---------------------------------------------------------------------
        
-       tmpstring = 'Step 09: Soil parameters ' // trim(SOILBCS) 
+       tmpstring = 'Step 08: Soil parameters ' // trim(SOILBCS) 
        fname_tmp = 'clsm/soil_param.first'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
@@ -579,7 +566,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
               
-       tmpstring  = 'Step 10: CLSM model parameters ' // trim(SOILBCS) 
+       tmpstring  = 'Step 09: CLSM model parameters ' // trim(SOILBCS) 
        fname_tmp  = 'clsm/ar.new'
        fname_tmp2 = 'clsm/bf.dat'
        fname_tmp3 = 'clsm/ts.dat'
@@ -608,7 +595,7 @@ integer :: n_threads=1
        write (log_file,'(a)')'      Uncomment associated lines in source to generate 7.5 minute raster file.'
        write (log_file,'(a)')' '
        
-       tmpstring = 'Step 11: CatchCNCLM40 NDep T2m SoilAlb parameters'
+       tmpstring = 'Step 10: CatchCNCLM40 NDep T2m SoilAlb parameters'
        fname_tmp = 'clsm/CLM_NDep_SoilAlb_T2m'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        ! create this file only if matching veg types file already exists
@@ -622,7 +609,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '       
        
-       tmpstring = 'Step 12: CatchCNCLM45 abm peatf gdp hdm fc parameters'
+       tmpstring = 'Step 11: CatchCNCLM45 abm peatf gdp hdm fc parameters'
        fname_tmp = 'clsm/CLM4.5_abm_peatf_gdp_hdm_fc'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
@@ -635,7 +622,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
        
-       tmpstring = 'Step 13: CatchCNCLM45 lightning frequency'
+       tmpstring = 'Step 12: CatchCNCLM45 lightning frequency'
        fname_tmp = 'clsm/lnfm.dat'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
@@ -648,7 +635,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
 
-       tmpstring = 'Step 14: Country and state codes'
+       tmpstring = 'Step 13: Country and state codes'
        fname_tmp = 'clsm/country_and_state_code.data'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
