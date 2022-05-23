@@ -8013,101 +8013,108 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       end subroutine Driver
 
       
-      FUNCTION betai(a,b,x)
-        REAL betai,a,b,x
-        REAL bt
-        !external gammln
-        
-        if (x < 0.0125) x = 0.0125
-        if (x > 0.9875) x = 0.9875
-        
-        if(x.lt.0..or.x.gt.1.)print *, 'bad argument x in betai',x
-        if(x.lt.0..or.x.gt.1.)stop
-        if(x.eq.0..or.x.eq.1.)then
-           bt=0.
-        else 
-           bt=exp(gammln(a+b)-gammln(a)-gammln(b) &
-                +a*log(x)+b*log(1.-x))
-        endif
-        
-        if(x.lt.(a+1.)/(a+b+2.))then 
-           betai=bt*betacf(a,b,x)/a
-           return
-        else
-           betai=1.-bt*betacf(b,a,1.-x)/b 
-           return
-        endif
-        
-      END FUNCTION betai
-
-      ! -------------------------------------------------------
-
-      FUNCTION betacf(a,b,x)
-
-        INTEGER MAXIT
-        REAL betacf,a,b,x,EPS,FPMIN
-        PARAMETER (MAXIT=100,EPS=3.e-7,FPMIN=1.e-30)
-        INTEGER m,m2
-        REAL aa,c,d,del,h,qab,qam,qap
-        
-        qab=a+b 
-        qap=a+1. 
-        qam=a-1.
-        c=1. 
-        d=1.-qab*x/qap
-        
-        if(abs(d).lt.FPMIN)d=FPMIN
-        d=1./d
-        h=d
-        do m=1,MAXIT
-           m2=2*m
-           aa=m*(b-m)*x/((qam+m2)*(a+m2))
-           d=1.+aa*d 
-           if(abs(d).lt.FPMIN)d=FPMIN
-           c=1.+aa/c
-           if(abs(c).lt.FPMIN)c=FPMIN
-           d=1./d
-           h=h*d*c
-           aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2))
-           d=1.+aa*d 
-           if(abs(d).lt.FPMIN)d=FPMIN
-           c=1.+aa/c
-           if(abs(c).lt.FPMIN)c=FPMIN
-           d=1./d
-           del=d*c
-           h=h*del
-           if(abs(del-1.).lt.EPS)exit 
-        enddo
-        betacf=h
-        return
-        
-      END FUNCTION betacf
+! Commented out functions betai(), betacf(), and gammln().
+! These functions are not used and were reproduced identically in  
+! GEOS_CatchCNCLM40GridComp.F90 and in GEOS_CatchCNCLM45GridComp.F90.
+! Another copy was in GEOScatchCN_GridComp/utils/math_routines.F90 but
+! there function betai() was missing the restriction 0.0125<x<0.9875.
+! - reichle, 23 May 2022
       
-      ! --------------------------------------------------------------
-      
-      FUNCTION gammln(xx)
-        
-        REAL gammln,xx
-        INTEGER j
-        DOUBLE PRECISION ser,stp,tmp,x,y,cof(6)
-        
-        SAVE cof,stp
-        DATA cof,stp/76.18009172947146d0,-86.50532032941677d0,          &
-             24.01409824083091d0,-1.231739572450155d0,.1208650973866179d-2, &
-             -.5395239384953d-5,2.5066282746310005d0/
-        x=xx
-        y=x
-        tmp=x+5.5d0
-        tmp=(x+0.5d0)*log(tmp)-tmp
-        ser=1.000000000190015d0
-        do  j=1,6
-           y=y+1.d0
-           ser=ser+cof(j)/y
-        enddo
-        gammln=tmp+log(stp*ser/x)
-        return
-        
-      END FUNCTION gammln
+!!      FUNCTION betai(a,b,x)
+!!        REAL betai,a,b,x
+!!        REAL bt
+!!        !external gammln
+!!        
+!!        if (x < 0.0125) x = 0.0125
+!!        if (x > 0.9875) x = 0.9875
+!!        
+!!        if(x.lt.0..or.x.gt.1.)print *, 'bad argument x in betai',x
+!!        if(x.lt.0..or.x.gt.1.)stop
+!!        if(x.eq.0..or.x.eq.1.)then
+!!           bt=0.
+!!        else 
+!!           bt=exp(gammln(a+b)-gammln(a)-gammln(b) &
+!!                +a*log(x)+b*log(1.-x))
+!!        endif
+!!        
+!!        if(x.lt.(a+1.)/(a+b+2.))then 
+!!           betai=bt*betacf(a,b,x)/a
+!!           return
+!!        else
+!!           betai=1.-bt*betacf(b,a,1.-x)/b 
+!!           return
+!!        endif
+!!        
+!!      END FUNCTION betai
+!!
+!!      ! -------------------------------------------------------
+!!
+!!      FUNCTION betacf(a,b,x)
+!!
+!!        INTEGER MAXIT
+!!        REAL betacf,a,b,x,EPS,FPMIN
+!!        PARAMETER (MAXIT=100,EPS=3.e-7,FPMIN=1.e-30)
+!!        INTEGER m,m2
+!!        REAL aa,c,d,del,h,qab,qam,qap
+!!        
+!!        qab=a+b 
+!!        qap=a+1. 
+!!        qam=a-1.
+!!        c=1. 
+!!        d=1.-qab*x/qap
+!!        
+!!        if(abs(d).lt.FPMIN)d=FPMIN
+!!        d=1./d
+!!        h=d
+!!        do m=1,MAXIT
+!!           m2=2*m
+!!           aa=m*(b-m)*x/((qam+m2)*(a+m2))
+!!           d=1.+aa*d 
+!!           if(abs(d).lt.FPMIN)d=FPMIN
+!!           c=1.+aa/c
+!!           if(abs(c).lt.FPMIN)c=FPMIN
+!!           d=1./d
+!!           h=h*d*c
+!!           aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2))
+!!           d=1.+aa*d 
+!!           if(abs(d).lt.FPMIN)d=FPMIN
+!!           c=1.+aa/c
+!!           if(abs(c).lt.FPMIN)c=FPMIN
+!!           d=1./d
+!!           del=d*c
+!!           h=h*del
+!!           if(abs(del-1.).lt.EPS)exit 
+!!        enddo
+!!        betacf=h
+!!        return
+!!        
+!!      END FUNCTION betacf
+!!      
+!!      ! --------------------------------------------------------------
+!!      
+!!      FUNCTION gammln(xx)
+!!        
+!!        REAL gammln,xx
+!!        INTEGER j
+!!        DOUBLE PRECISION ser,stp,tmp,x,y,cof(6)
+!!        
+!!        SAVE cof,stp
+!!        DATA cof,stp/76.18009172947146d0,-86.50532032941677d0,          &
+!!             24.01409824083091d0,-1.231739572450155d0,.1208650973866179d-2, &
+!!             -.5395239384953d-5,2.5066282746310005d0/
+!!        x=xx
+!!        y=x
+!!        tmp=x+5.5d0
+!!        tmp=(x+0.5d0)*log(tmp)-tmp
+!!        ser=1.000000000190015d0
+!!        do  j=1,6
+!!           y=y+1.d0
+!!           ser=ser+cof(j)/y
+!!        enddo
+!!        gammln=tmp+log(stp*ser/x)
+!!        return
+!!        
+!!      END FUNCTION gammln
 
       ! --------------------------------------------------------------
       
