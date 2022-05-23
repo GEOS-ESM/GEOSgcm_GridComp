@@ -780,14 +780,6 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DC.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DC.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DC.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DC.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DC.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DC.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DC.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DC.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DC.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DC.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DC.dat   
 
 /bin/rm -f sedfile
 cat > sedfile << EOF
@@ -1009,14 +1001,6 @@ cd clsm.C${NC}
    /bin/mv green.dat green_clim_${RC}.data
    /bin/mv lnfm.dat   lnfm_clim_${RC}.data
    /bin/mv ndvi.dat   ndvi_clim_${RC}.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RC}.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RC}.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RC}.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RC}.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RC}.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RC}.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RC}.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
 
 /bin/rm -f sedfile
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
@@ -1173,14 +1157,6 @@ cd clsm.C${NC}
    /bin/mv green.dat green_clim_${RC}.data
    /bin/mv lnfm.dat   lnfm_clim_${RC}.data
    /bin/mv ndvi.dat   ndvi_clim_${RC}.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RC}.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RC}.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RC}.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RC}.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RC}.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RC}.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RC}.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
 
 /bin/rm -f sedfile
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
@@ -1354,14 +1330,6 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DE.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DE.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DE.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DE.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DE.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DE.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DE.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DE.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DE.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DE.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DE.dat   
 
 
 cd ../
