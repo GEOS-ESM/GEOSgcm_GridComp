@@ -5846,11 +5846,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
     ! --------------------------------------------------------------------------
 
-    SUBROUTINE open_landparam_nc4_files 
+    SUBROUTINE open_landparam_nc4_files(maxcat) 
 
       implicit none
       integer                 :: NCCatOUTID,  NCCatCNOUTID,  NCVegOUTID  
       integer                 :: STATUS, CellID1, CellID2, CellID3, SubID
+      integer, intent (in)    :: maxcat
       integer, dimension(8)   :: date_time_values
       character (22)          :: time_stamp
       character (100)         :: MYNAME
@@ -5859,9 +5860,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       status = NF_CREATE ('clsm/catchcn_params.nc4', NF_NETCDF4, NCCatCNOUTID) ; VERIFY_(STATUS)
       status = NF_CREATE ('clsm/vegdyn.data'       , NF_NETCDF4, NCVegOUTID  ) ; VERIFY_(STATUS)
 
-      status = NF_DEF_DIM(NCCatOUTID  , 'tile' , NF_UNLIMITED, CellID1)
-      status = NF_DEF_DIM(NCCatCNOUTID, 'tile' , NF_UNLIMITED, CellID2)
-      status = NF_DEF_DIM(NCVegOUTID  , 'tile' , NF_UNLIMITED, CellID3)
+      status = NF_DEF_DIM(NCCatOUTID  , 'tile' , maxcat, CellID1)
+      status = NF_DEF_DIM(NCCatCNOUTID, 'tile' , maxcat, CellID2)
+      status = NF_DEF_DIM(NCVegOUTID  , 'tile' , maxcat, CellID3)
       status = NF_DEF_DIM(NCCatCNOUTID, 'unknown_dim2' , 4, SubID)
 
       call DEF_VAR ( NCCatOUTID, CellID1,'OLD_ITY'   ,'vegetation_type.'            , '1'       )

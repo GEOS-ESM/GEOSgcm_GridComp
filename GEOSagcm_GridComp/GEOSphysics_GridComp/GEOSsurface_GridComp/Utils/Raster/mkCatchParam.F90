@@ -59,6 +59,7 @@ PROGRAM mkCatchParam
   type (regrid_map)    :: maparc30, mapgeoland2,maparc60
   character*200        :: tmpstring, tmpstring1, tmpstring2
   character*200        :: fname_tmp, fname_tmp2, fname_tmp3, fname_tmp4
+  integer              :: maxcat
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -213,9 +214,6 @@ integer :: n_threads=1
           write (log_file,'(a)')'Cube-Sphere Grid - assuming dateline-on-edge (DE)'
        endif
        
-       inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       if (.not.file_exists) CALL open_landparam_nc4_files 
-
        ! ******************************************************************************
        !
        ! IMPORTANT: The top-level make_bcs script should not allow this program to
@@ -244,7 +242,15 @@ integer :: n_threads=1
           write (log_file,'(a)')'Skipping step for EASE grid. '
        endif
        write (log_file,'(a)')' '
-       
+
+        open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
+              action =  'read')
+        read (10, *) maxcat
+        close (10, status = 'keep')
+
+       inquire(file='clsm/catch_params.nc4', exist=file_exists)
+       if (.not.file_exists) CALL open_landparam_nc4_files(maxcat)  
+
        ! Creating cti_stats.dat 
        ! ----------------------
 
