@@ -59,7 +59,7 @@ PROGRAM mkCatchParam
   type (regrid_map)    :: maparc30, mapgeoland2,maparc60
   character*200        :: tmpstring, tmpstring1, tmpstring2
   character*200        :: fname_tmp, fname_tmp2, fname_tmp3, fname_tmp4
-  integer              :: maxcat
+  integer              :: N_tile
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -245,11 +245,11 @@ integer :: n_threads=1
 
         open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
               action =  'read')
-        read (10, *) maxcat
+        read (10, *) N_tile
         close (10, status = 'keep')
 
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       if (.not.file_exists) CALL open_landparam_nc4_files(maxcat)  
+       if (.not.file_exists) CALL open_landparam_nc4_files(N_tile)  
 
        ! Creating cti_stats.dat 
        ! ----------------------
