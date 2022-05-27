@@ -20,6 +20,7 @@ module cldmacro
          MAPL_R4
 
    use MAPL_BaseMod,      only: MAPL_UNDEF
+   use CLOUDNEW, only: CLDPARAMS
 
    implicit none
 
@@ -158,6 +159,7 @@ contains
          PRECU_dev        , &
          CUARF_dev        , &
          SNRCU_dev        , &
+         !CLDPARAMS        , &
          QST3_dev         , &
          DZET_dev         , &
          CNV_FRACTION_dev , &
@@ -192,7 +194,6 @@ contains
          QSNOW_CN, &
          KCBL, LTS_ , &
          CONVPAR_OPTION  )       
-
       integer, intent(in   )                    :: IRUN ! IM*JM
       integer, intent(in   )                    :: LM   ! LM
       real, intent(in   )                       :: DT   ! DT_MOIST
@@ -310,7 +311,6 @@ contains
 
       logical :: use_autoconv_timescale
 
-#ifdef CLDPARAMS
       CNV_BETA      = CLDPARAMS%CNV_BETA  ! Area factor for convective rain showers (non-dim)
       ANV_BETA      = CLDPARAMS%ANV_BETA  ! Area factor for anvil rain showers (non-dim)
       LS_BETA       = CLDPARAMS%LS_BETA   ! Area factor for Large Scale rain showers (non-dim)
@@ -371,7 +371,6 @@ contains
       turnrhcrit_upper = CLDPARAMS%TURNRHCRIT_UP
       sloperhcrit= CLDPARAMS%SLOPERHCRIT
       min_lts = CLDPARAMS%MIN_LTS
-#endif
 
       use_autoconv_timescale = .false.
       QRN_XS = 0.0
@@ -1200,7 +1199,6 @@ contains
       ! internal scalars
       integer :: N
       logical :: DO_HYSTPDF
-
       pdfflag = PDFSHAPE
       maxalpha=1.0-minrhcrit 
 
@@ -1218,7 +1216,6 @@ contains
       QSLIQ  = QSATLQ(         &
             TE   , &
             PL*100.0 , DQ=DQx )
-
 
       QSICE  = QSATIC(         &
             TE   , &

@@ -394,6 +394,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! derived quantaties
     ! Derived States
+!AOO Should PL be multiplied by 0.01 based on the pre-refactored moist?
     PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
     PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
     DO L=0,LM

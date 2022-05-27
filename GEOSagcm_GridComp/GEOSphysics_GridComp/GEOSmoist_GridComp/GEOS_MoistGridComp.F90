@@ -504,7 +504,7 @@ contains
          UNITS      = 'N m-2',                                     &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)   
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'TAUGWY',                                    &
@@ -512,7 +512,7 @@ contains
          UNITS      = 'N m-2',                                     &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)   
+    VERIFY_(STATUS)
 
 
     call MAPL_AddImportSpec(GC,                             &
@@ -563,7 +563,7 @@ contains
          SHORT_NAME = 'ALH',                                                   &
          DIMS       = MAPL_DimsHorzVert,                                       &
          VLOCATION  = MAPL_VLocationEdge,                                      &
-         RC=STATUS  )                                                   
+         RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( GC,                                   &
@@ -586,8 +586,8 @@ contains
 
     !============================================
 
-   call MAPL_AddImportSpec ( GC,                                          & !USe the nature run to force cirrus
-         SHORT_NAME = 'WSUB_NATURE',                                 &
+   call MAPL_AddImportSpec ( GC,                                   & !USe the nature run to force cirrus
+         SHORT_NAME = 'WSUB_NATURE',                               &
          LONG_NAME  =  'variance in wsub from the nature run',     &
          UNITS      = 'm2 s-2',                                    &
          RESTART    = MAPL_RestartSkip,                            &
@@ -947,6 +947,30 @@ contains
     call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME = 'QITOT',                                      &
          LONG_NAME  = 'grid_box_mass_fraction_of_cloud_ice_water',           &
+         UNITS      = 'kg kg-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                             &
+         SHORT_NAME = 'QRTOT',                                      &
+         LONG_NAME  = 'mass_fraction_of_falling_rain',              &
+         UNITS      = 'kg kg-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                             &
+         SHORT_NAME = 'QSTOT',                                      &
+         LONG_NAME  = 'mass_fraction_of_falling_snow',              &
+         UNITS      = 'kg kg-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                             &
+         SHORT_NAME = 'QGTOT',                                      &
+         LONG_NAME  = 'mass_fraction_of_falling_graupel',              &
          UNITS      = 'kg kg-1',                                    &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
