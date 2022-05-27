@@ -6586,10 +6586,10 @@ module GEOS_SurfaceGridCompMod
        snofltile = snofltile * het_precip_fac
        icefltile = icefltile * het_precip_fac
        frzrfltile = frzrfltile * het_precip_fac
+       if (associated(wgttile).and.IM.eq.1) wgttile(1,1,1:NT) = het_precip_fac
     end if
 
     if (associated(prtile).and.IM.eq.1) prtile(1,1,1:NT) = pcutile+plstile+snofltile+icefltile+frzrfltile
-    if (associated(wgttile).and.IM.eq.1) wgttile(1,1,1:NT) = het_precip_fac
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP

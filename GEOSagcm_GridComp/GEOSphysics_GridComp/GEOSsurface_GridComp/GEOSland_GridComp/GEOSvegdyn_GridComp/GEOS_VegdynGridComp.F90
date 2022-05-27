@@ -402,10 +402,6 @@ contains
     call MAPL_ReadForcing(MAPL,'NDVI',NDVIFILE,CURRENT_TIME,NDVI,ON_TILES=.true.,RC=STATUS)
     VERIFY_(STATUS)
 
-    LAI(:) = SUM(LAI)/10.
-    GRN(:) = GRN(1)
-    NDVI(:) = SUM(NDVI)/10.
-
 ! Vegetation types used to index into tables
 ! Root length density no longer depends on time of year
 ! -----------------------------------------------------

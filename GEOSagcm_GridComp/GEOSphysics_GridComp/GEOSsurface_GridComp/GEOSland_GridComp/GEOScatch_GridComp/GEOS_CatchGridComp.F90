@@ -3182,21 +3182,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(IMPORT,NDVI   , 'NDVI'   ,    RC=STATUS)
    VERIFY_(STATUS)
 
-!   print *,'UU=',UU
-!   print *,'UWINDLMTILE=',UWINDLMTILE
-!   print *,'VWINDLMTILE=',VWINDLMTILE
-!   print *,'DZ=',DZ
-!   print *,'PS=',PS
-!   print *,'Z2CH=',Z2CH
-!   print *,'PCU=',PCU
-!   print *,'ITY=',ITY
-!   print *,'ASCATZ0=',ASCATZ0
-!   print *,'NDVI=',NDVI
-   NDVI(:) = NDVI(1)
-!   print *,'LAI=',LAI
-   LAI(:) = LAI(1)
-
-
 ! Pointers to internals
 !----------------------
  
@@ -3411,12 +3396,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          MIN_VEG_HEIGHT = 0.1
    end select
 
-
-!   print *,'TA=',TA
-!   print *,'TC=',TC
-!   print *,'QA=',QA
-!   print *,'QC=',QC
-
    SUBTILES: do N=1,NUM_SUBTILES
 
 !  Effective vegetation height. In catchment, LAI dependence 
@@ -3519,10 +3498,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
 
    end do SUBTILES
-
-!   print *,'T10M=',MOT10M
-!   print *,'Q10M=',MOQ10M
-!   print *,'UU10M=',sqrt(MOU10M**2+MOV10M**2)
 
    if(associated( TH)) TH  = TH /CHX
    if(associated( QH)) QH  = QH /CQX
@@ -4279,8 +4254,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,DFUVR  ,'DFUVR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,LWDNSRF,'LWDNSRF',RC=STATUS); VERIFY_(STATUS)
 
-
-
         call MAPL_GetPointer(IMPORT,ALW    ,'ALW'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,BLW    ,'BLW'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,EVAP   ,'EVAP'   ,RC=STATUS); VERIFY_(STATUS)
@@ -4291,17 +4264,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,QHATM  ,'QHATM'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,CTATM  ,'CTATM'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,CQATM  ,'CQATM'  ,RC=STATUS); VERIFY_(STATUS)
-
-!        print *,'ALW=',ALW
-!        print *,'BLW=',BLW
-!        print *,'EVAP=',EVAP
-!        print *,'DEVAP=',DEVAP
-!        print *,'SH=',SH
-!        print *,'DSH=',DSH
-!        print *,'THATM=',THATM
-!        print *,'QHATM=',QHATM
-!        print *,'CTATM=',CTATM
-!        print *,'CQATM=',CQATM
 
         call MAPL_GetPointer(IMPORT,ITY    ,'ITY'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,LAI    ,'LAI'    ,RC=STATUS); VERIFY_(STATUS)
@@ -4330,16 +4292,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSV   ,'SSSV'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
-
-!        print *,'ROOTL=',ROOTL
-!        print *,'DUDP=',DUDP
-!        print *,'DUSV=',DUSV
-!        print *,'DUWT=',DUWT
-!        print *,'DUSD=',DUSD
-!        print *,'BCDP=',BCDP
-!        print *,'BCSV=',BCSV
-!        print *,'OCSD=',OCSD
-!        print *,'SSSD=',SSSD
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4614,11 +4566,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
-!        print *,'LAI = ',LAI
-        LAI(:) = LAI(1)
         LAI0  = LAI
  
-
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
@@ -4681,8 +4630,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            VERIFY_(STATUS)
         endif
 
-        VISDF(:) = SUM(VISDF)/10.
-        NIRDF(:) = SUM(NIRDF)/10.
         
         ! --------------------------------------------------------------------------
         ! retrieve the zenith angle
@@ -4757,9 +4704,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
      !   are the same for all subtiles.
      !---------------------------------------------------
      
-!     print *,'NDVI = ',NDVI
-     NDVI(:) = NDVI(1)
-
      IF (USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0
      D0   = D0_BY_ZVEG*ZVG
 
@@ -4893,13 +4837,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
-!        print *,'VEG = ',VEG
-!        print *,'LAI = ',LAI
-!        print *,'GRN = ',GRN
-!        print *,'ZTH = ',ZTH
-!        print *,'VISDF=',VISDF
-!        print *,'NIRDF=',NIRDF
-        GRN(:) = GRN(1)
 
         call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
@@ -4918,11 +4855,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
-!        print *,'ALBVR=',ALBVR
-!        print *,'ALBNR=',ALBNR
-!        print *,'ALBVF=',ALBVF
-!        print *,'ALBNF=',ALBNF
-
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
         ! --------------------------------------------------------------------------
@@ -4934,12 +4866,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         SWNETFREE = (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR 
         SWNETSNOW = (1.-SNOVR)*VSUVR + (1.-SNOVF)*VSUVF + (1.-SNONR)*DRNIR + (1.-SNONF)*DFNIR 
-
-!        print *,'VSUVR=',VSUVR
-!        print *,'VSUVF=',VSUVF
-!        print *,'DRNIR=',DRNIR
-!        print *,'DFNIR=',DFNIR
-!        print *,'SWNETFREE=',SWNETFREE
 
         ! --------------------------------------------------------------------------
         ! Parameters that depend on vegetation type only
@@ -5047,12 +4973,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! actual CATCHMENT call
         ! --------------------------------------------------------------------------
-
-!        print *,'SWNETFREE=',SWNETFREE
-!        print *,'SWNETSNOW=',SWNETSNOW
-!        print *,'LWDNSRF=',LWDNSRF
-!        print *,'SQSCAT=',SQSCAT
-
 
         TILEZERO = 0.0
 
@@ -5672,12 +5592,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT 
 
-!        print *,'TPSURF=',TSURF
-!        print *,'PRLAND=',PCU+PLS+SLDTOT
-!        print *,'WET2=',max(min(RZMC / POROS,1.0),0.0)
-!        print *,'EVAPOUT=',EVAPOUT
-!        print *,'SHOUT=',SHOUT
-
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
@@ -6004,7 +5918,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(import, lai, 'LAI', rc=status)
   VERIFY_(status)
-  lai(:) = lai(1)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
