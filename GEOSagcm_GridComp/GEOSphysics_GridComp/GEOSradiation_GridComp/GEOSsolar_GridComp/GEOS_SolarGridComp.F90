@@ -159,7 +159,7 @@ module GEOS_SolarGridCompMod
 
   use ESMF
   use MAPL
-  use WOA_Eddington_Rayleigh_Mod
+  use WOA_Eddington_pseudoRayleigh_Mod
 
   ! for RRTMGP
   use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
@@ -679,6 +679,8 @@ contains
 
     ! Advanced Flux Update (AFU) Internals
     ! ------------------------------------
+    ! note: the ASYES are the starred Eddington asymmetry parameters
+    !   of the Eddington_pseudoRayleigh system ($g^*_E$)
 
     ! AFU ultraviolet
 
@@ -692,7 +694,7 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'UV_Eddington_Rayleigh_effective_opt_thick_AFU',         &
+       LONG_NAME  = 'UV_Eddington_pseudoRayleigh_eff_opt_thick_AFU',         &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'UVR_TAUE',                                              &
        DEFAULT    = MAPL_UNDEF,                                              &
@@ -701,7 +703,7 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'UV_one_minus_Eddington_Rayleigh_SSAe_AFU',              &
+       LONG_NAME  = 'UV_one_minus_Eddington_pseudoRayleigh_SSAe_AFU',        &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'UVR_SSAEC',                                             &
        DEFAULT    = MAPL_UNDEF,                                              &
@@ -710,18 +712,9 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'UV_Eddington_asymmetry_parameter_AFU',                  &
+       LONG_NAME  = 'UV_Eddington_pseudoRayleigh_asymmetry_param_AFU',       &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'UVR_ASYED',                                             &
-       DEFAULT    = MAPL_UNDEF,                                              &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-       FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'UV_Rayleigh_fraction_AFU',                              &
-       UNITS      = '1',                                                     &
-       SHORT_NAME = 'UVR_FRAY',                                              &
+       SHORT_NAME = 'UVR_ASYES',                                             &
        DEFAULT    = MAPL_UNDEF,                                              &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
@@ -739,7 +732,7 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'Visible_Eddington_Rayleigh_effective_opt_thick_AFU',    &
+       LONG_NAME  = 'Visible_Eddington_pseudoRayleigh_eff_opt_thick_AFU',    &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'PAR_TAUE',                                              &
        DEFAULT    = MAPL_UNDEF,                                              &
@@ -748,7 +741,7 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'Visible_one_minus_Eddington_Rayleigh_SSAe_AFU',         &
+       LONG_NAME  = 'Visible_one_minus_Eddington_pseudoRayleigh_SSAe_AFU',   &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'PAR_SSAEC',                                             &
        DEFAULT    = MAPL_UNDEF,                                              &
@@ -757,18 +750,9 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'Visible_Eddington_asymmetry_parameter_AFU',             &
+       LONG_NAME  = 'Visible_Eddington_pseudoRayleigh_asymmetry_param_AFU',  &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'PAR_ASYED',                                             &
-       DEFAULT    = MAPL_UNDEF,                                              &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-       FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'Visible_Rayleigh_fraction_AFU',                         &
-       UNITS      = '1',                                                     &
-       SHORT_NAME = 'PAR_FRAY',                                              &
+       SHORT_NAME = 'PAR_ASYES',                                             &
        DEFAULT    = MAPL_UNDEF,                                              &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
@@ -786,7 +770,7 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'near_IR_Eddington_Rayleigh_effective_opt_thick_AFU',    &
+       LONG_NAME  = 'near_IR_Eddington_pseudoRayleigh_eff_opt_thick_AFU',    &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'NIR_TAUE',                                              &
        DEFAULT    = MAPL_UNDEF,                                              &
@@ -795,7 +779,7 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'near_IR_one_minus_Eddington_Rayleigh_SSAe_AFU',         &
+       LONG_NAME  = 'near_IR_one_minus_Eddington_pseudoRayleigh_SSAe_AFU',   &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'NIR_SSAEC',                                             &
        DEFAULT    = MAPL_UNDEF,                                              &
@@ -804,18 +788,9 @@ contains
        FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'near_IR_Eddington_asymmetry_parameter_AFU',             &
+       LONG_NAME  = 'near_IR_Eddington_pseudoRayleigh_asymmetry_param_AFU',  &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'NIR_ASYED',                                             &
-       DEFAULT    = MAPL_UNDEF,                                              &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-       FRIENDLYTO = trim(COMP_NAME),                                   __RC__)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'near_IR_Rayleigh_fraction_AFU',                         &
-       UNITS      = '1',                                                     &
-       SHORT_NAME = 'NIR_FRAY',                                              &
+       SHORT_NAME = 'NIR_ASYES',                                             &
        DEFAULT    = MAPL_UNDEF,                                              &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
@@ -2653,9 +2628,9 @@ contains
                                          UVRMSE, PARMSE, NIRMSE
 
       ! (2) internals
-      real, pointer, dimension(:)     :: UVR_TDN, UVR_TAUE, UVR_SSAEC, UVR_ASYED, UVR_FRAY, &
-                                         PAR_TDN, PAR_TAUE, PAR_SSAEC, PAR_ASYED, PAR_FRAY, &
-                                         NIR_TDN, NIR_TAUE, NIR_SSAEC, NIR_ASYED, NIR_FRAY, &
+      real, pointer, dimension(:)     :: UVR_TDN, UVR_TAUE, UVR_SSAEC, UVR_ASYES, &
+                                         PAR_TDN, PAR_TAUE, PAR_SSAEC, PAR_ASYES, &
+                                         NIR_TDN, NIR_TAUE, NIR_SSAEC, NIR_ASYES, &
                                          ALBVR_AFU, ALBVF_AFU, ALBNR_AFU, ALBNF_AFU
 
       ! variables for RRTMG code
@@ -2811,9 +2786,9 @@ contains
 
       ! For Advanced Flux Update (AFU)
       ! ------------------------------
-      type(Eddington_Rayleigh_Optics) :: obkg
-      type(WOA_Eddington_Rayleigh) :: Ebkg, Eana
-      double precision :: b_taue, b_ssae, b_g_Ed, b_f_Ry
+      type(Eddington_pseudoRayleigh_Optics) :: obkg
+      type(WOA_Eddington_pseudoRayleigh) :: Ebkg, Eana
+      double precision :: b_taue, b_ssae, b_g_Es
       integer :: analyze_optics_info
       logical :: do_AFU_analysis
       double precision :: frmse
@@ -3380,30 +3355,24 @@ contains
             UVR_TAUE    => ptr2(1:Num2do,1)
          case('UVR_SSAEC')
             UVR_SSAEC   => ptr2(1:Num2do,1)
-         case('UVR_ASYED')
-            UVR_ASYED   => ptr2(1:Num2do,1)
-         case('UVR_FRAY')
-            UVR_FRAY    => ptr2(1:Num2do,1)
+         case('UVR_ASYES')
+            UVR_ASYES   => ptr2(1:Num2do,1)
          case('PAR_TDN')
             PAR_TDN     => ptr2(1:Num2do,1)
          case('PAR_TAUE')
             PAR_TAUE    => ptr2(1:Num2do,1)
          case('PAR_SSAEC')
             PAR_SSAEC   => ptr2(1:Num2do,1)
-         case('PAR_ASYED')
-            PAR_ASYED   => ptr2(1:Num2do,1)
-         case('PAR_FRAY')
-            PAR_FRAY    => ptr2(1:Num2do,1)
+         case('PAR_ASYES')
+            PAR_ASYES   => ptr2(1:Num2do,1)
          case('NIR_TDN')
             NIR_TDN     => ptr2(1:Num2do,1)
          case('NIR_TAUE')
             NIR_TAUE    => ptr2(1:Num2do,1)
          case('NIR_SSAEC')
             NIR_SSAEC   => ptr2(1:Num2do,1)
-         case('NIR_ASYED')
-            NIR_ASYED   => ptr2(1:Num2do,1)
-         case('NIR_FRAY')
-            NIR_FRAY    => ptr2(1:Num2do,1)
+         case('NIR_ASYES')
+            NIR_ASYES   => ptr2(1:Num2do,1)
          case('ALBVR_AFU')
             ALBVR_AFU   => ptr2(1:Num2do,1)
          case('ALBVF_AFU')
@@ -4857,21 +4826,16 @@ contains
         ! used by each UPDATE that uses this REFRESH.
 
         ! Notes on background optical state:
-        !   b_ssae, b_g_Ed and b_f_Ry are first guesses
+        !   b_ssae and b_g_Es are first guesses
         ! Ideally the analysis system should be robust to initial guesses, but in
         ! practise this may not be the case and multiple local minima may exist.
         ! More work on optimal first guesses should be done based on the cloud
         ! state, etc.
-        !   Regardless, a background f_Ry of 0.5 should be avoided, because it
-        ! seems to shut down lmdif exploration in f_Ry dimension. Currently we
-        ! use 0.25 for cloudy columns and 0.75 for clear columns. We also start
-        ! with a zero guess for g_Ed in each band.
 
         ! (a) UV
         UVR_TAUE  = MAPL_UNDEF
         UVR_SSAEC = MAPL_UNDEF
-        UVR_ASYED = MAPL_UNDEF
-        UVR_FRAY  = MAPL_UNDEF
+        UVR_ASYES = MAPL_UNDEF
         UVRMSE    = MAPL_UNDEF
         UVCOSZ    = ZT
         UVINFO    = 1
@@ -4887,24 +4851,19 @@ contains
               if (b_taue > 0.0d0) then
 
                 ! make a background optical state:
-                b_ssae = 0.95d0; b_g_Ed = 0.0d0
-                if (any(CL(i,:) > 0.1d0)) then
-                  b_f_Ry = 0.25d0 ! "cloudy"
-                else
-                  b_f_Ry = 0.75d0 ! "clear"
-                end if
-                obkg = Eddington_Rayleigh_Optics( &
-                  b_taue, b_ssae, b_g_Ed, b_f_Ry, __RC__)
+                b_ssae = 0.95d0; b_g_Es = 0.0d0
+                obkg = Eddington_pseudoRayleigh_Optics( &
+                  b_taue, b_ssae, b_g_Es, __RC__)
 
                 ! and use it to form background state
-                Ebkg = WOA_Eddington_Rayleigh( &
-                  obkg,                        &
-                  dble(UVR_TDN(i)),            &
-                  dble(     ZT(i)),            &
-                  dble(UVR_ALR(i)),            &
-                  dble(UVR_ALF(i)),      __RC__)
+                Ebkg = WOA_Eddington_pseudoRayleigh( &
+                  obkg,                              &
+                  dble(UVR_TDN(i)),                  &
+                  dble(     ZT(i)),                  &
+                  dble(UVR_ALR(i)),                  &
+                  dble(UVR_ALF(i)),            __RC__)
 
-                ! estimate a WOA_Eddington_Rayleigh with optics consistent
+                ! estimate a WOA_Eddington_pseudoRayleigh with optics consistent
                 !   with the REFRESH fluxes calculated above
                 Eana = Ebkg%analyze_optics( &
                   size(Q,2), dble(UVR_UPF(i,:)), dble(UVR_DNB(i,:)), dble(UVR_DNR(i,:)), &
@@ -4915,8 +4874,7 @@ contains
                   ! load internal state (single precision)
                   UVR_TAUE(i)  = Eana%optics%taue
                   UVR_SSAEC(i) = 1.0d0 - Eana%optics%ssae
-                  UVR_ASYED(i) = Eana%optics%g_Ed
-                  UVR_FRAY(i)  = Eana%optics%f_Ry
+                  UVR_ASYES(i) = Eana%optics%g_Es
                   UVCOSZ(i)    = Eana%mu0_used
                   UVRMSE(i)    = frmse
                 end if
@@ -4929,8 +4887,7 @@ contains
         ! (b) Visible
         PAR_TAUE  = MAPL_UNDEF
         PAR_SSAEC = MAPL_UNDEF
-        PAR_ASYED = MAPL_UNDEF
-        PAR_FRAY  = MAPL_UNDEF
+        PAR_ASYES = MAPL_UNDEF
         PARMSE    = MAPL_UNDEF
         PACOSZ    = ZT
         PAINFO    = 1
@@ -4944,24 +4901,19 @@ contains
               if (b_taue > 0.0d0) then
 
                 ! make a background optical state:
-                b_ssae = 0.95d0; b_g_Ed = 0.0d0
-                if (any(CL(i,:) > 0.1d0)) then
-                  b_f_Ry = 0.25d0 ! "cloudy"
-                else
-                  b_f_Ry = 0.75d0 ! "clear"
-                end if
-                obkg = Eddington_Rayleigh_Optics( &
-                  b_taue, b_ssae, b_g_Ed, b_f_Ry, __RC__)
+                b_ssae = 0.95d0; b_g_Es = 0.0d0
+                obkg = Eddington_pseudoRayleigh_Optics( &
+                  b_taue, b_ssae, b_g_Es, __RC__)
 
                 ! and use it to form background state
-                Ebkg = WOA_Eddington_Rayleigh( &
-                  obkg,                        &
-                  dble(PAR_TDN(i)),            &
-                  dble(     ZT(i)),            &
-                  dble(PAR_ALR(i)),            &
-                  dble(PAR_ALF(i)),      __RC__)
+                Ebkg = WOA_Eddington_pseudoRayleigh( &
+                  obkg,                              &
+                  dble(PAR_TDN(i)),                  &
+                  dble(     ZT(i)),                  &
+                  dble(PAR_ALR(i)),                  &
+                  dble(PAR_ALF(i)),            __RC__)
 
-                ! estimate a WOA_Eddington_Rayleigh with optics consistent
+                ! estimate a WOA_Eddington_pseudoRayleigh with optics consistent
                 !   with the REFRESH fluxes calculated above
                 Eana = Ebkg%analyze_optics( &
                   size(Q,2), dble(PAR_UPF(i,:)), dble(PAR_DNB(i,:)), dble(PAR_DNR(i,:)), &
@@ -4972,8 +4924,7 @@ contains
                   ! load internal state (single precision)
                   PAR_TAUE(i)  = Eana%optics%taue
                   PAR_SSAEC(i) = 1.0d0 - Eana%optics%ssae
-                  PAR_ASYED(i) = Eana%optics%g_Ed
-                  PAR_FRAY(i)  = Eana%optics%f_Ry
+                  PAR_ASYES(i) = Eana%optics%g_Es
                   PACOSZ(i)    = Eana%mu0_used
                   PARMSE(i)    = frmse
                 end if
@@ -4986,8 +4937,7 @@ contains
         ! (c) Near-IR
         NIR_TAUE  = MAPL_UNDEF
         NIR_SSAEC = MAPL_UNDEF
-        NIR_ASYED = MAPL_UNDEF
-        NIR_FRAY  = MAPL_UNDEF
+        NIR_ASYES = MAPL_UNDEF
         NIRMSE    = MAPL_UNDEF
         NICOSZ    = ZT
         NIINFO    = 1
@@ -5001,24 +4951,19 @@ contains
               if (b_taue > 0.0d0) then
 
                 ! make a background optical state:
-                b_ssae = 0.80d0; b_g_Ed = 0.0d0
-                if (any(CL(i,:) > 0.1d0)) then
-                  b_f_Ry = 0.25d0 ! "cloudy"
-                else
-                  b_f_Ry = 0.75d0 ! "clear"
-                end if
-                obkg = Eddington_Rayleigh_Optics( &
-                  b_taue, b_ssae, b_g_Ed, b_f_Ry, __RC__)
+                b_ssae = 0.80d0; b_g_Es = 0.0d0
+                obkg = Eddington_pseudoRayleigh_Optics( &
+                  b_taue, b_ssae, b_g_Es, __RC__)
 
                 ! and use it to form background state
-                Ebkg = WOA_Eddington_Rayleigh( &
-                  obkg,                        &
-                  dble(NIR_TDN(i)),            &
-                  dble(     ZT(i)),            &
-                  dble(NIR_ALR(i)),            &
-                  dble(NIR_ALF(i)),      __RC__)
+                Ebkg = WOA_Eddington_pseudoRayleigh( &
+                  obkg,                              &
+                  dble(NIR_TDN(i)),                  &
+                  dble(     ZT(i)),                  &
+                  dble(NIR_ALR(i)),                  &
+                  dble(NIR_ALF(i)),            __RC__)
 
-                ! estimate a WOA_Eddington_Rayleigh with optics consistent
+                ! estimate a WOA_Eddington_pseudoRayleigh with optics consistent
                 !   with the REFRESH fluxes calculated above
                 Eana = Ebkg%analyze_optics( &
                   size(Q,2), dble(NIR_UPF(i,:)), dble(NIR_DNB(i,:)), dble(NIR_DNR(i,:)), &
@@ -5029,8 +4974,7 @@ contains
                   ! load internal state (single precision)
                   NIR_TAUE(i)  = Eana%optics%taue
                   NIR_SSAEC(i) = 1.0d0 - Eana%optics%ssae
-                  NIR_ASYED(i) = Eana%optics%g_Ed
-                  NIR_FRAY(i)  = Eana%optics%f_Ry
+                  NIR_ASYES(i) = Eana%optics%g_Es
                   NICOSZ(i)    = Eana%mu0_used
                   NIRMSE(i)    = frmse
                 end if
@@ -5664,9 +5608,9 @@ contains
       real, pointer, dimension(:,:) :: ALBDIR, ALBDIF
 
       ! internal pointers
-      real, pointer, dimension(:,:) :: UVR_TDN, UVR_TAUE, UVR_SSAEC, UVR_ASYED, UVR_FRAY
-      real, pointer, dimension(:,:) :: PAR_TDN, PAR_TAUE, PAR_SSAEC, PAR_ASYED, PAR_FRAY
-      real, pointer, dimension(:,:) :: NIR_TDN, NIR_TAUE, NIR_SSAEC, NIR_ASYED, NIR_FRAY
+      real, pointer, dimension(:,:) :: UVR_TDN, UVR_TAUE, UVR_SSAEC, UVR_ASYES
+      real, pointer, dimension(:,:) :: PAR_TDN, PAR_TAUE, PAR_SSAEC, PAR_ASYES
+      real, pointer, dimension(:,:) :: NIR_TDN, NIR_TAUE, NIR_SSAEC, NIR_ASYES
 
       ! export pointers
       real, pointer, dimension(:,:) :: DFUVR_AFU, DFPAR_AFU, DFNIR_AFU
@@ -5675,8 +5619,8 @@ contains
 
       ! locals
       double precision :: FdirDnSFC, FdifDnSFC, dummy
-      type(Eddington_Rayleigh_Optics) :: oupd
-      type(WOA_Eddington_Rayleigh) :: Eupd
+      type(Eddington_pseudoRayleigh_Optics) :: oupd
+      type(WOA_Eddington_pseudoRayleigh) :: Eupd
       real, allocatable, dimension(:,:) :: DIR2D, DIF2D, MCZUS
       logical :: do_AFU
 
@@ -5810,18 +5754,15 @@ contains
         call MAPL_GetPointer(INTERNAL, UVR_TDN,   'UVR_TDN',   __RC__)
         call MAPL_GetPointer(INTERNAL, UVR_TAUE,  'UVR_TAUE',  __RC__)
         call MAPL_GetPointer(INTERNAL, UVR_SSAEC, 'UVR_SSAEC', __RC__)
-        call MAPL_GetPointer(INTERNAL, UVR_ASYED, 'UVR_ASYED', __RC__)
-        call MAPL_GetPointer(INTERNAL, UVR_FRAY,  'UVR_FRAY',  __RC__)
+        call MAPL_GetPointer(INTERNAL, UVR_ASYES, 'UVR_ASYES', __RC__)
         call MAPL_GetPointer(INTERNAL, PAR_TDN,   'PAR_TDN',   __RC__)
         call MAPL_GetPointer(INTERNAL, PAR_TAUE,  'PAR_TAUE',  __RC__)
         call MAPL_GetPointer(INTERNAL, PAR_SSAEC, 'PAR_SSAEC', __RC__)
-        call MAPL_GetPointer(INTERNAL, PAR_ASYED, 'PAR_ASYED', __RC__)
-        call MAPL_GetPointer(INTERNAL, PAR_FRAY,  'PAR_FRAY',  __RC__)
+        call MAPL_GetPointer(INTERNAL, PAR_ASYES, 'PAR_ASYES', __RC__)
         call MAPL_GetPointer(INTERNAL, NIR_TDN,   'NIR_TDN',   __RC__)
         call MAPL_GetPointer(INTERNAL, NIR_TAUE,  'NIR_TAUE',  __RC__)
         call MAPL_GetPointer(INTERNAL, NIR_SSAEC, 'NIR_SSAEC', __RC__)
-        call MAPL_GetPointer(INTERNAL, NIR_ASYED, 'NIR_ASYED', __RC__)
-        call MAPL_GetPointer(INTERNAL, NIR_FRAY,  'NIR_FRAY',  __RC__)
+        call MAPL_GetPointer(INTERNAL, NIR_ASYES, 'NIR_ASYES', __RC__)
         call MAPL_GetPointer(EXPORT  , DRUVR_AFU, 'DRUVR_AFU', __RC__)
         call MAPL_GetPointer(EXPORT  , DFUVR_AFU, 'DFUVR_AFU', __RC__)
         call MAPL_GetPointer(EXPORT  , DRPAR_AFU, 'DRPAR_AFU', __RC__)
@@ -6349,19 +6290,18 @@ contains
 
               if (do_AFU) then
                 !+ASSERT_(UVR_TAUE(i,j) > 0.)
-                oupd = Eddington_Rayleigh_Optics( &
-                  dble(UVR_TAUE(i,j)),            &
-                  1.0d0-dble(UVR_SSAEC(i,j)),     &
-                  dble(UVR_ASYED(i,j)),           &
-                  dble(UVR_FRAY(i,j)),      __RC__)
+                oupd = Eddington_pseudoRayleigh_Optics( &
+                  dble(UVR_TAUE(i,j)),                  &
+                  1.0d0-dble(UVR_SSAEC(i,j)),           &
+                  dble(UVR_ASYES(i,j)),           __RC__)
 
                 !+ASSERT_(UVR_TDN(i,j) /= MAPL_UNDEF)
-                Eupd = WOA_Eddington_Rayleigh( &
-                  oupd,                        &
-                  dble(UVR_TDN(i,j)),          &
-                  dble(    ZTH(i,j)),          &
-                  dble( ALBDIR(i,j)),          &
-                  dble( ALBDIF(i,j)),    __RC__)
+                Eupd = WOA_Eddington_pseudoRayleigh( &
+                  oupd,                              &
+                  dble(UVR_TDN(i,j)),                &
+                  dble(    ZTH(i,j)),                &
+                  dble( ALBDIR(i,j)),                &
+                  dble( ALBDIF(i,j)),          __RC__)
 
                 call Eupd%compute_fluxes( &
                   1.0d0, FdirDnSFC, FdifDnSFC, dummy, &
@@ -6415,19 +6355,18 @@ contains
 
               if (do_AFU) then
                 !+ASSERT_(PAR_TAUE(i,j) > 0.)
-                oupd = Eddington_Rayleigh_Optics( &
-                  dble(PAR_TAUE(i,j)),            &
-                  1.0d0-dble(PAR_SSAEC(i,j)),     &
-                  dble(PAR_ASYED(i,j)),           &
-                  dble(PAR_FRAY(i,j)),      __RC__)
+                oupd = Eddington_pseudoRayleigh_Optics( &
+                  dble(PAR_TAUE(i,j)),                  &
+                  1.0d0-dble(PAR_SSAEC(i,j)),           &
+                  dble(PAR_ASYES(i,j)),           __RC__)
 
                 !+ASSERT_(PAR_TDN(i,j) /= MAPL_UNDEF)
-                Eupd = WOA_Eddington_Rayleigh( &
-                  oupd,                        &
-                  dble(PAR_TDN(i,j)),          &
-                  dble(    ZTH(i,j)),          & 
-                  dble( ALBDIR(i,j)),          &
-                  dble( ALBDIF(i,j)),    __RC__)
+                Eupd = WOA_Eddington_pseudoRayleigh( &
+                  oupd,                              &
+                  dble(PAR_TDN(i,j)),                &
+                  dble(    ZTH(i,j)),                & 
+                  dble( ALBDIR(i,j)),                &
+                  dble( ALBDIF(i,j)),          __RC__)
 
                 call Eupd%compute_fluxes( &
                   1.0d0, FdirDnSFC, FdifDnSFC, dummy, &
@@ -6481,19 +6420,18 @@ contains
 
               if (do_AFU) then
                 !+ASSERT_(NIR_TAUE(i,j) > 0.)
-                oupd = Eddington_Rayleigh_Optics( &
-                  dble(NIR_TAUE(i,j)),            &
-                  1.0d0-dble(NIR_SSAEC(i,j)),     &
-                  dble(NIR_ASYED(i,j)),           &
-                  dble(NIR_FRAY(i,j)),      __RC__)
+                oupd = Eddington_pseudoRayleigh_Optics( &
+                  dble(NIR_TAUE(i,j)),                  &
+                  1.0d0-dble(NIR_SSAEC(i,j)),           &
+                  dble(NIR_ASYES(i,j)),           __RC__)
 
                 !+ASSERT_(NIR_TDN(i,j) /= MAPL_UNDEF)
-                Eupd = WOA_Eddington_Rayleigh( &
-                  oupd,                        &
-                  dble(NIR_TDN(i,j)),          &
-                  dble(    ZTH(i,j)),          &
-                  dble( ALBDIR(i,j)),          &
-                  dble( ALBDIF(i,j)),    __RC__)
+                Eupd = WOA_Eddington_pseudoRayleigh( &
+                  oupd,                              &
+                  dble(NIR_TDN(i,j)),                &
+                  dble(    ZTH(i,j)),                &
+                  dble( ALBDIR(i,j)),                &
+                  dble( ALBDIF(i,j)),          __RC__)
 
                 call Eupd%compute_fluxes( &
                   1.0d0, FdirDnSFC, FdifDnSFC, dummy, &
