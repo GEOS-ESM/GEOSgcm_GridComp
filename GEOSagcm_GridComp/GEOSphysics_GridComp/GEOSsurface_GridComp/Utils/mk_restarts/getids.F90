@@ -554,7 +554,7 @@ contains
         implicit none
         character(*), intent (in) :: InCNTileFile
         integer , intent (inout)  :: ntiles
-        real, dimension (:), intent(out)   :: xlon, xlat
+        real, pointer, dimension (:)    :: xlon, xlat
         integer, optional, intent(IN) :: mask
         integer :: n,icnt,ityp, nt, umask, i, header
         real    :: xval,yval, pf
@@ -605,6 +605,8 @@ contains
       close(11)
        
       Ntiles = icnt
+      if(.not.associated (xlon)) allocate(xlon(Ntiles))
+      if(.not.associated (xlat)) allocate(xlat(Ntiles))
       xlon = ln1(:Ntiles)
       xlat = lt1(:Ntiles) 
    

@@ -772,7 +772,8 @@ contains
      integer, optional, intent(out) :: rc
      integer :: status, in_ntiles, out_ntiles, myid, numprocs
      real, allocatable :: var_out(:), tmp2d(:,:)
-     real   , allocatable , dimension (:) :: long, latg, lonc, latc, lonn,latt
+     real   , allocatable , dimension (:) :: lonn,latt
+     real   , pointer, dimension      (:) :: long, latg, lonc, latc
      integer, allocatable , dimension (:) :: low_ind, upp_ind, nt_local
      integer, allocatable , dimension (:) :: Id_glb, id_loc, tid_offl
      logical :: root_proc
@@ -1094,6 +1095,11 @@ contains
 
        call this%set_scale_var()
      endif
+
+     if(associated(long)) deallocate(long)
+     if(associated(latg)) deallocate(latg)
+     if(associated(lonc)) deallocate(lonc)
+     if(associated(latc)) deallocate(latc)
 
      _RETURN(_SUCCESS) 
    end subroutine re_tile
