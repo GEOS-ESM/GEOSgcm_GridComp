@@ -1798,8 +1798,8 @@ contains
           TS(:,WATER) = DATA_SST
           where(data_fr > mystate%tol_frice) !have lake ice
              TS(:,ICE)   = Tfreeze
-             FR(:,WATER) = DATA_FR
-             FR(:,ICE)   = 1.0-DATA_FR
+             FR(:,WATER) = 1.0-DATA_FR
+             FR(:,ICE)   = DATA_FR
           elsewhere ! water
              ! we are not changing TS(:,ICE)
              FR(:,WATER) = 1.0
