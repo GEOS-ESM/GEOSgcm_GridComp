@@ -838,6 +838,7 @@ contains
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
     character(len=ESMF_MAXSTR)     :: ERRstring
 
+    logical :: NCAR_TAU_TOP_ZERO
     real    :: NCAR_PRNDL
     real    :: NCAR_QBO_HDEPTH_SCALING
     integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
@@ -879,6 +880,8 @@ contains
       call MAPL_Get(MAPL, IM=IM, JM=JM, LATS=LATS, RC=STATUS)
       VERIFY_(STATUS)
 
+         call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., RC=STATUS)
+         VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=1.0, RC=STATUS)
@@ -886,10 +889,10 @@ contains
          call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=30.0, RC=STATUS)
          VERIFY_(STATUS)
 
-         call gw_common_init( .FALSE. , 1 , & 
-                              1.0 * MAPL_GRAV , &
-                              1.0 * MAPL_RGAS , &
-                              1.0 * MAPL_CP , &
+         call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , & 
+                              MAPL_GRAV , &
+                              MAPL_RGAS , &
+                              MAPL_CP , &
                               NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, NCAR_HR_CF, ERRstring )
 
          ! Beres Scheme File

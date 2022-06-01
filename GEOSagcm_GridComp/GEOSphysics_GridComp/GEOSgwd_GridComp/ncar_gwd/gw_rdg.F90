@@ -282,15 +282,9 @@ subroutine gw_rdg_ifc( &
    vtrdg = 0.
    ttrdg = 0.
   
-!WMP pressure scaling from GEOS top 0.01mb to zfac_layer
-   pint_adj = 1.0
-   zfac_layer = 100.0 ! 1mb
-   where (pint < zfac_layer)
-     pint_adj = 1./19. * &
-                ((atan( (2.*(pint-1.0)/(zfac_layer-1.0)-1.) * &
-                tan(20.*PI/21.-0.5*PI) ) + 0.5*PI) * 21./PI - 1.)
-   endwhere
-!WMP pressure scaling from GEOS
+!WMP pressure scaling near model top
+   zfac_layer = 100.0 ! 0.1mb
+   pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
 
    isoflag = 0
  
