@@ -6273,10 +6273,10 @@ contains
           allocate(DIF2D(IM,JM), __STAT__)
           allocate(MCZUS(IM,JM), __STAT__)
 
-!         call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBVR', __RC__)		! TODO <<<<<<<<<< and below
-!         call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBVF', __RC__)		! TODO <<<<<<<<<<
-          call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBVR_AFU', __RC__)
-          call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBVF_AFU', __RC__)
+          call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBVR', __RC__)
+          call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBVF', __RC__)
+!         call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBVR_AFU', __RC__)
+!         call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBVF_AFU', __RC__)
 
           ! UVR_TDN (from REFRESH) is either undef or +ve
           !+ASSERT_(all(UVR_TDN == MAPL_UNDEF .or. UVR_TDN > 0.))
@@ -6338,10 +6338,10 @@ contains
           allocate(DIF2D(IM,JM), __STAT__)
           allocate(MCZUS(IM,JM), __STAT__)
 
-!         call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBVR', __RC__)
-!         call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBVF', __RC__)
-          call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBVR_AFU', __RC__)
-          call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBVF_AFU', __RC__)
+          call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBVR', __RC__)
+          call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBVF', __RC__)
+!         call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBVR_AFU', __RC__)
+!         call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBVF_AFU', __RC__)
 
           ! PAR_TDN (from REFRESH) is either undef or +ve
           !+ASSERT_(all(PAR_TDN == MAPL_UNDEF .or. PAR_TDN > 0.))
@@ -6403,10 +6403,10 @@ contains
           allocate(DIF2D(IM,JM), __STAT__)
           allocate(MCZUS(IM,JM), __STAT__)
 
-!         call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBNR', __RC__)
-!         call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBNF', __RC__)
-          call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBNR_AFU', __RC__)
-          call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBNF_AFU', __RC__)
+          call MAPL_GetPointer(IMPORT, ALBDIR, 'ALBNR', __RC__)
+          call MAPL_GetPointer(IMPORT, ALBDIF, 'ALBNF', __RC__)
+!         call MAPL_GetPointer(INTERNAL, ALBDIR, 'ALBNR_AFU', __RC__)
+!         call MAPL_GetPointer(INTERNAL, ALBDIF, 'ALBNF_AFU', __RC__)
 
           ! NIR_TDN (from REFRESH) is either undef or +ve
           !+ASSERT_(all(NIR_TDN == MAPL_UNDEF .or. NIR_TDN > 0.))
