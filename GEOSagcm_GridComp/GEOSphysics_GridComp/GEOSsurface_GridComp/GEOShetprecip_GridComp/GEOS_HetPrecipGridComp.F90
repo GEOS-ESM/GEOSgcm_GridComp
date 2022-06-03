@@ -209,7 +209,7 @@ contains
     real, allocatable :: rn(:)
     real :: totalPrecip
     real :: total
-    real, parameter :: xlo=log10(5e-2), xhi=log10(10.)
+    real, parameter :: xlo=log10(5e-2), xhi=log10(100.)
     real, parameter :: ylo=0.9, yhi=0.0, fracdrymax=0.95
     real, parameter :: a1opt=0.4152, a2opt=0.9682 ! for relationship between CDF and precip. scaling
     real, parameter :: piby2=3.14159/2.

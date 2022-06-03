@@ -6906,7 +6906,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     end do
 
-!    if (associated(tpsurftilex).and.IM.eq.1) tpsurftilex(1,1,1:NT) = tpsurftile
+    if (associated(tpsurftilex).and.IM.eq.1) tpsurftilex(1,1,1:NT) = tpsurftile
 
 ! Create the Discharge for the ocean. This is an import of 
 !  Saltwater, which simply makes a copy to an export.
