@@ -1651,14 +1651,14 @@ contains
              ! -------------------
              call ESMF_ClockGet(clock, alarmCount = nalarms, rc=status)
              VERIFY_(STATUS)
-             allocate (alarmList(nalarms), alarmRingTime(nalarms), ringingState(nalarms), stat = status)
-             VERIFY_(STATUS)
-             call ESMF_ClockGetAlarmList(clock, alarmListFlag=ESMF_ALARMLIST_ALL, alarmList=alarmList, alarmCount = nalarms, rc=status)
-             VERIFY_(STATUS)
-             DO I = 1, nalarms
-                call ESMF_AlarmGet(alarmList(I), ringTime=alarmRingTime(I), ringing=ringingState(I), rc=status)
-                VERIFY_(STATUS)
-             END DO
+             !allocate (alarmList(nalarms), alarmRingTime(nalarms), ringingState(nalarms), stat = status)
+             !VERIFY_(STATUS)
+             !call ESMF_ClockGetAlarmList(clock, alarmListFlag=ESMF_ALARMLIST_ALL, alarmList=alarmList, alarmCount = nalarms, rc=status)
+             !VERIFY_(STATUS)
+             !DO I = 1, nalarms
+                !call ESMF_AlarmGet(alarmList(I), ringTime=alarmRingTime(I), ringing=ringingState(I), rc=status)
+                !VERIFY_(STATUS)
+             !END DO
 
              ! fix the predictor alarm (huh?)
              ! ------------------------------
@@ -1825,12 +1825,12 @@ contains
              ! -------------------------------
              call ESMF_ClockSet(clock, direction=ESMF_DIRECTION_FORWARD, rc=status)
              VERIFY_(STATUS)
-             DO I = 1, nalarms
-                call ESMF_AlarmSet(alarmList(I), ringTime=alarmRingTime(I), ringing=ringingState(I), rc=status)
-                VERIFY_(STATUS)
-             END DO
+             !DO I = 1, nalarms
+                !call ESMF_AlarmSet(alarmList(I), ringTime=alarmRingTime(I), ringing=ringingState(I), rc=status)
+                !VERIFY_(STATUS)
+             !END DO
 
-             deallocate(alarmList, alarmRingTime, ringingState)
+             !deallocate(alarmList, alarmRingTime, ringingState)
 
              ! restore import and internal states
              ! ----------------------------------

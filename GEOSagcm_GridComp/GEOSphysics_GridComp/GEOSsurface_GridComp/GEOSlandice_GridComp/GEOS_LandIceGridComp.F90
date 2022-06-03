@@ -2966,8 +2966,7 @@ contains
 !     If alarm is not ringing now, find out when it rang last
         else
          if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
-         call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
-         VERIFY_(STATUS)
+         before = MAPL_get_previous_ring(solalarm,_RC)
 ! PrevRingTime can lie: if alarm never went off yet it gives next alarm time, not prev.
          if(BEFORE > CURRENT_TIME) then
           BEFORE = BEFORE-TINT
