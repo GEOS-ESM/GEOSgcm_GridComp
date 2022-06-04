@@ -51,7 +51,8 @@ module GEOS_CatchCNCLM45GridCompMod
        RHOFS          => CATCH_SNWALB_RHOFS,  &
        SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE
+       SLOPE          => CATCH_SNWALB_SLOPE,  &
+       PEATCLSM_POROS_THRESHOLD
 
   USE  clm_varpar, ONLY :                     &
        NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT,    &
