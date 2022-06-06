@@ -833,6 +833,11 @@ contains
     integer                             :: IM, JM
     real, pointer, dimension(:,:)       :: LATS
 
+    character(len=ESMF_MAXSTR) :: GRIDNAME
+    character(len=4)           :: imchar
+    character(len=2)           :: dateline
+    integer                    :: imsize,nn
+
 ! NCAR GWD variables
 
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
@@ -846,8 +851,8 @@ contains
     real    :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
     real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
     real    :: NCAR_ORO_SOUTH_FAC
-    real    :: NCAR_HR_CF
-    real    :: NCAR_TAUBGND
+    real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
+    real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
     logical :: NCAR_DC_BERES
     real    :: NCAR_DC_BERES_SRC_LEVEL
     logical :: NCAR_SC_BERES
@@ -880,13 +885,25 @@ contains
       call MAPL_Get(MAPL, IM=IM, JM=JM, LATS=LATS, RC=STATUS)
       VERIFY_(STATUS)
 
+     ! Get grid name to determine IMSIZE
+      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
+      VERIFY_(STATUS)
+      GRIDNAME =  AdjustL(GRIDNAME)
+      nn = len_trim(GRIDNAME)
+      dateline = GRIDNAME(nn-1:nn)
+      imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
+      read(imchar,*) imsize
+      if(dateline.eq.'CF') imsize = imsize*4
+
          call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=1.0, RC=STATUS)
+         NCAR_QBO_HDEPTH_SCALING = min( imsize/1440.0 , 1.0 )
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=30.0, RC=STATUS)
+         NCAR_HR_CF = max( 40.0*360.0/imsize , 1.0 )
+         call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , & 
@@ -899,15 +916,15 @@ contains
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
             default='/discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,           RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,    RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,   RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,   RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,  RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_TAUBGND,        Label="NCAR_TAUBGND:",        default=50.0, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=12.5,  RC=STATUS)
          VERIFY_(STATUS)
         ! Beres DeepCu
          call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., RC=STATUS)
@@ -915,14 +932,14 @@ contains
          call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_dc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_TAUBGND, NCAR_DC_BERES, IM*JM, LATS)
+                             NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_ET_TAUBGND, NCAR_DC_BERES, IM*JM, LATS)
         ! Beres ShallowCu
          call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, RC=STATUS)
          VERIFY_(STATUS)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_sc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
-                             NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_TAUBGND, NCAR_SC_BERES, IM*JM, LATS)
+                             NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_ET_TAUBGND, NCAR_SC_BERES, IM*JM, LATS)
 
          ! Orographic Scheme
          call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           RC=STATUS)
@@ -933,7 +950,7 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  RC=STATUS)
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
@@ -1052,7 +1069,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.250, RC=STATUS)
+    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, RC=STATUS)
     VERIFY_(STATUS)
     if (NCAR_NRDG > 0) then
       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
@@ -1846,7 +1863,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
 
     ! Topographic Form Drag [Beljaars et al (2004)]
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=6.0, RC=STATUS)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=4.5, RC=STATUS)
     VERIFY_(STATUS)
     if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),stat=status)

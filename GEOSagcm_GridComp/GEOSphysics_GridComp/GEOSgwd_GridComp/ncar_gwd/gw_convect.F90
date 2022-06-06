@@ -585,7 +585,7 @@ subroutine gw_beres_ifc( band, &
      end do
 
      ! Determine wave sources for Beres deep scheme
-     call gw_beres_src(ncol, pver, band , desc, &
+     call gw_beres_src(ncol, pver, band, desc, &
           u, v, dqcdt, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats)
 
