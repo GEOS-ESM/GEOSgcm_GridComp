@@ -2993,7 +2993,7 @@ contains
      real                                :: AKHMMAX
      real                                :: C_B, LAMBDA_B, LOUIS_MEMORY
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
-     real                                :: PCEFF_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
+     real                                :: PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
      real                                :: SMTH_HGT
      real                                :: a1,a2
@@ -3199,12 +3199,16 @@ contains
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:",  default=0.,          RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:",  default=0.,          RC=STATUS); VERIFY_(STATUS)
      endif
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS); VERIFY_(STATUS)
 
@@ -4149,6 +4153,8 @@ contains
                   U_STAR_dev   = USTAR
                   B_STAR_dev   = BSTAR
                   FRLAND_dev   = FRLAND
+                  EVAP_dev     = EVAP
+                  SH_dev       = SH
                   T_dev        = T
                   QV_dev       = Q
                   QL_dev       = QLLS
@@ -4176,6 +4182,8 @@ contains
                                       U_STAR_dev,     &
                                       B_STAR_dev,     &
                                       FRLAND_dev,     &
+                                      EVAP_dev,       &
+                                      SH_dev,         &
                                       T_dev,          &
                                       QV_dev,         &
                                       QL_dev,         &
@@ -4218,7 +4226,7 @@ contains
                                       PRANDTLSFC, PRANDTLRAD,   &
                                       BETA_SURF, BETA_RAD,      &
                                       TPFAC_SURF, ENTRATE_SURF, &
-                                      PCEFF_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
+                                      PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 
          STATUS = cudaGetLastError()
@@ -4292,6 +4300,8 @@ contains
          DEALLOCATE(U_STAR_dev)
          DEALLOCATE(B_STAR_dev)
          DEALLOCATE(FRLAND_dev)
+         DEALLOCATE(EVAP_dev)
+         DEALLOCATE(SH_dev)
          DEALLOCATE(T_dev)
          DEALLOCATE(QV_dev)
          DEALLOCATE(QL_dev)
@@ -4376,6 +4386,8 @@ contains
                       USTAR,                    &
                       BSTAR,                    &
                       FRLAND,                   &
+                      EVAP,                     &
+                      SH,                       &
                       T,                        &
                       Q,                        &
                       QL,                       &
@@ -4418,7 +4430,7 @@ contains
                       PRANDTLSFC, PRANDTLRAD,   &
                       BETA_SURF, BETA_RAD,      &
                       TPFAC_SURF, ENTRATE_SURF, &
-                      PCEFF_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
+                      PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 #endif
 
