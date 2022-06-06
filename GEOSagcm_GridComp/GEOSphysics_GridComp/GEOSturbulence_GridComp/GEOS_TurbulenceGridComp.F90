@@ -2971,9 +2971,6 @@ contains
      real                                :: a1,a2
      real,               dimension(IM,JM,LM) :: dum3d,tmp3d,WVP
 
-     integer                             :: I,J,L,LOCK_ON,ITER
-     integer                             :: KPBLMIN,PBLHT_OPTION
-
 #ifdef USE_SCM_SURF
      ! SCM idealized surface-layer parameters
      integer :: SCM_SL          ! 0:    use exchange coefficients from surface grid comp

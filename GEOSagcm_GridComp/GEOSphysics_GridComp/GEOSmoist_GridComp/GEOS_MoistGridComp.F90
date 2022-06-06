@@ -8478,12 +8478,11 @@ contains
                        AeroProps(i,j,k)%nmods       = n_modes                 ! no need of a 3D field: aero provider specific
                     end do
                  end do
+              end do
 
-                 deallocate(buffer, __STAT__)
-              end if
-
+              deallocate(buffer, __STAT__)
               deallocate(aero_aci_modes, __STAT__)
-          end if
+           end if
 
       call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN1")
 
