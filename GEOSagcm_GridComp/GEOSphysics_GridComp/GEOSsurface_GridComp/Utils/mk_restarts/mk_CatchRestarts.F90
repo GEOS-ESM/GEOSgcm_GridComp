@@ -1,3 +1,5 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
 program  mk_CatchRestarts
 
 !  $Id: 
@@ -20,8 +22,6 @@ program  mk_CatchRestarts
   character*256 :: OutType
   character*256 :: arg(6)
 
-  integer :: zoom
-
   integer :: i, k, iargc, n, ntiles,ntiles_in, nplus, req
   integer, pointer  :: Id(:), tid_in (:)
   real,    pointer  :: loni(:),lono(:), lati(:), lato(:)
@@ -34,6 +34,7 @@ program  mk_CatchRestarts
   logical, allocatable, dimension(:)  :: mask
   integer, allocatable, dimension (:) :: sub_tid
   real   , allocatable, dimension (:) :: sub_lon, sub_lat
+  integer :: status
 
   call init_MPI()
 
@@ -41,7 +42,7 @@ program  mk_CatchRestarts
   
   I = iargc()
 
-  if( I<5 .or. I>6 ) then
+  if( I<4 .or. I>5 ) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
      call exit(1)
@@ -54,9 +55,8 @@ program  mk_CatchRestarts
   read(arg(2),'(a)')  InTileFile
   read(arg(3),'(a)')  InRestart
   read(arg(4),*)  SURFLAY
-  read(arg(5),*)  zoom
 
-  if(I==6) then
+  if(I==5) then
      call getarg(6,OutType)
      OutIsOld = trim(OutType)=="OutIsOld"
   else
@@ -87,7 +87,7 @@ program  mk_CatchRestarts
   endif
 
   if (havedata) then
-     if (root_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES)
+     if (root_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES, __RC__)
   else
 
      call MPI_BCAST  (ntiles   , 1, MPI_INTEGER, 0,MPI_COMM_WORLD, mpierr)
@@ -232,7 +232,7 @@ program  mk_CatchRestarts
      deallocate (loni,lati,lonn,latt, tid_in)
      call MPI_Barrier(MPI_COMM_WORLD, mpierr)
  
-     if (root_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES_IN, id)
+     if (root_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES_IN, id, __RC__)
   
   endif
 
@@ -241,13 +241,14 @@ program  mk_CatchRestarts
 
 contains
 
-  SUBROUTINE read_and_write_rst (NTILES,  SURFLAY, OutIsOld, NTILES_IN, idi)
+  SUBROUTINE read_and_write_rst (NTILES,  SURFLAY, OutIsOld, NTILES_IN, idi, rc)
 
     implicit none
     real,    intent (in) :: SURFLAY
     logical, intent (in) :: OutIsOld
     integer, intent (in) :: NTILES, NTILES_IN
     integer, pointer, dimension(:), optional, intent (in) :: idi    
+    integer, optional, intent(out) :: rc
     logical       :: havedata, NewLand
     character(len=256), parameter :: Names(29) = &
          (/'BF1   ','BF2   ','BF3   ','VGWMAX','CDCR1 ', &
@@ -271,7 +272,7 @@ contains
     real, allocatable :: var1(:),var2(:,:)
     character*256     :: vname
     character*256     :: OutFileName
-    integer           :: rc, i, n, j,k,ncatch,idum
+    integer           :: i, n, j,k,ncatch,idum
     logical,allocatable :: written(:)
     integer             :: ndims,filetype
     integer             :: dimSizes(3),nVars
@@ -286,6 +287,8 @@ contains
     character(len=:), pointer :: var_name,dname
     type(StringVector), pointer :: var_dimensions
     integer :: dim1, dim2
+    character(256) :: Iam = "read_and_write_rst"
+    integer :: status
 
     print *, 'SURFLAY: ',SURFLAY 
 
@@ -294,18 +297,18 @@ contains
 
     print *, 'havedata = ',havedata
 
-    call MAPL_NCIOGetFileType(InRestart, filetype,rc=rc)
+    call MAPL_NCIOGetFileType(InRestart, filetype,__RC__)
 
     if (filetype == 0) then
       
-       call InFmt%open(InRestart,pFIO_READ,rc=rc)
-       InCfg=InFmt%read(rc=rc)
-       call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),rc=rc)
+       call InFmt%open(InRestart,pFIO_READ,__RC__)
+       InCfg=InFmt%read(__RC__)
+       call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),__RC__)
        i = index(InRestart,'/',back=.true.)
        OutFileName = "OutData/"//trim(InRestart(i+1:))
-       call OutFmt%create(OutFileName,rc=rc)
-       call OutFmt%write(OutCfg,rc=rc)
-       call MAPL_IOCountNonDimVars(OutCfg,nvars,rc=rc)
+       call OutFmt%create(OutFileName,__RC__)
+       call OutFmt%write(OutCfg,__RC__)
+       call MAPL_IOCountNonDimVars(OutCfg,nvars,__RC__)
 
        allocate(written(nvars))
        written=.false. 
@@ -370,45 +373,45 @@ contains
        
        if(file_exists) then
           print *,'FILE FORMAT FOR LAND BCS IS NC4'
-          call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_Read,rc=rc) 
-          call MAPL_VarRead ( catchFmt ,'OLD_ITY', rity)
-          call MAPL_VarRead ( catchFmt ,'ARA1', ARA1)
-          call MAPL_VarRead ( catchFmt ,'ARA2', ARA2)
-          call MAPL_VarRead ( catchFmt ,'ARA3', ARA3)
-          call MAPL_VarRead ( catchFmt ,'ARA4', ARA4)
-          call MAPL_VarRead ( catchFmt ,'ARS1', ARS1)
-          call MAPL_VarRead ( catchFmt ,'ARS2', ARS2)
-          call MAPL_VarRead ( catchFmt ,'ARS3', ARS3)
-          call MAPL_VarRead ( catchFmt ,'ARW1', ARW1)
-          call MAPL_VarRead ( catchFmt ,'ARW2', ARW2)
-          call MAPL_VarRead ( catchFmt ,'ARW3', ARW3)
-          call MAPL_VarRead ( catchFmt ,'ARW4', ARW4)
+          call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_Read, __RC__) 
+          call MAPL_VarRead ( catchFmt ,'OLD_ITY', rity, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARA1', ARA1, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARA2', ARA2, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARA3', ARA3, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARA4', ARA4, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARS1', ARS1, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARS2', ARS2, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARS3', ARS3, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARW1', ARW1, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARW2', ARW2, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARW3', ARW3, __RC__)
+          call MAPL_VarRead ( catchFmt ,'ARW4', ARW4, __RC__)
 
           if( SURFLAY.eq.20.0 ) then
-             call MAPL_VarRead ( catchFmt ,'ATAU2', ATAU2)
-             call MAPL_VarRead ( catchFmt ,'BTAU2', BTAU2)
+             call MAPL_VarRead ( catchFmt ,'ATAU2', ATAU2, __RC__)
+             call MAPL_VarRead ( catchFmt ,'BTAU2', BTAU2, __RC__)
           endif
           
           if( SURFLAY.eq.50.0 ) then
-             call MAPL_VarRead ( catchFmt ,'ATAU5', ATAU2)
-             call MAPL_VarRead ( catchFmt ,'BTAU5', BTAU2)
+             call MAPL_VarRead ( catchFmt ,'ATAU5', ATAU2, __RC__)
+             call MAPL_VarRead ( catchFmt ,'BTAU5', BTAU2, __RC__)
           endif
           
-          call MAPL_VarRead ( catchFmt ,'PSIS', PSIS)
-          call MAPL_VarRead ( catchFmt ,'BEE', BEE)
-          call MAPL_VarRead ( catchFmt ,'BF1', BF1)
-          call MAPL_VarRead ( catchFmt ,'BF2', BF2)
-          call MAPL_VarRead ( catchFmt ,'BF3', BF3)
-          call MAPL_VarRead ( catchFmt ,'TSA1', TSA1)
-          call MAPL_VarRead ( catchFmt ,'TSA2', TSA2)
-          call MAPL_VarRead ( catchFmt ,'TSB1', TSB1)
-          call MAPL_VarRead ( catchFmt ,'TSB2', TSB2)
-          call MAPL_VarRead ( catchFmt ,'COND', COND)
-          call MAPL_VarRead ( catchFmt ,'GNU', GNU)
-          call MAPL_VarRead ( catchFmt ,'WPWET', WPWET)
-          call MAPL_VarRead ( catchFmt ,'DP2BR', DP2BR)
-          call MAPL_VarRead ( catchFmt ,'POROS', POROS)
-          call catchFmt%close(rc=rc)
+          call MAPL_VarRead ( catchFmt ,'PSIS', PSIS, __RC__)
+          call MAPL_VarRead ( catchFmt ,'BEE', BEE, __RC__)
+          call MAPL_VarRead ( catchFmt ,'BF1', BF1, __RC__)
+          call MAPL_VarRead ( catchFmt ,'BF2', BF2, __RC__)
+          call MAPL_VarRead ( catchFmt ,'BF3', BF3, __RC__)
+          call MAPL_VarRead ( catchFmt ,'TSA1', TSA1, __RC__)
+          call MAPL_VarRead ( catchFmt ,'TSA2', TSA2, __RC__)
+          call MAPL_VarRead ( catchFmt ,'TSB1', TSB1, __RC__)
+          call MAPL_VarRead ( catchFmt ,'TSB2', TSB2, __RC__)
+          call MAPL_VarRead ( catchFmt ,'COND', COND, __RC__)
+          call MAPL_VarRead ( catchFmt ,'GNU', GNU, __RC__)
+          call MAPL_VarRead ( catchFmt ,'WPWET', WPWET, __RC__)
+          call MAPL_VarRead ( catchFmt ,'DP2BR', DP2BR, __RC__)
+          call MAPL_VarRead ( catchFmt ,'POROS', POROS, __RC__)
+          call catchFmt%close(__RC__)
 
        else
           open(unit=21, file=trim(DataDir)//"mosaic_veg_typs_fracs",status='old',form='formatted')
@@ -493,38 +496,38 @@ contains
        
        if (filetype == 0) then
           
-          call MAPL_VarRead(InFmt,names(1),BF1)
-          call MAPL_VarRead(InFmt,names(2),BF2)
-          call MAPL_VarRead(InFmt,names(3),BF3)
-          call MAPL_VarRead(InFmt,names(4),VGWMAX)
-          call MAPL_VarRead(InFmt,names(5),CDCR1)
-          call MAPL_VarRead(InFmt,names(6),CDCR2)
-          call MAPL_VarRead(InFmt,names(7),PSIS)
-          call MAPL_VarRead(InFmt,names(8),BEE)
-          call MAPL_VarRead(InFmt,names(9),POROS)
-          call MAPL_VarRead(InFmt,names(10),WPWET)
+          call MAPL_VarRead(InFmt,names(1),BF1, __RC__)
+          call MAPL_VarRead(InFmt,names(2),BF2, __RC__)
+          call MAPL_VarRead(InFmt,names(3),BF3, __RC__)
+          call MAPL_VarRead(InFmt,names(4),VGWMAX, __RC__)
+          call MAPL_VarRead(InFmt,names(5),CDCR1, __RC__)
+          call MAPL_VarRead(InFmt,names(6),CDCR2, __RC__)
+          call MAPL_VarRead(InFmt,names(7),PSIS, __RC__)
+          call MAPL_VarRead(InFmt,names(8),BEE, __RC__)
+          call MAPL_VarRead(InFmt,names(9),POROS, __RC__)
+          call MAPL_VarRead(InFmt,names(10),WPWET, __RC__)
           
-          call MAPL_VarRead(InFmt,names(11),COND)
-          call MAPL_VarRead(InFmt,names(12),GNU)
-          call MAPL_VarRead(InFmt,names(13),ARS1)
-          call MAPL_VarRead(InFmt,names(14),ARS2)
-          call MAPL_VarRead(InFmt,names(15),ARS3)
-          call MAPL_VarRead(InFmt,names(16),ARA1)
-          call MAPL_VarRead(InFmt,names(17),ARA2)
-          call MAPL_VarRead(InFmt,names(18),ARA3)
-          call MAPL_VarRead(InFmt,names(19),ARA4)
-          call MAPL_VarRead(InFmt,names(20),ARW1)
+          call MAPL_VarRead(InFmt,names(11),COND, __RC__)
+          call MAPL_VarRead(InFmt,names(12),GNU, __RC__)
+          call MAPL_VarRead(InFmt,names(13),ARS1, __RC__)
+          call MAPL_VarRead(InFmt,names(14),ARS2, __RC__)
+          call MAPL_VarRead(InFmt,names(15),ARS3, __RC__)
+          call MAPL_VarRead(InFmt,names(16),ARA1, __RC__)
+          call MAPL_VarRead(InFmt,names(17),ARA2, __RC__)
+          call MAPL_VarRead(InFmt,names(18),ARA3, __RC__)
+          call MAPL_VarRead(InFmt,names(19),ARA4, __RC__)
+          call MAPL_VarRead(InFmt,names(20),ARW1, __RC__)
           
-          call MAPL_VarRead(InFmt,names(21),ARW2)
-          call MAPL_VarRead(InFmt,names(22),ARW3)
-          call MAPL_VarRead(InFmt,names(23),ARW4)
-          call MAPL_VarRead(InFmt,names(24),TSA1)
-          call MAPL_VarRead(InFmt,names(25),TSA2)
-          call MAPL_VarRead(InFmt,names(26),TSB1)
-          call MAPL_VarRead(InFmt,names(27),TSB2)
-          call MAPL_VarRead(InFmt,names(28),ATAU2)
-          call MAPL_VarRead(InFmt,names(29),BTAU2)
-          call MAPL_VarRead(InFmt,'OLD_ITY',rITY)
+          call MAPL_VarRead(InFmt,names(21),ARW2, __RC__)
+          call MAPL_VarRead(InFmt,names(22),ARW3, __RC__)
+          call MAPL_VarRead(InFmt,names(23),ARW4, __RC__)
+          call MAPL_VarRead(InFmt,names(24),TSA1, __RC__)
+          call MAPL_VarRead(InFmt,names(25),TSA2, __RC__)
+          call MAPL_VarRead(InFmt,names(26),TSB1, __RC__)
+          call MAPL_VarRead(InFmt,names(27),TSB2, __RC__)
+          call MAPL_VarRead(InFmt,names(28),ATAU2, __RC__)
+          call MAPL_VarRead(InFmt,names(29),BTAU2, __RC__)
+          call MAPL_VarRead(InFmt,'OLD_ITY',rITY, __RC__)
           
        else
           
@@ -637,14 +640,14 @@ contains
                 ndims = var_dimensions%size()
 
                 if (ndims == 1) then
-                   call MAPL_VarRead(InFmt,var_name,var1)
+                   call MAPL_VarRead(InFmt,var_name,var1, __RC__)
                    call MAPL_VarWrite(OutFmt,var_name,var1(idx))
                 else if (ndims == 2) then
 
                    dname => myVariable%get_ith_dimension(2)
                    dim1=InCfg%get_dimension(dname)
                    do j=1,dim1
-                      call MAPL_VarRead(InFmt,var_name,var1,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,var1,offset1=j, __RC__)
                       call MAPL_VarWrite(OutFmt,var_name,var1(idx),offset1=j)
                    enddo
                 else if (ndims == 3) then
@@ -655,7 +658,7 @@ contains
                    dim2=InCfg%get_dimension(dname)
                    do k=1,dim2
                       do j=1,dim1
-                         call MAPL_VarRead(InFmt,var_name,var1,offset1=j,offset2=k)
+                         call MAPL_VarRead(InFmt,var_name,var1,offset1=j,offset2=k, __RC__)
                          call MAPL_VarWrite(OutFmt,var_name,var1(idx),offset1=j,offset2=k)
                       enddo
                    enddo
@@ -749,7 +752,8 @@ contains
        read (50) var2
        write(40) ((var2(idx(i),j),i=1,ntiles),j=1,4)
     end if
-    
+    if (present(rc)) rc =0
+    !_RETURN(_SUCCESS)
   END SUBROUTINE read_and_write_rst
 
   ! *****************************************************************************

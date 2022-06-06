@@ -1329,9 +1329,9 @@ module GEOS_CICE4ColumnPhysGridComp
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                    ,&
-    SHORT_NAME         = 'ISTSFC',                         &
+    SHORT_NAME         = 'TSKINICE',                  &
     LONG_NAME          = 'snow_or_ice_surface_temperature',&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
@@ -3150,7 +3150,7 @@ contains
    real, pointer, dimension(:  )  :: HSNO       => null()
    real, pointer, dimension(:  )  :: HICEUNT    => null()
    real, pointer, dimension(:  )  :: SNOONICE   => null()
-   real, pointer, dimension(:  )  :: ISTSFC     => null()
+   real, pointer, dimension(:  )  :: TSKINICE   => null()
    real, pointer, dimension(:  )  :: IAGE       => null()
    real, pointer, dimension(:  )  :: DAIDTT     => null()
    real, pointer, dimension(:  )  :: DVIDTT     => null()
@@ -3535,7 +3535,7 @@ contains
    call MAPL_GetPointer(EXPORT,HSNO   , 'HSNO'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,HICEUNT, 'HICEUNT' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOONICE,'SNOONICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ISTSFC , 'ISTSFC'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TSKINICE, 'TSKINICE'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,IAGE   , 'IAGE'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DAIDTT , 'DAIDTT'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DVIDTT , 'DVIDTT'  ,    RC=STATUS); VERIFY_(STATUS)
@@ -4428,13 +4428,13 @@ contains
     !fully coupled ice-ocean dynamics not ready yet!!  
     if(associated(PICE   )) PICE    = 0.0
 
-    if(associated(ISTSFC)) then
+    if(associated(TSKINICE)) then
           ! to be consisten with CICE (unit in degC)
-          ISTSFC = sum((TS(:,ICE:)-TFfresh)*FR8(:,ICE:),dim=2)
+          TSKINICE = sum((TS(:,ICE:)-TFfresh)*FR8(:,ICE:),dim=2)
           where(FRCICE > puny)
-             ISTSFC = ISTSFC / FRCICE
+             TSKINICE = TSKINICE / FRCICE + MAPL_TICE
           elsewhere
-             ISTSFC = MAPL_UNDEF
+             TSKINICE = MAPL_UNDEF
           end where
     endif
 

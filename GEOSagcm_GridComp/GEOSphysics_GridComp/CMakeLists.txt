@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set (alldirs
-  @GEOSchem_GridComp
+  GEOSchem_GridComp
   GEOSmoist_GridComp
   GEOSsurface_GridComp
   GEOSturbulence_GridComp
@@ -15,8 +15,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_PhysicsGridComp.F90)
   esma_add_library (${this}
     SRCS GEOS_PhysicsGridComp.F90
     SUBCOMPONENTS ${alldirs}
-    DEPENDENCIES MAPL GMAO_mpeu GMAO_stoch
-    INCLUDES ${INC_ESMF})
+    DEPENDENCIES MAPL GMAO_mpeu GMAO_stoch esmf)
 
 else ()
 

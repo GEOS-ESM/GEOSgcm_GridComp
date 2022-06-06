@@ -7,6 +7,7 @@
     use MAPL_HashMod
     use process_hres_data
     use MAPL_SortMod
+    use rmTinyCatchParaMod, ONLY: SRTM_maxcat
 
 ! Program to create a surface raster file at 2.5' that has
 ! the ocean divided with a regular lat-lon DE grid. Its inputs
@@ -50,7 +51,7 @@
     ! ESA/SRTM ocean/land/ice/lake mask parameters
     ! --------------------------------------------
 
-    integer, parameter :: SRTM_maxcat = 291284, nc_esa = 129600, nr_esa = 64800
+    integer, parameter :: nc_esa = 129600, nr_esa = 64800
     integer, allocatable, target, dimension (:,:) :: geos_msk, geos_msk2 
     REAL,    allocatable, DIMENSION (:) :: loc_val
     INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
@@ -471,7 +472,7 @@
   end if
 
   do k=1,ip
-     iTable( 3,k) = k
+     iTable( 3,k) = 1
   end do
 
   if(Verb) print *, 'Writing til file...'

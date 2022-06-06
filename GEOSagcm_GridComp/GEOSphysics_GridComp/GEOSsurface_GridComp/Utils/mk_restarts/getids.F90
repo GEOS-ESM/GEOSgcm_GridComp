@@ -556,7 +556,7 @@ contains
         integer , intent (inout)  :: ntiles
         real, pointer, dimension (:)    :: xlon, xlat
         integer, optional, intent(IN) :: mask
-        integer :: n,icnt,ityp, nt, umask, i
+        integer :: n,icnt,ityp, nt, umask, i, header
         real    :: xval,yval, pf
         real,  allocatable :: ln1(:), lt1(:)
       
@@ -568,11 +568,26 @@ contains
    
       open(11,file=InCNTileFile, &
            form='formatted',action='read',status='old')
+
+      ! first read number of lines in the til file header
+      ! -------------------------------------------------
+      header = 5
+      read (11,*, iostat=n) Nt
+      do i = 1, header -1
+         read (11,*)
+      end do
+      read (11,*,IOSTAT=n)ityp,pf,xval, yval
+      if(n /= 0) header = 8
+
+      rewind (11)
+
+      ! read the tile file
+      !-------------------
       read (11,*, iostat=n) Nt
    
       allocate(ln1(Nt),lt1(Nt))
-   	  
-      do n = 1,7 ! skip header
+
+      do n = 1,header-1 ! skip header
          read(11,*)
       end do
      
