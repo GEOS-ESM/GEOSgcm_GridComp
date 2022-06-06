@@ -43,6 +43,7 @@ module GEOS_GFDL_1M_InterfaceMod
 
   ! Local resource variables
   integer :: imsize
+  real    :: TURNRHCRIT
   real    :: MINRHCRITLND
   real    :: MINRHCRITOCN
   real    :: MAXRHCRITLND
@@ -264,8 +265,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     read(imchar,*) imsize
     if(dateline.eq.'CF') imsize = imsize*4
 
-    tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
-    tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
+    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= 750.0 , RC=STATUS); VERIFY_(STATUS)
+    tmprhL = min(0.99,(1.0-min(0.30, max(0.01, dw_land  * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
+    tmprhO = min(0.99,(1.0-min(0.30, max(0.01, dw_ocean * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
     call MAPL_GetResource( MAPL, MINRHCRITLND    , 'MINRHCRITLND:'    , DEFAULT=tmprhL , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MINRHCRITOCN    , 'MINRHCRITOCN:'    , DEFAULT=tmprhO , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAXRHCRITLND    , 'MAXRHCRITOCN:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -464,7 +466,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     do J=1,JM
        do I=1,IM
-         turnrhcrit2D(I,J) = PLmb(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
+         if (TURNRHCRIT .LT. 0) then
+             turnrhcrit2D(I,J) = PLmb(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
+          else
+             turnrhcrit2D(I,J) = MIN( TURNRHCRIT , TURNRHCRIT-(1020-PLEmb(i,j,LM)) )
+          endif
           minrhcrit2D(I,J) = MINRHCRITOCN*(1.0-FRLAND(I,J)) + MINRHCRITLND*FRLAND(I,J)
           maxrhcrit2D(I,J) = MAXRHCRITOCN*(1.0-FRLAND(I,J)) + MAXRHCRITLND*FRLAND(I,J)
        end do
@@ -542,7 +548,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) then 
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
-       ! pdf/evap/subl
+       ! evap/subl/pdf
         do L=1,LM
           do J=1,JM
            do I=1,IM
@@ -572,10 +578,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
              endif
            ! combine and limit
-             ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
+             ALPHA = min( 0.30, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 70% 
+             RHCRIT = 1.0 - ALPHA
        ! evaporation/sublimation for CN/LS
              EVAPC(I,J,L) = Q(I,J,L)
-             RHCRIT = 1.0 ! Use 1.0 for evap
              call EVAP3 (         &
                   DT_MOIST      , &
                   CCW_EVAP_EFF  , &
@@ -591,7 +597,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    QST3(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
              SUBLC(I,J,L) =   Q(I,J,L)
-             RHCRIT = 1.0 - ALPHA
              call SUBL3 (        &
                   DT_MOIST      , &
                   CCI_EVAP_EFF  , &
@@ -606,13 +611,47 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
+       ! Put condensates in touch with the PDF
+             call hystpdf( &
+                      DT_MOIST       , &
+                      ALPHA          , &
+                      PDFSHAPE       , &
+                      PLmb(I,J,L)    , &
+                      ZL0(I,J,L)     , &
+                      Q(I,J,L)       , &
+                      QLLS(I,J,L)    , &
+                      QLCN(I,J,L)    , &
+                      QILS(I,J,L)    , &
+                      QICN(I,J,L)    , &
+                      T(I,J,L)       , &
+                      CLLS(I,J,L)    , &
+                      CLCN(I,J,L)    , &
+                      NACTL(I,J,L)   , &
+                      NACTI(I,J,L)   , &
+                      WHL(I,J,L)     , &
+                      WQT(I,J,L)     , &
+                      HL2(I,J,L)     , &
+                      QT2(I,J,L)     , &
+                      HLQT(I,J,L)    , &
+                      W3(I,J,L)      , &
+                      W2(I,J,L)      , &
+                      QT3(I,J,L)     , &
+                      HL3(I,J,L)     , &
+                      EDMF_FRC(I,J,L), &
+                      PDF_A(I,J,L)   , &
+                      WTHV2(I,J,L)   , &
+                      WQL(I,J,L)     , &
+                      USE_AEROSOL_NN)
        ! cleanup clouds
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
-            end do ! IM loop
-          end do ! JM loop
-        end do ! LM loop
-    ! Update TH
-    TH = T/PK
+             RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+           end do ! IM loop
+         end do ! JM loop
+       end do ! LM loop
+
+       ! Update TH
+       TH = T/PK
+
     ! Update macrophysics tendencies
     if (associated( DUDT_macro))  DUDT_macro=( U         - DUDT_macro)/DT_MOIST
     if (associated( DVDT_macro))  DVDT_macro=( V         - DVDT_macro)/DT_MOIST
@@ -670,73 +709,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          PFI_LS = 0.
         ! Liquid
          PFL_LS = 0.
-     ! Put condensates in touch with the PDF
-        do L=1,LM
-          do J=1,JM
-            do I=1,IM
-       ! Send the condensates through the pdf after convection
-       !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-             ALPHA = maxrhcrit2D(I,J)
-           ! lower turn from maxrhcrit
-             if (PLmb(i,j,l) .le. turnrhcrit2D(I,J)) then
-                ALPHAl = minrhcrit2D(I,J)
-             else
-                if (L.eq.LM) then
-                   ALPHAl = maxrhcrit2D(I,J)
-                else
-                   ALPHAl = minrhcrit2D(I,J) + (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
-                           ((atan( (2.*(PLmb(i,j,l)-turnrhcrit2D(I,J))/min(100., PLEmb(i,j,LM)-turnrhcrit2D(I,J))-1.) * &
-                           tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-                endif
-             endif
-           ! upper turn back to maxrhcrit
-             turnrhcrit_up = TROPP(i,j)/100.0
-             IF (turnrhcrit_up == MAPL_UNDEF) turnrhcrit_up = 100.
-             if (PLmb(i,j,l) .le. turnrhcrit_up) then
-                ALPHAu = maxrhcrit2D(I,J)
-             else
-                ALPHAu = maxrhcrit2D(I,J) - (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
-                        ((atan( (2.*(PLmb(i,j,l)-turnrhcrit_up)/( turnrhcrit2D(I,J)-turnrhcrit_up)-1.) * &
-                        tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-             endif
-           ! combine and limit
-             ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
-             RHCRIT = 1.0 - ALPHA
-             call hystpdf( &
-                      DT_MOIST       , &
-                      ALPHA          , &
-                      PDFSHAPE       , &
-                      PLmb(I,J,L)    , &
-                      ZL0(I,J,L)     , &
-                      Q(I,J,L)       , &
-                      QLLS(I,J,L)    , &
-                      QLCN(I,J,L)    , &
-                      QILS(I,J,L)    , &
-                      QICN(I,J,L)    , &
-                      T(I,J,L)       , &
-                      CLLS(I,J,L)    , &
-                      CLCN(I,J,L)    , &
-                      NACTL(I,J,L)   , &
-                      NACTI(I,J,L)   , &
-                      WHL(I,J,L)     , &
-                      WQT(I,J,L)     , &
-                      HL2(I,J,L)     , &
-                      QT2(I,J,L)     , &
-                      HLQT(I,J,L)    , &
-                      W3(I,J,L)      , &
-                      W2(I,J,L)      , &
-                      QT3(I,J,L)     , &
-                      HL3(I,J,L)     , &
-                      EDMF_FRC(I,J,L), &
-                      PDF_A(I,J,L)   , &
-                      WTHV2(I,J,L)   , &
-                      WQL(I,J,L)     , &
-                      USE_AEROSOL_NN)
-             call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
-             RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-            end do ! IM loop
-          end do ! JM loop
-        end do ! LM loop
         ! Cloud
          RAD_CF = MIN(CLCN+CLLS,1.0)
         ! Liquid
@@ -912,6 +884,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! Other Exports
         call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QICN+QILS )*MASS , 3 )
+        call MAPL_GetPointer(EXPORT, PTR2D, 'CLWP', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
         call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
         call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)

@@ -34,6 +34,7 @@ module GEOS_GF_InterfaceMod
   logical :: STOCHASTIC_CNV
   real    :: STOCH_TOP, STOCH_BOT
   real    :: SCLM_DEEP
+  logical :: FIX_CNV_CLOUD
 
   public :: GF_Setup, GF_Initialize, GF_Run
 
@@ -91,7 +92,7 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)      ,'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)       ,'FADJ_MASSFLX_MD:'       ,default= 0.5,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP           ,'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN           ,'USE_TRACER_SCAVEN:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN           ,'USE_TRACER_SCAVEN:'     ,default= 2,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_SCALE_DEP               ,'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP         ,'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, DICYCLE                     ,'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -217,13 +218,13 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
     ENDIF
-    call MAPL_GetResource(MAPL, GF_ENV_SETTING     , 'GF_ENV_SETTING:'  , DEFAULT= 'CURRENT' , RC=STATUS); VERIFY_(STATUS)
-
+    call MAPL_GetResource(MAPL, GF_ENV_SETTING  , 'GF_ENV_SETTING:'  , DEFAULT= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .TRUE.    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 1.5       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.5       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, FIX_CNV_CLOUD   , 'FIX_CNV_CLOUD:'   , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GF_Initialize
 
@@ -523,7 +524,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       QICN =         QICN + DQIDT_DC*DT_MOIST
       CLCN = MAX(MIN(CLCN + DQADT_DC*DT_MOIST, 1.0), 0.0)
 
-      ! fix 'anvil' cloud fraction 
+      ! fix 'convective' cloud fraction 
+      if (FIX_CNV_CLOUD) then
       TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
       TMP3D = QST3
       WHERE (CLCN < 1.0)
@@ -541,6 +543,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QLCN = 0.
          QICN = 0.
       END WHERE
+      endif
 
       ! Heating from cumulus friction
       call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)

@@ -2208,6 +2208,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='CLWP',                                        & 
+         LONG_NAME ='cloud_liquid_water_path',                     &
+         UNITS     ='kg m-2'  ,                                    &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='LWP',                                         & 
          LONG_NAME ='liquid_water_path',                           &
          UNITS     ='kg m-2'  ,                                    &
@@ -5707,6 +5715,19 @@ contains
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = CLLS+CLCN
+
+       ! Cloud condensate exports
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QLLSX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLLS
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QILSX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QILS
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QLCNX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLCN
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QICNX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QICN
 
        ! Fill wind, temperature & RH exports needed for SYNCTQ
 

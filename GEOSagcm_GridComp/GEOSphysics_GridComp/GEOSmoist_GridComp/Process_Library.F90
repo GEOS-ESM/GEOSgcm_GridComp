@@ -35,6 +35,11 @@ module GEOSmoist_Process_Library
   real, parameter :: be   = r13 - 0.11
   real, parameter :: aewc = 0.13*(3./(4.*MAPL_PI*RHO_W*1.e3))**r13
   real, parameter :: aeic = 0.13*(3./(4.*MAPL_PI*RHO_I*1.e3))**r13
+  real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
+  real, parameter :: gravbcp = MAPL_GRAV/MAPL_CP
+  real, parameter :: alhlbcp = MAPL_ALHL/MAPL_CP
+  real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
+  real, parameter :: alhsbcp = alhlbcp+alhfbcp
 
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type
@@ -253,7 +258,7 @@ module GEOSmoist_Process_Library
 
       QV   = QV   + EVAP
       QL   = QL   - EVAP
-      TE   = TE   - (MAPL_ALHL/MAPL_CP)*EVAP
+      TE   = TE   - alhlbcp*EVAP
 
    end subroutine EVAP3
 
@@ -334,7 +339,7 @@ module GEOSmoist_Process_Library
 
       QV   = QV   + SUBL
       QI   = QI   - SUBL
-      TE   = TE   - (MAPL_ALHS/MAPL_CP)*SUBL
+      TE   = TE   - alhsbcp*SUBL
 
    end subroutine SUBL3
 
@@ -396,11 +401,11 @@ module GEOSmoist_Process_Library
 
     LM = size(T,3)
 
-    BUOY(:,:,LM) =  T(:,:,LM) + (MAPL_GRAV/MAPL_CP)*ZLO(:,:,LM) + (MAPL_ALHL/MAPL_CP)*Q(:,:,LM)
+    BUOY(:,:,LM) =  T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)
 
     do L=LM-1,1,-1
-       BUOY(:,:,L) = BUOY(:,:,LM) - (T(:,:,L) + (MAPL_GRAV/MAPL_CP)*ZLO(:,:,L) + (MAPL_ALHL/MAPL_CP)*QS(:,:,L))
-       BUOY(:,:,L) = MAPL_GRAV*BUOY(:,:,L) / ( (1.+ (MAPL_ALHL/MAPL_CP)*DQS(:,:,L))*T(:,:,L) )
+       BUOY(:,:,L) = BUOY(:,:,LM) - (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*QS(:,:,L))
+       BUOY(:,:,L) = MAPL_GRAV*BUOY(:,:,L) / ( (1.+ alhlbcp*DQS(:,:,L))*T(:,:,L) )
     enddo
 
     BUOY(:,:,LM) = 0.0
@@ -544,7 +549,7 @@ module GEOSmoist_Process_Library
       ! Fix if Anvil cloud fraction too small
       if (AF < 1.E-5) then
          QV  = QV + QLA + QIA
-         TE  = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
+         TE  = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
          QLA = 0.
          QIA = 0.
@@ -553,7 +558,7 @@ module GEOSmoist_Process_Library
       ! Fix if LS cloud fraction too small
       if ( CF < 1.E-5 ) then
          QV = QV + QLC + QIC
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
+         TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
          QLC = 0.
          QIC = 0.
@@ -562,33 +567,33 @@ module GEOSmoist_Process_Library
       ! LS LIQUID too small
       if ( QLC  < 1.E-8 ) then
          QV = QV + QLC 
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC
+         TE = TE - (alhlbcp)*QLC
          QLC = 0.
       end if
       ! LS ICE too small
       if ( QIC  < 1.E-8 ) then
          QV = QV + QIC 
-         TE = TE - (MAPL_ALHS/MAPL_CP)*QIC
+         TE = TE - (alhsbcp)*QIC
          QIC = 0.
       end if
 
       ! Anvil LIQUID too small
       if ( QLA  < 1.E-8 ) then
          QV = QV + QLA 
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA
+         TE = TE - (alhlbcp)*QLA
          QLA = 0.
       end if
       ! Anvil ICE too small
       if ( QIA  < 1.E-8 ) then
          QV = QV + QIA 
-         TE = TE - (MAPL_ALHS/MAPL_CP)*QIA
+         TE = TE - (alhsbcp)*QIA
          QIA = 0.
       end if
 
       ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
       if ( ( QLA + QIA ) < 1.E-8 ) then
          QV = QV + QLA + QIA
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
+         TE = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
          QLA = 0.
          QIA = 0.
@@ -596,7 +601,7 @@ module GEOSmoist_Process_Library
       ! Ditto if LS cloud LIQUID+ICE too small
       if ( ( QLC + QIC ) < 1.E-8 ) then
          QV = QV + QLC + QIC
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
+         TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
          QLC = 0.
          QIC = 0.
@@ -687,42 +692,37 @@ module GEOSmoist_Process_Library
       ! internal scalars
       integer :: N, nmax
 
-      QC = QCl + QCi
-      QA = QAl + QAi
-      QT  =  QC  + QA + QV  !Total water after microphysics
-      tmpARR = 0.0
-      nmax =  20
-      QAx = 0.0
+      QC     = QCl + QCi
+      QA     = QAl + QAi
 
-      if ( AF < 1.0 )  tmpARR = 1./(1.-AF)
+                    tmpARR = 0.0
+      if (AF < 1.0) tmpARR = 1. / (1.-AF)
 
-      TEo = TE
+      DQSx = GEOS_DQSAT( TE, PL, QSAT=QSx )
 
-      DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
+                        QVx = ( QV - QSx*AF )*tmpARR
+      if ( AF >= 1.0 )  QVx = QSx*1.e-4
+
       CFx = CF*tmpARR
       QCx = QC*tmpARR
-      QVx = ( QV - QSx*AF )*tmpARR
-
-      if ( AF >= 1.0 )  QVx = QSx*1.e-4 
-      if ( AF >  0.0 )  QAx = QA/AF
 
       QT  = QCx + QVx
 
-      TEp = TEo
-      QSn = QSx
-      TEn = TEo
-      CFn = CFx
       QVn = QVx
       QCn = QCx
+      CFn = CFx
+      TEn = TE
+      QSn = QSx
       DQS = DQSx
 
+      nmax   = 20
       do n=1,nmax
 
          QVp = QVn
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         fQi = ice_fraction( TEp )
+         fQi = ice_fraction( TEn )
 
          if(PDFSHAPE.lt.2) then
 
@@ -740,13 +740,13 @@ module GEOSmoist_Process_Library
          endif
 
          if (PDFSHAPE.lt.5) then
-           call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
-           call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+           call pdffrac(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,CFn)
+           call pdfcondensate(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,QCn)
          elseif (PDFSHAPE.eq.5) then
 
             ! Update the liquid water static energy
-            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+            ALHX = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+            HL = TEn + gravbcp*ZL - ALHX*QCn
 
            call partition_dblgss(DT/nmax,           &
                                  TEn,          &
@@ -793,16 +793,18 @@ module GEOSmoist_Process_Library
 
          endif
 
+        ! Change in large-sclae condensate
+         DQCALL = QCn - QCp
+
          IF(USE_AERO_NN) THEN
-           DQCALL = QCn - QCp
            CF  = CFn * ( 1.-AF)
-           Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
+           Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
            call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
-                 TEp              , &
+                 TEn              , &
                  QT               , &
                  QCi              , &
                  QAi              , &
@@ -817,42 +819,26 @@ module GEOSmoist_Process_Library
                  .false.)
          ENDIF
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         ! These lines represent adjustments
-         ! to anvil condensate due to the 
-         ! assumption of a stationary TOTAL 
-         ! water PDF subject to a varying 
-         ! QSAT value during the iteration
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-         if ( AF > 0. ) then
-            QAo = QAx  ! + QSx - QS 
-         else
-            QAo = 0.
-         end if
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-         ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+         ALHX = (1.0-fQi)*alhlbcp + fQi*alhsbcp
 
          if(PDFSHAPE.eq.1) then 
-            QCn = QCp + ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX/MAPL_CP)             
+            QCn = QCp + DQCALL / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX)             
          elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
             ! for now, just use relaxation of 1/2.
-            if (n.ne.nmax) QCn = QCp + ( QCn - QCp ) *0.5
+            if (n.ne.nmax) QCn = QCp + DQCALL *0.5
          endif
 
-         QVn = QVp - (QCn - QCp)
-         TEn = TEp + (1.0-fQi)*(MAPL_ALHL/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF ) &
-               +      fQi* (MAPL_ALHS/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF )
+         QVn = QVp - DQCALL
+         TEn = TEp + ((1.0-fQi)*alhlbcp + fQi*alhsbcp) * DQCALL*(1.-AF)
 
-         if (abs(Ten - Tep) .lt. 0.00001) exit 
+         if (abs(TEn - TEp) .lt. 0.00001) exit 
 
          DQS  = GEOS_DQSAT( TEn, PL, QSAT=QSn )
 
       enddo ! qsat iteration
 
       CFo = CFn
-      CF = CFn
       QCo = QCn
       QVo = QVn
       TEo = TEn
@@ -863,9 +849,8 @@ module GEOSmoist_Process_Library
       if ( AF < 1.0 ) then
          CF  = CFo * ( 1.-AF)
          QCo = QCo * ( 1.-AF)
-         QAo = QAo *   AF  
+         QAo = QA
       else
-
          ! Special case AF=1, i.e., box filled with anvil. 
          !   - Note: no guarantee QV_box > QS_box
          CF  = 0.          ! Remove any other cloud
@@ -873,8 +858,8 @@ module GEOSmoist_Process_Library
          QCo = 0.          ! Remove same from LS   
          QT  = QAo + QV    ! Total water
          ! Now set anvil condensate to any excess of total water 
-         ! over QSx (saturation value at top)
-         QAo = MAX( QT - QSx, 0. )
+         ! over QSn (saturation value at top)
+         QAo = MAX( QT - QSn, 0. )
       end if
 
       ! Now take {\em New} condensate and partition into ice and liquid
@@ -887,44 +872,32 @@ module GEOSmoist_Process_Library
       dQAi = 0.0
 
       !large scale   
-
       QCx   = QCo - QC
-      if  (QCx .lt. 0.0) then  !net evaporation. Water evaporates first
-         dQCl = max(QCx, -QCl)   
+      if (QCx .lt. 0.0) then  !net evaporation. Water evaporates first
+         dQCl = max(QCx       , -QCl)   
          dQCi = max(QCx - dQCl, -QCi)
       else
          dQCl  = (1.0-fQi)*QCx
-         dQCi  =    fQi  * QCx
+         dQCi  =      fQi *QCx
       end if
+      QCi = QCi + dQCi
+      QCl = QCl + dQCl
 
       !Anvil   
       QAx   = QAo - QA
-
-      if  (QAx .lt. 0.0) then  !net evaporation. Water evaporates first
+      if (QAx .lt. 0.0) then  !net evaporation. Water evaporates first
          dQAl = max(QAx, -QAl)   
          dQAi = max(QAx - dQAl, -QAi)
       else            
          dQAl  =  (1.0-fQi)*QAx
-         dQAi  = QAx*fQi
+         dQAi  =       fQi *QAx
       end if
+      QAi = QAi + dQAi
+      QAl = QAl + dQAl
 
-      ! Clean-up cloud if fractions are too small
-      if ( AF < 1.e-5 ) then
-         dQAi = -QAi
-         dQAl = -QAl
-      end if
-      if ( CF < 1.e-5 ) then
-         dQCi = -QCi
-         dQCl = -QCl
-      end if
+      QV  = QV - (dQAi+dQCi+dQAl+dQCl) 
 
-      QAi    = QAi + dQAi
-      QAl    = QAl + dQAl
-      QCi    = QCi + dQCi
-      QCl    = QCl + dQCl
-      QV     = QV  - ( dQAi+dQCi+dQAl+dQCl) 
-
-      TE  = TE + (MAPL_ALHL*( dQAi+dQCi+dQAl+dQCl)+MAPL_ALHF*(dQAi+dQCi))/ MAPL_CP
+      TE  = TE + alhlbcp*(dQAi+dQCi+dQAl+dQCl) + alhfbcp*(dQAi+dQCi)
 
       ! We need to take care of situations where QS moves past QA
       ! during QSAT iteration. This should be only when QA/AF is small
@@ -935,7 +908,7 @@ module GEOSmoist_Process_Library
       ! speaking, PDF-wise, we should not do this.
       if ( QAo <= 0. ) then
          QV  = QV + QAi + QAl
-         TE  = TE - (MAPL_ALHS/MAPL_CP)*QAi - (MAPL_ALHL/MAPL_CP)*QAl
+         TE  = TE - alhsbcp*QAi - alhlbcp*QAl
          QAi = 0.
          QAl = 0.
          AF  = 0.  
@@ -1764,7 +1737,7 @@ module GEOSmoist_Process_Library
          DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/MAPL_TICE)**1.94)*1e-4  !From Seinfeld and Pandis 2006
          DENAIR=PL*100.0/MAPL_RGAS/TE
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
-         LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
+         LHcorr = ( 1.0 + DQSI*alhsbcp) !must be ice deposition
 
          if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then 
             DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
@@ -1893,7 +1866,7 @@ module GEOSmoist_Process_Library
                   KTOP = L
                   TL = TH(I,J,L)*PK(I,J,L)
                   if (TL > MAPL_TICE) then
-                      ZTHICK = TH(I,J,L) * (PKE(I,J,L) - PKE(I,J,L-1)) * MAPL_CP/MAPL_GRAV
+                      ZTHICK = TH(I,J,L) * (PKE(I,J,L) - PKE(I,J,L-1)) * cpbgrav
                       TL_MEAN = TL_MEAN + TL*ZTHICK
                       Z_LAYER = Z_LAYER + ZTHICK
                    else
@@ -1911,7 +1884,7 @@ module GEOSmoist_Process_Library
                   KTOP = L
                   TL = TH(I,J,L)*PK(I,J,L)
                   if (TL <= MAPL_TICE) then
-                      ZTHICK = TH(I,J,L) * (PKE(I,J,L) - PKE(I,J,L-1)) * MAPL_CP/MAPL_GRAV
+                      ZTHICK = TH(I,J,L) * (PKE(I,J,L) - PKE(I,J,L-1)) * cpbgrav
                       TL_MEAN = TL_MEAN + TL*ZTHICK
                       Z_LAYER = Z_LAYER + ZTHICK
                   else
@@ -1927,8 +1900,8 @@ module GEOSmoist_Process_Library
             endif
             if (KTOP == LM-1) then
                TL     = TH(I,J,LM)*PK(I,J,LM)
-               TH_BOT = (TL + (MAPL_GRAV/MAPL_CP)*ZL0(I,J,LM)) / PKE(I,J,LM)
-               ZTHICK = TH(I,J,LM) * (PKE(I,J,LM) - PKE(I,J,LM-1)) * MAPL_CP/MAPL_GRAV
+               TH_BOT = (TL + gravbcp*ZL0(I,J,LM)) / PKE(I,J,LM)
+               ZTHICK = TH(I,J,LM) * (PKE(I,J,LM) - PKE(I,J,LM-1)) * cpbgrav
                TL_MEAN = TL_MEAN + TL*ZTHICK
                Z_LAYER = Z_LAYER + ZTHICK
                if (TL > MAPL_TICE) then
