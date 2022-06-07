@@ -466,7 +466,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     do J=1,JM
        do I=1,IM
-         if (TURNRHCRIT .LT. 0) then
+         if ( (TURNRHCRIT .LT. 0) .or. (FRLAND(I,J) .GT. 0.0) ) then
              turnrhcrit2D(I,J) = PLmb(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
           else
              turnrhcrit2D(I,J) = MIN( TURNRHCRIT , TURNRHCRIT-(1020-PLEmb(i,j,LM)) )
