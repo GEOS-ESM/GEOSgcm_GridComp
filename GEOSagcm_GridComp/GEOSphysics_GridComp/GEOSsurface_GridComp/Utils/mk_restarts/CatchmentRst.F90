@@ -996,14 +996,14 @@ contains
        tmp2d = this%tc
        deallocate(this%tc)
        allocate(this%tc(out_ntiles, 4))
-       do k = 1, 3
+       do k = 1, 4
           this%tc(:,k) = tmp2d(id_glb(:),k)
        enddo
 
        tmp2d = this%qc
        deallocate(this%qc)
        allocate(this%qc(out_ntiles, 4))
-       do k = 1, 3
+       do k = 1, 4
           this%qc(:,k) = tmp2d(id_glb(:),k)
        enddo
 
@@ -1066,7 +1066,7 @@ contains
     
        !set tsurf to zero
        if (this%meta%has_variable('TSURF')) then
-          var_out = 0.0
+          var_out = this%tsurf(id_glb(:)) 
           this%tsurf = var_out
        endif
 
@@ -1074,22 +1074,37 @@ contains
        ! WW
        if(allocated(tmp2d)) deallocate(tmp2d)
        allocate(tmp2d(out_ntiles,4))
-       tmp2d = 0.001
+       !tmp2d = 0.001
        if (this%meta%has_variable('CH')) then
+          do k = 1,4
+            tmp2d(:,k) = this%ch(id_glb(:),k)
+          enddo
           this%ch  = tmp2d
        endif
        if (this%meta%has_variable('CM')) then
+          do k = 1,4
+            tmp2d(:,k) = this%cm(id_glb(:),k)
+          enddo
           this%cm  = tmp2d
        endif
        if (this%meta%has_variable('CQ')) then
+          do k = 1,4
+            tmp2d(:,k) = this%cq(id_glb(:),k)
+          enddo
           this%cq  = tmp2d
        endif
-       tmp2d = 0.25
+       !tmp2d = 0.25
        if (this%meta%has_variable('FR')) then
+          do k = 1,4
+            tmp2d(:,k) = this%fr(id_glb(:),k)
+          enddo
           this%fr  = tmp2d
        endif
-       tmp2d = 0.1
+       !tmp2d = 0.1
        if (this%meta%has_variable('WW')) then
+          do k = 1,4
+            tmp2d(:,k) = this%ww(id_glb(:),k)
+          enddo
           this%ww  = tmp2d
        endif
 
