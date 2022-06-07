@@ -229,7 +229,7 @@ module GEOS_SurfaceGridCompMod
     ! -------------------------------------------------------
     call MAPL_GetResource    (MAPL, LSM_CHOICE,    label="LSM_CHOICE:",             DEFAULT=1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource    (MAPL, DO_OBIO,       label="USE_OCEANOBIOGEOCHEM:",   DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource    (MAPL, DO_WAVES,      label="USE_WAVES:",              DEFAULT=1, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource    (MAPL, DO_WAVES,      label="USE_WAVES:",              DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource    (SCF,  ATM_CO2,       label='ATM_CO2:',                DEFAULT=2,          __RC__ ) 
     call MAPL_GetResource    (SCF,  catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,          __RC__ )

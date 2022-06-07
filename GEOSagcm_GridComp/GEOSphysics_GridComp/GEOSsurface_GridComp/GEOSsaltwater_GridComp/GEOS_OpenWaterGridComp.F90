@@ -179,7 +179,7 @@ module GEOS_OpenwaterGridCompMod
     call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_WAVES,      Label="USE_WAVES:"       , DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_WAVES,      Label="USE_WAVES:"       , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set the state variable specs.
@@ -1749,7 +1749,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Is the wave model enabled
 ! -------------------------
-    call MAPL_GetResource ( MAPL, DO_WAVES,         Label="USE_WAVES:",           DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_WAVES,         Label="USE_WAVES:",           DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
  
 ! Pointers to inputs

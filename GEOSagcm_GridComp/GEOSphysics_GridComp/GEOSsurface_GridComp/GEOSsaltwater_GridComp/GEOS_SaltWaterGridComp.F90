@@ -132,7 +132,7 @@ module GEOS_SaltwaterGridCompMod
     call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_WAVES,           Label="USE_WAVES:",           DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_WAVES,           Label="USE_WAVES:",           DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
