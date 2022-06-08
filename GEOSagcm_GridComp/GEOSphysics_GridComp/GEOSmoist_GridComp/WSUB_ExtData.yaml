@@ -1,0 +1,15 @@
+Collections:
+  WSUB_Wvar_positive_05hrdeg_2006%m2.nc4:
+    template: ExtData/g5gcm/moist/L72/Wvar_positive_05hrdeg_2006%m2.nc4
+    valid_range: "2006-01-01/2006-12-31"
+
+Samplings:
+  WSUB_sample_0:
+    extrapolation: clim
+
+Exports:
+  WSUB_NATURE:
+    collection: WSUB_Wvar_positive_05hrdeg_2006%m2.nc4
+    sample: WSUB_sample_0
+    variable: w_var_masked
+
