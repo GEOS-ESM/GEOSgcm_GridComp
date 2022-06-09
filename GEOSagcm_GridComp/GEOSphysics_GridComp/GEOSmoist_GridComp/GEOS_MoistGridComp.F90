@@ -5619,6 +5619,8 @@ contains
       character(len=ESMF_MAXSTR)      :: aci_field_name
       real, pointer, dimension(:,:)   :: aci_ptr_2d
       real, pointer, dimension(:,:,:) :: aci_ptr_3d
+     
+    
       real, pointer, dimension(:,:,:) :: aci_num
       real, pointer, dimension(:,:,:) :: aci_dgn
       real, pointer, dimension(:,:,:) :: aci_sigma
@@ -5627,6 +5629,9 @@ contains
       real, pointer, dimension(:,:,:) :: aci_f_dust
       real, pointer, dimension(:,:,:) :: aci_f_soot
       real, pointer, dimension(:,:,:) :: aci_f_organic
+    
+    
+     
       logical                         :: implements_aerosol_activation_properties
       character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
       integer                         :: ACI_STATUS
@@ -5699,7 +5704,9 @@ contains
 	   FDROP_DUST, FDROP_SOOT,  USE_NATURE_WSUB, SIGMA_NUC,  MIN_ALH, DCS, HMOIST_950, & 
        HSMOIST_500, SINST, MAX_EXP, MAX_CAPE, MIN_CAPE, DUST_INFAC, ORG_INFAC, BC_INFAC, SS_INFAC, &
         MAPL, RRTMG_IRRAD, RRTMG_SORAD, SCWST, MTIME, SWCIRRUS, MINCDNC, TMAXBASELQ, TMAXCFCORR, Immersion_param, &
-        DT_MICRO, DT_AUX, UR_SCALE, ACC_ENH, ACC_ENH_ICE, USE_WNET    
+        DT_MICRO, DT_AUX, UR_SCALE, ACC_ENH, ACC_ENH_ICE, USE_WNET 
+        
+      logical                         ::   USE_MAMNET    
         
       
       real                            :: THLSRC_PERT, QTSRC_PERT
@@ -6212,6 +6219,8 @@ contains
       call MAPL_GetResource( STATE, RRTMG_SORAD ,'USE_RRTMG_SORAD:', DEFAULT=0.0, RC=STATUS)
       VERIFY_(STATUS)
     
+      call MAPL_GetResource( STATE, USE_MAMNET ,'USE_MAMNET:', DEFAULT=.FALSE., RC=STATUS)
+      VERIFY_(STATUS)
       
 !!!!!!!!!!!!!!!!!
       call MAPL_GetResource(STATE,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
@@ -7660,9 +7669,9 @@ contains
       call ESMF_StateGet(IMPORT, 'AERO_ACI', aero_aci, __RC__)
 
       call ESMF_AttributeGet(aero_aci, name='implements_aerosol_activation_properties_method', &
-                                       value=implements_aerosol_activation_properties, __RC__)
+                                        value=implements_aerosol_activation_properties, __RC__)
 
-      if (implements_aerosol_activation_properties) then
+      if ((implements_aerosol_activation_properties) .or. (USE_MAMNET)) then
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -7676,11 +7685,18 @@ contains
                   call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
                   aci_ptr_3d = PLE
               end if
-
+              
               call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
               if (aci_field_name /= '') then
                   call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
                   aci_ptr_3d = TEMP
+              end if 
+              
+              CFX =100.*PLO*r_air/TEMP !density times conversion factor
+              call ESMF_AttributeGet(aero_aci, name='air_density', value=aci_field_name, __RC__)
+              if (aci_field_name /= '') then
+                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                  aci_ptr_3d = CFX
               end if    
 
               call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
@@ -7688,41 +7704,59 @@ contains
                   call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
                   aci_ptr_2d = FRLAND
               end if
+              
+              
 
               allocate(buffer(im,jm,lm,n_modes,8), __STAT__)
 
-              ACTIVATION_PROPERTIES: do n = 1, n_modes
+             if (USE_MAMNET)  then 
+                  naux =  1 !old way 
+             else
+                  naux=  n_modes     
+             end if
+              
+              ACTIVATION_PROPERTIES: do n = 1, naux
                  call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
                  
-                 ! execute the aerosol activation properties method 
-                 call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
-                 VERIFY_(ACI_STATUS)
-                 VERIFY_(STATUS)
+                 
+                 if (.NOT. USE_MAMNET) then 
+                     ! execute the aerosol activation properties method 
+                     call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
+                     VERIFY_(ACI_STATUS)
+                     VERIFY_(STATUS)
+                 else
+                                           ! execute MAMnet method 
+                     call ESMF_MethodExecute(aero_aci, label='MAMnet', userRC=ACI_STATUS, RC=STATUS)
+                     VERIFY_(ACI_STATUS)
+                     VERIFY_(STATUS)
+                 end if
+                     
+                     
+                     ! copy out aerosol activation properties
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_num, trim(aci_field_name), __RC__)
 
-                 ! copy out aerosol activation properties
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_num, trim(aci_field_name), __RC__)
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_dgn, trim(aci_field_name), __RC__)
 
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_dgn, trim(aci_field_name), __RC__)
+                     call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_sigma, trim(aci_field_name), __RC__)
 
-                 call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_sigma, trim(aci_field_name), __RC__)
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_density, trim(aci_field_name), __RC__)
 
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_density, trim(aci_field_name), __RC__)
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_hygroscopicity, trim(aci_field_name), __RC__)
 
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_hygroscopicity, trim(aci_field_name), __RC__)
+                     call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_f_dust, trim(aci_field_name), __RC__)
 
-                 call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_f_dust, trim(aci_field_name), __RC__)
+                     call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_f_soot, trim(aci_field_name), __RC__)
 
-                 call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_f_soot, trim(aci_field_name), __RC__)
-
-                 call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
+                     call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
+                
 
 #if (0)
                  if (MAPL_AM_I_ROOT()) then
@@ -7740,7 +7774,10 @@ contains
                     print *
                  END IF
 #endif
-
+         	
+    
+            
+            if (.not. USE_MAMNET) then  
                  buffer(:,:,:,n,1) = aci_num
                  buffer(:,:,:,n,2) = aci_dgn
                  buffer(:,:,:,n,3) = aci_sigma
@@ -7749,14 +7786,29 @@ contains
                  buffer(:,:,:,n,6) = aci_f_dust
                  buffer(:,:,:,n,7) = aci_f_soot
                  buffer(:,:,:,n,8) = aci_f_organic
-
-              end do ACTIVATION_PROPERTIES
+              
+              else !mamnet returns all modes at once
+              
+                 buffer(:,:,:,:,1) = reshape(aci_num,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,2) = reshape(aci_dgn,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,3) = reshape(aci_sigma,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,4) = reshape(aci_hygroscopicity,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,5) = reshape(aci_density,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,6) = reshape(aci_f_dust,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,7) = reshape(aci_f_soot,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,8) = reshape(aci_f_organic,(/im, jm, LM, n_modes/))
+                 
+               end if
+            
+            end do ACTIVATION_PROPERTIES
+              
+          ! now fill up the buffer
 
               do k = 1, LM
                  do j = 1, JM
                     do i = 1, IM
                        do n = 1, n_modes
-                          AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1)
+                          AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1) ! we may get some speeed up by using the buffer directly 
                           AeroProps(i,j,k)%dpg(n)   = buffer(i,j,k,n,2)
                           AeroProps(i,j,k)%sig(n)   = buffer(i,j,k,n,3)
                           AeroProps(i,j,k)%kap(n)   = buffer(i,j,k,n,4)
@@ -7769,11 +7821,13 @@ contains
                     end do
                  end do
               end do
+              
+              
 
               deallocate(buffer, __STAT__)
-
               deallocate(aero_aci_modes, __STAT__)
-          end if
+         
+          end if ! n_modes if
 
       call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN1")
 
@@ -7781,7 +7835,8 @@ contains
           ! options: 
           !     *) set aerosol concentrations to 0.0, i.e., no aerosol
           !     *) raise an exception if aerosol is required!
-      end if
+     
+      end if !activation propereties if
 
 
       call init_Aer(AeroAux)
