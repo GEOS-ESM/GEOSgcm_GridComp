@@ -53,10 +53,12 @@ module GEOSmoist_Process_Library
 
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
-  public :: hystpdf
+  public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp
+  public :: find_l, find_eis, FINDLCL
+  public :: find_cldtop, find_cldbase, gw_prof
 
   contains
 
@@ -608,6 +610,118 @@ module GEOSmoist_Process_Library
       end if
 
    end subroutine FIX_UP_CLOUDS
+
+   subroutine fix_up_clouds_2M( &
+         QV, &
+         TE, &
+         QLC,&
+         QIC,&
+         CF, &
+         QLA,&
+         QIA,&
+         AF, &
+         NL, &
+         NI, & 
+         QR, &
+         QS, &
+         QG, &
+         NR, &
+         NS, &
+         NG)
+
+      real, intent(inout), dimension(:,:,:) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, QR, QS, QG 
+      real, intent(inout), dimension(:,:,:) :: NI, NL, NS, NR, NG
+    
+      real, parameter  :: qmin  = 1.0e-12
+      real, parameter :: cfmin  = 1.0e-4
+      real, parameter :: nmin  = 100.0
+  
+
+
+    
+      ! Fix if Anvil cloud fraction too small
+      where (AF < cfmin) 
+         QV  = QV + QLA + QIA
+         TE  = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
+         AF  = 0.
+         QLA = 0.
+         QIA = 0.
+      end where
+
+      ! Fix if LS cloud fraction too small
+      where ( CF < cfmin) 
+         QV = QV + QLC + QIC
+         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
+         CF  = 0.
+         QLC = 0.
+         QIC = 0.
+      end where
+
+      ! LS LIQUID too small
+      where ( QLC  < qmin )
+         QV = QV + QLC 
+         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC
+         QLC = 0.
+      end where
+      ! LS ICE too small
+      where ( QIC  < qmin)
+         QV = QV + QIC 
+         TE = TE - (MAPL_ALHS/MAPL_CP)*QIC
+         QIC = 0.
+      end where
+
+      ! Anvil LIQUID too small
+      where ( QLA  < qmin )
+         QV = QV + QLA 
+         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA
+         QLA = 0.
+      end where
+      ! Anvil ICE too small
+      where ( QIA  < qmin) 
+         QV = QV + QIA 
+         TE = TE - (MAPL_ALHS/MAPL_CP)*QIA
+         QIA = 0.
+      end where
+
+      ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
+      where ( ( QLA + QIA ) < qmin) 
+         QV = QV + QLA + QIA
+         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
+         AF  = 0.
+         QLA = 0.
+         QIA = 0.
+      end where
+      ! Ditto if LS cloud LIQUID+ICE too small
+      where ( ( QLC + QIC ) < qmin )
+         QV = QV + QLC + QIC
+         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
+         CF  = 0.
+         QLC = 0.
+         QIC = 0.
+      end where
+      
+      
+      
+      !make sure no negative number concentrations are passed 
+      !and that N goes to minimum defaults in the microphysics when mass is too small 
+      
+      NL =  max(NL, 0.)
+      NI =  max(NI, 0.)
+      NR =  max(NR, 0.)
+      NS =  max(NS, 0.)
+      NG =  max(NG, 0.)
+      
+      where ((QLA+QLC) .le. qmin) NL = 0.0
+
+      where ((QIA+QIC) .le. qmin) NI = 0.0
+
+      where (QR .le. qmin) NR = 0.
+      
+      where (QS .le. qmin) NS = 0.
+      
+      where (QG .le. qmin) NG = 0.
+
+   end subroutine fix_up_clouds_2M
 
    subroutine hystpdf( &
          DT          , &
@@ -2024,5 +2138,263 @@ module GEOSmoist_Process_Library
 
     RETURN_(ESMF_SUCCESS)
   end subroutine VertInterp
+
+!finds the level closets to X2=criteria
+  subroutine find_l(kp, X, crit, im, jm, lm, kmin, kmax)
+
+      real, intent(in):: crit, X(im, jm, lm)
+      integer, intent (in) :: im, jm, lm, kmin, kmax
+      integer, intent (out) :: kp(im, jm)
+      integer :: i, j , k
+
+        DO j = 1, jm
+             DO i = 1, im
+                   DO k = lm-1, kmin, -1
+                     if ((X(i, j, k) .lt. crit) .and.  (X(i, j, k+1) .gt. crit))then
+                       kp(i, j) =  max(min(k  + 1, kmax), kmin)
+                       exit
+                     end if
+                    end do
+               end do
+       end do
+  end subroutine find_l
+
+  subroutine FIND_EIS(TH1, QSAT, TEMP, ZET, PLO, KLCL, IM, JM, LM, LTS, EIS)
+    ! !DESCRIPTION:  Returns ESrtimated Inversion Strength (K) according to Wood and Betherton, J.Climate, 2006
+   ! Written by Donifan Barahona
+
+    integer                    , intent(in) :: IM,JM,LM
+    real, dimension(IM,JM,LM), intent(in) :: TH1, QSAT, TEMP, PLO
+    real, dimension(IM,JM,0:LM), intent(in) :: ZET
+
+    integer, dimension(IM,JM), intent(in)     :: KLCL
+
+    real, dimension(IM,JM), intent(out)     :: EIS, LTS
+    real, dimension(IM,JM)        ::  Z700, ZLCL, QS700, QSLCL, T700, TLCL, GAMMA700, GAMMALCL
+
+    integer                                 :: I, J, K
+
+
+    do I = 1, IM
+       do J = 1, JM
+
+           LTS(I, J) =  0.0
+               DO K = LM-1, 2, -1
+                  If (PLO(I, J, K) .lt. 700.0) then
+                     LTS(I, J) =  TH1(I, J, K + 1)
+                     Z700(I, J) = ZET(I, J, K + 1)
+                     QS700(I, J) =  QSAT(I, J, K + 1)
+                     T700(I, J) =  TEMP(I, J, K + 1)
+                     exit
+                  end if
+             END DO
+
+              LTS(I, J)  =  LTS(I, J)-TH1(I, J, LM)
+
+              ZLCL(I, J) =  ZET(I, J, KLCL(I, J)-1)
+              QSLCL(I, J) =  QSAT(I, J, KLCL(I, J)-1)
+              TLCL(I, J) =  TEMP(I, J, KLCL(I, J)-1)
+       end do
+    end do
+
+    GAMMA700 =  (1.0+(MAPL_ALHL*QS700/MAPL_RGAS/T700))/(1.0 + (MAPL_ALHL*MAPL_ALHL*QS700/MAPL_RVAP/T700/T700))
+    GAMMA700 =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMA700)
+    GAMMALCL =  (1.0+(MAPL_ALHL*QSLCL/MAPL_RGAS/TLCL))/(1.0 + (MAPL_ALHL*MAPL_ALHL*QSLCL/MAPL_RVAP/TLCL/TLCL))
+    GAMMALCL =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMALCL)
+
+    EIS =  LTS -  GAMMA700*Z700 + GAMMALCL*ZLCL
+
+    end subroutine find_eis
+
+  function FINDLCL( THM, QM, PL, PK, IM, JM, LM ) result( KLCL )
+    ! !DESCRIPTION:
+    integer,                      intent(in) :: IM, JM, LM
+    real,    dimension(IM,JM,LM), intent(in) :: THM, QM
+    real,    dimension(IM,JM,LM), intent(in) :: PL, PK
+
+    integer, dimension(IM,JM)             :: KLCL
+
+    real, dimension(LM) :: TPCL, QSPCL
+    integer             :: I, J, L, KOFFSET
+
+    do I = 1, IM
+       do J = 1, JM
+
+          TPCL  = THM(I,J,LM) * PK(I,J,:)
+          QSPCL = GEOS_QSAT(TPCL, PL(I,J,:) )
+
+          KLCL(I,J) = 0
+
+          do L = LM,1,-1
+             if( QM(I,J,LM) >= QSPCL(L) ) then
+                KLCL(I,J) = L
+                exit
+             endif
+          enddo
+
+
+          !! ------------------------------------
+          !!   Disabled for Daedalus (e0203) merge
+          !! ------------------------------------
+          !!AMM      KOFFSET   = INT ( (LM - KLCL(I,J))/2 )   !! disable for Gan4_0
+          KOFFSET   = 0
+          KLCL(I,J) = MIN ( LM-1,  KLCL(I,J)+KOFFSET )
+          KLCL(I,J) = MAX (    2,  KLCL(I,J)+KOFFSET )
+
+       end do
+    end do
+
+  end function FINDLCL
+
+  !Find cloud top based on cloud fraction
+
+  subroutine find_cldtop(ncol, pver, cf, kcldtop)
+
+    integer, intent(in)  :: pver , ncol ! number of vertical layers
+    real,    intent(in)  :: cf(ncol,pver)     ! midpoint potential temperatures
+    integer, intent(out) ::  kcldtop
+    integer              ::  kuppest, ibot, k
+    real                 ::  stab,  cfcrit, cf00, cfp1
+
+
+    ibot = pver-1
+    kcldtop  = ibot+1
+    kuppest = 20
+    cfcrit = 1.0e-2
+
+
+    do k =  kuppest , ibot
+       cfp1 = cf(ncol, k+1)  ! qc one level down
+
+       if ( ( cfp1  .ge. cfcrit ) ) then
+          kcldtop  = k +1
+          exit
+       end if
+    end do
+
+    if (kcldtop .ge. ibot) then
+       kcldtop = pver
+       return
+    endif
+
+
+  end subroutine find_cldtop
+
+
+!Find cloud base  for a given cloud fraction
+
+  subroutine find_cldbase(ncol, pver, cf, kcldbase)
+
+    integer, intent(in)  :: pver , ncol ! number of vertical layers
+    real,    intent(in)  :: cf(ncol,pver)     ! midpoint potential temperatures
+    integer, intent(out) ::  kcldbase
+    integer              ::  kuppest, ibot, k
+    real                 ::  stab,  cfcrit, cf00, cfp1
+
+
+    ibot = pver-1
+    kcldbase  = 20
+    kuppest = 20
+    cfcrit = 1.0e-3
+
+
+    do k =  ibot, kuppest, -1
+       cfp1 = cf(ncol, k)  !
+
+       if ( ( cfp1  .ge. cfcrit ) ) then
+          kcldbase  = k
+          exit
+       end if
+    end do
+
+    if (kcldbase .le. kuppest) then
+       kcldbase = 1
+       return
+    endif
+
+
+  end subroutine find_cldbase
+
+  !DONIF Calculate the Brunt_Vaisala frequency
+
+  !===============================================================================
+  subroutine gw_prof (pcols, pver, ncol, t, pm, pi, rhoi, ni, ti, nm)
+    !-----------------------------------------------------------------------
+    ! Compute profiles of background state quantities for the multiple
+    ! gravity wave drag parameterization.
+    !
+    ! The parameterization is assumed to operate only where water vapor
+    ! concentrations are negligible in determining the density.
+    !-----------------------------------------------------------------------
+    !------------------------------Arguments--------------------------------
+    integer, intent(in)  :: ncol               ! number of atmospheric columns
+    integer, intent(in)  :: pcols              ! number of atmospheric columns
+    integer, intent(in)  :: pver               ! number of vertical layers
+
+    !real,    intent(in)  :: u(pcols,pver)      ! midpoint zonal wind
+    !real,    intent(in)  :: v(pcols,pver)      ! midpoint meridional wind
+    real,    intent(in)  :: t(pcols,pver)      ! midpoint temperatures
+    real,    intent(in)  :: pm(pcols,pver)     ! midpoint pressures
+    real,    intent(in)  :: pi(pcols,0:pver)   ! interface pressures
+
+    real,    intent(out) :: rhoi(pcols,0:pver) ! interface density
+    real,    intent(out) :: ni(pcols,0:pver)   ! interface Brunt-Vaisalla frequency
+    real,    intent(out) :: ti(pcols,0:pver)   ! interface temperature
+    real,    intent(out) :: nm(pcols,pver)     ! midpoint Brunt-Vaisalla frequency
+
+    !---------------------------Local storage-------------------------------
+    integer :: ix,kx                            ! loop indexes
+
+    real    :: dtdp
+    real    :: n2, cpair, r,g                              ! Brunt-Vaisalla frequency squared
+    real :: n2min   = 1.e-8
+    r=MAPL_RGAS
+    cpair=MAPL_CP
+    g=MAPL_GRAV
+
+    !-----------------------------------------------------------------------------
+    ! Determine the interface densities and Brunt-Vaisala frequencies.
+    !-----------------------------------------------------------------------------
+
+    ! The top interface values are calculated assuming an isothermal atmosphere
+    ! above the top level.
+    kx = 0
+    do ix = 1, ncol
+       ti(ix,kx) = t(ix,kx+1)
+       rhoi(ix,kx) = pi(ix,kx) / (r*ti(ix,kx))
+       ni(ix,kx) = sqrt (g*g / (cpair*ti(ix,kx)))
+    end do
+
+    ! Interior points use centered differences
+    do kx = 1, pver-1
+       do ix = 1, ncol
+          ti(ix,kx) = 0.5 * (t(ix,kx) + t(ix,kx+1))
+          rhoi(ix,kx) = pi(ix,kx) / (r*ti(ix,kx))
+          dtdp = (t(ix,kx+1)-t(ix,kx)) / (pm(ix,kx+1)-pm(ix,kx))
+          n2 = g*g/ti(ix,kx) * (1./cpair - rhoi(ix,kx)*dtdp)
+          ni(ix,kx) = sqrt (max (n2min, n2))
+       end do
+    end do
+
+    ! Bottom interface uses bottom level temperature, density; next interface
+    ! B-V frequency.
+    kx = pver
+    do ix = 1, ncol
+       ti(ix,kx) = t(ix,kx)
+       rhoi(ix,kx) = pi(ix,kx) / (r*ti(ix,kx))
+       ni(ix,kx) = ni(ix,kx-1)
+    end do
+
+    !-----------------------------------------------------------------------------
+    ! Determine the midpoint Brunt-Vaisala frequencies.
+    !-----------------------------------------------------------------------------
+    do kx=1,pver
+       do ix=1,ncol
+          nm(ix,kx) = 0.5 * (ni(ix,kx-1) + ni(ix,kx))
+       end do
+    end do
+
+    return
+  end subroutine gw_prof
 
 end module GEOSmoist_Process_Library

@@ -295,7 +295,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
     real, pointer, dimension(:,:  ) :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
     real, pointer, dimension(:,:  ) :: TPWI,TPWI_star,LFR_GF,CNPCPRATE
-    real, pointer, dimension(:,:,:) :: RSU_CN_GF,REV_CN_GF,PFL_CN_GF,PFI_CN_GF
+    real, pointer, dimension(:,:,:) :: RSU_CN,REV_CN,PFL_CN,PFI_CN
     real, pointer, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
     real, pointer, dimension(:,:,:) :: CNV_NICE, CNV_NDROP, CNV_FICE
     real, pointer, dimension(:,:,:) :: NCPL, NCPI
@@ -439,10 +439,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, ERRDP    ,'ERRDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ERRSH    ,'ERRSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ERRMD    ,'ERRMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, RSU_CN_GF,'RSU_CN_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, REV_CN_GF,'REV_CN_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PFI_CN_GF,'PFI_CN_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PFL_CN_GF,'PFL_CN_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RSU_CN   ,'RSU_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, REV_CN   ,'REV_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFI_CN   ,'PFI_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFL_CN   ,'PFL_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, AA0      ,'AA0'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, AA1      ,'AA1'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, AA2      ,'AA2'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
@@ -501,7 +501,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
-                                 ,RSU_CN_GF, REV_CN_GF, PFI_CN_GF, PFL_CN_GF        &
+                                 ,RSU_CN, REV_CN, PFI_CN, PFL_CN                    &
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
 
@@ -519,6 +519,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
       DQADT_DC = CNV_MFD*SCLM_DEEP/MASS
+    ! 2Momoent
+     !dNi = make_IceNumber (dQi, TE)
+     !dNl = make_DropletNumber (dQl, 0.0, FRLAND)
     ! add QI/QL/CL tendencies
       QLCN =         QLCN + DQLDT_DC*DT_MOIST
       QICN =         QICN + DQIDT_DC*DT_MOIST

@@ -2591,14 +2591,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='REV_CN_GF',                                   & 
-         LONG_NAME ='evaporation_of_convective_precipitation',     &
-         UNITS     ='kg kg-1 s-1',                                 &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='REV_SC',                                      & 
          LONG_NAME ='evaporation_of_shallow_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
@@ -2624,14 +2616,6 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RSU_CN',                                      & 
-         LONG_NAME ='sublimation_of_convective_precipitation',     &
-         UNITS     ='kg kg-1 s-1',                                 &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='RSU_CN_GF',                                   & 
          LONG_NAME ='sublimation_of_convective_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -2743,14 +2727,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='PFI_CN_GF',                                   & 
-         LONG_NAME ='3D_flux_of_ice_convective_precipitation',     &
-         UNITS     ='kg m-2 s-1',                                  &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PFI_SC',                                      & 
          LONG_NAME ='3D_flux_of_ice_shallow_convective_precipitation',     &
          UNITS     ='kg m-2 s-1',                                  &
@@ -2785,14 +2761,6 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PFL_CN',                                      & 
          LONG_NAME ='3D_flux_of_liquid_convective_precipitation',     &
-         UNITS     ='kg m-2 s-1',                                   &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='PFL_CN_GF',                                    & 
-         LONG_NAME ='3D_flux_of_liquid_convective_precipitation',   &
          UNITS     ='kg m-2 s-1',                                   &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
@@ -5586,13 +5554,13 @@ contains
           call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) PLS = PLS + PTR2D
+          if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) PLS = PLS + PTR2D
+          if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)

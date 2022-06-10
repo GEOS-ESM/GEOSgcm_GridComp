@@ -414,7 +414,6 @@ end subroutine micro_mg_init
 
 
 subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_tmp,  &
-                             CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, & 
                              ncol,             LM,               dt_moist,       & 
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
@@ -488,7 +487,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
 ! definitions
 
 
-   REAL, intent(in)     :: DT_MICRO,  CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND  
+   REAL, intent(in)     :: DT_MICRO
    real(r8), intent(in) :: DT_MOIST
    REAL, dimension(1,1:LM) :: SCICE_tmp, FQA_tmp, ALPH_tmp
    INTEGER, intent(in) :: LM, shape, ncol
@@ -602,7 +601,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        real, dimension(1, 1:LM) :: QRAIN_tmp, QSNOW_tmp, QGR_tmp, NRAIN_tmp, NSNOW_tmp, NGR_tmp, QLTOT_tmp, &    
                                                  QITOT_tmp, Q1_tmp, TEMP_tmp, NCPL_tmp, NCPI_tmp, CF_tmp, &
                                                  QLLS_tmp, QILS_tmp, QLCN_tmp, QICN_tmp, CLLS_tmp, CLCN_tmp, PL_tmp, &
-                                                 RHC_tmp, NCNUC_tmp
+                                                 RHC_tmp
        real(r8) :: DT_R8
 !!!!!!!!!!!!!!Initialize
   
@@ -621,7 +620,6 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
       CF_tmp (1, 1:LM)= cldfr8(1,1:LM) 
       PL_tmp(1, 1:LM) = plevr8(1,1:LM) 
       RHC_tmp = 0.8   
-      NCNUC_tmp = 0.0
       
     !  where (naair8 .gt. 1e3)             
     !   icecldfr8 =max( 0.05, icecldfr8)                              
@@ -760,26 +758,25 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        if (N_MICRO .lt. num_steps_micro) then
                            ! Update diagnostic cloud fraction (maybe condense more water)
                            DO K = 1, LM 
-                           
+                         
                                 call update_cld( &
-        		                 REAL(DT_MOIST)                , &
-        		                 ALPH_tmp(1, K)        , &
-        		                 shape , &
-        		                 PL_tmp (1, K)          , &
-        		                 Q1_tmp ( 1, K)            , &
-        		                 QLLS_tmp(1,K)           , &
-        		                 QLCN_tmp(1,K)           , &
-        		                 QILS_tmp( 1,K)           , &
-        		                 QICN_tmp( 1,K)           , &
-        		                 TEMP_tmp(1,K)           , &
-        		                 CLLS_tmp(1, K)           , &
-        		                 CLCN_tmp(1,K)           , &
-			                     SCICE_tmp(1,K)         , &
-			                     NCPI_tmp(1,K)           , &
-			                     NCPL_tmp (1,K)           , &
-                                 NCNUC_tmp(1,K), &     
-			                     RHC_tmp(1,K), &
-                                 CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, .FALSE.)                   
+                                         REAL(DT_MOIST)  , &
+                                          ALPH_tmp(1,K)  , &
+                                         shape           , &
+                                            PL_tmp(1,K)  , &
+                                            Q1_tmp(1,K)  , &
+                                          QLLS_tmp(1,K)  , &
+                                          QLCN_tmp(1,K)  , &
+                                          QILS_tmp(1,K)  , &
+                                          QICN_tmp(1,K)  , &
+                                          TEMP_tmp(1,K)  , &
+                                          CLLS_tmp(1,K)  , &
+                                          CLCN_tmp(1,K)  , &
+                                         SCICE_tmp(1,K)  , &
+                                          NCPI_tmp(1,K)  , &
+                                          NCPL_tmp(1,K)  , &
+                                           RHC_tmp(1,K)   , &
+                                         .FALSE.)                   
                              
 
                              CF_tmp  =  CLLS_tmp + CLCN_tmp
@@ -2459,13 +2456,13 @@ subroutine micro_mg_tend ( &
   
      call size_dist_param_ice(mg_ice_props, qiic(:,k), niic(:,k), &
           lami(:,k), mgncol, n0=n0i(:,k))
-	    
-	  
+            
+          
      ! Alternative autoconversion 
      if (do_sb_physics) then
        call sb2001v2_liq_autoconversion(pgam(:,k),qcic(:,k),ncic(:,k), &
             qric(:,k),rho(:,k),relvar(:,k),prc(:,k),nprc(:,k),nprc1(:,k), mgncol)     
-     endif	  
+     endif          
 
      !.......................................................................
      ! Autoconversion of cloud ice to snow
