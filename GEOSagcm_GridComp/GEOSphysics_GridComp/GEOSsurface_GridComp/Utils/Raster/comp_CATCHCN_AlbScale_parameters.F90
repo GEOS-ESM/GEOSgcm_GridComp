@@ -5,7 +5,7 @@ MODULE comp_CATCHCN_AlbScale_parameters
 
   use date_time_util,                   ONLY:     &
        date_time_type, augment_date_time
-
+  use mk_restarts_getidsMod, only: haversine, to_radian 
   implicit none
   INCLUDE 'netcdf.inc'
 
@@ -231,17 +231,6 @@ integer :: n_threads=1
     END SUBROUTINE get_id_loc
 
     ! *****************************************************************************
-
-    function to_radian(degree) result(rad)
-      
-      ! degrees to radians
-      real,intent(in) :: degree
-      real :: rad
-      
-      rad = degree*MAPL_PI/180.
-      
-    end function to_radian
-
     ! -------------------------------------------------------------------------------------------------
 
     SUBROUTINE regrid_alb (NTILES, id_loc)
@@ -806,29 +795,6 @@ integer :: n_threads=1
    end subroutine ReadCNTilFile
    
    ! *****************************************************************************
-   
-   real function haversine(deglat1,deglon1,deglat2,deglon2)
-     ! great circle distance -- adapted from Matlab 
-     real,intent(in) :: deglat1,deglon1,deglat2,deglon2
-     real :: a,c, dlat,dlon,lat1,lat2
-     real,parameter :: radius = 6371.0E3 
-     
-!     dlat = to_radian(deglat2-deglat1)
-!     dlon = to_radian(deglon2-deglon1)
-     !     lat1 = to_radian(deglat1)
-!     lat2 = to_radian(deglat2)
-     dlat = deglat2-deglat1
-     dlon = deglon2-deglon1
-     lat1 = deglat1
-     lat2 = deglat2     
-     a = (sin(dlat/2))**2 + cos(lat1)*cos(lat2)*(sin(dlon/2))**2
-     if(a>=0. .and. a<=1.) then
-        c = 2*atan2(sqrt(a),sqrt(1-a))
-        haversine = radius*c / 1000.
-     else
-        haversine = 1.e20
-     endif
-   end function
    
    ! *****************************************************************************
     
