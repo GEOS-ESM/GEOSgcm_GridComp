@@ -1,0 +1,60 @@
+module clm_varctl
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !MODULE: clm_varctl
+!
+! !DESCRIPTION:
+! Module containing run control variables
+!
+! !USES:
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+!
+! !PUBLIC MEMBER FUNCTIONS:
+  public init_clm_varctl          ! set parameters
+  implicit none
+
+  logical, public :: use_luna = .false.            ! true => use  LUNA
+  logical, public :: use_fates = .false.           ! true => use fates
+  logical, public :: use_hydrstress = .true.       ! true => use plant hydraulic stress calculation
+
+
+  ! If prognostic crops are turned on
+  logical, public :: use_crop = .false.
+
+  logical, public :: use_lch4            = .false.
+  logical, public :: use_nitrif_denitrif = .false.
+  logical, public :: use_vertsoilc       = .false.
+  logical, public :: use_century_decomp  = .false.
+  logical, public :: use_cn              = .true.
+  logical, public :: use_cndv            = .false.
+
+
+  logical, public :: use_c13 = .false.                  ! true => use C-13 model
+  logical, public :: use_c14 = .false.                  ! true => use C-14 model
+  !----------------------------------------------------------
+  ! CN matrix
+  !----------------------------------------------------------  
+  logical, public :: use_matrixcn = .false. !.false.              ! true => use cn matrix
+  logical, public :: use_soil_matrixcn = .false.! true => use cn matrix
+
+  real(r8), public :: nfix_timeconst = -1.2345_r8
+
+contains
+
+!---------------------------------------
+ subroutine init_clm_varctl()
+
+ !---
+  if (nfix_timeconst == -1.2345_r8) then
+     if (use_nitrif_denitrif) then
+        nfix_timeconst = 10._r8
+     else
+        nfix_timeconst = 0._r8
+     end if
+  end if
+
+ end subroutine init_clm_varctl
+
+end module clm_varctl
