@@ -3997,14 +3997,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type(MAPL_SunOrbit)         :: ORBIT
         type(ESMF_Time)             :: CURRENT_TIME
         type(ESMF_Time)             :: BEFORE
-        type(ESMF_Time)             :: NOW
         type(ESMF_Time)             :: MODELSTART
         type(ESMF_Time)             :: AFTER
         type(ESMF_TimeInterval)     :: DELT
         type(ESMF_TimeInterval)     :: TINT
-        real                        :: DT_SOLAR
         type(ESMF_Alarm)            :: SOLALARM
-        logical                     :: solalarmison
+        logical                     :: solAlarmIsOn
         logical                     :: debugzth
 
         real,pointer,dimension(:), save   :: VISDF=>null()
@@ -4147,17 +4145,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Get my internal MAPL_Generic state
         ! --------------------------------------------------------------------------
 
-        call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-        VERIFY_(STATUS)
+        call MAPL_GetObjectFromGC (GC, MAPL, __RC__)
 
-        call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-        VERIFY_(STATUS)
-
-        call ESMF_ConfigGetAttribute ( CF, DT                  ,&
-             Label   = trim(COMP_NAME)//"_DT:"     ,&
-             Default = DT                          ,&
-             RC=STATUS )
-        VERIFY_(STATUS)
+        ! Run frequency DT of catchGC, defaulting to heartbeat
+        call MAPL_Get (MAPL, HEARTBEAT=DT, __RC__)
+        call ESMF_ConfigGetAttribute (CF, DT,    &
+             Label   = trim(COMP_NAME)//"_DT:",  &
+             Default = DT,                 __RC__)
 
         ! Get component's private internal state
         call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
@@ -4197,14 +4191,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call MAPL_GetResource(MAPL      ,&
              VISDFFILE                  ,&
-              label   = 'VISDF_FILE:'     ,&
+             label   = 'VISDF_FILE:'    ,&
              default = 'visdf.dat'      ,&
              RC=STATUS )
         VERIFY_(STATUS)
 
         call MAPL_GetResource(MAPL       ,&
              NIRDFFILE                   ,&
-              label   = 'NIRDF_FILE:'     ,&
+             label   = 'NIRDF_FILE:'     ,&
              default = 'nirdf.dat'       ,&
              RC=STATUS )
         VERIFY_(STATUS)
@@ -4582,17 +4576,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN (2,:) = SNDZN2
         SNDZN (3,:) = SNDZN3
 
-        debugzth = .false.
+        debugzth = .false. .and. MAPL_AM_I_Root(VM)
 
         ! --------------------------------------------------------------------------
         ! Get the current time. 
         ! --------------------------------------------------------------------------
+        ! Note: DELT, the CLOCK timestep, is the short (UPDATE) timescale used by SolarGC.
 
-        call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
-        VERIFY_(STATUS)
-        if (MAPL_AM_I_Root(VM).and.debugzth) then
-         print *,' start time of clock '
-         CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
+        call ESMF_ClockGet (CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT, __RC__)
+        if (debugzth) then
+          print *, 'In catch, start time of clock'
+          call ESMF_TimePrint (MODELSTART, OPTIONS="string", RC=STATUS)
         endif
 
         ! ----------------------------------------------------------------------------------
@@ -4600,72 +4594,78 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! in the internal state and get their midmonth times
         ! ----------------------------------------------------------------------------------
 
-        if (ldas_ens_id  == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSMEBLE = 1 ( by default)
-           call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
-           VERIFY_(STATUS)
-           call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
-           VERIFY_(STATUS)
+        if (ldas_ens_id  == ldas_first_ens_id) then
+           ! it is always .true. if NUM_LDAS_ENSEMBLE = 1 (default)
+           call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,__RC__)
+           call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,__RC__)
         endif
-
         
         ! --------------------------------------------------------------------------
-        ! retrieve the zenith angle
+        ! retrieve ZTH = cos(solar zenith angle)
         ! --------------------------------------------------------------------------
 
-!! The next sequence is to make sure that the albedo here and in solar are in sync
-!!
-! Need to know when Solar was called last, so first get the solar alarm
-        call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, RC=STATUS )
-!        VERIFY_(STATUS)
-      if(status==0) then 
-! Get the interval of the solar alarm - first get it in seconds
-        call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, RC=STATUS )
-        VERIFY_(STATUS)
-! Now make an ESMF interval from the increment in seconds
-        CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), RC=STATUS )
-        VERIFY_(STATUS)
-! Now print out the solar alarm interval
-        if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", RC=STATUS )
-! Now find out if it is ringing now: if so, set "BEFORE" to last time it rang before now
-         solalarmison = ESMF_AlarmIsRinging(SOLALARM,RC=STATUS)
-         VERIFY_(STATUS)
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' logical for solar alarm ',solalarmison
-!     if so, set "BEFORE" to last time it rang before now
-        if(solalarmison) then
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is ringing '
-         NOW = CURRENT_TIME
-         BEFORE = NOW - TINT
-! Now print out the last time solar alarm rang
-         if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
-!     If alarm is not ringing now, find out when it rang last
-        else
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
-         call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
-         VERIFY_(STATUS)
-! PrevRingTime can lie: if alarm never went off yet it gives next alarm time, not prev.
-         if(BEFORE > CURRENT_TIME) then
-          BEFORE = BEFORE-TINT
-          if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time lied '
-          if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
-         else
-          if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time okay '
-          if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
-         endif
-! Now print out the last time solar alarm rang
-        endif
-     else
-        BEFORE = CURRENT_TIME
-        TINT = DELT
-     end if
-! Get the zenith angle at the center of the time between the last solar call and the next one
-        call MAPL_SunGetInsolation(LONS, LATS,      &
-            ORBIT, ZTH, SLR, &
-            INTV = TINT,     &
-            currTime=BEFORE+DELT,  &
-            RC=STATUS )
-        VERIFY_(STATUS)
+        !! The next sequence makes sure that the albedo here and in solar are in sync.
+        !! Explanation: Radiation runs after surface in GridCompRun sequence. And within
+        !! a SolarGC call, fluxes are UPDATEd from normalized internals *before* the less
+        !! frequent full solar calculation that REFRESHes those internals when the solar
+        !! alarm is ringing. Thus, even if the solar alarm is ringing here, the exported
+        !! fluxes from the UPDATE in Solar use the *previous* REFRESH. Only the following 
+        !! UPDATE (the timestep after the solar alarm ring) begins using the new REFRESH.
+        !! For this reason, the REFRESH uses a flux-weighted mean cos(SZA) that applies
+        !! for the period beginning one timestep beyond the current ring time (so it
+        !! syncs with the UPDATE for the *next* Solar call) and extending for one solar
+        !! ring interval.
+        !! Note by PMN: This is only consistent with SolarGC having UPDATE_FIRST .TRUE.,
+        !! the default. Multiple things currently break if this is not true! But Andrea
+        !! says the code works both ways (UPDATE_FIRST T|F) so need to verify.
 
-        ZTH = max(0.0,ZTH)
+        ! Get the solar alarm
+        call ESMF_ClockGetAlarm (CLOCK, ALARMNAME="SOLAR_Alarm", ALARM=SOLALARM, __RC__)
+
+        ! Get the interval of the solar alarm
+        call ESMF_AlarmGet(SOLALARM, RINGINTERVAL=TINT, __RC__)
+        if (debugzth) then
+          print *, 'In catch, Solar REFRESH interval'
+          call ESMF_TimeIntervalPrint (TINT, OPTIONS="string", RC=STATUS)
+        endif
+
+        ! Is solar alarm ringing now?
+        solAlarmIsOn = ESMF_AlarmIsRinging (SOLALARM, __RC__)
+        if (solAlarmIsOn) then
+          if (debugzth) print *, 'In catch, solar alarm is ringing'
+
+          ! if ringing, set "BEFORE" to last time it rang
+          BEFORE = CURRENT_TIME - TINT
+
+        else
+          if (debugzth) print *, 'In catch, solar alarm is not ringing'
+
+          ! if not ringing, find out when it rang last
+          call ESMF_AlarmGet (SOLALARM, prevRingTime=BEFORE, __RC__)
+
+          ! PrevRingTime can lie:
+          ! if alarm never went off yet, it gives next ring time, not prev
+          if (BEFORE > CURRENT_TIME) then
+            BEFORE = BEFORE - TINT
+            if (debugzth) print *, 'In catch, prev time lied'
+          else
+            if (debugzth) print *, 'In catch, prev time okay'
+          endif
+        endif
+
+        if (debugzth) then
+          print *, 'In catch, Last Solar REFRESH at'
+          call ESMF_TimePrint (BEFORE, OPTIONS="string", RC=STATUS)
+        endif
+
+        ! Get ZTH, the flux-weighted mean cos(solar zenith angle) between the last solar call
+        ! and the next one. This should lead to albedos consistent with the current period,
+        ! but *not* the upcoming REFRESH period.
+        call MAPL_SunGetInsolation(     &
+          LONS, LATS, ORBIT, ZTH, SLR,  &
+          INTV = TINT,                  &
+          currTime = BEFORE+DELT, __RC__)
+        ZTH = max(0.,ZTH)
 
      if (Z0_FORMULATION == 4) then
         ! make canopy height >= min veg height:
@@ -4694,7 +4694,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
      RMELT(:,:)  = 0.0
      !------------------------------------------------------------------
 
-     ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
+     ! Zero the light-absorbing aerosol (LAA) deposition rates from GOCART:
      
      select case (AEROSOL_DEPOSITION)
      case (0)
@@ -4731,7 +4731,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      end select
 
-! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
+! Convert the dimensions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
 ! TOTDEPOS(:,1): Combined dust deposition from size bin 1 (dry, conv-scav, ls-scav, sed)
 ! TOTDEPOS(:,2): Combined dust deposition from size bin 2 (dry, conv-scav, ls-scav, sed)
@@ -4811,25 +4811,25 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         end if
 
         ! --------------------------------------------------------------------------
-        ! Update raditation exports
+        ! Update radiation exports
         ! --------------------------------------------------------------------------
 
-
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+        ! get instantaneous snow-free albedos on tiles
+        ! NOTE: apply diffuse scale parameters to both direct and diffuse
+        call SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+                    VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles
+                    ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
-
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)    
-        TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
+        TPSN1OUT1 = TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
                  ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                 SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
+                 SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
         ! --------------------------------------------------------------------------
@@ -5478,42 +5478,41 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         EMIS    = EMSVEG(VEG) + (EMSBARESOIL - EMSVEG(VEG))*exp(-LAI)
 
-        EMIS    = EMIS     *(1.-ASNOW) + EMSSNO   *ASNOW
+        EMIS    = EMIS * (1.-ASNOW) + EMSSNO * ASNOW
 
-        call MAPL_SunGetInsolation(LONS, LATS,      &
-            ORBIT, ZTH, SLR, &
-            INTV = TINT,     &
-            currTime=CURRENT_TIME+DELT,  &
-            RC=STATUS )
-        VERIFY_(STATUS)
+        call MAPL_SunGetInsolation(             &
+            LONS, LATS, ORBIT, ZTH, SLR,        &
+            INTV = TINT,                        &
+            currTime = CURRENT_TIME+DELT, __RC__)
+        ZTH = max(0.,ZTH)
 
-        ZTH = max(0.0,ZTH)
+!pmn: (5) why not next (or current) ringtime + DELT for next refresh use? 
+
 
         ! --------------------------------------------------------------------------
-        ! Update raditation exports
+        ! Update radiation exports
         ! --------------------------------------------------------------------------
-
 
         call MAPL_TimerOn(MAPL,"-ALBEDO")
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+        call SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+                    VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+                    ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
 
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
-        TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
+        TPSN1OUT1 = TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
                  ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                 RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+                 RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)   
 
-        ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
-        ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
-        ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
-        ALBNF   = ALBNF    *(1.-ASNOW) + SNONF    *ASNOW
+        ALBVR = ALBVR * (1.-ASNOW) + SNOVR * ASNOW
+        ALBVF = ALBVF * (1.-ASNOW) + SNOVF * ASNOW
+        ALBNR = ALBNR * (1.-ASNOW) + SNONR * ASNOW
+        ALBNF = ALBNF * (1.-ASNOW) + SNONF * ASNOW
         call MAPL_TimerOff(MAPL,"-ALBEDO")
 
         LWNDSRF = LWDNSRF - HLWUP
