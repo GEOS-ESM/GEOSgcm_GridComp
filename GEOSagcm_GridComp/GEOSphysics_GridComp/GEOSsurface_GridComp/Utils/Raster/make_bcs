@@ -78,7 +78,7 @@ set BOLD    = "\033[1m"
 #######################################################################
 #######################################################################
 
-set pwd = `pwd`
+set bin_dir = `pwd`  # make_bcs must be run from install/bin directory
 
 set C1 = $RED
 set C2 = $BLUE
@@ -359,9 +359,9 @@ foreach orslv ($orslvs)
 set HOSTNAME = `hostname | rev | cut -c3- | rev`
 
 if ( $HOSTNAME == discover ) then
-    set l_data = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
+    set input_dir = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
 else
-    set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
+    set input_dir = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
 endif
 
 
@@ -372,9 +372,9 @@ if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
 # -------------------------------------------------------------------------------------------------
 
     if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
-	set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.DL
+	set GLOBAL_CATCH_DATA = ${input_dir}/global.cat_id.catch.DL
     else
-	set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask_freshwater-lakes.nc
+	set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask_freshwater-lakes.nc
     endif
 
 	 
@@ -384,9 +384,9 @@ else if ( $orslv == O2 | $orslv == O3 | $orslv == CS ) then
 # --------------------------------------------------------------------------------------------------------------
 
     if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
-	set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
+	set GLOBAL_CATCH_DATA = ${input_dir}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
     else
-	set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
+	set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask.nc
     endif
     
 else
@@ -397,7 +397,7 @@ else
 endif
 
 if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m25) then
-     set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
+     set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask.nc
 endif
 
 set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `
@@ -713,14 +713,12 @@ cat << _EOF_ > $BCJOB
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-
-cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd
+/bin/ln -s $bin_dir
+source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
@@ -729,7 +727,7 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $l_data CATCH
+ln -s $input_dir CATCH
 
 cd ../
 
@@ -782,14 +780,6 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DC.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DC.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DC.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DC.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DC.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DC.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DC.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DC.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DC.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DC.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DC.dat   
 
 /bin/rm -f sedfile
 cat > sedfile << EOF
@@ -821,7 +811,6 @@ cd ../
                     AlbMap* \
 		    plots \
                     CLM_veg_typs_fracs \
-                    CLM4.5_veg_typs_fracs \
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
                     CLM4.5_abm_peatf_gdp_hdm_fc \
@@ -902,14 +891,12 @@ cat << _EOF_ > $BCJOB
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-
-cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd
+/bin/ln -s $bin_dir
+source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
@@ -918,7 +905,7 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $l_data CATCH
+ln -s $input_dir CATCH
 
 cd ../
  
@@ -970,12 +957,11 @@ cat << _EOF_ > $BCJOB-2
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME-2.j
-#SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-
-cd $pwd
 cd $BCDIR
+
+source bin/g5_modules
  
 setenv MASKFILE $MASKFILE
 limit stacksize unlimited
@@ -1015,14 +1001,6 @@ cd clsm.C${NC}
    /bin/mv green.dat green_clim_${RC}.data
    /bin/mv lnfm.dat   lnfm_clim_${RC}.data
    /bin/mv ndvi.dat   ndvi_clim_${RC}.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RC}.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RC}.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RC}.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RC}.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RC}.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RC}.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RC}.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
 
 /bin/rm -f sedfile
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
@@ -1064,7 +1042,6 @@ cd ../
                     AlbMap* \
 		    plots \
                     CLM_veg_typs_fracs \
-                    CLM4.5_veg_typs_fracs \
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
                     CLM4.5_abm_peatf_gdp_hdm_fc \
@@ -1101,14 +1078,12 @@ cat << _EOF_ > $BCJOB
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-
-cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd
+/bin/ln -s $bin_dir
+source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
@@ -1117,7 +1092,7 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $l_data CATCH
+ln -s $input_dir CATCH
 
 cd ../
  
@@ -1182,14 +1157,6 @@ cd clsm.C${NC}
    /bin/mv green.dat green_clim_${RC}.data
    /bin/mv lnfm.dat   lnfm_clim_${RC}.data
    /bin/mv ndvi.dat   ndvi_clim_${RC}.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RC}.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RC}.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RC}.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RC}.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RC}.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RC}.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RC}.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
 
 /bin/rm -f sedfile
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
@@ -1231,7 +1198,6 @@ cd ../
                     AlbMap* \
 		    plots \
                     CLM_veg_typs_fracs \
-                    CLM4.5_veg_typs_fracs \
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
                     CLM4.5_abm_peatf_gdp_hdm_fc \
@@ -1311,16 +1277,15 @@ cat << _EOF_ > $BCJOB
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --chdir=$pwd/$BCDIR
 #SBATCH --constraint=sky
 
-cd $pwd
 cd $BCDIR
 
-/bin/ln -s $pwd
+/bin/ln -s $bin_dir
+source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
-ln -s $l_data CATCH
+ln -s $input_dir CATCH
 cd ../
 limit stacksize unlimited
 if ( $EVERSION == EASEv2 ) then
@@ -1365,14 +1330,6 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DE.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DE.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DE.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DE.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DE.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DE.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DE.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DE.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DE.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DE.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DE.dat   
 
 
 cd ../
@@ -1399,7 +1356,6 @@ cd ../
 			 pfaf_fractions.dat \
 			 plots \
                          CLM_veg_typs_fracs \
-                         CLM4.5_veg_typs_fracs \
                          mkCatchParam.log \
                          Grid2Catch_TransferData.nc \
                          CLM_NDep_SoilAlb_T2m \
