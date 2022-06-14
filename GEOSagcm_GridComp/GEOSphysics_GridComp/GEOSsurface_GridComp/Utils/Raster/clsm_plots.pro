@@ -323,8 +323,7 @@ endfor
 
 close,1
 clm_file = '../CLM_veg_typs_fracs'
-clm45_file = '../CLM4.5_veg_typs_fracs'
-if (file_test (clm_file) or file_test (clm45_file))  then begin
+if (file_test (clm_file))  then begin
 endif else begin
 cti_mean = 0.961*cti_mean - 1.957  
 endelse
@@ -345,21 +344,13 @@ cti_skew = 0.
 
 plot_mosaic, ncat, tile_id
 clm_file = '../CLM_veg_typs_fracs'
-clm45_file = '../CLM4.5_veg_typs_fracs'
 
-if (file_test (clm_file) or file_test (clm45_file))  then begin
+if (file_test (clm_file))  then begin
 
 ;spawn, "/bin/cp /discover/nobackup/smahanam/GEOS5_misc/mask/images/ESA_LandCover_mask.jpg ." 
 
-if (file_test (clm_file)) then begin
-plot_clm   , ncat, tile_id
-plot_carbon, ncat, tile_id
-endif
-
-if (file_test (clm45_file)) then begin
-plot_clm45   , ncat, tile_id	
-plot_carbon45, ncat, tile_id
-endif
+  plot_clm   , ncat, tile_id
+  plot_carbon, ncat, tile_id
 
 ; Now plot Ndep, T2m and SoilAlb
 ; ------------------------------
@@ -381,31 +372,31 @@ endif
   a6 = 0.
   a7 = 0.
   
-openr,1,filename
+  openr,1,filename
 
-for i = 0l,ncat -1l  do begin
-   readf,1,a1, a2, a3, a4, a5, a6, a7
-   ndep (i) = a1
-   visdr(i) = a2
-   visdf(i) = a3
-   nirdr(i) = a4
-   nirdf(i) = a5
-   t2mm (i) = a6
-   t2mp (i) = a7
+  for i = 0l,ncat -1l  do begin
+    readf,1,a1, a2, a3, a4, a5, a6, a7
+    ndep (i) = a1
+    visdr(i) = a2
+    visdf(i) = a3
+    nirdr(i) = a4
+    nirdf(i) = a5
+    t2mm (i) = a6
+    t2mp (i) = a7
 
-endfor
+  endfor
 
-close,1
-plot_three_vars2, ncat, tile_id, ndep, t2mm, t2mp
-plot_soilalb, ncat, tile_id,VISDR, VISDF, NIRDR, NIRDF
+  close,1
+  plot_three_vars2, ncat, tile_id, ndep, t2mm, t2mp
+  plot_soilalb, ncat, tile_id,VISDR, VISDF, NIRDR, NIRDF
 
-ndep  = 0.
-visdr = 0.
-visdf = 0.
-nirdr = 0.
-nirdf = 0.
-t2mm  = 0.
-t2mp  = 0.
+  ndep  = 0.
+  visdr = 0.
+  visdf = 0.
+  nirdr = 0.
+  nirdf = 0.
+  t2mm  = 0.
+  t2mp  = 0.
 
 endif	
 
@@ -629,205 +620,7 @@ make_movies, ncat, vec2grid, 'MODIS-NIR'
 END
 
 ; ==============================================================================
-;                                  CLM45-Carbon classes    
-; ==============================================================================
-
-PRO plot_carbon45,ncat, tile_id
-
-im = n_elements(tile_id[*,0])
-jm = n_elements(tile_id[0,*])
-
-dx = 360. / im
-dy = 180. / jm
-
-x = indgen(im)*dx -180. +  dx/2.
-y = indgen(jm)*dy -90.  +  dy/2.
-
-clm_type = intarr (ncat,4)
-clm_grid = intarr (im,jm,4)
-
-filename = '../CLM4.5_veg_typs_fracs'
-openr,1,filename
-k = 0
-v = 0
-fr= 0.
-v1= 0
-v2= 0
-v3= 0
-v4 =0
-
-for i = 0l,ncat -1l  do begin
-   readf,1,k,k,v1,v2,v3,v4,fr,fr,fr,fr,v,v
-   clm_type(i,0) = v1
-   clm_type(i,1) = v2	
-   clm_type(i,2) = v3
-   clm_type(i,3) = v4
-endfor
-
-close,1
-
-clm_grid (*,*,*) =  !VALUES.F_NAN
-
-for j = 0l, jm -1l do begin
-   for i = 0l, im -1 do begin
-      if(tile_id[i,j] gt 0) then begin
-	clm_grid(i,j,0) =  clm_type(tile_id[i,j] -1,0)
-	clm_grid(i,j,1) =  clm_type(tile_id[i,j] -1,1)
-	clm_grid(i,j,2) =  clm_type(tile_id[i,j] -1,2)
-	clm_grid(i,j,3) =  clm_type(tile_id[i,j] -1,3)
-      endif	
-   endfor
-endfor
-
-clm_type = 0
-
-limits = [-60,-180,90,180]
-if file_test ('limits.idl') then restore,'limits.idl'
-
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,1000], Z_Buffer=0
-;types= [  2,  3,  4,  5,  6,  7,  8,  9, 10, 11,11a, 12, 13, 14,14a, 15,15a, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 25]
-r_in  = [106,202,251,  0, 29, 77,109,142,233,255,255,255,127,164,164,217,217,234,220,201,185,165,145,125,105, 85, 60, 40]
-g_in  = [ 91,178,154, 85,115,145,165,185, 23,131,131,191, 39, 53, 53, 72, 72,234,220,201,185,165,145,125,105, 85, 60, 40]
-b_in  = [154,214,153,  0,  0,  0,  0, 13,  0,  0,200,  0,  4,  3,200,  1,200,234,220,201,185,165,145,125,105, 85, 60, 40]
-vtypes= [  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
-
-red  = intarr (256)
-green= intarr (256)
-blue = intarr (256)
-
-red  (255) = 255
-green(255) = 255
-blue (255) = 255
-
-for k = 0, n_elements(vtypes) -1 do begin 
-	red  (vtypes(k)) = r_in (k)
-	green(vtypes(k)) = g_in (k)
-	blue (vtypes(k)) = b_in (k)
-endfor
-
-TVLCT,red,green,blue
-
-colors = vtypes
-levels = vtypes
-
-clm_name = strarr(27)
-clm_name( 0)  = 'NLEt'  ;  1 	needleleaf evergreen temperate tree
-clm_name( 1)  = 'NLEB'  ;  2 	needleleaf evergreen boreal tree
-clm_name( 2)  = 'NLDB'  ;  3  	needleleaf deciduous boreal tree
-clm_name( 3)  = 'BLET'  ;  4 	broadleaf evergreen tropical tree
-clm_name( 4)  = 'BLEt'  ;  5 	broadleaf evergreen temperate tree
-clm_name( 5)  = 'BLDT'  ;  6 	broadleaf deciduous tropical tree
-clm_name( 6)  = 'BLDt'  ;  7 	broadleaf deciduous temperate tree
-clm_name( 7)  = 'BLDB'  ;  8 	broadleaf deciduous boreal tree
-clm_name( 8)  = 'BLEtS' ;  9 	broadleaf evergreen temperate shrub
-clm_name( 9)  = 'BLDtS' ; 10 	broadleaf deciduous temperate shrub [moisture +  deciduous]
-clm_name(10)  = 'BLDtSm'; 11 	broadleaf deciduous temperate shrub [moisture stress only]
-clm_name(11)  = 'BLDBS' ; 12 	broadleaf deciduous boreal shrub
-clm_name(12)  = 'AC3G'  ; 13 	arctic c3 grass
-clm_name(13)  = 'CC3G'  ; 14 	cool c3 grass [moisture +  deciduous]
-clm_name(14)  = 'CC3Gm' ; 15 	cool c3 grass [moisture stress only]
-clm_name(15)  = 'WC4G'  ; 16 	warm c4 grass [moisture +  deciduous]
-clm_name(16)  = 'WC4Gm' ; 17 	warm c4 grass [moisture stress only]
-clm_name(17)  = 'C3CROP'; 18    c3_crop                              
-clm_name(18)  = 'C3IRR' ; 19    c3_irrigated                         
-clm_name(19)  = 'CORN'  ; 20    corn                                 
-clm_name(20)  = 'ICORN' ; 21    irrigated corn                       
-clm_name(21)  = 'STCER' ; 22    spring temperate cereal              
-clm_name(22)  = 'ISTCER'; 23    irrigated spring temperate cereal    
-clm_name(23)  = 'WTCER' ; 24    winter temperate cereal              
-clm_name(24)  = 'IWTCER'; 25    irrigated winter temperate cereal    
-clm_name(25)  = 'SOYB'  ; 26    soybean                              
-clm_name(26)  = 'ISOYB' ; 27    irrigated soybean                    
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 2, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,0],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits,/advance
-contour, clm_grid[*,*,1],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 1000)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5-Carbon_PRIM_veg_typs.jpg', image24, True=1, Quality=100
-
-; now plotting secondary
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,1000], Z_Buffer=0
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 2, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,2],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits,/advance
-contour, clm_grid[*,*,3],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 1000)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5-Carbon_SEC_veg_typs.jpg', image24, True=1, Quality=100
-
-END
-
-; ==============================================================================
-;                                  CLM-Carbon classes    
+;                                  Catchment-CN classes    
 ; ==============================================================================
 
 PRO plot_carbon,ncat, tile_id
@@ -968,7 +761,7 @@ image24 = BytArr(3, 700, 1000)
 image24[0,*,*] = r[snapshot]
 image24[1,*,*] = g[snapshot]
 image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM-Carbon_PRIM_veg_typs.jpg', image24, True=1, Quality=100
+Write_JPEG, 'CatchmentCN_PRIM_veg_typs.jpg', image24, True=1, Quality=100
 
 ; now plotting secondary
 thisDevice = !D.Name
@@ -1012,189 +805,7 @@ image24 = BytArr(3, 700, 1000)
 image24[0,*,*] = r[snapshot]
 image24[1,*,*] = g[snapshot]
 image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM-Carbon_SEC_veg_typs.jpg', image24, True=1, Quality=100
-
-END
-
-; ==============================================================================
-;                                  CLM4.5 classes    
-; ==============================================================================
-
-PRO plot_clm45,ncat, tile_id
-
-im = n_elements(tile_id[*,0])
-jm = n_elements(tile_id[0,*])
-
-dx = 360. / im
-dy = 180. / jm
-
-x = indgen(im)*dx -180. +  dx/2.
-y = indgen(jm)*dy -90.  +  dy/2.
-
-clm_type = intarr (ncat,2)
-clm_grid = intarr (im,jm,2)
-
-filename = '../CLM4.5_veg_typs_fracs'
-openr,1,filename
-k = 0
-v = 0
-fr= 0.
-v1= 0
-v2= 0
-
-for i = 0l,ncat -1l  do begin
-   readf,1,k,k,v,v,v,v,fr,fr,fr,fr,v1,v2
-   clm_type(i,0) = v1
-   clm_type(i,1) = v2	
-endfor
-
-close,1
-
-clm_grid (*,*,*) =  !VALUES.F_NAN
-
-for j = 0l, jm -1l do begin
-   for i = 0l, im -1 do begin
-      if(tile_id[i,j] gt 0) then begin
-	clm_grid(i,j,0) =  clm_type(tile_id[i,j] -1,0)
-	clm_grid(i,j,1) =  clm_type(tile_id[i,j] -1,1)
-      endif	
-   endfor
-endfor
-
-clm_type = 0
-
-limits = [-60,-180,90,180]
-if file_test ('limits.idl') then restore,'limits.idl'
-
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,500], Z_Buffer=0
-
-r_in  = [255,106,202,251,  0, 29, 77,109,142,233,255,255,127,164,217,234,220,201,185,165,145,125,105, 85, 60, 40]
-g_in  = [245, 91,178,154, 85,115,145,165,185, 23,131,191, 39, 53, 72,234,220,201,185,165,145,125,105, 85, 60, 40]
-b_in  = [215,154,214,153,  0,  0,  0,  0, 13,  0,  0,  0,  4,  3,  1,234,220,201,185,165,145,125,105, 85, 60, 40]
-vtypes= [  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
-
-red  = intarr (256)
-green= intarr (256)
-blue = intarr (256)
-
-red  (255) = 255
-green(255) = 255
-blue (255) = 255
-
-for k = 0, n_elements(vtypes) -1 do begin 
-	red  (vtypes(k)) = r_in (k)
-	green(vtypes(k)) = g_in (k)
-	blue (vtypes(k)) = b_in (k)
-endfor
-
-TVLCT,red,green,blue
-
-colors = vtypes
-levels = vtypes
-
-clm_name = strarr(25)
-clm_name( 0)  = 'BARE' ;  1  	bare
-clm_name( 1)  = 'NLEt' ;  2 	needleleaf evergreen temperate tree
-clm_name( 2)  = 'NLEB' ;  3 	needleleaf evergreen boreal tree
-clm_name( 3)  = 'NLDB' ;  4  	needleleaf deciduous boreal tree
-clm_name( 4)  = 'BLET' ;  5 	broadleaf evergreen tropical tree
-clm_name( 5)  = 'BLEt' ;  6 	broadleaf evergreen temperate tree
-clm_name( 6)  = 'BLDT' ;  7 	broadleaf deciduous tropical tree
-clm_name( 7)  = 'BLDt' ;  8 	broadleaf deciduous temperate tree
-clm_name( 8)  = 'BLDB' ;  9 	broadleaf deciduous boreal tree
-clm_name( 9)  = 'BLEtS'; 10 	broadleaf evergreen temperate shrub
-clm_name(10)  = 'BLDtS'; 11 	broadleaf deciduous temperate shrub
-clm_name(11)  = 'BLDBS'; 12 	broadleaf deciduous boreal shrub
-clm_name(12)  = 'AC3G' ; 13 	arctic c3 grass
-clm_name(13)  = 'CC3G' ; 14 	cool c3 grass
-clm_name(14)  = 'WC4G' ; 15 	warm c4 grass
-clm_name(15)  = 'C3CROP'; 16    c3_crop                              
-clm_name(16)  = 'C3IRR' ; 17    c3_irrigated                         
-clm_name(17)  = 'CORN'  ; 18    corn                                 
-clm_name(18)  = 'ICORN' ; 19    irrigated corn                       
-clm_name(19)  = 'STCER' ; 20    spring temperate cereal              
-clm_name(20)  = 'ISTCER'; 21    irrigated spring temperate cereal    
-clm_name(21)  = 'WTCER' ; 22    winter temperate cereal              
-clm_name(22)  = 'IWTCER'; 23    irrigated winter temperate cereal    
-clm_name(23)  = 'SOYB'  ; 24    soybean                              
-clm_name(24)  = 'ISOYB' ; 25    irrigated soybean                    
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 1, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,0],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 500)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5_PRIM_veg_typs.jpg', image24, True=1, Quality=100
-
-; now plotting secondary
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,500], Z_Buffer=0
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 1, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,1],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 500)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5_SEC_veg_typs.jpg', image24, True=1, Quality=100
+Write_JPEG, 'CatchmentCN_SEC_veg_typs.jpg', image24, True=1, Quality=100
 
 END
 
