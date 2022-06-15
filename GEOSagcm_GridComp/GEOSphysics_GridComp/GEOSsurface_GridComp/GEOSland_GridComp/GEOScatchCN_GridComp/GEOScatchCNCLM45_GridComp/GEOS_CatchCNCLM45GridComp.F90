@@ -51,7 +51,8 @@ module GEOS_CatchCNCLM45GridCompMod
        RHOFS          => CATCH_SNWALB_RHOFS,  &
        SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE
+       SLOPE          => CATCH_SNWALB_SLOPE,  &
+       PEATCLSM_POROS_THRESHOLD
 
   USE  clm_varpar, ONLY :                     &
        NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT,    &
@@ -61,8 +62,8 @@ module GEOS_CatchCNCLM45GridCompMod
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
-  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
-       catch_calc_zbar, catch_calc_watertabled, irrigation_rate, &
+  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,            &
+       catch_calc_zbar, catch_calc_peatclsm_waterlevel, irrigation_rate, &
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
@@ -174,7 +175,7 @@ type OFFLINE_WRAP
 end type OFFLINE_WRAP
 
 integer :: RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
-integer :: ATM_CO2, SCALE_ALBFPAR,CHOOSEMOSFC
+integer :: ATM_CO2, CHOOSEMOSFC
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: CO2
@@ -291,12 +292,6 @@ subroutine SetServices ( GC, RC )
     ! 4: import AGCM model CO2 (AGCM only)
     call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=2  , __RC__ )   
 
-    ! SCALE_ALBFPAR: Scale CATCHCN ALBEDO and FPAR
-    ! 0-- NO scaling is performed
-    ! 1-- Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
-    ! 2-- Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
-    ! 3-- Pefform above both 1 and 2 scalings 
-    call MAPL_GetResource (SCF, SCALE_ALBFPAR, label='SCALE_ALBFPAR:', DEFAULT=0  , __RC__ )   
 
     ! Global mean CO2 
     call MAPL_GetResource (SCF, CO2,         label='CO2:',      DEFAULT=350.e-6, __RC__ )
@@ -3675,9 +3670,9 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       LONG_NAME          = 'depth_to_water_table_from_surface_in_peat',&
        UNITS              = 'm'                         ,&
-       SHORT_NAME         = 'WATERTABLED'               ,&
+       SHORT_NAME         = 'PEATCLSM_WATERLEVEL'       ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -3686,7 +3681,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'FSWCHANGE'                 ,&
+       SHORT_NAME         = 'PEATCLSM_FSWCHANGE'        ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -4453,7 +4448,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     type(MAPL_MetaComp),pointer     :: MAPL
     type(ESMF_Alarm)                :: ALARM
-
     integer :: IM,JM
     integer :: incl_Louis_extra_derivs
 
@@ -4859,8 +4853,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
         real, pointer, dimension(:)   :: IRRIGRATE
-        real, pointer, dimension(:)   :: WATERTABLED
-        real, pointer, dimension(:)   :: FSWCHANGE
+        real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
+        real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -5155,24 +5149,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp
     real, allocatable, dimension(:) :: SNOVR_tmp, SNONR_tmp, SNOVF_tmp, SNONF_tmp
 
-    ! Variables for FPAR scaling
-    ! --------------------------
-    
-    real, save,allocatable,dimension (:,:,:,:) :: Kappa, Lambda, Mu
-    real, save,allocatable,dimension (:,:,:)   :: MnVal, MxVal
-    integer, save, allocatable, dimension (:)  :: modis_tid, ThisMIndex
-    integer                                    :: n_modis, NTCurrent, CDFfile, infos, comms
-    integer, allocatable, dimension (:,:)      :: modis_index
-    integer, allocatable, dimension (:)        :: modis2cat
-    real   , allocatable, dimension (:)        :: m_lons, m_lats
-    real   , allocatable, dimension (:,:)      :: scaled_fpar, parav, parzone, unscaled_fpar
-    REAL   , PARAMETER                         :: TILEINT = 2.
-    integer, PARAMETER                         :: NOCTAD = 46, NSETS = 2
-    real                                       :: CLM4_fpar, CLM4_cdf, MODIS_fpar, tmparr(1,1,1,2), &
-         ThisK, ThisL, ThisM, ThisMin, ThisMax, tmparr2(1,1,1), ThisFPAR, ZFPAR  
-    character (len=ESMF_MAXSTR)   :: VISMEANFILE, VISSTDFILE, NIRMEANFILE, NIRSTDFILE, FPARMEANFILE, FPARSTDFILE
-    real, allocatable, dimension (:)           :: MODISVISmean, MODISVISstd, MODISNIRmean, MODISNIRstd, MODELFPARmean, MODELFPARstd
-    logical, save :: first_fpar = .true.
+    ! Variables for FPAR
+            ! --------------------------
+                real   , allocatable, dimension (:,:)      :: parzone
 
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
 
@@ -5560,8 +5539,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTBC002         ,'RMELTBC002'           ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC001         ,'RMELTOC001'           ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC002         ,'RMELTOC002'           ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WATERTABLED        ,'WATERTABLED'          ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,FSWCHANGE          ,'FSWCHANGE'            ,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL'  ,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE ,'PEATCLSM_FSWCHANGE'   ,           RC=STATUS); VERIFY_(STATUS)
 
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,           RC=STATUS); VERIFY_(STATUS)
 
@@ -5699,123 +5678,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ENDIF READ_CT_CO2       
     ENDIF
 
- ! OPTIONAL FPAR SCALING
-! ---------------------
- 
-    if  (SCALE_ALBFPAR >= 2) then 
-       IF (ntiles > 0) THEN
-          INTILALIZE_FPAR_PARAM : if(first_fpar) then
-             
-             ! Initialize FPAR MODIS scale parameters
-             ! --------------------------------------
-             
-!             CALL ESMF_VMGet(vm, MPICOMMUNICATOR=comms, rc=status)
-!             VERIFY_(status)
-!             call MPI_Info_create(infos, STATUS)
-!             call MPI_Info_set(infos, "romio_cb_read", "automatic", STATUS)
-             
-             STATUS = NF_OPEN ('FPAR_CDF_Params-M09.nc4', NF_NOWRITE, CDFfile)
-             STATUS = NF_INQ_DIMID  (CDFfile, 'tile10D', k); VERIFY_(STATUS)
-             STATUS = NF_INQ_DIMLEN (CDFfile, K, n_modis)  ; VERIFY_(STATUS)
-             
-             allocate (m_lons (1 : n_modis))
-             allocate (m_lats (1 : n_modis))  
-             
-             STATUS = NF_GET_VARA_REAL (CDFfile, VarID(CDFfile,'lon'),  (/1/), (/n_modis/), m_lons);VERIFY_(STATUS)
-             STATUS = NF_GET_VARA_REAL (CDFfile, VarID(CDFfile,'lat'),  (/1/), (/n_modis/), m_lats);VERIFY_(STATUS) 
-             
-             allocate (modis_index (1: 360/nint(TILEINT), 1: 180/nint(TILEINT)))
-             modis_index = -9999    
-             
-             ! vector to grid 10x10 MODIS tiles
-             
-             do i = 1, n_modis
-                
-                k = NINT (((m_lons(i) + TILEINT/2.) + 180.) / TILEINT)
-                n = NINT (((m_lats(i) + TILEINT/2.) +  90.) / TILEINT)
-                modis_index (k, n) = i
-                
-             end do
-             
-             ! for each catchment-tile overlying MODIS 10x10 tile 
-             
-             allocate (modis2cat (1:  NTILES))
-             allocate (modis_tid (1:  NTILES))
-             
-             modis_tid = -9999
-             modis2cat = 0
-             
-             do i = 1, NTILES
-                
-                k =  NINT ((CEILING (lons(i)*90./MAPL_PI)*2 + 180.) / TILEINT)
-                n =  NINT ((CEILING (lats(i)*90./MAPL_PI)*2 +  90.) / TILEINT)
-                if(k <=   3) k =   3
-                if(k >= 178) k = 178
-                modis2cat (i) = modis_index (k,n)
-
-             end do
-
-             K = count(modis2cat > 0)
-             
-             allocate (unq_mask(1:K ))
-             allocate (loc_int (1:K ))
-             
-             loc_int = pack(modis2cat ,mask = (modis2cat > 0))
-             call MAPL_Sort (loc_int)
-             unq_mask = .true.
-             
-             do i = 2,K 
-                unq_mask(i) = .not.(loc_int(i) == loc_int(i-1)) 
-             end do
-             
-             NUNQ = count(unq_mask)  
-             
-             allocate (ThisIndex (1:NUNQ))
-             ThisIndex =  pack(loc_int, mask = unq_mask )
-             
-             allocate (Kappa (1: NUNQ, 1: NUMPFT, 1 : NOCTAD, 1 : 2))
-             allocate (Lambda(1: NUNQ, 1: NUMPFT, 1 : NOCTAD, 1 : 2))
-             allocate (Mu    (1: NUNQ, 1: NUMPFT, 1 : NOCTAD, 1 : 2))
-             allocate (MnVal (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (MxVal (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-
-             Kappa    = -9999.
-             Lambda   = -9999.
-             Mu       = -9999.
-
-             do i = 1, NUNQ
-                
-                where (modis2cat ==  ThisIndex(i)) modis_tid = i
-                
-             end do
-             
-             do i = 1, NUNQ
-                do K = 1,NOCTAD
-                   do n = 1, NUMPFT
-                      IF (ThisIndex(i) >= 1) THEN
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Kappa' ),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);VERIFY_(STATUS)
-                         Kappa (i,N,K,:) = tmparr (1,1,1,:) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Lambda'),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);VERIFY_(STATUS)
-                         Lambda(i,N,K,:) = tmparr (1,1,1,:) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Mu'    ),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);VERIFY_(STATUS)
-                         Mu    (i,N,K,:) = tmparr (1,1,1,:)               
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MinVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         MnVal(i,N,K)  = tmparr2 (1,1,1)               
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MaxVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         MxVal(i,N,K) = tmparr2 (1,1,1)             
-                      ENDIF
-                   end do
-                end do
-             end do
-             status = NF_CLOSE (CDFFile)
-
-             deallocate ( modis2cat, unq_mask, loc_int, modis_index, m_lons, m_lats)
-             
-             first_fpar = .false.
-
-          endif INTILALIZE_FPAR_PARAM
-       endif
-    end if
 
         ! --------------------------------------------------------------------------
         ! ALLOCATE LOCAL POINTERS
@@ -6354,11 +6216,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(    car1(ntiles) )
     allocate(    car2(ntiles) )
     allocate(    car4(ntiles) )
-    allocate( parzone(ntiles,nveg) )
     allocate(    para(ntiles) )
-    allocate(   parav(ntiles,nveg) )
-    allocate (scaled_fpar  (NTILES,NVEG))
-    allocate (unscaled_fpar(NTILES,NVEG))
     allocate (  totwat(ntiles) )
     if(.not. allocated(npp )) allocate(     npp(ntiles) )
     if(.not. allocated(gpp )) allocate(     gpp(ntiles) )
@@ -6427,6 +6285,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate( psnsunx(ntiles,nveg) )
     allocate( psnshax(ntiles,nveg) )
     allocate( sifsunx(ntiles,nveg) )
+    allocate( parzone(ntiles,nveg) )
     allocate( sifshax(ntiles,nveg) )
     allocate( laisunx(ntiles,nveg) )
     allocate( laishax(ntiles,nveg) )
@@ -6767,8 +6626,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     end do
 
     para(:) = 0. ! zero out absorbed PAR summing array
-    parav(:, :) = 0. !
-    scaled_fpar = 1.
 
     do nz = 1,nzone
 
@@ -6904,8 +6761,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       do nv = 1,nveg
          para(:)     = para(:) + parzone(:,nv)*wtzone(:,nz)*fvez(:,nv)
-         parav(:,nv) = parav (:,nv) + parzone(:,nv)*wtzone(:,nz)
       end do
+
       if(associated(BTRANT)) btrant(:) = btrant(:) + btran(:)*wtzone(:,nz)  ! NOTE: btran here doesn't reflect the modification to btran for soybean (and nbrdlf_dcd_tmp_shrub if CNDV is on) in subroutine Photosynthesis.
       if(associated(SIF)) then
         do nv = 1,nveg
@@ -6915,159 +6772,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     end do
 
-   do nv = 1,nveg
-      unscaled_fpar (:,nv) = parav (:,nv)/ (DRPAR(:) + DFPAR(:) + 1.e-20)
-   end do
-
-   NTCurrent = CEILING (real (dofyr) / 8.)
-    
-   ! FPAR scaling to match MODIS CDF
-   ! -------------------------------
-   
-    DO_FS1 : if  (SCALE_ALBFPAR >= 2) then
-
-        IF (ntiles > 0) THEN
-           
-           NT_LOOP1 : do n = 1,NTILES
-
-              NV_LOOP1 : do nv = 1,nveg
-
-                 CLM4_fpar = parav (n,nv) / (DRPAR (n) + DFPAR (n) + 1.e-20)
-                 K = -1
-
-                 if(CLM4_fpar > 0.) then
-                    
-                    k = NINT(ITY(N,nv)) 
-                    if(minval(Kappa  (modis_tid (n), k, NTCurrent, :)) < 0.) then
-                       k = -1
-                       if(nv  == 1) k = NINT(ITY(N,2)) 
-                       if(nv  == 2) k = NINT(ITY(N,1))
-                       if(nv  == 3) k = NINT(ITY(N,4)) 
-                       if(nv  == 4) k = NINT(ITY(N,3))
-                       if(minval(Kappa  (modis_tid (n), k, NTCurrent, :)) < 0.) k = -1
-                       if((K == -1).and.(nv > 2)) then
-                          if(minval(Kappa  (modis_tid (n), NINT(ITY(N,2)), NTCurrent, :)) > 0.) k = NINT(ITY(N,2))
-                          if(minval(Kappa  (modis_tid (n), NINT(ITY(N,1)), NTCurrent, :)) > 0.) k = NINT(ITY(N,1))
-                       endif
-                    endif
-                    
-                 endif
-
-                 if((K > 0).and.(CLM4_fpar > 0)) then
-                    
-                    ! Computing probability of CLM4 FPAR
-                    
-                    ThisK   = Kappa  (modis_tid (n), k, NTCurrent, 2)
-                    ThisL   = Lambda (modis_tid (n), k, NTCurrent, 2)
-                    ThisM   = Mu     (modis_tid (n), k, NTCurrent, 2)
-                    ThisMin = MnVal  (modis_tid (n), k, NTCurrent)
-                    ThisMax = MxVal  (modis_tid (n), k, NTCurrent)
-                    
-                    if (CLM4_fpar < ThisMin) CLM4_fpar = ThisMin
-                    if (CLM4_fpar > ThisMax) CLM4_fpar = ThisMax
-                    if((ThisL == 0.).or.(ThisM == 0.)) print *,thisK,ThisL, ThisM, CLM4_fpar, ThisMin, ThisMax
-                    if((ThisL == 0.).or.(ThisM == 0.)) print *,n,k,NTCurrent,modis_tid (n)
-                    CLM4_cdf = ThisK * betai (ThisL, ThisM, (CLM4_fpar - ThisMin)/ThisMax)
-                    
-                    ! Computing corresponding MODIS FPAR for the same probability
-                    
-                    ThisK   = Kappa  (modis_tid (n), k, NTCurrent, 1)
-                    ThisL   = Lambda (modis_tid (n), k, NTCurrent, 1)
-                    ThisM   = Mu     (modis_tid (n), k, NTCurrent, 1)
-                    ThisMin = MnVal  (modis_tid (n), k, NTCurrent)
-                    ThisMax = MxVal  (modis_tid (n), k, NTCurrent)
-                    
-                    scaled_fpar (n,nv) = cdf2fpar (CLM4_cdf, ThisK, ThisL, ThisM, ThisMin, ThisMax)                                 
-                    if((scaled_fpar (n,nv) > 1.).or.(scaled_fpar (n,nv) < 0.)) then
-                       print *, 'PROB 1', CLM4_cdf, ThisK, ThisL, ThisM, ThisMin, ThisMax, scaled_fpar (n,nv)
-                    endif
-                    
-                    scaled_fpar (n,nv) = scaled_fpar (n,nv) / (CLM4_fpar + 1.e-20)
-                    
-                 endif
-              end do NV_LOOP1
-              
-           end do NT_LOOP1
-           
-           para  (:) = 0. ! zero out absorbed PAR summing array
-           parav = 0.
-
-           if(associated(BTRANT)) btrant = 0. 
-           if(associated(SIF))    sif    = 0. 
-           
-           do nz = 1,num_zon
-              
-              if(nz == 1) then
-                 btran = btran1
-                 tcx = tx1
-                 qax = qx1
-              endif
-              
-              if(nz == 2) then
-                 btran = btran2
-                 tcx = tx2
-                 qax = qx2
-              endif
-              
-              if(nz == 3) then
-                 btran = btran3
-                 tcx = tx3
-                 qax = qx3
-              endif
-              
-              do nv = 1,num_veg
-                 elaz(:,nv) = elai(:,nv,nz)
-                 esaz(:,nv) = esai(:,nv,nz)
-                 ityz(:,nv) = ityp(:,nv,nz)
-                 fvez(:,nv) = fveg(:,nv,nz)
-              end do
-              
-              do n = 1,NTILES
-                 if(tp1(n) < (Tzero-0.01)) btran(n) = 0. ! no photosynthesis if ground fully frozen
-              end do
-
-              call compute_rc(NTILES,nveg,TCx,QAx,T2M10D,                &
-                   TA, PS, ZTH,DRPAR,DFPAR,albdir,albdif,                &
-                   elaz,esaz,ityz,fvez,btran,fwet,                       &
-                   RCx,RCxDT,RCxDQ,psnsunx,psnshax,laisunx,laishax,      &
-                   dayl_fac,co2v,dtc,dea,parzone,sifsunx,sifshax,        &
-                   lmrsunx,lmrshax,fpar_sf = scaled_fpar )
-
-              rc00(:,nz) = rcx(:)
-              rcdt(:,nz) = rcxdt(:)
-              rcdq(:,nz) = rcxdq(:)
-              
-              psnsun(:,:,nz) = psnsunx(:,:)
-              psnsha(:,:,nz) = psnshax(:,:)
-              laisun(:,:,nz) = laisunx(:,:)
-              laisha(:,:,nz) = laishax(:,:)
-              lmrsun(:,:,nz) = lmrsunx(:,:)
-              lmrsha(:,:,nz) = lmrshax(:,:)
-  
-              do nv = 1,nveg
-                 para(:)     = para(:) + parzone(:,nv)*wtzone(:,nz)*fvez(:,nv)
-                 parav(:,nv) = parav (:,nv) + parzone(:,nv)*wtzone(:,nz)
-              end do
-
-              if(associated(BTRANT)) btrant(:) = btrant(:) + btran(:)*wtzone(:,nz)
-              if(associated(SIF)) then
-                 do nv = 1,nveg
-                    sif(:) = sif(:) + wtzone(:,nz)*fvez(:,nv)*(sifsunx(:,nv)*laisunx(:,nv) + sifshax(:,nv)*laishax(:,nv))
-                 end do
-              endif
-              
-           end do
-           
-        endif
-
-     endif DO_FS1
-
-     ! Below we are recycling the scaled_fpar array - from this point, it contains fpar scaled or otherwise
-     ! ----------------------------------------------------------------------------------------------------
-
-     do nv = 1,nveg
-        scaled_fpar (:,nv) = parav (:,nv)/ (DRPAR(:) + DFPAR(:) + 1.e-20)
-     end do
 
     if(associated(CNCO2)) CNCO2 = CO2V * 1e6
     deallocate (co2v)
@@ -7092,40 +6796,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
          ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
-    if  ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then 
-       
-       if(.not.allocated (MODISVISmean )) allocate (MODISVISmean  (1:NTILES))
-       if(.not.allocated (MODISVISstd  )) allocate (MODISVISstd   (1:NTILES))
-       if(.not.allocated (MODISNIRmean )) allocate (MODISNIRmean  (1:NTILES))
-       if(.not.allocated (MODISNIRstd  )) allocate (MODISNIRstd   (1:NTILES))
-       if(.not.allocated (MODELFPARmean)) allocate (MODELFPARmean (1:NTILES))
-       if(.not.allocated (MODELFPARstd )) allocate (MODELFPARstd  (1:NTILES))
-
-       if(ntiles > 0) then
-                    
-          call MAPL_GetResource(MAPL,VISMEANFILE  , label = 'VISMEAN_FILE:' , default = 'MODISVISmean.dat'  , RC=STATUS )  ; VERIFY_(STATUS)    
-          call MAPL_GetResource(MAPL,VISSTDFILE   , label = 'VISSTD_FILE:'  , default = 'MODISVISstd.dat'   , RC=STATUS )  ; VERIFY_(STATUS)      
-          call MAPL_GetResource(MAPL,NIRMEANFILE  , label = 'NIRMEAN_FILE:' , default = 'MODISNIRmean.dat'  , RC=STATUS )  ; VERIFY_(STATUS)     
-          call MAPL_GetResource(MAPL,NIRSTDFILE   , label = 'NIRSTD_FILE:'  , default = 'MODISNIRstd.dat'   , RC=STATUS )  ; VERIFY_(STATUS) 
-
-          call MAPL_GetResource(MAPL,FPARMEANFILE , label = 'MODELFPARMEAN_FILE:', default = 'MODELFPARmean.dat' , RC=STATUS )  ; VERIFY_(STATUS)     
-          call MAPL_GetResource(MAPL,FPARSTDFILE  , label = 'MODELFPARSTD_FILE:' , default = 'MODELFPARstd.dat'  , RC=STATUS )  ; VERIFY_(STATUS)      
-           
-          call MAPL_ReadForcing(MAPL,'MODISVISmean' ,VISMEANFILE ,CURRENT_TIME,MODISVISmean  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-          call MAPL_ReadForcing(MAPL,'MODISVISstd'  ,VISSTDFILE  ,CURRENT_TIME,MODISVISstd   ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-          call MAPL_ReadForcing(MAPL,'MODISNIRmean' ,NIRMEANFILE ,CURRENT_TIME,MODISNIRmean  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-          call MAPL_ReadForcing(MAPL,'MODISNIRstd'  ,NIRSTDFILE  ,CURRENT_TIME,MODISNIRstd   ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-          call MAPL_ReadForcing(MAPL,'MODELFPARmean',FPARMEANFILE,CURRENT_TIME,MODELFPARmean ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-          call MAPL_ReadForcing(MAPL,'MODELFPARstd' ,FPARSTDFILE ,CURRENT_TIME,MODELFPARstd  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-
-         do n = 1,NTILES
-            ThisFPAR = (unscaled_fpar(n,1)*FVG(N,1) + unscaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
-            ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
-            ALBVF(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
-            ALBNF(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))                
-          end do
-       endif
-    endif
 
     call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
     TPSN1OUT1 =  TPSN1OUT1 + Tzero
@@ -7142,16 +6812,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
          ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE. ) ! instantaneous snow-free albedos on tiles
   
-    if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then 
-       if(ntiles > 0) then
-          do n = 1,NTILES
-             ThisFPAR  = (unscaled_fpar(n,3)*FVG(N,3) + unscaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
-             ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
-             ALBVF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
-             ALBNF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))          
-          end do
-       endif
-    endif
 
     call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
          RHOFS,                                              &   
@@ -7896,13 +7556,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
-        if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then
-           do n = 1,NTILES
-              ThisFPAR  = (unscaled_fpar(n,1)*FVG(N,1) + unscaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
-              ZFPAR     = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
-              ALBVF(n)  = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))                      
-           end do
-        endif
 
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + Tzero        
@@ -7919,17 +7572,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE.  ) ! instantaneous snow-free albedos on tiles
 
-        if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then
-
-              do n = 1,NTILES
-                 ThisFPAR  = (unscaled_fpar(n,3)*FVG(N,3) + unscaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
-                 ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
-                 ALBVF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
-                 ALBNF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))          
-              end do
-
-           if(allocated (MODISVISmean)) deallocate (MODISVISmean, MODISVISstd, MODISNIRmean, MODISNIRstd, MODELFPARmean, MODELFPARstd)
-        endif
 
         call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
                  RHOFS,                                              &   
@@ -8061,9 +7703,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
-        if(associated(FSWCHANGE))  FSWCHANGE  = FSW_CHANGE
-        if(associated(WATERTABLED)) then
-           WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+        if(associated(PEATCLSM_FSWCHANGE )) then
+           where (POROS >= PEATCLSM_POROS_THRESHOLD)
+              PEATCLSM_FSWCHANGE = FSW_CHANGE
+           elsewhere
+              PEATCLSM_FSWCHANGE = MAPL_UNDEF
+           end where
+        end if
+
+        if(associated(PEATCLSM_WATERLEVEL)) then
+           PEATCLSM_WATERLEVEL = catch_calc_peatclsm_waterlevel( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
         endif
 
         if(associated(TPSN1OUT)) then
@@ -8281,11 +7930,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(    car1 )
         deallocate(    car2 )
         deallocate(    car4 )
-        deallocate( parzone )
         deallocate(    para )
-        deallocate(   parav )
-        deallocate (scaled_fpar)
-        deallocate (UNscaled_fpar)
         deallocate(  totwat )
         deallocate(   nfire )
         deallocate(som_closs)
@@ -8342,6 +7987,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate( psnsunx )
         deallocate( psnshax )
         deallocate( sifsunx )
+        deallocate( parzone )
         deallocate( sifshax )
         deallocate( laisunx )
         deallocate( laishax )
@@ -8374,128 +8020,109 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       end subroutine Driver
 
-      ! ----------------- routines for CDF scaling -------------------
       
-      REAL FUNCTION cdf2fpar (cdf, k,l, m, m1, m2)
-        
-        REAL, intent (in)  :: cdf, k,l,m, m1, m2
-        REAL :: x, ThisCDF, ThisFPAR
-        integer, parameter :: nBINS = 40
-        
-        x       = real (nBINS)
-        ThisCDF = 1.
-        
-        do while (ThisCDF >= cdf)
-           ThisFPAR = 1. - (real(nbins)-x)/real(nbins) - 1./2./real(nbins)
-           ThisCDF  = K * betai (L, M, ThisFPAR)
-           x = x - 1.
-           if(x == 0) exit 
-        end do
-        
-        cdf2fpar = ThisFPAR * m2 + m1
-        if(cdf2fpar > m2) cdf2fpar = m2
-        if(cdf2fpar < m1) cdf2fpar = m1
-        return
-
-      END FUNCTION cdf2fpar
-
-      ! ---------------------------------------------------------
+! Commented out functions betai(), betacf(), and gammln().
+! These functions are not used and were reproduced identically in  
+! GEOS_CatchCNCLM40GridComp.F90 and in GEOS_CatchCNCLM45GridComp.F90.
+! Another copy was in GEOScatchCN_GridComp/utils/math_routines.F90 but
+! there function betai() was missing the restriction 0.0125<x<0.9875.
+! - reichle, 23 May 2022
       
-      FUNCTION betai(a,b,x)
-        REAL betai,a,b,x
-        REAL bt
-        !external gammln
-        
-        if (x < 0.0125) x = 0.0125
-        if (x > 0.9875) x = 0.9875
-        
-        if(x.lt.0..or.x.gt.1.)print *, 'bad argument x in betai',x
-        if(x.lt.0..or.x.gt.1.)stop
-        if(x.eq.0..or.x.eq.1.)then
-           bt=0.
-        else 
-           bt=exp(gammln(a+b)-gammln(a)-gammln(b) &
-                +a*log(x)+b*log(1.-x))
-        endif
-        
-        if(x.lt.(a+1.)/(a+b+2.))then 
-           betai=bt*betacf(a,b,x)/a
-           return
-        else
-           betai=1.-bt*betacf(b,a,1.-x)/b 
-           return
-        endif
-        
-      END FUNCTION betai
-
-      ! -------------------------------------------------------
-
-      FUNCTION betacf(a,b,x)
-
-        INTEGER MAXIT
-        REAL betacf,a,b,x,EPS,FPMIN
-        PARAMETER (MAXIT=100,EPS=3.e-7,FPMIN=1.e-30)
-        INTEGER m,m2
-        REAL aa,c,d,del,h,qab,qam,qap
-        
-        qab=a+b 
-        qap=a+1. 
-        qam=a-1.
-        c=1. 
-        d=1.-qab*x/qap
-        
-        if(abs(d).lt.FPMIN)d=FPMIN
-        d=1./d
-        h=d
-        do m=1,MAXIT
-           m2=2*m
-           aa=m*(b-m)*x/((qam+m2)*(a+m2))
-           d=1.+aa*d 
-           if(abs(d).lt.FPMIN)d=FPMIN
-           c=1.+aa/c
-           if(abs(c).lt.FPMIN)c=FPMIN
-           d=1./d
-           h=h*d*c
-           aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2))
-           d=1.+aa*d 
-           if(abs(d).lt.FPMIN)d=FPMIN
-           c=1.+aa/c
-           if(abs(c).lt.FPMIN)c=FPMIN
-           d=1./d
-           del=d*c
-           h=h*del
-           if(abs(del-1.).lt.EPS)exit 
-        enddo
-        betacf=h
-        return
-        
-      END FUNCTION betacf
-      
-      ! --------------------------------------------------------------
-      
-      FUNCTION gammln(xx)
-        
-        REAL gammln,xx
-        INTEGER j
-        DOUBLE PRECISION ser,stp,tmp,x,y,cof(6)
-        
-        SAVE cof,stp
-        DATA cof,stp/76.18009172947146d0,-86.50532032941677d0,          &
-             24.01409824083091d0,-1.231739572450155d0,.1208650973866179d-2, &
-             -.5395239384953d-5,2.5066282746310005d0/
-        x=xx
-        y=x
-        tmp=x+5.5d0
-        tmp=(x+0.5d0)*log(tmp)-tmp
-        ser=1.000000000190015d0
-        do  j=1,6
-           y=y+1.d0
-           ser=ser+cof(j)/y
-        enddo
-        gammln=tmp+log(stp*ser/x)
-        return
-        
-      END FUNCTION gammln
+!!      FUNCTION betai(a,b,x)
+!!        REAL betai,a,b,x
+!!        REAL bt
+!!        !external gammln
+!!        
+!!        if (x < 0.0125) x = 0.0125
+!!        if (x > 0.9875) x = 0.9875
+!!        
+!!        if(x.lt.0..or.x.gt.1.)print *, 'bad argument x in betai',x
+!!        if(x.lt.0..or.x.gt.1.)stop
+!!        if(x.eq.0..or.x.eq.1.)then
+!!           bt=0.
+!!        else 
+!!           bt=exp(gammln(a+b)-gammln(a)-gammln(b) &
+!!                +a*log(x)+b*log(1.-x))
+!!        endif
+!!        
+!!        if(x.lt.(a+1.)/(a+b+2.))then 
+!!           betai=bt*betacf(a,b,x)/a
+!!           return
+!!        else
+!!           betai=1.-bt*betacf(b,a,1.-x)/b 
+!!           return
+!!        endif
+!!        
+!!      END FUNCTION betai
+!!
+!!      ! -------------------------------------------------------
+!!
+!!      FUNCTION betacf(a,b,x)
+!!
+!!        INTEGER MAXIT
+!!        REAL betacf,a,b,x,EPS,FPMIN
+!!        PARAMETER (MAXIT=100,EPS=3.e-7,FPMIN=1.e-30)
+!!        INTEGER m,m2
+!!        REAL aa,c,d,del,h,qab,qam,qap
+!!        
+!!        qab=a+b 
+!!        qap=a+1. 
+!!        qam=a-1.
+!!        c=1. 
+!!        d=1.-qab*x/qap
+!!        
+!!        if(abs(d).lt.FPMIN)d=FPMIN
+!!        d=1./d
+!!        h=d
+!!        do m=1,MAXIT
+!!           m2=2*m
+!!           aa=m*(b-m)*x/((qam+m2)*(a+m2))
+!!           d=1.+aa*d 
+!!           if(abs(d).lt.FPMIN)d=FPMIN
+!!           c=1.+aa/c
+!!           if(abs(c).lt.FPMIN)c=FPMIN
+!!           d=1./d
+!!           h=h*d*c
+!!           aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2))
+!!           d=1.+aa*d 
+!!           if(abs(d).lt.FPMIN)d=FPMIN
+!!           c=1.+aa/c
+!!           if(abs(c).lt.FPMIN)c=FPMIN
+!!           d=1./d
+!!           del=d*c
+!!           h=h*del
+!!           if(abs(del-1.).lt.EPS)exit 
+!!        enddo
+!!        betacf=h
+!!        return
+!!        
+!!      END FUNCTION betacf
+!!      
+!!      ! --------------------------------------------------------------
+!!      
+!!      FUNCTION gammln(xx)
+!!        
+!!        REAL gammln,xx
+!!        INTEGER j
+!!        DOUBLE PRECISION ser,stp,tmp,x,y,cof(6)
+!!        
+!!        SAVE cof,stp
+!!        DATA cof,stp/76.18009172947146d0,-86.50532032941677d0,          &
+!!             24.01409824083091d0,-1.231739572450155d0,.1208650973866179d-2, &
+!!             -.5395239384953d-5,2.5066282746310005d0/
+!!        x=xx
+!!        y=x
+!!        tmp=x+5.5d0
+!!        tmp=(x+0.5d0)*log(tmp)-tmp
+!!        ser=1.000000000190015d0
+!!        do  j=1,6
+!!           y=y+1.d0
+!!           ser=ser+cof(j)/y
+!!        enddo
+!!        gammln=tmp+log(stp*ser/x)
+!!        return
+!!        
+!!      END FUNCTION gammln
 
       ! --------------------------------------------------------------
       

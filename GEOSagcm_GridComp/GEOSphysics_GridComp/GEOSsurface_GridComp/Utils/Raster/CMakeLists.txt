@@ -9,7 +9,6 @@ rasterize.F90
 read_riveroutlet.F90
 CubedSphere_GridMod.F90
 rmTinyCatchParaMod.F90
-comp_CATCHCN_AlbScale_parameters.F90
 zip.c
 util.c
 )
