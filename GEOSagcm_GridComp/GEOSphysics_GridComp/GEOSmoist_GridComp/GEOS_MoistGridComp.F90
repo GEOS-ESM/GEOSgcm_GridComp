@@ -771,6 +771,17 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                             &
+         SHORT_NAME = 'PCPOBS',                                    &
+         LONG_NAME  = 'observed_precipitation',                    &
+         UNITS      = 'kg/m2/hr',                                  &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,                        &
+         AVERAGING_INTERVAL = AVRGNINT,                            &
+         REFRESH_INTERVAL   = RFRSHINT,                            &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'FRLANDICE',                                    &
          LONG_NAME  = 'areal_landice_fraction',                       &
          UNITS      = '1',                                     &
@@ -5603,7 +5614,7 @@ contains
       integer                         :: YEAR, MONTH, DAY, HR, SE, MN
       type (ESMF_Time)                :: CurrentTime
       real, pointer, dimension(:,:  ) :: LS_ARF, CN_ARF, AN_ARF, SC_ARF
-      real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND
+      real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND,PCPOBS
       real, pointer, dimension(:,:  ) :: IWP,LWP,CWP,TPW,CAPE,ZPBLCN,INHB,ZLCL,ZLFC,ZCBL,CCWP , KPBLIN, KPBLSC
       real, pointer, dimension(:,:  ) :: TVQ0,TVQ1,TVE0,TVE1,TVEX,DCPTE, TVQX2, TVQX1, CCNCOLUMN, NDCOLUMN, NCCOLUMN  !DONIF
       real, pointer, dimension(:,:,:,:) :: XHO
@@ -5976,6 +5987,7 @@ contains
       real                            :: RHEXCESS,CBL_TPERT_MXOCN,CBL_TPERT_MXLND
       real                            :: HEARTBEAT
 
+      integer                         :: PRESCRIBE_PRECIP
       integer                         :: L, K, I, J, KM, KK , Kii, NAER, N !DONIF
      
 
@@ -6543,6 +6555,7 @@ contains
 
       KSTRAP = INT( RASPARAMS%STRAPPING )
 
+      call MAPL_GetResource(STATE, PRESCRIBE_PRECIP, 'PRESCRIBE_PRECIP: ', DEFAULT=0, RC=STATUS)
 
      ! Get parameters for shallow convection
      !----------------------------------------------
@@ -6642,6 +6655,7 @@ contains
       call MAPL_GetPointer(IMPORT, SNOMAS,  'SNOMAS'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FRLANDICE,  'FRLANDICE'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, PCPOBS,  'PCPOBS'  , RC=STATUS); VERIFY_(STATUS)
       ! frland =0.0
       call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TROPP,   'TROPP'   , RC=STATUS); VERIFY_(STATUS)
@@ -12740,8 +12754,13 @@ do K= 1, LM
          if (associated(NCCOLUMN    ))    NCCOLUMN      =SUM(NCPI_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
       end if
 
-      if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
-      if (associated(PRELS  ))   PRELS   = LS_PRC2 + AN_PRC2
+      if (PRESCRIBE_PRECIP .ne. 0) then
+        if (associated(PRECU  ))   PRECU   = 0.5*PCPOBS/3600. !CN_PRC2 + SC_PRC2
+        if (associated(PRELS  ))   PRELS   = 0.5*PCPOBS/3600. !LS_PRC2 + AN_PRC2
+      else
+        if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
+        if (associated(PRELS  ))   PRELS   = LS_PRC2 + AN_PRC2
+      end if
       if (associated(TT_PRCP))   TT_PRCP = TPREC
 
    !  if(adjustl(CLDMICRO)=="GFDL") then

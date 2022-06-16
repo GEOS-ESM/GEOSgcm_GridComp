@@ -145,7 +145,7 @@ SUBROUTINE ARM2(FILENAME, NT, NLEVEL, NLAYR,                 &
 !  1.  SURFACE 
 
         do i = 1, NT
-        PCP_OBS(i) = TMP_sfc(5,i)*24.0          ! mm/day
+        PCP_OBS(i) = max(0.,TMP_sfc(5,i))          ! mm/hr
         PSFC(i)    = TMP_sfc(4,i)               ! mb
         TSKIN(i)   = TMP_sfc(3,i)               ! K
         end do

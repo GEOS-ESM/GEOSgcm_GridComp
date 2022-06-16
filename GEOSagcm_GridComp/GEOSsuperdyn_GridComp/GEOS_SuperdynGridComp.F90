@@ -204,6 +204,12 @@ integer ::          ADV = -1
 ! --------------------------------------------
 
     call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'PCPOBS',                                    &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'U',                                         &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
