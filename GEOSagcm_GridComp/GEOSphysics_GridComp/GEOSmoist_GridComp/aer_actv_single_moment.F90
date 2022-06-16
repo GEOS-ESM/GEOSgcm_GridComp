@@ -7,7 +7,7 @@ MODULE Aer_Actv_Single_Moment
       USE aer_cloud, only: AerProps
 !-------------------------------------------------------------------------------------------------------------------------
       IMPLICIT NONE
-      PUBLIC ::  Aer_Actv_1M_interface, USE_AEROSOL_NN, R_AIR
+      PUBLIC ::  Aer_Activation, USE_AEROSOL_NN, R_AIR
       PRIVATE
 
        ! Real kind for activation.
@@ -39,7 +39,7 @@ MODULE Aer_Actv_Single_Moment
 !>----------------------------------------------------------------------------------------------------------------------
 !>----------------------------------------------------------------------------------------------------------------------
 
-      SUBROUTINE Aer_Actv_1M_interface(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
+      SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
                                        sh, evap, kpbl, omega, FRLAND, USE_AERO_BUFFER, &
                                        AeroProps, aero_aci, NACTL, NACTI)
       IMPLICIT NONE
@@ -83,7 +83,7 @@ MODULE Aer_Actv_Single_Moment
       REAL :: numbinit
       integer :: i,j,k,n,rc
 
-      character(len=ESMF_MAXSTR)              :: IAm="Aer_Actv_1M_interface"
+      character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
 
       do k = 1, LM
@@ -338,7 +338,7 @@ MODULE Aer_Actv_Single_Moment
 
       end if
 
-      END SUBROUTINE Aer_Actv_1M_interface
+      END SUBROUTINE Aer_Activation
       
 !>----------------------------------------------------------------------------------------------------------------------
 !!    12-12-06, DLW: Routine to set up the call to subr. ACTFRAC_MAT to calculate the 

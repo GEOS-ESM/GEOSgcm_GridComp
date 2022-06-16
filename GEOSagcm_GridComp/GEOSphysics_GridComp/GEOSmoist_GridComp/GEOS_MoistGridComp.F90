@@ -5084,7 +5084,6 @@ contains
     type (ESMF_State),         pointer  :: GEX(:)
     type (ESMF_State)                   :: INTERNAL
 
-
     type (ESMF_Config)                  :: CF
 
     !=============================================================================
@@ -5191,7 +5190,6 @@ contains
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3
     real, allocatable, dimension(:,:)   :: TMP2D
-    type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
@@ -5337,11 +5335,10 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
-         ALLOCATE (AeroProps(IM,JM,LM))
-         call Aer_Actv_1M_interface(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                                    SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
-                                    AeroProps, AERO, NACTL, NACTI)
-         DEALLOCATE (AeroProps)
+         allocate ( AeroProps(IM,JM,LM) )
+         call Aer_Activation(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+                             SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
+                             AeroProps, AERO, NACTL, NACTI)
        else
          do L=1,LM
            NACTL(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
@@ -5356,6 +5353,10 @@ contains
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+
+       if (USE_AEROSOL_NN) then
+         deallocate ( AeroProps )
+       endif
 
        ! Export Total Moist Tendencies
 

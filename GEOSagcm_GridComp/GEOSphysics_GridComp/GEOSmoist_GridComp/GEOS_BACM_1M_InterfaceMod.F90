@@ -15,7 +15,7 @@ module GEOS_BACM_1M_InterfaceMod
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
   use aer_cloud
-  use Aer_Actv_Single_Moment, only: Aer_Actv_1M_interface, USE_AEROSOL_NN, R_AIR
+  use Aer_Actv_Single_Moment, only: USE_AEROSOL_NN, R_AIR
   use CLOUDNEW, only: CLDPARAMS, PROGNO_CLOUD
 
   implicit none
@@ -320,7 +320,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
     real, allocatable, dimension(:,:)   :: TMP2D
     type(ESMF_State)                    :: AERO
-    type(AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation 
     ! Exports
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
     real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro, DTHDT_micro

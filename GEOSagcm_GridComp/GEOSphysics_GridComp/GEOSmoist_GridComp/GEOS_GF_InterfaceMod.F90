@@ -34,6 +34,7 @@ module GEOS_GF_InterfaceMod
   logical :: STOCHASTIC_CNV
   real    :: STOCH_TOP, STOCH_BOT
   real    :: SCLM_DEEP
+  real    :: GF_MIN_AREA
   logical :: FIX_CNV_CLOUD
 
   public :: GF_Setup, GF_Initialize, GF_Run
@@ -115,6 +116,7 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, BETA_SH                     , 'BETA_SH:'              ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF         , 'USE_LINEAR_SUBCL_MF:'  ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CAP_MAXS                    , 'CAP_MAXS:'             ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, GF_MIN_AREA                 , 'GF_MIN_AREA:'          ,default= 1.e6, RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_GF2020                  , 'USE_GF2020:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     IF(USE_GF2020==1) THEN
        call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
@@ -221,7 +223,7 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, GF_ENV_SETTING  , 'GF_ENV_SETTING:'  , DEFAULT= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .TRUE.    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 1.5       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.5       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, FIX_CNV_CLOUD   , 'FIX_CNV_CLOUD:'   , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
@@ -482,6 +484,15 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR2D)) PTR2D = SEEDCNV
 
+! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
+    if (GF_MIN_AREA > 0) then
+       TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+    else if (GF_MIN_AREA < 0) then
+       TMP2D = ABS(GF_MIN_AREA)
+    else
+       TMP2D = AREA
+    endif
+
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pq
          call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,DT_MOIST                       &
@@ -491,7 +502,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN, CLLS    &
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, AREA, USTAR, TSTAR, QSTAR, T2M            &
+                                 ,FRLAND, TMP2D, USTAR, TSTAR, QSTAR, T2M           &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
                                  ,KPBL                                              &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &

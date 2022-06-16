@@ -11,6 +11,7 @@ module GEOSmoist_Process_Library
   use MAPL
   use GEOS_UtilsMod
   use Aer_Actv_Single_Moment
+  use aer_cloud
 
   implicit none
   private
@@ -41,6 +42,9 @@ module GEOSmoist_Process_Library
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = alhlbcp+alhfbcp
 
+ ! Storage of aerosol properties for activation
+  type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
+
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type
       real, pointer              :: Q(:,:,:) => null()
@@ -51,6 +55,7 @@ module GEOSmoist_Process_Library
   end type CNV_Tracer_Type
   type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
 
+  public :: AeroProps
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M

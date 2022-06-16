@@ -302,7 +302,16 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
 
     IAm = "MGB2_2M_Initialize"
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, __RC__ )
-    
+   
+    call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS)
+    VERIFY_(STATUS)
+    GRIDNAME =  AdjustL(GRIDNAME)
+    nn = len_trim(GRIDNAME)
+    dateline = GRIDNAME(nn-1:nn)
+    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
+    read(imchar,*) imsize
+    if(dateline.eq.'CF') imsize = imsize*4
+ 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , __RC__)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , __RC__)
     call MAPL_GetPointer(INTERNAL, QSNOW,    'QSNOW'   , __RC__)
@@ -349,7 +358,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
         call ini_micro(Dcsr8, micro_mg_berg_eff_factor_in, &
                        nccons, nicons, ncnstr8, ninstr8, qcvarr8)
     end if
-    call aer_cloud_init()
     call WRITE_PARALLEL ("INITIALIZED MG in non-generic GC INIT")
 
       call MAPL_GetResource(MAPL, CLDPARAMS%RH00,           'RH_CRIT:',        DEFAULT= 1.0     ,RC=STATUS); VERIFY_(STATUS)
@@ -427,7 +435,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
       call MAPL_GetResource( MAPL, RRTMG_SORAD ,  'USE_RRTMG_SORAD:',DEFAULT=0.0,     __RC__)
       call MAPL_GetResource(MAPL, CLDPARAMS%DISP_FACTOR_LIQ, 'DISP_FACTOR_LIQ:',  DEFAULT= 1.0,   __RC__) ! Scales the droplet/ice crystal number in convective detrainment 
       call MAPL_GetResource(MAPL, CLDPARAMS%DISP_FACTOR_ICE, 'DISP_FACTOR_ICE:',  DEFAULT= 1.0,   __RC__) ! Scales the droplet/ice crystal number in convective detrainment 
-      call MAPL_GetResource(MAPL, CLEANUP_RH,                'CLEANUP_RH:',       DEFAULT= 1,     __RC__)
+      call MAPL_GetResource(MAPL, CLEANUP_RH,                'CLEANUP_RH:',       DEFAULT= 0,     __RC__)
       call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', __RC__)
       call MAPL_GetResource(MAPL, PMIN_CBL,   'PMIN_CBL',   DEFAULT= 50000.0, __RC__)
       call MAPL_GetResource(MAPL,CBL_METHOD,  'CBL_METHOD:', DEFAULT= 6     , __RC__)
@@ -516,7 +524,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real (ESMF_KIND_R8)  :: tauxr8, fsoot_drop, fdust_drop, sigma_nuc_r8, rh1_r8, &
                             frachet_dust, frachet_bc, frachet_org, frachet_ss
 
-    real, allocatable, dimension(:,:)   :: CNV_FRACTION, ZWS, ZPBL
+    real, allocatable, dimension(:,:)   :: ZWS, ZPBL
 
   real, allocatable, dimension(:,:,:)  ::  QTOT, QL_TOT, QI_TOT
   real, allocatable, dimension(:,:,:) :: DQST3, QST3, DZET, QDDF3, FQAI, &
@@ -541,6 +549,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   real, allocatable, dimension(:,:,:) :: VFALLRN_AN_X, VFALLSN_AN_X
 
     integer :: I, J, L, K
+
     real, parameter :: pmin_trop = 10.0 !mbar minimum pressure to do cloud microphysics
     logical                   :: use_average_v
     real (ESMF_KIND_R8), dimension(3)       :: ccn_diag
@@ -608,26 +617,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       real, parameter :: r_air = 3.47d-3 !m3 Pa kg-1K-1
       integer,  parameter :: ncolmicro = 1
 
-      ! Aerosol cloud interactions internal variables
-      type(ESMF_State)                :: aero_aci
-      character(len=ESMF_MAXSTR)      :: aci_field_name
-      real, pointer, dimension(:,:)   :: aci_ptr_2d
-      real, pointer, dimension(:,:,:) :: aci_ptr_3d
-      real, pointer, dimension(:,:,:) :: aci_num
-      real, pointer, dimension(:,:,:) :: aci_dgn
-      real, pointer, dimension(:,:,:) :: aci_sigma
-      real, pointer, dimension(:,:,:) :: aci_density
-      real, pointer, dimension(:,:,:) :: aci_hygroscopicity
-      real, pointer, dimension(:,:,:) :: aci_f_dust
-      real, pointer, dimension(:,:,:) :: aci_f_soot
-      real, pointer, dimension(:,:,:) :: aci_f_organic
-      logical                         :: implements_aerosol_activation_properties
-      character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
-      integer                         :: ACI_STATUS, n
-      logical :: USE_AERO_BUFFER
-      real, dimension(:,:,:,:,:), allocatable :: buffer
-
-      type  (AerProps), allocatable, dimension (:,:,:) :: AeroProps !Storages aerosol properties for activation
       type  (AerProps) :: AeroAux, AeroAux_b
 
       character(len=ESMF_MAXSTR)              :: IAm
@@ -889,7 +878,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     allocate(KPBL(IM,JM), __STAT__)
     allocate(KCBL(IM,JM), __STAT__)
     allocate(NPRE_FRAC_2d(IM,JM), __STAT__)
-    allocate(CNV_FRACTION(IM,JM), __STAT__)
     allocate(ZWS(IM,JM), __STAT__)
     allocate(ZPBL(IM,JM), __STAT__)
     allocate(KCT(IM,JM), __STAT__)
@@ -920,7 +908,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     allocate(CFX(IM,JM,LM), __STAT__)
     allocate(U1(IM,JM,LM), __STAT__)
     allocate(V1(IM,JM,LM), __STAT__)
-    allocate(AeroProps(IM,JM,LM), __STAT__)
 
     allocate(QTOT(IM,JM,LM ), __STAT__)
     allocate(QL_TOT(IM,JM,LM ), __STAT__)
@@ -1101,131 +1088,10 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, EVAPC,   'EVAPC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SUBLC,   'SUBLC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
-   !============================================= Start Stratiform cloud processes==========================================
-
-    do k = 1, LM
-        do j = 1, JM
-            do i = 1, IM
-                AeroProps(i,j,k)%num = 0.0
-            end do
-        end do
-    end do    
-      
-    call ESMF_StateGet(IMPORT, 'AERO', aero_aci  , __RC__)
-
-    call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
-
-    if (n_modes > 0) then
-
-        allocate(aero_aci_modes(n_modes), __STAT__)
-        call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
-
-        call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
-        if (aci_field_name /= '') then
-            call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-            aci_ptr_3d = PLE
-        end if
-
-        call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
-        if (aci_field_name /= '') then
-            call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-            aci_ptr_3d = T
-        end if
-
-        call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
-        if (aci_field_name /= '') then
-            call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
-            aci_ptr_2d = FRLAND
-        end if
-
-        call MAPL_GetResource(MAPL, USE_AERO_BUFFER, 'USE_AERO_BUFFER:', DEFAULT=.TRUE., __RC__)
-    
-        if (USE_AERO_BUFFER) then
-           allocate(buffer(im,jm,lm,n_modes,8), __STAT__)
-        end if
-
-        ACTIVATION_PROPERTIES: do n = 1, n_modes
-           call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
-           
-           ! execute the aerosol activation properties method 
-           call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
-           VERIFY_(ACI_STATUS)
-           VERIFY_(STATUS)
-
-           ! copy out aerosol activation properties
-           call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_num, trim(aci_field_name), __RC__)
-
-           call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_dgn, trim(aci_field_name), __RC__)
-
-           call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_sigma, trim(aci_field_name), __RC__)
-
-           call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_density, trim(aci_field_name), __RC__)
-
-           call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_hygroscopicity, trim(aci_field_name), __RC__)
-
-           call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_f_dust, trim(aci_field_name), __RC__)
-
-           call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_f_soot, trim(aci_field_name), __RC__)
-
-           call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
-           call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
-
-           if (USE_AERO_BUFFER) then
-              buffer(:,:,:,n,1) = aci_num
-              buffer(:,:,:,n,2) = aci_dgn
-              buffer(:,:,:,n,3) = aci_sigma
-              buffer(:,:,:,n,4) = aci_hygroscopicity
-              buffer(:,:,:,n,5) = aci_density
-              buffer(:,:,:,n,6) = aci_f_dust
-              buffer(:,:,:,n,7) = aci_f_soot
-              buffer(:,:,:,n,8) = aci_f_organic
-           else
-              AeroProps(:,:,:)%num(n)   = aci_num
-              AeroProps(:,:,:)%dpg(n)   = aci_dgn
-              AeroProps(:,:,:)%sig(n)   = aci_sigma
-              AeroProps(:,:,:)%kap(n)   = aci_hygroscopicity
-              AeroProps(:,:,:)%den(n)   = aci_density
-              AeroProps(:,:,:)%fdust(n) = aci_f_dust
-              AeroProps(:,:,:)%fsoot(n) = aci_f_soot
-              AeroProps(:,:,:)%forg(n)  = aci_f_organic
-              AeroProps(:,:,:)%nmods    = n_modes                 ! no need of a 3D field: aero provider specific
-           end if
-
-        end do ACTIVATION_PROPERTIES
-
-        if (USE_AERO_BUFFER) then
-           do k = 1, LM
-              do j = 1, JM
-                 do i = 1, IM
-                    do n = 1, n_modes
-                       AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1)
-                       AeroProps(i,j,k)%dpg(n)   = buffer(i,j,k,n,2)
-                       AeroProps(i,j,k)%sig(n)   = buffer(i,j,k,n,3)
-                       AeroProps(i,j,k)%kap(n)   = buffer(i,j,k,n,4)
-                       AeroProps(i,j,k)%den(n)   = buffer(i,j,k,n,5)
-                       AeroProps(i,j,k)%fdust(n) = buffer(i,j,k,n,6)
-                       AeroProps(i,j,k)%fsoot(n) = buffer(i,j,k,n,7)
-                       AeroProps(i,j,k)%forg(n)  = buffer(i,j,k,n,8)
-                    end do
-                    AeroProps(i,j,k)%nmods       = n_modes                 ! no need of a 3D field: aero provider specific
-                 end do
-              end do
-           end do
-
-           deallocate(buffer, __STAT__)
-        end if
-
-        deallocate(aero_aci_modes, __STAT__)
-    end if
     call init_Aer(AeroAux)
     call init_Aer(AeroAux_b)
+
+   !============================================= Start Stratiform cloud processes==========================================
 
     DO J=1, JM
        DO I=1, IM
@@ -1240,7 +1106,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          END DO
       END DO
 
-         CNV_FRACTION = CNV_FRC
          ! find the minimun level for cloud micro calculations
          CNV_PLE  = PLE*.01
          PLO      = 0.5*(CNV_PLE(:,:,0:LM-1) +  CNV_PLE(:,:,1:LM  ) )
@@ -1311,10 +1176,10 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !!   make sure subcloud layer is at least 2 levels thick
       do j = 1,jm
          do i = 1,im
-            if(nint(kpblin(i,j)).ne.0) then
-               kpbl(i,j) = max(min(nint(kpblin(i,j))+1,LM-1), 1)
+            if(nint(KPBLIN(i,j)).ne.0) then
+               KPBL(i,j) = max(min(nint(KPBLIN(i,j))+1,LM-1), 1)
             else
-               kpbl(i,j) = LM-1
+               KPBL(i,j) = LM-1
             endif
          enddo
       enddo
@@ -1375,10 +1240,10 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        if (NPRE_FRAC > 0.0) then
          NPRE_FRAC_2d(:,:) = NPRE_FRAC
        else
-         ! include CNV_FRACTION dependence
+         ! include CNV_FRC dependence
          DO J=1, JM
             DO I=1, IM
-            NPRE_FRAC_2d(I,J) = CNV_FRACTION(I,J)*ABS(NPRE_FRAC) + (1-CNV_FRACTION(I,J))*0.05
+            NPRE_FRAC_2d(I,J) = CNV_FRC(I,J)*ABS(NPRE_FRAC) + (1-CNV_FRC(I,J))*0.05
             END DO
          END DO
        endif
@@ -1387,15 +1252,15 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (USE_AV_V .gt. 0.0) then   
             use_average_v = .true.
          end if
-        fdust_drop =  FDROP_DUST
-        fsoot_drop =  FDROP_SOOT
-        sigma_nuc_r8  = SIGMA_NUC
-     frachet_org =         ORG_INFAC
-     frachet_dust =         DUST_INFAC
-     frachet_bc =         BC_INFAC
-     frachet_ss =         SS_INFAC
+         fdust_drop   =  FDROP_DUST
+         fsoot_drop   =  FDROP_SOOT
+         sigma_nuc_r8 =  SIGMA_NUC
+         frachet_org  =  ORG_INFAC
+         frachet_dust =  DUST_INFAC
+         frachet_bc   =  BC_INFAC
+         frachet_ss   =  SS_INFAC
 
-        CFX=0.0
+          CFX=0.0
           where (QSS > 0.0) 
             CFX =Q1/(QSS)
           end where 
@@ -1404,8 +1269,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             xscale = (72000.0/imsize)            
             BKGTAU=  1.472/sqrt(1.0+ (xscale/6.0)) 
             BKGTAU = max((1.71 - BKGTAU), 0.0)*SWCIRRUS
-             
-      end if 
+         end if 
         
          do J=1,JM
             do I=1,IM
@@ -1423,13 +1287,11 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                      nhet_depr8 = 0.0
                      dust_immr8 = 0.0
                      dust_depr8 = 0.0
-                      so4x = 0.0
-                             dustx = 0.0
-                      bcx= 0.0
-                          orgx=0.0
-                          seasaltx=0.0
-                     
-                     
+                     so4x = 0.0
+                     dustx = 0.0
+                     bcx= 0.0
+                     orgx=0.0
+                     seasaltx=0.0
                      
                      uwind_gw(1,1:LM)           = min(0.5*SQRT( U1(I,J,1:LM)**2+  V1(I,J,1:LM)**2), 50.0)
                      tausurf_gw   = min(0.5*SQRT(TAUOROX(I , J)**2+TAUOROY(I , J)**2), 10.0) !limit to a very high value     
@@ -1439,62 +1301,59 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                      
                      
                      
-                      aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q1(i,j,LM)))) ! air_dens (kg m^-3)
-                      hfs = -SH  (i,j) ! W m^-2
-                      hfl = -EVAP(i,j) ! kg m^-2 s^-1
-                      aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
-                       aux3= ZLE(I, J, KPBL(I,J))           ! pbl height (m)
-                       !-convective velocity scale W* (m/s)
-                       ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
-                       ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s      
+                     aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q1(i,j,LM)))) ! air_dens (kg m^-3)
+                     hfs = -SH  (i,j) ! W m^-2
+                     hfl = -EVAP(i,j) ! kg m^-2 s^-1
+                     aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
+                     aux3= ZLE(I, J, KPBL(I,J))           ! pbl height (m)
+                     !-convective velocity scale W* (m/s)
+                     ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
+                     ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s      
              
-             
-                     
-                     pi_gw(1, 0:LM)        = 100.0*CNV_PLE(I,J,0:LM)                     
-                     theta_tr(1,1:LM)     = TH1(I,J,1:LM)
-                             rhoi_gw = 0.0  
-                     ni_gw   = 0.0 
-                     ti_gw   = 0.0                                         
-                     ter8(1,1:LM)      = TEMP(I,J,1:LM)   
-                             pi_gw(1, 0:LM)   = 100.0*CNV_PLE(I,J,0:LM) 
-                     plevr8(1,1:LM)    = 100.*PLO(I,J,:)
+                     pi_gw(1, 0:LM) = 100.0*CNV_PLE(I,J,0:LM)                     
+                     theta_tr(1,1:LM) = TH1(I,J,1:LM)
+                     rhoi_gw = 0.0  
+                     ni_gw = 0.0 
+                     ti_gw = 0.0                                         
+                     ter8(1,1:LM) = TEMP(I,J,1:LM)   
+                     pi_gw(1, 0:LM) = 100.0*CNV_PLE(I,J,0:LM) 
+                     plevr8(1,1:LM) = 100.*PLO(I,J,:)
                      ndropr8(1,1:LM) = NCPL(I, J, 1:LM)
-                            qir8(1,1:LM)     =  QILS(I, J,1:LM)+QICN(I, J,1:LM)
-                    qcr8(1,1:LM)     =  QLLS(I, J,1:LM)+QLCN(I, J,1:LM)
-                    npre8(1,1:LM)     = NPRE_FRAC_2d(I,J)*NCPI(I,J,1:LM)
-                    omegr8(1,1:LM)    = OMEGA(I,J,1:LM)  
-                    rad_cooling(1,1:LM) = RADLW(I,J,1:LM)+RADSW(I,J,1:LM)
-                    wparc_ls = 0.0
-                    wparc_gw = 0.0
-                    wparc_cgw= 0.0
-                    wparc_turb = 0.0
-                    swparc=0.0
-                    tm_gw =ter8
-                    pm_gw =plevr8
-                    pfrz_inc_r8 = 0.0
-                    Ksa1= 1.0
+                     qir8(1,1:LM) =  QILS(I, J,1:LM)+QICN(I, J,1:LM)
+                     qcr8(1,1:LM) =  QLLS(I, J,1:LM)+QLCN(I, J,1:LM)
+                     npre8(1,1:LM) = NPRE_FRAC_2d(I,J)*NCPI(I,J,1:LM)
+                     omegr8(1,1:LM) = OMEGA(I,J,1:LM)  
+                     rad_cooling(1,1:LM) = RADLW(I,J,1:LM)+RADSW(I,J,1:LM)
+                     wparc_ls = 0.0
+                     wparc_gw = 0.0
+                     wparc_cgw= 0.0
+                     wparc_turb = 0.0
+                     swparc=0.0
+                     tm_gw =ter8
+                     pm_gw =plevr8
+                     pfrz_inc_r8 = 0.0
+                     Ksa1= 1.0
                     
-                    if (FRLAND(I, J) .lt. 0.1) then 
+                     if (FRLAND(I, J) .lt. 0.1) then 
                          lc_turb(1,1:LM)   =  max(ALH(I,J,1:LM), MIN_ALH) 
                      else
                         lc_turb(1,1:LM)   =  max(ALH(I,J,1:LM), 50.0)
-                    end if 
+                     end if 
                          
-                    where ((npre8 .gt. 0.0)   .and. (qir8 .gt. 0.0))
+                     where ((npre8 .gt. 0.0)   .and. (qir8 .gt. 0.0))
                          dpre8    = ( qir8/(5400.0*npre8*MAPL_PI))**(0.33) !Assume exponential distribution
-                    elsewhere
+                     elsewhere
                         dpre8=1.0e-9
-                   end where
+                    end where
 
-                   call   gw_prof (1, LM, 1, tm_gw, pm_gw, pi_gw, &
-                                 rhoi_gw, ni_gw, ti_gw, nm_gw) !get Brunt_Vaisala Frequency and midpoint densities 
+                    call   gw_prof (1, LM, 1, tm_gw, pm_gw, pi_gw, &
+                                  rhoi_gw, ni_gw, ti_gw, nm_gw) !get Brunt_Vaisala Frequency and midpoint densities 
 
                     kcldtopcvn=KCT(I, J)
-                            Nct =nm_gw(1, kcldtopcvn)      !BV frequency ar cloud top
+                    Nct =nm_gw(1, kcldtopcvn)      !BV frequency ar cloud top
                     Wct = max(CNV_CVW(I, J, kcldtopcvn), 0.0)
                     fcn = maxval(CNV_UPDF(I, J, kcldtopcvn:LM))    
-
-                            kbmin= min(KCBL(I, J), LM -1)-2
+                    kbmin= min(KCBL(I, J), LM -1)-2
                     maxkhpbl=maxval(KH(I, J, kbmin:LM-1))    
                     
                ! ==========================================================================================    
@@ -1522,30 +1381,23 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                                        
                      if (K .ge.  kcldtopcvn) wparc_cgw(1, K) = 0.0                     
                     
-
-                        
                          if (USE_NATURE_WSUB .gt. 0.) then !use climatology from the Nature run (only for cirrus)
                                  
                                   !wparc_cgw(1, k)= max(WSUB_NATURE(I, J, K)+BKGTAU*BKGTAU, 0.0)!BKG accounts for unresolved vertical velocity at 7 km                            
-      
                                    wparc_cgw(1, k)= max(WSUB_NATURE(I, J, K)*BKGTAU*BKGTAU, 0.0)!BKG accounts for unresolved vertical velocity at 7 km                            
-      
                                    wparc_gw(1, k) = 0.0
-
                         end if 
 
-                             swparc(1, K)=sqrt(wparc_gw(1, K)+wparc_turb(1, K)+ wparc_cgw(1, K))
- 
-                        
+                        swparc(1, K)=sqrt(wparc_gw(1, K)+wparc_turb(1, K)+ wparc_cgw(1, K))
                                 
                        !Supersaturations to calculate CCN diagnostics
                         ccn_diag(1)=0.001
                         ccn_diag(2)=0.004
                         ccn_diag(3)=0.01
 
-                         AeroAux%nmods = 0
-                         AeroAux%num   = 0.0
-                         do i_src_mode = 1, AeroProps(I,J,K)%nmods
+                        AeroAux%nmods = 0
+                        AeroAux%num   = 0.0
+                        do i_src_mode = 1, AeroProps(I,J,K)%nmods
                             if (AeroProps(I,J,K)%num(i_src_mode) > 0.1) then
                                AeroAux%nmods = AeroAux%nmods + 1
                                i_dst_mode = AeroAux%nmods
@@ -1558,12 +1410,11 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                AeroAux%fdust(i_dst_mode) = AeroProps(I,J,K)%fdust(i_src_mode)
                                AeroAux%fsoot(i_dst_mode) = AeroProps(I,J,K)%fsoot(i_src_mode)
                                AeroAux%forg(i_dst_mode)  = AeroProps(I,J,K)%forg(i_src_mode)
-                             end if
+                            end if
                         end do
 
-                       rh1_r8=CFX(I, J, K)
-                       
-                             tauxr8 = ter8(1, K)
+                        rh1_r8=CFX(I, J, K)
+                        tauxr8 = ter8(1, K)
                              
                      !!Subroutine aerosol_activate contains the CCN activation and ice nucleation parameterizations. Lives in aer_cloud.F90.
 
@@ -1579,7 +1430,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       CCN04(I, J, K) = max(ccn_diag(2), 0.0)
                       CCN1 (I, J, K) = max(ccn_diag(3), 0.0)
                       
-                      if (K .ge. kbmin-6) npccninr8(1, K) = max(npccninr8(1, K), (1.0-CNV_FRACTION(I, J))*MINCDNC*1.e6)
+                      if (K .ge. kbmin-6) npccninr8(1, K) = max(npccninr8(1, K), (1.0-CNV_FRC(I, J))*MINCDNC*1.e6)
                        
                end do
 
@@ -1778,9 +1629,9 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          FQAL = 0.0
          FQA  = 0.0 
          QCNTOT = QLCN+QICN
-         QTOT   =  QCNTOT+ QLLS+QILS
-         QL_TOT  = QLCN+QLLS 
-         QI_TOT  = QICN+QILS   
+         QL_TOT = QLCN+QLLS 
+         QI_TOT = QICN+QILS 
+         QTOT   = QL_TOT+QI_TOT
 
          where (QTOT .gt. 0.0)
             FQA= min(max(QCNTOT/QTOT, 0.0), 1.0)    
@@ -1937,13 +1788,11 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          qgtendr8 =  0.0_r8
          ngtendr8 =  0.0_r8
      
-         !accre_enhanr8= 1.0_r8 
-         
          accre_enhanr8= ACC_ENH
          accre_enhan_icer8= ACC_ENH_ICE
          QCVAR_EXP = 2.0
          autscx = 1.0
-         
+ 
          do J=1,JM
             do I=1,IM
 
@@ -1955,33 +1804,31 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                rndstr8 = 2.0e-7
                naconr8   = 0.
 
-               cldfr8(1,1:LM)      = RAD_CF(I,J,1:LM) !Assume minimum overlap 
-             
-               liqcldfr8(1,1:LM)  = CFLIQ(I, J,1:LM) 
-               icecldfr8(1,1:LM)  = CFICE(I, J,1:LM) 
+                  cldfr8(1,1:LM)  = RAD_CF(I,J,1:LM) !Assume minimum overlap 
+               liqcldfr8(1,1:LM)  =  CFLIQ(I,J,1:LM) 
+               icecldfr8(1,1:LM)  =  CFICE(I,J,1:LM) 
                  
-               cldor8           = cldfr8  
-               ter8(1,1:LM)        = TEMP(I,J,1:LM)
-               qvr8(1,1:LM)        = Q1(I,J,1:LM)
+                  cldor8          = cldfr8  
+               ter8(1,1:LM)       = TEMP(I,J,1:LM)
+               qvr8(1,1:LM)       =   Q1(I,J,1:LM)
 
-               qcr8(1,1:LM)        = QL_TOT(I,J,1:LM)
-               qir8(1,1:LM)        = QI_TOT(I,J,1:LM)
-               ncr8(1,1:LM)        = MAX(NCPL(I,J,1:LM), 0.0) 
-               nir8(1,1:LM)        = MAX(NCPI(I,J,1:LM), 0.0) 
+               qcr8(1,1:LM)        =     QL_TOT(I,J,1:LM)
+               qir8(1,1:LM)        =     QI_TOT(I,J,1:LM)
+               ncr8(1,1:LM)        = MAX(  NCPL(I,J,1:LM), 0.0) 
+               nir8(1,1:LM)        = MAX(  NCPI(I,J,1:LM), 0.0) 
 
                ! Nucleation  tendencies 
-               naair8(1,1:LM)     = max((INC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - nir8(1,1:LM))/DT_MOIST, 0.0) 
+               naair8(1,1:LM)     = max(( INC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - nir8(1,1:LM))/DT_MOIST, 0.0) 
                npccninr8(1,1:LM)  = max((CDNC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - ncr8(1,1:LM))/DT_MOIST, 0.0)
                
                where  ((naair8 .gt. 1.0e3)) ! add cloud fraction if nucleation is happening 2018
                    icecldfr8 = max(0.05,  icecldfr8)
                end where 
-             
 
                where (cldfr8(1,:) .ge. 0.001) 
-                  nimmr8(1,1:LM)     = MIN(DNHET_IMM(I, J, 1:LM), ncr8(1,1:LM)/cldfr8(1,1:LM)/DT_MOIST) !tendency    
+                  nimmr8(1,1:LM) = MIN(DNHET_IMM(I, J, 1:LM), ncr8(1,1:LM)/cldfr8(1,1:LM)/DT_MOIST) !tendency    
                elsewhere 
-                  nimmr8(1,1:LM)   = 0.0 
+                  nimmr8(1,1:LM) = 0.0 
                end where
                
                nhet_depr8(1,1:LM) = NHET_DEP(I, J, 1:LM)/DT_MOIST !becomes a tendency (could be done a bit better)
@@ -1999,7 +1846,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   rndstr8( 1, K, 1:naux)=AeroAux_b%dpg(1:naux)/2.0
 
                   ! Get black carbon properties for contact ice nucleation      
-                  call init_Aer(AeroAux_b)   
                   call getINsubset(2,  AeroAux, AeroAux_b)          
                   nsootr8  (1, K)  = sum(AeroAux_b%num) !
                   naux = AeroAux_b%nmods 
@@ -2015,19 +1861,17 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                ficer8 = qir8 /( qcr8+qir8 + 1.e-10 )  
                omegr8(1,1:LM)=WSUB(I, J, 1:LM)
                
-               
                !Tuning factors
                disp_liu = LIU_MU
                ui_scale = UISCALE
                urscale  = URSCALE
                ts_autice = DT_R8*TS_AUTO_ICE 
                
-               
                if (AUTSC .gt. 0.0) then 
                   autscx = AUTSC
                else
-                autscx =  min(max(0., (300.0 - TEMP(I,J,LM))/ABS(AUTSC)), 1.0)
-                autscx  =  1.0 - 0.995*autscx
+                  autscx =  min(max(0., (300.0 - TEMP(I,J,LM))/ABS(AUTSC)), 1.0)
+                  autscx  =  1.0 - 0.995*autscx
                end if
                
                if (MTIME .le. 0.0) then 
@@ -2037,33 +1881,28 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                end if 
   
   !!!!================Estimate qcvar following Xie and Zhang, JGR, 2015
-                HMOIST_950 = 0.0
-                HSMOIST_500 = 0.0
-                              
+                 HMOIST_950 = 0.0
+                 HSMOIST_500 = 0.0
                  IF (PLO(I, J, LM) .le. 500.0) then                                        
-                      qcvarr8  = 2.0
+                    qcvarr8  = 2.0
                  ELSEIF (PLO(I, J, LM) .lt. 950.0) then 
-                   
                     DO K=LM, 1, -1       
                          if (PLO(I,J,K) .lt. 500.0) exit  
                          HSMOIST_500 = MAPL_CP*TEMP(I, J, K) + GZLO(I, J, K) + QST3(I, J, K)*MAPL_ALHL
                     END DO 
-                            
-                      HMOIST_950 = MAPL_CP*TEMP(I, J, LM) + GZLO(I, J, LM) + Q1(I, J, LM)*MAPL_ALHL               
-                      SINST = (HMOIST_950 -  HSMOIST_500)/(PLO(I,J,LM)*100.0- 50000.0)                   
-                  else
-                     DO K=LM, 1, -1       
+                    HMOIST_950 = MAPL_CP*TEMP(I, J, LM) + GZLO(I, J, LM) + Q1(I, J, LM)*MAPL_ALHL               
+                    SINST = (HMOIST_950 -  HSMOIST_500)/(PLO(I,J,LM)*100.0- 50000.0)                   
+                 ELSE
+                    DO K=LM, 1, -1       
                          if (PLO(I,J,K) .lt. 500.0) exit  
                          HSMOIST_500 = MAPL_CP*TEMP(I, J, K) + GZLO(I, J, K) + QST3(I, J, K)*MAPL_ALHL
                     END DO 
-
                     DO K=LM, 1, -1       
-                     if (PLO(I,J,K) .lt. 950.0) exit  
-                     HMOIST_950 = MAPL_CP*TEMP(I, J, K) + GZLO(I, J, K) + Q1(I, J, K)*MAPL_ALHL
+                         if (PLO(I,J,K) .lt. 950.0) exit  
+                         HMOIST_950 = MAPL_CP*TEMP(I, J, K) + GZLO(I, J, K) + Q1(I, J, K)*MAPL_ALHL
                     END DO                                          
-                     SINST = (HMOIST_950 -  HSMOIST_500)/45000.0                  
-               
-                   end if  
+                    SINST = (HMOIST_950 -  HSMOIST_500)/45000.0                  
+                  ENDIF
                
                   xscale = (36000.0/imsize)**(-0.666)
                   qcvarr8 =  0.67 -0.38*SINST +  4.96*xscale - 8.32*SINST*xscale  
@@ -2071,34 +1910,24 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   if (associated(QCVAR_EXP)) QCVAR_EXP(I, J) = real(qcvarr8)
                   relvarr8 = qcvarr8
                   
-                
                ! for MG23 (initial values)     
-                        frzimmr8 =  nimmr8
-                        frzcntr8 = nimmr8*0.0  
-                        frzdepr8 = nhet_depr8
-                        qrr8(1,1:LM)     =  QRAIN(I, J,1:LM)
-                        qsr8(1,1:LM)     =  QSNOW(I, J,1:LM)
-                        qgr8(1,1:LM)     =  QGRAUPEL(I, J,1:LM)                        
-                        nrr8(1,1:LM)     =  NRAIN(I, J,1:LM)
-                        nsr8(1,1:LM)     =  NSNOW(I, J,1:LM)
-                        ngr8(1,1:LM)     =  NGRAUPEL(I, J,1:LM)                         
-                        qsatfacr8 = 1.0                        
-                        SCICE_tmp(1,1:LM)  =  SC_ICE(I, J, 1:LM)
-                        FQA_tmp(1,1:LM)  = FQA(I, J, 1:LM) 
-                        ALPH_tmp(1,1:LM)  = ALPHT_X(I, J, 1:LM)
+                  frzimmr8 =  nimmr8
+                  frzcntr8 = nimmr8*0.0  
+                  frzdepr8 = nhet_depr8
+                  qrr8(1,1:LM)     =  QRAIN(I, J,1:LM)
+                  qsr8(1,1:LM)     =  QSNOW(I, J,1:LM)
+                  qgr8(1,1:LM)     =  QGRAUPEL(I, J,1:LM)                        
+                  nrr8(1,1:LM)     =  NRAIN(I, J,1:LM)
+                  nsr8(1,1:LM)     =  NSNOW(I, J,1:LM)
+                  ngr8(1,1:LM)     =  NGRAUPEL(I, J,1:LM)                         
+                  qsatfacr8 = 1.0                        
+                  SCICE_tmp(1,1:LM)  =  SC_ICE(I, J, 1:LM)
+                  FQA_tmp(1,1:LM)  = FQA(I, J, 1:LM) 
+                  ALPH_tmp(1,1:LM)  = ALPHT_X(I, J, 1:LM)
                    
-                   
-
- 
-     
-     
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      
   !CALLS to MG versions
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  
-  
-!!!Call to MG microphysics. Lives in cldwat2m_micro.F90
-
                
    if (MGVERSION .lt. 2)  then          
                
@@ -2282,12 +2111,11 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
                !diagnostics for number concentration budget (all grid-average, Kg-1 s-1)
               
-
-               DNDCCN(I,J,1:LM)       = REAL(npccnor8(1,1:LM))   !droplet number tendency from CCN activation
-               DNDACRLS(I,J,1:LM)     = REAL(npsacwsor8(1,1:LM)) !droplet number tendency from accretion by snow
-               DNDACRLR(I,J,1:LM)     = REAL(npraor8(1,1:LM))    !droplet number tendency from accretion by rain
-               DNDEVAPC(I,J,1:LM)     = REAL(nsubcor8(1,1:LM))   !droplet number tendency from evaporation 
-               DNDAUTLIQ(I,J,1:LM)    = REAL(nprc1or8(1,1:LM))   !droplet number tendency from autoconversion
+               DNDCCN(I,J,1:LM)        = REAL(npccnor8(1,1:LM))   !droplet number tendency from CCN activation
+               DNDACRLS(I,J,1:LM)      = REAL(npsacwsor8(1,1:LM)) !droplet number tendency from accretion by snow
+               DNDACRLR(I,J,1:LM)      = REAL(npraor8(1,1:LM))    !droplet number tendency from accretion by rain
+               DNDEVAPC(I,J,1:LM)      = REAL(nsubcor8(1,1:LM))   !droplet number tendency from evaporation 
+               DNDAUTLIQ(I,J,1:LM)     = REAL(nprc1or8(1,1:LM))   !droplet number tendency from autoconversion
                
                DNCACRIS (I,J,1:LM)     = REAL(npraior8(1,1:LM))  !ice number tendency from accretion by snow
                DNHET_CT(I,J,1:LM)      = REAL(nnucctor8(1,1:LM)) !ice number tendency from contact IN  
@@ -2297,18 +2125,11 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                DNCAUTICE (I,J,1:LM)    = REAL(nprcior8(1,1:LM))  !ice number tendency from autoconversion
                DNCHMSPLIT(I,J,1:LM)    = REAL(nsacwior8(1,1:LM)) !ice number tendency from H-M process
 
-               ! Total tendencies
-
-               
-               DQVDT_micro(I,J,1:LM)   = REAL(qvlatr8(1,1:LM))  
-               DQIDT_micro(I,J,1:LM)   = REAL(qitendr8(1,1:LM))   
-               DQLDT_micro(I,J,1:LM)   = REAL(qctendr8(1,1:LM) )    
-               DTDT_micro(I,J,1:LM)    = REAL((tlatr8(1,1:LM) / MAPL_CP))
-               DNDCCN(I,J,1:LM)       = REAL(npccnor8(1,1:LM))   !droplet number tendency from CCN activation
-               DNDACRLS(I,J,1:LM)     = REAL(npsacwsor8(1,1:LM) )!droplet number tendency from accretion by snow
-               DNDACRLR(I,J,1:LM)     = REAL(npraor8(1,1:LM))    !droplet number tendency from accretion by rain
-               DNDEVAPC(I,J,1:LM)     = REAL(nsubcor8(1,1:LM))   !droplet number tendency from evaporation 
-               DNDAUTLIQ(I,J,1:LM)    = REAL(nprc1or8(1,1:LM))   !droplet number tendency from autoconversion
+               DNDCCN(I,J,1:LM)        = REAL(npccnor8(1,1:LM))   !droplet number tendency from CCN activation
+               DNDACRLS(I,J,1:LM)      = REAL(npsacwsor8(1,1:LM) )!droplet number tendency from accretion by snow
+               DNDACRLR(I,J,1:LM)      = REAL(npraor8(1,1:LM))    !droplet number tendency from accretion by rain
+               DNDEVAPC(I,J,1:LM)      = REAL(nsubcor8(1,1:LM))   !droplet number tendency from evaporation 
+               DNDAUTLIQ(I,J,1:LM)     = REAL(nprc1or8(1,1:LM))   !droplet number tendency from autoconversion
 
             enddo !I
          enddo !J
@@ -2323,11 +2144,10 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
          !============ Put cloud fraction back in contact with the PDF and create new condensate if neccesary (Barahona et al., GMD, 2014)============
 
- DLPDF_X=  QLLS +QLCN
- DIPDF_X =  QILS +QICN
-
-do K= 1, LM
-   do J=1,JM
+    DLPDF_X=  QLLS +QLCN
+    DIPDF_X=  QILS +QICN
+    do K= 1, LM
+       do J=1,JM
             do I=1,IM
                   call update_cld( &
                          DT_MOIST                , &
@@ -2349,12 +2169,10 @@ do K= 1, LM
                          .TRUE.)
               
            end do 
-        end do
-  end do 
-  
-  
-   DLPDF_X=((QLLS+QLCN)  - DLPDF_X)/DT_MOIST
-   DIPDF_X=((QILS+QICN)  - DIPDF_X)/DT_MOIST
+       end do
+    end do 
+    DLPDF_X=((QLLS+QLCN) - DLPDF_X)/DT_MOIST
+    DIPDF_X=((QILS+QICN) - DIPDF_X)/DT_MOIST
 
          ! Make sure ice and liquid stay within T limits  
 
@@ -2533,15 +2351,13 @@ do K= 1, LM
             END DO
          END DO
 
-    
       !=====Tune area cloud fraction of extended PBL clouds. Area cloud fraction may be different from Volume cloud fraction 
          FQA= 0.0
          where (RAD_CF .gt. 0.0)
               FQA =  CLCN/RAD_CF
          end where
-         
-       
- 
+
+#ifdef SKIP 
          DO I=1, IM
             DO J = 1, JM    
 
@@ -2564,7 +2380,7 @@ do K= 1, LM
                           
                            USURF = USURF*fracover + 1.0-fracover   !only near the surface                                  
                            USURF = USURF*cfc_aux + 1.0-cfc_aux !only for the subtropics                          
-                           USURF =  usurf+ (1.0-USURF)*CNV_FRACTION(I, J) !only non-convective
+                           USURF =  usurf+ (1.0-USURF)*CNV_FRC(I, J) !only non-convective
                                             
                            RAD_CF(I, J, K)=RAD_CF(I, J, K)**USURF                                                                
                      END IF
@@ -2574,24 +2390,21 @@ do K= 1, LM
 
             end do
          end do
+#endif
          
-    
-           CLCN   =  FQA*RAD_CF
-           CLLS =  (1.0-FQA)*RAD_CF   
+      CLCN =       FQA *RAD_CF
+      CLLS =  (1.0-FQA)*RAD_CF   
 
-       WHERE (QTOT .gt. 1.0e-12) 
-            CFLIQ=RAD_CF*QL_TOT/QTOT
-            CFICE=RAD_CF*QI_TOT/QTOT
-        END WHERE
+      WHERE (QTOT .gt. 1.0e-12) 
+           CFLIQ=RAD_CF*QL_TOT/QTOT
+           CFICE=RAD_CF*QI_TOT/QTOT
+      END WHERE
          
-      if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
-
       ! Clean up Relative Humidity where RH > 110%
       !---------------------------------------------
       if (CLEANUP_RH == 1)  then
 
          RHEXCESS = 1.1
-
 
          !-----If using 2-moment microphysics, allow for supersaturation w.r.t ice ---
 
@@ -2608,19 +2421,16 @@ do K= 1, LM
             RHICE=0.0
          end where
 
-
          QSS  = GEOS_QsatLQU(         &
               TEMP   , &
               PLO*100.0 , DQ=DQSDT     ) !clean up only with respect to liquid water  DONIF
          if (associated(RHLIQ    ))   RHLIQ     =  Q1/QSS  !DONIF
-
 
          where ( Q1 > RHEXCESS*QSS )
             DQS = (Q1 - RHEXCESS*QSS)/( 1.0 + RHEXCESS*DQSDT*MAPL_ALHL/MAPL_CP )
          elsewhere
             DQS = 0.0
          endwhere
-
 
          Q1      =  Q1    - DQS
          TEMP    =  TEMP  + (MAPL_ALHL/MAPL_CP)*DQS
@@ -2632,9 +2442,9 @@ do K= 1, LM
          ER_PRCP =  0.0
       ENDIF
 
-      if (associated(CCNCOLUMN    ))   CCNCOLUMN      = SUM(CCN1*MASS/(100.*PLO*r_air/TEMP) , 3)
-      if (associated(NDCOLUMN    ))    NDCOLUMN      =  SUM(NCPL_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
-      if (associated(NCCOLUMN    ))    NCCOLUMN      =SUM(NCPI_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
+      if (associated(CCNCOLUMN))   CCNCOLUMN  = SUM(    CCN1*MASS/(100.*PLO*r_air/TEMP) , 3)
+      if (associated(NDCOLUMN ))    NDCOLUMN  = SUM(NCPL_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
+      if (associated(NCCOLUMN ))    NCCOLUMN  = SUM(NCPI_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
 
       ! Update microphysics tendencies
       if (associated(DQVDT_micro)) DQVDT_micro = ( Q1         - DQVDT_micro) / DT_MOIST
