@@ -80,10 +80,8 @@ real, allocatable :: alpha(:)
 ! Minimum non-zero stress.
 real(GW_PRC), parameter :: taumin = 1.e-10_GW_PRC
 ! Maximum wind tendency from stress divergence (before efficiency applied).
-!! 400 m/s/day
-!real(GW_PRC), parameter :: tndmax = 400._GW_PRC / 86400._GW_PRC
-! 80 m/s/day
-real(GW_PRC), parameter :: tndmax = 80._GW_PRC / 86400._GW_PRC
+! 400 m/s/day
+real(GW_PRC), parameter :: tndmax = 400._GW_PRC / 86400._GW_PRC
 ! Maximum allowed change in u-c (before efficiency applied).
 real(GW_PRC), parameter :: umcfac = 0.5_GW_PRC
 ! Minimum value of (u-c)**2.

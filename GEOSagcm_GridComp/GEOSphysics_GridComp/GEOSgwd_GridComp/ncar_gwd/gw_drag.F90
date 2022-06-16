@@ -44,7 +44,6 @@ module gw_drag_ncar
   real, parameter :: TAUBGND = 6.4            ! background source strength (/TAUSCAL)
   real, parameter :: TAUMIN  = 1.e-10         ! minimum (nonzero) stress
   real, parameter :: TAUSCAL = 0.001          ! scale factor for background stress source
-  real, parameter :: TNDMAX  = 500. / 86400.  ! maximum wind tendency
   real, parameter :: UMCFAC  = 0.5            ! factor to limit tendency to prevent reversing u-c
   real, parameter :: UBMC2MN = 0.01           ! min (u-c)**2
   real, parameter :: ZLDVCON = 10.            ! constant for determining zldv from tau0

@@ -902,7 +902,7 @@ contains
          NCAR_QBO_HDEPTH_SCALING = min( imsize/1440.0 , 1.0 )
          call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, RC=STATUS)
          VERIFY_(STATUS)
-         NCAR_HR_CF = max( 40.0*360.0/imsize , 1.0 )
+         NCAR_HR_CF = max( 20.0*360.0/imsize , 1.0 )
          call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, RC=STATUS)
          VERIFY_(STATUS)
 

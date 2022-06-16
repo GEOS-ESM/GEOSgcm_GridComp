@@ -263,8 +263,6 @@ subroutine gw_rdg_ifc( &
    real :: pint_adj(ncol,pver+1)
    real :: zfac_layer
 
-   logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
-
    character(len=4) :: type         ! BETA or GAMMA (just BETA for now)
    character(len=1) :: cn
    character(len=9) :: fname(4)
