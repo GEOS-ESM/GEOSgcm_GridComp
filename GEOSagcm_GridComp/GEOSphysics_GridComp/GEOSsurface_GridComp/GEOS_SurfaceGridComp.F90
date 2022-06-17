@@ -642,13 +642,41 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_nearinfraed_diffuse', &
+        LONG_NAME          = 'surface_albedo_for_nearinfrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        LONG_NAME          = 'surface_albedo_for_visible_beam_for_Solar_REFRESH',   &
+        UNITS              = '1',                                 &
+        SHORT_NAME         = 'ALBVR_REF',                         &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,            __RC__)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        LONG_NAME          = 'surface_albedo_for_visible_diffuse_for_Solar_REFRESH',&
+        UNITS              = '1',                                 &
+        SHORT_NAME         = 'ALBVF_REF',                         &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,            __RC__)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        LONG_NAME          = 'surface_albedo_for_nearinfrared_beam_for_Solar_REFRESH', &
+        UNITS              = '1',                                 &
+        SHORT_NAME         = 'ALBNR_REF',                         &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,            __RC__)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        LONG_NAME          = 'surface_albedo_for_nearinfrared_diffuse_for_Solar_REFRESH', &
+        UNITS              = '1',                                 &
+        SHORT_NAME         = 'ALBNF_REF',                         &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,            __RC__)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'EMIS',                              &
@@ -4862,6 +4890,10 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: ALBVF     => NULL()
     real, pointer, dimension(:,:) :: ALBNF     => NULL()
     real, pointer, dimension(:,:) :: ALBNR     => NULL()
+    real, pointer, dimension(:,:) :: ALBVR_REF => NULL()
+    real, pointer, dimension(:,:) :: ALBVF_REF => NULL()
+    real, pointer, dimension(:,:) :: ALBNF_REF => NULL()
+    real, pointer, dimension(:,:) :: ALBNR_REF => NULL()
     real, pointer, dimension(:,:) :: DELSS     => NULL()
     real, pointer, dimension(:,:) :: DELUS     => NULL()
     real, pointer, dimension(:,:) :: DELVS     => NULL()
@@ -5164,6 +5196,10 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: ALBVFTILE    => NULL()
     real, pointer, dimension(:) :: ALBNFTILE    => NULL()
     real, pointer, dimension(:) :: ALBNRTILE    => NULL()
+    real, pointer, dimension(:) :: ALBVRTILE_REF=> NULL()
+    real, pointer, dimension(:) :: ALBVFTILE_REF=> NULL()
+    real, pointer, dimension(:) :: ALBNFTILE_REF=> NULL()
+    real, pointer, dimension(:) :: ALBNRTILE_REF=> NULL()
     real, pointer, dimension(:) :: DTSTILE      => NULL()
     real, pointer, dimension(:) :: DQSTILE      => NULL()
     real, pointer, dimension(:) :: TSOIL1TILE   => NULL()
@@ -5936,6 +5972,10 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , ALBVF   , 'ALBVF'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , ALBNR   , 'ALBNR'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , ALBNF   , 'ALBNF'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ALBVR_REF, 'ALBVR_REF', __RC__)
+    call MAPL_GetPointer(EXPORT, ALBVF_REF, 'ALBVF_REF', __RC__)
+    call MAPL_GetPointer(EXPORT, ALBNR_REF, 'ALBNR_REF', __RC__)
+    call MAPL_GetPointer(EXPORT, ALBNF_REF, 'ALBNF_REF', __RC__)
     call MAPL_GetPointer(EXPORT  , EMISS   , 'EMIS'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DELSS   , 'DELSS'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DELUS   , 'DELUS'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6542,6 +6582,10 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(ALBVF   ,ALBVFTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(ALBNR   ,ALBNRTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(ALBNF   ,ALBNFTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(ALBVR_REF,ALBVRTILE_REF,NT,__RC__)
+    call MKTILE(ALBVF_REF,ALBVFTILE_REF,NT,__RC__)
+    call MKTILE(ALBNR_REF,ALBNRTILE_REF,NT,__RC__)
+    call MKTILE(ALBNF_REF,ALBNFTILE_REF,NT,__RC__)
     call MKTILE(EMISS   ,EMISSTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(FRI     ,FRTILE      ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TSOIL1  ,TSOIL1TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -6894,6 +6938,20 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM,  ALBNF,  ALBNFTILE, RC=STATUS) 
        VERIFY_(STATUS)                                             
     endif
+
+    if (associated(ALBVR_REF)) then
+       call MAPL_LocStreamTransform (LOCSTREAM, ALBVR_REF, ALBVRTILE_REF, __RC__) 
+    endif
+    if (associated(ALBVF_REF)) then
+       call MAPL_LocStreamTransform (LOCSTREAM, ALBVF_REF, ALBVFTILE_REF, __RC__) 
+    endif
+    if (associated(ALBNR_REF)) then
+       call MAPL_LocStreamTransform (LOCSTREAM, ALBNR_REF, ALBNRTILE_REF, __RC__) 
+    endif
+    if (associated(ALBNF_REF)) then
+       call MAPL_LocStreamTransform (LOCSTREAM, ALBNF_REF, ALBNFTILE_REF, __RC__) 
+    endif
+
     if(associated( EMISS)) then
        call MAPL_LocStreamTransform( LOCSTREAM,  EMISS,  EMISSTILE, RC=STATUS) 
        VERIFY_(STATUS)
@@ -8100,6 +8158,10 @@ module GEOS_SurfaceGridCompMod
     if(associated(ALBNRTILE ))  deallocate(ALBNRTILE)
     if(associated(ALBVFTILE ))  deallocate(ALBVFTILE)
     if(associated(ALBVRTILE ))  deallocate(ALBVRTILE)
+    if(associated(ALBNFTILE_REF)) deallocate(ALBNFTILE_REF)
+    if(associated(ALBNRTILE_REF)) deallocate(ALBNRTILE_REF)
+    if(associated(ALBVFTILE_REF)) deallocate(ALBVFTILE_REF)
+    if(associated(ALBVRTILE_REF)) deallocate(ALBVRTILE_REF)
     if(associated(EMISSTILE ))  deallocate(EMISSTILE)
     if(associated(FRTILE    ))  deallocate(FRTILE   )
 
@@ -8607,6 +8669,12 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'ALBNF'  , ALLOC=associated(ALBNFTILE)  , RC=STATUS)
       VERIFY_(STATUS)
+
+      call MAPL_GetPointer(GEX(type), dum, 'ALBVR_REF', ALLOC=associated(ALBVRTILE_REF), __RC__)
+      call MAPL_GetPointer(GEX(type), dum, 'ALBVF_REF', ALLOC=associated(ALBVFTILE_REF), __RC__)
+      call MAPL_GetPointer(GEX(type), dum, 'ALBNR_REF', ALLOC=associated(ALBNRTILE_REF), __RC__)
+      call MAPL_GetPointer(GEX(type), dum, 'ALBNF_REF', ALLOC=associated(ALBNFTILE_REF), __RC__)
+
       call MAPL_GetPointer(GEX(type), dum, 'EMIS'   , ALLOC=associated(EMISSTILE)  , RC=STATUS)
       VERIFY_(STATUS)
 
@@ -8656,6 +8724,18 @@ module GEOS_SurfaceGridCompMod
       if(associated(ALBNFTILE)) then
          call FILLOUT_TILE(GEX(type), 'ALBNF',   ALBNFTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
+      end if
+      if(associated(ALBVRTILE_REF)) then
+         call FILLOUT_TILE(GEX(type), 'ALBVR_REF', ALBVRTILE_REF, XFORM, __RC__)
+      end if
+      if(associated(ALBVFTILE_REF)) then
+         call FILLOUT_TILE(GEX(type), 'ALBVF_REF', ALBVFTILE_REF, XFORM, __RC__)
+      end if
+      if(associated(ALBNRTILE_REF)) then
+         call FILLOUT_TILE(GEX(type), 'ALBNR_REF', ALBNRTILE_REF, XFORM, __RC__)
+      end if
+      if(associated(ALBNFTILE_REF)) then
+         call FILLOUT_TILE(GEX(type), 'ALBNF_REF', ALBNFTILE_REF, XFORM, __RC__)
       end if
       if(associated(EMISSTILE)) then
          call FILLOUT_TILE(GEX(type), 'EMIS',    EMISSTILE, XFORM, RC=STATUS)

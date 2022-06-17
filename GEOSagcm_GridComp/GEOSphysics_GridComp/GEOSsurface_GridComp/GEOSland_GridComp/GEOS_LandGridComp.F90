@@ -269,6 +269,10 @@ contains
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBVR_REF', CHILD_ID = CATCH(1), __RC__)
+       call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBVF_REF', CHILD_ID = CATCH(1), __RC__)
+       call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBNR_REF', CHILD_ID = CATCH(1), __RC__)
+       call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBNF_REF', CHILD_ID = CATCH(1), __RC__)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EMIS', &
             CHILD_ID = CATCH(1), &
@@ -953,6 +957,13 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBNF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+
+! PMN: not implemented for CatchCN yet
+!      call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBVR_REF', CHILD_ID = CATCHCN(1), __RC__)
+!      call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBVF_REF', CHILD_ID = CATCHCN(1), __RC__)
+!      call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBNR_REF', CHILD_ID = CATCHCN(1), __RC__)
+!      call MAPL_AddExportSpec (GC, SHORT_NAME = 'ALBNF_REF', CHILD_ID = CATCHCN(1), __RC__)
+
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EMIS',     CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOWMASS', CHILD_ID = CATCHCN(1), RC=STATUS  )
