@@ -1794,18 +1794,21 @@ contains
             CURRENT_TIME, DATA_FR, ON_TILES=.true., RC=STATUS)
        VERIFY_(STATUS)
 
-       where(mystate%mask) ! we are operating over great lakes and Caspian sea (set by mask)
-          TS(:,WATER) = DATA_SST
-          where(data_fr > mystate%tol_frice) !have lake ice
-             TS(:,ICE)   = Tfreeze
-             FR(:,WATER) = 1.0-DATA_FR
-             FR(:,ICE)   = DATA_FR
-          elsewhere ! water
+       do I=1,NT
+          if(mystate%mask(i)) then
+             ! we are operating over the 'observed' lake: Great Lakes and Caspian Sea (set by mask)
+             TS(I,WATER) = DATA_SST(I)
+             if (data_fr(i) > mystate%tol_frice) then !have lake ice
+                TS(I,ICE)   = Tfreeze
+                FR(I,WATER) = 1.0-DATA_FR(I)
+                FR(I,ICE)   = DATA_FR(I)
+             end if
+          else ! water
              ! we are not changing TS(:,ICE)
-             FR(:,WATER) = 1.0
-             FR(:,ICE)   = 0.0
-          end where
-       end where
+             FR(I,WATER) = 1.0
+             FR(I,ICE)   = 0.0
+          end if
+       end do
 
        deallocate(DATA_SST, DATA_FR)
     end if
@@ -1869,7 +1872,10 @@ contains
 ! Update Ice fraction
 !--------------------
     do I=1,NT
-       if(mystate%mask(i)) cycle 
+!$       if(mystate%mask(i)) cycle 
+       if(mystate%mask(i)) then
+          cycle 
+       end if
        if    (TS(I,ICE)>MAPL_TICE .and. FR(I,ICE)>0.0) then
           ! MELT
           FR(I,WATER) = 1.0
