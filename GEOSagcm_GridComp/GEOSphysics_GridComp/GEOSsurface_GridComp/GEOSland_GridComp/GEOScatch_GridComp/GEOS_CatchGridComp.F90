@@ -43,9 +43,11 @@ module GEOS_CatchGridCompMod
        RHOFS          => CATCH_SNWALB_RHOFS,  &
        SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE
+       SLOPE          => CATCH_SNWALB_SLOPE,  &
+       PEATCLSM_POROS_THRESHOLD
 
-  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_watertabled
+
+  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel
 
 !#for_ldas_coupling 
   use catch_incr
@@ -2679,9 +2681,9 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       LONG_NAME          = 'depth_to_water_table_from_surface_in_peat',&
        UNITS              = 'm'                         ,&
-       SHORT_NAME         = 'WATERTABLED'               ,&
+       SHORT_NAME         = 'PEATCLSM_WATERLEVEL'       ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
@@ -2690,7 +2692,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'FSWCHANGE'                 ,&
+       SHORT_NAME         = 'PEATCLSM_FSWCHANGE'        ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
@@ -3927,8 +3929,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTBC002
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
-        real, pointer, dimension(:)   :: WATERTABLED
-        real, pointer, dimension(:)   :: FSWCHANGE
+        real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
+        real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -4468,8 +4470,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WATERTABLED,'WATERTABLED',RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,FSWCHANGE,  'FSWCHANGE',  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE, 'PEATCLSM_FSWCHANGE', RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
 
@@ -5644,9 +5646,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
-        if(associated(FSWCHANGE )) FSWCHANGE  = FSW_CHANGE
-        if(associated(WATERTABLED )) then
-           WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+        if(associated(PEATCLSM_FSWCHANGE  )) then
+           where (POROS >= PEATCLSM_POROS_THRESHOLD)
+              PEATCLSM_FSWCHANGE = FSW_CHANGE
+           elsewhere
+              PEATCLSM_FSWCHANGE = MAPL_UNDEF
+           end where
+        end if
+
+        if(associated(PEATCLSM_WATERLEVEL )) then
+           PEATCLSM_WATERLEVEL = catch_calc_peatclsm_waterlevel( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
         endif
 
         if(associated(TPSN1)) then
