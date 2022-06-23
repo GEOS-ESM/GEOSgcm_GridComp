@@ -10,9 +10,6 @@ module GEOS_OceanGridCompMod
 ! !USES:
   use ESMF
   use MAPL
-#ifdef BUILD_MIT_OCEAN
-  use MIT_GEOS5PlugMod, only: MITSetServices => SetServices  ! this sets IRF
-#endif
   use GEOS_DataSeaGridCompMod, only: DataSeaSetServices  => SetServices
 
   implicit none
@@ -124,10 +121,9 @@ contains
           case ("MOM6")
              call MAPL_GetResource ( MAPL, sharedObj,  Label="MOM6_GEOSPLUG:", DEFAULT="libMOM6_GEOSPlug.so", __RC__ )
              OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
-#ifdef BUILD_MIT_OCEAN
           case ("MIT")
-             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MITSetServices, __RC__)
-#endif
+             call MAPL_GetResource ( MAPL, sharedObj,  Label="MIT_GEOSPLUG:", DEFAULT="libMIT_GEOSPlug.so", __RC__ )
+             OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
           case default
              charbuf_ = "OCEAN_NAME: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
              _ASSERT(.false., charbuf_)

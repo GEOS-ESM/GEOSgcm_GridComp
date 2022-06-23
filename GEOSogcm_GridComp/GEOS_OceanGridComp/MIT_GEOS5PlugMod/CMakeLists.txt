@@ -37,19 +37,32 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/mitgcm_setup
 file(COPY ${MITGCM_CONFIG_DIR}/code
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup)
 
+file (GLOB OBJS CONFIGURE_DEPENDS ${MITGCM_BUILD_DIR}/build/*.o
+                ${MITGCM_BUILD_DIR}/code_split_driver/*.o)
+
+SET_SOURCE_FILES_PROPERTIES(
+  ${OBJS}
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true
+)
+
+message(STATUS "OBJS set to ${OBJS}")
+
 esma_add_library (${this}
-  SRCS ${SRCS}
+  SRCS ${SRCS} ${OBJS}
   DEPENDENCIES MAPL $<BUILD_INTERFACE:mitgcmuv> $<BUILD_INTERFACE:mitgcmuv_driver>
   INCLUDES $<BUILD_INTERFACE:${MITGCM_BUILD_DIR}/code_split_driver>
-  )
-
-target_link_libraries(${this} PUBLIC
-  libmitgcmuv_driver.a
+  TYPE SHARED
 )
 
-target_link_libraries(${this} PUBLIC
-  libmitgcmuv.a
-)
+#target_link_libraries(${this} PUBLIC
+#  libmitgcmuv_driver.so
+#)
+
+#target_link_libraries(${this} PUBLIC
+#  libmitgcmuv.a
+#)
 
 target_link_directories(${this} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver>
@@ -97,3 +110,4 @@ add_custom_target(
 	DEPENDS mitgcmuv
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver
 )
+

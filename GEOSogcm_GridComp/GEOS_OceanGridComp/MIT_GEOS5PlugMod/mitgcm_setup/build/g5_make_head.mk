@@ -37,9 +37,10 @@ esma_help help:
 
 THIS = mitgcmuv
 LIB  = lib$(THIS).a
-esma_install install: $(LIB)
-	$(MKDIR) $(ESMALIB) $(ESMAINC)/$(THIS)
-	$(CP) -p *.a            $(ESMALIB)
+esma_install install: $(OBJFILES)
+#esma_install install: $(LIB)
+#	$(MKDIR) $(ESMALIB) $(ESMAINC)/$(THIS)
+#	$(CP) -p *.a            $(ESMALIB)
 
 esma_clean clean:
 	-$(RM) *~ *.[aox] *.[Mm][Oo][Dd]

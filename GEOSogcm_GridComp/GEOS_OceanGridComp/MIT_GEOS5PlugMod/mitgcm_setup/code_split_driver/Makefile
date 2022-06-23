@@ -37,13 +37,14 @@ esma_help help:
 	@echo "         SITE = $(SITE)"
 
 THIS = mitgcmuv_driver
-LIB  = lib$(THIS).a
+#LIB  = lib$(THIS).a
+LIB  = lib$(THIS).so
 esma_install install pinstall: links
 	@$(MAKE) --no-print-directory target
 
 target: $(LIB)
 	$(MKDIR) $(ESMALIB) $(ESMAINC)/$(THIS)
-	$(CP) -p *.a            $(ESMALIB)
+	$(CP) -p *.so           $(ESMALIB)
 	$(CP) -p *.mod          $(ESMAINC)/$(THIS)
 
 esma_clean clean:
@@ -125,14 +126,14 @@ CPP_FLAGS=-DALLOW_USE_MPI -DALWAYS_USE_MPI
 #FC=mpif90
 FREAL8 =
 
-FC_FLAGS=-I../inc -I../build $(FIXED_SOURCE) $(EXTENDED_SOURCE) $(FREAL8) $(BIG_ENDIAN) $(ESMF_F90COMPILEOPTS) $(ESMF_F90COMPILEPATHS) $(MAPL_F90COMPILEPATHS) #-W0 -WB -assume byterecl -fpconstant 
+FC_FLAGS=-I../inc -I../build $(FIXED_SOURCE) $(EXTENDED_SOURCE) $(FPIC) $(FREAL8) $(BIG_ENDIAN) $(ESMF_F90COMPILEOPTS) $(ESMF_F90COMPILEPATHS) $(MAPL_F90COMPILEPATHS) #-W0 -WB -assume byterecl -fpconstant 
 FC_OPT=-O3 $(ALIGNCOM)
 #CC=mpicc
-CC_FLAGS=-I../inc -I../build
+CC_FLAGS=-I../inc -I../build $(FPIC)
 CC_OPT=-g
 F90C=$(FC)
-FOR_FLAGS=$(FC_FLAGS)
-F90_FLAGS=-I../inc -I../build $(FREAL8) $(BIG_ENDIAN) $(F90FLAGS) $(ESMF_F90COMPILEOPTS) $(ESMF_F90COMPILERATHS) $(MAPL_F90COMPILEPATHS) #-W0 -WB -assume byterecl -fpconstant 
+FOR_FLAGS=$(FC_FLAGS) $(FPIC)
+F90_FLAGS=-I../inc -I../build $(FPIC) $(FREAL8) $(BIG_ENDIAN) $(F90FLAGS) $(ESMF_F90COMPILEOPTS) $(ESMF_F90COMPILERATHS) $(MAPL_F90COMPILEPATHS) #-W0 -WB -assume byterecl -fpconstant 
 F90_OPT=$(FC_OPT) -g #-check -ftrapuv
 LIBS=-L../lib -lmitgcmuv $(ESMF_F90LINKPATHS) $(ESMF_F90ESMFLINKLIBS) $(MAPL_F90LINKPATHS)
 
@@ -144,11 +145,12 @@ a.out: $(OBJS) $(MAIN_OBJS)
 	$(FC) $(OBJS) $(LIBS)
 	cp a.out ../run_split
 
-lib: libmitgcmuv_driver.a
+lib: libmitgcmuv_driver.so
 
-libmitgcmuv_driver.a: $(OBJS)
+libmitgcmuv_driver.so: $(OBJS)
 	@ echo Creating \"$@\"
-	ar rcv $@ $(OBJS)
+	#ar rcv $@ $(OBJS)
+	#$(FC) -shared -o $@ $(OBJS) ../build/*.o
 
 %.o: %.F
 	@ echo Compiling \"$<\"
