@@ -12,7 +12,7 @@ module GEOS_SeaIceGridCompMod
   use ESMF
   use MAPL
 #ifdef BUILD_MIT_OCEAN
-  use GEOS_MITDynaGridCompMod,          only : GEOSMITSeaIceSetServices  => SetServices
+!  use GEOS_MITDynaGridCompMod,          only : GEOSMITSeaIceSetServices  => SetServices
 #else
   use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices  => SetServices
 #endif
@@ -80,7 +80,8 @@ contains
     type  (ESMF_Config)                :: CF
     integer                            :: iDUAL_OCEAN
     character(len=ESMF_MAXSTR)         :: charbuf_
-    !character(len=ESMF_MAXSTR)         :: sharedObj
+    character(len=ESMF_MAXSTR)         :: sharedObj
+    character(len=ESMF_MAXSTR)         :: userServeRoutine
 
 ! Begin...
 
@@ -112,7 +113,10 @@ contains
        ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, __RC__)
     else
 #ifdef BUILD_MIT_OCEAN
-       ICE = MAPL_AddChild(GC, NAME="MITSEAICEDYNA", SS=GEOSMITSeaIceSetServices, __RC__)
+!!!       ICE = MAPL_AddChild(GC, NAME="MITSEAICEDYNA", SS=GEOSMITSeaIceSetServices, __RC__)
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="MITICE:", DEFAULT="libGEOS_MITDynaGridComp.so", __RC__ )
+       call MAPL_GetResource ( MAPL, userServeRoutine,  Label="MITICE_SETSERVICES:", DEFAULT="geos_mitdynagridcompmod_mp_setservices_", __RC__ )
+       ICE = MAPL_AddChild("MITSEAICEDYNA",trim(userServeRoutine), parentGC=GC, sharedObj=sharedObj,  __RC__)
 #else             
        call MAPL_GetResource ( MAPL, SEAICE_NAME, Label="SEAICE_NAME:", DEFAULT="CICE4", __RC__ )
        select case (trim(SEAICE_NAME))
