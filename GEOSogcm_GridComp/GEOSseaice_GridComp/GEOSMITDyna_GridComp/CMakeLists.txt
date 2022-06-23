@@ -47,13 +47,13 @@ SET_SOURCE_FILES_PROPERTIES(
   GENERATED true
 )
 
-target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 esma_add_library (${this}
   SRCS ${SRCS} ${ICEOBJS}
   DEPENDENCIES MAPL CICE4 $<BUILD_INTERFACE:mitgcmseaice_driver> $<BUILD_INTERFACE:mitgcmseaice>
   INCLUDES $<BUILD_INTERFACE:${MITGCM_BUILD_DIR}/code_split_driver>
   TYPE SHARED
 )
+target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 target_link_directories(${this} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver>

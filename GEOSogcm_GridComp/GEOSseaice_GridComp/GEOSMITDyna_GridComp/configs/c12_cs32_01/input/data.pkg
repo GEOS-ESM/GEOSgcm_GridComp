@@ -1,0 +1,6 @@
+# Packages
+ &PACKAGES
+ useGMRedi=.TRUE.,
+ useSEAICE=.TRUE.,
+ useDiagnostics=.TRUE.,
+ &
