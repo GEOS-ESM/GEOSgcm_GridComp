@@ -30,10 +30,22 @@ module GEOS_MITDynaGridCompMod
   use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
   use ice_work,           only: init_work
 
+  USE MITGCM_STATE_MOD , ONLY :   &
+       MITGCM_ISTATE_CONTAINER,       &
+       MITGCM_ISTATE,                 &
+       MITGCM_ISTATE_WRAP_TYPE,       &
+       GETDP
+
+  USE MITGCM_DRIVER_MOD , ONLY :  &
+       DRIVER_INIT,                   &
+       DRIVER_RUN
+
+  USE STR4C_MOD
+  USE DRIVER_SET_IMPORT_STATE_MOD
+  USE DRIVER_GET_EXPORT_STATE_MOD
+
   implicit none
   private
-
-  integer, parameter :: FILE_HEADER_SIZE=14
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -50,6 +62,16 @@ module GEOS_MITDynaGridCompMod
   integer, parameter :: JDEB=25
   integer, parameter :: TARPE=63
 
+
+  type :: T_PrivateState
+     type(MITGCM_ISTATE),  pointer :: ptr
+  end type T_PrivateState
+
+  type :: T_PrivateState_Wrap
+     type(T_PrivateState), pointer :: ptr
+  end type T_PrivateState_Wrap
+
+  type(T_PrivateState), pointer :: privateState
 
 !=============================================================================
 
@@ -121,8 +143,8 @@ module GEOS_MITDynaGridCompMod
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
 
-!    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run,        RC=STATUS)
-!    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run,        RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=status)
     VERIFY_(STATUS)
@@ -1358,32 +1380,23 @@ module GEOS_MITDynaGridCompMod
     type (MAPL_MetaComp    ), pointer      :: MAPL
     type (ESMF_State)                      :: INTERNAL
 
-    type(ESMF_Alarm)                       :: ALARM_OCNEXCH   
-    type(ESMF_Alarm)                       :: ALARM   
-    type(ESMF_TimeInterval)                :: RING_INTERVAL  
-    type(ESMF_Time)                        :: RING_TIME  
-    type(ESMF_Time)                        :: currTime  
     integer                                :: CPLS 
 
-
-#ifdef MODIFY_TOPOGRAPHY
-    type (MAPL_LocStream       )            :: EXCH
-    real, allocatable                       :: FROCEAN(:,:)
-#endif
-
-! pointers to internal
-   real                   , pointer, dimension(:,:  ) :: ICEUMASK
-   real(kind=ESMF_KIND_R8), pointer, dimension(:,:,:) :: STRESSCOMP
-   real(kind=ESMF_KIND_R8), pointer, dimension(:,:  ) :: UVEL
-   real(kind=ESMF_KIND_R8), pointer, dimension(:,:  ) :: VVEL
-
-   logical,  allocatable          :: ICEUM(:,:) 
 
     integer                       :: IM, JM
     integer                       :: NXG, NYG
     integer                       :: NPES
     integer                       :: OGCM_IM, OGCM_JM
     integer                       :: OGCM_NX, OGCM_NY
+
+!   Variable to hold model state for each instance
+    TYPE(MITGCM_ISTATE_CONTAINER) :: mitgcmIState(1)
+    TYPE(T_PrivateState_Wrap) :: wrap
+
+!   Variables for holding and setting run directory
+    character(len=ESMF_MAXSTR)            :: ocean_dir
+    integer*1, pointer                    :: iarr(:)
+
 !=============================================================================
 
 ! Begin... 
@@ -1411,17 +1424,6 @@ module GEOS_MITDynaGridCompMod
     VERIFY_(STATUS)
 
     call MAPL_TimerOn(MAPL,"TOTAL"     )
-
-    call MAPL_Get(MAPL,             &
-                  INTERNAL_ESMF_STATE = INTERNAL,   &
-                  RUNALARM = ALARM,                 &
-                  IM=IM, &
-                  JM=JM, & 
-                  NX=NXG, & 
-                  NY=NYG, & 
-                                RC=STATUS )
-    VERIFY_(STATUS)
-
 
 ! CICE grid initialization using the communicator from the VM
 !------------------------------------------------------
@@ -1469,6 +1471,59 @@ module GEOS_MITDynaGridCompMod
     endif
  
 
+! Allocate the private state...
+!------------------------------
+    
+    allocate( PrivateSTATE , stat=STATUS )
+    VERIFY_(STATUS)
+
+    wrap%ptr => PrivateState
+
+! And put it in the GC
+!---------------------
+
+    CALL ESMF_UserCompSetInternalState( GC, trim(comp_name)//'_internal_state',&
+         WRAP, STATUS )
+    VERIFY_(status)
+
+!-------------------
+    CALL ESMF_GridCompGet(gc, vm=vm, RC=status); VERIFY_(STATUS)
+    CALL ESMF_VMGet(VM, mpiCommunicator=Comm, rc=RC)
+
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn(MAPL,"TOTAL"     )
+    call MAPL_TimerOn(MAPL,"INITIALIZE")
+
+! Get the grid, configuration
+!----------------------------
+
+    call MAPL_GetResource( MAPL, ocean_dir, label='SEAICE_DIR:', default='mitseaice_run', rc=status ) ; VERIFY_(STATUS)
+    call str4c( iarr, TRIM(ocean_dir) )
+
+! Now do component specific initialization
+! ----------------------------------------
+    call mysetdir(iarr)
+    call WRITE_PARALLEL("MITseaice:Calling DRIVER_INIT")
+    CALL DRIVER_INIT( mitgcmIState=mitgcmIState(1)%p, myComm=Comm)
+    call WRITE_PARALLEL("MITseaice:Done DRIVER_INIT")
+    deallocate(iarr)
+    call popdir
+
+    PrivateState%ptr => mitgcmIState(1)%p
+
+    CALL ESMF_UserCompSetInternalState ( GC, 'MITgcm_istate',wrap,status )
+    VERIFY_(STATUS)
+
+
 ! All Done
 !---------
 
@@ -1478,6 +1533,100 @@ module GEOS_MITDynaGridCompMod
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
+!=================================================================================
+
+!BOP
+
+! !IROUTINE: Run  -- Run method for External Model Plug
+
+! !INTERFACE:
+
+  subroutine Run  ( gc, import, export, clock, rc )
+
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component 
+    type(ESMF_State),    intent(INOUT) :: import ! Import state
+    type(ESMF_State),    intent(INOUT) :: export ! Export state
+    type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
+    integer, optional,   intent(  OUT) :: rc     ! Error code:
+!    type(ESMF_State)                   :: INTERNAL ! Internal state
+
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)		   :: IAm
+    integer				   :: STATUS
+    character(len=ESMF_MAXSTR)             :: COMP_NAME
+
+! Locals
+
+    type (MAPL_MetaComp), pointer          :: MAPL 
+
+    integer :: IM, JM
+
+
+!   Type for getting MITgcm internal state pointer
+    TYPE(T_PrivateState_Wrap) :: wrap
+    type(T_PrivateState), pointer :: privateState
+
+!   Variables for holding and setting run directory
+    character(len=ESMF_MAXSTR)            :: ocean_dir
+    integer*1, pointer                    :: iarr(:)
+
+! Begin
+!------
+
+
+! Get the component's name and set-up traceback handle.
+! -----------------------------------------------------
+    call WRITE_PARALLEL( ' Starting SEAICE plug run method ' )
+    Iam = "Run"
+    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+    VERIFY_(status)
+    Iam = trim(comp_name) // Iam
+
+! Get the wrapped MIT state
+!--------------------------
+    call ESMF_UserCompGetInternalState( GC, trim(comp_name)//'_internal_state',&
+         WRAP, STATUS )
+    VERIFY_(status)
+
+    PrivateState => wrap%ptr
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn (MAPL,"TOTAL")
+    call MAPL_TimerOn (MAPL,"RUN"  )
+
+    call MAPL_GetResource( MAPL, ocean_dir, label='SEAICE_DIR:', default='mitseaice_run', rc=status ) ; VERIFY_(STATUS)
+    call str4c( iarr, TRIM(ocean_dir) )
+
+
+    call mysetdir(iarr)
+    CALL DRIVER_RUN( PrivateState%ptr, 1 )
+    deallocate(iarr)
+    call popdir
+
+
+    call MAPL_TimerOff(MAPL,"RUN"   )
+    call MAPL_TimerOff(MAPL,"TOTAL" )
+
+! All Done
+!---------
+    call WRITE_PARALLEL( ' Finished SEAICE plug run method ' )
+    RETURN_(ESMF_SUCCESS)
+  end subroutine Run
+
+!=================================================================================
 ! !IROUTINE: Finalize        -- Finalize method for CICEDyna wrapper
 
 ! !INTERFACE:
