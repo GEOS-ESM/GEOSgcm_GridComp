@@ -441,10 +441,10 @@
       vhf_par = 3.0  !Default Vant-Hoff Factor
        !Kappa defines other aerosol properties 
       where (kappa_par .gt. 0.01)
-          ams_par  = 18.0e-3*1.7*3.0/kappa_par
+         ams_par  = 18.0e-3*1.7*3.0/kappa_par
       elsewhere 
-          ams_par =900.0e-3
-	  tp_par = 0.0
+         ams_par =900.0e-3
+	  	tp_par = 0.0
       end where
       
       amfs_par= 1.0

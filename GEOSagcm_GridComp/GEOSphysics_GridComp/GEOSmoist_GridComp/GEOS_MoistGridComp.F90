@@ -194,6 +194,7 @@ contains
     integer      :: AVRGNINT
     integer      :: IQVAINC
     real         :: DT
+    logical      :: USE_MAMNET
     
      character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
                                   FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL, &
@@ -236,6 +237,10 @@ contains
 
     call ESMF_ConfigGetAttribute( CF, AERO_PROVIDER, Label='AERO_PROVIDER:', RC=STATUS) ! Note: Default set in GEOS_GcmGridComp.F90
     VERIFY_(STATUS)
+    
+    
+    call ESMF_ConfigGetAttribute(CF, USE_MAMNET, Label='USE_MAMNET:', DEFAULT=.FALSE., RC=STATUS)
+      VERIFY_(STATUS)
 
     ! Set the Run entry point
     ! -----------------------
@@ -4633,6 +4638,68 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
     
+    
+    !-------MAMnet------------------------------------------
+    
+    if (USE_MAMNET) then
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_ACC',                                          & 
+             LONG_NAME ='Accumulation mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+        call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_AIT',                                          & 
+             LONG_NAME ='Aitken mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_CDU',                                          & 
+             LONG_NAME ='Coarse dust mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_CSS',                                          & 
+             LONG_NAME ='Coarse sea salt mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_FDU',                                          & 
+             LONG_NAME ='Fine dust mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_FSS',                                          & 
+             LONG_NAME ='Fine sea salt mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_PCM',                                          & 
+             LONG_NAME ='Primary carbon mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+   
+    end if ! use_mamnet
+    
 !-srf-gf-scheme
     IF(CONVPAR_OPTION=='GF' .or. CONVPAR_OPTION=='BOTH') THEN
 
@@ -5495,7 +5562,9 @@ contains
            DTDT_macro, DQVDT_macro, DQLDT_macro, DQIDT_macro, DQADT_macro, &
            FRZPP_LS, SNOWMELT_LS, QIRES, AUTICE, PFRZ, DNCNUC, DNCHMSPLIT, DNCSUBL, &
            DNCAUTICE, DNCACRIS, DNDCCN, DNDACRLS, DNDEVAPC, DNDACRLR, DNDAUTLIQ, & 
-           DNDCNV, DNCCNV, DTDT_moist, DTDTCN, ALPHA_RAS, DNDDT, DNCDT
+           DNDCNV, DNCCNV, DTDT_moist, DTDTCN, ALPHA_RAS, DNDDT, DNCDT, &            
+           MAMNET_NUM_A_ACC, MAMNET_NUM_A_AIT, MAMNET_NUM_A_CDU, MAMNET_NUM_A_CSS, &
+                             MAMNET_NUM_A_FDU, MAMNET_NUM_A_FSS, MAMNET_NUM_A_PCM
 
 
 
@@ -5629,6 +5698,18 @@ contains
       real, pointer, dimension(:,:,:) :: aci_f_dust
       real, pointer, dimension(:,:,:) :: aci_f_soot
       real, pointer, dimension(:,:,:) :: aci_f_organic
+      
+      
+      real, pointer, dimension(:,:,:,:) :: aci_num_4d
+      real, pointer, dimension(:,:,:,:) :: aci_dgn_4d
+      real, pointer, dimension(:,:,:,:) :: aci_sigma_4d
+      real, pointer, dimension(:,:,:,:) :: aci_density_4d
+      real, pointer, dimension(:,:,:,:) :: aci_hygroscopicity_4d
+      real, pointer, dimension(:,:,:,:) :: aci_f_dust_4d
+      real, pointer, dimension(:,:,:,:) :: aci_f_soot_4d
+      real, pointer, dimension(:,:,:,:) :: aci_f_organic_4d
+      
+      
     
     
      
@@ -7121,6 +7202,19 @@ contains
          if(ALLOC_SC_ICE     ) allocate(SC_ICE    (IM,JM,LM))
          if(ALLOC_DT_RASP    ) allocate(DT_RASP   (IM,JM,LM))
       endif
+      
+      
+      if (USE_MAMNET) then       
+       if(associated(MAMNET_NUM_A_ACC)) allocate(MAMNET_NUM_A_ACC(IM, JM, LM))
+       if(associated(MAMNET_NUM_A_AIT)) allocate(MAMNET_NUM_A_AIT(IM, JM, LM))
+       if(associated(MAMNET_NUM_A_CDU)) allocate(MAMNET_NUM_A_CDU(IM, JM, LM))
+       if(associated(MAMNET_NUM_A_CSS)) allocate(MAMNET_NUM_A_CSS(IM, JM, LM))
+       if(associated(MAMNET_NUM_A_FDU)) allocate(MAMNET_NUM_A_FDU(IM, JM, LM))
+       if(associated(MAMNET_NUM_A_FSS)) allocate(MAMNET_NUM_A_FSS(IM, JM, LM))
+       if(associated(MAMNET_NUM_A_PCM)) allocate(MAMNET_NUM_A_PCM(IM, JM, LM))
+      end if 
+                             
+                             
 
       allocate(FQAl(IM,JM,LM), stat=STATUS)
       VERIFY_(STATUS)
@@ -7280,21 +7374,8 @@ contains
          if(ALLOC_DNDAUTLIQ ) allocate (DNDAUTLIQ   (IM,JM,LM))      
          if(ALLOC_DNDCNV ) allocate (DNDCNV   (IM,JM,LM))
          if(ALLOC_DNCCNV ) allocate (DNCCNV   (IM,JM,LM))
-
-
-
-
-        ! if (associated(CLDREFFI_TOP)) allocate (CLDREFFI_TOP(IM, JM)) 
-        ! if (associated(CLDREFFL_TOP)) allocate (CLDREFFL_TOP(IM, JM))
-        ! if (associated(NCPI_TOP)) allocate (NCPI_TOP(IM, JM)) 
-        ! if (associated(NCPL_TOP)) allocate (NCPL_TOP(IM, JM)) 
-        ! if (associated(QCVAR_EXP)) allocate (QCVAR_EXP(IM, JM))  
-                  
-
-
-
-             
-	   
+         
+     
 
       end if ! 2MOMENT
 
@@ -7724,15 +7805,7 @@ contains
                      call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
                      VERIFY_(ACI_STATUS)
                      VERIFY_(STATUS)
-                 else
-                                           ! execute MAMnet method 
-                     call ESMF_MethodExecute(aero_aci, label='MAMnet', userRC=ACI_STATUS, RC=STATUS)
-                     VERIFY_(ACI_STATUS)
-                     VERIFY_(STATUS)
-                 end if
                      
-                     
-                     ! copy out aerosol activation properties
                      call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
                      call MAPL_GetPointer(aero_aci, aci_num, trim(aci_field_name), __RC__)
 
@@ -7756,6 +7829,42 @@ contains
 
                      call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
                      call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
+                     
+                 else
+                                           ! execute MAMnet method 
+                     call ESMF_MethodExecute(aero_aci, label='MAMnet', userRC=ACI_STATUS, RC=STATUS)
+                     VERIFY_(ACI_STATUS)
+                     VERIFY_(STATUS)
+                     
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_num_4d, trim(aci_field_name), __RC__)
+
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_dgn_4d, trim(aci_field_name), __RC__)
+
+                     call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_sigma_4d, trim(aci_field_name), __RC__)
+
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_density_4d, trim(aci_field_name), __RC__)
+
+                     call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_hygroscopicity_4d, trim(aci_field_name), __RC__)
+
+                     call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_f_dust_4d, trim(aci_field_name), __RC__)
+
+                     call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_f_soot_4d, trim(aci_field_name), __RC__)
+
+                     call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
+                     call MAPL_GetPointer(aero_aci, aci_f_organic_4d, trim(aci_field_name), __RC__)
+                     
+                 end if
+                     
+                     
+                     ! copy out aerosol activation properties
+                     
                 
 
 #if (0)
@@ -7789,15 +7898,23 @@ contains
               
               else !mamnet returns all modes at once
               
-                 buffer(:,:,:,:,1) = reshape(aci_num,(/im, jm, LM, n_modes/))
-                 buffer(:,:,:,:,2) = reshape(aci_dgn,(/im, jm, LM, n_modes/))
-                 buffer(:,:,:,:,3) = reshape(aci_sigma,(/im, jm, LM, n_modes/))
-                 buffer(:,:,:,:,4) = reshape(aci_hygroscopicity,(/im, jm, LM, n_modes/))
-                 buffer(:,:,:,:,5) = reshape(aci_density,(/im, jm, LM, n_modes/))
-                 buffer(:,:,:,:,6) = reshape(aci_f_dust,(/im, jm, LM, n_modes/))
-                 buffer(:,:,:,:,7) = reshape(aci_f_soot,(/im, jm, LM, n_modes/))
-                 buffer(:,:,:,:,8) = reshape(aci_f_organic,(/im, jm, LM, n_modes/))
+                 buffer(:,:,:,:,1) = aci_num_4d
+                 buffer(:,:,:,:,2) = aci_dgn_4d
+                 buffer(:,:,:,:,3) = aci_sigma_4d
+                 buffer(:,:,:,:,4) = aci_hygroscopicity_4d
+                 buffer(:,:,:,:,5) = aci_density_4d
+                 buffer(:,:,:,:,6) = aci_f_dust_4d
+                 buffer(:,:,:,:,7) = aci_f_soot_4d
+                 buffer(:,:,:,:,8) = aci_f_organic_4d
                  
+                    MAMNET_NUM_A_ACC = aci_num_4d(:, :, :, 1)
+                    MAMNET_NUM_A_AIT = aci_num_4d(:, :, :, 2)
+                    MAMNET_NUM_A_CDU = aci_num_4d(:, :, :, 3) 
+                    MAMNET_NUM_A_CSS = aci_num_4d(:, :, :, 4) 
+                    MAMNET_NUM_A_FDU = aci_num_4d(:, :, :, 5) 
+                    MAMNET_NUM_A_FSS = aci_num_4d(:, :, :, 6) 
+                    MAMNET_NUM_A_PCM = aci_num_4d(:, :, :, 7)
+
                end if
             
             end do ACTIVATION_PROPERTIES
@@ -12876,6 +12993,17 @@ do K= 1, LM
          if(ALLOC_DNDAUTLIQ) deallocate(DNDAUTLIQ)      
          if(ALLOC_DNDCNV ) deallocate (DNDCNV)
          if(ALLOC_DNCCNV ) deallocate (DNCCNV) 
+         
+         if (USE_MAMNET) then       
+           if(associated(MAMNET_NUM_A_ACC)) deallocate(MAMNET_NUM_A_ACC)
+           if(associated(MAMNET_NUM_A_AIT)) deallocate(MAMNET_NUM_A_AIT)
+           if(associated(MAMNET_NUM_A_CDU)) deallocate(MAMNET_NUM_A_CDU)
+           if(associated(MAMNET_NUM_A_CSS)) deallocate(MAMNET_NUM_A_CSS)
+           if(associated(MAMNET_NUM_A_FDU)) deallocate(MAMNET_NUM_A_FDU)
+           if(associated(MAMNET_NUM_A_FSS)) deallocate(MAMNET_NUM_A_FSS)
+           if(associated(MAMNET_NUM_A_PCM)) deallocate(MAMNET_NUM_A_PCM)
+      	end if
+         
          
 
 
