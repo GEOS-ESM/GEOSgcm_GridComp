@@ -37,15 +37,15 @@ esma_help help:
 	@echo "         SITE = $(SITE)"
 
 THIS = mitgcmuv_driver
-#LIB  = lib$(THIS).a
-LIB  = lib$(THIS).so
+LIB  = lib$(THIS).a
+#LIB  = lib$(THIS).so
 esma_install install pinstall: links
 	@$(MAKE) --no-print-directory target
 
 target: $(LIB)
-	$(MKDIR) $(ESMALIB) $(ESMAINC)/$(THIS)
-	$(CP) -p *.so           $(ESMALIB)
-	$(CP) -p *.mod          $(ESMAINC)/$(THIS)
+#	$(MKDIR) $(ESMALIB) $(ESMAINC)/$(THIS)
+#	$(CP) -p *.so           $(ESMALIB)
+#	$(CP) -p *.mod          $(ESMAINC)/$(THIS)
 
 esma_clean clean:
 	-$(RM) *~ *.[aox] *.[Mm][Oo][Dd]
@@ -145,11 +145,11 @@ a.out: $(OBJS) $(MAIN_OBJS)
 	$(FC) $(OBJS) $(LIBS)
 	cp a.out ../run_split
 
-lib: libmitgcmuv_driver.so
+lib: libmitgcmuv_driver.a
 
-libmitgcmuv_driver.so: $(OBJS)
+libmitgcmuv_driver.a: $(OBJS)
 	@ echo Creating \"$@\"
-	#ar rcv $@ $(OBJS)
+	ar rcv $@ $(OBJS)
 	#$(FC) -shared -o $@ $(OBJS) ../build/*.o
 
 %.o: %.F

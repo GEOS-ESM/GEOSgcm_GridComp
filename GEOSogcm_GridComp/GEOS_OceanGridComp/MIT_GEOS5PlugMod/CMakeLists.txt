@@ -47,11 +47,11 @@ SET_SOURCE_FILES_PROPERTIES(
   GENERATED true
 )
 
-message(STATUS "OBJS set to ${OBJS}")
+#message(STATUS "OBJS set to ${OBJS}")
 
 esma_add_library (${this}
   SRCS ${SRCS} ${OBJS}
-  DEPENDENCIES MAPL $<BUILD_INTERFACE:mitgcmuv> $<BUILD_INTERFACE:mitgcmuv_driver>
+  DEPENDENCIES MAPL $<BUILD_INTERFACE:mitgcmuv_driver> $<BUILD_INTERFACE:mitgcmuv>
   INCLUDES $<BUILD_INTERFACE:${MITGCM_BUILD_DIR}/code_split_driver>
   TYPE SHARED
 )
