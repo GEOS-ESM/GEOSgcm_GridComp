@@ -3597,6 +3597,7 @@ subroutine RUN2 (GC, IMPORT, EXPORT, CLOCK, RC)
 
     type(MAPL_MetaComp),pointer :: MAPL
     type(ESMF_Alarm) :: ALARM
+    type(ESMF_VM) :: VM
 
 ! ------------------------------------------------------------------------------
 ! Local variables
@@ -5501,7 +5502,7 @@ subroutine RUN2 (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_TimerOn(MAPL,"-ALBEDO")
         ! NOTE: apply diffuse scale parameters to both direct and diffuse
-        call SIBALB(NTILES, VEG, LAI, GRN, ZTH,
+        call SIBALB(NTILES, VEG, LAI, GRN, ZTH, &
                     VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles
                     ALBVR_REF, ALBNR_REF,       & ! "REFRESH" snow-free albedos on tiles
                     ALBVF_REF, ALBNF_REF)         ! only truly REFRESH is solAlarmIsOn
@@ -5530,7 +5531,7 @@ subroutine RUN2 (GC, IMPORT, EXPORT, CLOCK, RC)
            ALBNR = ALBNR_REF
            ALBNF = ALBNF_REF
         end if
-        if (.not. solArmIsOn) then
+        if (.not. solAlarmIsOn) then
            ! the "REFRESH" albedos are not real REFRESH albedos
            ! and are not needed by Solar in this case
            ! PMN: may be faster to never calculate these under AFU and not solArmIsOn
