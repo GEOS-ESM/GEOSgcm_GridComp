@@ -7,7 +7,7 @@ module gw_rdg
 !use shr_const_mod, only: pi => shr_const_pi
 use gw_common, only: gw_drag_prof, GWBand, pi,cpair,rair, &
                      calc_taucd, momentum_flux, momentum_fixer, &
-                     energy_change, energy_fixer
+                     energy_momentum_adjust, energy_change, energy_fixer
 use gw_utils, only:  GW_PRC, dot_2d, midpoint_interp
 
 
@@ -281,7 +281,7 @@ subroutine gw_rdg_ifc( &
    ttrdg = 0.
   
 !WMP pressure scaling near model top
-   zfac_layer = 100.0 ! 0.1mb
+   zfac_layer = 100.0 ! 1mb
    pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
 
    isoflag = 0
@@ -313,9 +313,7 @@ subroutine gw_rdg_ifc( &
           ttgw, gwut, &
           kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
 
-   ! call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
-   !                    effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
-
+#ifdef NCAR_ADJUST
    ! ! Project stress into directional components.
    ! taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
 
@@ -324,20 +322,20 @@ subroutine gw_rdg_ifc( &
    ! call momentum_flux(tend_level, taucd, um_flux, vm_flux)
    ! call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
 
+   ! ! Find energy change in the current state, and use fixer to apply
+   ! ! the difference in lower levels.
+   ! call energy_change(ncol, pver, dt, delp, u, v, utgw, vtgw, ttgw, de)
+   ! call energy_fixer(ncol, pver, tend_level, pint, de-flx_heat, ttgw)
+   ! flx_heat=de
+#else
+   ! call energy_momentum_adjust(ncol, pver, src_level, band, pint, delp, c, tau, &
+   !                    effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
+#endif
+
      ! Add the tendencies from each ridge to the totals.
      do k = 1, pver
         utrdg(:,k) = utrdg(:,k) + utgw(:,k)
         vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
-     end do
-
-   ! ! Find energy change in the current state, and use fixer to apply
-   ! ! the difference in lower levels.
-   ! call energy_change(ncol, pver, dt, delp, u, v, utrdg, vtrdg, ttrdg+ttgw, de)
-   ! call energy_fixer(ncol, pver, tend_level, pint, de-flx_heat, ttgw)
-   ! flx_heat=de
-
-     ! Add the tendencies from each ridge to the totals.
-     do k = 1, pver
         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
      end do
 

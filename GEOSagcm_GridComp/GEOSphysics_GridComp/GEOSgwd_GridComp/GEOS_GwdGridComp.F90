@@ -950,7 +950,7 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,  RC=STATUS)
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
@@ -1083,12 +1083,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------
     CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  RC=STATUS)
     VERIFY_(STATUS)
-!!  CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
-    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=0., RC=STATUS)
+   !CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
+    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=0.,      RC=STATUS)
     VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,	RC=STATUS)
+    CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,   RC=STATUS)
     VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,	RC=STATUS)
+    CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,   RC=STATUS)
     VERIFY_(STATUS)
 
 ! If its time, recalculate the GWD tendency
@@ -1863,7 +1863,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
 
     ! Topographic Form Drag [Beljaars et al (2004)]
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=4.5, RC=STATUS)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=6.0, RC=STATUS)
     VERIFY_(STATUS)
     if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),stat=status)
