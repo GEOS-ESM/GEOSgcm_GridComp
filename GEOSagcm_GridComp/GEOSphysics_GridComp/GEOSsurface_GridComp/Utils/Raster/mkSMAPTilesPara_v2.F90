@@ -776,8 +776,8 @@ PROGRAM mkSMAPTilesPara_v2
         allocate (xs ( nc_smap+1, nr_smap+1))
         allocate (ys ( nc_smap+1, nr_smap+1))
         
-        do  j = 1, nr_smap
-           do i = 1, nc_smap
+        do  j = 1, nr_smap+1
+           do i = 1, nc_smap+1
               x = real(i-1)        -0.5
               y = real(nr_smap - j)+0.5
               call easeV2_inverse(MGRID, x, y, yout, xout)
@@ -786,16 +786,6 @@ PROGRAM mkSMAPTilesPara_v2
            end do
         end do
         
-        do  j = nr_smap + 1, nr_smap + 1
-           do i = nc_smap + 1, nc_smap + 1
-              x = real(i-1)         -0.5
-              y =  -0.5
-              call easeV2_inverse(MGRID, x, y, yout, xout)
-              ys (i,j) = dble(yout)
-              xs (i,j) = dble(xout)        
-           end do
-        end do
-
         where (ys > 90.)
            ys = 90.D0
         endwhere
@@ -808,8 +798,7 @@ PROGRAM mkSMAPTilesPara_v2
         where (xs < -180.)
            xs = -180.D0
         endwhere
-        
-        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,Here=.false., Verb=.false.)       
+        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,xmn = xs(1,1), xmx= xs(nc_smap+1, nr_smap+1),  ymn=ys(1,1), ymx = ys(nc_smap+1, nr_smap+1), Here=.false., Verb=.false.)       
         stop
       end SUBROUTINE mkEASEv2Raster
 
