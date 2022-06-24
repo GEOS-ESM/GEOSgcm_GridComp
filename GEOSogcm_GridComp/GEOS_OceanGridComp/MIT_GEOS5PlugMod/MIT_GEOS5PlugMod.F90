@@ -959,11 +959,10 @@ contains
 
 end module MIT_GEOS5PlugMod
   
-        
-
-  
-
-
-
-
-
+subroutine SetServices(gc, rc)
+   use ESMF
+   use MIT_GEOS5PlugMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc,rc=rc)
+end subroutine

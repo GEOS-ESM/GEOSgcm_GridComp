@@ -82,7 +82,6 @@ contains
     integer ::      iDUAL_OCEAN
     character(len=ESMF_MAXSTR)         :: charbuf_
     character(len=ESMF_MAXSTR)         :: sharedObj
-    character(len=ESMF_MAXSTR)         :: userServeRoutine
 
 ! Begin...
 
@@ -124,9 +123,7 @@ contains
              OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
           case ("MIT")
              call MAPL_GetResource ( MAPL, sharedObj,  Label="MIT_GEOSPLUG:", DEFAULT="libMIT_GEOS5PlugMod.so", __RC__ )
-             ! OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
-             call MAPL_GetResource ( MAPL, userServeRoutine,  Label="MIT_SETSERVICES:", DEFAULT="mit_geos5plugmod_mp_setservices_", __RC__ )
-             OCN = MAPL_AddChild(OCEAN_NAME,trim(userServeRoutine), parentGC=GC, sharedObj=sharedObj,  __RC__)
+             OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
           case default
              charbuf_ = "OCEAN_NAME: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
              _ASSERT(.false., charbuf_)

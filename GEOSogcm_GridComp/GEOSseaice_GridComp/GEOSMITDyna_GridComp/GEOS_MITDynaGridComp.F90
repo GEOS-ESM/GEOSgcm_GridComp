@@ -1690,3 +1690,11 @@ module GEOS_MITDynaGridCompMod
   end subroutine Finalize
 
 end module GEOS_MITDynaGridCompMod
+  
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_MITDynaGridCompMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc,rc=rc)
+end subroutine
