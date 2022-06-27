@@ -114,6 +114,7 @@ contains
     else
 #ifdef BUILD_MIT_OCEAN
 !!!       ICE = MAPL_AddChild(GC, NAME="MITSEAICEDYNA", SS=GEOSMITSeaIceSetServices, __RC__)
+       call cice_array_init(MAPL)
        call MAPL_GetResource ( MAPL, sharedObj,  Label="MITICE:", DEFAULT="libGEOSMITDyna_GridComp.so", __RC__ )
        ICE = MAPL_AddChild("MITSEAICEDYNA", 'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
 #else             
@@ -1121,4 +1122,52 @@ contains
 
   end subroutine Run2
 
+  subroutine cice_array_init(MAPL, RC)
+    use ice_domain_size,    only: init_domain_size
+    use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
+    use ice_work,           only: init_work
+
+    implicit none
+    type (MAPL_MetaComp) :: MAPL
+    integer, optional :: rc
+
+    integer :: status
+    character(len=ESMF_MAXSTR), parameter:: IAm='cice_array_init'
+
+    type(ESMF_VM) :: VM
+    integer                       :: NPES, comm
+    integer                       :: OGCM_IM, OGCM_JM
+    integer                       :: OGCM_NX, OGCM_NY
+
+    ! CICE grid initialization using the communicator from the VM
+    !------------------------------------------------------
+    call ESMF_VMGetCurrent(VM, rc=STATUS)
+    VERIFY_(STATUS)
+    
+    call ESMF_VMGet(VM, mpiCommunicator=Comm, petCount=NPES, rc=STATUS)
+    VERIFY_(STATUS)
+
+
+    ! Do some necessary CICE initialization
+    !--------------------------------------
+
+    call MAPL_GetResource( MAPL, OGCM_IM, Label="OGCM.IM_WORLD:", RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, OGCM_JM, Label="OGCM.JM_WORLD:", RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, OGCM_NX, Label="OGCM.NX:", RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, OGCM_NY, Label="OGCM.NY:", RC=STATUS)
+    VERIFY_(STATUS)
+
+    call init_domain_size(OGCM_IM, OGCM_JM, OGCM_NX, OGCM_NY, NPES)
+
+    call alloc_dyna_arrays( MAPL_AM_I_Root(), Iam )
+    call init_work            ! work arrays
+
+    if(MAPL_AM_I_ROOT()) then
+       print*, 'CICE work array initialized'
+    endif
+ 
+  end subroutine cice_array_init
 end module GEOS_SeaIceGridCompMod

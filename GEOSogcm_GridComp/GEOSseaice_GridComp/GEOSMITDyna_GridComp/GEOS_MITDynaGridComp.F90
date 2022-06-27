@@ -26,10 +26,6 @@ module GEOS_MITDynaGridCompMod
   use ESMF
   use MAPL
 
-  use ice_domain_size,    only: init_domain_size
-  use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
-  use ice_work,           only: init_work
-
   USE MITGCM_STATE_MOD , ONLY :   &
        MITGCM_ISTATE_CONTAINER,       &
        MITGCM_ISTATE,                 &
@@ -1380,14 +1376,6 @@ module GEOS_MITDynaGridCompMod
     type (MAPL_MetaComp    ), pointer      :: MAPL
     type (ESMF_State)                      :: INTERNAL
 
-    integer                                :: CPLS 
-
-
-    integer                       :: IM, JM
-    integer                       :: NXG, NYG
-    integer                       :: NPES
-    integer                       :: OGCM_IM, OGCM_JM
-    integer                       :: OGCM_NX, OGCM_NY
 
 !   Variable to hold model state for each instance
     TYPE(MITGCM_ISTATE_CONTAINER) :: mitgcmIState(1)
@@ -1425,51 +1413,6 @@ module GEOS_MITDynaGridCompMod
 
     call MAPL_TimerOn(MAPL,"TOTAL"     )
 
-! CICE grid initialization using the communicator from the VM
-!------------------------------------------------------
-    call ESMF_VMGetCurrent(VM, rc=STATUS)
-    VERIFY_(STATUS)
-    
-    call ESMF_VMGet(VM, mpiCommunicator=Comm, petCount=NPES, rc=STATUS)
-    VERIFY_(STATUS)
-
-
-    ! Get the ocean layout from the VM
-    !---------------------------------
-
-    call MAPL_GetResource( MAPL, OGCM_IM, Label="OGCM.IM_WORLD:", RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, OGCM_JM, Label="OGCM.JM_WORLD:", RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, OGCM_NX, Label="OGCM.NX:", RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, OGCM_NY, Label="OGCM.NY:", RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! CICE grid initialization
-    !-------------------------
-
-    ASSERT_(mod(OGCM_IM,OGCM_NX)==0)
-    ASSERT_(mod(OGCM_JM,OGCM_NY)==0)
- 
-    if(MAPL_AM_I_ROOT()) then
-       print*, 'Initializing CICE domain size with: '
-       print*, 'OGCM_NX = ', OGCM_NX, 'OGCM_NY = ', OGCM_NY
-       print*, 'OGCM_IM = ', OGCM_IM, 'OGCM_JM = ', OGCM_JM
-    endif
-
-    ! Do some necessary CICE initialization
-    !--------------------------------------
-
-    call init_domain_size(OGCM_IM, OGCM_JM, OGCM_NX, OGCM_NY, NPES)
-
-    call alloc_dyna_arrays( MAPL_AM_I_Root(), Iam )
-    call init_work            ! work arrays
-
-    if(MAPL_AM_I_ROOT()) then
-       print*, 'CICE work array initialized'
-    endif
- 
 
 ! Allocate the private state...
 !------------------------------
@@ -1490,12 +1433,6 @@ module GEOS_MITDynaGridCompMod
     CALL ESMF_GridCompGet(gc, vm=vm, RC=status); VERIFY_(STATUS)
     CALL ESMF_VMGet(VM, mpiCommunicator=Comm, rc=RC)
 
-
-! Get my internal MAPL_Generic state
-!-----------------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Profilers
 !----------
@@ -1523,10 +1460,8 @@ module GEOS_MITDynaGridCompMod
     CALL ESMF_UserCompSetInternalState ( GC, 'MITgcm_istate',wrap,status )
     VERIFY_(STATUS)
 
-
 ! All Done
 !---------
-
     call MAPL_TimerOff(MAPL,"TOTAL"     )
     call MAPL_TimerOff(MAPL,"INITIALIZE")
 
