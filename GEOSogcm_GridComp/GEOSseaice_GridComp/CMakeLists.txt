@@ -15,9 +15,11 @@ else()
 
   esma_add_library (${this}
     SRCS GEOS_SeaIceGridComp.F90
-    SUBCOMPONENTS GEOSdataseaice_GridComp GEOSMITDyna_GridComp
+    SUBCOMPONENTS GEOSdataseaice_GridComp 
     DEPENDENCIES MAPL
     INCLUDES ${INC_ESMF})
 endif()
+
+add_subdirectory(GEOSMITDyna_GridComp)
 
 
