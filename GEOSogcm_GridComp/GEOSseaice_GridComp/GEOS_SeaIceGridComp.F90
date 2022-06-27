@@ -30,6 +30,7 @@ module GEOS_SeaIceGridCompMod
 
   character(len=ESMF_MAXSTR)          :: SEAICE_NAME
   integer                             :: DO_DATASEAICE
+  logical                             :: cice_work_arrays_initialized
 
 ! !DESCRIPTION:
 !
@@ -107,6 +108,8 @@ contains
 ! ---------------------------------------
     ICE = 0
     ICEd = 0
+
+    cice_work_arrays_initialized = .false.
 
     if(DO_DATASEAICE/=0) then
        SEAICE_NAME="DATASEAICE"
@@ -530,6 +533,8 @@ contains
 !           ice nudging only
        call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run2,    __RC__ )
     end if
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=status)
+    VERIFY_(STATUS)
 
 
 !=============================================================================
@@ -1122,9 +1127,74 @@ contains
 
   end subroutine Run2
 
+! !IROUTINE: Finalize        -- Finalize method for CICEDyna wrapper
+
+! !INTERFACE:
+
+  subroutine Finalize ( gc, import, export, clock, rc )
+    use ice_init,           only: dealloc_dyna_arrays
+
+! !ARGUMENTS:
+
+  type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component 
+  type(ESMF_State),    intent(INOUT) :: import ! Import state
+  type(ESMF_State),    intent(INOUT) :: export ! Export state
+  type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
+  integer, optional,   intent(  OUT) :: rc     ! Error code:
+
+!EOP
+
+    type (MAPL_MetaComp),    pointer                   :: MAPL 
+
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)       :: IAm
+    integer                          :: STATUS
+    character(len=ESMF_MAXSTR)       :: COMP_NAME
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    Iam = "Finalize"
+    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+    VERIFY_(STATUS)
+    Iam = trim(comp_name) // Iam
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
+    VERIFY_(STATUS)
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn(MAPL,"TOTAL"   )
+    call MAPL_TimerOn(MAPL,"FINALIZE")
+
+    if (cice_work_arrays_initialized) then
+       call dealloc_dyna_arrays( MAPL_AM_I_ROOT(), Iam )
+    end if
+
+    call MAPL_TimerOff(MAPL,"FINALIZE")
+    call MAPL_TimerOff(MAPL,"TOTAL"   )
+
+! Generic Finalize
+! ------------------
+    
+    call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+    VERIFY_(STATUS)
+
+! All Done
+!---------
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine Finalize
+
   subroutine cice_array_init(MAPL, RC)
     use ice_domain_size,    only: init_domain_size
-    use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
+    use ice_init,           only: alloc_dyna_arrays
     use ice_work,           only: init_work
 
     implicit none
@@ -1168,6 +1238,8 @@ contains
     if(MAPL_AM_I_ROOT()) then
        print*, 'CICE work array initialized'
     endif
+
+    cice_work_arrays_initialized = .true.
  
   end subroutine cice_array_init
 end module GEOS_SeaIceGridCompMod

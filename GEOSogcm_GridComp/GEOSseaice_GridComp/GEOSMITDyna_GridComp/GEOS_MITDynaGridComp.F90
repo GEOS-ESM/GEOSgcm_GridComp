@@ -142,9 +142,6 @@ module GEOS_MITDynaGridCompMod
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run,        RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=status)
-    VERIFY_(STATUS)
-
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -1562,68 +1559,6 @@ module GEOS_MITDynaGridCompMod
   end subroutine Run
 
 !=================================================================================
-! !IROUTINE: Finalize        -- Finalize method for CICEDyna wrapper
-
-! !INTERFACE:
-
-  subroutine Finalize ( gc, import, export, clock, rc )
-
-! !ARGUMENTS:
-
-  type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component 
-  type(ESMF_State),    intent(INOUT) :: import ! Import state
-  type(ESMF_State),    intent(INOUT) :: export ! Export state
-  type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
-  integer, optional,   intent(  OUT) :: rc     ! Error code:
-
-!EOP
-
-    type (MAPL_MetaComp),    pointer                   :: MAPL 
-
-
-! ErrLog Variables
-
-    character(len=ESMF_MAXSTR)       :: IAm
-    integer                          :: STATUS
-    character(len=ESMF_MAXSTR)       :: COMP_NAME
-
-! Get the target components name and set-up traceback handle.
-! -----------------------------------------------------------
-
-    Iam = "Finalize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
-    VERIFY_(STATUS)
-    Iam = trim(comp_name) // Iam
-
-! Get my internal MAPL_Generic state
-!-----------------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
-    VERIFY_(STATUS)
-
-! Profilers
-!----------
-
-    call MAPL_TimerOn(MAPL,"TOTAL"   )
-    call MAPL_TimerOn(MAPL,"FINALIZE")
-
-    call dealloc_dyna_arrays( MAPL_AM_I_ROOT(), Iam )
-
-    call MAPL_TimerOff(MAPL,"FINALIZE")
-    call MAPL_TimerOff(MAPL,"TOTAL"   )
-
-! Generic Finalize
-! ------------------
-    
-    call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
-
-! All Done
-!---------
-
-    RETURN_(ESMF_SUCCESS)
-  end subroutine Finalize
-
 end module GEOS_MITDynaGridCompMod
   
 subroutine SetServices(gc, rc)
