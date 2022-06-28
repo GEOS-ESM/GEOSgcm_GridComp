@@ -587,7 +587,7 @@ subroutine gw_beres_ifc( band, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats)
 
 !WMP pressure scaling near model top
-     zfac_layer = 20.0 ! 0.2mb
+     zfac_layer = 15.0 ! 0.15mb
      pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
 !    pint_adj = 1.0
 
