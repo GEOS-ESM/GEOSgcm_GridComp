@@ -102,7 +102,7 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: QST3_dev
    real, allocatable, dimension(:,:), device :: DZET_dev
    real, allocatable, dimension(:,:), device :: QDDF3_dev
-   real, allocatable, dimension(:  ), device :: CNV_FRACTION_dev
+   real, allocatable, dimension(:  ), device :: CNVFRC_dev
    real, allocatable, dimension(:  ), device :: TROPP_dev
 
    ! Inoutputs
@@ -446,7 +446,7 @@ contains
          QST3_dev         , &
          DZET_dev         , &
          QDDF3_dev        , &
-         CNV_FRACTION_dev , &
+         CNVFRC_dev       , &
          TROPP_dev        , &
          RHX_dev          , &
          REV_LS_dev       , &
@@ -564,7 +564,7 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: QST3_dev   ! QST3
       real, intent(in   ), dimension(IRUN,  LM) :: DZET_dev   ! DZET
       real, intent(in   ), dimension(IRUN,  LM) :: QDDF3_dev  ! QDDF3
-      real, intent(in   ), dimension(IRUN)      :: CNV_FRACTION_dev   ! CNV_FRACTION
+      real, intent(in   ), dimension(IRUN)      :: CNVFRC_dev   ! CNV_FRACTION
       real, intent(in   ), dimension(IRUN)      :: TROPP_dev   ! TROPP
 
       real, intent(  out), dimension(IRUN,  LM) :: RHX_dev    ! RHX
@@ -962,6 +962,7 @@ contains
             IF(USE_AEROSOL_NN) THEN
             CALL meltfrz_inst (    &
                   DT             , &
+                  CNVFRC_dev(I)  , &
                   TEMP           , &
                   QLW_LS_dev(I,K), & 
                   QLW_AN_dev(I,K), &
@@ -970,11 +971,13 @@ contains
             ELSE
             CALL meltfrz (         &
                   DT             , &
+                  CNVFRC_dev(I)  , &
                   TEMP           , &
                   QLW_LS_dev(I,K), & 
                   QIW_LS_dev(I,K))
             CALL meltfrz (         &
                   DT             , &
+                  CNVFRC_dev(I)  , &
                   TEMP           , &
                   QLW_AN_dev(I,K), & 
                   QIW_AN_dev(I,K))
@@ -1027,6 +1030,7 @@ contains
                   DT             , &
                   ALPHA          , &
                   PDFFLAG        , &
+                  CNVFRC_dev(I)  , &                  
                   PP_dev(I,K)    , &
                   ZZ_dev(I,K)    , &
                   Q_dev(I,K)     , &
@@ -1208,8 +1212,8 @@ contains
             ! ----------------------------
 
             ! WMP: Adjustments to resolved scale ice fall speed options 
-                                            FRACTION_REMOVAL = fr_ls_ice
-            if (CNV_FRACTION_dev(I) >= 0.5) FRACTION_REMOVAL = fr_an_ice
+                                      FRACTION_REMOVAL = fr_ls_ice
+            if (CNVFRC_dev(I) >= 0.5) FRACTION_REMOVAL = fr_an_ice
 
             SELECT CASE( ICE_SETTLE )
             CASE( 0 )
@@ -1217,7 +1221,7 @@ contains
               TROPICAL      = ANV_ICEFALL_C*1.0
               EXTRATROPICAL = ANV_ICEFALL_C*0.0
             CASE( 1 )
-              TROPICAL      = CNV_FRACTION_dev(I) 
+              TROPICAL      = CNVFRC_dev(I) 
               EXTRATROPICAL = 1.0-TROPICAL
               TROPICAL      = ANV_ICEFALL_C*TROPICAL
               EXTRATROPICAL =  LS_ICEFALL_C*EXTRATROPICAL
@@ -1231,7 +1235,7 @@ contains
                   ANVFRC_dev(I,K), &
                   KH_dev(I,K-1)  , &
                   VFALL          , &
-                  EXTRATROPICAL, TROPICAL, CNV_FRACTION_dev(I), TROPP_dev(I) )
+                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I), TROPP_dev(I) )
             VFALLICE_AN_dev(I,K) = VFALL
 
             CALL ICEFALL(          &
@@ -1253,7 +1257,7 @@ contains
               TROPICAL      =  LS_ICEFALL_C*0.0
               EXTRATROPICAL =  LS_ICEFALL_C*1.0
             CASE( 1 )
-              TROPICAL      = CNV_FRACTION_dev(I)
+              TROPICAL      = CNVFRC_dev(I)
               EXTRATROPICAL = 1.0-TROPICAL
               TROPICAL      = ANV_ICEFALL_C*TROPICAL
               EXTRATROPICAL =  LS_ICEFALL_C*EXTRATROPICAL
@@ -1267,7 +1271,7 @@ contains
                   CLDFRC_dev(I,K), &
                   KH_dev(I,K-1)  , &
                   VFALL          , &
-                  EXTRATROPICAL, TROPICAL, CNV_FRACTION_dev(I), TROPP_dev(I) )
+                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I), TROPP_dev(I) )
             VFALLICE_LS_dev(I,K) = VFALL
 
             CALL ICEFALL(          &
@@ -1768,9 +1772,9 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine meltfrz( DT, TE, QL, QI )
+   subroutine meltfrz( DT, CNVFRC, TE, QL, QI )
 
-      real, intent(in)    :: DT
+      real, intent(in)    :: DT, CNVFRC
       real, intent(inout) :: TE,QL,QI
 
       real  :: fQi,dQil
@@ -1781,7 +1785,7 @@ contains
 
       ! freeze liquid
       if ( TE <= MAPL_TICE ) then
-         fQi  = ice_fraction( TE )
+         fQi  = ice_fraction( TE, CNVFRC )
          taufrz = 1000.
          dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
          dQil = max(  0., dQil )
@@ -1807,6 +1811,7 @@ contains
 #endif
    subroutine meltfrz_inst  (     &
          Dt       , &
+         CNVFRC   , &
          TE       , &
          QCL      , &
          QAL      , &
@@ -1814,7 +1819,7 @@ contains
          QAI      )
 
       real ,   intent(inout) :: TE,QCL,QCI,QAL,QAI
-      real ,   intent(in   ) :: Dt
+      real ,   intent(in   ) :: Dt, CNVFRC
       real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQA
       integer                :: n
       integer, parameter     :: MaxIterations=5
@@ -1832,7 +1837,7 @@ contains
       convergence: do n=1,MaxIterations
 
       ! melt ice using ICE_FRACTION
-      fQi = ice_fraction( TE )
+      fQi = ice_fraction( TE, CNVFRC )
       if ( (fQi < 1.0) .and. (TE > MAPL_TICE) ) then
          DQmax = (TE-MAPL_TICE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QITOT*(1.0-fQi)
@@ -1844,7 +1849,7 @@ contains
       end if
 
       ! freeze liquid using ICE_FRACTION 
-      fQi = ice_fraction( TE )
+      fQi = ice_fraction( TE, CNVFRC )
       if ( (fQi > 0.0) .and. (TE <= MAPL_TICE) ) then
          DQmax = (MAPL_TICE-TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QLTOT *(1.0 - EXP( -Dt * fQi / taufrz ) )
@@ -2453,7 +2458,7 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine SETTLE_VEL( WXR, QI, PL, TE, F, KH, VF, LARGESCALE, ANVIL, CNV_FRACTION, TROPP_Pa )
+   subroutine SETTLE_VEL( WXR, QI, PL, TE, F, KH, VF, LARGESCALE, ANVIL, CNVFRC, TROPP_Pa )
 
       real, intent(in   ) :: WXR 
       real, intent(in   ) :: TE
@@ -2461,7 +2466,7 @@ contains
       real, intent(in   ) :: KH
       real, intent(out  ) :: VF
 
-      real, intent(in) :: ANVIL, LARGESCALE, CNV_FRACTION
+      real, intent(in) :: ANVIL, LARGESCALE, CNVFRC
       real, intent(in) :: TROPP_Pa
       
       real :: RHO, XIm,LXIm, VF_A, VF_L, tpp_hPa, VF_PSC, wgt1, wgt2
@@ -2536,7 +2541,7 @@ contains
        VF_L = 0.01 * (109.0*(XIm**0.16)) * MIN(LARGESCALE,PFAC)
  
     ! Combine the two
-       VF = CNV_FRACTION*VF_A + (1.0-CNV_FRACTION)*VF_L
+       VF = CNVFRC*VF_A + (1.0-CNVFRC)*VF_L
 
    end SUBROUTINE SETTLE_VEL
 

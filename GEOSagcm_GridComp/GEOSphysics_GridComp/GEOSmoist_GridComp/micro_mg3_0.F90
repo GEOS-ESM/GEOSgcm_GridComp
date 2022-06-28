@@ -415,6 +415,7 @@ end subroutine micro_mg_init
 
 subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_tmp,  &
                              ncol,             LM,               dt_moist,       & 
+                             cnvfrc, &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -491,7 +492,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
    real(r8), intent(in) :: DT_MOIST
    REAL, dimension(1,1:LM) :: SCICE_tmp, FQA_tmp, ALPH_tmp
    INTEGER, intent(in) :: LM, shape, ncol
-   
+  
+   real                         :: cnvfrc 
    real(r8), dimension(1,1:LM)  ::                                                     &  
                              ter8,                          qvr8,                              &
                              qcr8,                          qir8,                          &
@@ -763,6 +765,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                                          REAL(DT_MOIST)  , &
                                           ALPH_tmp(1,K)  , &
                                          shape           , &
+                                            cnvfrc       , &
                                             PL_tmp(1,K)  , &
                                             Q1_tmp(1,K)  , &
                                           QLLS_tmp(1,K)  , &

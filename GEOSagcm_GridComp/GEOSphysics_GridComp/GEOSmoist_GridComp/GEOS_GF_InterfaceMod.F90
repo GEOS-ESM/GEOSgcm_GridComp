@@ -93,7 +93,7 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)      ,'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)       ,'FADJ_MASSFLX_MD:'       ,default= 0.5,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP           ,'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN           ,'USE_TRACER_SCAVEN:'     ,default= 2,    RC=STATUS );VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN           ,'USE_TRACER_SCAVEN:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_SCALE_DEP               ,'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP         ,'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, DICYCLE                     ,'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -116,12 +116,12 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, BETA_SH                     , 'BETA_SH:'              ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF         , 'USE_LINEAR_SUBCL_MF:'  ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CAP_MAXS                    , 'CAP_MAXS:'             ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, GF_MIN_AREA                 , 'GF_MIN_AREA:'          ,default= 0.,   RC=STATUS );VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, GF_MIN_AREA                 , 'GF_MIN_AREA:'          ,default= 36.e6,RC=STATUS );VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, USE_GF2020                  , 'USE_GF2020:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     IF(USE_GF2020==1) THEN
        call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 5400., RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 7200., RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -130,7 +130,7 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'         ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF           , 'USE_SMOOTH_PROF:'     ,default= 0,     RC=STATUS );VERIFY_(STATUS)
@@ -220,13 +220,13 @@ subroutine GF_Initialize (MAPL, RC)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
     ENDIF
-    call MAPL_GetResource(MAPL, GF_ENV_SETTING  , 'GF_ENV_SETTING:'  , DEFAULT= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, GF_ENV_SETTING  , 'GF_ENV_SETTING:'  , DEFAULT= 'CURRENT' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .TRUE.    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 1.5       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.5       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, FIX_CNV_CLOUD   , 'FIX_CNV_CLOUD:'   , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, FIX_CNV_CLOUD   , 'FIX_CNV_CLOUD:'   , DEFAULT= .TRUE.    , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GF_Initialize
 
@@ -486,7 +486,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
     if (GF_MIN_AREA > 0) then
-       TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+       where (AREA > GF_MIN_AREA)
+          TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+       elsewhere
+          TMP2D = GF_MIN_AREA
+       endwhere
     else if (GF_MIN_AREA < 0) then
        TMP2D = ABS(GF_MIN_AREA)
     else
@@ -504,7 +508,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, TMP2D, USTAR, TSTAR, QSTAR, T2M           &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
-                                 ,KPBL                                              &
+                                 ,KPBL ,CNV_FRC                                     &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
                                  ,MUPDP,MUPSH,MUPMD,MDNDP                           &
@@ -526,7 +530,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       TH = TH + DTHDT_DC*DT_MOIST
     ! update DeepCu QL/QI/CF tendencies
       TMP3D= CNV_DQCDT/MASS
-      fQi  = ICE_FRACTION( T )
+      fQi  = ice_fraction( T, CNV_FRC )
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
       DQADT_DC = CNV_MFD*SCLM_DEEP/MASS

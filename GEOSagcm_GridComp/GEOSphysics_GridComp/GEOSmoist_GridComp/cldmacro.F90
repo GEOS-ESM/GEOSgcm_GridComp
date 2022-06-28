@@ -30,7 +30,6 @@ module cldmacro
    public macro_cloud
    public update_cld
    public meltfrz_inst
-   public Bergeron_iter
    public make_IceNumber
    public make_DropletNumber
    public CLDPARAMS, CLDPARAM_TYPE 
@@ -103,6 +102,7 @@ contains
          PPE_dev          , &
          EXNP_dev         , &
          FRLAND_dev       , &
+         CNVFRC_dev       , &
          QLWDTR_dev       , &              
          QRN_CU_dev       , &
          CNV_UPDFRC_dev   , &
@@ -158,6 +158,7 @@ contains
       real, intent(in   ), dimension(IRUN,0:LM) :: PPE_dev     ! CNV_PLE
       real, intent(in   ), dimension(IRUN,  LM) :: EXNP_dev    ! PK
       real, intent(in   ), dimension(IRUN     ) :: FRLAND_dev  ! FRLAND
+      real, intent(in   ), dimension(IRUN     ) :: CNVFRC_dev  ! CNVFRC
       real, intent(in   ), dimension(IRUN,  LM) :: QLWDTR_dev  ! CNV_DQLDT
       real, intent(inout), dimension(IRUN,  LM) :: QRN_CU_dev  ! CNV_PRC3 IS THIS INTENT IN?
       real, intent(inout), dimension(IRUN,  LM) :: CNV_UPDFRC_dev ! CNV_UPDF
@@ -407,6 +408,7 @@ contains
                   DT             , &
                   ALPHA          , &
                   CLDPARAMS%PDFSHAPE , &
+                  CNVFRC_dev(I)  , &
                   PP_dev(I,K)    , &
                   Q_dev(I,K)     , &
                   QLW_LS_dev(I,K), &
@@ -759,6 +761,7 @@ contains
          DT          , &
          ALPHA       , &
          PDFFLAG     , &
+         CNVFRC      , &
          PL          , &
          QV          , &
          QCl         , &
@@ -774,7 +777,7 @@ contains
          RHcmicro    , &
          DO_HYSTPDF)
 
-      real, intent(in)    :: DT,ALPHA,PL
+      real, intent(in)    :: DT,ALPHA,PL,CNVFRC
       integer, intent(in) :: pdfflag
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF, NI, RHCmicro, NL,  SCICE
 
@@ -883,6 +886,7 @@ contains
             DT          , &
             ALPHA       , &
             PDFFLAG     , &
+            CNVFRC      , &
             PL          , &
             QV          , &
             QCl         , &
@@ -917,6 +921,7 @@ subroutine hystpdf_new( &
          DT          , &
          ALPHA       , &
          PDFFLAG     , &
+         CNVFRC      , &
          PL          , &
          QV          , &
          QCl         , &
@@ -930,7 +935,7 @@ subroutine hystpdf_new( &
          NI          , &
          SC_ICE)
 
-      real, intent(in)    :: DT,ALPHA,PL
+      real, intent(in)    :: DT,ALPHA,PL,CNVFRC
       integer, intent(in) :: pdfflag
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF
       real, intent(in)    :: NL,NI
@@ -967,7 +972,7 @@ subroutine hystpdf_new( &
 
       TEo = TE
 
-      fQi = ice_fraction( TE )
+      fQi = ice_fraction( TE, CNVFRC )
       DQSx  = DQSAT( TE, PL, QSAT=QSx )
       CFx = CF*tmpARR
       QCx = QC*tmpARR
@@ -1041,6 +1046,7 @@ subroutine hystpdf_new( &
                  AF               , &
                  NLv              , &
                  NIv              , &
+                 CNVFRC           , &
                  DQCALL           , &
                  fQi              , & 
                  .true.)
@@ -1830,14 +1836,15 @@ iDT = 1.0/DT
          AF               , &
          NL               , &
          NI               , & 
+         CNVFRC           , &  
          DQALL            , &
-         FQI  ,    &
+         FQI              , &
          needs_preexisting )
 
       real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
       real ,  intent(inout   )    ::  DQALL 
       real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
-      real ,  intent(in)    :: CF, AF, NL, NI
+      real ,  intent(in)    :: CF, AF, NL, NI, CNVFRC
       real, intent (out) :: FQI
       logical, intent (in)  :: needs_preexisting
       
@@ -1880,7 +1887,7 @@ iDT = 1.0/DT
                    ! new 0518 this line ensures that only preexisting ice can grow by deposition.
                   ! Only works if explicit ice nucleation is available (2 moment muphysics and up)                        
                     else
-                      fQi  =   ice_fraction( TE )
+                      fQi  =   ice_fraction( TE, CNVFRC )
                     end if                      
                   return 
          end if 

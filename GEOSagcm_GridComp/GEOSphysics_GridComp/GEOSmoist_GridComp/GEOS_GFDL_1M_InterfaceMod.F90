@@ -579,8 +579,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              endif
            ! combine and limit
              ALPHA = min( 0.30, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 70% 
-             RHCRIT = 1.0 - ALPHA
-       ! evaporation/sublimation for CN/LS
+       ! evaporation for CN/LS
+             RHCRIT = 1.0 
              EVAPC(I,J,L) = Q(I,J,L)
              call EVAP3 (         &
                   DT_MOIST      , &
@@ -596,6 +596,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
+       ! sublimation for CN/LS
+             RHCRIT = 1.0 - ALPHA
              SUBLC(I,J,L) =   Q(I,J,L)
              call SUBL3 (        &
                   DT_MOIST      , &
@@ -616,6 +618,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       DT_MOIST       , &
                       ALPHA          , &
                       PDFSHAPE       , &
+                      CNV_FRC(I,J)   , &
                       PLmb(I,J,L)    , &
                       ZL0(I,J,L)     , &
                       Q(I,J,L)       , &

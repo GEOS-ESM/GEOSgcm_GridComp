@@ -269,7 +269,7 @@ CONTAINS
                                ,RADSW   ,RADLW ,DQDT_BL  ,DTDT_BL                 &
                                ,FRLAND  ,AREA  ,USTAR ,TSTAR ,QSTAR ,T2M ,Q2M     &
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
-                               ,KPBLIN                                            &
+                               ,KPBLIN  ,CNVFRC                                   &
                                ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
                                ,DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF                   &
                                ,MUPDP,MUPSH,MUPMD,MDNDP                           &
@@ -306,7 +306,7 @@ CONTAINS
                                                       LONS, LATS, &
                                                       STOCHASTIC_SIG
 
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: KPBLIN
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: KPBLIN, CNVFRC
 
 
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: TPWI, TPWI_star
@@ -758,6 +758,7 @@ CONTAINS
                      ,xland       &
                      ,sfc_press   &
                      ,kpbl        &
+                     ,CNVFRC      &
                      !--- atmos state
                      ,col_sat     &
                      ,up          &
@@ -831,13 +832,13 @@ CONTAINS
         DO j=1,myp
           DO i=1,mxp
             DO k=1,mzp
-                 frct_liq(i,j,k) = fract_liq_f(tup5d(i,j,flip(k),DEEP))
+                 frct_liq(i,j,k) = fract_liq_f(tup5d(i,j,flip(k),DEEP),cnvfrc(i,j))
         ENDDO;ENDDO;ENDDO
       ELSE
         DO j=1,myp
           DO i=1,mxp
             DO k=1,mzp
-                 frct_liq(i,j,k) = fract_liq_f(T1(i,j,k))
+                 frct_liq(i,j,k) = fract_liq_f(T1(i,j,k),cnvfrc(i,j))
         ENDDO;ENDDO;ENDDO
       ENDIF
       !-- update GEOS-5 model state with the feedback from cumulus convection
@@ -1197,6 +1198,7 @@ ENDIF
               ,xland                 &
               ,sfc_press             &
               ,kpbl                  &
+              ,cnvfrc                &
 
               ,col_sat               &
               ,u                     &
@@ -1288,6 +1290,7 @@ ENDIF
                                                           buoy_exc
 
    INTEGER, DIMENSION(its:ite,jts:jte), INTENT(IN) :: kpbl
+   REAL,    DIMENSION(its:ite,jts:jte), INTENT(IN) :: cnvfrc
 
    !-- intent (in)
    REAL,    DIMENSION(its:ite,jts:jte) ::             topt ,aot500 ,temp2m ,sfc_press &
@@ -1898,6 +1901,7 @@ endif
                   ,xlons                            &
                   ,xlats                            &
                   ,xlandi                           &
+                  ,cnvfrc(:,j)                      &
                   ,temp_new                         &
                   ,qv_new                           &
                   ,temp_new_BL                      &
@@ -2165,6 +2169,7 @@ loop1:  do n=1,maxiens
                      ,xlons             &
                      ,xlats             &
                      ,xland             &
+                     ,cnvfrc            &
                      ,tn                &
                      ,qo                &
                      ,tn_bl             &
@@ -2273,6 +2278,7 @@ loop1:  do n=1,maxiens
 
      REAL,    DIMENSION (its:ite)               ,INTENT (IN   )    ::   &
         col_sat,&
+        cnvfrc,&
         stochastic_sig
      REAL,    DIMENSION (its:ite)               ,INTENT (INOUT)    ::   &
         zws,ztexec,zqexec
@@ -2738,7 +2744,7 @@ ENDIF
 !--- partition between liq/ice cloud contents
 !
       call get_partition_liq_ice(ierr,tn,z1,zo_cup,po_cup,p_liq_ice,melting_layer,&
-                                 itf,ktf,its,ite,kts,kte,cumulus)
+                                 itf,ktf,its,ite,kts,kte,cnvfrc,cumulus)
 !
       do i=its,itf
         if(ierr(i).eq.0)then
@@ -3322,7 +3328,7 @@ loop0:       do k=kts,ktf
 
      if(FIRST_GUESS_W .or. AUTOCONV == 4) then
         call cup_up_moisture_light(cumulus,start_level,klcl,ierr,ierrc,zo_cup,qco,qrco,pwo,pwavo,hco,tempco,xland   &
-                                  ,po,p_cup,kbcon,ktop,cd,dbyo,clw_all,t_cup,qo,GAMMAo_cup,zuo          &
+                                  ,cnvfrc,po,p_cup,kbcon,ktop,cd,dbyo,clw_all,t_cup,qo,GAMMAo_cup,zuo          &
                                   ,qeso_cup,k22,qo_cup,ZQEXEC,use_excess,rho,up_massentr,up_massdetr    &
                                   ,psum,psumh,c1d,x_add_buoy,1,itf,ktf,ipr,jpr,its,ite, kts,kte         )
 
@@ -3334,7 +3340,7 @@ loop0:       do k=kts,ktf
 !
 !--- calculate moisture properties of updraft
      call cup_up_moisture(cumulus,start_level,klcl,ierr,ierrc,zo_cup,qco,qrco,pwo,pwavo,hco,tempco,xland   &
-                         ,po,p_cup,kbcon,ktop,cd,dbyo,clw_all,t_cup,qo,GAMMAo_cup,zuo,qeso_cup &
+                         ,cnvfrc,po,p_cup,kbcon,ktop,cd,dbyo,clw_all,t_cup,qo,GAMMAo_cup,zuo,qeso_cup &
                          ,k22,qo_cup,ZQEXEC,use_excess,ccn,rho,up_massentr,up_massdetr,psum    &
                          ,psumh,c1d,x_add_buoy,vvel2d,vvel1d,zws,entr_rate_2d                  &
                          ,1,itf,ktf,ipr,jpr,its,ite, kts,kte                                   )
@@ -3451,7 +3457,7 @@ loop0:       do k=kts,ktf
 !
 !--- calculate rain mixing ratio in updrafts
 !
-!       call cup_up_rain(cumulus,klcl,kbcon,ktop,k22,ierr,xland         &
+!       call cup_up_rain(cumulus,klcl,kbcon,ktop,k22,ierr,xland,cnvfrc  &
 !                       ,zo_cup,qco,qrco,pwo,pwavo,po,p_cup,t_cup,tempco&
 !                       ,zuo,up_massentr,up_massdetr,vvel2d,rho         &
 !                       ,qrr                                            &
@@ -4846,7 +4852,7 @@ ENDIF ! vertical discretization formulation
                             ,tempco,qco,qrco,qo_cup,itf,ktf,its,ite, kts,kte   )
 
             call cup_up_lightning(itf,ktf,its,ite, kts,kte, ierr, kbcon,ktop,xland,cape &
-                                 ,zo,zo_cup,t_cup,t,tempco,qrco,po_cup,rho,prec_flx     &
+                                 ,cnvfrc,zo,zo_cup,t_cup,t,tempco,qrco,po_cup,rho,prec_flx     &
                                  ,lightn_dens                                        )
        endif
 !
@@ -4923,7 +4929,7 @@ ENDIF ! vertical discretization formulation
 
    IF(LIQ_ICE_NUMBER_CONC == 1) THEN
      call get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop &
-                                 ,dtime,rho,outqc,tempco,outnliq,outnice)
+                                 ,cnvfrc,dtime,rho,outqc,tempco,outnliq,outnice)
    ENDIF
 !
 !
@@ -6326,7 +6332,7 @@ ENDIF
 !------------------------------------------------------------------------------------
 
    SUBROUTINE cup_up_moisture(name,start_level,klcl,ierr,ierrc,z_cup,qc,qrc,pw,pwav,hc,tempc,xland,&
-                                  po,p_cup,kbcon,ktop,cd,dby,clw_all,                  &
+                                  cnvfrc,po,p_cup,kbcon,ktop,cd,dby,clw_all,                  &
                                   t_cup,q,gamma_cup,zu,qes_cup,k22,qe_cup,            &
                                   zqexec,use_excess,ccn,rho,                          &
                                   up_massentr,up_massdetr,psum,psumh,c1d,x_add_buoy,  &
@@ -6358,6 +6364,7 @@ ENDIF
                                                        ,qe_cup,hc,po,up_massentr,up_massdetr &
                                                        ,dby,qes_cup,z_cup,cd,c1d
 
+     real,  dimension (its:ite)        ,intent (in) ::  cnvfrc
      real,  dimension (its:ite)        ,intent (in) ::  zqexec,xland,x_add_buoy
      real,  dimension (its:ite)        ,intent (in) ::  zws,ccn
      real,  dimension (its:ite,kts:kte),intent (in) ::  entr_rate_2d
@@ -6502,8 +6509,8 @@ ENDIF
                    qrc(i,k)= clw_all(i,k) ; pw(i,k) = 0.
                 else
 
-                   cx0     = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k)))
-                  !cx0     = (c1d(i,k)+c0)*(1.+ 2.*fract_liq_f(tempc(i,k)))
+                   cx0     = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k),cnvfrc(i)))
+                  !cx0     = (c1d(i,k)+c0)*(1.+ 2.*fract_liq_f(tempc(i,k),cnvfrc(i)))
 !--- v0
                    qrc(i,k)= qrc(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    qrc(i,k)= max(qrc(i,k),min_liq)
@@ -6593,7 +6600,7 @@ ENDIF
 
                 if(clw_all(i,k) > min_liq) then
 
-                  tem1 = fract_liq_f(tempc(i,k))
+                  tem1 = fract_liq_f(tempc(i,k),cnvfrc(i))
                   cbf  = 1.
                   if(tempc(i,k) < T_BF) cbf=1.+0.5*sqrt(min(max(T_BF-tempc(i,k),0.),T_BF-T_ice_BF))
                   !qrc_crit_BF = 0.5e-3/cbf
@@ -6667,7 +6674,7 @@ ENDIF
 
 !------------------------------------------------------------------------------------
    SUBROUTINE cup_up_moisture_light(name,start_level,klcl,ierr,ierrc,z_cup,qc,qrc,pw,pwav,hc,tempc,xland &
-                                   ,po,p_cup,kbcon,ktop,cd,dby,clw_all,t_cup,q,gamma_cup,zu  &
+                                   ,cnvfrc,po,p_cup,kbcon,ktop,cd,dby,clw_all,t_cup,q,gamma_cup,zu  &
                                    ,qes_cup,k22,qe_cup,zqexec,use_excess,rho                 &
                                    ,up_massentr,up_massdetr,psum,psumh,c1d,x_add_buoy        &
                                    ,itest,itf,ktf,ipr,jpr,its,ite, kts,kte                   )
@@ -6692,7 +6699,7 @@ ENDIF
                                                        ,qe_cup,hc,po,up_massentr,up_massdetr &
                                                        ,dby,qes_cup,z_cup,cd,c1d
 
-     real,  dimension (its:ite)        ,intent (in) ::  zqexec,xland,x_add_buoy
+     real,  dimension (its:ite)        ,intent (in) ::  zqexec,xland,x_add_buoy,cnvfrc
 !
 ! input and output
 !
@@ -6775,7 +6782,7 @@ ENDIF
 
             !--add glaciation effect on the MSE
             if(MELT_GLAC) then
-               delt_hc_glac = clw_all(i,k)*(1.- fract_liq_f(tempc(i,k)))*xlf
+               delt_hc_glac = clw_all(i,k)*(1.- fract_liq_f(tempc(i,k),cnvfrc(i)))*xlf
 
                tempc(i,k) = tempc(i,k)+(1./cp)*delt_hc_glac
             endif
@@ -10066,12 +10073,12 @@ ENDIF
 
 !------------------------------------------------------------------------------------
    SUBROUTINE get_partition_liq_ice(ierr,tn,z1,zo_cup,po_cup, p_liq_ice,melting_layer         &
-                                   ,itf,ktf,its,ite, kts,kte, cumulus          )
+                                   ,itf,ktf,its,ite, kts,kte, cnvfrc, cumulus )
      IMPLICIT NONE
      CHARACTER *(*), INTENT (IN)                          :: cumulus
      INTEGER  ,INTENT (IN   )                             :: itf,ktf, its,ite, kts,kte
      INTEGER  ,INTENT (IN   ), DIMENSION(its:ite)         :: ierr
-     REAL     ,INTENT (IN   ), DIMENSION(its:ite)         :: z1
+     REAL     ,INTENT (IN   ), DIMENSION(its:ite)         :: z1, cnvfrc
      REAL     ,INTENT (IN   ), DIMENSION(its:ite,kts:kte) :: tn,po_cup,zo_cup
      REAL     ,INTENT (INOUT), DIMENSION(its:ite,kts:kte) :: p_liq_ice,melting_layer
      INTEGER :: i,k
@@ -10085,7 +10092,7 @@ ENDIF
         DO k=kts,ktf
           DO i=its,itf
              if(ierr(i) /= 0) cycle
-             p_liq_ice(i,k) = fract_liq_f(tn(i,k))
+             p_liq_ice(i,k) = fract_liq_f(tn(i,k),cnvfrc(i))
          ENDDO
         ENDDO
 !        go to 650
@@ -10963,8 +10970,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
         dp = 100.*(po_cup(i,k)-po_cup(i,k+1))
 
-        !p_liq_ice(i,k) = fract_liq_f(tempco(i,k))
-
         !---rainfall evaporation below cloud base
         if(k <= kbcon(i)) then
          q_deficit = max(0.,(RH_cr*qes_cup(i,k) -qo_cup(i,k)))
@@ -11003,6 +11008,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
          pre(i) = pre(i) - evap_bcb(i,k)
 
         !--for future use (rain and snow precipitation fluxes)
+        !p_liq_ice(i,k) = fract_liq_f(tempco(i,k),,cnvfrc(i))
         !prec_flx_rain(k) = prec_flx(i,k)*(1.-p_liq_ice(k))
         !prec_flx_snow(k) = prec_flx(i,k)*    p_liq_ice(k)
 
@@ -11048,7 +11054,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
            !
            !--for future use (rain and snow precipitation fluxes)
-           !p_liq_ice(i,k) = fract_liq_f(tempco(i,k))
+           !p_liq_ice(i,k) = fract_liq_f(tempco(i,k),,cnvfrc(i))
            !prec_flx_rain(k) = prec_flx(i,k)*(1.-p_liq_ice(k))
            !prec_flx_snow(k) = prec_flx(i,k)*    p_liq_ice(k)
          enddo
@@ -11457,7 +11463,7 @@ END SUBROUTINE get_wetbulb
 
 !------------------------------------------------------------------------------------
   SUBROUTINE cup_up_lightning(itf,ktf,its,ite, kts,kte, ierr, kbcon,ktop,xland,cape &
-                             ,zo,zo_cup,t_cup,t,tempco,qrco,po_cup,rho,prec_flx     &
+                             ,cnvfrc,zo,zo_cup,t_cup,t,tempco,qrco,po_cup,rho,prec_flx     &
                              ,lightn_dens)
 
    !=====================================================================================
@@ -11470,7 +11476,7 @@ END SUBROUTINE get_wetbulb
    implicit none
    integer                            ,intent(in)  :: itf,ktf, its,ite, kts,kte
    integer, dimension(its:ite)        ,intent(in)  :: ierr,kbcon,ktop
-   real,    dimension(its:ite)        ,intent(in)  :: cape,xland
+   real,    dimension(its:ite)        ,intent(in)  :: cape,xland,cnvfrc
    real,    dimension(its:ite,kts:kte),intent(in)  :: po_cup,zo_cup,t_cup,t,tempco,zo &
                                                      ,qrco,rho,prec_flx
 
@@ -11501,7 +11507,7 @@ END SUBROUTINE get_wetbulb
 
       do k=kts,ktop(i)
 
-        p_liq_ice(k) = fract_liq_f(tempco(i,k))
+        p_liq_ice(k) = fract_liq_f(tempco(i,k),cnvfrc(i))
 
         prec_flx_fr=   p_liq_ice(k)*prec_flx(i,k)/rho(i,k)
 
@@ -11532,7 +11538,7 @@ END SUBROUTINE get_wetbulb
   END SUBROUTINE cup_up_lightning
 
 !------------------------------------------------------------------------------------
-   SUBROUTINE cup_up_rain(cumulus,klcl,kbcon,ktop,k22,ierr,xland        &
+   SUBROUTINE cup_up_rain(cumulus,klcl,kbcon,ktop,k22,ierr,xland,cnvfrc &
                       ,zo_cup,qco,qrco,pwo,pwavo,po,p_cup,t_cup,tempco  &
                       ,zuo,up_massentr,up_massdetr,vvel2d,rho           &
                       ,qrr                                              &
@@ -11542,7 +11548,7 @@ END SUBROUTINE get_wetbulb
      character *(*)            , intent (in) :: cumulus
      integer                    ,intent (in) :: itf,ktf,its,ite,kts,kte
      integer, dimension(its:ite),intent (in) :: kbcon,ktop,k22,klcl,ierr
-     real,    dimension(its:ite),intent (in) :: xland,pwavo
+     real,    dimension(its:ite),intent (in) :: xland,cnvfrc,pwavo
      real,    dimension(its:ite,kts:kte),intent (in)  ::   &
               zo_cup,qco,qrco,pwo,po,p_cup,t_cup,zuo       &
              ,up_massentr,up_massdetr,vvel2d,tempco,rho
@@ -11570,7 +11576,7 @@ END SUBROUTINE get_wetbulb
 
        do k=ktop(i),kts,-1
 
-           p_liq_ice(k) = fract_liq_f(tempco(i,k))
+           p_liq_ice(k) = fract_liq_f(tempco(i,k),cnvfrc(i))
 
            !--- transport + mixing
            denom = zuo(i,k+1)-.5*up_massdetr(i,k)+up_massentr(i,k)
@@ -11858,12 +11864,13 @@ SUBROUTINE get_interp(q_old,t_old,po_cup,q_new,t_new)
 end SUBROUTINE get_interp
 
 !------------------------------------------------------------------------------------
-REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
+REAL FUNCTION fract_liq_f(temp2,cnvfrc) ! temp2 in Kelvin, fraction between 0 and 1.
    implicit none
    real,intent(in)  :: temp2 ! K
+   real,intent(in)  :: cnvfrc
    SELECT CASE(FRAC_MODIS)
    CASE (1)
-       fract_liq_f = 1.0 - ICE_FRACTION(temp2)
+       fract_liq_f = 1.0 - ice_fraction(temp2,cnvfrc)
    CASE DEFAULT
        fract_liq_f =  min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
    END SELECT
@@ -12380,12 +12387,13 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
  end subroutine GF_convpar_init
 !------------------------------------------------------------------------------------
  subroutine get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop&
-                                  ,dtime,rho,outqc,tempco,outnliq,outnice)
+                                  ,cnvfrc,dtime,rho,outqc,tempco,outnliq,outnice)
 
     implicit none
     integer,   intent (in )  :: itf,ktf,its,ite,kts,kte
     real,      intent (in )  :: dtime
 
+    real,    dimension (its:ite)         ,intent (in )  :: cnvfrc
     integer, dimension (its:ite)         ,intent (in )  :: ierr,ktop
     real,    dimension (its:ite,kts:kte) ,intent (in )  :: outqc,tempco,rho
     real,    dimension (its:ite,kts:kte) ,intent (out)  :: outnliq,outnice
@@ -12405,7 +12413,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
 
          do k=kts,ktop(i)+1
 
-            fr    = fract_liq_f(tempco(i,k))
+            fr    = fract_liq_f(tempco(i,k),cnvfrc(i))
             tqliq = dtime * outqc(i,k)* rho(i,k) * fr
             tqice = dtime * outqc(i,k)* rho(i,k) * (1.-fr)
 

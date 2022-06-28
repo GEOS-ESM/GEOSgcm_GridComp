@@ -143,48 +143,51 @@ module GEOSmoist_Process_Library
 
   end subroutine CNV_Tracers_Init
 
-  function ICE_FRACTION_3D (TEMP) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP(:,:,:)
+  function ICE_FRACTION_3D (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:)
       real :: ICEFRCT(size(TEMP,1),size(TEMP,2),size(TEMP,3))
       integer :: i,j,l
       do l=1,size(TEMP,3)
       do j=1,size(TEMP,2)
       do i=1,size(TEMP,1)
-        ICEFRCT(i,j,l) = ICE_FRACTION_SC(TEMP(i,j,l))
+        ICEFRCT(i,j,l) = ICE_FRACTION_SC(TEMP(i,j,l),CNV_FRACTION(i,j))
       enddo
       enddo
       enddo
   end function ICE_FRACTION_3D
 
-  function ICE_FRACTION_2D (TEMP) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP(:,:)
+  function ICE_FRACTION_2D (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP(:,:),CNV_FRACTION(:,:)
       real :: ICEFRCT(size(TEMP,1),size(TEMP,2))
       integer :: i,j
       do j=1,size(TEMP,2)
       do i=1,size(TEMP,1)
-        ICEFRCT(i,j) = ICE_FRACTION_SC(TEMP(i,j))
+        ICEFRCT(i,j) = ICE_FRACTION_SC(TEMP(i,j),CNV_FRACTION(i,j))
       enddo
       enddo
   end function ICE_FRACTION_2D
 
-  function ICE_FRACTION_1D (TEMP) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP(:)
+  function ICE_FRACTION_1D (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP(:),CNV_FRACTION(:)
       real :: ICEFRCT(size(TEMP))
       integer :: i
       do i=1,size(TEMP)
-        ICEFRCT(i) = ICE_FRACTION_SC(TEMP(i))
+        ICEFRCT(i) = ICE_FRACTION_SC(TEMP(i),CNV_FRACTION(i))
       enddo
   end function ICE_FRACTION_1D
 
-  function ICE_FRACTION_SC (TEMP) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP
+  function ICE_FRACTION_SC (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP,CNV_FRACTION
       real             :: ICEFRCT
       real             :: tc, ptc
+      real             :: anvexp
 
+      ! Anvil clouds need a shifted polynomial
+      anvexp = 1+4*CNV_FRACTION
       ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
       tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))**anvexp
 
   end function ICE_FRACTION_SC
 
@@ -732,6 +735,7 @@ module GEOSmoist_Process_Library
          DT          , &
          ALPHA       , &
          PDFSHAPE    , &
+         CNVFRC      , &
          PL          , &
          ZL          , &
          QV          , &
@@ -778,7 +782,7 @@ module GEOSmoist_Process_Library
          WQL,        &
          USE_AERO_NN )
 
-      real, intent(in)    :: DT,ALPHA,PL,ZL
+      real, intent(in)    :: DT,ALPHA,CNVFRC,PL,ZL
       integer, intent(in) :: pdfshape
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
       real, intent(in)    :: NL,NI
@@ -841,7 +845,7 @@ module GEOSmoist_Process_Library
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         fQi = ice_fraction( TEn )
+         fQi = ice_fraction( TEn, CNVFRC )
 
          if(PDFSHAPE.lt.2) then
 
@@ -908,7 +912,7 @@ module GEOSmoist_Process_Library
                                  WQL,          &
                                  CFn)
 
-           fQi = ice_fraction( TEn )
+           fQi = ice_fraction( TEn, CNVFRC )
 
          endif
 
@@ -933,6 +937,7 @@ module GEOSmoist_Process_Library
                  AF               , &
                  NLv              , &
                  NIv              , &
+                 CNVFRC           , &
                  DQCALL           , &
                  fQi              , & 
                  .false.)
@@ -961,7 +966,7 @@ module GEOSmoist_Process_Library
       QCo = QCn
       QVo = QVn
       TEo = TEn
-      fQi = ice_fraction( TEo )
+      fQi = ice_fraction( TEo, CNVFRC )
 
       ! Update prognostic variables.  Deal with special case of AF=1
       ! Temporary variables QCo, QAo become updated grid means.
@@ -1803,6 +1808,7 @@ module GEOSmoist_Process_Library
          AF               , &
          NL               , &
          NI               , & 
+         CNVFRC           , &
          DQALL            , &
          FQI  ,    &
          needs_preexisting )
@@ -1812,7 +1818,7 @@ module GEOSmoist_Process_Library
       real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
       real ,  intent(inout   )    ::  DQALL 
       real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
-      real ,  intent(in)    :: CF, AF, NL, NI
+      real ,  intent(in)    :: CF, AF, NL, NI, CNVFRC
       real, intent (out) :: FQI
       logical, intent (in)  :: needs_preexisting
       
@@ -1844,7 +1850,7 @@ module GEOSmoist_Process_Library
 
       else !mixed phase or ice clouds
 
-         FQI   = ice_fraction( TE )
+         FQI   = ice_fraction( TE, CNVFRC )
          
          QVINC = QV 
          QSLIQ = GEOS_QsatLQU(TE, PL*100.0, DQ=DQSL )

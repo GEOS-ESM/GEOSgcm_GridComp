@@ -1530,6 +1530,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               CNV_PLE           , &
               PK                , &
               FRLAND            , &   ! <- surf
+              CNV_FRC           , &   ! <- convective fraction
               CNV_DQCDT         , &   ! <- dpcu              
               CNV_PRC3          , &   ! <- dpcu   
               CNV_UPDF          , &   ! <- dpcu
@@ -1972,6 +1973,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         
          call  micro_mg_tend_interface ( DT_MICRO, INT(CLDPARAMS%PDFSHAPE), ALPH_tmp, SCICE_tmp, FQA_tmp, &
                              ncolmicro,             LM,               dt_r8,       & 
+                             CNV_FRC(I,J), &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -2153,6 +2155,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                          DT_MOIST                , &
                          ALPHT_X(I, J, K)        , &
                          INT(CLDPARAMS%PDFSHAPE) , &
+                         CNV_FRC(I, J)           , &
                          PLO(I, J, K)            , &
                          Q1 (I, J, K)            , &
                          QLLS(I, J, K)           , &
