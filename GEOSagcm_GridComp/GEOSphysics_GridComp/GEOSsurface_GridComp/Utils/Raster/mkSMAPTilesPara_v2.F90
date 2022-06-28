@@ -749,8 +749,6 @@ PROGRAM mkSMAPTilesPara_v2
 
       ! CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
       
-      call system (tmpstring)
-
       ! now run mkCatchParam
       ! --------------------
 

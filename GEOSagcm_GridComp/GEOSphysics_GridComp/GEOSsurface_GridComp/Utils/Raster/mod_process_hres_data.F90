@@ -1139,7 +1139,7 @@ END SUBROUTINE HISTOGRAM
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
       call RegridRaster(tile_id,iraster)
       NPLUS = count(iraster >= 1 .and. iraster <= ncatch)
-      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
       allocate (rmap%map (1:NPLUS))     
       rmap%map%NT = 0
       pix_count = 1
@@ -1158,7 +1158,7 @@ END SUBROUTINE HISTOGRAM
 
    else
       NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
-      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
       allocate (rmap%map (1:NPLUS))     
       rmap%map%NT = 0
       pix_count   = 1
@@ -2603,6 +2603,7 @@ END SUBROUTINE modis_scale_para_high
                      do i = iLL, iLL + nc_10 -1 
                         if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
                            pix_count = rmap%ij_index(i,j)
+                           if (pix_count ==0) cycle
                            if(rmap%map(pix_count)%nt > 0) then
                               do n = 1, rmap%map(pix_count)%nt
                                  if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
@@ -2906,6 +2907,7 @@ END SUBROUTINE modis_scale_para_high
                  do i = iLL, iLL + nc_10 -1 
                     if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
                        pix_count = rmap%ij_index(i,j)
+                       if (pix_count == 0) cycle
                        if(rmap%map(pix_count)%nt > 0) then
                           do n = 1, rmap%map(pix_count)%nt
                              if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
@@ -4194,8 +4196,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                   j  = 0
                   i1 = n - k
                   i2 = n + k
-                  if((i1 >=     1).and.(soil_class_com (i1) >=1)) j = i1  ! tentatively use "lower" neighbor unless out of range
-                  if((i2 <=maxcat).and.(soil_class_com (i2) >=1)) j = i2  ! "upper" neighbor prevails unless out of range
+                  if(i1 >=     1) then
+                     if (soil_class_com (i1) >=1) j = i1  ! tentatively use "lower" neighbor unless out of range
+                  endif
+
+                  if(1 <= i2 .and. i2 <=maxcat) then
+                     if (soil_class_com (i2) >=1) j = i2  ! "upper" neighbor prevails unless out of range
+                  endif
 
                   if (j > 0) then
                      soil_class_com (n) = soil_class_com (j)
