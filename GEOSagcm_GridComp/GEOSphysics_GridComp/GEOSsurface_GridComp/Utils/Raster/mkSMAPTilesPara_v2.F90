@@ -783,20 +783,9 @@ PROGRAM mkSMAPTilesPara_v2
               xs (i,j) = dble(xout)
            end do
         end do
-        
-        where (ys > 90.)
-           ys = 90.D0
-        endwhere
-        where (ys < -90.)
-           ys = -90.D0
-        endwhere
-        where (xs > 180.)
-           xs = 180.D0
-        endwhere
-        where (xs < -180.)
-           xs = -180.D0
-        endwhere
+	
         call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,xmn = xs(1,1), xmx= xs(nc_smap+1, nr_smap+1),  ymn=ys(1,1), ymx = ys(nc_smap+1, nr_smap+1), Here=.false., Verb=.false.)       
+
         stop
       end SUBROUTINE mkEASEv2Raster
 
