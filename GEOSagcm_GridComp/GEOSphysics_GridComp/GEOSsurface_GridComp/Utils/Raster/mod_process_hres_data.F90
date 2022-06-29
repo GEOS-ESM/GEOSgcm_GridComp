@@ -1875,6 +1875,7 @@ END SUBROUTINE modis_scale_para_high
                    do j = jLL,jLL + nr_10 -1 
                       do i = iLL, iLL + nc_10 -1
                          pix_count = rmap%ij_index(i,j)
+                         if (pix_count ==0) cycle
                          if(net_data1(i-iLL +1 ,j - jLL +1) > 0) then
                             
                             if(rmap%map(pix_count)%nt > 0) then

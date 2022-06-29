@@ -56,7 +56,9 @@ PROGRAM mkCatchParam
   logical              :: ease_grid=.false., redo_modis=.false.
   character*40         :: lai_name 
   integer, parameter   :: log_file = 998
-  type (regrid_map)    :: maparc30, mapgeoland2,maparc60
+  type (regrid_map), target     :: shared_map
+  type (regrid_map), pointer    :: maparc30, mapgeoland2
+  type (regrid_map)    :: maparc60
   character*200        :: tmpstring, tmpstring1, tmpstring2
   character*200        :: fname_tmp, fname_tmp2, fname_tmp3, fname_tmp4
   integer              :: N_tile
@@ -99,8 +101,6 @@ integer :: n_threads=1
 !
 !$OMP ENDPARALLEL
 
-!   call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
-!   call system('cd ..')
 
     USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE                                      "
     USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                                     "
@@ -339,7 +339,9 @@ integer :: n_threads=1
                   
        tmpstring = 'Step 05: Vegetation climatologies'
        write (log_file,'(a,a,a)') trim(tmpstring),' ', trim(LAIBCS)
-       
+
+       call create_mapping (nc,nr,40320,20160,shared_map, gridnamer)         
+        
        if((trim(LAIBCS) == 'MODGEO').or.(trim(LAIBCS) == 'GEOLAND2')) then 
           fname_tmp = 'clsm/lai.GEOLAND2_10-DayClim'
           write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
@@ -347,7 +349,8 @@ integer :: n_threads=1
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
              !allocate (mapgeoland2 (1:40320,1:20160))
-             call create_mapping (nc,nr,40320,20160,mapgeoland2, gridnamer)         
+             !call create_mapping (nc,nr,40320,20160,mapgeoland2, gridnamer)         
+             mapgeoland2 => shared_map
              lai_name = 'GEOLAND2_10-DayClim/geoland2_' 
              if(trim(LAIBCS) == 'GEOLAND2') then
                 call hres_lai_no_gswp (40320,20160,mapgeoland2,gridnamer, lai_name) 
@@ -355,8 +358,8 @@ integer :: n_threads=1
                 call hres_lai_no_gswp (40320,20160,mapgeoland2,gridnamer, lai_name, merge=1) 
              endif
              ! if(allocated(mapgeoland2)) deallocate (mapgeoland2)
-             deallocate (mapgeoland2%map)
-             deallocate (mapgeoland2%ij_index)
+             !deallocate (mapgeoland2%map)
+             !deallocate (mapgeoland2%ij_index)
              write (log_file,'(a)')'         Done.'
           else
              write (log_file,'(a)')'         Using existing file.'
@@ -365,7 +368,8 @@ integer :: n_threads=1
        
        if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2')) then
           ! allocate (maparc30    (1:43200,1:21600))
-          call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
+          !call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
+          maparc30 =>shared_map
        endif
        
        fname_tmp = 'clsm/green.dat'
@@ -378,7 +382,8 @@ integer :: n_threads=1
           else
              if (size(maparc30%ij_index,1) /= 43200) then 
                 ! allocate (maparc30    (1:43200,1:21600))
-                call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
+                !call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
+                maparc30 =>shared_map
              endif
              call hres_gswp2 (43200,21600, maparc30, gridnamer,'green') 
           endif
@@ -398,7 +403,8 @@ integer :: n_threads=1
           if (trim(LAIBCS) == 'GSWPH') then
              if (size(maparc30%ij_index,1) /= 43200) then 
                 ! allocate (maparc30    (1:43200,1:21600))
-                call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
+                !call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
+                maparc30 =>shared_map
              endif
              inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
              if (.not.file_exists) call hres_gswp2 (43200,21600, maparc30, gridnamer,'lai') 
@@ -499,8 +505,8 @@ integer :: n_threads=1
        write (log_file,'(a)')' '
        
        if(.not.F25Tag) then 
-          deallocate (maparc30%map)
-          deallocate (maparc30%ij_index)
+          !deallocate (maparc30%map)
+          !deallocate (maparc30%ij_index)
        endif
 
        ! ---------------------------------------------
