@@ -4655,7 +4655,10 @@ subroutine RUN2 (GC, IMPORT, EXPORT, CLOCK, RC)
           !! For this reason, the REFRESH uses a flux-weighted mean cos(SZA) that applies
           !! for the period beginning one timestep beyond the current ring time (so it
           !! syncs with the UPDATE for the *next* Solar call) and extending for one solar
-          !! ring interval.
+          !! ring interval. We use the time of the PREVIOUS solar ring here (i.e., BEFORE)
+          !! so that the albedos going into the catchment calculation below are consistent
+          !! with the last full Solar REFRESH, the normalized fluxes from which will be
+          !! used in the the imminent (later this timestep) Solar UPDATE.
           !! Note by PMN: This is only consistent with SolarGC having UPDATE_FIRST .TRUE.,
           !! the default. Multiple things currently break if this is not true! But Andrea
           !! says the code works both ways (UPDATE_FIRST T|F) so need to verify.
@@ -4688,15 +4691,15 @@ subroutine RUN2 (GC, IMPORT, EXPORT, CLOCK, RC)
           endif
 
           ! Set the solar averaging period between the last solar REFRESH and the next one.
-          ! This should lead to albedos consistent with the current REFRESH period, but *not*
-          ! the upcoming REFRESH period.
+          ! This yields albedos consistent with the current solar REFRESH period. 
           ZTHSTART = BEFORE + DELT
           ZTHINTVL = SOLINT
 
         else
 
-          ! For an AFU calculation just need flux-averaged albedos
-          ! for the CURRENT timestep for the AFU UPDATE phase
+          ! For an AFU calculation just need flux-averaged albedos for the CURRENT timestep,
+          ! to be used for the AFU UPDATE phase in Solar and for a catchment calculation
+          ! below that is consistent with that AFU update.
           ZTHSTART = CURRENT_TIME
           ZTHINTVL = DELT
 
@@ -5475,75 +5478,90 @@ subroutine RUN2 (GC, IMPORT, EXPORT, CLOCK, RC)
         QC(:,FSNW) =  GEOS_QSAT (TC(:,FSNW), PS, PASCALS=.true., RAMP=0.0)
 
         ! --------------------------------------------------------------------------
-        ! update surface emissivities
+        ! Update LW radiation exports
         ! --------------------------------------------------------------------------
 
+        ! Surface emissivity
         EMIS = EMSVEG(VEG) + (EMSBARESOIL - EMSVEG(VEG))*exp(-LAI)
         EMIS = EMIS * (1.-ASNOW) + EMSSNO * ASNOW
 
-        ! --------------------------------------------------------------------------
-        ! Update solar zenith angle 
-        ! --------------------------------------------------------------------------
-        ! If solar alarm is ringing, this period is exactly what the solar refresh needs
-
-        call MAPL_SunGetInsolation(             &
-            LONS, LATS, ORBIT, ZTH, SLR,        &
-            INTV = SOLINT,                      &
-            currTime = CURRENT_TIME+DELT, __RC__)
-        ZTH = max(0.,ZTH)
+        ! Longwave net downward at surface (note spellings carefully)
+        LWNDSRF = LWDNSRF - HLWUP
 
         ! --------------------------------------------------------------------------
-        ! Update radiation exports
+        ! Update Output Temperature of Top Snow Level
         ! --------------------------------------------------------------------------
-        ! Per previous comment, when solar alarm is ringing, the _REF albedos will
-        ! be the correct time-averaged albedos for the upcoming solar REFRESH. When
-        ! not ringing, they are just forward-looking time-avereged albedos that are
-        ! not used. 
-
-        call MAPL_TimerOn(MAPL,"-ALBEDO")
-        ! NOTE: apply diffuse scale parameters to both direct and diffuse
-        call SIBALB(NTILES, VEG, LAI, GRN, ZTH, &
-                    VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles
-                    ALBVR_REF, ALBNR_REF,       & ! "REFRESH" snow-free albedos on tiles
-                    ALBVF_REF, ALBNF_REF)         ! only truly REFRESH is solAlarmIsOn
+        ! PMN: shifted out of REFRESH albedo branch below because "TPSN1OUT" can 
+        ! be requested for export whether or not a solar REFRESH is imminent.
 
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 = TPSN1OUT1 + MAPL_TICE
 
-        call SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
-                 RHOFS,                                              &   
-                 SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
-                 WESNN, HTSNNN, SNDZN,                               &
-                 ALBVR_REF, ALBNR_REF, ALBVF_REF, ALBNF_REF,         & 
-                 SNOVR, SNONR, SNOVF, SNONF,  & ! "REFRESH" snow albedos on tiles
-                 RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)   
+        ! --------------------------------------------------------------------------
+        ! Update albedo exports
+        ! --------------------------------------------------------------------------
 
-        ALBVR_REF = ALBVR_REF * (1.-ASNOW) + SNOVR * ASNOW
-        ALBVF_REF = ALBVF_REF * (1.-ASNOW) + SNOVF * ASNOW
-        ALBNR_REF = ALBNR_REF * (1.-ASNOW) + SNONR * ASNOW
-        ALBNF_REF = ALBNF_REF * (1.-ASNOW) + SNONF * ASNOW
+        call MAPL_TimerOn(MAPL,"-ALBEDO")
 
-        if (.not. do_AFU_calc) then
-           ! copy "REFRESH" albedos to regular albedos to mimic prior non-AFU code
-           ! Note: if do_AFU_calc then retain previous instantaneous albedos
-           ALBVR = ALBVR_REF
-           ALBVF = ALBVF_REF
-           ALBNR = ALBNR_REF
-           ALBNF = ALBNF_REF
-        end if
+        if (.not. do_AFU_calc  &    ! non-AFU: maintain legacy behavior
+            .or. SolAlarmIsOn) then ! AFU and RERESH imminent: need ALB*_REF
+                                    !   (otherwise ALB*_REF are unused so 
+                                    !   their calculation is wasteful).
+
+           ! update cosine of solar zenith angle for solar REFRESH:
+           ! when solar alarm is ringing, this period is exactly what the REFRESH needs
+
+           call MAPL_SunGetInsolation(             &
+               LONS, LATS, ORBIT, ZTH, SLR,        &
+               INTV = SOLINT,                      &
+               currTime = CURRENT_TIME+DELT, __RC__)
+           ZTH = max(0.,ZTH)
+
+           ! Per previous comment, when solar alarm is ringing, the _REF albedos will
+           ! be the correct time-averaged albedos for the upcoming solar REFRESH. When
+           ! not ringing, they are just forward-looking time-avereged albedos that are
+           ! unused. Are produced anyway in this branch to maintain legacy behavior.
+
+           ! NOTE: apply diffuse scale parameters to both direct and diffuse
+           call SIBALB(NTILES, VEG, LAI, GRN, ZTH, &
+                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles
+                       ALBVR_REF, ALBNR_REF,       & ! "REFRESH" snow-free albedos on tiles
+                       ALBVF_REF, ALBNF_REF)         ! only truly REFRESH if solAlarmIsOn
+
+           call SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+                    RHOFS,                                              &   
+                    SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
+                    WESNN, HTSNNN, SNDZN,                               &
+                    ALBVR_REF, ALBNR_REF, ALBVF_REF, ALBNF_REF,         & 
+                    SNOVR, SNONR, SNOVF, SNONF,  & ! "REFRESH" snow albedos on tiles
+                    RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)   
+
+           ALBVR_REF = ALBVR_REF * (1.-ASNOW) + SNOVR * ASNOW
+           ALBVF_REF = ALBVF_REF * (1.-ASNOW) + SNOVF * ASNOW
+           ALBNR_REF = ALBNR_REF * (1.-ASNOW) + SNONR * ASNOW
+           ALBNF_REF = ALBNF_REF * (1.-ASNOW) + SNONF * ASNOW
+
+           if (.not. do_AFU_calc) then
+              ! Copy "REFRESH" albedos to regular albedos to mimic prior non-AFU code.
+              ! Note: if do_AFU_calc then retain previous instantaneous albedos.
+              ALBVR = ALBVR_REF
+              ALBVF = ALBVF_REF
+              ALBNR = ALBNR_REF
+              ALBNF = ALBNF_REF
+           end if
+
+        endif  ! REFRESH albedo update
+
         if (.not. solAlarmIsOn) then
-           ! the "REFRESH" albedos are not real REFRESH albedos
-           ! and are not needed by Solar in this case
-           ! PMN: may be faster to never calculate these under AFU and not solArmIsOn
-           !      but need to check that none of the above outputs are used below. TODO !!!!!!!!!!!!
+           ! The "REFRESH" albedos are not real REFRESH albedos
+           ! and are not needed by Solar in this case.
            ALBVR_REF = MAPL_UNDEF
            ALBVF_REF = MAPL_UNDEF
            ALBNR_REF = MAPL_UNDEF
            ALBNF_REF = MAPL_UNDEF
         end if
-        call MAPL_TimerOff(MAPL,"-ALBEDO")
 
-        LWNDSRF = LWDNSRF - HLWUP
+        call MAPL_TimerOff(MAPL,"-ALBEDO")
 
         ! --------------------------------------------------------------------------
         ! update subtile fractions and outputs
