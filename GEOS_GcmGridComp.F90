@@ -1081,17 +1081,23 @@ contains
            call ESMF_TimeIntervalGet( PREDICTOR_DURATION, S=i_PREDICTOR_DURATION, rc=status )
            call MAPL_ConfigSetAttribute(  CF, i_PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS)
            VERIFY_(STATUS)
-           IF(MAPL_AM_I_ROOT()) PRINT *,'Setting PREDICTOR_DURATION, to ',i_PREDICTOR_DURATION
+           IF(MAPL_AM_I_ROOT()) PRINT *,'Setting PREDICTOR_DURATION based on IAU Frequency: ',i_PREDICTOR_DURATION
        else
            call ESMF_TimeIntervalGet( PREDICTOR_DURATION, S=rep_S, rc=status )
-           if( rep_S .ne. i_PREDICTOR_DURATION ) then
+           if( rep_S .gt. i_PREDICTOR_DURATION ) then
                IF(MAPL_AM_I_ROOT()) then
                   PRINT * 
                   PRINT *,'ERROR!             User-Defined PREDICTOR_DURATION: ',i_PREDICTOR_DURATION
-                  PRINT *,'is INCONSISTENT with Calculated PREDICTOR_DURATION: ',rep_S
+                  PRINT *,'is SMALLER THAN required Calculated PREDICTOR_DURATION: ',rep_S
                   PRINT * 
                endif
                VERIFY_(ESMF_FAILURE)
+           else
+               if( rep_S .ne. i_PREDICTOR_DURATION ) then
+                   call ESMF_TimeIntervalSet( PREDICTOR_DURATION, S=i_PREDICTOR_DURATION, rc=status )
+                   VERIFY_(STATUS)
+                   IF(MAPL_AM_I_ROOT()) PRINT *,' (Note: PREDICTOR_DURATION based on USER Input) '
+               endif
            endif
        endif
        gcm_internal_state%predur = i_PREDICTOR_DURATION
@@ -1844,6 +1850,7 @@ contains
              VERIFY_(STATUS)
 
              if( gcm_internal_state%predur .ne. 0 ) then
+                 if( MAPL_AM_I_Root() ) print *
                  do
                    call ESMF_ClockAdvance ( clock, rc=status )
                    VERIFY_(STATUS)
