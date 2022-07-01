@@ -1401,7 +1401,7 @@ END SUBROUTINE HISTOGRAM
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisvf, modisnf,albvf,albnf, lat,lon, &
+         modisvf, modisnf,albvf,albnf, &
          green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
          calbvf,calbnf, zero_array, one_array, albvr,albnr
@@ -1435,8 +1435,8 @@ END SUBROUTINE HISTOGRAM
     close (10,status='keep')
 
     fname=trim(gfile)//'.til'
-
     open (10,file=fname,status='old',action='read',form='formatted')
+
     fname='clsm/mosaic_veg_typs_fracs'
     open (20,file=fname,status='old',action='read',form='formatted')
 
@@ -1451,9 +1451,9 @@ END SUBROUTINE HISTOGRAM
     
     do n = 1,ip
       if (ease_grid) then     
-	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
+         read(10,*,IOSTAT=ierr) typ !,pfs,lont,latt,ig,jg,fr_gcm
       else
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+         read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
             typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
       endif
        if (typ == 100) then

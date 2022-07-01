@@ -2728,7 +2728,7 @@ integer :: n_threads=1
       if (ease_grid) then  
          read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
       else
-	 read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
+         read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
               typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
       endif
 
@@ -6215,9 +6215,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          locmax=MAX(3,indimax10)
-
-      endif      ! if (nmax .ge. shift+1) 
-                  
+         ! add protection here in case nmax <3 . why 3 ?
+         if (locmax > nmax) locmax = nmax
+      endif      ! if (nmax .ge. shift+1)
  30   densmax=denstest(idep,locmax)
       aa(idep)=exp(1.)*densmax
 
@@ -6441,10 +6441,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                 densaux(n) .gt. densaux(n-11) .and.        &
                 densaux(n) .gt. densaux(n-12) .and.        &
                 densaux(n) .gt. densaux(n-13) .and.        &
-                densaux(n) .gt. densaux(n-14) .and.        &
-                densaux(n) .gt. densaux(n-15)) then
-               locmax=n
-               goto 30
+                densaux(n) .gt. densaux(n-14)) then ! .and.        &
+                !densaux(n) .gt. densaux(n-15)) then
+                locmax=n
+                goto 30
             endif
          enddo
 
@@ -6459,7 +6459,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          locmax=MAX(3,indimax10)
-
+         ! in case nmax < 3. why hard coded 3?
+         if(locmax > nmax) locmax = nmax
       endif      ! if (nmax .ge. shift+1) 
          
  30   densmax=denstest(locmax)
