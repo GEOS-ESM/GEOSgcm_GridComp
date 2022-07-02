@@ -194,7 +194,6 @@ module gfdl2_cloud_microphys_mod
  
     real :: t_min = 178. !< min temp to freeze - dry all water vapor
     real :: t_sub = 184. !< min temp for sublimation of cloud ice
-    real :: t_evap = 273.16 + 10.0
     real :: mp_time = 150. !< maximum micro - physics time step (sec)
     
     ! relative humidity increment
@@ -2096,17 +2095,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! cloud water < -- > vapor adjustment:
         ! -----------------------------------------------------------------------
 
+        if (do_qa) then
         qsw = wqs2 (tz (k), den (k), dwsdt)
         dq0 = qsw - qv (k)
         if (dq0 > qvmin) then
-           ! Kludge here to prevent evap in warmer lower troposphere...
-            if (tz(k) < t_evap) then
-             !factor = SQRT(min((t_evap-tz(k))/(t_evap-t_ice),1.0))
-             !factor = min (1., factor * fac_l2v * (10. * dq0 / qsw))
-              factor = min (1., fac_l2v * (10. * dq0 / qsw))
-            else
-              factor = 0. 
-            endif
+            factor = min (1., fac_l2v * (10. * dq0 / qsw))
             evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
         else
             evap = 0.0
@@ -2117,6 +2110,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         q_liq (k) = q_liq (k) - evap
         cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
         tz (k) = tz (k) - evap * lhl (k) / cvm (k)
+        endif
 
         ! -----------------------------------------------------------------------
         ! update heat capacity and latend heat coefficient
@@ -2183,6 +2177,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! sublimation / deposition of ice
         ! -----------------------------------------------------------------------
         
+        if (do_qa) then
         if (tz (k) < tice) then
             qsi = iqs2 (tz (k), den (k), dqsdt)
             dq = fac_i2v * (qv (k) - qsi)
@@ -2212,6 +2207,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             q_sol (k) = q_sol (k) + sink
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
+        endif
         endif
 
         ! -----------------------------------------------------------------------
@@ -2323,13 +2319,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! -----------------------------------------------------------------------
         ! compute cloud fraction
         ! -----------------------------------------------------------------------
+        if (.not. do_qa) cycle
         
         ! -----------------------------------------------------------------------
         ! combine water species
         ! -----------------------------------------------------------------------
-        
-        if (.not. do_qa) cycle
-        
         if (preciprad) then
             q_sol (k) = qi (k) + qs (k) + qg (k)
             q_liq (k) = ql (k) + qr (k)
@@ -2348,7 +2342,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         tin = tz (k) - (lcpk (k) * q_cond (k) + icpk (k) * q_sol (k)) ! minimum temperature
         ! tin = tz (k) - ((lv00 + d0_vap * tz (k)) * q_cond (k) + &
         ! (li00 + dc_ice * tz (k)) * q_sol (k)) / (c_air + qpz * c_vap)
-        
+
         ! -----------------------------------------------------------------------
         ! determine saturated specific humidity
         ! -----------------------------------------------------------------------
