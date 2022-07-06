@@ -234,14 +234,3 @@
 #
 # GEOSagcm=>PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
-
-# ---- Scale CATCHCN ALBEDO and FPAR
-#
-#    0 : NO scaling is performed (default)
-#    1 : Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
-#    2 : Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
-#    3 : Perform both 1 and 2 above 
-#
-# GEOSagcm=>SCALE_ALBFPAR: 0
-# GEOSldas=>SCALE_ALBFPAR: 0
-
