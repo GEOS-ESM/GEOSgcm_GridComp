@@ -2726,7 +2726,7 @@ integer :: n_threads=1
     
     do n = 1,ip
       if (ease_grid) then  
-         read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
+         read(10,*,IOSTAT=ierr) typ,pfs !,lon,lat,ig,jg,fr_gcm,i_dum
       else
          read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
               typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum

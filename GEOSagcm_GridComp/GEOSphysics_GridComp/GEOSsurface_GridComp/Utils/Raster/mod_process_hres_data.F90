@@ -1393,8 +1393,8 @@ END SUBROUTINE HISTOGRAM
     character*6 :: MA
     CHARACTER*20 :: version,resoln,continent
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
-    REAL :: latt,lont,fr_gcm,fr_cat,tsteps,zth, slr,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    REAL :: tsteps,zth, slr,tarea
+    INTEGER :: typ,j_dum,ierr,indr1,ip2
     character*100 :: path,fname,fout,metpath
     character (*) :: gfile
     integer :: n,maxcat,ip
@@ -1453,13 +1453,15 @@ END SUBROUTINE HISTOGRAM
       if (ease_grid) then     
          read(10,*,IOSTAT=ierr) typ !,pfs,lont,latt,ig,jg,fr_gcm
       else
-         read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+         !read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+         !   typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+         read(10,*,IOSTAT=ierr) typ
       endif
        if (typ == 100) then
           ip2 = n 
-          read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
-            indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
+          !read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
+          !  indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
+          read (20,*,IOSTAT=ierr) indr1,indr1,vegcls(ip2)
        endif
        if(ierr /= 0)write (*,*)'Problem reading', n, ease_grid
     end do
