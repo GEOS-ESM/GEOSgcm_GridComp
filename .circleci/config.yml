@@ -18,6 +18,7 @@ workflows:
           matrix:
             parameters:
               compiler: [gfortran, ifort]
+          baselibs_version: *baselibs_version
           repo: GEOSgcm
           checkout_fixture: true
           mepodevelop: true
