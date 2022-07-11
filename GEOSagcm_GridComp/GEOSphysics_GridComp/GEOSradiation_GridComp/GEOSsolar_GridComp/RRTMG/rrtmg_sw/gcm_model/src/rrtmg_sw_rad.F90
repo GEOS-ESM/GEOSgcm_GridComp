@@ -134,7 +134,7 @@ contains
       ! The main input for isolvar = 1 is solcycfrac in [0,1], which is the normalized input
       ! position in the 11-year average cycle. This solcycfrac is used to interpolate into the
       ! {mg,sb}avgcyc arrays to values Mg and SB, which are then converted to svar_f and svar_s
-      ! via the linear relationship provided. These linear relationships are desined such that
+      ! via the linear relationship provided. These linear relationships are designed such that
       ! svar_f = 1 at Mg = <Mg>, the time average Mg index over AvgCyc11, and similarly for svar_s
       ! and SB, such that <svar_{s,f}> are both unity. So, if solcyclfr is uniformly cycled in
       ! [0,1] by the caller of rrtmg_sw_rad(), then each of the faculae and sunspot terms will
@@ -234,12 +234,12 @@ contains
       ! subcolumn clear counts for Tot|High|Mid|Low super-layers
       integer, intent(out) :: clearCounts(ncol,4)
 
-      real, intent(out) :: swuflx  (ncol,nlay+1)     ! Total sky SW up   flux (W/m2)
-      real, intent(out) :: swdflx  (ncol,nlay+1)     ! Total sky SW down flux (W/m2)
-      real, intent(out) :: swuflxc (ncol,nlay+1)     ! Clear sky SW up   flux (W/m2)
-      real, intent(out) :: swdflxc (ncol,nlay+1)     ! Clear sky SW down flux (W/m2)
+      real, intent(out) :: swuflx  (ncol,nlay+1)     !   All-sky SW up   flux (W/m2)
+      real, intent(out) :: swdflx  (ncol,nlay+1)     !   All-sky SW down flux (W/m2)
+      real, intent(out) :: swuflxc (ncol,nlay+1)     ! Clear-sky SW up   flux (W/m2)
+      real, intent(out) :: swdflxc (ncol,nlay+1)     ! Clear-sky SW down flux (W/m2)
 
-      ! Output added for Land/Surface process
+      ! Output added for Land/Surface process (all-sky)
       real, intent(out) :: nirr    (ncol)            ! Near-IR direct  down SW flux (W/m2)
       real, intent(out) :: nirf    (ncol)            ! Near-IR diffuse down SW flux (W/m2)
       real, intent(out) :: parr    (ncol)            ! Visible direct  down SW flux (W/m2)
@@ -481,18 +481,18 @@ contains
       ! subcolumn clear counts for Tot|High|Mid|Low super-layers
       integer, intent(out) :: clearCounts(gncol,4)
 
-      real, intent(out) :: swuflx  (gncol,nlay+1)      ! Total sky SW up   flux (W/m2)
-      real, intent(out) :: swdflx  (gncol,nlay+1)      ! Total sky SW down flux (W/m2)
-      real, intent(out) :: swuflxc (gncol,nlay+1)      ! Clear sky SW up   flux (W/m2)
-      real, intent(out) :: swdflxc (gncol,nlay+1)      ! Clear sky SW down flux (W/m2)
+      real, intent(out) :: swuflx  (gncol,nlay+1)      !   All-sky SW up   flux (W/m2)
+      real, intent(out) :: swdflx  (gncol,nlay+1)      !   All-sky SW down flux (W/m2)
+      real, intent(out) :: swuflxc (gncol,nlay+1)      ! Clear-sky SW up   flux (W/m2)
+      real, intent(out) :: swdflxc (gncol,nlay+1)      ! Clear-sky SW down flux (W/m2)
 
-      ! Output added for Land/Surface process
-      real, intent(out) :: nirr   (gncol)             ! Near-IR direct  down SW flux (w/m2)
-      real, intent(out) :: nirf   (gncol)             ! Near-IR diffuse down SW flux (w/m2)
-      real, intent(out) :: parr   (gncol)             ! Visible direct  down SW flux (w/m2)
-      real, intent(out) :: parf   (gncol)             ! Visible diffuse down SW flux (w/m2)
-      real, intent(out) :: uvrr   (gncol)             ! UV      direct  down SW flux (w/m2)
-      real, intent(out) :: uvrf   (gncol)             ! UV      diffuse down SW flux (w/m2)
+      ! Output added for Land/Surface process (all-sky)
+      real, intent(out) :: nirr    (gncol)             ! Near-IR direct  down SW flux (w/m2)
+      real, intent(out) :: nirf    (gncol)             ! Near-IR diffuse down SW flux (w/m2)
+      real, intent(out) :: parr    (gncol)             ! Visible direct  down SW flux (w/m2)
+      real, intent(out) :: parf    (gncol)             ! Visible diffuse down SW flux (w/m2)
+      real, intent(out) :: uvrr    (gncol)             ! UV      direct  down SW flux (w/m2)
+      real, intent(out) :: uvrf    (gncol)             ! UV      diffuse down SW flux (w/m2)
 
       ! In-cloud PAR optical thickness for Tot|High|Mid|Low super-layers
       real, intent(out), dimension (gncol) :: tautp, tauhp, taump, taulp
@@ -500,7 +500,7 @@ contains
       ! ----- Locals -----
 
       ! Control
-      real, parameter :: zepzen = 1.e-10                    ! very small cossza
+      real, parameter :: zepzen = 1.e-10   ! very small cossza
 
       integer :: ibnd, icol, ilay, ilev  ! various indices
 
@@ -544,9 +544,9 @@ contains
       real,    dimension (nlay,pncol) :: fac00, fac01, fac10, fac11  
       
       ! general
-      real :: play (nlay,  pncol)             ! Layer pressures (hPa)
-      real :: plev (nlay+1,pncol)             ! Interface pressures (hPa)
-      real :: tlay (nlay,  pncol)             ! Layer temperatures (K)
+      real :: play (nlay,  pncol)           ! Layer pressures (hPa)
+      real :: plev (nlay+1,pncol)           ! Interface pressures (hPa)
+      real :: tlay (nlay,  pncol)           ! Layer temperatures (K)
 
       ! Atmosphere/clouds - cldprop
       ! ---------------------------
@@ -580,20 +580,12 @@ contains
       real :: omga (nlay,nbndsw,pncol)
 
       ! SW flux temporaries [W/m2]
-      real :: zbbfu    (nlay+1,pncol)  ! all-SW  up
-      real :: zbbfd    (nlay+1,pncol)  ! all-SW  down
+      real :: zbbfu    (nlay+1,pncol)  ! all-SW  up           all-sky
+      real :: zbbfd    (nlay+1,pncol)  ! all-SW  down         all-sky
       real :: zbbcu    (nlay+1,pncol)  ! all-SW  up          clear-sky
       real :: zbbcd    (nlay+1,pncol)  ! all-SW  down        clear-sky
-      real :: zbbfddir (nlay+1,pncol)  ! all-SW  down direct
+      real :: zbbfddir (nlay+1,pncol)  ! all-SW  down direct   all-sky
       real :: zbbcddir (nlay+1,pncol)  ! all-SW  down direct clear-sky
-      real :: zuvfd    (nlay+1,pncol)  ! UV-Vis  down
-      real :: zuvcd    (nlay+1,pncol)  ! UV-Vis  down        clear-sky
-      real :: zuvfddir (nlay+1,pncol)  ! UV-Vis  down direct
-      real :: zuvcddir (nlay+1,pncol)  ! UV-Vis  down direct clear-sky
-      real :: znifd    (nlay+1,pncol)  ! near-IR down
-      real :: znicd    (nlay+1,pncol)  ! near-IR down        clear-sky
-      real :: znifddir (nlay+1,pncol)  ! near-IR down direct
-      real :: znicddir (nlay+1,pncol)  ! near-IR down direct clear-sky
 
       real, dimension (pncol) :: &
          znirr, znirf, zparr, zparf, zuvrr, zuvrf
@@ -1168,12 +1160,11 @@ contains
                fac00, fac01, fac10, fac11, &
                cloudLM, cloudMH, & 
                selffac, selffrac, indself, forfac, forfrac, indfor, &
-               zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, zuvcd, znifd, znicd, &
-               zbbfddir, zbbcddir, zuvfddir, zuvcddir, znifddir, znicddir,&
+               zbbfd, zbbfu, zbbcd, zbbcu, zbbfddir, zbbcddir, &
                znirr, znirf, zparr, zparf, zuvrr, zuvrf, &
                ztautp, ztauhp, ztaump, ztaulp)
 
-            ! Copy out up and down, clear and total sky fluxes to output arrays.
+            ! Copy out up and down, clear- and all-sky fluxes to output arrays.
             ! Vertical indexing goes from bottom to top; reverse here for GCM if necessary.
 
             if (cc == 1) then  ! clear gridcolumns

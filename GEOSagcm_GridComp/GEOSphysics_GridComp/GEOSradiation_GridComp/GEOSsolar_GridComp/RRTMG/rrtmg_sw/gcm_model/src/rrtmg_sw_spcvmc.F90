@@ -38,8 +38,7 @@ contains
       fac00, fac01, fac10, fac11, &
       cloudLM, cloudMH, & 
       selffac, selffrac, indself, forfac, forfrac, indfor, &
-      pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
-      pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir, &
+      pbbfd, pbbfu, pbbcd, pbbcu, pbbfddir, pbbcddir, &
       znirr, znirf, zparr, zparf, zuvrr, zuvrf, &
       ztautp, ztauhp, ztaump, ztaulp)
    ! ---------------------------------------------------------------------------
@@ -144,16 +143,6 @@ contains
       real, intent(out) :: pbbfddir (nlay+1,pncol) 
       real, intent(out) :: pbbcddir (nlay+1,pncol) 
 
-      real, intent(out) :: puvcd    (nlay+1,pncol) 
-      real, intent(out) :: puvfd    (nlay+1,pncol) 
-      real, intent(out) :: puvcddir (nlay+1,pncol) 
-      real, intent(out) :: puvfddir (nlay+1,pncol) 
-
-      real, intent(out) :: pnicd    (nlay+1,pncol) 
-      real, intent(out) :: pnifd    (nlay+1,pncol) 
-      real, intent(out) :: pnicddir (nlay+1,pncol) 
-      real, intent(out) :: pnifddir (nlay+1,pncol) 
-      
       ! surface band fluxes (direct and TOTAL)
       real, intent(out), dimension(pncol) :: &
          znirr, znirf, zparr, zparf, zuvrr, zuvrf
@@ -202,14 +191,6 @@ contains
       pbbfu    = 0. 
       pbbcddir = 0. 
       pbbfddir = 0. 
-      puvcd    = 0. 
-      puvfd    = 0. 
-      puvcddir = 0. 
-      puvfddir = 0. 
-      pnicd    = 0. 
-      pnifd    = 0. 
-      pnicddir = 0. 
-      pnifddir = 0.
       znirr    = 0.
       znirf    = 0.
       zparr    = 0.
@@ -319,17 +300,6 @@ contains
                pbbcd   (ikl,icol) = pbbcd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
                pbbcddir(ikl,icol) = pbbcddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
               
-               ! Band fluxes
-               if (ibm >= 10 .and. ibm <= 13) then
-                  ! UV/Visible
-                  puvcd   (ikl,icol)  = puvcd   (ikl,icol)  + zincflx * zfd  (jk,iw,icol)  
-                  puvcddir(ikl,icol)  = puvcddir(ikl,icol)  + zincflx * ztdbt(jk,iw,icol)  
-               else if (ibm == 14 .or. ibm <= 9) then  
-                  ! Near-IR
-                  pnicd   (ikl,icol) = pnicd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
-                  pnicddir(ikl,icol) = pnicddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
-               endif 
-
             enddo  ! layer loop
          enddo  ! spectral loop
       enddo  ! column loop
@@ -421,17 +391,6 @@ contains
                   pbbfd   (ikl,icol)  = pbbfd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)              
                   pbbfddir(ikl,icol)  = pbbfddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
 
-                  ! Band fluxes
-                  if (ibm >= 10 .and. ibm <= 13) then
-                     ! UV/Visible
-                     puvfd   (ikl,icol) = puvfd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
-                     puvfddir(ikl,icol) = puvfddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
-                  else if (ibm == 14 .or. ibm <= 9) then  
-                     ! Near-IR
-                     pnifd   (ikl,icol) = pnifd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
-                     pnifddir(ikl,icol) = pnifddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
-                  endif
-
                enddo  ! layer loop
             enddo  ! spectral loop
          enddo  ! column loop
@@ -442,10 +401,6 @@ contains
          pbbfu    = pbbcu
          pbbfd    = pbbcd
          pbbfddir = pbbcddir
-         puvfd    = puvcd
-         puvfddir = puvcddir
-         pnifd    = pnicd
-         pnifddir = pnicddir
 
       end if
 
@@ -635,7 +590,7 @@ contains
    ! Original: J-JMorcrette, ECMWF, Feb 2003
    ! Revised for F90 reformatting: MJIacono, AER, Jul 2006
    ! Revised to add exponential lookup table: MJIacono, AER, Aug 2007
-   ! Cleaned up and nodified as per above note: PMNorris, GMAO, Aug 2021
+   ! Cleaned up and modified as per above note: PMNorris, GMAO, Aug 2021
    !
    ! ------------------------------------------------------------------
 
