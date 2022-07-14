@@ -216,7 +216,7 @@ module GEOSmoist_Process_Library
       real, intent(in   ) :: NL,NI
       real, intent(in   ) :: QS
 
-      real :: ES,RADIUS,K1,K2,TEFF,QCm,EVAP,RHx,QC  !,QS
+      real :: ES,RADIUS,K1,K2,QCm,EVAP,RHx,QC  !,QS
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!         EVAPORATION OF CLOUD WATER.             !!
@@ -252,23 +252,21 @@ module GEOSmoist_Process_Library
 
       RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,1)
       
-      if ( (RHx < RHCR ) .and.(RADIUS > 0.0) ) then
-         TEFF   =   ( RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+      if ( (RHx < RHCR ) .and. (RADIUS > 0.0) ) then
+         EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+         EVAP = MIN( EVAP , QL  )
       else
-         TEFF   = 0.0 ! -999.
+         EVAP = 0.0
       end if
-
-      EVAP = a_eff*QL*DT*TEFF
-      EVAP = MIN( EVAP , QL  )
 
       QC=QL+QI
       if (QC > 0.) then
-         F    = F * ( QC - EVAP ) / QC
+         F = F * ( QC - EVAP ) / QC
       end if
 
-      QV   = QV   + EVAP
-      QL   = QL   - EVAP
-      TE   = TE   - alhlbcp*EVAP
+      QV = QV + EVAP
+      QL = QL - EVAP
+      TE = TE - alhlbcp*EVAP
 
    end subroutine EVAP3
 
@@ -333,23 +331,21 @@ module GEOSmoist_Process_Library
 
       RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,2)
       
-      if ( (RHx < RHCR ) .and.(RADIUS > 0.0) ) then
-         TEFF   =   ( RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+      if ( (RHx < RHCR) .and.(RADIUS > 0.0) ) then
+         SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+         SUBL = MIN( SUBL , QI  )
       else
-         TEFF   = 0.0 ! -999.
+         SUBL = 0.0
       end if
-
-      SUBL = a_eff*QI*DT*TEFF
-      SUBL = MIN( SUBL , QI  )
 
       QC=QL+QI
       if (QC > 0.) then
-         F    = F * ( QC - SUBL ) / QC
+         F = F * ( QC - SUBL ) / QC
       end if
 
-      QV   = QV   + SUBL
-      QI   = QI   - SUBL
-      TE   = TE   - alhsbcp*SUBL
+      QV = QV + SUBL
+      QI = QI - SUBL
+      TE = TE - alhsbcp*SUBL
 
    end subroutine SUBL3
 
@@ -358,12 +354,12 @@ module GEOSmoist_Process_Library
        REAL   , INTENT(IN) :: TE,PL,QC,NNL,NNI
        INTEGER, INTENT(IN) :: ITYPE
        REAL  :: RADIUS
-       INTEGER, PARAMETER  :: CLOUD=1, ICE=2
+       INTEGER, PARAMETER  :: LIQUID=1, ICE=2
        REAL :: NNX,RHO,BB,WC
 
        !- air density (kg/m^3)
        RHO = 100.*PL / (MAPL_RGAS*TE )
-       IF(ITYPE == CLOUD) THEN
+       IF(ITYPE == LIQUID) THEN
 
        !- liquid cloud effective radius ----- 
           !- [liu&daum, 2000 and 2005. liu et al 2008]
@@ -912,8 +908,8 @@ module GEOSmoist_Process_Library
            NLv = NL/Nfac
            NIv = NI/Nfac
            fQi = ice_fraction( TEn, CNVFRC )
-           QLn = QCn*(1.0-AF)*(1.0-fQi)
-           QIn = QCn*(1.0-AF)*     fQi 
+           QLn = QCn*(1.0-AF)*(1.0-fQi) ! Just Large-Scale portion
+           QIn = QCn*(1.0-AF)*     fQi  ! Just Large-Scale portion
            call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &

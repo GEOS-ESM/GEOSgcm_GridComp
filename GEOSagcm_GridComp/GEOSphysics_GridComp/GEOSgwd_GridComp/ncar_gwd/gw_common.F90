@@ -479,8 +479,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
           ! Test to see if u-c has the same sign here as the level below.
           if (ubmc(i) > 0.0 .eqv. ubi(i,k+1) > c(i,l)) then
-              tausat(i) = abs(effkwv(i) * rhoi(i,k) * ubmc(i)**3 / &
-                 (satfac*ni(i,k)))
+             if (ni(i,k) /= 0.0) & 
+                 tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / &
+                                  (satfac*ni(i,k)) )
              if (present(ro_adjust)) &
                  tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
              if (present(tau_adjust)) &

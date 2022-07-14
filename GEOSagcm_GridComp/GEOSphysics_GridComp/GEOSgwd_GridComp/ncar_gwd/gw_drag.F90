@@ -199,7 +199,7 @@ contains
     zi(:,1) = zi(:,2) + 0.5*( zm_dev(:,1) - zm_dev(:,2)  )
 
    ! DeepCu BKG
-    if (beres_dc_desc%active) then
+    if (beres_dc_desc%active .and. effgwbkg>0.0) then
     call gw_beres_ifc( beres_band, &
        pcols, pver, dt , effgwbkg,  &
        u_dev , v_dev, t_dev, &
@@ -215,7 +215,7 @@ contains
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw
     endif
    ! ShallowCu BKG
-    if (beres_sc_desc%active) then
+    if (beres_sc_desc%active .and. effgwbkg>0.0) then
     call gw_beres_ifc( beres_band, &
        pcols, pver, dt , effgwbkg,  &
        u_dev , v_dev, t_dev, &
@@ -231,6 +231,7 @@ contains
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw
      endif
     ! Orographic
+     if (effgworo > 0.0) then
      if (nrdg > 0) then
        trpd_leewv    = .FALSE.
        rdg_cd_llb    = 1.0
@@ -264,6 +265,7 @@ contains
      dudt_gwd_dev = dudt_gwd_dev + dudt_org_dev
      dvdt_gwd_dev = dvdt_gwd_dev + dvdt_org_dev
      dtdt_gwd_dev = dtdt_gwd_dev + dtdt_org_dev
+     endif
 
      taugwdx_dev(1:pcols)         = 0.0  !zonal      gravity wave surface    stress
      taugwdy_dev(1:pcols)         = 0.0  !meridional gravity wave surface    stress

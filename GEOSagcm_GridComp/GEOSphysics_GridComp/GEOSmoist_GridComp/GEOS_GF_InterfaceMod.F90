@@ -120,8 +120,8 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, USE_GF2020                  , 'USE_GF2020:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     IF(USE_GF2020==1) THEN
        call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 7200., RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'             ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'            ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'           ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -224,8 +224,8 @@ subroutine GF_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, SCLM_DEEP       , 'SCLM_DEEP:'       , DEFAULT= 1.0       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CNV_2MOM        , 'CNV_2MOM:'        , DEFAULT= .FALSE.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, STOCHASTIC_CNV  , 'STOCHASTIC_CNV:'  , DEFAULT= .TRUE.    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 1.5       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.5       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCH_TOP       , 'STOCH_TOP:'       , DEFAULT= 1.25      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, STOCH_BOT       , 'STOCH_BOT:'       , DEFAULT= 0.75      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, FIX_CNV_CLOUD   , 'FIX_CNV_CLOUD:'   , DEFAULT= .TRUE.    , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GF_Initialize
@@ -476,7 +476,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (STOCHASTIC_CNV) then
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
-       SEEDCNV = MAX(MIN(SEEDINI/1000000.0,1.0),0.0)
+       SEEDCNV = SQRT(MAX(MIN(SEEDINI/1000000.0,1.0),0.0))
        SEEDCNV = (1.1*CNV_FRC - 0.1) * ((1.0-(1.0-SEEDCNV))*(STOCH_TOP-STOCH_BOT)+STOCH_BOT)
     else
        SEEDCNV = 1.0

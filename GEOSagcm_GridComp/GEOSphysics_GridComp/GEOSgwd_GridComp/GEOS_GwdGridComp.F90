@@ -1800,7 +1800,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(TMP2D)) TMP2D = GBXAR_TMP
 
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
+         DUDT_GWD_NCAR = 0.0
+         DVDT_GWD_NCAR = 0.0
+         DTDT_GWD_NCAR = 0.0
+         TAUXB_TMP_NCAR = 0.0
+         TAUYB_TMP_NCAR = 0.0
+         DUDT_ORG_NCAR = 0.0
+         DVDT_ORG_NCAR = 0.0
+         DTDT_ORG_NCAR = 0.0
+         TAUXO_TMP_NCAR = 0.0
+         TAUYO_TMP_NCAR = 0.0
          call MAPL_TimerOn(MAPL,"-INTR_NCAR")
+         if ( (NCAR_EFFGWORO /= 0.0) .OR. (NCAR_EFFGWBKG /= 0.0) ) then
          call gw_intr_ncar(IM*JM,    LM,         DT,     NCAR_NRDG,   &
               beres_dc_desc, beres_sc_desc, beres_band, oro_band,     &
               PLE,       T,          U,          V,                   &
@@ -1816,6 +1827,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               NCAR_EFFGWBKG, &
               RC=STATUS)
          VERIFY_(STATUS)
+         endif
          call MAPL_TimerOff(MAPL,"-INTR_NCAR")
 
          ! Use GEOS GWD only for Extratropical background sources...
