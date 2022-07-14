@@ -1026,6 +1026,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="AGCM_BARRIER"           ,RC=STATUS)
+    VERIFY_(STATUS)
 
 ! All done
 !---------
@@ -1361,6 +1363,7 @@ contains
 
 ! Local derived type aliases
 
+   type (ESMF_VM)                      :: VMG
    type (MAPL_MetaComp),      pointer  :: STATE
    type (ESMF_GridComp),      pointer  :: GCS(:)
    type (ESMF_State),         pointer  :: GIM(:)
@@ -1554,7 +1557,7 @@ contains
 ! -----------------------------------------------------------
 
     Iam = "Run"
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet ( GC, VM=VMG, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // trim(Iam)
 
@@ -2399,6 +2402,9 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call DO_UPDATE_PHY ('DPEDT')
     call DO_UPDATE_PHY ('DTDT' )
 
+    call MAPL_TimerOn (STATE,"AGCM_BARRIER"  )
+    call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    call MAPL_TimerOff(STATE,"AGCM_BARRIER"  )
 
 ! Run RUN2 of SuperDynamics (ADD_INCS) to add Physics Diabatic Tendencies
 !------------------------------------------------------------------------
