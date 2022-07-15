@@ -89,23 +89,23 @@ set CR = $RESET
 # Land bcs version (LBCSV)
 
 # set default land bcs version
-set lbcsv = NL3
+set lbcsv = NL3_2
 
 if ( $HELPMODE != YES ) then
    echo "${CR}"
    echo "Boundary Conditions (BCs) Package:"    
    echo " "
-   echo "Enter 3-character alphanumeric code for land BCs version (select only one):"
+   echo "Enter 3-5-character alphanumeric code for land BCs version (select only one):"
 else
    echo "Options for land BCs version:"
 endif
-echo "   ${C2}F25 : Fortuna-2_5"
-echo "   ${C2}GM4 : Ganymed-4_0  (/discover/nobackup/ltakacs/bcs/Ganymed-4_0/)"
-echo "   ${C2}ICA : Icarus       (/discover/nobackup/ltakacs/bcs/Icarus/)"
-echo "   ${C2}NL3 : Icarus-NLv3  (/discover/nobackup/ltakacs/bcs/Icarus-NLv3/)"
-echo "   ${C2}NL4 : NLv4 [SMAP]  (/discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)"
-echo "   ${C2}NL5 : NLv5 [SMAP]"
-echo "   ${C2}DEV : Development version${CR}"
+echo "   ${C2}F25_2 : Fortuna-2_5"
+echo "   ${C2}GM4_2 : Ganymed-4_0  (GM4: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)"
+echo "   ${C2}ICA_2 : Icarus       (ICA: /discover/nobackup/ltakacs/bcs/Icarus/)"
+echo "   ${C2}NL3_2 : Icarus-NLv3  (NL3: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)"
+echo "   ${C2}NL4   : NLv4 [SMAP]  (/discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)"
+echo "   ${C2}NL5   : NLv5 [SMAP]"
+echo "   ${C2}DEV   : Development version${CR}"
 echo "                                            "
 if ( $HELPMODE != YES ) then
    echo "              NOTE: Due to compiler differences, code improvements and bug fixes that"
@@ -126,10 +126,10 @@ if ( $HELPMODE != YES ) then
    
    set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
    
-   if( $dummy == 'F25'  | \
-       $dummy == 'GM4'  | \
-       $dummy == 'ICA'  | \
-       $dummy == 'NL3'  | \
+   if( $dummy == 'F25_2'  | \
+       $dummy == 'GM4_2'  | \
+       $dummy == 'ICA_2'  | \
+       $dummy == 'NL3_2'  | \
        $dummy == 'NL4'  | \
        $dummy == 'NL5'  | \
        $dummy == 'DEV') then
@@ -371,7 +371,7 @@ if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
 # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
 # -------------------------------------------------------------------------------------------------
 
-    if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
+    if ( $lbcsv == F25_2 | $lbcsv == GM4_2 | $lbcsv == ICA_2 ) then
 	set GLOBAL_CATCH_DATA = ${input_dir}/global.cat_id.catch.DL
     else
 	set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask_freshwater-lakes.nc
@@ -383,7 +383,7 @@ else if ( $orslv == O2 | $orslv == O3 | $orslv == CS ) then
 # Great-Lakes & Caspian-Sea treated as Model OCEAN tiles, Surface Temperatures will be taken from OCEAN SST Data
 # --------------------------------------------------------------------------------------------------------------
 
-    if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
+    if ( $lbcsv == F25_2 | $lbcsv == GM4_2 | $lbcsv == ICA_2 ) then
 	set GLOBAL_CATCH_DATA = ${input_dir}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
     else
 	set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask.nc

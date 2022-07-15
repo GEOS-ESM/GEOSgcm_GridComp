@@ -9,7 +9,7 @@ PROGRAM mkCatchParam
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -v: LBCSV : Choose bcs version (ICA, NL3, NL4, NL5, or development)             
+!     -v: LBCSV : Choose bcs version (ICA_2, NL3_2, NL4, NL5, or development)             
 !     -e: EASE : This is optional if catchment.def file is available already or                    
 !         the til file format is pre-Fortuna-2.                                                    
 !     
@@ -52,7 +52,7 @@ PROGRAM mkCatchParam
   character*128        :: GridNameR = ''
   character*128        :: GridNameT = ''
   logical              :: file_exists, file_exists2, file_exists3, file_exists4
-  logical              :: F25Tag = .false.
+  logical              :: F25_2Tag = .false.
   logical              :: ease_grid=.false., redo_modis=.false.
   character*40         :: lai_name 
   integer, parameter   :: log_file = 998
@@ -109,7 +109,7 @@ integer :: n_threads=1
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                         "
     USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                          "          
     USAGE(7) ="                the til file format is pre-Fortuna-2.                                                   "
-    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, or DEV)                              "
+    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25_2, GM4_2, ICA_2, NL3_2, NL4, NL5, or DEV)                              "
 
 ! Process Arguments                            
 !------------------ 
@@ -154,7 +154,7 @@ integer :: n_threads=1
           GridName = trim(arg)
        case ('v')
           LBSV = trim(arg)
-          if (trim(arg).eq."F25") F25Tag = .true.
+          if (trim(arg).eq."F25_2") F25_2Tag = .true.
           call init_bcs_config (trim(LBSV))
        case ('b')
           DL = trim(arg)
@@ -467,7 +467,7 @@ integer :: n_threads=1
           inquire(file=trim(fname_tmp), exist=file_exists)          
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
-             if(F25Tag) then 
+             if(F25_2Tag) then 
                 call create_mapping (nc,nr,21600,10800,maparc60,    gridnamer)
                 call modis_alb_on_tiles_high (21600,10800,maparc60,MODALB,gridnamer)
                 deallocate (maparc60%map)
@@ -498,7 +498,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
        
-       if(.not.F25Tag) then 
+       if(.not.F25_2Tag) then 
           deallocate (maparc30%map)
           deallocate (maparc30%ij_index)
        endif
@@ -517,7 +517,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp ), exist=file_exists )                        
        inquire(file=trim(fname_tmp2), exist=file_exists2)
        if ((redo_modis).or.(.not.file_exists).or.(.not.file_exists2)) then
-          !   if(.not.F25Tag) then
+          !   if(.not.F25_2Tag) then
           write (log_file,'(a)')'         Creating files... (resolution will be added to file name later)'
           call modis_scale_para_high (ease_grid,MODALB,gridnamet)
           !  else
@@ -561,8 +561,8 @@ integer :: n_threads=1
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file...'
           if(SOILBCS=='NGDC')  then 
-             if(     F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
-             if(.not.F25Tag) call soil_para_high (nc,nr,regrid,gridnamer)
+             if(     F25_2Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25_2Tag=F25_2Tag)
+             if(.not.F25_2Tag) call soil_para_high (nc,nr,regrid,gridnamer)
           endif
           if(SOILBCS=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer)
           write (log_file,'(a)')'         Done.'           
