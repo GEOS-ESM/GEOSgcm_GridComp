@@ -89,7 +89,7 @@ contains
        use_PEATMAP = .false.
        jpl_height  = .false.
 
-    case ("GM4_2", "ICA.2")
+    case ("GM4_2", "ICA_2")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS2'
