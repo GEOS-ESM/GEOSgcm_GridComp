@@ -33,7 +33,6 @@ module GEOS_MITDynaGridCompMod
   implicit none
   private
 
-  integer, parameter :: FILE_HEADER_SIZE=14
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -46,9 +45,6 @@ module GEOS_MITDynaGridCompMod
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: NUM_ICE_LAYERS_ALL
   integer            :: NUM_SNOW_LAYERS_ALL
-  integer, parameter :: IDEB=15
-  integer, parameter :: JDEB=25
-  integer, parameter :: TARPE=63
 
 
 !=============================================================================
@@ -1287,6 +1283,136 @@ module GEOS_MITDynaGridCompMod
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'ICESTATES',                      &
+    LONG_NAME          = 'container_for_seaice_variables_for_MITgcm', &
+    UNITS              = 'N/A',                            &
+    DIMS               = MAPL_DimsHorzOnly,                &
+    VLOCATION          = MAPL_VLocationNone,               &
+    DATATYPE           = MAPL_StateItem,                   &
+!    RESTART            = MAPL_RestartSkip,                 &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+
+! !Export state - increments for seaice:
+
+  call MAPL_AddExportSpec(GC,                                    &
+       SHORT_NAME         = 'DEL_FRACICE',                        &
+       LONG_NAME          = 'delta_fractional_cover_of_seaice',  &
+       UNITS              = '1',                                 &
+       DIMS               = MAPL_DimsHorzOnly,                   &
+       UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+       VLOCATION          = MAPL_VLocationNone,                  &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'DEL_TI',                                &
+    LONG_NAME          = 'delta_seaice_skin_temperature',           &
+    UNITS              = 'K',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    DEFAULT            = MAPL_TICE,                           &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'DEL_SI',                                &
+    LONG_NAME          = 'delta_seaice_skin_salinity',              &
+    UNITS              = 'psu',                               &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    DEFAULT            = 4.,                                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                &
+    SHORT_NAME         = 'DEL_VOLICE',                            &
+    LONG_NAME          = 'delta_ice_category_volume_per_unit_area_of_grid_cell',&
+    UNITS              = 'm',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    DEFAULT            = 0.0,                                 &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                &
+    SHORT_NAME         = 'DEL_VOLSNO',                            &
+    LONG_NAME          = 'delta_sno_category_volume_per_unit_area_of_grid_cell',&
+    UNITS              = 'm',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+   DEFAULT            = 0.0,                                 &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                &
+        SHORT_NAME         = 'DEL_ERGICE',                            &
+        LONG_NAME          = 'delta_ice_category_layer_internal_energy',&
+        UNITS              = 'J m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        UNGRIDDED_DIMS     = (/NUM_ICE_LAYERS_ALL/),              &
+        !VLOCATION          = MAPL_VLocationCenter,                 &
+    ! DEFAULT            = 0.0,                                 &
+                                                       RC=STATUS  )
+   VERIFY_(STATUS)
+
+   call MAPL_AddExportSpec(GC,                                &
+        SHORT_NAME         = 'DEL_ERGSNO',                            &
+        LONG_NAME          = 'delta_snow_category_layer_internal_energy',&
+        UNITS              = 'J m-2',                             &
+        !DIMS               = MAPL_DimsHorzVert,                   &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        UNGRIDDED_DIMS     = (/NUM_SNOW_LAYERS_ALL/),             &
+        !VLOCATION          = MAPL_VLocationCenter,                 &
+       !DEFAULT            = 0.0,                                 &
+                                                       RC=STATUS  )
+   VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC                                     ,&
+        LONG_NAME          = 'delta_melt_pond_volume'                     ,&
+        UNITS              = 'm'                                ,&
+        SHORT_NAME         = 'DEL_MPOND'                                 ,&
+        !DIMS               = MAPL_DimsHorzVert,                   &
+       UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        !VLOCATION          = MAPL_VLocationCenter,                 &
+        !DEFAULT            = 0.0                                    ,&
+        RC=STATUS                                                 )
+
+     VERIFY_(STATUS)
+
+   call MAPL_AddExportSpec(GC,                                &
+        SHORT_NAME         = 'DEL_TAUAGE',                            &
+        LONG_NAME          = 'delta_volume_weighted_mean_ice_age',      &
+        UNITS              = 's',                                 &
+        !DIMS               = MAPL_DimsHorzVert,                   &
+        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        !VLOCATION          = MAPL_VLocationCenter,                 &
+        !DEFAULT            = 0.0,                                 &
+                                                       RC=STATUS  )
+   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+         SHORT_NAME         = 'DEL_HI',                                &
+         LONG_NAME          = 'delta_seaice_skin_layer_depth',            &
+         UNITS              = 'm',                                 &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+    VERIFY_(STATUS)
+
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
@@ -1384,6 +1510,7 @@ module GEOS_MITDynaGridCompMod
     integer                       :: NPES
     integer                       :: OGCM_IM, OGCM_JM
     integer                       :: OGCM_NX, OGCM_NY
+    type (ESMF_State) :: state
 !=============================================================================
 
 ! Begin... 
@@ -1465,9 +1592,18 @@ module GEOS_MITDynaGridCompMod
     call init_work            ! work arrays
 
     if(MAPL_AM_I_ROOT()) then
-       print*, 'CICE work array initialized'
+       print*, 'CICE work array initialized in '//trim(comp_name)
     endif
  
+    call ESMF_StateGet(EXPORT, 'ICESTATES', state, __RC__)
+    call ESMF_StateAdd(state, [import,export], __RC__)
+    ! ALT: the statement above looks funny (at best): 
+    ! the state item ICESTATES 
+    ! itself is contained in the export state of this component, and yet
+    ! it contains the export (and import). It seems cyclical, 
+    ! but no harm is done, and it is a convenient way to encapsulate
+    ! the seaice variables and "ship" them to MITgcm
+    call ESMF_AttributeSet(state, name='ICECOMPNAME', value=trim(comp_name),__RC__)
 
 ! All Done
 !---------

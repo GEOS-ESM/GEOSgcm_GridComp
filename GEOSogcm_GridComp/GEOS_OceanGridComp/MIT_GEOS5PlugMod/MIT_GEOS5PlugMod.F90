@@ -66,7 +66,9 @@ module MIT_GEOS5PlugMod
 ! MOM's precision and the B grid
 
   type :: T_PrivateState
-     type(MITGCM_ISTATE),  pointer :: ptr
+     type(MITGCM_ISTATE),  pointer :: istate
+     type(ESMF_State)              :: import
+     type(ESMF_State)              :: export
   end type T_PrivateState
 
   type :: T_PrivateState_Wrap
@@ -74,6 +76,12 @@ module MIT_GEOS5PlugMod
   end type T_PrivateState_Wrap
 
   type(T_PrivateState), pointer :: privateState
+
+  integer            :: NUM_ICE_CATEGORIES
+  integer            :: NUM_ICE_LAYERS
+  integer, parameter :: NUM_SNOW_LAYERS=1
+  integer            :: NUM_ICE_LAYERS_ALL
+  integer            :: NUM_SNOW_LAYERS_ALL
 
   logical :: DUAL_OCEAN
 
@@ -137,7 +145,7 @@ contains
 ! ---------------------------------------
 
     Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
@@ -259,7 +267,32 @@ contains
     deallocate(exports)
 
 
+  call MAPL_AddImportSpec(GC,                            &
+    SHORT_NAME         = 'ICESTATES',                      &
+    LONG_NAME          = 'container_for_seaice_variables_for_MITgcm', &
+    UNITS              = 'N/A',                            &
+    DIMS               = MAPL_DimsHorzOnly,                &
+    VLOCATION          = MAPL_VLocationNone,               &
+    DATATYPE           = MAPL_StateItem,                   &
+!    RESTART            = MAPL_RestartSkip,                 &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
 !EOS
+
+! Get constants from CF
+! ---------------------
+
+    call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+    VERIFY_(STATUS)
+
+    NUM_ICE_LAYERS_ALL  = NUM_ICE_LAYERS  * NUM_ICE_CATEGORIES
+    NUM_SNOW_LAYERS_ALL = NUM_SNOW_LAYERS * NUM_ICE_CATEGORIES
+
+!ALT: These were brought from  the original CICEdyna
 
 ! Set the Initialize, Run, Finalize entry points
 ! ----------------------------------------------
@@ -340,6 +373,7 @@ contains
     TYPE(MITGCM_ISTATE_CONTAINER) :: mitgcmIState(1)
 !   TYPE(MITGCM_ISTATE_WRAP_TYPE) wrap
     TYPE(T_PrivateState_Wrap) wrap
+    type(MITGCM_ISTATE),  pointer :: istate
 
 !   Variables for holding and setting run directory
     character(len=ESMF_MAXSTR)            :: ocean_dir
@@ -350,6 +384,8 @@ contains
     REAL_, pointer                         :: SS  (:,:)
     REAL_, pointer                         :: pMASK(:,:,:)
     REAL_, pointer                         :: DH(:,:,:)
+    type(ESMF_State) :: state
+    character(len=ESMF_MAXSTR)            :: cname
     integer :: chdir
     external chdir 
 
@@ -413,7 +449,8 @@ contains
     call popdir
 !    status = chdir('..')
 
-    PrivateState%ptr => mitgcmIState(1)%p
+    PrivateState%iState => mitgcmIState(1)%p
+    istate => PrivateState%iState
 
     CALL ESMF_UserCompSetInternalState ( GC, 'MITgcm_istate',wrap,status )
     VERIFY_(STATUS)
@@ -457,10 +494,15 @@ contains
     VERIFY_(STATUS)
 
     call WRITE_PARALLEL("Calling DRIVER_Get_ExportState")
-    CALL DRIVER_GET_EXPORT_STATE(privateState%ptr, 'MASK', pMASK )
-    CALL DRIVER_GET_EXPORT_STATE(privateState%ptr, 'TS', TS )
-    CALL DRIVER_GET_EXPORT_STATE(privateState%ptr, 'SS', SS )
-     call WRITE_PARALLEL("Done DRIVER_Get_ExportState")
+    CALL DRIVER_GET_EXPORT_STATE(istate, 'MASK', pMASK )
+    CALL DRIVER_GET_EXPORT_STATE(istate, 'TS', TS )
+    CALL DRIVER_GET_EXPORT_STATE(istate, 'SS', SS )
+    call WRITE_PARALLEL("Done DRIVER_Get_ExportState")
+
+    call ESMF_StateGet(IMPORT, 'ICESTATES', state, __RC__)
+    call ESMF_AttributeGet(state, name='ICECOMPNAME', value=cname, __RC__)
+    call ESMF_StateGet(state, trim(cname)//'_Imports', privateState%import, __RC__)
+    call ESMF_StateGet(state, trim(cname)//'_Exports', privateState%export, __RC__)
 
 
 ! Profilers
@@ -557,12 +599,58 @@ contains
 !   Type for getting MITgcm internal state pointer
     TYPE(T_PrivateState_Wrap) wrap
     type(T_PrivateState), pointer :: privateState
+    type(MITGCM_ISTATE),  pointer :: istate
 
 !   Variables for holding and setting run directory
     character(len=ESMF_MAXSTR)            :: ocean_dir
     integer*1, pointer                    :: iarr(:)
     integer                               :: active_ocean
     REAL*8                                :: Av
+
+! Sea ice vars
+    integer :: i, j
+    integer :: C, L, LCI, LCS
+    real, parameter :: cutoff = 1.0e-5
+    type(ESMF_State) :: importSI, exportSI
+
+    REAL_, pointer                         :: FRACICE(:,:,:)
+    REAL_, pointer                         :: VOLICE(:,:,:)
+    REAL_, pointer                         :: VOLSNO(:,:,:)
+    REAL_, pointer                         :: ERGICE(:,:,:)
+    REAL_, pointer                         :: ERGSNO(:,:,:)
+    REAL_, pointer                         :: TI(:,:,:)
+    REAL_, pointer                         :: SI(:,:)
+    REAL_, pointer                         :: HI(:,:)
+    REAL_, pointer                         :: MPOND (:,:,:)
+    REAL_, pointer                         :: TAUAGE(:,:,:)
+    REAL_, pointer                         :: UI(:,:)
+    REAL_, pointer                         :: VI(:,:)
+    REAL_, pointer                         :: TAUXIe(:,:)
+    REAL_, pointer                         :: TAUYIe(:,:)
+    REAL_, pointer                         :: TAUXBOT(:,:)
+    REAL_, pointer                         :: TAUYBOT(:,:)
+
+    REAL_, pointer                         :: FRACICEe(:,:,:)
+    REAL_, pointer                         :: TIe(:,:,:)
+    REAL_, pointer                         :: SIe(:,:)
+    REAL_, pointer                         :: VOLICEe(:,:,:)
+    REAL_, pointer                         :: VOLSNOe(:,:,:)
+    REAL_, pointer                         :: ERGICEe(:,:,:)
+    REAL_, pointer                         :: ERGSNOe(:,:,:)
+    REAL_, pointer                         :: MPONDe(:,:,:)
+    REAL_, pointer                         :: TAUAGEe(:,:,:)
+    REAL_, pointer                         :: HIe(:,:)
+
+    REAL_, pointer                         :: DEL_FRACICE(:,:,:)
+    REAL_, pointer                         :: DEL_TI(:,:,:)
+    REAL_, pointer                         :: DEL_SI (:,:)
+    REAL_, pointer                         :: DEL_VOLICE(:,:,:)
+    REAL_, pointer                         :: DEL_VOLSNO(:,:,:)
+    REAL_, pointer                         :: DEL_ERGICE(:,:,:)
+    REAL_, pointer                         :: DEL_ERGSNO(:,:,:)
+    REAL_, pointer                         :: DEL_MPOND(:,:,:)
+    REAL_, pointer                         :: DEL_TAUAGE(:,:,:)
+    REAL_, pointer                         :: DEL_HI(:,:)
 
 ! Begin
 !------
@@ -583,6 +671,10 @@ contains
     VERIFY_(status)
 
     PrivateState => wrap%ptr
+    istate => PrivateState%iState
+
+    importSI = PrivateState%import
+    exportSI = PrivateState%export
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -619,6 +711,19 @@ contains
     call MAPL_GetPointer(IMPORT,   DFNIR,     'DFNIR',     RC=STATUS); VERIFY_(STATUS)
     call MAPL_Get(MAPL, LATS=LATS, LONS=LONS, RC=status); VERIFY_(STATUS)
 
+! Sea ice vars
+    call MAPL_GetPointer(importSI,     HI,     'HI', __RC__)
+    call MAPL_GetPointer(importSI,     TI,     'TI', __RC__)
+    call MAPL_GetPointer(importSI,     SI,     'SI', __RC__)
+    call MAPL_GetPointer(importSI, VOLICE, 'VOLICE', __RC__)
+    call MAPL_GetPointer(importSI, VOLSNO, 'VOLSNO', __RC__)
+    call MAPL_GetPointer(importSI, ERGICE, 'ERGICE', __RC__)
+    call MAPL_GetPointer(importSI, ERGSNO, 'ERGSNO', __RC__)
+    call MAPL_GetPointer(importSI, TAUAGE, 'TAUAGE', __RC__)
+    call MAPL_GetPointer(importSI,  MPOND,  'MPOND', __RC__)
+
+    call MAPL_GetPointer(importSI, FRACICE,'FRACICE', RC=STATUS)
+
 ! Get EXPORT pointers to mirror imports
 !--------------------------------------
     call MAPL_GetPointer(EXPORT,   TAUXe,      'TAUX',       RC=STATUS); VERIFY_(STATUS)
@@ -634,6 +739,18 @@ contains
     call MAPL_GetPointer(EXPORT,   SFLXe,      'SFLX',      RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,   DISCHARGEe, 'DISCHARGEe', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MASK, trim(COMP_NAME)//'_3D_MASK',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
+
+#ifdef SEAICE_EXPORTS
+    CALL MAPL_GetPointer(exportSI, TIe,   'TI', __RC__)
+    CALL MAPL_GetPointer(exportSI, SIe,   'SI', __RC__)
+    CALL MAPL_GetPointer(exportSI, VOLICEe, 'VOLICE', __RC__)
+    CALL MAPL_GetPointer(exportSI, VOLSNOe, 'VOLSNO', __RC__)
+    CALL MAPL_GetPointer(exportSI, ERGICEe, 'ERGICE', __RC__)
+    CALL MAPL_GetPointer(exportSI, ERGSNOe, 'ERGSNO', __RC__)
+    CALL MAPL_GetPointer(exportSI, MPONDe, 'MPOND', __RC__)
+    CALL MAPL_GetPointer(exportSI, TAUAGEe, 'TAUAGE', __RC__)
+    CALL MAPL_GetPointer(exportSI, HIe, 'HI', __RC__)
+#endif
 
     ! Actual copy (only if needed)
     if (associated(TAUXe)) TAUXe = TAUX
@@ -664,27 +781,78 @@ contains
 !US Net short-wave raditaion, downward positive (flip sign inside the MIT driver)
     SWFLX = PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR
 
+!ALT protect agaist "orphan" points
+!    where (FRACICE == MAPL_Undef) FRACICE=0.0
+!    where (VOLICE == MAPL_Undef) VOLICE=0.0
+!    where (VOLSNO == MAPL_Undef) VOLSNO=0.0
+!    where (ERGICE == MAPL_Undef) ERGICE=0.0
+!    where (ERGSNO == MAPL_Undef) ERGSNO=0.0
+!    where (TAUAGE == MAPL_Undef) TAUAGE=0.0
+!    where (MPOND == MAPL_Undef) MPOND=0.0
+!    where (TI == MAPL_Undef) TI=MAPL_TICE
+!    where (SI == MAPL_Undef) SI=30.0
+!    where (HI == MAPL_Undef) HI=0.0
+
+    DO J=1,JM
+       DO I=1,IM
+          if (WGHT(I,J) == 0.0 .and. MASK(I,J,1) /= 0.0) then
+             ! WGHT is 0, either because this truely is not a ocean point
+             ! or GEOS does not think this is ocean point. In the latter,
+             ! the values passed from OGCM are set to MAPL_Undef, 
+             ! and we need to protect them. If MITgcm does not think this is
+             ! ocean point, the protection is not needed but does not hurt
+             ! we are going to be sloppy and overwrite the imports
+
+             ! A related, but somewhat separate question is should be
+             ! scale any of these variables by WGHT. If yes, we need to 
+             ! un-scale them on the way back
+
+             DISCHARGE(I,J) = 0.0
+             TI(I,J,:) = MAPL_TICE
+             HI(I,J) = 0.0
+             SI(I,J) = 30.0
+             FRACICE(I,J,:) = 0.0
+             VOLICE(I,J,:) = 0.0
+             VOLSNO(I,J,:) = 0.0
+             ERGICE(I,J,:) = 0.0
+             ERGSNO(I,J,:) = 0.0
+             TAUAGE(I,J,:) = 0.0
+             MPOND(I,J,:) = 0.0
+          end if
+       END DO
+    END DO
+!@@    FRACICE = min(FRACICE, 1.0)
 ! Put import data into internal state
 !------------------------------------
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TAUX',   TAUX )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TAUY',   TAUY )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'PS',     PS )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'SWHEAT', SWFLX )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'HFLX',   HFLX )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'TAUX',   TAUX )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'TAUY',   TAUY )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'PS',     PS )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'SWHEAT', SWFLX )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'HFLX',   HFLX )
     deallocate(HFLX)
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'DISCHARGE',   DISCHARGE )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'QFLX',   QFLX )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'DISCHARGE',   DISCHARGE )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'QFLX',   QFLX )
     deallocate(QFLX)
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'SFLX',   SFLX )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'LATS',   LATS )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'LONS',   LONS )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'WGHT',   WGHT )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'SFLX',   SFLX )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'LATS',   LATS )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'LONS',   LONS )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'WGHT',   WGHT )
 
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'FRACICE', FRACICE )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'VOLICE',  VOLICE )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'VOLSNO',  VOLSNO )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'ERGICE',  ERGICE )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'ERGSNO',  ERGSNO )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'MPOND',   MPOND )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'TAUAGE',  TAUAGE )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'TI',  TI )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'SI',  SI )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'HI',  HI )
     call MAPL_GetResource( MAPL, active_ocean, label='ACTIVE_OCEAN:', &
          default=1, rc=status ) ; VERIFY_(STATUS)
 
     call mysetdir(iarr)
-    if (active_ocean /= 0) CALL DRIVER_RUN( PrivateState%ptr, 1 )
+    if (active_ocean /= 0) CALL DRIVER_RUN( istate, 1 )
     deallocate(iarr)
     call popdir
 
@@ -693,12 +861,114 @@ contains
     CALL MAPL_GetPointer(EXPORT,   TW,   'TW', RC=STATUS); VERIFY_(STATUS)
     CALL MAPL_GetPointer(EXPORT,   SW,   'SW', RC=STATUS); VERIFY_(STATUS)
 
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'US',   UW )
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'VS',   VW )
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'TS',   TW )
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'SS',   SW )
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr, 'MASK', MASK )
+    CALL MAPL_GetPointer(exportSI, DEL_FRACICE,'DEL_FRACICE', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_TI,   'DEL_TI', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_SI,   'DEL_SI', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_VOLICE, 'DEL_VOLICE', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_VOLSNO, 'DEL_VOLSNO', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_ERGICE, 'DEL_ERGICE', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_ERGSNO, 'DEL_ERGSNO', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_MPOND, 'DEL_MPOND', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_TAUAGE, 'DEL_TAUAGE', alloc=.true., __RC__)
+    CALL MAPL_GetPointer(exportSI, DEL_HI, 'DEL_HI', alloc=.true., __RC__)
 
+    DEL_FRACICE = 0.0
+    DEL_TI = 0.0
+    DEL_SI = 0.0
+    DEL_VOLICE = 0.0
+    DEL_VOLSNO = 0.0
+    DEL_ERGICE = 0.0
+    DEL_ERGSNO = 0.0
+    DEL_MPOND = 0.0
+    DEL_TAUAGE = 0.0
+    DEL_HI = 0.0
+
+    CALL DRIVER_GET_EXPORT_STATE( istate,   'US',   UW )
+    CALL DRIVER_GET_EXPORT_STATE( istate,   'VS',   VW )
+    CALL DRIVER_GET_EXPORT_STATE( istate,   'TS',   TW )
+    CALL DRIVER_GET_EXPORT_STATE( istate,   'SS',   SW )
+    CALL DRIVER_GET_EXPORT_STATE( istate, 'MASK', MASK )
+
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELFRACICE', DEL_FRACICE )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELTI', DEL_TI )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELSI', DEL_SI )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELVOLICE', DEL_VOLICE )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELVOLSNO', DEL_VOLSNO )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELERGICE', DEL_ERGICE )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELERGSNO', DEL_ERGSNO )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELMPOND', DEL_MPOND )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELTAUAGE', DEL_TAUAGE )
+    CALL DRIVER_GET_EXPORT_STATE( istate,'DELHI', DEL_HI )
+
+    ! ALT: for now, we need to implement ridging
+    ! and/or make sure it stays between 0 and 1
+
+    ! ALT: for now we leave FRACICE alone and pass the increment to SALT
+
+    if (associated(FRACICEe)) then
+       FRACICEe = FRACICE
+    end if
+
+    ! Update the sea-ice fields
+ 
+    DO J = 1, JM
+       DO I = 1, IM
+          ! US : We decided not to advect seaice in regions which are not 100% ocean
+          ! both in GEOS and MITgcm. 0.99 was chosen arbitrarily because ==1 was found 
+          ! problematic - many points in the Arctic were ~1e-3 smaller than one
+          ! in the c90-llc90_02a experiment and this created many holes of seaice 
+          ! advection in there.
+          ! In case we would like to revisit this number, advlim in 
+          ! import_state_fill_mod.FOR need to match this number.
+          if (WGHT(I,J) > 0.99) then
+
+             ! Apply increments
+             FRACICE(I,J,:) = FRACICE(I,J,:) + DEL_FRACICE(I,J,:)
+             VOLICE(I,J,:) = VOLICE(I,J,:) + DEL_VOLICE(I,J,:)
+             VOLSNO(I,J,:) = VOLSNO(I,J,:) + DEL_VOLSNO(I,J,:)
+             ERGICE(I,J,:) = ERGICE(I,J,:) + DEL_ERGICE(I,J,:)
+             ERGSNO(I,J,:) = ERGSNO(I,J,:) + DEL_ERGSNO(I,J,:)
+             TAUAGE(I,J,:) = TAUAGE(I,J,:) + DEL_TAUAGE(I,J,:)
+             MPOND(I,J,:) = MPOND(I,J,:) + DEL_MPOND(I,J,:)
+             !ALT we do not update skin, and the line below is commented out
+             !HI(I,J) = HI(I,J) + DEL_HI(I,J)
+
+             ! Apply a cutoff as additional check to MITgcm regularization
+             DO C = 1, NUM_ICE_CATEGORIES
+                IF (VOLICE(I,J,C) < cutoff .OR. FRACICE(I,J,C) < cutoff) THEN
+                   FRACICE(I,J,C) = 0.0
+                   VOLICE(I,J,C) = 0.0
+                   TAUAGE(I,J,C) = 0.0
+                   MPOND(I,J,C) = 0.0
+                   DO L = 1, NUM_ICE_LAYERS
+                      LCI = L + (C-1)*NUM_ICE_LAYERS
+                      ERGICE(I,J,LCI) = 0.0
+                   END DO
+                END IF
+                IF (VOLSNO(I,J,C) < cutoff .OR. FRACICE(I,J,C) < cutoff) THEN
+                   VOLSNO(I,J,C) = 0.0
+                   DO L = 1, NUM_SNOW_LAYERS
+                      LCS = L + (C-1)*NUM_SNOW_LAYERS
+                      ERGSNO(I,J,LCS) = 0.0
+                   END DO
+                END IF
+             END DO
+             
+             !ALT: workaround to deal with a possible bug in DEL_TI
+             where(FRACICE(I,J,:) /= 0.0 )  TI(I,J,:) = TI(I,J,:) + DEL_TI(I,J,:)
+             if (any(DEL_VOLICE(I,J,:) /= 0.0)) then ! we advected at least one
+                SI(I,J) = SI(I,J) + DEL_SI(I,J)
+             end if
+
+             ! Apply ridging algorithm
+             if (sum(FRACICE(I,J,:)) > 1) then
+                FRACICE(I,J,:) = FRACICE(I,J,:)/sum(FRACICE(I,J,:))
+             end if
+             
+           end if
+       END DO
+    END DO
+  
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )
 
@@ -753,6 +1023,7 @@ contains
     type(MAPL_MetaComp),           pointer :: MAPL 
     TYPE(T_PrivateState_Wrap) wrap
     type(T_PrivateState), pointer :: privateState
+    type(MITGCM_ISTATE),  pointer :: istate
 
     type(ESMF_Grid)                        :: Grid
 
@@ -789,6 +1060,7 @@ contains
     VERIFY_(status)
 
     privateState => WRAP%PTR
+    istate => PrivateState%iState
 
 ! Get the grid, configuration
 !----------------------------
@@ -803,7 +1075,7 @@ contains
 
 ! Get EXPORT pointers
 !--------------------
-    ! by now this should be allocated, so 'alloc=.true.' is needed
+    ! by now this should be allocated, so 'alloc=.true.' is not needed
     CALL MAPL_GetPointer(EXPORT, MASK, trim(COMP_NAME)//'_3D_MASK', RC=STATUS)
     VERIFY_(STATUS)
 
@@ -827,7 +1099,7 @@ contains
        T = T + DEL_TEMP
 
     end where
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TS', T )
+    CALL DRIVER_SET_IMPORT_STATE( istate,   'TS', T )
     deallocate(T)
 
 ! All Done

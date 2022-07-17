@@ -695,6 +695,15 @@ contains
 ! Connections between the children
 !---------------------------------
 
+#ifdef BUILD_MIT_OCEAN
+  call MAPL_AddConnectivity ( GC,   &
+       SHORT_NAME  = (/'ICESTATES'/), &
+       DST_ID = OCEAN,               &
+       SRC_ID = SEAICE,             &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+#endif
+
   if(DO_DATASEAONLY==0) then
 !   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
        ! Radiation to Ocean

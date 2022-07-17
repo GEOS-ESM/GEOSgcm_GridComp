@@ -9,6 +9,10 @@ set (alldirs
 
 set (dependencies GEOS_Seaice_GridComp MAPL CICE4)
 
+if ( BUILD_MIT_OCEAN )
+  add_compile_definitions(BUILD_MIT_OCEAN)
+endif()
+
 esma_add_library (${this}
   SRCS GEOS_OgcmGridComp.F90
   SUBCOMPONENTS ${alldirs}
