@@ -962,6 +962,7 @@ contains
     integer           :: LM
     integer           :: NUM
     real, allocatable :: WGHT(:,:)
+    real, pointer     :: WGHTi(:,:)
     real              :: DT, TAU_SST
     real              :: TAU_SST_UNDER_ICE
     real, pointer     :: LONS  (:,:)
@@ -1166,11 +1167,16 @@ contains
 ! Weight for ocean grid
 !----------------------
        wght=0.0
-       where(MASK>0)
+       where(MASK>0 .and. FROCEAN /= MAPL_UNDEF)
           WGHT = FROCEAN/MASK
        elsewhere
           WGHT = 0.0
        end where
+
+#ifdef BUILD_MIT_OCEAN
+       call MAPL_GetPointer(GIM(OCN), WGHTi, 'WGHT', __RC__)
+       WGHTi = WGHT
+#endif
 
        if(DO_DATASEA==0) then
 ! Copy imports into ImEx variables

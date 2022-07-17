@@ -155,7 +155,8 @@
          IF ( tmpW(i,j,bi,bj).EQ.0.D0 ) THEN 
            pLoad(i,j,bi,bj) = 1.D+5
          ELSE
-           pLoad(i,j,bi,bj) = p%PS(iSLo+i,jSLo+j)/tmpW(i,j,bi,bj)
+!           pLoad(i,j,bi,bj) = p%PS(iSLo+i,jSLo+j)/tmpW(i,j,bi,bj)
+           pLoad(i,j,bi,bj) = p%PS(iSLo+i,jSLo+j)
          ENDIF
 
 !     Transfer TS to theta (for dual ocean).
