@@ -81,7 +81,7 @@ contains
 
     select case (trim(LBSV))
 
-    case ("F25_2")
+    case ("F25")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS1'
@@ -89,14 +89,14 @@ contains
        use_PEATMAP = .false.
        jpl_height  = .false.
 
-    case ("GM4_2", "ICA_2")
+    case ("GM4", "ICA")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS2'
        use_PEATMAP = .false.
        jpl_height  = .false.
 
-    case ("NL3_2")
+    case ("NL3")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -590,7 +590,7 @@ END SUBROUTINE modis_lai
 
 !----------------------------------------------------------------------  
 
-  SUBROUTINE soil_para_high (nx,ny,regrid,gfile,F25_2Tag)
+  SUBROUTINE soil_para_high (nx,ny,regrid,gfile,F25Tag)
 
     implicit none
       real, dimension(12) :: lbee,lpsis,lporo,lcond,lwpwet, &
@@ -613,7 +613,7 @@ END SUBROUTINE modis_lai
       integer, allocatable, dimension (:) :: land_gswp2
       logical :: regrid
       real, pointer :: Raster(:,:)
-      logical, intent (in), optional :: F25_2Tag
+      logical, intent (in), optional :: F25Tag
       logical                            :: file_exists
       real, allocatable, dimension (:,:) :: parms4file
 
@@ -719,7 +719,7 @@ integer :: n_threads=1
           
           close (10,status='keep')
           
-          if (present(F25_2Tag)) then 
+          if (present(F25Tag)) then 
 
              iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid1)
              ASSERT_(iret==NF_NOERR)
@@ -788,7 +788,7 @@ integer :: n_threads=1
 
           DO n =1,maxcat
 		if(count_soil(n)/=0.) soildepth(n)=soildepth(n)/count_soil(n)	
-                if (present(F25_2Tag)) then
+                if (present(F25Tag)) then
                    soildepth(n) = max(soildepth(n),1.)
                 else
                    soildepth(n) = max(soildepth(n),1.334)
