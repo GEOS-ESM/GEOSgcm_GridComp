@@ -53,7 +53,6 @@ file(COPY ${MITGCM_CONFIG_DIR}/code
 
 esma_add_library (${this}
   SRCS ${SRCS} #${OBJS}
-#  DEPENDENCIES MAPL mitgcm_setup/code_split_driver/driverdone
   DEPENDENCIES MAPL $<BUILD_INTERFACE:mitgcmuv_driver> $<BUILD_INTERFACE:mitgcmuv>
   INCLUDES $<BUILD_INTERFACE:${MITGCM_BUILD_DIR}/code_split_driver>
 #  TYPE SHARED
@@ -96,20 +95,16 @@ add_custom_command(
 )
 
 add_custom_command(
-	OUTPUT mitgcm_setup/inc/incdone
+	OUTPUT mitgcm_setup/inc/SEAICE_PARAMS.h
 	COMMAND ./mk_local ../local_build
-	COMMAND touch incdone
 	DEPENDS mitgcm_setup/local_build/Makefile
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/inc
 )
 
-#add_custom_command(
-#	OUTPUT mitgcm_setup/build/builddone
 add_custom_target(mitgcmuv
 	COMMAND ./mk_local ../local_build
 	COMMAND make install
-#	COMMAND touch builddone
-	DEPENDS mitgcm_setup/inc/incdone
+	DEPENDS mitgcm_setup/inc/SEAICE_PARAMS.h
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/build
 )
 
@@ -117,7 +112,6 @@ add_custom_target(mitgcmuv
 #	OUTPUT ${MITLIBS}
 add_custom_target(mitgcmuv_driver
 	COMMAND make install FC=${FC} CC=${CC}
-#	DEPENDS mitgcm_setup/build/builddone
 	DEPENDS mitgcmuv
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver
 )
