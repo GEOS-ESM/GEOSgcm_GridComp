@@ -51,11 +51,11 @@ if ( "$1" == "-noland" ) set SKIPLAND = YES
 
 if ( $HELPMODE != YES ) then
 
-   setenv NCPUS `/usr/bin/lscpu | grep '^CPU(s)' | cut -d ':' -f2 | head -1 `
-   @ NCPUS = $NCPUS / 4
-   @ NCPUS = $NCPUS * 3
-   set NCPUS = 20
-   setenv OMP_NUM_THREADS 1
+   #setenv NCPUS `/usr/bin/lscpu | grep '^CPU(s)' | cut -d ':' -f2 | head -1 `
+   #@ NCPUS = $NCPUS / 4
+   #@ NCPUS = $NCPUS * 3
+   setenv NCPUS           20
+   setenv OMP_NUM_THREADS  1
 
 endif
    
@@ -317,7 +317,7 @@ endif
 # Experiment directory (for BCS output)
 
 # define default
-setenv EXPDIR /discover/nobackup/$USER/BCS_PACKAGE/$lbcsv
+set EXPDIR = /discover/nobackup/$USER/BCS_PACKAGE/$lbcsv
 
 # append minor version string to default bcs output dir name if output from current code differs from archived bcs
 
