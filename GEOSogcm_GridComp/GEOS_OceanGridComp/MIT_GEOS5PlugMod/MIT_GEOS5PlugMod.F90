@@ -987,6 +987,7 @@ contains
 ! !INTERFACE:
 
   subroutine Run2  ( gc, import, export, clock, rc )
+    USE IMPORT_STATE_FILL_MOD
 
 ! !ARGUMENTS:
 
@@ -1101,6 +1102,7 @@ contains
     end where
     CALL DRIVER_SET_IMPORT_STATE( istate,   'TS', T )
     deallocate(T)
+    call mitgcm_import_fill_ts(istate%import)
 
 ! All Done
 !---------

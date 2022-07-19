@@ -423,4 +423,44 @@ c          IF ( AREAITD(i,j,n,bi,bj).EQ.exclVal ) THEN
       RETURN
       END SUBROUTINE
 
+      SUBROUTINE MITGCM_IMPORT_FILL_TS  ( importPtr )
+!     -- Fill onlt TS import for an MITgcm instance.
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "GRID.h"
+#include "FFIELDS.h"
+#include "DYNVARS.h"
+
+!     -- Routine arguments    --
+!     -- Import state pointer --
+      TYPE(MITGCM_IMPORT), POINTER :: importPtr
+
+!     -- Local variables --
+      TYPE(MITGCM_IMPORT), POINTER :: p
+      INTEGER bi, bj, i, j, jSLo, iSLo
+      INTEGER k, l, n
+      INTEGER iMin, iMax, jMin, jMax
+
+!     Transfer fields from importPtr to MITgcm forcing variables.
+      p => importPtr
+      DO bj=1,nSy
+       DO bi=1,nSx
+        jSLo = (bj-1)*sNy
+        iSLo = (bi-1)*sNx
+        DO j=1,sNy
+         DO i=1,sNx
+
+!     Transfer TS to theta (for dual ocean).
+!     TS      : SST in K
+!     theta   : SST in DegC
+            theta(i,j,1,bi,bj) = p%TS(iSLo+i,jSLo+j)-celsius2K
+
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+      RETURN
+      END SUBROUTINE
+
       END MODULE
