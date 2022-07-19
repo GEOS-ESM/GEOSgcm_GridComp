@@ -344,7 +344,7 @@ if ( $HELPMODE != YES ) then
    echo "   [${C2}${EXPDIR}${CR}]"
    set NEWEXPDIR = $<
 
-   if( $NEWEXPDIR != '' ) setenv EXPDIR $NEWEXPDIR
+   if( $NEWEXPDIR != '' ) set EXPDIR = $NEWEXPDIR
 
    mkdir -p $EXPDIR
    if ($status>0) then
