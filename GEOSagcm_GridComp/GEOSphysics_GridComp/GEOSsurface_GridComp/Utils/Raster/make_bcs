@@ -54,7 +54,7 @@ if ( $HELPMODE != YES ) then
    #setenv NCPUS `/usr/bin/lscpu | grep '^CPU(s)' | cut -d ':' -f2 | head -1 `
    #@ NCPUS = $NCPUS / 4
    #@ NCPUS = $NCPUS * 3
-   setenv NCPUS           20
+   set NCPUS = 20
    setenv OMP_NUM_THREADS  1
 
 endif
