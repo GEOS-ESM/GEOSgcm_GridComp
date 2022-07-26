@@ -75,11 +75,12 @@ contains
       clearCounts, swuflx, swdflx, swuflxc, swdflxc, &
       nirr, nirf, parr, parf, uvrr, uvrf, &
       tautp, tauhp, taump, taulp, &
-
+      do_FAR, taumol_age, taumol_age_limit, &
+      taur, taug, sflxzen, ssi, &
       ! optional inputs
       bndscl, indsolvar, solcycfrac)
 
-      use parrrsw, only : nbndsw
+      use parrrsw, only : nbndsw, ngptsw
 
       ! ----- Inputs -----
 
@@ -228,6 +229,9 @@ contains
       integer, intent(in) :: normFlx                 ! Normalize fluxes?
                                                      !   0 = no normalization
                                                      !   1 = normalize (by scon*coszen)
+      ! FAR controls
+      logical, intent(in) :: do_FAR
+      real, intent(in) :: taumol_age_limit
 
       ! ----- Outputs -----
 
@@ -249,6 +253,14 @@ contains
 
       ! In-cloud PAR optical thickness for Tot|High|Mid|Low super-layers
       real, intent(out), dimension (ncol) :: tautp, tauhp, taump, taulp
+
+      ! ------- FAR InOuts -------
+      ! if (.not.do_FAR) these can be unassociated pointers since not used
+      ! NB: the tau[rg] are in GEOS (unflipped) top->bot order
+
+      real, intent(inout), dimension(:),     pointer :: taumol_age    ! (ncol)             if (do_FAR)
+      real, intent(inout), dimension(:,:,:), pointer :: taur, taug    ! (ncol,nlay,ngptsw) if (do_FAR)
+      real, intent(inout), dimension(:,:),   pointer :: sflxzen, ssi  ! (ncol,     ngptsw) if (do_FAR)
 
       ! ----- Locals -----
 
@@ -352,6 +364,50 @@ contains
         error stop 'negative values in input: ssaaer'
       end if
 
+      ! check FAR inputs
+      if (do_FAR) then
+         if (.not.associated(taumol_age)) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'not associated when do_FAR: taumol_age'
+         end if
+         if (any(shape(taumol_age) /= [ncol])) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'mal-dimensioned: taumol_age'
+         end if
+         if (.not.associated(taur)) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'not associated when do_FAR: taur'
+         end if
+         if (any(shape(taur) /= [ncol,nlay,ngptsw])) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'mal-dimensioned: taur'
+         end if
+         if (.not.associated(taug)) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'not associated when do_FAR: taug'
+         end if
+         if (any(shape(taug) /= [ncol,nlay,ngptsw])) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'mal-dimensioned: taug'
+         end if
+         if (.not.associated(sflxzen)) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'not associated when do_FAR: sflxzen'
+         end if
+         if (any(shape(sflxzen) /= [ncol,ngptsw])) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'mal-dimensioned: sflxzen'
+         end if
+         if (.not.associated(ssi)) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'not associated when do_FAR: ssi'
+         end if
+         if (any(shape(ssi) /= [ncol,ngptsw])) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            error stop 'mal-dimensioned: ssi'
+         end if
+      end if
+
       ! set column partition size pncol
       if (rpart > 0) then
          pncol = rpart
@@ -374,6 +430,8 @@ contains
          clearCounts, swuflx, swdflx, swuflxc, swdflxc, &
          nirr, nirf, parr, parf, uvrr, uvrf, &
          tautp, tauhp, taump, taulp, &
+         do_FAR, taumol_age, taumol_age_limit, &
+         taur, taug, sflxzen, ssi, &
          ! optional inputs
          bndscl, indsolvar, solcycfrac)
                                                       
@@ -394,6 +452,8 @@ contains
       clearCounts, swuflx, swdflx, swuflxc, swdflxc, &
       nirr, nirf, parr, parf, uvrr, uvrf, &
       tautp, tauhp, taump, taulp, &
+      do_FAR, taumol_age, taumol_age_limit, &
+      taur, taug, sflxzen, ssi, &
       ! optional inputs
       bndscl, indsolvar, solcycfrac)
 
@@ -476,6 +536,10 @@ contains
 
       integer, intent(in) :: normFlx                   ! Normalize fluxes flag
 
+      ! FAR controls
+      logical, intent(in) :: do_FAR
+      real, intent(in) :: taumol_age_limit
+
       ! ----- Outputs -----
 
       ! subcolumn clear counts for Tot|High|Mid|Low super-layers
@@ -497,12 +561,19 @@ contains
       ! In-cloud PAR optical thickness for Tot|High|Mid|Low super-layers
       real, intent(out), dimension (gncol) :: tautp, tauhp, taump, taulp
 
+      ! ------- FAR InOuts -------
+      ! if (.not.do_FAR) these can be unassociated pointers since not used
+      ! NB: the tau[rg] are in GEOS (unflipped) top->bot order
+
+      real, intent(inout), dimension(:),     pointer :: taumol_age    ! (gncol)             if (do_FAR)
+      real, intent(inout), dimension(:,:,:), pointer :: taur, taug    ! (gncol,nlay,ngptsw) if (do_FAR)
+      real, intent(inout), dimension(:,:),   pointer :: sflxzen, ssi  ! (gncol,     ngptsw) if (do_FAR)
+
       ! ----- Locals -----
 
       ! Control
       real, parameter :: zepzen = 1.e-10   ! very small cossza
-
-      integer :: ibnd, icol, ilay, ilev  ! various indices
+      integer :: ibnd, icol, ilay, ilev    ! various indices
 
       ! Atmosphere
       real :: coldry (nlay,pncol)        ! dry air column amount
@@ -593,6 +664,12 @@ contains
       ! in-cloud PAR optical thicknesses
       real, dimension (pncol) :: ztautp, ztauhp, ztaump, ztaulp
       
+      ! FAR taumol partitioned fields
+      ! Note: ztau[rg] are in RRTMG bot->top order unlike tau[rg]
+      real, dimension(pncol) :: ztage
+      real, dimension(nlay,ngptsw,pncol) :: ztaur, ztaug
+      real, dimension(ngptsw,pncol) :: zsflxzen, zssi
+
       ! Solar variability multipliers
       ! -----------------------------
 
@@ -1011,6 +1088,21 @@ contains
                   colo2 (:,icol) = go2vmr (gicol,1:nlay)   
                 end do
 
+               ! copy in FAR taumol InOuts
+               if (do_FAR) then
+                  do icol = 1,ncol
+                     gicol = gicol_clr(icol + cols - 1)
+                     ztage(icol) = taumol_age(gicol)
+                     do ilay = 1,nlay
+                        ztaur(nlay+1-ilay,:,icol) = taur(gicol,ilay,:)
+                        ztaug(nlay+1-ilay,:,icol) = taug(gicol,ilay,:)
+                     enddo
+!pmn: check copy efficiency here and elsewhere for ztau[rg]
+                     zsflxzen(:,icol) = sflxzen(gicol,:)
+                     zssi    (:,icol) = ssi    (gicol,:)
+                  end do
+               end if
+
             else
 
                ! ------------------
@@ -1084,6 +1176,20 @@ contains
                   colch4(:,icol) = gch4vmr(gicol,1:nlay)
                   colo2 (:,icol) = go2vmr (gicol,1:nlay)  
                enddo
+
+               ! copy in FAR taumol InOuts
+               if (do_FAR) then
+                  do icol = 1,ncol
+                     gicol = gicol_cld(icol + cols - 1)
+                     ztage(icol) = taumol_age(gicol)
+                     do ilay = 1,nlay
+                        ztaur(nlay+1-ilay,:,icol) = taur(gicol,ilay,:)
+                        ztaug(nlay+1-ilay,:,icol) = taug(gicol,ilay,:)
+                     enddo
+                     zsflxzen(:,icol) = sflxzen(gicol,:)
+                     zssi    (:,icol) = ssi    (gicol,:)
+                  end do
+               end if
 
             end if  ! clear or cloudy gridcolumns
 
@@ -1162,7 +1268,9 @@ contains
                selffac, selffrac, indself, forfac, forfrac, indfor, &
                zbbfd, zbbfu, zbbcd, zbbcu, zbbfddir, zbbcddir, &
                znirr, znirf, zparr, zparf, zuvrr, zuvrf, &
-               ztautp, ztauhp, ztaump, ztaulp)
+               ztautp, ztauhp, ztaump, ztaulp, &
+               do_FAR, ztage, taumol_age_limit, &
+               ztaur, ztaug, zsflxzen, zssi)
 
             ! Copy out up and down, clear- and all-sky fluxes to output arrays.
             ! Vertical indexing goes from bottom to top; reverse here for GCM if necessary.
@@ -1204,6 +1312,20 @@ contains
                   uvrf(gicol) = zuvrf(icol) - zuvrr(icol)
                end do
 
+               ! copy out FAR taumol InOuts
+               if (do_FAR) then
+                  do icol = 1,ncol
+                     gicol = gicol_clr(icol + cols - 1)
+                     taumol_age(gicol) = ztage(icol)
+                     do ilay = 1,nlay
+                        taur(gicol,ilay,:) = ztaur(nlay+1-ilay,:,icol)
+                        taug(gicol,ilay,:) = ztaug(nlay+1-ilay,:,icol)
+                     enddo
+                     sflxzen(gicol,:) = zsflxzen(:,icol)
+                     ssi    (gicol,:) = zssi    (:,icol)
+                  end do
+               end if
+
             else ! cloudy columns
 
                do icol = 1,ncol
@@ -1232,6 +1354,20 @@ contains
                   uvrr(gicol) = zuvrr(icol)
                   uvrf(gicol) = zuvrf(icol) - zuvrr(icol)
                enddo
+
+               ! copy out FAR taumol InOuts
+               if (do_FAR) then
+                  do icol = 1,ncol
+                     gicol = gicol_cld(icol + cols - 1)
+                     taumol_age(gicol) = ztage(icol)
+                     do ilay = 1,nlay
+                        taur(gicol,ilay,:) = ztaur(nlay+1-ilay,:,icol)
+                        taug(gicol,ilay,:) = ztaug(nlay+1-ilay,:,icol)
+                     enddo
+                     sflxzen(gicol,:) = zsflxzen(:,icol)
+                     ssi    (gicol,:) = zssi    (:,icol)
+                  end do
+               end if
 
             endif  ! clear/cloudy
 

@@ -77,7 +77,7 @@ contains
       real,    intent(out) :: ssi      (ngptsw,pncol)  ! spectral solar intensity with solar var
       real,    intent(out) :: sfluxzen (ngptsw,pncol)  ! solar source function
       real,    intent(out) :: taug(nlay,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlay,ngptsw,pncol)  ! Rayleigh 
+      real,    intent(out) :: taur(nlay,ngptsw,pncol)  ! Rayleigh optical depth
 
       ! Calculate optical depths and solar inputs for each spectral band.
 

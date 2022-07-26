@@ -40,7 +40,9 @@ contains
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, pbbfddir, pbbcddir, &
       znirr, znirf, zparr, zparf, zuvrr, zuvrf, &
-      ztautp, ztauhp, ztaump, ztaulp)
+      ztautp, ztauhp, ztaump, ztaulp, &
+      do_FAR, taumol_age, taumol_age_limit, &
+      ztaur, ztaug, zsflxzen, ssi)
    ! ---------------------------------------------------------------------------
    !
    ! Purpose: Contains spectral loop to compute the shortwave radiative fluxes, 
@@ -70,6 +72,8 @@ contains
    ! Revision: Uniform formatting for RRTMG: MJIacono, AER, Jul 2006 
    ! Revision: Use exponential lookup table for transmittance: MJIacono, AER, 
    !           Aug 2007 
+   ! Revision: Added ztau[lmht]p: PMNorris, GMAO, at some point
+   ! Revision: Experiment with FAR taumol, PMNorris, GMAO, Jul 2022
    !
    ! ------------------------------------------------------------------
 
@@ -134,6 +138,10 @@ contains
       integer, intent(in) :: cloudLM  ! Low-mid
       integer, intent(in) :: cloudMH  ! Mid-high
 
+      ! FAR controls
+      logical, intent(in) :: do_FAR
+      real, intent(in) :: taumol_age_limit
+
       ! ------- Output -------
 
       real, intent(out) :: pbbcd    (nlay+1,pncol) 
@@ -150,6 +158,12 @@ contains
       ! in-cloud PAR optical thicknesses
       real, intent(out), dimension (pncol) :: &
          ztautp, ztauhp, ztaump, ztaulp
+
+      ! ------- FAR InOuts -------
+
+      real, intent(inout), dimension(pncol) :: taumol_age
+      real, intent(inout), dimension(nlay,ngptsw,pncol) :: ztaur, ztaug
+      real, intent(inout), dimension(ngptsw,pncol) :: zsflxzen, ssi
 
       ! ------- Local -------
 
@@ -176,11 +190,9 @@ contains
       real :: ztra   (nlay+1,ngptsw,pncol)  ! direct beam transmissivity
       real :: ztrad  (nlay+1,ngptsw,pncol)  ! diffuse     transmissivity
 
-      real :: ztaur  (nlay,ngptsw,pncol)
-      real :: ztaug  (nlay,ngptsw,pncol) 
-
-      real :: zsflxzen (ngptsw,pncol)
-      real :: ssi      (ngptsw,pncol)
+      logical :: recalc (ncol) 
+      integer, allocatable(:) :: irc
+      integer :: nrc
 
       ! ------------------------------------------------------------------
 
@@ -199,13 +211,40 @@ contains
       zuvrf    = 0.
 
       ! Calculate the optical depths for gaseous absorption and Rayleigh scattering     
-      call taumol_sw( &
-         pncol, ncol, nlay, &
-         colh2o, colco2, colch4, colo2, colo3, colmol, &
-         laytrop, jp, jt, jt1, fac00, fac01, fac10, fac11, &
-         selffac, selffrac, indself, forfac, forfrac, indfor, &
-         isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
-         ssi, zsflxzen, ztaug, ztaur)
+      if (.not.do_FAR) then
+         ! legacy non-FAR calculation every REFRESH
+         call taumol_sw( &
+            pncol, ncol, nlay, &
+            colh2o, colco2, colch4, colo2, colo3, colmol, &
+            laytrop, jp, jt, jt1, fac00, fac01, fac10, fac11, &
+            selffac, selffrac, indself, forfac, forfrac, indfor, &
+            isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
+            ssi, zsflxzen, ztaug, ztaur)
+      else
+         ! FAR asynchronous recalculation of uninitialized or old values
+         recalc = (taumol_age(1:ncol) < 0.) .or. (taulmol_age(1:ncol) > taumol_age_limit)
+         if (any(recalc)) then
+            ! get number of recalculated columns and their indicies irc
+            nrc = count(recalc)
+            allocate(irc(nrc))
+            irc = pack([1:ncol],recalc)
+            ! recalculate columns needed
+            call taumol_sw( &
+               nrc, nrc, nlay, &
+               colh2o(:,irc), colco2(:,irc), colch4(:,irc), &
+               colo2(:,irc), colo3(:,irc), colmol(:,irc), &
+               laytrop(irc), jp(:,irc), jt(:,irc), jt1(:,irc), &
+               fac00(:,irc), fac01(:,irc), fac10(:,irc), fac11(:,irc), &
+               selffac(:,irc), selffrac(:,irc), indself(:,irc), &
+               forfac(:,irc), forfrac(:,irc), indfor(:,irc), &
+               isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
+               ssi(:,irc), zsflxzen(:,irc), ztaug(:,:,irc), ztaur(:,:,irc))
+            ! recalculated values are now brand new
+            taumol_age(irc) = 0.
+            ! clean up
+            deallocate(irc)
+         end if
+      endif
 
       ! Set fixed boundary values.
       ! The sfc (jk=nlay+1) zref[d] & ztra[d] never change from these.
