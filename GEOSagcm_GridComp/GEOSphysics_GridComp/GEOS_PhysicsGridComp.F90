@@ -1216,6 +1216,14 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = (/ 'Q         ','FCLD      ' /),              &
+        DST_NAME  = (/ 'Q_avg24   ','FCLD_avg24' /),              &
+        DST_ID      = CHEM,                                       &
+        SRC_ID      = MOIST,                                      &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                              &
          SHORT_NAME  = (/'ZPBL','PPBL'/),                         &
          DST_ID      = CHEM,                                      &
          SRC_ID      = TURBL,                                     &
@@ -1253,6 +1261,14 @@ contains
      call MAPL_AddConnectivity ( GC,                              &
         SHORT_NAME  = (/ 'TAUCLI', 'TAUCLW', 'CLDTT ',            &
                          'DFPAR ', 'DRPAR '                   /), &
+        DST_ID      =  CHEM,                                      &
+        SRC_ID      =  RAD,                                       &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = (/ 'TAUCLI      ', 'TAUCLW      '/),          &
+        DST_NAME  = (/ 'TAUCLI_avg24', 'TAUCLW_avg24'/),          &
         DST_ID      =  CHEM,                                      &
         SRC_ID      =  RAD,                                       &
                                                        RC=STATUS  )
