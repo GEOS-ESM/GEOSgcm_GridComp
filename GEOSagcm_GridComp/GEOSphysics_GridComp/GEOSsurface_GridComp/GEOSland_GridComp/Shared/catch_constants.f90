@@ -70,9 +70,11 @@ module catch_constants
   
   ! ---------------------------------------------------------------------------
   !
-  ! layer depth associated with snow-free land temperatures
+  ! layer depth associated with snow-free land surface soil temperatures
   !
-  ! Note: DZTC = .05 is a hardwired setting of the depth of the bottom of
+  ! ==================
+  ! Note by Randy Koster & Rolf Reichle when CSOIL=200. was still used (~2018):
+  ! DZTC = .05 is a hardwired setting of the depth of the bottom of
   ! the surface soil layer.  It should be made a parameter that is tied to
   ! the heat capacity CSOIL, which had been set to either CSOIL_1 or
   ! CSOIL_2 based on vegetation type.  For now we leave
@@ -87,8 +89,13 @@ module catch_constants
   ! are other impacts in wet climates regarding the effect of
   ! the depth of the water table on the thermal conductivity; these impacts
   ! are presumably very small.
-
-  REAL,    PARAMETER, PUBLIC :: CATCH_DZTC          = 0.05     ! m  layer depth for tc1, tc2, tc4
+  ! ==================
+  !
+  ! DZTSURF (formerly DZTC) is the layer depth associated w/ surface soil temperatures:
+  !   Catchment:    tc1, tc2, tc4  (CSOIL also includes veg canopy)
+  !   CatchmentCN:  tg1, tg2, tg4  (tc[X] are separate canopy temperatures)
+  
+  REAL,    PARAMETER, PUBLIC :: CATCH_DZTSURF       = 0.05     ! m  layer depth for tc[X] or tg[X]
 
   ! ---------------------------------------------------------------------------
   !
@@ -127,6 +134,25 @@ module catch_constants
 
   REAL,    PARAMETER, PUBLIC :: CATCH_SATCAPFR      = 0.2      ! SATCAP = SATCAPFR * LAI
 
+  
+  ! peatCLSM implementation smahanam  3-16-2021
+  !
+  ! Use of peat-specific hydrology (PEATCLSM) is triggered by a porosity threshold.
+  ! Porosity of peat tiles depends on bcs version.
+  !
+  !     bcs version           | source of peat info       | porosity
+  !     -----------------------------------------------------------------
+  !     NLv3, NLv4            | HWSD                      | poros=0.80
+  !     NLv5                  | PEATMAP                   | poros=0.93
+  !
+  ! - reichle, 26 Jan 2022
+  
+  REAL, PARAMETER, PUBLIC :: PEATCLSM_POROS_THRESHOLD  = 0.90    ! [m3/m3]
+
+  ! max zbar for specific yield calc in PEATCLSM
+  
+  REAL, PARAMETER, PUBLIC :: PEATCLSM_ZBARMAX_4_SYSOIL = 0.45    ! [m] 
+
 contains
 
   ! ****************************************************************************************
@@ -142,39 +168,42 @@ contains
     write (logunit,*)
     write (logunit,*) 'echo_catch_constants():'
     write (logunit,*)
-    write (logunit,*) 'CATCH_N_PFAFS       = ', CATCH_N_PFAFS       
-    write (logunit,*) 'CATCH_N_PFAFSROUTE  = ', CATCH_N_PFAFSROUTE  
-    write (logunit,*) 'CATCH_N_SNOW        = ', CATCH_N_SNOW        
-    write (logunit,*) 'CATCH_N_GT          = ', CATCH_N_GT          
-    write (logunit,*) 'CATCH_N_ZONES       = ', CATCH_N_ZONES       
-    write (logunit,*) 'CATCH_SNWALB_RHOFS  = ', CATCH_SNWALB_RHOFS  
-    write (logunit,*) 'CATCH_SNWALB_VISMAX = ', CATCH_SNWALB_VISMAX 
-    write (logunit,*) 'CATCH_SNWALB_NIRMAX = ', CATCH_SNWALB_NIRMAX 
-    write (logunit,*) 'CATCH_SNWALB_SLOPE  = ', CATCH_SNWALB_SLOPE  
-    write (logunit,*) 'CATCH_MAXSNDEPTH    = ', CATCH_MAXSNDEPTH    
-    write (logunit,*) 'CATCH_DZ1MAX        = ', CATCH_DZ1MAX        
-    write (logunit,*) 'CATCH_DZTC          = ', CATCH_DZTC          
-    write (logunit,*) 'CATCH_DZGT          = ', CATCH_DZGT          
-    write (logunit,*) 'CATCH_PHIGT         = ', CATCH_PHIGT         
-    write (logunit,*) 'CATCH_ALHMGT        = ', CATCH_ALHMGT        
-    write (logunit,*) 'CATCH_FSN           = ', CATCH_FSN           
-    write (logunit,*) 'CATCH_SHR           = ', CATCH_SHR           
-    write (logunit,*) 'CATCH_SCONST        = ', CATCH_SCONST        
-    write (logunit,*) 'CATCH_CSOIL_1       = ', CATCH_CSOIL_1       
-    write (logunit,*) 'CATCH_C_CANOP       = ', CATCH_C_CANOP       
-    write (logunit,*) 'CATCH_SATCAPFR      = ', CATCH_SATCAPFR      
+    write (logunit,*) 'CATCH_N_PFAFS              = ', CATCH_N_PFAFS       
+    write (logunit,*) 'CATCH_N_PFAFSROUTE         = ', CATCH_N_PFAFSROUTE  
+    write (logunit,*) 'CATCH_N_SNOW               = ', CATCH_N_SNOW        
+    write (logunit,*) 'CATCH_N_GT                 = ', CATCH_N_GT          
+    write (logunit,*) 'CATCH_N_ZONES              = ', CATCH_N_ZONES       
+    write (logunit,*) 'CATCH_SNWALB_RHOFS         = ', CATCH_SNWALB_RHOFS  
+    write (logunit,*) 'CATCH_SNWALB_VISMAX        = ', CATCH_SNWALB_VISMAX 
+    write (logunit,*) 'CATCH_SNWALB_NIRMAX        = ', CATCH_SNWALB_NIRMAX 
+    write (logunit,*) 'CATCH_SNWALB_SLOPE         = ', CATCH_SNWALB_SLOPE  
+    write (logunit,*) 'CATCH_MAXSNDEPTH           = ', CATCH_MAXSNDEPTH    
+    write (logunit,*) 'CATCH_DZ1MAX               = ', CATCH_DZ1MAX        
+    write (logunit,*) 'CATCH_DZTSURF              = ', CATCH_DZTSURF          
+    write (logunit,*) 'CATCH_DZGT                 = ', CATCH_DZGT          
+    write (logunit,*) 'CATCH_PHIGT                = ', CATCH_PHIGT         
+    write (logunit,*) 'CATCH_ALHMGT               = ', CATCH_ALHMGT        
+    write (logunit,*) 'CATCH_FSN                  = ', CATCH_FSN           
+    write (logunit,*) 'CATCH_SHR                  = ', CATCH_SHR           
+    write (logunit,*) 'CATCH_SCONST               = ', CATCH_SCONST        
+    write (logunit,*) 'CATCH_CSOIL_1              = ', CATCH_CSOIL_1       
+    write (logunit,*) 'CATCH_C_CANOP              = ', CATCH_C_CANOP       
+    write (logunit,*) 'CATCH_SATCAPFR             = ', CATCH_SATCAPFR
+    write (logunit,*)
+    write (logunit,*) 'PEATCLSM_POROS_THRESHOLD   = ', PEATCLSM_POROS_THRESHOLD
+    write (logunit,*) 'PEATCLSM_ZBARMAX_4_SYSOIL  = ', PEATCLSM_ZBARMAX_4_SYSOIL
     write (logunit,*)
     write (logunit,*) 'Constants from SURFPARAMS:'
     write (logunit,*)
-    write (logunit,*) 'LAND_FIX            = ', LAND_FIX 
-    write (logunit,*) 'CSOIL_2             = ', CSOIL_2 
-    write (logunit,*) 'WEMIN               = ', WEMIN   
-    write (logunit,*) 'AICEV               = ', AICEV   
-    write (logunit,*) 'AICEN               = ', AICEN   
-    write (logunit,*) 'FLWALPHA            = ', FLWALPHA
-    write (logunit,*) 'ASTRFR              = ', ASTRFR  
-    write (logunit,*) 'STEXP               = ', STEXP   
-    write (logunit,*) 'RSWILT              = ', RSWILT  
+    write (logunit,*) 'LAND_FIX                   = ', LAND_FIX 
+    write (logunit,*) 'CSOIL_2                    = ', CSOIL_2 
+    write (logunit,*) 'WEMIN                      = ', WEMIN   
+    write (logunit,*) 'AICEV                      = ', AICEV   
+    write (logunit,*) 'AICEN                      = ', AICEN   
+    write (logunit,*) 'FLWALPHA                   = ', FLWALPHA
+    write (logunit,*) 'ASTRFR                     = ', ASTRFR  
+    write (logunit,*) 'STEXP                      = ', STEXP   
+    write (logunit,*) 'RSWILT                     = ', RSWILT  
     write (logunit,*)    
     write (logunit,*) 'end echo_catch_constants()'
     write (logunit,*)
