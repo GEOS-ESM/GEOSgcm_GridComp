@@ -681,6 +681,9 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'ALBVR_REF',                         &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,            __RC__)
+!PMN: make default MAPL_UNDEF once all children can produce??
+!PMN: but iunderstand how tile xformations effect this.
+!PMN: MKTILE makes default for all TILE vars MAPL_UNDEF
 
      call MAPL_AddExportSpec(GC,                                  &
         LONG_NAME          = 'surface_albedo_for_visible_diffuse_for_Solar_REFRESH',&
@@ -5139,24 +5142,24 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: T2MWET       => NULL()
 
 ! GOSWIM (internal/export variables from catch/catchcn)
-    real, pointer, dimension(:,:,:) :: RDU001      => NULL()
-    real, pointer, dimension(:,:,:) :: RDU002      => NULL()
-    real, pointer, dimension(:,:,:) :: RDU003      => NULL()
-    real, pointer, dimension(:,:,:) :: RDU004      => NULL()
-    real, pointer, dimension(:,:,:) :: RDU005      => NULL()
-    real, pointer, dimension(:,:,:) :: RBC001      => NULL()
-    real, pointer, dimension(:,:,:) :: RBC002      => NULL()
-    real, pointer, dimension(:,:,:) :: ROC001      => NULL()
-    real, pointer, dimension(:,:,:) :: ROC002      => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU001  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU002  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU003  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU004  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTDU005  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTBC001  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTBC002  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTOC001  => NULL()
-    real, pointer, dimension(:,:)   :: RMELTOC002  => NULL()
+    real, pointer, dimension(:,:,:) :: RDU001     => NULL()
+    real, pointer, dimension(:,:,:) :: RDU002     => NULL()
+    real, pointer, dimension(:,:,:) :: RDU003     => NULL()
+    real, pointer, dimension(:,:,:) :: RDU004     => NULL()
+    real, pointer, dimension(:,:,:) :: RDU005     => NULL()
+    real, pointer, dimension(:,:,:) :: RBC001     => NULL()
+    real, pointer, dimension(:,:,:) :: RBC002     => NULL()
+    real, pointer, dimension(:,:,:) :: ROC001     => NULL()
+    real, pointer, dimension(:,:,:) :: ROC002     => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU001 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU002 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU003 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU004 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTDU005 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTBC001 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTBC002 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTOC001 => NULL()
+    real, pointer, dimension(:,:)   :: RMELTOC002 => NULL()
     real, pointer, dimension(:,:)   :: PEATCLSM_WATERLEVEL => NULL()
     real, pointer, dimension(:,:)   :: PEATCLSM_FSWCHANGE  => NULL()
 
