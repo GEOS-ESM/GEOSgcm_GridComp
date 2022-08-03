@@ -35,8 +35,10 @@ module clm_varpar
   ! for soil matrix 
   integer, public  :: ndecomp_pools_vr   !total number of pools ndecomp_pools*vertical levels
 
-  integer, parameter :: numpft         = 15!19   ! actual # of pfts (without bare), 16 here, since we are removing the spli types
+  integer, parameter :: numpft         = 15!19   ! actual # of pfts (without bare), 16 here, since we are removing the split types
   integer, parameter :: mxpft          = 15      !
+  integer, public    :: maxsoil_patches = numpft + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
+
   integer, public, parameter :: nvariants   =   2     ! number of variants of PFT constants
 
   integer, public, parameter :: numrad      =   2     ! number of solar radiation bands: vis, nir
@@ -104,9 +106,14 @@ module clm_varpar
   integer, public    :: nvegnpool             ! number of vegetation N pools
 
 
+  ! For CH4 code 
+  integer, parameter :: ngases = 3 ! CH4, O2, & CO2
 
   nlevmaxurbgrnd = max0(nlevurb,nlevgrnd)
   nlevmaxurbgrnd = nlevgrnd ! jkolassa: set this here, since we are not modelling urban tiles for now
+
+
+  integer, public :: max_patch_per_col = maxsoil_patches ! since we don't have CFTs or urban patches
 
 contains
 

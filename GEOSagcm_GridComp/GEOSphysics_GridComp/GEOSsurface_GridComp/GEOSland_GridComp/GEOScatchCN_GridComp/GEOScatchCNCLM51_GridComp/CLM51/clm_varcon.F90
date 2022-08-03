@@ -48,5 +48,16 @@ module clm_varcon
   real(r8), public, parameter ::  spval = 1.e36_r8  ! special value for real data
   integer , public, parameter :: ispval = -9999     ! special value for int data
 
+  !------------------------------------------------------------------
+  ! Set subgrid names
+  !------------------------------------------------------------------
+
+  character(len=16), public, parameter :: grlnd  = 'lndgrid'      ! name of lndgrid
+  character(len=16), public, parameter :: namea  = 'gridcellatm'  ! name of atmgrid
+  character(len=16), public, parameter :: nameg  = 'gridcell'     ! name of gridcells
+  character(len=16), public, parameter :: namel  = 'landunit'     ! name of landunits
+  character(len=16), public, parameter :: namec  = 'column'       ! name of columns
+  character(len=16), public, parameter :: namep  = 'pft'          ! name of patches
+  character(len=16), public, parameter :: nameCohort = 'cohort'   ! name of cohorts (ED specific)
 
 end module clm_varcon

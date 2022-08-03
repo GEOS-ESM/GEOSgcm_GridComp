@@ -1,6 +1,6 @@
 module CNCLM_CanopyStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varpar       , only : nlevcan, nvegwcs, numpft, num_zon, num_veg, &
                                 var_col, var_pft
   use clm_varcon       , only : spval

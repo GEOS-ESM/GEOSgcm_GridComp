@@ -3,6 +3,7 @@ module CNCLM_pftconMod
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
   use clm_varpar       , only : mxpft, numrad
+  use clm_varctl       , only : use_flexibleCN
   use netcdf 
   use MAPL_ExceptionHandling
 
@@ -209,6 +210,21 @@ module CNCLM_pftconMod
 
 type(pftcon_type), public, target, save :: pftcon
 
+  integer, public, parameter :: pftname_len = 40         ! max length of pftname       
+  character(len=pftname_len), public :: pftname(0:mxpft) ! PFT description
+
+  real(r8), public, parameter :: reinickerp = 1.6_r8     ! parameter in allometric equation
+  real(r8), public, parameter :: dwood  = 2.5e5_r8       ! cn wood density (gC/m3); lpj:2.0e5
+  real(r8), public, parameter :: allom1 = 100.0_r8       ! parameters in
+  real(r8), public, parameter :: allom2 =  40.0_r8       ! ...allometric
+  real(r8), public, parameter :: allom3 =   0.5_r8       ! ...equations
+  real(r8), public, parameter :: allom1s = 250.0_r8      ! modified for shrubs by
+  real(r8), public, parameter :: allom2s =   8.0_r8      ! X.D.Z
+! root radius, density from Bonan, GMD, 2014
+  real(r8), public, parameter :: root_density = 0.31e06_r8 !(g biomass / m3 root)
+  real(r8), public, parameter :: root_radius = 0.29e-03_r8 !(m)
+
+
 contains
 
 !--------------------------------
@@ -224,7 +240,7 @@ contains
 
     !LOCAL
     character(300)     :: paramfile
-    integer            :: ierr, clm_varid
+    integer            :: ierr, clm_varid, ncid
 
     real(r8), allocatable, dimension(:)   :: read_tmp_1
     real(r8), allocatable, dimension(:,:) :: read_tmp_2
@@ -382,502 +398,383 @@ contains
     ! TO DO: pass parameter file through rc files rather than hardcoding name here
 
     paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
-    ierr = NF90_OPEN(trim(paramfile),NF90_NOWRITE,ncid)
-    if (ierr/=0) then
-       _ASSERT(.FALSE.,'error opening netcdf file')
+    call ncid%open(trim(paramfile),pFIO_READ, __RC__)
+
+    call ncd_io('pftname',pftname, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('z0mr', this%z0mr, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('displar', this%displar, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('dleaf', this%dleaf, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('c3psn', this%c3psn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rholvis', this%rhol(:,ivis), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rholnir', this%rhol(:,inir), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rhosvis', this%rhos(:,ivis), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rhosnir', this% rhos(:,inir), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('taulvis', this%taul(:,ivis), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('taulnir', this%taul(:,inir), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('tausvis', this%taus(:,ivis), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('tausnir', this%taus(:,inir), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('xl', this%xl, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('roota_par', this%roota_par, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rootb_par', this%rootb_par, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('slatop', this%slatop, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('dsladlai', this%dsladlai, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('leafcn', this%leafcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('biofuel_harvfrac', this%biofuel_harvfrac, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('flnr', this%flnr, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('smpso', this%smpso, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('smpsc', this%smpsc, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fnitr', this%fnitr, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('woody', this%woody, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('lflitcn', this%lflitcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('frootcn', this%frootcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('livewdcn', this%livewdcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('deadwdcn', this%deadwdcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('grperc', this%grperc, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('grpnow', this%grpnow, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('froot_leaf', this%froot_leaf, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('stem_leaf', this%stem_leaf, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('croot_stem', this%croot_stem, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('flivewd', this%flivewd, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fcur', this%fcur, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fcurdv', this%fcurdv, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('lf_flab', this%lf_flab, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('lf_fcel', this%lf_fcel, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('lf_flig', this%lf_flig, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fr_flab', this%fr_flab, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fr_fcel', this%fr_fcel, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fr_flig', this%fr_flig, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('leaf_long', this%leaf_long, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('evergreen', this%evergreen, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('stress_decid', this%stress_decid, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('season_decid', this%season_decid, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+!KO
+    call ncd_io('season_decid_temperate', this%season_decid_temperate, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+!KO
+
+    call ncd_io('pftpar20', this%pftpar20, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pftpar28', this%pftpar28, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pftpar29', this%pftpar29, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pftpar30', this%pftpar30, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pftpar31', this%pftpar31, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('a_fix', this%a_fix, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('b_fix', this%b_fix, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('c_fix', this%c_fix, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('s_fix', this%s_fix, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('akc_active', this%akc_active, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('akn_active', this%akn_active, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('ekc_active', this%ekc_active, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('ekn_active', this%ekn_active, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('kc_nonmyc', this%kc_nonmyc, 'read', ncid, readvar=readv,   posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('kn_nonmyc', this%kn_nonmyc, 'read', ncid, readvar=readv,   posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('kr_resorb', this%kr_resorb, 'read', ncid, readvar=readv,   posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('perecm', this%perecm, 'read', ncid, readvar=readv,         posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fun_cn_flex_a', this%fun_cn_flex_a, 'read', ncid, readvar=readv,         posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fun_cn_flex_b', this%fun_cn_flex_b, 'read', ncid, readvar=readv,         posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fun_cn_flex_c', this%fun_cn_flex_c, 'read', ncid, readvar=readv,         posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('FUN_fracfixers', this%FUN_fracfixers, 'read', ncid, readvar=readv,         posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('manunitro', this%manunitro, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fleafcn', this%fleafcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('ffrootcn', this%ffrootcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fstemcn', this%fstemcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rootprof_beta', this%rootprof_beta, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pconv', this%pconv, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pprod10', this%pprod10, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pprodharv10', this%pprodharv10, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('pprod100', this%pprod100, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('graincn', this%graincn, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('mxtmp', this%mxtmp, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('baset', this%baset, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('declfact', this%declfact, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('bfact', this%bfact, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('aleaff', this%aleaff, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('arootf', this%arootf, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('astemf', this%astemf, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('arooti', this%arooti, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fleafi', this%fleafi, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('allconsl', this%allconsl, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('allconss', this%allconss, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('crop', this%crop, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('mergetoclmpft', this%mergetoclmpft, 'read', ncid, readvar=readv)
+    if ( .not. readv ) then
+       call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
     end if
 
-    ierr = NF90_INQ_VARID(ncid,'z0mr',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%z0mr(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'displar',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%displar(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'dleaf',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%dleaf(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'c3psn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%c3psn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rholvis',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%rhol(:,1) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rholnir',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%rhol(:,2) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rhosvis',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%rhos(:,1) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rhosnir',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%rhos(:,2) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'taulvis',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%taul(:,1) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'taulnir',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%taul(:,2) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'tausvis',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%taus(:,1) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'tausnir',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%taus(:,2) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'xl',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%xl(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'roota_par',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%roota_par(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rootb_par',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%rootb_par(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'slatop',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%slatop(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'dsladlai',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%dsladlai(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'leafcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%leafcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'biofuel_harvfrac',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%biofuel_harvfrac(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'flnr',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%flnr(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'smpso',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%smpso(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'smpsc',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%smpsc(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fnitr',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fnitr(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'woody',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%woody(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'lflitcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%lflitcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'frootcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%frootcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'livewdcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%livewdcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'deadwdcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%deadwdcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'grperc',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%grperc(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'grpnow',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%grpnow(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'froot_leaf',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%froot_leaf(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'stem_leaf',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%stem_leaf(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'croot_stem',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%croot_stem(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'flivewd',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%flivewd(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fcur',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fcur(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fcurdv',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fcurdv(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'lf_flab',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%lf_flab(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'lf_fcel',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%lf_fcel(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'lf_flig',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%lf_flig(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fr_flab',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fr_flab(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fr_fcel',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fr_fcel(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fr_flig',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fr_flig(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'leaf_long',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%leaf_long(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'evergreen',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%evergreen(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'stress_decid',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%stress_decid(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'season_decid',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%season_decid(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'season_decid_temperate',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%z0mr(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pftpar20',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pftpar20(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pftpar28',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pftpar28(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pftpar29',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pftpar29(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pftpar30',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pftpar30(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pftpar31',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pftpar31(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'a_fix',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%a_fix(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'b_fix',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%b_fix(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'c_fix',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%c_fix(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'s_fix',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%s_fix(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'akc_active',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%akc_active(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'akn_active',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%akn_active(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'ekc_active',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%ekc_active(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'ekn_active',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%ekn_active(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'kc_nonmyc',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%kc_nonmyc(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'kn_nonmyc',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%kn_nonmyc(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'kr_resorb',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%kr_resorb(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'perecm',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%perecm(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fun_cn_flex_a',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fun_cn_flex_a(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fun_cn_flex_b',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fun_cn_flex_b(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fun_cn_flex_c',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fun_cn_flex_c(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'FUN_fracfixers',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%FUN_fracfixers(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'manunitro',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%manunitro(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fleafcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fleafcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'ffrootcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%ffrootcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fstemcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fstemcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rootprof_beta',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_2)
-    this%rootprof_beta(:,:) = read_tmp_2(0:mxpft,:)
-
-    ierr = NF90_INQ_VARID(ncid,'pconv',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pconv(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pprod10',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pprod10(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pprodharv10',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pprodharv10(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'pprod100',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%pprod100(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'graincn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%graincn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'mxtmp',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%mxtmp(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'baset',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%baset(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'declfact',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%declfact(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'bfact',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%bfact(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'aleaff',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%aleaff(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'arootf',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%arootf(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'astemf',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%astemf(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'arooti',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%arooti(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fleafi',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fleafi(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'allconsl',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%allconsl(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'allconss',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%allconss(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'crop',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%crop(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'mergetoclmpft',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_3)
-    this%mergetoclmpft(:) = read_tmp_3(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'irrigated',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%irrigated(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'ztopmx',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%ztopmx(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'laimx',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%laimx(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'gddmin',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%gddmin(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'hybgdd',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%hybgdd(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'lfemerg',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%lfemerg(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'grnfill',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%grnfill(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'mbbopt',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%mbbopt(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'medlynslope',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%medlynslope(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'medlynintercept',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%medlynintercept(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'mxmat',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_3)
-    this%mxmat(:) = read_tmp_3(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'cc_leaf',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%cc_leaf(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'cc_lstem',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%cc_lstem(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'cc_dstem',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%cc_dstem(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'cc_other',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%cc_other(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fstemcn',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fstemcn(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fm_leaf',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fm_leaf(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fm_lstem',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fm_lstem(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fm_dstem',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fm_dstem(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fm_other',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fm_other(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fm_root',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fm_root(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fm_lroot',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fm_lroot(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fm_droot',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fm_droot(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fsr_pft',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fsr_pft(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'fd_pft',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%fd_pft(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rswf_min',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%rswf_min(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'rswf_max',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%rswf_max(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'min_planting_temp',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%min_planting_temp(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'min_NH_planting_date',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_3)
-    this%min_NH_planting_date(:) = read_tmp_3(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'min_SH_planting_date',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_3)
-    this%min_SH_planting_date(:) = read_tmp_3(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'max_NH_planting_date',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_3)
-    this%max_NH_planting_date(:) = read_tmp_3(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'max_SH_planting_date',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_3)
-    this%max_SH_planting_date(:) = read_tmp_3(0:mxpft)
+    call ncd_io('irrigated', this%irrigated, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('ztopmx', this%ztopmx, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('laimx', this%laimx, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('gddmin', this%gddmin, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('hybgdd', this%hybgdd, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('lfemerg', this%lfemerg, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('grnfill', this%grnfill, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('mbbopt', this%mbbopt, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('medlynslope', this%medlynslope, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('medlynintercept', this%medlynintercept, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('mxmat', this%mxmat, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('cc_leaf', this% cc_leaf, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('cc_lstem', this%cc_lstem, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('cc_dstem', this%cc_dstem, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('cc_other', this%cc_other, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fm_leaf', this% fm_leaf, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fm_lstem', this%fm_lstem, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fm_dstem', this%fm_dstem, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fm_other', this%fm_other, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fm_root', this% fm_root, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fm_lroot', this%fm_lroot, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fm_droot', this%fm_droot, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fsr_pft', this% fsr_pft, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('fd_pft', this%  fd_pft, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rswf_min', this% rswf_min, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('rswf_max', this% rswf_max, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+    call ncd_io('planting_temp', this%planttemp, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('min_planting_temp', this%minplanttemp, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('min_NH_planting_date', this%mnNHplantdate, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('min_SH_planting_date', this%mnSHplantdate, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('max_NH_planting_date', this%mxNHplantdate, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    call ncd_io('max_SH_planting_date', this%mxSHplantdate, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
 
     do m = 0,mxpft
        this%dwood(m) = dwood
@@ -885,40 +782,28 @@ contains
        this%root_density(m) = root_density
     end do
 
+    !
+    ! clm 5 nitrogen variables
+    !
     if (use_flexibleCN) then
-       ierr = NF90_INQ_VARID(ncid,'i_vcad',clm_varid)
-       ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-       this%i_vcad(:) = read_tmp_1(0:mxpft)
+       call ncd_io('i_vcad', this%i_vcad, 'read', ncid, readvar=readv)
+       if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
-       ierr = NF90_INQ_VARID(ncid,'s_vcad',clm_varid)
-       ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-       this%s_vcad(:) = read_tmp_1(0:mxpft)
+       call ncd_io('s_vcad', this%s_vcad, 'read', ncid, readvar=readv)
+       if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
-       ierr = NF90_INQ_VARID(ncid,'i_flnr',clm_varid)
-       ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-       this%i_flnr(:) = read_tmp_1(0:mxpft)
+       call ncd_io('i_flnr', this%i_flnr, 'read', ncid, readvar=readv)
+       if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
-       ierr = NF90_INQ_VARID(ncid,'s_flnr',clm_varid)
-       ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-       this%s_flnr(:) = read_tmp_1(0:mxpft)
-
+       call ncd_io('s_flnr', this%s_flnr, 'read', ncid, readvar=readv)
+       if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
     end if
 
-    if ( use_crop .and. use_dynroot )then
-       ierr = NF90_INQ_VARID(ncid,'root_dmx',clm_varid)
-       ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-       this%root_dmx(:) = read_tmp_1(0:mxpft)
-    end if
+    call ncd_io('nstem',this%nstem, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+    call ncd_io('taper',this%taper, 'read', ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
-    ierr = NF90_INQ_VARID(ncid,'nstem',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%nstem(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_INQ_VARID(ncid,'taper',clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, read_tmp_1)
-    this%taper(:) = read_tmp_1(0:mxpft)
-
-    ierr = NF90_CLOSE(ncid)
    
     ! jkolassa, Dec 2021: not using biomass heat storage module, so set the following 4 parameters to 0
     this%dbh = 0.0_r8

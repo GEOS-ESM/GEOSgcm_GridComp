@@ -95,6 +95,8 @@ module CNCLM_GridcellType
        this%latdeg (nc) = lats(nc) / MAPL_PI * 180.
        this%londeg (nc) = lons(nc) / MAPL_PI * 180.
        this%dayl   (nc) = cnpft (nc,1,1, 28) ! variable used to be patch level and is now gridcell level; assume all patches in gridcell have same day length
+       
+       this%prev_dayl(nc) = this%dayl(nc) ! following previous Catchment-CN versions, daylength of previous day is initialized as daylength of current day; changed for subsequent time steps in CN_DriverMod
 
     end do ! nc
   end subroutine init_gridcell_type

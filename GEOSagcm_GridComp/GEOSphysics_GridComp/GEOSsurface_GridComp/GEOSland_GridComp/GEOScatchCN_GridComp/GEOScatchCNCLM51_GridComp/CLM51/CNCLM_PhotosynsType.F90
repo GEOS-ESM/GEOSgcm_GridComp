@@ -12,6 +12,48 @@ module CNCLM_PhotosynsType
   implicit none
   save
 
+  ! !PUBLIC VARIABLES:
+
+  type :: photo_params_type
+     real(r8) :: act25  ! Rubisco activity at 25 C (umol CO2/gRubisco/s)
+     real(r8) :: fnr  ! Mass ratio of total Rubisco molecular mass to nitrogen in Rubisco (gRubisco/gN in Rubisco)
+     real(r8) :: cp25_yr2000  ! CO2 compensation point at 25°C at present day O2 (mol/mol)
+     real(r8) :: kc25_coef  ! Michaelis-Menten const. at 25°C for CO2 (unitless)
+     real(r8) :: ko25_coef  ! Michaelis-Menten const. at 25°C for O2 (unitless)
+     real(r8) :: fnps       ! Fraction of light absorbed by non-photosynthetic pigment (unitless)
+     real(r8) :: theta_psii ! Empirical curvature parameter for electron transport rate (unitless)
+     real(r8) :: theta_ip   ! Empirical curvature parameter for ap photosynthesis co-limitation (unitless)
+     real(r8) :: vcmaxha    ! Activation energy for vcmax (J/mol)
+     real(r8) :: jmaxha     ! Activation energy for jmax (J/mol)
+     real(r8) :: tpuha      ! Activation energy for tpu (J/mol)
+     real(r8) :: lmrha      ! Activation energy for lmr (J/mol)
+     real(r8) :: kcha       ! Activation energy for kc (J/mol)
+     real(r8) :: koha       ! Activation energy for ko (J/mol)
+     real(r8) :: cpha       ! Activation energy for cp (J/mol)
+     real(r8) :: vcmaxhd    ! Deactivation energy for vcmax (J/mol)
+     real(r8) :: jmaxhd     ! Deactivation energy for jmax (J/mol)
+     real(r8) :: tpuhd      ! Deactivation energy for tpu (J/mol)
+     real(r8) :: lmrhd      ! Deactivation energy for lmr (J/mol)
+     real(r8) :: lmrse      ! Entropy term for lmr (J/mol/K)
+     real(r8) :: tpu25ratio ! Ratio of tpu25top to vcmax25top (unitless)
+     real(r8) :: kp25ratio  ! Ratio of kp25top to vcmax25top (unitless)
+     real(r8) :: vcmaxse_sf ! Scale factor for vcmaxse (unitless)
+     real(r8) :: jmaxse_sf  ! Scale factor for jmaxse (unitless)
+     real(r8) :: tpuse_sf   ! Scale factor for tpuse (unitless)
+     real(r8) :: jmax25top_sf ! Scale factor for jmax25top (unitless)
+     real(r8), allocatable, public  :: krmax              (:)
+     real(r8), allocatable, private :: kmax               (:,:)
+     real(r8), allocatable, private :: psi50              (:,:)
+     real(r8), allocatable, private :: ck                 (:,:)
+     real(r8), allocatable, private :: lmr_intercept_atkin(:)
+     real(r8), allocatable, private :: theta_cj           (:) ! Empirical curvature parameter for ac, aj photosynthesis co-limitation (unitless)
+  contains
+     procedure, private :: allocParams
+  end type photo_params_type
+  !
+  type(photo_params_type), public, protected :: params_inst  ! params_inst is populated in readParamsMod 
+
+
 !
 ! !PUBLIC MEMBER FUNCTIONS:
   public :: init_photosyns_type
@@ -253,6 +295,7 @@ contains
       allocate(this%enzs_z_patch    (begp:endp,1:nlevcan)) ; this%enzs_z_patch      (:,:) = 1._r8
     endif
 
+     this%rootstem_acc = .false.     ! jkolassa, Jun 2022: Default for CTSM5.1
 
      this%light_inhibit = .true.     ! jkolassa, Feb 2022: This is the default value for CTSM5.1; we could in the future control this through resource files
 
@@ -286,5 +329,225 @@ contains
   end do ! nc
 
   end subroutine init_photosyns_type
+
+  !-----------------------------------------------------------------------
+  subroutine allocParams ( this )
+    !
+    implicit none
+
+    ! !ARGUMENTS:
+    class(photo_params_type) :: this
+    !
+    ! !LOCAL VARIABLES:
+    character(len=32)  :: subname = 'allocParams'
+    !-----------------------------------------------------------------------
+
+    ! allocate parameters
+
+    allocate( this%krmax       (0:mxpft) )          ; this%krmax(:)        = nan
+    allocate( this%theta_cj    (0:mxpft) )          ; this%theta_cj(:)     = nan
+    allocate( this%kmax        (0:mxpft,nvegwcs) )  ; this%kmax(:,:)       = nan
+    allocate( this%psi50       (0:mxpft,nvegwcs) )  ; this%psi50(:,:)      = nan
+    allocate( this%ck          (0:mxpft,nvegwcs) )  ; this%ck(:,:)         = nan
+
+    if ( use_hydrstress .and. nvegwcs /= 4 )then
+       call endrun(msg='Error:: the Plant Hydraulics Stress methodology is for the spacA function is hardcoded for nvegwcs==4' &
+                   //errMsg(__FILE__, __LINE__))
+    end if
+
+  end subroutine allocParams
+
+  !-----------------------------------------------------------------------
+ !-----------------------------------------------------------------------
+  subroutine readParams ( this, ncid )
+    !
+    ! !USES:
+    use ncdio_pio , only : file_desc_t,ncd_io
+    use paramUtilMod, only: readNcdioScalar
+    implicit none
+
+    ! !ARGUMENTS:
+    class(photosyns_type) :: this
+    type(file_desc_t),intent(inout) :: ncid   ! pio netCDF file id
+    !
+    ! !LOCAL VARIABLES:
+    character(len=32)  :: subname = 'readParams'
+    character(len=100) :: errCode = '-Error reading in parameters file:'
+    logical            :: readv ! has variable been read in or not
+    real(r8)           :: temp1d(0:mxpft) ! temporary to read in parameter
+    real(r8)           :: temp2d(0:mxpft,nvegwcs) ! temporary to read in parameter
+    real(r8)           :: tempr ! temporary to read in parameter
+    character(len=100) :: tString ! temp. var for reading
+    !-----------------------------------------------------------------------
+
+    ! read in parameters
+
+
+    call params_inst%allocParams()
+
+    tString = "krmax"
+    call ncd_io(varname=trim(tString),data=temp1d, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%krmax=temp1d
+    tString = "lmr_intercept_atkin"
+    call ncd_io(varname=trim(tString),data=temp1d, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%lmr_intercept_atkin=temp1d
+    tString = "theta_cj"
+    call ncd_io(varname=trim(tString),data=temp1d, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%theta_cj=temp1d
+    tString = "kmax"
+    call ncd_io(varname=trim(tString),data=temp2d, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%kmax=temp2d
+    tString = "psi50"
+    call ncd_io(varname=trim(tString),data=temp2d, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%psi50=temp2d
+    tString = "ck"
+    call ncd_io(varname=trim(tString),data=temp2d, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%ck=temp2d
+
+    ! read in the scalar parameters
+
+    ! Michaelis-Menten constant at 25°C for O2 (unitless)
+    tString = "ko25_coef"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%ko25_coef=tempr
+    ! Michaelis-Menten constant at 25°C for CO2 (unitless)
+    tString = "kc25_coef"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%kc25_coef=tempr
+    ! CO2 compensation point at 25°C at present day O2 levels
+    tString = "cp25_yr2000"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%cp25_yr2000=tempr
+    ! Rubisco activity at 25 C (umol CO2/gRubisco/s)
+    tString = "act25"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%act25=tempr
+    ! Mass ratio of total Rubisco molecular mass to nitrogen in Rubisco (gRubisco/gN(Rubisco))
+    tString = "fnr"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%fnr=tempr
+    ! Fraction of light absorbed by non-photosynthetic pigment (unitless)
+    tString = "fnps"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%fnps=tempr
+    ! Empirical curvature parameter for electron transport rate (unitless)
+    tString = "theta_psii"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%theta_psii=tempr
+    ! Empirical curvature parameter for ap photosynthesis co-limitation (unitless)
+    tString = "theta_ip"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%theta_ip=tempr
+    ! Activation energy for vcmax (J/mol)
+    tString = "vcmaxha"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%vcmaxha=tempr
+    ! Activation energy for jmax (J/mol)
+    tString = "jmaxha"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%jmaxha=tempr
+    ! Activation energy for tpu (J/mol)
+    tString = "tpuha"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%tpuha=tempr
+    ! Activation energy for lmr (J/mol)
+    tString = "lmrha"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%lmrha=tempr
+    ! Activation energy for kc (J/mol)
+    tString = "kcha"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%kcha=tempr
+    ! Activation energy for ko (J/mol)
+    tString = "koha"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%koha=tempr
+    ! Activation energy for cp (J/mol)
+    tString = "cpha"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%cpha=tempr
+    ! Deactivation energy for vcmax (J/mol)
+    tString = "vcmaxhd"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%vcmaxhd=tempr
+    ! Deactivation energy for jmax (J/mol)
+    tString = "jmaxhd"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%jmaxhd=tempr
+    ! Deactivation energy for tpu (J/mol)
+    tString = "tpuhd"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%tpuhd=tempr
+    ! Deactivation energy for lmr (J/mol)
+    tString = "lmrhd"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%lmrhd=tempr
+    ! Entropy term for lmr (J/mol/K)
+    tString = "lmrse"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%lmrse=tempr
+    ! Ratio of tpu25top to vcmax25top (unitless)
+    tString = "tpu25ratio"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%tpu25ratio=tempr
+    ! Ratio of kp25top to vcmax25top (unitless)
+    tString = "kp25ratio"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%kp25ratio=tempr
+    ! Scale factor for vcmaxse (unitless)
+    tString = "vcmaxse_sf"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%vcmaxse_sf=tempr
+    ! Scale factor for jmaxse (unitless)
+    tString = "jmaxse_sf"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%jmaxse_sf=tempr
+    ! Scale factor for tpuse (unitless)
+    tString = "tpuse_sf"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%tpuse_sf=tempr
+    ! Scale factor for jmax25top (unitless)
+    tString = "jmax25top_sf"
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%jmax25top_sf=tempr
+
+  end subroutine readParams
+
+
+  !------------------------------------------------------------------------
+                                                                                   
+
 
 end module CNCLM_PhotosynsType

@@ -28,7 +28,7 @@ module clm_time_manager
       
       is_end_curr_day,          &! return true on last timestep in current day
       is_restart                 ! return true if this is a restart run
-
+      is_first_step              ! dummy function here, because it is loaded, but not used
 contains
 
 !=========================================================================================
@@ -215,6 +215,13 @@ function is_end_curr_day( )
  is_end_curr_day = (tod == 0)
 
 end function is_end_curr_day
+
+!=========================================================================================
+
+function is_first_step( )
+
+
+end function is_first_step
 
 !=========================================================================================
 

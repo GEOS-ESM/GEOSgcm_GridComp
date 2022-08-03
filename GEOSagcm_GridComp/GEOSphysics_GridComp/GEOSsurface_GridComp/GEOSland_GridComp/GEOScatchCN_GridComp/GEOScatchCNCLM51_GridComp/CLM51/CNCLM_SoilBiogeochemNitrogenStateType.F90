@@ -1,4 +1,4 @@
-module CNCLM_SoilBiogeochemNitrogenStateType
+ module CNCLM_SoilBiogeochemNitrogenStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -155,7 +155,7 @@ contains
              ! jkolassa May 2022: accounting for fact that pool order in CNCOL is different from CTSM
              this%decomp_npools_col    (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
              this%decomp_npools_col_1m (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
-             ! jkolassa May 2022: loop has to be added below of we add more biogeochemical (or soil) layers
+             ! jkolassa May 2022: loop has to be added below if we add more biogeochemical (or soil) layers
              this%decomp_npools_vr_col (n,1,np) cncol(nc,nz,decomp_npool_cncol_index(np))
           end do !np
       end do !nz

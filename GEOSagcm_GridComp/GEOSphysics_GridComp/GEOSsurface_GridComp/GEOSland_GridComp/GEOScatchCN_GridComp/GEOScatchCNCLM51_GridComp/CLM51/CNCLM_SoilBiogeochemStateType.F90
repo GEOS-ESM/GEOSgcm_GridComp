@@ -41,7 +41,7 @@ module CNCLM_SoilBiogeochemStateType
 contains
 
 !---------------------------------------
- subroutine init_soilbiogeochem_state_type(bounds, nch, cncol,  this)
+ subroutine init_soilbiogeochem_state_type(bounds, nch, cncol, cn5_cold_start,  this)
 
     !
     ! !ARGUMENTS:
@@ -49,16 +49,29 @@ contains
     type(bounds_type),                     intent(in) :: bounds
     integer,                               intent(in) :: nch ! number of tiles
     real, dimension(nch,NUM_ZON,VAR_COL),  intent(in) :: cncol ! gkw: column CN restart
+    logical, optional,                     intent(in) :: cn5_cold_start
     type(soilbiogeochem_state_type),       intent(inout) :: this
     !
     ! !LOCAL VARIABLES:
     integer :: begp, endp
     integer :: begc,endc
     integer :: n, nc, nz, n, np
+    logical :: cold_start = .false.
     !-----------------------------------
 
     begp = bounds%begp; endp= bounds%endp
     begc = bounds%begc; endc= bounds%endc
+
+    ! check whether a cn5_cold_start option was set and change cold_start accordingly
+    if (present(cn5_cold_start) .and. (cn5_cold_start==.true.)) then
+       cold_start = .true.
+    end if
+
+    ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
+    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
+       (size(cnpft,3).ne.var_pft)))
+       _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
+    end if
 
     allocate(this%leaf_prof_patch     (begp:endp,1:nlevdecomp_full)) ; this%leaf_prof_patch     (:,:) = spval
     allocate(this%froot_prof_patch    (begp:endp,1:nlevdecomp_full)) ; this%froot_prof_patch    (:,:) = spval
@@ -87,6 +100,22 @@ contains
 
           this%fpg_col(n) = cncol(nc,nz, 30)
           this%fpi_col(n) = cncol(nc,nz, 35)
+
+
+          ! "new" variables: introduced in CNCLM50
+          if (cold_start==.false.) then
+             do nw = 1,nlevdecomp_full
+                this%nfixation_prof_col(n,nw)    = cnpft(nc,nz,nv, XXX+(nw-1))
+                this%ndep_prof_col(n,nw)         = cnpft(nc,nz,nv, XXX+(nw-1))
+             end do
+          elseif (cold_start) then
+             this%nfixation_prof_col(n,1:nlevdecomp_full)    = 0._r8
+             this%ndep_prof_col(n,1:nlevdecomp_full)    = 0._r8
+          else
+            _ASSERT(.FALSE.,'missing CNCLM50_cold_start setting')
+          end if
+
+
           do np = 1,nlevdecomp_full
              this%fpi_vr_col(n,np) = cncol(nc,nz, 35)
           end do

@@ -29,7 +29,7 @@ module clm_varctl
   logical, public :: use_century_decomp  = .false.
   logical, public :: use_cn              = .true.
   logical, public :: use_cndv            = .false.
-
+  logical, public :: use_grainproduct    = .false.
 
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
@@ -41,6 +41,18 @@ module clm_varctl
 
   real(r8), public :: nfix_timeconst = -1.2345_r8
 
+  !----------------------------------------------------------
+  ! Unit Numbers
+  !----------------------------------------------------------
+  !
+  integer, public :: iulog = 6        ! "stdout" log file unit number, default is 6; jkolassa: This is following CTSM, iulog is not set to output_unit
+
+  !----------------------------------------------------------
+  !  flexibleCN
+  !----------------------------------------------------------
+  logical, public :: use_flexibleCN = .false.
+  logical, public :: CNratio_floating = .false.
+  integer, public :: CN_evergreen_phenology_opt = 0
 contains
 
 !---------------------------------------

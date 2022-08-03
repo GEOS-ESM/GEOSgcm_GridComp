@@ -34,13 +34,12 @@ module CNCLM_decompMod
   ! INPUT:
     integer, intent(in) :: nch         ! number of Catchment tiles
     type(bounds_type), intent(inout) :: this
+  !----------------------------------
 
   this%begg = 1 ; this%endg = nch
   this%begl = 1 ; this%endl = nch
   this%begc = 1 ; this%endc = nch*NUM_ZON
   this%begp = 1 ; this%endp = nch*NUM_ZON*(numpft+1)
 
-
-
-
+  end subroutine init_bounds
 end module CNCLM_decompMod

@@ -258,11 +258,6 @@
              if (ityp(nc,nv,nz).eq.np) then 
                  elai_pft = elai(nc,nv,nz)
                  esai_pft = esai(nc,nv,nz)
-
-                 if (fveg(nc,nv,nz).gt.1.e-4) then
-                  soilstate_inst%rootfr_patch(p,1) = 1.0 ! jkolassa: since we only use one soil layer, we are setting rootfr to 1 for all vegetated areas;                                 ! if we ever introduce more soil layers, CTSM5.1 offers different options for the root distribution
-
-                  end if
              end if
           end do ! nv
 
