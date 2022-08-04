@@ -26,12 +26,12 @@ endif ()
 # MAT NOTE This should use find_package(ZLIB) but Baselibs currently
 #     confuses find_package(). This is a hack until Baselibs is
 #     reorganized.
-if (Baselibs_FOUND)
+if (Baselibs_FOUND AND NETCDF_LIBRARY_TYPE STREQUAL STATIC)
   set (INC_ZLIB ${BASEDIR}/include/zlib)
   target_include_directories(${this} PRIVATE ${INC_ZLIB})
 else ()
   find_package(ZLIB)
-  target_link_libraries(${this} PRIVATE ZLIB::zlib)
+  target_link_libraries(${this} PRIVATE ZLIB::ZLIB)
 endif ()
 
 ecbuild_add_executable (TARGET chk_clsm_params.x SOURCES chk_clsm_params.F90  LIBS MAPL ${this})
