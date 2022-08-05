@@ -1463,8 +1463,8 @@ contains
 ! pointers to internal
 
    real, pointer, dimension(:,:)  :: TI    => null()
-!   real, pointer, dimension(:  )  :: HI    => null()
-!   real, pointer, dimension(:  )  :: SI    => null()
+   real, pointer, dimension(:  )  :: HI    => null()
+   real, pointer, dimension(:  )  :: SI    => null()
    real, pointer, dimension(:,:)  :: QS    => null()
    real, pointer, dimension(:,:)  :: CH    => null()
    real, pointer, dimension(:,:)  :: CQ    => null()
@@ -1495,26 +1495,26 @@ contains
    real, pointer, dimension(:)    :: DFUVR => null()
    real, pointer, dimension(:)    :: EVAP  => null()
    real, pointer, dimension(:)    :: SH => null()
-!   real, pointer, dimension(:)    :: TAUX => null()
-!   real, pointer, dimension(:)    :: TAUY => null()
+   real, pointer, dimension(:)    :: TAUX => null()
+   real, pointer, dimension(:)    :: TAUY => null()
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
-!   real, pointer, dimension(:)    :: UU => null()
+   real, pointer, dimension(:)    :: UU => null()
 !!$   real, pointer, dimension(:)    :: TF => null()
    real, pointer, dimension(:)    :: FI => null()
    real, pointer, dimension(:)    :: THATM => null()
    real, pointer, dimension(:)    :: QHATM => null()
-!   real, pointer, dimension(:)    :: UHATM => null()
-!   real, pointer, dimension(:)    :: VHATM => null()
+   real, pointer, dimension(:)    :: UHATM => null()
+   real, pointer, dimension(:)    :: VHATM => null()
    real, pointer, dimension(:)    :: UUA   => null()
    real, pointer, dimension(:)    :: VVA   => null()
    real, pointer, dimension(:)    :: CTATM => null()
    real, pointer, dimension(:)    :: CQATM => null()
-!   real, pointer, dimension(:)    :: CMATM => null()
+   real, pointer, dimension(:)    :: CMATM => null()
    real, pointer, dimension(:)    :: UW => null()
    real, pointer, dimension(:)    :: UI => null()
    real, pointer, dimension(:)    :: VW => null()
@@ -1689,8 +1689,6 @@ contains
 
    IAm =  trim(COMP_NAME) // "CICECORE"
 
-!#include "GetPtr.h"
-
 ! Get the time step
 ! -----------------
 
@@ -1720,36 +1718,28 @@ contains
    call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=pet, RC=STATUS)
    VERIFY_(STATUS)
 
-   !call ESMF_VMBarrier(VM, __RC__)
-   !t1 = MPI_Wtime()
-    call MAPL_TimerOn(MAPL,    "-In_ReDist")
+   call MAPL_TimerOn(MAPL,    "-In_ReDist")
 !load balance setup
    if(loadBalance) then
-      !TILE_WITH_ICE = sum(FR8_base,2) > 0
-      !NUMTILEICE = count(TILE_WITH_ICE)
-      TILE_WITH_ICE = .true.
+
       NUMTILEICE = NT
+      TILE_WITH_ICE = .true.
       call MAPL_BalanceCreate(OrgLen=NUMTILEICE, Comm=COMM, Handle=CICECOREBalanceHandle, BalLen=NUM2DO, BufLen=NUMMAX, rc=STATUS)
       VERIFY_(STATUS)
-   else
-      NUMTILEICE = NT
-      TILE_WITH_ICE = .true.
-      call MAPL_BalanceCreate(OrgLen=NUMTILEICE, Comm=COMM, Handle=CICECOREBalanceHandle, BufLen=NUMMAX, rc=STATUS)
-      CICECOREBalanceHandle = 0
-      NUM2DO = NT
-      !NUMMAX = NT
-   end if
+     HorzDims = NT   ! Slice size for buffer packing
 
-   HorzDims = NT   ! Slice size for buffer packing
-
+!****IMPORTANT****!!! Adjust the relevant buffer(s) and pointer assigments BufferPacking.h and BufferUnpacking.h if import/internal/export fields are added/deleted
 #include "BufferPacking.h"
-    call MAPL_TimerOff(MAPL,    "-In_ReDist")
 
-      !t2 = MPI_Wtime()
-      !print *, __LINE__, "num2do ", NUM2DO, NUMMAX
-      !call ESMF_VMBarrier(VM, __RC__)
-      !call ESMF_Finalize()
-      !stop
+   else  ! no load_balance
+
+#include "GetPtr.h"
+      NUM2DO = NT
+      lats2do => LATS
+      lons2do => LONS
+
+   end if
+   call MAPL_TimerOff(MAPL,    "-In_ReDist")
 
 ! Copy friendly internals into tile-tile local variables
 !-------------------------------------------------------
@@ -2779,10 +2769,11 @@ contains
     call MAPL_TimerOff(MAPL,    "-Albedo")
 
     call MAPL_TimerOn(MAPL,    "-Out_ReDist")
+    if(loadBalance) then
 #include "BufferUnpacking.h"
-
-    deallocate(BUFIMP,BUFINT,BUFINT8,BUFEXP,STAT=STATUS)
-    VERIFY_(STATUS)
+       deallocate(BUFIMP,BUFINT,BUFINT8,BUFEXP,STAT=STATUS)
+       VERIFY_(STATUS)
+    endif
     call MAPL_TimerOff(MAPL,    "-Out_ReDist")
 
     deallocate(FSWABS)
