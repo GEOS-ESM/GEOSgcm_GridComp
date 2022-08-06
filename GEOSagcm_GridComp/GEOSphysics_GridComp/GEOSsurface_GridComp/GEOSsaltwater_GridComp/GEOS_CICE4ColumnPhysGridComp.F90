@@ -1273,8 +1273,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: NUM_ICE_LAYERS      ! set via resource parameter
   integer                             :: NUM_ICE_CATEGORIES  ! set via resource parameter
 
-  real, pointer, dimension(:)         :: LATS => null()
-  real, pointer, dimension(:)         :: LONS => null()
+  real, pointer, dimension(:)         :: LATS_ORIGINAL => null()
+  real, pointer, dimension(:)         :: LONS_ORIGINAL => null()
 
   real, pointer, dimension(:)         :: AREA => null()     ! needed to calculate TILEAREA in SaltWaterCore
 
@@ -1312,8 +1312,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-----------------------------------
 
     call MAPL_Get(MAPL,             &
-         TILELATS  = LATS ,                      &
-         TILELONS  = LONS ,                      &
+         TILELATS  = LATS_ORIGINAL ,                      &
+         TILELONS  = LONS_ORIGINAL ,                      &
          TILEAREA  = AREA ,                      &
          ORBIT     = ORBIT,                      &
          INTERNAL_ESMF_STATE = INTERNAL,         &
@@ -1324,7 +1324,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Update the skin variables each step
 !------------------------------------
 
-    call CICECORE(NT=size(LONS), RC=STATUS )
+    call CICECORE(NT_ORIGINAL=size(LONS_ORIGINAL), RC=STATUS )
     VERIFY_(STATUS)
 
 !  All done
@@ -1339,10 +1339,10 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   subroutine CICECORE(NT,RC)
+   subroutine CICECORE(NT_ORIGINAL,RC)
 
    use MPI
-   integer,           intent(IN ) :: NT
+   integer,           intent(IN ) :: NT_ORIGINAL
    integer, optional, intent(OUT) :: RC
      
 !  Locals
@@ -1668,7 +1668,7 @@ contains
    real, parameter                     :: SALTWATERICECAP = MAPL_CAPICE
 
 ! load balancing variables
-   integer :: NUM2DO, NUMMAX, pet, NUMTILEICE, CICECOREBalanceHandle, L1, LN
+   integer :: NT, NUMMAX, pet, CICECOREBalanceHandle, L1, LN
    integer :: HorzDims, numIntSlices, numIntSlices8, numExpSlices
    real, target, allocatable :: BUFIMP(:), BUFINT(:), BUFEXP(:)
    real(kind=MAPL_R8), target, allocatable :: BUFINT8(:)
@@ -1676,12 +1676,12 @@ contains
    real(kind=MAPL_R8), pointer :: PTR1R8(:), PTR2R8(:,:), PTR3R8(:,:,:)
    !integer   :: SLICESimp(100) ! increase size if more than 100 imports
    integer :: COMM
-   logical, dimension(NT) :: TILE_WITH_ICE
+   logical, dimension(NT_ORIGINAL) :: TILE_WITH_ICE
    logical :: loadBalance
    integer :: numUsedImp   ! number of imports actually used
    !character(len=ESMF_MAXSTR), dimension(29) :: NAMESimp
-   real,               pointer    :: lats2do(:)
-   real,               pointer    :: lons2do(:)
+   real,               pointer    :: LATS(:)
+   real,               pointer    :: LONS(:)
    real(kind=MAPL_R8)                  :: t1, t2, t3, t4
 
 !  Begin...
@@ -1713,20 +1713,17 @@ contains
     call MAPL_GetResource ( MAPL, loadBalance    , Label="CICE_LOAD_BALANCE:", &
         DEFAULT=.FALSE., RC=STATUS)
 
-   call ESMF_VMGetCurrent(VM, RC=STATUS)
-   VERIFY_(STATUS)
-   call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=pet, RC=STATUS)
-   VERIFY_(STATUS)
-
+   call ESMF_VMGetCurrent(VM, __RC__)
+   call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=pet, __RC__)
+   !call ESMF_VMBarrier(VM, __RC__)
    call MAPL_TimerOn(MAPL,    "-In_ReDist")
 !load balance setup
    if(loadBalance) then
 
-      NUMTILEICE = NT
       TILE_WITH_ICE = .true.
-      call MAPL_BalanceCreate(OrgLen=NUMTILEICE, Comm=COMM, Handle=CICECOREBalanceHandle, BalLen=NUM2DO, BufLen=NUMMAX, rc=STATUS)
+      call MAPL_BalanceCreate(OrgLen=NT_ORIGINAL, Comm=COMM, Handle=CICECOREBalanceHandle, BalLen=NT, BufLen=NUMMAX, rc=STATUS)
       VERIFY_(STATUS)
-     HorzDims = NT   ! Slice size for buffer packing
+     HorzDims = NT_ORIGINAL   ! Slice size for buffer packing
 
 !****IMPORTANT****!!! Adjust the relevant buffer(s) and pointer assigments BufferPacking.h and BufferUnpacking.h if import/internal/export fields are added/deleted
 #include "BufferPacking.h"
@@ -1734,9 +1731,9 @@ contains
    else  ! no load_balance
 
 #include "GetPtr.h"
-      NUM2DO = NT
-      lats2do => LATS
-      lons2do => LONS
+      NT = NT_ORIGINAL
+      LATS => LATS_ORIGINAL
+      LONS => LONS_ORIGINAL
 
    end if
    call MAPL_TimerOff(MAPL,    "-In_ReDist")
@@ -1745,53 +1742,53 @@ contains
 !-------------------------------------------------------
 
     TS => TI
-    allocate( FSWABS (NUM2DO), STAT=STATUS)
+    allocate( FSWABS (NT), STAT=STATUS)
     VERIFY_(STATUS)
-    allocate( ALBVRI (NUM2DO), STAT=STATUS)
+    allocate( ALBVRI (NT), STAT=STATUS)
     VERIFY_(STATUS)
-    allocate( ALBVFI (NUM2DO), STAT=STATUS)
+    allocate( ALBVFI (NT), STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(  ALBNRI (NUM2DO), STAT=STATUS)
+    allocate(  ALBNRI (NT), STAT=STATUS)
     VERIFY_(STATUS)
-    allocate( ALBNFI (NUM2DO), STAT=STATUS)
+    allocate( ALBNFI (NT), STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(SHF        (NUM2DO),                                   STAT=STATUS)
+    allocate(SHF        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(EVP        (NUM2DO),                                   STAT=STATUS)
+    allocate(EVP        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(SHD        (NUM2DO),                                   STAT=STATUS)
+    allocate(SHD        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(EVD        (NUM2DO),                                   STAT=STATUS)
+    allocate(EVD        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(CFQ        (NUM2DO),                                   STAT=STATUS)
+    allocate(CFQ        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(CFT        (NUM2DO),                                   STAT=STATUS)
+    allocate(CFT        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(TXI        (NUM2DO),                                   STAT=STATUS)
+    allocate(TXI        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(TYI        (NUM2DO),                                   STAT=STATUS)
+    allocate(TYI        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DQS        (NUM2DO),                                   STAT=STATUS)
+    allocate(DQS        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DTS        (NUM2DO),                                   STAT=STATUS)
+    allocate(DTS        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DTX        (NUM2DO),                                   STAT=STATUS)
+    allocate(DTX        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DTY        (NUM2DO),                                   STAT=STATUS)
+    allocate(DTY        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(SWN        (NUM2DO),                                   STAT=STATUS)
+    allocate(SWN        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(PEN        (NUM2DO),                                   STAT=STATUS)
+    allocate(PEN        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(LHF        (NUM2DO),                                   STAT=STATUS)
+    allocate(LHF        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ZTH        (NUM2DO),                                   STAT=STATUS)
+    allocate(ZTH        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(SLR        (NUM2DO),                                   STAT=STATUS)
+    allocate(SLR        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(VSUVR        (NUM2DO),                                   STAT=STATUS)
+    allocate(VSUVR        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(VSUVF        (NUM2DO),                                   STAT=STATUS)
+    allocate(VSUVF        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
 
 ! Initialize PAR and UVR beam fluxes
@@ -1808,101 +1805,101 @@ contains
     VERIFY_(STATUS)
     allocate(TRACERS   (NUM_3D_ICE_TRACERS,NUM_ICE_CATEGORIES),STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(TF        (NUM2DO),                                   STAT=STATUS)
+    allocate(TF        (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(MELTLN    (NUM2DO),                                   STAT=STATUS)
+    allocate(MELTLN    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FRAZLN    (NUM2DO),                                   STAT=STATUS)
+    allocate(FRAZLN    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FRESHN    (NUM2DO),                                   STAT=STATUS)
+    allocate(FRESHN    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FRESHL    (NUM2DO),                                   STAT=STATUS)
+    allocate(FRESHL    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FSALTN    (NUM2DO),                                   STAT=STATUS)
+    allocate(FSALTN    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FSALTL    (NUM2DO),                                   STAT=STATUS)
+    allocate(FSALTL    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FHOCNN    (NUM2DO),                                   STAT=STATUS)
+    allocate(FHOCNN    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FHOCNL    (NUM2DO),                                   STAT=STATUS)
+    allocate(FHOCNL    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(RSIDE     (NUM2DO),                                   STAT=STATUS)
+    allocate(RSIDE     (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FSWTHRU   (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(FSWTHRU   (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FCOND     (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(FCOND     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FCONDBOT  (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(FCONDBOT  (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(TBOT      (NUM2DO),                                   STAT=STATUS)
+    allocate(TBOT      (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FBOT      (NUM2DO),                                   STAT=STATUS)
+    allocate(FBOT      (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ALBVRN    (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(ALBVRN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ALBNRN    (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(ALBNRN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ALBVFN    (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(ALBVFN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ALBNFN    (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(ALBNFN    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FSWSFC    (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(FSWSFC    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FSWINT    (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(FSWINT    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ISWABS    (NUM2DO,NUM_ICE_LAYERS,NUM_ICE_CATEGORIES), STAT=STATUS)
+    allocate(ISWABS    (NT,NUM_ICE_LAYERS,NUM_ICE_CATEGORIES), STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(SSWABS    (NUM2DO,NUM_SNOW_LAYERS,NUM_ICE_CATEGORIES),STAT=STATUS)
+    allocate(SSWABS    (NT,NUM_SNOW_LAYERS,NUM_ICE_CATEGORIES),STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(MELTT     (NUM2DO),                                   STAT=STATUS)
+    allocate(MELTT     (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(MELTS     (NUM2DO),                                   STAT=STATUS)
+    allocate(MELTS     (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(MELTB     (NUM2DO),                                   STAT=STATUS)
+    allocate(MELTB     (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(CONGEL    (NUM2DO),                                   STAT=STATUS)
+    allocate(CONGEL    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(SNOICE    (NUM2DO),                                   STAT=STATUS)
+    allocate(SNOICE    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(TS_OLD    (NUM2DO,NUM_SUBTILES),                      STAT=STATUS)
+    allocate(TS_OLD    (NT,NUM_SUBTILES),                      STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ALBIN     (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(ALBIN     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ALBSN     (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(ALBSN     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(ALBPND    (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(ALBPND    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DRUVRTHRU (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(DRUVRTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DFUVRTHRU (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(DFUVRTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DRPARTHRU (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(DRPARTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(DFPARTHRU (NUM2DO,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    allocate(DFPARTHRU (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(TOTALFLUX (NUM2DO),                                   STAT=STATUS)
+    allocate(TOTALFLUX (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(NEWICEERG (NUM2DO),                                   STAT=STATUS)
+    allocate(NEWICEERG (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(SBLX      (NUM2DO),                                   STAT=STATUS)
+    allocate(SBLX      (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FSURF     (NUM2DO),                                   STAT=STATUS)
+    allocate(FSURF     (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(AICENINIT (NUM2DO, NUM_ICE_CATEGORIES),               STAT=STATUS)
+    allocate(AICENINIT (NT, NUM_ICE_CATEGORIES),               STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(VICENINIT (NUM2DO, NUM_ICE_CATEGORIES),               STAT=STATUS)
+    allocate(VICENINIT (NT, NUM_ICE_CATEGORIES),               STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FR8TMP    (NUM2DO, NUM_SUBTILES),                     STAT=STATUS)
+    allocate(FR8TMP    (NT, NUM_SUBTILES),                     STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FRCICE    (NUM2DO),                                   STAT=STATUS)
+    allocate(FRCICE    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(FR_OLD    (NUM2DO),                                   STAT=STATUS)
+    allocate(FR_OLD    (NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(VOLSNO_OLD(NUM2DO),                                   STAT=STATUS)
+    allocate(VOLSNO_OLD(NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(VOLICE_OLD(NUM2DO),                                   STAT=STATUS)
+    allocate(VOLICE_OLD(NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
-    allocate(VOLICE_DELTA(NUM2DO,NUM_ICE_CATEGORIES),              STAT=STATUS)
+    allocate(VOLICE_DELTA(NT,NUM_ICE_CATEGORIES),              STAT=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, LATSO, Label="LATSO:", DEFAULT=70.0, RC=STATUS)
@@ -1913,8 +1910,8 @@ contains
 !     initialize arrays for CICE Thermodynamics
     call CICE_PREP_THERMO(TF,TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
                             FSWTHRU,FCOND,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
-                            ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,lats2do,lons2do,LATSO,LONSO,   &
-                            FR8,FRCICE,SW,TAUAGE,ICE,NUM2DO,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
+                            ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,LATS,LONS,LATSO,LONSO,   &
+                            FR8,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
                             NEWICEERG, SBLX, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -1927,14 +1924,14 @@ contains
     VICENINIT  = VOLICE
 
 #if 0
-    allocate(vice0(NUM2DO),                                   STAT=STATUS)
+    allocate(vice0(NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
     call ESMF_GridCompGet( GC, VM=VMG, RC=STATUS )
     VERIFY_(STATUS)
 
     vice0 =  VOLICE_OLD 
-    TOTALAREAN = sum(vice0*AREA*(MAPL_RADIUS**2), mask=SLMASK<0.5 .and. lats2do>0.0)
-    TOTALAREAS = sum(vice0*AREA*(MAPL_RADIUS**2), mask=SLMASK<0.5 .and. lats2do<0.0)
+    TOTALAREAN = sum(vice0*AREA*(MAPL_RADIUS**2), mask=SLMASK<0.5 .and. LATS>0.0)
+    TOTALAREAS = sum(vice0*AREA*(MAPL_RADIUS**2), mask=SLMASK<0.5 .and. LATS<0.0)
     deallocate(vice0)
 
     call ESMF_VMBarrier(VMG, rc=status)
@@ -1953,8 +1950,8 @@ contains
     call MAPL_GetResource ( MAPL, FRZMLT_MAX, Label="CICE_FRZMLT_MAX:" , DEFAULT=1000., RC=STATUS)
     VERIFY_(STATUS)
     DTDB = REAL(DT, kind=MAPL_R8)     ! Convert DT precision: Real4 to Real8 for usage in CICE
-    do k=1, NUM2DO 
-          call CICE_INQUIRE_TILE(lats2do(K), lons2do(K), LATSO, LONSO, OBSERVE, LATSD, LONSD)
+    do k=1, NT 
+          call CICE_INQUIRE_TILE(LATS(K), LONS(K), LATSO, LONSO, OBSERVE, LATSD, LONSD)
           FRZMLTDB  = REAL(FRZMLT(K),            kind=MAPL_R8)
           FRZMLTDB  = min(max(FRZMLTDB,-FRZMLT_MAX),FRZMLT_MAX) 
           if(FRZMLT(K)<0.0) then ! heat the already existing ice from below
@@ -2061,7 +2058,7 @@ contains
         endif
 
 ! Get the zenith angle at the center of the time between the last solar call and the next one
-        call MAPL_SunGetInsolation(lons2do, lats2do,      &
+        call MAPL_SunGetInsolation(LONS, LATS,      &
             ORBIT, ZTH, SLR, &
             INTV = TINT,     &
             currTime=BEFORE+DELT,  &
@@ -2075,14 +2072,14 @@ contains
 ! also compute shortwave radiation passing thru bottom of ice and skin layer bottom (DxxxTHRU; xx=RUVR, FUVR, ...)
 !------------------------------------------------------------------------------------------------------------------
 
-    call CICE_ALBSEAICE (ICE,NUM_ICE_CATEGORIES,NUM_ICE_LAYERS,NUM_SNOW_LAYERS,NUM2DO,DO_POND,LATSO,LONSO,lats2do,lons2do,ZTH,FR8,TS,&
+    call CICE_ALBSEAICE (ICE,NUM_ICE_CATEGORIES,NUM_ICE_LAYERS,NUM_SNOW_LAYERS,NT,DO_POND,LATSO,LONSO,LATS,LONS,ZTH,FR8,TS,&
                            DRPAR,DFPAR,DRNIR,DFNIR,DRUVR,DFUVR,VSUVR,VSUVF,VOLICE,VOLSNO,APONDN,HPONDN,                      &
                            ISWABS,FSWSFC, FSWINT,FSWTHRU,SSWABS,ALBIN,ALBSN,ALBPND,ALBVRN,ALBVFN,ALBNRN,ALBNFN,              &
                            DRUVRTHRU,DFUVRTHRU,DRPARTHRU,DFPARTHRU,RC=STATUS)
       VERIFY_(STATUS)                     
 !!! Make this call so that during the predictor and corrector we use these albedos to send to radiation
      if(dual_ocean) then
-      call ALBSEAICEM2 (ALBVRI,ALBVFI,ALBNRI,ALBNFI,ZTH,lats2do,CURRENT_TIME)  ! GEOS albedo over sea ice
+      call ALBSEAICEM2 (ALBVRI,ALBVFI,ALBNRI,ALBNFI,ZTH,LATS,CURRENT_TIME)  ! GEOS albedo over sea ice
       do N=1, NUM_ICE_CATEGORIES
        ALBVRN(:,N) = ALBVRI(:)
        ALBVFN(:,N) = ALBVFI(:)
@@ -2124,7 +2121,7 @@ contains
     if(associated(ALBSNe  )) then
         ALBSNe = ALBSN
         do N=1, NUM_ICE_CATEGORIES 
-           do K=1,NUM2DO
+           do K=1,NT
               if(FR8(K,N) <= puny) then 
                  ALBSNe(K,N) = MAPL_UNDEF
               elseif(VOLSNO(K,N)/FR8(K,N) <= puny) then
@@ -2245,7 +2242,7 @@ contains
                endwhere   
           endif
 
-          call CICE_THERMO1(N,NSUB,NUM2DO,ICE,lats2do,lons2do,LATSO,LONSO,DT,TF,FR8TMP,TS,         &
+          call CICE_THERMO1(N,NSUB,NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR8TMP,TS,         &
                            ERGICE,ERGSNO,TAUXBOT,TAUYBOT,TBOT,ISWABS,SSWABS,             &
                            DO_POND,FBOT,RSIDE,PCU,PLS,FSURF,                             &
                            FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
@@ -2513,8 +2510,8 @@ contains
 ! redistributing ice and water mass due to freezing and melting
 ! -------------------------------------------------------------
 #if 0
-    do k=1,NUM2DO
-       if((abs(lats2do(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(lons2do(k)*rad_to_deg-LONSO) < 1.e-3)) then
+    do k=1,NT
+       if((abs(LATS(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(LONS(k)*rad_to_deg-LONSO) < 1.e-3)) then
           print*, 'after THERMO1 before THERMO2_STEP1'
           do i=1,NUM_ICE_CATEGORIES
              print*, i, FR8(K,i), VOLICE(K,i)  
@@ -2530,7 +2527,7 @@ contains
 
     call MAPL_TimerOn(MAPL,    "-Thermo2")
 
-    call CICE_THERMO2_STEP1 (NUM2DO,ICE,lats2do,lons2do,LATSO,LONSO,DT,TF,FR8,TS,    &
+    call CICE_THERMO2_STEP1 (NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR8,TS,    &
                              VOLICE,VOLSNO,VOLPOND,ERGICE,ERGSNO,                    &
                              AICENINIT,VICENINIT,TRCRTYPE,FRCICE,FRZMLT,FRAZLN,      &
                              FRESHL,FSALTL,FHOCNL,RSIDE,MELTLN,VOLICE_DELTA,         &
@@ -2542,8 +2539,8 @@ contains
     if(associated(FSITHERM_CMIP5)) FSITHERM_CMIP5 = FRESHL
 
 #if 0
-    do k=1,NUM2DO
-       if((abs(lats2do(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(lons2do(k)*rad_to_deg-LONSO) < 1.e-3)) then
+    do k=1,NT
+       if((abs(LATS(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(LONS(k)*rad_to_deg-LONSO) < 1.e-3)) then
           print*, 'after THERMO2_STEP1 before THERMO2_STEP2'
           do i=1,NUM_ICE_CATEGORIES
              print*, i, FR8(K,i), VOLICE(K,i)  
@@ -2558,7 +2555,7 @@ contains
 #endif
 
     !*** artificially do a lateral melt step over those frozen lake tiles if the ice gets too thick
-    call CICE_THERMO2_STEP2 (NUM2DO,ICE,lats2do,lons2do,LATSO,LONSO,DT,FR8,TS,          &
+    call CICE_THERMO2_STEP2 (NT,ICE,LATS,LONS,LATSO,LONSO,DT,FR8,TS,          &
                              VOLICE,VOLSNO,VOLPOND,ERGICE,ERGSNO,                     &
                              TRCRTYPE,FRCICE,SLMASK,TRACERS,TAUAGE,RC=STATUS)
     VERIFY_(STATUS)                         
@@ -2567,7 +2564,7 @@ contains
     ! These are the final area fractions that are in the internal state
     FRCICE       = sum(FR8(:,ICE:), dim=2)
 
-    do k=1,NUM2DO
+    do k=1,NT
         do N=1,NUM_ICE_CATEGORIES
            if(FR8(K,N) < puny) TI(K,N) = MAPL_TICE+Tocnfrz
         enddo  
@@ -2599,7 +2596,7 @@ contains
 
     if(associated(TINZ   )) then
         TINZ = MAPL_UNDEF
-        do K=1, NUM2DO
+        do K=1, NT
            call diagnose_internal_ice_temp(VOLICE(K,:), ERGICE(K,:,:), TINZ(K,:))
         enddo
     endif
@@ -2646,8 +2643,8 @@ contains
 
 
 #if 0
-    do k=1,NUM2DO
-       if((abs(lats2do(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(lons2do(k)*rad_to_deg-LONSO) < 1.e-3)) then
+    do k=1,NT
+       if((abs(LATS(k)*rad_to_deg-LATSO) < 1.e-3) .and. (abs(LONS(k)*rad_to_deg-LONSO) < 1.e-3)) then
           print*, 'end of cice thermo'
           do i=1,NUM_ICE_CATEGORIES
              print*, i, FR8(K,i), VOLICE(K,i)  
@@ -2660,11 +2657,11 @@ contains
        endif 
     enddo
   
-    allocate(vice1(NUM2DO),                                   STAT=STATUS)
+    allocate(vice1(NT),                                   STAT=STATUS)
     VERIFY_(STATUS)
     vice1 =  sum(VOLICE,dim=2) 
-    TOTALAREAN1 = sum(vice1*AREA*(MAPL_RADIUS**2),mask=SLMASK<0.5 .and. lats2do>0.0)
-    TOTALAREAS1 = sum(vice1*AREA*(MAPL_RADIUS**2),mask=SLMASK<0.5 .and. lats2do<0.0)
+    TOTALAREAN1 = sum(vice1*AREA*(MAPL_RADIUS**2),mask=SLMASK<0.5 .and. LATS>0.0)
+    TOTALAREAS1 = sum(vice1*AREA*(MAPL_RADIUS**2),mask=SLMASK<0.5 .and. LATS<0.0)
     deallocate(vice1)
 
     call ESMF_VMBarrier(VMG, rc=status)
@@ -2712,7 +2709,7 @@ contains
     call MAPL_TimerOn(MAPL,    "-Albedo")
 
     if(solalarmison) then
-       call MAPL_SunGetInsolation(lons2do, lats2do,      &
+       call MAPL_SunGetInsolation(LONS, LATS,      &
             ORBIT, ZTH, SLR,                       &
             INTV = TINT,                           &
             currTime=CURRENT_TIME+DELT,            &
@@ -2721,14 +2718,14 @@ contains
 
        ZTH = max(0.0,ZTH)
           
-       call CICE_ALBSEAICE (ICE,NUM_ICE_CATEGORIES,NUM_ICE_LAYERS,NUM_SNOW_LAYERS,NUM2DO,DO_POND,LATSO,LONSO,lats2do,lons2do,ZTH,FR8,TS,&
+       call CICE_ALBSEAICE (ICE,NUM_ICE_CATEGORIES,NUM_ICE_LAYERS,NUM_SNOW_LAYERS,NT,DO_POND,LATSO,LONSO,LATS,LONS,ZTH,FR8,TS,&
                             DRPAR,DFPAR,DRNIR,DFNIR,DRUVR,DFUVR,VSUVR,VSUVF,VOLICE,VOLSNO,APONDN,HPONDN,                      &
                             ISWABS,FSWSFC, FSWINT,FSWTHRU,SSWABS,ALBIN,ALBSN,ALBPND,ALBVRN,ALBVFN,ALBNRN,ALBNFN,              &
                             DRUVRTHRU,DFUVRTHRU,DRPARTHRU,DFPARTHRU,RC=STATUS)
        VERIFY_(STATUS)                     
 
        do N=1,NUM_ICE_CATEGORIES
-             do K=1,NUM2DO
+             do K=1,NT
                 if(FR8(K,N) > puny) then
                    if(associated(IALB_C5))   IALB_C5(K)   = IALB_C5(K) + FR8(K,N) * ALBIN(K,N)
                 end if
@@ -2768,6 +2765,7 @@ contains
 
     call MAPL_TimerOff(MAPL,    "-Albedo")
 
+    !call ESMF_VMBarrier(VM, __RC__)
     call MAPL_TimerOn(MAPL,    "-Out_ReDist")
     if(loadBalance) then
 #include "BufferUnpacking.h"
