@@ -658,6 +658,7 @@ integer :: n_threads=1
        ! ---------------------------------------------------------------------
        if(use_snow_albedo)then
          tmpstring = 'Step 14: Snow albedo from MODIS' 
+         write (log_file,'(a)') trim(tmpstring)
          ! here I should test if snow_alb is written into nc file
          ! and call the soil_snow_alb subroutine only if it's not there
        ! inquire(file='clsm/catch_params.nc4', exist=file_exists)
