@@ -920,6 +920,15 @@ contains
          RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddConnectivity ( GC,                                                        &
+         SRC_NAME  = (/'T            ','PLE          ','ZLE          ','TROPP_BLENDED'/),  &
+         DST_NAME  = (/'T_avg24      ','PLE_avg24    ','ZLE_avg24    ','TROPP_avg24  '/),  &
+         DST_ID = PHYS,                                                                    &
+         SRC_ID = SDYN,                                                                    &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+
     call MAPL_AddConnectivity ( GC,              &
          SRC_NAME    = 'PLE',                    &
          DST_NAME    = 'PLEINST',                &
@@ -2412,6 +2421,9 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call MAPL_TimerOn (STATE,"SUPERDYNAMICS"  )
 
     call ESMF_GridCompRun(GCS(SDYN), importState=GIM(SDYN), exportState=GEX(SDYN), clock=CLOCK, PHASE=2, userRC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GenericRunCouplers( STATE, SDYN, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
 
     call MAPL_TimerOff(STATE,"SUPERDYNAMICS"  )
