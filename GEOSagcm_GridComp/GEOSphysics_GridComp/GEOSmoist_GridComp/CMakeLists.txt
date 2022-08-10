@@ -1,6 +1,7 @@
 esma_set_this()
 
 set (srcs
+  Process_Library.F90
   CLDPARAMS.F90 RASPARAMS.F90 ras.F90 cloudnew.F90 ddf.F90 rascnvv2_v.F90
   cldmacro.F90 cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90
   GEOS_MoistGridComp.F90 partition_pdf.F90

@@ -9797,6 +9797,7 @@ contains
         ! Liquid
             PFL_LS_X = 0.
 
+#ifdef SKIP
         ! Execute GFDL microphysics
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI]
@@ -9817,7 +9818,9 @@ contains
                              ! constant grid/time information
                                LHYDROSTATIC, LPHYS_HYDROSTATIC, &
                                1,IM, 1,JM, 1,LM, 1, LM)
-
+#else
+         _ASSERT(.false.,'Skipped GFDL-MP build')
+#endif
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = PRCP_RAIN    / 86400.
          PRCP_SNOW    = PRCP_SNOW    / 86400.

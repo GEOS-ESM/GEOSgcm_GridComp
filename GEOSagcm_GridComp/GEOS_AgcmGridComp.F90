@@ -988,7 +988,7 @@ contains
 
      call MAPL_TerminateImport    ( GC,                                                     &
           SHORT_NAME = (/'DUDT  ','DVDT  ','DWDT  ','DTDT  ','DPEDT ','DQVANA','DQLANA',    &
-                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS  '/),  &
+                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS','VARFLT'/),  &
           CHILD      = SDYN,                                                                &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -1025,8 +1025,6 @@ contains
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="AGCM_BARRIER"           ,RC=STATUS)
     VERIFY_(STATUS)
 
 ! All done
@@ -1156,21 +1154,24 @@ contains
     call MAPL_GetPointer(EXPORT, VARFLT, 'VARFLT', ALLOC=.true., rc=STATUS)
     VERIFY_(STATUS)
 
-! PHIS ...
+! PHIS (topography)...
 !---------
     call ESMF_StateGet( GIM(SDYN), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
+    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
+    PHIS = PTR
 
+! Pass PHIS into PHYS
+!---------
     call ESMF_StateGet( GIM(PHYS), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
-    PHIS = PTR
 
-! GWDVAR ...
+! GWDVAR (standard deviation)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'SGH', FIELD, rc=STATUS )
     VERIFY_(STATUS)
@@ -1179,14 +1180,22 @@ contains
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     SGH = PTR
 
-! TRBVAR ...
+! TRBVAR (variance)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'VARFLT', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
     VERIFY_(STATUS)
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
     VARFLT = PTR
+
+! Pass variance into SDYN
+!-----------
+    call ESMF_StateGet( GIM(SDYN), 'VARFLT', FIELD, rc=STATUS )
+    VERIFY_(STATUS)
+    Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
+    VERIFY_(STATUS)
 
 ! ======================================================================
 !ALT: the next section addresses the problem when export variables have been
