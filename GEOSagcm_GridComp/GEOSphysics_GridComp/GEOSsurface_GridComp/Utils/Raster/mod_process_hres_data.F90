@@ -3068,8 +3068,8 @@ END SUBROUTINE modis_scale_para_high
       write(hh,'(i2.2)') hhtil
 
       fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/'// &
-               'albedo/snow/MODIS/v1/snow_alb_MOD10A1.061_30arcsec_'//  &
-               '2000_2022_H'//hh//'V'//vv//'.nc'
+              '/albedo/snow/MODIS/v1/snow_alb_MOD10A1.061_30arcsec_'//  &
+              '2000_2022_H'//hh//'V'//vv//'.nc'
 
       ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
       status=NF_OPEN(trim(fname),NF_NOWRITE, ncid) ; VERIFY_(STATUS)
