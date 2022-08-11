@@ -76,6 +76,7 @@ module CatchmentRstMod
      real, allocatable ::     sndzn1(:)
      real, allocatable ::     sndzn2(:)
      real, allocatable ::     sndzn3(:)
+     real, allocatable ::    snowalb(:)
      real, allocatable ::         ch(:,:)
      real, allocatable ::         cm(:,:)
      real, allocatable ::         cq(:,:)
@@ -427,6 +428,9 @@ contains
      if (this%meta%has_variable('WW')) then
        call MAPL_VarWrite(formatter,"WW",this%ww)
      endif
+     if (this%meta%has_variable('SNOWALB')) then
+       call MAPL_VarWrite(formatter,"SNOWALB",this%snowalb)
+     endif
 
      _RETURN(_SUCCESS)
 
@@ -483,6 +487,9 @@ contains
      if (this%meta%has_variable('TSURF')) then
        allocate( this%      tsurf(ntiles) )
      endif
+     if (this%meta%has_variable('SNOWALB')) then
+       allocate( this%         snowalb(ntiles) )
+     endif
 
      allocate( this%     wesnn1(ntiles) )
      allocate( this%     wesnn2(ntiles) )
@@ -509,6 +516,7 @@ contains
      if (this%meta%has_variable('WW')) then
        allocate( this%         ww(ntiles,4) )
      endif
+
      _RETURN(_SUCCESS)
    end subroutine allocate_catch
 
@@ -529,6 +537,8 @@ contains
       logical       :: file_exists
 
       type(NetCDF4_Fileformatter) :: CatchFmt
+      type(Variable) :: var
+      type(FileMetadata) :: meta_
 
       character*256        :: Iam = "add_bcs"
 
@@ -611,6 +621,18 @@ contains
         call MAPL_VarRead ( CatchFmt ,'WPWET', this%WPWET, __RC__)
         call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR, __RC__)
         call MAPL_VarRead ( CatchFmt ,'POROS', this%POROS, __RC__)
+        meta_ = CatchFmt%read(__RC__)
+        if ( meta_%has_variable('SNOWALB')) then
+           if ( .not. allocated(this%snowalb)) allocate(this%snowalb(ntiles))
+           call MAPL_VarRead ( CatchFmt ,'SNOWALB', this%snowalb, __RC__)
+           if ( .not. this%meta%has_variable('SNOWALB')) then
+              var = Variable(type=pFIO_REAL32, dimensions='tile')
+              call var%add_attribute('long_name', 'snow_albedo')
+              call var%add_attribute('units', '1')
+              call this%meta%add_variable('SNOWALB', var)
+           endif
+        endif
+
         call CatchFmt%close()
       else
         open(unit=21, file=trim(DataDir)//'/clsm/mosaic_veg_typs_fracs',form='formatted')
@@ -1068,6 +1090,10 @@ contains
        if (this%meta%has_variable('TSURF')) then
           var_out = this%tsurf(id_glb(:)) 
           this%tsurf = var_out
+       endif
+       if (this%meta%has_variable('SNOWALB')) then
+          var_out = this%snowalb(id_glb(:)) 
+          this%snowalb = var_out
        endif
 
        ! CH CM CQ FR WW
