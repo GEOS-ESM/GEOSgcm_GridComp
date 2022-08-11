@@ -45,7 +45,7 @@ module rmTinyCatchParaMod
   INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
   logical, public, save     :: use_PEATMAP = .true.
   logical, public, save     :: jpl_height  = .true.
-  logical, public, save     :: use_snow_albedo  = .false. ! Biljana
+  logical, public, save     :: use_snow_albedo  = .false. 
   character*8, public, save :: LAIBCS  = 'MODGEO'
   character*4, public, save :: SOILBCS = 'HWSD'
   character*6, public, save :: MODALB  = 'MODIS2'
@@ -118,7 +118,7 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-     case ("NL6")  !! Biljana New boundary condition option 
+     case ("NL6")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'

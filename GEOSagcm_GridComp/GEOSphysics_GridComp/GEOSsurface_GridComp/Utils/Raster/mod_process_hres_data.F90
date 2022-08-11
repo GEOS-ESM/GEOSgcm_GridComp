@@ -26,7 +26,6 @@ use date_time_util
 use leap_year
 use MAPL_ConstantsMod
 use lsm_routines, ONLY: sibalb
-USE IFPORT ! Biljana
 
 #if defined USE_EXTERNAL_FINDLOC
 use findloc_mod, only: findloc
@@ -39,7 +38,7 @@ include 'netcdf.inc'
 private
 
 public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
-public :: soil_snow_alb ! Biljana
+public :: soil_snow_alb 
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
 public :: histogram, create_mapping, esa2mosaic , esa2clm
 public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
@@ -2988,7 +2987,7 @@ END SUBROUTINE modis_scale_para_high
 
 !----------------------------------------------------------------------  
 
-  SUBROUTINE soil_snow_alb (nx,ny,gfiler)  ! Biljana
+  SUBROUTINE soil_snow_alb (nx,ny,gfiler)  
 
 ! Implement snow albedo calculated from MOIDS 22-year climatology. Store snow albedo 
 ! values in clsm/catch_params.nc4
@@ -3068,9 +3067,9 @@ END SUBROUTINE modis_scale_para_high
       write(vv,'(i2.2)') vvtil
       write(hh,'(i2.2)') hhtil
 
-      fname = '/discover/nobackup/borescan/tools/idl/01_snow_fraction/06_modis_nsidc/'// &
-              '/data/data_out/snow_alb_all_08_Top99th_percentile_MOD10A1.A_30arcsec_'//  &
-              '2000_2022_H'//hh//'V'//vv//'.nc'
+      fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/'// &
+               'albedo/snow/MODIS/v1/snow_alb_MOD10A1.061_30arcsec_'//  &
+               '2000_2022_H'//hh//'V'//vv//'.nc'
 
       ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
       status=NF_OPEN(trim(fname),NF_NOWRITE, ncid) ; VERIFY_(STATUS)
@@ -3096,7 +3095,7 @@ END SUBROUTINE modis_scale_para_high
 !  open(11,file=trim(fname),form='formatted',status='unknown',action = 'write')
 
   ! loop over tiles
-  print*, 'Starting tile loop for snow albedo. Biljana'
+  print*, 'Starting tile loop for snow albedo. '
   count_init_invalid=0 ! counter for non-valid snow albedo after matching tile size
 
   do n = 1, maxcat ! loop over tile
@@ -3229,10 +3228,10 @@ END SUBROUTINE modis_scale_para_high
 !  write (11,'(a)')'TileIndex PfafID snw_alb'          
 !  close (11, status = 'keep')
 
-  print*, 'Ended tile loop for snow albedo. Biljana'
+  print*, 'Ended tile loop for snow albedo. '
   print*, 'There has been ',count_init_invalid,' inital non-valid snow values (out of',maxcat,')'
 
-  END SUBROUTINE soil_snow_alb ! Biljana
+  END SUBROUTINE soil_snow_alb 
 
   !--------------------------------------------------------------------------------------
 
@@ -6145,7 +6144,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       call DEF_VAR ( NCCatOUTID, CellID1,'TSB2'      ,'water_transfer_param_4'      ,'1'        )
       call DEF_VAR ( NCCatOUTID, CellID1,'WPWET'     ,'wetness_at_wilting_point'    ,'1'        )
       call DEF_VAR ( NCCatOUTID, CellID1,'DP2BR'     ,'depth_to_bedrock'            ,'mm'       )
-      call DEF_VAR ( NCCatOUTID, CellID1,'SNOWALB'   ,'snow_albedo'                 ,'1'        )  ! Biljana
+      call DEF_VAR ( NCCatOUTID, CellID1,'SNOWALB'   ,'snow_albedo'                 ,'1'        )  
 
       call DEF_VAR (  NCVegOUTID, CellID3,'ITY'      ,'vegetation_type'             ,'1'        )
       call DEF_VAR (  NCVegOUTID, CellID3,'Z2CH'     ,'vegetation_height'           ,'m'        )

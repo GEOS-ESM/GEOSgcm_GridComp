@@ -653,43 +653,16 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
        
-       ! Biljana
        ! Creating snow_alb_param.dat
        ! ---------------------------------------------------------------------
        if(use_snow_albedo)then
          tmpstring = 'Step 14: Snow albedo from MODIS' 
          write (log_file,'(a)') trim(tmpstring)
-         ! here I should test if snow_alb is written into nc file
-         ! and call the soil_snow_alb subroutine only if it's not there
-       ! inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       ! if (.not.file_exists) then 
-       !   write (log_file,'(a)')'           clsm/catch_params.nc4 is missing. Something is wrong. STOP!'
-       !   stop
-       ! else
-           ! inquire for snow albedo variable
-
-           ! if not present, inititate
              write (log_file,'(a)')'         Loading snow albedo...'
              call soil_snow_alb (nc,nr,gridnamer)
              write (log_file,'(a)')'         Done.'           
-
-           ! if present and loaded, do nothing
-
-       ! endif
-
-         !fname_tmp = 'clsm/snow_alb_param.dat'
-         !write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
-         !inquire(file=trim(fname_tmp), exist=file_exists)
-         !if (.not.file_exists) then
-         !   write (log_file,'(a)')'         Creating file...'
-         !   call soil_snow_alb (nc,nr,gridnamer)
-         !   write (log_file,'(a)')'         Done.'           
-         !else
-         !   write (log_file,'(a,a)')'         Using existing file.'
-         !endif
          write (log_file,'(a)')' '
        endif ! if use_snow_albedo
-       ! Biljana -- done creating snow albedo file
 
        !      inquire(file='clsm/irrig.dat', exist=file_exists)
        !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
