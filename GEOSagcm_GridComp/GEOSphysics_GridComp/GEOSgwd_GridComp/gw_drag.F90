@@ -304,24 +304,32 @@ contains
     I_LOOP: do i = 1, pcols
 #endif
 
+! zero net tendencies prior to runs
+       do k = 1, pver
+         dudt_gwd_dev(i,k) = 0.
+         dvdt_gwd_dev(i,k) = 0.
+         dtdt_gwd_dev(i,k) = 0.
+         dudt_org_dev(i,k) = 0.
+         dvdt_org_dev(i,k) = 0.
+         dtdt_org_dev(i,k) = 0.
+           utbsrc_dev(i,k) = 0.
+           vtbsrc_dev(i,k) = 0.
+           ttbsrc_dev(i,k) = 0.
+            taubx_dev(i,k) = 0.
+            tauby_dev(i,k) = 0.
+              feb_dev(i,k) = 0.
+             fepb_dev(i,k) = 0.
+       end do
+       taubkgx_dev(i) = 0.
+       taubkgy_dev(i) = 0.
+       taugwdx_dev(i) = 0.
+       taugwdy_dev(i) = 0.
+
 ! Assign newtonian cooling coefficients
 ! -------------------------------------
        do k = 0, pver
           alpha(k) = 0.0
           dback(k) = 0.0
-       end do
-
-! Determine the bounds of the background and orographic stress regions
-       ktoporo = 0
-
-       ktopbg  = 0
-
-       kbotoro = pver
-
-       do k = 0, pver
-          if (pref_dev(k+1) .lt. 40000.) then
-             kbotbg = k    ! spectrum source at 400 mb
-          end if
        end do
 
        do k = 0, pver
@@ -334,7 +342,14 @@ contains
 !-----------------------------------------------------------------------------
 ! Non-orographic backgound gravity wave spectrum
 !-----------------------------------------------------------------------------
-       if (pgwv > 0) then
+       if (effgwbkg > 0.0 .and. pgwv > 0) then
+
+          ktopbg  = 0
+          do k = 0, pver
+             if (pref_dev(k+1) .lt. 40000.) then
+                kbotbg = k    ! spectrum source at 400 mb
+             end if
+          end do
 
 ! Determine the wave source for a background spectrum at ~400 mb
 
@@ -372,66 +387,53 @@ contains
           taubkgx_dev(i) = tau0x
           taubkgy_dev(i) = tau0y
 
-       else
-
-! zero net tendencies if no spectrum computed
-
-          do k = 1, pver
-            dudt_gwd_dev(i,k) = 0.
-            dvdt_gwd_dev(i,k) = 0.
-            dtdt_gwd_dev(i,k) = 0.
-              utbsrc_dev(i,k) = 0.
-              vtbsrc_dev(i,k) = 0.
-              ttbsrc_dev(i,k) = 0.
-               taubx_dev(i,k) = 0.
-               tauby_dev(i,k) = 0.
-                 feb_dev(i,k) = 0.
-                fepb_dev(i,k) = 0.
-          end do
-          taubkgx_dev(i) = 0.
-          taubkgy_dev(i) = 0.
-
        end if
 
 !-----------------------------------------------------------------------------
 ! Orographic stationary gravity wave
 !-----------------------------------------------------------------------------
+       if (effgworo > 0.0) then
+
+          ktoporo = 0
+          kbotoro = pver
 
 ! Determine the orographic wave source
 
-       call gw_oro   (i,        pcols,  pver,    pgwv,     &
-            u_dev,    v_dev,    t_dev,  sgh_dev, pmid_dev, &
-            pint_dev, pdel_dev, zm_dev, nm,                &
-            kldv,     kldvmn,   ksrc,   ksrcmn,  rdpldv,   &
-            tau,      ubi,      ubm,    xv,      yv,       &
-            kbotoro,  rlat_dev  )
+          call gw_oro   (i,        pcols,  pver,    pgwv,     &
+               u_dev,    v_dev,    t_dev,  sgh_dev, pmid_dev, &
+               pint_dev, pdel_dev, zm_dev, nm,                &
+               kldv,     kldvmn,   ksrc,   ksrcmn,  rdpldv,   &
+               tau,      ubi,      ubm,    xv,      yv,       &
+               kbotoro,  rlat_dev  )
 
 ! Solve for the drag profile
 
-       call gw_drag_prof     (i,        pcols,     pver,                 &
-            pgwv,     0,      kbotoro,  ktoporo,   c,         u_dev,     &
-            v_dev,    t_dev,  pint_dev, pdel_dev,  rpdel_dev, lnpint_dev,&
-            rlat_dev, rhoi,   ni,       ti,        nm,        dt,        &
-            alpha,    dback,  kldv,     kldvmn,    ksrc,      ksrcmn,    &
-            rdpldv,   tau,    ubi,      ubm,       xv,        yv,        &
-            utgw,     vtgw,   ttgw,     tauox_dev, tauoy_dev, feo_dev,   &
-            fepo_dev, utosrc, vtosrc,   ttosrc,                          &
-            tau0x,    tau0y,  effgworo )
+          call gw_drag_prof     (i,        pcols,     pver,                 &
+               pgwv,     0,      kbotoro,  ktoporo,   c,         u_dev,     &
+               v_dev,    t_dev,  pint_dev, pdel_dev,  rpdel_dev, lnpint_dev,&
+               rlat_dev, rhoi,   ni,       ti,        nm,        dt,        &
+               alpha,    dback,  kldv,     kldvmn,    ksrc,      ksrcmn,    &
+               rdpldv,   tau,    ubi,      ubm,       xv,        yv,        &
+               utgw,     vtgw,   ttgw,     tauox_dev, tauoy_dev, feo_dev,   &
+               fepo_dev, utosrc, vtosrc,   ttosrc,                          &
+               tau0x,    tau0y,  effgworo )
 
 ! Add the orographic tendencies to the spectrum tendencies
 ! Compute the temperature tendency from energy conservation (includes spectrum).
 
-       do k = 1, pver
-          dudt_org_dev(i,k) =                     utgw(k)
-          dvdt_org_dev(i,k) =                     vtgw(k)
-          dtdt_org_dev(i,k) =                     ttgw(k)
-          dudt_gwd_dev(i,k) = dudt_gwd_dev(i,k) + utgw(k)
-          dvdt_gwd_dev(i,k) = dvdt_gwd_dev(i,k) + vtgw(k)
-          dtdt_gwd_dev(i,k) = dtdt_gwd_dev(i,k) + ttgw(k)
-       end do
+          do k = 1, pver
+             dudt_org_dev(i,k) =                     utgw(k)
+             dvdt_org_dev(i,k) =                     vtgw(k)
+             dtdt_org_dev(i,k) =                     ttgw(k)
+             dudt_gwd_dev(i,k) = dudt_gwd_dev(i,k) + utgw(k)
+             dvdt_gwd_dev(i,k) = dvdt_gwd_dev(i,k) + vtgw(k)
+             dtdt_gwd_dev(i,k) = dtdt_gwd_dev(i,k) + ttgw(k)
+          end do
 
-       taugwdx_dev(i) = tau0x
-       taugwdy_dev(i) = tau0y
+          taugwdx_dev(i) = tau0x
+          taugwdy_dev(i) = tau0y
+
+       end if
 
 #ifndef _CUDA
     end do I_LOOP
@@ -808,12 +810,16 @@ contains
     latdeg = rlat(i)*180./PI_GWD
 !
     if (-15.3 < latdeg .and. latdeg < 15.3) then
-!!AMM  flat_gw = 1.2*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
-!!AMM  if (flat_gw < 1.2 .and. abs(latdeg) <= 3.) flat_gw = 1.2
-!!AMM  flat_gw = 2.5*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
-!!AMM  if (flat_gw < 2.5 .and. abs(latdeg) <= 3.) flat_gw = 2.5
-       flat_gw = bgstressmax*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
-       if (flat_gw < bgstressmax .and. abs(latdeg) <= 3.) flat_gw = bgstressmax
+       if (bgstressmax == 0.0) then
+          flat_gw =  0.10
+       else
+!!AMM    flat_gw = 1.2*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
+!!AMM    if (flat_gw < 1.2 .and. abs(latdeg) <= 3.) flat_gw = 1.2
+!!AMM    flat_gw = 2.5*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
+!!AMM    if (flat_gw < 2.5 .and. abs(latdeg) <= 3.) flat_gw = 2.5
+         flat_gw = bgstressmax*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
+         if (flat_gw < bgstressmax .and. abs(latdeg) <= 3.) flat_gw = bgstressmax
+       end if
     else if (latdeg > -31. .and. latdeg <= -15.3) then
        flat_gw =  0.10
     else if (latdeg <  31. .and. latdeg >=  15.3) then

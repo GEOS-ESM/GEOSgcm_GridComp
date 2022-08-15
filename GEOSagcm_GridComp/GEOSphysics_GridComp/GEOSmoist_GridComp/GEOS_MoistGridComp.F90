@@ -4622,6 +4622,22 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)  
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DTDT_DC',                                         &
+         LONG_NAME ='T tendency due to deep convection',               &
+         UNITS     ='K s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='DTDT_SC',                                         &
+         LONG_NAME ='T tendency due to shallow convection',               &
+         UNITS     ='K s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME ='FRZPP_LS',                                                 &
          LONG_NAME  ='Tendency in T from micro precip freezing',  &
@@ -5761,7 +5777,7 @@ contains
            DTDT_macro, DQVDT_macro, DQLDT_macro, DQIDT_macro, DQADT_macro, &
            FRZPP_LS, SNOWMELT_LS, QIRES, AUTICE, PFRZ, DNCNUC, DNCHMSPLIT, DNCSUBL, &
            DNCAUTICE, DNCACRIS, DNDCCN, DNDACRLS, DNDEVAPC, DNDACRLR, DNDAUTLIQ, & 
-           DNDCNV, DNCCNV, DTDT_moist, DTDTCN, ALPHA_RAS, DNDDT, DNCDT
+           DNDCNV, DNCCNV, DTDT_moist, DTDTCN, ALPHA_RAS, DNDDT, DNCDT, DTDT_DC, DTDT_SC
 
 
 
@@ -7804,6 +7820,9 @@ contains
       if(associated(DTDTCN)) DTDTCN=TEMP
 !--srf-gf-scheme
 
+      call MAPL_GetPointer(EXPORT, DTDT_DC, 'DTDT_DC', RC=STATUS); VERIFY_(STATUS)
+      if(associated(DTDT_DC)) DTDT_DC=TEMP
+
 !-srf - placed here before the cumulus parameterizations are called.
       if(associated(CNV_DQLDT)) CNV_DQLDT =  0.0
       ZLE(:,:,LM) = 0.
@@ -8868,6 +8887,7 @@ contains
       if(associated(DTHDTCN)) DTHDTCN  = ( TH1 -  DTHDTCN ) / DT_MOIST
       if(associated(DQCDTCN)) DQCDTCN  = CNV_DQLDT * MAPL_GRAV / ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
       if(associated(DTDTCN )) DTDTCN   = ( TH1*PK -  DTDTCN ) / DT_MOIST
+      if(associated(DTDT_DC)) DTDT_DC  = ( TH1*PK -  DTDT_DC) / DT_MOIST
 
 #ifdef USEDDF
 !-srf-gf-scheme
@@ -8943,6 +8963,9 @@ contains
       TH1 = TH1 + DTHDT_SC * DT_MOIST    !  tendencies calculated below
       U1  = U1  + DUDT_SC * DT_MOIST
       V1  = V1  + DVDT_SC * DT_MOIST
+
+      call MAPL_GetPointer(EXPORT, DTDT_SC, 'DTDT_SC', RC=STATUS); VERIFY_(STATUS)
+      if(associated(DTDT_SC)) DTDT_SC  = DTHDT_SC*PK
 
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
