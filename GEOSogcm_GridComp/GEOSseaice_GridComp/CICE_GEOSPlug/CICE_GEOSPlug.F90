@@ -416,6 +416,8 @@ contains
     call AddSurfField('DRUVR', SURFST, GRID,  __RC__)
     call AddSurfField('DFUVR', SURFST, GRID,  __RC__)
     call AddSurfField('COSZ',  SURFST, GRID,  __RC__)
+    call AddSurfField('DTS',   SURFST, GRID, 
+                     UGRID=NUM_ICE_CATEGORIES, __RC__)
 
     RETURN_(ESMF_SUCCESS)
     
@@ -689,7 +691,6 @@ contains
      real, dimension(:,:,:), pointer         :: ts
 ! ErrLog Variables
 
-     integer                                 :: STATUS
      character(len=ESMF_MAXSTR), parameter   :: IAm=' thermo_coupling'
 
      !call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
@@ -701,7 +702,7 @@ contains
      call ice_fast_physics     
 
      ! export the relevant fields from cice
-     call ice_export_thermo1
+     call ice_export_thermo1(state, rc=rc)
 
      ! pack them back into state 
 
