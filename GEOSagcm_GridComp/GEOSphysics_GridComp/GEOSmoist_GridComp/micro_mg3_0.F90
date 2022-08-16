@@ -353,7 +353,7 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   cpp = cpair               ! specific heat of dry air
   tmelt = tmelt_in
   rhmini = rhmini_in
-  micro_mg_precip_frac_method = 'in_cloud' !'max_overlap' !'in_cloud'
+  micro_mg_precip_frac_method = 'max_overlap' !'max_overlap' !'in_cloud'
   micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
   allow_sed_supersat          = .true.
   do_sb_physics               = .false.
@@ -431,8 +431,9 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              tlatr8,                         qvlatr8,                        &
                              qctendr8,                       qitendr8,                       &
                              nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   qgrtendr8,                     &
-                             nrtendr8,                       nstendr8,   ngrtendr8,                   &
+                             qrtendr8,                       qstendr8,                       &
+                             nrtendr8,                       nstendr8,                       &
+                             qgrtendr8,                      ngrtendr8,                      &
                              effcr8,               effc_fnr8,            effir8,               &
                              sadicer8,                       sadsnowr8,                      &
                              prectr8,                        precir8,                        &
@@ -655,9 +656,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                   ncr8   = NCPL_tmp  
                   nir8   = NCPI_tmp                      
                   
-              
-   
-       
+        
                         call micro_mg_tend ( &
                              ncol,             LM,               dt_r8,       & 
                              ter8,                            qvr8,                              &
@@ -666,7 +665,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                         ngrr8,                         &
-                             relvarr8,                     accre_enhanr8, accre_enhan_icer8,                  &
+                             relvarr8,                     accre_enhanr8, accre_enhan_icer8,      &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -675,9 +674,10 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              tlatr8,                         qvlatr8,                        &
                              qctendr8,                       qitendr8,                       &
                              nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   qgrtendr8,                     &
-                             nrtendr8,                       nstendr8,   ngrtendr8,                   &
-                             effcr8,               effc_fnr8,            effir8,               &
+                             qrtendr8,                       qstendr8,   			 	     &		
+                             nrtendr8,                       nstendr8,                       &
+                             qgrtendr8,                      ngrtendr8,                      &
+                             effcr8,               effc_fnr8,            effir8,             &
                              sadicer8,                       sadsnowr8,                      &
                              prectr8,                        precir8,                        &
                              nevaprr8,                       evapsnowr8,                     &
@@ -687,7 +687,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              pgamradr8,                      lamcradr8,                      &
                              qsoutr8,                        dsoutr8,                        &
                              qgoutr8,     ngoutr8,           dgoutr8,                        &
-                             lflxr8,               iflxr8,   gflxr8,                           &
+                             lflxr8,               iflxr8,   &
+                             gflxr8,                           &
                              rflxr8,               sflxr8,    qroutr8,          &
                              reff_rainr8,                    reff_snowr8, reff_graur8,        &
                              qcsevapr8,            qisevapr8,            qvresr8,              &
@@ -746,9 +747,6 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                           NCPL_tmp(1, 1:LM)= MAX(NCPL_tmp(1, 1:LM)  + REAL(nctendr8(1,1:LM)) * DT_R8, 0.0) 
                           NCPI_tmp(1, 1:LM)= MAX(NCPI_tmp(1, 1:LM)  + REAL(nitendr8(1,1:LM)) * DT_R8, 0.0)  
                
-            
-
-
            
                            CLCN_tmp =     CF_tmp*FQA_tmp
                            CLLS_tmp =     CF_tmp*(1.0-FQA_tmp)
@@ -1077,7 +1075,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        nctendr8 = nctendr8_accum/num_steps_micro 
        nitendr8 =  nitendr8_accum/num_steps_micro
        qrtendr8 = qrtendr8_accum/num_steps_micro 
-       qstendr8 = qstendr8_accum/num_steps_micro 
+       qstendr8 = qstendr8_accum/num_steps_micro
+       qgrtendr8 = qgrtendr8_accum/num_steps_micro
        nrtendr8 = nrtendr8_accum/num_steps_micro 
        nstendr8 = nstendr8_accum/num_steps_micro 
        ngrtendr8 = ngrtendr8_accum/num_steps_micro
@@ -3228,6 +3227,7 @@ subroutine micro_mg_tend ( &
         if (do_hail.or.do_graupel) then
            qgtend(i,k) = qgtend(i,k) + (pracg(i,k)+pgracs(i,k)+prdg(i,k)+psacr(i,k)+mnuccr(i,k))*precip_frac(i,k) &
                 + (psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)
+                 
 
            qstend(i,k) = qstend(i,k)+ &
                 (prai(i,k)+prci(i,k))*icldm(i,k)+(psacws(i,k)+bergs(i,k))*lcldm(i,k)+(prds(i,k)+ &
@@ -3440,7 +3440,9 @@ subroutine micro_mg_tend ( &
   dum_2D = qg
   qg = qgr
   qgtend = qgtend + (dum_2D-qg)/deltat
-
+  
+  
+  
   dum_2D = ng
   ng = ngr
   ngtend = ngtend + (dum_2D-ng)/deltat
@@ -3971,6 +3973,8 @@ subroutine micro_mg_tend ( &
         faltndng = faloutng(k)/pdel(i,k)
         qgtend(i,k) = qgtend(i,k)-faltndg/nstep
         ngtend(i,k) = ngtend(i,k)-faltndng/nstep
+        
+      
 
         ! sedimentation tendency for output
         qgsedten(i,k)=qgsedten(i,k)-faltndg/nstep
@@ -3986,7 +3990,8 @@ subroutine micro_mg_tend ( &
            ! add fallout terms to eulerian tendencies
            qgtend(i,k) = qgtend(i,k)-faltndg/nstep
            ngtend(i,k) = ngtend(i,k)-faltndng/nstep
-
+           
+ 
            ! sedimentation tendency for output
            qgsedten(i,k)=qgsedten(i,k)-faltndg/nstep
 
@@ -4112,7 +4117,8 @@ subroutine micro_mg_tend ( &
               ngtend(i,k)=ngtend(i,k)-dum*dumng(i,k)/deltat
               qrtend(i,k)=qrtend(i,k)+dum*dumg(i,k)/deltat
               nrtend(i,k)=nrtend(i,k)+dum*dumng(i,k)/deltat
-
+              
+ 
               dum1=-xlf*dum*dumg(i,k)/deltat
               tlat(i,k)=tlat(i,k)+dum1
               meltsdttot(i,k)=meltsdttot(i,k) + dum1
@@ -4143,8 +4149,8 @@ subroutine micro_mg_tend ( &
 
               qrtend(i,k)=qrtend(i,k)-dum*dumr(i,k)/deltat
               nrtend(i,k)=nrtend(i,k)-dum*dumnr(i,k)/deltat
-
-              ! get mean size of rain = 1/lamr, add frozen rain to either snow or cloud ice
+              
+               ! get mean size of rain = 1/lamr, add frozen rain to either snow or cloud ice
               ! depending on mean rain size
               ! add to graupel if using that option....
 
@@ -4156,6 +4162,8 @@ subroutine micro_mg_tend ( &
                  if(do_hail.or.do_graupel) then
                     qgtend(i,k)=qgtend(i,k)+dum*dumr(i,k)/deltat
                     ngtend(i,k)=ngtend(i,k)+dum*dumnr(i,k)/deltat
+                    
+                      
                  else
                     qstend(i,k)=qstend(i,k)+dum*dumr(i,k)/deltat
                     nstend(i,k)=nstend(i,k)+dum*dumnr(i,k)/deltat
@@ -4529,6 +4537,9 @@ subroutine micro_mg_tend ( &
      end do
   end do
 
+
+  
+  
   ! DO STUFF FOR OUTPUT:
   !==================================================
 

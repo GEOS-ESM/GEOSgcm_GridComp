@@ -1759,14 +1759,16 @@ subroutine hystpdf_new( &
 
       ! real, parameter :: RL  = 12.0e-6
       ! real, parameter :: RI  = 50.0e-6
-     
-     
-       real :: RL, RI
-
-     
       
       integer  :: STRATEGY
       real     :: minrhx 
+     
+      real :: RL, RI, rho
+       
+      rho = 100.*PL / (MAPL_RGAS*TE ) !air density Kg/m3
+
+     
+     
 
       STRATEGY = 1
 
@@ -1785,20 +1787,20 @@ subroutine hystpdf_new( &
             dQi =  DCIFshlw*iMASS
             dQl =  DCLFshlw*iMASS
            
-            dNi = make_IceNumber (dQi, TE)
-            dNl = make_DropletNumber (dQl,nwfax)  
+            dNi = make_IceNumber (dQi, TE)/rho
+            dNl = make_DropletNumber (dQl,nwfax)/rho  
              
-            NL = NL + dNl*DT*(1.-AF)*scale_ncpl_uw   
-            NI = NI + dNi*DT*(1.0-AF)*scale_ncpi_uw 
+            NL = NL + dNl*DT*scale_ncpl_uw   
+            NI = NI + dNi*DT*scale_ncpi_uw 
             
-            if ((DMF  + DMFshlw) .gt. 1.0e-16) then ! Concentration of droplets and ice crystals in the detrainment 
+           ! if ((DMF  + DMFshlw) .gt. 1.0e-16) then ! Concentration of droplets and ice crystals in the detrainment 
               
-               CNVNDROP = dNL/iMASS/(DMF  + DMFshlw)
-               CNVNICE =  dNi/iMASS/(DMF  + DMFshlw)
-            else
-                CNVNDROP =  0.0
-                CNVNICE = 0.0
-            end if 
+           !    CNVNDROP = dNL/iMASS/(DMF  + DMFshlw)
+           !    CNVNICE =  dNi/iMASS/(DMF  + DMFshlw)
+           ! else
+           !     CNVNDROP =  0.0
+           !     CNVNICE = 0.0
+           ! end if 
       else
       
           fQi =  CNVFICE  

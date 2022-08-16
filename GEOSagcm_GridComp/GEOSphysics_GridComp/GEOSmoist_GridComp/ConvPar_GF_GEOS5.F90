@@ -280,7 +280,7 @@ CONTAINS
                                ,TRACER,FSCAV,CNAMES,QNAMES,DTRDT_GF               &
                                ,RSU_CN,REV_CN, PFI_CN, PFL_CN                     &
 			       ,TPWI,TPWI_star,LIGHTN_DENS                        &    
-			       ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d                   &
+             ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d, NWFA                   &
 			       !,CNV_TR &!,VAR2d,ZKBCON
     			       )
 
@@ -314,9 +314,9 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp,mzp)                 :: CNV_TR  
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: CNV_MFC
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: CNV_MF0 ,CNV_PRC3,CNV_MFD,CNV_DQLDT  &
-                                                     ,CNV_UPDF, CNV_CVW, CNV_QC,CLCN,ENTLAM&
-                                                     ,CNV_NICE, CNV_NDROP, CNV_FICE
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT)  :: CNV_MF0 ,CNV_PRC3,CNV_MFD,CNV_DQLDT  &
+                                                     ,CNV_UPDF, CNV_CVW, CNV_QC,CLCN,ENTLAM &
+                                                     ,CNV_NICE, CNV_NDROP, CNV_FICE, NWFA
     !-for debug purposes
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: DQDT_GF,DTDT_GF,MUPDP,MDNDP,MUPSH,MUPMD ,DTRDT_GF
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(INOUT):: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
@@ -436,7 +436,7 @@ CONTAINS
     REAL    :: tem1,dz,air_dens, src_cnvtr,snk_cnvtr,dz_int,tau_cp
     CHARACTER(len=10) :: ENV_SETTING='DEFAULT'! ! 'CURRENT'/'DEFAULT'
     INTEGER, PARAMETER :: itest=1!3 
-    REAL :: RL, RI, disp_factor,x1,x2
+    REAL :: dQl, dQi, dNl, dNi
 
     !--- to reproduce model behavior when using single-moment and version X0039_p5/f525_p5_fp of Dec 2019
     IF(ZERO_DIFF == 1) THEN
@@ -755,8 +755,6 @@ CONTAINS
                      ,SRC_T       &
                      ,SRC_Q       &
                      ,SRC_CI      &
-                     ,SRC_NL      &
-                     ,SRC_NI      &
                      ,SRC_U       &
                      ,SRC_V       &
                      ,SUB_MPQI    & 
@@ -1024,41 +1022,36 @@ ENDIF
       ENDDO
   ENDIF
 
+!print *, '=========='
   IF(adjustl(CLDMICRO) =="2MOMENT") then 
     !- we adjust convective cloud condensate and number here
         DO j=1,myp
          DO i=1,mxp
           DO k=1,mzp 
-
-!---obsolete
-             !tem1 = T(i,j,k)             
-             !RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
-             !RL =   min(max(RL, 10.0), 30.0)*1.e-6              
-             !RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
-             !RI =   min(max(RI, 20.0), 250.0)*1.e-6
-             !tem1 = 1.- (tem1 - 235.0) /38.0 
-             !tem1 =  min(max(0.0, tem1), 1.0)
-             ! make up some "number" sources. In the future this should depend explicitly on the convective mphysics
-             !disp_factor =  10.0 ! used to account somehow for the size dist
-	     !SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
-	     !SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
-             !CNV_FICE (i, j, k)   =   tem1
-!---obsolete
              
-	     tem1 = frct_liq(i,j,k)
-             
-             QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
-             QICN (i,j,k) = QICN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * tem1
-
-             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist * SRC_NL(flip(k),i,j)                
-             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist * SRC_NI(flip(k),i,j)     
-            
+             CNV_FICE(i, j, k) = 1.0 - frct_liq(i,j,k) 
              DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
              air_dens = 100.*PLO_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
+ 
+ 
+             dQl =  SRC_CI(flip(k),i,j) *frct_liq(i,j,k)	        
+             QLCN (i,j,k) = QLCN (i,j,k) + dQl*DT_moist 
+             dQi =  SRC_CI(flip(k),i,j) * (1.-frct_liq(i,j,k))
+             QICN (i,j,k) = QICN (i,j,k) + dQi*DT_moist 
+
+
+             dNi = make_IceNumber (dQi, T_n(i,j,k))/air_dens
+             dNl = make_DropletNumber (dQl, NWFA(i, j, k))/air_dens
+             
+             !print*, k, 'dqi', dQi,  'dNi', dNi, 'dql', dQl,  'dNl', dNl, 'qnfwa',  NWFA(i, j, k)  
+
+             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist * dNl               
+             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist * dNi    
+             
                                               
              if (CNV_MFD (i,j,k)  .gt. 0.) then 
-                CNV_NICE (i,j,k)=   SRC_NI(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
-                CNV_NDROP(i,j,k)=   SRC_NL(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
+                CNV_NICE (i,j,k)=  dNi*DZ * air_dens/CNV_MFD (i,j,k) 
+                CNV_NDROP(i,j,k)=  dNl*DZ * air_dens/CNV_MFD (i,j,k) 
              endif 
           ENDDO
          ENDDO 
@@ -1226,8 +1219,6 @@ ENDIF
               ,rthcuten              &
               ,rqvcuten              &
               ,rqccuten              &
-              ,rnlcuten              &
-              ,rnicuten              &
               ,rucuten               &
               ,rvcuten               &
               ,sub_mpqi              & 
@@ -1314,8 +1305,6 @@ ENDIF
                                                     rthcuten   &
                                                    ,rqvcuten   &
                                                    ,rqccuten   &
-                                                   ,rnlcuten   &
-                                                   ,rnicuten   &
                                                    ,rucuten    &
                                                    ,rvcuten    &
                                                    ,rbuoycuten &
@@ -2092,17 +2081,6 @@ loop1:  do n=1,maxiens
              SUB_MPQL (:,kr,i,j)= (outmpql(:,i,k,deep)+outmpql(:,i,k,mid)+outmpql(:,i,k,shal)) *fixout_qv(i)
              SUB_MPQI (:,kr,i,j)= (outmpqi(:,i,k,deep)+outmpqi(:,i,k,mid)+outmpqi(:,i,k,shal)) *fixout_qv(i)
              SUB_MPCF (:,kr,i,j)= (outmpcf(:,i,k,deep)+outmpcf(:,i,k,mid)+outmpcf(:,i,k,shal)) *fixout_qv(i)
-       ENDDO
-      ENDDO
-     ENDIF     
-
-     IF(LIQ_ICE_NUMBER_CONC == 1) THEN
-      DO i = its,itf
-       if(do_this_column(i,j) == 0) CYCLE
-       DO k = kts,kte
-             kr=k!+1
-             RNICUTEN (kr,i,j)= (outnice(i,k,shal) + outnice(i,k,deep) + outnice(i,k,mid )) *fixout_qv(i)
-             RNLCUTEN (kr,i,j)= (outnliq(i,k,shal) + outnliq(i,k,deep) + outnliq(i,k,mid )) *fixout_qv(i)
        ENDDO
       ENDDO
      ENDIF     
@@ -12559,7 +12537,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
  end subroutine GF_convpar_init 
 !------------------------------------------------------------------------------------
  subroutine get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop    &
-                                   ,dtime,rho,outqc,tempco,outnliq,outnice)
+                                  ,dtime,rho,outqc,tempco,outnliq,outnice)
      
     implicit none
     integer,   intent (in )  :: itf,ktf,its,ite,kts,kte
@@ -12576,7 +12554,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
     real,   dimension (its:ite,kts:kte) :: nifa   ! in the future set this as NCPI
     
     
-    nwfa(:,:) =  99.e7  ! in the future set this as NCPL. Actually this is CCN number
+    nwfa(:,:) =  99.e7  ! in the future set this as NCPL
     nifa(:,:) =  0.     ! in the future set this as NCPI
     dtinv    = 1./dtime
     do i=its,itf
@@ -12710,8 +12688,8 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
       real:: q_nwfa, x1, xDc
       integer:: nu_c
 
-      if (Q_cloud == 0) then
-         make_DropletNumber = 0
+      if (Q_cloud .le. 0.) then
+         make_DropletNumber = 0.0
          return
       end if
 
@@ -12726,6 +12704,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
       lambda = (4.0D0 + nu_c) / xDc
       qnc = Q_cloud / g_ratio(nu_c) * lambda*lambda*lambda / am_r
       make_DropletNumber = SNGL(qnc)
+      
 
       return
       end function make_DropletNumber
@@ -12934,3 +12913,5 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
 
 
 END  MODULE ConvPar_GF_GEOS5
+
+
