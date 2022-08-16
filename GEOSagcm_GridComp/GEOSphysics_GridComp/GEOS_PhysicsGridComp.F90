@@ -1394,7 +1394,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'DTDT_DC', 'DTDT_SC',                     &
-                         'DQLDT_micro', 'DQIDT_micro'/),           & 
+                         'DQLDT'  , 'DQIDT'  /),                   & 
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )

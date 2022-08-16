@@ -266,16 +266,16 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
      VERIFY_(STATUS)
      call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME = 'DQLDT_micro',                                   &
-         LONG_NAME = 'total_liq_water_tendency_due_to_largescale',       &
+         SHORT_NAME = 'DQLDT',                                   &
+         LONG_NAME = 'total_liq_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
      VERIFY_(STATUS)
      call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME= 'DQIDT_micro',                                   &
-         LONG_NAME = 'total_ice_water_tendency_due_to_largescale',       &
+         SHORT_NAME= 'DQIDT',                                   &
+         LONG_NAME = 'total_ice_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -1267,8 +1267,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, HT_sc,    'DTDT_SC', RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT_micro', RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT_micro', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT'  , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT'  , RC=STATUS ); VERIFY_(STATUS)
 
 ! Allocate/refer to the outputs
 !------------------------------
