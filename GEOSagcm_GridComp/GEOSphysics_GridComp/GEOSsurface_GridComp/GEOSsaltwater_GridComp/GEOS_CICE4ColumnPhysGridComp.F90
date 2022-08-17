@@ -1715,7 +1715,7 @@ contains
 
    call ESMF_VMGetCurrent(VM, __RC__)
    call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=pet, __RC__)
-   !call ESMF_VMBarrier(VM, __RC__)
+   call ESMF_VMBarrier(VM, __RC__)
    call MAPL_TimerOn(MAPL,    "-In_ReDist")
 !load balance setup
    if(loadBalance) then
@@ -2765,7 +2765,7 @@ contains
 
     call MAPL_TimerOff(MAPL,    "-Albedo")
 
-    !call ESMF_VMBarrier(VM, __RC__)
+    call ESMF_VMBarrier(VM, __RC__)
     call MAPL_TimerOn(MAPL,    "-Out_ReDist")
     if(loadBalance) then
 #include "BufferUnpacking.h"
