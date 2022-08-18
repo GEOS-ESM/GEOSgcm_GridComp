@@ -5068,7 +5068,7 @@ contains
 
     integer  unit
 
-    real DCS, QCVAR_, WBFFACTOR, NC_CST, NI_CST, NG_CST, MUI_CST
+    real DCS, QCVAR_, WBFFACTOR, NC_CST, NI_CST, NG_CST, MUI_CST, CNV_NUMLIQ_SC, CNV_NUMICE_SC
     logical  :: nccons, nicons, ngcons, do_graupel
     integer  :: LM
  
@@ -5136,6 +5136,9 @@ contains
     
     do_graupel = .false.
 
+    call MAPL_GetResource(MAPL, CNV_NUMLIQ_SC,   'CNV_NUMLIQ_SC:', DEFAULT= 0.1 ,RC=STATUS) !scaling for conv number
+    call MAPL_GetResource(MAPL, CNV_NUMICE_SC,   'CNV_NUMICE_SC:', DEFAULT= 1.0 ,RC=STATUS)
+       
     if(adjustl(CLDMICRO)=="2MOMENT") then
 
        if (MGVERSION .gt. 2.0) do_graupel = .true.
@@ -5171,8 +5174,10 @@ contains
            call ini_micro(Dcsr8, micro_mg_berg_eff_factor_in, &
                           nccons, nicons, ncnstr8, ninstr8, qcvarr8)
        end if 
+        
+       qcvarr8=QCVAR_
                          
-       call aer_cloud_init()
+       call aer_cloud_init(CNV_NUMLIQ_SC, CNV_NUMICE_SC)
        call WRITE_PARALLEL ("INITIALIZED MG in non-generic GC INIT")
     end if
     
@@ -5186,7 +5191,7 @@ contains
     end if
  
     if( (adjustl(CLDMICRO)=="1MOMENT" .or. adjustl(CLDMICRO)=="GFDL") .and. USE_AEROSOL_NN) then
-       call aer_cloud_init()
+       call aer_cloud_init(CNV_NUMLIQ_SC, CNV_NUMICE_SC)
        call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for 1moment")
     end if
 !--kml
@@ -6447,8 +6452,8 @@ contains
           
       call MAPL_GetResource(STATE, USE_NATURE_WSUB,     'USE_NAT_WSUB:',     DEFAULT= 1.0  ,RC=STATUS) !greater than zero reads wsub from nature run	             
       call MAPL_GetResource(STATE, DCS, 'DCS:', default=350.0e-6, RC=STATUS )
-      call MAPL_GetResource(STATE, CLDPARAMS%SCALE_NCPL_UW,         'SCALE_NCPL_UW:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the droplet number in shallow detrainment 
-      call MAPL_GetResource(STATE, CLDPARAMS%SCALE_NCPI_UW,         'SCALE_NCPI_UW:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the ice crystal number in shallow detrainment 
+      !call MAPL_GetResource(STATE, CLDPARAMS%SCALE_NCPL_UW,         'SCALE_NCPL_UW:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the droplet number in shallow detrainment 
+      ! call MAPL_GetResource(STATE, CLDPARAMS%SCALE_NCPI_UW,         'SCALE_NCPI_UW:',     DEFAULT= 1.0,   RC=STATUS) ! Scales the ice crystal number in shallow detrainment 
       
       call MAPL_GetResource( STATE, RRTMG_IRRAD ,'USE_RRTMG_IRRAD:', DEFAULT=0.0, RC=STATUS)
       VERIFY_(STATUS)
@@ -6457,11 +6462,11 @@ contains
     
      if  (MGVERSION .lt. 2.0) then
       
-        call MAPL_GetResource(STATE, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 1.0,    RC=STATUS) !accretion snow-ice scaling for MG2
-        call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 0.5,  RC=STATUS) !Ice autoconversion time scale
+       call MAPL_GetResource(STATE, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 1.0,    RC=STATUS) !accretion snow-ice scaling for MG2
+        call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 0.25,  RC=STATUS) !Ice autoconversion time scale
      else      
-        call MAPL_GetResource(STATE, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 0.1 ,    RC=STATUS) !accretion snow-ice scaling for MG2  
-        call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 2.0, RC=STATUS) !Ice autoconversion time scale
+        call MAPL_GetResource(STATE, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 0.05 ,    RC=STATUS) !accretion snow-ice scaling for MG2  
+        call MAPL_GetResource(STATE, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 4.0, RC=STATUS) !Ice autoconversion time scale
      end if
   
 !!!!!!!!!!!!!!!!!

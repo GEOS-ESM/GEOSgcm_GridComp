@@ -12,7 +12,7 @@ module cldmacro
    use GEOS_UtilsMod,     only:QSAT=>GEOS_Qsat, DQSAT=>GEOS_DQsat, &
          QSATLQ=>GEOS_QsatLQU, QSATIC=>GEOS_QsatICE
    
-   use ConvPar_GF_GEOS5,  only: make_DropletNumber, make_IceNumber      
+   use aer_cloud,  only: make_DropletNumber, make_IceNumber      
 
    use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
          MAPL_GRAV , MAPL_ALHS , &
@@ -88,8 +88,6 @@ module cldmacro
    integer :: pdfflag
    real    :: sloperhcrit
    real :: min_lts
-   real :: scale_ncpl_uw
-   real :: scale_ncpi_uw
    real :: sclm_shw, sclm_deep
 
    real, parameter :: T_ICE_MAX    = MAPL_TICE  ! -7.0+MAPL_TICE
@@ -372,8 +370,6 @@ contains
       MAX_RL        = CLDPARAMS%MAX_RL
       MAX_RI        = CLDPARAMS%MAX_RI
       PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
-      scale_ncpl_uw   = CLDPARAMS%scale_ncpl_uw
-      scale_ncpi_uw   = CLDPARAMS%scale_ncpi_uw
       sclm_shw =  CLDPARAMS%SCLM_SHW
       sclm_deep =  sclmfdfr
       turnrhcrit_upper = CLDPARAMS%TURNRHCRIT_UP
@@ -1790,8 +1786,8 @@ subroutine hystpdf_new( &
             dNi = make_IceNumber (dQi, TE)/rho
             dNl = make_DropletNumber (dQl,nwfax)/rho  
              
-            NL = NL + dNl*DT*scale_ncpl_uw   
-            NI = NI + dNi*DT*scale_ncpi_uw 
+            NL = NL + dNl*DT 
+            NI = NI + dNi*DT
             
            ! if ((DMF  + DMFshlw) .gt. 1.0e-16) then ! Concentration of droplets and ice crystals in the detrainment 
               
