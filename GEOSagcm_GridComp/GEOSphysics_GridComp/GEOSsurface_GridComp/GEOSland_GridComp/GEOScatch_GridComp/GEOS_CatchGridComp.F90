@@ -897,6 +897,16 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'snow_albedo'               ,&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'SNOWALB'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+  call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_at_wilting_point'  ,&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'WPWET'                     ,&
@@ -3763,6 +3773,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: psis
         real, dimension(:),   pointer :: bee
         real, dimension(:),   pointer :: poros
+        real, dimension(:),   pointer :: snowalb
         real, dimension(:),   pointer :: wpwet
         real, dimension(:),   pointer :: cond
         real, dimension(:),   pointer :: gnu
@@ -4132,6 +4143,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
+
+        integer                       :: SNOW_ALBEDO_INFO
+        character(len=ESMF_MAXSTR)    :: SURFRC
+        type(ESMF_Config)             :: SCF
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4354,8 +4369,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CM         ,'CM'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
         if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
@@ -4856,6 +4871,25 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
                  SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
+
+
+        call MAPL_GetResource(MAPL,SURFRC,label='SURFRC:',default='GEOS_SurfaceGridComp.rc',RC=STATUS) ; VERIFY_(STATUS)
+        SCF = ESMF_ConfigCreate(rc=status)                                                             ; VERIFY_(STATUS)
+        call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status)                                                 ; VERIFY_(STATUS)
+        call MAPL_GetResource(SCF,SNOW_ALBEDO_INFO,Label="SNOW_ALBEDO_INFO:", DEFAULT=0, RC=STATUS)    ; VERIFY_(STATUS)
+
+        if (SNOW_ALBEDO_INFO == 1) then
+
+            call MAPL_GetPointer(INTERNAL,SNOWALB    ,'SNOWALB'    ,RC=STATUS); VERIFY_(STATUS)
+
+        where (SNOWALB > 0. .and. SNOWALB <= 1.)
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+        endwhere
+
+        endif ! if SNOW_ALBEDO_INFO 
 
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
@@ -5534,6 +5568,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+
+        if (SNOW_ALBEDO_INFO == 1) then
+
+        where (SNOWALB > 0. .and. SNOWALB <= 1.)
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+        endwhere
+
+        endif ! if SNOW_ALBEDO_INFO 
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
