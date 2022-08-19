@@ -6032,8 +6032,9 @@ contains
       ! GEOS-Chem stuff
       character(len=ESMF_MAXSTR)      :: SpcName 
       REAL, DIMENSION(3)              :: Vect_KcScal
-      LOGICAL                         :: is_gcc
+      LOGICAL                         :: is_gcc, use_gocart
       REAL                            :: retfactor, liq_and_gas, convfaci2g, online_cldliq, online_vud 
+      REAL                            :: ftemp_threshold
 
       !!real,    dimension(IM,JM,  LM)  :: QILS, QICN ! Soon to be moved into internal state
 
@@ -7219,6 +7220,8 @@ contains
            Hcts(1:KM)%liq_and_gas     = 0.
            Hcts(1:KM)%online_cldliq   = 0.
            Hcts(1:KM)%online_vud      = 1.0
+           Hcts(1:KM)%use_gocart      = .FALSE.
+           Hcts(1:KM)%ftemp_threshold = -999.0 
         ENDIF
       ENDIF
 
@@ -7325,17 +7328,19 @@ contains
            if (IS_FRIENDLY(K)) then
               SpcName = QNAMES(K)
               call GCC_check_params(EXPORT,k,SpcName,FIELD,is_gcc,Vect_KcScal,retfactor,liq_and_gas,&
-                                    convfaci2g,online_cldliq,online_vud, __RC__ )
+                                    convfaci2g,online_cldliq,online_vud,use_gocart,ftemp_threshold, __RC__ )
               if ( is_gcc ) then
-                 Hcts(k)%is_gcc        = .TRUE.
-                 Hcts(k)%KcScal1       = Vect_KcScal(1)
-                 Hcts(k)%KcScal2       = Vect_KcScal(2)
-                 Hcts(k)%KcScal3       = Vect_KcScal(3)
-                 Hcts(k)%retfactor     = retfactor
-                 Hcts(k)%liq_and_gas   = liq_and_gas
-                 Hcts(k)%convfaci2g    = convfaci2g
-                 Hcts(k)%online_cldliq = online_cldliq
-                 Hcts(k)%online_vud    = online_vud
+                 Hcts(k)%is_gcc          = .TRUE.
+                 Hcts(k)%KcScal1         = Vect_KcScal(1)
+                 Hcts(k)%KcScal2         = Vect_KcScal(2)
+                 Hcts(k)%KcScal3         = Vect_KcScal(3)
+                 Hcts(k)%retfactor       = retfactor
+                 Hcts(k)%liq_and_gas     = liq_and_gas
+                 Hcts(k)%convfaci2g      = convfaci2g
+                 Hcts(k)%online_cldliq   = online_cldliq
+                 Hcts(k)%online_vud      = online_vud
+                 Hcts(k)%use_gocart      = use_gocart 
+                 Hcts(k)%ftemp_threshold = ftemp_threshold 
               end if
            end if
          ENDIF

@@ -245,7 +245,8 @@ CONTAINS
 
 !---------------------------------------------------------------------------------------------------
   SUBROUTINE GCC_check_params( EXPORT, k, SpcName, FIELD, is_gcc, Vect_KcScal, retfactor, &
-                               liq_and_gas, convfaci2g, online_cldliq, online_vud, RC )
+                               liq_and_gas, convfaci2g, online_cldliq, online_vud, use_gocart, &
+                               ftemp_threshold, RC )
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
@@ -263,11 +264,14 @@ CONTAINS
     REAL, INTENT(OUT)                 :: convfaci2g
     REAL, INTENT(OUT)                 :: online_cldliq
     REAL, INTENT(OUT)                 :: online_vud
+    LOGICAL, INTENT(OUT)              :: use_gocart 
+    REAL, INTENT(OUT)                 :: ftemp_threshold
     INTEGER, INTENT(OUT)              :: RC       ! Success or failure
     ! Local variables
     CHARACTER(LEN=ESMF_MAXSTR)        :: shortname
     CHARACTER(LEN=ESMF_MAXSTR)        :: diagname
     INTEGER                           :: I
+    REAL                              :: doit
     LOGICAL                           :: isPresent
     REAL, POINTER, DIMENSION(:,:)     :: GCptr2d
     REAL, POINTER, DIMENSION(:,:,:)   :: GCptr3d
@@ -275,12 +279,14 @@ CONTAINS
     __Iam__('GCC_check_params')
 
     ! Default initial values
-    is_gcc = .FALSE.
-    Vect_KcScal(:) = 1.0
-    retfactor      = 1.0
-    liq_and_gas    = 0.0
-    online_cldliq  = 0.0
-    online_vud     = 1.0
+    is_gcc          = .FALSE.
+    Vect_KcScal(:)  = 1.0
+    retfactor       = 1.0
+    liq_and_gas     = 0.0
+    online_cldliq   = 0.0
+    online_vud      = 1.0
+    use_gocart      = .FALSE.
+    ftemp_threshold = -999.0
     ! check if this is a GEOS-Chem species
     if ( LEN(TRIM(SpcName)) > 4 ) then
     if ( TRIM(SpcName(1:4)) == 'SPC_' ) then
@@ -310,6 +316,15 @@ CONTAINS
        call ESMF_AttributeGet (FIELD,"OnlineVUD",isPresent=isPresent, __RC__ )
        if (isPresent) then
           call ESMF_AttributeGet (FIELD,"OnlineVUD",online_vud, __RC__ )
+       endif
+       call ESMF_AttributeGet (FIELD,"UseGOCART",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet (FIELD,"UseGOCART",doit, __RC__ )
+          if ( doit==1.0 ) use_gocart = .TRUE.
+       endif
+       call ESMF_AttributeGet (FIELD,"GOCARTfTempThreshold",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet (FIELD,"GOCARTfTempThreshold",ftemp_threshold, __RC__ )
        endif
        ! check if exports are requested for this species. If so, store the species 
        ! index as used by MOIST in the corresponding slot in the local diagnostics

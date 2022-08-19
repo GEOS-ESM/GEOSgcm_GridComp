@@ -161,6 +161,8 @@ USE moist_gcc_interface,     ONLY: compute_ki_gcc_aerosol, compute_ki_gcc_gas, &
    REAL    :: online_cldliq
    REAL    :: online_vud 
    LOGICAL :: is_gcc
+   LOGICAL :: use_gocart 
+   REAL    :: ftemp_threshold 
 END TYPE Hcts_vars
  TYPE (Hcts_vars), ALLOCATABLE :: Hcts(:)
 
@@ -10056,9 +10058,16 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
                        ! Use GEOS-Chem formulation for GEOS-Chem species...
                        if ( is_gcc ) then
-                          call compute_ki_gcc_aerosol ( tempco(i,k), Hcts(ispc)%KcScal1, Hcts(ispc)%KcScal2, Hcts(ispc)%KcScal3, kc_scaled )
-                          ftemp      = fscav(ispc)  ! apply aerosol scavenging efficiency 
-                          this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), Hcts(ispc)%online_vud )
+                          if ( Hcts(ispc)%use_gocart ) then
+                             kc_scaled  = kc
+                             this_w_upd = w_upd
+                             ftemp = 1.0
+                             if ( tempco(i,k) < Hcts(ispc)%ftemp_threshold ) ftemp = 0.0 
+                          else
+                             call compute_ki_gcc_aerosol ( tempco(i,k), Hcts(ispc)%KcScal1, Hcts(ispc)%KcScal2, Hcts(ispc)%KcScal3, kc_scaled )
+                             ftemp      = fscav(ispc)  ! apply aerosol scavenging efficiency 
+                             this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), Hcts(ispc)%online_vud )
+                          endif
 
                        ! Original formulation
                        else
