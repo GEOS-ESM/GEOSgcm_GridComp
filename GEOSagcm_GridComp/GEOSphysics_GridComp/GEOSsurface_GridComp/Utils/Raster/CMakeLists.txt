@@ -2,13 +2,13 @@ esma_set_this(OVERRIDE raster)
 set (srcs
 date_time_util.F90
 leap_year.F90
-easeV1_conv.F90
+EASE_conv.F90
 mod_process_hres_data.F90
-easeV2_conv.F90
 rasterize.F90
 read_riveroutlet.F90
 CubedSphere_GridMod.F90
 rmTinyCatchParaMod.F90
+CatchParams.F90
 zip.c
 util.c
 )
@@ -46,6 +46,6 @@ ecbuild_add_executable (TARGET mkMOMAquaRaster.x SOURCES mkMOMAquaRaster.F90 LIB
 ecbuild_add_executable (TARGET FillMomGrid.x SOURCES FillMomGrid.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkSMAPTilesPara.x SOURCES mkSMAPTilesPara.F90 LIBS MAPL ${this})
-ecbuild_add_executable (TARGET mkSMAPTilesPara_v2.x SOURCES mkSMAPTilesPara_v2.F90 LIBS MAPL ${this})
+#ecbuild_add_executable (TARGET mkSMAPTilesPara_v2.x SOURCES mkSMAPTilesPara_v2.F90 LIBS MAPL ${this})
 
 install(PROGRAMS make_bcs clsm_plots.pro plot_curves.pro create_README.csh plot_curves.csh DESTINATION bin)

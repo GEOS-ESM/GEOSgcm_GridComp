@@ -1298,7 +1298,7 @@ if(${MGRID} == M09 | ${MGRID} == M36) then
     /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
 endif
 setenv OMP_NUM_THREADS 1
-bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -v $lbcsv 
+bin/mkSMAPTilesPara.x -smap_grid ${MGRID} -v $lbcsv -EASE v2 
 setenv OMP_NUM_THREADS ${NCPUS}
 head -1 clsm/mkCatchParam.log > smap_cmd
 chmod 755 smap_cmd
@@ -1308,7 +1308,7 @@ bin/create_README.csh
 else
 setenv MASKFILE ${MASKFILE}
 setenv OMP_NUM_THREADS 1
-bin/mkSMAPTilesPara.x -smap_grid ${MGRID}
+bin/mkSMAPTilesPara.x -smap_grid ${MGRID} -EASE v1
 setenv OMP_NUM_THREADS ${NCPUS}
 head -1 clsm/mkCatchParam.log > smap_cmd
 chmod 755 smap_cmd
