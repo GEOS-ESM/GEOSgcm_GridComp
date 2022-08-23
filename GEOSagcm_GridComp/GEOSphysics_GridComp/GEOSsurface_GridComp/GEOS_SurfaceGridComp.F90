@@ -5813,9 +5813,7 @@ module GEOS_SurfaceGridCompMod
        call ESMF_FieldBundleSet(bundle, GRID=GRID, RC=STATUS)
        VERIFY_(STATUS)
 
-     ! call MAPL_CFIORead( PRECIP_FILE, CurrentTime, Bundle, RC=STATUS)
-     ! VERIFY_(STATUS)
-       call MAPL_read_bundle( Bundle,PRECIP_FILE, CurrentTime, RC=status)
+       call MAPL_read_bundle( Bundle,PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
        VERIFY_(STATUS)
        call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
        VERIFY_(STATUS)
