@@ -1721,8 +1721,7 @@ contains
    if(loadBalance) then
 
       TILE_WITH_ICE = .true.
-      call MAPL_BalanceCreate(OrgLen=NT_ORIGINAL, Comm=COMM, Handle=CICECOREBalanceHandle, BalLen=NT, BufLen=NUMMAX, rc=STATUS)
-      VERIFY_(STATUS)
+      call MAPL_BalanceCreate(OrgLen=NT_ORIGINAL, Comm=COMM, Handle=CICECOREBalanceHandle, BalLen=NT, BufLen=NUMMAX, __RC__)
      HorzDims = NT_ORIGINAL   ! Slice size for buffer packing
 
 !****IMPORTANT****!!! Adjust the relevant buffer(s) and pointer assigments BufferPacking.h and BufferUnpacking.h if import/internal/export fields are added/deleted
@@ -2771,6 +2770,8 @@ contains
 #include "BufferUnpacking.h"
        deallocate(BUFIMP,BUFINT,BUFINT8,BUFEXP,STAT=STATUS)
        VERIFY_(STATUS)
+
+       call MAPL_BalanceDestroy(Handle=CICECOREBalanceHandle, __RC__)
     endif
     call MAPL_TimerOff(MAPL,    "-Out_ReDist")
 
