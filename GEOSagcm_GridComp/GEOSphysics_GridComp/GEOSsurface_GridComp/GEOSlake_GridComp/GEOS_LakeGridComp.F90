@@ -1788,25 +1788,24 @@ contains
 
        allocate(DATA_SST(NT), DATA_FR(NT), stat=status); VERIFY_(STATUS)
        call MAPL_ReadForcing(MAPL, 'SST', mystate%sstfile,&
-            CURRENT_TIME, DATA_SST, ON_TILES=.true., RC=STATUS)
+            CURRENT_TIME, DATA_SST, RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_ReadForcing(MAPL, 'FR', mystate%dataFrtFile,&
-            CURRENT_TIME, DATA_FR, ON_TILES=.true., RC=STATUS)
+            CURRENT_TIME, DATA_FR, RC=STATUS)
        VERIFY_(STATUS)
 
        do I=1,NT
           if(mystate%mask(i)) then
              ! we are operating over the 'observed' lake: Great Lakes and Caspian Sea (set by mask)
              TS(I,WATER) = DATA_SST(I)
+             TS(I,ICE)   = Tfreeze
              if (data_fr(i) > mystate%tol_frice) then !have lake ice
-                TS(I,ICE)   = Tfreeze
                 FR(I,WATER) = 1.0-DATA_FR(I)
                 FR(I,ICE)   = DATA_FR(I)
+             else
+                FR(I,WATER) = 1.0
+                FR(I,ICE)   = 0.0
              end if
-          else ! water
-             ! we are not changing TS(:,ICE)
-             FR(I,WATER) = 1.0
-             FR(I,ICE)   = 0.0
           end if
        end do
 
