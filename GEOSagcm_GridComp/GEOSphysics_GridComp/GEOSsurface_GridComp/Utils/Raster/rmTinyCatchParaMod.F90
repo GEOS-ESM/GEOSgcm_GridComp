@@ -89,6 +89,7 @@ contains
        GNU     = 2.17
        use_PEATMAP = .false.
        jpl_height  = .false.
+       use_snow_albedo= .false.
 
     case ("GM4", "ICA")
        LAIBCS  = 'GSWP2'
@@ -96,6 +97,7 @@ contains
        MODALB  = 'MODIS2'
        use_PEATMAP = .false.
        jpl_height  = .false.
+       use_snow_albedo= .false.
 
     case ("NL3")
        LAIBCS  = 'MODGEO'
@@ -103,6 +105,7 @@ contains
        MODALB  = 'MODIS2'
        use_PEATMAP = .false.
        jpl_height  = .false.
+       use_snow_albedo= .false.
 
      case ("NL4")
        LAIBCS  = 'MODGEO'
@@ -110,6 +113,7 @@ contains
        MODALB  = 'MODIS2'      
        use_PEATMAP = .false.
        jpl_height  = .true.
+       use_snow_albedo= .false.
 
      case ("NL5")
        LAIBCS  = 'MODGEO'
@@ -117,6 +121,7 @@ contains
        MODALB  = 'MODIS2'
        use_PEATMAP = .true.
        jpl_height  = .true.
+       use_snow_albedo= .false.
 
      case ("NL6")   
        LAIBCS  = 'MODGEO'
@@ -132,6 +137,7 @@ contains
        MODALB  = 'MODIS2'
        use_PEATMAP = .true.
        jpl_height  = .true.
+       use_snow_albedo= .false.
        
     end select
              

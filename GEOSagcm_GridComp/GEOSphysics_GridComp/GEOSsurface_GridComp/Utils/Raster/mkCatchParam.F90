@@ -653,8 +653,6 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
        
-       ! Creating snow_alb_param.dat
-       ! ---------------------------------------------------------------------
        if(use_snow_albedo)then
          tmpstring = 'Step 14: Snow albedo from MODIS' 
          write (log_file,'(a)') trim(tmpstring)
