@@ -50,6 +50,8 @@ program SaltIntSplitter
   integer :: status
   type (Variable), pointer :: global
   type (StringIntegerMap), pointer :: dimensions
+  type (StringIntegerMap) :: water_dimensions
+  type (StringIntegerMapIterator) :: d_iter
 
 !---------------------------------------------------------------------------
 
@@ -101,9 +103,19 @@ program SaltIntSplitter
      
      dimensions => InCfg%get_dimensions()
      global     => Incfg%get_global()
-
-     WaterCfg = FileMetaData(dimensions= dimensions, global=global)
      IceCfg   = FileMetaData(dimensions= dimensions, global=global)
+
+     water_dimensions = dimensions
+     d_iter = water_dimensions%find('unknown_dim1')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     d_iter = water_dimensions%find('unknown_dim2')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     d_iter = water_dimensions%find('unknown_dim3')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     d_iter = water_dimensions%find('unknown_dim4')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+
+     WaterCfg = FileMetaData(dimensions= water_dimensions, global=global)
 
      call WaterCfg%modify_dimension('tile', itiles)
      call IceCfg%modify_dimension('tile', itiles)
@@ -114,12 +126,10 @@ program SaltIntSplitter
      endif
 
      if((subtileSize==0) .and. (ungridSize/=0)) then
-        call WaterCfg%modify_dimension('unknown_dim4', ungridSize-1)
         call IceCfg%modify_dimension('unknown_dim4', ungridSize-1)
      endif
      
      if ((subtileSize/=0) .and. (ungridSize/=0)) then
-        call WaterCfg%modify_dimension('unknown_dim4', ungridSize-1)
         call IceCfg%modify_dimension('unknown_dim4', ungridSize-1)
         call WaterCfg%modify_dimension('subtile', 1)
         call IceCfg%modify_dimension('subtile', subtileSize-1)
@@ -152,7 +162,7 @@ program SaltIntSplitter
                  if (dimSizes(2) == 2) then ! AMIP
                    call waterCfg%add_variable(var_name, myVariable)
                  else
-                   if (var_name /= 'TSKINI') then 
+                   if (var_name /= 'TSKINI' .and. var_name /= 'TAUAGE') then 
                      call waterCfg%add_variable(var_name, myVariable)
                    endif 
                 endif
@@ -162,6 +172,11 @@ program SaltIntSplitter
               call iceCfg%add_variable(var_name, myVariable)
            end if
         end if
+
+        if (var_name == 'time') then
+           call iceCfg%add_variable(var_name, myVariable)
+           call waterCfg%add_variable(var_name, myVariable)
+        endif
         call var_iter%next()   
      enddo
 
@@ -226,7 +241,7 @@ program SaltIntSplitter
                  call MAPL_VarRead(InFmt,var_name,varIn,offset1=2, __RC__)
                  call MAPL_VarWrite(WaterFmt,var_name,varIn,offset1=1)
               else
-                 if (var_name == 'TSKINI') then 
+                 if (var_name == 'TSKINI' .or. var_name == 'TAUAGE') then 
                     do j=1,dimSizes(2)
                       call MAPL_VarRead(InFmt,var_name,varIn,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j)
@@ -260,6 +275,11 @@ program SaltIntSplitter
               enddo
            end if
         end if
+
+        if (var_name == 'time') then
+          call MAPL_VarWrite(IceFmt, 'time',[0.0d0])
+          call MAPL_VarWrite(waterFmt,'time',[0.0d0])
+        endif
      
         call var_iter%next()   
      enddo
