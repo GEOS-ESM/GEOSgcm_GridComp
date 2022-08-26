@@ -696,11 +696,11 @@
          SNOONICE => PTR1(1:NT)
          L1 = LN + 1
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'ISTSFC', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'TSKINICE', __RC__)
       if ( associated(PTR1) ) then
          LN = L1 + NUMMAX -1
          PTR1(1:NUMMAX) => BUFEXP(L1:LN)
-         ISTSFC => PTR1(1:NT)
+         TSKINICE => PTR1(1:NT)
          L1 = LN + 1
       end if
       call MAPL_GetPointer(EXPORT,PTR1,'IAGE', __RC__)

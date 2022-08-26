@@ -287,7 +287,7 @@
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'ISTSFC', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'TSKINICE', __RC__)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX

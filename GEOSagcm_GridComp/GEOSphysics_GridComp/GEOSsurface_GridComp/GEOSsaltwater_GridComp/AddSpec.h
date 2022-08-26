@@ -1157,9 +1157,9 @@
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                    ,&
-    SHORT_NAME         = 'ISTSFC',                         &
+    SHORT_NAME         = 'TSKINICE',                  &
     LONG_NAME          = 'snow_or_ice_surface_temperature',&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
