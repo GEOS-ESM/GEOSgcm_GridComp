@@ -2,9 +2,8 @@ esma_set_this(OVERRIDE raster)
 set (srcs
 date_time_util.F90
 leap_year.F90
-easeV1_conv.F90
+EASE_conv.F90
 mod_process_hres_data.F90
-easeV2_conv.F90
 rasterize.F90
 read_riveroutlet.F90
 CubedSphere_GridMod.F90

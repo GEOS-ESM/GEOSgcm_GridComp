@@ -5,7 +5,7 @@ PROGRAM mkSMAPTilesPara_v1
 !     f90 -c smapconv.f
 !     f90 -o create_smap_tiles create_smap_tiles.o smapconv.o
 !
-      use easeV1_conv
+      use ease_conv
       use rmTinyCatchParaMod
       use process_hres_data
       use MAPL_SortMod
