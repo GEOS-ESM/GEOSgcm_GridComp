@@ -485,10 +485,10 @@ contains
      allocate( this%    ghtcnt6(ntiles) )
      
      if (this%meta%has_variable('TSURF')) then
-       allocate( this%      tsurf(ntiles) )
+       allocate( this%    tsurf(ntiles) )
      endif
      if (this%meta%has_variable('SNOWALB')) then
-       allocate( this%         snowalb(ntiles) )
+       allocate( this%  snowalb(ntiles) )
      endif
 
      allocate( this%     wesnn1(ntiles) )
@@ -537,10 +537,10 @@ contains
       logical       :: file_exists
 
       type(NetCDF4_Fileformatter) :: CatchFmt
-      type(Variable) :: var
-      type(FileMetadata) :: meta_
+      type(Variable)              :: var
+      type(FileMetadata)          :: meta_
 
-      character*256        :: Iam = "add_bcs"
+      character*256               :: Iam = "add_bcs"
 
       ntiles = this%ntiles
 
@@ -621,8 +621,10 @@ contains
         call MAPL_VarRead ( CatchFmt ,'WPWET', this%WPWET, __RC__)
         call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR, __RC__)
         call MAPL_VarRead ( CatchFmt ,'POROS', this%POROS, __RC__)
+
         meta_ = CatchFmt%read(__RC__)
-        if ( meta_%has_variable('SNOWALB')) then
+
+        if (meta_%has_variable('SNOWALB')) then
            if ( .not. allocated(this%snowalb)) allocate(this%snowalb(ntiles))
            call MAPL_VarRead ( CatchFmt ,'SNOWALB', this%snowalb, __RC__)
            if ( .not. this%meta%has_variable('SNOWALB')) then
@@ -1091,6 +1093,7 @@ contains
           var_out = this%tsurf(id_glb(:)) 
           this%tsurf = var_out
        endif
+
        if (this%meta%has_variable('SNOWALB')) then
           var_out = this%snowalb(id_glb(:)) 
           this%snowalb = var_out

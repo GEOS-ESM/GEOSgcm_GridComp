@@ -123,7 +123,7 @@ contains
        jpl_height  = .true.
        use_snow_albedo= .false.
 
-     case ("NL6")   
+     case ("V06")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -131,13 +131,21 @@ contains
        jpl_height  = .true.
        use_snow_albedo= .true.
 
-    case ("DEV")
+     case ("V07")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        use_PEATMAP = .true.
-       jpl_height  = .true.
+       jpl_height  = .false.
        use_snow_albedo= .false.
+
+     case ("V08")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       use_PEATMAP = .false.
+       jpl_height  = .false.
+       use_snow_albedo= .true.
        
     end select
              

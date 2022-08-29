@@ -906,6 +906,7 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_at_wilting_point'  ,&
     UNITS              = '1'                         ,&
@@ -4872,22 +4873,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
-
         call MAPL_GetResource(MAPL,SURFRC,label='SURFRC:',default='GEOS_SurfaceGridComp.rc',RC=STATUS) ; VERIFY_(STATUS)
         SCF = ESMF_ConfigCreate(rc=status)                                                             ; VERIFY_(STATUS)
         call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status)                                                 ; VERIFY_(STATUS)
-        call MAPL_GetResource(SCF,SNOW_ALBEDO_INFO,Label="SNOW_ALBEDO_INFO:", DEFAULT=0, RC=STATUS)    ; VERIFY_(STATUS)
+        call MAPL_GetResource(SCF,SNOW_ALBEDO_INFO,Label="SNOW_ALBEDO_INFO:",DEFAULT=0,RC=STATUS)      ; VERIFY_(STATUS)
 
         if (SNOW_ALBEDO_INFO == 1) then
 
-            call MAPL_GetPointer(INTERNAL,SNOWALB    ,'SNOWALB'    ,RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
 
-        where (SNOWALB > 0. .and. SNOWALB <= 1.)
-           SNOVR = SNOWALB
-           SNONR = SNOWALB
-           SNOVF = SNOWALB
-           SNONF = SNOWALB
-        endwhere
+            where (SNOWALB > 0. .and. SNOWALB <= 1.)
+               SNOVR = SNOWALB
+               SNONR = SNOWALB
+               SNOVF = SNOWALB
+               SNONF = SNOWALB
+            endwhere
 
         endif ! if SNOW_ALBEDO_INFO 
 
@@ -5571,12 +5571,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (SNOW_ALBEDO_INFO == 1) then
 
-        where (SNOWALB > 0. .and. SNOWALB <= 1.)
-           SNOVR = SNOWALB
-           SNONR = SNOWALB
-           SNOVF = SNOWALB
-           SNONF = SNOWALB
-        endwhere
+           where (SNOWALB > 0. .and. SNOWALB <= 1.)
+              SNOVR = SNOWALB
+              SNONR = SNOWALB
+              SNOVF = SNOWALB
+              SNONF = SNOWALB
+           endwhere
 
         endif ! if SNOW_ALBEDO_INFO 
 

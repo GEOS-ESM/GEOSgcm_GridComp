@@ -109,7 +109,7 @@ integer :: n_threads=1
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                         "
     USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                          "          
     USAGE(7) ="                the til file format is pre-Fortuna-2.                                                   "
-    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, or DEV)                              "
+    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, V06, V07 and V08)                              "
 
 ! Process Arguments                            
 !------------------ 
@@ -249,7 +249,7 @@ integer :: n_threads=1
         close (10, status = 'keep')
 
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       if (.not.file_exists) CALL open_landparam_nc4_files(N_tile)  
+       if (.not.file_exists) CALL open_landparam_nc4_files(N_tile,use_snow_albedo)  
 
        ! Creating cti_stats.dat 
        ! ----------------------
