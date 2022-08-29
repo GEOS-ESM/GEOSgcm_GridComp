@@ -1314,27 +1314,19 @@ if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
 if(${MGRID} == M09 | ${MGRID} == M36) then 
     bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
-    bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -pfaf_til T
+    bin/mkSMAPTilesPara.x -smap_grid ${MGRID} -pfaf_til T -EASE_VERSION v2
     bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
     bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
     /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
 endif
-setenv OMP_NUM_THREADS 1
-bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -v $lbcsv 
 setenv OMP_NUM_THREADS ${NCPUS}
-head -1 clsm/mkCatchParam.log > smap_cmd
-chmod 755 smap_cmd
-./smap_cmd
+bin/mkSMAPTilesPara.x -smap_grid ${MGRID} -v $lbcsv -EASE_VERSION v2 
 chmod 755 bin/create_README.csh
 bin/create_README.csh
 else
 setenv MASKFILE ${MASKFILE}
-setenv OMP_NUM_THREADS 1
-bin/mkSMAPTilesPara.x -smap_grid ${MGRID}
 setenv OMP_NUM_THREADS ${NCPUS}
-head -1 clsm/mkCatchParam.log > smap_cmd
-chmod 755 smap_cmd
-./smap_cmd
+bin/mkSMAPTilesPara.x -smap_grid ${MGRID} -EASE_VERSION v2
 chmod 755 bin/create_README.csh
 bin/create_README.csh
 endif
