@@ -102,7 +102,7 @@ program SaltIntSplitter
      end if
      
      dimensions => InCfg%get_dimensions()
-     global     => Incfg%get_global()
+     global     => Incfg%get_global_var()
      IceCfg   = FileMetaData(dimensions= dimensions, global=global)
 
      water_dimensions = dimensions
