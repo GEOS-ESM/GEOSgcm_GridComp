@@ -194,8 +194,9 @@ PROGRAM mkSMAPTilesPara_v2
          nr = 21600
          call mkEASEv2Raster
          
-      else
-         if((trim(MGRID) == 'M09').or.(trim(MGRID) == 'M36'))call write_tilfile 
+      !else
+      !   This section was used to make Irrigated Tiles 
+      !   if((trim(MGRID) == 'M09').or.(trim(MGRID) == 'M36'))call write_tilfile 
       endif
       
       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
