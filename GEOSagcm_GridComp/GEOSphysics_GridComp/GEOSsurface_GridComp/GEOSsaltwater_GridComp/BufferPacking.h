@@ -1,3 +1,10 @@
+! Code section for reordering original array pointers and packing them into 
+! 1D buffer that is then subsequently redistributed for load balancing.
+! The actual pointers used for computation are then made to point back to the
+! relevant porion of the 1D buffer after redistribution.
+! ***CRITTICAL*** If fields are addedd or deleted to any of the ESMF states, or
+! if any pointer name(s) is changed, this code section needs to modified accordingly.
+
 ! import packing and redistribution
 
    numUsedImp = 34  ! should match the number of imports used in this subroutine + 2 (for LATS and LONS)
@@ -216,7 +223,7 @@
 
       call MAPL_BalanceWork(BUFIMP, NUMMAX, Direction=MAPL_Distribute, Handle=CICECOREBalanceHandle, __RC__)
 
-!REAL4 internal
+! REAL4 internal  packing and redistribution
       numIntSlices =                             &
          NUM_ICE_CATEGORIES                  +   & ! TSKINI
          NUM_SUBTILES                        +   & ! QS
@@ -275,7 +282,7 @@
 
       call MAPL_BalanceWork(BUFINT, NUMMAX, Direction=MAPL_Distribute, Handle=CICECOREBalanceHandle, __RC__)
 
-!REAL8 internal
+! REAL8 internal  packing and redistribution
       numIntSlices8 =                            &
          NUM_SUBTILES                        +   & ! FR
          NUM_ICE_CATEGORIES                  +   & ! VOLICE
@@ -342,8 +349,8 @@
       call MAPL_BalanceWork(BUFINT8, NUMMAX, Direction=MAPL_Distribute, Handle=CICECOREBalanceHandle, __RC__)
 
 
-!export 
-!not all exports will necessarily be needed but memory will be allocated just in case
+! export packing and redistribution
+! not all exports will necessarily be needed but memory will be allocated just in case
       numExpSlices =                           &
          79                                +   & ! 79 total single slice exports
          NUM_ICE_CATEGORIES                +   & ! FCONDBOTN

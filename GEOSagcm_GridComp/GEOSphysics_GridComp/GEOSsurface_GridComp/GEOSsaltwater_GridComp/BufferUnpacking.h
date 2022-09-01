@@ -1,4 +1,12 @@
-!retrieve real4 internal
+! This section reverses what was done un BufferPacking by redistributing the 
+! the updated 1D buffer back to the original distribution and then map relevant
+! portions to the original pointers in the INTERNAL and EXPORT fields. 
+! There is no need to do IMPORT on exit.
+! ***CRITTICAL*** For any changes (pointer variable name change, field addition or 
+! deletion) made in BufferPacking, corresponding changes need to be made here 
+! as well.
+
+! retrieve real4 internal
       call MAPL_BalanceWork(BUFINT, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, __RC__)
       L1 = 1
       call MAPL_GetPointer(INTERNAL,PTR2,'TSKINI', __RC__) 
@@ -22,7 +30,7 @@
       call MAPL_GetPointer(INTERNAL,PTR1,'SLMASK', __RC__) 
       call CICEReorder(BUFINT(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
 
-!retrieve real8 internal
+! retrieve real8 internal
       call MAPL_BalanceWork(BUFINT8, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, __RC__)
       L1 = 1
       call MAPL_GetPointer(INTERNAL,PTR2R8,'FR', __RC__) 
