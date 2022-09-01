@@ -950,10 +950,10 @@ integer :: n_threads=1
     print *,trim(gname)
     string1 ='til/'//trim(gout)//'-Pfafstetter.til'//' '//&
     'clsm/'//trim(gout)//'-Pfaf.notiny.til'
-    call system ('cp '//trim(string1))
+    call execute_command_line ('cp '//trim(string1))
     string1 ='rst/'//trim(gout)//'-Pfafstetter.rst'//' '//&
     'clsm/'//trim(gout)//'-Pfaf.notiny.rst'
-    call system ('cp '//trim(string1))
+    call execute_command_line ('cp '//trim(string1))
     print *,'and, copied those those files to clsm/.'
 
     stop
@@ -7251,11 +7251,11 @@ SUBROUTINE REFORMAT_VEGFILES
   integer :: month
 
   tmp_string = 'mkdir -p '//'clsm/g5fmt'
-  call system(tmp_string)
+  call execute_command_line(tmp_string)
   tmp_string = '/bin/mv '//'clsm/lai.dat ' //'clsm/g5fmt/.'
-  call system(tmp_string) 
+  call execute_command_line(tmp_string) 
   tmp_string = '/bin/mv '//'clsm/green.dat ' //'clsm/g5fmt/.'
-  call system(tmp_string) 
+  call execute_command_line(tmp_string) 
 
   open (10,file='clsm/g5fmt/lai.dat'  , form = 'unformatted',   &
        convert='little_endian',status='old',action='read' )

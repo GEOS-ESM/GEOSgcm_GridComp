@@ -5925,9 +5925,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       write (time_stamp,'(i4.4,a1,i2.2,a1,i2.2,1x,a2,1x,i2.2,a1,i2.2,a1,i2.2)')      &
            date_time_values(1),'-',date_time_values(2),'-',date_time_values(3),'at', &
            date_time_values(5),':',date_time_values(6),':',date_time_values(7)
-!      call system('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
+!      call execute_command_line('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
 !      call sleep (5)
-      call getenv ("USER"        ,MYNAME        )
+      call get_environment_variable ("USER"        ,MYNAME        )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'Date'     , LEN_TRIM(time_stamp),trim(time_stamp))
       status = NF_PUT_ATT_TEXT(NCVegOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )

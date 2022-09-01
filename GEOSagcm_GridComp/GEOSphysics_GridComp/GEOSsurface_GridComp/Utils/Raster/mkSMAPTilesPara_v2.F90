@@ -56,7 +56,7 @@ PROGRAM mkSMAPTilesPara_v2
       character*100 :: veg_class (12)
       character*5 :: MGRID
       character*100 :: gfile,gtopo30
-      integer :: nc_smap,nr_smap, N_args, iargc 
+      integer :: nc_smap,nr_smap, N_args, command_argument_count 
       real :: EASE_grid_area, CELL_km
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
       character(40) :: arg, EASElabel 
@@ -68,7 +68,7 @@ PROGRAM mkSMAPTilesPara_v2
       
       include 'netcdf.inc'
 
-      N_args = iargc()
+      N_args = command_argument_count()
 
       if(N_args < 1) then
         print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX'
@@ -82,20 +82,20 @@ PROGRAM mkSMAPTilesPara_v2
 
          i = i+1
          
-         call getarg(i,arg)
+         call get_command_argument(i,arg)
          
          if     ( trim(arg) == '-smap_grid' ) then
             i = i+1
-            call getarg(i,MGRID)
+            call get_command_argument(i,MGRID)
 
          elseif ( trim(arg) == '-pfaf_til' ) then
             i = i+1
-            call getarg(i,PF)
+            call get_command_argument(i,PF)
             if (PF == 'T') pfaf_til = .true.
 
          elseif ( trim(arg) == '-v' ) then
             i = i+1
-            call getarg(i,LBSV)
+            call get_command_argument(i,LBSV)
                         
          else ! stop for any other arguments
             
@@ -107,8 +107,8 @@ PROGRAM mkSMAPTilesPara_v2
          
       end do
       
-      call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-      call system('cd ..')
+      call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+      call execute_command_line('cd ..')
       
       
       ! Setting SMAP Grid specifications
@@ -184,7 +184,7 @@ PROGRAM mkSMAPTilesPara_v2
       !   Check for the 10 arc-sec MaskFile
       ! -----------------------------------
       
-      call getenv ("MASKFILE"        ,MaskFile        )
+      call get_environment_variable ("MASKFILE"        ,MaskFile        )
 
       print *, 'Using MaskFile ', trim(MaskFile)
       
@@ -758,7 +758,7 @@ PROGRAM mkSMAPTilesPara_v2
       tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
       print *,trim(tmpstring)
       
-      call system (tmpstring)
+      call execute_command_line (tmpstring)
 
     contains
 
