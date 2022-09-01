@@ -1,4 +1,4 @@
-! This section reverses what was done un BufferPacking by redistributing the 
+! This section reverses what was done in BufferPacking by redistributing the 
 ! the updated 1D buffer back to the original distribution and then map relevant
 ! portions to the original pointers in the INTERNAL and EXPORT fields. 
 ! There is no need to do IMPORT on exit.
