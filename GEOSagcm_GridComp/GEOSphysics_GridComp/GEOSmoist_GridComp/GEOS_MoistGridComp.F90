@@ -2438,6 +2438,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='SL',                                          & 
+         LONG_NAME ='liquid_water_static_energy',                  &
+         UNITS     ='K',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='T',                                           & 
+         LONG_NAME ='temperature',                                 &
+         UNITS     ='K',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME='KCBL_moist',                                  & 
          LONG_NAME ='KCBL_before_moist',                           &
          UNITS     ='1',                                           &
@@ -5345,6 +5361,7 @@ contains
       real, pointer, dimension(:,:,:) :: RSU_CN, RSU_AN, RSU_LS,    ALPHT, ALPH1, ALPH2
       real, pointer, dimension(:,:,:) :: ENTLAM
       real, pointer, dimension(:,:,:) :: KHX
+      real, pointer, dimension(:,:,:) :: SLX, TX
       real, pointer, dimension(:,:  ) :: DTSX
 
       real, pointer, dimension(:,:,:) :: REVSU_CN, REVSU_LSAN
@@ -6387,6 +6404,8 @@ contains
       call MAPL_GetPointer(EXPORT, ZCBL,     'ZCBL'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, TT_PRCP,  'TPREC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, HOURNORAIN,  'HOURNORAIN'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, TX    ,   'T'       , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLX   ,   'SL'      , RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, PRCP_RAIN,    'PRCP_RAIN' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PRCP_SNOW,    'PRCP_SNOW'    , RC=STATUS); VERIFY_(STATUS)
@@ -12203,8 +12222,8 @@ do K= 1, LM
       if (associated(CCWP   ))   CCWP    = SUM(   CNV_QC *MASS , 3 )
       if (associated(TPW    ))   TPW     = SUM(   Q1         *MASS , 3 )
       if (associated(RH2    ))   RH2     = max(MIN( Q1/GEOS_QSAT (TH1*PK, PLO) , 1.02 ),0.0)
-
-    
+      if (associated(SLX    ))   SLX     = GZLO + MAPL_CP*TEMP - MAPL_ALHL*(QLLS+QLCN) - MAPL_ALHS*(QILS+QICN)
+      if (associated(TX     ))   TX      = TEMP
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
          if (associated(CCNCOLUMN    ))   CCNCOLUMN      = SUM(CCN1*MASS/(100.*PLO*r_air/TEMP) , 3)
