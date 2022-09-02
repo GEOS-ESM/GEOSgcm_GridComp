@@ -7926,35 +7926,14 @@ contains
          QV600 = Q(:,:,levs600)
       END WHERE
 
-    ! Compute the deep convective fraction based on mid-tropospheric moisture (QV at 600mb)
-    !     mid-tropospheric moisture is used as an indicator of vertical motion
-    !     associated with active deep convection lifting moisture to the mid-troposphere
-    ! QV at 600mb Criteria 
-    ! call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT= 0.00250, RC=STATUS)
-    ! VERIFY_(STATUS)
-    ! call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 0.00600, RC=STATUS)
-    ! VERIFY_(STATUS)
-
-    ! CAPE Criteria
-      if( LM .ne. 72 ) then
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
-        VERIFY_(STATUS)
-      else
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
-        VERIFY_(STATUS)
-      endif
+      call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
+      VERIFY_(STATUS)
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          if (CNV_FRACTION_MAX < 1.0) then

@@ -312,7 +312,7 @@ subroutine gw_oro_ifc( band, &
      end do
 
 !WMP pressure scaling near model top
-     zfac_layer = 100.0 ! 0.1mb
+     zfac_layer = 1000.0 ! 10mb
      pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
 
      ! Solve for the drag profile with orographic sources.

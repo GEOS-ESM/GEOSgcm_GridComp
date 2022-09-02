@@ -950,7 +950,7 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=4.0,  RC=STATUS)
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
@@ -1061,7 +1061,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Gravity wave drag
 ! -----------------
 
-    call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=NINT(32*LM/181.0),    RC=STATUS)
+    if (LM .eq. 72) then
+       GEOS_PGWV = 4
+    else
+       GEOS_PGWV = NINT(32*LM/181.0)
+    endif
+    call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, RC=STATUS)
     VERIFY_(STATUS)
@@ -1069,10 +1074,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, RC=STATUS)
+    NCAR_EFFGWBKG = min( imsize/720.0 , 1.0 )
+    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=NCAR_EFFGWBKG, RC=STATUS)
     VERIFY_(STATUS)
     if (NCAR_NRDG > 0) then
-      call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
+      call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.250, RC=STATUS)
       VERIFY_(STATUS)
     else
       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.125, RC=STATUS)
@@ -1875,7 +1881,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
 
     ! Topographic Form Drag [Beljaars et al (2004)]
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=6.0, RC=STATUS)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=10.0, RC=STATUS)
     VERIFY_(STATUS)
     if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),stat=status)

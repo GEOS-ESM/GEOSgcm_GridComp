@@ -281,8 +281,9 @@ subroutine gw_rdg_ifc( &
    ttrdg = 0.
   
 !WMP pressure scaling near model top
-   zfac_layer = 100.0 ! 1mb
-   pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
+!  zfac_layer = 1000.0 ! 10mb
+!  pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
+   pint_adj = 1.0
 
    isoflag = 0
  

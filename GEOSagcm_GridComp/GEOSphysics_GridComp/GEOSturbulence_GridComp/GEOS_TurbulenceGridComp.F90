@@ -3141,7 +3141,7 @@ contains
      if (LM .eq. 72) then
        call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -3212,14 +3212,14 @@ contains
      endif
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS); VERIFY_(STATUS)
 
-     if (JASON_TUNING .eq. 1) then
+     if (LM .eq. 72) then
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,          RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,          RC=STATUS); VERIFY_(STATUS)
      endif
 
    ! Pressure Thickness at the surface for 1-2-1 smoother for THV (and U:V) [72L setup uses an index of 5-levels]
-     if (JASON_TUNING .eq. 1) then
+     if (LM .eq. 72) then
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=     0.0,    RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=  5000.0,    RC=STATUS); VERIFY_(STATUS)
