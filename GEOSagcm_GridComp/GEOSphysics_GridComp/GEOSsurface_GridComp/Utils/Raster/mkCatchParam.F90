@@ -9,7 +9,7 @@ PROGRAM mkCatchParam
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -v: LBCSV : Choose bcs version (ICA, NL3, NL4, NL5, or development)             
+!     -v: LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08)
 !     -e: EASE : This is optional if catchment.def file is available already or                    
 !         the til file format is pre-Fortuna-2.                                                    
 !     
@@ -21,7 +21,7 @@ PROGRAM mkCatchParam
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
 
-  use rmTinyCatchParaMod
+  use rmTinyCatchParaMod             ! includes:  use_snow_albedo
   use process_hres_data
   !   use module_irrig_params, ONLY : create_irrig_params
 
@@ -109,7 +109,7 @@ integer :: n_threads=1
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                         "
     USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                          "          
     USAGE(7) ="                the til file format is pre-Fortuna-2.                                                   "
-    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07 and v08)                              "
+    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08)                       "
 
 ! Process Arguments                            
 !------------------ 
@@ -654,13 +654,13 @@ integer :: n_threads=1
        write (log_file,'(a)')' '
        
        if(use_snow_albedo)then
-         tmpstring = 'Step 14: Snow albedo from MODIS' 
-         write (log_file,'(a)') trim(tmpstring)
-             write (log_file,'(a)')'         Loading snow albedo...'
-             call soil_snow_alb (nc,nr,gridnamer)
-             write (log_file,'(a)')'         Done.'           
-         write (log_file,'(a)')' '
-       endif ! if use_snow_albedo
+          tmpstring = 'Step 14: Snow albedo from MODIS' 
+          write (log_file,'(a)') trim(tmpstring)
+          write (log_file,'(a)')'         Creating file...'
+          call MODIS_snow_alb (nc,nr,gridnamer)
+          write (log_file,'(a)')'         Done.'           
+          write (log_file,'(a)')' '
+       endif 
 
        !      inquire(file='clsm/irrig.dat', exist=file_exists)
        !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)

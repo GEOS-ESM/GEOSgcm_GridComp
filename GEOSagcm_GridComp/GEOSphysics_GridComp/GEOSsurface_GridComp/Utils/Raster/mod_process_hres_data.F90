@@ -38,7 +38,7 @@ include 'netcdf.inc'
 private
 
 public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
-public :: soil_snow_alb 
+public :: MODIS_snow_alb 
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
 public :: histogram, create_mapping, esa2mosaic , esa2clm
 public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
@@ -2987,9 +2987,9 @@ END SUBROUTINE modis_scale_para_high
 
 !----------------------------------------------------------------------  
 
-  SUBROUTINE soil_snow_alb (nx,ny,gfiler)  
+  SUBROUTINE MODIS_snow_alb (nx,ny,gfiler)  
 
-! Implement snow albedo calculated from MOIDS 22-year climatology. 
+! Implement snow albedo calculated from MODIS 22-year climatology. 
 ! Store snow albedo values in clsm/catch_params.nc4
 ! Biljana Orescanin July 2022, SSAI@NASA
  
@@ -3129,8 +3129,8 @@ END SUBROUTINE modis_scale_para_high
     hhtil_min=max(hhtil_min,1)
     hhtil_max=min(hhtil_max,36)
 
-    do hhtil=hhtil_min,hhtil_max ! loop over input files - horzontal direction
-      do vvtil=vvtil_min,vvtil_max ! loop over input files - vertical direction
+    do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
+      do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
 
         ! Find indices ranges corresponding to the current tile area.
         imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0))
@@ -3160,8 +3160,8 @@ END SUBROUTINE modis_scale_para_high
     snw_alb(n) = sno_alb_sum / max(1.0,sno_alb_cnt)
     if (snw_alb(n) .le. 0.0 .or. snw_alb(n) .gt. 1.0 ) snw_alb(n)=-9999.0 !1.E15
 
-    ! If no valid solition found, and if the tile size smaller than the snow albedo resolution,
-    ! expand the search area by 1-tile padding.
+    ! If no valid solution found, and if tile size smaller than snow albedo resolution,
+    !  expand search area by 1-tile padding.
 
     ! Size of a tile (in both directions)
     pad_lon=(max_lon(n)-min_lon(n))
@@ -3171,8 +3171,8 @@ END SUBROUTINE modis_scale_para_high
 
       count_init_invalid=count_init_invalid+1
 
-      do hhtil=hhtil_min,hhtil_max ! loop over input files - horzontal direction
-        do vvtil=vvtil_min,vvtil_max ! loop over input files - vertical direction
+      do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
+        do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
 
           ! Repeat the steps for extracting snow albedo value
           imin2=floor((min_lon(n)-pad_lon+180.0 - (hhtil-1)*10.0) * (xdim/10.0))
@@ -3213,9 +3213,9 @@ END SUBROUTINE modis_scale_para_high
     endif
 
   print*, 'Ended tile loop for snow albedo. '
-  print*, 'There has been ',count_init_invalid,' inital non-valid snow values (out of',maxcat,')'
+  print*, 'Initially found ', count_init_invalid, ' tiles with no-data values for snow albedo (out of ', maxcat,')'
 
-  END SUBROUTINE soil_snow_alb 
+  END SUBROUTINE MODIS_snow_alb
 
   !--------------------------------------------------------------------------------------
 

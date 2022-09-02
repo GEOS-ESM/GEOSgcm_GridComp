@@ -136,7 +136,8 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
+integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: FWETC, FWETL
@@ -227,15 +228,21 @@ subroutine SetServices ( GC, RC )
        call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
     endif
 
-    ! GOSWIM ANOW_ALBEDO 
+    ! SNOW ALBEDO 
+    ! 0 : parameterization based on look-up table 
+    ! 1 : MODIS-derived snow albedo (where available, elsewhere fall back to option 0)
+    call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
+
+    ! GOSWIM SNOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0  , __RC__ )
+    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
     ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
     ! __________________________________________
-    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION, label='AEROSOL_DEPOSITION:', DEFAULT=0  , __RC__ )
+    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
+
     call ESMF_ConfigDestroy(SCF, __RC__)
 
 ! Set the Run entry points
@@ -4145,9 +4152,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
 
-        integer                       :: SNOW_ALBEDO_INFO
-        character(len=ESMF_MAXSTR)    :: SURFRC
-        type(ESMF_Config)             :: SCF
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4869,27 +4873,24 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
-                 ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                 SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
+                 ALBVR, ALBNR, ALBVF, ALBNF, &  ! instantaneous snow-free albedos on tiles
+                 SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow      albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
-        call MAPL_GetResource(MAPL,SURFRC,label='SURFRC:',default='GEOS_SurfaceGridComp.rc',RC=STATUS) ; VERIFY_(STATUS)
-        SCF = ESMF_ConfigCreate(rc=status)                                                             ; VERIFY_(STATUS)
-        call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status)                                                 ; VERIFY_(STATUS)
-        call MAPL_GetResource(SCF,SNOW_ALBEDO_INFO,Label="SNOW_ALBEDO_INFO:",DEFAULT=0,RC=STATUS)      ; VERIFY_(STATUS)
-
         if (SNOW_ALBEDO_INFO == 1) then
-
-            call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
-
-            where (SNOWALB > 0. .and. SNOWALB <= 1.)
-               SNOVR = SNOWALB
-               SNONR = SNOWALB
-               SNOVF = SNOWALB
-               SNONF = SNOWALB
-            endwhere
-
-        endif ! if SNOW_ALBEDO_INFO 
+           
+           ! where available, use MODIS-derived snow albedo from bcs (via Catch restart)
+           
+           call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
+           
+           where (SNOWALB > 0. .and. SNOWALB <= 1.)
+              SNOVR = SNOWALB
+              SNONR = SNOWALB
+              SNOVF = SNOWALB
+              SNONF = SNOWALB
+           endwhere
+           
+        endif
 
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
@@ -5570,7 +5571,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
 
         if (SNOW_ALBEDO_INFO == 1) then
-
+           
+           ! where available, use MODIS-derived snow albedo from bcs (via Catch restart)
+           
            where (SNOWALB > 0. .and. SNOWALB <= 1.)
               SNOVR = SNOWALB
               SNONR = SNOWALB
@@ -5578,7 +5581,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               SNONF = SNOWALB
            endwhere
 
-        endif ! if SNOW_ALBEDO_INFO 
+        endif
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW

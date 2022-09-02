@@ -50,7 +50,7 @@ subroutine SetServices ( GC, RC )
     character(len=ESMF_MAXSTR)   :: CATCHCN_VERSION
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF
-    integer :: DO_GOSWIM, LSM_CHOICE, ATM_CO2
+    integer :: DO_GOSWIM, LSM_CHOICE, ATM_CO2, SNOW_ALBEDO_INFO
 
 ! Begin...
 ! --------
@@ -69,6 +69,14 @@ subroutine SetServices ( GC, RC )
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=2, RC=STATUS) ; VERIFY_(STATUS)
+
+    ! SNOW ALBEDO -- so far, only parameterization based on look-up table is implemented for CatchCN
+    ! 0 : parameterization based on look-up table 
+    ! 1 : MODIS-derived snow albedo (where available, elsewhere fall back to option 0)
+    call ESMF_ConfigGetAttribute (SCF, label='SNOW_ALBEDO_INFO:', value=SNOW_ALBEDO_INFO, DEFAULT=0, RC=STATUS) ; VERIFY_(STATUS)
+
+    _ASSERT( SNOW_ALBEDO_INFO==0, "SNOW_ALBEDO_INFO must be 0 for CatchCN")
+
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
     if ( LSM_CHOICE == 2 ) then
