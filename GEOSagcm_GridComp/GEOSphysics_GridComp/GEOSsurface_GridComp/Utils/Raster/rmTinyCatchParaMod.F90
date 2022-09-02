@@ -123,7 +123,7 @@ contains
        jpl_height  = .true.
        use_snow_albedo= .false.
 
-     case ("V06")   
+     case ("v06")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -131,7 +131,7 @@ contains
        jpl_height  = .true.
        use_snow_albedo= .true.
 
-     case ("V07")   
+     case ("v07")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -139,7 +139,7 @@ contains
        jpl_height  = .false.
        use_snow_albedo= .false.
 
-     case ("V08")   
+     case ("v08")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'

@@ -109,7 +109,7 @@ integer :: n_threads=1
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                         "
     USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                          "          
     USAGE(7) ="                the til file format is pre-Fortuna-2.                                                   "
-    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, V06, V07 and V08)                              "
+    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07 and v08)                              "
 
 ! Process Arguments                            
 !------------------ 
