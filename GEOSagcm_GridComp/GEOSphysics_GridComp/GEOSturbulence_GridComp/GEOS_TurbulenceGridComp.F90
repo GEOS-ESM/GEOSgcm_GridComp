@@ -4208,6 +4208,10 @@ end subroutine RUN1
           if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHL*SX
          endif
 
+         if( name=='QILS' .or. name=='QICN' ) then
+          if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHS*SX
+         endif
+
          if( name=='U' ) then
            if(associated(UFLXTRB)) U = U + SX
          end if
