@@ -42,14 +42,19 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
+
   INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
-  logical, public, save     :: use_PEATMAP = .true.
-  logical, public, save     :: jpl_height  = .true.
-  logical, public, save     :: use_snow_albedo  = .false. 
-  character*8, public, save :: LAIBCS  = 'MODGEO'
-  character*4, public, save :: SOILBCS = 'HWSD'
-  character*6, public, save :: MODALB  = 'MODIS2'
-  REAL, public, save        :: GNU = 1.0
+
+  ! The following variables define the details of the BCS version (data sources).
+  ! Initialize to dummy values here and set to desired values in init_bcs_config().
+
+  logical,     public, save :: use_PEATMAP = .false.
+  logical,     public, save :: jpl_height  = .false.
+  character*8, public, save :: LAIBCS      = 'UNDEF'
+  character*4, public, save :: SOILBCS     = 'UNDEF'
+  character*6, public, save :: MODALB      = 'UNDEF'
+  character*8, public, save :: SNOWALB     = 'UNDEF'
+  REAL,        public, save :: GNU         = MAPL_UNDEF
 
   type :: mineral_perc
      real :: clay_perc
@@ -59,93 +64,108 @@ module rmTinyCatchParaMod
 
 contains
 
-  SUBROUTINE init_bcs_config (LBSV)
+  SUBROUTINE init_bcs_config (LBCSV)
 
+    ! determine BCs details from land BCs version string (LBCSV)
+    !
+    ! LAIBCS:  Leaf-Area-Index data set.        DEFAULT : MODGEO
+    !   GLASSA   : 8-day AVHRR clim, 1981-2017,        7200x3600  grid
+    !   GLASSM   : 8-day MODIS clim, 2000-2017,        7200x3600  grid
+    !   MODISV6  : 8-day       clim, 2002.01-2016.10, 86400x43200 grid
+    !   MODGEO   : MODIS with GEOLAND2 overlaid on South America, Africa, and Australia
+    !   GEOLAND2 : 10-day  clim,     1999-2011,       40320x20160 grid               
+    !   GSWP2    : Monthly clim,     1982-1998,         360x180   grid                  
+    !   MODIS    : 8-day   clim,     2000-2013,       43200x21600 grid
+    !   GSWPH    : Monthly clim,     1982-1998,       43200x21600 grid           
+    !
+    ! MODALB:  MODIS Albedo data (snow-free).   DEFAULT : MODIS2                                            
+    !   MODIS1   : 16-day clim,  1'x1' (21600x10800) MODIS data, 2000-2004 
+    !   MODIS2   :  8-day clim, 30"x30"(43200x21600) MODIS data, 2001-2011 
+    !
+    ! SNOWALB: Snow albedo data.                DEFAULT : LUT
+    !   LUT      : Parameterization based on look-up table values. 
+    !   MODC006  : Static snow albedo derived from MODIS Collection 6 data where available, LUT elsewhere. 
+    !
+    ! SOILBCS: Soil parameter data.             DEFAULT : HWSD                                                       
+    !   HWSD     : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
+    
     implicit none
+    
+    character(*), intent (in) :: LBCSV     ! land BCs version 
 
-    character(*), intent (in) :: LBSV          ! LBSV = land BCs version (?)
-
-! LAIBCS: Choice of LAI data set. DEFAULT : MODGEO
-!         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on  7200x3600 grid
-!         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on  7200x3600 grid
-!         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on  86400x43200 grid
-!         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Afirca and Australia
-!         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               
-!         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                  
-!         MODIS   : 8-day climatology from the period 2000-2013 on  43200x21600 grid
-!         GSWPH   : Monthly climatology from the period 1982-1998 on 43200x21600 grid              "
-! MODALB: Choice of MODIS Albedo data. DEFAULT : MODIS2                                            
-!         MODIS1 : 16-day Climatology from 1'x1 (21600x10800) MODIS data from the period 2000-2004 
-!         MODIS2 : 8-day Climatology from 30"x30"(43200x21600) MODIS data from the period 2001-2011 
-! SOILBCS:Choice of soil data. DEFAULT :HWSD                                                       
-!         HWSD : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) Parameters   
-
-    select case (trim(LBSV))
+    select case (trim(LBCSV))
 
     case ("F25")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS1'
+       SNOWALB = 'LUT'
        GNU     = 2.17
        use_PEATMAP = .false.
        jpl_height  = .false.
-       use_snow_albedo= .false.
 
     case ("GM4", "ICA")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS2'
+       SNOWALB = 'LUT'
+       GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
-       use_snow_albedo= .false.
 
     case ("NL3")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
+       SNOWALB = 'LUT'
+       GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
-       use_snow_albedo= .false.
 
      case ("NL4")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'      
+       SNOWALB = 'LUT'
+       GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .true.
-       use_snow_albedo= .false.
 
      case ("NL5")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
+       SNOWALB = 'LUT'
+       GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
-       use_snow_albedo= .false.
 
      case ("v06")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
+       SNOWALB = 'MODC006'
+       GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
-       use_snow_albedo= .true.
 
      case ("v07")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
+       SNOWALB = 'LUT'
+       GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
-       use_snow_albedo= .false.
 
      case ("v08")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
+       SNOWALB = 'MODC006'
+       GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
-       use_snow_albedo= .true.
        
     end select
              

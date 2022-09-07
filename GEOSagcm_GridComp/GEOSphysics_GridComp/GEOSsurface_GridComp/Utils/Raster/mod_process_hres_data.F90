@@ -2994,9 +2994,9 @@ END SUBROUTINE modis_scale_para_high
 
   SUBROUTINE MODIS_snow_alb (nx,ny,gfiler)  
 
-! Implement snow albedo calculated from MODIS 22-year climatology. 
-! Store snow albedo values in clsm/catch_params.nc4
-! Biljana Orescanin July 2022, SSAI@NASA
+  ! Process static snow albedo calculated from MODIS climatology and write into clsm/catch_params.nc4
+  !
+  ! Biljana Orescanin July 2022, SSAI@NASA
  
   implicit none	    
   integer, intent (in)                       :: nx, ny 
@@ -3098,9 +3098,6 @@ END SUBROUTINE modis_scale_para_high
   count_init_invalid=0 ! counter for non-valid snow albedo avalues (informational use only; not needed for) 
 
   do n = 1, maxcat ! loop over tiles
-
-    ! Start by setting snow albedo to missing
-    snw_alb(n)=-9999.0
 
     ! Set sums and counts to zero
     sno_alb_sum =0.
@@ -6089,13 +6086,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
     ! --------------------------------------------------------------------------
 
-    SUBROUTINE open_landparam_nc4_files(N_tile,use_snow_albedo) 
+    SUBROUTINE open_landparam_nc4_files(N_tile,process_snow_albedo) 
 
       implicit none
       integer                 :: NCCatOUTID,  NCCatCNOUTID,  NCVegOUTID  
       integer                 :: STATUS, CellID1, CellID2, CellID3, SubID
       integer, intent (in)    :: N_tile
-      logical, intent (in)    :: use_snow_albedo
+      logical, intent (in)    :: process_snow_albedo
       integer, dimension(8)   :: date_time_values
       character (22)          :: time_stamp
       character (100)         :: MYNAME
@@ -6139,7 +6136,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       call DEF_VAR ( NCCatOUTID, CellID1,'TSB2'      ,'water_transfer_param_4'      ,'1'        )
       call DEF_VAR ( NCCatOUTID, CellID1,'WPWET'     ,'wetness_at_wilting_point'    ,'1'        )
       call DEF_VAR ( NCCatOUTID, CellID1,'DP2BR'     ,'depth_to_bedrock'            ,'mm'       )
-      if (use_snow_albedo) &
+      if (process_snow_albedo) &
       call DEF_VAR ( NCCatOUTID, CellID1,'SNOWALB'   ,'snow_albedo'                 ,'1'        )  
 
       call DEF_VAR (  NCVegOUTID, CellID3,'ITY'      ,'vegetation_type'             ,'1'        )
