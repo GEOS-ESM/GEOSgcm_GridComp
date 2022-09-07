@@ -27,7 +27,7 @@ program FillMomGrid
 
   REAL(KIND=REAL64),   parameter     :: PI        = MAPL_PI
 
-  integer                :: IARGC
+  integer                :: command_argument_count
   integer                :: nxt, argl, fill
   integer                :: i, j, k, l, ip
   integer                :: STATUS, i1, i2, nvars, rvars
@@ -94,7 +94,6 @@ INCLUDE "netcdf.inc"
     end if
 
     nxt = 1
-    !call getarg(nxt,arg)
     call get_command_argument(nxt,arg)
 
     do while(arg(1:1)=='-')
@@ -104,7 +103,6 @@ INCLUDE "netcdf.inc"
        if(argl==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             !call getarg(nxt,arg)
              call get_command_argument(nxt,arg)
           end if
        else
@@ -133,20 +131,17 @@ INCLUDE "netcdf.inc"
        end select
 
        nxt = nxt + 1
-       !call getarg(nxt,arg)
        call get_command_argument(nxt,arg)
     end do
 
     Grid1 = ARG
 
     nxt = nxt + 1
-    !call getarg(nxt,arg)
     call get_command_argument(nxt,arg)
 
     Grid2 = ARG
 
     nxt = nxt + 1
-    !call getarg(nxt,arg)
     call get_command_argument(nxt,arg)
 
     GridFile = arg

@@ -56,7 +56,7 @@ PROGRAM mkSMAPTilesPara_v2
       character*100 :: veg_class (12)
       character*5 :: MGRID
       character*100 :: gfile,gtopo30
-      integer :: nc_smap,nr_smap, N_args, iargc 
+      integer :: nc_smap,nr_smap, N_args, command_argument_count 
       real :: EASE_grid_area, CELL_km
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
       character(40) :: arg, EASElabel 
@@ -68,7 +68,7 @@ PROGRAM mkSMAPTilesPara_v2
       
       include 'netcdf.inc'
 
-      N_args = iargc()
+      N_args = command_argument_count()
 
       if(N_args < 1) then
         print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX'
@@ -82,20 +82,20 @@ PROGRAM mkSMAPTilesPara_v2
 
          i = i+1
          
-         call getarg(i,arg)
+         call get_command_argument(i,arg)
          
          if     ( trim(arg) == '-smap_grid' ) then
             i = i+1
-            call getarg(i,MGRID)
+            call get_command_argument(i,MGRID)
 
          elseif ( trim(arg) == '-pfaf_til' ) then
             i = i+1
-            call getarg(i,PF)
+            call get_command_argument(i,PF)
             if (PF == 'T') pfaf_til = .true.
 
          elseif ( trim(arg) == '-v' ) then
             i = i+1
-            call getarg(i,LBSV)
+            call get_command_argument(i,LBSV)
                         
          else ! stop for any other arguments
             
@@ -107,8 +107,8 @@ PROGRAM mkSMAPTilesPara_v2
          
       end do
       
-      call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-      call system('cd ..')
+      call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+      call execute_command_line('cd ..')
       
       
       ! Setting SMAP Grid specifications
@@ -184,7 +184,7 @@ PROGRAM mkSMAPTilesPara_v2
       !   Check for the 10 arc-sec MaskFile
       ! -----------------------------------
       
-      call getenv ("MASKFILE"        ,MaskFile        )
+      call get_environment_variable ("MASKFILE"        ,MaskFile        )
 
       print *, 'Using MaskFile ', trim(MaskFile)
       
@@ -194,8 +194,9 @@ PROGRAM mkSMAPTilesPara_v2
          nr = 21600
          call mkEASEv2Raster
          
-      else
-         if((trim(MGRID) == 'M09').or.(trim(MGRID) == 'M36'))call write_tilfile 
+      !else
+      !   This section was used to make Irrigated Tiles 
+      !   if((trim(MGRID) == 'M09').or.(trim(MGRID) == 'M36'))call write_tilfile 
       endif
       
       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
@@ -749,8 +750,6 @@ PROGRAM mkSMAPTilesPara_v2
 
       ! CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
       
-      call system (tmpstring)
-
       ! now run mkCatchParam
       ! --------------------
 
@@ -759,7 +758,7 @@ PROGRAM mkSMAPTilesPara_v2
       tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
       print *,trim(tmpstring)
       
-      call system (tmpstring)
+      call execute_command_line (tmpstring)
 
     contains
 
@@ -776,8 +775,8 @@ PROGRAM mkSMAPTilesPara_v2
         allocate (xs ( nc_smap+1, nr_smap+1))
         allocate (ys ( nc_smap+1, nr_smap+1))
         
-        do  j = 1, nr_smap
-           do i = 1, nc_smap
+        do  j = 1, nr_smap+1
+           do i = 1, nc_smap+1
               x = real(i-1)        -0.5
               y = real(nr_smap - j)+0.5
               call easeV2_inverse(MGRID, x, y, yout, xout)
@@ -785,31 +784,9 @@ PROGRAM mkSMAPTilesPara_v2
               xs (i,j) = dble(xout)
            end do
         end do
-        
-        do  j = nr_smap + 1, nr_smap + 1
-           do i = nc_smap + 1, nc_smap + 1
-              x = real(i-1)         -0.5
-              y =  -0.5
-              call easeV2_inverse(MGRID, x, y, yout, xout)
-              ys (i,j) = dble(yout)
-              xs (i,j) = dble(xout)        
-           end do
-        end do
+	
+        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,xmn = xs(1,1), xmx= xs(nc_smap+1, nr_smap+1),  ymn=ys(1,1), ymx = ys(nc_smap+1, nr_smap+1), Here=.false., Verb=.false.)       
 
-        where (ys > 90.)
-           ys = 90.D0
-        endwhere
-        where (ys < -90.)
-           ys = -90.D0
-        endwhere
-        where (xs > 180.)
-           xs = 180.D0
-        endwhere
-        where (xs < -180.)
-           xs = -180.D0
-        endwhere
-        
-        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,Here=.false., Verb=.false.)       
         stop
       end SUBROUTINE mkEASEv2Raster
 
