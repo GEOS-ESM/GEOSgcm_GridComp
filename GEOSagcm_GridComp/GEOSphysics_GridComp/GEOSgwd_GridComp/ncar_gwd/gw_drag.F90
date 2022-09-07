@@ -63,6 +63,7 @@ contains
           sgh_dev,       mxdis_dev,     hwdth_dev,    clngt_dev,  angll_dev,         &
           anixy_dev,     gbxar_dev,     kwvrdg_dev,   effrdg_dev, pref_dev,          & 
           pmid_dev,      pdel_dev,      rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
+          phis_dev,                                                                  &
           dudt_gwd_dev,  dvdt_gwd_dev,  dtdt_gwd_dev,                                &
           dudt_org_dev,  dvdt_org_dev,  dtdt_org_dev,                                &
           taugwdx_dev,   taugwdy_dev,   &
@@ -111,7 +112,8 @@ contains
     real,    intent(in   ) :: lnpint_dev(pcols,pver+1) ! log(pint)
     real,    intent(in   ) :: zm_dev(pcols,pver)       ! height above surface at layers
     real,    intent(in   ) :: rlat_dev(pcols)          ! latitude in radian
-    
+    real,    intent(in   ) :: phis_dev(pcols)          ! surface geopotential
+ 
     real,    intent(  out) :: dudt_gwd_dev(pcols,pver) ! zonal wind tendency at layer 
     real,    intent(  out) :: dvdt_gwd_dev(pcols,pver) ! meridional wind tendency at layer 
     real,    intent(  out) :: dtdt_gwd_dev(pcols,pver) ! temperature tendency at layer
@@ -157,7 +159,8 @@ contains
     real :: utgw(pcols,pver)            ! zonal wind tendency
     real :: vtgw(pcols,pver)            ! meridional wind tendency
 
-    real         :: zi(pcols,pver+1)                   ! interface heights above ground
+    real :: z(pcols)                           ! Surface elevation
+    real :: zi(pcols,pver+1)                   ! interface heights above ground
     real :: ni(pcols,pver+1)                   ! interface Brunt-Vaisalla frequency
     real :: nm(pcols,pver)                     ! midpoint Brunt-Vaisalla frequency
     !!!real    :: rdpldv                              ! 1/dp across low level divergence region
@@ -191,6 +194,8 @@ contains
     flx_heat(:) = 0.0
 
     call gw_prof (pcols , pver, pint_dev , pmid_dev , t_dev , rhoi, nm, ni )
+
+    z = phis_dev/MAPL_GRAV
 
     zi(:,pver+1) = 0.0
     do k=2,pver 
@@ -240,7 +245,7 @@ contains
          u_dev , v_dev, t_dev, &
          pint_dev, pmid_dev, &
          pdel_dev, rpdel_dev, &
-         lnpint_dev, zm_dev, zi, &
+         lnpint_dev, zm_dev, zi, z, &
          ni, nm, rhoi, &
          kvtt, &
          kwvrdg_dev, effrdg_dev, &

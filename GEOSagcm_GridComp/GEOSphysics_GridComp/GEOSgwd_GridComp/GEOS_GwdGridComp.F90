@@ -211,6 +211,16 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'PHIS',                              &
+        LONG_NAME          = 'surface geopotential height',       &
+        UNITS              = 'm+2 s-2',                           &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'SGH',                                       &
         LONG_NAME  = 'standard_deviation_of_topography',          &
         UNITS      = 'm',                                         &
@@ -950,7 +960,7 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=4.0,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  RC=STATUS)
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
@@ -1078,7 +1088,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=NCAR_EFFGWBKG, RC=STATUS)
     VERIFY_(STATUS)
     if (NCAR_NRDG > 0) then
-      call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.250, RC=STATUS)
+      call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
       VERIFY_(STATUS)
     else
       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.125, RC=STATUS)
@@ -1128,7 +1138,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Pointers from Import state
 
       real, pointer, dimension(:)      :: PREF
-      real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT
+      real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT, PHIS
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
       !++jtb Array for moist deep & shallow conv heating
       real, pointer, dimension(:,:,:)  :: HT_dc, HT_sc
@@ -1267,6 +1277,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, Q,        'Q',       RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, U,        'U',       RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, V,        'V',       RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, PHIS,     'PHIS',    RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, SGH,      'SGH',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, AREA,     'AREA',    RC=STATUS ); VERIFY_(STATUS)
@@ -1825,6 +1836,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
               ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+              PHIS,                                                   &
               DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
               DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
               TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
