@@ -19,7 +19,7 @@ program MOMraster
   REAL_,     pointer     :: yvert(:,:,:)          ! Lats of MOM's vertices
   REAL_                  :: xmin, xmax
   integer                :: i, j, nxt,k
-  integer                :: status, iargc
+  integer                :: status, command_argument_count
   character*(128)        :: GridFile
   character*(128)        :: GridName=''
   character*(128)        :: arg
@@ -40,7 +40,7 @@ INCLUDE "netcdf.inc"
 ! Process Arguments
 !------------------
 
-    I = iargc()
+    I = command_argument_count()
 
     if(I < 1 .or. I > 8) then
        print *, "Wrong Number of arguments: ", i
@@ -49,13 +49,13 @@ INCLUDE "netcdf.inc"
     end if
 
     nxt = 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
     do while(arg(1:1)=='-')
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           endif
        else
           arg = arg(3:)
@@ -78,7 +78,7 @@ INCLUDE "netcdf.inc"
           call exit(1)
        end select
        nxt = nxt + 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
     end do
 
     GridFile = arg
