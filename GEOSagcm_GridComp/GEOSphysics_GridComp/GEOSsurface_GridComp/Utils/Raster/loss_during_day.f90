@@ -90,7 +90,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     mult_jobs = .false.
     jseg = ntyps
     job=1
-    I = iargc()
+    I = command_argument_count()
 
     if(I < 1 ) then
        print *, "Job Segment is not specified: ", i
@@ -99,9 +99,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     end if
 
     if (i>0) then 
-       call getarg(1,arg)
+       call get_command_argument(1,arg)
        if ( trim(arg) == '-js' ) then
-          call getarg(2,arg)
+          call get_command_argument(2,arg)
           read(arg,'(i2)') job
           mult_jobs = .true.
           jseg =32

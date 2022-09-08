@@ -52,7 +52,7 @@
     integer              :: II, JJ, Type
     logical              :: UseType = .false., DoZip=.false., Verb=.false.
     logical              :: Here = .false.
-    integer              :: I, J, status, iargc, nxt
+    integer              :: I, J, status, command_argument_count, nxt
     real*8               :: dx, dy, lon0
     real*8,  allocatable :: xs(:), ys(:)
     character*128        :: &
@@ -69,7 +69,7 @@
 ! Process Arguments
 !------------------
 
-    I = iargc()
+    I = command_argument_count()
 
     if(I < 2 .or. I > 17) then
        print *, "Wrong Number of arguments: ", i
@@ -79,14 +79,14 @@
 
     nxt = 1
 
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
 
     do while(arg(1:1)=='-')
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           endif
        else
           arg = arg(3:)
@@ -116,18 +116,18 @@
           call exit(1)
        end select
        nxt = nxt + 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
     end do
 
     read(arg,'(i5)') ii
 
     nxt = nxt + 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
 
     read(arg,'(i5)') jj
 
     nxt = nxt + 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
     Grid2 = ARG
  
     if(trim(Gridname) == '') then

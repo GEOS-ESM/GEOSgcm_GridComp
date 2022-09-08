@@ -13,7 +13,7 @@ PROGRAM mkLISTilesPara
   integer, parameter   :: nc_gswp2 = 360, nr_gswp2 = 180, n_gswp2 =15238 
   integer, parameter :: max_pfaf_smap = 100
   character(40) :: arg
-  integer       ::  i, N_args, iargc, status
+  integer       ::  i, N_args, command_argument_count, status
   character*300 :: latlon_vector_file
   integer       :: nc, nr
   character*200 :: gfile
@@ -23,7 +23,7 @@ PROGRAM mkLISTilesPara
   real :: dx, dy
   integer :: ncells, dateline, nc_domain,nr_domain,i_offset,j_offset
   
-  N_args = iargc()
+  N_args = command_argument_count()
 
   if(N_args /= 2) then
      print *,'USAGE : bin/mkLISTilesPara -vfile filename'
@@ -36,11 +36,11 @@ PROGRAM mkLISTilesPara
      
      i = i+1
      
-     call getarg(i,arg)
+     call get_command_argument(i,arg)
      
      if     ( trim(arg) == '-vfile' ) then
         i = i+1
-        call getarg(i,latlon_vector_file)
+        call get_command_argument(i,latlon_vector_file)
 	
      else ! stop for any other arguments
 
@@ -50,14 +50,14 @@ PROGRAM mkLISTilesPara
      endif     
 end do
 
-call system('mkdir -p data/ ; mkdir -p til/ ; mkdir -p rst/ ; mkdir -p clsm/plots')
-call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-call system('cd ..')
+call execute_command_line('mkdir -p data/ ; mkdir -p til/ ; mkdir -p rst/ ; mkdir -p clsm/plots')
+call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+call execute_command_line('cd ..')
      
 !   Check for the 10 arc-sec MaskFile
 ! -----------------------------------
 
-call getenv ("MASKFILE"        ,MaskFile        )
+call get_environment_variable ("MASKFILE"        ,MaskFile        )
 
 if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then       
    ! Use new ESA based MaskFile
@@ -87,7 +87,7 @@ write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
 tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
 print *,trim(tmpstring)
 
-call system(tmpstring)
+call execute_command_line(tmpstring)
 
 contains
 

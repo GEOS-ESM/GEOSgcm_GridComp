@@ -1139,7 +1139,7 @@ END SUBROUTINE HISTOGRAM
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
       call RegridRaster(tile_id,iraster)
       NPLUS = count(iraster >= 1 .and. iraster <= ncatch)
-      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
       allocate (rmap%map (1:NPLUS))     
       rmap%map%NT = 0
       pix_count = 1
@@ -1158,7 +1158,7 @@ END SUBROUTINE HISTOGRAM
 
    else
       NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
-      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
       allocate (rmap%map (1:NPLUS))     
       rmap%map%NT = 0
       pix_count   = 1
@@ -1393,15 +1393,15 @@ END SUBROUTINE HISTOGRAM
     character*6 :: MA
     CHARACTER*20 :: version,resoln,continent
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
-    REAL :: latt,lont,fr_gcm,fr_cat,tsteps,zth, slr,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    REAL :: tsteps,zth, slr,tarea
+    INTEGER :: typ,j_dum,ierr,indr1,ip2
     character*100 :: path,fname,fout,metpath
     character (*) :: gfile
     integer :: n,maxcat,ip
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisvf, modisnf,albvf,albnf, lat,lon, &
+         modisvf, modisnf,albvf,albnf, &
          green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
          calbvf,calbnf, zero_array, one_array, albvr,albnr
@@ -1435,8 +1435,8 @@ END SUBROUTINE HISTOGRAM
     close (10,status='keep')
 
     fname=trim(gfile)//'.til'
-
     open (10,file=fname,status='old',action='read',form='formatted')
+
     fname='clsm/mosaic_veg_typs_fracs'
     open (20,file=fname,status='old',action='read',form='formatted')
 
@@ -1451,15 +1451,17 @@ END SUBROUTINE HISTOGRAM
     
     do n = 1,ip
       if (ease_grid) then     
-	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
+         read(10,*,IOSTAT=ierr) typ !,pfs,lont,latt,ig,jg,fr_gcm
       else
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+         !read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+         !   typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+         read(10,*,IOSTAT=ierr) typ
       endif
        if (typ == 100) then
           ip2 = n 
-          read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
-            indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
+          !read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
+          !  indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
+          read (20,*,IOSTAT=ierr) indr1,indr1,vegcls(ip2)
        endif
        if(ierr /= 0)write (*,*)'Problem reading', n, ease_grid
     end do
@@ -1875,6 +1877,7 @@ END SUBROUTINE modis_scale_para_high
                    do j = jLL,jLL + nr_10 -1 
                       do i = iLL, iLL + nc_10 -1
                          pix_count = rmap%ij_index(i,j)
+                         if (pix_count ==0) cycle
                          if(net_data1(i-iLL +1 ,j - jLL +1) > 0) then
                             
                             if(rmap%map(pix_count)%nt > 0) then
@@ -2603,6 +2606,7 @@ END SUBROUTINE modis_scale_para_high
                      do i = iLL, iLL + nc_10 -1 
                         if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
                            pix_count = rmap%ij_index(i,j)
+                           if (pix_count ==0) cycle
                            if(rmap%map(pix_count)%nt > 0) then
                               do n = 1, rmap%map(pix_count)%nt
                                  if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
@@ -2906,6 +2910,7 @@ END SUBROUTINE modis_scale_para_high
                  do i = iLL, iLL + nc_10 -1 
                     if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
                        pix_count = rmap%ij_index(i,j)
+                       if (pix_count == 0) cycle
                        if(rmap%map(pix_count)%nt > 0) then
                           do n = 1, rmap%map(pix_count)%nt
                              if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
@@ -4194,8 +4199,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                   j  = 0
                   i1 = n - k
                   i2 = n + k
-                  if((i1 >=     1).and.(soil_class_com (i1) >=1)) j = i1  ! tentatively use "lower" neighbor unless out of range
-                  if((i2 <=maxcat).and.(soil_class_com (i2) >=1)) j = i2  ! "upper" neighbor prevails unless out of range
+                  if(i1 >=     1) then
+                     if (soil_class_com (i1) >=1) j = i1  ! tentatively use "lower" neighbor unless out of range
+                  endif
+
+                  if(1 <= i2 .and. i2 <=maxcat) then
+                     if (soil_class_com (i2) >=1) j = i2  ! "upper" neighbor prevails unless out of range
+                  endif
 
                   if (j > 0) then
                      soil_class_com (n) = soil_class_com (j)
@@ -5915,9 +5925,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       write (time_stamp,'(i4.4,a1,i2.2,a1,i2.2,1x,a2,1x,i2.2,a1,i2.2,a1,i2.2)')      &
            date_time_values(1),'-',date_time_values(2),'-',date_time_values(3),'at', &
            date_time_values(5),':',date_time_values(6),':',date_time_values(7)
-!      call system('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
+!      call execute_command_line('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
 !      call sleep (5)
-      call getenv ("USER"        ,MYNAME        )
+      call get_environment_variable ("USER"        ,MYNAME        )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'Date'     , LEN_TRIM(time_stamp),trim(time_stamp))
       status = NF_PUT_ATT_TEXT(NCVegOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
