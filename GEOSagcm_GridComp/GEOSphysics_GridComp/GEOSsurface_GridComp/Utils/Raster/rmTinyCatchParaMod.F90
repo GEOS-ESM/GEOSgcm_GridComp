@@ -10,6 +10,7 @@ module rmTinyCatchParaMod
   use date_time_util  
   use leap_year
   use MAPL_ConstantsMod
+  use MAPL_Base,    ONLY: MAPL_UNDEF
   use lsm_routines, ONLY: sibalb
   
   implicit none
