@@ -288,13 +288,13 @@ subroutine gw_rdg_ifc( &
 !WMP pressure scaling near model top
 !  zfac_layer = 1000.0 ! 10mb
 !  pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
-!  pint_adj = 1.0
+   pint_adj = 1.0
 !  pint_adj = 0.1 + (0.9/19.0) * &
 !                   ((ATAN((2.*(pint-10000.0)/(75000.0-10000.0)-1.) * TAN(20.*pi/21.-0.5*pi)) + 0.5*pi) * 21./pi - 1.)
 !  adjust strength from surface (1.0) to 10,000m (0.1)
-   do k=1,pver+1 
-     pint_adj(:,k)= 0.1 + PINTADJ_0 * ((ATAN((2.*(z+zi(:,k)-2500.0)/(-2500.0)-1.) * PINTADJ_1) + PINTADJ_2) * PINTADJ_3 - 1.)
-   enddo
+!  do k=1,pver+1 
+!    pint_adj(:,k)= 0.1 + PINTADJ_0 * ((ATAN((2.*(z+zi(:,k)-2500.0)/(-2500.0)-1.) * PINTADJ_1) + PINTADJ_2) * PINTADJ_3 - 1.)
+!  enddo
 
    isoflag = 0
  
@@ -323,7 +323,8 @@ subroutine gw_rdg_ifc( &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           effrdg(:,nn), c, kvtt, tau, utgw, vtgw, &
           ttgw, gwut, &
-          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
+          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj, &
+          tndmax_in=40.0/86400.0)
 
 #ifdef NCAR_ADJUST
    ! ! Project stress into directional components.

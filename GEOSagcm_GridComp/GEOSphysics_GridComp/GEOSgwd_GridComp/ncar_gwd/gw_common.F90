@@ -79,9 +79,6 @@ real, allocatable :: alpha(:)
 
 ! Minimum non-zero stress.
 real(GW_PRC), parameter :: taumin = 1.e-10_GW_PRC
-! Maximum wind tendency from stress divergence (before efficiency applied).
-! 400 m/s/day
-real(GW_PRC), parameter :: tndmax = 400._GW_PRC / 86400._GW_PRC
 ! Maximum allowed change in u-c (before efficiency applied).
 real(GW_PRC), parameter :: umcfac = 0.5_GW_PRC
 ! Minimum value of (u-c)**2.
@@ -268,7 +265,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, tau,  utgw,  vtgw, &
      ttgw,  gwut, ro_adjust, tau_adjust, &
-     kwvrdg, satfac_in, lapply_effgw_in )
+     kwvrdg, satfac_in, lapply_effgw_in, tndmax_in )
 
   !-----------------------------------------------------------------------
   ! Solve for the drag profile from the multiple gravity wave drag
@@ -368,6 +365,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   logical, intent(in), optional :: lapply_effgw_in
 
+  real, intent(in), optional :: tndmax_in
+
   !---------------------------Local storage-------------------------------
 
   ! Level, wavenumber, constituent and column loop indices.
@@ -398,6 +397,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! unless overidden by satfac_in
   real(GW_PRC) :: satfac
 
+  real(GW_PRC) :: tndmax
+
   real(GW_PRC) :: near_zero = tiny(1.0_GW_PRC)
 
   logical :: lapply_effgw
@@ -411,6 +412,13 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      satfac = 2.0
   endif
 
+! Maximum wind tendency from stress divergence (before efficiency applied).
+  if (present(tndmax_in)) then
+     tndmax = tndmax_in
+  else
+     tndmax = 400._GW_PRC / 86400._GW_PRC
+  endif
+
   ! Default behavior is to apply effgw and
   ! tendency limiters as designed by Sean
   ! Santos (lapply_effgw=.TRUE.). However,
@@ -419,7 +427,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   if (present(lapply_effgw_in)) then
       lapply_effgw = lapply_effgw_in
   else
-      lapply_effgw = .TRUE.
+      lapply_effgw = .FALSE.
   endif
 
   
@@ -984,11 +992,13 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
   real, intent(inout) :: ttgw(ncol,pver)
 
   real :: zlb,pm,rhom,cmu,fpmx,fpmy,fe,fpe,fpml,fpel,fpmt,fpet,dusrcl,dvsrcl,dtsrcl
-  real :: utfac,uhtmax
+  real :: tndmax,utfac,uhtmax
   integer  :: ktop
 
   ! Level index.
   integer :: i,k,l
+
+  tndmax = 400.0/86400.0
 
 ! GEOS efficiency and energy/momentum adjustments
   ktop=1
