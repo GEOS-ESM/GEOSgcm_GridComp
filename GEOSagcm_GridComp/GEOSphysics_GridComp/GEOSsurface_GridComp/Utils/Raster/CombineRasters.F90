@@ -30,7 +30,7 @@ program mkOverlaySimple
 
   REAL_,   parameter     :: PI        = RASTER_PI
 
-  integer                :: IARGC
+  integer                :: command_argument_count
   integer                :: nxt, argl, fill
   integer                :: i, j, k, l, ip
   integer                :: STATUS, i1, i2, nvars, rvars
@@ -76,7 +76,7 @@ program mkOverlaySimple
     rstdir='rst/'   ! Write in current dir
     maxtiles=4000000
 
-    I = iargc()
+    I = command_argument_count()
 
     if(I < 2 .or. I > 11) then
        print *, trim(Usage)
@@ -84,7 +84,7 @@ program mkOverlaySimple
     end if
 
     nxt = 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
 
     do while(arg(1:1)=='-')
        opt=arg(2:2)
@@ -93,7 +93,7 @@ program mkOverlaySimple
        if(argl==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           end if
        else
           arg = arg(3:)
@@ -119,13 +119,13 @@ program mkOverlaySimple
        end select
 
        nxt = nxt + 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
     end do
 
     Grid1 = ARG
 
     nxt = nxt + 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
 
     Grid2 = ARG
 

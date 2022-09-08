@@ -1137,7 +1137,9 @@ contains
 !----------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'PCU ','PLS ','SNO ','ICE ','FRZR'/),     &
+         SHORT_NAME  = (/'PCU    ', 'PLS    ', 'SNO    ',          &
+                         'ICE    ', 'FRZR   ', 'TPREC  ',          &
+                         'CN_PRCP' /),                             &
          DST_ID      = SURF,                                       &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1198,19 +1200,24 @@ contains
 ! -----------------
 
      call MAPL_AddConnectivity ( GC,                              &
-        SHORT_NAME  = (/ 'Q       ',  'RH2     ', 'CN_PRCP ',     &
-                         'TPREC   ',  'SNO     ', 'DQDT    ',     &
-                         'FCLD    ',  'LS_PRCP ', 'CNV_MFC ',     &
-                         'CNV_MFD ',  'QL      ', 'PFL_CN  ',     &
-                         'PFL_LSAN',  'PFI_CN  ', 'PFI_LSAN',     &
-                         'QCTOT   ',  'CNV_QC  ',                 &
-                         'QLTOT   ',  'QLCN    ', 'QICN    ',     &
-                         'DQLDT   ',  'QITOT   ', 'REV_CN  ',     &
-                         'REV_LS  ',  'REV_AN  ', 'LFR_GCC ',     &
-                                      'DQIDT   ', 'QI      ',     &
-                         'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
-                         'QILS    ',  'DQRL    ', 'CNV_FRC ',     &
-                         'RI      ',  'RL      '            /),   &
+        SHORT_NAME  = (/ 'Q       ', 'RH2     ', 'DQDT    ',      &
+                         'FCLD    ', 'CNV_MFC ', 'CNV_MFD ',      &
+                         'QL      ', 'PFL_CN  ', 'PFL_LSAN',      &
+                         'PFI_CN  ', 'PFI_LSAN', 'QCTOT   ',      &
+                         'CNV_QC  ', 'QLTOT   ', 'QLCN    ',      &
+                         'QICN    ', 'DQLDT   ', 'QITOT   ',      &
+                         'REV_CN  ', 'REV_LS  ', 'REV_AN  ',      &
+                         'LFR_GCC ', 'DQIDT   ', 'QI      ',      &
+                         'DQRC    ', 'CNV_CVW ', 'DQRL    ',      &
+                         'CNV_FRC ', 'RI      ',  'RL      ' /),  &
+        DST_ID      = CHEM,                                       &
+        SRC_ID      = MOIST,                                      &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = (/ 'Q         ','FCLD      ' /),              &
+        DST_NAME  = (/ 'Q_avg24   ','FCLD_avg24' /),              &
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
@@ -1235,7 +1242,8 @@ contains
                          'CN       ', 'RHOS     ', 'WET2     ',   &
                          'SNOMAS   ', 'SNOWDP   ', 'ITY      ',   &
                          'LHFX     ', 'Q2M      ', 'Q10M     ',   &
-                         'T10M     ', 'WCSF     '             /), &
+                         'T10M     ', 'WCSF     ', 'CN_PRCP  ',   &
+                         'PRECTOT  '                          /), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
                                                        RC=STATUS  )
@@ -1253,6 +1261,14 @@ contains
      call MAPL_AddConnectivity ( GC,                              &
         SHORT_NAME  = (/ 'TAUCLI', 'TAUCLW', 'CLDTT ',            &
                          'DFPAR ', 'DRPAR '                   /), &
+        DST_ID      =  CHEM,                                      &
+        SRC_ID      =  RAD,                                       &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = (/ 'TAUCLI      ', 'TAUCLW      '/),          &
+        DST_NAME  = (/ 'TAUCLI_avg24', 'TAUCLW_avg24'/),          &
         DST_ID      =  CHEM,                                      &
         SRC_ID      =  RAD,                                       &
                                                        RC=STATUS  )
@@ -1318,7 +1334,9 @@ contains
 
     !Aerosol
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'AERO_ACI'/),                             &
+         SHORT_NAME  = (/'AERO'/),                           &
+!         SHORT_NAME  = (/'AERO_ACI  '/),                             &
+!         SHORT_NAME  = (/'AERO_ACI  ', 'AERO2G_ACI'/),                             &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )

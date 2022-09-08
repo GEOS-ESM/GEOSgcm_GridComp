@@ -7,6 +7,5 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL CICE4)
-target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
+  DEPENDENCIES GEOS_Shared MAPL CICE4 esmf NetCDF::NetCDF_Fortran)
 

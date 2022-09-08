@@ -18,7 +18,7 @@ program Runoff
   character*100          :: fileLL="data/CATCH/Outlet_latlon."
   character*5            :: C_NX, C_NY
 
-  call getarg(1,file)
+  call get_command_argument(1,file)
 
   fileT = "til/"//trim(file)//".til"
   fileR = "rst/"//trim(file)//".rst"

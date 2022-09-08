@@ -27,7 +27,7 @@
     character*128        :: ARG, GridName=''
     character*1          :: opt
     integer              :: ncells !  Cells on edges of cubed faces
-    integer              :: I, J, N, status, nxt
+    integer              :: I, J, N, status, command_argument_count, nxt
     integer              :: js,jv
     real*8               :: dx, dy
     real*8,  allocatable :: xs(:,:), ys(:,:), xv(:,:,:), yv(:,:,:)

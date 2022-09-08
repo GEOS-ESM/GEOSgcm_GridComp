@@ -11,7 +11,7 @@ allocate(alb_in(nx,ny))
 allocate(albo(nx,ny))
 allocate(alb_out(nx,ny))
 
-call getarg(1,ifile)
+call get_command_argument(1,ifile)
 
 ofile = "data/Attic/foo"!trim(ifile)//'int1'
 

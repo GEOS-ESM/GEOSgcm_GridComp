@@ -23,6 +23,7 @@
     integer, parameter     :: nx0 = 8640
     integer, parameter     :: ny0 = 4320
 
+    integer                :: command_argument_count
     integer                :: i,j,k,n, status,ncid, ncid2
     integer                :: ip, nxt
     integer                :: type, maxtiles, nx, ny
@@ -73,8 +74,8 @@
     character*128          :: &
     Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -l LandFile -g GridName"
     include 'netcdf.inc'
-    call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
-    call system('cd ..')
+    call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
+    call execute_command_line('cd ..')
 
 ! Process Arguments
 !------------------

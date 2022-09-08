@@ -14,7 +14,7 @@ PROGRAM mkLISTilesPara
   integer, parameter   :: nc_gswp2 = 360, nr_gswp2 = 180, n_gswp2 =15238 
   integer, parameter :: max_pfaf_smap = 100
   character(40) :: arg
-  integer       ::  i, N_args, status
+  integer       ::  i, N_args, command_argument_count, status
   character*300 :: latlon_vector_file
   integer       :: nc, nr
   character*200 :: gfile
@@ -51,9 +51,9 @@ PROGRAM mkLISTilesPara
      endif     
 end do
 
-call system('mkdir -p data/ ; mkdir -p til/ ; mkdir -p rst/ ; mkdir -p clsm/plots')
-call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-call system('cd ..')
+call execute_command_line('mkdir -p data/ ; mkdir -p til/ ; mkdir -p rst/ ; mkdir -p clsm/plots')
+call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+call execute_command_line('cd ..')
      
 !   Check for the 10 arc-sec MaskFile
 ! -----------------------------------
@@ -88,7 +88,7 @@ write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
 tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
 print *,trim(tmpstring)
 
-call system(tmpstring)
+call execute_command_line(tmpstring)
 
 contains
 

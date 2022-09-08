@@ -52,7 +52,7 @@ PROGRAM mkSMAPTilesPara_v1
       character*100 :: veg_class (12)
       character*5 :: MGRID
       character*100 :: gfile,gtopo30
-      integer :: nc_smap,nr_smap, N_args
+      integer :: nc_smap,nr_smap, N_args, command_argument_count 
       real :: EASE_grid_area, CELL_km
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
       character(40) :: arg
@@ -91,8 +91,8 @@ PROGRAM mkSMAPTilesPara_v1
          
       end do
       
-      call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-      call system('cd ..')
+      call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+      call execute_command_line('cd ..')
       
       
       ! Setting SMAP Grid specifications
@@ -690,7 +690,7 @@ PROGRAM mkSMAPTilesPara_v1
       tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
       print *,trim(tmpstring)
       
-      call system (tmpstring)   
+      call execute_command_line (tmpstring)   
 
    END PROGRAM mkSMAPTilesPara_v1
 
