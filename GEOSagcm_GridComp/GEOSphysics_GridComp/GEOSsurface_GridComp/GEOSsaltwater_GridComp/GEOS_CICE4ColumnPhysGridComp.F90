@@ -78,6 +78,9 @@ module GEOS_CICE4ColumnPhysGridComp
       type(cice_state), pointer :: ptr
   end type
 
+#define PACKIT   1
+#define UNPACKIT 2
+
   contains
 
 !BOP
@@ -3011,8 +3014,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: NUM_ICE_LAYERS      ! set via resource parameter
   integer                             :: NUM_ICE_CATEGORIES  ! set via resource parameter
 
-  real, pointer, dimension(:)         :: LATS => null()
-  real, pointer, dimension(:)         :: LONS => null()
+  real, pointer, dimension(:)         :: LATS_ORIGINAL => null()
+  real, pointer, dimension(:)         :: LONS_ORIGINAL => null()
 
   real, pointer, dimension(:)         :: AREA => null()     ! needed to calculate TILEAREA in SaltWaterCore
 
@@ -3050,8 +3053,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-----------------------------------
 
     call MAPL_Get(MAPL,             &
-         TILELATS  = LATS ,                      &
-         TILELONS  = LONS ,                      &
+         TILELATS  = LATS_ORIGINAL ,                      &
+         TILELONS  = LONS_ORIGINAL ,                      &
          TILEAREA  = AREA ,                      &
          ORBIT     = ORBIT,                      &
          INTERNAL_ESMF_STATE = INTERNAL,         &
@@ -3062,7 +3065,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Update the skin variables each step
 !------------------------------------
 
-    call CICECORE(NT=size(LONS), RC=STATUS )
+    call CICECORE(NT_ORIGINAL=size(LONS_ORIGINAL), RC=STATUS )
     VERIFY_(STATUS)
 
 !  All done
@@ -3077,9 +3080,9 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   subroutine CICECORE(NT,RC)
+   subroutine CICECORE(NT_ORIGINAL,RC)
 
-   integer,           intent(IN ) :: NT
+   integer,           intent(IN ) :: NT_ORIGINAL
    integer, optional, intent(OUT) :: RC
      
 !  Locals
@@ -3264,27 +3267,27 @@ contains
    real, pointer, dimension(:)    :: FRZMLT    => null() 
 
    real, pointer, dimension(:,:)       :: TS  => null()
-   real,    dimension(NT)              :: SHF
-   real,    dimension(NT)              :: EVP
-   real,    dimension(NT)              :: SHD
-   real,    dimension(NT)              :: EVD
-   real,    dimension(NT)              :: CFQ
-   real,    dimension(NT)              :: CFT
-   !real,    dimension(NT)              :: UUA
-   !real,    dimension(NT)              :: VVA
-   real,    dimension(NT)              :: TXI
-   real,    dimension(NT)              :: TYI
-   real,    dimension(NT)              :: DQS
-   real,    dimension(NT)              :: DTS
-   real,    dimension(NT)              :: DTX
-   real,    dimension(NT)              :: DTY
-   real,    dimension(NT)              :: SWN
-   real,    dimension(NT)              :: PEN
-   real,    dimension(NT)              :: LHF
-   real,    dimension(NT)              :: ZTH
-   real,    dimension(NT)              :: SLR
-   real,    dimension(NT)              :: VSUVR
-   real,    dimension(NT)              :: VSUVF
+   real, allocatable,    dimension(:)              :: SHF
+   real, allocatable,    dimension(:)              :: EVP
+   real, allocatable,    dimension(:)              :: SHD
+   real, allocatable,    dimension(:)              :: EVD
+   real, allocatable,    dimension(:)              :: CFQ
+   real, allocatable,    dimension(:)              :: CFT
+   !real, allocatable,    dimension(:)              :: UUA
+   !real, allocatable,    dimension(:)              :: VVA
+   real, allocatable,    dimension(:)              :: TXI
+   real, allocatable,    dimension(:)              :: TYI
+   real, allocatable,    dimension(:)              :: DQS
+   real, allocatable,    dimension(:)              :: DTS
+   real, allocatable,    dimension(:)              :: DTX
+   real, allocatable,    dimension(:)              :: DTY
+   real, allocatable,    dimension(:)              :: SWN
+   real, allocatable,    dimension(:)              :: PEN
+   real, allocatable,    dimension(:)              :: LHF
+   real, allocatable,    dimension(:)              :: ZTH
+   real, allocatable,    dimension(:)              :: SLR
+   real, allocatable,    dimension(:)              :: VSUVR
+   real, allocatable,    dimension(:)              :: VSUVF
 
    integer                             :: N
    real                                :: DT
@@ -3309,12 +3312,12 @@ contains
    real(kind=MAPL_R8), dimension(1)    :: FRZMLTDB, TSCDB, TFDB, TAUXBOTDB, TAUYBOTDB, &
                                           TBOTDB, FBOTDB, RSIDEDB
 
-   real,    dimension(NT)              :: FSWABS
-   real                                :: YDAY 
-   real,    dimension(NT)              :: ALBVRI
-   real,    dimension(NT)              :: ALBVFI
-   real,    dimension(NT)              :: ALBNRI
-   real,    dimension(NT)              :: ALBNFI
+   real, allocatable,   dimension(:)              :: FSWABS
+   real                                           :: YDAY
+   real, allocatable,  dimension(:)               :: ALBVRI
+   real, allocatable,   dimension(:)              :: ALBVFI
+   real, allocatable,   dimension(:)              :: ALBNRI
+   real, allocatable,   dimension(:)              :: ALBNFI
 
    integer,            allocatable    :: TRCRTYPE      (:)
    real,               allocatable    :: TRACERS       (:,:)
@@ -3404,181 +3407,26 @@ contains
    real, parameter                     :: SALTWATERCAP    = MAPL_CAPWTR
    real, parameter                     :: SALTWATERICECAP = MAPL_CAPICE
 
+! load balancing variables
+   integer :: NT, NUMMAX, pet, CICECOREBalanceHandle, L1, LN
+   integer :: HorzDims, numIntSlices, numIntSlices8, numExpSlices
+   real, target, allocatable :: BUFIMP(:), BUFINT(:), BUFEXP(:)
+   real(kind=MAPL_R8), target, allocatable :: BUFINT8(:)
+   real, pointer :: PTR1(:), PTR2(:,:), PTR3(:,:,:)
+   real(kind=MAPL_R8), pointer :: PTR1R8(:), PTR2R8(:,:), PTR3R8(:,:,:)
+   !integer   :: SLICESimp(100) ! increase size if more than 100 imports
+   integer :: COMM
+   logical, dimension(NT_ORIGINAL) :: TILE_WITH_ICE
+   logical :: loadBalance
+   integer :: numUsedImp   ! number of imports actually used
+   !character(len=ESMF_MAXSTR), dimension(29) :: NAMESimp
+   real,               pointer    :: LATS(:)
+   real,               pointer    :: LONS(:)
+
 !  Begin...
 !----------
 
    IAm =  trim(COMP_NAME) // "CICECORE"
-
-
-! Pointers to inputs
-!-------------------
-
-   call MAPL_GetPointer(IMPORT,ALW    , 'ALW'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,BLW    , 'BLW'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,LWDNSRF, 'LWDNSRF',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DRPAR  , 'DRPAR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DFPAR  , 'DFPAR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DRNIR  , 'DRNIR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DFNIR  , 'DFNIR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DRUVR  , 'DRUVR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DFUVR  , 'DFUVR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,EVAP   , 'EVAP'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SH     , 'SH'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TAUX   , 'TAUX'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TAUY   , 'TAUY'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS); VERIFY_(STATUS)
-   !call MAPL_GetPointer(IMPORT,TF     , 'TFREEZE',    RC=STATUS); VERIFY_(STATUS)
-
-   ! TODO: revisit for dual_ocean
-   !   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    RC=STATUS); VERIFY_(STATUS)
-
-   call MAPL_GetPointer(IMPORT,UW     , 'UW'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VW     , 'VW'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,QHATM  , 'QHATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UHATM  , 'UHATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VHATM  , 'VHATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UUA    , 'UUA'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VVA    , 'VVA'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CTATM  , 'CTATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CMATM  , 'CMATM'  ,    RC=STATUS); VERIFY_(STATUS)
-
-   call MAPL_GetPointer(IMPORT,TAUXBOT, 'TAUXBOT',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TAUYBOT, 'TAUYBOT',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TW     , 'TS_FOUND',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,FRZMLT , 'FRZMLT' ,    RC=STATUS); VERIFY_(STATUS)
-
-! Pointers to internals
-!----------------------
-
-   call MAPL_GetPointer(INTERNAL,TI     ,'TSKINI',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,HI     ,'HSKINI',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,SI     ,'SSKINI',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,QS     , 'QS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CH     , 'CH'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CQ     , 'CQ'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CM     , 'CM'   ,    RC=STATUS); VERIFY_(STATUS)
-
-   call MAPL_GetPointer(INTERNAL,FR8    , 'FR'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLICE ,'VOLICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLSNO ,'VOLSNO',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLPOND,'VOLPOND',   RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,APONDN, 'APONDN',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,HPONDN, 'HPONDN',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGICE ,'ERGICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGSNO ,'ERGSNO',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,TAUAGE ,'TAUAGE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,SLMASK ,'SLMASK',    RC=STATUS); VERIFY_(STATUS)
-
-! Pointers to outputs
-!--------------------
-
-   call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBNF  , 'ALBNF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBNR  , 'ALBNR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QST    , 'QST'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TST    , 'TST'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DELTS  , 'DELTS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TAUXI  , 'TAUXI'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TAUYI  , 'TAUYI'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENUVR , 'PENUVR'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENUVF , 'PENUVF'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENPAR , 'PENPAR'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENPAF , 'PENPAF'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,EVAPOUT, 'EVAPOUT' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SUBLIM,  'SUBLIM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SHOUT  , 'SHOUT'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SHICE  , 'SHICE'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLATN  , 'HLATN'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLATICE, 'HLATICE' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSURFe , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSURFICE,'FSURFICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLWUP  , 'HLWUP'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLWUPe , 'HLWUPICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,LWNDSRF, 'LWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SWNDSRF, 'SWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,LWNDICE, 'LWNDICE' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SWNDICE, 'SWNDICE' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRACI  , 'FRACI'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRACINEW,'FRACINEW',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,LWDNSRFe,'LWDNSRF' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SWDNSRFe,'SWDNSRF' ,    RC=STATUS); VERIFY_(STATUS)
-
-
-   call MAPL_GetPointer(EXPORT,FRAZIL , 'FRAZIL'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CONGELO, 'CONGEL'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOICEO, 'SNOICE'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRESH  , 'FRESH'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSALT  , 'FSALT'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FHOCN  , 'FHOCN'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PICE   , 'PICE'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSWTRUO, 'FSWTHRU' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSWABSO, 'FSWABS'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTL  , 'MELTL'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTTL , 'MELTT'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTBL , 'MELTB'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MELTSL , 'MELTS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HICE   , 'HICE'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HSNO   , 'HSNO'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HICEUNT, 'HICEUNT' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOONICE,'SNOONICE',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TSKINICE, 'TSKINICE'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,IAGE   , 'IAGE'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DAIDTT , 'DAIDTT'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DVIDTT , 'DVIDTT'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FBOTL  , 'FBOT'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,USTARI , 'USTARI'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FCONDTOP,'FCONDTOP',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FCONDB,  'FCONDBOT',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,NIERG,  'NEWICEERG',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SBLXOUT,'SUBLIMFLX',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SIALB,   'SIALB'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GHTSKIN, 'GHTSKIN' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRZMLTe, 'FRZMLT'  ,    RC=STATUS); VERIFY_(STATUS)
-
-   ! category dimensional exports
-   call MAPL_GetPointer(EXPORT,FCONDBOTN,  'FCONDBOTN' ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FCONDTOPN,  'FCONDTOPN' ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TINZ     ,  'TINZ'      ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SHICEN   ,  'SHICEN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLWUPN   ,  'HLWUPN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,LWNDSRFN ,  'LWNDSRFN'  ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSURFN   ,  'FSURFN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TSURFN   ,  'TSURFN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSWSFCN  ,  'FSWSFCN'   ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBINe   ,  'ALBIN'     ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBSNe   ,  'ALBSN'     ,  RC=STATUS); VERIFY_(STATUS)
-
-   ! CMIP5 exports
-   call MAPL_GetPointer(EXPORT,EVAP_C5,        'evap_CMIP5' ,     RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PR_C5,          'pr_CMIP5'   ,     RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PRSN_C5,        'prsn_CMIP5' ,     RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GRFRAZIL_C5,    'grFrazil_CMIP5' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GRCONGEL_C5,    'grCongel_CMIP5' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GRLATERAL_C5,   'grLateral_CMIP5', RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOTOICE_C5,    'snoToIce_CMIP5' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOMELT_C5,     'snomelt_CMIP5' ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TMELT_C5,       'tmelt_CMIP5' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,BMELT_C5,       'bmelt_CMIP5' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SFDSI_C5,       'sfdsi_CMIP5' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HFSIFRAZIL_C5,  'hfsifrazil_CMIP5',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,IALB_C5,        'ialb_CMIP5',      RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RSDSSI_C5,      'rsdssi_CMIP5',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RSUSSI_C5,      'rsussi_CMIP5',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSITHERM_CMIP5,'fsitherm_CMIP5',   RC=STATUS); VERIFY_(STATUS)
 
 ! Get the time step
 ! -----------------
@@ -3601,10 +3449,91 @@ contains
     call MAPL_GetResource ( MAPL, DO_POND,     Label="CICE_DO_POND:" , DEFAULT=0,       RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource ( MAPL, loadBalance    , Label="CICE_LOAD_BALANCE:", &
+        DEFAULT=.TRUE., RC=STATUS)
+
+   call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ALBNF  , 'ALBNF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ALBNR  , 'ALBNR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+
+   call ESMF_VMGetCurrent(VM, __RC__)
+   call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=pet, __RC__)
+   call ESMF_VMBarrier(VM, __RC__)
+   call MAPL_TimerOn(MAPL,    "-In_ReDist")
+!load balance setup
+   if(loadBalance) then
+
+      TILE_WITH_ICE = .true.
+      call MAPL_BalanceCreate(OrgLen=NT_ORIGINAL, Comm=COMM, Handle=CICECOREBalanceHandle, BalLen=NT, BufLen=NUMMAX, __RC__)
+     HorzDims = NT_ORIGINAL   ! Slice size for buffer packing
+
+!****IMPORTANT****!!! Adjust the relevant buffer(s) and pointer assigments BufferPacking.h and BufferUnpacking.h if import/internal/export fields are added/deleted
+#include "BufferPacking.h"
+
+   else  ! no load_balance
+
+#include "GetPtr.h"
+      NT = NT_ORIGINAL
+      LATS => LATS_ORIGINAL
+      LONS => LONS_ORIGINAL
+
+   end if
+   call MAPL_TimerOff(MAPL,    "-In_ReDist")
+
 ! Copy friendly internals into tile-tile local variables
 !-------------------------------------------------------
 
     TS => TI
+    allocate( FSWABS (NT), STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate( ALBVRI (NT), STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate( ALBVFI (NT), STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(  ALBNRI (NT), STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate( ALBNFI (NT), STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(SHF        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(EVP        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(SHD        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(EVD        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(CFQ        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(CFT        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(TXI        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(TYI        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(DQS        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(DTS        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(DTX        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(DTY        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(SWN        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(PEN        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(LHF        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(ZTH        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(SLR        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(VSUVR        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(VSUVF        (NT),                                   STAT=STATUS)
+    VERIFY_(STATUS)
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------
@@ -4580,6 +4509,41 @@ contains
 
     call MAPL_TimerOff(MAPL,    "-Albedo")
 
+    call ESMF_VMBarrier(VM, __RC__)
+    call MAPL_TimerOn(MAPL,    "-Out_ReDist")
+    if(loadBalance) then
+#include "BufferUnpacking.h"
+       deallocate(BUFIMP,BUFINT,BUFINT8,BUFEXP,STAT=STATUS)
+       VERIFY_(STATUS)
+
+       call MAPL_BalanceDestroy(Handle=CICECOREBalanceHandle, __RC__)
+    endif
+    call MAPL_TimerOff(MAPL,    "-Out_ReDist")
+
+    deallocate(FSWABS)
+    deallocate(ALBVRI)
+    deallocate(ALBVFI)
+    deallocate( ALBNRI)
+    deallocate(ALBNFI)
+    deallocate(SHF)
+    deallocate(EVP)
+    deallocate(SHD)
+    deallocate(EVD)
+    deallocate(CFQ)
+    deallocate(CFT)
+    deallocate(TXI)
+    deallocate(TYI)
+    deallocate(DQS)
+    deallocate(DTS)
+    deallocate(DTX)
+    deallocate(DTY)
+    deallocate(SWN)
+    deallocate(PEN)
+    deallocate(LHF)
+    deallocate(ZTH)
+    deallocate(SLR)
+    deallocate(VSUVR)
+    deallocate(VSUVF)
     deallocate(TRCRTYPE)
     deallocate(TRACERS)
     deallocate(TF)
@@ -6216,4 +6180,57 @@ end subroutine RUN2
 
 end module GEOS_CICE4ColumnPhysGridComp
 
+subroutine CICEReOrder(Packed, UnPacked, MSK, Pdim, Udim, LM, DIR)
+  integer, intent(IN   ) :: Pdim, Udim, LM, DIR
+  real,    intent(INOUT) ::   Packed(Pdim,*)
+  real,    intent(INOUT) :: UnPacked(Udim,*)
+  logical, intent(IN   ) :: MSK(Udim)
 
+  integer :: I, J, L, M
+
+  do L = 1,LM
+     M = 1
+     do I = 1,Udim
+        if (MSK(I)) then
+           if(DIR==PACKIT) then
+              Packed(M,L) = UnPacked(I,L)
+           else
+              Unpacked(I,L) = Packed(M,L)
+           end if
+           M = M+1
+        else
+           if(DIR/=PACKIT) then
+              UnPacked(I,L) = 0
+           end if
+        end if
+     end do
+  end do
+end subroutine CICEReOrder
+
+subroutine CICEReOrder8(Packed, UnPacked, MSK, Pdim, Udim, LM, DIR)
+  use MAPL, only : MAPL_R8
+  integer, intent(IN   ) :: Pdim, Udim, LM, DIR
+  real(kind=MAPL_R8),    intent(INOUT) ::   Packed(Pdim,*)
+  real(kind=MAPL_R8),    intent(INOUT) :: UnPacked(Udim,*)
+  logical, intent(IN   ) :: MSK(Udim)
+
+  integer :: I, J, L, M
+
+  do L = 1,LM
+     M = 1
+     do I = 1,Udim
+        if (MSK(I)) then
+           if(DIR==PACKIT) then
+              Packed(M,L) = UnPacked(I,L)
+           else
+              Unpacked(I,L) = Packed(M,L)
+           end if
+           M = M+1
+        else
+           if(DIR/=PACKIT) then
+              UnPacked(I,L) = 0
+           end if
+        end if
+     end do
+  end do
+end subroutine CICEReOrder8
