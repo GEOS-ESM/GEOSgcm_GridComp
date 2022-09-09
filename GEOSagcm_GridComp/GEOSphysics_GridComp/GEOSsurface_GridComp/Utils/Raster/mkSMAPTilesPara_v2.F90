@@ -14,6 +14,7 @@ PROGRAM mkSMAPTilesPara_v2
       use MAPL_SortMod
       use MAPL_ConstantsMod
       use LogRectRasterizeMod
+      use netcdf
       
       implicit none
       character*5          :: LBCSV = 'UNDEF'
@@ -35,6 +36,7 @@ PROGRAM mkSMAPTilesPara_v2
       integer :: dx_esa, dy_esa, NBINS, NPLUS
 
       integer*8, allocatable, dimension (:) ::  SRTM_catid
+      real(kind=8),allocatable, dimension(:)::  SRTM_catid_r8
 
       integer,allocatable, dimension (:,:), target :: tileid_index,catid_index
       integer,allocatable, dimension (:,:)         :: catid, iaster
@@ -51,7 +53,7 @@ PROGRAM mkSMAPTilesPara_v2
       character(3) :: easegrid      
       real :: clat, clon, r_smap, s_smap, smap_convert, da
       real :: fr_gcm
-      integer :: ind_col, ind_row, status, ncid, nciv,nland_cells, DOM_INDX
+      integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX
       REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
       character*100 :: veg_class (12)
       character*5 :: MGRID
@@ -67,8 +69,6 @@ PROGRAM mkSMAPTilesPara_v2
       character*1            :: PF
       character(len=2)       :: EASE_Version
  
-      include 'netcdf.inc'
-
       N_args = command_argument_count()
 
       if(N_args < 1) then
@@ -230,6 +230,7 @@ PROGRAM mkSMAPTilesPara_v2
 
          allocate(tileid_index(1:nc,1:nr))
          allocate(SRTM_catid  (1:SRTM_maxcat+2))
+         allocate(SRTM_catid_r8(1:SRTM_maxcat+2), source = 0.d0)
          allocate(catid_index (1:nc,1:nr))          
          allocate(veg         (1:nc,1:nr))
          allocate(geos_msk    (1:nc_esa,1:dy_esa))
@@ -255,25 +256,26 @@ PROGRAM mkSMAPTilesPara_v2
          catid_index  = 0
          veg          = 0
          
-         status    = NF_OPEN ('data/CATCH/GEOS5_10arcsec_mask.nc', NF_NOWRITE, ncid)
-         status    = NF_GET_VARA_INT64 (ncid,3,(/1/),(/SRTM_maxcat/),SRTM_catid(1:SRTM_maxcat))  ! Read pfafstetter IDs
+         status    = NF90_OPEN ('data/CATCH/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
+         status    = nf90_inq_varid(ncid, name='PfafID', varid=varid)
+         status    = nf90_get_var(ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/))
          if(status /=0) then
-            PRINT *, NF_STRERROR(STATUS)
-            print *, 'Problem with NF_OPEN',trim(MaskFile)
+            PRINT *, NF90_STRERROR(STATUS)
+            print *, 'Problem with NF90_OPEN',trim(MaskFile)
          endif
-
+         SRTM_catid = int8(SRTM_catid_r8)
          SRTM_catid (SRTM_maxcat + 1) = 190000000
          SRTM_catid (SRTM_maxcat + 2) = 200000000 
          i1 = 0  ! count # of 30-arcsec pixels
-
+         status    = nf90_inq_varid(ncid, name='CatchIndex', varid=varid)
          do j=1,nr
 
             clat = -90. + float(j-1)*dy + dy/2.
-
-            status  = NF_GET_VARA_INT (ncid,4,(/1,(j-1)*dy_esa +1/),(/nc_esa,dy_esa/),geos_msk) ! Read 10-arcsec rows that lie within the raster row 'j'  
+            status  = NF90_GET_VAR (ncid, varid, geos_msk, (/1,(j-1)*dy_esa +1/),(/nc_esa,dy_esa/)) ! Read 10-arcsec rows that lie within the raster row 'j'  
+            !status  = NF_GET_VARA_INT (ncid,4,(/1,(j-1)*dy_esa +1/),(/nc_esa,dy_esa/),geos_msk) ! Read 10-arcsec rows that lie within the raster row 'j'  
             
             if(status /=0) then
-               PRINT *, NF_STRERROR(STATUS)
+               PRINT *, NF90_STRERROR(STATUS)
                print *, 'Problem with NF_GET_VARA_INT',trim(MaskFile),status
             endif
             
@@ -343,7 +345,7 @@ PROGRAM mkSMAPTilesPara_v2
             end do
          enddo
 
-         status    = NF_CLOSE (ncid)  
+         status    = NF90_CLOSE (ncid)  
          deallocate (geos_msk)
 
          print *,'Read ', trim (MaskFile) 
@@ -758,7 +760,7 @@ PROGRAM mkSMAPTilesPara_v2
 
          !---------------------------------------------------
 
-         deallocate (SRTM_CatchArea, SRTM_catid)
+         deallocate (SRTM_CatchArea, SRTM_catid, SRTM_catid_r8)
          
       endif
       
