@@ -530,6 +530,17 @@ contains
   
     ! !IMPORT STATE:
 
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'ZLE',                                       &
+         LONG_NAME  = 'geopotential_height',                       &
+         UNITS      = 'm',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         AVERAGING_INTERVAL = AVRGNINT,                             &
+         REFRESH_INTERVAL   = RFRSHINT,                             &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME = 'PLE',                                         &
          LONG_NAME  = 'air_pressure',                                &
@@ -4011,7 +4022,23 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='THMOIST',                                     & 
+         SHORT_NAME='UAFMOIST',                                     &
+         LONG_NAME ='zonal_wind_after_all_of_moist',   &
+         UNITS     ='m s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='VAFMOIST',                                     &
+         LONG_NAME ='meridional_wind_after_all_of_moist',   &
+         UNITS     ='m s-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='THAFMOIST',                                     &
          LONG_NAME ='potential_temperature_after_all_of_moist',   &
          UNITS     ='K',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -4019,7 +4046,23 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='SMOIST',                                      & 
+         SHORT_NAME='TAFMOIST',                                     &
+         LONG_NAME ='temperature_after_all_of_moist',   &
+         UNITS     ='K',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='QAFMOIST',                                     &
+         LONG_NAME ='specific_humidity_after_all_of_moist',   &
+         UNITS     ='kg kg-1',                                     &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='SAFMOIST',                                      &
          LONG_NAME ='dry_static_energy_after_all_of_moist',        &
          UNITS     ='m+2 s-2',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -5602,7 +5645,7 @@ contains
            CLDREFFI                             
 
 
-      real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH
+      real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH, ZLEI
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE
       real, pointer, dimension(    :) :: PREF
@@ -5638,6 +5681,9 @@ contains
 
       real, pointer, dimension(:,:  ) :: KEMST,KEMST2
       real, pointer, dimension(:,:,:) :: QSN, QRN, QPLS
+
+      real, pointer, dimension(:,:,:) :: PTR3D
+      real, pointer, dimension(:,:)   :: PTR2D
 
       logical, pointer                :: IS_FRIENDLY(:)
       logical, pointer                :: IS_WEIGHTED(:)
@@ -5716,9 +5762,6 @@ contains
 
       ! MATMAT Additional after-RAS exports
       real, pointer, dimension(:,:,:) :: THRAS,URAS,VRAS
-      !AMM sync t,q extra diagnostic
-      real, pointer, dimension(:,:,:) :: THMOIST, SMOIST
-      real, dimension(IM,JM,0:LM)     :: geopenew
 
       ! vapor-to-liquid  [ *ALHL ]
       real, pointer, dimension(:,:) :: PDFLZ,CNVLZ,CNVRNZ
@@ -6658,6 +6701,7 @@ contains
       call MAPL_GetPointer(IMPORT, WSUB_NATURE,  'WSUB_NATURE'     , RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(IMPORT, AREA,    'AREA'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, ZLEI,    'ZLE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, PREF,    'PREF'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
@@ -7067,10 +7111,6 @@ contains
       call MAPL_GetPointer(EXPORT, DBRCDT,    'DBRCDT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DDUDTcarma,  'DDUDTcarma'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSSDTcarma,  'DSSDTcarma'    , RC=STATUS); VERIFY_(STATUS)
-
-      !AMM sync t,q extra diagnostic
-      call MAPL_GetPointer(EXPORT, THMOIST,  'THMOIST' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  SMOIST,  'SMOIST'  , RC=STATUS); VERIFY_(STATUS)
 
       !--------Aerosol-Cloud interactions 
 
@@ -7807,11 +7847,6 @@ contains
       !  post facto tendency calculations.
       !----------------------------------------------------------------
 
-      TH1      = TH
-      Q1       = Q
-      U1       = U
-      V1       = V
-       
       CNV_HAIL = 0.0
       CNV_PLE  = PLE*.01
       PLO      = 0.5*(CNV_PLE(:,:,0:LM-1) +  CNV_PLE(:,:,1:LM  ) )
@@ -7821,7 +7856,12 @@ contains
       MASS     = DP/MAPL_GRAV
       iMASS    = 1.0/MASS
 
-      TEMP     = TH1*PK
+      TEMP     = T
+      TH       = T/PK
+      TH1      = TH
+      Q1       = Q
+      U1       = U
+      V1       = V
 
       DQS      = GEOS_DQSAT(TEMP, PLO, qsat=QSS)
 
@@ -12814,7 +12854,30 @@ do K= 1, LM
       if (associated(TPW    ))   TPW     = SUM(   Q1         *MASS , 3 )
       if (associated(RH2    ))   RH2     = max(MIN( Q1/GEOS_QSAT (TH1*PK, PLO) , 1.02 ),0.0)
 
-    
+          ! Fill wind, temperature & RH exports needed for SYNCTQ
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'UAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = U1
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'VAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = V1
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'TAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = TEMP
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = Q1
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'THAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = TH1
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'SAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) then
+          do L=1,LM
+            PTR3D(:,:,L) = MAPL_CP*TEMP(:,:,L) + MAPL_GRAV*(ZLO(:,:,L)+ZLEI(:,:,LM))
+          enddo
+       endif
+ 
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
          if (associated(CCNCOLUMN    ))   CCNCOLUMN      = SUM(CCN1*MASS/(100.*PLO*r_air/TEMP) , 3)
@@ -13207,16 +13270,6 @@ do K= 1, LM
       !------------------------------
 
       Q = Q1
-      !AMM to sync up T and Q also update to the modified TH
-      if(associated(THMOIST  )) THMOIST    = TH1
-      ! edge geopotential - array defined from 0 to LM (ie., bottom edge), pke defined that way too
-      geopenew(:,:,LM) = 0.
-      do k=lm-1,0,-1
-         geopenew(:,:,k) = geopenew(:,:,k+1) + mapl_cp*(th1(:,:,k+1)*(1.+mapl_vireps*q1(:,:,k+1)))*( pke(:,:,k+1)-pke(:,:,k) )
-      enddo
-      !!   if(associated(SMOIST)) SMOIST = mapl_cp*th1*pk + (0.5*( geopenew(:,:,0:lm-1)+geopenew(:,:,1:lm) ))
-      if(associated(SMOIST)) SMOIST = mapl_cp*th1*pk + gzlo
-
 
       ! Calculate flash rate following Murray et al. (2012), as used by GEOS-Chem 
       !-------------------------------------------------------------------------------------
