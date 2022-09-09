@@ -8,7 +8,7 @@ PROGRAM mkSMAPTilesPara_v2
 !     f90 -c smapconv.f
 !     f90 -o create_smap_tiles create_smap_tiles.o smapconv.o
 !
-      use easeV2_conv
+      use EASE_conv
       use rmTinyCatchParaMod
       use process_hres_data
       use MAPL_SortMod
@@ -65,19 +65,21 @@ PROGRAM mkSMAPTilesPara_v2
       character*128          :: MaskFile
       logical                :: pfaf_til = .false.
       character*1            :: PF
-      
+      character(len=2)       :: EASE_Version
+ 
       include 'netcdf.inc'
 
       N_args = command_argument_count()
 
       if(N_args < 1) then
-        print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX'
-	print *,'Allowed SMAP grids are: M01 M03 M09 M25 M36'
+        print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -v LBCSV -pfaf_til x -ease_version xx'
+        print *,'Allowed SMAP grids are: M01 M03 M09 M25 M36'
+        print *,'Allowed EASE_VERSION are: v1 v2'
         stop
       end if
 
+      EASE_Version = 'v2'
       i=0      
-
       do while ( i < N_args )
 
          i = i+1
@@ -96,77 +98,92 @@ PROGRAM mkSMAPTilesPara_v2
          elseif ( trim(arg) == '-v' ) then
             i = i+1
             call get_command_argument(i,LBCSV)
+
+         elseif ( trim(arg) == '-ease_version' ) then
+            i = i+1
+            call get_command_argument(i,EASE_Version)
                         
          else ! stop for any other arguments
             
-            print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -pfaf_til T'
+            print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -pfaf_til T -v LBCSV -ease_version xx'
             print *,'Allowed SMAP grids are: M09 M36 Ml'
             stop
             
          endif
          
       end do
+
+      if (MGRID /= 'M25' .and. EASE_version == 'v1') then
+         stop ("EASEv1 only supports M25")
+      endif      
       
-      call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-      call execute_command_line('cd ..')
-      
+      ! WY noted: should do it in the script that calls this program 
+      !call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+      !call execute_command_line('cd ..')
       
       ! Setting SMAP Grid specifications
       ! --------------------------------
-      
+
+      EASElabel = 'SMAP_EASEv2_'//trim(MGRID)
+      if (ease_version == 'v1') EASElabel    = 'SMAP_EASE_M25'
+
       if (trim(MGRID) == 'M09') then
-         
+
          CELL_km = 9.008055210146     ! nominal cell size in kilometers
          nc_smap = 3856
          nr_smap = 1624
-         gfile = 'SMAP_EASEv2_'//trim(MGRID)//'_3856x1624'
          EASE_grid_area = CELL_km*CELL_km
-         EASElabel      = 'SMAP-EASEv2-M09'
-         
+         gfile        = trim(EASElabel)//'_3856x1624'
+
       elseif(trim(MGRID) == 'M36') then
-         
+
          CELL_km = 36.032220840584    ! nominal cell size in kilometers
          nc_smap = 964
          nr_smap = 406
-         gfile = 'SMAP_EASEv2_'//trim(MGRID)//'_964x406'
          EASE_grid_area = CELL_km*CELL_km
-         EASElabel      = 'SMAP-EASEv2-M36'
-         
-    elseif(trim(MGRID) == 'M25') then
- 
-     	 CELL_km = 25.0252600081    ! nominal cell size in kilometers		 
-         nc_smap = 1388
-         nr_smap = 584
-         gfile = 'SMAP_EASEv2_M25_1388x584'
+         gfile        = trim(EASElabel)//'_964x406'
+
+      elseif(trim(MGRID) == 'M25') then
+
+         if (ease_version == 'v2') then
+            CELL_km = 25.0252600081    ! nominal cell size in kilometers       
+            nc_smap = 1388
+            nr_smap = 584
+            gfile     = trim(EASElabel)//'_1388x584'
+         else if (ease_version == 'v1') then
+            CELL_km = 25.067525         ! nominal cell size in kilometers
+            nc_smap = 1383
+            nr_smap = 586
+            gfile      = trim(EASElabel)//'_1383x586'
+         endif
          EASE_grid_area = CELL_km*CELL_km
-         
+
       else if (trim(MGRID) .eq. 'M03') then ! SMAP  3 km grid
          CELL_km = 3.0026850700487     ! nominal cell size in kilometers
          nc_smap = 11568
          nr_smap = 4872
-         gfile = 'SMAP_EASEv2_M03_11568x4872'
          EASE_grid_area = CELL_km*CELL_km
          regrid = .true.
          NC = 21600
          NR = 10800
          NT = 500000000
-         
+         gfile = trim(EASElabel)//'_11568x4872'
+
       else if (trim(MGRID) .eq. 'M01') then ! SMAP  1 km grid
          CELL_km = 1.00089502334956     ! nominal cell size in kilometers
          nc_smap = 34704
          nr_smap = 14616
-         gfile = 'SMAP_EASEv2_M01_34704x14616'
          EASE_grid_area = CELL_km*CELL_km
          regrid = .true.
          NC = 43200
-         NR = 21600   
+         NR = 21600
          NT = 1500000000
-         
+         gfile = trim(EASElabel)//'_34704x14616'
       else  !
-         
+
          print *,'Unknown SMAP Grid stopping..'
          stop
-         
+
       endif
 
       allocate(land_id    (1:NT))
@@ -306,7 +323,7 @@ PROGRAM mkSMAPTilesPara_v2
 
                   ! count in if this is i,j pixel is a land, lake or ice within ind_col,ind_row SMAP grid cell
                   
-                  call easeV2_convert(trim(MGRID), clat, clon, r_smap, s_smap)
+                  call EASE_convert(EASELabel, clat, clon, r_smap, s_smap)
                   
                   ind_col = nint(r_smap) + 1 
                   ind_row = nint(s_smap) + 1
@@ -462,7 +479,7 @@ PROGRAM mkSMAPTilesPara_v2
             do j =nr ,1 ,-1
                
                clat = -90. + float(j-1)*dy + dy/2.
-               call easeV2_convert(trim(MGRID), clat, clon, r_smap, s_smap)
+               call EASE_convert(EASELabel, clat, clon, r_smap, s_smap)
                
                ind_col = nint(r_smap) + 1 
                ind_row = nint(s_smap) + 1
@@ -554,7 +571,7 @@ PROGRAM mkSMAPTilesPara_v2
          do j =nr ,1 ,-1
             lats = -90._8 + (j - 0.5_8)*dy
             clat = -90. + float(j-1)*dy + dy/2.
-            call easeV2_convert(trim(MGRID), clat, clon, r_smap, s_smap)
+            call EASE_convert(EASELabel, clat, clon, r_smap, s_smap)
             
             ind_col = nint(r_smap) + 1 
             ind_row = nint(s_smap) + 1
@@ -669,7 +686,7 @@ PROGRAM mkSMAPTilesPara_v2
       open  (10, file ='til/'//trim(gfile)//'.til',form='formatted',status='unknown',action='write')
       write (10,*)i_index,SRTM_maxcat, nc, nr 
       write (10,*)1
-      write (10,*)'SMAP-EASEv2-'//trim(MGRID)
+      write (10,*)EASELabel
       write (10,*)nc_smap
       write (10,*)nr_smap
  !     write (10,*)'NO-OCEAN'
@@ -694,20 +711,20 @@ PROGRAM mkSMAPTilesPara_v2
 
          if (l <= l_index) then 
             typ = 100
-            call easeV2_inverse (trim(MGRID), real(ig-1),real(jg-1), clat, clon) 
+            call EASE_inverse (EASELabel, real(ig-1),real(jg-1), clat, clon) 
             
             mnx = clon - 180./real(nc_smap)
             mxx = clon + 180./real(nc_smap)
             
             jgv = real(jg-1) + 0.5
             
-            call easeV2_inverse (trim(MGRID), real(ig-1),jgv, clat, clon) 
+            call EASE_inverse (EASELabel, real(ig-1),jgv, clat, clon) 
 
             mny = clat
          
             jgv = real(jg-1) - 0.5
          
-            call easeV2_inverse (trim(MGRID), real(ig-1),jgv, clat, clon) 
+            call EASE_inverse (EASELabel, real(ig-1),jgv, clat, clon) 
 
             mxy = clat 
 
@@ -715,7 +732,7 @@ PROGRAM mkSMAPTilesPara_v2
 
          endif
 
-         call easeV2_inverse (trim(MGRID), real(ig-1),  real(jg-1), clat, clon)
+         call EASE_inverse (EASELabel, real(ig-1),  real(jg-1), clat, clon)
          
          fr_gcm= tile_area(l)/smap_grid_area(jg*ND +  ig)
 
@@ -779,7 +796,7 @@ PROGRAM mkSMAPTilesPara_v2
            do i = 1, nc_smap+1
               x = real(i-1)        -0.5
               y = real(nr_smap - j)+0.5
-              call easeV2_inverse(MGRID, x, y, yout, xout)
+              call EASE_inverse(MGRID, x, y, yout, xout)
               ys (i,j) = dble(yout)
               xs (i,j) = dble(xout)
            end do
