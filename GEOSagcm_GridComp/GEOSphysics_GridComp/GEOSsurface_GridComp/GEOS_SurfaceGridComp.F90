@@ -889,7 +889,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TSOIL1',                            &
-        LONG_NAME          = 'soil_temperatures_layer_1'         ,&
+        LONG_NAME          = 'soil_temperature_layer_1'          ,&
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -898,7 +898,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TSOIL2',                            &
-        LONG_NAME          = 'soil_temperatures_layer_2'         ,&
+        LONG_NAME          = 'soil_temperature_layer_2'          ,&
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -907,7 +907,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TSOIL3',                            &
-        LONG_NAME          = 'soil_temperatures_layer_3'         ,&
+        LONG_NAME          = 'soil_temperature_layer_3'          ,&
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -916,7 +916,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TSOIL4',                            &
-        LONG_NAME          = 'soil_temperatures_layer_4'         ,&
+        LONG_NAME          = 'soil_temperature_layer_4'          ,&
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -925,7 +925,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TSOIL5',                            &
-        LONG_NAME          = 'soil_temperatures_layer_5'         ,&
+        LONG_NAME          = 'soil_temperature_layer_5'          ,&
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -934,7 +934,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TSOIL6',                            &
-        LONG_NAME          = 'soil_temperatures_layer_6'         ,&
+        LONG_NAME          = 'soil_temperature_layer_6'          ,&
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -943,7 +943,7 @@ module GEOS_SurfaceGridCompMod
 
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'fractional_area_of_land_snowcover',&
+    LONG_NAME          = 'fractional_area_of_snow_on_land',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ASNOW'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -970,7 +970,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_temperature_of_snow',&
+    LONG_NAME          = 'surface_temperature_of_snow_on_land',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPSNOW'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -997,7 +997,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_temperature_of_wilted_zone',&
+    LONG_NAME          = 'surface_temperature_of_wilting_zone',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPWLT'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1051,7 +1051,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'surface_soil_wetness'              ,&
+        LONG_NAME          = 'soil_wetness_surface'              ,&
         UNITS              = '1'                                 ,&
         SHORT_NAME         = 'WET1'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1060,7 +1060,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'root_zone_soil_wetness'            ,&
+        LONG_NAME          = 'soil_wetness_rootzone'             ,&
         UNITS              = '1'                                 ,&
         SHORT_NAME         = 'WET2'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1069,7 +1069,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'ave_prof_soil_moisture'            ,&
+        LONG_NAME          = 'soil_wetness_profile'              ,&
         UNITS              = '1'                                 ,&
         SHORT_NAME         = 'WET3'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1078,7 +1078,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'water_surface_layer'               ,&
+        LONG_NAME          = 'soil_moisture_surface'             ,&
         UNITS              = 'm3 m-3'                            ,&
         SHORT_NAME         = 'WCSF'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1087,7 +1087,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'water_root_zone'                   ,&
+        LONG_NAME          = 'soil_moisture_rootzone'            ,&
         UNITS              = 'm3 m-3'                            ,&
         SHORT_NAME         = 'WCRZ'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1096,7 +1096,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'water_profile'                     ,&
+        LONG_NAME          = 'soil_moisture_profile'             ,&
         UNITS              = 'm3 m-3'                            ,&
         SHORT_NAME         = 'WCPR'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1114,7 +1114,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'greenness_fraction'                ,&
+        LONG_NAME          = 'vegetation_greenness_fraction'     ,&
         UNITS              = '1'                                 ,&
         SHORT_NAME         = 'GRN'                               ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1360,7 +1360,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction'   ,&
+        LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction_on_land'   ,&
         UNITS              = 'm'                                 ,&
         SHORT_NAME         = 'SNOWDP'                            ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
@@ -1599,7 +1599,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_ice_evaporation_energy_flux',&
+    LONG_NAME          = 'snow_ice_evaporation_energy_flux_on_land',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPICE'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1644,7 +1644,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'baseflow_flux'             ,&
+    LONG_NAME          = 'baseflow_flux_land'        ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'BASEFLOW'                  ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1663,7 +1663,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
-    LONG_NAME          = 'Evaporation_land',          &
+    LONG_NAME          = 'total_evaporatranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1690,7 +1690,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DRPARLAND',                 &
-    LONG_NAME          = 'surface_downwelling_par_beam_flux', &
+    LONG_NAME          = 'surface_downwelling_PAR_beam_flux', &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1699,7 +1699,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DFPARLAND',                 &
-    LONG_NAME          = 'surface_downwelling_par_diffuse_flux', &
+    LONG_NAME          = 'surface_downwelling_PAR_diffuse_flux', &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1744,7 +1744,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'SWNETSNOW',                    &
-     LONG_NAME          = 'Net_shortwave_snow',        &
+     LONG_NAME          = 'Net_shortwave_flux_snow',        &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1753,7 +1753,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWUPSNOW',                    &
-     LONG_NAME          = 'Net_longwave_snow',         &
+     LONG_NAME          = 'Net_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1762,7 +1762,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWDNSNOW',                    &
-     LONG_NAME          = 'Net_longwave_snow',         &
+     LONG_NAME          = 'Net_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1771,7 +1771,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'GHSNOW',                    &
-     LONG_NAME          = 'Ground_heating_snow',       &
+     LONG_NAME          = 'Ground_heating_flux_snow',       &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1798,7 +1798,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SWLAND',                    &
-    LONG_NAME          = 'Net_shortwave_land',        &
+    LONG_NAME          = 'Net_shortwave_flux_land',   &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1807,7 +1807,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SWDOWNLAND',                &
-    LONG_NAME          = 'Incident_shortwave_land',   &
+    LONG_NAME          = 'Incident_shortwave_flux_land',   &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1816,7 +1816,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWLAND',                    &
-    LONG_NAME          = 'Net_longwave_land',         &
+    LONG_NAME          = 'Net_longwave_flux_land',         &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1825,7 +1825,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHLAND',                    &
-    LONG_NAME          = 'Ground_heating_land',       &
+    LONG_NAME          = 'Ground_heating_flux_land',       &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1834,7 +1834,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHTSKIN',                   &
-    LONG_NAME          = 'Ground_heating_for_skin_temp',&
+    LONG_NAME          = 'Ground_heating_flux_for_skin_temp',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1861,7 +1861,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'TWLAND',                    &
-    LONG_NAME          = 'Avail_water_storage_land',  &
+    LONG_NAME          = 'total_water_storage_land',  &
     UNITS              = 'kg m-2',                    &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1906,7 +1906,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPLAND',                    &
-    LONG_NAME          = 'rate_of_spurious_land_energy_source',&
+    LONG_NAME          = 'rate_of_spurious_energy_source_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1915,7 +1915,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPWATR',                    &
-    LONG_NAME          = 'rate_of_spurious_land_water_source',&
+    LONG_NAME          = 'rate_of_spurious_water_source_land',&
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1924,7 +1924,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPSNOW',                    &
-    LONG_NAME          = 'rate_of_spurious_snow_energy',&
+    LONG_NAME          = 'rate_of_spurious_snow_energy_source_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
