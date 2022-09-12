@@ -916,38 +916,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       integer :: blocksize
 #endif
 
-! NCEP gwd related vars
-      real, pointer :: TRATE(:,:,:)=>NULL()
-      real          :: CDMBGWD(2)
-      logical       :: LPRNT
-      logical, allocatable :: KCNV(:,:)
-      integer       :: IMX
-      integer       :: IPR, ME, LAT, KDT
-      integer       :: NMTVR
-      integer       :: I,IRUN
-      integer       :: IX, IY
-      real          :: FV, FHOUR
-      real          :: A, QM
-      real, allocatable :: PK(:,:,:)
-      integer, allocatable :: KPBL(:,:)
-      integer, allocatable :: KBOT(:,:)
-      integer, allocatable :: KTOP(:,:)
-      real, allocatable :: QMAX(:,:)
-      real, pointer     :: fPBL(:,:) => NULL()
-      real, pointer     :: CLDF(:,:) => NULL()
-      real, pointer     :: HPRIME(:,:) => NULL()
-      real, pointer     :: OC(:,:) => NULL()
-      real, pointer     :: SIGMA(:,:) => NULL()
-      real, pointer     :: GAMMA(:,:) => NULL()
-      real, pointer     :: THETA(:,:) => NULL()
-      real, pointer     :: DLENGTH(:,:) => NULL()
-      real, pointer     :: ELVMAX(:,:) => NULL()
-      real, pointer     :: OA4(:,:,:) => NULL()
-      real, pointer     :: CLX4(:,:,:) => NULL()
-      type (ESMF_State) :: INTERNAL
-      type (ESMF_Grid)  :: esmfgrid
-      integer           :: COUNTS(3)
-
 ! NCAR GWD vars
 
       logical :: USE_NCAR_GWD
