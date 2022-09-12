@@ -107,7 +107,7 @@ module GEOS_MoistGridCompMod
 !-srf-gf-scheme
 
 !ALT-protection for GF
-  USE ConvectionMod, only: Disable_Convection
+! USE ConvectionMod, only: Disable_Convection
 !ALT-protection for GF
 
 !--kml--------------
