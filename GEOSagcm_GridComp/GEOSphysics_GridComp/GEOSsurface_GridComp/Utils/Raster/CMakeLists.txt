@@ -44,7 +44,7 @@ ecbuild_add_executable (TARGET mkMITAquaRaster.x SOURCES mkMITAquaRaster.F90 LIB
 ecbuild_add_executable (TARGET mkMOMAquaRaster.x SOURCES mkMOMAquaRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET FillMomGrid.x SOURCES FillMomGrid.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL ${this})
-#ecbuild_add_executable (TARGET mkSMAPTilesPara.x SOURCES mkSMAPTilesPara.F90 LIBS MAPL ${this})
+ecbuild_add_executable (TARGET mkSMAPTilesPara.x SOURCES mkSMAPTilesPara.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkSMAPTilesPara_v2.x SOURCES mkSMAPTilesPara_v2.F90 LIBS MAPL ${this})
 
 install(PROGRAMS make_bcs clsm_plots.pro plot_curves.pro create_README.csh plot_curves.csh DESTINATION bin)

@@ -56,11 +56,11 @@ module EASE_conv
 
   public :: ease_convert
   public :: ease_inverse
-!  public :: easeV1_convert
-!  public :: easeV1_inverse
-!  public :: easeV2_convert
-!  public :: easeV2_inverse
-!  public :: easeV2_extent
+  public :: easeV1_convert
+  public :: easeV1_inverse
+  public :: easeV2_convert
+  public :: easeV2_inverse
+  public :: easeV2_extent
 
 
   ! ***NEVER*** change these constants to GEOS-5 MAPL constants!!!!

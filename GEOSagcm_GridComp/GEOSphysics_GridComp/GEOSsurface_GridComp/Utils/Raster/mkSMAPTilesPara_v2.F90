@@ -65,7 +65,7 @@ PROGRAM mkSMAPTilesPara_v2
       character*128          :: MaskFile
       logical                :: pfaf_til = .false.
       character*1            :: PF
-      character(len=2)       :: EASE_Version
+      character(len=6)       :: EASE_Version
  
       include 'netcdf.inc'
 
@@ -74,11 +74,11 @@ PROGRAM mkSMAPTilesPara_v2
       if(N_args < 1) then
         print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -v LBCSV -pfaf_til x -ease_version xx'
         print *,'Allowed SMAP grids are: M01 M03 M09 M25 M36'
-        print *,'Allowed EASE_VERSION are: v1 v2'
+        print *,'Allowed EASE_VERSION are: EASE EASEv2'
         stop
       end if
 
-      EASE_Version = 'v2'
+      EASE_Version = 'EASEv2'
       i=0      
       do while ( i < N_args )
 
@@ -113,7 +113,7 @@ PROGRAM mkSMAPTilesPara_v2
          
       end do
 
-      if (MGRID /= 'M25' .and. EASE_version == 'v1') then
+      if (MGRID /= 'M25' .and. EASE_version == 'EASE') then
          stop ("EASEv1 only supports M25")
       endif      
       
@@ -124,8 +124,7 @@ PROGRAM mkSMAPTilesPara_v2
       ! Setting SMAP Grid specifications
       ! --------------------------------
 
-      EASElabel = 'SMAP_EASEv2_'//trim(MGRID)
-      if (ease_version == 'v1') EASElabel    = 'SMAP_EASE_M25'
+      EASElabel = 'SMAP_'//trim(EASE_Version)//'_'//trim(MGRID)
 
       if (trim(MGRID) == 'M09') then
 
@@ -145,12 +144,13 @@ PROGRAM mkSMAPTilesPara_v2
 
       elseif(trim(MGRID) == 'M25') then
 
-         if (ease_version == 'v2') then
+         ! WY note, Original program has no combination of EASEv2 and M25
+         if (ease_version == 'EASEv2') then
             CELL_km = 25.0252600081    ! nominal cell size in kilometers       
             nc_smap = 1388
             nr_smap = 584
             gfile     = trim(EASElabel)//'_1388x584'
-         else if (ease_version == 'v1') then
+         else 
             CELL_km = 25.067525         ! nominal cell size in kilometers
             nc_smap = 1383
             nr_smap = 586
