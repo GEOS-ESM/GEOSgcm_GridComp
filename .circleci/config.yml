@@ -1,5 +1,9 @@
 version: 2.1
 
+# Anchors to prevent forgetting to update a version
+baselibs_version: &baselibs_version v7.5.0
+bcs_version: &bcs_version v10.22.5
+
 orbs:
   ci: geos-esm/circleci-tools@1
 
@@ -14,7 +18,22 @@ workflows:
           matrix:
             parameters:
               compiler: [gfortran, ifort]
+          baselibs_version: *baselibs_version
           repo: GEOSgcm
           checkout_fixture: true
           mepodevelop: true
-          persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
+          persist_workspace: true # Needs to be true to run fv3/gcm experiment, costs extra
+      # Run GCM (1 hour, no ExtData)
+      - ci/run_gcm:
+          name: run-GCM-on-<< matrix.compiler >>
+          context:
+            - docker-hub-creds
+          matrix:
+            parameters:
+              compiler: [gfortran, ifort]
+          requires:
+            - build-GEOSgcm-on-<< matrix.compiler >>
+          repo: GEOSgcm
+          baselibs_version: *baselibs_version
+          bcs_version: *bcs_version
+

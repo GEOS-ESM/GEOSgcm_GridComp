@@ -16,8 +16,8 @@ jobs:
     name: Build GEOSgcm
     if: "!contains(github.event.pull_request.labels.*.name, '0 diff trivial')"
     runs-on: ubuntu-latest
-    container: 
-      image: gmao/ubuntu20-geos-env-mkl:v6.2.13-openmpi_4.1.2-gcc_11.2.0
+    container:
+      image: gmao/ubuntu20-geos-env-mkl:v7.5.0-openmpi_4.1.2-gcc_11.2.0
       credentials:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -25,7 +25,7 @@ jobs:
       LANGUAGE: en_US.UTF-8
       LC_ALL: en_US.UTF-8
       LANG: en_US.UTF-8
-      LC_TYPE: en_US.UTF-8 
+      LC_TYPE: en_US.UTF-8
       OMPI_ALLOW_RUN_AS_ROOT: 1
       OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
       OMPI_MCA_btl_vader_single_copy_mechanism: none
@@ -35,10 +35,13 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - name: Checkout GCM
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: GEOS-ESM/GEOSgcm
           fetch-depth: 1
+      - name: Set all directories as git safe
+        run: |
+          git config --global --add safe.directory '*'
       - name: Versions etc.
         run: |
           gfortran --version
