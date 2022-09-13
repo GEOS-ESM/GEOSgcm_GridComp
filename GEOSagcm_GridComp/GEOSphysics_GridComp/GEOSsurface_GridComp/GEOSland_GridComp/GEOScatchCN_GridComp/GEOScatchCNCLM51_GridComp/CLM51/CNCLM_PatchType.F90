@@ -69,7 +69,7 @@ module CNCLM_PatchType
  contains
 
 !----------------------------------------------------
-  subroutine init_patch_type(bounds, nch, ityp, this)
+  subroutine init_patch_type(bounds, nch, ityp, fveg, this)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
@@ -78,6 +78,7 @@ module CNCLM_PatchType
     type(bounds_type),                       intent(in) :: bounds
     integer,                                 intent(in) :: nch    ! number of Catchment tiles
     integer, dimension(nch,num_veg,num_zon), intent(in) :: ityp   ! PFT index
+    real, dimension(nch,num_veg,num_zon),    intent(in) :: fveg   ! PFT fraction
     type(patch_type),                        intent(inout) :: this
 
   ! LOCAL: 
@@ -122,7 +123,8 @@ module CNCLM_PatchType
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                this%itype(np) = ityp(nc,nz,nz)
+                this%itype(np) = ityp(nc,nv,nz)
+                this%wtcol(np) = fveg(nc,nv,nz)
                 this%column(np) = n 
              end do ! nv
           end do ! p

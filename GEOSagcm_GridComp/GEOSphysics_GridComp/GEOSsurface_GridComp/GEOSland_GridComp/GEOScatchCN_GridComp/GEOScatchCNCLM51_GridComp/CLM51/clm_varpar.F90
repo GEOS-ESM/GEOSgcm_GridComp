@@ -19,7 +19,7 @@ module clm_varpar
   integer, parameter :: nlevsoi     =   1     ! number of hydrologically active soil layers
   integer, parameter :: nlevgrnd    =   1     ! number of ground layers (includes lower layers that are hydrologically inactive)
   integer, parameter :: nlevsno     =   0     ! maximum number of snow layers
-  integer, public    :: nlevurb     =   5     ! number of urban layers; jk Oct 2021: using CTSM5.1 value for now
+  integer, public    :: nlevurb     =   0     ! number of urban layers; jk Oct 2021: using CTSM5.1 value of 5 for now; jkolassa Aug 2022: changed because having more urban than ground layers caused and issue with the initialization of the soil layers in column type
   integer, public    :: nlevmaxurbgrnd        ! maximum of the number of ground and urban layers
   integer, public, parameter :: nlayer      =   3     ! number of VIC soil layer --Added by AWang
 

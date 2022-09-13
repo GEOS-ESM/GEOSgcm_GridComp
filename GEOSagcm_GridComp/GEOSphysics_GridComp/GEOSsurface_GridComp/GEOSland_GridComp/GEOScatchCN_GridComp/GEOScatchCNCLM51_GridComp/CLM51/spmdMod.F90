@@ -15,6 +15,8 @@ module spmdMod
 !EOP
 !-----------------------------------------------------------------------
 
+  use ESMF
+  use MAPL
   use shr_kind_mod, only: r8 => shr_kind_r8
   use clm_varctl  , only: iulog
   implicit none
@@ -62,7 +64,7 @@ contains
 ! !IROUTINE: spmd_init( clm_mpicom )
 !
 ! !INTERFACE:
-  subroutine spmd_init()
+  subroutine spmd_init(vm)
 !
 ! !DESCRIPTION:
 ! MPI initialization (number of cpus, processes, tids, etc)
@@ -71,6 +73,7 @@ contains
 !
 ! !ARGUMENTS:
     implicit none
+     type(ESMF_VM), intent(in) :: vm
 !    integer, intent(in) :: clm_mpicom
 !    integer, intent(in) :: LNDID
 !
@@ -80,62 +83,40 @@ contains
 !
 ! !LOCAL VARIABLES:
 !EOP
-!    integer :: i,j         ! indices
-!    integer :: ier         ! return error status
-!    integer :: mylength    ! my processor length
-!    logical :: mpi_running ! temporary
-!    integer, allocatable :: length(:)
-!    integer, allocatable :: displ(:)
-!    character*(MPI_MAX_PROCESSOR_NAME), allocatable :: procname(:)
-!    character*(MPI_MAX_PROCESSOR_NAME)              :: myprocname
+    integer :: i,j         ! indices
+    integer :: npes
+    type (MaplGrid ),pointer :: MYGRID
 !-----------------------------------------------------------------------
 
-    ! Initialize mpi communicator group
+    ! Get MPI communicator
 
-  !  mpicom = clm_mpicom
+    call ESMF_VmGet(VM, mpicommunicator=mpicom, __RC__) 
 
-  !  comp_id = LNDID
+    ! Get my processor id and number of processors
 
-    ! Get my processor id
+    call ESMF_VmGet(VM, localPet=MYGRID%MYID, petCount=npes, __RC__)
 
-  !  call mpi_comm_rank(mpicom, iam, ier)
-    if (MAPL_Am_I_Root()) then
+    ! determine master process
+    if (MAPL_Am_I_Root(vm)) then
        masterproc = .true.
     else
        masterproc = .false.
     end if
 
-    ! Get number of processors
+    if (masterproc) then
+       write(iulog,100)npes
+       write(iulog,200)
+       write(iulog,220)
+       do i=0,npes-1
+          write(iulog,250)i,MYGRID%MYID
+       end do
+    endif
 
-!    call mpi_comm_size(mpicom, npes, ier)
-!
-!    ! Get my processor names
-!
-!    allocate (length(0:npes-1), displ(0:npes-1), procname(0:npes-1))
-!
-!    call mpi_get_processor_name (myprocname, mylength, ier)
-!    call mpi_allgather(mylength,1,MPI_INTEGER,length,1,MPI_INTEGER,mpicom,ier)
-!
-!    do i = 0,npes-1
-!       displ(i)=i*MPI_MAX_PROCESSOR_NAME
-!    end do
-!    call mpi_gatherv (myprocname,mylength,MPI_CHARACTER, &
-!                      procname,length,displ,MPI_CHARACTER,0,mpicom,ier)
-!    if (masterproc) then
-!       write(iulog,100)npes
-!       write(iulog,200)
-!       write(iulog,220)
-!       do i=0,npes-1
-!          write(iulog,250)i,(procname((i))(j:j),j=1,length(i))
-!       end do
-!    endif
-!
-!    deallocate (length, displ, procname)
-!
-!100 format(//,i3," pes participating in computation for CLM")
-!200 format(/,35('-'))
-!220 format(/,"NODE#",2x,"NAME")
-!250 format("(",i5,")",2x,100a1,//)
+
+100 format(//,i3," pes participating in computation for CLM")
+200 format(/,35('-'))
+220 format(/,"NODE#",2x,"NAME")
+250 format("(",i5,")",2x,100a1,//)
 
   end subroutine spmd_init
 

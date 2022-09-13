@@ -22,9 +22,9 @@ module CNCLM_ColumnType
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
   use CNCLM_decompMod  , only : bounds_type
-  use clm_varcon     , only : ispval
+  use clm_varcon     , only : zsoi, dzsoi, zisoi, dzsoi_decomp, spval, ispval
   use clm_varctl     , only : use_fates
-  use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak, nlevmaxurbgrnd
+  use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak, nlevmaxurbgrnd,nlevurb
 
 
   ! !PUBLIC TYPES:
@@ -139,7 +139,17 @@ module CNCLM_ColumnType
 
 
     this%nbedrock(:) = 1  !jkolassa: set this to 1, since we only have one soil layer
-    this%dz(:)       = 1. ! jkolassa: setting this to 1, since we only have 1 soil layer for now; consistent with previous versions of CNCLM
+
+     do c = bounds%begc,bounds%endc
+        col%z(c,1:nlevgrnd)  = zsoi(1:nlevgrnd)
+        col%zi(c,0:nlevgrnd) = zisoi(0:nlevgrnd)
+        col%dz(c,1:nlevgrnd) = dzsoi(1:nlevgrnd)
+        if (nlevgrnd < nlevurb) then
+           col%z(c,nlevgrnd+1:nlevurb)  = spval
+           col%zi(c,nlevgrnd+1:nlevurb) = spval
+           col%dz(c,nlevgrnd+1:nlevurb) = spval
+        end if
+     end do
 
  end subroutine init_column_type
 end module CNCLM_ColumnType

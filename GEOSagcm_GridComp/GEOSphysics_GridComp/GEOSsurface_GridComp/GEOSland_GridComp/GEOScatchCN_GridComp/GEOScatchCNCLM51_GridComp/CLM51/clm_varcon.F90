@@ -60,4 +60,41 @@ module clm_varcon
   character(len=16), public, parameter :: namep  = 'pft'          ! name of patches
   character(len=16), public, parameter :: nameCohort = 'cohort'   ! name of cohorts (ED specific)
 
+! !PUBLIC MEMBER FUNCTIONS:
+  public clm_varcon_init          ! Initialze constants that need to be initialized
+
+! !REVISION HISTORY:
+! Created by Mariana Vertenstein
+
+!EOP
+!-----------------------------------------------------------------------
+contains
+!-------------------------------
+  subroutine clm_varcon_init()
+!
+! !DESCRIPTION:
+! This subroutine initializes constants in clm_varcon. MUST be called 
+! after the clm_varpar_init.
+!
+! !USES:
+!
+! !ARGUMENTS:
+    implicit none
+!
+!
+!EOP
+!------------------------------------------------------------------------------
+  allocate( zsoi(1:nlevgrnd) )
+  allocate( dzsoi(1:nlevgrnd) )
+  allocate( zisoi(0:nlevgrnd) )
+  allocate( dzsoi_decomp(1:nlevdecomp_full) )
+
+  ! jkolassa Aug 2022: This follows previous implementations of Catchment-CN and works as long as we use a single soil layer (for CN); we will have to update this if we increase the number of soil layers.
+  zsoi(1)  = 0.5
+  dzsoi(1) = 1.
+  zisoi(0) = 0.
+  zisoi(1) = 1.
+  dzsoi_decomp(1) = dzsoi(1)
+
+  end subroutine clm_varcon_init
 end module clm_varcon

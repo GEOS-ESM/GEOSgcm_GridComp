@@ -1,6 +1,9 @@
  module CN_initMod
 
-  use clm_varpar        , only : VAR_COL, VAR_PFT
+  use ESMF
+
+  use clm_varcon        , only : clm_varcon_init
+  use clm_varpar        , only : VAR_COL, VAR_PFT, clm_varpar_init
   use clm_varctl        , only : use_century_decomp
   use CNCLM_decompMod
   use CNCLM_VegNitrogenStateType
@@ -40,6 +43,9 @@
   use CNMRespMod         , only : readCNMRespParams => readParams
   use CNSharedParamsMod  , only : CNParamsReadShared
   use spmdMod
+  use Wateratm2lndBulkType
+  use CNCLM_WaterDiagnosticBulkType
+  use Wateratm2lndType
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
@@ -47,7 +53,11 @@
   use NutrientCompetitionFactoryMod      , only : create_nutrient_competition_method
   use SoilBiogeochemDecompMod            , only : readSoilBiogeochemDecompParams         => readParams
   use CNPhenologyMod                     , only : readCNPhenolParams                     => readParams
-
+  use SoilBiogeochemLittVertTranspMod    , only : readSoilBiogeochemLittVertTranspParams => readParams
+  use CNPhenologyMod                     , only : CNPhenologyReadNML
+  use dynSubgridControlMod               , only : dynSubgridControl_init
+  use CNFireFactoryMod                   , only : CNFireReadNML, create_cnfire_method
+  use FireMethodType                     , only : fire_method_type
 
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
@@ -85,6 +95,8 @@
   type(temperature_type)                  :: temperature_inst
   type(soilstate_type)                    :: soilstate_inst
   type(waterdiagnosticbulk_type)          :: waterdiagnosticbulk_inst
+  type(wateratm2lndbulk_type)             :: wateratm2lndbulk_inst
+  type(wateratm2lnd_type)                 :: wateratm2lnd_inst
   type(canopystate_type)                  :: canopystate_inst
   type(solarabs_type)                     :: solarabs_inst
   type(surfalb_type)                      :: surfalb_inst
@@ -107,18 +119,24 @@
   type(ch4_type)                          :: ch4_inst
   type(crop_type)                         :: crop_inst
   type(dgvs_type)                         :: dgvs_inst
+  type(fire_method_type)                  :: cnfire_method
+  type(saturated_excess_runoff_type)      :: saturated_excess_runoff_inst
 
   character(300)     :: paramfile
   type(Netcdf4_fileformatter) :: ncid
   integer            :: rc
+
+  type (ESMF_VM)                :: VM
   !-----------------------------------------
 
 ! initialize CN model
 ! -------------------
 
-    call spmd_init()
+    call spmd_init(VM)
 
     call clm_varpar_init()
+
+    call clm_varcon_init()
 
     call init_clm_varctl()
 
@@ -126,7 +144,7 @@
 
     ! initialize subrgid types
 
-    call init_patch_type                (bound, nch, ityp, patch)
+    call init_patch_type                (bound, nch, ityp, fveg, patch)
 
     call init_column_type               (bounds, col)
 
@@ -142,6 +160,12 @@
 
     call init_filter_type               (bounds, nch, filter)
 
+    ! read parameters and configurations from namelist file
+
+    call CNPhenologyReadNML       ( NLFilename )
+    call dynSubgridControl_init   ( NLFilename )
+    call CNFireReadNML            ( NLFilename )
+
     ! initialize states and fluxes
 
     call init_cnveg_nitrogenstate_type  (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_nitrogenstate_inst, cn5_cold_start) 
@@ -155,6 +179,10 @@
     call init_soilstate_type            (bounds, soilstate_inst)
 
     call init_waterdiagnosticbulk_type  (bounds, waterdiagnosticbulk_inst)
+
+    call init_wateratm2lndbulk_type     (bounds, wateratm2lndbulk_inst)
+
+    call init_wateratm2lnd_type         (bounds, wateratm2lnd_type)
 
     call init_canopystate_type          (bounds, nch, ityp, fveg, cncol, cnpft, canopystate_inst, cn5_cold_start)
 
@@ -202,6 +230,11 @@
 
     call init_dgvs_type                 (bounds, dgvs_inst)
 
+    call init_saturated_excess_runoff_type(bounds, saturated_excess_runoff_inst)
+
+    call create_cnfire_method(cnfire_method)
+    call cnfire_method%FireInit(bounds)
+
     ! calls to original CTSM initialization routines
 
     ! initialize rooting profile with default values
@@ -234,6 +267,12 @@
    call nutrient_competition_method%readParams(ncid)
    call readSoilBiogeochemDecompParams(ncid)
    call readCNPhenolParams(ncid)
+   call readSoilBiogeochemLittVertTranspParams(ncid)
+   call photosyns_inst%ReadParams( ncid )
+   call cnfire_method%CNFireReadParams( ncid )
+
+   call ncid%close(rc=status)
+
 
    if (use_century_decomp) then
       call init_decompcascade_bgc(bounds, soilbiogeochem_state_inst, &
@@ -241,9 +280,6 @@
    else
       call init_decompcascade_cn(bounds, soilbiogeochem_state_inst)
    end if
-
-   call photosyns_inst%ReadParams( ncid )
-
 
  end  subroutine CN_init
 end module CN_initMod

@@ -34,7 +34,7 @@ module CNCLM_pftconMod
   integer, public :: nc3_nonarctic_grass   = 13   ! Cool c3 grass [moisture + deciduous]
   integer, public :: nc4_grass             = 14   ! Warm c4 grass [moisture + deciduous]
   integer, public :: nc3crop               = 15   ! C3_crop [moisture + deciduous]   
-  integer, public :: npcropmin = nc3crop          ! value for first crop
+  integer, public :: npcropmin = nc3crop          ! value for first crop functional type (not including the more generic C3 crop PFT)
 
  !
   type, public :: pftcon_type

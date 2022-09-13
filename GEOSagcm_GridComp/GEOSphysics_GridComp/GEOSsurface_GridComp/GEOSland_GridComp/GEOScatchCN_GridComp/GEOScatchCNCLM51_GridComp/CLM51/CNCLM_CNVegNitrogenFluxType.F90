@@ -354,6 +354,10 @@ module CNCLM_CNVegNitrogenFluxType
      integer,pointer :: list_agmn          (:)        ! Indices of non-diagnoal entries in full sparse matrix Agm for N cycle
      integer,pointer :: list_afin          (:)        ! Indices of non-diagnoal entries in full sparse matrix Afi for N cycle
 
+ contains
+
+     procedure , public  :: SetValues
+
  end type cnveg_nitrogenflux_type
 
 type(cnveg_nitrogenflux_type), public, target, save :: cnveg_nitrogenflux_inst
@@ -965,6 +969,8 @@ contains
                 if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
 
                   this%plant_ndemand_patch (np) = cnpft(nc,nz,nv, 75)
+                  this%dwt_wood_productn_gain_patch(np) = 0.   ! following CNCLM45 setting
+                  this%dwt_crop_productn_gain_patch(np) = 0.   ! following CNCLM45 setting
 
                  end if
             end do !nv

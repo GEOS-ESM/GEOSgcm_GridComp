@@ -12,6 +12,7 @@ module clm_time_manager
    
    public ::&
       get_step_size,            &! return step size in seconds
+      get_step_size_real,       &! return step size in seconds, real-valued
       get_rad_step_size,        &! return radiation step size in seconds
       get_nstep,                &! return CN timestep number
 
@@ -49,6 +50,16 @@ integer function get_step_size( dt )
  get_step_size = dt_default 
   
 end function get_step_size
+
+!=========================================================================================
+
+real(r8) function get_step_size_real()
+
+    ! Return the step size in seconds, as a real value
+
+    get_step_size_real = real(get_step_size(), r8)
+
+  end function get_step_size_real
 
 !=========================================================================================
 

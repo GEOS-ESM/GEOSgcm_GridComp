@@ -457,6 +457,11 @@ module CNCLM_CNVegCarbonFluxType
      integer,pointer :: list_agmc          (:)        ! Indices of non-diagnoal entries in full sparse matrix Agm for C cycle
      integer,pointer :: list_afic          (:)        ! Indices of non-diagnoal entries in full sparse matrix Afi for C cycle
 
+ contains
+
+     procedure , public  :: SetValues
+
+
  end type cnveg_carbonflux_type
 
 type(cnveg_carbonflux_type), public, target, save :: cnveg_carbonflux_inst
@@ -1030,7 +1035,7 @@ contains
     allocate(this%npp_Nfix_patch          (begp:endp)) ; this%npp_Nfix_patch          (:) = nan
     allocate(this%npp_Nretrans_patch      (begp:endp)) ; this%npp_Nretrans_patch      (:) = nan
     allocate(this%npp_Nuptake_patch       (begp:endp)) ; this%npp_Nuptake_patch       (:) = nan
-    allocate(this%npp_growth_patch       (begp:endp)) ; this%npp_growth_patch       (:) = nan
+    allocate(this%npp_growth_patch        (begp:endp)) ; this%npp_growth_patch       (:) = nan
     allocate(this%leafc_change_patch      (begp:endp)) ; this%leafc_change_patch      (:) = nan
     allocate(this%soilc_change_patch      (begp:endp)) ; this%soilc_change_patch      (:) = nan
 
@@ -1054,7 +1059,9 @@ contains
                   this%prev_leafc_to_litter_patch  (np) = cnpft(nc,nz,nv, 42)
                   this%tempsum_npp_patch           (np) = cnpft(nc,nz,nv, 45)
                   this%xsmrpool_recover_patch      (np) = cnpft(nc,nz,nv, 47)
-
+                  this%dwt_wood_productc_gain_patch(np) = 0.   ! following CNCLM45 setting
+                  this%dwt_crop_productc_gain_patch(np) = 0.   ! following CNCLM45 setting
+ 
                  end if
             end do !nv
        end do ! p

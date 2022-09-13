@@ -15,6 +15,8 @@ module clm_varctl
   public init_clm_varctl          ! set parameters
   implicit none
 
+  logical, public :: use_nguardrail         = .true.  ! true => use precision control
+
   logical, public :: use_luna = .false.            ! true => use  LUNA
   logical, public :: use_fates = .false.           ! true => use fates
   logical, public :: use_hydrstress = .true.       ! true => use plant hydraulic stress calculation
@@ -30,6 +32,9 @@ module clm_varctl
   logical, public :: use_cn              = .true.
   logical, public :: use_cndv            = .false.
   logical, public :: use_grainproduct    = .false.
+  logical, public :: use_dynroot         = .false.
+  logical, public :: use_bedrock = .false. ! true => use spatially variable soil depth
+
 
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
@@ -53,6 +58,11 @@ module clm_varctl
   logical, public :: use_flexibleCN = .false.
   logical, public :: CNratio_floating = .false.
   integer, public :: CN_evergreen_phenology_opt = 0
+
+  ! State of the model for the accelerated decomposition (AD) spinup. 
+  ! 0 (default) = normal model; 1 = AD SPINUP
+  integer, public :: spinup_state = 0
+
 contains
 
 !---------------------------------------
