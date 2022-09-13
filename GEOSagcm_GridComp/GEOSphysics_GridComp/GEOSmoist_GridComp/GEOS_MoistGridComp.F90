@@ -8507,16 +8507,16 @@ contains
                END SELECT
 
                SELECT CASE (QNAME(1:13))
-               CASE ('CAphilicCA.bc')
+               CASE ('CA.bcphilic')
                   if(associated(DBC2gDT)) then
                      CMBC2g = CMBC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
 !               CASE ('OCp')
-               CASE ('CAphilicCA.oc')
+               CASE ('CA.ocphilic')
                   if(associated(DOC2gDT)) then
                      CMOC2g = CMOC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
-               CASE ('CAphilicCA.br')
+               CASE ('CA.brphilic')
                   if(associated(DBRC2gDT)) then
                      CMBRC2g = CMBRC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
@@ -9054,16 +9054,16 @@ contains
                END SELECT
 
                SELECT CASE (QNAME(1:13))
-               CASE ('CAphilicCA.bc')
+               CASE ('CA.bcphilic')
                   if(associated(DBC2gDT)) then
                      DBC2gDT = DBC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
 !               CASE ('OCp')
-               CASE ('CAphilicCA.oc')
+               CASE ('CA.ocphilic')
                   if(associated(DOC2gDT)) then
                      DOC2gDT = DOC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
-               CASE ('CAphilicCA.br')
+               CASE ('CA.brphilic')
                   if(associated(DBRC2gDT)) then
                      DBRC2gDT = DBRC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if

@@ -4277,7 +4277,7 @@ contains
           TKE(:,:,0) = 1e-6
           TKE(:,:,LM) = 1e-6
         else
-          TKE = MAPL_UNDEF
+          TKE = 1e-6 ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
           do L = 1,LM-1
             TKE(:,:,L) = ( LAMBDADISS * &
             ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
@@ -4285,6 +4285,7 @@ contains
             (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
             TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
           enddo
+          TKE = max(1e-6, TKE) ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
 
           ! If not running SHOC, estimate ISOTROPY from KH and TKE,
           ! based on Eq. 7 from Bogenschutz and Krueger (2013).
