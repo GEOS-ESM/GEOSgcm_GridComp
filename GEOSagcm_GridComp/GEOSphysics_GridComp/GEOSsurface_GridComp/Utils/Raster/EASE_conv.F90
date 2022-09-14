@@ -1,7 +1,19 @@
 
 module EASE_conv
   
-  ! ==========================================================================
+  ! =====================================================================================
+  !
+  ! EASE_conv.F90 - FORTRAN routines for conversion of Equal-Area Scalable Earth (EASE)
+  !                 grid coordinates (lat/lon <--> row/col indices)
+  !
+  !                 Implemented for global cylindrical ('Mxx') EASE grids only. 
+  !
+  !                 Works for EASE[v1] and EASEv2 grids. 
+  ! 
+  ! -------------------------------------------------------------------------------------
+  ! 
+  ! CHANGELOG (easeV1_conv.F90):
+  ! ============================
   !
   ! easeV1_conv.F90 - FORTRAN routines for conversion of azimuthal 
   !                   equal area and equal area cylindrical grid coordinates
@@ -23,59 +35,16 @@ module EASE_conv
   !                      Converted from *.f to *.F90 module
   ! 
   ! $Log$
-  ! Revision 1.1.2.3  2018/09/13 20:42:50  wjiang
-  ! change M25
-  !
-  ! Revision 1.1.2.2  2017/09/18 15:10:25  wjiang
-  ! "fix" strange compiler erro on comment line.
-  !
-  ! Revision 1.1.2.1  2017/01/19 19:35:58  wjiang
-  ! 1)add EASE grid support
-  ! 2)add ensemble average for HISTORY
-  !
-  ! Revision 1.2  2014-08-26 17:33:55  rreichle
-  ! - clean-up of *.F90 in GEOSlana_GridComp:
-  ! - make sure all modules include "private" statement
-  ! - follow all "use" statements with "ONLY"
-  ! - removed unused files (esat_qsat.F90, nr_sort.f)
-  ! - removed unused variables
-  !
   ! Revision 1.1  2011-05-11 21:58:46  rreichle
-  !
   ! Adding utilities to map between EASE grids and lat/lon coordinates.
   !
   ! Revision 1.3  1994/11/01 23:40:43  brodzik
   ! Replaced all references to 'ease' with 'smap'
   ! Replaced all references to 'smap' with 'easeV1' -- reichle
-  ! 
-  ! ==========================================================================
-
-  implicit none
-  
-  private
-
-  public :: ease_convert
-  public :: ease_inverse
-!  public :: easeV1_convert
-!  public :: easeV1_inverse
-!  public :: easeV2_convert
-!  public :: easeV2_inverse
-!  public :: easeV2_extent
-
-
-  ! ***NEVER*** change these constants to GEOS-5 MAPL constants!!!!
-    
-  ! radius of the earth (km), authalic sphere based on International datum 
-  
-  real*8, parameter :: RE_km = 6371.228
-  
-  ! scale factor for standard paralles at +/-30.00 degrees
-  
-  real*8, parameter :: COS_PHI1 = .866025403
-  
-  real*8, parameter :: PI  = 3.14159265358979323846
- 
-  ! ==========================================================================
+  !
+  !
+  ! CHANGELOG (easeV2_conv.F90):
+  ! ============================
   !
   ! easeV2_conv.F90 - FORTRAN routines for converting grid coordinates
   !                   (latitude/longitude <--> row/column indices)
@@ -88,8 +57,6 @@ module EASE_conv
   ! (wgs84_convert.pro, wgs84_inverse.pro) available from  
   ! ftp://sidads.colorado.edu/pub/tools/easegrid/geolocation_tools/
   !
-  ! 04-Apr-2013 - reichle
-  !
   ! Official references:
   !  doi:10.3390/ijgi1010032
   !  doi:10.3390/ijgi3031154 -- correction of M25 "map_scale_m" parameters!
@@ -97,10 +64,44 @@ module EASE_conv
   ! 04-Apr-2013 - reichle
   ! 11-Sep-2018 - reichle, mgirotto -- added 'M25' grid parameters 
   !
+  !
+  ! CHANGELOG (EASE_conv.F90):
+  ! ==========================
+  !
+  ! 2022-09-13, wjiang+reichle: 
+  !   merged easeV1_conv.F90 and easeV2_conv.F90 into EASE_conv.F90
+  !
+  !
   ! ==========================================================================
 
+  implicit none
+  
+  private
 
-  ! ***NEVER*** change these constants to GEOS-5 MAPL constants!!!!
+  public :: ease_convert
+  public :: ease_inverse
+
+  ! =======================================================================
+  !
+  ! EASEv1 global constants
+
+  ! ***NEVER*** change these constants to GEOS MAPL constants!!!!
+    
+  ! radius of the earth (km), authalic sphere based on International datum 
+  
+  real*8, parameter :: easeV1_RE_km                    = 6371.228
+  
+  ! scale factor for standard paralles at +/-30.00 degrees
+  
+  real*8, parameter :: easeV1_COS_PHI1                 = .866025403
+  
+  real*8, parameter :: easeV1_PI                       = 3.141592653589793
+ 
+  ! =======================================================================
+  !
+  ! EASEv2 global constants
+
+  ! ***NEVER*** change these constants to GEOS MAPL constants!!!!
   
   ! radius of the earth (m) and map eccentricity
   
@@ -108,6 +109,7 @@ module EASE_conv
   
   real*8, parameter :: map_eccentricity                = 0.081819190843
   
+  real*8, parameter :: easeV2_PI                       = 3.14159265358979323846
   
   real*8, parameter :: e2      = map_eccentricity * map_eccentricity
   real*8, parameter :: e4      = e2 * e2
@@ -127,13 +129,15 @@ module EASE_conv
   real*8, parameter :: M_map_reference_latitude        =   0.0
   real*8, parameter :: M_map_second_reference_latitude =  30.0
   
-  real*8, parameter :: M_sin_phi1 = sin(M_map_second_reference_latitude*PI/180.)
-  real*8, parameter :: M_cos_phi1 = cos(M_map_second_reference_latitude*PI/180.)
+  real*8, parameter :: M_sin_phi1 = sin(M_map_second_reference_latitude*easeV2_PI/180.)
+  real*8, parameter :: M_cos_phi1 = cos(M_map_second_reference_latitude*easeV2_PI/180.)
   
   real*8, parameter :: M_kz = M_cos_phi1/sqrt(1.0-e2*M_sin_phi1*M_sin_phi1)
   
   
 contains  
+  
+  ! *******************************************************************
   
   subroutine ease_convert (gridname, lat, lon, r, s)
     character*(*), intent(in)  :: gridname
@@ -162,6 +166,8 @@ contains
     endif 
   end subroutine
 
+  ! *******************************************************************
+  
   subroutine ease_inverse (gridname, r, s, lat, lon)
     character*(*), intent(in)  :: gridname
     real,          intent(in)  :: r, s
@@ -220,6 +226,8 @@ contains
     integer :: cols, rows
     real*8  :: Rg, phi, lam, rho, CELL_km, r0, s0
     
+    real*8, parameter :: PI = easeV1_PI
+
     ! ---------------------------------------------------------------------
     
     call easeV1_get_params( grid, CELL_km, cols, rows, r0, s0, Rg )
@@ -238,8 +246,8 @@ contains
        s = s0 - rho * cos(lam)
        
     else if (grid(1:1).eq.'M') then
-       r = r0 + Rg * lam * COS_PHI1
-       s = s0 - Rg * sin(phi) / COS_PHI1
+       r = r0 + Rg * lam * easeV1_COS_PHI1
+       s = s0 - Rg * sin(phi) / easeV1_COS_PHI1
        
     endif
         
@@ -277,6 +285,8 @@ contains
     real*8    :: Rg, phi, lam, rho, CELL_km, r0, s0
     real*8    :: gamma, beta, epsilon, x, y, c
     real*8    :: sinphi1, cosphi1
+
+    real*8, parameter :: PI = easeV1_PI
 
     ! ---------------------------------------------------------------------
     
@@ -328,7 +338,7 @@ contains
        ! 	  above 90.00N or below 90.00S are given a lat of 90.00
        
        epsilon = 1 + 0.5/Rg
-       beta = y*COS_PHI1/Rg
+       beta = y*easeV1_COS_PHI1/Rg
        if (abs(beta).gt.epsilon) return
        if (beta.le.-1.) then
           phi = -PI/2.
@@ -337,7 +347,7 @@ contains
        else
           phi = asin(beta)
        endif
-       lam = x/COS_PHI1/Rg
+       lam = x/easeV1_COS_PHI1/Rg
        lat = phi*180./PI   ! convert from radians to degree
        lon = lam*180./PI   ! convert from radians to degree
     endif
@@ -420,11 +430,11 @@ contains
        
     endif
         
-    Rg = RE_km/CELL_km
+    Rg = easeV1_RE_km/CELL_km
     
   end subroutine easeV1_get_params
   
-
+  ! *******************************************************************
   
   subroutine easeV2_convert (grid, lat, lon, col_ind, row_ind)
     
@@ -453,6 +463,8 @@ contains
     integer :: cols, rows
     real*8  :: dlon, phi, lam, map_scale_m, r0, s0, ms, x, y, sin_phi, q
     
+    real*8, parameter :: PI = easeV2_PI
+
     ! ---------------------------------------------------------------------
     
     call easeV2_get_params( grid, map_scale_m, cols, rows, r0, s0 )
@@ -531,6 +543,8 @@ contains
     integer   :: cols, rows
     real*8    :: phi, lam, map_scale_m, r0, s0, beta, x, y, qp
     
+    real*8, parameter :: PI = easeV2_PI
+
     ! ---------------------------------------------------------------------
     
     call easeV2_get_params( grid, map_scale_m, cols, rows, r0, s0 )
@@ -599,7 +613,7 @@ contains
           cols = 1388
           rows =  584
           r0 = (cols-1)/2.0
-          s0 = (rows-1)/2
+          s0 = (rows-1)/2.0
 
        else if (grid .eq. 'M09') then      ! SMAP  9 km grid
 
