@@ -553,28 +553,6 @@ contains
     VERIFY_(STATUS)                                                                          
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PKE',                                         &
-         LONG_NAME  = 'edge_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationEdge,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PLK',                                       &
-         LONG_NAME  = 'mid-layer_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationCenter,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME = 'PREF',                                       &
          LONG_NAME  = 'reference_air_pressure',                     &
          UNITS      = 'Pa',                                         &
@@ -716,17 +694,6 @@ contains
             REFRESH_INTERVAL   = RFRSHINT,                            &
             RC=STATUS )
        VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'TH',                                        &
-         LONG_NAME  = 'potential_temperature',                     &
-         UNITS      = 'K',                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         AVERAGING_INTERVAL = AVRGNINT,                            &
-         REFRESH_INTERVAL   = RFRSHINT,                            &
-         RC=STATUS  )
-    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'U',                                         &
@@ -5645,7 +5612,7 @@ contains
            CLDREFFI                             
 
 
-      real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH, ZLEI
+      real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, ZLEI
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE
       real, pointer, dimension(    :) :: PREF
@@ -6045,7 +6012,7 @@ contains
       real,    dimension(IM,JM,0:LM)  :: PKE
       real,    dimension(IM,JM,  LM)  :: DQS, QSS, PLO, ZLO, TEMP, PK, DP, DQSDT, DBZ3D
       real,    dimension(IM,JM,  LM)  :: KEX, DKEX
-      real,    dimension(IM,JM,  LM)  :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
+      real,    dimension(IM,JM,  LM)  :: TH, Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
 
       integer                         :: SHLWDIAG
       real,    dimension(IM,JM,  LM)  :: SHLW_PRC3,SHLW_SNO3,UFRC_SC
@@ -6706,7 +6673,6 @@ contains
       call MAPL_GetPointer(IMPORT, PREF,    'PREF'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
@@ -7876,13 +7842,12 @@ contains
 
 !-srf - placed here before the cumulus parameterizations are called.
       if(associated(CNV_DQLDT)) CNV_DQLDT =  0.0
-      ZLE(:,:,LM) = 0.
-      do L=LM,1,-1
-         ZLE(:,:,L-1) = TH (:,:,L) * (1.+MAPL_VIREPS*Q(:,:,L))    ! This term is really THV
-         ZLO(:,:,L  ) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PKE(:,:,L)-PK (:,:,L  ) ) * ZLE(:,:,L-1)
-         ZLE(:,:,L-1) = ZLO(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PK (:,:,L)-PKE(:,:,L-1) ) * ZLE(:,:,L-1)
-         DZET(:,:,L ) = ZLE(:,:,L-1) - ZLE(:,:,L)
-      end do
+
+      DO L=0,LM
+         ZLE(:,:,L)= ZLEI(:,:,L) - ZLEI(:,:,LM)   ! Edge Height (m) above the surface
+      END DO
+      ZLO      = 0.5*(ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) ) ! Layer Height (m) above the surface
+      DZET     =     (ZLE(:,:,0:LM-1) - ZLE(:,:,1:LM) ) ! Layer thickness (m)
 
       GZLE  = MAPL_GRAV * ZLE
       GZLO  = MAPL_GRAV * ZLO

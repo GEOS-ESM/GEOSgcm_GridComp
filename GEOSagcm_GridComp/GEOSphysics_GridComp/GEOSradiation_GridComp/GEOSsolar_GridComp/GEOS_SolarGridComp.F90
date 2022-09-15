@@ -2839,6 +2839,20 @@ contains
       QQ3(:,:,2) = QL
       QQ3(:,:,3) = QR
       QQ3(:,:,4) = QS
+
+      WHERE (RI == MAPL_UNDEF)
+        RI = 36.e-6
+      END WHERE
+      WHERE (RL == MAPL_UNDEF)
+        RL = 14.e-6
+      END WHERE
+      WHERE (RR == MAPL_UNDEF)
+        RR = 50.e-6
+      END WHERE
+      WHERE (RS == MAPL_UNDEF)
+        RS = 50.e-6
+      END WHERE
+
       RR3(:,:,1) = RI*1.e6  ! microns
       RR3(:,:,2) = RL*1.e6
       RR3(:,:,3) = RR*1.e6
@@ -3624,8 +3638,11 @@ contains
       ! Set flags related to cloud properties (see RRTMG_SW)
       ! ----------------------------------------------------
 
-      ICEFLGSW = 3
-      LIQFLGSW = 1
+! Set flags related to cloud properties
+      call MAPL_GetResource(MAPL,ICEFLGSW,'RRTMG_ICEFLG:',DEFAULT=3,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,LIQFLGSW,'RRTMG_LIQFLG:',DEFAULT=1,RC=STATUS)
+      VERIFY_(STATUS)
 
       ! Get number of cores per node for RRTMG GPU
       ! ------------------------------------------
@@ -3715,6 +3732,14 @@ contains
       CO2_R (:,1:LM  ) = CO2
       O2_R  (:,1:LM  ) = O2
       FCLD_R(:,1:LM  ) = CL (:,LM:1:-1)
+
+! Clean up negatives
+      WHERE (Q_R < 0.) Q_R = 0.
+      WHERE (O3_R < 0.) O3_R = 0.
+      WHERE (CH4_R < 0.) CH4_R = 0.
+      WHERE (CO2_R < 0.) CO2_R = 0.
+      WHERE (O2_R < 0.) O2_R = 0.
+      WHERE (FCLD_R < 0.) FCLD_R = 0.
 
       ! Adjustment for Earth/Sun distance, from MAPL_SunGetInsolation
       ADJES = DIST

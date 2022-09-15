@@ -1702,6 +1702,19 @@ contains
    CWC (:,:,:,KRAIN  ) = QR
    CWC (:,:,:,KSNOW  ) = QS
 
+   WHERE (RI == MAPL_UNDEF)
+      RI = 36.e-6
+   END WHERE
+   WHERE (RL == MAPL_UNDEF)
+      RL = 14.e-6
+   END WHERE
+   WHERE (RR == MAPL_UNDEF)
+      RR = 50.e-6
+   END WHERE
+   WHERE (RS == MAPL_UNDEF)
+      RS = 50.e-6
+   END WHERE
+
    REFF(:,:,:,KICE   ) = RI * 1.0e6
    REFF(:,:,:,KLIQUID) = RL * 1.0e6
    REFF(:,:,:,KRAIN  ) = RR * 1.0e6
@@ -3195,8 +3208,10 @@ contains
       allocate(DOLRBRG_DTS (nbndlw,IM*JM),__STAT__)
 
       ! choices for cloud physical to optical conversion
-      ICEFLGLW = 3
-      LIQFLGLW = 1
+      call MAPL_GetResource(MAPL,ICEFLGLW,'RRTMG_ICEFLG:',DEFAULT=3,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,LIQFLGLW,'RRTMG_LIQFLG:',DEFAULT=1,RC=STATUS)
+      VERIFY_(STATUS)
 
       ! calculate derivatives of upward flux with Tsurf
       Ts_derivs = .true.
@@ -3322,6 +3337,19 @@ contains
 
       enddo ! IM
       enddo ! JM
+
+! Clean up negatives
+      WHERE (Q_R < 0.) Q_R = 0.
+      WHERE (O3_R < 0.) O3_R = 0.
+      WHERE (CH4_R < 0.) CH4_R = 0.
+      WHERE (N2O_R < 0.) N2O_R = 0.
+      WHERE (CO2_R < 0.) CO2_R = 0.
+      WHERE (O2_R < 0.) O2_R = 0.
+      WHERE (CCL4_R < 0.) CCL4_R = 0.
+      WHERE (CFC11_R < 0.) CFC11_R = 0.
+      WHERE (CFC12_R < 0.) CFC12_R = 0.
+      WHERE (CFC22_R < 0.) CFC22_R = 0.
+      WHERE (FCLD_R < 0.) FCLD_R = 0.
 
       call MAPL_TimerOff(MAPL,"---RRTMG_FLIP",RC=STATUS)
       VERIFY_(STATUS)

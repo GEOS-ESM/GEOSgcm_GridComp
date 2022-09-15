@@ -825,6 +825,7 @@ module GEOSmoist_Process_Library
 
       CFn = CF*tmpARR
       QCn = QC*tmpARR
+      QT  = QCn + QVn
       TEn = TE
 
       nmax   = 20
@@ -834,7 +835,6 @@ module GEOSmoist_Process_Library
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         QT  = QCn + QVn
 
          if(PDFSHAPE.lt.2) then
 
@@ -951,6 +951,7 @@ module GEOSmoist_Process_Library
             if (n.ne.nmax) QCn = QCp + DQCALL *0.5
          endif
 
+         DQCALL = QCn - QCp
          QVn = QVp - DQCALL
          TEn = TEp + ((1.0-fQi)*alhlbcp + fQi*alhsbcp) * ( DQCALL*(1.-AF) + (QAn-QAp)*AF )
 

@@ -223,33 +223,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'PLK',                                       &
-         LONG_NAME  = 'mid-layer_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'PKE',                                       &
-         LONG_NAME  = 'edge_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationEdge,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'TH',                                        &
-         LONG_NAME  = 'potential_temperature',                     &
-         UNITS      = 'K',                                         &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'T',                                         &
          LONG_NAME  = 'air_temperature',                           &
          UNITS      = 'K',                                         &
@@ -1077,17 +1050,22 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
+         DST_ID      = TURBL,                                      &
+         SRC_ID      = SURF,                                       &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! Radiation Imports
 !-------------------
 
-     call MAPL_AddConnectivity ( GC,                                  &
-         SHORT_NAME  = (/'QV   ','QL   ','QI   ','QR   ','QS   ',     &
-                         'QLLS ','QILS ','QLCN ','QICN ',             &
-                         'QRTOT','QSTOT',                             &
-                         'RL   ','RR   ','RI   ','RS   ','FCLD ' /),  &
-         DST_ID      = RAD,                                           &
-         SRC_ID      = MOIST,                                         &
-                                                           RC=STATUS  )
+     call MAPL_AddConnectivity ( GC,                            &
+         SHORT_NAME  = (/  'QV','QL','QI','QR','QS','QG',      &
+                         'FCLD','RL','RI','RR','RS','RG' /),   &
+         DST_ID      = RAD,                                     &
+         SRC_ID      = MOIST,                                   &
+                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1137,9 +1115,7 @@ contains
 !----------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'PCU    ', 'PLS    ', 'SNO    ',          &
-                         'ICE    ', 'FRZR   ', 'TPREC  ',          &
-                         'CN_PRCP' /),                             &
+         SHORT_NAME  = (/'PCU','PLS','SNO','ICE','FRZR'/),         &
          DST_ID      = SURF,                                       &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1189,29 +1165,49 @@ contains
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'Q', 'DTDT_DC', 'DTDT_SC',                &
-                              'DQLDT'  , 'DQIDT'  /),              &
+         SHORT_NAME  = (/'Q', 'DTDT_DC', 'DTDT_SC'/),              &
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SRC_NAME    = 'DQIDT_micro',                                      &
+         DST_NAME    = 'DQIDT',                                            &
+         DST_ID      = GWD,                                               &
+         SRC_ID      = MOIST,                                              &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SRC_NAME    = 'DQLDT_micro',                                      &
+         DST_NAME    = 'DQLDT',                                            &
+         DST_ID      = GWD,                                               &
+         SRC_ID      = MOIST,                                              &
+                                                       RC=STATUS  )
     VERIFY_(STATUS)
 
 ! Chemistry Imports
 ! -----------------
 
-     call MAPL_AddConnectivity ( GC,                              &
-        SHORT_NAME  = (/ 'Q       ', 'RH2     ', 'DQDT    ',      &
-                         'FCLD    ', 'CNV_MFC ', 'CNV_MFD ',      &
-                         'QL      ', 'PFL_CN  ', 'PFL_LSAN',      &
-                         'PFI_CN  ', 'PFI_LSAN', 'QCTOT   ',      &
-                         'CNV_QC  ', 'QLTOT   ', 'QLCN    ',      &
-                         'QICN    ', 'DQLDT   ', 'QITOT   ',      &
-                         'REV_CN  ', 'REV_LS  ', 'REV_AN  ',      &
-                         'LFR_GCC ', 'DQIDT   ', 'QI      ',      &
-                         'DQRC    ', 'CNV_CVW ', 'DQRL    ',      &
-                         'CNV_FRC ', 'RI      ',  'RL      ' /),  &
-        DST_ID      = CHEM,                                       &
-        SRC_ID      = MOIST,                                      &
+     call MAPL_AddConnectivity ( GC,                                      &
+        SHORT_NAME  = (/ 'RL      ',  'QL      ', 'QLTOT   ', 'DQLDT   ', &
+                         'RI      ',  'QI      ', 'QITOT   ', 'DQIDT   ', &
+                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN',             &
+                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN',             &
+                         'FCLD    ',  'QCTOT   ', 'CNV_QC  ',             &
+                         'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
+                         'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
+                         'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
+                         'LFR_GCC ',  'RH2     ' /),                      &
+        DST_ID      = CHEM,                                               &
+        SRC_ID      = MOIST,                                              &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                                      &
+        SRC_NAME    = 'PCU',                                              &
+        DST_NAME    = 'CN_PRCP',                                          &
+        DST_ID      = CHEM,                                               &
+        SRC_ID      = MOIST,                                              &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1234,8 +1230,7 @@ contains
                          'CN       ', 'RHOS     ', 'WET2     ',   &
                          'SNOMAS   ', 'SNOWDP   ', 'ITY      ',   &
                          'LHFX     ', 'Q2M      ', 'Q10M     ',   &
-                         'T10M     ', 'WCSF     ', 'CN_PRCP  ',   &
-                         'PRECTOT  '                          /), &
+                         'T10M     ', 'WCSF     ', 'PRECTOT  '/), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
                                                        RC=STATUS  )
@@ -1295,13 +1290,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-!-srf-gf-scheme
-    call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'USTAR', 'TSTAR', 'QSTAR', 'T2M  ',       &
                          'Q2M  ', 'TA   ', 'QA   ', 'SH   ',       &
                          'EVAP '                                   &
@@ -1310,7 +1298,6 @@ contains
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-!-srf-gf-scheme
 
 
     !-------------- DONIF Additional Moist Imports
@@ -1390,6 +1377,7 @@ contains
 
    VERIFY_(STATUS)
     
+
 !EOP
 
 ! Disable connectivities of Surface imports that are filled manually from 

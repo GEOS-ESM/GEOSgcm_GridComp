@@ -27,6 +27,10 @@ module cloudnew
 
    use partition_pdf
 
+!! use GEOSmoist_Process_Library, only: ice_fraction, hystpdf, evap3, subl3, fix_up_clouds
+   use GEOSmoist_Process_Library, only: hystpdf_refactored=>hystpdf
+   use GEOSmoist_Process_Library, only: evap3_refactored=>evap3
+
    implicit none
 
 #ifndef _CUDA
@@ -1088,10 +1092,11 @@ contains
             LSPDFFRACNEW= CLDFRC_dev(I,K)
 
             IF(USE_AEROSOL_NN) THEN
-            call hystpdf_new(      &
+            call hystpdf_refactored(      &
                   DT             , &
                   ALPHA          , &
                   PDFFLAG        , &
+                  CNV_FRACTION_dev(I)  , &
                   PP_dev(I,K)    , &
                   ZZ_dev(I,K)    , &
                   Q_dev(I,K)     , &
@@ -1136,7 +1141,7 @@ contains
 #endif
                   WTHV2_dev(I,K),      &
                   wql_dev(I,K),        &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I) ) 
+                  USE_AEROSOL_NN==1)
             else
             call hystpdf(          &
                   DT             , &
@@ -4069,57 +4074,15 @@ contains
    function ICE_FRACTION (TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND) RESULT(ICEFRCT)
       real, intent(in) :: TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND
       real             :: ICEFRCT
-      real             :: ICEFRCT_0, ICEFRCT_1 
+      real             :: tc, ptc
+      real             :: anvexp
 
-  ! Anvil-Convective sigmoidal function like figure 7(right) of Hu et al 2010 in tropical convective regimes
-        ICEFRCT_0  = 0.00
-        if ( TEMP <= aT_ICE_ALL ) then
-           ICEFRCT_0 = 1.000
-        else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
-           ICEFRCT_0 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_0 = MIN(ICEFRCT_0,1.00)
-        ICEFRCT_0 = MAX(ICEFRCT_0,0.00)
-        ICEFRCT_0 = ICEFRCT_0**aICEFRPWR
-
-  ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-      if ( (SNOMAS > 0.1) .OR. (FRLANDICE > 0.5) ) then
-        ! Over snow/ice
-        ICEFRCT_1  = 0.00
-        if ( TEMP <= iT_ICE_ALL ) then
-           ICEFRCT_1 = 1.000
-        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_1 = 1.00 -  ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL )
-        end if
-        ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
-        ICEFRCT_1 = MAX(ICEFRCT_1,0.00)
-        ICEFRCT_1 = ICEFRCT_1**iICEFRPWR
-      else if (FRLAND > 0.1) then
-        ! Over Land
-        ICEFRCT_1  = 0.00
-        if ( TEMP <= lT_ICE_ALL ) then
-           ICEFRCT_1 = 1.000
-        else if ( (TEMP > lT_ICE_ALL) .AND. (TEMP <= lT_ICE_MAX) ) then
-           ICEFRCT_1 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - lT_ICE_ALL ) / ( lT_ICE_MAX - lT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
-        ICEFRCT_1 = MAX(ICEFRCT_1,0.00)
-        ICEFRCT_1 = ICEFRCT_1**lICEFRPWR
-      else
-        ! Over Oceans
-        ICEFRCT_1  = 0.00
-        if ( TEMP <= oT_ICE_ALL ) then
-           ICEFRCT_1 = 1.000
-        else if ( (TEMP > oT_ICE_ALL) .AND. (TEMP <= oT_ICE_MAX) ) then
-           ICEFRCT_1 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - oT_ICE_ALL ) / ( oT_ICE_MAX - oT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
-        ICEFRCT_1 = MAX(ICEFRCT_1,0.00)
-        ICEFRCT_1 = ICEFRCT_1**oICEFRPWR
-      endif
-
-   ! Combine the Convective and Stratiform functions
-      ICEFRCT  = ICEFRCT_1*(1.0-CNV_FRACTION) + ICEFRCT_0*(CNV_FRACTION)
+      ! Anvil clouds need a shifted polynomial
+      anvexp = 1+4*CNV_FRACTION
+      ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
+      tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
+      ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))**anvexp
 
    end function ICE_FRACTION
 
