@@ -192,7 +192,7 @@ integer :: n_threads=1
     if(use_PEATMAP)  PEATSOURCE   = 'PEATMAP'
     if(jpl_height)   VEGZSOURCE   = 'JPL'
 
-    if (trim(SNOWALB)=='MODC006')  process_snow_albedo=.true.
+    if (trim(SNOWALB)=='MODC061')  process_snow_albedo=.true.
 
     if(n_threads == 1) then
 
