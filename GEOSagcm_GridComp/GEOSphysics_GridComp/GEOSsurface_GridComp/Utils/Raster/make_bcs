@@ -1335,7 +1335,7 @@ endif
 setenv MASKFILE ${MASKFILE}
 setenv OMP_NUM_THREADS 1
 # WY NOTE: the name mkSMAPTilesPara_v2.x will be changed to bin/bin/mkSMAPTilesPara.x
-bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -v $lbcsv -ease_version $EVERSION
+bin/mkSMAPTilesPara_v2.x -smap_grid ${BCNAME} -v $lbcsv
 setenv OMP_NUM_THREADS ${NCPUS}
 bin/mkCatchParam.x -e EASE -g ${BCNAME} -v $lbcsv -x ${NX} -y ${NY} 
 chmod 755 bin/create_README.csh

@@ -2,7 +2,7 @@
 
 PROGRAM mkSMAPTilesPara_v2
 
-!     This program constructs land and lake tiles for the SMAP-EASE-M09 and M36 grids (just set MGRID) 
+!     This program constructs land and lake tiles for the SMAP_EASEv1_Mxx  
 !         for CLSM implementation.
 !     f90 -c create_smap_tiles.f90
 !     f90 -c smapconv.f
@@ -56,12 +56,12 @@ PROGRAM mkSMAPTilesPara_v2
       integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX
       REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
       character*100 :: veg_class (12)
-      character*5 :: MGRID
       character*100 :: gfile,gtopo30
       integer :: nc_smap,nr_smap, N_args, command_argument_count 
       real*8  ::  CELL_km
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
-      character(40) :: arg, EASElabel 
+      character(40) :: arg, EASElabel_ 
+      character(len=:), allocatable :: EASElabel 
       character*200 :: tmpstring, tmpstring1, tmpstring2	      
       logical :: regrid = .false.
       character*128          :: MaskFile
@@ -74,9 +74,9 @@ PROGRAM mkSMAPTilesPara_v2
       N_args = command_argument_count()
 
       if(N_args < 1) then
-        print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -v LBCSV -ease_version xx'
-        print *,'Allowed SMAP grids are: M01 M03 M09 M25 M36'
-        print *,'Allowed EASE_VERSION are: EASEv1 EASEv2'
+        print *,'USAGE : bin/mkSMAPTiles -smap_grid EASELabel -v LBCSV'
+        print *,'Allowed SMAP grids are: SMAP_EASEv1_M01 M03 M09 M25 M36'
+        print *,'Allowed SMAP grids are: SMAP_EASEv2_M01 M03 M09 M25 M36'
         stop
       end if
 
@@ -89,7 +89,7 @@ PROGRAM mkSMAPTilesPara_v2
          
          if     ( trim(arg) == '-smap_grid' ) then
             i = i+1
-            call get_command_argument(i,MGRID)
+            call get_command_argument(i,EASELabel_)
 
          ! WY noted: this may be used in the future for irrigation tiles
          !elseif ( trim(arg) == '-pfaf_til' ) then
@@ -101,10 +101,6 @@ PROGRAM mkSMAPTilesPara_v2
             i = i+1
             call get_command_argument(i,LBCSV)
 
-         elseif ( trim(arg) == '-ease_version' ) then
-            i = i+1
-            call get_command_argument(i,EASE_Version)
-                        
          else ! stop for any other arguments
             print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -v LBCSV -ease_version xx'
             print *,'Allowed SMAP grids are: M01, M03, M09, M25, M36 '
@@ -113,10 +109,11 @@ PROGRAM mkSMAPTilesPara_v2
          endif
          
       end do
-
-      if (MGRID /= 'M25' .and. EASE_version == 'EASEv1') then
-         stop ("EASEv1 only supports M25")
-      endif      
+      
+      ! WY note, remove this verification. There can be all combination
+     ! if (MGRID /= 'M25' .and. EASE_version == 'EASEv1') then
+     !    stop ("EASEv1 only supports M25")
+     ! endif      
       
       ! WY noted: should do it in the script that calls this program 
       !call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
@@ -125,29 +122,29 @@ PROGRAM mkSMAPTilesPara_v2
       ! Setting SMAP Grid specifications
       ! --------------------------------
 
-      EASElabel = 'SMAP_'//ease_version//'_'//trim(MGRID)
+      EASElabel = trim(EASELabel_)
 
       call ease_get_params(EASELabel, CELL_km, nc_smap, nr_smap, r0,s0, Rg)
       write(nc_string, '(i0)') nc_smap
       write(nr_string, '(i0)') nr_smap
       gfile = trim(EASElabel)//'_'//trim(nc_string)//'x'//trim(nc_string)
 
-      if (trim(MGRID) .eq. 'M03') then ! SMAP  3 km grid
+      if (index(EASELabel,'M03') /=0) then ! SMAP  3 km grid
          regrid = .true.
          NC = 21600
          NR = 10800
          NT = 500000000
       endif
-      if (trim(MGRID) .eq. 'M01') then ! SMAP  1 km grid
+      if (index(EASELabel,'M03') /=0) then ! SMAP  1 km grid
          regrid = .true.
          NC = 43200
          NR = 21600
          NT = 1500000000
       endif
  !
-      if ( .not. (trim(MGRID) .eq. 'M01' .or. trim(MGRID) .eq. 'M03' .or.  &
-        trim(MGRID) .eq. 'M09' .or. trim(MGRID) .eq. 'M25' .or.  &
-        trim(MGRID) .eq. 'M36')) then
+      if ( .not. (index(EASELabel,'M01') /=0 .or. index(EASELabel,'M03') /=0 .or.  &
+        index(EASELabel,'M09') /=0 .or. index(EASELabel,'M25') /=0 .or.  &
+        index(EASELabel,'M36') /=0)) then
         stop('Unknown SMAP Grid stopping..')
       endif
 
