@@ -1466,17 +1466,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'snow_albedo'               ,&
-    UNITS              = '1'                         ,&
-    SHORT_NAME         = 'SNOWALB'                   ,&
-    FRIENDLYTO         = trim(COMP_NAME)             ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartOptional        ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
-
   !---------- GOSWIM snow impurity related variables ----------
  
   if (N_CONST_LAND4SNWALB /= 0) then 
