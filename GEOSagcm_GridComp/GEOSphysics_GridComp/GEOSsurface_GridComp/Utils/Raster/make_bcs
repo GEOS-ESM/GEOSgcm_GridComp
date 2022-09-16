@@ -242,9 +242,28 @@ if ( $HELPMODE != YES ) then
           $HRCODE == 'm9'      | \
           $HRCODE == 'm36'     | \
           $HRCODE == 'm25')    then  
-	  set isEASE = 1
+	     set isEASE = 1
       endif
    end
+
+   if ( $isEASE == 1 ) then
+      EASE_VERSION:
+      echo " What is the EASE grid version:  EASEv1 or EASEv2 ? default is EASEv2"
+      set dummy = `echo $<`
+
+      if ( $dummy == '' ) set dummy = EASEv2
+
+      if( $dummy == 'EASEv1'  | \
+           $dummy == 'EASEv2') then 
+        set EVERSION = $dummy
+        echo "EASE grid Version is  ${EVERSION} "
+      else
+         echo " "
+         echo " Invalid input, please use EASEv1 or EASEv2 "
+         echo " "
+         goto EASE_VERSION
+      endif
+   endif
    
 else
 
@@ -1262,11 +1281,12 @@ endif # End Cube Test
 if( $grid == ease ) then
   echo $HRCODE 
 
-  if( $HRCODE == m25 ) then
-    set EVERSION = EASEv1
-  else
-    set EVERSION = EASEv2
-  endif
+  #WY noted: ease version becomes input
+  #if( $HRCODE == m25 ) then
+  #  set EVERSION = EASEv1
+  #else
+  #  set EVERSION = EASEv2
+  #endif
 
   set RS  = ${im}x${jm}
   set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
