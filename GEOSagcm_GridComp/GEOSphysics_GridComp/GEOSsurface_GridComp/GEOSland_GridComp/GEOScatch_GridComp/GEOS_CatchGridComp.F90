@@ -904,17 +904,6 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'snow_albedo'               ,&
-    UNITS              = '1'                         ,&
-    SHORT_NAME         = 'SNOWALB'                   ,&
-    FRIENDLYTO         = trim(COMP_NAME)             ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_at_wilting_point'  ,&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'WPWET'                     ,&
@@ -1462,6 +1451,17 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone,          &
     RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'snow_albedo'               ,&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'SNOWALB'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartOptional        ,&
+                                           RC=STATUS  ) 
   VERIFY_(STATUS)
 
   !---------- GOSWIM snow impurity related variables ----------
