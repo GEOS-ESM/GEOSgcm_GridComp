@@ -903,16 +903,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'snow_albedo'               ,&
-    UNITS              = '1'                         ,&
-    SHORT_NAME         = 'SNOWALB'                   ,&
-    FRIENDLYTO         = trim(COMP_NAME)             ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_at_wilting_point'  ,&
@@ -1386,6 +1376,19 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  if (SNOW_ALBEDO_INFO == 1) then
+    call MAPL_AddInternalSpec(GC                  ,&
+       LONG_NAME          = 'snow_albedo'               ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SNOWALB'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+     VERIFY_(STATUS)
+  endif
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
