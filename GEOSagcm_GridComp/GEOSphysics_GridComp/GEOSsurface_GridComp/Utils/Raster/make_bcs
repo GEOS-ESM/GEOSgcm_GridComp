@@ -133,7 +133,6 @@ if ( $HELPMODE != YES ) then
 
    set dummy = `echo $<`
    
-   set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
    
    if( $dummy == 'F25'  | \
        $dummy == 'GM4'  | \
@@ -141,9 +140,9 @@ if ( $HELPMODE != YES ) then
        $dummy == 'NL3'  | \
        $dummy == 'NL4'  | \
        $dummy == 'NL5'  | \
-       $dummy == 'V06'  | \
-       $dummy == 'V07'  | \
-       $dummy == 'V08') then
+       $dummy == 'v06'  | \
+       $dummy == 'v07'  | \
+       $dummy == 'v08') then
       set lbcsv = $dummy
    else if ( $dummy == '' ) then
       echo $lbcsv
