@@ -935,7 +935,6 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/M
 
 cd data 
 ln -s $input_dir CATCH
-
 cd ../
  
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
@@ -1261,41 +1260,41 @@ endif # End Cube Test
 #######################################################################
 
 if( $grid == ease ) then
-echo $HRCODE 
+  echo $HRCODE 
 
-if( $HRCODE == m25 ) then
-set EVERSION = EASE
-else
-set EVERSION = EASEv2
-endif
+  if( $HRCODE == m25 ) then
+    set EVERSION = EASEv1
+  else
+    set EVERSION = EASEv2
+  endif
 
-set RS  = ${im}x${jm}
-set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
-set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
+  set RS  = ${im}x${jm}
+  set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
+  set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
-set             BCNAME = SMAP_${EVERSION}_${MGRID}
-set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
-set             BCJOB  = $BCDIR/$BCNAME.j
-set           THISGRID = SMAP-${EVERSION}-${MGRID}
+  set             BCNAME = SMAP_${EVERSION}_${MGRID}
+  set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
+  set             BCJOB  = $BCDIR/$BCNAME.j
+  set             THISGRID = SMAP-${EVERSION}-${MGRID}
 
-set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
-if( $nfiles >= 1 ) then
-  echo ""
-  echo "${C1} ----------------------------------------------------${CR}"
-  echo "${C1}                 Abort:                              ${CR}"
-  echo "${C2} This BCS run $BCDIR ${CR}"
-  echo "${C2} will create resolution dir already present: $BCNAME ${CR}"
-  echo "${C2} Please delete run dir and same resolution BCS files and resubmit"
-  echo "${C1} ----------------------------------------------------${CR}"
-  echo ""
-  exit
-endif
+  set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
+  if( $nfiles >= 1 ) then
+    echo ""
+    echo "${C1} ----------------------------------------------------${CR}"
+    echo "${C1}                 Abort:                              ${CR}"
+    echo "${C2} This BCS run $BCDIR ${CR}"
+    echo "${C2} will create resolution dir already present: $BCNAME ${CR}"
+    echo "${C2} Please delete run dir and same resolution BCS files and resubmit"
+    echo "${C1} ----------------------------------------------------${CR}"
+    echo ""
+    exit
+  endif
 
-mkdir -p $BCDIR 
-mkdir -p $EXPDIR/$OUTDIR/logs
+  mkdir -p $BCDIR 
+  mkdir -p $EXPDIR/$OUTDIR/logs
 
-echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
-/bin/rm -f     $BCJOB
+  echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
+  /bin/rm -f     $BCJOB
 
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
@@ -1328,7 +1327,7 @@ if ( $EVERSION == EASEv2 ) then
    ##    /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
    ##endif
 endif
-if ( $EVERSION == EASE ) then
+if ( $EVERSION == EASEv1 ) then
   ## for easev1, default values
   set lbcsv = UNDEF
 endif

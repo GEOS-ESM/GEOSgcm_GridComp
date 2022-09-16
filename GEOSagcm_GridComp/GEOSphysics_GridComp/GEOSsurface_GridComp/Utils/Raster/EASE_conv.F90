@@ -80,6 +80,7 @@ module EASE_conv
 
   public :: ease_convert
   public :: ease_inverse
+  public :: ease_get_params
 
   ! =======================================================================
   !
@@ -159,7 +160,7 @@ contains
     
     if(index(gridname,'EASEv2') /=0) then
         call easeV2_convert(grid,lat,lon,r,s)
-    else if(index(gridname,'EASE') /=0) then
+    else if(index(gridname,'EASEv1') /=0) then
         call easeV1_convert(grid,lat,lon,r,s)
     else
        print*,"wrong gridname: "//gridname
@@ -188,13 +189,48 @@ contains
     
     if(index(gridname,'EASEv2') /=0) then
         call easeV2_inverse(grid,r,s,lat,lon)
-    else if(index(gridname,'EASE') /=0) then
+    else if(index(gridname,'EASEv1') /=0) then
         call easeV1_inverse(grid,r,s,lat,lon)
     else
        print*,"wrong gridname: "//gridname
     endif 
   end subroutine ease_inverse
 
+  subroutine ease_get_params (gridname, CELL_km, cols, rows, r0, s0, Rg )
+    implicit none
+    character*(*), intent(in)  :: gridname
+    real*8,        intent(out) :: CELL_km
+    integer,       intent(out) :: cols, rows
+    real*8,        intent(out) :: r0, s0, Rg
+
+    real*8                     :: map_scale_m
+    character(3)  :: grid
+
+    if (index(gridname,'M36') /=0 ) then
+        grid='M36'
+    else if (index(gridname,'M25') /=0 ) then
+        grid='M25'
+    else if (index(gridname,'M09') /=0 ) then
+        grid='M09'
+    else if (index(gridname,'M03') /=0 ) then
+        grid='M03'
+    else if (index(gridname,'M01') /=0 ) then
+        grid='M01'
+    endif
+    
+    if(index(gridname,'EASEv2') /=0) then
+        call easeV2_get_params(grid, map_scale_m, cols, rows, r0, s0)
+        Rg = -9999.0
+        CELL_km = map_scale_m/1000.d0
+    else if(index(gridname,'EASEv1') /=0) then
+        call easeV1_get_params(grid, CELL_km, cols, rows, r0, s0, Rg)
+    else
+       print*,"wrong gridname: "//gridname
+    endif 
+
+  end subroutine ease_get_params
+
+  ! *******************************************************************
   ! *******************************************************************
   
   subroutine easeV1_convert (grid, lat, lon, r, s)
