@@ -133,7 +133,6 @@ if ( $HELPMODE != YES ) then
 
    set dummy = `echo $<`
    
-   set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
    
    if( $dummy == 'F25'  | \
        $dummy == 'GM4'  | \
