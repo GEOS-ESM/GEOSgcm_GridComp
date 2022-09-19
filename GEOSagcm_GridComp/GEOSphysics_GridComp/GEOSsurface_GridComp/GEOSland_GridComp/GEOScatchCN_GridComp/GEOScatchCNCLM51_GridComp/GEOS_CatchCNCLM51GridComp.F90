@@ -34,7 +34,6 @@ module GEOS_CatchCNCLM51GridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   use CATCHMENT_CN_MODEL
-  use compute_rc_mod
   use CN_DriverMod
   use CN_initMod
   USE STIEGLITZSNOW,   ONLY :                 &
@@ -52,7 +51,9 @@ module GEOS_CatchCNCLM51GridCompMod
        RHOFS          => CATCH_SNWALB_RHOFS,  &
        SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE
+       SLOPE          => CATCH_SNWALB_SLOPE,  &
+       PEATCLSM_POROS_THRESHOLD
+
 
   USE  clm_varpar, ONLY :                     &
        NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT,    &
@@ -63,7 +64,7 @@ module GEOS_CatchCNCLM51GridCompMod
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
-       catch_calc_zbar, catch_calc_watertabled, irrigation_rate, &
+       catch_calc_zbar, catch_calc_peatclsm_waterlevel, irrigation_rate, &
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
@@ -3669,9 +3670,9 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'depth_to_water_table_from_surface',&
+       LONG_NAME          = 'depth_to_water_table_from_surface_in_peat',&
        UNITS              = 'm'                         ,&
-       SHORT_NAME         = 'WATERTABLED'               ,&
+       SHORT_NAME         = 'PEATCLSM_WATERLEVEL'       ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -3680,7 +3681,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'FSWCHANGE'                 ,&
+       SHORT_NAME         = 'PEATCLSM_FSWCHANGE'        ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -4855,8 +4856,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
         real, pointer, dimension(:)   :: IRRIGRATE
-        real, pointer, dimension(:)   :: WATERTABLED
-        real, pointer, dimension(:)   :: FSWCHANGE
+        real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
+        real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -5533,8 +5534,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTBC002         ,'RMELTBC002'           ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC001         ,'RMELTOC001'           ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC002         ,'RMELTOC002'           ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WATERTABLED        ,'WATERTABLED'          ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,FSWCHANGE          ,'FSWCHANGE'            ,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL'  ,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE ,'PEATCLSM_FSWCHANGE'   ,           RC=STATUS); VERIFY_(STATUS)
 
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,           RC=STATUS); VERIFY_(STATUS)
 
@@ -7580,9 +7581,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
-        if(associated(FSWCHANGE))  FSWCHANGE  = FSW_CHANGE
-        if(associated(WATERTABLED)) then
-           WATERTABLED = catch_calc_watertabled( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+        if(associated(PEATCLSM_FSWCHANGE )) then
+           where (POROS >= PEATCLSM_POROS_THRESHOLD)
+              PEATCLSM_FSWCHANGE = FSW_CHANGE
+           elsewhere
+              PEATCLSM_FSWCHANGE = MAPL_UNDEF
+           end where
+        end if
+
+        if(associated(PEATCLSM_WATERLEVEL)) then
+           PEATCLSM_WATERLEVEL = catch_calc_peatclsm_waterlevel( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
         endif
 
         if(associated(TPSN1OUT)) then
@@ -7871,35 +7879,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(      tp )
         deallocate( soilice )
         deallocate (PLSIN)
-        call MAPL_TimerOff  ( MAPL, "-CATCHCNCLM45" )
+        call MAPL_TimerOff  ( MAPL, "-CATCHCNCLM51" )
         RETURN_(ESMF_SUCCESS)
 
       end subroutine Driver
 
-!      ! ----------------- routines for CDF scaling -------------------
-!      
-!      REAL FUNCTION cdf2fpar (cdf, k,l, m, m1, m2)
-!        
-!        REAL, intent (in)  :: cdf, k,l,m, m1, m2
-!        REAL :: x, ThisCDF, ThisFPAR
-!        integer, parameter :: nBINS = 40
-!        
-!        x       = real (nBINS)
-!        ThisCDF = 1.
-!        
-!        do while (ThisCDF >= cdf)
-!           ThisFPAR = 1. - (real(nbins)-x)/real(nbins) - 1./2./real(nbins)
-!           ThisCDF  = K * betai (L, M, ThisFPAR)
-!           x = x - 1.
-!           if(x == 0) exit 
-!        end do
-!        
-!        cdf2fpar = ThisFPAR * m2 + m1
-!        if(cdf2fpar > m2) cdf2fpar = m2
-!        if(cdf2fpar < m1) cdf2fpar = m1
-!        return
-!
-!      END FUNCTION cdf2fpar
+! Commented out functions betai(), betacf(), and gammln().
+! These functions are not used and were reproduced identically in  
+! GEOS_CatchCNCLM40GridComp.F90 and in GEOS_CatchCNCLM45GridComp.F90.
+! Another copy was in GEOScatchCN_GridComp/utils/math_routines.F90 but
+! there function betai() was missing the restriction 0.0125<x<0.9875.
+! - reichle, 23 May 2022
 !
 !      ! ---------------------------------------------------------
 !      
