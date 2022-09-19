@@ -145,7 +145,8 @@ PROGRAM mkSMAPTilesPara_v2
       if ( .not. (index(EASELabel,'M01') /=0 .or. index(EASELabel,'M03') /=0 .or.  &
         index(EASELabel,'M09') /=0 .or. index(EASELabel,'M25') /=0 .or.  &
         index(EASELabel,'M36') /=0)) then
-        stop('Unknown SMAP Grid stopping..')
+        print*,'Unknown SMAP Grid stopping..'
+        stop
       endif
 
       allocate(land_id    (1:NT))
