@@ -167,7 +167,7 @@ module gfdl2_cloud_microphys_mod
     ! id_ice, id_prec, id_cond, id_var, id_droplets
     ! integer :: gfdl_mp_clock ! clock for timing of driver routine
     
-    real, parameter :: dt_fr = 8. !< homogeneous freezing of all cloud water at t_wfr - dt_fr
+    real :: dt_fr = 8. !< homogeneous freezing of all cloud water at t_wfr - dt_fr
     ! minimum temperature water can exist (moore & molinero nov. 2011, nature)
     ! dt_fr can be considered as the error bar
     
@@ -322,7 +322,7 @@ module gfdl2_cloud_microphys_mod
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof,         &
-        do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
+        do_sedi_heat, sedi_transport, do_sedi_w, dt_fr, de_ice, icloud_f, irain_f, mp_print
     
     public                                                                    &
         mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, dw_land, dw_ocean, &
@@ -336,7 +336,7 @@ module gfdl2_cloud_microphys_mod
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof,         &
-        do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
+        do_sedi_heat, sedi_transport, do_sedi_w, dt_fr, de_ice, icloud_f, irain_f, mp_print
     
 contains
 

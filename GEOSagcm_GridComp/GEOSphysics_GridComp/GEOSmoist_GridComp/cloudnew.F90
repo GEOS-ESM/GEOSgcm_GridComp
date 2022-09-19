@@ -46,8 +46,6 @@ module cloudnew
            real               :: ANV_SUND_COLD         ! 19
            real               :: ANV_SUND_TEMP1        ! 20
            real               :: ANV_TO_LS_TIME        ! 21
-           real               :: CCN_OCEAN             ! 22
-           real               :: CCN_LAND              ! 23
            real               :: DISABLE_RAD           ! 26
            real               :: ICE_SETTLE            ! 27
            real               :: ANV_ICEFALL           ! 28
@@ -57,7 +55,6 @@ module cloudnew
            real               :: ANV_ENVF              ! 31
            real               :: SC_ENVF               ! 31
            real               :: LS_ENVF               ! 31
-           real               :: WRHODEP               ! 32
            real               :: ICE_RAMP              ! 33
            real               :: CNV_DDRF              ! 36
            real               :: ANV_DDRF              ! 37
@@ -216,8 +213,6 @@ module cloudnew
    real,    constant :: ANV_SDQV3
    real,    constant :: ANV_SDQVT1
    real,    constant :: ANV_TO_LS
-   real,    constant :: CCN_OCEAN
-   real,    constant :: CCN_LAND
    integer, constant :: DISABLE_RAD
    integer, constant :: ICE_SETTLE
    real,    constant :: ANV_ICEFALL_C
@@ -227,7 +222,6 @@ module cloudnew
    real,    constant :: ANVENVFC
    real,    constant :: SCENVFC
    real,    constant :: LSENVFC
-   real,    constant :: WRHODEP
    real,    constant :: T_ICE_ALL
    real,    constant :: CNVDDRFC
    real,    constant :: ANVDDRFC
@@ -327,8 +321,6 @@ module cloudnew
    real    :: ANV_SDQV3
    real    :: ANV_SDQVT1
    real    :: ANV_TO_LS
-   real    :: CCN_OCEAN
-   real    :: CCN_LAND
    integer :: DISABLE_RAD
    integer :: ICE_SETTLE
    real    :: ANV_ICEFALL_C
@@ -338,7 +330,6 @@ module cloudnew
    real    :: ANVENVFC
    real    :: SCENVFC
    real    :: LSENVFC
-   real    :: WRHODEP
    real    :: T_ICE_ALL
    real    :: CNVDDRFC
    real    :: ANVDDRFC
@@ -711,7 +702,7 @@ contains
 
       logical :: use_autoconv_timescale
 
-      real :: TROPICAL, EXTRATROPICAL
+      real :: NI, NL, TROPICAL, EXTRATROPICAL
 
       real :: LSPDFLIQNEW, LSPDFICENEW, LSPDFFRACNEW
 
@@ -735,8 +726,6 @@ contains
          ANV_SDQV3     = CLDPARAMS%ANV_SUND_COLD
          ANV_SDQVT1    = CLDPARAMS%ANV_SUND_TEMP1
          ANV_TO_LS     = CLDPARAMS%ANV_TO_LS_TIME
-         CCN_OCEAN     = CLDPARAMS%CCN_OCEAN
-         CCN_LAND      = CLDPARAMS%CCN_LAND
          DISABLE_RAD   = INT( CLDPARAMS%DISABLE_RAD )
          ICE_SETTLE    = NINT( CLDPARAMS%ICE_SETTLE )
          ANV_ICEFALL_C = CLDPARAMS%ANV_ICEFALL
@@ -746,7 +735,6 @@ contains
          ANVENVFC      = CLDPARAMS%ANV_ENVF
          SCENVFC       = CLDPARAMS%SC_ENVF
          LSENVFC       = CLDPARAMS%LS_ENVF
-         WRHODEP       = CLDPARAMS%WRHODEP
          T_ICE_ALL     = CLDPARAMS%ICE_RAMP + T_ICE_MAX
          CNVDDRFC      = CLDPARAMS%CNV_DDRF
          ANVDDRFC      = CLDPARAMS%ANV_DDRF
@@ -1021,7 +1009,7 @@ contains
 
             ! impose a minimum amount of variability
             ALPHA    = MAX(  ALPHA , 1.0 - RH00 )
-   
+ 
             LSPDFLIQNEW = QLW_LS_dev(I,K)
             LSPDFICENEW = QIW_LS_dev(I,K)
             LSPDFFRACNEW= CLDFRC_dev(I,K)
@@ -1118,9 +1106,17 @@ contains
             EVAPC_dev(I,K) = QLW_LS_dev(I,K)+QLW_AN_dev(I,K)
             SUBLC_dev(I,K) = QIW_LS_dev(I,K)+QIW_AN_dev(I,K)
 
+            if (USE_AEROSOL_NN) then
+               NL = NACTL_dev(I,K)
+               NI = NACTI_dev(I,K)
+            else
+               NL = 50.e6
+               NI =  5.e6
+            endif
+
              ! 'Anvil' partition from RAS/Parameterized not done in hystpdf
 
-            RHCRIT = 1.0 ! Use 1.0 for evaporation
+            RHCRIT = 1.0
             call evap3(            &
                   DT             , &
                   CCW_EVP_EFF    , &
@@ -1131,8 +1127,8 @@ contains
                   QLW_AN_dev(I,K), &
                   QIW_AN_dev(I,K), &
                   ANVFRC_dev(I,K), &
-                  NACTL_dev(I,K) , &
-                  NACTI_dev(I,K) , &
+                  NL , &
+                  NI , &
                   QST3_dev(I,K)  )  
 
             RHCRIT = 1.0 - ALPHA
@@ -1146,8 +1142,8 @@ contains
                   QLW_AN_dev(I,K), &
                   QIW_AN_dev(I,K), &
                   ANVFRC_dev(I,K), &
-                  NACTL_dev(I,K) , &
-                  NACTI_dev(I,K) , &
+                  NL , &
+                  NI , &
                   QST3_dev(I,K)  ) 
 
             EVAPC_dev(I,K) = ( EVAPC_dev(I,K) - (QLW_LS_dev(I,K)+QLW_AN_dev(I,K)) ) / DT
@@ -1221,21 +1217,18 @@ contains
               TROPICAL      = ANV_ICEFALL_C*1.0
               EXTRATROPICAL = ANV_ICEFALL_C*0.0
             CASE( 1 )
-              TROPICAL      = CNVFRC_dev(I) 
-              EXTRATROPICAL = 1.0-TROPICAL
-              TROPICAL      = ANV_ICEFALL_C*TROPICAL
-              EXTRATROPICAL =  LS_ICEFALL_C*EXTRATROPICAL
+              TROPICAL      = ANV_ICEFALL_C
+              EXTRATROPICAL =  LS_ICEFALL_C
             END SELECT
 
             CALL SETTLE_VEL(       &
-                  WRHODEP        , &
                   QIW_AN_dev(I,K), &
                   PP_dev(I,K)    , &
                   TEMP           , &
                   ANVFRC_dev(I,K), &
                   KH_dev(I,K-1)  , &
                   VFALL          , &
-                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I), TROPP_dev(I) )
+                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I) )
             VFALLICE_AN_dev(I,K) = VFALL
 
             CALL ICEFALL(          &
@@ -1257,21 +1250,18 @@ contains
               TROPICAL      =  LS_ICEFALL_C*0.0
               EXTRATROPICAL =  LS_ICEFALL_C*1.0
             CASE( 1 )
-              TROPICAL      = CNVFRC_dev(I)
-              EXTRATROPICAL = 1.0-TROPICAL
-              TROPICAL      = ANV_ICEFALL_C*TROPICAL
-              EXTRATROPICAL =  LS_ICEFALL_C*EXTRATROPICAL
+              TROPICAL      = ANV_ICEFALL_C
+              EXTRATROPICAL =  LS_ICEFALL_C
             END SELECT
 
             CALL SETTLE_VEL(       &
-                  WRHODEP        , &
                   QIW_LS_dev(I,K), &
                   PP_dev(I,K)    , &
                   TEMP           , &
                   CLDFRC_dev(I,K), &
                   KH_dev(I,K-1)  , &
                   VFALL          , &
-                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I), TROPP_dev(I) )
+                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I) )
             VFALLICE_LS_dev(I,K) = VFALL
 
             CALL ICEFALL(          &
@@ -1344,10 +1334,10 @@ contains
             AREA_ANV_PRC_tolayer = ANV_BETA * AREA_ANV_PRC_tolayer
 
             IF (K == LM) THEN ! Weve accumulated over the whole column
-               if ( TOT_PREC_ANV > 0.0 ) AREA_ANV_PRC = MAX( AREA_ANV_PRC/TOT_PREC_ANV, 1.E-6 )
-               if ( TOT_PREC_UPD > 0.0 ) AREA_UPD_PRC = MAX( AREA_UPD_PRC/TOT_PREC_UPD, 1.E-6 )
-               if ( TOT_PREC_SC > 0.0 ) AREA_SCUP_PRC = MAX( AREA_SCUP_PRC/TOT_PREC_SC, 1.E-6 )
-               if ( TOT_PREC_LS  > 0.0 ) AREA_LS_PRC  = MAX( AREA_LS_PRC/TOT_PREC_LS,   1.E-6 )
+               if ( TOT_PREC_ANV > 0.0 ) AREA_ANV_PRC  = MAX( AREA_ANV_PRC/TOT_PREC_ANV, 1.E-6 )
+               if ( TOT_PREC_UPD > 0.0 ) AREA_UPD_PRC  = MAX( AREA_UPD_PRC/TOT_PREC_UPD, 1.E-6 )
+               if ( TOT_PREC_SC  > 0.0 ) AREA_SCUP_PRC = MAX( AREA_SCUP_PRC/TOT_PREC_SC, 1.E-6 )
+               if ( TOT_PREC_LS  > 0.0 ) AREA_LS_PRC   = MAX( AREA_LS_PRC/TOT_PREC_LS,   1.E-6 )
 
                AREA_LS_PRC  = LS_BETA  * AREA_LS_PRC
                AREA_UPD_PRC = CNV_BETA * AREA_UPD_PRC
@@ -1357,10 +1347,10 @@ contains
                !! Intensity factor in PRECIP3 is floored at
                !! 1.0. So this is fair.
 
-               LSARF_dev(I) = MIN( AREA_LS_PRC,  1.0 )
-               CUARF_dev(I) = MIN( AREA_UPD_PRC, 1.0 )
+               LSARF_dev(I) = MIN( AREA_LS_PRC,   1.0 )
+               CUARF_dev(I) = MIN( AREA_UPD_PRC,  1.0 )
                SCARF_dev(I) = MIN( AREA_SCUP_PRC, 1.0 )
-               ANARF_dev(I) = MIN( AREA_ANV_PRC, 1.0 )
+               ANARF_dev(I) = MIN( AREA_ANV_PRC,  1.0 )
             END IF
 
             QRN_ALL = 0.
@@ -1377,7 +1367,7 @@ contains
             QTMP1 = QLW_LS_dev(I,K) + QLW_AN_dev(I,K)
             QTMP2 = QIW_LS_dev(I,K) + QIW_AN_dev(I,K)
 
-        !- GF scheme handles its own conv precipitation.
+        !- Convection schemes must handle their own conv precipitation.
         !- Otherwise, the surface convective precip must be set to zero inside GF main routine.
         IF(CONVPAR_OPTION .ne. 'GF') then
             !  Convective
@@ -1587,9 +1577,6 @@ contains
                if (VFALLRN.NE.0.) then
                   QRN_ALL = QRN_ALL + PFL_LS_dev(I,K)/VFALLRN
                end if
-             ! if (VFALLRN.NE.0. .AND. VFALLSN.NE.0.) then
-             !    QPLS_dev(I,K) = QPLS_dev(I,K) + PFL_LS_dev(I,K)/VFALLRN + PFI_LS_dev(I,K)/VFALLSN
-             ! end if 
             end if
 
             IF ( (QLW_LS_dev(I,K)+QLW_AN_dev(I,K)) > tiny(0.00) ) THEN
@@ -1719,6 +1706,7 @@ contains
 
       real    :: a1, Al, Au, TURNRHCRIT_UP
 
+#define OLD_RHCRIT
 #ifdef OLD_RHCRIT
       ! alpha is the 1/2*width so RH_crit=1.0-alpha
 
@@ -1822,7 +1810,7 @@ contains
       real ,   intent(in   ) :: Dt, CNVFRC
       real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQA
       integer                :: n
-      integer, parameter     :: MaxIterations=5
+      integer, parameter     :: MaxIterations=1
       logical                :: converged
       real                   :: taufrz=450 ! timescale for freezing (seconds)
 
@@ -1838,7 +1826,7 @@ contains
 
       ! melt ice using ICE_FRACTION
       fQi = ice_fraction( TE, CNVFRC )
-      if ( (fQi < 1.0) .and. (TE > MAPL_TICE) ) then
+      if ( fQi < 1.0 ) then
          DQmax = (TE-MAPL_TICE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QITOT*(1.0-fQi)
          dQil  = min(dQil, DQmax)
@@ -1850,7 +1838,7 @@ contains
 
       ! freeze liquid using ICE_FRACTION 
       fQi = ice_fraction( TE, CNVFRC )
-      if ( (fQi > 0.0) .and. (TE <= MAPL_TICE) ) then
+      if ( fQi > 0.0 ) then
          DQmax = (MAPL_TICE-TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QLTOT *(1.0 - EXP( -Dt * fQi / taufrz ) )
          dQil  = min(dQil, DQmax)
@@ -2458,56 +2446,18 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine SETTLE_VEL( WXR, QI, PL, TE, F, KH, VF, LARGESCALE, ANVIL, CNVFRC, TROPP_Pa )
+   subroutine SETTLE_VEL( QI, PL, TE, F, KH, VF, LARGESCALE, ANVIL, CNVFRC )
 
-      real, intent(in   ) :: WXR 
       real, intent(in   ) :: TE
       real, intent(in   ) :: QI, F, PL
       real, intent(in   ) :: KH
       real, intent(out  ) :: VF
 
       real, intent(in) :: ANVIL, LARGESCALE, CNVFRC
-      real, intent(in) :: TROPP_Pa
       
-      real :: RHO, XIm,LXIm, VF_A, VF_L, tpp_hPa, VF_PSC, wgt1, wgt2
+      real :: RHO, XIm, LXIm, VF_A, VF_L
 
-      real :: tc, IWC
-
-      real, parameter :: aaC = - 4.18334e-5
-      real, parameter :: bbC = - 0.00525867
-      real, parameter :: ccC = - 0.0486519
-      real, parameter :: ddC = 0.00251197
-      real, parameter :: eeC = 1.91523
-
-      real, parameter :: aaL = - 1.70704e-5
-      real, parameter :: bbL = - 0.00319109
-      real, parameter :: ccL = - 0.0169876
-      real, parameter :: ddL = 0.00410839
-      real, parameter :: eeL = 1.93644
-
-      real :: PFAC, rBB, C0, C1, DIAM, lnP
-
-      real, parameter :: vf_min = 1.e-5 !< min fall speed for cloud ice, snow, graupel
-      real, parameter :: vi_max = 0.5   !< max fall speed for ice
-
-! ------ For polar stratospheric clouds with single-moment microphysics ------
-
-      REAL :: oneThird,ricecm,logsigicesq,ndensice,h2ocond,fluxcorr
-      REAL :: rmedice,radius,rhoi,mdens,mfp,dynvis
-
-      REAL, PARAMETER :: sigsq=1.3323e-19
-      REAL, PARAMETER :: bet=1.458e-6
-      REAL, PARAMETER :: s=110.4
-      REAL, PARAMETER :: a=1.249
-      REAL, PARAMETER :: b=0.42
-      REAL, PARAMETER :: cc=0.87
-      REAL, PARAMETER :: nice = 1.e-2
-      REAL, PARAMETER :: sigice = 1.6 
-      REAL, PARAMETER :: massh2o = 2.991e-23 
-      REAL, PARAMETER :: densice = 1.
-
-      REAL, PARAMETER :: BLEND_DEPTH_hPa = 50.
-! ----------------------------------------------------------------------------
+      real :: PFAC
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
       ! Uses Eq. 1 Lawrence and Crutzen (1998, Tellus 50B, 263-289) 
@@ -2534,14 +2484,14 @@ contains
     ! Assume unmodified they represent situation at 100 mb
        PFAC = SIN( 0.5*MAPL_PI*MIN(1.0,100./PL))
 
-    ! Convective anvil Convert from cm/s to m/s
-       VF_A = 0.01 * (128.6 + 53.2*LXIm + 5.5*LXIm**2) * MIN(ANVIL,PFAC)
+    ! Convective anvil
+       VF_A = (128.6 + 53.2*LXIm + 5.5*LXIm**2) * MIN(ANVIL,PFAC)
 
     ! Mid-latitude cirrus
-       VF_L = 0.01 * (109.0*(XIm**0.16)) * MIN(LARGESCALE,PFAC)
+       VF_L = (109.0*(XIm**0.16)) * MIN(LARGESCALE,PFAC)
  
-    ! Combine the two
-       VF = CNVFRC*VF_A + (1.0-CNVFRC)*VF_L
+    ! Combine the two and convert from cm/s to m/s
+       VF = 0.01 * (CNVFRC*VF_A + (1.0-CNVFRC)*VF_L)
 
    end SUBROUTINE SETTLE_VEL
 

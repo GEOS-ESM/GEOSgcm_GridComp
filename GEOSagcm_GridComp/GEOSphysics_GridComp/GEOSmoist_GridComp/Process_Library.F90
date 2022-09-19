@@ -28,19 +28,20 @@ module GEOSmoist_Process_Library
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
+  real, parameter :: R_AIR   =  3.47e-3   ! m3 Pa kg-1K-1
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
+  ! LDRADIUS4
   real, parameter :: RHO_I   =  916.8     ! Density of ice crystal in kg/m^3
   real, parameter :: RHO_W   = 1000.0     ! Density of liquid water in kg/m^3
-  real, parameter :: r13  = 1./3.
-  real, parameter :: be   = r13 - 0.11
-  real, parameter :: aewc = 0.13*(3./(4.*MAPL_PI*RHO_W*1.e3))**r13
-  real, parameter :: aeic = 0.13*(3./(4.*MAPL_PI*RHO_I*1.e3))**r13
+  real, parameter :: be      = 1./3. - 0.14
+  real, parameter :: bx      = 100.* (3./(4.*MAPL_PI))**(1./3.) * 0.07*6.92
+  ! combined constantc
   real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
   real, parameter :: gravbcp = MAPL_GRAV/MAPL_CP
   real, parameter :: alhlbcp = MAPL_ALHL/MAPL_CP
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
-  real, parameter :: alhsbcp = alhlbcp+alhfbcp
+  real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
@@ -312,9 +313,9 @@ module GEOSmoist_Process_Library
 
       RHx = MIN( QV/QS , 1.00 )
 
-      K1 = (MAPL_ALHL**2) * RHO_W / ( K_COND*MAPL_RVAP*(TE**2))
+      K1 = (MAPL_ALHL**2) * RHO_I / ( K_COND*MAPL_RVAP*(TE**2))
 
-      K2 = MAPL_RVAP * TE * RHO_W / ( DIFFU * (1000./PL) * ES )
+      K2 = MAPL_RVAP * TE * RHO_I / ( DIFFU * (1000./PL) * ES )
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Here DIFFU is given for 1000 mb  !!
@@ -351,7 +352,8 @@ module GEOSmoist_Process_Library
 
    function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE) RESULT(RADIUS)
 
-       REAL   , INTENT(IN) :: TE,PL,QC,NNL,NNI
+       REAL   , INTENT(IN) :: TE,PL,QC
+       REAL   , INTENT(IN) :: NNL,NNI ! #/m^3
        INTEGER, INTENT(IN) :: ITYPE
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: LIQUID=1, ICE=2
@@ -364,18 +366,18 @@ module GEOSmoist_Process_Library
        !- liquid cloud effective radius ----- 
           !- [liu&daum, 2000 and 2005. liu et al 2008]
           !- liquid water content
-          WC = 1.e3*RHO*QC  !g/m3
+          WC = RHO*QC*1000. !g/m3
           !- cloud drop number concentration #/m3
           !- from the aerosol model + ....
-          NNX = MAX(NNL,1.e3)
+          NNX = NNL*1.e-6
           !- radius in meters
-          RADIUS = MIN(60.e-6,MAX(2.5e-6,aewc * (WC/NNX)**be))
+          RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*bx*(WC/NNX)**be))
 
        ELSEIF(ITYPE == ICE) THEN
 
        !- ice cloud effective radius ----- 
         !- ice water content
-         WC = 1.e3*RHO*QC  !g/m3
+         WC = RHO*QC*1000.  !g/m3
         !------ice cloud effective radius ----- [klaus wyser, 1998]
          if(TE>MAPL_TICE .or. QC <=0.) then
             BB = -2.
@@ -824,16 +826,17 @@ module GEOSmoist_Process_Library
 
       CFn = CF*tmpARR
       QCn = QC*tmpARR
+      QT  = QCn + QVn
       TEn = TE
 
-      nmax   = 20
+                       nmax = 1
+      if (USE_AERO_NN) nmax = 20
       do n=1,nmax
 
          QVp = QVn
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         QT  = QCn + QVn
 
          if(PDFSHAPE.lt.2) then
 
@@ -950,6 +953,7 @@ module GEOSmoist_Process_Library
             if (n.ne.nmax) QCn = QCp + DQCALL *0.5
          endif
 
+         DQCALL = QCn - QCp
          QVn = QVp - DQCALL
          TEn = TEp + ((1.0-fQi)*alhlbcp + fQi*alhsbcp) * ( DQCALL*(1.-AF) + (QAn-QAp)*AF )
 
@@ -958,8 +962,6 @@ module GEOSmoist_Process_Library
          DQS  = GEOS_DQSAT( TEn, PL, QSAT=QSn )
 
       enddo ! qsat iteration
-
-      fQi = ice_fraction( TEn, CNVFRC )
 
       ! Update prognostic variables.  Deal with special case of AF=1
       ! Temporary variables QCn, QAn become updated grid means.
@@ -1018,24 +1020,18 @@ module GEOSmoist_Process_Library
       TE  = TE + alhlbcp*(dQAi+dQCi+dQAl+dQCl) + alhfbcp*(dQAi+dQCi)
 
       ! We need to take care of situations where QS moves past QC
-      ! during QSAT iteration. This should be only when QC/CF is small
-      ! to begin with. Effect is to make QCn negative. So, we 
-      ! "evaporate" offending QC's
+      ! during QSAT iteration. This should be only when QA/AF is small
+      ! to begin with. Effect is to make QAn negative. So, we 
+      ! "evaporate" offending QA's
       !
+      ! We get rid of anvil fraction also, although strictly
       ! speaking, PDF-wise, we should not do this.
-      if ( (QAi + QAl) <= 0. ) then
+      if ( QAn <= 0. ) then
          QV  = QV + QAi + QAl
          TE  = TE - alhsbcp*QAi - alhlbcp*QAl
          QAi = 0.
          QAl = 0.
          AF  = 0.  
-      end if
-      if ( (QCi + QCl) <= 0. ) then
-         QV  = QV + QCi + QCl
-         TE  = TE - alhsbcp*QCi - alhlbcp*QCl
-         QCi = 0.
-         QCl = 0.
-         CF  = 0.
       end if
 
    end subroutine hystpdf
