@@ -12,7 +12,7 @@ contains
 !---------------------------------
  subroutine CN_Driver(nch,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
                       rzm,sfm,tm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
-                      abm,peatf,hdm,lnfm)
+                      abm,peatf,hdm,lnfm,poros,rh30)
 
  use CNCLM_decompMod, only : bounds
  use CNCLM_filterMod, only : filter
@@ -54,6 +54,8 @@ contains
  real, dimension(nch), intent(in) :: peatf     ! Fraction of peatland, unitless (0-1)
  real, dimension(nch), intent(in) :: hdm       ! Human population density in 2010 (individual/km2)
  real, dimension(nch), intent(in) :: lnfm      ! Lightning frequency [Flashes/km^2/day]
+ real, dimension(nch), intent(in) :: poros     ! porosity
+ real, dimension(nch), intent(in) :: rh30      ! 30-day running mean of relative humidity
 
  !LOCAL
 
@@ -92,7 +94,8 @@ contains
         temperature_inst%t_soisno_col(n,-nlevsno+1:nlevmaxurbgrnd) = tp1(nc) ! jkolassa: only one soil and no snow column at this point (may change in future)
         temperature_inst%t_grnd_col(n) = temperature_inst%t_soisno_col(n)
         temperature_inst%t_soi17cm_col(n) = temperature_inst%t_grnd_col(n)
-        soilstate_inst%soilpsi_col(n,nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*rzm(nc,nz)**(-bee(nc)) ! jkolassa: only one soil layer at this point
+        soilstate_inst%soilpsi_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*rzm(nc,nz)**(-bee(nc)) ! jkolassa: only one soil layer at this point
+        soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd)   = poros(nc) 
         atm2lnd_inst%forc_t_downscaled_col(n)  = tm(nc)
         wateratm2lndbulk_inst%forc_rain_downscaled_col(n) = rainfm(nc)
         wateratm2lndbulk_inst%forc_snow_downscaled_col(n) = snowfm(nc)
@@ -117,6 +120,7 @@ contains
            cnfire_method%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
            wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
            wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
+           wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
         end do ! np
      end do ! nz
   end do ! nc

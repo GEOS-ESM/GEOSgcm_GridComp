@@ -24,7 +24,8 @@ module CNCLM_ColumnType
   use CNCLM_decompMod  , only : bounds_type
   use clm_varcon     , only : zsoi, dzsoi, zisoi, dzsoi_decomp, spval, ispval
   use clm_varctl     , only : use_fates
-  use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak, nlevmaxurbgrnd,nlevurb
+  use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak, nlevmaxurbgrnd,nlevurb, &
+                              CN_zone_weight, numpft
 
 
   ! !PUBLIC TYPES:
@@ -100,7 +101,7 @@ module CNCLM_ColumnType
   ! LOCAL:
 
     integer :: begc, endc
-
+    integer :: nc, nz, n
   !----------------------------
 
   begc = bounds%begc ; endc = bounds%endc
@@ -150,6 +151,19 @@ module CNCLM_ColumnType
            col%dz(c,nlevgrnd+1:nlevurb) = spval
         end if
      end do
+
+
+  
+    n = 0
+    do nc = 1,nch        ! catchment tile loop
+       do nz = 1,num_zon    ! CN zone loop
+          n = n + 1
+          this%gridcell(n) = nc
+          this%wtgcell(n)  = CN_zone_weight(nz)
+          this%patchi(n)   = (numpft+1)*(n-1) + 1
+          this%patchf(n)   = (numpft+1)*n
+        end do ! nz
+     end do ! nc
 
  end subroutine init_column_type
 end module CNCLM_ColumnType

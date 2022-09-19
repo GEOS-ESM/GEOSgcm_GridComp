@@ -124,22 +124,21 @@ module CNFireBaseMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine CNFireInit( this, bounds, NLFilename )
+  subroutine CNFireInit( this, bounds )
     !
     ! !DESCRIPTION:
     ! Initialize CN Fire module
     ! !ARGUMENTS:
     class(cnfire_base_type) :: this
     type(bounds_type), intent(in) :: bounds
-    character(len=*),  intent(in) :: NLFilename
     !-----------------------------------------------------------------------
     ! Call the base-class Initialization method
-    call this%BaseFireInit( bounds, NLFilename )
+    call this%BaseFireInit( bounds )
 
     ! Allocate memory
     call this%InitAllocate( bounds )
     ! History file
-    call this%InitHistory( bounds )
+  !  call this%InitHistory( bounds )
   end subroutine CNFireInit
   !----------------------------------------------------------------------
 
@@ -159,26 +158,6 @@ contains
     allocate(this%btran2_patch             (begp:endp))             ; this%btran2_patch            (:)   = nan
 
   end subroutine InitAllocate
-
-  !-----------------------------------------------------------------------
-  subroutine InitHistory( this, bounds )
-    !
-    ! Initailizae history variables
-    use clm_varcon      , only : spval
-    use histFileMod     , only : hist_addfld1d
-    !
-    ! !ARGUMENTS:
-    class(cnfire_base_type) :: this
-    type(bounds_type), intent(in) :: bounds
-    !-----------------------------------------------------------------------
-    integer :: begp, endp
-    !------------------------------------------------------------------------
-    begp = bounds%begp; endp= bounds%endp
-    this%btran2_patch(begp:endp) = spval
-    call hist_addfld1d(fname='BTRAN2', units='unitless',  &
-         avgflag='A', long_name='root zone soil wetness factor', &
-         ptr_patch=this%btran2_patch, l2g_scale_type='veg')
-  end subroutine InitHistory
 
   !----------------------------------------------------------------------
   subroutine CNFire_calc_fire_root_wetness_Li2014( this, bounds, &
@@ -316,21 +295,18 @@ contains
   !----------------------------------------------------------------------
 
   !----------------------------------------------------------------------
-  subroutine FireReadNML( this, NLFilename )
+  subroutine FireReadNML( this, fire_method )
     !
     ! !DESCRIPTION:
     ! Read the namelist for CNFire
     !
     ! !USES:
-    use fileutils      , only : getavu, relavu, opnfil
     use shr_nl_mod     , only : shr_nl_find_group_name
-    use spmdMod        , only : masterproc, mpicom
-    use shr_mpi_mod    , only : shr_mpi_bcast
     use clm_varctl     , only : iulog
     !
     ! !ARGUMENTS:
     class(cnfire_base_type) :: this
-    character(len=*), intent(in) :: NLFilename ! Namelist filename
+    character(len=*), intent(in) :: fire_method ! Namelist filename
     !
     ! !LOCAL VARIABLES:
     integer :: ierr                 ! error code
@@ -344,10 +320,6 @@ contains
     real(r8) :: rh_low, rh_hgh, bt_min, bt_max, occur_hi_gdp_tree
     real(r8) :: lfuel, ufuel, cmb_cmplt_fact_litter, cmb_cmplt_fact_cwd
 
-    namelist /lifire_inparm/ cli_scale, boreal_peatfire_c, pot_hmn_ign_counts_alpha, &
-                             non_boreal_peatfire_c, cropfire_a1,                &
-                             rh_low, rh_hgh, bt_min, bt_max, occur_hi_gdp_tree, &
-                             lfuel, ufuel, cmb_cmplt_fact_litter, cmb_cmplt_fact_cwd
 
     if ( this%need_lightning_and_popdens() ) then
        cli_scale                 = cnfire_const%cli_scale
@@ -367,36 +339,61 @@ contains
        ! Initialize options to default values, in case they are not specified in
        ! the namelist
 
-       if (masterproc) then
-          unitn = getavu()
-          write(iulog,*) 'Read in '//nmlname//'  namelist'
-          call opnfil (NLFilename, unitn, 'F')
-          call shr_nl_find_group_name(unitn, nmlname, status=ierr)
-          if (ierr == 0) then
-             read(unitn, nml=lifire_inparm, iostat=ierr)
-             if (ierr /= 0) then
-                call endrun(msg="ERROR reading "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
-             end if
-          else
-             call endrun(msg="ERROR could NOT find "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
-          end if
-          call relavu( unitn )
-       end if
+       select case (trim(fire_method))
 
-       call shr_mpi_bcast (cli_scale               , mpicom)
-       call shr_mpi_bcast (boreal_peatfire_c       , mpicom)
-       call shr_mpi_bcast (pot_hmn_ign_counts_alpha, mpicom)
-       call shr_mpi_bcast (non_boreal_peatfire_c   , mpicom)
-       call shr_mpi_bcast (cropfire_a1             , mpicom)
-       call shr_mpi_bcast (rh_low                  , mpicom)
-       call shr_mpi_bcast (rh_hgh                  , mpicom)
-       call shr_mpi_bcast (lfuel                   , mpicom)
-       call shr_mpi_bcast (ufuel                   , mpicom)
-       call shr_mpi_bcast (bt_min                  , mpicom)
-       call shr_mpi_bcast (bt_max                  , mpicom)
-       call shr_mpi_bcast (occur_hi_gdp_tree       , mpicom)
-       call shr_mpi_bcast (cmb_cmplt_fact_litter   , mpicom)
-       call shr_mpi_bcast (cmb_cmplt_fact_cwd      , mpicom)
+       case ("nofire")
+       
+       case ("li2014qianfrc")
+         lfuel                    = 75._r8                      
+         ufuel                    = 1050._r8                 
+         rh_low                   = 30.0_r8                     
+         rh_hgh                   = 80.0_r8                     
+         bt_min                   = 0.3_r8                    
+         bt_max                   = 0.7_r8                     
+         cli_scale                = 0.035_r8                
+         boreal_peatfire_c        = 4.2e-5_r8      
+         pot_hmn_ign_counts_alpha = 0.0035_r8  
+         non_boreal_peatfire_c    = 0.001_r8  
+         cropfire_a1              = 0.3_r8                
+         occur_hi_gdp_tree        = 0.39_r8         
+         cmb_cmplt_fact_litter    = 0.5_r8     
+         cmb_cmplt_fact_cwd       = 0.25_r8     
+       case ("li2016crufrc")
+         lfuel                    = 105._r8                      
+         ufuel                    = 1050._r8                     
+         rh_low                   = 30.0_r8                 
+         rh_hgh                   = 80.0_r8                    
+         bt_min                   = 0.85_r8                   
+         bt_max                   = 0.98_r8                      
+         cli_scale                = 0.033_r8                  
+         boreal_peatfire_c        = 0.09e-4_r8       
+         pot_hmn_ign_counts_alpha = 0.01_r8  
+         non_boreal_peatfire_c    = 0.17e-3_r8    
+         cropfire_a1              = 1.6e-4_r8                
+         occur_hi_gdp_tree        = 0.33_r8          
+         cmb_cmplt_fact_litter    = 0.5_r8       
+         cmb_cmplt_fact_cwd       = 0.28_r8      
+       case ("li2021gswpfrc")
+         lfuel                    = 75._r8                         
+         ufuel                    = 1050._r8                       
+         rh_low                   = 30.0_r8                       
+         rh_hgh                   = 80.0_r8                       
+         bt_min                   = 0.85_r8                       
+         bt_max                   = 0.98_r8                        
+         cli_scale                = 0.025_r8                  
+         boreal_peatfire_c        = 0.09e-4_r8        
+         pot_hmn_ign_counts_alpha = 0.01_r8   
+         non_boreal_peatfire_c    = 0.17e-3_r8   
+         cropfire_a1              = 1.6e-4_r8                 
+         occur_hi_gdp_tree        = 0.33_r8          
+         cmb_cmplt_fact_litter    = 0.5_r8       
+         cmb_cmplt_fact_cwd       = 0.28_r8      
+
+       case default
+          write(iulog,*) subname//' ERROR: unknown method: ', fire_method
+          call endrun(msg=errMsg(sourcefile, __LINE__))
+
+       end select
 
        cnfire_const%cli_scale                 = cli_scale
        cnfire_const%boreal_peatfire_c         = boreal_peatfire_c
@@ -413,12 +410,6 @@ contains
        cnfire_const%cmb_cmplt_fact_litter     = cmb_cmplt_fact_litter
        cnfire_const%cmb_cmplt_fact_cwd        = cmb_cmplt_fact_cwd
 
-       if (masterproc) then
-          write(iulog,*) ' '
-          write(iulog,*) nmlname//' settings:'
-          write(iulog,nml=lifire_inparm)
-          write(iulog,*) ' '
-       end if
     end if
 
   end subroutine FireReadNML
@@ -454,7 +445,7 @@ contains
                                     ideadstem,ideadstem_st,ideadstem_xf,&
                                     ilivecroot,ilivecroot_st,ilivecroot_xf,&
                                     ideadcroot,ideadcroot_st,ideadcroot_xf,iretransn,ioutc,ioutn
-   use CNVegMatrixMod       , only: matrix_update_fic, matrix_update_fin
+  ! use CNVegMatrixMod       , only: matrix_update_fic, matrix_update_fin
    !
    ! !ARGUMENTS:
    class(cnfire_base_type)                              :: this

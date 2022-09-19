@@ -46,6 +46,10 @@
   use Wateratm2lndBulkType
   use CNCLM_WaterDiagnosticBulkType
   use Wateratm2lndType
+  use EnergyFluxType
+  use SaturatedExcessRunoffMod
+  use WaterStateBulkType
+  use WaterStateType
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
@@ -121,6 +125,10 @@
   type(dgvs_type)                         :: dgvs_inst
   type(fire_method_type)                  :: cnfire_method
   type(saturated_excess_runoff_type)      :: saturated_excess_runoff_inst
+  type(energyflux_type)                   :: energyflux_inst
+  type(waterstatebulk_type)               :: waterstatebulk_inst
+  type(waterstate_type)                   :: waterstate_inst
+
 
   character(300)     :: paramfile
   type(Netcdf4_fileformatter) :: ncid
@@ -163,7 +171,7 @@
     ! read parameters and configurations from namelist file
 
     call CNPhenologyReadNML       ( NLFilename )
-    call dynSubgridControl_init   ( NLFilename )
+    call dynSubgridControl_init   ( )
     call CNFireReadNML            ( NLFilename )
 
     ! initialize states and fluxes
@@ -231,6 +239,12 @@
     call init_dgvs_type                 (bounds, dgvs_inst)
 
     call init_saturated_excess_runoff_type(bounds, saturated_excess_runoff_inst)
+
+    call init_energyflux_type           (bounds, energyflux_inst)  
+
+    call init_waterstatebulk_type       (bounds, waterstatebulk_inst)
+
+    call init_waterstate_type           (bounds, waterstate_inst)
 
     call create_cnfire_method(cnfire_method)
     call cnfire_method%FireInit(bounds)
