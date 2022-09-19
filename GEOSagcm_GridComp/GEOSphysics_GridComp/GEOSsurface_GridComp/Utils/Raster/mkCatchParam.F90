@@ -23,14 +23,16 @@ PROGRAM mkCatchParam
 
   use rmTinyCatchParaMod
   use process_hres_data
-  use comp_CATCHCN_AlbScale_parameters, ONLY : albedo4catchcn
   !   use module_irrig_params, ONLY : create_irrig_params
 
   implicit none
   
   include 'netcdf.inc'	
   
-  integer              :: NC = i_raster, NR = j_raster
+  ! The default is NC=i_raster=8640, NR=j_raster=4320 via "use rmTinyCatchParaMod", but
+  ! NC and NR are typically overwritten through command-line arguments "-x nx -y ny".
+ 
+  integer              :: NC = i_raster, NR = j_raster    
   character*4          :: LBSV = 'DEF'
   character*128        :: GridName = ''
   character*128        :: ARG, MaskFile
@@ -41,7 +43,7 @@ PROGRAM mkCatchParam
   character*4          :: EASE ='    '
   character*2          :: DL ='DC'    
   integer              :: II, JJ, Type
-  integer              :: I, J, iargc, nxt
+  integer              :: I, J, command_argument_count, nxt
   real*8               :: dx, dy, lon0
   logical              :: regrid
   character(len=400), dimension (8) ::  Usage 
@@ -57,6 +59,7 @@ PROGRAM mkCatchParam
   type (regrid_map)    :: maparc30, mapgeoland2,maparc60
   character*200        :: tmpstring, tmpstring1, tmpstring2
   character*200        :: fname_tmp, fname_tmp2, fname_tmp3, fname_tmp4
+  integer              :: N_tile
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -96,8 +99,8 @@ integer :: n_threads=1
 !
 !$OMP ENDPARALLEL
 
-!   call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
-!   call system('cd ..')
+!   call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
+!   call execute_command_line('cd ..')
 
     USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE                                      "
     USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                                     "
@@ -121,7 +124,7 @@ integer :: n_threads=1
        write (log_file,'(a)')' '
     endif
 
-    I = iargc()
+    I = command_argument_count()
     if(I < 1 .or. I > 10) then
        write (log_file,'(a)') "Wrong Number of arguments: ", i
        do j = 1,size(usage)
@@ -131,13 +134,13 @@ integer :: n_threads=1
     end if
 
     nxt = 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
     do while(arg(1:1)=='-')
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'zh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           endif
        else
           arg = arg(3:)
@@ -165,10 +168,10 @@ integer :: n_threads=1
           call exit(1)
        end select
        nxt = nxt + 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
     end do
 
-   call getenv ("MASKFILE"        ,MaskFile        )
+   call get_environment_variable ("MASKFILE"        ,MaskFile        )
  
   if(trim(Gridname) == '') then
       write (log_file,'(a)')'Unable to create parameters without til/rst files.... !'
@@ -211,8 +214,14 @@ integer :: n_threads=1
           write (log_file,'(a)')'Cube-Sphere Grid - assuming dateline-on-edge (DE)'
        endif
        
-       inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       if (.not.file_exists) CALL open_landparam_nc4_files 
+       ! ******************************************************************************
+       !
+       ! IMPORTANT: The top-level make_bcs script should not allow this program to
+       !            run when ./clsm/ exists.  Consequently, across "Steps [xx]" below,
+       !            the "inquire()" statements should be obsolete, and the case 
+       !            "Using existing file" should never happen.
+       !
+       ! ******************************************************************************
 
        ! Creating catchment.def 
        ! ----------------------
@@ -233,7 +242,15 @@ integer :: n_threads=1
           write (log_file,'(a)')'Skipping step for EASE grid. '
        endif
        write (log_file,'(a)')' '
-       
+
+        open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
+              action =  'read')
+        read (10, *) N_tile
+        close (10, status = 'keep')
+
+       inquire(file='clsm/catch_params.nc4', exist=file_exists)
+       if (.not.file_exists) CALL open_landparam_nc4_files(N_tile)  
+
        ! Creating cti_stats.dat 
        ! ----------------------
 
@@ -281,19 +298,6 @@ integer :: n_threads=1
           endif
           write (log_file,'(a)')' '
 
-          tmpstring = 'Step 05: Vegetation types using ESA land cover (CatchCNCLM45)'
-          fname_tmp = 'clsm/CLM4.5_veg_typs_fracs'
-          write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
-          inquire(file=trim(fname_tmp), exist=file_exists) 
-          if (.not.file_exists) then
-             write (log_file,'(a)')'         Creating file...'
-             call ESA2CLM_45 (nc,nr,gridnamer)           
-             write (log_file,'(a)')'         Done.'           
-          else
-             write (log_file,'(a)')'         Using existing file.'
-          endif
-          write (log_file,'(a)')' '
-
        else
 
           tmpstring = 'Step 03: Vegetation types using IGBP SiB2 land cover (MOSAIC/Catch)'
@@ -333,7 +337,7 @@ integer :: n_threads=1
        
        ! creating mapping arrays if necessary
                   
-       tmpstring = 'Step 06: Vegetation climatologies'
+       tmpstring = 'Step 05: Vegetation climatologies'
        write (log_file,'(a,a,a)') trim(tmpstring),' ', trim(LAIBCS)
        
        if((trim(LAIBCS) == 'MODGEO').or.(trim(LAIBCS) == 'GEOLAND2')) then 
@@ -368,7 +372,7 @@ integer :: n_threads=1
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)          
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           if (trim(LAIBCS) == 'GSWP2') then 
              call process_gswp2_veg (nc,nr,regrid,'grnFrac',gridnamer)
           else
@@ -387,7 +391,7 @@ integer :: n_threads=1
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           redo_modis = .true.
           
           if (trim(LAIBCS) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',gridnamer) 
@@ -436,7 +440,7 @@ integer :: n_threads=1
        write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           call gimms_clim_ndvi (nc,nr,gridnamer)
           write (log_file,'(a)')'         Done.'
        else
@@ -454,7 +458,7 @@ integer :: n_threads=1
        ! MODIS1 data on native grid and produces 8/16-day MODIS Albedo climatology
 
 
-       tmpstring = 'Step 07: Albedo climatologies'
+       tmpstring = 'Step 06: Albedo climatologies'
        write (log_file,'(a,a,a)') trim(tmpstring),' ', trim(MODALB)
        
        if(MODALB == 'MODIS1') then 
@@ -479,11 +483,13 @@ integer :: n_threads=1
        endif
        
        if(MODALB == 'MODIS2') then 
-          fname_tmp = 'clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat'
-          write (log_file,'(a,a)')'         --> ', trim(fname_tmp)
-          inquire(file=trim(fname_tmp), exist=file_exists)          
-          if (.not.file_exists) then
-             write (log_file,'(a)')'         Creating file...'
+          fname_tmp  = 'clsm/AlbMap.WS.8-day.tile.0.3_0.7.dat'
+          fname_tmp2 = 'clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat'
+          write (log_file,'(a,a,a,a)')'         --> ', trim(fname_tmp), ', ', trim(fname_tmp2)
+          inquire(file=trim(fname_tmp ), exist=file_exists )          
+          inquire(file=trim(fname_tmp2), exist=file_exists2)          
+          if ((.not.file_exists).or.(.not.file_exists2)) then
+             write (log_file,'(a)')'         Creating files...'
              call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB,gridnamer)
              write (log_file,'(a)')'         Done.'
           else
@@ -499,7 +505,7 @@ integer :: n_threads=1
 
        ! ---------------------------------------------
 
-       tmpstring = 'Step 08: Albedo scale factors'
+       tmpstring = 'Step 07: Albedo scale factors'
        write (log_file,'(a,a,a)') trim(tmpstring),' ', trim(MODALB)
        
        ! NOTE: There are two files with albedo scale factors: "visdf.dat" and "nirdf.dat".
@@ -512,7 +518,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp2), exist=file_exists2)
        if ((redo_modis).or.(.not.file_exists).or.(.not.file_exists2)) then
           !   if(.not.F25Tag) then
-          write (log_file,'(a)')'         Creating files...'
+          write (log_file,'(a)')'         Creating files... (resolution will be added to file name later)'
           call modis_scale_para_high (ease_grid,MODALB,gridnamet)
           !  else
           !     This option is for legacy sets like Fortuna 2.1
@@ -548,7 +554,7 @@ integer :: n_threads=1
        !  1) NGDC soil properties, 2) HWSD-STATSGO2 Soil Properties
        ! ---------------------------------------------------------------------
        
-       tmpstring = 'Step 09: Soil parameters ' // trim(SOILBCS) 
+       tmpstring = 'Step 08: Soil parameters ' // trim(SOILBCS) 
        fname_tmp = 'clsm/soil_param.first'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
@@ -565,7 +571,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
               
-       tmpstring  = 'Step 10: CLSM model parameters ' // trim(SOILBCS) 
+       tmpstring  = 'Step 09: CLSM model parameters ' // trim(SOILBCS) 
        fname_tmp  = 'clsm/ar.new'
        fname_tmp2 = 'clsm/bf.dat'
        fname_tmp3 = 'clsm/ts.dat'
@@ -594,7 +600,7 @@ integer :: n_threads=1
        write (log_file,'(a)')'      Uncomment associated lines in source to generate 7.5 minute raster file.'
        write (log_file,'(a)')' '
        
-       tmpstring = 'Step 11: CatchCNCLM40 NDep T2m SoilAlb parameters'
+       tmpstring = 'Step 10: CatchCNCLM40 NDep T2m SoilAlb parameters'
        fname_tmp = 'clsm/CLM_NDep_SoilAlb_T2m'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        ! create this file only if matching veg types file already exists
@@ -608,7 +614,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '       
        
-       tmpstring = 'Step 12: CatchCNCLM45 abm peatf gdp hdm fc parameters'
+       tmpstring = 'Step 11: CatchCNCLM45 abm peatf gdp hdm fc parameters'
        fname_tmp = 'clsm/CLM4.5_abm_peatf_gdp_hdm_fc'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
@@ -621,12 +627,12 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
        
-       tmpstring = 'Step 13: CatchCNCLM45 lightning frequency'
+       tmpstring = 'Step 12: CatchCNCLM45 lightning frequency'
        fname_tmp = 'clsm/lnfm.dat'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
-          write (log_file,'(a)')'         Creating file...'
+          write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           call CLM45_clim_parameters (nc,nr,gridnamer)   
           write (log_file,'(a)')'         Done.'           
        else
@@ -634,7 +640,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
 
-       tmpstring = 'Step 14: Country and state codes'
+       tmpstring = 'Step 13: Country and state codes'
        fname_tmp = 'clsm/country_and_state_code.data'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
@@ -651,14 +657,13 @@ integer :: n_threads=1
        !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
        !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
        
-       !   call albedo4catchcn (gridnamet)
        
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')' '
        
-       !       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
+       !       call execute_command_line ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
     endif
 
     close (log_file,status='keep') 

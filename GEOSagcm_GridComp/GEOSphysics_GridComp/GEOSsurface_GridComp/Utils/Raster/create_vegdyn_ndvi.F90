@@ -21,7 +21,7 @@ PROGRAM create_vegdyn_ndvi
 
   implicit none
   
-  integer            :: NTILES, N, I, k, iargc, JPLH
+  integer            :: NTILES, N, I, k, command_argument_count, JPLH
   integer, parameter :: nx = 8640, ny = 4320
 
   character*400 :: BCSDIR, OUTDIR, GFILE, IMxJM, arg(5)
@@ -30,18 +30,18 @@ PROGRAM create_vegdyn_ndvi
   real, pointer, dimension (:)  :: z2, z0, ityp
   include 'netcdf.inc'	
 
-  I = iargc()
+  I = command_argument_count()
   IMxJM =''
   GFILE =''
 
-  if(iargc() /= 5) then
-     print *, "Wrong Number of arguments: ", iargc()
+  if(command_argument_count() /= 5) then
+     print *, "Wrong Number of arguments: ", command_argument_count()
      print *, "Usage : ./create_vegdyn_ndvi BCSDIR GFILE, IMxJM JPLH OUTDIR"
      stop
   endif
   
   do n=1,5
-     call getarg(n,arg(n))
+     call get_command_argument(n,arg(n))
   enddo
   
   read(arg(1),'(a)') BCSDIR
@@ -53,8 +53,8 @@ PROGRAM create_vegdyn_ndvi
   ! create dirs/links
   ! -----------------
 
-  call system('mkdir -p data ; cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
-  call system('mkdir -p '//trim(OUTDIR)) 
+  call execute_command_line('mkdir -p data ; cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
+  call execute_command_line('mkdir -p '//trim(OUTDIR)) 
 
   open (10,file = trim(BCSDIR)//'/clsm/catchment.def', &
        form= 'formatted', action = 'read', status = 'old')

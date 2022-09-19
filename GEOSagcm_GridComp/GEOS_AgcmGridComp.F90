@@ -920,6 +920,15 @@ contains
          RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddConnectivity ( GC,                                                        &
+         SRC_NAME  = (/'T            ','PLE          ','ZLE          ','TROPP_BLENDED'/),  &
+         DST_NAME  = (/'T_avg24      ','PLE_avg24    ','ZLE_avg24    ','TROPP_avg24  '/),  &
+         DST_ID = PHYS,                                                                    &
+         SRC_ID = SDYN,                                                                    &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+
     call MAPL_AddConnectivity ( GC,              &
          SRC_NAME    = 'PLE',                    &
          DST_NAME    = 'PLEINST',                &
@@ -1025,6 +1034,8 @@ contains
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="AGCM_BARRIER"           ,RC=STATUS)
     VERIFY_(STATUS)
 
 ! All done
@@ -1361,6 +1372,7 @@ contains
 
 ! Local derived type aliases
 
+   type (ESMF_VM)                      :: VMG
    type (MAPL_MetaComp),      pointer  :: STATE
    type (ESMF_GridComp),      pointer  :: GCS(:)
    type (ESMF_State),         pointer  :: GIM(:)
@@ -1554,7 +1566,7 @@ contains
 ! -----------------------------------------------------------
 
     Iam = "Run"
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet ( GC, VM=VMG, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // trim(Iam)
 
@@ -2399,6 +2411,9 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call DO_UPDATE_PHY ('DPEDT')
     call DO_UPDATE_PHY ('DTDT' )
 
+    call MAPL_TimerOn (STATE,"AGCM_BARRIER"  )
+    call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+    call MAPL_TimerOff(STATE,"AGCM_BARRIER"  )
 
 ! Run RUN2 of SuperDynamics (ADD_INCS) to add Physics Diabatic Tendencies
 !------------------------------------------------------------------------
@@ -2406,6 +2421,9 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call MAPL_TimerOn (STATE,"SUPERDYNAMICS"  )
 
     call ESMF_GridCompRun(GCS(SDYN), importState=GIM(SDYN), exportState=GEX(SDYN), clock=CLOCK, PHASE=2, userRC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GenericRunCouplers( STATE, SDYN, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
 
     call MAPL_TimerOff(STATE,"SUPERDYNAMICS"  )

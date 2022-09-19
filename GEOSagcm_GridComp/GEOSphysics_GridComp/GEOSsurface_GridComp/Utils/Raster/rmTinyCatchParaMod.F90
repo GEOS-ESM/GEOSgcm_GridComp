@@ -37,7 +37,7 @@ module rmTinyCatchParaMod
   public create_soil_types_files,compute_mosaic_veg_types
   public cti_stat_file, create_model_para_woesten
   public create_model_para, modis_lai,regridraster,regridrasterreal
-  public i_raster, j_raster,regridraster1,regridraster2,n_SoilClasses,gnu,zks
+  public i_raster, j_raster,regridraster1,regridraster2,n_SoilClasses,zks
   public mineral_perc, process_gswp2_veg,center_pix, soil_class
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
@@ -48,7 +48,7 @@ module rmTinyCatchParaMod
   character*8, public, save :: LAIBCS  = 'MODGEO'
   character*4, public, save :: SOILBCS = 'HWSD'
   character*6, public, save :: MODALB  = 'MODIS2'
-  REAL, save                :: GNU = 1.0
+  REAL, public, save        :: GNU = 1.0
 
   type :: mineral_perc
      real :: clay_perc
@@ -62,7 +62,8 @@ contains
 
     implicit none
 
-    character(*), intent (in) :: LBSV
+    character(*), intent (in) :: LBSV          ! LBSV = land BCs version (?)
+
 ! LAIBCS: Choice of LAI data set. DEFAULT : MODGEO
 !         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on  7200x3600 grid
 !         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on  7200x3600 grid
@@ -949,10 +950,10 @@ integer :: n_threads=1
     print *,trim(gname)
     string1 ='til/'//trim(gout)//'-Pfafstetter.til'//' '//&
     'clsm/'//trim(gout)//'-Pfaf.notiny.til'
-    call system ('cp '//trim(string1))
+    call execute_command_line ('cp '//trim(string1))
     string1 ='rst/'//trim(gout)//'-Pfafstetter.rst'//' '//&
     'clsm/'//trim(gout)//'-Pfaf.notiny.rst'
-    call system ('cp '//trim(string1))
+    call execute_command_line ('cp '//trim(string1))
     print *,'and, copied those those files to clsm/.'
 
     stop
@@ -2725,9 +2726,9 @@ integer :: n_threads=1
     
     do n = 1,ip
       if (ease_grid) then  
-         read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
+         read(10,*,IOSTAT=ierr) typ,pfs !,lon,lat,ig,jg,fr_gcm,i_dum
       else
-	 read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
+         read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
               typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
       endif
 
@@ -3503,10 +3504,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           atile_sand,atile_clay, tile_lon, tile_lat, grav_vec, soc_vec,&
 	  poc_vec,a_sand_surf,a_clay_surf,wpwet_surf,poros_surf, pmap
 
-      real, allocatable, dimension (:,:) :: good_clay, good_sand
-      integer, allocatable, dimension (:,:) :: tile_add, tile_pick
-      type (mineral_perc) :: min_percs
-      integer :: CF1, CF2, CF3, CF4
+!obsolete20220428      real, allocatable, dimension (:,:) :: good_clay, good_sand
+!obsolete20220428      integer, allocatable, dimension (:,:) :: tile_add, tile_pick
+!obsolete20220428      type (mineral_perc) :: min_percs
+!obsolete20220428      integer :: CF1, CF2, CF3, CF4
+
       integer i,j,n,k, tindex1,pfaf1,nbcatch
       integer soil_gswp
       real meanlu,stdev,minlu,maxlu,coesk,rzdep
@@ -3584,6 +3586,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       
 !c-------------------------------------------------------------------------
 
+      ! SoilClasses-SoilHyd-TauParam.dat and SoilClasses-SoilHyd-TauParam.peatmap differ
+      ! only in the parameters for the peat class #253.  The file *.peatmap contains
+      ! the PEATCLSM parameters from Table 2 of Bechtold et al. 2019 (doi:10.1029/2018MS001574).
+      !
+      ! Note: K_s = COND*exp(-zks*gnu)   ==> with zks=2 and gnu=1, K_s = 0.135335*COND
+      !
+      !         K_s      COND     [m/s]
+      ! NLv4  7.86e-7   5.81e-6
+      ! NLv5  3.79e-6   2.80e-5   <== note *typo* in Table 2 of Bechtold et al. 2019, which erroneously lists K_s=2.8e-5
+
       if(use_PEATMAP) then 
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap' 
       else
@@ -3591,7 +3603,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       endif
       open (11, file=trim(fname), form='formatted',status='old', &
               action = 'read')
-      read (11,'(a)')fout           
+      read (11,'(a)')fout        ! read header line
+          
       losfile =trim(c_data)//'/Woesten_SoilParam/loss_pd_top/loss_perday_rz1m_'
 
       allocate (a_sand (1:n_SoilClasses))
@@ -3604,17 +3617,17 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       allocate (gfrc   (1:nwt,1:nrz,1:n_SoilClasses))
       
       do n =1,n_SoilClasses
+
+         ! read sand/clay/orgC for class n defined in SoilClasses-SoilHyd-TauParam.*
+
          read (11,'(4f7.3)')a_sand(n),a_clay(n),a_silt(n),a_oc(n)
          write (fout,'(i2.2,i2.2,i4.4)')nint(a_sand(n)),nint(a_clay(n)),nint(100*a_oc(n))
 
-         if(n == n_SoilClasses) then 
-            if(use_PEATMAP) then
-               open (120,file=trim(losfile)//trim(fout)//'.peat',  &
-                    form='formatted',status='old')
-            else
-               open (120,file=trim(losfile)//trim(fout),  &
+         ! open and read loss parameter file for class n (defined through sand/clay/orgC)
+
+         if(n == n_SoilClasses .and. use_PEATMAP) then 
+            open (120,file=trim(losfile)//trim(fout)//'.peat',  &
                  form='formatted',status='old')
-            endif
          else
             open (120,file=trim(losfile)//trim(fout),  &
                  form='formatted',status='old')
@@ -3635,6 +3648,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       close (11,status='keep')  
       deallocate (a_sand,a_silt,a_clay,a_oc)
 
+      ! open files for *reading*
+
      fname='clsm/soil_param.first'       
        open (10,file=fname,action='read',       &
           form='formatted',status='old')              
@@ -3646,6 +3661,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      fname='clsm/catchment.def'           
       open (12,file=fname,action='read',        &
           form='formatted',status='old')                                                             
+
+      ! open files for *writing*
 
      fout='clsm/ar.new'               
       open (20,file=fout,action='write',        &
@@ -3678,8 +3695,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
  	open (42,file=fout,action='write',        &
 	     form='formatted',status='unknown')       
 
-     read (11,*)nbcatch
-     read (12,*)nbcatch
+     read (11,*)nbcatch    ! read header line (number of tiles) -- cti_stats.dat
+     read (12,*)nbcatch    ! read header line (number of tiles) -- catchment.def
 
      allocate (tile_lon(1:nbcatch))
      allocate (tile_lat(1:nbcatch))
@@ -3732,19 +3749,30 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      allocate (wpwet_surf     (1:nbcatch))
      allocate (poros_surf     (1:nbcatch))
      allocate (pmap           (1:nbcatch))
-     allocate (good_clay     (1:100,4))
-     allocate (good_sand     (1:100,4))
-     allocate (tile_add      (1:100,4))   
-     allocate (tile_pick     (1:100,4)) 
-     tile_add = 0
-     tile_pick= 0
-     good_clay =0.
-     good_sand =0.
+
+!obsolete20220428     allocate (good_clay     (1:100,4))
+!obsolete20220428     allocate (good_sand     (1:100,4))
+!obsolete20220428     allocate (tile_add      (1:100,4))   
+!obsolete20220428     allocate (tile_pick     (1:100,4)) 
+!obsolete20220428     tile_add = 0
+!obsolete20220428     tile_pick= 0
+!obsolete20220428     good_clay =0.
+!obsolete20220428     good_sand =0.
  
      do n=1,nbcatch
+
+        ! read cti_stats.dat 
+
         read(11,'(i10,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
              ,minlu,maxlu,coesk                                  
  
+        ! read soil_param.first
+        !
+        ! WARNING: Immediately after the present do loop, BEE, COND, POROS, PSIS, WPWET, and 
+        !          soildepth will be read again (and thus overwritten) with the values from 
+        !          the catch_params.nc4 file.  It is unclear if the values in soil_param.first
+        !          and catch_params.nc4 differ. See comments below.
+
         read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
@@ -3754,6 +3782,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            write(*,*)'Warnning 1: tindex mismatched'                        
            stop
         endif
+
+        ! read catchment.def
 
         read (12,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
         tile_lon(n) = (minlon + maxlon)/2.
@@ -3787,11 +3817,26 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                 minlu,maxlu
            stop
         endif
-     END DO
+     END DO    ! n=1,nbcatch
 
      inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
      if(file_exists) then
+
+        ! Read BEE, COND, POROS, PSIS, WPWET, and soildepth from nc4 file.
+        ! It is unclear if parameters in nc4 file differ from those in soil_param.first, which were read 
+        ! in the do loop just above.
+        ! Probably, the parameters differ by roundoff because soil_param.first is an ASCII file and 
+        ! catch_params.nc4 is a netcdf file.  Consequently, the parameters from the nc4 file are used
+        ! in the calculation of the ar.new, bf.dat, and ts.dat parameters, which comes next.
+        ! To maintain consistency between the parameters in soil_param.first and soil_param.dat where 
+        ! no changes are needed, soil_param.first needs to be read again below (so as to overwrite
+        ! the values from the nc4 file).  
+        ! Why the parameters from the nc4 file are read here in the first place remains a mystery.
+        ! Removing this read, however, will (almost certainly) result in non-zero-diff changes
+        ! for existing bcs datasets.
+        ! - reichle, 28 April 2022        
+        
         status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
         allocate (parms4file (1:nbcatch, 1:25))
         status = NF_GET_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/nbcatch/), BEE  (:)) ; VERIFY_(STATUS) 
@@ -3808,7 +3853,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         parms4file (:,25) = soildepth(:)
      endif
 
-     rewind(10)
+     rewind(10)                ! soil_param.first (so soil_param.first can be read again below...)
 
      allocate(low_ind(n_threads))
      allocate(upp_ind(n_threads))
@@ -3849,8 +3894,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           TOPMEAN(n),TOPVAR(n),TOPSKEW(n),     &
           ST,AC,COESKEW)
       
-!c Areal fractioning parameters
-
+      ! compute areal fractioning parameters (ar.new)
+      
       CALL SAT_PARAM(                                              &
                      BEE(n),PSIS(n),POROS(n),COND(n),              & 
                      WPWET(n), ST, AC, COESKEW,n,                  &
@@ -3860,6 +3905,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                      arw1(n),arw2(n),arw3(n),arw4(n),              &
                      taberr1(n),taberr2(n),taberr3(n),taberr4(n),  &
                      normerr1(n),normerr2(n),normerr3(n),normerr4(n))
+
+      ! compute base flow parameters (bf.dat)
 
       CALL BASE_PARAM(                                  &
           BEE(n),PSIS(n),POROS(n),COND(n),              &
@@ -3874,6 +3921,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	  rzexcn (:,:) =  grzexcn (:,:,soil_class_com(n))
 	  frc    (:,:) =  gfrc    (:,:,soil_class_com(n))
 
+      ! compute time scale parameters (rzexc-catdef) (ts.dat)
+
       CALL TS_PARAM(                       &
           BEE(n),PSIS(n),POROS(n),         &
           ST, AC,                          &
@@ -3881,10 +3930,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-      if(soil_class_com(n) == 253) then
+      if(soil_class_com(n) == 253 .and. use_PEATMAP) then
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
-         if(use_PEATMAP) then
             
             ars1(n) = -7.9514018e-03
             ars2(n) = 6.2297356e-02 
@@ -3907,182 +3955,350 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             tsb1(n) = -3.700285e-03  
             tsb2(n) = -2.392484e-03
             
-         endif
       endif
    END DO
    END DO
           !$OMP ENDPARALLELDO
 
-     CF1 =0
-     CF2 =0
-     CF3 =0
-     CF4 =0
+! This code block is obsolete because it was only needed if preserve_soiltype==.true, but
+! preserve_soiltype was hardwired to .false. above.
+! -reichle, 28 April 2022
+!
+!obsolete20220428     CF1 =0
+!obsolete20220428     CF2 =0
+!obsolete20220428     CF3 =0
+!obsolete20220428     CF4 =0
+!obsolete20220428
+!obsolete20220428     DO n=1,nbcatch
+!obsolete20220428
+!obsolete20220428     	if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then
+!obsolete20220428
+!obsolete20220428         ! determine organic carbon class ("group") from soil class
+!obsolete20220428
+!obsolete20220428	   if ((soil_class_com(n)>=1).and.(soil_class_com(n)<=84)) then	
+!obsolete20220428      	      group=1
+!obsolete20220428           else if ((soil_class_com(n) > 84).and.(soil_class_com(n)<=168)) then
+!obsolete20220428      	      group=2
+!obsolete20220428           else if ((soil_class_com(n) >168).and.(soil_class_com(n)< N_SoilClasses)) then
+!obsolete20220428              group=3
+!obsolete20220428	   else
+!obsolete20220428              group=4              ! peat 
+!obsolete20220428           endif
+!obsolete20220428
+!obsolete20220428           ! assemble scalar structure that holds mineral percentages of tile n
+!obsolete20220428
+!obsolete20220428           min_percs%clay_perc = atile_clay(n)
+!obsolete20220428           min_percs%sand_perc = atile_sand(n) 
+!obsolete20220428           min_percs%silt_perc = 100. - min_percs%clay_perc - min_percs%sand_perc
+!obsolete20220428
+!obsolete20220428           ! "soil_class" is an integer function (defined below) that assigns 
+!obsolete20220428           !    an integer soil class [1-100] for a given mineral percentage triplet
+!obsolete20220428
+!obsolete20220428           ! "tile_pick" contains the number (ID) n of a sample tile for each
+!obsolete20220428           !    soil class
+!obsolete20220428           
+!obsolete20220428           if(tile_pick(soil_class (min_percs),group) == 0) then
+!obsolete20220428
+!obsolete20220428             ! assign tile n as the sample tile for its soil class in "tile_pick"
+!obsolete20220428
+!obsolete20220428             tile_pick(soil_class (min_percs),group) = n 
+!obsolete20220428              
+!obsolete20220428             ! Assign sand/clay from tile n to "good_clay" and "good_sand" for its class????
+!obsolete20220428             ! Why is "good_sand" dimension (100,4) when CF[x] seems to count the 
+!obsolete20220428             !   number of tiles within each organic carbon subclass ("group")?? 
+!obsolete20220428             
+!obsolete20220428             select case (group)
+!obsolete20220428
+!obsolete20220428             case (1)
+!obsolete20220428                 
+!obsolete20220428                CF1 = CF1 + 1
+!obsolete20220428                good_clay (CF1,group) = atile_clay(n)
+!obsolete20220428                good_sand (CF1,group) = atile_sand(n)
+!obsolete20220428                tile_add  (CF1,group) = n
+!obsolete20220428
+!obsolete20220428             case (2)
+!obsolete20220428                CF2 = CF2 + 1
+!obsolete20220428                good_clay (CF2,group) = atile_clay(n)
+!obsolete20220428                good_sand (CF2,group) = atile_sand(n)
+!obsolete20220428                tile_add  (CF2,group) = n
+!obsolete20220428
+!obsolete20220428             case (3)
+!obsolete20220428                CF3 = CF3 + 1
+!obsolete20220428                good_clay (CF3,group) = atile_clay(n)
+!obsolete20220428                good_sand (CF3,group) = atile_sand(n)
+!obsolete20220428                tile_add  (CF3,group) = n
+!obsolete20220428
+!obsolete20220428             case (4)
+!obsolete20220428                CF4 = CF4 + 1
+!obsolete20220428                good_clay (CF4,group) = atile_clay(n)
+!obsolete20220428                good_sand (CF4,group) = atile_sand(n)
+!obsolete20220428                tile_add  (CF4,group) = n
+!obsolete20220428
+!obsolete20220428             end select
+!obsolete20220428          endif
+!obsolete20220428
+!obsolete20220428	endif   ! (ars1(n).ne.9999.).and.(arw1(n).ne.9999.)
+!obsolete20220428	
+!obsolete20220428     END DO	! n=1,nbcatch
 
+     ! ----------------------------------------------------------------------------------------
+     !
+     ! write ar.new, bf.dat, ts.dat, and soil_param.dat
+     
      DO n=1,nbcatch
-
-     	if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then
-
-	   if ((soil_class_com(n)>=1).and.(soil_class_com(n)<=84)) then	
-      	      group=1
-           else if ((soil_class_com(n) > 84).and.(soil_class_com(n)<=168)) then
-      	      group=2
-           else if ((soil_class_com(n) >168).and.(soil_class_com(n)< N_SoilClasses)) then
-              group=3
-	   else
-              group=4
-           endif
-
-           min_percs%clay_perc = atile_clay(n)
-           min_percs%sand_perc = atile_sand(n) 
-           min_percs%silt_perc = 100. - min_percs%clay_perc - min_percs%sand_perc
-
-           if(tile_pick(soil_class (min_percs),group) == 0) then
-             tile_pick(soil_class (min_percs),group) = n 
-
-             select case (group)
-
-             case (1)
-                 
-                CF1 = CF1 + 1
-                good_clay (CF1,group) = atile_clay(n)
-                good_sand (CF1,group) = atile_sand(n)
-                tile_add  (CF1,group) = n
-
-             case (2)
-                CF2 = CF2 + 1
-                good_clay (CF2,group) = atile_clay(n)
-                good_sand (CF2,group) = atile_sand(n)
-                tile_add  (CF2,group) = n
-
-             case (3)
-                CF3 = CF3 + 1
-                good_clay (CF3,group) = atile_clay(n)
-                good_sand (CF3,group) = atile_sand(n)
-                tile_add  (CF3,group) = n
-
-             case (4)
-                CF4 = CF4 + 1
-                good_clay (CF4,group) = atile_clay(n)
-                good_sand (CF4,group) = atile_sand(n)
-                tile_add  (CF4,group) = n
-
-             end select
-          endif
-	endif	
-     END DO	
-
-     DO n=1,nbcatch
-         read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+        
+        ! Read soil_param.first again...; this is (almost certainly) needed to maintain consistency
+        ! between soil_param.first and soil_param.dat, see comments above.
+        
+        read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
 	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
 	     wpwet_surf(n),poros_surf(n), pmap(n)
-     if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then   
-      write(20,'(i10,i8,f5.2,11(2x,e14.7))')         &
-                     tindex2(n),pfaf2(n),gnu,       &
-                     ars1(n),ars2(n),ars3(n),         &
-                     ara1(n),ara2(n),ara3(n),ara4(n), &
-                     arw1(n),arw2(n),arw3(n),arw4(n) 
 
-      write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
-      write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
-          tsa1(n),tsa2(n),tsb1(n),tsb2(n)
 
-      write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
-	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
-             BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
-	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
-	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),    &
-	     wpwet_surf(n),poros_surf(n), pmap(n)
+! This code block was obsolete because only one set of write statements is needed/desired.
+! Repeating near-verbatim copies of write statements was bad coding practice.
+! - reichle, 28 April 2022
+!
+!obsolete20220428        if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then   
+!obsolete20220428           
+!obsolete20220428           ! nominal case, all parameter values are good           
+!obsolete20220428
+!obsolete20220428           ! write ar.new
+!obsolete20220428        
+!obsolete20220428           write(20,'(i10,i8,f5.2,11(2x,e14.7))')         &
+!obsolete20220428                     tindex2(n),pfaf2(n),gnu,       &
+!obsolete20220428                     ars1(n),ars2(n),ars3(n),         &
+!obsolete20220428                     ara1(n),ara2(n),ara3(n),ara4(n), &
+!obsolete20220428                     arw1(n),arw2(n),arw3(n),arw4(n) 
+!obsolete20220428
+!obsolete20220428           ! write bf.dat
+!obsolete20220428      
+!obsolete20220428           write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
+!obsolete20220428 
+!obsolete20220428           ! write ts.dat
+!obsolete20220428
+!obsolete20220428           write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+!obsolete20220428                tsa1(n),tsa2(n),tsb1(n),tsb2(n)
+!obsolete20220428
+!obsolete20220428           ! write soil_param.dat
+!obsolete20220428
+!obsolete20220428           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+!obsolete20220428	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
+!obsolete20220428             BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
+!obsolete20220428	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
+!obsolete20220428	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),    &
+!obsolete20220428	     wpwet_surf(n),poros_surf(n), pmap(n)
+!obsolete20220428
+!obsolete20220428           if (allocated (parms4file)) then
+!obsolete20220428              parms4file (n, 1) = ara1(n)
+!obsolete20220428              parms4file (n, 2) = ara2(n)
+!obsolete20220428              parms4file (n, 3) = ara3(n)
+!obsolete20220428              parms4file (n, 4) = ara4(n)
+!obsolete20220428              parms4file (n, 5) = ars1(n)
+!obsolete20220428              parms4file (n, 6) = ars2(n)
+!obsolete20220428              parms4file (n, 7) = ars3(n)
+!obsolete20220428              parms4file (n, 8) = arw1(n)
+!obsolete20220428              parms4file (n, 9) = arw2(n)
+!obsolete20220428              parms4file (n,10) = arw3(n)
+!obsolete20220428              parms4file (n,11) = arw4(n)  
+!obsolete20220428              parms4file (n,13) = bf1(n)
+!obsolete20220428              parms4file (n,14) = bf2(n)
+!obsolete20220428              parms4file (n,15) = bf3(n)
+!obsolete20220428              parms4file (n,17) = gnu
+!obsolete20220428              parms4file (n,20) = tsa1(n)
+!obsolete20220428              parms4file (n,21) = tsa2(n)
+!obsolete20220428              parms4file (n,22) = tsb1(n)
+!obsolete20220428              parms4file (n,23) = tsb2(n)
+!obsolete20220428           endif
 
-      if (allocated (parms4file)) then
-         parms4file (n, 1) = ara1(n)
-         parms4file (n, 2) = ara2(n)
-         parms4file (n, 3) = ara3(n)
-         parms4file (n, 4) = ara4(n)
-         parms4file (n, 5) = ars1(n)
-         parms4file (n, 6) = ars2(n)
-         parms4file (n, 7) = ars3(n)
-         parms4file (n, 8) = arw1(n)
-         parms4file (n, 9) = arw2(n)
-         parms4file (n,10) = arw3(n)
-         parms4file (n,11) = arw4(n)  
-         parms4file (n,13) = bf1(n)
-         parms4file (n,14) = bf2(n)
-         parms4file (n,15) = bf3(n)
-         parms4file (n,17) = gnu
-         parms4file (n,20) = tsa1(n)
-         parms4file (n,21) = tsa2(n)
-         parms4file (n,22) = tsb1(n)
-         parms4file (n,23) = tsb2(n)
-      endif
 
-      else
-      if(preserve_soiltype) then 
-         if ((soil_class_com(n)>=1).and.(soil_class_com(n)<=84)) then	
-            group=1
-         else if ((soil_class_com(n)>  84).and.(soil_class_com(n)<=168)) then
-            group=2
-         else if ((soil_class_com(n)> 168).and.(soil_class_com(n)< N_SoilClasses)) then
-            group=3
-         else
-            group=4
-         endif
-         
-         min_percs%clay_perc = atile_clay(n)
-         min_percs%sand_perc = atile_sand(n) 
-         min_percs%silt_perc = 100. - min_percs%clay_perc - min_percs%sand_perc
-         if(tile_pick(soil_class (min_percs),group) > 0) then
-            k = tile_pick(soil_class (min_percs),group) 
-            
-         else
-            select case (group)
-               
-            case (1)
-               j = center_pix (good_clay(1:CF1,group),good_sand(1:CF1,group),       &
-                    min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
-               k = tile_add  (j,group) 
-            case (2)
-               j = center_pix (good_clay(1:CF2,group),good_sand(1:CF2,group),       &
-                    min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
-               k = tile_add  (j,group)   
-            case (3)
-               j = center_pix (good_clay(1:CF3,group),good_sand(1:CF3,group),       &
-                    min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
-               k = tile_add  (j,group) 
-            case (4)
-               j = center_pix (good_clay(1:CF4,group),good_sand(1:CF4,group),       &
-                    min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
-               k = tile_add  (j,group)   
-            end select
-            print *,'NO Similar SoilClass :',soil_class (min_percs),group,n,k
-            
-         endif
-         if (error_file) then
-            write (41,*)n,k
-            !           write (41,*)tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
-            !            BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)  
-            !           write (41,*)tindex2(k),pfaf2(k),soil_class_top,soil_class_com(k),    &
-            !                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k) 
-         endif
-         
-         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
-              tindex2(n),pfaf2(n),gnu,   &
-              ars1(k),ars2(k),ars3(k),                   &
-              ara1(k),ara2(k),ara3(k),ara4(k),           &
-              arw1(k),arw2(k),arw3(k),arw4(k) 
+! This code block is obsolete because it was only needed if preserve_soiltype==.true, but
+! preserve_soiltype was hardwired to .false. above.
+! -reichle, 28 April 2022
+!
+!obsolete20220428        else     ! (ars1(n).ne.9999.) .or. (arw1(n)==9999.)
+!obsolete20220428           
+!obsolete20220428           ! exception, some parameter values are no-data
+!obsolete20220428           
+!obsolete20220428           if(preserve_soiltype) then 
+!obsolete20220428
+!obsolete20220428              ! look for a tile with a similar soil class
+!obsolete20220428
+!obsolete20220428              ! NOTE: preserve_soiltype=.false. hardwired as of 28 Apr 2022
+!obsolete20220428
+!obsolete20220428              if ((soil_class_com(n)>=1).and.(soil_class_com(n)<=84)) then	
+!obsolete20220428                 group=1
+!obsolete20220428              else if ((soil_class_com(n)>  84).and.(soil_class_com(n)<=168)) then
+!obsolete20220428                 group=2
+!obsolete20220428              else if ((soil_class_com(n)> 168).and.(soil_class_com(n)< N_SoilClasses)) then
+!obsolete20220428                 group=3
+!obsolete20220428              else
+!obsolete20220428                 group=4
+!obsolete20220428              endif
+!obsolete20220428              
+!obsolete20220428              min_percs%clay_perc = atile_clay(n)
+!obsolete20220428              min_percs%sand_perc = atile_sand(n) 
+!obsolete20220428              min_percs%silt_perc = 100. - min_percs%clay_perc - min_percs%sand_perc
+!obsolete20220428              
+!obsolete20220428              if(tile_pick(soil_class (min_percs),group) > 0) then
+!obsolete20220428
+!obsolete20220428                 k = tile_pick(soil_class (min_percs),group) 
+!obsolete20220428            
+!obsolete20220428              else
+!obsolete20220428
+!obsolete20220428                 select case (group)
+!obsolete20220428                    
+!obsolete20220428                 case (1)
+!obsolete20220428                    j = center_pix (good_clay(1:CF1,group),good_sand(1:CF1,group),       &
+!obsolete20220428                         min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
+!obsolete20220428                    k = tile_add  (j,group) 
+!obsolete20220428                 case (2)
+!obsolete20220428                    j = center_pix (good_clay(1:CF2,group),good_sand(1:CF2,group),       &
+!obsolete20220428                         min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
+!obsolete20220428                    k = tile_add  (j,group)   
+!obsolete20220428                 case (3)
+!obsolete20220428                    j = center_pix (good_clay(1:CF3,group),good_sand(1:CF3,group),       &
+!obsolete20220428                         min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
+!obsolete20220428                    k = tile_add  (j,group) 
+!obsolete20220428                 case (4)
+!obsolete20220428                    j = center_pix (good_clay(1:CF4,group),good_sand(1:CF4,group),       &
+!obsolete20220428                         min_percs%clay_perc,min_percs%sand_perc,min_percs%silt_perc,.true.)
+!obsolete20220428                    k = tile_add  (j,group)   
+!obsolete20220428                 end select
+!obsolete20220428                 print *,'NO Similar SoilClass :',soil_class (min_percs),group,n,k
+!obsolete20220428                 
+!obsolete20220428              endif
+!obsolete20220428
+!obsolete20220428              if (error_file) then
+!obsolete20220428                 ! record in file clsm/bad_sat_param.tiles           
+!obsolete20220428                 write (41,*)n,k    ! n="bad" tile, k=tile from which parameters are taken
+!obsolete20220428                 
+!obsolete20220428                 !           write (41,*)tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
+!obsolete20220428                 !            BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)  
+!obsolete20220428                 !           write (41,*)tindex2(k),pfaf2(k),soil_class_top,soil_class_com(k),    &
+!obsolete20220428                 !                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k) 
+!obsolete20220428              endif
+!obsolete20220428              
+!obsolete20220428              
+!obsolete20220428              ! write ar.new, bf.dat, ts.dat, and soil_param.dat
+!obsolete20220428              
+!obsolete20220428              write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
+!obsolete20220428                   tindex2(n),pfaf2(n),gnu,   &
+!obsolete20220428                   ars1(k),ars2(k),ars3(k),                   &
+!obsolete20220428                   ara1(k),ara2(k),ara3(k),ara4(k),           &
+!obsolete20220428                   arw1(k),arw2(k),arw3(k),arw4(k) 
+!obsolete20220428              write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+!obsolete20220428              write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+!obsolete20220428                   tsa1(k),tsa2(k),tsb1(k),tsb2(k)
+!obsolete20220428              
+!obsolete20220428              write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+!obsolete20220428                   tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),      &
+!obsolete20220428                   BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
+!obsolete20220428                   grav_vec(k),soc_vec(k),poc_vec(k),                            &
+!obsolete20220428                   a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,   &
+!obsolete20220428                   wpwet_surf(k),poros_surf(k), pmap (k)
+!obsolete20220428
+!obsolete20220428              if (allocated (parms4file)) then
+!obsolete20220428                 parms4file (n, 1) = ara1(k)
+!obsolete20220428                 parms4file (n, 2) = ara2(k)
+!obsolete20220428                 parms4file (n, 3) = ara3(k)
+!obsolete20220428                 parms4file (n, 4) = ara4(k)
+!obsolete20220428                 parms4file (n, 5) = ars1(k)
+!obsolete20220428                 parms4file (n, 6) = ars2(k)
+!obsolete20220428                 parms4file (n, 7) = ars3(k)
+!obsolete20220428                 parms4file (n, 8) = arw1(k)
+!obsolete20220428                 parms4file (n, 9) = arw2(k)
+!obsolete20220428                 parms4file (n,10) = arw3(k)
+!obsolete20220428                 parms4file (n,11) = arw4(k)  
+!obsolete20220428                 parms4file (n,12) = BEE(k)
+!obsolete20220428                 parms4file (n,13) = bf1(k)
+!obsolete20220428                 parms4file (n,14) = bf2(k)
+!obsolete20220428                 parms4file (n,15) = bf3(k)
+!obsolete20220428                 parms4file (n,16) = COND(k)
+!obsolete20220428                 parms4file (n,17) = gnu
+!obsolete20220428                 parms4file (n,18) = POROS(k)
+!obsolete20220428                 parms4file (n,19) = PSIS(k)
+!obsolete20220428                 parms4file (n,20) = tsa1(k)
+!obsolete20220428                 parms4file (n,21) = tsa2(k)
+!obsolete20220428                 parms4file (n,22) = tsb1(k)
+!obsolete20220428                 parms4file (n,23) = tsb2(k)
+!obsolete20220428                 parms4file (n,24) = wpwet    (k)
+!obsolete20220428                 parms4file (n,25) = soildepth(k)
+!obsolete20220428              endif
+!obsolete20220428
+!obsolete20220428           else    ! .not. preserve_soiltype
+
+
+        ! This revised if block replaces the complex, nested if block commented out above
+        
+        if ( (ars1(n)==9999.) .or. (arw1(n)==9999.) ) then 
+           
+           ! some parameter values are no-data --> find nearest tile k with good parameters
+           
+           dist_save = 1000000.
+           k = 0
+           do i = 1,nbcatch
+              if(i /= n) then
+                 if((ars1(i).ne.9999.).and.(arw1(i).ne.9999.)) then
+                    
+                    tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
+                         (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
+                    if(tile_distance < dist_save) then
+                       k = i
+                       dist_save = tile_distance
+                    endif
+                 endif
+              endif
+           enddo
+           ! record in file clsm/bad_sat_param.tiles
+           write (41,*)n,k        ! n="bad" tile, k=tile from which parameters are taken
+
+           ! Overwrite parms4file when filling in parameters from neighboring tile k.
+           ! For "good" tiles, keep parms4file as read earlier from catch_params.nc4,
+           ! which is why this must be done within the "then" block of the "if" statement.
+           ! This is necessary for backward 0-diff compatibility of catch_params.nc4.
+
+           parms4file (n,12) = BEE(k)
+           parms4file (n,16) = COND(k)
+           parms4file (n,18) = POROS(k)
+           parms4file (n,19) = PSIS(k)
+           parms4file (n,24) = wpwet(k)
+           parms4file (n,25) = soildepth(k)
+                                 
+        else
+           
+           ! nominal case, all parameters are good
+           
+           k = n
+           
+        end if
+        
+        ! for current tile n, write parameters of tile k into ar.new (20), bf.dat (30), ts.dat (40), 
+        !   and soil_param.dat (42)
+        
+        write(20,'(i10,i8,f5.2,11(2x,e14.7))')          &
+             tindex2(n),pfaf2(n),gnu,                   &
+             ars1(k),ars2(k),ars3(k),                   &
+             ara1(k),ara2(k),ara3(k),ara4(k),           &
+             arw1(k),arw2(k),arw3(k),arw4(k) 
+        
         write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
-          tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-
-        write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
-              tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),      &
-              BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
-              grav_vec(k),soc_vec(k),poc_vec(k),                            &
-              a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,   &
-	      wpwet_surf(k),poros_surf(k), pmap (k)
-
+        
+        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,                      &
+             tsa1(k),tsa2(k),tsb1(k),tsb2(k)
+        
+        write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')         &
+             tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),                      &
+             BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                       &
+             grav_vec(k),soc_vec(k),poc_vec(k),                                            &
+             a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,                   &
+             wpwet_surf(k),poros_surf(k), pmap(k)
+        
+        ! record ar.new, bf.dat, and ts.dat parameters for later writing into catch_params.nc4
+        
         if (allocated (parms4file)) then
            parms4file (n, 1) = ara1(k)
            parms4file (n, 2) = ara2(k)
@@ -4095,93 +4311,28 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            parms4file (n, 9) = arw2(k)
            parms4file (n,10) = arw3(k)
            parms4file (n,11) = arw4(k)  
-           parms4file (n,12) = BEE(k)
            parms4file (n,13) = bf1(k)
            parms4file (n,14) = bf2(k)
            parms4file (n,15) = bf3(k)
-           parms4file (n,16) = COND(k)
            parms4file (n,17) = gnu
-           parms4file (n,18) = POROS(k)
-           parms4file (n,19) = PSIS(k)
            parms4file (n,20) = tsa1(k)
            parms4file (n,21) = tsa2(k)
            parms4file (n,22) = tsb1(k)
            parms4file (n,23) = tsb2(k)
-           parms4file (n,24) = wpwet    (k)
-           parms4file (n,25) = soildepth(k)
         endif
-
-     else 
-
-         dist_save = 1000000.
-         k = 0
-         do i = 1,nbcatch
-            if(i /= n) then
-               if((ars1(i).ne.9999.).and.(arw1(i).ne.9999.)) then
-
-                  tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
-                                  (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
-                  if(tile_distance < dist_save) then
-                     k = i
-                     dist_save = tile_distance
-                  endif
-               endif
-            endif
-         enddo
-         write (41,*)n,k
-         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
-              tindex2(n),pfaf2(n),gnu,   &
-              ars1(k),ars2(k),ars3(k),                   &
-              ara1(k),ara2(k),ara3(k),ara4(k),           &
-              arw1(k),arw2(k),arw3(k),arw4(k) 
-         write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-         write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
-              tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-         write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')&
-              tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),         &
-              BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
-              grav_vec(k),soc_vec(k),poc_vec(k),                            &
-              a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,   &
-	      wpwet_surf(k),poros_surf(k), pmap(k)
-
-         if (allocated (parms4file)) then
-            parms4file (n, 1) = ara1(k)
-            parms4file (n, 2) = ara2(k)
-            parms4file (n, 3) = ara3(k)
-            parms4file (n, 4) = ara4(k)
-            parms4file (n, 5) = ars1(k)
-            parms4file (n, 6) = ars2(k)
-            parms4file (n, 7) = ars3(k)
-            parms4file (n, 8) = arw1(k)
-            parms4file (n, 9) = arw2(k)
-            parms4file (n,10) = arw3(k)
-            parms4file (n,11) = arw4(k)  
-            parms4file (n,12) = BEE(k)
-            parms4file (n,13) = bf1(k)
-            parms4file (n,14) = bf2(k)
-            parms4file (n,15) = bf3(k)
-            parms4file (n,16) = COND(k)
-            parms4file (n,17) = gnu
-            parms4file (n,18) = POROS(k)
-            parms4file (n,19) = PSIS(k)
-            parms4file (n,20) = tsa1(k)
-            parms4file (n,21) = tsa2(k)
-            parms4file (n,22) = tsb1(k)
-            parms4file (n,23) = tsb2(k)
-            parms4file (n,24) = wpwet    (k)
-            parms4file (n,25) = soildepth(k)
-         endif
-      endif
-   endif
-   
-      if (error_file) then
-	 write(21,*)tindex2(n),pfaf2(n),taberr1(n),taberr2(n),taberr3(n),taberr4(n), &
+     
+!obsolete20220428     endif               ! if (preserve_soiltype) then
+!obsolete20220428     
+!obsolete20220428  endif                  !   if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then
+        
+        if (error_file) then
+           write(21,*)tindex2(n),pfaf2(n),taberr1(n),taberr2(n),taberr3(n),taberr4(n), &
 		normerr1(n),normerr2(n),normerr3(n),normerr4(n)
-	 write(31,*)tindex2(n),pfaf2(n),taberr1(n),taberr2(n),normerr1(n),normerr2(n)
-      endif 
-
-      END DO
-      
+           write(31,*)tindex2(n),pfaf2(n),taberr1(n),taberr2(n),normerr1(n),normerr2(n)
+        endif
+        
+     END DO              ! n=1,nbcatch
+     
 !      Write(*,*) 'END COMPUTING MODEL PARA'
 
       close(10,status='keep')
@@ -6064,9 +6215,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          locmax=MAX(3,indimax10)
-
-      endif      ! if (nmax .ge. shift+1) 
-                  
+         ! add protection here in case nmax <3 . why 3 ?
+         if (locmax > nmax) locmax = nmax
+      endif      ! if (nmax .ge. shift+1)
  30   densmax=denstest(idep,locmax)
       aa(idep)=exp(1.)*densmax
 
@@ -6290,10 +6441,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                 densaux(n) .gt. densaux(n-11) .and.        &
                 densaux(n) .gt. densaux(n-12) .and.        &
                 densaux(n) .gt. densaux(n-13) .and.        &
-                densaux(n) .gt. densaux(n-14) .and.        &
-                densaux(n) .gt. densaux(n-15)) then
-               locmax=n
-               goto 30
+                densaux(n) .gt. densaux(n-14)) then ! .and.        &
+                !densaux(n) .gt. densaux(n-15)) then
+                locmax=n
+                goto 30
             endif
          enddo
 
@@ -6308,7 +6459,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          locmax=MAX(3,indimax10)
-
+         ! in case nmax < 3. why hard coded 3?
+         if(locmax > nmax) locmax = nmax
       endif      ! if (nmax .ge. shift+1) 
          
  30   densmax=denstest(locmax)
@@ -7099,11 +7251,11 @@ SUBROUTINE REFORMAT_VEGFILES
   integer :: month
 
   tmp_string = 'mkdir -p '//'clsm/g5fmt'
-  call system(tmp_string)
+  call execute_command_line(tmp_string)
   tmp_string = '/bin/mv '//'clsm/lai.dat ' //'clsm/g5fmt/.'
-  call system(tmp_string) 
+  call execute_command_line(tmp_string) 
   tmp_string = '/bin/mv '//'clsm/green.dat ' //'clsm/g5fmt/.'
-  call system(tmp_string) 
+  call execute_command_line(tmp_string) 
 
   open (10,file='clsm/g5fmt/lai.dat'  , form = 'unformatted',   &
        convert='little_endian',status='old',action='read' )
