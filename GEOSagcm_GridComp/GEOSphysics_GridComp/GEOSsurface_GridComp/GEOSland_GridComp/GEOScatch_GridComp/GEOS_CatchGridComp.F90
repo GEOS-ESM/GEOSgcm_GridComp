@@ -1381,7 +1381,6 @@ subroutine SetServices ( GC, RC )
        LONG_NAME          = 'snow_albedo'               ,&
        UNITS              = '1'                         ,&
        SHORT_NAME         = 'SNOWALB'                   ,&
-       DEFAULT            = MAPL_UNDEF                  ,&
        FRIENDLYTO         = trim(COMP_NAME)             ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
