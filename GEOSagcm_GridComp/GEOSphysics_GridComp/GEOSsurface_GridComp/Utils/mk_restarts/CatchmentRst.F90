@@ -633,7 +633,6 @@ contains
               var = Variable(type=pFIO_REAL32, dimensions='tile')
               call var%add_attribute('long_name', 'snow_albedo')
               call var%add_attribute('units', '1')
-              call var%add_attribute('_FillValue', MAPL_UNDEF)
               call this%meta%add_variable('SNOWALB', var)
            endif
         endif
