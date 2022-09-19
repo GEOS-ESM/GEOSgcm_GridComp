@@ -26,6 +26,7 @@ use date_time_util
 use leap_year
 use MAPL_ConstantsMod
 use lsm_routines, ONLY: sibalb
+use MAPL_Base,    ONLY: MAPL_UNDEF
 
 #if defined USE_EXTERNAL_FINDLOC
 use findloc_mod, only: findloc
@@ -3036,7 +3037,7 @@ END SUBROUTINE modis_scale_para_high
   allocate (snw_alb(1:maxcat))
 
   ! Start by setting all snow albedo values to missing
-  snw_alb(:)=-9999.0 
+  snw_alb(:)=MAPL_UNDEF 
 
   do n = 1, maxcat
      read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
@@ -3160,7 +3161,7 @@ END SUBROUTINE modis_scale_para_high
 
     ! Calculate snow albedo for the current tile
     snw_alb(n) = sno_alb_sum / max(1.0,sno_alb_cnt)
-    if (snw_alb(n) .le. 0.0 .or. snw_alb(n) .gt. 1.0 ) snw_alb(n)=-9999.0 !1.E15
+    if (snw_alb(n) .le. 0.0 .or. snw_alb(n) .gt. 1.0 ) snw_alb(n)=MAPL_UNDEF !1.E15
 
     ! If no valid solution found, and if tile size smaller than snow albedo resolution,
     !  expand search area by 1-tile padding.
@@ -3199,7 +3200,7 @@ END SUBROUTINE modis_scale_para_high
       end do ! hhtil
 
       snw_alb(n) = sno_alb_sum2 / max(1.0,sno_alb_cnt2)
-      if (snw_alb(n) .le. 0.0 .or. snw_alb(n) .gt. 1.0 ) snw_alb(n)=-9999.0 !1.E15
+      if (snw_alb(n) .le. 0.0 .or. snw_alb(n) .gt. 1.0 ) snw_alb(n)=MAPL_UNDEF !1.E15
 
     endif
 
