@@ -211,6 +211,16 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'PHIS',                              &
+        LONG_NAME          = 'surface geopotential height',       &
+        UNITS              = 'm+2 s-2',                           &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'SGH',                                       &
         LONG_NAME  = 'standard_deviation_of_topography',          &
         UNITS      = 'm',                                         &
@@ -266,16 +276,16 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
      VERIFY_(STATUS)
      call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME = 'DQLDT_micro',                                   &
-         LONG_NAME = 'total_liq_water_tendency_due_to_largescale',       &
+         SHORT_NAME = 'DQLDT',                                   &
+         LONG_NAME = 'total_liq_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
      VERIFY_(STATUS)
      call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME= 'DQIDT_micro',                                   &
-         LONG_NAME = 'total_ice_water_tendency_due_to_largescale',       &
+         SHORT_NAME= 'DQIDT',                                   &
+         LONG_NAME = 'total_ice_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -950,7 +960,7 @@ contains
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,  RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  RC=STATUS)
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
@@ -1061,15 +1071,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Gravity wave drag
 ! -----------------
 
-    call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=NINT(32*LM/181.0),    RC=STATUS)
+    if (LM .eq. 72) then
+       GEOS_PGWV = 4
+    else
+       GEOS_PGWV = NINT(32*LM/181.0)
+    endif
+    call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, RC=STATUS)
+    call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, RC=STATUS)
+    NCAR_EFFGWBKG = min( imsize/720.0 , 1.0 )
+    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=NCAR_EFFGWBKG, RC=STATUS)
     VERIFY_(STATUS)
     if (NCAR_NRDG > 0) then
       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
@@ -1122,7 +1138,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Pointers from Import state
 
       real, pointer, dimension(:)      :: PREF
-      real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT
+      real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT, PHIS
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
       !++jtb Array for moist deep & shallow conv heating
       real, pointer, dimension(:,:,:)  :: HT_dc, HT_sc
@@ -1261,14 +1277,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, Q,        'Q',       RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, U,        'U',       RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, V,        'V',       RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, PHIS,     'PHIS',    RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, SGH,      'SGH',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, AREA,     'AREA',    RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, HT_sc,    'DTDT_SC', RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT_micro', RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT_micro', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT'  , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT'  , RC=STATUS ); VERIFY_(STATUS)
 
 ! Allocate/refer to the outputs
 !------------------------------
@@ -1769,20 +1786,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
          if (FIRST_RUN) then
            call gw_newtonian_set(LM, PREF)
-         ! if (NCAR_NRDG > 0) then
-         !  IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-         !  call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
-         !  do nrdg = 1, NCAR_NRDG
-         !   IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
-         !   call Write_Profile(MXDIS(:,:,nrdg),  AREA, ESMFGRID, 'MXDIS')
-         !   call Write_Profile(ANGLL(:,:,nrdg),  AREA, ESMFGRID, 'ANGLL')
-         !   call Write_Profile(ANIXY(:,:,nrdg),  AREA, ESMFGRID, 'ANIXY')
-         !   call Write_Profile(CLNGT(:,:,nrdg),  AREA, ESMFGRID, 'CLNGT')
-         !   call Write_Profile(HWDTH(:,:,nrdg),  AREA, ESMFGRID, 'HWDTH')
-         !   call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
-         !   call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
-         !  enddo
-         !endif
+           if (NCAR_NRDG > 0) then
+            IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
+            call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
+            do nrdg = 1, NCAR_NRDG
+             IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
+             call Write_Profile(MXDIS(:,:,nrdg),  AREA, ESMFGRID, 'MXDIS')
+             call Write_Profile(ANGLL(:,:,nrdg),  AREA, ESMFGRID, 'ANGLL')
+             call Write_Profile(ANIXY(:,:,nrdg),  AREA, ESMFGRID, 'ANIXY')
+             call Write_Profile(CLNGT(:,:,nrdg),  AREA, ESMFGRID, 'CLNGT')
+             call Write_Profile(HWDTH(:,:,nrdg),  AREA, ESMFGRID, 'HWDTH')
+             call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
+             call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
+            enddo
+          endif
           FIRST_RUN = .false.
          endif
 
@@ -1819,6 +1836,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
               ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+              PHIS,                                                   &
               DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
               DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
               TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
@@ -1875,7 +1893,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
 
     ! Topographic Form Drag [Beljaars et al (2004)]
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=6.0, RC=STATUS)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=10.0, RC=STATUS)
     VERIFY_(STATUS)
     if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),stat=status)
