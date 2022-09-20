@@ -2236,8 +2236,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:)    :: SW  => null()
 
    real, pointer, dimension(:)    :: AREA => null()
-   real, pointer, dimension(:)    :: LATS => null()
-   real, pointer, dimension(:)    :: LONS => null()
+   real, pointer, dimension(:)    :: LATS_ORIGINAL => null()
+   real, pointer, dimension(:)    :: LONS_ORIGINAL => null()
 
    integer                        :: N
    integer                        :: NT
@@ -2323,6 +2323,24 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    type(cice_state_wrap) :: wrap
    type(cice_state), pointer :: mystate
 
+! load balancing variables
+   integer :: NUMMAX, pet, CICECOREBalanceHandle, L1, LN
+   integer :: HorzDims, numIntSlices, numIntSlices8, numExpSlices
+   real, target, allocatable :: BUFIMP(:), BUFINT(:), BUFEXP(:)
+   real(kind=MAPL_R8), target, allocatable :: BUFINT8(:)
+   real, pointer :: PTR1(:), PTR2(:,:), PTR3(:,:,:)
+   real(kind=MAPL_R8), pointer :: PTR1R8(:), PTR2R8(:,:), PTR3R8(:,:,:)
+   !integer   :: SLICESimp(100) ! increase size if more than 100 imports
+   integer :: COMM
+   type(ESMF_VM)                :: VM
+   logical, allocatable, dimension(:) :: TILE_WITH_ICE
+   logical :: loadBalance
+   integer :: numUsedImp   ! number of imports actually used
+   !character(len=ESMF_MAXSTR), dimension(29) :: NAMESimp
+   real,               pointer    :: LATS(:)
+   real,               pointer    :: LONS(:)
+   integer :: NT_ORIGINAL
+
 !=============================================================================
 
 ! Begin... 
@@ -2359,8 +2377,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL,                          &
          INTERNAL_ESMF_STATE = INTERNAL,         &
          TILEAREA = AREA,         &
-         TILELATS = LATS,         &
-         TILELONS = LONS,         &
+         TILELATS = LATS_ORIGINAL,         &
+         TILELONS = LONS_ORIGINAL,         &
          RC=STATUS )
     VERIFY_(STATUS)
 
@@ -2390,135 +2408,164 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     DTDB = REAL(DT, kind=MAPL_R8)
 
-! Pointers to inputs
-!-------------------
+    call MAPL_GetResource ( MAPL, loadBalance    , Label="CICE_LOAD_BALANCE:", &
+        DEFAULT=.TRUE., RC=STATUS)
 
-   call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UWINDLMTILE     , 'UWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VWINDLMTILE     , 'VWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DZ     , 'DZ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND' ,  RC=STATUS)
-   VERIFY_(STATUS)
-   ! the call below may be needed in dual-ocean mode 
-   !   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    RC=STATUS)
-   !   VERIFY_(STATUS)
+!! Pointers to inputs
+!!-------------------
+!
+!   call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,UWINDLMTILE     , 'UWINDLMTILE'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,VWINDLMTILE     , 'VWINDLMTILE'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,DZ     , 'DZ'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND' ,  RC=STATUS)
+!   VERIFY_(STATUS)
+!   ! the call below may be needed in dual-ocean mode 
+!   !   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    RC=STATUS)
+!   !   VERIFY_(STATUS)
+!
+!
+!! Pointers to internals
+!!----------------------
+!
+!   call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
+!   VERIFY_(STATUS) 
+!   call MAPL_GetPointer(INTERNAL,TI   , 'TSKINI' ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,QS   , 'QS'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,CM   , 'CM'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,Z0   , 'Z0'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,VOLICE ,'VOLICE',    RC=STATUS) 
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,VOLSNO ,'VOLSNO',    RC=STATUS) 
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,VOLPOND,'VOLPOND',   RC=STATUS) 
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,ERGICE ,'ERGICE',    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,ERGSNO ,'ERGSNO',    RC=STATUS) 
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,TAUAGE ,'TAUAGE',    RC=STATUS) 
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(INTERNAL,SLMASK ,'SLMASK',    RC=STATUS) 
+!   VERIFY_(STATUS)
+!
+!! Pointers to outputs
+!!--------------------
+!
+!   call MAPL_GetPointer(EXPORT,QH    , 'QH'      ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,TH    , 'TH'      ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,UH    , 'UH'      ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,VH    , 'VH'      ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,QST   , 'QST'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,TST   , 'TST'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,CHT   , 'CHT'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,CMT   , 'CMT'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,CQT   , 'CQT'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,CNT   , 'CNT'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,RIT   , 'RIT'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,RET   , 'RET'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,Z0O   , 'Z0'      ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,Z0H   , 'Z0H'     ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOT2M, 'MOT2M'   ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOQ2M, 'MOQ2M'   ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOU2M, 'MOU2M'  ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOV2M, 'MOV2M'  ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOT10M, 'MOT10M'   ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOQ10M, 'MOQ10M'   ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOU10M, 'MOU10M'  ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOV10M, 'MOV10M'  ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOU50M, 'MOU50M'  ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,MOV50M, 'MOV50M'  ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,QSAT1 , 'QSAT1'   ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,QSAT2 , 'QSAT2'   ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!
+!  ! export to openwater
+!   call MAPL_GetPointer(EXPORT,TF    , 'TFREEZE' ,    RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetPointer(EXPORT,FRACI , 'FRACI'   ,    RC=STATUS)
+!   VERIFY_(STATUS)
 
+   call ESMF_VMGetCurrent(VM, __RC__)
+   call ESMF_VMGet(VM, mpiCommunicator=COMM, localPet=pet, __RC__)
+   call ESMF_VMBarrier(VM, __RC__)
+   call MAPL_TimerOn(MAPL,    "-In_ReDist_RUN1")
+   NT_ORIGINAL = size(LONS_ORIGINAL)
+!load balance setup
+   if(loadBalance) then
 
-! Pointers to internals
-!----------------------
+      allocate(TILE_WITH_ICE(NT_ORIGINAL), _STAT)
+      TILE_WITH_ICE = .true.
+      call MAPL_BalanceCreate(OrgLen=NT_ORIGINAL, Comm=COMM, Handle=CICECOREBalanceHandle, BalLen=NT, BufLen=NUMMAX, __RC__)
+     HorzDims = NT_ORIGINAL   ! Slice size for buffer packing
 
-   call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
-   VERIFY_(STATUS) 
-   call MAPL_GetPointer(INTERNAL,TI   , 'TSKINI' ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,QS   , 'QS'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CM   , 'CM'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,Z0   , 'Z0'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLICE ,'VOLICE',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLSNO ,'VOLSNO',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,VOLPOND,'VOLPOND',   RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGICE ,'ERGICE',    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,ERGSNO ,'ERGSNO',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,TAUAGE ,'TAUAGE',    RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,SLMASK ,'SLMASK',    RC=STATUS) 
-   VERIFY_(STATUS)
+!****IMPORTANT****!!! Adjust the relevant buffer(s) and pointer assigments BufferPacking.h and BufferUnpacking.h if import/internal/export fields are added/deleted
+#include "BufferPacking_RUN1.h"
 
-! Pointers to outputs
-!--------------------
+   else  ! no load_balance
 
-   call MAPL_GetPointer(EXPORT,QH    , 'QH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TH    , 'TH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,UH    , 'UH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,VH    , 'VH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QST   , 'QST'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TST   , 'TST'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CHT   , 'CHT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CMT   , 'CMT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CQT   , 'CQT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CNT   , 'CNT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RIT   , 'RIT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RET   , 'RET'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,Z0O   , 'Z0'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,Z0H   , 'Z0H'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOT2M, 'MOT2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOQ2M, 'MOQ2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU2M, 'MOU2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV2M, 'MOV2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOT10M, 'MOT10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOQ10M, 'MOQ10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU10M, 'MOU10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV10M, 'MOV10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU50M, 'MOU50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV50M, 'MOV50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QSAT1 , 'QSAT1'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QSAT2 , 'QSAT2'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+#include "GetPtr_RUN1.h"
+      NT = NT_ORIGINAL
+      LATS => LATS_ORIGINAL
+      LONS => LONS_ORIGINAL
 
-  ! export to openwater
-   call MAPL_GetPointer(EXPORT,TF    , 'TFREEZE' ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRACI , 'FRACI'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   end if
+   call MAPL_TimerOff(MAPL,    "-In_ReDist_RUN1")
 
    NT = size(TA)
   ! if(NT == 0) then
@@ -2924,6 +2971,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(FRACI )) FRACI = REAL(FRI, KIND=MAPL_R4)
 
    if(associated(TF    )) call FreezingTemperature(TF, SW, MIN_FREEZE_SALINITY, PRES_ICE==1, kelvin=.true.)
+
+    call ESMF_VMBarrier(VM, __RC__)
+    call MAPL_TimerOn(MAPL,    "-Out_ReDist_RUN1")
+    if(loadBalance) then
+#include "BufferUnpacking_RUN1.h"
+       deallocate(BUFIMP,BUFINT,BUFINT8,BUFEXP,STAT=STATUS)
+       VERIFY_(STATUS)
+       deallocate(TILE_WITH_ICE, _STAT)
+
+       call MAPL_BalanceDestroy(Handle=CICECOREBalanceHandle, __RC__)
+    endif
+    call MAPL_TimerOff(MAPL,    "-Out_ReDist_RUN1")
 
    deallocate(UUU)
    deallocate(LAI)
