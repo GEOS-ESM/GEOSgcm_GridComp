@@ -3212,14 +3212,14 @@ contains
      endif
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS); VERIFY_(STATUS)
 
-     if (JASON_TUNING .eq. 1) then
+     if (LM .eq. 72) then
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,          RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,          RC=STATUS); VERIFY_(STATUS)
      endif
 
    ! Pressure Thickness at the surface for 1-2-1 smoother for THV (and U:V) [72L setup uses an index of 5-levels]
-     if (JASON_TUNING .eq. 1) then
+     if (LM .eq. 72) then
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=     0.0,    RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=  5000.0,    RC=STATUS); VERIFY_(STATUS)
@@ -6436,20 +6436,9 @@ end subroutine RUN1
 
       integer :: I,J,L
       real    :: CBl, FKV_temp
-      real    :: Hefold
-      real, parameter ::      &
-          dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
-          dxmax_ss = 12000.0           ! maximum grid length for Beljaars
-                       ! a1 = (IH*kflt**n1)**-1 = (0.00102*0.00035**-1.9)**-1 = 0.00026615161
-                       ! a1 = 0.00026615161
-                       ! a2 = a1 * k1**(n1-n2) = a1 * 0.003**(-1.9 - -2.8) = a1 * 0.003**0.9 = a1 * 0.005363
-                       ! a2 = a1 * 0.005363 * 0.075924 = 1.08371722e-7
-      real, parameter :: a2 = 1.08371722e-7
 
       do I = 1, IM
          do J = 1, JM
-#define OLDGEOS
-#ifdef OLDGEOS
             CBl = C_B*1.e-7*VARFLT(I,J)
             do L = LM, 1, -1
                FKV(I,J,L) = 0.0
@@ -6463,24 +6452,6 @@ end subroutine RUN1
                   FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
                end if
             end do
-#else
-           ! Resolution sensitivity to disable Beljaars at <5km
-            CBl = C_B*a2*VARFLT(I,J)*MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
-           ! Revise e-folding height based on PBL height and topographic std. dev.
-            Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,nint(KPBL(i,j)))),LAMBDA_B)
-            do L = LM, 1, -1
-               FKV(I,J,L) = 0.0
-               if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold ) then
-                  FKV_temp = Z(I,J,L)/Hefold
-                  FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-                  FKV_temp = CBl*(FKV_temp/Hefold)*sqrt(U(I,J,L)**2+V(I,J,L)**2)
-
-                  BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
-                  BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
-                  FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
-               end if
-            end do
-#endif
          end do 
       end do 
 
