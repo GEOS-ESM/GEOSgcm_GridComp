@@ -70,6 +70,9 @@ module EASE_conv
   !
   ! 2022-09-13, wjiang+reichle: 
   !   merged easeV1_conv.F90 and easeV2_conv.F90 into EASE_conv.F90
+  !   - using different values for PI in easeV1 and easeV2 calcs as in old easeV[x]_conv.F90 modules; 
+  !       in contrast, LDAS_EASE_conv.F90 in GEOSldas used only a single value for PI.
+  !   - bug fix in easeV2_get_params() for EASEv2/M25 (to compute s0, divide by 2.0 not by integer 2)
   !
   !
   ! ==========================================================================
@@ -139,98 +142,125 @@ module EASE_conv
 contains  
   
   ! *******************************************************************
-  
-  subroutine ease_convert (gridname, lat, lon, r, s)
-    character*(*), intent(in)  :: gridname
-    real,          intent(in)  :: lat, lon
-    real,          intent(out) :: r, s
-    character(3)  :: grid
-
-    if (index(gridname,'M36') /=0 ) then
-        grid='M36'
-    else if (index(gridname,'M25') /=0 ) then
-        grid='M25'
-    else if (index(gridname,'M09') /=0 ) then
-        grid='M09'
-    else if (index(gridname,'M03') /=0 ) then
-        grid='M03'
-    else if (index(gridname,'M01') /=0 ) then
-        grid='M01'
-    endif
-    
-    if(index(gridname,'EASEv2') /=0) then
-        call easeV2_convert(grid,lat,lon,r,s)
-    else if(index(gridname,'EASEv1') /=0) then
-        call easeV1_convert(grid,lat,lon,r,s)
-    else
-       print*,"wrong gridname: "//gridname
-    endif 
-  end subroutine
-
+  !
+  !   GENERIC routines (public interface)
+  !
   ! *******************************************************************
   
-  subroutine ease_inverse (gridname, r, s, lat, lon)
-    character*(*), intent(in)  :: gridname
-    real,          intent(in)  :: r, s
-    real,          intent(out) :: lat, lon
+  subroutine ease_convert (EASELabel, lat, lon, r, s)
+    
+    character*(*), intent(in)  :: EASELabel
+    real,          intent(in)  :: lat, lon
+    real,          intent(out) :: r, s
+    
     character(3)  :: grid
-
-    if (index(gridname,'M36') /=0 ) then
-        grid='M36'
-    else if (index(gridname,'M25') /=0 ) then
-        grid='M25'
-    else if (index(gridname,'M09') /=0 ) then
-        grid='M09'
-    else if (index(gridname,'M03') /=0 ) then
-        grid='M03'
-    else if (index(gridname,'M01') /=0 ) then
-        grid='M01'
+    
+    if (     index(EASELabel,'M36') /=0 ) then
+       grid='M36'
+    else if (index(EASELabel,'M25') /=0 ) then
+       grid='M25'
+    else if (index(EASELabel,'M09') /=0 ) then
+       grid='M09'
+    else if (index(EASELabel,'M03') /=0 ) then
+       grid='M03'
+    else if (index(EASELabel,'M01') /=0 ) then
+       grid='M01'
+    else
+       print*,"ease_convert(): unknown grid projection and resolution: "//trim(EASELabel)//"  STOPPING."
+       stop
     endif
     
-    if(index(gridname,'EASEv2') /=0) then
-        call easeV2_inverse(grid,r,s,lat,lon)
-    else if(index(gridname,'EASEv1') /=0) then
-        call easeV1_inverse(grid,r,s,lat,lon)
+    if(     index(EASELabel,'EASEv2') /=0) then
+       call easeV2_convert(grid,lat,lon,r,s)
+    else if(index(EASELabel,'EASEv1') /=0) then
+       call easeV1_convert(grid,lat,lon,r,s)
     else
-       print*,"wrong gridname: "//gridname
-    endif 
+       print*,"ease_convert(): unknown grid version: "//trim(EASELabel)//"  STOPPING."
+       stop
+    endif
+    
+  end subroutine ease_convert
+  
+  ! *******************************************************************
+  
+  subroutine ease_inverse (EASELabel, r, s, lat, lon)
+    
+    character*(*), intent(in)  :: EASELabel
+    real,          intent(in)  :: r, s
+    real,          intent(out) :: lat, lon
+    
+    character(3)  :: grid
+    
+    if (     index(EASELabel,'M36') /=0 ) then
+       grid='M36'
+    else if (index(EASELabel,'M25') /=0 ) then
+       grid='M25'
+    else if (index(EASELabel,'M09') /=0 ) then
+       grid='M09'
+    else if (index(EASELabel,'M03') /=0 ) then
+       grid='M03'
+    else if (index(EASELabel,'M01') /=0 ) then
+       grid='M01'
+    else
+       print*,"ease_inverse(): unknown grid projection and resolution: "//trim(EASELabel)//"  STOPPING."
+       stop
+    endif
+    
+    if(     index(EASELabel,'EASEv2') /=0) then
+       call easeV2_inverse(grid,r,s,lat,lon)
+    else if(index(EASELabel,'EASEv1') /=0) then
+       call easeV1_inverse(grid,r,s,lat,lon)
+    else
+       print*,"ease_inverse(): unknown grid version: "//trim(EASELabel)//"  STOPPING."
+       stop
+    endif
+    
   end subroutine ease_inverse
+  
+  ! *******************************************************************
+  
+  subroutine ease_get_params (EASELabel, CELL_km, cols, rows, r0, s0, Rg )
 
-  subroutine ease_get_params (gridname, CELL_km, cols, rows, r0, s0, Rg )
-    implicit none
-    character*(*), intent(in)  :: gridname
+    character*(*), intent(in)  :: EASELabel
     real*8,        intent(out) :: CELL_km
     integer,       intent(out) :: cols, rows
     real*8,        intent(out) :: r0, s0, Rg
-
+    
     real*8                     :: map_scale_m
     character(3)  :: grid
-
-    if (index(gridname,'M36') /=0 ) then
-        grid='M36'
-    else if (index(gridname,'M25') /=0 ) then
-        grid='M25'
-    else if (index(gridname,'M09') /=0 ) then
-        grid='M09'
-    else if (index(gridname,'M03') /=0 ) then
-        grid='M03'
-    else if (index(gridname,'M01') /=0 ) then
-        grid='M01'
+    
+    if (     index(EASELabel,'M36') /=0 ) then
+       grid='M36'
+    else if (index(EASELabel,'M25') /=0 ) then
+       grid='M25'
+    else if (index(EASELabel,'M09') /=0 ) then
+       grid='M09'
+    else if (index(EASELabel,'M03') /=0 ) then
+       grid='M03'
+    else if (index(EASELabel,'M01') /=0 ) then
+       grid='M01'
+    else
+       print*,"ease_get_params(): unknown grid projection and resolution: "//trim(EASELabel)//"  STOPPING."
+       stop
     endif
     
-    if(index(gridname,'EASEv2') /=0) then
-        call easeV2_get_params(grid, map_scale_m, cols, rows, r0, s0)
-        Rg = -9999.0
-        CELL_km = map_scale_m/1000.d0
-    else if(index(gridname,'EASEv1') /=0) then
-        call easeV1_get_params(grid, CELL_km, cols, rows, r0, s0, Rg)
+    if(     index(EASELabel,'EASEv2') /=0) then
+       call easeV2_get_params(grid, map_scale_m, cols, rows, r0, s0)
+       Rg = -9999.0
+       CELL_km = map_scale_m/1000.d0
+    else if(index(EASELabel,'EASEv1') /=0) then
+       call easeV1_get_params(grid, CELL_km, cols, rows, r0, s0, Rg)
     else
-       print*,"wrong gridname: "//gridname
-    endif 
-
+       print*,"ease_get_params(): unknown grid version: "//trim(EASELabel)//"  STOPPING."
+       stop
+    endif
+    
   end subroutine ease_get_params
-
+  
   ! *******************************************************************
+  !
+  !   EASEv1 routines (private)
+  !
   ! *******************************************************************
   
   subroutine easeV1_convert (grid, lat, lon, r, s)
@@ -412,7 +442,7 @@ contains
     
     if ((grid(1:1).eq.'N').or.(grid(1:1).eq.'S')) then
 
-       print *,'Polar projections not implemented yet'
+       print *,'easeV1_get_params(): polar projections not implemented yet'
        stop
 
     else if (grid(1:1).eq.'M') then
@@ -454,14 +484,14 @@ contains
        
        else
        
-          print *,'easeV1_convert: unknown resolution: ',grid
+          print *,'easeV1_get_params(): unknown resolution: ',grid
           stop
        
        endif
 
     else
        
-       print *, 'easeV1_convert: unknown projection: ', grid
+       print *, 'easeV1_get_params(): unknown projection: ', grid
        stop
        
     endif
@@ -470,6 +500,10 @@ contains
     
   end subroutine easeV1_get_params
   
+  ! *******************************************************************
+  !
+  !   EASEv2 routines (private)
+  !
   ! *******************************************************************
   
   subroutine easeV2_convert (grid, lat, lon, col_ind, row_ind)
@@ -540,7 +574,7 @@ contains
        
     else
        
-       print *,'Polar projections not implemented yet'
+       print *,'EASEv2_convert(): Polar projections not implemented yet'
        stop
        
     endif
@@ -603,7 +637,7 @@ contains
        
     else
        
-       print *,'Polar projections not implemented yet'
+       print *,'EASEv2_inverse(): Polar projections not implemented yet'
        stop
        
     endif
@@ -677,19 +711,19 @@ contains
        
        else
           
-          print *,'easeV2_convert: unknown resolution: ',grid
+          print *,'easeV2_get_params(): unknown resolution: ',grid
           stop
        
        endif
 
     else if ((grid(1:1).eq.'N').or.(grid(1:1).eq.'S')) then
        
-       print *,'Polar projections not implemented yet'
+       print *,'easeV2_get_params(): Polar projections not implemented yet'
        stop
        
     else
        
-       print *, 'easeV2_convert: unknown projection: ', grid
+       print *, 'easeV2_get_params(): unknown projection: ', grid
        stop
        
     endif

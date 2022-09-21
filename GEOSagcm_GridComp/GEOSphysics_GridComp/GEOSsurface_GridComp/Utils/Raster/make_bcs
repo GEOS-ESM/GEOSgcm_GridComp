@@ -1340,7 +1340,7 @@ if ( $EVERSION == EASEv2 ) then
    ## This section was used to make Irrigated Tiles
    ##if(${MGRID} == M09 | ${MGRID} == M36) then 
    ##    bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
-   ##    bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -pfaf_til T
+   ##    bin/mkSMAPTilesPara_v2.x -ease_label ${MGRID} -pfaf_til T
    ##    bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
    ##    bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
    ##    /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
@@ -1354,7 +1354,7 @@ endif
 setenv MASKFILE ${MASKFILE}
 setenv OMP_NUM_THREADS 1
 # WY NOTE: the name mkSMAPTilesPara_v2.x will be changed to bin/bin/mkSMAPTilesPara.x
-bin/mkSMAPTilesPara_v2.x -smap_grid ${BCNAME} -v $lbcsv
+bin/mkSMAPTilesPara_v2.x -ease_label ${BCNAME} -v $lbcsv
 setenv OMP_NUM_THREADS ${NCPUS}
 bin/mkCatchParam.x -e EASE -g ${BCNAME} -v $lbcsv -x ${NX} -y ${NY} 
 chmod 755 bin/create_README.csh

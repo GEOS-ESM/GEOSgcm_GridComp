@@ -1,13 +1,18 @@
 #include "Raster.h"
 
 PROGRAM mkSMAPTilesPara_v2
+  
+  ! This program constructs land and lake tiles for EASE grid tile spaces such as
+  !  those used for the SMAP Level-4 products and other offline projects
 
-!     This program constructs land and lake tiles for the SMAP_EASEv1_Mxx  
-!         for CLSM implementation.
-!     f90 -c create_smap_tiles.f90
-!     f90 -c smapconv.f
-!     f90 -o create_smap_tiles create_smap_tiles.o smapconv.o
-!
+  ! This program resulted from the merger and cleanup of mkSMAPTilesPara.F90
+  !  and mkSMAPTilesPara_v2.F90 in September 2022.
+  ! Before the merger and cleanup, the EASE grid parameters were hard-coded here.
+  !  For EASEv2 M25, the outdated scale value was used here.
+  !
+  ! - wjiang + reichle, 21 Sep 2022
+  
+
       use EASE_conv
       use rmTinyCatchParaMod
       use process_hres_data
@@ -31,7 +36,7 @@ PROGRAM mkSMAPTilesPara_v2
       INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
       logical, dimension (:), allocatable :: unq_mask   
       integer, pointer  , dimension (:,:) :: subset
-      integer, pointer    , dimension (:) :: subset1, subset_smap
+      integer, pointer    , dimension (:) :: subset1
       real,    pointer    , dimension (:) :: subset2
       integer :: dx_esa, dy_esa, NBINS, NPLUS
 
@@ -42,7 +47,7 @@ PROGRAM mkSMAPTilesPara_v2
       integer,allocatable, dimension (:,:)         :: catid, iaster
       integer,allocatable, dimension (:)           :: land_id,water_id,ice_id
       integer,allocatable, dimension (:)           :: my_land, all_id
-      real, allocatable, dimension (:)             :: smap_grid_area,tile_area,SRTM_CatchArea 
+      real, allocatable, dimension (:)             :: ease_grid_area,tile_area,SRTM_CatchArea 
       integer*1,allocatable, dimension (:,:)       :: veg, i2aster
       real*4, dimension (:,:), allocatable         :: q0,raster
       REAL, dimension (:), allocatable             :: tile_ele, tile_area_land  
@@ -51,13 +56,13 @@ PROGRAM mkSMAPTilesPara_v2
       integer l,imn,imx,jmn,jmx,mval,l_index,i_index,w_index,typ,pfaf,cindex
       integer :: LakeType, IceType, OceanType
       character(3) :: easegrid      
-      real :: clat, clon, r_smap, s_smap, smap_convert, da
+      real :: clat, clon, r_ease, s_ease, da
       real :: fr_gcm
       integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX
       REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
       character*100 :: veg_class (12)
       character*100 :: gfile,gtopo30
-      integer :: nc_smap,nr_smap, N_args, command_argument_count 
+      integer :: nc_ease,nr_ease, N_args, command_argument_count 
       real*8  ::  CELL_km
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
       character(40) :: arg, EASElabel_ 
@@ -70,13 +75,18 @@ PROGRAM mkSMAPTilesPara_v2
       character(len=6)       :: EASE_Version
       real*8                 :: r0, s0, Rg 
       character(len=10)      :: nc_string, nr_string
+      character(128)         :: usage1, usage2
+
+      ! --------------------------------------------------------------------------------------
+
+      usage1 = 'USAGE : bin/mkEASETiles -ease_label EASELabel -v LBCSV                  '
+      usage2 = '        where EASELabel = *EASEv[x]_M[yy]*, x={1,2}, yy={01,03,09,25,36}'
 
       N_args = command_argument_count()
 
       if(N_args < 1) then
-        print *,'USAGE : bin/mkSMAPTiles -smap_grid EASELabel -v LBCSV'
-        print *,'Allowed SMAP grids are: SMAP_EASEv1_M01 M03 M09 M25 M36'
-        print *,'Allowed SMAP grids are: SMAP_EASEv2_M01 M03 M09 M25 M36'
+        print *,trim(usage1)
+        print *,trim(usage2)
         stop
       end if
 
@@ -87,7 +97,7 @@ PROGRAM mkSMAPTilesPara_v2
          
          call get_command_argument(i,arg)
          
-         if     ( trim(arg) == '-smap_grid' ) then
+         if     ( trim(arg) == '-ease_label' ) then
             i = i+1
             call get_command_argument(i,EASELabel_)
 
@@ -102,9 +112,8 @@ PROGRAM mkSMAPTilesPara_v2
             call get_command_argument(i,LBCSV)
 
          else ! stop for any other arguments
-            print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -v LBCSV -ease_version xx'
-            print *,'Allowed SMAP grids are: M01, M03, M09, M25, M36 '
-            print *,'Allowed ease_version are: EASEv1 EASEv2'
+            print *,trim(usage1)
+            print *,trim(usage2)
             stop
          endif
          
@@ -119,23 +128,23 @@ PROGRAM mkSMAPTilesPara_v2
       !call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
       !call execute_command_line('cd ..')
       
-      ! Setting SMAP Grid specifications
+      ! Setting EASE Grid specifications
       ! --------------------------------
 
       EASElabel = trim(EASELabel_)
 
-      call ease_get_params(EASELabel, CELL_km, nc_smap, nr_smap, r0,s0, Rg)
-      write(nc_string, '(i0)') nc_smap
-      write(nr_string, '(i0)') nr_smap
+      call ease_get_params(EASELabel, CELL_km, nc_ease, nr_ease, r0,s0, Rg)
+      write(nc_string, '(i0)') nc_ease
+      write(nr_string, '(i0)') nr_ease
       gfile = trim(EASElabel)//'_'//trim(nc_string)//'x'//trim(nc_string)
 
-      if (index(EASELabel,'M03') /=0) then ! SMAP  3 km grid
+      if (index(EASELabel,'M03') /=0) then ! EASE  3 km grid
          regrid = .true.
          NC = 21600
          NR = 10800
          NT = 500000000
       endif
-      if (index(EASELabel,'M03') /=0) then ! SMAP  1 km grid
+      if (index(EASELabel,'M03') /=0) then ! EASE  1 km grid
          regrid = .true.
          NC = 43200
          NR = 21600
@@ -145,7 +154,7 @@ PROGRAM mkSMAPTilesPara_v2
       if ( .not. (index(EASELabel,'M01') /=0 .or. index(EASELabel,'M03') /=0 .or.  &
         index(EASELabel,'M09') /=0 .or. index(EASELabel,'M25') /=0 .or.  &
         index(EASELabel,'M36') /=0)) then
-        print*,'Unknown SMAP Grid stopping..'
+        print*,'Unknown EASE grid projection and resolution: '//trim(EASELabel)//'  STOPPING.'
         stop
       endif
 
@@ -159,7 +168,7 @@ PROGRAM mkSMAPTilesPara_v2
       IceType   =11
       LakeType  =10
 
-      ND        = 10*10**(nint(log10(1.*nr_smap)))
+      ND        = 10*10**(nint(log10(1.*nr_ease)))
       
       !   Check for the 10 arc-sec MaskFile
       ! -----------------------------------
@@ -181,7 +190,7 @@ PROGRAM mkSMAPTilesPara_v2
       
       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
          ! New ESA (Veg) + SRTM (catchments) based mask file
-         ! is overlaid on SMAP 
+         ! is overlaid on the EASE grid
          ! -------------------------------------------------
          
          nc = 43200  ! Number of rows in raster file
@@ -286,14 +295,14 @@ PROGRAM mkSMAPTilesPara_v2
                   if(catid_index (i,j) == SRTM_maxcat + 2) veg (i,j) = IceType
                   if((catid_index(i,j) >= 1).and.(catid_index  (i,j) <=  SRTM_maxcat)) i1 = i1 + 1
 
-                  ! count in if this is i,j pixel is a land, lake or ice within ind_col,ind_row SMAP grid cell
+                  ! count in if this is i,j pixel is a land, lake or ice within ind_col,ind_row EASE grid cell
                   
-                  call EASE_convert(EASELabel, clat, clon, r_smap, s_smap)
+                  call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
                   
-                  ind_col = nint(r_smap) + 1 
-                  ind_row = nint(s_smap) + 1
+                  ind_col = nint(r_ease) + 1 
+                  ind_row = nint(s_ease) + 1
                   
-                  if((ind_row.ge.1).and.(veg(i,j).ne.OceanType).and.(ind_row.le.nr_smap)) then
+                  if((ind_row.ge.1).and.(veg(i,j).ne.OceanType).and.(ind_row.le.nr_ease)) then
                      l=  ind_row*ND +  ind_col
                      
                      if(veg(i,j)==LakeType) then 
@@ -317,7 +326,7 @@ PROGRAM mkSMAPTilesPara_v2
       else
          
          ! Old IGBP (Veg) + HYDRO1k (catchments) based mask will
-         ! Overlaid on SMAP mask
+         ! Overlaid on EASE mask
          ! -----------------------------------------------------
          
          allocate(iaster      (i_raster,j_raster)) 
@@ -428,11 +437,11 @@ PROGRAM mkSMAPTilesPara_v2
          print *,'Min and Max of tile indices:',minval(catid_index),maxval(catid_index)
  
          ! While looping through the nc x nr grid (tile raster), this section counts # of  
-         ! SMAP grid cells that contain land, ice or water, seperately.
-         ! Each SMAP grid cell is assigned with an ID = ind_row*ND +  ind_col. 
+         ! EASE grid cells that contain land, ice or water, seperately.
+         ! Each EASE grid cell is assigned with an ID = ind_row*ND +  ind_col. 
          ! This is just the prelimiminery assessment in the process of assigning separate  
-         !     tiles for land, water and ice fractions within the SMAP Grid cell
-         ! The program checks each nc x nr pixels whether there is a SMAP grid cell underneath, and counts
+         !     tiles for land, water and ice fractions within the EASE Grid cell
+         ! The program checks each nc x nr pixels whether there is a EASE grid cell underneath, and counts
          ! number of water, land and ice pixels as seen on veg raster.
          ! -----------------------------------------------------------------------------------------------
          
@@ -444,12 +453,12 @@ PROGRAM mkSMAPTilesPara_v2
             do j =nr ,1 ,-1
                
                clat = -90. + float(j-1)*dy + dy/2.
-               call EASE_convert(EASELabel, clat, clon, r_smap, s_smap)
+               call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
                
-               ind_col = nint(r_smap) + 1 
-               ind_row = nint(s_smap) + 1
+               ind_col = nint(r_ease) + 1 
+               ind_row = nint(s_ease) + 1
                
-               if((ind_row.ge.1).and.(veg(i,j).ne.OceanType).and.(ind_row.le.nr_smap)) then
+               if((ind_row.ge.1).and.(veg(i,j).ne.OceanType).and.(ind_row.le.nr_ease)) then
                   l=  ind_row*ND +  ind_col
                   
                   if(veg(i,j)==LakeType) then 
@@ -485,9 +494,9 @@ PROGRAM mkSMAPTilesPara_v2
       
       deallocate (raster)
       
-      print *,'# of Land  pixels in SMAP: ',sum (land_id)
-      print *,'# of water pixels in SMAP: ',sum (water_id)
-      print *,'# of ice   pixels in SMAP: ',sum (ice_id)
+      print *,'# of Land  pixels in EASE: ',sum (land_id)
+      print *,'# of water pixels in EASE: ',sum (water_id)
+      print *,'# of ice   pixels in EASE: ',sum (ice_id)
 
       l_index=0
       w_index=sum (land_id)
@@ -496,7 +505,7 @@ PROGRAM mkSMAPTilesPara_v2
 
 
       allocate(tile_area (1:i_index + sum (ice_id)))
-      allocate(smap_grid_area     (1:NT))
+      allocate(ease_grid_area     (1:NT))
       allocate(tile_ele      (1:w_index))
       allocate(tile_area_land(1:w_index)) 
       allocate(my_land       (1:i_index + sum (ice_id)))
@@ -508,18 +517,18 @@ PROGRAM mkSMAPTilesPara_v2
 
       my_land    = 0
       all_id     = 0
-      smap_grid_area = 0. 
+      ease_grid_area = 0. 
       tile_area_land = 0.       
       tile_ele       = 0.
       tile_area      = 0.
 
       ! While looping through the nc x nr grid, this section derives land, ice and water tiles.
-      ! Each SMAP grid cell is assigned with an ID = ind_row*ND +  ind_col 
-      !         ind_col, ind_row are overlying SMAP grid cell indices 
+      ! Each EASE grid cell is assigned with an ID = ind_row*ND +  ind_col 
+      !         ind_col, ind_row are overlying EASE grid cell indices 
       ! Based on the above sums: 
       !         l_index Grid cells have land fractions (sum(land_id)) 
-      !         w_index SMAP Grid cells have inland water fractions (sum(water_id))
-      !         i_index SMAP Grid cells have ice fractions (sum(ice_id))
+      !         w_index EASE Grid cells have inland water fractions (sum(water_id))
+      !         i_index EASE Grid cells have ice fractions (sum(ice_id))
       ! hence, tile_index        1                     to l_index                     represent land tiles  
       !         tile_index       l_index +1            to l_index + w_index           represent water (lakes) tiles  
       !         tile_index       l_index + w_index +1  to l_index + w_index + i_index represent ice tiles
@@ -536,15 +545,15 @@ PROGRAM mkSMAPTilesPara_v2
          do j =nr ,1 ,-1
             lats = -90._8 + (j - 0.5_8)*dy
             clat = -90. + float(j-1)*dy + dy/2.
-            call EASE_convert(EASELabel, clat, clon, r_smap, s_smap)
+            call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
             
-            ind_col = nint(r_smap) + 1 
-            ind_row = nint(s_smap) + 1
+            ind_col = nint(r_ease) + 1 
+            ind_row = nint(s_ease) + 1
 
             l=  ind_row*ND +  ind_col
             pix_area =(sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
 
-            if((ind_row.ge.1).and.(veg(i,j).ge.1).and.(ind_row.le.nr_smap)) then
+            if((ind_row.ge.1).and.(veg(i,j).ge.1).and.(ind_row.le.nr_ease)) then
                                            
                if(veg(i,j)==LakeType) then
                   if(water_id(l)==0) then
@@ -582,8 +591,8 @@ PROGRAM mkSMAPTilesPara_v2
                all_id (tileid_index(i,j)) = j*ND_raster + i 
             endif
 
-            if((ind_row.ge.1).and.(ind_row.le.nr_smap)) then  
-               smap_grid_area(l) = smap_grid_area(l) +             &
+            if((ind_row.ge.1).and.(ind_row.le.nr_ease)) then  
+               ease_grid_area(l) = ease_grid_area(l) +             &
                     pix_area
             endif
 
@@ -652,8 +661,8 @@ PROGRAM mkSMAPTilesPara_v2
       write (10,*)i_index,SRTM_maxcat, nc, nr 
       write (10,*)1
       write (10,*)EASELabel
-      write (10,*)nc_smap
-      write (10,*)nr_smap
+      write (10,*)nc_ease
+      write (10,*)nr_ease
  !     write (10,*)'NO-OCEAN'
  !     write (10,*) -9999
  !     write (10,*) -9999      
@@ -678,8 +687,8 @@ PROGRAM mkSMAPTilesPara_v2
             typ = 100
             call EASE_inverse (EASELabel, real(ig-1),real(jg-1), clat, clon) 
             
-            mnx = clon - 180./real(nc_smap)
-            mxx = clon + 180./real(nc_smap)
+            mnx = clon - 180./real(nc_ease)
+            mxx = clon + 180./real(nc_ease)
             
             jgv = real(jg-1) + 0.5
             
@@ -699,7 +708,7 @@ PROGRAM mkSMAPTilesPara_v2
 
          call EASE_inverse (EASELabel, real(ig-1),  real(jg-1), clat, clon)
          
-         fr_gcm= tile_area(l)/smap_grid_area(jg*ND +  ig)
+         fr_gcm= tile_area(l)/ease_grid_area(jg*ND +  ig)
 
          if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
             write(10,'(i10,i9,2f10.4,2i6,f19.12,i10,i15,e13.4)') &
@@ -715,7 +724,7 @@ PROGRAM mkSMAPTilesPara_v2
       close (11,status='keep')          
 
       deallocate (tileid_index,catid_index,veg)
-      deallocate (tile_area, smap_grid_area, tile_ele, tile_area_land, my_land, all_id)
+      deallocate (tile_area, ease_grid_area, tile_ele, tile_area_land, my_land, all_id)
  
       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
 
@@ -759,21 +768,21 @@ PROGRAM mkSMAPTilesPara_v2
 !!!        real*8,   allocatable :: xs(:,:), ys(:,:)
 !!!        real          :: x,y, xout, yout
 !!!        
-!!!        allocate (xs ( nc_smap+1, nr_smap+1))
-!!!        allocate (ys ( nc_smap+1, nr_smap+1))
+!!!        allocate (xs ( nc_ease+1, nr_ease+1))
+!!!        allocate (ys ( nc_ease+1, nr_ease+1))
 !!!        
-!!!        do  j = 1, nr_smap+1
-!!!           do i = 1, nc_smap+1
+!!!        do  j = 1, nr_ease+1
+!!!           do i = 1, nc_ease+1
 !!!              x = real(i-1)        -0.5
-!!!              y = real(nr_smap - j)+0.5
+!!!              y = real(nr_ease - j)+0.5
 !!!              call EASE_inverse(MGRID, x, y, yout, xout)
 !!!              ys (i,j) = dble(yout)
 !!!              xs (i,j) = dble(xout)
 !!!           end do
 !!!        end do
 !!!
-!!!        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,xmn = xs(1,1), xmx= xs(nc_smap+1, nr_smap+1), &
-!!!                       ymn=ys(1,1), ymx = ys(nc_smap+1, nr_smap+1), Here=.false., Verb=.false.)       
+!!!        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,xmn = xs(1,1), xmx= xs(nc_ease+1, nr_ease+1), &
+!!!                       ymn=ys(1,1), ymx = ys(nc_ease+1, nr_ease+1), Here=.false., Verb=.false.)       
 !!!
 !!!        stop
 !!!      end SUBROUTINE mkEASEv2Raster
@@ -819,7 +828,7 @@ PROGRAM mkSMAPTilesPara_v2
 !!!                rRtable(1,2),rRtable(1,3),iRtable (1,2),iRtable (1,3),rRtable(1,4),iRtable (1,4),&
 !!!                iRtable (1,5),iRtable (1,6),rRtable(1,5),iRtable (1,7)
 !!!           write(11,'(I10,3E20.12,9(2I10,E20.12,I10))') iRtable (1,1),rRtable(1,1), &
-!!!                rRtable(1,2),rRtable(1,3),iRtable (1,2)-1,nr_smap - iRtable (1,3),rRtable(1,4),iRtable (1,4),&
+!!!                rRtable(1,2),rRtable(1,3),iRtable (1,2)-1,nr_ease - iRtable (1,3),rRtable(1,4),iRtable (1,4),&
 !!!                iRtable (1,5),iRtable (1,6),rRtable(1,5),iRtable (1,7)
 !!!        end do
 !!!     
