@@ -109,7 +109,7 @@
 !              > 0 for decrease in theta (ocean cooling)
 !              Typical range: -250 < Qnet < 600
 !              Southwest C-grid tracer point (i.e., A-grid)
-          Qnet(i,j,bi,bj) = p%HFLX(iSLo+i,jSLo+j)
+          Qnet(i,j,bi,bj) = Qsw(i,j,bi,bj) - p%HFLX(iSLo+i,jSLo+j)
 
 !     Transfer QFLX to EMPMR.
 !     QFLX   : Freshwater flux from skin to ocean in kg/m2/s.
