@@ -136,7 +136,7 @@ PROGRAM mkSMAPTilesPara_v2
       call ease_get_params(EASELabel, CELL_km, nc_ease, nr_ease, r0,s0, Rg)
       write(nc_string, '(i0)') nc_ease
       write(nr_string, '(i0)') nr_ease
-      gfile = trim(EASElabel)//'_'//trim(nc_string)//'x'//trim(nc_string)
+      gfile = trim(EASElabel)//'_'//trim(nc_string)//'x'//trim(nr_string)
 
       if (index(EASELabel,'M03') /=0) then ! EASE  3 km grid
          regrid = .true.
