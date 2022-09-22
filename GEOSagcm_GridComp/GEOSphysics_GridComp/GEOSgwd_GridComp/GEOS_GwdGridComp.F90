@@ -48,7 +48,6 @@ module GEOS_GwdGridCompMod
   public SetServices
 
 !EOP
-  logical, parameter :: USE_NCEP_GWD = .false.
   type(GWBand)          :: beres_band
   type(BeresSourceDesc) :: beres_desc
   type(GWBand)          :: oro_band
@@ -545,134 +544,6 @@ contains
          VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
-     if (USE_NCEP_GWD) then
-!ALT: Reminder for myself: we need connections in Physics
-! We need some new imports
-! from turbulance
-        call MAPL_AddImportSpec(GC,                             &
-             SHORT_NAME = 'KPBL',                               &
-             LONG_NAME  = 'planetary_boundary_layer_level',     &
-             UNITS      = '1',                                  &
-             DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)      
-
-! from moist
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_moist',                            & 
-             LONG_NAME ='T tendency due to moist',               &
-             UNITS     ='K s-1',                                 &
-             DIMS      = MAPL_DimsHorzVert,                      &
-             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-        VERIFY_(STATUS)  
-!ALT: from this we can compute QMAX (column maximum value)
-!     and KTOP, KBOT near the location of QMAX
-!JTB: Moved up to default import state block (3/25/20)
-!WMP: Restored here for NCEP code
-
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='CNV_FRC',                               &
-             LONG_NAME ='convective_fraction',                   &
-             UNITS     ='1',                                     &
-             DIMS      = MAPL_DimsHorzOnly,                      &
-             VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-        VERIFY_(STATUS)
-
-! from dycore
-        call MAPL_AddImportSpec ( gc,                            &
-             SHORT_NAME = 'DXC',                                 &
-             LONG_NAME  = 'cgrid_delta_x',                       &
-             UNITS      = 'm'  ,                                 &
-             DIMS       = MAPL_DimsHorzOnly,                     &
-             VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-        VERIFY_(STATUS)
-
-!        call MAPL_AddImportSpec ( gc,                            &
-!             SHORT_NAME = 'DYC',                                 &
-!             LONG_NAME  = 'cgrid_delta_y',                       &
-!             UNITS      = 'm'  ,                                 &
-!             DIMS       = MAPL_DimsHorzOnly,                     &
-!             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-!        VERIFY_(STATUS)
-
-
-! New internal state for boundary data
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'STDDEV',                           &
-             LONG_NAME  = 'orographic standard deviation',    &
-             UNITS      = 'm',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'CONVEXITY',                        &
-             LONG_NAME  = 'orographic convexity',             &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'OA4',                              &
-             LONG_NAME  = 'orographic assymetry',             &
-             UNGRIDDED_DIMS     = (/4/),                      &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'CLX4',                             &
-             LONG_NAME  = 'fractional area',                  &
-             UNGRIDDED_DIMS     = (/4/),                      &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'THETA',                            &
-             LONG_NAME  = 'angle of mnt with east (x)',       &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'SIGMA',                            &
-             LONG_NAME  = 'orographic slope',                 &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'GAMMA',                            &
-             LONG_NAME  = 'orographic anisotropy',            &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'ELVMAX',                           &
-             LONG_NAME  = 'orographic maximum',               &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-     end if ! NCEP
-!_end_of_if_ncep
 !EOS
 
 ! Set the Profiling timers
@@ -894,45 +765,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Gravity wave drag
 ! -----------------
 
-    if (USE_NCEP_GWD) then
-! NCEP  FV3 values
-! C768:  cdmbgwd="3.500,0.25"
-! C384:  cdmbgwd="1.000,1.20"
-! C192:  cdmbgwd="0.200,2.50"
-! C96 :  cdmbgwd="0.125,3.00"
-! C48 :  cdmbgwd="0.062,3.50"
-    if ( imsize.lt.270 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.062, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=3.500, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.270 .and. imsize.lt.540 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.125, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=3.000, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.540 .and. imsize.lt.1080 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.200, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=2.500, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.1080 .and. imsize.lt.3240 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=1.000, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=1.200, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.3240 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=3.500, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=0.250, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    endif
-
     call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
@@ -1046,38 +878,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
 
-! NCEP gwd related vars
-      real, pointer :: TRATE(:,:,:)=>NULL()
-      real          :: CDMBGWD(2)
-      logical       :: LPRNT
-      logical, allocatable :: KCNV(:,:)
-      integer       :: IMX
-      integer       :: IPR, ME, LAT, KDT
-      integer       :: NMTVR
-      integer       :: I,IRUN
-      integer       :: IX, IY
-      real          :: FV, FHOUR
-      real          :: A, QM
-      real, allocatable :: PK(:,:,:)
-      integer, allocatable :: KPBL(:,:)
-      integer, allocatable :: KBOT(:,:)
-      integer, allocatable :: KTOP(:,:)
-      real, allocatable :: QMAX(:,:)
-      real, pointer     :: fPBL(:,:) => NULL()
-      real, pointer     :: CLDF(:,:) => NULL()
-      real, pointer     :: HPRIME(:,:) => NULL()
-      real, pointer     :: OC(:,:) => NULL()
-      real, pointer     :: SIGMA(:,:) => NULL()
-      real, pointer     :: GAMMA(:,:) => NULL()
-      real, pointer     :: THETA(:,:) => NULL()
-      real, pointer     :: DLENGTH(:,:) => NULL()
-      real, pointer     :: ELVMAX(:,:) => NULL()
-      real, pointer     :: OA4(:,:,:) => NULL()
-      real, pointer     :: CLX4(:,:,:) => NULL()
-      type (ESMF_State) :: INTERNAL
-      type (ESMF_Grid)  :: esmfgrid
-      integer           :: COUNTS(3)
-
 ! NCAR GWD vars
 
       logical :: USE_NCAR_GWD
@@ -1176,14 +976,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_TimerOn(MAPL,"-INTR")
-    if (.not. USE_NCEP_GWD) then
 
-       if (USE_NCAR_GWD) then
-          ! Use Julio new code
-       call gw_intr_ncar(IM*JM,    LM,         DT,                  &
-            PGWV,      beres_desc, beres_band, oro_band,            &
-            PLE,       T,          U,          V,      HT_dpc,      &
-            SGH,       PREF,                                        &
+    if (USE_NCAR_GWD) then
+       ! Use Julio new code
+    call gw_intr_ncar(IM*JM,    LM,         DT,                  &
+         PGWV,      beres_desc, beres_band, oro_band,            &
+         PLE,       T,          U,          V,      HT_dpc,      &
+         SGH,       PREF,                                        &
+         PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+         DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+         DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+         TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+         TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+         FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+         BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
+    VERIFY_(STATUS)
+    else
+       ! Use GEOS GWD    
+       call gw_intr   (IM*JM,      LM,         DT,                  &
+            PGWV,                                                   &
+            PLE,       T,          U,          V,      SGH,   PREF, &
             PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
             DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
             DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
@@ -1191,162 +1003,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
             TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
             FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
             BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
-       VERIFY_(STATUS)
-       else
-          ! Use GEOS GWD    
-          call gw_intr   (IM*JM,      LM,         DT,                  &
-               PGWV,                                                   &
-               PLE,       T,          U,          V,      SGH,   PREF, &
-               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-               DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-               BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
-         VERIFY_(STATUS)
-       end if
-
-    else
-       ! get pointers from INTERNAL:HPRIME,OC,OA4,CLX4,THETA,SIGMA,GAMMA,ELVMAX
-       call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, HPRIME, 'STDDEV', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, OC, 'CONVEXITY', RC=STATUS )
-       VERIFY_(STATUS)
-       ! next 2 have ungridded dim = 4
-       call MAPL_GetPointer( INTERNAL, OA4, 'OA4', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, CLX4, 'CLX4', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, THETA, 'THETA', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, SIGMA, 'SIGMA', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, GAMMA, 'GAMMA', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, ELVMAX, 'ELVMAX', RC=STATUS )
-       VERIFY_(STATUS)
-
-       KDT = 1 !??? current number of time step (not used)
-       IRUN = IM*JM
-       IX = IRUN
-       IY = IRUN
-       DVDT_ORG = 0.0
-       DUDT_ORG = 0.0
-       DTDT_ORG = 0.0
-       ! Make sure we have: U, V, T, Q, KPBL,
-       call MAPL_GetPointer( IMPORT, FPBL, 'KPBL', RC=STATUS )
-       VERIFY_(STATUS)
-       allocate(KPBL(IM,JM),stat=status)
-       VERIFY_(STATUS)
-       KPBL = nint(fPBL)
-!ALT: we need some protection      
-       KPBL = MIN(KPBL, LM-1) ! when LM=132, we might need to cap it to LM-3
-
-       ! PLE, PL,DELP
-       allocate(PK(IM,JM,0:LM),stat=status)
-       VERIFY_(STATUS)
-
-       PK = ( PLE/MAPL_P00 )**MAPL_KAPPA ! Question should P00 be there
-
-       IMX = imsize     ! number of longitudes (along the equator = 4xCnumber)
-       nmtvr = 14       ! number of topographic variables such as variances
-       CDMBGWD = [CDMBGWD1,CDMBGWD2]  ! multiplication factors for cdmb and gwd
-       ! me, lprint, ipr are currently not being used
-       me = 0 ! we could get it from VM
-       lprnt = .false.
-       ipr = 0
-
-       call GWDPS(IRUN,IX,IY,LM,DVDT_ORG,DUDT_ORG,DTDT_ORG,&
-            U,V,T,Q,KPBL,              &
-            PLE,PDEL,PMID,PK,&
-            ZI,ZM,DT,KDT,         &
-            HPRIME,OC,OA4,CLX4,THETA,SIGMA,GAMMA,ELVMAX,       &
-            TAUXO_TMP,TAUYO_TMP, &
-            MAPL_GRAV, MAPL_CP, MAPL_RDRY, MAPL_RVAP, IMX,  &
-            nmtvr, cdmbgwd, me, lprnt, ipr)
-
-       ! Get IMPORT DTDT_moist
-!ALT: BE careful. The NCEP routines expect 2d packed into 1d 
-       ! units
-       ! min/max search potentially could fail
-       ! scaling coefficient values???
-       ! ============================
-       ! kind_phys!!! check with Bill
-       ! for now 4, otherwise this will create interface problems
-       ! ============================
-       
-       LAT = 1 ! latitude index for debugging prints, not used
-       FHOUR = 0.0 ! forecast hour, not used
-       FV = MAPL_RDRY/MAPL_RVAP - 1.0     ! con_fvirt = con_rv/con_rd-1
-
-       ! GWDC needs a grid spacing argument, Bill suggesed we use DXC
-       call MAPL_GetPointer( IMPORT, DLENGTH, 'DXC', RC=STATUS )
-       VERIFY_(STATUS)
-
-       call MAPL_GetPointer( IMPORT, CLDF, 'CNV_FRC', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( IMPORT, TRATE, 'DTDT_moist', RC=STATUS )
-       VERIFY_(STATUS)
-       ! for every i,j search loop over levels to find QMAX, KBOT and KTOP
-       ! lat is not used
-
-       allocate(QMAX(IM,JM), KBOT(IM,JM), KTOP(IM,JM), KCNV(IM,JM), stat=status)
-       VERIFY_(STATUS)
-       KCNV = .false.
-       
-       DO J=1,JM
-          DO I=1,IM
-             QM = MAXVAL(TRATE(I,J,:))
-             K = MAXLOC(TRATE(I,J,:),DIM=1)
-             QMAX(I,J) = QM
-             A = QM
-             DO L = K+1, LM
-                IF(A > TRATE(I,J,L)) then
-                   A = TRATE(I,J,L)
-                ELSE
-                   EXIT
-                END IF
-             END DO
-             KTOP(I,J) = L-1
-
-             A = QM
-             DO L = K-1, 1, -1
-                IF(A < TRATE(I,J,L)) then
-                   A = TRATE(I,J,L)
-                ELSE
-                   EXIT
-                END IF
-             END DO
-             KBOT(I,J) = L+1
-
-             IF(CLDF(I,J) > 0.15) THEN
-                KCNV(I,J) = .TRUE.
-             END IF
-          END DO
-       END DO
-       call gwdc(IRUN,IX,IY,LM,LAT,U,V,T,Q,DT, &
-            PMID,PLE,PDEL,QMAX,KTOP,KBOT,KCNV,CLDF, &
-            MAPL_GRAV,MAPL_CP,MAPL_RDRY,FV,MAPL_PI,&
-            DLENGTH,LPRNT,IPR,FHOUR, &
-            DUDT_TOT,DVDT_TOT,TAUXB_TMP,TAUYB_TMP)
-
-       ! Adjust to prepare vars for POSTINTR
-       DTDT_GWD = DTDT_ORG 
-       DUDT_GWD = DUDT_ORG + DUDT_TOT  
-       DVDT_GWD = DVDT_ORG + DVDT_TOT  
-! reset total; they were used only as temporary variables
-       DUDT_TOT = 0.0
-       DVDT_TOT = 0.0
-
-       deallocate(KCNV, KTOP, KBOT, QMAX)
-       deallocate(PK)
-       deallocate(KPBL)
-
-
+      VERIFY_(STATUS)
     end if
+
     call MAPL_TimerOff(MAPL,"-INTR")
 
     CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
