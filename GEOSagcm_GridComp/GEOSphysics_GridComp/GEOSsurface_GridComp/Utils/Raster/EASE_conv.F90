@@ -83,7 +83,7 @@ module EASE_conv
 
   public :: ease_convert
   public :: ease_inverse
-  public :: ease_get_params
+  public :: ease_extent
 
   ! =======================================================================
   !
@@ -146,6 +146,12 @@ contains
   !   GENERIC routines (public interface)
   !
   ! *******************************************************************
+  !
+  !   EASELabel = *EASEv[x]_[p][yy]*    (e.g., EASEv2_M09)
+  !
+  !     version:     x  = {  1,  2             }
+  !     projection:  p  = {  M                 }    ! only cylindrical ("M") implemented     
+  !     resolution:  yy = { 01, 03, 09, 25, 36 }    ! 12.5 km not yet implemented
   
   subroutine ease_convert (EASELabel, lat, lon, r, s)
     
@@ -219,15 +225,13 @@ contains
   
   ! *******************************************************************
   
-  subroutine ease_get_params (EASELabel, CELL_km, cols, rows, r0, s0, Rg )
+  subroutine ease_extent (EASELabel, cols, rows )
 
     character*(*), intent(in)  :: EASELabel
-    real*8,        intent(out) :: CELL_km
     integer,       intent(out) :: cols, rows
-    real*8,        intent(out) :: r0, s0, Rg
-    
-    real*8                     :: map_scale_m
-    character(3)  :: grid
+
+    real*8                     :: map_scale_m, CELL_km, r0, s0, Rg
+    character(3)               :: grid
     
     if (     index(EASELabel,'M36') /=0 ) then
        grid='M36'
@@ -240,23 +244,22 @@ contains
     else if (index(EASELabel,'M01') /=0 ) then
        grid='M01'
     else
-       print*,"ease_get_params(): unknown grid projection and resolution: "//trim(EASELabel)//"  STOPPING."
+       print*,"ease_extent(): unknown grid projection and resolution: "//trim(EASELabel)//"  STOPPING."
        stop
     endif
     
     if(     index(EASELabel,'EASEv2') /=0) then
        call easeV2_get_params(grid, map_scale_m, cols, rows, r0, s0)
-       Rg = -9999.0
-       CELL_km = map_scale_m/1000.d0
     else if(index(EASELabel,'EASEv1') /=0) then
        call easeV1_get_params(grid, CELL_km, cols, rows, r0, s0, Rg)
     else
-       print*,"ease_get_params(): unknown grid version: "//trim(EASELabel)//"  STOPPING."
+       print*,"ease_extent(): unknown grid version: "//trim(EASELabel)//"  STOPPING."
        stop
     endif
     
-  end subroutine ease_get_params
+  end subroutine ease_extent
   
+
   ! *******************************************************************
   !
   !   EASEv1 routines (private)
@@ -500,6 +503,7 @@ contains
     
   end subroutine easeV1_get_params
   
+
   ! *******************************************************************
   !
   !   EASEv2 routines (private)
@@ -730,27 +734,6 @@ contains
            
   end subroutine easeV2_get_params
   
-  ! *******************************************************************
-  
-  subroutine easeV2_extent( grid, N_cols, N_rows )
-
-    ! simple wrapper to get N_cols (N_lon) and N_rows (N_lat)
-    
-    implicit none
-    
-    character*(*), intent(in)  :: grid
-    integer,       intent(out) :: N_cols, N_rows
-    
-    ! local variables
-    
-    real*8                     :: map_scale_m, r0, s0
-    
-    ! ------------------------------------------------
-    
-    call easeV2_get_params( grid, map_scale_m, N_cols, N_rows, r0, s0 )
-    
-  end subroutine easeV2_extent
-
   ! *******************************************************************
 
 end module EASE_conv

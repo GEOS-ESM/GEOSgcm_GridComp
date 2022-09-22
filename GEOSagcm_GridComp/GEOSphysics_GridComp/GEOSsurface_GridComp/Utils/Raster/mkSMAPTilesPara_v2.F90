@@ -63,7 +63,6 @@ PROGRAM mkSMAPTilesPara_v2
       character*100 :: veg_class (12)
       character*100 :: gfile,gtopo30
       integer :: nc_ease,nr_ease, N_args, command_argument_count 
-      real*8  ::  CELL_km
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
       character(40) :: arg, EASElabel_ 
       character(len=:), allocatable :: EASElabel 
@@ -73,7 +72,6 @@ PROGRAM mkSMAPTilesPara_v2
       logical                :: pfaf_til = .false.
       character*1            :: PF
       character(len=6)       :: EASE_Version
-      real*8                 :: r0, s0, Rg 
       character(len=10)      :: nc_string, nr_string
       character(128)         :: usage1, usage2
 
@@ -133,7 +131,7 @@ PROGRAM mkSMAPTilesPara_v2
 
       EASElabel = trim(EASELabel_)
 
-      call ease_get_params(EASELabel, CELL_km, nc_ease, nr_ease, r0,s0, Rg)
+      call ease_extent(EASELabel, nc_ease, nr_ease )
       write(nc_string, '(i0)') nc_ease
       write(nr_string, '(i0)') nr_ease
       gfile = trim(EASElabel)//'_'//trim(nc_string)//'x'//trim(nr_string)
@@ -150,23 +148,17 @@ PROGRAM mkSMAPTilesPara_v2
          NR = 21600
          NT = 1500000000
       endif
- !
-      if ( .not. (index(EASELabel,'M01') /=0 .or. index(EASELabel,'M03') /=0 .or.  &
-        index(EASELabel,'M09') /=0 .or. index(EASELabel,'M25') /=0 .or.  &
-        index(EASELabel,'M36') /=0)) then
-        print*,'Unknown EASE grid projection and resolution: '//trim(EASELabel)//'  STOPPING.'
-        stop
-      endif
 
       allocate(land_id    (1:NT))
       allocate(water_id   (1:NT))
       allocate(ice_id     (1:NT))
-      land_id     = 0
-      water_id    = 0
-      ice_id      = 0             
-      OceanType = 0
-      IceType   =11
-      LakeType  =10
+
+      land_id     =  0
+      water_id    =  0
+      ice_id      =  0             
+      OceanType   =  0
+      IceType     = 11
+      LakeType    = 10
 
       ND        = 10*10**(nint(log10(1.*nr_ease)))
       

@@ -254,8 +254,8 @@ if ( $HELPMODE != YES ) then
 
       if( $dummy == 'EASEv1'  | \
            $dummy == 'EASEv2') then 
-        set EVERSION = $dummy
-        echo "EASE grid Version is  ${EVERSION} "
+        set EASEVERSION = $dummy
+        echo "EASE grid Version is  ${EASEVERSION} "
       else
          echo " "
          echo " Invalid input, please use EASEv1 or EASEv2 "
@@ -1282,19 +1282,19 @@ if( $grid == ease ) then
 
   #WY noted: ease version becomes input
   #if( $HRCODE == m25 ) then
-  #  set EVERSION = EASEv1
+  #  set EASEVERSION = EASEv1
   #else
-  #  set EVERSION = EASEv2
+  #  set EASEVERSION = EASEv2
   #endif
 
   set RS  = ${im}x${jm}
   set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
   set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
-  set             BCNAME = SMAP_${EVERSION}_${MGRID}
+  set             BCNAME = SMAP_${EASEVERSION}_${MGRID}
   set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
   set             BCJOB  = $BCDIR/$BCNAME.j
-  set             THISGRID = SMAP-${EVERSION}-${MGRID}
+  set             THISGRID = SMAP-${EASEVERSION}-${MGRID}
 
   set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
   if( $nfiles >= 1 ) then
@@ -1336,7 +1336,7 @@ ln -s $input_dir CATCH
 cd ../
 limit stacksize unlimited
 
-if ( $EVERSION == EASEv2 ) then
+if ( $EASEVERSION == EASEv2 ) then
    ## This section was used to make Irrigated Tiles
    ##if(${MGRID} == M09 | ${MGRID} == M36) then 
    ##    bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
@@ -1346,7 +1346,7 @@ if ( $EVERSION == EASEv2 ) then
    ##    /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
    ##endif
 endif
-if ( $EVERSION == EASEv1 ) then
+if ( $EASEVERSION == EASEv1 ) then
   ## for easev1, default values
   set lbcsv = UNDEF
 endif
@@ -1361,7 +1361,7 @@ chmod 755 bin/create_README.csh
 bin/create_README.csh
 
 /bin/mv clsm  clsm.${IM}x${JM}
-/bin/cp til/SMAP_${EVERSION}_${MGRID}_${RS}.til clsm.${IM}x${JM}
+/bin/cp til/SMAP_${EASEVERSION}_${MGRID}_${RS}.til clsm.${IM}x${JM}
 ##/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.TIL clsm.${IM}x${JM}
 
 cd clsm.${IM}x${JM}
@@ -1377,9 +1377,9 @@ cd clsm.${IM}x${JM}
 
 cd ../
 
-/bin/rm -rf              SMAP_${EVERSION}_${MGRID}
-/bin/mv clsm.${IM}x${JM} SMAP_${EVERSION}_${MGRID}
-                     cd  SMAP_${EVERSION}_${MGRID} 
+/bin/rm -rf              SMAP_${EASEVERSION}_${MGRID}
+/bin/mv clsm.${IM}x${JM} SMAP_${EASEVERSION}_${MGRID}
+                     cd  SMAP_${EASEVERSION}_${MGRID} 
                    mkdir clsm
                  /bin/mv ar.new \
                          bf.dat \
@@ -1409,8 +1409,8 @@ cd ../
                          clsm
                      cd  ../ 
 
-/bin/mv rst  SMAP_${EVERSION}_${MGRID}
-/bin/mv til  SMAP_${EVERSION}_${MGRID}
+/bin/mv rst  SMAP_${EASEVERSION}_${MGRID}
+/bin/mv til  SMAP_${EASEVERSION}_${MGRID}
 
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
@@ -1420,7 +1420,7 @@ cd ../../
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm IRRIG/$BCNAME/rst
-#bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t SMAP_${EVERSION}_${MGRID}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
+#bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t SMAP_${EASEVERSION}_${MGRID}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
 #/bin/cp $BCNAME/${THISGRID}_${THISGRID}-Pfafstetter.TIL IRRIG/$BCNAME/.
 _EOF_
 
