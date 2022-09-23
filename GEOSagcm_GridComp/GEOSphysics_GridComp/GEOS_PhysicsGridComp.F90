@@ -1115,9 +1115,23 @@ contains
 !----------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'PCU','PLS','SNO','ICE','FRZR'/),         &
+         SHORT_NAME  = (/'SNO','ICE','FRZR'/),                     &
          DST_ID      = SURF,                                       &
          SRC_ID      = MOIST,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'RAIN_CONV',                                &
+         DST_NAME    = 'PCU',                                      &
+         SRC_ID      = MOIST,                                      &
+         DST_ID      = SURF,                                       &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'RAIN_STRAT',                               &
+         DST_NAME    = 'PLS',                                      &
+         SRC_ID      = MOIST,                                      &
+         DST_ID      = SURF,                                       &
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1204,7 +1218,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                                      &
-        SRC_NAME    = 'PCU',                                              &
+        SRC_NAME    = 'RAIN_CONV',                                        &
         DST_NAME    = 'CN_PRCP',                                          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
@@ -2841,18 +2855,14 @@ contains
 
    !  Modify P and Q such that Pdry is conserved
    !  ------------------------------------------
-!#define ORIGDRY
-#ifdef ORIGDRY
-             ple_new = ple*1.0_8
-               sumdq = 0.0
-         DPDT(:,:,0) = 0.0
+       ple_new = ple*1.0_8
+       sumdq = 0.0
+       DPDT(:,:,0) = 0.0
        do l=1,lm
-                            sumdq = sumdq + dq(:,:,L) * ( ple(:,:,L)-ple(:,:,L-1) ) / DT
+                   sumdq = sumdq + dq(:,:,L) * ( ple(:,:,L)-ple(:,:,L-1) ) / DT
              dpdt(:,:,L) = sumdq
            ple_new(:,:,L) = ple_new(:,:,L) + dt*dpdt(:,:,L)
-           !   dpe(:,:)   = 1.0_8/( 1.0_8  + dq(:,:,L) )
                dpe(:,:)   = (ple(:,:,L)-ple(:,:,L-1)) / (ple_new(:,:,L)-ple_new(:,:,L-1))
-
              do N=1,NQ
                 call ESMFL_BundleGetPointertoData( BUNDLE, trim(NAMES(N)), PTR3D, RC=STATUS)
                 VERIFY_(STATUS)
@@ -2862,25 +2872,6 @@ contains
                 endif
               end do
        end do
-#else
-       ple_new = ple*1.0_8
-       DPDT(:,:,0) = 0.0
-       do l=1,lm
-             dpe(:,:)  = 1. + dq(:,:,l)
-             ple_new(:,:,l) = ple_new(:,:,l-1) + (ple(:,:,l)-ple(:,:,l-1)) * dpe(:,:)
-             dpdt(:,:,l) = (ple_new(:,:,l)-ple(:,:,l))/DT
- 
-             do N=1,NQ
-                call ESMFL_BundleGetPointertoData( BUNDLE, trim(NAMES(N)), PTR3D, RC=STATUS)
-                VERIFY_(STATUS)
-                if( trim(NAMES(N)) /= 'CLCN'       .and. & ! Exclude: Advected Convective and Large-Scale
-                    trim(NAMES(N)) /= 'CLLS'     )  then   ! -------- Cloud Fractions
-                PTR3D(:,:,l) = PTR3d(:,:,l) / dpe(:,:)
-                endif
-              end do
-       end do
-
-#endif
 
    ! Create New Dry Mass Variables
    ! -----------------------------

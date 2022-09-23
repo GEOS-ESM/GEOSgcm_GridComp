@@ -780,12 +780,9 @@ contains
 ! deep ones
             if ( zsml(i,j) .lt. 1600. ) then 
                wentr_tmp = wentr_tmp * ( zsml(i,j) / 800. )
-!               wentr_tmp = wentr_tmp * (0.5 + zsml(i,j)/1600.)
             else
                wentr_tmp = 2.*wentr_tmp
-!               wentr_tmp = 1.5*wentr_tmp
             endif
-
 !-----------------------------------------
 
 !!AMM106 !----------------------------------------
@@ -1061,12 +1058,12 @@ contains
 ! deep ones
 
 !!AMM107
-!         if ( zradtop .lt. 500. ) then
-!            wentr_rad = 0.00
-!         endif
-!         if (( zradtop .gt. 500.) .and. (zradtop .le. 800. )) then
-!            wentr_rad = wentr_rad * ( zradtop-500.) / 300.
-!         endif
+         if ( zradtop .lt. 500. ) then
+            wentr_rad = 0.00
+         endif
+         if (( zradtop .gt. 500.) .and. (zradtop .le. 800. )) then
+            wentr_rad = wentr_rad * ( zradtop-500.) / 300.
+         endif
 
          if ( zradtop .lt. 2400. ) then 
             wentr_rad = wentr_rad * ( zradtop / 800. )
@@ -1272,7 +1269,11 @@ contains
       end if
     else   ! tpfac scales up bstar by inv. ratio of
            ! heat-bubble area to stagnant area
-      tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
+      if (nlev.eq.72) then
+        tep  = (t(i,j,nlev) + 0.4) * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
+      else
+        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
+      end if
       qp   = q(i,j,nlev)
     end if
 
@@ -1284,20 +1285,21 @@ contains
 ! entrate:  tunable param from rc file
 ! vscale:   tunable param hardwired here.
 
-!      vscale    = 0.25 / 100. ! change of .25 m s-1 in 100 m
-!!vscale    = 0.10 / 100. ! change of .10 m s-1 in 100 m
+! vscale is vscale_surf=0.25/100.0 parameter now passed through argument list
 
 !search for level where this is exceeded              
 
       lts =  0.0
 !  LTS using TH at 3km abve surface
-      do k = nlev-1,2,-1
-         if (z(i,j,k).gt.3000.0) then
-           lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
-           exit
-         end if
-      end do
-      lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
+      if (nlev.ne.72) then
+         do k = nlev-1,2,-1
+            if (z(i,j,k).gt.3000.0) then
+              lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
+              exit
+            end if
+         end do
+         lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
+      end if
 
       t1   = t(i,j,nlev)
       v1   = v(i,j,nlev)
@@ -1332,11 +1334,15 @@ contains
 
          dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
          qp    = qp - dqp
-         tep = tep + (pceff + 0.5*(1.-pceff)*(1.+TANH(lts-18.)))*MAPL_ALHL * dqp/MAPL_CP
+         if (lts .eq. 0.0) then
+           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
+! of condensation heating that gets applied to parcel
+         else
+           tep = tep + (pceff + 0.5*(1.-pceff)*(1.+TANH(lts-18.)))*MAPL_ALHL * dqp/MAPL_CP      
 !                           Set pceff to 1 where LTS is high
 !           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
 !                                                           ! of condensation heating that gets applied to parcel
-
+         endif
 
 ! If parcel temperature (tep) colder than env (t2)
 ! OR if entrainment too big, declare this the PBL top
@@ -1419,7 +1425,11 @@ contains
       svpar   = svp
       h1      = zf(i,j,toplev)
       t1      = t(toplev)
-      entrate = 1.0/1000.
+      if (nlev.eq.72) then
+        entrate = 0.2/200.
+      else
+        entrate = 1.0/1000.
+      endif
 
       !search for level where parcel is warmer than env             
 

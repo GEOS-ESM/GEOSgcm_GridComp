@@ -3566,14 +3566,17 @@ contains
       QSTOTCOSP  = reshape( QSTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       QGTOTCOSP  = reshape( QGTOT(:,:,LM:1:-1), (/ IM*JM , LM /) )
       PLECOSP  = reshape( PLE(:,:,LM:0:-1), (/ IM*JM , LM+1 /) )
-      ZLECOSP = ZLE2D(:,LM:0:-1)
       MCOSZCOSP = reshape( MCOSZ , (/ IM*JM /) )
       FRLANDCOSP = reshape( FRLAND , (/ IM*JM /) )
       FROCEANCOSP = reshape( FROCEAN , (/ IM*JM /) )
       TSCOSP = reshape( TS , (/ IM*JM /) )
 
       ZLE2D  = reshape( ZLE, (/ IM*JM , LM+1 /) )
-      zlo2d =  0.5*( zle2d(:,0:LM-1)+zle2d(:,1:lm))
+      do k = 1,LM+1
+         ZLE2D(:,k) = ZLE2D(:,k)-ZLE2D(:,LM+1)
+      enddo
+      ZLECOSP = ZLE2D(:,LM:0:-1)
+      ZLO2D =  0.5*( ZLE2D(:,0:LM-1)+ZLE2D(:,1:LM))
       ZLOCOSP = ZLO2D(:,LM:1:-1)
 
 

@@ -3574,15 +3574,15 @@ contains
          ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! height above the surface 
       enddo
       ZSM = ZL0
-      if (SMTH_HGT >= 0) then
-      ZSM(:,:,LM) = ZL0(:,:,LM-1)*0.25 + ZL0(:,:,LM  )*0.75
-      do J=1,JM
-       do I=1,IM
-         do L=LM-1,SMTH_LEV(I,J),-1
-            ZSM(I,J,L) = ZL0(I,J,L-1)*0.25 + ZL0(I,J,L)*0.50 + ZL0(I,J,L+1)*0.25
+      if (SMTH_HGT > 0) then
+        ZSM(:,:,LM) = ZL0(:,:,LM-1)*0.25 + ZL0(:,:,LM  )*0.75
+        do J=1,JM
+         do I=1,IM
+           do L=LM-1,SMTH_LEV(I,J),-1
+              ZSM(I,J,L) = ZL0(I,J,L-1)*0.25 + ZL0(I,J,L)*0.50 + ZL0(I,J,L+1)*0.25
+           end do
          end do
-      end do
-      end do
+        end do
       end if
 
       ! Layer height, pressure, and virtual temperatures
@@ -3613,19 +3613,28 @@ contains
       USM = U
       VSM = V
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
-      TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-      USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
-      VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
       if (SMTH_HGT >= 0) then
-      do J=1,JM
-       do I=1,IM
-         do L=LM-1,SMTH_LEV(I,J),-1
-            TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
-            USM(I,J,L) =   U(I,J,L-1)*0.25 +   U(I,J,L)*0.50 +   U(I,J,L+1)*0.25
-            VSM(I,J,L) =   V(I,J,L-1)*0.25 +   V(I,J,L)*0.50 +   V(I,J,L+1)*0.25
+        TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+        USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
+        VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
+        do J=1,JM
+         do I=1,IM
+           do L=LM-1,SMTH_LEV(I,J),-1
+              TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
+              USM(I,J,L) =   U(I,J,L-1)*0.25 +   U(I,J,L)*0.50 +   U(I,J,L+1)*0.25
+              VSM(I,J,L) =   V(I,J,L-1)*0.25 +   V(I,J,L)*0.50 +   V(I,J,L+1)*0.25
+           end do
          end do
-       end do
-      end do
+        end do
+      else
+        TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+        do J=1,JM
+         do I=1,IM
+           do L=LM-1,SMTH_LEV(I,J),-1
+              TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
+           end do
+         end do
+        end do
       end if
       RHOE(:,:,1:LM-1)=PLE(:,:,1:LM-1)/(MAPL_RGAS*TVE) 
       RHOE(:,:,0)=PLE(:,:,0)/(MAPL_RGAS*TV(:,:,1))
@@ -3723,7 +3732,7 @@ contains
        call surface_layer(IM, JM, LM, &
                           SCM_SL_FLUX, SCM_Z0, &
                           zpbl, ssurf_scm, qsurf_scm, &
-                          z, zle, ple, rhoe, u, v, T, q, thv, &
+                          z, zle0, ple, rhoe, u, v, T, q, thv, &
                           sh_scm, evap_scm, zeta_scm, &
                           ustar_scm, cu_scm, ct_scm)
 
@@ -3759,7 +3768,7 @@ contains
     IF(DoMF /= 0) then
 
       call RUN_EDMF(1, IM*JM, 1, LM, DT,      & ! in
-               PHIS, Z, ZLE, PLE, RHOE,       & ! in
+               PHIS, Z, ZL0, PLE, RHOE,       & ! in
                NUMUP, U, V, T, THL, THV, QT,  & ! in
                Q, QL, QI, USTAR,              & ! in
                SH, EVAP, frland, zpbl,        & ! in
@@ -3955,7 +3964,7 @@ contains
                        !== Inputs ==
                        DT/DMI(:,:,1:LM),      &
                        PLO(:,:,1:LM),         &
-                       ZLE(:,:,0:LM),         &
+                       ZL0(:,:,0:LM),         &
                        Z(:,:,1:LM),           &
                        U(:,:,1:LM),           &
                        V(:,:,1:LM),           &
@@ -4163,7 +4172,7 @@ contains
                   V_dev        = V
                   ZFULL_dev    = Z
                   PFULL_dev    = PLO
-         ZHALF_dev(:,:,1:LM+1) = ZLE(:,:,0:LM)
+         ZHALF_dev(:,:,1:LM+1) = ZL0(:,:,0:LM)
          PHALF_dev(:,:,1:LM+1) = PLE(:,:,0:LM)
 
          ! Inoutputs - Lock
@@ -4396,7 +4405,7 @@ contains
                       V,                        &
                       Z,                        &
                       PLO,                      &
-                      ZLE,                      &
+                      ZL0,                      &
                       PLE,                      &
                       ! Inoutputs
                       KM,                       &
@@ -4458,9 +4467,9 @@ contains
           TKE = MAPL_UNDEF
           do L = 1,LM-1
             TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
-            (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
-            (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
+            ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5)  *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+            (KM(:,:,L)*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
+            (KM(:,:,L)*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
             TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
           enddo
 
@@ -4523,12 +4532,16 @@ contains
 
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF
+
+       if (LM .eq. 72) then
+         thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
          tcrib(:,:,LM) = 0.0
          do I = 1, IM
             do J = 1, JM
                do L=LM-1,1,-1
+                  thetavh(I,J) = T(I,J,L)*(1.0+MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))*(TH(I,J,L)/T(I,J,L))
                   uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2,1.0E-8)
-                  tcrib(I,J,L) = MAPL_GRAV*(THV(I,J,L)-THV(I,J,LM))*Z(I,J,L)/(THV(I,J,LM)*uv2h(I,J))
+                  tcrib(I,J,L) = MAPL_GRAV*(thetavh(I,J)-thetavs(I,J))*Z(I,J,L)/(thetavs(I,J)*uv2h(I,J))
                   if (tcrib(I,J,L) >= tcri_crit) then
                      TCZPBL(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
                      KPBLTC(I,J) = float(L)
@@ -4537,6 +4550,23 @@ contains
                end do
             end do
          end do
+       else
+         tcrib(:,:,LM) = 0.0
+         do I = 1, IM
+            do J = 1, JM
+               do L=LM-1,1,-1
+                  uv2h(I,J) = max(USM(I,J,L)**2+VSM(I,J,L)**2,1.0E-8)
+                  tcrib(I,J,L) = MAPL_GRAV*(TSM(I,J,L)-TSM(I,J,LM))*Z(I,J,L)/(TSM(I,J,LM)*uv2h(I,J))
+                  if (tcrib(I,J,L) >= tcri_crit) then
+                     TCZPBL(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                     KPBLTC(I,J) = float(L)
+                     exit
+                  end if
+               end do
+            end do
+         end do
+       endif
+
          where (TCZPBL<0.)
             TCZPBL = Z(:,:,LM)
             KPBLTC = float(LM)
@@ -4609,8 +4639,8 @@ contains
                do L=LM-1,2,-1
                   if ( (temparray(L) < 0.1*maxkh) .and. (temparray(L+1) >= 0.1*maxkh)  &
                   .and. (ZPBL10p(I,J) == MAPL_UNDEF ) ) then
-                     ZPBL10p(I,J) = ZLE(I,J,L)+ &
-                  ((ZLE(I,J,L-1)-ZLE(I,J,L))/(temparray(L)-temparray(L+1))) * (0.1*maxkh-temparray(L+1))
+                     ZPBL10p(I,J) = ZL0(I,J,L)+ &
+                  ((ZL0(I,J,L-1)-ZL0(I,J,L))/(temparray(L)-temparray(L+1))) * (0.1*maxkh-temparray(L+1))
                      KPBL10p(I,J) = float(L)
                   end if
                end do
@@ -4939,14 +4969,14 @@ contains
 !EOP
 
       call MAPL_TimerOn(MAPL,"---BELJAARS")
-
+      if (C_B /= 0.0) then
       call BELJAARS(IM, JM, LM, DT, &
                     LAMBDA_B, C_B,  &
                     KPBL, &
                     U, V, Z, AREA,  &
                     VARFLT, PLE,    &
                     BKV, BKUU, FKV  )
-
+      endif
       call MAPL_TimerOff(MAPL,"---BELJAARS")
 
       call MAPL_TimerOn(MAPL,"---DECOMP")
@@ -5532,6 +5562,7 @@ end subroutine RUN1
       real, dimension(IM,JM,LM)           :: DP, SX
       real, dimension(IM,JM,LM-1)         :: DF
       real, dimension(IM,JM,LM)           :: QT,SL,U,V,ZLO
+      real, dimension(IM,JM,0:LM)         :: ZL0
       integer, allocatable                :: KK(:)
       !  pointers to export of S after update
       real, dimension(:,:,:), pointer     :: SAFUPDATE
@@ -5712,18 +5743,21 @@ end subroutine RUN1
 
       DP = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
 
-      ZLO = 0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1))
+      do L=0,LM
+         ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! height above the surface 
+      enddo
+      ZLO = 0.5*(ZL0(:,:,1:LM)+ZL0(:,:,0:LM-1))
 
 ! Diagnostics
       call MAPL_GetPointer(EXPORT, HGTLM5 ,  'HGTLM5' , RC=STATUS); VERIFY_(STATUS)
       if(associated(HGTLM5)) then
-         HGTLM5 = ZLE(:,:,LM-5)
+         HGTLM5 = ZL0(:,:,LM-5)
       end if
       call MAPL_GetPointer(EXPORT, LM50M ,  'LM50M' , RC=STATUS); VERIFY_(STATUS)
       if(associated(LM50M)) then
          LM50M = LM
          do L=LM,2,-1
-            where (ZLE(:,:,L) <= 150. .and. ZLE(:,:,L-1) > 150.)
+            where (ZL0(:,:,L) <= 150. .and. ZL0(:,:,L-1) > 150.)
                LM50M=L-1
             endwhere
          enddo
@@ -5731,7 +5765,7 @@ end subroutine RUN1
 
       L200=LM
       do L=LM,2,-1
-         where (ZLE(:,:,L) <= 200. .and. ZLE(:,:,L-1) > 200.)
+         where (ZL0(:,:,L) <= 200. .and. ZL0(:,:,L-1) > 200.)
             L200=L-1
          endwhere
       enddo
@@ -5789,21 +5823,21 @@ end subroutine RUN1
 
          L500=1.
          do L=LM,2,-1
-            where (ZLE(:,:,L) <= z500 .and. ZLE(:,:,L-1) > z500)     
+            where (ZL0(:,:,L) <= z500 .and. ZL0(:,:,L-1) > z500)     
                L500=L-1    
             endwhere
          enddo
 
          L1500=1.
          do L=LM,2,-1
-            where (ZLE(:,:,L) <= z1500 .and. ZLE(:,:,L-1) > z1500)    
+            where (ZL0(:,:,L) <= z1500 .and. ZL0(:,:,L-1) > z1500)    
                L1500=L-1
             endwhere
          enddo
 
          L7000=1.
          do L=LM,2,-1
-            where (ZLE(:,:,L) <= z7000 .and. ZLE(:,:,L-1) > z7000)    
+            where (ZL0(:,:,L) <= z7000 .and. ZL0(:,:,L-1) > z7000)    
                L7000=L-1
             endwhere
          enddo

@@ -189,7 +189,7 @@ subroutine gw_rdg_ifc( &
 
    !---------------------------Local storage-------------------------------
 
-   integer :: k, m, nn, icnst
+   integer :: i, k, m, nn, icnst
 
    real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
    ! gravity wave wind tendency for each wave
@@ -285,16 +285,19 @@ subroutine gw_rdg_ifc( &
    vtrdg = 0.
    ttrdg = 0.
   
-!WMP pressure scaling near model top
-!  zfac_layer = 1000.0 ! 10mb
-!  pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
-   pint_adj = 1.0
-!  pint_adj = 0.1 + (0.9/19.0) * &
-!                   ((ATAN((2.*(pint-10000.0)/(75000.0-10000.0)-1.) * TAN(20.*pi/21.-0.5*pi)) + 0.5*pi) * 21./pi - 1.)
+!GEOS pressure scaling near model top
+   zfac_layer = 1000.0 ! 10mb
+   do k=1,pver+1 
+     do i=1,ncol
+       pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
+     enddo
+   enddo
+! AVOID this code in favor of tndmax limiter
 !  adjust strength from surface (1.0) to 10,000m (0.1)
 !  do k=1,pver+1 
 !    pint_adj(:,k)= 0.1 + PINTADJ_0 * ((ATAN((2.*(z+zi(:,k)-2500.0)/(-2500.0)-1.) * PINTADJ_1) + PINTADJ_2) * PINTADJ_3 - 1.)
 !  enddo
+! AVOID this code in favor of tndmax limiter
 
    isoflag = 0
  
