@@ -3572,8 +3572,8 @@ contains
       TSCOSP = reshape( TS , (/ IM*JM /) )
 
       ZLE2D  = reshape( ZLE, (/ IM*JM , LM+1 /) )
-      do k = 1,LM+1
-         ZLE2D(:,k) = ZLE2D(:,k)-ZLE2D(:,LM+1)
+      do k = 0,LM
+         ZLE2D(:,k) = ZLE2D(:,k)-ZLE2D(:,LM)
       enddo
       ZLECOSP = ZLE2D(:,LM:0:-1)
       ZLO2D =  0.5*( ZLE2D(:,0:LM-1)+ZLE2D(:,1:LM))
