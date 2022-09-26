@@ -628,7 +628,7 @@ PROGRAM mkSMAPTilesPara_v2
               print *,'Total Land Area :', sum(tile_area(1:l_index))* MAPL_RADIUS * MAPL_RADIUS/1000./1000., &
                    sum(tile_area_land(1:l_index))* MAPL_RADIUS * MAPL_RADIUS/1000./1000.
 
-      print *,'Creating ... ', trim(gfile)//'rst'
+      print *,'Creating ... ', trim(gfile)//'.rst'
 
      !-------------------------------------------
 
@@ -641,7 +641,7 @@ PROGRAM mkSMAPTilesPara_v2
       
       close (10,status='keep')
 
-      print *,'Creating ... ', trim(gfile)//'til ,catchment.def'
+      print *,'Creating ... ', trim(gfile)//'.til ,catchment.def'
  
     !-----------------------------------------------------------
 
