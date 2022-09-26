@@ -43,7 +43,7 @@ PROGRAM mkCatchParam
   integer              :: I, J, command_argument_count, nxt
   real*8               :: dx, dy, lon0
   logical              :: regrid
-  character(len=400), dimension (8) ::  Usage 
+  character(len=400), dimension (6) ::  Usage 
   character*128        ::  Grid2
   character*2          :: poles
   character*128        :: GridNameR = ''
