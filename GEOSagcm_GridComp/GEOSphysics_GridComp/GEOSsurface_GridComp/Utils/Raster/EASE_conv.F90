@@ -225,10 +225,11 @@ contains
   
   ! *******************************************************************
   
-  subroutine ease_extent (EASELabel, cols, rows )
+  subroutine ease_extent (EASELabel, cols, rows, CELL_area )
 
-    character*(*), intent(in)  :: EASELabel
-    integer,       intent(out) :: cols, rows
+    character*(*),   intent(in)  :: EASELabel
+    integer,         intent(out) :: cols, rows
+    real, optional, intent(out):: CELL_area
 
     real*8                     :: map_scale_m, CELL_km, r0, s0, Rg
     character(3)               :: grid
@@ -250,8 +251,10 @@ contains
     
     if(     index(EASELabel,'EASEv2') /=0) then
        call easeV2_get_params(grid, map_scale_m, cols, rows, r0, s0)
+       if(present(CELL_area)) CELL_area = map_scale_m**2 / 1000.0 / 1000.0
     else if(index(EASELabel,'EASEv1') /=0) then
        call easeV1_get_params(grid, CELL_km, cols, rows, r0, s0, Rg)
+       if(present(CELL_area)) CELL_area = Cell_km**2
     else
        print*,"ease_extent(): unknown grid version: "//trim(EASELabel)//"  STOPPING."
        stop
