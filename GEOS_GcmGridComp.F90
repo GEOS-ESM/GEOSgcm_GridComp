@@ -81,6 +81,9 @@ type T_GCM_STATE
    character(len=ESMF_MAXSTR) :: checkpointFileType = ''
    type(ESMF_GridComp)        :: history_parent
    logical                    :: run_history = .false.
+   logical                    :: gsi_coupling = .false.
+   integer                    :: gsicpl_interval
+   integer                    :: gsicpl_maxchecks
 end type T_GCM_STATE
 
 ! Wrapper for extracting internal state
@@ -1236,6 +1239,8 @@ contains
           endif
        endif
 
+       ! Check for GSI coupling, only works with regular replay (cakelle2, 9/28/2022)
+       call check_gsi_coupling(_RC)
     end if
 
 ! **********************************************************************
@@ -1386,6 +1391,29 @@ contains
 
      _RETURN(_SUCCESS)
    end subroutine initialize_history
+
+   subroutine check_gsi_coupling(rc)
+     integer, optional, intent(out) :: rc
+     integer :: gsi_coupling, status
+     ! check for GSI coupling
+     call MAPL_GetResource(MAPL, gsi_coupling, Label="GSI_COUPLING:", default=0, rc=status)
+     VERIFY_(STATUS)
+     gcm_internal_state%gsi_coupling     = (gsi_coupling==1)
+     gcm_internal_state%gsicpl_interval  = -1
+     gcm_internal_state%gsicpl_maxchecks = -1
+     if ( gcm_internal_state%gsi_coupling ) then
+       call MAPL_GetResource(MAPL, gcm_internal_state%gsicpl_interval, Label="GSI_INTERVAL_SEC:", default=30, rc=status)
+       VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, gcm_internal_state%gsicpl_maxchecks, Label="GSI_MAXCHECKS:", default=120, rc=status)
+       VERIFY_(STATUS)
+       IF(MAPL_AM_I_ROOT()) then
+          PRINT *,'GSI coupling turned on, settings: '
+          PRINT *,' -- GSI_INTERVAL_SEC: ', gcm_internal_state%gsicpl_interval
+          PRINT *,' -- GSI_MAXCHECKS   : ', gcm_internal_state%gsicpl_maxchecks
+       ENDIF
+     endif
+     _RETURN(_SUCCESS)
+   end subroutine check_gsi_coupling 
 
    subroutine AllocateExports(STATE, NAMES, RC)
      type(ESMF_State)          , intent(INOUT) ::  STATE
@@ -1815,6 +1843,14 @@ contains
                    if (ct ==replayTime) exit
                  enddo
              endif
+
+             ! eventually wait for GSI before continuing with the predictor step
+             ! -----------------------------------------------------------------
+             if ( gcm_internal_state%gsi_coupling ) then
+                call run_gsi_coupling(_RC)
+             endif
+
+
              if( MAPL_AM_I_Root() ) then
                 print *
                 print *, 'Continue  AGCM Replay ...'
@@ -1937,6 +1973,50 @@ contains
        _RETURN(_SUCCESS)
  
      end subroutine run_history
+
+     subroutine run_gsi_coupling(rc)
+       integer, optional, intent(out) :: rc
+       integer :: status
+       integer :: nchecks
+       integer :: istat
+       logical :: checkpoint_exist
+       character(len=ESMF_MAXSTR) :: checkpointfile 
+
+       if( MAPL_AM_I_Root() ) then
+          print *
+          print *, 'Coupling with GSI...'
+          print *
+       endif
+       call MAPL_DateStampGet(clock, datestamp, rc=status)
+       VERIFY_(STATUS)
+       ! Create gsi restart file with current time stamp in it. This will tell GSI to do the analysis 
+       IF ( MAPL_am_I_Root() ) THEN
+          open(333,file='gsi_restart.runme',status='new')
+          write(333,'(a15)') datestamp(1:8)//' '//datestamp(10:13)//'00'
+          close(333)
+          write(*,*) 'written gsi_restart.runme - now waiting for GSI do run/finish'
+       ENDIF
+       ! Repeatedly check if the gsi checkpoint file exists (--> GSI has finished)
+       CHECKPOINTFILE = 'gsi_done.e'//trim(datestamp)
+       CHECKPOINT_EXIST = .FALSE.
+       NCHECKS = 0
+       DO WHILE ( .NOT. CHECKPOINT_EXIST )
+          INQUIRE( FILE=TRIM(CHECKPOINTFILE), EXIST=CHECKPOINT_EXIST )
+          IF ( CHECKPOINT_EXIST ) THEN
+             if ( MAPL_AM_I_Root() ) write(*,*) 'Checkpoint file found - resuming run after nchechks=',NCHECKS
+          ELSE
+             NCHECKS = NCHECKS + 1
+             IF ( NCHECKS >= gcm_internal_state%gsicpl_maxchecks ) THEN
+                write(*,*) 'Exceeded max. number of checks (b) - will crash! Missing file: ',TRIM(CHECKPOINTFILE)
+                _ASSERT(.FALSE.,'Exceeded max. number of gsi coupling checks')
+             ENDIF
+             if ( MAPL_AM_I_Root() ) write(*,*) 'Checkpoint file not found - go to sleep!'
+             CALL SLEEP( gcm_internal_state%gsicpl_interval )
+          ENDIF
+       ENDDO
+       _RETURN(_SUCCESS)
+
+     end subroutine run_gsi_coupling
 
      subroutine RUN_OCEAN(phase, rc)
        integer, optional, intent(IN)  :: phase
