@@ -1286,10 +1286,6 @@ if( $grid == ease ) then
   #else
   #  set EASEVERSION = EASEv2
   #endif
-  if ( $EASEVERSION == EASEv1 ) then
-    ## for easev1, default values
-    set lbcsv = UNDEF
-  endif
 
   set RS  = ${im}x${jm}
   set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
@@ -1353,7 +1349,7 @@ limit stacksize unlimited
 
 setenv MASKFILE ${MASKFILE}
 setenv OMP_NUM_THREADS 1
-bin/mkEASETilesParam.x -ease_label ${BCNAME} -v $lbcsv
+bin/mkEASETilesParam.x -ease_label ${BCNAME} 
 
 setenv OMP_NUM_THREADS 1
 bin/mkCatchParam.x -g ${BCNAME} -v $lbcsv -x ${NX} -y ${NY}

@@ -15,7 +15,8 @@ PROGRAM mkEASETilesParam
   
 
       use EASE_conv
-      use rmTinyCatchParaMod
+      use rmTinyCatchParaMod, only : i_raster, j_raster, SRTM_maxcat 
+      use rmTinyCatchParaMod, only : RegridRaster, RegridRaster1, RegridRasterReal
       use process_hres_data
       use MAPL_SortMod
       use MAPL_ConstantsMod
@@ -23,7 +24,6 @@ PROGRAM mkEASETilesParam
       use netcdf
       
       implicit none
-      character*5          :: LBCSV = 'UNDEF'
       integer i,j,ig,jg,i0,iop,n,d1,d2,j1,j2,i1,i2,ix, jx,icount,pcount
       integer :: NC = i_raster, NR = j_raster, NT = 16330000, ND = 10000, ND_raster = 10000
       
@@ -78,7 +78,7 @@ PROGRAM mkEASETilesParam
 
       ! --------------------------------------------------------------------------------------
 
-      usage1 = 'USAGE : bin/mkEASETilesParam.x -ease_label EASELabel -v LBCSV                  '
+      usage1 = 'USAGE : bin/mkEASETilesParam.x -ease_label EASELabel                  '
       usage2 = '        where EASELabel = *EASEv[x]_M[yy]*, x={1,2}, yy={01,03,09,25,36}'
 
       N_args = command_argument_count()
@@ -106,9 +106,9 @@ PROGRAM mkEASETilesParam
          !   call get_command_argument(i,PF)
          !   if (PF == 'T') pfaf_til = .true.
 
-         elseif ( trim(arg) == '-v' ) then
-            i = i+1
-            call get_command_argument(i,LBCSV)
+         !elseif ( trim(arg) == '-v' ) then
+         !   i = i+1
+         !   call get_command_argument(i,LBCSV)
 
          else ! stop for any other arguments
             print *,trim(usage1)
