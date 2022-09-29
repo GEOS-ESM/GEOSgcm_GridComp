@@ -1378,10 +1378,9 @@ subroutine SetServices ( GC, RC )
 
   if (SNOW_ALBEDO_INFO == 1) then
     call MAPL_AddInternalSpec(GC                  ,&
-       LONG_NAME          = 'snow_albedo'               ,&
+       LONG_NAME          = 'effective_snow_albedo'               ,&
        UNITS              = '1'                         ,&
        SHORT_NAME         = 'SNOWALB'                   ,&
-       DEFAULT            = MAPL_UNDEF                  ,&
        FRIENDLYTO         = trim(COMP_NAME)             ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&

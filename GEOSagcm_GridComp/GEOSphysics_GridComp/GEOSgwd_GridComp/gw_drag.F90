@@ -20,105 +20,15 @@ module gw_drag
   implicit none
 
   !save
-#ifndef _CUDA
   private                          ! Make default type private to the module
 !
 ! PUBLIC: interfaces
 !
   public gw_intr                   ! interface to actual parameterization
-#endif
 
 !
 ! PRIVATE: Rest of the data and interfaces are private to this module
 !
-
-#ifdef _CUDA
-
-  ! Inputs
-  ! ------
-
-  real, allocatable, dimension(:,:), device :: pint_dev     ! pressure at the layer edges
-  real, allocatable, dimension(:,:), device :: t_dev        ! temperature at layers
-  real, allocatable, dimension(:,:), device :: u_dev        ! zonal wind at layers
-  real, allocatable, dimension(:,:), device :: v_dev        ! meridional wind at layers
-  real, allocatable, dimension(:  ), device :: sgh_dev      ! standard deviation of orography
-  real, allocatable, dimension(:  ), device :: pref_dev     ! reference pressure at the layeredges
-  real, allocatable, dimension(:,:), device :: pmid_dev     ! pressure at the layers
-  real, allocatable, dimension(:,:), device :: pdel_dev     ! pressure thickness at the layers
-  real, allocatable, dimension(:,:), device :: rpdel_dev    ! 1.0 / pdel
-  real, allocatable, dimension(:,:), device :: lnpint_dev   ! log(pint)
-  real, allocatable, dimension(:,:), device :: zm_dev       ! height above surface at layers
-  real, allocatable, dimension(:  ), device :: rlat_dev     ! latitude in radian
-
-  ! Inoutputs
-  ! ---------
-
-  ! Outputs
-  ! -------
-
-  real, allocatable, dimension(:,:), device :: dudt_gwd_dev ! zonal wind tendency at layer 
-  real, allocatable, dimension(:,:), device :: dvdt_gwd_dev ! meridional wind tendency at layer 
-  real, allocatable, dimension(:,:), device :: dtdt_gwd_dev ! temperature tendency at layer
-  real, allocatable, dimension(:,:), device :: dudt_org_dev ! zonal wind tendency at layer due to orography GWD
-  real, allocatable, dimension(:,:), device :: dvdt_org_dev ! meridional wind tendency at layer  due to orography GWD
-  real, allocatable, dimension(:,:), device :: dtdt_org_dev ! temperature tendency at layer  due to orography GWD
-  real, allocatable, dimension(:  ), device :: taugwdx_dev  ! zonal      gravity wave surface    stress
-  real, allocatable, dimension(:  ), device :: taugwdy_dev  ! meridional gravity wave surface    stress
-  real, allocatable, dimension(:,:), device :: tauox_dev    ! zonal      orographic gravity wave stress
-  real, allocatable, dimension(:,:), device :: tauoy_dev    ! meridional orographic gravity wave stress
-  real, allocatable, dimension(:,:), device :: feo_dev      ! energy flux of orographic gravity waves
-  real, allocatable, dimension(:,:), device :: fepo_dev     ! pseudoenergy flux of orographic gravity waves
-  real, allocatable, dimension(:  ), device :: taubkgx_dev  ! zonal      gravity wave background stress
-  real, allocatable, dimension(:  ), device :: taubkgy_dev  ! meridional gravity wave background stress
-  real, allocatable, dimension(:,:), device :: taubx_dev    ! zonal      background gravity wave stress
-  real, allocatable, dimension(:,:), device :: tauby_dev    ! meridional background gravity wave stress
-  real, allocatable, dimension(:,:), device :: feb_dev      ! energy flux of background gravity waves
-  real, allocatable, dimension(:,:), device :: fepb_dev     ! pseudoenergy flux of background gravity waves
-  real, allocatable, dimension(:,:), device :: utbsrc_dev   ! dU/dt below background launch level
-  real, allocatable, dimension(:,:), device :: vtbsrc_dev   ! dV/dt below background launch level
-  real, allocatable, dimension(:,:), device :: ttbsrc_dev   ! dT/dt below background launch level
-
-  ! ------------
-  ! GEOPOTENTIAL
-  ! ------------
-
-  ! Inputs
-  ! ------
-
-  real, allocatable, dimension(:,:), device :: pmln_dev   ! Log midpoint pressures
-  real, allocatable, dimension(:,:), device :: q_dev      ! specific humidity
-
-  ! Outputs
-  ! -------
-
-  real, allocatable, dimension(:,:), device :: zi_dev     ! Height above surface at interfaces
-
-  ! --------
-  ! POSTINTR
-  ! --------
-
-  ! Outputs
-  ! -------
-
-  real, allocatable, dimension(:,:), device :: dudt_tot_dev ! Tendency of eastward wind due to GWD
-  real, allocatable, dimension(:,:), device :: dvdt_tot_dev ! Tendency of northward wind due to GWD
-  real, allocatable, dimension(:,:), device :: dtdt_tot_dev ! Tendency of air temperature due to GWD
-
-  real, allocatable, dimension(:,:), device :: dudt_rah_dev ! Tendency of eastward wind due to Rayleigh friction
-  real, allocatable, dimension(:,:), device :: dvdt_rah_dev ! Tendency of northward wind due to Rayleigh friction
-  real, allocatable, dimension(:,:), device :: dtdt_rah_dev ! Tendency of air temperature due to Rayleigh friction
-
-  real, allocatable, dimension(:  ), device :: pegwd_dev    ! Potential energy tendency across GWD
-  real, allocatable, dimension(:  ), device :: peoro_dev    ! Potential energy tendency due to orographic gravity
-  real, allocatable, dimension(:  ), device :: peray_dev    ! Potential energy tendency due to Rayleigh friction
-  real, allocatable, dimension(:  ), device :: pebkg_dev    ! Potential energy tendency due to gw background
-  real, allocatable, dimension(:  ), device :: kegwd_dev    ! Kinetic energy tendency across GWD
-  real, allocatable, dimension(:  ), device :: keoro_dev    ! Kinetic energy tendency due to orographic gravity
-  real, allocatable, dimension(:  ), device :: keray_dev    ! Kinetic energy tendency due to Rayleigh friction
-  real, allocatable, dimension(:  ), device :: kebkg_dev    ! Kinetic energy tendency due to gw background
-  real, allocatable, dimension(:  ), device :: keres_dev    ! Kinetic energy residual for total energy conservation
-  real, allocatable, dimension(:  ), device :: bkgerr_dev   ! Kinetic energy residual for BKG energy conservation
-#endif
 
   real, parameter :: KWVB    = 6.28e-5        ! effective horizontal wave number for background
   real, parameter :: KWVBEQ  = 6.28e-5/7.     ! effective horizontal wave number for background
@@ -146,14 +56,6 @@ contains
 
 !===============================================================================
 
-! GPU: The GPU call has a different structure only due to limitations of
-!      CUDA. CUDA doesn't support calls with too many variables, so we must
-!      use USE association to get around this. Hopefully this will change
-!      in the future.
-
-#ifdef _CUDA
-  attributes(global) subroutine gw_intr (pcols,pver,dt,pgwv, bgstressmax, effgworo, effgwbkg)
-#else
   subroutine gw_intr   (pcols,        pver,         dt,         pgwv,              &
           pint_dev,     t_dev,        u_dev,        v_dev,      sgh_dev, pref_dev, &
           pmid_dev,     pdel_dev,     rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
@@ -163,22 +65,11 @@ contains
           taubkgx_dev,  taubkgy_dev,  taubx_dev,    tauby_dev,  feb_dev,           &
           fepo_dev,     fepb_dev,     utbsrc_dev,   vtbsrc_dev, ttbsrc_dev,        &
           bgstressmax,  effgworo,     effgwbkg,     rc            )
-#endif
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
 !-----------------------------------------------------------------------
 
-#ifdef _CUDA
-!------------------------------Arguments--------------------------------
-    integer, intent(in), value :: pcols ! number of columns
-    integer, intent(in), value :: pver  ! number of vertical layers
-    real,    intent(in), value :: dt    ! time step
-    integer, intent(in), value :: pgwv  ! number of waves allowed (Default = 4, 0 nullifies)
-    real   , intent(in), value :: bgstressmax  ! Max of equatorial profile of BG stress factor
-    real,    intent(in), value :: effgwbkg     ! tendency efficiency for background gwd (Default = 0.125)
-    real,    intent(in), value :: effgworo     ! tendency efficiency for orographic gwd (Default = 0.125)
-#else
 !------------------------------Arguments--------------------------------
     integer, intent(in   ) :: pcols                    ! number of columns
     integer, intent(in   ) :: pver                     ! number of vertical layers
@@ -223,18 +114,6 @@ contains
     real,    intent(  out) :: ttbsrc_dev(pcols,pver)   ! dT/dt below background launch level
 
     integer, optional, intent(out) :: RC               ! return code
-#endif
-
-! GPU: CUDA must know the size of local arrays during compile-time. Thus, the automatic
-!      arrays below are static. These ifdefs make them automatic on the CPU.
-
-#ifndef GPU_MAXLEVS
-#define GPU_MAXLEVS pver
-#endif
-
-#ifndef MAXPGWV
-#define MAXPGWV pgwv
-#endif
 
 !---------------------------Local storage-------------------------------
 
@@ -247,33 +126,33 @@ contains
     integer :: ksrc                     ! index of top interface of source region
     integer :: ksrcmn                   ! min value of ksrc
 
-    real    :: ttgw(GPU_MAXLEVS)            ! temperature tendency
-    real    :: utgw(GPU_MAXLEVS)            ! zonal wind tendency
-    real    :: vtgw(GPU_MAXLEVS)            ! meridional wind tendency
+    real    :: ttgw(pver)            ! temperature tendency
+    real    :: utgw(pver)            ! zonal wind tendency
+    real    :: vtgw(pver)            ! meridional wind tendency
 
-    real    :: ni(0:GPU_MAXLEVS)                   ! interface Brunt-Vaisalla frequency
-    real    :: nm(GPU_MAXLEVS)                     ! midpoint Brunt-Vaisalla frequency
+    real    :: ni(0:pver)                   ! interface Brunt-Vaisalla frequency
+    real    :: nm(pver)                     ! midpoint Brunt-Vaisalla frequency
     real    :: rdpldv                              ! 1/dp across low level divergence region
-    real    :: rhoi(0:GPU_MAXLEVS)                 ! interface density
-    real    :: tau(-MAXPGWV:MAXPGWV,0:GPU_MAXLEVS) ! wave Reynolds stress
+    real    :: rhoi(0:pver)                 ! interface density
+    real    :: tau(-pgwv:pgwv,0:pver) ! wave Reynolds stress
     real    :: tau0x                               ! c=0 sfc. stress (zonal)
     real    :: tau0y                               ! c=0 sfc. stress (meridional)
-    real    :: ti(0:GPU_MAXLEVS)                   ! interface temperature
-    real    :: ubi(0:GPU_MAXLEVS)                  ! projection of wind at interfaces
-    real    :: ubm(GPU_MAXLEVS)                    ! projection of wind at midpoints
+    real    :: ti(0:pver)                   ! interface temperature
+    real    :: ubi(0:pver)                  ! projection of wind at interfaces
+    real    :: ubm(pver)                    ! projection of wind at midpoints
     real    :: xv                                  ! unit vectors of source wind (x)
     real    :: yv                                  ! unit vectors of source wind (y)
 
-    real    :: utosrc(GPU_MAXLEVS)
-    real    :: vtosrc(GPU_MAXLEVS)
-    real    :: ttosrc(GPU_MAXLEVS)
+    real    :: utosrc(pver)
+    real    :: vtosrc(pver)
+    real    :: ttosrc(pver)
 
-    real    :: alpha(0:GPU_MAXLEVS)     ! newtonian cooling coefficients
-    real    :: dback(0:GPU_MAXLEVS)     ! newtonian cooling coefficients
-    real    :: c  (-MAXPGWV:MAXPGWV)      ! wave phase speeds
+    real    :: alpha(0:pver)     ! newtonian cooling coefficients
+    real    :: dback(0:pver)     ! newtonian cooling coefficients
+    real    :: c  (-pgwv:pgwv)      ! wave phase speeds
     real    :: c4
-    real    :: cw (-MAXPGWV:MAXPGWV)      ! wave phase speeds
-    real    :: cw4(-MAXPGWV:MAXPGWV)      ! wave phase speeds
+    real    :: cw (-pgwv:pgwv)      ! wave phase speeds
+    real    :: cw4(-pgwv:pgwv)      ! wave phase speeds
 
 !-----------------------------------------------------------------------------
 
@@ -296,13 +175,7 @@ contains
 
     cw = cw*(sum(cw4)/sum(cw))
 
-#ifdef _CUDA
-    i = (blockidx%x - 1) * blockdim%x + threadidx%x
-
-    I_LOOP: if ( i <= pcols ) then
-#else
     I_LOOP: do i = 1, pcols
-#endif
 
 ! Assign newtonian cooling coefficients
 ! -------------------------------------
@@ -433,20 +306,13 @@ contains
        taugwdx_dev(i) = tau0x
        taugwdy_dev(i) = tau0y
 
-#ifndef _CUDA
     end do I_LOOP
     rc = 0
-#else
-    end if I_LOOP
-#endif 
 
     return
   end subroutine gw_intr
 
 !================================================================================
-#ifdef _CUDA
-  attributes(device) &
-#endif
   subroutine gw_prof (i, k, pcols, pver, u, v, t, pm, pi, rhoi, ni, ti, nm)
 !-----------------------------------------------------------------------
 ! Compute profiles of background state quantities for the multiple
@@ -516,9 +382,6 @@ contains
 
 !================================================================================
 
-#ifdef _CUDA
-  attributes(device) &
-#endif
   subroutine gw_oro (i, pcols, pver, pgwv, &
        u, v, t, sgh, pm, pi, dpm, zm, nm,  &
        kldv, kldvmn, ksrc, ksrcmn, rdpldv, &
@@ -709,9 +572,6 @@ contains
   end subroutine gw_oro
 
 !===============================================================================
-#ifdef _CUDA
-  attributes(device) &
-#endif
   subroutine gw_bgnd (i, pcols, pver, cw,       &
        u, v, t, pm, pi, dpm, rdpm, piln, rlat,  &
        kldv, kldvmn, ksrc, ksrcmn, rdpldv, tau, &
@@ -850,9 +710,6 @@ contains
   end subroutine gw_bgnd
 
 !===============================================================================
-#ifdef _CUDA
-  attributes(device) &
-#endif
   subroutine gw_drag_prof (i,     pcols, pver,           &
              pgwv,  ngwv,  kbot,  ktop,  c,     u,       &
              v,     t,     pi,    dpm,   rdpm,  piln,    &
