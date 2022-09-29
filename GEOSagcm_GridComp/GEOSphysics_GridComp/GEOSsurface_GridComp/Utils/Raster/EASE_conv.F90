@@ -229,7 +229,7 @@ contains
 
     character*(*),   intent(in)  :: EASELabel
     integer,         intent(out) :: cols, rows
-    real, optional, intent(out):: CELL_area
+    real, optional,  intent(out) :: CELL_area
 
     real*8                     :: map_scale_m, CELL_km, r0, s0, Rg
     character(3)               :: grid
