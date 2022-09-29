@@ -33,45 +33,12 @@ module GEOS_GwdGridCompMod
   use ESMF
   use MAPL
 
-#ifdef _CUDA
-  use gw_drag, only: &
-        ! Subroutines
-        GW_INTR, &
-        ! Working Arrays
-        ZM_DEV, LNPINT_DEV, PMLN_DEV, PMID_DEV, &
-        RPDEL_DEV, &
-        ! Inputs - PREGEO
-        PINT_DEV, RLAT_DEV, &
-        ! Outputs - PREGEO
-        PDEL_DEV, &
-        ! Inputs - GEOPOT
-        T_DEV, Q_DEV, &
-        ! Outputs - GEOPOT
-        ZI_DEV, &
-        ! Inputs - INTR
-        U_DEV, V_DEV, SGH_DEV, PREF_DEV, &
-        ! Outputs - INTR
-        DUDT_GWD_DEV, DVDT_GWD_DEV, DTDT_GWD_DEV, &
-        DUDT_ORG_DEV, DVDT_ORG_DEV, DTDT_ORG_DEV, &
-        TAUGWDX_DEV, TAUGWDY_DEV, TAUOX_DEV, TAUOY_DEV, &
-        FEO_DEV, FEPO_DEV,  TAUBKGX_DEV, TAUBKGY_DEV, &
-        TAUBX_DEV, TAUBY_DEV,  FEB_DEV, FEPB_DEV, &
-        UTBSRC_DEV, VTBSRC_DEV, TTBSRC_DEV, &
-        ! Outputs - POSTINTR
-        DUDT_TOT_DEV, DVDT_TOT_DEV, DTDT_TOT_DEV, &
-        DUDT_RAH_DEV, DVDT_RAH_DEV, DTDT_RAH_DEV, &
-        PEGWD_DEV, PEORO_DEV, PERAY_DEV, PEBKG_DEV, &
-        KEGWD_DEV, KEORO_DEV, KERAY_DEV, KEBKG_DEV, &
-        KERES_DEV, BKGERR_DEV
-  use cudafor
-#else
   use gw_oro, only : gw_oro_init
   use gw_convect, only : gw_beres_init, BeresSourceDesc
   use gw_common, only: GWBand, gw_common_init
   use gw_drag_ncar, only: gw_intr_ncar
 
   use gw_drag, only: gw_intr
-#endif
   
   implicit none
   private
@@ -81,7 +48,6 @@ module GEOS_GwdGridCompMod
   public SetServices
 
 !EOP
-  logical, parameter :: USE_NCEP_GWD = .false.
   type(GWBand)          :: beres_band
   type(BeresSourceDesc) :: beres_desc
   type(GWBand)          :: oro_band
@@ -578,134 +544,6 @@ contains
          VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
-     if (USE_NCEP_GWD) then
-!ALT: Reminder for myself: we need connections in Physics
-! We need some new imports
-! from turbulance
-        call MAPL_AddImportSpec(GC,                             &
-             SHORT_NAME = 'KPBL',                               &
-             LONG_NAME  = 'planetary_boundary_layer_level',     &
-             UNITS      = '1',                                  &
-             DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)      
-
-! from moist
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_moist',                            & 
-             LONG_NAME ='T tendency due to moist',               &
-             UNITS     ='K s-1',                                 &
-             DIMS      = MAPL_DimsHorzVert,                      &
-             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-        VERIFY_(STATUS)  
-!ALT: from this we can compute QMAX (column maximum value)
-!     and KTOP, KBOT near the location of QMAX
-!JTB: Moved up to default import state block (3/25/20)
-!WMP: Restored here for NCEP code
-
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='CNV_FRC',                               &
-             LONG_NAME ='convective_fraction',                   &
-             UNITS     ='1',                                     &
-             DIMS      = MAPL_DimsHorzOnly,                      &
-             VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-        VERIFY_(STATUS)
-
-! from dycore
-        call MAPL_AddImportSpec ( gc,                            &
-             SHORT_NAME = 'DXC',                                 &
-             LONG_NAME  = 'cgrid_delta_x',                       &
-             UNITS      = 'm'  ,                                 &
-             DIMS       = MAPL_DimsHorzOnly,                     &
-             VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-        VERIFY_(STATUS)
-
-!        call MAPL_AddImportSpec ( gc,                            &
-!             SHORT_NAME = 'DYC',                                 &
-!             LONG_NAME  = 'cgrid_delta_y',                       &
-!             UNITS      = 'm'  ,                                 &
-!             DIMS       = MAPL_DimsHorzOnly,                     &
-!             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-!        VERIFY_(STATUS)
-
-
-! New internal state for boundary data
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'STDDEV',                           &
-             LONG_NAME  = 'orographic standard deviation',    &
-             UNITS      = 'm',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'CONVEXITY',                        &
-             LONG_NAME  = 'orographic convexity',             &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'OA4',                              &
-             LONG_NAME  = 'orographic assymetry',             &
-             UNGRIDDED_DIMS     = (/4/),                      &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'CLX4',                             &
-             LONG_NAME  = 'fractional area',                  &
-             UNGRIDDED_DIMS     = (/4/),                      &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'THETA',                            &
-             LONG_NAME  = 'angle of mnt with east (x)',       &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'SIGMA',                            &
-             LONG_NAME  = 'orographic slope',                 &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'GAMMA',                            &
-             LONG_NAME  = 'orographic anisotropy',            &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-        
-        call MAPL_AddInternalSpec ( gc,                       &
-             SHORT_NAME = 'ELVMAX',                           &
-             LONG_NAME  = 'orographic maximum',               &
-             UNITS      = '1',                                &
-             DIMS       = MAPL_DimsHorzOnly,                  &
-             VLOCATION  = MAPL_VLocationNone,                 &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-     end if ! NCEP
-!_end_of_if_ncep
 !EOS
 
 ! Set the Profiling timers
@@ -927,45 +765,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Gravity wave drag
 ! -----------------
 
-    if (USE_NCEP_GWD) then
-! NCEP  FV3 values
-! C768:  cdmbgwd="3.500,0.25"
-! C384:  cdmbgwd="1.000,1.20"
-! C192:  cdmbgwd="0.200,2.50"
-! C96 :  cdmbgwd="0.125,3.00"
-! C48 :  cdmbgwd="0.062,3.50"
-    if ( imsize.lt.270 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.062, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=3.500, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.270 .and. imsize.lt.540 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.125, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=3.000, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.540 .and. imsize.lt.1080 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.200, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=2.500, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.1080 .and. imsize.lt.3240 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=1.000, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=1.200, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    if ( imsize.ge.3240 ) then
-      call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=3.500, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=0.250, RC=STATUS)
-      VERIFY_(STATUS)
-    endif
-    endif
-
     call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
@@ -1079,43 +878,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
 
-#ifdef _CUDA
-      type(dim3) :: Grid, Block
-      integer :: blocksize
-#endif
-
-! NCEP gwd related vars
-      real, pointer :: TRATE(:,:,:)=>NULL()
-      real          :: CDMBGWD(2)
-      logical       :: LPRNT
-      logical, allocatable :: KCNV(:,:)
-      integer       :: IMX
-      integer       :: IPR, ME, LAT, KDT
-      integer       :: NMTVR
-      integer       :: I,IRUN
-      integer       :: IX, IY
-      real          :: FV, FHOUR
-      real          :: A, QM
-      real, allocatable :: PK(:,:,:)
-      integer, allocatable :: KPBL(:,:)
-      integer, allocatable :: KBOT(:,:)
-      integer, allocatable :: KTOP(:,:)
-      real, allocatable :: QMAX(:,:)
-      real, pointer     :: fPBL(:,:) => NULL()
-      real, pointer     :: CLDF(:,:) => NULL()
-      real, pointer     :: HPRIME(:,:) => NULL()
-      real, pointer     :: OC(:,:) => NULL()
-      real, pointer     :: SIGMA(:,:) => NULL()
-      real, pointer     :: GAMMA(:,:) => NULL()
-      real, pointer     :: THETA(:,:) => NULL()
-      real, pointer     :: DLENGTH(:,:) => NULL()
-      real, pointer     :: ELVMAX(:,:) => NULL()
-      real, pointer     :: OA4(:,:,:) => NULL()
-      real, pointer     :: CLX4(:,:,:) => NULL()
-      type (ESMF_State) :: INTERNAL
-      type (ESMF_Grid)  :: esmfgrid
-      integer           :: COUNTS(3)
-
 ! NCAR GWD vars
 
       logical :: USE_NCAR_GWD
@@ -1196,405 +958,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(EXPORT,    KERES, 'KERES'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,   BKGERR, 'BKGERR'  , RC=STATUS); VERIFY_(STATUS)
 
-#ifdef _CUDA
-
-      _ASSERT(  LM <= GPU_MAXLEVS,'needs informative message') ! If these are tripped GNUmakefile
-      _ASSERT(PGWV <= MAXPGWV,'needs informative message')     ! must be modified.
-
-      call MAPL_GetResource(MAPL,BLOCKSIZE,'BLOCKSIZE:',DEFAULT=128,RC=STATUS)
-      VERIFY_(STATUS)
-
-      Block = dim3(blocksize,1,1)
-      Grid  = dim3(ceiling(real(IM*JM)/real(blocksize)),1,1)
-
-      call MAPL_TimerOn(MAPL,"-DRIVER_ALLOC",RC=STATUS)
-      VERIFY_(STATUS)
-
-      ! ----------------------
-      ! Allocate device arrays
-      ! ----------------------
-  
-      ! Working Arrays
-      ! --------------
-  
-      ALLOCATE(ZM_DEV(IM*JM,LM),STAT=STATUS)       ! height above surface at layers
-      ALLOCATE(LNPINT_DEV(IM*JM,LM+1),STAT=STATUS) ! log(pint)
-      ALLOCATE(PMLN_DEV(IM*JM,LM),STAT=STATUS)     ! log midpoint pressures
-      ALLOCATE(PMID_DEV(IM*JM,LM),STAT=STATUS)     ! pressure at the layers
-      ALLOCATE(RPDEL_DEV(IM*JM,LM),STAT=STATUS)    ! 1.0 / pdel
-  
-      ! Inputs - PREGEO
-      ! ---------------
-  
-      ALLOCATE(PINT_DEV(IM*JM,LM+1),STAT=STATUS)   ! pressure at the layer edges
-      ALLOCATE(RLAT_DEV(IM*JM),STAT=STATUS)        ! latitude in radian
-  
-      ! Outputs - PREGEO
-      ! ----------------
-  
-      ALLOCATE(PDEL_DEV(IM*JM,LM),STAT=STATUS)     ! pressure thickness at the layers
-  
-      ! Inputs - GEOPOT
-      ! ---------------
-  
-      ALLOCATE(T_DEV(IM*JM,LM),STAT=STATUS)        ! temperature at layers
-      ALLOCATE(Q_DEV(IM*JM,LM),STAT=STATUS)        ! specific humidity
-  
-      ! Outputs - GEOPOT
-      ! ----------------
-  
-      ALLOCATE(ZI_DEV(IM*JM,LM+1),STAT=STATUS)     ! Height above surface at interfaces
-  
-      ! Inputs - INTR
-      ! -------------
-  
-      ALLOCATE(U_DEV(IM*JM,LM),STAT=STATUS)        ! zonal wind at layers
-      ALLOCATE(V_DEV(IM*JM,LM),STAT=STATUS)        ! meridional wind at layers
-      ALLOCATE(SGH_DEV(IM*JM),STAT=STATUS)         ! standard deviation of orography
-      ALLOCATE(PREF_DEV(LM+1),STAT=STATUS)         ! reference pressure at the layeredges
-  
-      ! Outputs - INTR
-      ! --------------
-    
-      ALLOCATE(DUDT_GWD_DEV(IM*JM,LM),STAT=STATUS) ! zonal wind tendency at layer 
-      ALLOCATE(DVDT_GWD_DEV(IM*JM,LM),STAT=STATUS) ! meridional wind tendency at layer 
-      ALLOCATE(DTDT_GWD_DEV(IM*JM,LM),STAT=STATUS) ! temperature tendency at layer
-      ALLOCATE(DUDT_ORG_DEV(IM*JM,LM),STAT=STATUS) ! zonal wind tendency at layer due to orography GWD
-      ALLOCATE(DVDT_ORG_DEV(IM*JM,LM),STAT=STATUS) ! meridional wind tendency at layer  due to orography GWD
-      ALLOCATE(DTDT_ORG_DEV(IM*JM,LM),STAT=STATUS) ! temperature tendency at layer  due to orography GWD
-      ALLOCATE(TAUGWDX_DEV(IM*JM),STAT=STATUS)     ! zonal      gravity wave surface    stress
-      ALLOCATE(TAUGWDY_DEV(IM*JM),STAT=STATUS)     ! meridional gravity wave surface    stress
-      ALLOCATE(TAUOX_DEV(IM*JM,LM+1),STAT=STATUS)  ! zonal      orographic gravity wave stress
-      ALLOCATE(TAUOY_DEV(IM*JM,LM+1),STAT=STATUS)  ! meridional orographic gravity wave stress
-      ALLOCATE(FEO_DEV(IM*JM,LM+1),STAT=STATUS)    ! energy flux of orographic gravity waves
-      ALLOCATE(FEPO_DEV(IM*JM,LM+1),STAT=STATUS)   ! pseudoenergy flux of orographic gravity waves
-      ALLOCATE(TAUBKGX_DEV(IM*JM),STAT=STATUS)     ! zonal      gravity wave background stress
-      ALLOCATE(TAUBKGY_DEV(IM*JM),STAT=STATUS)     ! meridional gravity wave background stress
-      ALLOCATE(TAUBX_DEV(IM*JM,LM+1),STAT=STATUS)  ! zonal      background gravity wave stress
-      ALLOCATE(TAUBY_DEV(IM*JM,LM+1),STAT=STATUS)  ! meridional background gravity wave stress
-      ALLOCATE(FEB_DEV(IM*JM,LM+1),STAT=STATUS)    ! energy flux of background gravity waves
-      ALLOCATE(FEPB_DEV(IM*JM,LM+1),STAT=STATUS)   ! pseudoenergy flux of background gravity waves
-      ALLOCATE(UTBSRC_DEV(IM*JM,LM),STAT=STATUS)   ! dU/dt below background launch level
-      ALLOCATE(VTBSRC_DEV(IM*JM,LM),STAT=STATUS)   ! dV/dt below background launch level
-      ALLOCATE(TTBSRC_DEV(IM*JM,LM),STAT=STATUS)   ! dT/dt below background launch level
-  
-      ! Outputs - POSTINTR
-      ! ------------------
-  
-      ALLOCATE(DUDT_TOT_DEV(IM*JM,LM),STAT=STATUS) ! Tendency of eastward wind due to GWD
-      ALLOCATE(DVDT_TOT_DEV(IM*JM,LM),STAT=STATUS) ! Tendency of northward wind due to GWD
-      ALLOCATE(DTDT_TOT_DEV(IM*JM,LM),STAT=STATUS) ! Tendency of air temperature due to GWD
-      ALLOCATE(DUDT_RAH_DEV(IM*JM,LM),STAT=STATUS) ! Tendency of eastward wind due to Rayleigh friction
-      ALLOCATE(DVDT_RAH_DEV(IM*JM,LM),STAT=STATUS) ! Tendency of northward wind due to Rayleigh friction
-      ALLOCATE(DTDT_RAH_DEV(IM*JM,LM),STAT=STATUS) ! Tendency of air temperature due to Rayleigh friction
-      ALLOCATE(PEGWD_DEV(IM*JM),STAT=STATUS)       ! Potential energy tendency across GWD
-      ALLOCATE(PEORO_DEV(IM*JM),STAT=STATUS)       ! Potential energy tendency due to orographic gravity
-      ALLOCATE(PERAY_DEV(IM*JM),STAT=STATUS)       ! Potential energy tendency due to Rayleigh friction
-      ALLOCATE(PEBKG_DEV(IM*JM),STAT=STATUS)       ! Potential energy tendency due to gw background
-      ALLOCATE(KEGWD_DEV(IM*JM),STAT=STATUS)       ! Kinetic energy tendency across GWD
-      ALLOCATE(KEORO_DEV(IM*JM),STAT=STATUS)       ! Kinetic energy tendency due to orographic gravity
-      ALLOCATE(KERAY_DEV(IM*JM),STAT=STATUS)       ! Kinetic energy tendency due to Rayleigh friction
-      ALLOCATE(KEBKG_DEV(IM*JM),STAT=STATUS)       ! Kinetic energy tendency due to gw background
-      ALLOCATE(KERES_DEV(IM*JM),STAT=STATUS)       ! Kinetic energy residual for total energy conservation
-      ALLOCATE(BKGERR_DEV(IM*JM),STAT=STATUS)      ! Kinetic energy residual for BKG energy conservation
-
-      call MAPL_TimerOff(MAPL,"-DRIVER_ALLOC",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOn(MAPL,"-DRIVER_DATA",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOn(MAPL,"--DRIVER_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
-
-      ! ---------------------
-      ! Copy inputs to device
-      ! ---------------------
-  
-      ! Inputs
-      ! ------
-  
-      STATUS = cudaMemcpy(PINT_DEV,PLE,IM*JM*(LM+1))
-      STATUS = cudaMemcpy(RLAT_DEV,LATS,IM*JM)
-      STATUS = cudaMemcpy(T_DEV,T,IM*JM*LM)
-      STATUS = cudaMemcpy(Q_DEV,Q,IM*JM*LM)
-      STATUS = cudaMemcpy(U_DEV,U,IM*JM*LM)
-      STATUS = cudaMemcpy(V_DEV,V,IM*JM*LM)
-      STATUS = cudaMemcpy(SGH_DEV,SGH,IM*JM)
-      STATUS = cudaMemcpy(PREF_DEV,PREF,LM+1)
-
-      call MAPL_TimerOff(MAPL,"--DRIVER_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOff(MAPL,"-DRIVER_DATA",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOn(MAPL,"-DRIVER_RUN",RC=STATUS)
-      VERIFY_(STATUS)
-
-      CALL PREGEO<<<Grid,Block>>>(IM*JM, LM, &
-            PINT_DEV, RLAT_DEV, PMID_DEV, PDEL_DEV, RPDEL_DEV, LNPINT_DEV, PMLN_DEV)
-
-      STATUS = cudaGetLastError()
-      if (STATUS /= 0) then 
-         write (*,*) "Error code from PREGEO kernel call: ", STATUS
-         write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         _ASSERT(.FALSE.,'needs informative message')
-      end if
-
-      ! Compute ZM
-      !-------------
-
-      call GEOPOTENTIAL<<<Grid,Block>>>(IM*JM,  LM,                        &
-            LNPINT_DEV, PMLN_DEV, PINT_DEV, PMID_DEV, PDEL_DEV, RPDEL_DEV, &
-            T_DEV,      Q_DEV,    ZI_DEV,   ZM_DEV                         )
-
-      STATUS = cudaGetLastError()
-      if (STATUS /= 0) then 
-         write (*,*) "Error code from GEOPOTENTIAL kernel call: ", STATUS
-         write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         _ASSERT(.FALSE.,'needs informative message')
-      end if
-
-      call MAPL_TimerOn(MAPL,"-INTR",RC=STATUS)
-      VERIFY_(STATUS)
-  
-      !Do gravity wave drag calculations on a list of soundings
-      !---------------------------------------------------------
-  
-      call GW_INTR<<<Grid,Block>>>(IM*JM, LM, DT, PGWV, BGSTRESSMAX, effgworo, effgwbkg)
-  
-      STATUS = cudaGetLastError()
-      if (STATUS /= 0) then 
-         write (*,*) "Error code from GW_INTR kernel call: ", STATUS
-         write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         _ASSERT(.FALSE.,'needs informative message')
-      end if
-  
-      call MAPL_TimerOff(MAPL,"-INTR",RC=STATUS)
-      VERIFY_(STATUS)
-
-      CALL POSTINTR<<<Grid,Block>>>(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
-            ! Inputs
-            PREF_DEV, &
-            PDEL_DEV, &
-            U_DEV, &
-            V_DEV, &
-            DUDT_GWD_DEV, &
-            DVDT_GWD_DEV, &
-            DTDT_GWD_DEV, &
-            DUDT_ORG_DEV, &
-            DVDT_ORG_DEV, &
-            DTDT_ORG_DEV, &
-
-            ! Outputs
-            DUDT_TOT_DEV, &
-            DVDT_TOT_DEV, &
-            DTDT_TOT_DEV, &
-            DUDT_RAH_DEV, &
-            DVDT_RAH_DEV, &
-            DTDT_RAH_DEV, &
-            PEGWD_DEV,    &
-            PEORO_DEV,    &
-            PERAY_DEV,    &
-            PEBKG_DEV,    &
-            KEGWD_DEV,    &
-            KEORO_DEV,    &
-            KERAY_DEV,    &
-            KEBKG_DEV,    &
-            KERES_DEV,    &
-            BKGERR_DEV    )
-
-      STATUS = cudaGetLastError()
-      if (STATUS /= 0) then 
-         write (*,*) "Error code from POSTINTR kernel call: ", STATUS
-         write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         _ASSERT(.FALSE.,'needs informative message')
-      end if
-  
-      call MAPL_TimerOff(MAPL,"-DRIVER_RUN",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOn(MAPL,"-DRIVER_DATA",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOn(MAPL,"--DRIVER_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
-
-      ! ------------------------
-      ! Copy outputs from device
-      ! ------------------------
-  
-      ! Outputs - PREGEO
-      ! ----------------
-
-      ! MAT PDEL might be needed below to weight DTDT
-      if(associated(DTDT)) STATUS = cudaMemcpy(PDEL,PDEL_DEV,IM*JM*LM)
-
-      ! Outputs - GEOPOT
-      ! ----------------
-
-      !GPU This array is not used anywhere past this point. Uncomment
-      !GPU to copy it to the host if needed in future.
-      !GPU  STATUS = cudaMemcpy(ZI,ZI_DEV,IM*JM*(LM+1)) !MAT Not used after this
-
-      ! Outputs - INTR
-      ! --------------
-    
-      STATUS = cudaMemcpy(DUDT_GWD,DUDT_GWD_DEV,IM*JM*LM)
-      STATUS = cudaMemcpy(DVDT_GWD,DVDT_GWD_DEV,IM*JM*LM)
-      STATUS = cudaMemcpy(DTDT_GWD,DTDT_GWD_DEV,IM*JM*LM)
-
-      STATUS = cudaMemcpy(DUDT_ORG,DUDT_ORG_DEV,IM*JM*LM)
-      STATUS = cudaMemcpy(DVDT_ORG,DVDT_ORG_DEV,IM*JM*LM)
-      STATUS = cudaMemcpy(DTDT_ORG,DTDT_ORG_DEV,IM*JM*LM)
-
-      STATUS = cudaMemcpy(TAUXO_TMP,TAUGWDX_DEV,IM*JM)
-      STATUS = cudaMemcpy(TAUYO_TMP,TAUGWDY_DEV,IM*JM)
-      STATUS = cudaMemcpy(TAUXB_TMP,TAUBKGX_DEV,IM*JM)
-      STATUS = cudaMemcpy(TAUYB_TMP,TAUBKGY_DEV,IM*JM)
-
-      !GPU These arrays are not used anywhere past this point. Uncomment
-      !GPU to copy them to the host if needed in future.
-      !GPU  STATUS = cudaMemcpy(TAUXO_3D,TAUOX_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(TAUYO_3D,TAUOY_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(FEO_3D,FEO_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(FEPO_3D,FEPO_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(TAUXB_3D,TAUBX_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(TAUYB_3D,TAUBY_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(FEB_3D,FEB_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(FEPB_3D,FEPB_DEV,IM*JM*(LM+1))
-      !GPU  STATUS = cudaMemcpy(DUBKGSRC,UTBSRC_DEV,IM*JM*LM)
-      !GPU  STATUS = cudaMemcpy(DVBKGSRC,VTBSRC_DEV,IM*JM*LM)
-      !GPU  STATUS = cudaMemcpy(DTBKGSRC,TTBSRC_DEV,IM*JM*LM)
-
-      ! Outputs - POSTINTR
-      ! ------------------
-    
-      if(associated(DUDT    )) STATUS = cudaMemcpy(DUDT,    DUDT_TOT_DEV,IM*JM*LM)
-      if(associated(DVDT    )) STATUS = cudaMemcpy(DVDT,    DVDT_TOT_DEV,IM*JM*LM)
-      if(associated(DTDT    )) STATUS = cudaMemcpy(DTDT,    DTDT_TOT_DEV,IM*JM*LM)
-
-      if(associated(DUDT_RAY)) STATUS = cudaMemcpy(DUDT_RAY,DUDT_RAH_DEV,IM*JM*LM)
-      if(associated(DVDT_RAY)) STATUS = cudaMemcpy(DVDT_RAY,DVDT_RAH_DEV,IM*JM*LM)
-      if(associated(DTDT_RAY)) STATUS = cudaMemcpy(DTDT_RAY,DTDT_RAH_DEV,IM*JM*LM)
-
-      ! KE dIagnostics
-      !----------------
-
-      if(associated(PEGWD )) STATUS = cudaMemcpy(PEGWD, PEGWD_DEV,IM*JM)
-      if(associated(PEORO )) STATUS = cudaMemcpy(PEORO, PEORO_DEV,IM*JM)
-      if(associated(PERAY )) STATUS = cudaMemcpy(PERAY, PERAY_DEV,IM*JM)
-      if(associated(PEBKG )) STATUS = cudaMemcpy(PEBKG, PEBKG_DEV,IM*JM)
-      if(associated(KEGWD )) STATUS = cudaMemcpy(KEGWD, KEGWD_DEV,IM*JM)
-      if(associated(KEORO )) STATUS = cudaMemcpy(KEORO, KEORO_DEV,IM*JM)
-      if(associated(KERAY )) STATUS = cudaMemcpy(KERAY, KERAY_DEV,IM*JM)
-      if(associated(KEBKG )) STATUS = cudaMemcpy(KEBKG, KEBKG_DEV,IM*JM)
-      if(associated(KERES )) STATUS = cudaMemcpy(KERES, KERES_DEV,IM*JM)
-      if(associated(BKGERR)) STATUS = cudaMemcpy(BKGERR,BKGERR_DEV,IM*JM)
-  
-      call MAPL_TimerOff(MAPL,"--DRIVER_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOff(MAPL,"-DRIVER_DATA",RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_TimerOn(MAPL,"-DRIVER_DEALLOC",RC=STATUS)
-      VERIFY_(STATUS)
-
-      ! ------------------------
-      ! Deallocate device arrays
-      ! ------------------------
-  
-      ! Working Arrays
-      ! --------------
-  
-      DEALLOCATE(ZM_DEV)
-      DEALLOCATE(LNPINT_DEV)
-      DEALLOCATE(PMLN_DEV)
-      DEALLOCATE(PMID_DEV)
-      DEALLOCATE(RPDEL_DEV)
-  
-      ! Inputs - PREGEO
-      ! ---------------
-  
-      DEALLOCATE(PINT_DEV)
-      DEALLOCATE(RLAT_DEV)
-  
-      ! Outputs - PREGEO
-      ! ----------------
-  
-      DEALLOCATE(PDEL_DEV)
-  
-      ! Inputs - GEOPOT
-      ! ---------------
-  
-      DEALLOCATE(T_DEV)
-      DEALLOCATE(Q_DEV)
-  
-      ! Outputs - GEOPOT
-      ! ----------------
-  
-      DEALLOCATE(ZI_DEV)
-  
-      ! Inputs - INTR
-      ! -------------
-  
-      DEALLOCATE(U_DEV)
-      DEALLOCATE(V_DEV)
-      DEALLOCATE(SGH_DEV)
-      DEALLOCATE(PREF_DEV)
-  
-      ! Outputs - INTR
-      ! --------------
-    
-      DEALLOCATE(DUDT_GWD_DEV)
-      DEALLOCATE(DVDT_GWD_DEV)
-      DEALLOCATE(DTDT_GWD_DEV)
-      DEALLOCATE(DUDT_ORG_DEV)
-      DEALLOCATE(DVDT_ORG_DEV)
-      DEALLOCATE(DTDT_ORG_DEV)
-      DEALLOCATE(TAUGWDX_DEV)
-      DEALLOCATE(TAUGWDY_DEV)
-      DEALLOCATE(TAUOX_DEV)
-      DEALLOCATE(TAUOY_DEV)
-      DEALLOCATE(FEO_DEV)
-      DEALLOCATE(FEPO_DEV)
-      DEALLOCATE(TAUBKGX_DEV)
-      DEALLOCATE(TAUBKGY_DEV)
-      DEALLOCATE(TAUBX_DEV)
-      DEALLOCATE(TAUBY_DEV)
-      DEALLOCATE(FEB_DEV)
-      DEALLOCATE(FEPB_DEV)
-      DEALLOCATE(UTBSRC_DEV)
-      DEALLOCATE(VTBSRC_DEV)
-      DEALLOCATE(TTBSRC_DEV)
-  
-      ! Outputs - POSTINTR
-      ! ------------------
-  
-      DEALLOCATE(DUDT_TOT_DEV)
-      DEALLOCATE(DVDT_TOT_DEV)
-      DEALLOCATE(DTDT_TOT_DEV)
-      DEALLOCATE(DUDT_RAH_DEV)
-      DEALLOCATE(DVDT_RAH_DEV)
-      DEALLOCATE(DTDT_RAH_DEV)
-      DEALLOCATE(PEGWD_DEV)
-      DEALLOCATE(PEORO_DEV)
-      DEALLOCATE(PERAY_DEV)
-      DEALLOCATE(PEBKG_DEV)
-      DEALLOCATE(KEGWD_DEV)
-      DEALLOCATE(KEORO_DEV)
-      DEALLOCATE(KERAY_DEV)
-      DEALLOCATE(KEBKG_DEV)
-      DEALLOCATE(KERES_DEV)
-      DEALLOCATE(BKGERR_DEV)
-
-      call MAPL_TimerOff(MAPL,"-DRIVER_DEALLOC",RC=STATUS)
-      VERIFY_(STATUS)
-
-#else
-! This is the non-CUDA sectio
 
       CALL PREGEO(IM*JM,   LM,   &
                     PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
@@ -1613,14 +976,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_TimerOn(MAPL,"-INTR")
-    if (.not. USE_NCEP_GWD) then
 
-       if (USE_NCAR_GWD) then
-          ! Use Julio new code
-       call gw_intr_ncar(IM*JM,    LM,         DT,                  &
-            PGWV,      beres_desc, beres_band, oro_band,            &
-            PLE,       T,          U,          V,      HT_dpc,      &
-            SGH,       PREF,                                        &
+    if (USE_NCAR_GWD) then
+       ! Use Julio new code
+    call gw_intr_ncar(IM*JM,    LM,         DT,                  &
+         PGWV,      beres_desc, beres_band, oro_band,            &
+         PLE,       T,          U,          V,      HT_dpc,      &
+         SGH,       PREF,                                        &
+         PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+         DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+         DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+         TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+         TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+         FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+         BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
+    VERIFY_(STATUS)
+    else
+       ! Use GEOS GWD    
+       call gw_intr   (IM*JM,      LM,         DT,                  &
+            PGWV,                                                   &
+            PLE,       T,          U,          V,      SGH,   PREF, &
             PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
             DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
             DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
@@ -1628,162 +1003,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
             TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
             FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
             BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
-       VERIFY_(STATUS)
-       else
-          ! Use GEOS GWD    
-          call gw_intr   (IM*JM,      LM,         DT,                  &
-               PGWV,                                                   &
-               PLE,       T,          U,          V,      SGH,   PREF, &
-               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-               DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-               BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
-         VERIFY_(STATUS)
-       end if
-
-    else
-       ! get pointers from INTERNAL:HPRIME,OC,OA4,CLX4,THETA,SIGMA,GAMMA,ELVMAX
-       call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, HPRIME, 'STDDEV', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, OC, 'CONVEXITY', RC=STATUS )
-       VERIFY_(STATUS)
-       ! next 2 have ungridded dim = 4
-       call MAPL_GetPointer( INTERNAL, OA4, 'OA4', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, CLX4, 'CLX4', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, THETA, 'THETA', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, SIGMA, 'SIGMA', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, GAMMA, 'GAMMA', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( INTERNAL, ELVMAX, 'ELVMAX', RC=STATUS )
-       VERIFY_(STATUS)
-
-       KDT = 1 !??? current number of time step (not used)
-       IRUN = IM*JM
-       IX = IRUN
-       IY = IRUN
-       DVDT_ORG = 0.0
-       DUDT_ORG = 0.0
-       DTDT_ORG = 0.0
-       ! Make sure we have: U, V, T, Q, KPBL,
-       call MAPL_GetPointer( IMPORT, FPBL, 'KPBL', RC=STATUS )
-       VERIFY_(STATUS)
-       allocate(KPBL(IM,JM),stat=status)
-       VERIFY_(STATUS)
-       KPBL = nint(fPBL)
-!ALT: we need some protection      
-       KPBL = MIN(KPBL, LM-1) ! when LM=132, we might need to cap it to LM-3
-
-       ! PLE, PL,DELP
-       allocate(PK(IM,JM,0:LM),stat=status)
-       VERIFY_(STATUS)
-
-       PK = ( PLE/MAPL_P00 )**MAPL_KAPPA ! Question should P00 be there
-
-       IMX = imsize     ! number of longitudes (along the equator = 4xCnumber)
-       nmtvr = 14       ! number of topographic variables such as variances
-       CDMBGWD = [CDMBGWD1,CDMBGWD2]  ! multiplication factors for cdmb and gwd
-       ! me, lprint, ipr are currently not being used
-       me = 0 ! we could get it from VM
-       lprnt = .false.
-       ipr = 0
-
-       call GWDPS(IRUN,IX,IY,LM,DVDT_ORG,DUDT_ORG,DTDT_ORG,&
-            U,V,T,Q,KPBL,              &
-            PLE,PDEL,PMID,PK,&
-            ZI,ZM,DT,KDT,         &
-            HPRIME,OC,OA4,CLX4,THETA,SIGMA,GAMMA,ELVMAX,       &
-            TAUXO_TMP,TAUYO_TMP, &
-            MAPL_GRAV, MAPL_CP, MAPL_RDRY, MAPL_RVAP, IMX,  &
-            nmtvr, cdmbgwd, me, lprnt, ipr)
-
-       ! Get IMPORT DTDT_moist
-!ALT: BE careful. The NCEP routines expect 2d packed into 1d 
-       ! units
-       ! min/max search potentially could fail
-       ! scaling coefficient values???
-       ! ============================
-       ! kind_phys!!! check with Bill
-       ! for now 4, otherwise this will create interface problems
-       ! ============================
-       
-       LAT = 1 ! latitude index for debugging prints, not used
-       FHOUR = 0.0 ! forecast hour, not used
-       FV = MAPL_RDRY/MAPL_RVAP - 1.0     ! con_fvirt = con_rv/con_rd-1
-
-       ! GWDC needs a grid spacing argument, Bill suggesed we use DXC
-       call MAPL_GetPointer( IMPORT, DLENGTH, 'DXC', RC=STATUS )
-       VERIFY_(STATUS)
-
-       call MAPL_GetPointer( IMPORT, CLDF, 'CNV_FRC', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( IMPORT, TRATE, 'DTDT_moist', RC=STATUS )
-       VERIFY_(STATUS)
-       ! for every i,j search loop over levels to find QMAX, KBOT and KTOP
-       ! lat is not used
-
-       allocate(QMAX(IM,JM), KBOT(IM,JM), KTOP(IM,JM), KCNV(IM,JM), stat=status)
-       VERIFY_(STATUS)
-       KCNV = .false.
-       
-       DO J=1,JM
-          DO I=1,IM
-             QM = MAXVAL(TRATE(I,J,:))
-             K = MAXLOC(TRATE(I,J,:),DIM=1)
-             QMAX(I,J) = QM
-             A = QM
-             DO L = K+1, LM
-                IF(A > TRATE(I,J,L)) then
-                   A = TRATE(I,J,L)
-                ELSE
-                   EXIT
-                END IF
-             END DO
-             KTOP(I,J) = L-1
-
-             A = QM
-             DO L = K-1, 1, -1
-                IF(A < TRATE(I,J,L)) then
-                   A = TRATE(I,J,L)
-                ELSE
-                   EXIT
-                END IF
-             END DO
-             KBOT(I,J) = L+1
-
-             IF(CLDF(I,J) > 0.15) THEN
-                KCNV(I,J) = .TRUE.
-             END IF
-          END DO
-       END DO
-       call gwdc(IRUN,IX,IY,LM,LAT,U,V,T,Q,DT, &
-            PMID,PLE,PDEL,QMAX,KTOP,KBOT,KCNV,CLDF, &
-            MAPL_GRAV,MAPL_CP,MAPL_RDRY,FV,MAPL_PI,&
-            DLENGTH,LPRNT,IPR,FHOUR, &
-            DUDT_TOT,DVDT_TOT,TAUXB_TMP,TAUYB_TMP)
-
-       ! Adjust to prepare vars for POSTINTR
-       DTDT_GWD = DTDT_ORG 
-       DUDT_GWD = DUDT_ORG + DUDT_TOT  
-       DVDT_GWD = DVDT_ORG + DVDT_TOT  
-! reset total; they were used only as temporary variables
-       DUDT_TOT = 0.0
-       DVDT_TOT = 0.0
-
-       deallocate(KCNV, KTOP, KBOT, QMAX)
-       deallocate(PK)
-       deallocate(KPBL)
-
-
+      VERIFY_(STATUS)
     end if
+
     call MAPL_TimerOff(MAPL,"-INTR")
 
     CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
@@ -1839,8 +1061,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated(KEBKG   )) KEBKG  = KEBKG_X
     if(associated(KERES   )) KERES  = KERES_X
     if(associated(BKGERR  )) BKGERR = BKGERR_X
-
-#endif
 
 !! Tendency diagnostics
 !!---------------------
@@ -1904,9 +1124,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-#ifdef _CUDA
-  attributes(global) &
-#endif
   subroutine geopotential(pcols  , pver   ,                   &
          piln   , pmln   , pint  , pmid   , pdel   , rpdel  , &
          t      , q      , zi     , zm     )
@@ -1926,13 +1143,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !
 ! Input arguments
 !
-#ifdef _CUDA
-    integer, value :: pcols                ! Number of longitudes
-    integer, value :: pver                 ! Number of vertical layers
-#else
     integer, intent(in) :: pcols                ! Number of longitudes
     integer, intent(in) :: pver                 ! Number of vertical layers
-#endif
 
     real,    intent(in) :: piln (pcols,pver+1)  ! Log interface pressures
     real,    intent(in) :: pmln (pcols,pver)    ! Log midpoint pressures
@@ -1968,13 +1180,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! The surface height is zero by definition.
 
-#ifdef _CUDA
-    i = (blockidx%x - 1) * blockdim%x + threadidx%x
-
-    I_LOOP: if ( i <= pcols ) then
-#else
     I_LOOP: do i = 1, pcols
-#endif
+
        zi(i,pver+1) = 0.0
 
 ! Compute zi, zm from bottom up. 
@@ -2000,20 +1207,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           zm(i,k) = zi(i,k+1) + ROG * tv * hkk
           zi(i,k) = zi(i,k+1) + ROG * tv * hkl
        end do
-#ifndef _CUDA
     end do I_LOOP
-#else
-    end if I_LOOP
-#endif 
 
     return
   end subroutine geopotential
 
 !----------------------------------------------------------------------- 
 
-#ifdef _CUDA
-  attributes(global) &
-#endif
   subroutine pregeo(pcols,pver,&
     ple,lats,pmid,pdel,rpdel,piln,pmln)
 
@@ -2024,13 +1224,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Input arguments
 !
 
-#ifdef _CUDA
-    integer, value :: pcols         ! Number of longitudes
-    integer, value :: pver          ! Number of vertical layers
-#else
     integer, intent(in) :: pcols    ! Number of longitudes
     integer, intent(in) :: pver     ! Number of vertical layers
-#endif
 
     real,    intent(in) :: ple (pcols,pver+1)    ! Interface pressures
     real,    intent(in) :: lats(pcols)           ! latitude in radian
@@ -2059,13 +1254,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Form pressure factors
 !----------------------
 
-#ifdef _CUDA
-    I = (BLOCKIDX%X - 1) * BLOCKDIM%X + THREADIDX%X
-
-    I_LOOP: IF ( I <= PCOLS ) THEN
-#else
     I_LOOP: DO I = 1, PCOLS
-#endif
+
        DO K = 1, PVER
            PMID(I,K) = 0.5*(  PLE(I,K  ) + PLE(I,K+1) )
            PDEL(I,K) =        PLE(I,K+1) - PLE(I,K  )
@@ -2074,17 +1264,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            PMLN(I,K) = log(  PMID(I,K) ) !
        END DO
        PILN(I,PVER+1)  = log( PLE(I,PVER+1)  )
-#ifndef _CUDA
     END DO I_LOOP
-#else
-    END IF I_LOOP
-#endif 
 
   end subroutine pregeo
 
-#ifdef _CUDA
-  attributes(global) &
-#endif
   subroutine postintr(pcols,pver,dt, h0, hh, z1, tau1, &
         pref, &
         pdel, &
@@ -2122,17 +1305,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Input arguments
 !
 
-#ifdef _CUDA
-    integer, value :: PCOLS ! Number of longitudes
-    integer, value :: PVER  ! Number of vertical layers
-    real,    value :: DT    ! Time step
-    real,    value :: H0, HH, Z1, TAU1 ! Rayleigh friction parameters
-#else    
     integer, intent(in) :: PCOLS ! Number of longitudes
     integer, intent(in) :: PVER  ! Number of vertical layers
     real,    intent(in) :: DT    ! Time step
     real,    intent(in) :: H0, HH, Z1, TAU1 ! Rayleigh friction parameters
-#endif
 
     real,    intent(in) :: PREF(PVER+1)
     real,    intent(in) :: PDEL(PCOLS,PVER)
@@ -2172,13 +1348,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-----------------------------------------------------------------------
 !
 
-#ifdef _CUDA
-    I = (BLOCKIDX%X - 1) * BLOCKDIM%X + THREADIDX%X
-
-    I_LOOP: IF ( I <= PCOLS ) THEN
-#else
     I_LOOP: DO I = 1, PCOLS
-#endif
+
        PEGWD(I)  = 0.0
        PEORO(I)  = 0.0
        PERAY(I)  = 0.0
@@ -2234,11 +1405,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        BKGERR(I) = -( PEBKG(I) + KEBKG(I) )
        KERES(I)  =    PEGWD(I) + KEGWD(I) + BKGERR(I)
 
-#ifndef _CUDA
     END DO I_LOOP
-#else
-    END IF I_LOOP
-#endif 
 
   end subroutine postintr
 
