@@ -225,13 +225,22 @@ contains
   
   ! *******************************************************************
   
-  subroutine ease_extent (EASELabel, cols, rows, CELL_area )
+  subroutine ease_extent (EASELabel, cols, rows, cell_area, ll_lon, ll_lat, ur_lon, ur_lat)
+    
+    ! get commonly used EASE grid parameters 
 
-    character*(*),   intent(in)  :: EASELabel
-    integer,         intent(out) :: cols, rows
-    real, optional,  intent(out) :: CELL_area
+    character*(*),           intent(in)  :: EASELabel
+    integer,                 intent(out) :: cols, rows  ! number of grid cells in lon and lat direction 
+    real,          optional, intent(out) :: cell_area   ! [m]
+    real,          optional, intent(out) :: ll_lon      ! lon of grid cell boundary in lower left  corner
+    real,          optional, intent(out) :: ll_lat      ! lat of grid cell boundary in lower left  corner
+    real,          optional, intent(out) :: ur_lon      ! lon of grid cell boundary in upper right corner
+    real,          optional, intent(out) :: ur_lat      ! lat of grid cell boundary in upper right corner
+
+    ! ---------------------------------------------------------------------
 
     real*8                     :: map_scale_m, CELL_km, r0, s0, Rg
+    real                       :: tmplon
     character(3)               :: grid
     
     if (     index(EASELabel,'M36') /=0 ) then
@@ -250,18 +259,35 @@ contains
     endif
     
     if(     index(EASELabel,'EASEv2') /=0) then
+
        call easeV2_get_params(grid, map_scale_m, cols, rows, r0, s0)
-       if(present(CELL_area)) CELL_area = map_scale_m**2 / 1000.0 / 1000.0
+
+       if(present(cell_area)) cell_area = map_scale_m**2
+
     else if(index(EASELabel,'EASEv1') /=0) then
+
        call easeV1_get_params(grid, CELL_km, cols, rows, r0, s0, Rg)
-       if(present(CELL_area)) CELL_area = Cell_km**2
+
+       if(present(cell_area)) cell_area = CELL_km**2 * 1000. * 1000.
+
     else
+
        print*,"ease_extent(): unknown grid version: "//trim(EASELabel)//"  STOPPING."
        stop
+
     endif
+
+    ! get lat/lon of corner grid cells
+    ! 
+    ! recall that EASE grid indexing is zero-based
+
+    if (present(ll_lat))  call ease_inverse(EASElabel, 0., rows-0.5, ll_lat, tmplon)     
+    if (present(ur_lat))  call ease_inverse(EASElabel, 0.,     -0.5, ur_lat, tmplon)     
     
+    if (present(ll_lon))  ll_lon = -180.
+    if (present(ur_lon))  ur_lon =  180.
+
   end subroutine ease_extent
-  
 
   ! *******************************************************************
   !

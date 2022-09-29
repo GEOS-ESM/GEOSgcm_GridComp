@@ -106,10 +106,6 @@ PROGRAM mkEASETilesParam
          !   call get_command_argument(i,PF)
          !   if (PF == 'T') pfaf_til = .true.
 
-         !elseif ( trim(arg) == '-v' ) then
-         !   i = i+1
-         !   call get_command_argument(i,LBCSV)
-
          else ! stop for any other arguments
             print *,trim(usage1)
             print *,trim(usage2)

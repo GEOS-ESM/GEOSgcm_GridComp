@@ -168,6 +168,11 @@ contains
        use_PEATMAP = .false.
        jpl_height  = .false.
        
+    case default
+
+       print *,'init_bcs_config(): unknown land boundary conditions version (LBCSV)'
+       stop
+
     end select
              
   END SUBROUTINE init_bcs_config
