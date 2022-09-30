@@ -4213,8 +4213,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(NUM_LDAS_ENSEMBLE > 1) then
            call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
            VERIFY_(STATUS)           
-           !for GEOSldas comp_name should be catchxxxx
-           read(comp_name(6:6+ens_id_width-1), *) ldas_ens_id
+           !for GEOSldas comp_name should be catch_exxxx
+           read(comp_name(8:), *) ldas_ens_id
         endif
 
         call MAPL_GetResource(MAPL      ,&

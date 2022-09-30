@@ -72,7 +72,7 @@ subroutine SetServices ( GC, RC )
 
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
-        !catchcnxxxx
+        !catchcn_exxxx
         tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
     endif
 
