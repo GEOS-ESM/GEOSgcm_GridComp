@@ -152,12 +152,24 @@ contains
   !     version:     x  = {  1,  2             }
   !     projection:  p  = {  M                 }    ! only cylindrical ("M") implemented     
   !     resolution:  yy = { 01, 03, 09, 25, 36 }    ! 12.5 km not yet implemented
-  
-  subroutine ease_convert (EASELabel, lat, lon, r, s)
+  !
+  !   Coordinate arguments for ease_convert() and ease_inverse():
+  !
+  !     |    map coords    |  0-based index   |   # grid cells   |
+  !     |                  |  (real numbers!) |                  |
+  !     ----------------------------------------------------------
+  !     |    latitude      |        s         |       rows       |
+  !     |    longitude     |        r         |       cols       |
+  !
+  !   Indices are 0-based and run west to east (r) and north to south (s).
+  !
+  ! --------------------------------------------------------------------
+
+  subroutine ease_convert (EASELabel, lat, lon, r, s)   ! note odd/reversed order of (lat,lon) and (r,s)
     
     character*(*), intent(in)  :: EASELabel
     real,          intent(in)  :: lat, lon
-    real,          intent(out) :: r, s
+    real,          intent(out) :: r, s         ! r = lon index,  s = lat index
     
     character(3)  :: grid
     
@@ -189,10 +201,13 @@ contains
   
   ! *******************************************************************
   
-  subroutine ease_inverse (EASELabel, r, s, lat, lon)
+  subroutine ease_inverse (EASELabel, r, s, lat, lon)   ! note odd/reversed order of (r,s) and (lat,lon) 
+    
+    ! Note: Get lat/lon of grid cell borders by using fractional indices. 
+    !       E.g., s=-0.5 yields northern grid cell boundary of northernmost grid cells.
     
     character*(*), intent(in)  :: EASELabel
-    real,          intent(in)  :: r, s
+    real,          intent(in)  :: r, s         ! r = lon index,  s = lat index
     real,          intent(out) :: lat, lon
     
     character(3)  :: grid
@@ -230,8 +245,8 @@ contains
     ! get commonly used EASE grid parameters 
 
     character*(*),           intent(in)  :: EASELabel
-    integer,                 intent(out) :: cols, rows  ! number of grid cells in lon and lat direction 
-    real,          optional, intent(out) :: cell_area   ! [m]
+    integer,                 intent(out) :: cols, rows  ! number of grid cells in lon and lat direction, resp. 
+    real,          optional, intent(out) :: cell_area   ! [m^2]
     real,          optional, intent(out) :: ll_lon      ! lon of grid cell boundary in lower left  corner
     real,          optional, intent(out) :: ll_lat      ! lat of grid cell boundary in lower left  corner
     real,          optional, intent(out) :: ur_lon      ! lon of grid cell boundary in upper right corner
