@@ -52,6 +52,21 @@ module GEOS_GwdGridCompMod
   type(BeresSourceDesc) :: beres_desc
   type(GWBand)          :: oro_band
 
+! Thread private config params
+  type :: ThreadWorkSpace
+     real :: effgworo
+     real :: effgwbkg
+     integer :: pgwv
+     real :: bgstressmax
+     real :: Z1
+     real :: TAU1
+     real :: H0
+     real :: HH
+     logical :: USE_NCAR_GWD
+  end type ThreadWorkSpace
+
+  type(ThreadWorkspace), allocatable, target :: workspaces(:)
+
 contains
 
 !BOP
@@ -83,6 +98,11 @@ contains
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
 !=============================================================================
+
+! local
+    type (MAPL_MetaComp),       pointer    :: MAPL
+    logical :: use_threads
+    type (ESMF_Config)                            :: myCF
 
 ! Begin...
 
@@ -546,6 +566,18 @@ contains
 
 !EOS
 
+     myCF = ESMF_ConfigCreate (_RC)
+     call ESMF_ConfigLoadFile (myCF, 'GWD_GridComp.rc', _RC)
+     call ESMF_ConfigGetAttribute (myCF, use_threads, label='use_threads:', default=.FALSE., _RC)
+
+!   Get my internal MAPL_Generic state
+!   -----------------------------------
+    call MAPL_GetObjectFromGC (GC, MAPL, _RC)
+!   set use_threads
+    call MAPL%set_use_threads(use_threads)
+
+    call ESMF_ConfigDestroy(myCF, _RC)
+
 ! Set the Profiling timers
 ! ------------------------
 
@@ -617,6 +649,16 @@ contains
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
     character(len=ESMF_MAXSTR)     :: ERRstring
     logical                        :: USE_NCAR_GWD
+    real :: effgworo
+    real :: effgwbkg
+    integer :: pgwv
+    real :: bgstressmax
+    real :: Z1
+    real :: TAU1
+    real :: H0
+    real :: HH
+    integer :: num_threads
+    integer :: LM
 
 !=============================================================================
 
@@ -629,6 +671,10 @@ contains
       call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
       VERIFY_(STATUS)
       Iam = trim(COMP_NAME) // Iam
+
+! allocate space for threadprivate structure
+      num_threads = MAPL_get_num_threads()
+      allocate(workspaces(0:num_threads-1), _STAT)
 
       ! Get my internal MAPL_Generic state
       !-----------------------------------
@@ -647,6 +693,7 @@ contains
 
       call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.false., RC=STATUS)
       VERIFY_(STATUS)
+      workspaces(0:)%USE_NCAR_GWD = USE_NCAR_GWD
 
       !++jtb 03/2020
       !-----------------------------------
@@ -665,6 +712,50 @@ contains
 
          call gw_oro_init ( oro_band )
       end if
+
+! Gravity wave drag
+! -----------------
+
+    call MAPL_Get(MAPL, LM=LM, RC=STATUS )
+    VERIFY_(STATUS)
+    !print *, __FILE__, __LINE__, "LM = ", LM
+
+    !print *, __FILE__, __LINE__
+    call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
+    VERIFY_(STATUS)
+    workspaces(0:)%effgworo = effgworo
+    call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
+    VERIFY_(STATUS)
+    workspaces(0:)%effgwbkg = effgwbkg
+
+    if( LM .eq. 72 ) then
+        call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=4,    RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource( MAPL, bgstressmax, Label="BGSTRESSMAX:", default=0.9,  RC=STATUS)
+        VERIFY_(STATUS)
+    else
+        call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=NINT(4*LM/72.0),    RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource( MAPL, bgstressmax, Label="BGSTRESSMAX:", default=0.9, RC=STATUS)
+        VERIFY_(STATUS)
+    endif
+    workspaces(0:)%pgwv = pgwv
+    workspaces(0:)%bgstressmax = bgstressmax
+
+! Rayleigh friction
+! -----------------
+    CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  RC=STATUS)
+    VERIFY_(STATUS)
+    workspaces(0:)%Z1 = Z1
+    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
+    VERIFY_(STATUS)
+    workspaces(0:)%TAU1 = TAU1
+    CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,	RC=STATUS)
+    VERIFY_(STATUS)
+    workspaces(0:)%H0 = H0
+    CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,	RC=STATUS)
+    VERIFY_(STATUS)
+    workspaces(0:)%HH = HH
 
       ! All done
       !---------
@@ -705,20 +796,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (ESMF_Alarm       )            :: ALARM
 
   integer                             :: IM, JM, LM
-  integer                             :: pgwv
-  real                                :: effgworo, effgwbkg
-  real                                :: CDMBGWD1, CDMBGWD2
-  real                                :: bgstressmax
+  integer, pointer                             :: pgwv
+  real, pointer                                :: effgworo, effgwbkg
+  !real                                :: CDMBGWD1, CDMBGWD2
+  real, pointer                                :: bgstressmax
+  logical, pointer :: USE_NCAR_GWD
   real, pointer, dimension(:,:)       :: LATS
 
-  character(len=ESMF_MAXSTR) :: GRIDNAME
-  character(len=4)           :: imchar
-  character(len=2)           :: dateline
-  integer                    :: imsize,nn
+  !character(len=ESMF_MAXSTR) :: GRIDNAME
+  !character(len=4)           :: imchar
+  !character(len=2)           :: dateline
+  !integer                    :: imsize,nn
+  type(ThreadWorkspace), pointer :: workspace
+  integer :: thread
 
 ! Rayleigh friction parameters
 
-  REAL                                :: H0, HH, Z1, TAU1
+  REAL, pointer                                :: H0, HH, Z1, TAU1
+  type(ESMF_VM) :: vm
 
 !=============================================================================
 
@@ -728,20 +823,22 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
    Iam = "Run"
-   call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
+   call ESMF_GridCompGet( GC, name=COMP_NAME, VM=vm, RC=STATUS )
    VERIFY_(STATUS)
    Iam = trim(COMP_NAME) // Iam
+    !print *, __FILE__, __LINE__
 
 ! Retrieve the pointer to the state
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
    VERIFY_(STATUS)
+    !print *, __FILE__, __LINE__
 
 ! Local aliases to the state, grid, and configuration
 ! ---------------------------------------------------
 
-   call MAPL_TimerOn(MAPL,"TOTAL")
+   !call MAPL_TimerOn(MAPL,"TOTAL")
 
 ! Get parameters from generic state.
 !-----------------------------------
@@ -751,59 +848,43 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          RUNALARM=ALARM, LATS=LATS,  &
                            RC=STATUS )
     VERIFY_(STATUS)
+    !print *, __FILE__, __LINE__, IM, JM, LM
 
 ! Get grid name to determine IMSIZE
-    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
-    GRIDNAME =  AdjustL(GRIDNAME)
-    nn = len_trim(GRIDNAME)
-    dateline = GRIDNAME(nn-1:nn)
-    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-    read(imchar,*) imsize
-    if(dateline.eq.'CF') imsize = imsize*4
-
-! Gravity wave drag
-! -----------------
-
-    call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
-    VERIFY_(STATUS)
-
-    if( LM .eq. 72 ) then
-        call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=4,    RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource( MAPL, bgstressmax, Label="BGSTRESSMAX:", default=0.9,  RC=STATUS)
-        VERIFY_(STATUS)
-     else
-        call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=NINT(4*LM/72.0),    RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource( MAPL, bgstressmax, Label="BGSTRESSMAX:", default=0.9, RC=STATUS)
-        VERIFY_(STATUS)
-     endif
-
-! Rayleigh friction
-! -----------------
-    CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,	RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,	RC=STATUS)
-    VERIFY_(STATUS)
+    !call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
+    !call ESMF_VMBarrier(vm, _RC)
+    !VERIFY_(STATUS)
+    !GRIDNAME =  AdjustL(GRIDNAME)
+    !nn = len_trim(GRIDNAME)
+    !dateline = GRIDNAME(nn-1:nn)
+    !imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
+    !read(imchar,*) imsize
+    !if(dateline.eq.'CF') imsize = imsize*4
+    thread = MAPL_get_current_thread()
+    workspace => workspaces(thread)
+    pgwv => workspace%pgwv
+    effgworo => workspace%effgworo
+    effgwbkg => workspace%effgwbkg
+    bgstressmax => workspace%bgstressmax
+    H0 => workspace%H0
+    HH => workspace%HH
+    Z1 => workspace%Z1
+    TAU1 => workspace%TAU1
+    USE_NCAR_GWD => workspace%USE_NCAR_GWD
 
 ! If its time, recalculate the GWD tendency
 ! -----------------------------------------
 
+    !print *, __FILE__, __LINE__
    if ( ESMF_AlarmIsRinging( ALARM ) ) then
-      call ESMF_AlarmRingerOff(ALARM, RC=STATUS); VERIFY_(STATUS)
-      call MAPL_TimerOn (MAPL,"DRIVER")
+      !call ESMF_AlarmRingerOff(ALARM, RC=STATUS); VERIFY_(STATUS)
+    !print *, __FILE__, __LINE__
+      !call MAPL_TimerOn (MAPL,"DRIVER")
       call Gwd_Driver(RC=STATUS); VERIFY_(STATUS)
-      call MAPL_TimerOff(MAPL,"DRIVER")
+      !call MAPL_TimerOff(MAPL,"DRIVER")
    endif
 
-   call MAPL_TimerOff(MAPL,"TOTAL")
+   !call MAPL_TimerOff(MAPL,"TOTAL")
 
    RETURN_(ESMF_SUCCESS)
 
@@ -880,7 +961,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! NCAR GWD vars
 
-      logical :: USE_NCAR_GWD
+      !logical :: USE_NCAR_GWD
 
 !  Begin...
 !----------
@@ -894,6 +975,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8,      RC=STATUS); VERIFY_(STATUS)
 
       DT = DT_R8
+   !print *, __FILE__, __LINE__, trim(COMP_NAME), DT_R8
 
 ! Pointers to inputs
 !---------------------
@@ -958,6 +1040,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(EXPORT,    KERES, 'KERES'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,   BKGERR, 'BKGERR'  , RC=STATUS); VERIFY_(STATUS)
 
+    !print *, __FILE__, __LINE__, minval(T), maxval(T)
+
+    ! !$omp critical (PRNT)
+    ! block
+    ! thread = MAPL_get_current_thread()
+    ! print *, __FILE__, __LINE__, PGWV, effgwbkg, USE_NCAR_GWD
+    ! end block
+    ! !$omp end critical (PRNT)
 
       CALL PREGEO(IM*JM,   LM,   &
                     PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
@@ -972,10 +1062,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Do gravity wave drag calculations on a list of soundings
 !---------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,USE_NCAR_GWD,'USE_NCAR_GWD:', default=.false., RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_TimerOn(MAPL,"-INTR")
+    !call MAPL_TimerOn(MAPL,"-INTR")
 
     if (USE_NCAR_GWD) then
        ! Use Julio new code
@@ -1006,7 +1093,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       VERIFY_(STATUS)
     end if
 
-    call MAPL_TimerOff(MAPL,"-INTR")
+    !call MAPL_TimerOff(MAPL,"-INTR")
 
     CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
           PREF,     &
@@ -1037,6 +1124,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           KERES_X,  &
           BKGERR_X  )
 
+    !print *, __FILE__, __LINE__
 !! Tendency diagnostics
 !!---------------------
 
@@ -1082,6 +1170,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated(TAUOROY )) TAUOROY = TAUYO_TMP
     if(associated(TAUBKGX )) TAUBKGX = TAUXB_TMP
     if(associated(TAUBKGY )) TAUBKGY = TAUYB_TMP
+    !print *, __FILE__, __LINE__
 
 ! Export unweighted T Tendency
 !-----------------------------
@@ -1097,6 +1186,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! AMM modify T_EXP to be the T AFTER GWD, ie., add the tendency*dt
 ! (need to do this before DTDT is pressure weighted for the dynamics)
     if(associated(T_EXP   )) T_EXP    = T + DTDT*DT
+    !$omp critical (PRT)
+    !print *, __FILE__, __LINE__, minval(T_EXP), maxval(T_EXP)
+    !$omp end critical (PRT)
 
 ! DTDT has to be pressure weighted and is all due to frictional heating.
 !-----------------------------------------------------------------------
@@ -1111,6 +1203,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated(Q_EXP   )) Q_EXP    = Q
     if(associated(U_EXP   )) U_EXP    = U
     if(associated(V_EXP   )) V_EXP    = V
+    !print *, __FILE__, __LINE__
+    ! !omp critical (BLK1)
+    ! block
+    ! use esmf
+    ! use omp_lib
+    ! !print *, __FILE__, __LINE__
+    ! call ESMF_VMBarrier(vm, _RC)
+    ! end block
+    ! !omp end critical (BLK1)
 
 
 ! All done
