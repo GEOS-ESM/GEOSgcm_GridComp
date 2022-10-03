@@ -32,24 +32,17 @@ module linear_1d_operators
 !   ! Construct diffusion matrix.
 !   op = diffusion_operator(coords, d)
 !   call op%lmult_as_diag(-dt)
-!   call op%add_to_diag(1._r8)
+!   call op%add_to_diag(1.)
 !   ! Decompose in order to invert the operation.
 !   decomp = TriDiagDecomp(op)
 !   ! Diffuse data for one time step (fixed flux boundaries).
 !   call decomp%left_div(data)
-
-
-!++jtb
-!use shr_kind_mod, only: r8 => shr_kind_r8
-!  replaced below with 
-!integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
 
 !++jtb
 !   replaced this set with simple call abort()
 !use shr_log_mod, only: errMsg => shr_log_errMsg
 !use shr_sys_mod, only: shr_sys_abort
 !--jtb
-
 
 use coords_1d, only: Coords1D
 
@@ -97,7 +90,6 @@ public :: BoundaryData
 public :: BoundaryFlux
 
 !++jtb
-integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
 
 ! TriDiagOp represents operators that can work between nearest neighbors,
 ! with some extra logic at the boundaries. The implementation is a
@@ -109,13 +101,13 @@ type :: TriDiagOp
    ! The size of the matrix (number of grid cells).
    integer, public :: ncel
    ! Super-, sub-, and regular diagonals.
-   real(r8), allocatable :: spr(:,:)
-   real(r8), allocatable :: sub(:,:)
-   real(r8), allocatable :: diag(:,:)
+   real, allocatable :: spr(:,:)
+   real, allocatable :: sub(:,:)
+   real, allocatable :: diag(:,:)
    ! Buffers to hold boundary data; Details depend on the type of boundary
    ! being used.
-   real(r8), allocatable :: left_bound(:)
-   real(r8), allocatable :: right_bound(:)
+   real, allocatable :: left_bound(:)
+   real, allocatable :: right_bound(:)
  contains
    ! Applies the operator to a set of data.
    procedure :: apply => apply_tridiag
@@ -184,7 +176,7 @@ integer, parameter :: fixed_flux_bndry = 4
 type :: BoundaryType
    private
    integer :: bndry_type = fixed_flux_bndry
-   real(r8), allocatable :: edge_width(:)
+   real, allocatable :: edge_width(:)
  contains
    procedure :: make_left
    procedure :: make_right
@@ -193,11 +185,10 @@ end type BoundaryType
 
 abstract interface
    subroutine deriv_seed(del_minus, del_plus, sub, spr)
-     import :: r8
-     real(r8), USE_CONTIGUOUS intent(in) :: del_minus(:)
-     real(r8), USE_CONTIGUOUS intent(in) :: del_plus(:)
-     real(r8), USE_CONTIGUOUS intent(out) :: sub(:)
-     real(r8), USE_CONTIGUOUS intent(out) :: spr(:)
+     real, USE_CONTIGUOUS intent(in) :: del_minus(:)
+     real, USE_CONTIGUOUS intent(in) :: del_plus(:)
+     real, USE_CONTIGUOUS intent(out) :: sub(:)
+     real, USE_CONTIGUOUS intent(out) :: spr(:)
    end subroutine deriv_seed
 end interface
 
@@ -247,7 +238,7 @@ integer, parameter :: flux_cond = 2
 type :: BoundaryCond
    private
    integer :: cond_type = no_data_cond
-   real(r8), allocatable :: edge_data(:)
+   real, allocatable :: edge_data(:)
  contains
    procedure :: apply_left
    procedure :: apply_right
@@ -277,9 +268,9 @@ type :: TriDiagDecomp
    integer :: nsys = 0
    integer :: ncel = 0
    ! These correspond to A_k, E_k, and 1 / (B_k - A_k * E_{k+1})
-   real(r8), allocatable :: ca(:,:)
-   real(r8), allocatable :: ze(:,:)
-   real(r8), allocatable :: dnom(:,:)
+   real, allocatable :: ca(:,:)
+   real, allocatable :: ze(:,:)
+   real, allocatable :: dnom(:,:)
 contains
   procedure :: left_div => decomp_left_div
   procedure :: finalize => decomp_finalize
@@ -300,11 +291,11 @@ function zero_operator(nsys, ncel) result(op)
 
   op = TriDiagOp(nsys, ncel)
 
-  op%spr = 0._r8
-  op%sub = 0._r8
-  op%diag = 0._r8
-  op%left_bound = 0._r8
-  op%right_bound = 0._r8
+  op%spr = 0.
+  op%sub = 0.
+  op%diag = 0.
+  op%left_bound = 0.
+  op%right_bound = 0.
 
 end function zero_operator
 
@@ -317,28 +308,28 @@ function identity_operator(nsys, ncel) result(op)
 
   op = TriDiagOp(nsys, ncel)
 
-  op%spr = 0._r8
-  op%sub = 0._r8
-  op%diag = 1._r8
-  op%left_bound = 0._r8
-  op%right_bound = 0._r8
+  op%spr = 0.
+  op%sub = 0.
+  op%diag = 1.
+  op%left_bound = 0.
+  op%right_bound = 0.
 
 end function identity_operator
 
 ! Create an operator that just does an element-wise product by some data.
 function diagonal_operator(diag) result(op)
   ! Data to multiply by.
-  real(r8), USE_CONTIGUOUS intent(in) :: diag(:,:)
+  real, USE_CONTIGUOUS intent(in) :: diag(:,:)
 
   type(TriDiagOp) :: op
 
   op = TriDiagOp(size(diag, 1), size(diag, 2))
 
-  op%spr = 0._r8
-  op%sub = 0._r8
+  op%spr = 0.
+  op%sub = 0.
   op%diag = diag
-  op%left_bound = 0._r8
-  op%right_bound = 0._r8
+  op%left_bound = 0.
+  op%right_bound = 0.
 
 end function diagonal_operator
 
@@ -356,7 +347,7 @@ function diffusion_operator(coords, d_coef, l_bndry, r_bndry) &
   ! Grid cell locations.
   type(Coords1D), intent(in) :: coords
   ! Diffusion coefficient defined on interfaces.
-  real(r8), USE_CONTIGUOUS intent(in) :: d_coef(:,:)
+  real, USE_CONTIGUOUS intent(in) :: d_coef(:,:)
   ! Objects representing the kind of boundary on each side.
   class(BoundaryType), target, intent(in), optional :: l_bndry, r_bndry
   ! Output operator.
@@ -395,10 +386,10 @@ function diffusion_operator(coords, d_coef, l_bndry, r_bndry) &
 
   select case (l_bndry_loc%bndry_type)
   case (fixed_layer_bndry)
-     op%left_bound = 2._r8*d_coef(:,1)*coords%rdel(:,1) / &
+     op%left_bound = 2.*d_coef(:,1)*coords%rdel(:,1) / &
           (l_bndry_loc%edge_width+coords%del(:,1))
   case default
-     op%left_bound = 0._r8
+     op%left_bound = 0.
   end select
 
   do k = 1, coords%d-1
@@ -408,10 +399,10 @@ function diffusion_operator(coords, d_coef, l_bndry, r_bndry) &
 
   select case (r_bndry_loc%bndry_type)
   case (fixed_layer_bndry)
-     op%right_bound = 2._r8*d_coef(:,coords%d+1)*coords%rdel(:,coords%d) / &
+     op%right_bound = 2.*d_coef(:,coords%d+1)*coords%rdel(:,coords%d) / &
           (r_bndry_loc%edge_width+coords%del(:,coords%d))
   case default
-     op%right_bound = 0._r8
+     op%right_bound = 0.
   end select
 
   ! Above, we found all off-diagonals. Now get the diagonal.
@@ -431,7 +422,7 @@ function advection_operator(coords, v_coef, l_bndry, r_bndry) &
   ! Grid cell locations.
   type(Coords1D), intent(in) :: coords
   ! Advection coefficient (effective velocity).
-  real(r8), USE_CONTIGUOUS intent(in) :: v_coef(:,:)
+  real, USE_CONTIGUOUS intent(in) :: v_coef(:,:)
   ! Objects representing the kind of boundary on each side.
   class(BoundaryType), target, intent(in), optional :: l_bndry, r_bndry
   ! Output operator.
@@ -443,7 +434,7 @@ function advection_operator(coords, v_coef, l_bndry, r_bndry) &
   type(BoundaryType), target :: bndry_default
 
   ! Negative derivative of v.
-  real(r8) :: v_deriv(coords%n,coords%d)
+  real :: v_deriv(coords%n,coords%d)
 
   if (present(l_bndry)) then
      l_bndry_loc => l_bndry
@@ -476,10 +467,10 @@ function advection_operator(coords, v_coef, l_bndry, r_bndry) &
      op%left_bound = v_coef(:,1) / &
           (l_bndry_loc%edge_width+coords%del(:,1))
   case default
-     op%left_bound = 0._r8
+     op%left_bound = 0.
   end select
 
-  op%sub = v_coef(:,2:coords%d)*coords%rdst*0.5_r8
+  op%sub = v_coef(:,2:coords%d)*coords%rdst*0.5
   op%spr = -op%sub
 
   select case (r_bndry_loc%bndry_type)
@@ -487,7 +478,7 @@ function advection_operator(coords, v_coef, l_bndry, r_bndry) &
      op%right_bound = v_coef(:,coords%d+1) / &
           (r_bndry_loc%edge_width+coords%del(:,coords%d))
   case default
-     op%right_bound = 0._r8
+     op%right_bound = 0.
   end select
 
   ! Above, we found all off-diagonals. Now get the diagonal. This must be
@@ -529,7 +520,7 @@ end function advection_operator
 ! off-diagonal terms.
 function first_derivative(grid_spacing, l_bndry, r_bndry) result(op)
   ! Distances between points.
-  real(r8), USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
+  real, USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
   ! Boundary conditions.
   class(BoundaryType), intent(in), optional :: l_bndry, r_bndry
   ! Output operator.
@@ -542,13 +533,13 @@ end function first_derivative
 
 subroutine first_derivative_seed(del_minus, del_plus, sub, spr)
   ! Distances to next and previous point.
-  real(r8), USE_CONTIGUOUS intent(in) :: del_minus(:)
-  real(r8), USE_CONTIGUOUS intent(in) :: del_plus(:)
+  real, USE_CONTIGUOUS intent(in) :: del_minus(:)
+  real, USE_CONTIGUOUS intent(in) :: del_plus(:)
   ! Off-diagonal matrix terms.
-  real(r8), USE_CONTIGUOUS intent(out) :: sub(:)
-  real(r8), USE_CONTIGUOUS intent(out) :: spr(:)
+  real, USE_CONTIGUOUS intent(out) :: sub(:)
+  real, USE_CONTIGUOUS intent(out) :: spr(:)
 
-  real(r8) :: del_sum(size(del_plus))
+  real :: del_sum(size(del_plus))
 
   del_sum = del_plus + del_minus
 
@@ -559,7 +550,7 @@ end subroutine first_derivative_seed
 
 function second_derivative(grid_spacing, l_bndry, r_bndry) result(op)
   ! Distances between points.
-  real(r8), USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
+  real, USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
   ! Boundary conditions.
   class(BoundaryType), intent(in), optional :: l_bndry, r_bndry
   ! Output operator.
@@ -572,25 +563,25 @@ end function second_derivative
 
 subroutine second_derivative_seed(del_minus, del_plus, sub, spr)
   ! Distances to next and previous point.
-  real(r8), USE_CONTIGUOUS intent(in) :: del_minus(:)
-  real(r8), USE_CONTIGUOUS intent(in) :: del_plus(:)
+  real, USE_CONTIGUOUS intent(in) :: del_minus(:)
+  real, USE_CONTIGUOUS intent(in) :: del_plus(:)
   ! Off-diagonal matrix terms.
-  real(r8), USE_CONTIGUOUS intent(out) :: sub(:)
-  real(r8), USE_CONTIGUOUS intent(out) :: spr(:)
+  real, USE_CONTIGUOUS intent(out) :: sub(:)
+  real, USE_CONTIGUOUS intent(out) :: spr(:)
 
-  real(r8) :: del_sum(size(del_plus))
+  real :: del_sum(size(del_plus))
 
   del_sum = del_plus + del_minus
 
-  sub = 2._r8 / (del_minus*del_sum)
-  spr = 2._r8 / (del_plus*del_sum)
+  sub = 2. / (del_minus*del_sum)
+  spr = 2. / (del_plus*del_sum)
 
 end subroutine second_derivative_seed
 
 ! Brains behind the first/second derivative functions.
 function deriv_op_from_seed(grid_spacing, seed, l_bndry, r_bndry) result(op)
   ! Distances between points.
-  real(r8), USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
+  real, USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
   ! Function to locally construct matrix elements.
   procedure(deriv_seed) :: seed
   ! Boundary conditions.
@@ -664,7 +655,7 @@ function new_BoundaryExtrapolate() result(new_bndry)
 end function new_BoundaryExtrapolate
 
 function new_BoundaryFixedLayer(width) result(new_bndry)
-  real(r8), USE_CONTIGUOUS intent(in) :: width(:)
+  real, USE_CONTIGUOUS intent(in) :: width(:)
   type(BoundaryType) :: new_bndry
 
   new_bndry%bndry_type = fixed_layer_bndry
@@ -684,22 +675,22 @@ end function new_BoundaryFixedFlux
 
 subroutine make_left(self, grid_spacing, seed, term1, term2)
   class(BoundaryType), intent(in) :: self
-  real(r8), USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
+  real, USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
   procedure(deriv_seed) :: seed
-  real(r8), USE_CONTIGUOUS intent(out) :: term1(:)
-  real(r8), USE_CONTIGUOUS intent(out) :: term2(:)
+  real, USE_CONTIGUOUS intent(out) :: term1(:)
+  real, USE_CONTIGUOUS intent(out) :: term2(:)
 
-  real(r8) :: del_plus(size(term1)), del_minus(size(term1))
+  real :: del_plus(size(term1)), del_minus(size(term1))
 
   select case (self%bndry_type)
   case (zero_bndry)
-     term1 = 0._r8
-     term2 = 0._r8
+     term1 = 0.
+     term2 = 0.
   case (first_order_bndry)
      ! To calculate to first order, just use a really huge del_minus (i.e.
      ! pretend that there's a point so far away it doesn't matter).
      del_plus = grid_spacing(:,1)
-     del_minus = del_plus * 4._r8 / epsilon(1._r8)
+     del_minus = del_plus * 4. / epsilon(1.)
      call seed(del_minus, del_plus, term1, term2)
   case (extrapolate_bndry)
      ! To extrapolate from the boundary, use distance from the nearest
@@ -719,7 +710,7 @@ subroutine make_left(self, grid_spacing, seed, term1, term2)
      del_plus = grid_spacing(:,1)
      del_minus = del_plus
      call seed(del_minus, del_plus, term1, term2)
-     term1 = 0._r8
+     term1 = 0.
   case default
      call abort()
      !call shr_sys_abort("Invalid boundary type at "// &
@@ -730,21 +721,21 @@ end subroutine make_left
 
 subroutine make_right(self, grid_spacing, seed, term1, term2)
   class(BoundaryType), intent(in) :: self
-  real(r8), USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
+  real, USE_CONTIGUOUS intent(in) :: grid_spacing(:,:)
   procedure(deriv_seed) :: seed
-  real(r8), USE_CONTIGUOUS intent(out) :: term1(:)
-  real(r8), USE_CONTIGUOUS intent(out) :: term2(:)
+  real, USE_CONTIGUOUS intent(out) :: term1(:)
+  real, USE_CONTIGUOUS intent(out) :: term2(:)
 
-  real(r8) :: del_plus(size(term1)), del_minus(size(term1))
+  real :: del_plus(size(term1)), del_minus(size(term1))
 
   select case (self%bndry_type)
   case (zero_bndry)
-     term1 = 0._r8
-     term2 = 0._r8
+     term1 = 0.
+     term2 = 0.
   case (first_order_bndry)
      ! Use huge del_plus, analogous to how left boundary works.
      del_minus = grid_spacing(:,size(grid_spacing, 2))
-     del_plus = del_minus * 4._r8 / epsilon(1._r8)
+     del_plus = del_minus * 4. / epsilon(1.)
      call seed(del_minus, del_plus, term1, term2)
   case (extrapolate_bndry)
      ! Same strategy as left boundary, but reversed.
@@ -762,7 +753,7 @@ subroutine make_right(self, grid_spacing, seed, term1, term2)
      del_plus = grid_spacing(:,size(grid_spacing, 2))
      del_minus = del_plus
      call seed(del_minus, del_plus, term1, term2)
-     term2 = 0._r8
+     term2 = 0.
   case default
      call abort()
      !call shr_sys_abort("Invalid boundary type at "// &
@@ -822,7 +813,7 @@ function new_BoundaryNoData() result(new_cond)
 end function new_BoundaryNoData
 
 function new_BoundaryData(data) result(new_cond)
-  real(r8), USE_CONTIGUOUS intent(in) :: data(:)
+  real, USE_CONTIGUOUS intent(in) :: data(:)
   type(BoundaryCond) :: new_cond
 
   new_cond%cond_type = data_cond
@@ -831,9 +822,9 @@ function new_BoundaryData(data) result(new_cond)
 end function new_BoundaryData
 
 function new_BoundaryFlux(flux, dt, spacing) result(new_cond)
-  real(r8), USE_CONTIGUOUS intent(in) :: flux(:)
-  real(r8), intent(in) :: dt
-  real(r8), USE_CONTIGUOUS intent(in) :: spacing(:)
+  real, USE_CONTIGUOUS intent(in) :: flux(:)
+  real, intent(in) :: dt
+  real, USE_CONTIGUOUS intent(in) :: spacing(:)
   type(BoundaryCond) :: new_cond
 
   new_cond%cond_type = flux_cond
@@ -850,9 +841,9 @@ end function new_BoundaryFlux
 
 function apply_left(self, bound_term, array) result(delta_edge)
   class(BoundaryCond), intent(in) :: self
-  real(r8), USE_CONTIGUOUS intent(in) :: bound_term(:)
-  real(r8), USE_CONTIGUOUS intent(in) :: array(:,:)
-  real(r8) :: delta_edge(size(array, 1))
+  real, USE_CONTIGUOUS intent(in) :: bound_term(:)
+  real, USE_CONTIGUOUS intent(in) :: array(:,:)
+  real :: delta_edge(size(array, 1))
 
   select case (self%cond_type)
   case (no_data_cond)
@@ -871,9 +862,9 @@ end function apply_left
 
 function apply_right(self, bound_term, array) result(delta_edge)
   class(BoundaryCond), intent(in) :: self
-  real(r8), USE_CONTIGUOUS intent(in) :: bound_term(:)
-  real(r8), USE_CONTIGUOUS intent(in) :: array(:,:)
-  real(r8) :: delta_edge(size(array, 1))
+  real, USE_CONTIGUOUS intent(in) :: bound_term(:)
+  real, USE_CONTIGUOUS intent(in) :: array(:,:)
+  real :: delta_edge(size(array, 1))
 
   select case (self%cond_type)
   case (no_data_cond)
@@ -903,11 +894,11 @@ function apply_tridiag(self, array, l_cond, r_cond) result(output)
   ! Operator to apply.
   class(TriDiagOp), intent(in) :: self
   ! Data to act on.
-  real(r8), USE_CONTIGUOUS intent(in) :: array(:,:)
+  real, USE_CONTIGUOUS intent(in) :: array(:,:)
   ! Objects representing boundary conditions.
   class(BoundaryCond), target, intent(in), optional :: l_cond, r_cond
   ! Function result.
-  real(r8) :: output(size(array, 1), size(array, 2))
+  real :: output(size(array, 1), size(array, 2))
 
   ! Local objects to implement default.
   class(BoundaryCond), pointer :: l_cond_loc, r_cond_loc
@@ -1023,7 +1014,7 @@ end subroutine subtract_in_place_tridiag_ops
 subroutine scalar_add_tridiag(self, constant)
 
   class(TriDiagOp), intent(inout) :: self
-  real(r8), intent(in) :: constant
+  real, intent(in) :: constant
 
   self%diag = self%diag + constant
 
@@ -1033,7 +1024,7 @@ end subroutine scalar_add_tridiag
 subroutine diagonal_add_tridiag(self, diag_array)
 
   class(TriDiagOp), intent(inout) :: self
-  real(r8), USE_CONTIGUOUS intent(in) :: diag_array(:,:)
+  real, USE_CONTIGUOUS intent(in) :: diag_array(:,:)
 
   self%diag = self%diag + diag_array
 
@@ -1043,7 +1034,7 @@ end subroutine diagonal_add_tridiag
 subroutine scalar_lmult_tridiag(self, constant)
 
   class(TriDiagOp), intent(inout) :: self
-  real(r8), intent(in) :: constant
+  real, intent(in) :: constant
 
   self%spr = self%spr * constant
   self%sub = self%sub * constant
@@ -1059,7 +1050,7 @@ end subroutine scalar_lmult_tridiag
 subroutine diagonal_lmult_tridiag(self, diag_array)
 
   class(TriDiagOp), intent(inout) :: self
-  real(r8), USE_CONTIGUOUS intent(in) :: diag_array(:,:)
+  real, USE_CONTIGUOUS intent(in) :: diag_array(:,:)
 
   self%spr = self%spr * diag_array(:,:self%ncel-1)
   self%sub = self%sub * diag_array(:,2:)
@@ -1116,16 +1107,16 @@ function new_TriDiagDecomp(op, graft_decomp) result(decomp)
      decomp%dnom(:,op%ncel+1:) = graft_decomp%dnom(:,op%ncel+1:)
      decomp%ze(:,op%ncel+1:) = graft_decomp%ze(:,op%ncel+1:)
      ! Fill in dnom edge value.
-     decomp%dnom(:,op%ncel) = 1._r8 / (op%diag(:,op%ncel) - &
+     decomp%dnom(:,op%ncel) = 1. / (op%diag(:,op%ncel) - &
           decomp%ca(:,op%ncel)*decomp%ze(:,op%ncel+1))
   else
      ! If no grafting, the edge value of dnom comes from the diagonal.
-     decomp%dnom(:,op%ncel) = 1._r8 / op%diag(:,op%ncel)
+     decomp%dnom(:,op%ncel) = 1. / op%diag(:,op%ncel)
   end if
 
   do k = op%ncel - 1, 1, -1
      decomp%ze(:,k+1)   = - op%sub(:,k) * decomp%dnom(:,k+1)
-     decomp%dnom(:,k) = 1._r8 / &
+     decomp%dnom(:,k) = 1. / &
           (op%diag(:,k) - decomp%ca(:,k)*decomp%ze(:,k+1))
   end do
 
@@ -1145,12 +1136,12 @@ subroutine decomp_left_div(decomp, q, l_cond, r_cond)
   ! Decomposed matrix.
   class(TriDiagDecomp), intent(in) :: decomp
   ! Data to left-divide by the matrix.
-  real(r8), USE_CONTIGUOUS intent(inout) :: q(:,:)
+  real, USE_CONTIGUOUS intent(inout) :: q(:,:)
   ! Objects representing boundary conditions.
   class(BoundaryCond), intent(in), optional :: l_cond, r_cond
 
   ! "F" from the equation above.
-  real(r8) :: zf(decomp%nsys,decomp%ncel)
+  real :: zf(decomp%nsys,decomp%ncel)
 
   ! Level index.
   integer :: k

@@ -462,30 +462,6 @@ module GEOS_SurfaceGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-!   Total precip from MOIST (for backwards compatibility when not using PRECIP_FILE)
-!   --------------------------------------------------------------------------------
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME='TPREC',                                       &
-         LONG_NAME ='total_precipitation',                         &
-         UNITS     ='kg m-2 s-1',                                  &
-         DEFAULT   = MAPL_UNDEF,                                   &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,                           &
-         RESTART   = MAPL_RestartSkip,                  RC=STATUS  )
-     VERIFY_(STATUS)
-
-!   Convective precip from MOIST (for backwards compatibility when not using PRECIP_FILE)
-!   -------------------------------------------------------------------------------------
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME='CN_PRCP',                                     &
-         LONG_NAME ='convective_precipitation',                    &
-         UNITS     ='kg m-2 s-1',                                  &
-         DEFAULT   = MAPL_UNDEF,                                   &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,                           &
-         RESTART   = MAPL_RestartSkip,                  RC=STATUS  )
-     VERIFY_(STATUS)
-
      call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'liquid_water_convective_precipitation', &
         UNITS              = 'kg m-2 s-1',                        &
@@ -2036,16 +2012,7 @@ module GEOS_SurfaceGridCompMod
        RC=STATUS  )
   VERIFY_(STATUS)
      
-  call MAPL_AddExportSpec(GC,                                    &
-       LONG_NAME          = 'convective_precipitation',          &
-       UNITS              = 'kg m-2 s-1',                        &
-       SHORT_NAME         = 'CN_PRCP',                           &
-       DIMS               = MAPL_DimsHorzOnly,                   &
-       VLOCATION          = MAPL_VLocationNone,                  &
-       RC=STATUS  )
-  VERIFY_(STATUS)
-     
-  call MAPL_AddExportSpec(GC,                                    &
+  call MAPL_AddExportSpec(GC,                             &
        LONG_NAME          = 'snowfall',                          &
        UNITS              = 'kg m-2 s-1',                        &
        SHORT_NAME         = 'SNO',                               &
@@ -4483,9 +4450,6 @@ module GEOS_SurfaceGridCompMod
 !  All done
 !-----------
 
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
-
     call MAPL_TimerOff(MAPL,"-RUN1" )
     call MAPL_TimerOff(MAPL,"TOTAL")
 
@@ -5099,10 +5063,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SNO          => NULL()
     real, pointer, dimension(:,:) :: ICE          => NULL()
     real, pointer, dimension(:,:) :: FRZR         => NULL()
-    real, pointer, dimension(:,:) :: TPREC        => NULL()
-    real, pointer, dimension(:,:) :: CN_PRCP      => NULL()
     real, pointer, dimension(:,:) :: PRECTOT      => NULL()
-    real, pointer, dimension(:,:) :: PRECCU       => NULL()
     real, pointer, dimension(:,:) :: T2MDEW       => NULL()
     real, pointer, dimension(:,:) :: T2MWET       => NULL()
 
@@ -5830,8 +5791,6 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT, ICEFL   , 'ICE'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FRZRFL  , 'FRZR'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TA      , 'TA'      ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TPREC   , 'TPREC'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, PRECCU  , 'CN_PRCP' ,  RC=STATUS); VERIFY_(STATUS)
 
 ! This is the default behavior, with all surface components seeing uncorrected precip
 !------------------------------------------------------------------------------------
@@ -6930,31 +6889,13 @@ module GEOS_SurfaceGridCompMod
 !  including any correction. The uncorrected comes from moist.
 !-------------------------------------------------------------
 
-  ! Convective Precipitation
-  ! ------------------------
-    call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.true., RC=STATUS)
+    call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', RC=STATUS)
     VERIFY_(STATUS)
-
-    if(PRECIP_FILE /= "null") then
-       TMPTILE = PCUTILE
-       call MAPL_LocStreamTransform( LOCSTREAM, CN_PRCP, TMPTILE, RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       CN_PRCP = PRECCU
-    endif
-
-  ! Total Precipitation
-  ! -------------------
-    call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', ALLOC=.true., RC=STATUS)
-    VERIFY_(STATUS)
-
-    if(PRECIP_FILE /= "null") then
+    if (associated(PRECTOT)) then
        TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE + FRZRFLTILE
        call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
-    else
-       PRECTOT = TPREC
-    endif
+    end if
 
 ! New effective temperature and humidity
 !---------------------------------------
@@ -8228,9 +8169,6 @@ module GEOS_SurfaceGridCompMod
 
     if(associated( UUATILE  )) deallocate( UUATILE   )
     if(associated( VVATILE  )) deallocate( VVATILE   )
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
 
     call MAPL_TimerOff(MAPL,"-RUN2" )
     call MAPL_TimerOff(MAPL,"TOTAL")
