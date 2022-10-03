@@ -3,7 +3,6 @@ esma_set_this()
 set (alldirs
   GEOSsuperdyn_GridComp
   GEOSphysics_GridComp
-  GigaTraj_GridComp 
   )
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_AgcmGridComp.F90)

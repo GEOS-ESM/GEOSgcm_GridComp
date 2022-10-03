@@ -20,6 +20,10 @@ module GEOS_GcmGridCompMod
    use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
+#ifdef HAS_GIGATRAJ
+   use GigaTraj_GridCompMod,     only:  GigaTraj_SetServices => SetServices
+#endif
+
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
    use MAPL_HistoryGridCompMod,  only:  Hist_SetServices => SetServices
    use MAPL_HistoryGridCompMod,  only:  HISTORY_ExchangeListWrap
@@ -53,6 +57,7 @@ integer ::       OGCM
 integer ::       AIAU
 integer ::       ADFI
 integer ::       hist
+integer ::       gigatraj
 
 integer :: bypass_ogcm
 integer ::       k
@@ -235,6 +240,10 @@ contains
     else
        AGCM = MAPL_AddChild(GC, NAME='AGCM', SS=Agcm_SetServices, RC=STATUS)
        VERIFY_(STATUS)
+#ifdef HAS_GIGATRAJ
+       gigatraj = MAPL_AddChild(GC, NAME='GigaTraj', SS=GigaTraj_SetServices, RC=STATUS)
+       VERIFY_(STATUS)
+#endif
        AIAU = MAPL_AddChild(GC, NAME='AIAU', SS=AIAU_SetServices, RC=STATUS)
        VERIFY_(STATUS)
        ADFI = MAPL_AddChild(GC, NAME='ADFI', SS=ADFI_SetServices, RC=STATUS)
@@ -1890,6 +1899,11 @@ contains
    
     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
     VERIFY_(STATUS)
+#ifdef HAS_GIGATRAJ
+    ! use agcm export as gigatraj's import
+    call ESMF_GridCompRun ( GCS(gigatraj), importState=GEX(AGCM), exportState=GEX(gigatraj), clock=clock, userRC=status )
+    VERIFY_(STATUS)
+#endif
 
     if(DO_DATAATM/=0) then
       call MAPL_TimerOff(MAPL,"DATAATM"     )
