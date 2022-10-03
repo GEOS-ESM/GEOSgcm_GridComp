@@ -116,8 +116,9 @@ contains
 
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
-        !landxxxx
-        tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
+        ! land_exxxx
+        ! here ENS_ID_WIDTH is the width of digits. add 2 for '_e'
+        tmp(1:ens_id_width+2)=COMP_NAME(5:5+ens_id_width-1+2)
     endif
 
 !------------------------------------------------------------

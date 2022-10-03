@@ -4069,8 +4069,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
 
-        integer                     :: ens_id_width
-
 !#for_ldas_coupling
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
         type (CATCH_WRAP)                       :: wrap2
@@ -4211,9 +4209,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ldas_ens_id = ldas_first_ens_id
         
         if(NUM_LDAS_ENSEMBLE > 1) then
-           call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
-           VERIFY_(STATUS)           
-           !for GEOSldas comp_name should be catch_exxxx
+           !for GEOSldas comp_name should be catch_exxxx, digit starting from 8th character
            read(comp_name(8:), *) ldas_ens_id
         endif
 
