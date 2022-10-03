@@ -40,6 +40,9 @@ contains
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
+    type (ESMF_Config)                  :: CF
+    type (MAPL_MetaComp),  pointer      :: MAPL
+
 ! Begin...
 
 ! Get my name and set-up traceback handle
