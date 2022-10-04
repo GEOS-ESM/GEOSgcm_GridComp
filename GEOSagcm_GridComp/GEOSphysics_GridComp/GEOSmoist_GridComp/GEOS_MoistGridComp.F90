@@ -50,7 +50,7 @@ module GEOS_MoistGridCompMod
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
-
+  
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -4226,6 +4226,16 @@ contains
          DIMS      = MAPL_DimsHorzVert,                                  &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
+    
+    
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='NWFA',                                      &
+         LONG_NAME ='Number concentration of water-friendly aerosol',               &
+         UNITS     ='Kg-1'  ,                                         &
+         DIMS      = MAPL_DimsHorzVert,                                  &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
 
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='CNV_NICE',                                          & 
@@ -5186,7 +5196,7 @@ contains
     real                                :: Tmax
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
-    real, allocatable, dimension(:,:,:) :: QST3, DQST3
+    real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
@@ -5204,9 +5214,15 @@ contains
     real, pointer, dimension(:,:  ) :: PTYPE, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, RAIN_STRAT, RAIN_CONV
     real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:  ) :: CAPE, INHB
-    real, pointer, dimension(:,:  ) :: CNV_FRC
+    real, pointer, dimension(:,: ) :: CNV_FRC
+    real, pointer, dimension(:,:,:  ) :: NWFA
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+    
+
+    
+    real :: CNV_NUMLIQ_SC, CNV_NUMICE_SC
+    
 
     integer :: IM,JM,LM
     integer :: I, J, L
@@ -5288,6 +5304,8 @@ contains
        ALLOCATE ( MASS (IM,JM,LM  ) )
        ALLOCATE ( TMP2D(IM,JM     ) )
 
+      
+
        ! Derived States
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
        call FILLQ2ZERO(Q, MASS, TMP2D)
@@ -5303,8 +5321,11 @@ contains
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+       MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+       NWFA =  0.0 !number concentration of water friendly aerosol
 
        ! These may be used by children
+       call MAPL_GetPointer(EXPORT, NWFA, 'NWFA', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)        
        call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5331,7 +5352,7 @@ contains
          allocate ( AeroProps(IM,JM,LM) )
          call Aer_Activation(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI)
+                             AeroProps, AERO, NACTL, NACTI, NWFA)
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6
@@ -5350,6 +5371,7 @@ contains
        if (USE_AEROSOL_NN) then
          deallocate ( AeroProps )
        endif
+       
 
        ! Export Total Moist Tendencies
 
@@ -5719,10 +5741,10 @@ contains
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
        ! Aerosol activation exports
-       call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/(T)) ! kg-1
-       call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/(T)) ! kg-1
+       !call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
+       !if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/(T)) ! kg-1
+       !call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
+       !if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/(T)) ! kg-1
 
        ! Lightning Exports
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)

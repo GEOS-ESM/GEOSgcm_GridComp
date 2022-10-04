@@ -637,8 +637,8 @@
 			       nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
                   
 
-   	        	  !call IceParam (sigwparc,  &
-                	!	     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+   	        	  call IceParam (sigwparc,  &
+                		     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
 		  end if 
 		   
 		  sc_ice = 1.0
@@ -3450,7 +3450,7 @@ if (.false.) then
                        nsdust= max(exp(-0.517*T_ice + 150.577)-min_ns_dust, 0.0)
                        dnsd  = max(0.517*nsdust, 0.0)
 
-                       nssoot= 7.463*max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) 
+                       nssoot= 7.463*max(exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !bug 2021 
                        dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
                        
 

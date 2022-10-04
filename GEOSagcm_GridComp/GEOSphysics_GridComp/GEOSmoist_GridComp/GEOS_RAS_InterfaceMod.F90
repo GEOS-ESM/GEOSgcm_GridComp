@@ -12,6 +12,7 @@ module GEOS_RAS_InterfaceMod
 
   use ESMF
   use MAPL
+  use GEOSmoist_Process_Library
 
   implicit none
 
@@ -55,6 +56,7 @@ module GEOS_RAS_InterfaceMod
       real               :: RASAL_SLOPE
   endtype RASPARAM_TYPE
   type   (RASPARAM_TYPE) :: RASPARAMS
+  real    :: CNV_NUMLIQ_SC, CNV_NUMICE_SC
 
   public :: RAS_Setup, RAS_Initialize, RAS_Run
 
@@ -123,6 +125,8 @@ subroutine RAS_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, CBL_TPERT,               'CBL_TPERT:',       DEFAULT=-1.0   , RC=STATUS)
       call MAPL_GetResource(MAPL, CBL_TPERT_MXOCN,         'CBL_TPERT_MXOCN:', DEFAULT= 2.0   , RC=STATUS)
       call MAPL_GetResource(MAPL, CBL_TPERT_MXLND,         'CBL_TPERT_MXLND:', DEFAULT= 0.0   , RC=STATUS)
+      call MAPL_GetResource(MAPL, CNV_NUMLIQ_SC,   'CNV_NUMLIQ_SC:', DEFAULT= 0.1 ,RC=STATUS) !scaling for conv number
+      call MAPL_GetResource(MAPL, CNV_NUMICE_SC,   'CNV_NUMICE_SC:', DEFAULT= 1.0 ,RC=STATUS)     
 #endif
 
 end subroutine RAS_Initialize
@@ -144,6 +148,9 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
     real                            :: DT_MOIST
+     
+    !exports 
+    real, pointer, dimension(:,:,:) :: CNV_NICE, CNV_NDROP, CNV_FICE, NWFA 
 
     ! Local variables
 
@@ -218,6 +225,11 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          TPERT = MIN( TPERT , CBL_TPERT_MXLND ) ! land
       end where
       SIGE = PREF/PREF(LM) ! this should eventually change
+      
+      call MAPL_GetPointer(EXPORT, CNV_FICE , 'CNV_FICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP',ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_NICE , 'CNV_NICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, NWFA, 'NWFA', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS) 
 
       ! MATMAT Export out the inputs before RAS needed for RAStest
       call MAPL_GetPointer(EXPORT, THOI,   'THOI'  , RC=STATUS); VERIFY_(STATUS)
@@ -227,6 +239,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PLEI,   'PLEI'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, TPERTI, 'TPERTI', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, KCBLI,  'KCBLI' , RC=STATUS); VERIFY_(STATUS)
+\      
       if(associated(THOI  )) THOI   = TH1
       if(associated(QHOI  )) QHOI   = Q1
       if(associated(QSSI  )) QSSI   = QSS
@@ -329,7 +342,56 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            TRIEDLEV_DIAG = trdlx, &
            FSCAV  = FSCAV       , &
            DISSKE = KEX           )
-
+           
+      
+      
+      TEMP  = TH1*PK     
+      
+      if (RASPARAMS%CLDMICRO .eq. 0.0) then 
+       CNVFICE = ICE_FRACTION( TEMP )
+       dNi = make_IceNumber (DQIDT_DC, TE)*CNV_NUMICE_SC
+       dNl = make_DropletNumber (DQLDT_DC, NWFA)*CNV_NUMLIQ_SC
+     else
+      
+          dNL = CNVNDROP/MASS !number source DONIF
+          dNI = CNVNICE/MASS
+     end if   
+           
+                      
+           
+      ! UPDATE ANVIL
+      
+      QLCN  = QLCN + (1.0-CNV_FICE)* CNV_DQLDT*DT_MOIST/MASS ! 
+      QICN  = QICN +    CNV_FICE * CNV_DQLDT*DT_MOIST/MASS 
+      NCPL =  NCPL + dNl*DT_MOIST
+      NCPI =  NCPI + dNI*DT_MOIST
+      CLCN = MAX(MIN(CLCN + CNV_MFD*DT_MOIST/MASS, 1.0), 0.0)
+      
+      ! fix 'convective' cloud fraction 
+      if (FIX_CNV_CLOUD) then
+      TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
+      TMP3D = QST3
+      WHERE (CLCN < 1.0)
+         TMP3D = ( Q - QST3 * CLCN )/(1.-CLCN)
+      END WHERE
+      minrhx = 0.001
+      WHERE ( (( TMP3D - minrhx*QST3 ) < 0.0 ) .AND. (CLCN > 0.0) )
+         CLCN = (Q  - minrhx*QST3 )/( QST3*(1.0-minrhx) )
+      END WHERE
+      ! If still cant make suitable env RH then destroy anvil
+      WHERE ( CLCN < 0.0 )
+         CLCN = 0.
+         Q    = Q + QLCN + QICN
+         T    = T - (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
+         QLCN = 0.
+         QICN = 0.
+      END WHERE
+      
+      ! dont forget that conv cond has never frozen !!!!
+          TEMP   = TEMP +   (MAPL_ALHS-MAPL_ALHL) * CNV_FICE * CNV_MFD*DT_MOIST/MAPL_CP/MASS
+      
+       TH1  = TEMP/PK 
+       
       if(associated(QVRAS  )) QVRAS    = Q1
       if(associated(THRAS  )) THRAS    = TH1
       if(associated(URAS   )) URAS     = U1

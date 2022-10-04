@@ -13,6 +13,7 @@ module GEOS_UW_InterfaceMod
   use ESMF
   use MAPL
   use UWSHCU   ! using module that contains uwshcu code
+  use GEOSmoist_Process_Library
 
   implicit none
 
@@ -26,7 +27,8 @@ module GEOS_UW_InterfaceMod
   integer                                 :: STATUS
 
   public :: UW_Setup, UW_Initialize, UW_Run
-
+  real    :: CNV_NUMLIQ_SC, CNV_NUMICE_SC
+   
 contains
 
 subroutine UW_Setup (GC, CF, RC)
@@ -100,6 +102,8 @@ subroutine UW_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, CNV_NUMLIQ_SC,   'CNV_NUMLIQ_SC:', DEFAULT= 1.0 ,RC=STATUS) !scaling for conv number
+    call MAPL_GetResource(MAPL, CNV_NUMICE_SC,   'CNV_NUMICE_SC:', DEFAULT= 1.0 ,RC=STATUS)     
 
 end subroutine UW_Initialize
 
@@ -111,7 +115,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer, optional,   intent(  out) :: RC     ! Error code:
 
     ! Internals
-    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
+    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, NCPL, NCPI
     real, pointer, dimension(:,:)   :: CUSH
 
     ! Imports
@@ -141,6 +145,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:)   :: PTR2D
+    real, pointer, dimension(:,:,:) :: CNV_NICE, CNV_NDROP, CNV_FICE, NWFA
+    real, pointer, dimension(:,:,:) ::  dNL, dNI
 
     type (MAPL_MetaComp), pointer   :: MAPL
     type (ESMF_Config  )            :: CF
@@ -193,6 +199,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NCPL,  'NCPL'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NCPI,  'NCPI'   , RC=STATUS); VERIFY_(STATUS)
 
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
@@ -265,6 +273,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    
+    call MAPL_GetPointer(EXPORT, CNV_FICE , 'CNV_FICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP',ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_NICE , 'CNV_NICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, NWFA, 'NWFA', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS) 
 
       !  Call UW shallow convection
       !----------------------------------------------------------------
@@ -342,8 +355,22 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         QILS = QILS + (QISUB_SC+QIENT_SC)*DT_MOIST
       !  Number concentrations for 2-moment microphysics
       !--------------------------------------------------------------
-        SC_NDROP = SC_NDROP*MASS
-        SC_NICE  = SC_NICE *MASS
+       ! 2Moment
+       SC_NICE = make_IceNumber (QIDET_SC, T)*CNV_NUMICE_SC
+       SC_NDROP = make_DropletNumber (QLDET_SC, NWFA)*CNV_NUMLIQ_SC
+       NCPL =  NCPL + SC_NDROP*DT_MOIST
+       NCPI =  NCPI + SC_NICE*DT_MOIST
+
+      where (MFD_SC .gt. 0.)
+         CNV_NICE  =  CNV_NICE + dNi*MASS/MFD_SC
+         CNV_NDROP =  CNV_NDROP + dNl*MASS/MFD_SC
+       elsewhere
+         CNV_NICE = 0.0
+         CNV_NDROP =  0.0 
+      end where
+
+
+
       !  Precipitation
       !--------------------------------------------------------------
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', RC=STATUS); VERIFY_(STATUS)

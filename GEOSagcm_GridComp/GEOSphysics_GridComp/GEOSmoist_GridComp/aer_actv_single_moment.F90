@@ -41,7 +41,7 @@ MODULE Aer_Actv_Single_Moment
 
       SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
                                        sh, evap, kpbl, omega, FRLAND, USE_AERO_BUFFER, &
-                                       AeroProps, aero_aci, NACTL, NACTI)
+                                       AeroProps, aero_aci, NACTL, NACTI, NWFA)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM
       TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
@@ -53,8 +53,9 @@ MODULE Aer_Actv_Single_Moment
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
       real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl     
       logical                     ,intent(in ) :: USE_AERO_BUFFER
+      
  
-      real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI
+      real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI, NWFA
       
       real(AER_PR), allocatable, dimension (:) :: sig0,rg,ni,bibar,nact 
       real(AER_PR), dimension (IM,JM)  :: naer_cb, zws
@@ -77,7 +78,7 @@ MODULE Aer_Actv_Single_Moment
       real, pointer, dimension(:,:,:) :: aci_f_organic
       character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
       integer                         :: ACI_STATUS
-      REAL                            :: aux1,aux2,aux3,hfs,hfl
+      REAL                            :: aux1,aux2,aux3,hfs,hfl, nfaux
 
       integer :: n_modes
       REAL :: numbinit
@@ -212,6 +213,22 @@ MODULE Aer_Actv_Single_Moment
 
                  deallocate(buffer, __STAT__)
               end if
+              
+             
+              do k = 1, LM
+               do j = 1, JM
+                do i = 1, IM
+                nfaux =  0.0
+                 do n = 1, n_modes
+                   if (AeroProps(i,j,k)%kap(n) .gt. 0.4) then 
+                            nfaux =  nfaux + AeroProps(i,j,k)%num(n)
+                   end if                           
+                 end do !modes
+                 NWFA(I, J, K)  =  nfaux
+                end do
+               end do 
+              end do 
+             
 
               deallocate(aero_aci_modes, __STAT__)
 

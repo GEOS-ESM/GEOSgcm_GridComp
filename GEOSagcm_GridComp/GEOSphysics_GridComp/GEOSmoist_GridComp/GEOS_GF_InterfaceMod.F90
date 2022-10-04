@@ -38,6 +38,7 @@ module GEOS_GF_InterfaceMod
   real    :: SCLM_DEEP
   real    :: GF_MIN_AREA
   logical :: FIX_CNV_CLOUD
+  real    :: CNV_NUMLIQ_SC, CNV_NUMICE_SC
 
   public :: GF_Setup, GF_Initialize, GF_Run
 
@@ -213,7 +214,11 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, SCLM_DEEP           , 'SCLM_DEEP:'       ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CNV_2MOM            , 'CNV_2MOM:'        ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       , 'FIX_CNV_CLOUD:'   ,default= .TRUE. , RC=STATUS); VERIFY_(STATUS)
+      
     ENDIF
+    
+     call MAPL_GetResource(MAPL, CNV_NUMLIQ_SC,   'CNV_NUMLIQ_SC:', DEFAULT= 0.1 ,RC=STATUS) !scaling for conv number
+     call MAPL_GetResource(MAPL, CNV_NUMICE_SC,   'CNV_NUMICE_SC:', DEFAULT= 1.0 ,RC=STATUS)     
 
 end subroutine GF_Initialize
 
@@ -244,7 +249,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
-    real, pointer, dimension(:,:,:) :: NACTL, NACTI
+    real, pointer, dimension(:,:,:) :: NCPL, NCPI ! NACTL, NACTI
     real, pointer, dimension(:,:,:) :: CNV_TR ! tracer memory
 
     ! Imports
@@ -286,8 +291,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: TPWI,TPWI_star,LFR_GF,CNPCPRATE
     real, pointer, dimension(:,:,:) :: RSU_CN,REV_CN,PFL_CN,PFI_CN
     real, pointer, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
-    real, pointer, dimension(:,:,:) :: CNV_NICE, CNV_NDROP, CNV_FICE
-    real, pointer, dimension(:,:,:) :: NCPL, NCPI
+    real, pointer, dimension(:,:,:) :: CNV_NICE, CNV_NDROP, CNV_FICE, NWFA
+    real, pointer, dimension(:,:,:) ::  dNL, dNI
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -326,8 +331,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, NACTL,  'NACTL'   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, NACTI,  'NACTI'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NCPL,  'NCPL'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NCPI,  'NCPI'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
 
     ! Imports
@@ -441,14 +446,18 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     ! 2-moment stuff
-    call MAPL_GetPointer(EXPORT, NCPL     ,'NCPL_VOL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, NCPI     ,'NCPL_VOL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !call MAPL_GetPointer(EXPORT, NCPL     ,'NCPL_VOL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   ! call MAPL_GetPointer(EXPORT, NCPI     ,'NCPL_VOL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+
     TMP3D = PL*R_AIR/T
-    NCPL = NACTL/TMP3D ! kg-1
-    NCPI = NACTI/TMP3D ! kg-1
+
+    !NCPL = NACTL/TMP3D ! kg-1
+    !NCPI = NACTI/TMP3D ! kg-1
+    
     call MAPL_GetPointer(EXPORT, CNV_FICE , 'CNV_FICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP',ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_NICE , 'CNV_NICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, NWFA, 'NWFA', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
     ! Initialize tendencies
     call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -460,6 +469,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
+    
     if (STOCHASTIC_CNV) then
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
@@ -502,8 +512,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,MUPDP,MUPSH,MUPMD,MDNDP                           &
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
-                                 ,DTDTDYN,DQVDTDYN                                  &
-                                 ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
+                                 ,DTDTDYN,DQVDTDYN                                  &                                
                                  ,RSU_CN, REV_CN, PFI_CN, PFL_CN                    &
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
@@ -526,8 +535,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,MUPDP,MUPSH,MUPMD                                 &
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
-                                 ,DTDTDYN,DQVDTDYN                                  &
-                                 ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
+                                 ,DTDTDYN,DQVDTDYN                                  &                                
                                  ,RSU_CN, REV_CN, PFI_CN, PFL_CN)
     ENDIF
 
@@ -545,9 +553,23 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
       DQADT_DC = CNV_MFD*SCLM_DEEP/MASS
-    ! 2Momoent
-     !dNi = make_IceNumber (dQi, TE)
-     !dNl = make_DropletNumber (dQl, 0.0, FRLAND)
+    ! 2Moment
+      dNi = make_IceNumber (DQIDT_DC, T)*CNV_NUMICE_SC
+      dNl = make_DropletNumber (DQLDT_DC, NWFA)*CNV_NUMICE_SC
+      NCPL =  NCPL + dNl*DT_MOIST
+      NCPI =  NCPI + dNI*DT_MOIST
+      CNV_FICE =  fQi
+      
+      where (CNV_MFD .gt. 0.)
+         CNV_NICE  =   dNi*MASS/CNV_MFD
+         CNV_NDROP =   dNl*MASS/CNV_MFD 
+       elsewhere
+         CNV_NICE = 0.0
+         CNV_NDROP =  0.0 
+      end where 
+             
+      
+      
     ! add QI/QL/CL tendencies
       QLCN =         QLCN + DQLDT_DC*DT_MOIST
       QICN =         QICN + DQIDT_DC*DT_MOIST
