@@ -783,6 +783,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-INTR_GEOS"   ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="-BELJAARS_TOFD"   ,RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-DRIVER_DATA"   ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_DEVICE"   ,RC=STATUS)
@@ -1011,7 +1013,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer                             :: IM, JM, LM
   integer                             :: pgwv
-  real                                :: effbeljaars, tcrib
+  real                                :: HGT_SURFACE
+  real                                :: effbeljaars, limbeljaars, tcrib
   real                                :: effgworo, effgwbkg
   real                                :: CDMBGWD1, CDMBGWD2
   real                                :: bgstressmax
@@ -1785,7 +1788,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          enddo
 
          if (FIRST_RUN) then
+           FIRST_RUN = .false.
            call gw_newtonian_set(LM, PREF)
+#ifdef DEBUG_GWD
            if (NCAR_NRDG > 0) then
             IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
             call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
@@ -1800,7 +1805,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
             enddo
           endif
-          FIRST_RUN = .false.
+#endif
          endif
 
          call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', RC=STATUS); VERIFY_(STATUS)
@@ -1891,10 +1896,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
          TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
+    call MAPL_TimerOff(MAPL,"-INTR")
 
     ! Topographic Form Drag [Beljaars et al (2004)]
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=10.0, RC=STATUS)
+    call MAPL_TimerOn(MAPL,"-BELJAARS_TOFD")
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=8.0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, limbeljaars, Label="BELJAARS_LIMITER:",  default=400.0, RC=STATUS)
+    VERIFY_(STATUS)
+    limbeljaars = limbeljaars/86400.0
+    ! this approximation is invalid near the surface below 50m.
+    if (LM .eq. 72) then
+      call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 0.0, RC=STATUS); VERIFY_(STATUS)
+    else
+      call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS); VERIFY_(STATUS)
+    endif
     if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),stat=status)
     VERIFY_(STATUS)
@@ -1922,16 +1938,27 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        DO J=1,JM
           DO I=1,IM
                var_temp = 0.0
-               wsp=SQRT(U(i,j,l)**2 + V(i,j,l)**2)
-               if (a2(i,j) > 0.0 .AND. ZM(I,J,L) < 4.0*Hefold(i,j) ) then
+               if (a2(i,j) > 0.0 .AND. ZM(I,J,L) < 4.0*Hefold(i,j) &
+                                 .AND. ZM(I,J,L) > HGT_SURFACE     ) then
+                  wsp      = SQRT(U(i,j,l)**2 + V(i,j,l)**2)
                   var_temp = ZM(I,J,L)/Hefold(i,j)
                   var_temp = exp(-var_temp*sqrt(var_temp))*(var_temp**(-1.2))
-                  var_temp = a2(i,j)*(var_temp/Hefold(i,j))
+                  var_temp = wsp*a2(i,j)*(var_temp/Hefold(i,j))
+                 !  Note:  This is a semi-implicit treatment of the time differencing
+                 !  per Beljaars et al. (2004, QJRMS) doi: 10.1256/qj.03.73
+                  DUDT_TOFD(i,j,l) = - var_temp*U(i,j,l)/(1. + var_temp*DT)
+                  DVDT_TOFD(i,j,l) = - var_temp*V(i,j,l)/(1. + var_temp*DT)
+                 ! Apply Tendency Limiter
+                  if (abs(DUDT_TOFD(i,j,l)) > limbeljaars) then
+                    DUDT_TOFD(i,j,l) = (limbeljaars/abs(DUDT_TOFD(i,j,l))) * DUDT_TOFD(i,j,l)
+                  end if
+                  if (abs(DVDT_TOFD(i,j,l)) > limbeljaars) then
+                    DVDT_TOFD(i,j,l) = (limbeljaars/abs(DVDT_TOFD(i,j,l))) * DVDT_TOFD(i,j,l)
+                  end if
+               else
+                  DUDT_TOFD(i,j,l) = 0.0
+                  DVDT_TOFD(i,j,l) = 0.0
                end if
-               !  Note:  This is a semi-implicit treatment of the time differencing
-               !  per Beljaars et al. (2004, QJRMS)
-               DUDT_TOFD(i,j,l) = - var_temp*wsp*U(i,j,l)/(1. + var_temp*DT*wsp)
-               DVDT_TOFD(i,j,l) = - var_temp*wsp*V(i,j,l)/(1. + var_temp*DT*wsp)
           END DO
        END DO
     END DO
@@ -1942,8 +1969,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     DUDT_TOFD=0.0
     DVDT_TOFD=0.0  
     endif 
-
-    call MAPL_TimerOff(MAPL,"-INTR")
+    call MAPL_TimerOff(MAPL,"-BELJAARS_TOFD")
 
     CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
           PREF,     &
@@ -1979,7 +2005,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     if(associated(DUDT    )) DUDT     = DUDT_TOT
     if(associated(DVDT    )) DVDT     = DVDT_TOT
-    if(associated(DTDT    )) DTDT     = DTDT_TOT
+    if(associated(DTDT    )) DTDT     = DTDT_TOT*PDEL ! DTDT has to be pressure weighted for dynamics
 
     if(associated(DUDT_RAY)) DUDT_RAY = DUDT_RAH
     if(associated(DVDT_RAY)) DVDT_RAY = DVDT_RAH
@@ -2027,37 +2053,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Export unweighted T Tendency
 !-----------------------------
+    if(associated(TTMGW   )) TTMGW    = DTDT_TOT
 
-    if(associated(TTMGW)) then
-       if(associated(DTDT )) then
-          TTMGW = DTDT
-       else
-          TTMGW = 0.0
-       end if
-    end if
-
-! AMM modify T_EXP to be the T AFTER GWD, ie., add the tendency*dt
-! (need to do this before DTDT is pressure weighted for the dynamics)
-    if(associated(T_EXP   )) T_EXP    = T + DTDT*DT
-
-! DTDT has to be pressure weighted and is all due to frictional heating.
-!-----------------------------------------------------------------------
-
-    if(associated(DTDT    )) then
-       DTDT = DTDT*PDEL 
-    end if
-
-    if(associated(PREF_EXP)) PREF_EXP = PREF
-    if(associated(SGH_EXP )) SGH_EXP  = SGH
-    if(associated(PLE_EXP )) PLE_EXP  = PLE
-    if(associated(Q_EXP   )) Q_EXP    = Q
-    if(associated(U_EXP   )) U_EXP    = U + DUDT_GWD*DT
-    if(associated(V_EXP   )) V_EXP    = V + DVDT_GWD*DT
-
+! Fille additional exports
+!-------------------------
+    if(associated(    Q_EXP ))    Q_EXP = Q
+    if(associated(    U_EXP ))    U_EXP = U + DUDT_TOT*DT
+    if(associated(    V_EXP ))    V_EXP = V + DVDT_TOT*DT
+    if(associated(    T_EXP ))    T_EXP = T + DTDT_TOT*DT
+    if(associated( PREF_EXP )) PREF_EXP = PREF
+    if(associated(  SGH_EXP ))  SGH_EXP = SGH
+    if(associated(  PLE_EXP ))  PLE_EXP = PLE
 
 ! All done
 !-----------
-
     RETURN_(ESMF_SUCCESS)
    end subroutine GWD_DRIVER
 

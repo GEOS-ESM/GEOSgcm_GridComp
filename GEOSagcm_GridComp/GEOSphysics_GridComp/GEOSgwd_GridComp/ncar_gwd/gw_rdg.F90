@@ -502,18 +502,25 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
 !--------------------------------------------------------------------------
 
   hdsp      = mxdis ! no longer multipied by 2
-  src_level = pver+1
-  bwv_level = -1
-  tlb_level = -1
 
   tau(:,0,:) = 0.0
 
+  ! Find min height to begin tendency forcing
+  tend_level = pver
+  do k = pver, 1, -1
+     do i = 1, ncol
+        if ( 0.5*(zi(i,k+1)+zi(i,k)) <= orohmin ) then
+           tend_level(i) = k
+        end if
+     end do
+  end do
   ! Find depth of "source layer" for mountain waves
   ! i.e., between ground and mountain top
+  src_level = tend_level
   do k = pver, 1, -1
      do i = 1, ncol
         ! Need to have h >= z(k+1) here or code will bomb when h=0.
-        if ( (hdsp(i) >= zi(i,k+1)) .and. (hdsp(i) < zi(i,k))   ) then
+        if ( (k <= tend_level(i)) .and. (hdsp(i) >= zi(i,k+1)) .and. (hdsp(i) < zi(i,k)) ) then
            src_level(i) = k  
         end if
      end do
@@ -532,15 +539,15 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
      end do
   end do
 
-
   do i = 1, ncol
-     dpsrc(i) = pint(i,pver+1) - pint(i,src_level(i))
+     dpsrc(i) = pint(i,tend_level(i)) - pint(i,src_level(i))
   end do
-
-  rsrc = rsrc / dpsrc
-  usrc = usrc / dpsrc
-  vsrc = vsrc / dpsrc
-  nsrc = nsrc / dpsrc
+  where ( dpsrc > 0.0 )
+    rsrc = rsrc / dpsrc
+    usrc = usrc / dpsrc
+    vsrc = vsrc / dpsrc
+    nsrc = nsrc / dpsrc
+  end where
 
   wmsrc = sqrt( usrc**2 + vsrc**2 )
 
@@ -685,9 +692,10 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   where( tlb < 0.)
      tlb = 0.
   endwhere
+  tlb_level = tend_level
   do k = pver, pver/2, -1
      do i = 1, ncol
-         if ( (tlb(i) > zi(i,k+1)) .and. (tlb(i) <= zi(i,k))   ) then
+         if ( (k <= tend_level(i)) .and. (tlb(i) > zi(i,k+1)) .and. (tlb(i) <= zi(i,k)) ) then
            tlb_level(i) = k
         end if
      end do
@@ -706,14 +714,14 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   where(( bwv < 0.) .or. (dwv < 0.) )
      bwv = 0.
   endwhere
+  bwv_level = tend_level
   do k = pver,1, -1
      do i = 1, ncol
-        if ( (bwv(i) > zi(i,k+1)) .and. (bwv(i) <= zi(i,k))   ) then
+        if ( (k <= tend_level(i)) .and. (bwv(i) > zi(i,k+1)) .and. (bwv(i) <= zi(i,k)) ) then
            bwv_level(i) = k+1
         end if
      end do
   end do
-
 
 
   ! Compute the interface wind projection by averaging the midpoint winds.
@@ -721,9 +729,6 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   ubi(:,1) = ubm(:,1)
   ubi(:,2:pver) = midpoint_interp(ubm)
   ubi(:,pver+1) = ubm(:,pver)
-
-  ! Allow wind tendencies all the way to the model bottom.
-  tend_level = pver
 
   ! No spectrum; phase speed is just 0.
   c = 0.
