@@ -838,6 +838,7 @@ module GEOSmoist_Process_Library
 
                         QVn = ( QV - QSn*AF )*tmpARR
       if ( AF >= 1.0 )  QVn = QSn*1.e-4
+                        QAp = 0.0
       if ( AF >  0.0 )  QAp = QA/AF
 
       CFn = CF*tmpARR
