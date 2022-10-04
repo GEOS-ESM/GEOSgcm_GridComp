@@ -587,9 +587,13 @@ subroutine gw_beres_ifc( band, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats)
 
 !WMP pressure scaling near model top
-!    zfac_layer = 15.0 ! 0.15mb
-!    pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
-     pint_adj = 1.0
+!!!  pint_adj = 1.0
+     zfac_layer = 300.0 ! 3mb
+     do k=1,pver+1
+       do i=1,ncol
+         pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
+       enddo
+     enddo
 
       ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 

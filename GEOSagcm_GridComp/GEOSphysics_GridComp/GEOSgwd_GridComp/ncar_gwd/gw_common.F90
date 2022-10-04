@@ -522,19 +522,19 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   if (tau_0_ubc) tau(:,:,ktop) = 0.0
 
   ! Apply efficiency to completed stress profile.
-  if (lapply_effgw) then
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,tau,tend_level,ncol,effgw) &
+!$OMP parallel do default(none) shared(pver,ktop,band,tau,tend_level,ncol,effgw) &
 !$OMP                          private(k,l,i)
-    do k = ktop, kbot_tend+1
+    do k = ktop, pver+1
         do l = -band%ngwv, band%ngwv
            do i=1,ncol
             if (k-1 <= tend_level(i)) then
               tau(i,l,k) = tau(i,l,k) * effgw(i)
+            else
+              tau(i,l,k) = 0.0
             end if
            end do
         end do
-     end do
-  end if
+    end do
 
   !------------------------------------------------------------------------
   ! Compute the tendencies from the stress divergence.
@@ -543,7 +543,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Loop over levels from top to bottom
 !$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
-!$OMP                                  gwut,ubt,xv,yv,lapply_effgw,ubt_lim_ratio,tend_level,near_zero) &
+!$OMP                                  gwut,ubt,xv,yv,ubt_lim_ratio,tend_level,near_zero) &
 !$OMP                          private(k,l,i,ubtl)
   do k = ktop, kbot_tend
 
@@ -567,9 +567,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           ubtl(i) = min(ubtl(i), umcfac * abs(c(i,l)-ubm(i,k)) / dt)
 
           ! Note: Here the limiter is being applied to each component wave
-          ! seperately; BEFORE adding spectrum (conv., frontal) and BEFORE 
-          ! applying effgw_{} (all GW)
-          if (.not. lapply_effgw) ubtl(i) = min(ubtl(i), tndmax)
+          ubtl(i) = min(ubtl(i), tndmax)
         
           if (k <= tend_level(i)) then
 
@@ -585,25 +583,20 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
      end do
 
-     if (lapply_effgw) then
-        ! Apply second tendency limit to maintain numerical stability.
-        ! Enforce du/dt < tndmax so that ridicuously large tendencies are not
-        ! permitted.
-        ! This can only happen above tend_level, so don't bother checking the
-        ! level explicitly.
-        do i=1,ncol
-          if (abs(ubt(i,k)) > tndmax) then
+     ! Apply second tendency limit to maintain numerical stability.
+     ! Enforce du/dt < tndmax so that ridicuously large tendencies are not
+     ! permitted.
+     ! This can only happen above tend_level, so don't bother checking the
+     ! level explicitly.
+     do i=1,ncol
+        if (abs(ubt(i,k)) > tndmax) then
            ubt_lim_ratio(i) = tndmax/abs(ubt(i,k))
            ubt(i,k) = ubt_lim_ratio(i) * ubt(i,k)
-          else
+        else
            ubt_lim_ratio(i) = 1.0
-          end if
-        end do
-     else
-        ubt_lim_ratio = 1.0
-     end if
+        end if
+     end do
 
-     
      do l = -band%ngwv, band%ngwv
         gwut(:,k,l) = ubt_lim_ratio*gwut(:,k,l)
         ! Redetermine the effective stress on the interface below from the
@@ -636,35 +629,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
      ! End of level loop.
   end do
-
-
-  ! Block to undo Sean Santos mods to effgw and limiters.
-  ! Here because non-oro GW in WACCM need extensive re-tuning
-  ! before Sean's mods can be adopted. --jtb 03/02/16
-  !==========================================
-  if (.not.(lapply_effgw)) then
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tend_level,tau,effgw) &
-!$OMP                          private(k,l)
-     do k = ktop, kbot_tend+1
-        do l = -band%ngwv, band%ngwv
-           do i=1,ncol
-             if (k-1 <= tend_level(i)) then
-              tau(i,l,k) = tau(i,l,k) * effgw(i)
-             end if
-           end do
-        end do
-     end do
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,gwut,utgw,vtgw,effgw) &
-!$OMP                          private(k,l)
-     do k = ktop, kbot_tend
-        do l = -band%ngwv, band%ngwv
-           gwut(:,k,l) = gwut(:,k,l) * effgw
-        end do
-        utgw(:,k) = utgw(:,k) * effgw
-        vtgw(:,k) = vtgw(:,k) * effgw
-     end do
-  end if
-  !===========================================
 
   ! Evaluate second temperature tendency term: Conversion of kinetic
   ! energy into thermal.
