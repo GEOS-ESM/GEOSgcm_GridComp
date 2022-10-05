@@ -186,9 +186,13 @@ module GEOSmoist_Process_Library
       real, parameter :: aT_ICE_ALL = 245.16
       real, parameter :: aT_ICE_MAX = 261.16
       real, parameter :: aICEFRPWR  = 2.0
+        ! Over Oceans
+      real, parameter :: oT_ICE_ALL = 238.16
+      real, parameter :: oT_ICE_MAX = 263.16
+      real, parameter :: oICEFRPWR  = 4.0
 
       ! Anvil clouds
-      ! Anvil-Convective sigmoidal function like figure 7(right)
+      ! Anvil-Convective sigmoidal function like figure 6(right)
       ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
         ICEFRCT_C  = 0.00
         if ( TEMP <= aT_ICE_ALL ) then
@@ -199,10 +203,22 @@ module GEOSmoist_Process_Library
         ICEFRCT_C = MIN(ICEFRCT_C,1.00)
         ICEFRCT_C = MAX(ICEFRCT_C,0.00)
         ICEFRCT_C = ICEFRCT_C**aICEFRPWR
+#ifdef MODIS_ICE_POLY
       ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
         tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
         ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
         ICEFRCT_M = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+#else
+        ICEFRCT_M  = 0.00
+        if ( TEMP <= oT_ICE_ALL ) then
+           ICEFRCT_M = 1.000
+        else if ( (TEMP > oT_ICE_ALL) .AND. (TEMP <= oT_ICE_MAX) ) then
+           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - oT_ICE_ALL ) / ( oT_ICE_MAX - oT_ICE_ALL ) ) )
+        end if
+        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+        ICEFRCT_M = ICEFRCT_M**oICEFRPWR
+#endif
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 
