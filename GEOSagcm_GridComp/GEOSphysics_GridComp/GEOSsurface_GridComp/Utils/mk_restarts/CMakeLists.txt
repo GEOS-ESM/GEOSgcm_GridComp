@@ -18,6 +18,7 @@ set (exe_srcs
   mk_RouteRestarts.F90
   mk_GEOSldasRestarts.F90
   mk_catchANDcnRestarts.F90
+  mk_openwater_aqua.F90
 )
 
 esma_add_library (${this}

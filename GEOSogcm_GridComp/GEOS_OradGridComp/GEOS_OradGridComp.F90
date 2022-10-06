@@ -507,11 +507,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !------------------------
 
    if (.not. ocean_extData) then
+      kpar = 1.0
+#if 0
      call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
      VERIFY_(STATUS)
 
      call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
      VERIFY_(STATUS)
+#endif
    else
      call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
      KPAR = data_kpar

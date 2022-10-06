@@ -575,7 +575,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        if (ocean_extData) then
          FR = data_ice ! netcdf variable
        else ! binary
-         call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
+!         call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
+          FR = 0.0
        end if
 
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
