@@ -73,8 +73,7 @@ subroutine SetServices ( GC, RC )
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
         !catchcn_exxxx
-        !ENS_ID_WIDTH is the width of the digit. Add 2 for '_e'
-        tmp(1:ens_id_width+2)=COMP_NAME(8:8+ens_id_width-1 +2)
+        tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
     endif
 
 
