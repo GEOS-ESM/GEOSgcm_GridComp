@@ -30,6 +30,7 @@ module GEOS_LandGridCompMod
   use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
   use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
+  use pso_params_mod_landshared
 !  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
@@ -85,7 +86,7 @@ contains
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
-    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
+    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width, ens_int, pso_choice, test
     character(len=ESMF_MAXSTR)              :: SURFRC
 
 !=============================================================================
@@ -114,11 +115,34 @@ contains
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
+    pso_choice = 0
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
         !landxxxx
         tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
+        if (pso_choice == 1) then
+            read(tmp,*,iostat=status) ens_int
+            pso_params%ens_num = ens_int + 1
+            pso_params%total_ens = NUM_LDAS_ENSEMBLE
+            !write(*,*) 'ens_int'
+            !write(*,*) ens_int
+            !write(*,*) 'pso_params%ens_num'
+            !write(*,*) pso_params%ens_num
+            !write(*,*) 'pso_params%total_ens'
+            !write(*,*) pso_params%total_ens
+            !intentional error
+        endif
+    else
+        if (pso_choice == 1) then
+            pso_params%ens_num = 1
+            pso_params%total_ens = 1
+            !write(*,*) 'pso_params%ens_num'
+            !write(*,*) pso_params%ens_num
+            !write(*,*) 'pso_params%total_ens'
+            !write(*,*) pso_params%total_ens
+        endif
     endif
+    
 
 !------------------------------------------------------------
 ! Register services for this component
@@ -920,8 +944,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)  
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WATERTABLED',CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FSWCHANGE',  CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
 
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
@@ -1292,8 +1316,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)  
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WATERTABLED',CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FSWCHANGE',  CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
 
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
