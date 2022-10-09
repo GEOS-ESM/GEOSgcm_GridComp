@@ -6,7 +6,7 @@ import os
 from bcs_utils import *
 
 
-ease_template = """ #!/bin/csh -x
+ease_template = """#!/bin/csh -x
 
 #SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}.log
 #SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}.err
@@ -92,8 +92,6 @@ cd ../../
 /bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
 /bin/rm -r {OUTDIR}
 
-cd {bin_dir}
-
 """
 
 def make_ease_bcs(config):
@@ -145,13 +143,36 @@ def make_ease_bcs(config):
            NY = config['NY'], \
            RS = RS,\
            BCDIR = scratch_dir, \
-           NCPUS = 20)
+           NCPUS = config['NCPUS'])
 
+
+  ease_job = open(bcjob,'wt')
+  ease_job.write(job_script)
+  ease_job.close()
+
+  interactive = os.getenv('SLURM_JOB_ID', default = None)
+  if ( interactive ) :
+     print('interactive mode\n')
+     ntasks = os.getenv('SLURM_NTASKS', default = None)
+     if ( not ntasks):
+        nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
+        ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
+        subprocess.call(['chmod', '755', bcjob])
+        print(bcjob+  '  1>' + log_name  + '  2>&1')
+        os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
+  else:
+    print("sbatch " + bcjob +"\n")
+    subprocess.call(['sbatch', bcjob])
+
+  print( "cd " + bin_dir)
+  os.chdir(bin_dir)
+ 
   print(job_script)
 
 if __name__ == "__main__":
 
    answers = ask_questions()
    config = get_config_from_answers(answers)
+   print("make_ease_bcs")
    make_ease_bcs(config)
 
