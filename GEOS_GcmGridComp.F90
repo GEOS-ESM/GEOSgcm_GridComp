@@ -922,6 +922,10 @@ contains
 ! Recursive setup of grids (should be disabled)
     call ESMF_GridCompSet(GCS(AGCM),  grid=agrid, rc=status)
     VERIFY_(STATUS)
+#ifdef HAS_GIGATRAJ
+    call ESMF_GridCompSet(GCS(gigatraj),  grid=agrid, rc=status)
+    VERIFY_(STATUS)
+#endif
     call ESMF_GridCompSet(GCS(OGCM),  grid=ogrid, rc=status)
     VERIFY_(STATUS)
     if(DO_DATAATM==0) then

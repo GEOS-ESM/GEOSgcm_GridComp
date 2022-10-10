@@ -71,7 +71,18 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec ( gc,                                &
+         SHORT_NAME = 'DVDT',                                      &
+         LONG_NAME  = 'northward_wind_bias_tendency',              &
+         UNITS      = 'm s-2',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         FIELD_TYPE = MAPL_VectorField,                            &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
+
+    call MAPL_GenericSetServices    ( GC, RC=STATUS )
+    VERIFY_(STATUS)
 ! Clocks
 !-------
 
@@ -209,6 +220,7 @@ contains
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
 
+  RETURN_(ESMF_SUCCESS)
   end subroutine Run
 
 end module GigaTraj_GridCompMod
