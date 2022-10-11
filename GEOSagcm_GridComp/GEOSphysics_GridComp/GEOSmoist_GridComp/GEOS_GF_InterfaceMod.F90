@@ -210,9 +210,9 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, C0_SHAL             ,'C0_SHAL:'          ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT            ,'QRC_CRIT:'         ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, GF_ENV_SETTING      ,'GF_ENV_SETTING:'   ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SCLM_DEEP           , 'SCLM_DEEP:'       ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CNV_2MOM            , 'CNV_2MOM:'        ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       , 'FIX_CNV_CLOUD:'   ,default= .TRUE. , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CNV_2MOM            ,'CNV_2MOM:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .TRUE. , RC=STATUS); VERIFY_(STATUS)
     ENDIF
 
 end subroutine GF_Initialize

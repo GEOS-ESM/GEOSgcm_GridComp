@@ -86,11 +86,6 @@ USE GEOSmoist_Process_Library
 
  CHARACTER(len=10) :: GF_ENV_SETTING = 'DYNAMICS' ! or 'CURRENT'
 
- INTEGER, PARAMETER :: MAX_NSPEC=200
- CHARACTER(len=100),DIMENSION(MAX_NSPEC)    ::  CHEM_NAME
- INTEGER           ,DIMENSION(MAX_NSPEC)    ::  CHEM_NAME_MASK,CHEM_NAME_MASK_EVAP
- REAL              ,DIMENSION(MAX_NSPEC)    ::  CHEM_ADJ_AUTOC
-
  CONTAINS
 
   subroutine get_incloud_sc_chem_up(cumulus,mtp,se,se_cup,sc_up,pw_up,tot_pw_up_chem&
@@ -131,48 +126,14 @@ USE GEOSmoist_Process_Library
      pw_up          = 0.0
      tot_pw_up_chem = 0.0
 
-     IF(USE_TRACER_SCAVEN==2 .and. cumulus /= 'shallow') THEN
-        factor_temp = 1.
-        do i=its,itf
-            if(ierr(i) /= 0) cycle
-            do ispc = 1,mtp
-               ! - if tracer is type "carbon" then set coefficient to 0 for hydrophobic
-               if( TRIM(CHEM_name (ispc)(1:len_trim('OCphobic') )) == 'OCphobic') factor_temp(ispc,:,:) = 0.0
-
-               ! - suppress scavenging most aerosols at cold T except BCn1 (hydrophobic), dust, and HNO3
-               if( TRIM(CHEM_name (ispc)(1:len_trim('BCphobic') )) == 'BCphobic') then
-                  where(tempco < 258.) factor_temp(ispc,:,:) = 0.0
-               endif
-
-               if( TRIM(CHEM_name (ispc)) == 'sulfur'   .or. &
-
-                   TRIM(CHEM_name (ispc)(1:len_trim('ss') )) == 'ss'  .or. & ! 'seasalt'
-
-                   TRIM(CHEM_name (ispc)) == 'SO2'      .or. &
-                   TRIM(CHEM_name (ispc)) == 'SO4'      .or. &
-
-                   TRIM(CHEM_name (ispc)) == 'nitrate'  .or. &
-                   TRIM(CHEM_name (ispc)) == 'bromine'  .or. &
-                   TRIM(CHEM_name (ispc)) == 'NH3'      .or. &
-                   TRIM(CHEM_name (ispc)) == 'NH4a'          ) then
-
-                   where(tempco < 258.) factor_temp(ispc,:,:) = 0.0
-               endif
-
-             enddo
-          enddo
-     endIF
      do i=its,itf
        if(ierr(i) /= 0) cycle
-      !start_level(i) = klcl(i)
-      !start_level(i) = k22(i)
 
        do ispc=1,mtp
              call get_cloud_bc(cumulus,kts,kte,ktf,xland(i),po(i,kts:kte),se_cup(ispc,i,kts:kte),sc_b(ispc,i),k22(i))
        enddo
        do k=kts,start_level(i)
             sc_up   (:,i,k) = sc_b  (:,i)
-           !sc_up   (:,i,k) = se_cup(:,i,k)
        enddo
      enddo
 
@@ -194,12 +155,10 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
             endif
 
             !-- scavenging section
-            if(USE_TRACER_SCAVEN==0 .or. cumulus == 'shallow') cycle loopk
+            if(USE_TRACER_SCAVEN==0 .or. trim(cumulus) == 'shallow') cycle loopk
             dz=z_cup(i,k)-z_cup(i,k-1)
 
             !-- in-cloud vert velocity for scavenging formulation 2
-!           w_upd = cte_w_upd
-!           w_upd = vvel1d(i)
             w_upd = vvel2d(i,k)
 
             do ispc = 1,mtp
@@ -211,7 +170,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
                     !--formulation 2 as in GOCART
                     if(USE_TRACER_SCAVEN==2) &
-                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- CHEM_ADJ_AUTOC(ispc) * kc * (dz/w_upd)))*factor_temp(ispc,i,k))
+                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
 
                     !--formulation 3 - orignal GF conv_par
                     if(USE_TRACER_SCAVEN==3) then
@@ -243,7 +202,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                        fliq = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
 
                       !---   aqueous-phase concentration in rain water
-                      pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq* CHEM_ADJ_AUTOC(ispc) *kc*dz/w_upd)))!*factor_temp(ispc,i,k))
+                      pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq* kc*dz/w_upd)))!*factor_temp(ispc,i,k))
 
                     endif
 
@@ -262,12 +221,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
             tot_pw_up_chem(:,i) = tot_pw_up_chem(:,i) + pw_up(:,i,k)*dp/g
           enddo loopk
            !
-           !----- get back the in-cloud updraft gas-phase mixing ratio : sc_up(ispc,k)
-!          do k=start_level(i)+1,ktop(i)+1
-!            do ispc = 1,mtp
-!             sc_up(ispc,i,k) = sc_up(ispc,i,k) - sc_up_aq(ispc,i,k)
-!            enddo
-!          enddo
      enddo
   end subroutine get_incloud_sc_chem_up
 !---------------------------------------------------------------------------------------------------
@@ -282,17 +235,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
   !--- define some constants!
   real, parameter:: rgas  =  8.205e-2 ! atm M^-1 K^-1 ! 8.314 gas constant [J/(mol*K)]
-  real, parameter:: avogad=  6.022e23! Avogadro constant [1/mol]
-  real, parameter:: rhoH2O=  999.9668! density of water [kg/m3]
-  real, parameter:: temp0 =    298.15! standard temperature [K]
   real, parameter:: temp0i= 1./298.15! inverse of standard temperature [K]
-  real, parameter:: MWH2O =        18.02! molecular mass of water [kg/kmol]
-  real, parameter:: MWAIR =        28.97! effective molecular mass of air [kg/kmol]
-  real, parameter:: conv3 = avogad / 1.0e6!  [mol(g)/m3(air)]  to [molec(g)/cm3(air)]
-  real, parameter:: conv4 = 100.          !  [m]          to [cm]
-  real, parameter:: conv5 = 1000.          !  [m^3]            to [l]
-  real, parameter:: conv7 = 1/conv5          !  [l]    to [m^3]
-  real, parameter:: conv6 = 1. / 101325.  !  [Pa]            to [atm]
   real, parameter:: hplus = 1.175E-4          !  for cloud water. pH is asuumed to be 3.93: pH=3.93 =>hplus=10**(-pH)
 
   ! aqueous-phase concentrations XXXa [mol/m3(air)]!
@@ -301,11 +244,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
   ! converted to [(mol(aq)/m3(aq))/(mol(g)/m3(air))], i.e. dimensionless!
   ! in equilibrium XXXa = XXXh * LWC * XXXg!
   tcorr = 1./temp - temp0i
-
-  !-P. Colarco corrected the expression below
-  !fct   = conv7 * rgas * temp ! - for henry_coef in units 1/m3
-   fct   =         rgas * temp ! - for henry_coef dimensioless
-
+  fct   = rgas * temp ! - for henry_coef dimensioless
 
   !-taking into account the acid dissociation constant
   ! ak=ak0*exp(dak*(1/t-1/298))
@@ -345,7 +284,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      sc_dn          = 0.0
      pw_dn          = 0.0
      tot_pw_dn_chem = 0.0
-     if(cumulus == 'shallow') return
+     if(trim(cumulus) == 'shallow') return
 
      do i=its,itf
        if(ierr(i) /= 0) cycle
@@ -365,8 +304,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
        do ispc=1,mtp
         !--downdrafts will be initiate with a mixture of 50% environmental and in-cloud concentrations
               sc_dn(ispc,i,k) = se_cup(ispc,i,k)
-             !sc_dn(ispc,i,k) = 0.9*se_cup(ispc,i,k)+0.1*sc_up(ispc,i,k)
-
               pw_dn(ispc,i,k) = - pwdper * tot_pw_up_chem(ispc,i)*g/dp
               sc_dn(ispc,i,k) = sc_dn(ispc,i,k) - pw_dn(ispc,i,k)
               tot_pw_dn_chem(ispc,i) = tot_pw_dn_chem(ispc,i) + pw_dn(ispc,i,k)*dp/g
@@ -404,42 +341,16 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
               !-- amount evaporated by the downdraft from the precipitation
               pw_dn(ispc,i,k) = - pwdper * tot_pw_up_chem (ispc,i)*g/dp ! < 0. => source term for the downdraft tracer concentration
 
-              !if(ispc==1) print*,"pw=",pwdper,tot_pw_up_chem (ispc,i),pwevo(i)/pwavo(i),pwdo(i,k)/(1.e-16+pwo(i,k))
-
               !-- final tracer in the downdraft
               sc_dn(ispc,i,k) = sc_dn(ispc,i,k) - pw_dn(ispc,i,k) ! observe that -pw_dn is > 0.
 
               !-- total evaporated tracer
               tot_pw_dn_chem(ispc,i) = tot_pw_dn_chem(ispc,i) + pw_dn(ispc,i,k)*dp/g
-
-              !print*,"to=",k,tot_pw_dn_chem(ispc,i),pwdo(i,k)/(1.e-16+pwevo(i)),frac_evap,tot_pw_dn_chem(ispc,i)/tot_pw_up_chem (ispc,i)
-
            enddo
         enddo
         !
      enddo
-    end subroutine get_incloud_sc_chem_dd
-!---------------------------------------------------------------------------------------------------
-    subroutine interface_aerchem(mtp,aer_chem_mech)
-      IMPLICIT NONE
-      INTEGER, INTENT(IN) :: mtp
-      CHARACTER(len=*), INTENT(IN) :: AER_CHEM_MECH
-      !-local vars
-      INTEGER :: ispc, len_ACM, len_spc, irun=0
-      CHARACTER(len=100) :: TMP_AER_NAME
-      CHEM_NAME_MASK      = 1
-      CHEM_NAME_MASK_EVAP = 1
-      CHEM_ADJ_AUTOC      = 1.0
-
-      !- GOCART + PCHEM section
-      IF(AER_CHEM_MECH=='GOCART') then
-       len_ACM=len(TRIM(AER_CHEM_MECH))
-       do ispc=1,mtp
-           len_spc           = len(TRIM(CNV_Tracers(ispc)%cname))
-           CHEM_name (ispc)  = TRIM(CNV_Tracers(ispc)%qname)
-       enddo
-      endIF
-   end subroutine interface_aerchem
+   end subroutine get_incloud_sc_chem_dd
 !---------------------------------------------------------------------------------------------------
    subroutine get_cloud_bc(cumulus,kts,kte,ktf,xland,po,array,x_aver,k22,add,Tpert)
     implicit none
@@ -474,8 +385,9 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
      elseif(bc_meth == 1) then
       effec_frac  = (1.-xland) +xland*frac_ave_layer_ocean
-      x_ave_layer = ave_layer*effec_frac
-
+      if(trim(cumulus) == 'deep'   ) x_ave_layer = cum_ave_layer(deep)*effec_frac
+      if(trim(cumulus) == 'shallow') x_ave_layer = cum_ave_layer(shal)*effec_frac
+      if(trim(cumulus) == 'mid'    ) x_ave_layer = cum_ave_layer(mid )*effec_frac
 
       i_beg = minloc(abs(po(kts:ktf)-(po(k22)+0.5*x_ave_layer)),1)
       i_end = minloc(abs(po(kts:ktf)-(po(k22)-0.5*x_ave_layer)),1)

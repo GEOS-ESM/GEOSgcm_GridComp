@@ -46,8 +46,8 @@ MODULE Aer_Actv_Single_Moment
       integer, intent(in)::IM,JM,LM
       TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
       type(ESMF_State)            ,intent(inout) :: aero_aci
-      real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! hPa
-      real, dimension (IM,JM,0:LM),intent(in ) :: ple ! hPa
+      real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
+      real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
       real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,omega,zlo, qlcn, qicn, qlls, qils
       real, dimension (IM,JM,0:LM),intent(in ) :: zle
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
@@ -218,7 +218,7 @@ MODULE Aer_Actv_Single_Moment
 !----- aerosol activation (single-moment uphysics)      
       do j = 1, JM
          do i = 1, IM
-            aux1=  100*PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)
+            aux1=  PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)
             hfs = -SH  (i,j) ! W m^-2
             hfl = -EVAP(i,j) ! kg m^-2 s^-1
             aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
@@ -240,7 +240,7 @@ MODULE Aer_Actv_Single_Moment
              k            = kpbli(i,j)
              naer_cb(i,j) = zero_par
              tk           = T(i,j,k)              ! K
-             press        = plo(i,j,k)*100.0      ! Pa     
+             press        = plo(i,j,k)            ! Pa     
              air_den      = press*28.8e-3/8.31/tk ! kg/m3
              DO n=1,n_modes
                 if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) &
@@ -255,12 +255,12 @@ MODULE Aer_Actv_Single_Moment
         Do i=1,IM
               
               tk                 = T(i,j,k)                         ! K
-              press              = plo(i,j,k)*100.e0                ! Pa   
+              press              = plo(i,j,k)                       ! Pa   
               air_den            = press*28.8e-3/8.31/tk            ! kg/m3
               qc                 = qicn(i,j,k)+qils(i,j,k)*1.e+3    ! g/kg
               ql                 = qlcn(i,j,k)+qlls(i,j,k)*1.e+3    ! g/kg
               
-              IF( plo(i,j,k)*100.0 > 34000.0) THEN 
+              IF( plo(i,j,k) > 34000.0) THEN 
                 
                 wupdraft           = -9.81*air_den*omega(i,j,k)     ! m/s - grid-scale only              
                 
@@ -297,7 +297,7 @@ MODULE Aer_Actv_Single_Moment
  
                 ENDIF ! tk>245
                ENDIF   ! updraft > 0.1
-               ENDIF   ! 100*plo > 34000.0
+               ENDIF   ! plo > 34000.0
               
 
                IF( tk <= 268.0) then

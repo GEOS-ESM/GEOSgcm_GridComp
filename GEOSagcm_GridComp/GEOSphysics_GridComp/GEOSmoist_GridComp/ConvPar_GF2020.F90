@@ -13,7 +13,6 @@ MODULE ConvPar_GF2020
 !
 USE module_gate
 USE MAPL
-USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 USE ConvPar_GF_SharedParams
 
  IMPLICIT NONE
@@ -481,11 +480,6 @@ CONTAINS
        allocate(SRC_CHEM(mtp, mzp, mxp, myp),stat=alloc_stat) !- tendency from convection
        IF(alloc_stat==0) SRC_CHEM=0.0
     ENDIF
-    IF(USE_TRACER_TRANSP==1) THEN
-      AER_CHEM_MECH='GOCART' !in the future set as intent(in) from MoistGridComp
-      CALL interface_aerchem(mtp,aer_chem_mech)
-    ENDIF
-
     !
     !- 2-d input data
     aot500  (:,:) = 0.1  ! #
@@ -826,7 +820,7 @@ CONTAINS
               !- update tracer mass mixing ratios
               DO ispc=1,mtp
 
-                 CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) * CHEM_NAME_MASK(ispc)
+                 CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) 
 
                  !-- final check for negative tracer mass mixing ratio
                  CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
@@ -1890,7 +1884,6 @@ loop1:  do n=1,maxiens
          if(do_this_column(i,j) == 0) CYCLE
 
          do ispc=1,mtp
-           if(CHEM_NAME_MASK (ispc) == 0 ) CYCLE
 
            do k=kts,ktf
               distance(k)= se_chem(ispc,i,k) + RCHEMCUTEN(ispc,k,i,j)* dt
@@ -2331,20 +2324,20 @@ loop1:  do n=1,maxiens
 !--- maximum depth (mb) of capping inversion (larger cap = no convection)
 !
       IF(ZERO_DIFF==1 .or. MOIST_TRIGGER==0) THEN
-       if(cumulus == 'deep'   ) then ; cap_max_inc=20. ; endif ! cap_maxs=50.
-       if(cumulus == 'mid'    ) then ; cap_max_inc=10. ; endif ! cap_maxs=50.
-       if(cumulus == 'shallow') then ; cap_max_inc=25. ; endif ! cap_maxs=50.
+       if(trim(cumulus) == 'deep'   ) then ; cap_max_inc=20. ; endif ! cap_maxs=50.
+       if(trim(cumulus) == 'mid'    ) then ; cap_max_inc=10. ; endif ! cap_maxs=50.
+       if(trim(cumulus) == 'shallow') then ; cap_max_inc=25. ; endif ! cap_maxs=50.
       ELSE
-       if(cumulus == 'deep'   ) then ; cap_max_inc=90. ; endif !--- test cap_maxs=10.  ; cap_max_inc=50
-       if(cumulus == 'mid'    ) then ; cap_max_inc=90. ; endif !--- test cap_maxs=10.  ; cap_max_inc=50
-       if(cumulus == 'shallow') then ; cap_max_inc=10. ; endif !--- test cap_maxs=25.  ; cap_max_inc=50
+       if(trim(cumulus) == 'deep'   ) then ; cap_max_inc=90. ; endif !--- test cap_maxs=10.  ; cap_max_inc=50
+       if(trim(cumulus) == 'mid'    ) then ; cap_max_inc=90. ; endif !--- test cap_maxs=10.  ; cap_max_inc=50
+       if(trim(cumulus) == 'shallow') then ; cap_max_inc=10. ; endif !--- test cap_maxs=25.  ; cap_max_inc=50
       ENDIF
 !
 !--- lambda_U parameter for momentum transport
 !
-      if(cumulus == 'deep'   ) then;lambau_dp (:) = lambau_deep;  lambau_dn (:) = lambau_shdn ;endif
-      if(cumulus == 'mid'    ) then;lambau_dp (:) = lambau_shdn;  lambau_dn (:) = lambau_shdn ;endif
-      if(cumulus == 'shallow') then;lambau_dp (:) = lambau_shdn;  lambau_dn (:) = lambau_shdn ;endif
+      if(trim(cumulus) == 'deep'   ) then;lambau_dp (:) = lambau_deep;  lambau_dn (:) = lambau_shdn ;endif
+      if(trim(cumulus) == 'mid'    ) then;lambau_dp (:) = lambau_shdn;  lambau_dn (:) = lambau_shdn ;endif
+      if(trim(cumulus) == 'shallow') then;lambau_dp (:) = lambau_shdn;  lambau_dn (:) = lambau_shdn ;endif
 
       if(pgcon .ne. 0.) then
        lambau_dp (:) = 0.; lambau_dn (:) = 0.
@@ -2392,7 +2385,7 @@ loop1:  do n=1,maxiens
 !
       if( USE_SCALE_DEP == 0 ) sig(:)=1.
       if( USE_SCALE_DEP == 1 ) then
-         if( cumulus == 'shallow') then
+         if( trim(cumulus) == 'shallow') then
             sig(:)=1.
          else
             do i=its,itf
@@ -2420,7 +2413,7 @@ loop1:  do n=1,maxiens
 !
 !---  create a real random number in the interval [-use_random_num, +use_random_num]
 !
-      if( cumulus == 'deep' .and. use_random_num > 1.e-6) then
+      if( trim(cumulus) == 'deep' .and. use_random_num > 1.e-6) then
          call gen_random(its,ite,use_random_num,random)
       else
          random = 0.0
@@ -2437,10 +2430,10 @@ loop1:  do n=1,maxiens
 !--- max/min allowed value for epsilon (ratio downdraft base mass flux/updraft
 !    base mass flux
 !--  note : to make the evaporation stronger => increase "edtmin"
-      if( cumulus == 'shallow') then
+      if( trim(cumulus) == 'shallow') then
           edtmin(:)=0.0 ;  edtmax(:)=0.0
       endif
-      if(cumulus == 'mid'     ) then
+      if(trim(cumulus) == 'mid'     ) then
           DO i=its,itf
              if(xland(i) > 0.99 ) then !- over water
                    edtmin(i)=0.1;  edtmax(i)=MAX_EDT_OCEAN  !
@@ -2450,7 +2443,7 @@ loop1:  do n=1,maxiens
           ENDDO
           if(c0_mid < 1.e-8) edtmin(:)=0.0
       endif
-      if(cumulus == 'deep'    ) then
+      if(trim(cumulus) == 'deep'    ) then
           DO i=its,itf
              if(xland(i) > 0.99 ) then !- over water
                    edtmin(i)=0.1;  edtmax(i)=MAX_EDT_OCEAN  !
@@ -2462,13 +2455,13 @@ loop1:  do n=1,maxiens
 !
 !--- minimum depth (m), clouds must have
 !
-      if(cumulus == 'deep'                         ) depth_min=1000.
-      if(cumulus == 'mid' .or. cumulus == 'shallow') depth_min=500.
+      if(trim(cumulus) == 'deep'                         ) depth_min=1000.
+      if(trim(cumulus) == 'mid' .or. trim(cumulus) == 'shallow') depth_min=500.
 !
 !--- max height(m) above ground where updraft air can originate
 !
-      if(cumulus == 'deep'                         ) zkbmax=4000.
-      if(cumulus == 'mid' .or. cumulus == 'shallow') zkbmax=3000.
+      if(trim(cumulus) == 'deep'                         ) zkbmax=4000.
+      if(trim(cumulus) == 'mid' .or. trim(cumulus) == 'shallow') zkbmax=3000.
 !
 !--- height(m) above which no downdrafts are allowed to originate
 !
@@ -2477,8 +2470,8 @@ loop1:  do n=1,maxiens
 !--- depth(m) over which downdraft detrains all its mass
 !
       z_detr=1000.
-      if(cumulus == 'deep'                         ) z_detr= 1000.
-      if(cumulus == 'mid' .or. cumulus == 'shallow') z_detr= 300.
+      if(trim(cumulus) == 'deep'                         ) z_detr= 1000.
+      if(trim(cumulus) == 'mid' .or. trim(cumulus) == 'shallow') z_detr= 300.
 !
       !- mbdt ~ xmb * timescale
       do i=its,itf
@@ -2554,7 +2547,7 @@ loop1:  do n=1,maxiens
 !
 !--- determine level with highest moist static energy content - k22
 !
-      if(cumulus == 'shallow') then
+      if(trim(cumulus) == 'shallow') then
         start_k22 = 1
       else
         start_k22 = 2
@@ -2564,7 +2557,7 @@ loop1:  do n=1,maxiens
          if(ierr(i) /= 0) cycle
          k22(i)=maxloc(HEO_CUP(i,start_k22:kbmax(i)+1),1)+start_k22-1
          k22(i)=max(k22(i),start_k22)
-            if(cumulus == 'shallow') then
+            if(trim(cumulus) == 'shallow') then
                       k22(i)=min(2,k22(i))
 
                       if(K22(I).GT.KBMAX(i))then
@@ -2591,7 +2584,7 @@ loop1:  do n=1,maxiens
 !-- cold pool parameterization and convective memory
 !
      IF(CONVECTION_TRACER == 1) THEN
-        if(cumulus == 'deep') then
+        if(trim(cumulus) == 'deep') then
           if(USE_MEMORY == 0) then
              do i=its,itf
                 if(ierr(i) /= 0) cycle
@@ -2685,7 +2678,7 @@ loop1:  do n=1,maxiens
 
 !
 !--- temporary
-!     IF(cumulus == 'deep') then
+!     IF(trim(cumulus) == 'deep') then
 !
 !            do i=its,itf
 !             !tau_bl_(i)=-1.
@@ -2703,7 +2696,7 @@ loop1:  do n=1,maxiens
 !---lift closure
 !
 !     IF(LIFT_CLOSURE==1) THEN
-!       if(cumulus == 'deep') then
+!       if(trim(cumulus) == 'deep') then
 !           do i=its,itf
 !             if(ierr(i) /= 0) cycle
 !             x_add_buoy(i) = FBUOY*(maxval(buoy_exc(i,kts:klcl(i))))
@@ -2747,7 +2740,7 @@ loop0:       do k=kts,ktf
         111 format(1x,A5,3F10.2,2i4)
       enddo
       !-- check if LCL is below PBL height for shallow convection
-      if(USE_LCL .and. cumulus == 'mid')then
+      if(USE_LCL .and. trim(cumulus) == 'mid')then
        do i=its,itf
         if(ierr(i).eq.0)then
           if(klcl(i) > max(1,kpbl(i)+1)) then
@@ -2758,7 +2751,7 @@ loop0:       do k=kts,ktf
        enddo
       endif
 
-      IF(ADV_TRIGGER==1 .and. cumulus /= 'shallow') THEN
+      IF(ADV_TRIGGER==1 .and. trim(cumulus) /= 'shallow') THEN
          wkf = 0.02 ! m/s
          do i=its,itf
               if(ierr(i) /= 0) CYCLE
@@ -2824,7 +2817,7 @@ loop0:       do k=kts,ktf
            DO i=its,itf
              if(ierr(i) /= 0) CYCLE
 
-             if(cumulus /= 'shallow') then
+             if(trim(cumulus) /= 'shallow') then
 
                 do k=kts,ktf
 
@@ -2844,8 +2837,8 @@ loop0:       do k=kts,ktf
                        !- v 1
                        entr_rate_2d(i,k)=max(entr_rate(i)*(1.3-frh)*max(min(1.,(qeso_cup(i,k)&
                                         /qeso_cup(i,klcl(i)))**1.25),0.1),1.e-5)
-                       if(cumulus == 'deep') cd(i,k)=1.e-2*entr_rate(i)
-                       if(cumulus == 'mid' ) cd(i,k)=0.75*entr_rate_2d(i,k)
+                       if(trim(cumulus) == 'deep') cd(i,k)=1.e-2*entr_rate(i)
+                       if(trim(cumulus) == 'mid' ) cd(i,k)=0.75*entr_rate_2d(i,k)
                      endif
                 enddo
 
@@ -2869,9 +2862,9 @@ loop0:       do k=kts,ktf
 !
 !--- start_level
 !
-      !if(cumulus == 'deep'    ) start_level(:)=  KLCL(:)
-      !if(cumulus == 'mid'     ) start_level(:)=  KLCL(:)
-      !if(cumulus == 'shallow' ) start_level(:)=  KLCL(:)
+      !if(trim(cumulus) == 'deep'    ) start_level(:)=  KLCL(:)
+      !if(trim(cumulus) == 'mid'     ) start_level(:)=  KLCL(:)
+      !if(trim(cumulus) == 'shallow' ) start_level(:)=  KLCL(:)
       start_level(:)=  KLCL(:)
 !     start_level(:)=  KTS
 !
@@ -2916,7 +2909,7 @@ loop0:       do k=kts,ktf
 !
 !--- option for using the inversion layers as a barrier for the convection development
 !
-      IF(cumulus == 'mid') THEN
+      IF(trim(cumulus) == 'mid') THEN
         if(USE_INV_LAYERS) then
         !
         !--- get inversion layers
@@ -2950,7 +2943,7 @@ loop0:       do k=kts,ktf
        enddo
       ENDIF
 
-      IF(cumulus == 'shallow') THEN
+      IF(trim(cumulus) == 'shallow') THEN
         IF(USE_INV_LAYERS) THEN
          call get_inversion_layers(cumulus,ierr,psur,po_cup,tn_cup,zo_cup,k_inv_layers,&
                                   dtempdz,itf,ktf,its,ite, kts,kte)
@@ -2978,7 +2971,7 @@ loop0:       do k=kts,ktf
       IF(zero_diff == 1) THEN
        DO i=its,itf
         if(ierr(i) /= 0)cycle
-        if(cumulus /= 'shallow') then
+        if(trim(cumulus) /= 'shallow') then
          k=5
         else
          k=2
@@ -3007,7 +3000,7 @@ loop0:       do k=kts,ktf
 
 !---not-zero-diff-APR-06-2020
       IF(zero_diff == 0) THEN
-       if(cumulus == 'deep') then
+       if(trim(cumulus) == 'deep') then
         min_deep_top=500.
         if(icumulus_gf(mid) == 0) min_deep_top=750.
         do i=its,itf
@@ -3029,12 +3022,12 @@ loop0:       do k=kts,ktf
         if(ierr(i) /= 0)cycle
         if(last_ierr(i) == 0) then
           !--- if 'mid' => last was 'shallow'
-         ! if(cumulus == 'mid' .and. po_cup(i,ktop(i)) > 700.) then
+         ! if(trim(cumulus) == 'mid' .and. po_cup(i,ktop(i)) > 700.) then
          !   ierr(i)=27
          !   ierrc(i)='avoiding double-counting shallow and mid'
          ! endif
          !--- if 'mid' => last was 'shallow'
-         if(cumulus == 'mid' ) then
+         if(trim(cumulus) == 'mid' ) then
            ierr(i)=27
            ierrc(i)='avoiding double-counting deep and mid'
          endif
@@ -3105,7 +3098,7 @@ loop0:       do k=kts,ktf
      call get_buoyancy(itf,ktf, its,ite, kts,kte,ierr,klcl,kbcon,ktop,hco,heo_cup,heso_cup,dbyo,zo_cup)
 
 !--- get "c1d" profile ----------------------------------------
-     if(cumulus == 'deep' .and. USE_C1D) then
+     if(trim(cumulus) == 'deep' .and. USE_C1D) then
         Do i=its,itf
             if(ierr(i) /= 0) cycle
             c1d(i,kbcon(i)+1:ktop(i)-1)=abs(c1)
@@ -3148,7 +3141,7 @@ loop0:       do k=kts,ktf
 !--- updraft moist static energy + momentum budget
 !
 !--- option to produce linear fluxes in the sub-cloud layer.
-     if(cumulus == 'shallow' .and. use_linear_subcl_mf == 1) then
+     if(trim(cumulus) == 'shallow' .and. use_linear_subcl_mf == 1) then
        do i=its,itf
           if(ierr(i) /= 0) cycle
            call get_delmix(cumulus,kts,kte,ktf,xland(i),start_level(i),po(i,kts:kte) &
@@ -3294,7 +3287,7 @@ loop0:       do k=kts,ktf
 
 !---  calls routine to get wet bulb temperature and moisture at jmin
 !
-       IF(USE_WETBULB == 1 .and. cumulus /= 'shallow' ) THEN
+       IF(USE_WETBULB == 1 .and. trim(cumulus) /= 'shallow' ) THEN
         do i=its,itf
           if(ierr(i) /= 0) cycle
           k = jmin(i)
@@ -3316,7 +3309,7 @@ loop0:       do k=kts,ktf
 
        do i=its,itf
             bud(i)=0.
-            if(ierr(i)/= 0 .or. cumulus == 'shallow')cycle
+            if(ierr(i)/= 0 .or. trim(cumulus) == 'shallow')cycle
             i_wb=0
             !--for future test
             if(use_wetbulb==1) then
@@ -3418,11 +3411,11 @@ loop0:       do k=kts,ktf
 !
 !--- diurnal cycle section
 !
-      if(cumulus=='deep') then
+      if(trim(cumulus)=='deep') then
             wmeanx=3.   ! m/s ! in the future change for Wmean == integral( W dz) / cloud_depth
             T_star=5.   ! T_star = temp scale in original paper = 1 K
       endif
-      if(cumulus=='mid' .or. cumulus=='shallow') then
+      if(trim(cumulus)=='mid' .or. trim(cumulus)=='shallow') then
            wmeanx=3
            T_star=40.
       endif
@@ -3441,11 +3434,11 @@ loop0:       do k=kts,ktf
 
             !- time-scale cape removal from Bechtold et al. 2008
             !tau_ecmwf(i)=( zo_cup(i,ktop(i))- zo_cup(i,kbcon(i)) ) / wmean(i)
-            !if(cumulus=='deep') tau_ecmwf(i)=max(tau_ecmwf(i),tau_deep)
-            !if(cumulus=='mid' ) tau_ecmwf(i)=max(tau_ecmwf(i),tau_mid)
+            !if(trim(cumulus)=='deep') tau_ecmwf(i)=max(tau_ecmwf(i),tau_deep)
+            !if(trim(cumulus)=='mid' ) tau_ecmwf(i)=max(tau_ecmwf(i),tau_mid)
 
             !print*,"tau=",cumulus,real(tau_ecmwf(i),4),real(tau_deep,4),real(tau_mid,4)
-            if(cumulus=='deep') then
+            if(trim(cumulus)=='deep') then
                tau_ecmwf(i)=tau_deep
             else
                tau_ecmwf(i)=tau_mid
@@ -3463,8 +3456,8 @@ loop0:       do k=kts,ktf
             !- time-scale cape removal from Bechtold et al. 2008
             tau_ecmwf(i)=( zo_cup(i,ktop(i))- zo_cup(i,kbcon(i)) ) / wmean(i)
 
-           !if(cumulus=='deep') tau_ecmwf(i)= min(max(dtime,tau_ecmwf(i)),tau_deep)
-           !if(cumulus=='mid' ) tau_ecmwf(i)= min(max(dtime,tau_ecmwf(i)),tau_mid )
+           !if(trim(cumulus)=='deep') tau_ecmwf(i)= min(max(dtime,tau_ecmwf(i)),tau_deep)
+           !if(trim(cumulus)=='mid' ) tau_ecmwf(i)= min(max(dtime,tau_ecmwf(i)),tau_mid )
             tau_ecmwf(i)= max(dtime,tau_ecmwf(i))
             tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
          ENDDO
@@ -3482,7 +3475,7 @@ loop0:       do k=kts,ktf
             endif
       ENDDO
 
-      IF( (DICYCLE==1 .or. DICYCLE == 6) .or. (DICYCLE==0 .and. cumulus=='mid') ) THEN
+      IF( (DICYCLE==1 .or. DICYCLE == 6) .or. (DICYCLE==0 .and. trim(cumulus)=='mid') ) THEN
         iversion=0
         !-- calculate pcape from BL forcing only
         call cup_up_aa1bl(iversion,aa1_bl,aa1_fa,aa1,t,tn,q,qo,dtime,po_cup,zo_cup,zuo,dbyo,GAMMAo_CUP,tn_cup, &
@@ -3667,7 +3660,7 @@ ENDIF
 !
 !--- Trigger function based on Xie et al 2019
 !
-     IF(ADV_TRIGGER == 3 .and. cumulus /= 'shallow') THEN
+     IF(ADV_TRIGGER == 3 .and. trim(cumulus) /= 'shallow') THEN
 !    IF(ADV_TRIGGER == 3 ) THEN
 
        daa_adv_dt=0.
@@ -3730,7 +3723,7 @@ ENDIF
 
        enddo
        !--- only for output
-      if(cumulus == 'deep') AA0_(:) = daa_adv_dt(:)*3600. ! J/kg/hour
+      if(trim(cumulus) == 'deep') AA0_(:) = daa_adv_dt(:)*3600. ! J/kg/hour
 
      ENDIF
 !
@@ -3898,11 +3891,11 @@ IF(VERT_DISCR == 0) THEN
 
              !-- take out cloud liquid/ice water for detrainment
             detup=up_massdetro(i,k)
-            if( cumulus == 'mid'  .or. cumulus == 'shallow') then
+            if( trim(cumulus) == 'mid'  .or. trim(cumulus) == 'shallow') then
 
                dellaqc(i,k) = detup*0.5*(qrco(i,k+1)+qrco(i,k)) *g/dp
 
-            elseif(cumulus == 'deep') then
+            elseif(trim(cumulus) == 'deep') then
 
                if(.not. USE_C1D) then
 
@@ -4152,11 +4145,11 @@ ELSEIF(VERT_DISCR == 1) THEN
 
             !-- take out cloud liquid/ice water for detrainment
             detup=up_massdetro(i,k)
-            if( cumulus == 'mid'  .or. cumulus == 'shallow') then
+            if( trim(cumulus) == 'mid'  .or. trim(cumulus) == 'shallow') then
 
                dellaqc(i,k) = detup*0.5*(qrco(i,k+1)+qrco(i,k)) *g/dp
 
-            elseif(cumulus == 'deep') then
+            elseif(trim(cumulus) == 'deep') then
 
                if(.not. USE_C1D) then
 
@@ -4513,7 +4506,7 @@ ENDIF ! vertical discretization formulation
                endif
              enddo
          enddo
-         if(pr_ens(i,7).lt.1.e-6 .and. c0_mid > 0. .and.  cumulus /= 'shallow' )then
+         if(pr_ens(i,7).lt.1.e-6 .and. c0_mid > 0. .and.  trim(cumulus) /= 'shallow' )then
             ierr(i)=18
             ierrc(i)="total normalized condensate too small"
             do nens3=1,maxens3
@@ -4537,7 +4530,7 @@ ENDIF ! vertical discretization formulation
 !
 !--- calculate cloud base mass flux
 !
-      if(cumulus == 'deep') &
+      if(trim(cumulus) == 'deep') &
       call cup_forcing_ens_3d(itf,ktf,its,ite, kts,kte,ens4,ensdim,ichoice,maxens,maxens2,maxens3 &
                              ,ierr,ierr2,ierr3,k22,kbcon,ktop         &
                              ,xland1,aa0,aa1,xaa0,mbdt,dtime          &
@@ -4545,7 +4538,7 @@ ENDIF ! vertical discretization formulation
                              ,po_cup,omeg,zdo,zuo,pr_ens,edto         &
                              ,tau_ecmwf,aa1_bl,xf_dicycle, xk_x)
 !
-      if(cumulus == 'mid') &
+      if(trim(cumulus) == 'mid') &
       call cup_forcing_ens_3d_mid(aa0,aa1,xaa0,mbdt,dtime,ierr          &
                                  ,po_cup,ktop,k22,kbcon,kpbl,ichoice,maxens,maxens3   &
                                  ,itf,ktf,its,ite, kts,kte                      &
@@ -4554,7 +4547,7 @@ ENDIF ! vertical discretization formulation
 
 
 
-      if(cumulus == 'shallow') then
+      if(trim(cumulus) == 'shallow') then
        call cup_up_cape(cape,z,zu,dby,gamma_cup,t_cup,k22,kbcon,ktop,ierr    &
                             ,tempco,qco,qrco,qo_cup,itf,ktf,its,ite, kts,kte )
 
@@ -4795,17 +4788,16 @@ IF(USE_TRACER_TRANSP==1)  THEN
           endif
 
           !- include evaporation (this term must not be applied to the tracer 'QW')
-          if(USE_TRACER_EVAP == 1 .and. cumulus /= 'shallow') then
+          if(USE_TRACER_EVAP == 1 .and. trim(cumulus) /= 'shallow') then
             do k=kts,ktop(i)
                  dp=100.*(po_cup(i,k)-po_cup(i,k+1))
                  out_chem(:,i,k) = out_chem(:,i,k)    &
                                  - 0.5*edto(i)*(zdo(i,k)*pw_dn_chem(:,i,k)+zdo(i,k+1)*pw_dn_chem(:,i,k+1))*g/dp !&  ! evaporated ( pw_dn < 0 => E_dn > 0)
-                                 !*chem_name_mask_evap(:) !-- to avoid the "Dry Mass Violation"
             enddo
           endif
 
           !- include scavenging
-          if(USE_TRACER_SCAVEN > 0 .and. cumulus /= 'shallow') then
+          if(USE_TRACER_SCAVEN > 0 .and. trim(cumulus) /= 'shallow') then
             do k=kts,ktop(i)
                  dp=100.*(po_cup(i,k)-po_cup(i,k+1))
                  out_chem(:,i,k) = out_chem(:,i,k) &
@@ -4834,14 +4826,13 @@ IF(USE_TRACER_TRANSP==1)  THEN
                                          + (zdo(i,k+1)*sc_dn_chem(:,i,k+1) - zdo(i,k)*sc_dn_chem(:,i,k))*beta1*edto(i)
 
               !- include evaporation (this term must not be applied to the tracer 'QW')
-              if(USE_TRACER_EVAP == 1 .and. cumulus /= 'shallow') then
+              if(USE_TRACER_EVAP == 1 .and. trim(cumulus) /= 'shallow') then
                  out_chem(:,i,k) = out_chem(:,i,k)    &
                                  - 0.5*edto(i)*(zdo(i,k)*pw_dn_chem(:,i,k)+zdo(i,k+1)*pw_dn_chem(:,i,k+1))*beta1 !&  ! evaporated ( pw_dn < 0 => E_dn > 0)
-                                 !*chem_name_mask_evap(:) !-- to avoid the "Dry Mass Violation"
               endif
 
               !- include scavenging
-              if(USE_TRACER_SCAVEN > 0 .and. cumulus /= 'shallow') then
+              if(USE_TRACER_SCAVEN > 0 .and. trim(cumulus) /= 'shallow') then
                  out_chem(:,i,k) = out_chem(:,i,k) &
                                  - 0.5*(zuo(i,k)*pw_up_chem(:,i,k)+zuo(i,k+1)*pw_up_chem(:,i,k+1))*beta1  ! incorporated in rainfall (<0)
               endif
@@ -4851,7 +4842,6 @@ IF(USE_TRACER_TRANSP==1)  THEN
 
             enddo
             do ispc = 1, mtp
-                if(CHEM_NAME_MASK (ispc) == 0 ) CYCLE
                 call tridiag (ktop(i),aa (kts:ktop(i)),bb (kts:ktop(i)),cc (kts:ktop(i)),ddtr (ispc,kts:ktop(i)))
                 out_chem(ispc,i,kts:ktop(i))=(ddtr(ispc,kts:ktop(i))-se_chem(ispc,i,kts:ktop(i)))/dtime
             enddo
@@ -4898,7 +4888,6 @@ IF(USE_TRACER_TRANSP==1)  THEN
                                           -(fp_mtp(:,k  )*ddtr_upd(:,max(kts,k-1))+fm_mtp(:,k  )*ddtr_upd(:,k  )) )
             enddo
             do ispc = 1, mtp
-                if(CHEM_NAME_MASK (ispc) == 0 ) CYCLE
                 out_chem(ispc,i,kts:ktop(i))=(ddtr(ispc,kts:ktop(i))-se_chem(ispc,i,kts:ktop(i)))/dtime
             enddo
 
@@ -4913,14 +4902,13 @@ IF(USE_TRACER_TRANSP==1)  THEN
                                   + (zdo(i,k+1)*sc_dn_chem(:,i,k+1) - zdo(i,k)*sc_dn_chem(:,i,k))*beta1*edto(i)
 
               !- include evaporation (this term must not be applied to the tracer 'QW')
-              if(USE_TRACER_EVAP == 1 .and. cumulus /= 'shallow') then
+              if(USE_TRACER_EVAP == 1 .and. trim(cumulus) /= 'shallow') then
                  out_chem(:,i,k) = out_chem(:,i,k)    &
                                  - 0.5*edto(i)*(zdo(i,k)*pw_dn_chem(:,i,k)+zdo(i,k+1)*pw_dn_chem(:,i,k+1))*beta1 !&  ! evaporated ( pw_dn < 0 => E_dn > 0)
-                                 !*chem_name_mask_evap(:) !-- to avoid the "Dry Mass Violation"
               endif
 
               !- include scavenging
-              if(USE_TRACER_SCAVEN > 0 .and. cumulus /= 'shallow') then
+              if(USE_TRACER_SCAVEN > 0 .and. trim(cumulus) /= 'shallow') then
                  out_chem(:,i,k) = out_chem(:,i,k) &
                                  - 0.5*(zuo(i,k)*pw_up_chem(:,i,k)+zuo(i,k+1)*pw_up_chem(:,i,k+1))*beta1  ! incorporated in rainfall (<0)
               endif
@@ -4931,7 +4919,6 @@ IF(USE_TRACER_TRANSP==1)  THEN
 
         !--- check mass conservation for tracers
         do ispc = 1, mtp
-           if(CHEM_NAME_MASK (ispc) == 0 ) CYCLE
           trash_ (:) = 0.
           trash2_(:) = 0.
           evap_  (:) = 0.
@@ -4957,15 +4944,6 @@ IF(USE_TRACER_TRANSP==1)  THEN
                 out_chem(ispc,i,k)=out_chem(ispc,i,k)+residu_(ispc)*beta1
              enddo
            endif
-           !if (MAPL_AM_I_ROOT())  then
-           !if(evap_  (ispc) > wetdep_(ispc)) then
-           !print*,"budget=",ispc,evap_  (ispc), wetdep_(ispc),trash_ (ispc),trim(CHEM_NAME(ispc))!,trash_ (ispc),trash2_(ispc)
-           !call flush(6)
-           !endif
-           !if(evap_  (ispc) > wetdep_(ispc)) stop " eva<wet "
-           !if(abs(trash_(ispc)) >1.e-6 ) then
-           !  if (MAPL_AM_I_ROOT())  write(6,*)'=> mass_cons=',trash_(ispc),spacing(trash2_(ispc)),trim(CHEM_NAME(ispc)),trim(cumulus)
-           !endif
         enddo
 
 
@@ -4978,16 +4956,16 @@ ENDIF !- end of section for atmospheric composition
 !
 !- begin: for GATE soundings-------------------------------------------
    if(wrtgrads) then
-    if(cumulus == 'deep'   ) then ; cty='1'; nvarbegin =  0 ;endif
-    if(cumulus == 'shallow') then ; cty='2'; nvarbegin =101 ;endif
-    if(cumulus == 'mid'    ) then ; cty='3'; nvarbegin =201 ;endif
+    if(trim(cumulus) == 'deep'   ) then ; cty='1'; nvarbegin =  0 ;endif
+    if(trim(cumulus) == 'shallow') then ; cty='2'; nvarbegin =101 ;endif
+    if(trim(cumulus) == 'mid'    ) then ; cty='3'; nvarbegin =201 ;endif
     do i=its,itf
      !if(ierr(i).eq.0) then
       !- 2-d section
       do k=kts,ktf  !max(1,ktop(i))
        nvar=nvarbegin
 
-       if(cumulus == 'deep'   ) &
+       if(trim(cumulus) == 'deep'   ) &
          call set_grads_var(jl,k,nvar,zo(i,k),"zo"//cty ,' height','3d')
 !        call set_grads_var(jl,k,nvar,po(i,k),"po"//cty ,' press','3d')
 
@@ -5212,7 +5190,7 @@ ENDIF !- end of section for atmospheric composition
        vshear=0.
        edtc  =0.
 
-       if(cumulus=='shallow') return
+       if(trim(cumulus)=='shallow') return
 
        do i=its,itf
          if(ierr(i) /= 0)cycle
@@ -5332,7 +5310,7 @@ ENDIF !- end of section for atmospheric composition
      pwev=0.  !-- column integrated rain evaporation (normalized)
      pwd =0.  !-- rain evaporation at layer k
 
-     if(cumulus == 'shallow') return
+     if(trim(cumulus) == 'shallow') return
 !
      DO i=its,itf
         if(ierr(i) /= 0) cycle
@@ -6877,7 +6855,7 @@ ENDIF !- end of section for atmospheric composition
        dd_massentru = 0.
        dd_massdetru = 0.
      endif
-     if(cumulus == 'shallow') return
+     if(trim(cumulus) == 'shallow') return
 
      do i=its,itf
         if(ierr(i) /= 0) cycle
@@ -7261,7 +7239,7 @@ ENDIF !- end of section for atmospheric composition
       !- beta parameter: must be larger than 1, higher makes the profile sharper around the maximum zu
       beta    = max(1.1, 2.1 - 0.5*hei_updf)
 
-!--- tmp IF(cumulus == 'deep') beta =beta_sh
+!--- tmp IF(trim(cumulus) == 'deep') beta =beta_sh
       !print*,"hei=",jl,pmaxzu,hei_updf,beta!(pmaxzu-(psur-100.))/( -(psur-100.) +  0.5*( 0.25*(psur-100.) + 0.75*po_cup(kt) ))
 
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)
@@ -7609,9 +7587,9 @@ ENDIF !- end of section for atmospheric composition
 
   !---------------------------------------------------------
   ELSEIF(draft == "DOWN" ) then
-      IF(cumulus == 'shallow') return
-      IF(cumulus == 'mid' ) beta =2.5
-      IF(cumulus == 'deep') beta =2.5
+      IF(trim(cumulus) == 'shallow') return
+      IF(trim(cumulus) == 'mid' ) beta =2.5
+      IF(trim(cumulus) == 'deep') beta =2.5
 
       hei_down=(1.-xland)*hei_down_LAND+xland*hei_down_OCEAN
 
@@ -9722,7 +9700,7 @@ ENDIF
      p_liq_ice    (:,:) = 1.
      melting_layer(:,:) = 0.
      !-- get function of T for partition of total condensate into liq and ice phases.
-     IF(MELT_GLAC .and. cumulus == 'deep') then
+     IF(MELT_GLAC .and. trim(cumulus) == 'deep') then
         DO k=kts,ktf
           DO i=its,itf
              if(ierr(i) /= 0) cycle
@@ -9819,7 +9797,7 @@ ENDIF
      REAL, DIMENSION(its:ite)         :: norm,total_pwo_solid_phase
      REAL, DIMENSION(its:ite,kts:kte) :: pwo_solid_phase,pwo_eff
 
-     IF(MELT_GLAC .and. cumulus == 'deep') then
+     IF(MELT_GLAC .and. trim(cumulus) == 'deep') then
 
         norm                  = 0.0
         pwo_solid_phase       = 0.0
@@ -10221,7 +10199,7 @@ ENDIF
  real    :: RH_cr_OCEAN,RH_cr_LAND
  real,    dimension(its:ite) :: tot_evap_bcb,eff_c_conv
 
- if(cumulus == 'shallow') then
+ if(trim(cumulus) == 'shallow') then
      RH_cr_OCEAN   = 1.
      RH_cr_LAND    = 1.
      eff_c_conv(:) = min(0.2,max(xmb(:),c_conv))
@@ -10234,7 +10212,7 @@ ENDIF
  prec_flx     = 0.0
  evap_flx     = 0.0
  tot_evap_bcb = 0.0
-!! if(cumulus == 'shallow') return
+!! if(trim(cumulus) == 'shallow') return
 
  do i=its,itf
 
@@ -10319,7 +10297,7 @@ ENDIF
      integer :: i,k
      prec_flx = 0.0
      evap_flx = 0.0
-!!     if(cumulus == 'shallow') return
+!!     if(trim(cumulus) == 'shallow') return
 
      DO i=its,itf
          if (ierr(i)  /= 0) cycle
@@ -10408,10 +10386,10 @@ ENDIF
      real,    dimension(its:ite,kts:kte)  ::  hcdo
      logical :: keep_going
 
-     if(cumulus == 'deep') beta=0.05
-     if(cumulus == 'mid' ) beta=0.02
+     if(trim(cumulus) == 'deep') beta=0.05
+     if(trim(cumulus) == 'mid' ) beta=0.02
 
-     if(cumulus == 'shallow'  ) then
+     if(trim(cumulus) == 'shallow'  ) then
         beta    = 0.02
         jmin(:) = 0
         return
@@ -10420,7 +10398,7 @@ ENDIF
      do i=its,itf
          if(ierr(i) /= 0) cycle
 
-         if(cumulus == 'deep' .and. melt_glac) jmin(i)=max(jmin(i),maxloc(melting_layer(i,:),1))
+         if(trim(cumulus) == 'deep' .and. melt_glac) jmin(i)=max(jmin(i),maxloc(melting_layer(i,:),1))
 
          !
          !--- check whether it would have buoyancy, if there where
@@ -10487,7 +10465,7 @@ ENDIF
      real, parameter :: fpkup=0.8  !-- 90% of precip occurs above 80% of critical w
 
      p_cwv_ave = 0.0
-     if(cumulus /= 'deep') return
+     if(trim(cumulus) /= 'deep') return
 !
 !-- get the pickup of ensemble ave prec, following Neelin et al 2009.
 !
@@ -10851,7 +10829,7 @@ END SUBROUTINE get_wetbulb
                           ,exp_SB    = 2./3.  ! Seifert & Beheng 2006 eq 27
 
      qrr = 0.
-     if(cumulus == 'shallow') return
+     if(trim(cumulus) == 'shallow') return
 
      !--- rain water mixing ratio
      do i=its,itf

@@ -5329,7 +5329,8 @@ contains
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
          allocate ( AeroProps(IM,JM,LM) )
-         call Aer_Activation(IM,JM,LM, Q, T, PLmb, PLEmb, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+         ! Pressures in Pa
+         call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
                              AeroProps, AERO, NACTL, NACTI)
        else
