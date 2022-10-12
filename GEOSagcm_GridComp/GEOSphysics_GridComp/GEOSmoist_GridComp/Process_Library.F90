@@ -12,6 +12,7 @@ module GEOSmoist_Process_Library
   use GEOS_UtilsMod
   use Aer_Actv_Single_Moment
   use aer_cloud
+  use Henrys_law_ConstantsMod, only: get_HenrysLawCts
 
   implicit none
   private
@@ -43,6 +44,9 @@ module GEOSmoist_Process_Library
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
+  ! Surface Types
+  real, pointer, dimension(:,:)   :: SNOMAS,FRLANDICE,FRLAND,FRACI 
+
  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
@@ -60,13 +64,23 @@ module GEOSmoist_Process_Library
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
-  public :: FILLQ2ZERO
+  public :: FILLQ2ZERO, FILLQ2ZERO1
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp
   public :: find_l, find_eis, FINDLCL
   public :: find_cldtop, find_cldbase, gw_prof
 
   contains
+
+  subroutine INIT_SURF_TYPES(IMPORT)
+    type(ESMF_State), INTENT(INOUT) :: IMPORT      ! Import state
+    character(len=ESMF_MAXSTR) :: IAm = "ProcessLibrary:INIT_SURF_TYPES"
+    INTEGER :: STATUS, rc
+    call MAPL_GetPointer(IMPORT, FRLAND,    'FRLAND'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, FRLANDICE, 'FRLANDICE' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, FRACI,     'FRACI'     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SNOMAS,    'SNOMAS'    , RC=STATUS); VERIFY_(STATUS)
+  end subroutine INIT_SURF_TYPES 
 
   subroutine CNV_Tracers_Init(TR, RC)
     type (ESMF_FieldBundle), intent(inout) :: TR
@@ -77,7 +91,7 @@ module GEOSmoist_Process_Library
     logical :: isPresent, isFriendly
     integer :: ind, N, F
     character(len=ESMF_MAXSTR), pointer, dimension(:) :: QNAMES
-    character(len=ESMF_MAXSTR) :: QNAME
+    character(len=ESMF_MAXSTR) :: QNAME, STR_CNV_TRACER
 
     call ESMF_FieldBundleGet(TR, FieldCount=TotalTracers, RC=STATUS); VERIFY_(STATUS)
     allocate(QNAMES(TotalTracers), stat=STATUS); VERIFY_(STATUS)
@@ -97,6 +111,7 @@ module GEOSmoist_Process_Library
     if (allocated(CNV_Tracers)) then
       ASSERT_( size(CNV_Tracers) == FriendlyTracers )
     else
+      call WRITE_PARALLEL ("List of species friendly to MoistGridComp:")
       ! fill CNV_Tracers
       allocate( CNV_Tracers(FriendlyTracers), stat=STATUS); VERIFY_(STATUS)
       F = 0
@@ -107,7 +122,6 @@ module GEOSmoist_Process_Library
          if(isPresent) then
             call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
             if (isFriendly) then
-               call WRITE_PARALLEL (trim(QNAME)//" is FriendlyToMOIST")
                ! Iterate the friendly index
                !-------------------------------
                F = F + 1
@@ -118,23 +132,45 @@ module GEOSmoist_Process_Library
                if(isPresent) then
                   call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", CNV_Tracers(F)%fscav, RC=STATUS); VERIFY_(STATUS)
                end if
-              ! Get items for the wet removal parameterization for gases based on the Henry's Law
-              !-------------------------------------------------------------------------------------
-              CNV_Tracers(F)%Vect_Hcts(:)=-99.
-              call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent,  RC=STATUS); VERIFY_(STATUS)
-              if (isPresent) then
-                 call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
-              end if
-              ! Get component and tracer names
-              !-------------------------------------------------------------------------------------
-              ind= index(QNAME, '::')
-              if (ind > 0) then
-                 CNV_Tracers(F)%CNAME = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
-                 CNV_Tracers(F)%QNAME = trim(QNAME(ind+2:))
-              end if
-              ! Get pointer to friendly tracers
-              !-----------------------------------------
-              call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
+               ! Get items for the wet removal parameterization for gases based on the Henry's Law
+               !-------------------------------------------------------------------------------------
+               CNV_Tracers(F)%Vect_Hcts(:)=-99.
+               call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent,  RC=STATUS); VERIFY_(STATUS)
+               if (isPresent) then
+                  call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
+               end if
+               ! Get component and tracer names
+               !-------------------------------------------------------------------------------------
+               ind= index(QNAME, '::')
+               if (ind > 0) then
+                  CNV_Tracers(F)%CNAME = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
+                  CNV_Tracers(F)%QNAME = trim(QNAME(ind+2:))
+               end if
+              !! temporary section to fill Henrys cts for N2O and CH4 of PCHEM chemical mechanism
+              !!-------------------------------------------------------------------------------------
+              !if ( trim(CNV_Tracers(F)%QNAME) == 'N2O' .or. trim(CNV_Tracers(F)%QNAME) == 'CH4' ) then
+              !   call get_HenrysLawCts(trim(CNV_Tracers(F)%QNAME), &
+              !                              CNV_Tracers(F)%Vect_Hcts(1),     &
+              !                              CNV_Tracers(F)%Vect_Hcts(2),     &
+              !                              CNV_Tracers(F)%Vect_Hcts(3),     &
+              !                              CNV_Tracers(F)%Vect_Hcts(4) )
+              !endif
+               ! Get pointer to friendly tracers
+               !-----------------------------------------
+               call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
+               ! Report tracer status
+               !-----------------------------------------
+               if (CNV_Tracers(F)%fscav > 1.e-6) then
+                   WRITE(STR_CNV_TRACER,101) TRIM(QNAME), CNV_Tracers(F)%fscav
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+               elseif (CNV_Tracers(F)%Vect_Hcts(1)>1.e-6) then
+                   WRITE(STR_CNV_TRACER,102) TRIM(QNAME), CNV_Tracers(F)%Vect_Hcts
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+               else
+                   call WRITE_PARALLEL (trim(QNAME))
+               endif
+101            FORMAT(a,' ScavengingFractionPerKm:',1(1x,f3.1))
+102            FORMAT(a,' SetofHenryLawCts:',4(1x,es9.2))
             end if
          end if
       enddo
@@ -186,9 +222,13 @@ module GEOSmoist_Process_Library
       real, parameter :: aT_ICE_ALL = 245.16
       real, parameter :: aT_ICE_MAX = 261.16
       real, parameter :: aICEFRPWR  = 2.0
+        ! Over Oceans
+      real, parameter :: oT_ICE_ALL = 238.16
+      real, parameter :: oT_ICE_MAX = 263.16
+      real, parameter :: oICEFRPWR  = 4.0
 
       ! Anvil clouds
-      ! Anvil-Convective sigmoidal function like figure 7(right)
+      ! Anvil-Convective sigmoidal function like figure 6(right)
       ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
         ICEFRCT_C  = 0.00
         if ( TEMP <= aT_ICE_ALL ) then
@@ -199,10 +239,22 @@ module GEOSmoist_Process_Library
         ICEFRCT_C = MIN(ICEFRCT_C,1.00)
         ICEFRCT_C = MAX(ICEFRCT_C,0.00)
         ICEFRCT_C = ICEFRCT_C**aICEFRPWR
+#ifdef MODIS_ICE_POLY
       ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
         tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
         ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
         ICEFRCT_M = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+#else
+        ICEFRCT_M  = 0.00
+        if ( TEMP <= oT_ICE_ALL ) then
+           ICEFRCT_M = 1.000
+        else if ( (TEMP > oT_ICE_ALL) .AND. (TEMP <= oT_ICE_MAX) ) then
+           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - oT_ICE_ALL ) / ( oT_ICE_MAX - oT_ICE_ALL ) ) )
+        end if
+        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+        ICEFRCT_M = ICEFRCT_M**oICEFRPWR
+#endif
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 
@@ -1941,6 +1993,40 @@ module GEOSmoist_Process_Library
     DEALLOCATE(TPW2)
     DEALLOCATE(TPWC)
   end subroutine FILLQ2ZERO
+
+  subroutine FILLQ2ZERO1( Q, MASS, FILLQ  )
+    real, dimension(:,:,:),   intent(inout)  :: Q
+    real, dimension(:,:,:),   intent(in)     :: MASS
+    real, dimension(:,:),     intent(  out)  :: FILLQ
+    integer                                  :: IM,JM,LM
+    integer                                  :: I,J,K,L
+    real                                     :: TPW, NEGTPW
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Fills in negative q values in a mass conserving way.
+    ! Conservation of TPW was checked.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    IM = SIZE( Q, 1 )
+    JM = SIZE( Q, 2 )
+    LM = SIZE( Q, 3 )
+    do j=1,JM
+       do i=1,IM
+          TPW = SUM( Q(i,j,:)*MASS(i,j,:) )
+          NEGTPW = 0.
+          do l=1,LM
+             if ( Q(i,j,l) < 0.0 ) then
+                NEGTPW   = NEGTPW + ( Q(i,j,l)*MASS( i,j,l ) )
+                Q(i,j,l) = 0.0
+             endif
+          enddo
+          do l=1,LM
+             if ( Q(i,j,l) >= 0.0 ) then
+                Q(i,j,l) = Q(i,j,l)*( 1.0+NEGTPW/(TPW-NEGTPW) )
+             endif
+          enddo
+          FILLQ(i,j) = -NEGTPW
+       end do
+    end do
+  end subroutine FILLQ2ZERO1
 
   subroutine DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, PTYPE, PLE, TH, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
     integer,                        intent(in   )  :: IM, JM, LM
