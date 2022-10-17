@@ -1,4 +1,4 @@
-module CNCLM_CanopyStateType
+module CanopyStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varpar       , only : nlevcan, nvegwcs, numpft, num_zon, num_veg, &
@@ -155,7 +155,7 @@ contains
                   ! "new" variables: introduced in CNCLM50
                   if (cold_start==.false.) then
                      do nw = 1,nvegwcs
-                        this%vegwp_patch(np,nw)    = cnpft(nc,nz,nv, 77+(nw-1))
+                        this%vegwp_patch(np,nw)    = cnpft(nc,nz,nv, 76+(nw-1))
                      end do
                   elseif (cold_start) then
                      this%vegwp_patch(np,1:nvegwcs)    = -2.5e4_r8

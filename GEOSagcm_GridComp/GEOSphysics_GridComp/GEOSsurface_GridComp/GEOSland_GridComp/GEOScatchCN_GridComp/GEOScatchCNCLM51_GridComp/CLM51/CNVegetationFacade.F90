@@ -1141,7 +1141,6 @@ contains
     ! Should only be called if use_cn is true
     !
     ! !USES:
-    use clm_time_manager   , only : get_nstep_since_startup_or_lastDA_restart_or_pause
     !
     ! !ARGUMENTS:
     class(cn_vegetation_type)               , intent(inout) :: this
@@ -1153,17 +1152,10 @@ contains
     type(atm2lnd_type)                      , intent(in)    :: atm2lnd_inst
     !
     ! !LOCAL VARIABLES:
-    integer              :: DA_nstep                   ! time step number
 
     character(len=*), parameter :: subname = 'BalanceCheck'
     !-----------------------------------------------------------------------
 
-    DA_nstep = get_nstep_since_startup_or_lastDA_restart_or_pause()
-    if (DA_nstep <= skip_steps )then
-       if (masterproc) then
-          write(iulog,*) '--WARNING-- skipping CN balance check for first timesteps after startup or data assimilation'
-       end if
-    else
 
        call this%cn_balance_inst%CBalanceCheck( &
             bounds, num_soilc, filter_soilc, &
@@ -1179,8 +1171,6 @@ contains
             this%cnveg_nitrogenstate_inst, &
             this%n_products_inst, &
             atm2lnd_inst)
-
-    end if
 
   end subroutine BalanceCheck
 

@@ -4,8 +4,9 @@
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
-  use clm_varctl       , only : use_soil_matrixcn
-  use CNCLM_decompMod  , only : bounds_type
+  use clm_varcon       , only : spval, dzsoi_decomp, zisoi
+  use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn
+  use decompMod        , only : bounds_type
 
   ! !PUBLIC TYPES:
   implicit none
@@ -62,6 +63,10 @@
      real(r8), pointer :: hori_tran_nacc                  (:,:,:) ! col (gN/m3/yr) accumulated N transport between pools at the same level in dimension(col,nlev,ntransfers)
     ! type(sparse_matrix_type) :: AKXnacc                          ! col (gN/m3/yr) accumulated N transfers from j to i (col,i,j) per year in dimension(col,nlev*npools,nlev*npools) in sparse matrix type
     ! type(vector_type) :: matrix_Ninter                           ! col (gN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools in dimension(col,nlev*npools) in vector type
+
+  contains
+   
+     procedure, public :: Summary
 
   end type soilbiogeochem_nitrogenstate_type
   type(soilbiogeochem_nitrogenstate_type), public, target, save :: soilbiogeochem_nitrogenstate_inst
@@ -146,9 +151,9 @@ contains
       do nz = 1,nzone    ! CN zone loop
           n = n + 1
 
-          this%ntrunc_vr_col (n) = cncol(nc,nz,16)
+          this%ntrunc_vr_col (n,1:nlevdecomp_full) = cncol(nc,nz,16)
           ! jkolassa May 2022: for now nlevdecomp_full = 1; will need to add loop if we introduce more soil layers
-          this%sminn_vr_col  (n,1) = cncol(nc,nz,24)
+          this%sminn_vr_col  (n,1:nlevdecomp_full) = cncol(nc,nz,24)
           this%sminn_col  (n) = this%sminn_vr_col(n,1)
 
           do np = 1,ndecomp_pools
@@ -162,5 +167,231 @@ contains
    end do 
 
  end subroutine init_soilbiogeochem_nitrogenstate_type
+
+  !-----------------------------------------------------------------------
+  subroutine Summary(this, bounds, num_allc, filter_allc)
+    !
+    ! !ARGUMENTS:
+    class (soilbiogeochem_nitrogenstate_type) :: this
+    type(bounds_type) , intent(in) :: bounds
+    integer           , intent(in) :: num_allc       ! number of columns in allc filter
+    integer           , intent(in) :: filter_allc(:) ! filter for all active columns
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c,j,k,l     ! indices
+    integer  :: fc          ! lake filter indices
+    real(r8) :: maxdepth    ! depth to integrate soil variables
+    !-----------------------------------------------------------------------
+
+   ! vertically integrate NO3 NH4 N2O pools
+   if (use_nitrif_denitrif) then
+      do fc = 1,num_allc
+         c = filter_allc(fc)
+         this%smin_no3_col(c) = 0._r8
+         this%smin_nh4_col(c) = 0._r8
+      end do
+      do j = 1, nlevdecomp
+         do fc = 1,num_allc
+            c = filter_allc(fc)
+            this%smin_no3_col(c) = &
+                 this%smin_no3_col(c) + &
+                 this%smin_no3_vr_col(c,j) * dzsoi_decomp(j)
+
+            this%smin_nh4_col(c) = &
+                 this%smin_nh4_col(c) + &
+                 this%smin_nh4_vr_col(c,j) * dzsoi_decomp(j)
+          end do
+       end do
+
+    end if
+
+   ! vertically integrate each of the decomposing N pools
+   do l = 1, ndecomp_pools
+      do fc = 1,num_allc
+         c = filter_allc(fc)
+         this%decomp_npools_col(c,l) = 0._r8
+         if(use_soil_matrixcn)then
+            this%matrix_cap_decomp_npools_col(c,l) = 0._r8
+         end if
+      end do
+      do j = 1, nlevdecomp
+         do fc = 1,num_allc
+            c = filter_allc(fc)
+            this%decomp_npools_col(c,l) = &
+                 this%decomp_npools_col(c,l) + &
+                 this%decomp_npools_vr_col(c,j,l) * dzsoi_decomp(j)
+            if(use_soil_matrixcn)then
+               this%matrix_cap_decomp_npools_col(c,l) = &
+                    this%matrix_cap_decomp_npools_col(c,l) + &
+                    this%matrix_cap_decomp_npools_vr_col(c,j,l) * dzsoi_decomp(j)
+            end if
+         end do
+      end do
+   end do
+
+   ! for vertically-resolved soil biogeochemistry, calculate some diagnostics of carbon pools to a given depth
+   if ( nlevdecomp > 1) then
+
+      do l = 1, ndecomp_pools
+         do fc = 1,num_allc
+            c = filter_allc(fc)
+            this%decomp_npools_1m_col(c,l) = 0._r8
+         end do
+      end do
+
+
+      ! vertically integrate each of the decomposing n pools to 1 meter
+      maxdepth = 1._r8
+      do l = 1, ndecomp_pools
+         do j = 1, nlevdecomp
+            if ( zisoi(j) <= maxdepth ) then
+               do fc = 1,num_allc
+                  c = filter_allc(fc)
+                  this%decomp_npools_1m_col(c,l) = &
+                       this%decomp_npools_1m_col(c,l) + &
+                       this%decomp_npools_vr_col(c,j,l) * dzsoi_decomp(j)
+               end do
+            elseif ( zisoi(j-1) < maxdepth ) then
+               do fc = 1,num_allc
+                  c = filter_allc(fc)
+                  this%decomp_npools_1m_col(c,l) = &
+                       this%decomp_npools_1m_col(c,l) + &
+                       this%decomp_npools_vr_col(c,j,l) * (maxdepth - zisoi(j-1))
+               end do
+            endif
+         end do
+      end do
+
+
+      ! Add soil nitrogen pools together to produce vertically-resolved decomposing total soil N pool
+      if ( nlevdecomp_full > 1 ) then
+         do j = 1, nlevdecomp
+            do fc = 1,num_allc
+               c = filter_allc(fc)
+               this%decomp_soiln_vr_col(c,j) = 0._r8
+            end do
+         end do
+         do l = 1, ndecomp_pools
+            if ( decomp_cascade_con%is_soil(l) ) then
+               do j = 1, nlevdecomp
+                  do fc = 1,num_allc
+                     c = filter_allc(fc)
+                     this%decomp_soiln_vr_col(c,j) = this%decomp_soiln_vr_col(c,j) + &
+                          this%decomp_npools_vr_col(c,j,l)
+                  end do
+               end do
+            end if
+         end do
+      end if
+
+      ! total litter nitrogen to 1 meter (TOTLITN_1m)
+      do fc = 1,num_allc
+         c = filter_allc(fc)
+         this%totlitn_1m_col(c) = 0._r8
+      end do
+      do l = 1, ndecomp_pools
+         if ( decomp_cascade_con%is_litter(l) ) then
+            do fc = 1,num_allc
+               c = filter_allc(fc)
+               this%totlitn_1m_col(c) = &
+                    this%totlitn_1m_col(c) + &
+                    this%decomp_npools_1m_col(c,l)
+            end do
+         end if
+      end do
+
+
+      ! total soil organic matter nitrogen to 1 meter (TOTSOMN_1m)
+      do fc = 1,num_allc
+         c = filter_allc(fc)
+         this%totsomn_1m_col(c) = 0._r8
+      end do
+      do l = 1, ndecomp_pools
+         if ( decomp_cascade_con%is_soil(l) ) then
+            do fc = 1,num_allc
+               c = filter_allc(fc)
+               this%totsomn_1m_col(c) = this%totsomn_1m_col(c) + &
+                    this%decomp_npools_1m_col(c,l)
+            end do
+         end if
+      end do
+
+   endif
+
+   ! total litter nitrogen (TOTLITN)
+   do fc = 1,num_allc
+      c = filter_allc(fc)
+      this%totlitn_col(c)    = 0._r8
+   end do
+   do l = 1, ndecomp_pools
+      if ( decomp_cascade_con%is_litter(l) ) then
+         do fc = 1,num_allc
+            c = filter_allc(fc)
+            this%totlitn_col(c) = &
+                 this%totlitn_col(c) + &
+                 this%decomp_npools_col(c,l)
+         end do
+      end if
+   end do
+
+
+   ! total soil organic matter nitrogen (TOTSOMN)
+   do fc = 1,num_allc
+      c = filter_allc(fc)
+      this%totsomn_col(c)    = 0._r8
+   end do
+   do l = 1, ndecomp_pools
+      if ( decomp_cascade_con%is_soil(l) ) then
+         do fc = 1,num_allc
+            c = filter_allc(fc)
+            this%totsomn_col(c) = this%totsomn_col(c) + &
+                 this%decomp_npools_col(c,l)
+         end do
+      end if
+   end do
+
+   ! total cwdn
+   do fc = 1,num_allc
+      c = filter_allc(fc)
+      this%cwdn_col(c) = 0._r8
+   end do
+   do l = 1, ndecomp_pools
+      if ( decomp_cascade_con%is_cwd(l) ) then
+         do fc = 1,num_allc
+            c = filter_allc(fc)
+            this%cwdn_col(c) = this%cwdn_col(c) + &
+                 this%decomp_npools_col(c,l)
+         end do
+      end if
+   end do
+
+
+   ! total sminn
+   do fc = 1,num_allc
+      c = filter_allc(fc)
+      this%sminn_col(c)      = 0._r8
+   end do
+   do j = 1, nlevdecomp
+      do fc = 1,num_allc
+         c = filter_allc(fc)
+         this%sminn_col(c) = this%sminn_col(c) + &
+              this%sminn_vr_col(c,j) * dzsoi_decomp(j)
+      end do
+   end do
+
+   ! total col_ntrunc
+   do fc = 1,num_allc
+      c = filter_allc(fc)
+      this%ntrunc_col(c) = 0._r8
+   end do
+   do j = 1, nlevdecomp
+      do fc = 1,num_allc
+         c = filter_allc(fc)
+         this%ntrunc_col(c) = this%ntrunc_col(c) + &
+              this%ntrunc_vr_col(c,j) * dzsoi_decomp(j)
+      end do
+   end do
+
+ end subroutine Summary
 
 end CNCLM_SoilBiogeochemNitrogenStateType

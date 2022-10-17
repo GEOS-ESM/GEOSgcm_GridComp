@@ -2495,6 +2495,7 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M10D'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RH30D'   ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      else                                                                                      
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMCM'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      endif

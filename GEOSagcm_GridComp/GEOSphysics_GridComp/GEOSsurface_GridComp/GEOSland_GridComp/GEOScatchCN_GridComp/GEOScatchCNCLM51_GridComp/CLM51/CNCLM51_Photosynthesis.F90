@@ -357,6 +357,9 @@
   rssun  = photosyns_inst%rssun_patch
   rssha  = photosyns_inst%rssha_patch   
 
+ call PhotosynthesisTotal (fn, filterp, &
+       atm2lnd_inst, canopystate_inst, photosyns_inst)
+
    np = 0
     do nc = 1,nch        ! catchment tile loop
        do nz = 1,num_zon    ! CN zone loop 

@@ -16,7 +16,6 @@
   use CNCLM_SolarAbsorbedType
   use CNCLM_SurfaceAlbedoType
   use CNCLM_OzoneBaseMod
-  use CNCLM_PhotosynsType
   use CNCLM_pftconMod
   use CNCLM_WaterFluxType
   use CNCLM_SoilBiogeochemCarbonStateType
@@ -50,6 +49,7 @@
   use SaturatedExcessRunoffMod
   use WaterStateBulkType
   use WaterStateType
+  use FrictionVelocityMod
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
@@ -62,6 +62,7 @@
   use dynSubgridControlMod               , only : dynSubgridControl_init
   use CNFireFactoryMod                   , only : CNFireReadNML, create_cnfire_method
   use FireMethodType                     , only : fire_method_type
+  use SoilBiogeochemNLeachingMod         , only : readSoilBiogeochemNLeachingParams      => readParams
 
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
@@ -128,6 +129,7 @@
   type(energyflux_type)                   :: energyflux_inst
   type(waterstatebulk_type)               :: waterstatebulk_inst
   type(waterstate_type)                   :: waterstate_inst
+  type(frictionvel_type)                  :: frictionvel_inst
 
 
   character(300)     :: paramfile
@@ -176,9 +178,9 @@
 
     ! initialize states and fluxes
 
-    call init_cnveg_nitrogenstate_type  (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_nitrogenstate_inst, cn5_cold_start) 
+    call init_cnveg_nitrogenstate_type  (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_nitrogenstate_inst) 
 
-    call init_cnveg_carbonstate_type    (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_carbonstate_inst, cn5_cold_start)
+    call init_cnveg_carbonstate_type    (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_carbonstate_inst)
 
     call init_atm2lnd_type              (bounds, atm2lnd_inst)
 
@@ -200,7 +202,7 @@
 
     call init_ozone_base_type           (bounds, ozone_inst)
 
-    call init_photosyns_type            (bounds, nch, ityp, fveg, cncol, cnpft, photosyns_inst, cn5_cold_start)
+    call photosyns_inst%Init            (bounds, nch, ityp, fveg, cncol, cnpft, photosyns_inst, cn5_cold_start)
 
     call init_pftcon_type               (pftcon)
 
@@ -218,7 +220,7 @@
 
     call init_cnveg_state_type          (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_state_inst)
 
-    call init_cnveg_carbonflux_type     (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_carbonflux_inst)
+    call init_cnveg_carbonflux_type     (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_carbonflux_inst, cn5_cold_start)
  
     call init_cnveg_nitrogenflux_type   (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_nitrogenflux_inst)
 
@@ -245,6 +247,12 @@
     call init_waterstatebulk_type       (bounds, waterstatebulk_inst)
 
     call init_waterstate_type           (bounds, waterstate_inst)
+
+    call init_frictionvel_type          (bounds, frictionvel_inst)
+
+    call CNPhenologyInit                (bounds)
+
+    call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
 
     call create_cnfire_method(cnfire_method)
     call cnfire_method%FireInit(bounds)
@@ -284,6 +292,7 @@
    call readSoilBiogeochemLittVertTranspParams(ncid)
    call photosyns_inst%ReadParams( ncid )
    call cnfire_method%CNFireReadParams( ncid )
+   call readSoilBiogeochemNLeachingParams(ncid)
 
    call ncid%close(rc=status)
 

@@ -15,7 +15,9 @@ module CNCLM_CNVegNitrogenFluxType
 				igrain,igrain_st,igrain_xf,ioutc
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
-  use clm_varcon       , only : spval
+  use clm_varcon       , only : spval, ispval, dzsoi_decomp
+  use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_crop, use_matrixcn
+  use PatchType        , only : patch
 
   ! !PUBLIC TYPES:
   implicit none
@@ -23,7 +25,6 @@ module CNCLM_CNVegNitrogenFluxType
 !
 ! !PUBLIC MEMBER FUNCTIONS:
   public :: init_cnveg_nitrogenflux_type
-  procedure , public :: SetValues 
 
   type, public :: cnveg_nitrogenflux_type
 
@@ -357,6 +358,7 @@ module CNCLM_CNVegNitrogenFluxType
  contains
 
      procedure , public  :: SetValues
+     procedure , public  :: Summary => Summary_nitrogenflux
 
  end type cnveg_nitrogenflux_type
 
@@ -1236,5 +1238,94 @@ contains
     end do
 
   end subroutine SetValues
+
+ !-----------------------------------------------------------------------
+  subroutine Summary_nitrogenflux(this, bounds, num_soilc, filter_soilc, num_soilp, filter_soilp)
+    !
+    ! !USES:
+    use clm_varpar    , only: nlevdecomp,ndecomp_cascade_transitions,ndecomp_pools
+    use clm_varctl    , only: use_nitrif_denitrif
+    use subgridAveMod , only: p2c
+    !
+    ! !ARGUMENTS:
+    class (cnveg_nitrogenflux_type) :: this
+    type(bounds_type) , intent(in) :: bounds
+    integer           , intent(in) :: num_soilc       ! number of soil columns in filter
+    integer           , intent(in) :: filter_soilc(:) ! filter for soil columns
+    integer           , intent(in) :: num_soilp       ! number of soil patches in filter
+    integer           , intent(in) :: filter_soilp(:) ! filter for soil patches
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c,p,j,k,l   ! indices
+    integer  :: fp,fc       ! lake filter indices
+    real(r8) :: maxdepth    ! depth to integrate soil variables
+    !-----------------------------------------------------------------------
+
+    do fp = 1,num_soilp
+       p = filter_soilp(fp)
+
+       ! total N deployment (from sminn and retranslocated N pool) (NDEPLOY)
+       this%ndeploy_patch(p) = &
+            this%sminn_to_npool_patch(p) + &
+            this%retransn_to_npool_patch(p) + &
+            this%free_retransn_to_npool_patch(p)
+
+
+       ! total patch-level fire N losses
+       this%fire_nloss_patch(p) = &
+            this%m_leafn_to_fire_patch(p)               + &
+            this%m_leafn_storage_to_fire_patch(p)       + &
+            this%m_leafn_xfer_to_fire_patch(p)          + &
+            this%m_frootn_to_fire_patch(p)              + &
+            this%m_frootn_storage_to_fire_patch(p)      + &
+            this%m_frootn_xfer_to_fire_patch(p)         + &
+            this%m_livestemn_to_fire_patch(p)           + &
+            this%m_livestemn_storage_to_fire_patch(p)   + &
+            this%m_livestemn_xfer_to_fire_patch(p)      + &
+            this%m_deadstemn_to_fire_patch(p)           + &
+            this%m_deadstemn_storage_to_fire_patch(p)   + &
+            this%m_deadstemn_xfer_to_fire_patch(p)      + &
+            this%m_livecrootn_to_fire_patch(p)          + &
+            this%m_livecrootn_storage_to_fire_patch(p)  + &
+            this%m_livecrootn_xfer_to_fire_patch(p)     + &
+            this%m_deadcrootn_to_fire_patch(p)          + &
+            this%m_deadcrootn_storage_to_fire_patch(p)  + &
+            this%m_deadcrootn_xfer_to_fire_patch(p)     + &
+            this%m_retransn_to_fire_patch(p)
+
+    end do
+
+    call p2c(bounds, num_soilc, filter_soilc, &
+         this%fire_nloss_patch(bounds%begp:bounds%endp), &
+         this%fire_nloss_p2c_col(bounds%begc:bounds%endc))
+
+
+    ! vertically integrate column-level fire N losses
+    do k = 1, ndecomp_pools
+       do j = 1, nlevdecomp
+          do fc = 1,num_soilc
+             c = filter_soilc(fc)
+             this%m_decomp_npools_to_fire_col(c,k) = &
+                  this%m_decomp_npools_to_fire_col(c,k) + &
+                  this%m_decomp_npools_to_fire_vr_col(c,j,k) * dzsoi_decomp(j)
+          end do
+       end do
+    end do
+
+    ! total column-level fire N losses
+    do fc = 1,num_soilc
+       c = filter_soilc(fc)
+       this%fire_nloss_col(c) = this%fire_nloss_p2c_col(c)
+    end do
+    do k = 1, ndecomp_pools
+       do fc = 1,num_soilc
+          c = filter_soilc(fc)
+          this%fire_nloss_col(c) = &
+               this%fire_nloss_col(c) + &
+               this%m_decomp_npools_to_fire_col(c,k)
+       end do
+    end do
+
+  end subroutine Summary_nitrogenflux
 
 end module CNCLM_CNVegNitrogenFluxType

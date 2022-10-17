@@ -3,10 +3,15 @@ module CNCLM_VegNitrogenStateType
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use MAPL_ExceptionHandling
   use clm_varctl       , only : use_matrixcn
+  use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp
   use clm_varpar       , only : NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT, &
                                 numpft, CN_zone_weight
+  use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
+  use clm_varpar       , only : nlevdecomp_full, nlevdecomp
+  use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
+  use PatchType        , only : patch
 
   ! !PUBLIC TYPES:
   implicit none
@@ -198,13 +203,17 @@ module CNCLM_VegNitrogenStateType
      real(r8), pointer :: deadcrootn_storage_SASUsave_patch   (:) ! (gC/m2) dead coarse root C storage
      real(r8), pointer :: deadcrootn_xfer_SASUsave_patch      (:) ! (gC/m2) dead coarse root C transfer:wq
 
+  contains 
+
+     procedure , public  :: Summary => Summary_nitrogenstate
+
 end type cnveg_nitrogenstate_type
 type(cnveg_nitrogenstate_type), public, target, save :: cnveg_nitrogenstate_inst
 
 contains
 
 !-------------------------------------------------------------
-  subroutine init_cnveg_nitrogenstate_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start)
+  subroutine init_cnveg_nitrogenstate_type(bounds, nch, ityp, fveg, cncol, cnpft, this)
 
 ! !DESCRIPTION:
 ! Initialize CTSM nitrogen states
@@ -222,30 +231,17 @@ contains
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
     type(cnveg_nitrogenstate_type),               intent(inout):: this
-    logical, optional,                            intent(in) :: cn5_cold_start
 
 
   ! LOCAL:
 
     integer  :: begp, endp, begg, endgg, begc, endc
     integer  :: np, nc, nz, p, nv, n
-    logical  :: cold_start = .false.
   !---------------------------------------------------------------------
 
     begp = bounds%begp  ; endp = bounds%endp
     begg = bounds%begg  ; endg = bounds%endg
     begc = bounds%begc  ; endc = bounds%endc
-
-    ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start==.true.)) then
-       cold_start = .true.
-    end if
-
-    ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
-       (size(cnpft,3).ne.var_pft)))
-       _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
-    end if
 
     allocate(this%grainn_patch                           (begp:endp)) ; this%grainn_patch                        (:) = nan
     allocate(this%grainn_storage_patch                   (begp:endp)) ; this%grainn_storage_patch                (:) = nan
@@ -473,9 +469,9 @@ contains
                      this%livestemn_patch          (np) = cnpft(nc,nz,nv, 63)
                      this%livestemn_storage_patch  (np) = cnpft(nc,nz,nv, 64)
                      this%livestemn_xfer_patch     (np) = cnpft(nc,nz,nv, 65)
-                     this%npool_patch              (np) = cncol(nc,nz,nv, 66)
-                     this%ntrunc_patch             (np) = cncol(nc,nz,nv, 67)
-                     this%retransn_patch           (np) = cncol(nc,nz,nv, 68)
+                     this%npool_patch              (np) = cnpft(nc,nz,nv, 66)
+                     this%ntrunc_patch             (np) = cnpft(nc,nz,nv, 67)
+                     this%retransn_patch           (np) = cnpft(nc,nz,nv, 68)
 
                 end if
               end do !nv                                                                                            
@@ -484,6 +480,126 @@ contains
     end do ! nc  
 
   end subroutine init_cnveg_nitrogenstate_type
+
+  !-----------------------------------------------------------------------
+  subroutine Summary_nitrogenstate(this, bounds, num_allc, filter_allc, &
+       num_soilc, filter_soilc, num_soilp, filter_soilp,&
+       soilbiogeochem_nitrogenstate_inst)
+    !
+    ! !USES:
+    use subgridAveMod, only : p2c
+    use SoilBiogeochemNitrogenStateType, only : soilbiogeochem_nitrogenstate_type
+    !
+    ! !ARGUMENTS:
+    class(cnveg_nitrogenstate_type)                      :: this
+    type(bounds_type)                       , intent(in) :: bounds
+    integer                                 , intent(in) :: num_allc        ! number of columns in allc filter
+    integer                                 , intent(in) :: filter_allc(:)  ! filter for all active columns
+    integer                                 , intent(in) :: num_soilc       ! number of soil columns in filter
+    integer                                 , intent(in) :: filter_soilc(:) ! filter for soil columns
+    integer                                 , intent(in) :: num_soilp       ! number of soil patches in filter
+    integer                                 , intent(in) :: filter_soilp(:) ! filter for soil patches
+    type(soilbiogeochem_nitrogenstate_type) , intent(in) :: soilbiogeochem_nitrogenstate_inst
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c,p,j,k,l ! indices
+    integer  :: fp,fc       ! lake filter indices
+    real(r8) :: maxdepth    ! depth to integrate soil variables
+    !-----------------------------------------------------------------------
+
+    ! --------------------------------------------
+    ! patch level summary
+    ! --------------------------------------------
+
+    do fp = 1,num_soilp
+       p = filter_soilp(fp)
+
+       ! displayed vegetation nitrogen, excluding storage (DISPVEGN)
+       this%dispvegn_patch(p) = &
+            this%leafn_patch(p)      + &
+            this%frootn_patch(p)     + &
+            this%livestemn_patch(p)  + &
+            this%deadstemn_patch(p)  + &
+            this%livecrootn_patch(p) + &
+            this%deadcrootn_patch(p)
+
+       ! stored vegetation nitrogen, including retranslocated N pool (STORVEGN)
+       this%storvegn_patch(p) = &
+            this%leafn_storage_patch(p)      + &
+            this%frootn_storage_patch(p)     + &
+            this%livestemn_storage_patch(p)  + &
+            this%deadstemn_storage_patch(p)  + &
+            this%livecrootn_storage_patch(p) + &
+            this%deadcrootn_storage_patch(p) + &
+            this%leafn_xfer_patch(p)         + &
+            this%frootn_xfer_patch(p)        + &
+            this%livestemn_xfer_patch(p)     + &
+            this%deadstemn_xfer_patch(p)     + &
+            this%livecrootn_xfer_patch(p)    + &
+            this%deadcrootn_xfer_patch(p)    + &
+            this%npool_patch(p)              + &
+            this%retransn_patch(p)
+
+       if ( use_crop .and. patch%itype(p) >= npcropmin )then
+          this%dispvegn_patch(p) = &
+               this%dispvegn_patch(p) + &
+               this%grainn_patch(p)
+
+          this%storvegn_patch(p) = &
+               this%storvegn_patch(p) + &
+               this%grainn_storage_patch(p)     + &
+               this%grainn_xfer_patch(p) + &
+               this%cropseedn_deficit_patch(p)
+       end if
+
+       ! total vegetation nitrogen (TOTVEGN)
+       this%totvegn_patch(p) = &
+            this%dispvegn_patch(p) + &
+            this%storvegn_patch(p)
+
+       ! total patch-level carbon (add ntrunc)
+       this%totn_patch(p) = &
+            this%totvegn_patch(p) + &
+            this%ntrunc_patch(p)
+
+    end do
+
+    ! --------------------------------------------
+    ! column level summary
+    ! --------------------------------------------
+
+    call p2c(bounds, num_soilc, filter_soilc, &
+         this%totvegn_patch(bounds%begp:bounds%endp), &
+         this%totvegn_col(bounds%begc:bounds%endc))
+
+    call p2c(bounds, num_soilc, filter_soilc, &
+         this%totn_patch(bounds%begp:bounds%endp), &
+         this%totn_p2c_col(bounds%begc:bounds%endc))
+
+
+    do fc = 1,num_allc
+       c = filter_allc(fc)
+
+       ! total ecosystem nitrogen, including veg (TOTECOSYSN)
+       this%totecosysn_col(c) =    &
+            soilbiogeochem_nitrogenstate_inst%cwdn_col(c)    + &
+            soilbiogeochem_nitrogenstate_inst%totlitn_col(c) + &
+            soilbiogeochem_nitrogenstate_inst%totsomn_col(c) + &
+            soilbiogeochem_nitrogenstate_inst%sminn_col(c)   + &
+            this%totvegn_col(c)
+
+       ! total column nitrogen, including patch (TOTCOLN)
+
+       this%totn_col(c) = this%totn_p2c_col(c)               + &
+            soilbiogeochem_nitrogenstate_inst%cwdn_col(c)    + &
+            soilbiogeochem_nitrogenstate_inst%totlitn_col(c) + &
+            soilbiogeochem_nitrogenstate_inst%totsomn_col(c) + &
+            soilbiogeochem_nitrogenstate_inst%sminn_col(c)   + &
+            soilbiogeochem_nitrogenstate_inst%ntrunc_col(c)
+
+    end do
+
+  end subroutine Summary_nitrogenstate
 
 end module CNCLM_VegNitrogenStateType
 

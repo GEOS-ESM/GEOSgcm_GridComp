@@ -4,7 +4,8 @@ module CNCLM_SoilBiogeochemCarbonStateType
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
-  use clm_varctl       , only : use_soil_matrixcn
+  use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi, zsoi, c3_r2
+  use clm_varctl       , only : iulog, use_vertsoilc, use_fates, use_soil_matrixcn
   use CNCLM_decompMod  , only : bounds_type
 
   ! !PUBLIC TYPES:
@@ -49,6 +50,12 @@ module CNCLM_SoilBiogeochemCarbonStateType
      real(r8), pointer :: hori_tran_acc                   (:,:,:) ! (gC/m3/yr) accumulated C transport between pools at the same level in dimension(col,nlev,ntransfers)
     ! type(sparse_matrix_type) :: AKXcacc                          ! (gC/m3/yr) accumulated N transfers from j to i (col,i,j) per year in dimension(col,nlev*npools,nlev*npools) in sparse matrix type
     ! type(vector_type) :: matrix_Cinter                           ! (gC/m3)    vertically-resolved decomposing (litter, cwd, soil) N pools in dimension(col,nlev*npools) in vector type
+
+  contains
+
+     procedure , public  :: Summary
+     procedure , public  :: SetTotVgCThresh
+  
 
   end type soilbiogeochem_carbonstate_type
   type(soilbiogeochem_carbonstate_type), public, target, save :: soilbiogeochem_carbonstate_inst
@@ -151,5 +158,214 @@ contains
    end do ! nc
 
  end init_soilbiogeochem_carbonstate_type
+
+  !-----------------------------------------------------------------------
+  subroutine Summary(this, bounds, num_allc, filter_allc)
+    !
+    ! !DESCRIPTION:
+    ! Perform column-level carbon summary calculations
+    !
+    ! !ARGUMENTS:
+    class(soilbiogeochem_carbonstate_type)          :: this
+    type(bounds_type)               , intent(in)    :: bounds
+    integer                         , intent(in)    :: num_allc       ! number of columns in allc filter
+    integer                         , intent(in)    :: filter_allc(:) ! filter for all active columns
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c,j,k,l       ! indices
+    integer  :: fc            ! filter indices
+    real(r8) :: maxdepth      ! depth to integrate soil variables
+    !-----------------------------------------------------------------------
+
+    ! vertically integrate each of the decomposing C pools
+    do l = 1, ndecomp_pools
+       do fc = 1,num_allc
+          c = filter_allc(fc)
+          this%decomp_cpools_col(c,l) = 0._r8
+          if(use_soil_matrixcn)then
+             this%matrix_cap_decomp_cpools_col(c,l) = 0._r8
+          end if
+       end do
+    end do
+    do l = 1, ndecomp_pools
+       do j = 1, nlevdecomp
+          do fc = 1,num_allc
+             c = filter_allc(fc)
+             this%decomp_cpools_col(c,l) = &
+                  this%decomp_cpools_col(c,l) + &
+                  this%decomp_cpools_vr_col(c,j,l) * dzsoi_decomp(j)
+             if(use_soil_matrixcn)then
+                this%matrix_cap_decomp_cpools_col(c,l) = &
+                     this%matrix_cap_decomp_cpools_col(c,l) + &
+                     this%matrix_cap_decomp_cpools_vr_col(c,j,l) * dzsoi_decomp(j)
+             end if
+          end do
+       end do
+    end do
+
+    if ( nlevdecomp > 1) then
+
+       ! vertically integrate each of the decomposing C pools to 1 meter
+       maxdepth = 1._r8
+       do l = 1, ndecomp_pools
+          do fc = 1,num_allc
+             c = filter_allc(fc)
+             this%decomp_cpools_1m_col(c,l) = 0._r8
+          end do
+       end do
+       do l = 1, ndecomp_pools
+          do j = 1, nlevdecomp
+             if ( zisoi(j) <= maxdepth ) then
+                do fc = 1,num_allc
+                   c = filter_allc(fc)
+                   this%decomp_cpools_1m_col(c,l) = &
+                        this%decomp_cpools_1m_col(c,l) + &
+                        this%decomp_cpools_vr_col(c,j,l) * dzsoi_decomp(j)
+                end do
+             elseif ( zisoi(j-1) < maxdepth ) then
+                do fc = 1,num_allc
+                   c = filter_allc(fc)
+                   this%decomp_cpools_1m_col(c,l) = &
+                        this%decomp_cpools_1m_col(c,l) + &
+                        this%decomp_cpools_vr_col(c,j,l) * (maxdepth - zisoi(j-1))
+                end do
+             endif
+          end do
+       end do
+
+    endif
+
+    ! Add soil carbon pools together to produce vertically-resolved decomposing total soil c pool
+    if ( nlevdecomp_full > 1 ) then
+       do j = 1, nlevdecomp
+          do fc = 1,num_allc
+             c = filter_allc(fc)
+             this%decomp_soilc_vr_col(c,j) = 0._r8
+          end do
+       end do
+       do l = 1, ndecomp_pools
+          if ( decomp_cascade_con%is_soil(l) ) then
+             do j = 1, nlevdecomp
+                do fc = 1,num_allc
+                   c = filter_allc(fc)
+                   this%decomp_soilc_vr_col(c,j) = this%decomp_soilc_vr_col(c,j) + &
+                        this%decomp_cpools_vr_col(c,j,l)
+                end do
+             end do
+          end if
+       end do
+    end if
+
+    ! truncation carbon
+    do fc = 1,num_allc
+       c = filter_allc(fc)
+       this%ctrunc_col(c) = 0._r8
+    end do
+    do j = 1, nlevdecomp
+       do fc = 1,num_allc
+          c = filter_allc(fc)
+          this%ctrunc_col(c) = &
+               this%ctrunc_col(c) + &
+               this%ctrunc_vr_col(c,j) * dzsoi_decomp(j)
+       end do
+    end do
+
+    ! total litter carbon in the top meter (TOTLITC_1m)
+    if ( nlevdecomp > 1) then
+       do fc = 1,num_allc
+          c = filter_allc(fc)
+          this%totlitc_1m_col(c) = 0._r8
+       end do
+       do l = 1, ndecomp_pools
+          if ( decomp_cascade_con%is_litter(l) ) then
+             do fc = 1,num_allc
+                c = filter_allc(fc)
+                this%totlitc_1m_col(c) = this%totlitc_1m_col(c) + &
+                     this%decomp_cpools_1m_col(c,l)
+             end do
+          endif
+       end do
+    end if
+
+    ! total soil organic matter carbon in the top meter (TOTSOMC_1m)
+    if ( nlevdecomp > 1) then
+       do fc = 1,num_allc
+          c = filter_allc(fc)
+          this%totsomc_1m_col(c) = 0._r8
+       end do
+       do l = 1, ndecomp_pools
+          if ( decomp_cascade_con%is_soil(l) ) then
+             do fc = 1,num_allc
+                c = filter_allc(fc)
+                this%totsomc_1m_col(c) = this%totsomc_1m_col(c) + this%decomp_cpools_1m_col(c,l)
+             end do
+          end if
+       end do
+    end if
+
+    ! total litter carbon (TOTLITC)
+    do fc = 1,num_allc
+       c = filter_allc(fc)
+       this%totlitc_col(c) = 0._r8
+    end do
+    do l = 1, ndecomp_pools
+       if ( decomp_cascade_con%is_litter(l) ) then
+          do fc = 1,num_allc
+             c = filter_allc(fc)
+             this%totlitc_col(c) = this%totlitc_col(c) + this%decomp_cpools_col(c,l)
+          end do
+       endif
+    end do
+
+
+    ! total soil organic matter carbon (TOTSOMC)
+    do fc = 1,num_allc
+       c = filter_allc(fc)
+       this%totsomc_col(c) = 0._r8
+    end do
+    do l = 1, ndecomp_pools
+       if ( decomp_cascade_con%is_soil(l) ) then
+          do fc = 1,num_allc
+             c = filter_allc(fc)
+             this%totsomc_col(c) = this%totsomc_col(c) + this%decomp_cpools_col(c,l)
+          end do
+       end if
+    end do
+
+    ! coarse woody debris carbon
+    if (.not. use_fates ) then
+       do fc = 1,num_allc
+          c = filter_allc(fc)
+          this%cwdc_col(c) = 0._r8
+       end do
+       do l = 1, ndecomp_pools
+          if ( decomp_cascade_con%is_cwd(l) ) then
+             do fc = 1,num_allc
+                c = filter_allc(fc)
+                this%cwdc_col(c) = this%cwdc_col(c) + this%decomp_cpools_col(c,l)
+             end do
+          end if
+       end do
+
+    end if
+
+  end subroutine Summary
+
+  !------------------------------------------------------------------------
+  subroutine SetTotVgCThresh(this, totvegcthresh)
+
+    class(soilbiogeochem_carbonstate_type)                       :: this
+    real(r8)                              , intent(in)           :: totvegcthresh
+
+    if ( totvegcthresh <= 0.0_r8 )then
+        call endrun(msg=' ERROR totvegcthresh is zero or negative and should be > 0'//&
+               errMsg(sourcefile, __LINE__))
+    end if
+    this%totvegcthresh = totvegcthresh
+
+  end subroutine SetTotVgCThresh
+
+
+  !-----------------------------------------------------------------------
 
 end module CNCLM_SoilBiogeochemCarbonStateType

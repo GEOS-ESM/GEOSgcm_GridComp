@@ -1846,6 +1846,16 @@ subroutine SetServices ( GC, RC )
        RESTART            = MAPL_RestartOptional        ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = '5-day running mean of CN sum for snow depth',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'SNDZM5D'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for area snow cover',&
@@ -1866,6 +1876,37 @@ subroutine SetServices ( GC, RC )
        RESTART            = MAPL_RestartOptional        ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = '10-day running mean of ground temperature',&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'TG10D'                    ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = '5-day running mean of daily minimum 2-m temperature',&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'T2MMIN5D'                    ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = '30-day running mean of surface relative humidity',&
+       UNITS              = '%'                         ,&
+       SHORT_NAME         = 'RH30D'                    ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = '10-day running mean of total precipitation',&
@@ -4186,8 +4227,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start=.true.)
-      call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai)  
+      call CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start=.true.) 
+      call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif
 
@@ -4201,8 +4242,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! obtain LAI from previous time step (from CN model)
 ! --------------------------------------------------
 
-   call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai,tlai=tlai)
-      
+   call get_CN_LAI(nt,ityp,fveg,elai,esai=esai,tlai=tlai)   
+   
    lai1 = 0.
    wght = 0.
    do nz = 1,nzone
@@ -4673,8 +4714,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ar1m   
         real, dimension(:),   pointer :: tpm
         real, dimension(:),   pointer :: cnsum
-        real, dimension(:,:,:), pointer :: psnsunm
-        real, dimension(:,:,:), pointer :: psnsham
         real, dimension(:),   pointer :: sndzm
         real, dimension(:),   pointer :: asnowm
         real, dimension(:,:), pointer :: RDU001
@@ -4695,6 +4734,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: CLMPF
         real, dimension(:),   pointer :: CLMSF
         real, dimension(:),   pointer :: T2M10D
+        real, dimension(:),   pointer :: TG10D
+        real, dimension(:),   pointer :: T2MMIN5D
+        real, dimension(:),   pointer :: RH30D
         real, dimension(:),   pointer :: TPREC10D
         real, dimension(:),   pointer :: TPREC60D
 
@@ -5042,7 +5084,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: fpg, fpi, sminn_to_plant, sminn_to_npool, ndep_to_sminn
     real, allocatable, dimension(:) :: totvegn, totlitn, totsomn, retransn, retransn_to_npool  
     real, allocatable, dimension(:) :: fuelc, totlitc, cwdc, rootc 
-    real, allocatable, dimension(:) :: lats_degree, lons_degree
 
     ! ***************************************************************************************************************************************************************
     ! Begin Carbon Tracker variables
@@ -5116,7 +5157,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer :: ntile, nv, dpy, ierr, iok, ndt
     integer, save :: year_prev = -9999
     
+    integer, save :: n1d                ! number of land model steps in a 1-day period
+    integer, save :: n5d                ! number of land model steps in a 5-day period
     integer, save :: n10d               ! number of land model steps in a 10-day period
+    integer, save :: n30d               ! number of land model steps in a 30-day period
     integer, save :: n60d               ! number of land model steps in a 60-day period    
 
     ! For accumulated fields
@@ -5127,7 +5171,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, save :: istep                    ! model time step index
     integer :: accper                         ! number of time steps accumulated in a period of XX days, increases from 1 to nXXd in the first XX days,
     ! and remains as nXXd thereafter
-    
+    integer :: ta_count = 0
+    real    :: TA_MIN = 1000.                 
+   
     integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, AGCM_S_ofday
     logical, save :: first = .true.
     integer*8, save :: istep_cn = 1 ! gkw: legacy variable from offline
@@ -5355,8 +5401,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM5D'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2M10D'     ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,T2M10D     ,'TG10D'      ,RC=STATUS); VERIFY_(STATUS
+        call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2MMIN5D'   ,RC=STATUS); VERIFY_(STATUS
+        call MAPL_GetPointer(INTERNAL,RH30D      ,'RH30D'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC10D   ,'TPREC10D'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC60D   ,'TPREC60D'   ,RC=STATUS); VERIFY_(STATUS)
  
@@ -5554,13 +5604,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
       ! set number of time steps within a XX-day/hour period for 2m temperature XX-day/hour "running mean"
       ! --------------------------------------------------------------------------------------------------
+      n1d  = 86400/dt
+      n5d  = 5*86400/dt
       n10d = 10*86400/dt
+      n30d = 30*86400/dt
       n60d = 60*86400/dt
       ! fzeng: this is done in such way to exclude istep in the restart file
       if(init_accum) then
         istep = 0                             ! set model time step index to 0 when begin to accumulate the cumulative variables, fzeng, 21 Apr 2017 
        else
-        istep = maxval((/n10d,n60d/)) ! otherwise, set model time step index to the maximum of these nXX
+        istep = maxval((/n10d,n30d,n60d/)) ! otherwise, set model time step index to the maximum of these nXX
       end if           
       
       ! variables used for summing CN inputs over multiple land model calls; not saved on restart 
@@ -6182,9 +6235,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! gkw: start on main CN block
 
     allocate(   btran(ntiles,nveg,nzone) )
+    allocate(   btran_fire(ntiles,nzone) )
     allocate(     wgt(ntiles) )
     allocate(     wpp(ntiles) )
     allocate(    fwet(ntiles) )
+    allocate(     bt(ntiles,fsat:fwlt))
     allocate(     sm(ntiles,fsat:fwlt))
     allocate(  SWSRF1(ntiles) )
     allocate(  SWSRF2(ntiles) )
@@ -6243,8 +6298,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(           totlitc(ntiles) )
     allocate(              cwdc(ntiles) )
     allocate(             rootc(ntiles) )
-    allocate(       lats_degree(ntiles) )
-    allocate(       lons_degree(ntiles) )
     allocate(              lnfm(ntiles) )
 
     allocate(     tgw(ntiles,nzone) )
@@ -6357,6 +6410,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          sm(n,fwlt) = min(sm(n,fwlt),wpwet(n)-1.e-7)
        end do
        
+       bt(:,fsat) = 1.0
+       bt(:,ftrns) = sm(:,ftrns)**(-bee)
+       wpp = wpwet ** (-bee)
+       bt(:,ftrns) = (bt(:,ftrns)-wpp)/(1.-wpp)
+       bt(:,fwlt) = 0.
+ 
        do n = 1,ntiles
 
          ax1 = car1(n)
@@ -6415,6 +6474,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          endif
 
          do nz = 1,nzone
+            btran_fire(n,nz) = (f1(nz)*bt(n,fsat)     + f2(nz)*bt(n,ftrn)     + f4(nz)*bt(n,fwlt)    )/wtzone(n,nz)
 	    tgw(n,nz) =  (f1(nz)*tg(n,fsat) + f2(nz)*tg(n,ftrn) + f4(nz)*tg(n,fwlt))/wtzone(n,nz)
 	    tcx(n,nz) =  (f1(nz)*tc(n,fsat) + f2(nz)*tc(n,ftrn) + f4(nz)*tc(n,fwlt))/wtzone(n,nz)
 	    qcx(n,nz) =  (f1(nz)*qc(n,fsat) + f2(nz)*qc(n,ftrn) + f4(nz)*qc(n,fwlt))/wtzone(n,nz)
@@ -6459,6 +6519,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       bflow(n) = min(cond(n),bflow(n))
     end do
 
+! compute relative humidity (%) used in CNFireMod
+! -----------------------------------------------
+    do n = 1,ntiles
+       Qair_sat = MAPL_EQsat(TA(n), PS(n) )
+       Qair_relative(n) = QA(n) / Qair_sat * 100. 
+    end do
+
+    Qair_relative(:) = min(max(0., Qair_relative(:)), 100.)
+
 ! compute accumulated fields, fzeng
 ! following the methods in accFldsMod.F90 and accumulMod.F90 in CLM4.5
 ! --------------------------------------------------------------------
@@ -6473,22 +6542,60 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! ---------------------------------------------------------------------------------   
      if(init_accum) then     
         
+        ! (1) 5-day running mean of snow depth      
+         accper = min(istep,n5d)
+         SNDZM5D   = ((accper-1)*SNDZM5D + SNDZM) / accper 
+
         ! (1) 10-day running mean of 2-m temperature (K) and total precipitation (mm H2O/s)     
          accper = min(istep,n10d)
          T2M10D   = ((accper-1)*T2M10D + TA) / accper
          TPREC10D = ((accper-1)*TPREC10D + PCU + PLS + SNO) / accper      
-         
+         TG10D    = ((accper-1)*TG10D + TG) / accper         
+
+        ! (2) 30-day running mean of relative humidity [%]     
+         accper = min(istep,n30d)
+         RH30D   = ((accper-1)*RH30D + Qair_relative) / accper
+
+
         ! (2) 60-day running mean of total precipitation (mm H2O/s)
          accper = min(istep,n60d)
-         TPREC60D = ((accper-1)*TPREC60D + PCU + PLS + SNO) / accper            
+         TPREC60D = ((accper-1)*TPREC60D + PCU + PLS + SNO) / accper      
+
+
+        ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day running mean of minimum T2M
+
+         ta_count = ta_count + 1
+         TA_MIN = min(TA_MIN,TA)
+
+         if (ta_count == n1d) then 
+             T2MMIN5D   = ((accper-1)*T2MMIN5D   + TA_MIN)  / accper
+             TA_MIN = 1000.
+             ta_count = 0
+         end if 
 
       else
  
+         SNDZM5D  = ((n5d-1)*SNDZM5D   + SNDZM)  / n5d
          T2M10D   = ((n10d-1)*T2M10D   + TA)  / n10d
+         TG10D    = ((n10d-1)*TG10D   + TG)  / n10d
          TPREC10D = ((n10d-1)*TPREC10D + PCU + PLS + SNO) / n10d
+         RH30D    = ((n30d-1)*RH30D    + Qair_relative)  / n30d
          TPREC60D = ((n60d-1)*TPREC60D + PCU + PLS + SNO) / n60d
 
+
+         ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day running mean of minimum T2M
+
+         ta_count = ta_count + 1
+         TA_MIN = min(TA_MIN,TA)
+
+         if (ta_count == n1d) then
+             T2MMIN5D   = ((n5d-1)*T2MMIN5D   + TA_MIN)  / n5d
+             TA_MIN = 1000.
+             ta_count = 0
+         end if 
+
      endif
+
 
 ! get CO2
 ! -------
@@ -6729,15 +6836,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       year_prev = AGCM_YY
     endif
 
-! compute relative humidity (%) used in CNFireMod
-! -----------------------------------------------
-    do n = 1,ntiles
-       Qair_sat = MAPL_EQsat(TA(n), PS(n) )
-       Qair_relative(n) = QA(n) / Qair_sat * 100.
-    end do
-
-    Qair_relative(:) = min(max(0., Qair_relative(:)), 100.)
-
     ! CN time step over 4 hours may fail; limit to 4 hours; verify that DTCN is a multiple of DT
     ! ------------------------------------------------------------------------------------------
     dtcn = min(dtcn,14400.)
@@ -6762,10 +6860,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     snowfm  = snowfm  + SNO
     runsrfm = runsrfm + runsrf
     ar1m    = ar1m    + car1        
-    psnsunm = psnsunm + psnsun*laisun
-    psnsham = psnsham + psnsha*laisha
-    lmrsunm = lmrsunm + lmrsun*laisun
-    lmrsham = lmrsham + lmrsha*laisha       
     do n = 1,N_snow
        sndzm(:) = sndzm(:) + sndzn(n,:)
     end do
@@ -6787,12 +6881,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           tgwm(:,nz) = tgwm(:,nz) / cnsum(:)
           rzmm(:,nz) = rzmm(:,nz) / cnsum(:)
           sfmm(:,nz) = sfmm(:,nz) / cnsum(:)
-          do nv = 1,nveg
-             psnsunm(:,nv,nz) = psnsunm(:,nv,nz) / cnsum(:)
-             psnsham(:,nv,nz) = psnsham(:,nv,nz) / cnsum(:)
-             lmrsunm(:,nv,nz) = lmrsunm(:,nv,nz) / cnsum(:)
-             lmrsham(:,nv,nz) = lmrsham(:,nv,nz) / cnsum(:)                
-          end do
        end do
        tpm     = tpm     / cnsum
        bflowm  = bflowm  / cnsum
@@ -6807,27 +6895,24 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        sndzm   = sndzm   / cnsum
        asnowm  = asnowm  / cnsum
        
-       laisun = 1.
-       laisha = 1.
-       
-       lats_degree = lats / MAPL_PI * 180.
-       lons_degree = lons / MAPL_PI * 180.
 
-       call CN_Driver(istep_cn,ntiles,nveg,nzone,dayl,                                           &
-            tgwm,tpm,tp2,tp3,tp4,tp5,tp6,sfmm,rzmm,wpwet,                                        &
-            psis,bee,poros,vgwmax,bflowm,totwatm,runsrfm,                                        &
-            tairm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,T2M10D,                              &
-            psnsunm,psnsham,lmrsunm,lmrsham,laisun,laisha,                                       &
-            ar1m,btran_fire_rz,btran_fire_sf,lats_degree,lons_degree,                            &
-            ityp,fveg,wtzone,sndzm,asnowm,ndep,abm,peatf,gdp,hdm,fieldcap,lnfm,                  &
-            elai,esai,tlai,totcolc,cat_id,cli_t2m,                                               &
-            npp,gpp,sr,nee,frootc,padd,vegc,xsmr,burn,closs,                                     &
-            nfire,som_closs,ndeploy,denit,sminn_leached,sminn,fire_nloss,                        &
-            leafn,leafc,gross_nmin,net_nmin,nfix_to_sminn,actual_immob,                          &
-            fpg,fpi,sminn_to_plant,sminn_to_npool,ndep_to_sminn,totvegn,totlitn,totsomn,         &
-            retransn,retransn_to_npool,fuelc,totlitc,cwdc,rootc) 
+       call CN_Driver(ntiles,ityp,fveg,ndep,tpm,tairm,psis,bee,dayl,btran_fire,ar1m,&
+                      rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,gdp,&
+                      abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
+                      asnowm,TG10D,T2MMIN5D,SNDZM5D, &
+                      elai,esai,tlai,totcolc,npp,gpp,sr,nee,burn,closs,nfire,&
+                      som_closs,frootc,vegc,xsmr,ndeploy,denit,sminn_leached,sminn,&
+                      fire_nloss,leafn,leafc,gross_nmin,net_nmin,&
+                      nfix_to_sminn,actual_immob,fpg,fpi,sminn_to_plant,&
+                      sminn_to_npool,ndep_to_sminn,totvegn,totlitn,totsomn,&
+                      retransn,retransn_to_npool,fuelc,totlitc,cwdc,rootc)
 
-       
+       ! jkolassa: padd is a correction term that we may no longer need;
+       !           I am setting it to zero here in order to avoid having to change
+       !           the restart file for now       
+
+       padd(:) = 0.
+
        ! save scaled CN diagnostics
        ! --------------------------
        if(associated(CNLAI)) then
@@ -6911,10 +6996,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        snowfm  = 0.
        runsrfm = 0.
        ar1m    = 0.           
-       psnsunm = 0.
-       psnsham = 0.
-       lmrsunm = 0.
-       lmrsham = 0.          
        sndzm   = 0.
        asnowm  = 0.
        cnsum   = 0.
@@ -6974,7 +7055,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! ------------------------------------------
        if(NextTime == StopTime) then
           
-          call CN_exit(ntiles,nveg,nzone,ityp,fveg,cncol,var_col,cnpft,var_pft)     
+          call CN_exit(ntile,ityp,fveg,cncol,cnpft)    
           i = 1
           do iv = 1,VAR_PFT
              do nv = 1,NUM_VEG
@@ -7829,8 +7910,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(           totlitc )
         deallocate(              cwdc )
         deallocate(             rootc )
-        deallocate(       lats_degree )
-        deallocate(       lons_degree )
         deallocate(              lnfm )
         
         deallocate(     tgw )
@@ -7841,14 +7920,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate( totcolc )
         deallocate(  wtzone )
         deallocate(               sfm )
-        deallocate(            bt1_sf )
-        deallocate(            bt2_sf )
-        deallocate(            bt4_sf )    
-        deallocate(         btran1_sf )
-        deallocate(         btran2_sf )
-        deallocate(         btran3_sf )
-        deallocate(     btran_fire_rz )
-        deallocate(     btran_fire_sf )
+        deallocate(            bt )    
+        deallocate(     btran_fire )
         deallocate( psnsunx )
         deallocate( psnshax )
         deallocate( sifsunx )

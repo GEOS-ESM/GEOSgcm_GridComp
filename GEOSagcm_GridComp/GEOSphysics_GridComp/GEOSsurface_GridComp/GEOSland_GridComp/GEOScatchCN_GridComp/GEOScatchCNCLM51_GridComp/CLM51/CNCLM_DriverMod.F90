@@ -1,0 +1,604 @@
+module CN_DriverMod
+
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use nanMod           , only : nan
+  use CNVegetationFacade
+  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,
+                                var_col, var_pft
+  use clm_varcon       , only : grav, denh2o
+
+  implicit none
+  private
+
+! !PUBLIC MEMBER FUNCTIONS:
+  public :: CN_Driver
+  public :: CN_exit
+  public :: get_CN_LAI
+
+contains
+
+!---------------------------------
+ subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
+                      rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
+                      abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
+                      fsnow,tg10d,t2m5d,sndzn5d, &
+                      zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
+                      som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
+                      col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
+                      nfix_to_sminng,actual_immobg,fpgg,fpig,sminn_to_plantg,&
+                      sminn_to_npoolg,ndep_to_sminng,totvegng,totlitng,totsomng,&
+                      retransng,retransn_to_npoolg,fuelcg,totlitcg,cwdcg,rootcg)
+
+ use CNCLM_decompMod, only : bounds
+ use CNCLM_filterMod, only : filter
+ use CNCLM_SoilBiogeochemCarbonFluxType, only : soilbiogeochem_carbonflux_inst
+ use CNCLM_SoilBiogeochemNitrogenFluxType, only : soilbiogeochem_nitrogenflux_inst
+ use CNCLM_ActiveLayerMod
+ use CNCLM_GridcellType
+ use FireMethodType              , only : fire_method_inst
+ use SaturatedExcessRunoffMod    , only : saturated_excess_runoff_inst
+ use CNCLM_WaterDiagnosticBulkType, only : waterdiagnosticbulk_inst
+ use CNCLM_atm2lndType           , only : atm2lnd_inst
+ use Wateratm2lndBulkType        , only : wateratm2lndbulk_inst
+ use CNCLM_CNVegStateType        , only : cnveg_state_inst
+ use WaterStateBulkType          , only : waterstatebulk_inst
+
+ !ARGUMENTS
+ implicit none
+ 
+ !INPUT
+ integer,              intent(in) :: nch     ! number of tiles 
+ integer, dimension(nch,num_veg,num_zon),      intent(in) :: ityp ! PFT index
+ real, dimension(nch,num_veg,num_zon),         intent(in) :: fveg    ! PFT fraction
+ real, dimension(nch), intent(in) :: ndep    ! nitrogen deposition [g m^-2 s^-1]
+ real, dimension(nch), intent(in) :: tp1     ! soil temperatures [K]
+ real, dimension(nch), intent(in) :: tairm   ! surface air temperature [K] averaged over CN interval
+ real, dimension(nch), intent(in) :: bee     ! Clapp-Hornberger 'b' [-]
+ real, dimension(nch), intent(in) :: psis    ! saturated matric potential [m]
+ real, dimension(nch), intent(in) :: dayl    ! daylength [seconds]
+ real, dimension(nch,num_zon), intent(in) :: btran_fire
+ real, dimension(nch), intent(in) :: car1m     ! fraction of tile that is saturated area
+ real, dimension(nch,num_zon), intent(in) :: rzm ! weighted root-zone moisture content as frac of WHC
+ real, dimension(nch,num_zon), intent(in) :: sfm ! weighted surface moisture content as frac of WHC
+ real, dimension(nch), intent(in) :: rhm       ! relative humidity (%)
+ real, dimension(nch), intent(in) :: windm     ! wind speed (m/s)
+ real, dimension(nch), intent(in) :: rainfm    ! rainfall (convective + largescale) (kg/m2/s)
+ real, dimension(nch), intent(in) :: snowfm    ! snowfall (kg/m2/s)  
+ real, dimension(nch), intent(in) :: prec10d   ! 10-day running mean of total precipitation (mm H2O/s)
+ real, dimension(nch), intent(in) :: prec60d   ! 60-day running mean of total precipitation (mm H2O/s)
+ real, dimension(nch), intent(in) :: gdp       ! Real GDP (K 1995US$/capita)
+ real, dimension(nch), intent(in) :: abm       ! Peak month for agricultural fire, unitless
+ real, dimension(nch), intent(in) :: peatf     ! Fraction of peatland, unitless (0-1)
+ real, dimension(nch), intent(in) :: hdm       ! Human population density in 2010 (individual/km2)
+ real, dimension(nch), intent(in) :: lnfm      ! Lightning frequency [Flashes/km^2/day]
+ real, dimension(nch), intent(in) :: poros     ! porosity
+ real, dimension(nch), intent(in) :: rh30      ! 30-day running mean of relative humidity
+ real, dimension(nch), intent(in) :: totwat    ! soil liquid water content [kg m^-2]
+ real, dimension(nch), intent(in) :: bflow     ! baseflow
+ real, dimension(nch), intent(in) :: runsrf    ! surface runoff [kg m^-2 s^-1]
+ real, dimension(nch), intent(in) :: sndzn     ! snow height of snow covered area (m)
+ real, dimension(nch), intent(in) :: fsnow     ! snow cover fraction [0-1]
+ real, dimension(nch), intent(in) :: tg10d     ! 10-day running mean of ground temperature [K]
+ real, dimension(nch), intent(in) :: t2m5d     ! 5-day running mean of daily minimum 2m temperature [K]
+ real, dimension(nch), intent(in) :: sndzn5d   ! 5-day running mean of total snow depth
+
+ ! OUTPUT
+
+  real, dimension(nch,num_veg,num_zon), intent(out) :: zlai ! leaf-area index for tile (subject to burying by snow)
+  real, dimension(nch,num_veg,num_zon), intent(out) :: zsai ! stem-area index for tile
+  real, dimension(nch,num_veg,num_zon), intent(out) :: ztai ! leaf-area index for tile (not buried by snow)
+
+  real, dimension(nch,num_zon),         intent(out) :: colc ! column total carbon
+  real, dimension(nch),                 intent(out) :: nppg ! (gC/m2/s) net primary production [PFT]
+  real, dimension(nch),                 intent(out) :: gppg ! (gC/m2/s) gross primary production [PFT]
+ 
+  real, dimension(nch),                 intent(out) :: srg  ! (gC/m2/s) total soil respiration (HR + root resp) [column]
+  real, dimension(nch),                 intent(out) :: neeg ! (gC/m2/s) net ecosystem exchange of carbon, includes fire, landuse, harvest, and hrv_xsmrpool flux, positive for source [column]
+ 
+  real, dimension(nch),                 intent(out) :: burn  ! burn rate / fractional area burned (/sec)
+  real, dimension(nch),                 intent(out) :: closs ! (gC/m2/s) total fire C loss
+  real, dimension(nch),                 intent(out) :: nfire ! fire counts (count/km2/s)
+  real, dimension(nch),                 intent(out) :: som_closs ! (gC/m2/s) carbon emissions due to peat burning
+
+  real, dimension(nch), intent(out) :: root ! fine root carbon [gC/m2]
+  real, dimension(nch), intent(out) :: vegc ! (gC/m2) total vegetation carbon, excluding cpool
+  real, dimension(nch), intent(out) :: xsmr ! (gC/m2) abstract C pool to meet excess maintenance respiration (MR) demand
+
+  real, dimension(nch), intent(out) :: ndeployg        ! total N deployed to growth and storage (gN/m2/s)
+  real, dimension(nch), intent(out) :: denitg          ! total rate of denitrification (gN/m2/s)
+  real, dimension(nch), intent(out) :: sminn_leachedg  ! soil mineral N pool loss to leaching (gN/m2/s)
+  real, dimension(nch), intent(out) :: sminng          ! (gN/m2) soil mineral N
+  real, dimension(nch), intent(out) :: col_fire_nlossg ! (gN/m2/s) total column-level fire N loss
+  real, dimension(nch), intent(out) :: leafng          ! (gN/m2) leaf N
+  real, dimension(nch), intent(out) :: leafcg          ! (gC/m2) leaf C
+  real, dimension(nch), intent(out) :: gross_nming     ! gross rate of N mineralization (gN/m2/s)
+  real, dimension(nch), intent(out) :: net_nming       ! vert-int (diagnostic) net rate of N mineralization (gN/m2/s)
+  real, dimension(nch), intent(out) :: nfix_to_sminng  ! symbiotic/asymbiotic N fixation to soil mineral N (gN/m2/s)
+  real, dimension(nch), intent(out) :: actual_immobg   ! vert-int (diagnostic) actual N immobilization (gN/m2/s) 
+  real, dimension(nch), intent(out) :: fpgg            ! fraction of potential gpp (no units)
+  real, dimension(nch), intent(out) :: fpig            ! fraction of potential immobilization (no units)
+  real, dimension(nch), intent(out) :: sminn_to_plantg ! vert-int (diagnostic) plant uptake of soil mineral N (gN/m2/s)
+  real, dimension(nch), intent(out) :: sminn_to_npoolg ! deployment of soil mineral N uptake (gN/m2/s)
+  real, dimension(nch), intent(out) :: ndep_to_sminng  ! atmospheric N deposition to soil mineral N (gN/m2/s)
+  real, dimension(nch), intent(out) :: totvegng              ! (gN/m2) total vegetation nitrogen
+  real, dimension(nch), intent(out) :: totlitng              ! (gN/m2) total litter nitrogen
+  real, dimension(nch), intent(out) :: totsomng              ! (gN/m2) total soil organic matter nitrogen
+  real, dimension(nch), intent(out) :: retransng             ! (gN/m2) plant pool of retranslocated N
+  real, dimension(nch), intent(out) :: retransn_to_npoolg    ! deployment of retranslocated N (gN/m2/s)
+
+ !LOCAL
+
+ ! jkolassa: not sure the below type declarations are necessary or whether use statements 
+ ! above are enough
+
+ type(bounds_type)                      :: bounds
+ type(clumpfilter_type)                 :: filter
+ type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
+ type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
+ type(gridcell_type)                    :: grc
+ type(cn_vegetation_type), public       :: bgc_vegetation_inst
+ type(fire_method_type)                 :: cnfire_method
+ type(saturated_excess_runoff_type)     :: saturated_excess_runoff_inst
+
+ logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
+ logical, save :: first = .true.
+ integer  :: n, p, nc, nz, np, nv
+
+ !-------------------------------
+
+  ! update CLM types with current states
+
+  n = 0
+  p = 0
+  do nc = 1,nch        ! catchment tile loop
+
+     grc%dayl(nc)                          = dayl(nc)
+     wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
+     atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
+     cnfire_method%forc_hdm(nc)            = hdm(nc)
+     cnfire_method%forc_lnfm(nc)           = lnfm(nc)
+
+     do nz = 1,num_zon    ! CN zone loop
+        n = n + 1
+
+        temperature_inst%t_soisno_col(n,-nlevsno+1:nlevmaxurbgrnd) = tp1(nc) ! jkolassa: only one soil and no snow column at this point (may change in future)
+        temperature_inst%t_grnd_col(n) = temperature_inst%t_soisno_col(n)
+        temperature_inst%t_soi17cm_col(n) = temperature_inst%t_grnd_col(n)
+        soilstate_inst%soilpsi_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*rzm(nc,nz)**(-bee(nc)) ! jkolassa: only one soil layer at this point
+        soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd)   = poros(nc) 
+        atm2lnd_inst%forc_t_downscaled_col(n)  = tm(nc)
+        wateratm2lndbulk_inst%forc_rain_downscaled_col(n) = rainfm(nc)
+        wateratm2lndbulk_inst%forc_snow_downscaled_col(n) = snowfm(nc)
+        waterdiagnosticbulk_inst%wf_col(n)  = sfm(nc,nz)
+        waterdiagnosticbulk_inst%wf2_col(n) = rzm(nc,nz)
+        waterdiagnosticbulk_inst%frac_sno_col(n) = fsnow(nc)
+        waterdiagnosticbulk_inst%snow_depth_col(n) = sndzn(nc)
+        waterdiagnosticbulk_inst%snow_5day_col(n) = sndzn5d(nc)  
+        cnveg_state_inst%gdp_lf_col(n) = gdp(nc)
+        cnveg_state_inst%abm_lf_col(n) = abm(nc)
+        cnveg_state_inst%peatf_lf_col(n) = peatf(nc)
+        waterstatebulk_inst%h2osoi_liq_col(n,-nlevsno+1:nlevgrnd) = totwat(nc)
+        waterfluxbulk_inst%qflx_drain_col(n) = bflow(nc)
+        waterfluxbulk_inst%qflx_surf_col(n) = runsrf(nc)
+
+        ! compute column-level saturated area fraction (water table at surface)
+        if(nz==1) then
+          saturated_excess_runoff_inst%fsat_col(n) = min(max(0.,car1m(nc)/CN_zone_weight(nz)),1.)
+        elseif(nz==2) then
+          saturated_excess_runoff_inst%fsat_col(n) = min(max(0.,(car1m(nc)-CN_zone_weight(1))/CN_zone_weight(nz)),1.)
+        elseif(nz==3)
+          saturated_excess_runoff_inst%fsat_col(n) = min(max(0.,(car1m(nc)-CN_zone_weight(1)-CN_zone_weight(2))/CN_zone_weight(nz)),1.)
+        endif
+
+        do np = 0,numpft  ! PFT index loop
+           p = p + 1
+           temperature_inst%t_ref2m_patch(p) = tairm(nc)
+           temperature_inst%soila10_patch(p) = tg10d(nc)
+           temperature_inst%t_a5min_patch(p) = t2m5d(nc)
+           cnfire_method%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
+           wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
+           wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
+           wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
+           frictionvel_inst%forc_hgt_u_patch(p) = 30. ! following CNCLM45 implementation, but this should be available from the GridComp
+        end do ! np
+     end do ! nz
+  end do ! nc
+
+
+
+  ! call CLM routines that are needed prior to Ecosystem Dynamics call
+
+  call active_layer_inst%alt_calc(num_soilc, filter_soilc, &
+       temperature_inst)
+
+  call bgc_vegetation_inst%InitGridcellBalance(bounds, &
+       filter%num_allc, filter%allc, &
+       filter%num_soilc, filter%soilc, &
+       filter%num_soilp, filter%soilp, &
+       soilbiogeochem_carbonstate_inst, &
+       c13_soilbiogeochem_carbonstate_inst, &
+       c14_soilbiogeochem_carbonstate_inst, &
+       soilbiogeochem_nitrogenstate_inst)
+
+  call bgc_vegetation_inst%InitColumnBalance(bounds, &
+       filter%num_allc, filter%allc, &
+       filter%num_soilc, filter%soilc, &
+       filter%num_soilp, filter%soilp, &
+       soilbiogeochem_carbonstate_inst, &
+       c13_soilbiogeochem_carbonstate_inst, &
+       c14_soilbiogeochem_carbonstate_inst, &
+       soilbiogeochem_nitrogenstate_inst)
+
+  ! Ecosystem Dynamics calculations
+  ! jkolassa: This call contains most of the CLM ecosystem dynamics
+  ! calculations, including soil biogeochemistry, carbon/nitrogen state and 
+  ! flux updates, fire, etc.
+ call bgc_vegetation_inst%EcosystemDynamicsPreDrainage(bounds,            &
+      filter%num_soilc, filter%soilc,                       &
+      filter%num_soilp, filter%soilp,                       &
+      filter%num_actfirec, filter%actfirec,                 &
+      filter%num_actfirep, filter%actfirep,                 &
+      filter%num_pcropp, filter%pcropp, &
+      filter%num_exposedvegp, filter%exposedvegp, &
+      filter%num_noexposedvegp, filter%noexposedvegp, &
+      doalb,              &
+      soilbiogeochem_carbonflux_inst, soilbiogeochem_carbonstate_inst,         &
+      c13_soilbiogeochem_carbonflux_inst, c13_soilbiogeochem_carbonstate_inst, &
+      c14_soilbiogeochem_carbonflux_inst, c14_soilbiogeochem_carbonstate_inst, &
+      soilbiogeochem_state_inst,                                               &
+      soilbiogeochem_nitrogenflux_inst, soilbiogeochem_nitrogenstate_inst,     &
+      active_layer_inst, &
+      atm2lnd_inst, water_inst%waterstatebulk_inst, &
+      water_inst%waterdiagnosticbulk_inst, water_inst%waterfluxbulk_inst,      &
+      water_inst%wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
+      soil_water_retention_curve, crop_inst, ch4_inst, &
+      photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,          &
+      nutrient_competition_method, fireemis_inst)
+
+
+ ! jkolassa: This call is mostly to compute the nitrogen leaching, summary states and fluxes
+ ! and the vegetation structural updates
+ call bgc_vegetation_inst%EcosystemDynamicsPostDrainage(bounds, &
+      filter%num_allc, filter%allc, &
+      filter%num_soilc, filter%soilc, &
+      filter%num_soilp, filter%soilp, &
+      filter%num_actfirec, filter%actfirec,                 &
+      filter%num_actfirep, filter%actfirep,                 &
+      doalb, crop_inst, &
+      soilstate_inst, soilbiogeochem_state_inst, &
+      water_inst%waterstatebulk_inst, water_inst%waterdiagnosticbulk_inst, &
+      water_inst%waterfluxbulk_inst, frictionvel_inst, canopystate_inst, &
+      soilbiogeochem_carbonflux_inst, soilbiogeochem_carbonstate_inst, &
+      c13_soilbiogeochem_carbonflux_inst, c13_soilbiogeochem_carbonstate_inst, &
+      c14_soilbiogeochem_carbonflux_inst, c14_soilbiogeochem_carbonstate_inst, &
+      soilbiogeochem_nitrogenflux_inst, soilbiogeochem_nitrogenstate_inst)
+
+
+! check carbon and nitrogen balances except on first time step
+  if(.not.first) then
+    call bgc_vegetation_inst%BalanceCheck( &
+         bounds, filter%num_soilc, filter%soilc, &
+         soilbiogeochem_carbonflux_inst, &
+         soilbiogeochem_nitrogenflux_inst, atm2lnd_inst )
+  else
+    first = .false.
+  end if
+
+      grc%prev_dayl = grc%dayl ! set previous day length for following time steps (dayl itself is computed in GridComp)
+
+
+! map CLM outputs to Catchment space
+
+  n = 0
+  p = 0
+  do nc = 1,nch        ! catchment tile loop
+
+     nppg(nc) = 0.
+     gppg(nc) = 0.
+     srg(nc) = 0. 
+     burn(nc) = 0.
+     closs(nc) = 0.
+     som_closs(nc) = 0.
+     nfire(nc) = 0.
+     root(nc) = 0.
+     vegc(nc) = 0.
+     ndeployg(nc) = 0.
+     leafng(nc) = 0.
+     leafcg(nc) = 0.
+     sminn_to_npoolg(nc) = 0.
+     totvegng(nc) = 0.
+     retransng(nc) = 0.
+     retransn_to_npoolg(nc) = 0.
+     rootcg(nc) = 0.
+     denitg(nc) = 0.
+     sminn_leachedg(nc) = 0.
+     sminng(nc) = 0.
+     col_fire_nlossg(nc) = 0.
+     gross_nming(nc) = 0.
+     net_nming(nc) = 0.
+     nfix_to_sminng(nc) = 0.
+     actual_immobg(nc) = 0.
+     fpgg(nc) = 0.
+     fpig(nc) = 0.
+     sminn_to_plantg(nc) = 0.
+     ndep_to_sminng(nc) = 0.
+     totlitng(nc) = 0.
+     totsomng(nc) = 0.
+     fuelcg(nc) = 0.
+     totlitcg(nc) = 0.
+     cwdcg(nc) = 0.
+
+     neeg(nc) = cnveg_carbonflux_inst%nee_grc(nc)
+
+     do nz = 1,num_zon    ! CN zone loop
+        n = n + 1
+
+        colc(nc,nz) = cnveg_carbonstate_inst%totc_col(n)
+        srg(nc) = srg(nc) + cnveg_carbonflux_inst%sr_col(n)*CN_zone_weight(nz)         
+        burn(nc) = burn(nc) + cnveg_state_inst%farea_burned_col(n)*CN_zone_weight(nz)
+        closs(nc) = closs(nc) + cnveg_carbonflux_inst%fire_closs_col(n)*CN_zone_weight(nz)
+        som_closs(nc) = som_closs(nc) + soilbiogeochem_carbonflux_inst%somc_fire_col(n)*CN_zone_weight(nz)
+        nfire(nc) = nfire(nc) + cnveg_state_inst%nfire_col(n)*CN_zone_weight(nz)
+        denitg(nc) = denitg(nc) + soilbiogeochem_nitrogenflux_inst%denit_col(n)*CN_zone_weight(nz)
+        sminn_leachedg(nc) = sminn_leachedg(nc) + soilbiogeochem_nitrogenflux_inst%sminn_leached_col(n)*CN_zone_weight(nz)
+        sminng(nc) = sminng(nc) + soilbiogeochem_nitrogenstate_inst%sminn_col(n)*CN_zone_weight(nz)
+        col_fire_nlossg(nc) = col_fire_nlossg(nc) + cnveg_nitrogenflux_inst%fire_nloss_col(n)*CN_zone_weight(nz)
+        gross_nming(nc) = gross_nming(nc) + soilbiogeochem_nitrogenflux_inst%gross_nmin_col(n)*CN_zone_weight(nz)
+        net_nming(nc) = net_nming(nc) + soilbiogeochem_nitrogenflux_inst%net_nmin_col(n)*CN_zone_weight(nz)
+        nfix_to_sminng(nc) = nfix_to_sminng(nc) + soilbiogeochem_nitrogenflux_inst%nfix_to_sminn_col(n)*CN_zone_weight(nz)
+        actual_immobg(nc) = actual_immobg(nc) + soilbiogeochem_nitrogenflux_inst%actual_immob_col(n)*CN_zone_weight(nz)
+        fpgg(nc) = fpgg(nc) + soilbiogeochem_state_inst%fpg_col(n)*CN_zone_weight(nz)
+        fpig(nc) = fpig(nc) + soilbiogeochem_state_inst%fpi_col(n)*CN_zone_weight(nz)
+        sminn_to_plantg(nc) = sminn_to_plantg(nc) + soilbiogeochem_nitrogenflux_inst%sminn_to_plant_col(n)*CN_zone_weight(nz)
+        ndep_to_sminng(nc) = ndep_to_sminng(nc) + soilbiogeochem_nitrogenflux_inst%ndep_to_sminn_col(n)*CN_zone_weight(nz)
+        totlitng(nc) = totlitng(nc) + soilbiogeochem_nitrogenstate_inst%totlitn_col(n)*CN_zone_weight(nz)
+        totsomng(nc) = totsomng(nc) + soilbiogeochem_nitrogenstate_inst%totsomn_col(n)*CN_zone_weight(nz)
+        fuelcg(nc) = fuelcg(nc) + cnveg_carbonstate_inst%fuelc_col(n)*CN_zone_weight(nz)
+        totlitcg(nc) = totlitcg(nc) + soilbiogeochem_carbonstate_inst%totlitc_col(n)*CN_zone_weight(nz)
+        cwdcg(nc) = cwdcg(nc) + soilbiogeochem_carbonstate_inst%cwdc_col(n)*CN_zone_weight(nz)
+
+        do np = 0,numpft  ! PFT index loop
+           p = p + 1
+             do nv = 1,num_veg ! defined veg loop
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+
+                  zlai(nc,nv,nz) = canopystate_inst%elai_patch(p)
+                  zsai(nc,nv,nz) = canopystate_inst%esai_patch(p)
+                  ztai(nc,nv,nz) = canopystate_inst%tlai_patch(p)
+
+                  pwtgcell = fveg(nc,nv,nz)*wtzone(nc,nz) ! PFT weight in catchment tile
+                  nppg(nc) = nppg(nc) + cnveg_carbonflux_inst%npp_patch(p)*pwtgcell
+                  gppg(nc) = gppg(nc) + cnveg_carbonflux_inst%gpp_patch(p)*pwtgcell
+                  root(nc) = root(nc) + (cnveg_carbonstate_inst%frootc_patch(p) &
+                                       + cnveg_carbonstate_inst%frootc_storage_patch(p) &
+                                       + cnveg_carbonstate_inst%frootc_xfer_patch(p) &
+                                        )*pwtgcell
+                  vegc(nc) = vegc(nc) + cnveg_carbonstate_inst%totvegc_patch(p)*pwtgcell
+                  ndeployg(nc) = ndeployg(nc) + cnveg_nitrogenflux_inst%ndeploy_patch(p)*pwtgcell
+                  leafng(nc) = leafng(nc) + cnveg_nitrogenstate_inst%leafn_patch(p)*pwtgcell
+                  leafcg(nc) = leafcg(nc) + cnveg_carbonstate_inst%leafc_patch(p)*pwtgcell
+                  sminn_to_npoolg(nc) = sminn_to_npoolg(nc) + cnveg_nitrogenflux_inst%sminn_to_npool_patch(p)*pwtgcell
+                  totvegng(nc) = totvegng(nc) + cnveg_nitrogenstate_inst%totvegn_patch(p)*pwtgcell
+                  retransng(nc) = retransng(nc) + cnveg_nitrogenstate_inst%retransn_patch(p)*pwtgcell
+                  retransn_to_npoolg(nc) = retransn_to_npoolg(nc) + cnveg_nitrogenflux_inst%retransn_to_npool_patch(p)*pwtgcell
+                  rootcg(nc) = rootcg(nc) + (cnveg_carbonstate_inst%frootc_patch(p) &
+                                          + cnveg_carbonstate_inst%frootc_storage_patch(p) &
+                                          + cnveg_carbonstate_inst%frootc_xfer_patch(p) &
+                                          + cnveg_carbonstate_inst%livecrootc_patch(p) &
+                                          + cnveg_carbonstate_inst%livecrootc_storage_patch(p) &
+                                          + cnveg_carbonstate_inst%livecrootc_xfer_patch(p) &
+                                          + cnveg_carbonstate_inst%deadcrootc_patch(p) &
+                                          + cnveg_carbonstate_inst%deadcrootc_storage_patch(p) &
+                                          + cnveg_carbonstate_inst%deadcrootc_xfer_patch(p) &
+                                          )*pwtgcell
+
+                end if
+             end do ! nv
+        end do !np
+     end do ! nz
+  end do ! nc
+
+ end subroutine CN_Driver
+
+!------------------------------------------------
+ subroutine CN_exit(nch,ityp,fveg,cncol,cnpft)
+
+  ! INPUT
+  integer,                                 intent(in) :: nch  ! number of tiles
+  integer, dimension(nch,num_veg,num_zon), intent(in) :: ityp ! PFT index
+  real, dimension(nch,num_veg,num_zon),    intent(in) :: fveg ! PFT fraction
+
+  ! OUTPUT
+  real, dimension(nch,num_zon,var_col),         intent(out) :: cncol ! column-level restart variables 
+  real, dimension(nch,num_zon,num_veg,var_pft), intent(out) :: cnpft ! PFT-level restart variables
+
+  ! LOCAL
+  integer :: n, p, nv, nc, nz, np, nd
+  integer, dimension(8) :: decomp_cpool_cncol_index = (/ 3, 4, 5, 2, 10, 11, 12, 13 /)
+  integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17,25, 26, 27, 28 /)
+  !----------------
+
+  n = 0
+  np = 0
+  do nc = 1,nch        ! catchment tile loop
+    do nz = 1,nzone    ! CN zone loop
+      n = n + 1
+
+      cncol(nc,nz, 1) = soilbiogeochem_carbonstate_inst%ctrunc_vr_col(n,1)
+
+      do nd = 1,ndecomp_pools
+         ! jkolassa: accounting for fact that pool order in CNCOL is different from CTSM
+         cncol(nc,nz,decomp_cpool_cncol_index(nd)) = soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col   (n,1,nd)
+         cncol(nc,nz,decomp_npool_cncol_index(nd)) = soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col (n,1,nd)
+      end do
+
+      cncol(nc,nz, 6) = cnveg_carbonstate_inst%totvegc_col              (n)
+      ! jkolassa: variables below transitioned from being column-level to being gridcell-level in CLM;
+      !           assuming here that quantities are spread over zones according to zone weight
+      cncol(nc,nz, 7) = c_products_inst%prod100_grc(nc)*CN_zone_weight(nz) 
+      cncol(nc,nz, 8) = c_products_inst%prod100_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz, 9) = cnveg_carbonstate_inst%seedc_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz,14) = cnveg_carbonstate_inst%totc_col                 (n)
+      cncol(nc,nz,15) = soilbiogeochem_carbonstate_inst%totlitc_col     (n)
+      cncol(nc,nz,16) = soilbiogeochem_nitrogenstate_inst%ntrunc_vr_col (n,1)
+
+
+      cncol(nc,nz,21) = n_products_inst%prod100_grc(nc)*CN_zone_weight(nz) 
+      cncol(nc,nz,22) = n_products_inst%prod100_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz,23) = cnveg_nitrogenstate_inst%seedn_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz,24) = soilbiogeochem_nitrogenstate_inst%sminn_vr_col   (n,1)
+      cncol(nc,nz,29) = cnveg_nitrogenstate_inst%totn_col                (n)
+      cncol(nc,nz,30) = soilbiogeochem_state_inst%fpg_col                (n)
+      cncol(nc,nz,31) = cnveg_state_inst%annsum_counter_col              (n)
+      cncol(nc,nz,32) = cnveg_state_inst%annavg_t2m_col                  (n)
+      cncol(nc,nz,33) = cnveg_carbonflux_inst%annsum_npp_col             (n)
+      cncol(nc,nz,34) = cnveg_state_inst%farea_burned_col                (n)
+      cncol(nc,nz,35) = soilbiogeochem_state_inst%fpi_col                (n)
+
+      do p = 0,numpft  ! PFT index loop
+        np = np + 1
+        do nv = 1,nveg ! defined veg loop
+
+          if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+            cnpft(nc,nz,nv,  1) = cnveg_carbonstate_inst%cpool_patch                 (np)
+            cnpft(nc,nz,nv,  2) = cnveg_carbonstate_inst%deadcrootc_patch            (np)
+            cnpft(nc,nz,nv,  3) = cnveg_carbonstate_inst%deadcrootc_storage_patch    (np)
+            cnpft(nc,nz,nv,  4) = cnveg_carbonstate_inst%deadcrootc_xfer_patch       (np)
+            cnpft(nc,nz,nv,  5) = cnveg_carbonstate_inst%deadstemc_patch             (np)
+            cnpft(nc,nz,nv,  6) = cnveg_carbonstate_inst%deadstemc_storage_patch     (np)
+            cnpft(nc,nz,nv,  7) = cnveg_carbonstate_inst%deadstemc_xfer_patch        (np)
+            cnpft(nc,nz,nv,  8) = cnveg_carbonstate_inst%frootc_patch                (np)
+            cnpft(nc,nz,nv,  9) = cnveg_carbonstate_inst%frootc_storage_patch        (np)
+            cnpft(nc,nz,nv, 10) = cnveg_carbonstate_inst%frootc_xfer_patch           (np)
+            cnpft(nc,nz,nv, 11) = cnveg_carbonstate_inst%gresp_storage_patch         (np)
+            cnpft(nc,nz,nv, 12) = cnveg_carbonstate_inst%gresp_xfer_patch            (np)
+            cnpft(nc,nz,nv, 13) = cnveg_carbonstate_inst%leafc_patch                 (np)
+            cnpft(nc,nz,nv, 14) = cnveg_carbonstate_inst%leafc_storage_patch         (np)
+            cnpft(nc,nz,nv, 15) = cnveg_carbonstate_inst%leafc_xfer_patch            (np)
+            cnpft(nc,nz,nv, 16) = cnveg_carbonstate_inst%livecrootc_patch            (np)
+            cnpft(nc,nz,nv, 17) = cnveg_carbonstate_inst%livecrootc_storage_patch    (np)
+            cnpft(nc,nz,nv, 18) = cnveg_carbonstate_inst%livecrootc_xfer_patch       (np)
+            cnpft(nc,nz,nv, 19) = cnveg_carbonstate_inst%livestemc_patch             (np)
+            cnpft(nc,nz,nv, 20) = cnveg_carbonstate_inst%livestemc_storage_patch     (np)
+            cnpft(nc,nz,nv, 21) = cnveg_carbonstate_inst%livestemc_xfer_patch        (np)
+            cnpft(nc,nz,nv, 22) = cnveg_carbonstate_inst%ctrunc_patch                (np)
+            cnpft(nc,nz,nv, 23) = cnveg_carbonstate_inst%xsmrpool_patch              (np)
+            cnpft(nc,nz,nv, 24) = cnveg_state_inst%annavg_t2m_patch                  (np)
+            cnpft(nc,nz,nv, 25) = cnveg_state_inst%annmax_retransn_patch             (np)
+            cnpft(nc,nz,nv, 26) = cnveg_carbonflux_inst%annsum_npp_patch             (np)
+            cnpft(nc,nz,nv, 27) = cnveg_state_inst%annsum_potential_gpp_patch        (np)
+            cnpft(nc,nz,nv, 28) = grc%dayl                                           (np)
+            cnpft(nc,nz,nv, 29) = cnveg_state_inst%days_active_patch                 (np)
+            cnpft(nc,nz,nv, 30) = cnveg_state_inst%dormant_flag_patch                (np)
+            cnpft(nc,nz,nv, 31) = cnveg_state_inst%offset_counter_patch              (np)
+            cnpft(nc,nz,nv, 32) = cnveg_state_inst%offset_fdd_patch                  (np)
+            cnpft(nc,nz,nv, 33) = cnveg_state_inst%offset_flag_patch                 (np)
+            cnpft(nc,nz,nv, 34) = cnveg_state_inst%offset_swi_patch                  (np)
+            cnpft(nc,nz,nv, 35) = cnveg_state_inst%onset_counter_patch               (np)
+            cnpft(nc,nz,nv, 36) = cnveg_state_inst%onset_fdd_patch                   (np)
+            cnpft(nc,nz,nv, 37) = cnveg_state_inst%onset_flag_patch                  (np)
+            cnpft(nc,nz,nv, 38) = cnveg_state_inst%onset_gdd_patch                   (np)
+            cnpft(nc,nz,nv, 39) = cnveg_state_inst%onset_gddflag_patch               (np)
+            cnpft(nc,nz,nv, 40) = cnveg_state_inst%onset_swi_patch                   (np)
+            cnpft(nc,nz,nv, 41) = cnveg_carbonflux_inst%prev_frootc_to_litter_patch  (np)
+            cnpft(nc,nz,nv, 42) = cnveg_carbonflux_inst%prev_leafc_to_litter_patch   (np)
+            cnpft(nc,nz,nv, 43) = cnveg_state_inst%tempavg_t2m_patch                 (np)
+            cnpft(nc,nz,nv, 44) = cnveg_state_inst%tempmax_retransn_patch            (np)
+            cnpft(nc,nz,nv, 45) = cnveg_carbonflux_inst%tempsum_npp_patch            (np)
+            cnpft(nc,nz,nv, 46) = cnveg_state_inst%tempsum_potential_gpp_patch       (np)
+            cnpft(nc,nz,nv, 47) = cnveg_carbonflux_inst%xsmrpool_recover_patch       (np)
+            cnpft(nc,nz,nv, 48) = cnveg_nitrogenstate_inst%deadcrootn_patch          (np)
+            cnpft(nc,nz,nv, 49) = cnveg_nitrogenstate_inst%deadcrootn_storage_patch  (np)
+            cnpft(nc,nz,nv, 50) = cnveg_nitrogenstate_inst%deadcrootn_xfer_patch     (np)
+            cnpft(nc,nz,nv, 51) = cnveg_nitrogenstate_inst%deadstemn_patch           (np)
+            cnpft(nc,nz,nv, 52) = cnveg_nitrogenstate_inst%deadstemn_storage_patch   (np)
+            cnpft(nc,nz,nv, 53) = cnveg_nitrogenstate_inst%deadstemn_xfer_patch      (np)
+            cnpft(nc,nz,nv, 54) = cnveg_nitrogenstate_inst%frootn_patch              (np)
+            cnpft(nc,nz,nv, 55) = cnveg_nitrogenstate_inst%frootn_storage_patch      (np)
+            cnpft(nc,nz,nv, 56) = cnveg_nitrogenstate_inst%frootn_xfer_patch         (np)
+            cnpft(nc,nz,nv, 57) = cnveg_nitrogenstate_inst%leafn_patch               (np)
+            cnpft(nc,nz,nv, 58) = cnveg_nitrogenstate_inst%leafn_storage_patch       (np)
+            cnpft(nc,nz,nv, 59) = cnveg_nitrogenstate_inst%leafn_xfer_patch          (np)
+            cnpft(nc,nz,nv, 60) = cnveg_nitrogenstate_inst%livecrootn_patch          (np)
+            cnpft(nc,nz,nv, 61) = cnveg_nitrogenstate_inst%livecrootn_storage_patch  (np)
+            cnpft(nc,nz,nv, 62) = cnveg_nitrogenstate_inst%livecrootn_xfer_patch     (np)
+            cnpft(nc,nz,nv, 63) = cnveg_nitrogenstate_inst%livestemn_patch           (np)
+            cnpft(nc,nz,nv, 64) = cnveg_nitrogenstate_inst%livestemn_storage_patch   (np)
+            cnpft(nc,nz,nv, 65) = cnveg_nitrogenstate_inst%livestemn_xfer_patch      (np)
+            cnpft(nc,nz,nv, 66) = cnveg_nitrogenstate_inst%npool_patch               (np)
+            cnpft(nc,nz,nv, 67) = cnveg_nitrogenstate_inst%ntrunc_patch              (np)
+            cnpft(nc,nz,nv, 68) = cnveg_nitrogenstate_inst%retransn_patch            (np)
+            cnpft(nc,nz,nv, 69) = canopystate_inst%elai_patch                        (np)
+            cnpft(nc,nz,nv, 70) = canopystate_inst%esai_patch                        (np)
+            cnpft(nc,nz,nv, 71) = canopystate_inst%hbot_patch                        (np)
+            cnpft(nc,nz,nv, 72) = canopystate_inst%htop_patch                        (np)
+            cnpft(nc,nz,nv, 73) = canopystate_inst%tlai_patch                        (np)
+            cnpft(nc,nz,nv, 74) = canopystate_inst%tsai_patch                        (np)
+            cnpft(nc,nz,nv, 75) = cnveg_carbonflux_inst%plant_ndemand_patch          (np)
+            cnpft(nc,nz,nv, 76) = canopystate_inst%vegwp_patch                       (np,1)
+            cnpft(nc,nz,nv, 77) = canopystate_inst%vegwp_patch                       (np,2)
+            cnpft(nc,nz,nv, 78) = canopystate_inst%vegwp_patch                       (np,3)
+            cnpft(nc,nz,nv, 79) = canopystate_inst%vegwp_patch                       (np,4)
+            cnpft(nc,nz,nv, 80) = cnveg_carbonflux_inst%annsum_litfall_patch         (np)
+            cnpft(nc,nz,nv, 81) = cnveg_carbonflux_inst%tempsum_litfall_patch        (np)
+          endif
+
+        end do ! defined veg loop
+      end do   ! PFT index loop
+    end do     ! CN zone loop
+  end do       ! catchment tile loop
+
+  return
+
+ end subroutine CN_exit 
+
+!--------------------------
+  subroutine get_CN_LAI(nch,ityp,fveg,elai,esai,tlai,tsai)
+
+ ! ARGUMENTS
+
+  use CanopyStateType , only : canopystate_inst
+
+  ! INPUT/OUTPUT
+  integer, intent(in) :: nch ! number of tiles
+  integer, dimension(nch,num_veg,num_zon), intent(in) :: ityp ! PFT index
+  real, dimension(nch,num_veg,num_zon), intent(in) :: fveg    ! PFT fraction
+  real, dimension(nch,num_veg,num_zon), intent(out)           :: elai   ! exposed leaf-area index
+  real, dimension(nch,num_veg,num_zon), intent(out), optional :: esai   ! exposed stem-area index
+  real, dimension(nch,num_veg,num_zon), intent(out), optional :: tlai   ! total leaf-area index
+  real, dimension(nch,num_veg,num_zon), intent(out), optional :: tsai   ! total stem-area index
+
+  ! LOCAL
+  integer :: n, p, nv, nc, nz, np
+  !------------------------------
+                    elai = 0.
+  if(present(esai)) esai = 0.
+  if(present(tlai)) tlai = 0.
+  if(present(tsai)) tsai = 0.
+
+  n = 0
+  np = 0
+  do nc = 1,nch        ! catchment tile loop
+    do nz = 1,nzone    ! CN zone loop
+      n = n + 1
+      do p = 0,numpft  ! PFT index loop
+        np = np + 1
+        do nv = 1,nveg ! defined veg loop
+
+! extract LAI & SAI from CN clmtype
+! ---------------------------------
+          if(ityp(nc,nv,nz)==p .and. ityp(nc,nv,nz)>0 .and. fveg(nc,nv,nz)>1.e-4) then
+                              elai(nc,nv,nz) = canopystate_inst%elai_patch(np)
+            if(present(esai)) esai(nc,nv,nz) = canopystate_inst%esai_patch(np)
+            if(present(tlai)) tlai(nc,nv,nz) = canopystate_inst%tlai_patch(np)
+            if(present(tsai)) tsai(nc,nv,nz) = canopystate_inst%tsai_patch(np)
+          endif
+
+        end do ! defined veg loop
+      end do   ! PFT index loop
+    end do     ! CN zone loop
+  end do       ! catchment tile loop
+
+
+  end subroutine get_CN_LAI
+end module CN_DriverMod

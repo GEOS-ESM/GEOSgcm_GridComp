@@ -1,12 +1,13 @@
 module CNCLM_VegCarbonStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
-  use clm_varctl       , only : use_matrixcn
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use clm_varctl       , only : iulog, use_cndv, use_crop, use_matrixc
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
   use nanMod           , only : nan
   use CNCLM_decompMod  , only : bounds_type
-
+  use pftconMod        , only : noveg, npcropmin, pftcon
+  use PatchType        , only : patch
 
   ! !PUBLIC TYPES:
   implicit none
@@ -192,6 +193,10 @@ module CNCLM_VegCarbonStateType
      real(r8), pointer :: deadcrootc_xfer_SASUsave_patch      (:) ! (gC/m2) dead coarse root C transfer   
      logical, private  :: dribble_crophrv_xsmrpool_2atm
 
+  contains
+
+     procedure , public  :: Summary => Summary_carbonstate
+
  end type cnveg_carbonstate_type
 
 type(cnveg_carbonstate_type), public, target, save :: cnveg_carbonstate_inst
@@ -199,7 +204,7 @@ type(cnveg_carbonstate_type), public, target, save :: cnveg_carbonstate_inst
 contains
 
 !----------------------------------------------
-  subroutine init_cnveg_carbonstate_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start)
+  subroutine init_cnveg_carbonstate_type(bounds, nch, ityp, fveg, cncol, cnpft, this)
 
 ! !DESCRIPTION:
 ! Initialize CTSM carbon states
@@ -217,30 +222,17 @@ contains
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
     type(cnveg_carbonstate_type),               intent(inout):: this
-    logical, optional,                            intent(in) :: cn5_cold_start
 
     ! LOCAL
     integer  :: begp, endp
     integer  :: begc, endc
     integer  :: begg, endg
     integer  :: np, nc, nz, p, nv, n
-    logical  :: cold_start = .false.
     !--------------------------------------------------------
 
     begp = bounds%begp  ; endp = bounds%endp
     begg = bounds%begg  ; endg = bounds%endg
     begc = bounds%begc  ; endc = bounds%endc
-
-    ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start==.true.)) then
-       cold_start = .true.
-    end if
-
-    ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
-       (size(cnpft,3).ne.var_pft)))
-       _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
-    end if
 
     allocate(this%leafc_patch                            (begp:endp)) ; this%leafc_patch                        (:) = nan    
     allocate(this%leafc_storage_patch                    (begp:endp)) ; this%leafc_storage_patch                (:) = nan    
@@ -517,5 +509,144 @@ contains
   end do ! nc                                                                                                         
 
   end subroutine init_cnveg_carbonstate_type
+
+  !-----------------------------------------------------------------------
+  subroutine Summary_carbonstate(this, bounds, num_allc, filter_allc, &
+       num_soilc, filter_soilc, num_soilp, filter_soilp, &
+       soilbiogeochem_cwdc_col, soilbiogeochem_totlitc_col, soilbiogeochem_totsomc_col, &
+       soilbiogeochem_ctrunc_col)
+    !
+    ! !USES:
+    use subgridAveMod, only : p2c
+    use clm_time_manager , only : get_nstep
+
+    !
+    ! !DESCRIPTION:
+    ! Perform patch and column-level carbon summary calculations
+    !
+    ! !ARGUMENTS:
+    class(cnveg_carbonstate_type)  :: this
+    type(bounds_type) , intent(in) :: bounds
+    integer           , intent(in) :: num_allc        ! number of columns in allc filter
+    integer           , intent(in) :: filter_allc(:)  ! filter for all active columns
+    integer           , intent(in) :: num_soilc       ! number of soil columns in filter
+    integer           , intent(in) :: filter_soilc(:) ! filter for soil columns
+    integer           , intent(in) :: num_soilp       ! number of soil patches in filter
+    integer           , intent(in) :: filter_soilp(:) ! filter for soil patches
+    real(r8)          , intent(in) :: soilbiogeochem_cwdc_col(bounds%begc:)
+    real(r8)          , intent(in) :: soilbiogeochem_totlitc_col(bounds%begc:)
+    real(r8)          , intent(in) :: soilbiogeochem_totsomc_col(bounds%begc:)
+    real(r8)          , intent(in) :: soilbiogeochem_ctrunc_col(bounds%begc:)
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c,p,j,k,l       ! indices
+    integer  :: fp,fc           ! lake filter indices
+    !-----------------------------------------------------------------------
+
+    SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_cwdc_col)    == (/bounds%endc/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_totlitc_col) == (/bounds%endc/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_totsomc_col) == (/bounds%endc/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_ctrunc_col)  == (/bounds%endc/)), sourcefile, __LINE__)
+
+    ! calculate patch -level summary of carbon state
+
+    do fp = 1,num_soilp
+       p = filter_soilp(fp)
+
+       ! displayed vegetation carbon, excluding storage and cpool (DISPVEGC)
+       this%dispvegc_patch(p) =        &
+            this%leafc_patch(p)      + &
+            this%frootc_patch(p)     + &
+            this%livestemc_patch(p)  + &
+            this%deadstemc_patch(p)  + &
+            this%livecrootc_patch(p) + &
+            this%deadcrootc_patch(p)
+
+       ! stored vegetation carbon, excluding cpool (STORVEGC)
+       this%storvegc_patch(p) =                &
+            this%cpool_patch(p)              + &
+            this%leafc_storage_patch(p)      + &
+            this%frootc_storage_patch(p)     + &
+            this%livestemc_storage_patch(p)  + &
+            this%deadstemc_storage_patch(p)  + &
+            this%livecrootc_storage_patch(p) + &
+            this%deadcrootc_storage_patch(p) + &
+            this%leafc_xfer_patch(p)         + &
+            this%frootc_xfer_patch(p)        + &
+            this%livestemc_xfer_patch(p)     + &
+            this%deadstemc_xfer_patch(p)     + &
+            this%livecrootc_xfer_patch(p)    + &
+            this%deadcrootc_xfer_patch(p)    + &
+            this%gresp_storage_patch(p)      + &
+            this%gresp_xfer_patch(p)
+
+       if ( use_crop .and. patch%itype(p) >= npcropmin )then
+          this%storvegc_patch(p) =            &
+               this%storvegc_patch(p)       + &
+               this%grainc_storage_patch(p) + &
+               this%grainc_xfer_patch(p)
+
+          this%dispvegc_patch(p) =            &
+               this%dispvegc_patch(p)       + &
+               this%grainc_patch(p)
+       end if
+
+       ! total vegetation carbon, excluding cpool (TOTVEGC)
+       this%totvegc_patch(p) = &
+            this%dispvegc_patch(p) + &
+            this%storvegc_patch(p)
+
+       ! total patch-level carbon, including xsmrpool, ctrunc
+       this%totc_patch(p) = &
+            this%totvegc_patch(p) + &
+            this%xsmrpool_patch(p) + &
+            this%ctrunc_patch(p)
+
+       if (use_crop) then
+          this%totc_patch(p) = this%totc_patch(p) + this%cropseedc_deficit_patch(p) + &
+               this%xsmrpool_loss_patch(p)
+       end if
+
+       ! (WOODC) - wood C
+       this%woodc_patch(p) = &
+            this%deadstemc_patch(p)    + &
+            this%livestemc_patch(p)    + &
+            this%deadcrootc_patch(p)   + &
+            this%livecrootc_patch(p)
+
+    end do
+
+    ! --------------------------------------------
+    ! column level summary
+    ! --------------------------------------------
+
+    call p2c(bounds, num_soilc, filter_soilc, &
+         this%totvegc_patch(bounds%begp:bounds%endp), &
+         this%totvegc_col(bounds%begc:bounds%endc))
+
+    call p2c(bounds, num_soilc, filter_soilc, &
+         this%totc_patch(bounds%begp:bounds%endp), &
+         this%totc_p2c_col(bounds%begc:bounds%endc))
+
+    do fc = 1,num_allc
+       c = filter_allc(fc)
+
+       ! total ecosystem carbon, including veg but excluding cpool (TOTECOSYSC)
+       this%totecosysc_col(c) =    &
+            soilbiogeochem_cwdc_col(c)    + &
+            soilbiogeochem_totlitc_col(c) + &
+            soilbiogeochem_totsomc_col(c) + &
+            this%totvegc_col(c)
+
+       ! total column carbon, including veg and cpool (TOTCOLC)
+       this%totc_col(c) =  this%totc_p2c_col(c) + &
+            soilbiogeochem_cwdc_col(c)      + &
+            soilbiogeochem_totlitc_col(c)   + &
+            soilbiogeochem_totsomc_col(c)   + &
+            soilbiogeochem_ctrunc_col(c)
+
+    end do
+
+  end subroutine Summary_carbonstate
 
 end module CNCLM_VegCarbonStateType

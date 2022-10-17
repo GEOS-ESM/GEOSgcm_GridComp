@@ -849,6 +849,7 @@ program Scale_CatchCN
           call MAPL_VarWrite(formatter,"RUNSRFM", var)
           call MAPL_VarWrite(formatter,"AR1M",    var)
           call MAPL_VarWrite(formatter,"T2M10D",  var)
+          call MAPL_VarWrite(formatter,"RH30D",  var)
           call MAPL_VarWrite(formatter,"TPREC10D",var)
           call MAPL_VarWrite(formatter,"TPREC60D",var)
        else

@@ -19,6 +19,22 @@ module CNCLM_CNDVType
 ! !PUBLIC MEMBER FUNCTIONS:
   public :: init_dgvs_type
 
+  ! !PUBLIC DATA TYPES:
+  !
+  ! DGVM-specific ecophysiological constants structure (patch-level)
+  type, public :: dgv_ecophyscon_type
+     real(r8), pointer :: crownarea_max(:)   ! patch tree maximum crown area [m2]
+     real(r8), pointer :: tcmin(:)           ! patch minimum coldest monthly mean temperature [units?]
+     real(r8), pointer :: tcmax(:)           ! patch maximum coldest monthly mean temperature [units?]
+     real(r8), pointer :: gddmin(:)          ! patch minimum growing degree days (at or above 5 C)
+     real(r8), pointer :: twmax(:)           ! patch upper limit of temperature of the warmest month [units?]
+     real(r8), pointer :: reinickerp(:)      ! patch parameter in allometric equation
+     real(r8), pointer :: allom1(:)          ! patch parameter in allometric
+     real(r8), pointer :: allom2(:)          ! patch parameter in allometric
+     real(r8), pointer :: allom3(:)          ! patch parameter in allometric
+  end type dgv_ecophyscon_type
+  type(dgv_ecophyscon_type), public :: dgv_ecophyscon
+
   ! DGVM state variables structure
   type, public :: dgvs_type
      real(r8), pointer, public :: agdd_patch        (:) ! patch accumulated growing degree days above 5
@@ -44,6 +60,12 @@ contains
 
 !------------------------------------------------------
   subroutine init_dgvs_type(bounds, this)
+
+    use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
+    use clm_varpar     , only : maxveg
+    use pftconMod      , only : allom1s, allom2s, allom1, allom2, allom3, reinickerp
+    use pftconMod      , only : nbrdlf_dcd_brl_shrub
+    use pftconMod      , only : pftcon
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
@@ -73,6 +95,33 @@ contains
     allocate(this%greffic_patch     (begp:endp)) ;     this%greffic_patch     (:) = nan
     allocate(this%heatstress_patch  (begp:endp)) ;     this%heatstress_patch  (:) = nan
 
+
+    allocate(dgv_ecophyscon%crownarea_max (0:maxveg))
+    allocate(dgv_ecophyscon%tcmin         (0:maxveg))
+    allocate(dgv_ecophyscon%tcmax         (0:maxveg))
+    allocate(dgv_ecophyscon%gddmin        (0:maxveg))
+    allocate(dgv_ecophyscon%twmax         (0:maxveg))
+    allocate(dgv_ecophyscon%reinickerp    (0:maxveg))
+    allocate(dgv_ecophyscon%allom1        (0:maxveg))
+    allocate(dgv_ecophyscon%allom2        (0:maxveg))
+    allocate(dgv_ecophyscon%allom3        (0:maxveg))
+
+    do m = 0,maxveg
+       dgv_ecophyscon%crownarea_max(m) = pftcon%pftpar20(m)
+       dgv_ecophyscon%tcmin(m)         = pftcon%pftpar28(m)
+       dgv_ecophyscon%tcmax(m)         = pftcon%pftpar29(m)
+       dgv_ecophyscon%gddmin(m)        = pftcon%pftpar30(m)
+       dgv_ecophyscon%twmax(m)         = pftcon%pftpar31(m)
+       dgv_ecophyscon%reinickerp(m)    = reinickerp
+       dgv_ecophyscon%allom1(m)        = allom1
+       dgv_ecophyscon%allom2(m)        = allom2
+       dgv_ecophyscon%allom3(m)        = allom3
+       ! modification for shrubs by X.D.Z
+       if (pftcon%is_shrub(m)) then
+          dgv_ecophyscon%allom1(m) = allom1s
+          dgv_ecophyscon%allom2(m) = allom2s
+       end if
+    end do
   end subroutine init_dgvs_type
 
 end module CNCLM_CNDVType

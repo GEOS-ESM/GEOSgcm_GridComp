@@ -5,8 +5,9 @@ module CNCLM_SoilBiogeochemCarbonFluxType
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan, ndecomp_cascade_outtransitions
   use clm_varpar       , only : nlevdecomp_full, nlevgrnd, nlevdecomp, nlevsoi, ndecomp_pools_vr
   use clm_varctl       , only : use_fates, use_soil_matrixcn, use_vertsoilc
-  use clm_varcon       , only : spval, ispval
-  use CNCLM_decompMod  , only : bounds_type
+  use clm_varcon       , only : spval, ispval, dzsoi_decomp
+  use decompMod        , only : bounds_type
+  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
 
   ! !PUBLIC TYPES:
   implicit none
@@ -15,7 +16,6 @@ module CNCLM_SoilBiogeochemCarbonFluxType
 !
 ! !PUBLIC MEMBER FUNCTIONS:
   public :: init_soilbiogeochem_carbonflux_type
-  procedure, public :: SetValues
 
   type, public :: soilbiogeochem_carbonflux_type
 
@@ -72,6 +72,11 @@ module CNCLM_SoilBiogeochemCarbonFluxType
 !     type(diag_matrix_type)           :: Xdiagsoil                          ! Temporary C and N state variable to calculate accumulation transfers
 !
 !     type(vector_type)                :: matrix_Cinput                      ! C input to different soil compartments (pools and layers) (gC/m3/step)
+
+  contains
+
+     procedure , public  :: SetValues
+     procedure , public  :: Summary
 
   end type soilbiogeochem_carbonflux_type
   type(soilbiogeochem_carbonflux_type), public, target, save :: soilbiogeochem_carbonflux_inst
@@ -259,6 +264,119 @@ contains
     ! NOTE: do not zero the fates to BGC C flux variables since they need to persist from the daily fates timestep s to the half-hourly BGC timesteps.  I.e. FATES_c_to_litr_lab_c_col, FATES_c_to_litr_cel_c_col, FATES_c_to_litr_lig_c_col
 
  end subroutine SetValues
+
+  !-----------------------------------------------------------------------
+  subroutine Summary(this, bounds, num_soilc, filter_soilc)
+    !
+    ! !DESCRIPTION:
+    ! On the radiation time step, column-level carbon summary calculations
+    !
+    ! !USES:
+    ! !ARGUMENTS:
+    class(soilbiogeochem_carbonflux_type)           :: this
+    type(bounds_type)               , intent(in)    :: bounds
+    integer                         , intent(in)    :: num_soilc       ! number of soil columns in filter
+    integer                         , intent(in)    :: filter_soilc(:) ! filter for soil columns
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c,j,k,l
+    integer  :: fc
+    !-----------------------------------------------------------------------
+
+    do fc = 1,num_soilc
+       c = filter_soilc(fc)
+       this%som_c_leached_col(c) = 0._r8
+    end do
+
+    ! vertically integrate HR and decomposition cascade fluxes
+    do k = 1, ndecomp_cascade_transitions
+       do j = 1,nlevdecomp
+          do fc = 1,num_soilc
+             c = filter_soilc(fc)
+             this%decomp_cascade_hr_col(c,k) = &
+                  this%decomp_cascade_hr_col(c,k) + &
+                  this%decomp_cascade_hr_vr_col(c,j,k) * dzsoi_decomp(j)
+
+             this%decomp_cascade_ctransfer_col(c,k) = &
+                  this%decomp_cascade_ctransfer_col(c,k) + &
+                  this%decomp_cascade_ctransfer_vr_col(c,j,k) * dzsoi_decomp(j)
+          end do
+       end do
+    end do
+
+    ! total heterotrophic respiration, vertically resolved (HR)
+    do j = 1,nlevdecomp
+       do fc = 1,num_soilc
+          c = filter_soilc(fc)
+          this%hr_vr_col(c,j) = 0._r8
+       end do
+    end do
+    do k = 1, ndecomp_cascade_transitions
+       do j = 1,nlevdecomp
+          do fc = 1,num_soilc
+             c = filter_soilc(fc)
+             this%hr_vr_col(c,j) = &
+                  this%hr_vr_col(c,j) + &
+                  this%decomp_cascade_hr_vr_col(c,j,k)
+          end do
+       end do
+    end do
+
+    ! add up all vertical transport tendency terms and calculate total som leaching loss as the sum of these
+    do l = 1, ndecomp_pools
+       do fc = 1,num_soilc
+          c = filter_soilc(fc)
+          this%decomp_cpools_leached_col(c,l) = 0._r8
+       end do
+       do j = 1, nlevdecomp
+          do fc = 1,num_soilc
+             c = filter_soilc(fc)
+             this%decomp_cpools_leached_col(c,l) = this%decomp_cpools_leached_col(c,l) + &
+                  this%decomp_cpools_transport_tendency_col(c,j,l) * dzsoi_decomp(j)
+          end do
+       end do
+       do fc = 1,num_soilc
+          c = filter_soilc(fc)
+          this%som_c_leached_col(c) = this%som_c_leached_col(c) + this%decomp_cpools_leached_col(c,l)
+       end do
+    end do
+
+
+    ! soil organic matter heterotrophic respiration 
+       associate(is_soil => decomp_cascade_con%is_soil) ! TRUE => pool is a soil pool  
+         do k = 1, ndecomp_cascade_transitions
+            if ( is_soil(decomp_cascade_con%cascade_donor_pool(k)) ) then
+               do fc = 1,num_soilc
+                  c = filter_soilc(fc)
+                  this%somhr_col(c) = this%somhr_col(c) + this%decomp_cascade_hr_col(c,k)
+               end do
+            end if
+         end do
+       end associate
+
+    ! litter heterotrophic respiration (LITHR)
+       associate(is_litter => decomp_cascade_con%is_litter) ! TRUE => pool is a litter pool
+         do k = 1, ndecomp_cascade_transitions
+            if ( is_litter(decomp_cascade_con%cascade_donor_pool(k)) ) then
+               do fc = 1,num_soilc
+                  c = filter_soilc(fc)
+                  this%lithr_col(c) = this%lithr_col(c) + this%decomp_cascade_hr_col(c,k)
+               end do
+            end if
+         end do
+       end associate
+
+    ! total heterotrophic respiration (HR)
+       do fc = 1,num_soilc
+          c = filter_soilc(fc)
+
+          this%hr_col(c) = &
+               this%lithr_col(c) + &
+               this%somhr_col(c)
+
+       end do
+
+  end subroutine Summary
 
 end module CNCLM_SoilBiogeochemCarbonFluxType
 

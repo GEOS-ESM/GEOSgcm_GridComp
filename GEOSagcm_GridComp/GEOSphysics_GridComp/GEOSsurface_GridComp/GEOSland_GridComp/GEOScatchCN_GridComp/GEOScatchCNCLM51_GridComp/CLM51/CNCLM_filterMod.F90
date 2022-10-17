@@ -170,13 +170,18 @@ contains
       this_filter%num_exposedvegp = 0
       this_filter%num_noexposedvegp = 0
       this_filter%num_nourbanp = 0
+      this_filter%num_allc = 0      
 
       n = 0
       do nc = 1,nch
          do nz = 1,nzone 
             n = n + 1
+
             this_filter%num_soilc = this_filter%num_soilc + 1
             this_filter%soilc(this%num_soilc) = n 
+            this_filter%num_allc = this_filter%num_allc + 1
+            this_filter%allc(this%num_allc) = n
+
             do p = 0,numpft  ! PFT index loop
                np = np + 1
                do nv = 1,num_veg ! defined veg loop

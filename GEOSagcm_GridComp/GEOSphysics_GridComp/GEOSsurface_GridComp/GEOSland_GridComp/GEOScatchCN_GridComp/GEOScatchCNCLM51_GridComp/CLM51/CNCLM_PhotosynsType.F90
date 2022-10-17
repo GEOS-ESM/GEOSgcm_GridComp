@@ -319,8 +319,8 @@ contains
                    photosyns_inst%alphapsnsun_patch(np) = 0._r8
                    photosyns_inst%alphapsnsha_patch(np) = 0._r8
                 else (cold_start=.false.) then
-                    photosyns_inst%alphapsnsun_patch(np) = cnpft(nc,nz,nv, 75)
-                    photosyns_inst%alphapsnsha_patch(np) = cnpft(nc,nz,nv, 76)
+                    photosyns_inst%alphapsnsun_patch(np) = cnpft(nc,nz,nv, 76)
+                    photosyns_inst%alphapsnsha_patch(np) = cnpft(nc,nz,nv, 77)
                 end if 
               end if ! ityp =p  
           end do !nv
