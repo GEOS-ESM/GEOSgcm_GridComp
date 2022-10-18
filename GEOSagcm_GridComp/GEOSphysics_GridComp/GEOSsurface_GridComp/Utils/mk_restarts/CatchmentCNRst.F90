@@ -18,14 +18,18 @@ module CatchmentCNRstMod
   integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
   integer, parameter :: npft    = 19
   integer, parameter :: npft_clm45    = 19
+  integer, parameter :: npft_clm51    = 15
   integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column 
+  integer, parameter :: VAR_COL_CLM51 = 35 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM51 = 81 ! number of CN PFT variables per column
   real,    parameter :: nan = O'17760000000'
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
   integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
 
   type, extends(CatchmentRst) :: CatchmentCNRst
      logical :: isCLM45
+     logical :: isCLM51
      integer :: VAR_COL
      integer :: VAR_PFT
      real, allocatable ::    cnity(:,:)
@@ -56,19 +60,23 @@ module CatchmentCNRstMod
      !real, allocatable :: cnsum(:)
      !real, allocatable :: sndzm(:)
      !real, allocatable :: asnowm(:)
-     !real, allocatable :: ar1m(:)
-     !real, allocatable :: rainfm(:)
-     !real, allocatable :: rhm(:)
-     !real, allocatable :: runsrfm(:)
-     !real, allocatable :: snowfm(:)
-     !real, allocatable :: windm(:)
-     !real, allocatable :: tprec10d(:)
-     !real, allocatable :: tprec60d(:)
-     !real, allocatable :: t2m10d(:)
+     real, allocatable :: ar1m(:)
+     real, allocatable :: rainfm(:)
+     real, allocatable :: rhm(:)
+     real, allocatable :: runsrfm(:)
+     real, allocatable :: snowfm(:)
+     real, allocatable :: windm(:)
+     real, allocatable :: tprec10d(:)
+     real, allocatable :: tprec60d(:)
+     real, allocatable :: t2m10d(:)
      !real, allocatable :: sfmcm(:)
      !real, allocatable :: psnsunm(:,:,:)
      !real, allocatable :: psnsham(:,:,:)
-     
+     real, allocatable :: rh30d(:) 
+     real, allocatable :: tg10d(:)
+     real, allocatable :: t2mmin5d(:)
+     real, allocatable :: sndzm5d(:)    
+
   contains
      procedure :: write_nc4
      procedure :: allocate_cn   
@@ -105,6 +113,7 @@ contains
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
  
      catch%isCLM45 = .false.
+     catch%isCLM51 = .false.
      call formatter%open(filename, pFIO_READ, __RC__)
      meta  = formatter%read(__RC__)
      ntiles = meta%get_dimension('tile', __RC__)
@@ -119,6 +128,11 @@ contains
         catch%VAR_COL = VAR_COL_CLM45
         catch%VAR_PFT = VAR_PFT_CLM45
         catch%isCLM45 = .true.
+     endif
+     if (index(cnclm, '51') /=0) then
+        catch%VAR_COL = VAR_COL_CLM51
+        catch%VAR_PFT = VAR_PFT_CLM51
+        catch%isCLM51 = .true.
      endif
 
      if (myid == 0) then
@@ -151,6 +165,26 @@ contains
            call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
            call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
            call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+        endif
+        if( catch%isCLM51) then
+           call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
+           call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
+           call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
+           call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
+           call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+           call MAPL_VarRead(formatter,"RHM",     catch%RHM     , __RC__)
+           call MAPL_VarRead(formatter,"WINDM",   catch%WINDM   , __RC__)
+           call MAPL_VarRead(formatter,"RAINFM",  catch%RAINFM  , __RC__)
+           call MAPL_VarRead(formatter,"SNOWFM",  catch%SNOWFM  , __RC__)
+           call MAPL_VarRead(formatter,"RUNSRFM", catch%RUNSURFM, __RC__)
+           call MAPL_VarRead(formatter,"AR1M",    catch%AR1M    , __RC__)
+           call MAPL_VarRead(formatter,"SNDZM5D", catch%SNDZM5D , __RC__)
+           call MAPL_VarRead(formatter,"T2M10D",  catch%T2M10D  , __RC__)
+           call MAPL_VarRead(formatter,"T2MMIN5D",catch%T2MMIN5D, __RC__)
+           call MAPL_VarRead(formatter,"TG10D",   catch%TG10D   , __RC__)
+           call MAPL_VarRead(formatter,"RH30D",   catch%RH30D   , __RC__)
+           call MAPL_VarRead(formatter,"TPREC10D",catch%TPREC10D, __RC__)
+           call MAPL_VarRead(formatter,"TPREC60D",catch%TPREC60D, __RC__)
         endif
         do j=1,dim1
            call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
@@ -185,6 +219,7 @@ contains
     character(len=256) :: Iam = "CatchmentCNRst_empty"
 
      catch%isCLM45 = .false.
+     catch%isCLM51 = .false.
      catch%ntiles = meta%get_dimension('tile', __RC__)
      catch%time = time
      catch%meta = meta
@@ -196,6 +231,11 @@ contains
         catch%VAR_COL = VAR_COL_CLM45
         catch%VAR_PFT = VAR_PFT_CLM45
         catch%isCLM45 = .true.
+     endif
+     if (index(cnclm, '51') /=0) then
+        catch%VAR_COL = VAR_COL_CLM51
+        catch%VAR_PFT = VAR_PFT_CLM51
+        catch%isCLM51 = .true.
      endif
 
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
@@ -293,6 +333,29 @@ contains
         call MAPL_VarWrite(formatter,"RH30D",  var)
         call MAPL_VarWrite(formatter,"TPREC10D",var)
         call MAPL_VarWrite(formatter,"TPREC60D",var)
+     elseif (this%isCLM51) then
+          do j=1,dim1
+             call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
+          enddo
+
+          call MAPL_VarWrite(formatter,"ABM",     this%ABM, rc =rc     )
+          call MAPL_VarWrite(formatter,"FIELDCAP",this%FIELDCAP)
+          call MAPL_VarWrite(formatter,"HDM",     this%HDM     )
+          call MAPL_VarWrite(formatter,"GDP",     this%GDP     )
+          call MAPL_VarWrite(formatter,"PEATF",   this%PEATF   )
+          call MAPL_VarWrite(formatter,"RHM",     this%RHM)
+          call MAPL_VarWrite(formatter,"WINDM",   this%WINDM)
+          call MAPL_VarWrite(formatter,"RAINFM",  this%RAINFM)
+          call MAPL_VarWrite(formatter,"SNOWFM",  this%SNOWFM)
+          call MAPL_VarWrite(formatter,"RUNSRFM", this%RUNSURFM)
+          call MAPL_VarWrite(formatter,"AR1M",    this%AR1M)
+          call MAPL_VarWrite(formatter,"SNDZM5D", this%SNDZM5D)
+          call MAPL_VarWrite(formatter,"T2M10D",  this%T2M10D)
+          call MAPL_VarWrite(formatter,"T2MMIN5D",this%T2MMIN5D)
+          call MAPL_VarWrite(formatter,"TG10D",   this%TG10D)
+          call MAPL_VarWrite(formatter,"RH30D",   this%RH30D)
+          call MAPL_VarWrite(formatter,"TPREC10D",this%TPREC10D)
+          call MAPL_VarWrite(formatter,"TPREC60D",this%TPREC60D)
      else
         call MAPL_VarWrite(formatter,"SFMCM",  var)
      endif
@@ -344,6 +407,19 @@ contains
      allocate(this%HDM(ntiles))
      allocate(this%GDP(ntiles))
      allocate(this%PEATF(ntiles))
+     allocate(this%RHM(ntiles))
+     allocate(this%WINDM(ntiles))
+     allocate(this%RAINFM(ntiles))
+     allocate(this%SNOWFM(ntiles))
+     allocate(this%RUNSURFM(ntiles))
+     allocate(this%AR1M(ntiles))
+     allocate(this%RH30D(ntiles))
+     allocate(this%TG10D(ntiles))
+     allocate(this%T2M10D(ntiles))
+     allocate(this%T2MMIN5D(ntiles))
+     allocate(this%TPREC10D(ntiles))
+     allocate(this%TPREC60D(ntiles))
+     allocate(this%SNDZM5D(ntiles))
      _RETURN(_SUCCESS)
    end subroutine allocate_cn
 
@@ -427,6 +503,16 @@ contains
                gdp(n), hdm(n), fc(n)
       end do
       CLOSE (unit30, STATUS = 'KEEP')
+    endif
+
+    if (this%isCLM51 ) then
+
+      open(newunit=unit32, file=trim(OutBcsDir)//'/clsm/CLM5.1_abm_peatf_gdp_hdm_fc' ,form='formatted')
+      do n=1,ntiles
+         read (unit32, *) i, j, abm(n), peatf(n), &
+               gdp(n), hdm(n), fc(n)
+      end do
+      CLOSE (unit32, STATUS = 'KEEP')
     endif
     
     do n=1,ntiles
@@ -516,7 +602,7 @@ contains
      this%BGALBNR = BNIRDR
      this%BGALBNF = BNIRDF
  
-     if (this%isCLM45) then
+     if ((this%isCLM45) .or. (this%isCLM51))then
        this%abm       = real(abm)
        this%fieldcap  = fc
        this%hdm       = hdm
@@ -978,6 +1064,14 @@ contains
                     var_pft_out(n, nz,nv,73) = max(var_pft_out(n, nz,nv,73),0.)
                     var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)
                     if(this%isCLM45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)
+                    if(this%isCLM51) then
+                       var_pft_out(n, nz,nv,76) = max(var_pft_out(n, nz,nv,76),0.)
+                       var_pft_out(n, nz,nv,77) = max(var_pft_out(n, nz,nv,77),0.)
+                       var_pft_out(n, nz,nv,78) = max(var_pft_out(n, nz,nv,78),0.)
+                       var_pft_out(n, nz,nv,79) = max(var_pft_out(n, nz,nv,79),0.)
+                       var_pft_out(n, nz,nv,80) = max(var_pft_out(n, nz,nv,80),0.)
+                       var_pft_out(n, nz,nv,81) = max(var_pft_out(n, nz,nv,81),0.)
+                    end if
                  endif
               end do NVLOOP3  ! end veg loop                 
            endif    ! end carbon check         
@@ -1185,6 +1279,16 @@ contains
                        !STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_dum)  ; VERIFY_(STATUS)
                     endif
                  endif
+                 i = i + 1
+              end do
+           end do
+        end do
+     elseif(this%isclm51) then
+        do iv = 1,VAR_PFT
+           do nv = 1,nveg
+              do nz = 1,nzone
+                 this%cnpft(:,i) = var_pft_out(:, nz,nv,iv)
+                    !STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))  ; VERIFY_(STATUS)
                  i = i + 1
               end do
            end do
