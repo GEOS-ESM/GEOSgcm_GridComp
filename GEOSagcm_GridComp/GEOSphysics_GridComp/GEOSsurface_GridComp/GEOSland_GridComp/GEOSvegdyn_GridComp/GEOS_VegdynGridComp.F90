@@ -344,8 +344,8 @@ contains
 ! Get file names from configuration
 ! -----------------------------------------------------------
     if(NUM_LDAS_ENSEMBLE > 1) then
-       !for GEOSldas, the comp_name should be vegdynxxxx....
-       read(comp_name(7:7+ens_id_width-1), *) ldas_ens_id
+       !for GEOSldas, the comp_name should be vegdyn_exxxx....
+       read(comp_name(9:), *) ldas_ens_id
     endif
 
     call MAPL_GetResource(MAPL, LAIFILE, label = 'LAI_FILE:', &
