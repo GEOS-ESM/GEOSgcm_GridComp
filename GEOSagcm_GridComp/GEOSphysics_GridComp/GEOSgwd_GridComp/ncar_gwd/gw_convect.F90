@@ -11,7 +11,6 @@ module gw_convect
 
 implicit none
 private
-save
 
 public :: BeresSourceDesc
 public :: gw_beres_ifc

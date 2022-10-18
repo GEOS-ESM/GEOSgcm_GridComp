@@ -11,7 +11,6 @@ use coords_1d, only: Coords1D
 
 implicit none
 private
-save
 
 ! Public interface.
 
@@ -80,10 +79,6 @@ integer :: ktop = huge(1)
 
 ! Background diffusivity.
 real(r8), parameter :: dback = 0.05_r8
-
-
-! Newtonian cooling coefficients.
-real(r8), allocatable :: alpha(:)
 
 !
 ! Limits to keep values reasonable.
@@ -423,7 +418,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   type(TriDiagDecomp) :: decomp
 
 
-  allocate( alpha(pver+1) )
+! Newtonian cooling coefficients.
+  real(r8) :: alpha(pver+1)  ! Make alpha local instead of global for correct behavior under threading
   alpha(:)=0._r8
 
   if (present(satfac_in)) then
@@ -735,8 +731,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ttgw = dttke / cpair
 
 #endif
-
-deallocate( alpha )
 
 end subroutine gw_drag_prof
 

@@ -10,7 +10,6 @@ module gw_oro
 
 implicit none
 private
-save
 
 public :: gw_oro_ifc
 public :: gw_oro_src

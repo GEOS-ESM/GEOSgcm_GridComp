@@ -6,7 +6,6 @@ module gw_utils
 
 implicit none
 private
-save
 
 ! Real kind for gravity wave parameterization.
 integer, public, parameter :: r8 = selected_real_kind(12)

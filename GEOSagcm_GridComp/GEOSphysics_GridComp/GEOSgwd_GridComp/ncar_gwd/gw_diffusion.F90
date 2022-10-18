@@ -10,7 +10,6 @@ use linear_1d_operators, only: TriDiagDecomp
 
 implicit none
 private
-save
 
 public :: gw_ediff
 public :: gw_diff_tend

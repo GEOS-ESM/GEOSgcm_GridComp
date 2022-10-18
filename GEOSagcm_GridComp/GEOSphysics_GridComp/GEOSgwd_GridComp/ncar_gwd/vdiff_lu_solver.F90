@@ -11,7 +11,6 @@ use linear_1d_operators, only: TriDiagOp, operator(+), TriDiagDecomp
 
 implicit none
 private
-save
 
 ! Public interfaces
 public :: vd_lu_decomp

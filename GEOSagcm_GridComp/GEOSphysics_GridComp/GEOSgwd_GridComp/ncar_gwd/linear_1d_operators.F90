@@ -55,7 +55,6 @@ use coords_1d, only: Coords1D
 
 implicit none
 private
-save
 
 ! Main type.
 public :: TriDiagOp
