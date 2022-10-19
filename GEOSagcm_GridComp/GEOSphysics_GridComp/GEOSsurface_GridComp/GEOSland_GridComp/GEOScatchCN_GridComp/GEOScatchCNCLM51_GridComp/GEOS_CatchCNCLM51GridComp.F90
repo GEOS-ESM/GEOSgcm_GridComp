@@ -3741,7 +3741,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="RUN2"  ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-CATCHCNCLM45" ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="-CATCHCNCLM51" ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-ALBEDO" ,RC=STATUS)
     VERIFY_(STATUS)
@@ -7214,7 +7214,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
 
          if (UNIT_i == 0) then
-           unit_i = GETFILE( "catchcnclm45_inputs.data", form="unformatted", RC=STATUS )
+           unit_i = GETFILE( "catchcnclm51_inputs.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
         endif
         unit = unit_i
@@ -7297,7 +7297,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! params
         if (firsttime) then
             firsttime = .false.
-           unit = GETFILE( "catchcnclm45_params.data", form="unformatted", RC=STATUS )
+           unit = GETFILE( "catchcnclm51_params.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
@@ -7344,7 +7344,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            VERIFY_(STATUS)
 
 ! Updates
-           unit = GETFILE( "catchcnclm45_updates.data", form="unformatted", RC=STATUS )
+           unit = GETFILE( "catchcnclm51_updates.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
 
            call MAPL_VarWrite(unit, tilegrid, TG(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
@@ -8426,11 +8426,11 @@ subroutine RUN0(gc, import, export, clock, rc)
 
 end subroutine RUN0
 
-end module GEOS_CatchCNCLM45GridCompMod
+end module GEOS_CatchCNCLM51GridCompMod
 
 subroutine SetServices(gc, rc)
    use ESMF
-   use GEOS_CatchCNCLM45GridCompMod, only : mySetservices=>SetServices
+   use GEOS_CatchCNCLM51GridCompMod, only : mySetservices=>SetServices
    type(ESMF_GridComp) :: gc
    integer, intent(out) :: rc
    call mySetServices(gc, rc=rc)
