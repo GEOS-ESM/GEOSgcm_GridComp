@@ -1,4 +1,4 @@
-module CNCLM_WaterDiagnosticBulkType
+module WaterDiagnosticBulkType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use clm_varpar       , only : nlevgrnd, nlevsno, nlevcan
@@ -131,4 +131,4 @@ contains
 
  end subroutine init_waterdiagnosticbulk_type
 
-end module CNCLM_WaterDiagnosticBulkType
+end module WaterDiagnosticBulkType

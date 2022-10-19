@@ -5,45 +5,45 @@
   use clm_varcon        , only : clm_varcon_init
   use clm_varpar        , only : VAR_COL, VAR_PFT, clm_varpar_init
   use clm_varctl        , only : use_century_decomp
-  use CNCLM_decompMod
-  use CNCLM_VegNitrogenStateType
-  use CNCLM_CarbonStateType
-  use CNCLM_atm2lndType
-  use CNCLM_TemperatureType
-  use CNCLM_SoilStateType
-  use CNCLM_WaterDiagnosticBulkType
-  use CNCLM_CanopyStateType
-  use CNCLM_SolarAbsorbedType
-  use CNCLM_SurfaceAlbedoType
-  use CNCLM_OzoneBaseMod
-  use CNCLM_pftconMod
-  use CNCLM_WaterFluxType
-  use CNCLM_SoilBiogeochemCarbonStateType
-  use CNCLM_SoilBiogeochemNitrogenStateType
-  use CNCLM_CNProductsMod 
-  use CNCLM_SoilBiogeochemStateType
-  use CNCLM_CNVegStateType
-  use CNCLM_CNVegCarbonFluxType
-  use CNCLM_CNVegNitrogenFluxType
-  use CNCLM_GridcellType
-  use CNCLM_WaterFluxBulkType
-  use CNCLM_filterMod
-  use CNCLM_SoilBiogeochemCarbonFluxType
-  use CNCLM_SoilBiogeochemNitrogenFluxType
-  use CNCLM_PatchType
-  use CNCLM_ColumnType
-  use CNCLM_ch4Mod
-  use CNCLM_SoilBiogeochemDecompCascadeConType
-  use CNCLM_ActiveLayerMod
-  use CNCLM_CropType
-  use CNCLM_CNDVType
+  use decompMod
+  use CNVegNitrogenStateType
+  use CNCarbonStateType
+  use atm2lndType
+  use TemperatureType
+  use SoilStateType
+  use WaterDiagnosticBulkType
+  use CanopyStateType
+  use SolarAbsorbedType
+  use SurfaceAlbedoType
+  use OzoneBaseMod
+  use pftconMod
+  use WaterFluxType
+  use SoilBiogeochemCarbonStateType
+  use SoilBiogeochemNitrogenStateType
+  use CNProductsMod 
+  use SoilBiogeochemStateType
+  use CNVegStateType
+  use CNVegCarbonFluxType
+  use CNVegNitrogenFluxType
+  use GridcellType
+  use WaterFluxBulkType
+  use filterMod
+  use SoilBiogeochemCarbonFluxType
+  use SoilBiogeochemNitrogenFluxType
+  use PatchType
+  use ColumnType
+  use ch4Mod
+  use SoilBiogeochemDecompCascadeConType
+  use ActiveLayerMod
+  use CropType
+  use CNDVType
   use LandunitType
   use RootBiophysMod
   use CNMRespMod         , only : readCNMRespParams => readParams
   use CNSharedParamsMod  , only : CNParamsReadShared
   use spmdMod
   use Wateratm2lndBulkType
-  use CNCLM_WaterDiagnosticBulkType
+  use WaterDiagnosticBulkType
   use Wateratm2lndType
   use EnergyFluxType
   use SaturatedExcessRunoffMod
@@ -133,6 +133,7 @@
 
 
   character(300)     :: paramfile
+  character(300)     :: NLFilename
   type(Netcdf4_fileformatter) :: ncid
   integer            :: rc
 

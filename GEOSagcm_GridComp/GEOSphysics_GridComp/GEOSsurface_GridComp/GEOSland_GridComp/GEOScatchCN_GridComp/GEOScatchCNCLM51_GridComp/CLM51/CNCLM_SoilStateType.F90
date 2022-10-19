@@ -1,4 +1,4 @@
-module CNCLM_SoilStateType
+module SoilStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use clm_varpar       , only : nlevsoi, nlevgrnd, nlevmaxurbgrnd, &
@@ -155,4 +155,4 @@ contains
 
   end subroutine init_soilstate_type
 
-end module CNCLM_SoilStateType
+end module SoilStateType

@@ -1,4 +1,4 @@
-module CNCLM_SoilBiogeochemCarbonFluxType
+module SoilBiogeochemCarbonFluxType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -378,5 +378,5 @@ contains
 
   end subroutine Summary
 
-end module CNCLM_SoilBiogeochemCarbonFluxType
+end module SoilBiogeochemCarbonFluxType
 

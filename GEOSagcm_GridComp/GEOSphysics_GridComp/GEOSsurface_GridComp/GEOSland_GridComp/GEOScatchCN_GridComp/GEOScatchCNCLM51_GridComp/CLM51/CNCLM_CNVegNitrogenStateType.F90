@@ -1,4 +1,4 @@
-module CNCLM_VegNitrogenStateType
+module CNVegNitrogenStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use MAPL_ExceptionHandling
@@ -601,5 +601,5 @@ contains
 
   end subroutine Summary_nitrogenstate
 
-end module CNCLM_VegNitrogenStateType
+end module CNVegNitrogenStateType
 

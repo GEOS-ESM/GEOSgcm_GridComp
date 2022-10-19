@@ -1,4 +1,4 @@
-module CNCLM_filterMod
+module filterMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -218,4 +218,4 @@ contains
       end do !nc
 
   end subroutine init_filter_type
-end module CNCLM_filterMod
+end module filterMod

@@ -1,4 +1,4 @@
-module CNCLM_pftconMod
+module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -848,4 +848,4 @@ contains
 
  end subroutine init_pftcon_type
 
-end module CNCLM_pftconMod
+end module pftconMod

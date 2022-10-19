@@ -1,4 +1,4 @@
-module CNCLM_ColumnType
+module ColumnType
 
   !-----------------------------------------------------------------------
   ! !DESCRIPTION:
@@ -166,4 +166,4 @@ module CNCLM_ColumnType
      end do ! nc
 
  end subroutine init_column_type
-end module CNCLM_ColumnType
+end module ColumnType

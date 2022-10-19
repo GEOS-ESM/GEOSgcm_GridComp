@@ -1,4 +1,4 @@
-module CNCLM_WaterFluxType
+module WaterFluxType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -177,4 +177,4 @@ contains
 
   end subroutine init_waterflux_type
 
-end module CNCLM_WaterFluxType
+end module WaterFluxType

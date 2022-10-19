@@ -1,4 +1,4 @@
-module CNCLM_CNVegNitrogenFluxType
+module CNVegNitrogenFluxType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -1328,4 +1328,4 @@ contains
 
   end subroutine Summary_nitrogenflux
 
-end module CNCLM_CNVegNitrogenFluxType
+end module CNVegNitrogenFluxType

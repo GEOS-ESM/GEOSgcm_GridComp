@@ -34,7 +34,7 @@ module GEOS_CatchCNCLM51GridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   use CATCHMENT_CN_MODEL
-  use CN_DriverMod
+  use CNCLM_DriverMod
   use CN_initMod
   USE STIEGLITZSNOW,   ONLY :                 &
        snow_albedo, StieglitzSnow_calc_tpsnow, N_CONSTIT,   &

@@ -1,4 +1,4 @@
-module CNCLM_SoilBiogeochemDecompCascadeConType
+module SoilBiogeochemDecompCascadeConType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
@@ -144,4 +144,4 @@ contains
     end if
   end subroutine init_decomp_cascade_constants
 
-end module CNCLM_SoilBiogeochemDecompCascadeConType
+end module SoilBiogeochemDecompCascadeConType

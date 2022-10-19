@@ -1,4 +1,4 @@
-module CNCLM_OzoneBaseMod
+module OzoneBaseMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod          , only : nan
@@ -58,4 +58,4 @@ contains
 
   end subroutine init_ozone_base_type
 
-end module CNCLM_OzoneBaseMod
+end module OzoneBaseMod

@@ -1,4 +1,4 @@
-module CNCLM_CNProductsMod
+module CNProductsMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use MAPL_ExceptionHandling
@@ -456,4 +456,4 @@ contains
 
   end subroutine ComputeSummaryVars
 
-end module CNCLM_CNProductsMod
+end module CNProductsMod

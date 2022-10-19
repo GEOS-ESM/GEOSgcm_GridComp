@@ -1,4 +1,4 @@
-module CNCLM_CNVegCarbonFluxType
+module CNVegCarbonFluxType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -2136,5 +2136,6 @@ contains
   end subroutine Summary_carbonflux
 
 
-end module CNCLM_CNVegCarbonFluxType
+end module CNVegCarbonFluxType
+
 

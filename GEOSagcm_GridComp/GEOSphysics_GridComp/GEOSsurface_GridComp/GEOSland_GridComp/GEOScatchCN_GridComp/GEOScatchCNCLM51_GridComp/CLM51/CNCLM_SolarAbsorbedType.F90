@@ -1,4 +1,4 @@
-module CNCLM_SolarAbsorbedType
+module SolarAbsorbedType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use clm_varcon       , only : spval
@@ -142,4 +142,4 @@ contains
 
   end subroutine init_solarabs_type
 
-end module CNCLM_SolarAbsorbedType
+end module SolarAbsorbedType

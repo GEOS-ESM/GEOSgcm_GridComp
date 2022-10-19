@@ -1,4 +1,4 @@
-module CNCLM_ch4Mod
+module ch4Mod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -219,4 +219,4 @@ contains
 
  end subroutine init_ch4_type
 
-end module CNCLM_ch4Mod
+end module ch4Mod

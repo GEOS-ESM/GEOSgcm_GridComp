@@ -1,4 +1,4 @@
-module CNCLM_PatchType
+module PatchType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -131,4 +131,4 @@ module CNCLM_PatchType
         end do ! nz
      end do ! nc
   end subroutine init_patch_type
-end module CNCLM_PatchType
+end module PatchType

@@ -1,4 +1,4 @@
-module CNCLM_SurfaceAlbedoType
+module SurfaceAlbedoType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -161,4 +161,4 @@ contains
 
   end subroutine init_surfalb_type
 
-end module CNCLM_SurfaceAlbedoType
+end module SurfaceAlbedoType

@@ -1,4 +1,4 @@
-module CNCLM_CNDVType
+module CNDVType
 
   !-----------------------------------------------------------------------
   ! !DESCRIPTION:
@@ -124,4 +124,4 @@ contains
     end do
   end subroutine init_dgvs_type
 
-end module CNCLM_CNDVType
+end module CNDVType

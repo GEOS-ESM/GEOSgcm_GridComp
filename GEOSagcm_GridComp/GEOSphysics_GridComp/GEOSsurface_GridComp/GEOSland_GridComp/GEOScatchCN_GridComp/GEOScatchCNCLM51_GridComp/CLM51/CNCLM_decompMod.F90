@@ -1,4 +1,4 @@
-module CNCLM_decompMod
+module decompMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use clm_varpar       , only: NUM_ZON, NUM_VEG, numpft
@@ -42,4 +42,4 @@ module CNCLM_decompMod
   this%begp = 1 ; this%endp = nch*NUM_ZON*(numpft+1)
 
   end subroutine init_bounds
-end module CNCLM_decompMod
+end module decompMod

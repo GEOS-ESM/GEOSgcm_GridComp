@@ -1,4 +1,4 @@
-module CNCLM_CropType
+module CropType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varcon       , only : spval
@@ -67,4 +67,4 @@ contains
 
    end subroutine init_crop_type
 
-end module CNCLM_CropType
+end module CropType

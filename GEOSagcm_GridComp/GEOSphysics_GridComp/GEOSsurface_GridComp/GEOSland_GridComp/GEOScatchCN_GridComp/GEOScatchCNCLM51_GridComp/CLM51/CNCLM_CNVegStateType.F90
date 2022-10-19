@@ -1,4 +1,4 @@
-module CNCLM_CNVegStateType
+module CNVegStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -248,4 +248,4 @@ contains
   end subroutine init_cnveg_state_type
 
 
-end module CNCLM_CNVegStateType
+end module CNVegStateType

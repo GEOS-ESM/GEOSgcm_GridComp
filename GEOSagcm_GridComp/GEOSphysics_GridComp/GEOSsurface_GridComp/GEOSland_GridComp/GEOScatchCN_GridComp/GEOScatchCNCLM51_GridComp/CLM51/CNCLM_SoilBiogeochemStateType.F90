@@ -1,4 +1,4 @@
-module CNCLM_SoilBiogeochemStateType
+module SoilBiogeochemStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -123,4 +123,4 @@ contains
    end do ! nc
 
  end  subroutine init_soilbiogeochem_state_type
-end module CNCLM_SoilBiogeochemStateType
+end module SoilBiogeochemStateType

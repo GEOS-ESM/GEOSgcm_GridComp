@@ -1,4 +1,4 @@
-module CNCLM_atm2lndType
+module atm2lndType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use clm_varpar       , only : numrad
@@ -142,4 +142,4 @@ contains
 
   end subroutine init_atm2lnd_type  
 
-end module CNCLM_atm2lndType
+end module atm2lndType

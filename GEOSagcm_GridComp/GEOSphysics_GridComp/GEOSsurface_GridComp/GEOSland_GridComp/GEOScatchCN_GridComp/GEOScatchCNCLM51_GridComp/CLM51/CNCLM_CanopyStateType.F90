@@ -180,4 +180,4 @@ contains
 
   end subroutine init_canopystate_type
 
-end module CNCLM_CanopyStateType
+end module CanopyStateType

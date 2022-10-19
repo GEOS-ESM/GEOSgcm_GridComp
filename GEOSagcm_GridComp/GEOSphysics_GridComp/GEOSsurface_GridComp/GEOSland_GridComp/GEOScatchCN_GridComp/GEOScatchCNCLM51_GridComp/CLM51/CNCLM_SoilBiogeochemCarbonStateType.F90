@@ -1,4 +1,4 @@
-module CNCLM_SoilBiogeochemCarbonStateType
+module SoilBiogeochemCarbonStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -368,4 +368,4 @@ contains
 
   !-----------------------------------------------------------------------
 
-end module CNCLM_SoilBiogeochemCarbonStateType
+end module SoilBiogeochemCarbonStateType

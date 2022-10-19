@@ -1,4 +1,4 @@
-module CNCLM_ActiveLayerMod
+module ActiveLayerMod
 
   !-----------------------------------------------------------------------
   ! !DESCRIPTION:
@@ -198,4 +198,4 @@ contains
 
   end subroutine alt_calc
 
-end module CNCLM_ActiveLayerMod
+end module ActiveLayerMod

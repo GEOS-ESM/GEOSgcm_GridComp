@@ -1,4 +1,4 @@
-module CNCLM_GridcellType
+module GridcellType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4,  MAPL_PI
   use nanMod           , only : nan
@@ -100,4 +100,4 @@ module CNCLM_GridcellType
 
     end do ! nc
   end subroutine init_gridcell_type
-end module CNCLM_GridcellType
+end module GridcellType

@@ -1,4 +1,4 @@
-module CNCLM_WaterFluxBulkType
+module WaterFluxBulkType
 
   use MAPL_ConstantsMod    , ONLY : r8 => MAPL_R4
   use nanMod               , only : nan
@@ -102,4 +102,4 @@ contains
     allocate(this%AnnET                    (begc:endc))              ; this%AnnET                    (:)   = nan
 
   end subroutine init_waterfluxbulk_type
-end module CNCLM_WaterFluxBulkType
+end module WaterFluxBulkType

@@ -1,4 +1,4 @@
-module CNCLM_TemperatureType
+module TemperatureType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevurb, nlevmaxurbgrnd
@@ -237,4 +237,4 @@ type(temperature_type), public, target, save :: temperature_inst
 
   end subroutine init_temperature_type
 
-end module CNCLM_TemperatureType
+end module TemperatureType

@@ -2,24 +2,24 @@
 
  use MAPL_ConstantsMod
  use clm_varpar,         only : numpft, numrad, num_veg, num_zon
- use CNCLM_decompMod,    only : bounds_type
+ use decompMod,          only : bounds_type
  use PatchType,          only : patch
  use clm_varcon          only : rair
  
- use CNCLM_VegNitrogenstateType
- use CNCLM_VegCarbonstateType
- use CNCLM_atm2lndType
- use CNCLM_TemperatureType
- use CNCLM_SoilStateType
- use CNCLM_pftconMod
- use CNCLM_WaterDiagnosticBulkType
- use CNCLM_SurfaceAlbedoType
- use CNCLM_SolarAbsorbedType
- use CNCLM_CanopyStateType
- use CNCLM_OzoneBaseMod
- use CNCLM_PhotosynsType
- use CNCLM_WaterFluxBulkType
- use CNCLM_filterMod,  only: filter
+ use CNVegNitrogenstateType
+ use CNVegCarbonstateType
+ use atm2lndType
+ use TemperatureType
+ use SoilStateType
+ use pftconMod
+ use WaterDiagnosticBulkType
+ use SurfaceAlbedoType
+ use SolarAbsorbedType
+ use CanopyStateType
+ use OzoneBaseMod
+ use PhotosynsType
+ use WaterFluxBulkType
+ use filterMod,  only: filter
 
  implicit none
 
@@ -418,6 +418,7 @@
      end do ! nz
   end do ! nc
 
+ end associate 
 
  end subroutine catchcn_calc_rc
 

@@ -1,4 +1,4 @@
- module CNCLM_SoilBiogeochemNitrogenStateType
+ module SoilBiogeochemNitrogenStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -394,4 +394,4 @@ contains
 
  end subroutine Summary
 
-end CNCLM_SoilBiogeochemNitrogenStateType
+end module SoilBiogeochemNitrogenStateType

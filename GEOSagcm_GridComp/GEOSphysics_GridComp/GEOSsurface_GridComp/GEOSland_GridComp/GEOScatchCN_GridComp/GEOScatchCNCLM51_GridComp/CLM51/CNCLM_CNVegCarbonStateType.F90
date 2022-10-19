@@ -1,4 +1,4 @@
-module CNCLM_VegCarbonStateType
+module CNVegCarbonStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varctl       , only : iulog, use_cndv, use_crop, use_matrixc
@@ -649,4 +649,4 @@ contains
 
   end subroutine Summary_carbonstate
 
-end module CNCLM_VegCarbonStateType
+end module CNVegCarbonStateType
