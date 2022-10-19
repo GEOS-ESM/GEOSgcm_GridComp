@@ -495,7 +495,7 @@ contains
 
     endif
 
-    if (this%isCLM45 ) then
+    if ((this%isCLM45) .or. (this%isCLM51)) then
 
       open(newunit=unit30, file=trim(OutBcsDir)//'/clsm/CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
       do n=1,ntiles
@@ -503,16 +503,6 @@ contains
                gdp(n), hdm(n), fc(n)
       end do
       CLOSE (unit30, STATUS = 'KEEP')
-    endif
-
-    if (this%isCLM51 ) then
-
-      open(newunit=unit32, file=trim(OutBcsDir)//'/clsm/CLM5.1_abm_peatf_gdp_hdm_fc' ,form='formatted')
-      do n=1,ntiles
-         read (unit32, *) i, j, abm(n), peatf(n), &
-               gdp(n), hdm(n), fc(n)
-      end do
-      CLOSE (unit32, STATUS = 'KEEP')
     endif
     
     do n=1,ntiles
