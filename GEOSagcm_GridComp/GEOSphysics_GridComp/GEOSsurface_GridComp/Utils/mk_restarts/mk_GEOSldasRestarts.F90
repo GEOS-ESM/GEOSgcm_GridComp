@@ -2633,7 +2633,7 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M10D'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
-     if(clm51) then
+     elseif(clm51) then
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'AR1M'    ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RAINFM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RHM'     ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
