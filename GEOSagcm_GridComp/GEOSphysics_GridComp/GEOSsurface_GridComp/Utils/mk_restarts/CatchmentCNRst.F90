@@ -347,7 +347,7 @@ contains
           call MAPL_VarWrite(formatter,"WINDM",   this%WINDM)
           call MAPL_VarWrite(formatter,"RAINFM",  this%RAINFM)
           call MAPL_VarWrite(formatter,"SNOWFM",  this%SNOWFM)
-          call MAPL_VarWrite(formatter,"RUNSRFM", this%RUNSURFM)
+          call MAPL_VarWrite(formatter,"RUNSRFM", this%RUNSRFM)
           call MAPL_VarWrite(formatter,"AR1M",    this%AR1M)
           call MAPL_VarWrite(formatter,"SNDZM5D", this%SNDZM5D)
           call MAPL_VarWrite(formatter,"T2M10D",  this%T2M10D)
