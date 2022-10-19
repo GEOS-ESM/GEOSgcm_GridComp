@@ -2375,7 +2375,7 @@ contains
                     var_pft_out(n, nz,nv,73) = max(var_pft_out(n, nz,nv,73),0.)  
                     var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)  
                     if(clm45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)  
-                    if(this%isCLM51) then
+                    if(clm51) then
                        var_pft_out(n, nz,nv,76) = max(var_pft_out(n, nz,nv,76),0.)
                        var_pft_out(n, nz,nv,77) = max(var_pft_out(n, nz,nv,77),0.)
                        var_pft_out(n, nz,nv,78) = max(var_pft_out(n, nz,nv,78),0.)
@@ -2590,8 +2590,7 @@ contains
         do iv = 1,VAR_PFT
            do nv = 1,nveg
               do nz = 1,nzone
-                 this%cnpft(:,i) = var_pft_out(:, nz,nv,iv)
-                    !STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))  ; VERIFY_(STATUS)
+                    STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))  ; VERIFY_(STATUS)
                  i = i + 1
               end do
            end do
