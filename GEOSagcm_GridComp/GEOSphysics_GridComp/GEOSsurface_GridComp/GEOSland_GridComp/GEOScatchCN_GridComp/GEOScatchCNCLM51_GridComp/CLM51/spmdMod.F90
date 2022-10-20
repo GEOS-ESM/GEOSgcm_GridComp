@@ -64,7 +64,7 @@ contains
 ! !IROUTINE: spmd_init( clm_mpicom )
 !
 ! !INTERFACE:
-  subroutine spmd_init(vm)
+  subroutine spmd_init()
 !
 ! !DESCRIPTION:
 ! MPI initialization (number of cpus, processes, tids, etc)
@@ -73,7 +73,8 @@ contains
 !
 ! !ARGUMENTS:
     implicit none
-     type(ESMF_VM), intent(in) :: vm
+     type(ESMF_VM) :: vm
+     integer, optional,   intent(  out) :: RC     ! Error code
 !    integer, intent(in) :: clm_mpicom
 !    integer, intent(in) :: LNDID
 !
@@ -83,10 +84,13 @@ contains
 !
 ! !LOCAL VARIABLES:
 !EOP
-    integer :: i,j         ! indices
-    integer :: npes
-    type (MaplGrid ),pointer :: MYGRID
+    integer  :: i     ! indices
+    integer  :: npes  ! MPI size
+    integer  :: MYID  ! MPI Rank
 !-----------------------------------------------------------------------
+
+    call ESMF_VmGetCurrent(VM, rc=status)
+    VERIFY_(STATUS)
 
     ! Get MPI communicator
 
@@ -94,7 +98,7 @@ contains
 
     ! Get my processor id and number of processors
 
-    call ESMF_VmGet(VM, localPet=MYGRID%MYID, petCount=npes, __RC__)
+    call ESMF_VmGet(VM, localPet=MYID, petCount=npes, __RC__)
 
     ! determine master process
     if (MAPL_Am_I_Root(vm)) then
@@ -108,7 +112,7 @@ contains
        write(iulog,200)
        write(iulog,220)
        do i=0,npes-1
-          write(iulog,250)i,MYGRID%MYID
+          write(iulog,250)i,MYID
        end do
     endif
 

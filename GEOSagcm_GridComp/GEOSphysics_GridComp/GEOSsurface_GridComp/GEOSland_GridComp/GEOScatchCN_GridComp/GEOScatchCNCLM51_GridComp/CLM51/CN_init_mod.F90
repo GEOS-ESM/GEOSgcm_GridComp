@@ -137,13 +137,12 @@
   type(Netcdf4_fileformatter) :: ncid
   integer            :: rc
 
-  type (ESMF_VM)                :: VM
   !-----------------------------------------
 
 ! initialize CN model
 ! -------------------
 
-    call spmd_init(VM)
+    call spmd_init()
 
     call clm_varpar_init()
 
