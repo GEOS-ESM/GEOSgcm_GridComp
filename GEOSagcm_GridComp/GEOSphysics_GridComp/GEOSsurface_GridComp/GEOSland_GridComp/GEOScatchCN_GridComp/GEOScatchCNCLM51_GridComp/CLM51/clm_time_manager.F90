@@ -1,5 +1,6 @@
 module clm_time_manager
 
+   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
    use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec
    use clm_varctl  , only: iulog
 
@@ -28,7 +29,7 @@ module clm_time_manager
       get_days_per_year,        &! return the days per year for current year
       
       is_end_curr_day,          &! return true on last timestep in current day
-      is_restart                 ! return true if this is a restart run
+      is_restart,                 ! return true if this is a restart run
       is_first_step              ! dummy function here, because it is loaded, but not used
 contains
 
