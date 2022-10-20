@@ -99,6 +99,8 @@ end subroutine shr_nl_find_group_name
   ! !INTERFACE: ------------------------------------------------------------------
   function shr_string_toLower(str)
 
+    use shr_kind_mod   ! F90 kinds
+ 
     implicit none
 
     ! !INPUT/OUTPUT PARAMETERS:
