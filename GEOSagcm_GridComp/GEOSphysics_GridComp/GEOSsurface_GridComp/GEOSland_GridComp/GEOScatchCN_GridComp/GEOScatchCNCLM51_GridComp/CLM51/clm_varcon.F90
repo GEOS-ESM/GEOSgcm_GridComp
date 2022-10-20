@@ -49,6 +49,16 @@ module clm_varcon
   integer , public, parameter :: ispval = -9999     ! special value for int data
 
   !------------------------------------------------------------------
+  ! Soil depths
+  !------------------------------------------------------------------
+
+  real(r8), pointer :: zsoi(:)         !soil z  (layers)
+  real(r8), pointer :: dzsoi(:)        !soil dz (thickness)
+  real(r8), pointer :: zisoi(:)        !soil zi (interfaces)
+  real(r8), pointer :: dzsoi_decomp(:) !soil dz (thickness)
+
+
+  !------------------------------------------------------------------
   ! Set subgrid names
   !------------------------------------------------------------------
 
