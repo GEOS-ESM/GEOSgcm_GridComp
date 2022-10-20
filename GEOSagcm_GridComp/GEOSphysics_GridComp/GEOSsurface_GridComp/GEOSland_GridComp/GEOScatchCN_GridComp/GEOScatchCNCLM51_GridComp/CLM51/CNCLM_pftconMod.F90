@@ -5,6 +5,7 @@ module pftconMod
   use clm_varpar       , only : mxpft, numrad
   use clm_varctl       , only : use_flexibleCN
   use netcdf 
+  use shr_log_mod      , only : errMsg => shr_log_errMsg
   use MAPL_ExceptionHandling
 
 
@@ -224,6 +225,8 @@ type(pftcon_type), public, target, save :: pftcon
   real(r8), public, parameter :: root_density = 0.31e06_r8 !(g biomass / m3 root)
   real(r8), public, parameter :: root_radius = 0.29e-03_r8 !(m)
 
+  character(len=*), parameter, private :: sourcefile = &
+       __FILE__
 
 contains
 
@@ -241,10 +244,12 @@ contains
     !LOCAL
     character(300)     :: paramfile
     integer            :: ierr, clm_varid, ncid
+    logical            :: readv ! has variable been read in or not
 
     real(r8), allocatable, dimension(:)   :: read_tmp_1
     real(r8), allocatable, dimension(:,:) :: read_tmp_2
     integer , allocatable, dimension(:)   :: read_tmp_3
+
 
 !---------------------------------------------------------
 
