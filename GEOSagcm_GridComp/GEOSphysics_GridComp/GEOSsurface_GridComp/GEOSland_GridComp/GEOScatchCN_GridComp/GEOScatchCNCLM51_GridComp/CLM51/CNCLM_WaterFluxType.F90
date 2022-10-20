@@ -6,7 +6,7 @@ module WaterFluxType
   use clm_varcon       , only : spval
   use netcdf
   use MAPL_ExceptionHandling
-  use CNCLM_decompMod      , only : bounds_type
+  use decompMod        , only : bounds_type
 
 
   ! !PUBLIC TYPES:

@@ -5,7 +5,7 @@ module SoilStateType
                                 nlayer, nlevsno
   use clm_varcon       , only : spval
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
 
   ! !PUBLIC TYPES:
   implicit none

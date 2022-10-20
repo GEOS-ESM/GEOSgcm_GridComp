@@ -2,7 +2,7 @@ module CNVegNitrogenFluxType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools,&
                                 nvegcpool,ncphtrans,ncgmtrans,ncfitrans,&
                                 ncphouttrans,ncgmouttrans,ncfiouttrans

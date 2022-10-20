@@ -5,8 +5,10 @@ module WaterFluxBulkType
   use clm_varpar           , only : nlevsno, nlevsoi
   use clm_varcon           , only : spval
   use MAPL_ExceptionHandling
-  use CNCLM_WaterFluxType  , only : waterflux_type
-  use CNCLM_decompMod      , only : bounds_type
+  use WaterFluxType  , only : waterflux_type
+  use decompMod      , only : bounds_type
+
+  implicit none
 
   ! !PUBLIC TYPES:
   type, extends(waterflux_type), public :: waterfluxbulk_type

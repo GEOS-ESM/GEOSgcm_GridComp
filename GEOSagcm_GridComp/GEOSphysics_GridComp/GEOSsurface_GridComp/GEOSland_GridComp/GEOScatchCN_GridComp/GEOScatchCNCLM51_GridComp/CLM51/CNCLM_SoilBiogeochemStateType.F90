@@ -7,7 +7,7 @@ module SoilBiogeochemStateType
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
   use clm_varctl       , only : use_cn
   use clm_varcon       , only : spval
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
 
   ! !PUBLIC TYPES:
   implicit none

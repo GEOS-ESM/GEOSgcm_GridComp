@@ -1,4 +1,4 @@
-module CN_DriverMod
+module CNCLM_DriverMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
@@ -29,18 +29,18 @@ contains
                       sminn_to_npoolg,ndep_to_sminng,totvegng,totlitng,totsomng,&
                       retransng,retransn_to_npoolg,fuelcg,totlitcg,cwdcg,rootcg)
 
- use CNCLM_decompMod, only : bounds
- use CNCLM_filterMod, only : filter
- use CNCLM_SoilBiogeochemCarbonFluxType, only : soilbiogeochem_carbonflux_inst
- use CNCLM_SoilBiogeochemNitrogenFluxType, only : soilbiogeochem_nitrogenflux_inst
- use CNCLM_ActiveLayerMod
- use CNCLM_GridcellType
+ use decompMod, only : bounds
+ use filterMod, only : filter
+ use SoilBiogeochemCarbonFluxType  , only : soilbiogeochem_carbonflux_inst
+ use SoilBiogeochemNitrogenFluxType, only : soilbiogeochem_nitrogenflux_inst
+ use ActiveLayerMod
+ use GridcellType
  use FireMethodType              , only : fire_method_inst
  use SaturatedExcessRunoffMod    , only : saturated_excess_runoff_inst
- use CNCLM_WaterDiagnosticBulkType, only : waterdiagnosticbulk_inst
- use CNCLM_atm2lndType           , only : atm2lnd_inst
+ use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_inst
+ use atm2lndType                 , only : atm2lnd_inst
  use Wateratm2lndBulkType        , only : wateratm2lndbulk_inst
- use CNCLM_CNVegStateType        , only : cnveg_state_inst
+ use CNVegStateType              , only : cnveg_state_inst
  use WaterStateBulkType          , only : waterstatebulk_inst
 
  !ARGUMENTS

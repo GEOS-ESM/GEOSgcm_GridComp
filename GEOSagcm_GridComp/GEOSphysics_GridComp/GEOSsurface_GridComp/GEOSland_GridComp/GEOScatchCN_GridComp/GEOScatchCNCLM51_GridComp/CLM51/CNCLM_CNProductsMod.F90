@@ -3,7 +3,7 @@ module CNProductsMod
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use MAPL_ExceptionHandling
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
   use clm_varpar       , only : num_zon, var_col, cn_zone_weight
 
   ! !PUBLIC TYPES:

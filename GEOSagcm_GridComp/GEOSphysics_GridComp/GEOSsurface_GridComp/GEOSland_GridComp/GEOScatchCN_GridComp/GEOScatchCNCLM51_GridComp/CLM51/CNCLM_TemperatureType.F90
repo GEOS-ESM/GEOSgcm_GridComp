@@ -5,7 +5,7 @@ module TemperatureType
   use clm_varctl       , only : use_fates, use_luna
   use clm_varcon       , only : spval, ispval
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
 
   ! !PUBLIC TYPES:
   implicit none

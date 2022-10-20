@@ -6,7 +6,7 @@ module SoilBiogeochemCarbonStateType
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
   use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi, zsoi, c3_r2
   use clm_varctl       , only : iulog, use_vertsoilc, use_fates, use_soil_matrixcn
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
 
   ! !PUBLIC TYPES:
   implicit none

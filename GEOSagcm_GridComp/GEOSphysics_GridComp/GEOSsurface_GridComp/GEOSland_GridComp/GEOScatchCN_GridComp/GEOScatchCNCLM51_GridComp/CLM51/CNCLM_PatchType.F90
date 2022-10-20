@@ -2,9 +2,9 @@ module PatchType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
-  use clm_varcon     , only : ispval
-  use clm_varctl     , only : use_fates
+  use decompMod        , only : bounds_type
+  use clm_varcon       , only : ispval
+  use clm_varctl       , only : use_fates
 
  !-----------------------------------------------------------------------
   ! !DESCRIPTION:

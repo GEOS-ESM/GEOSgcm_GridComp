@@ -3,7 +3,7 @@ module CropType
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varcon       , only : spval
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
   ! !PUBLIC TYPES:
   implicit none
   save

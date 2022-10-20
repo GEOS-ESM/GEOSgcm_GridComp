@@ -4,7 +4,7 @@ module CNVegStateType
   use nanMod           , only : nan
   use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevsoi
   use clm_varcon       , only : spval, ispval
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
 
 
   ! !PUBLIC TYPES:

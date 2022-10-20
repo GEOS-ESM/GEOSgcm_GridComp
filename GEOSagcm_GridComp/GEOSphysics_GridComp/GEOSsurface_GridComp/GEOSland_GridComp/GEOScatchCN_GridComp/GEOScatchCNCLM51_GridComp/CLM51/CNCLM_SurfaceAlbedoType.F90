@@ -5,7 +5,8 @@ module SurfaceAlbedoType
   use clm_varpar       , only : numrad, nlevcan, nlevsno, numpft, num_zon, num_veg, &
                                 var_col, var_pft
   use clm_varcon       , only : spval, ispval
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
+
   ! !PUBLIC TYPES:
   implicit none
   save

@@ -21,7 +21,7 @@ module ColumnType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod       , only : bounds_type
   use clm_varcon     , only : zsoi, dzsoi, zisoi, dzsoi_decomp, spval, ispval
   use clm_varctl     , only : use_fates
   use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak, nlevmaxurbgrnd,nlevurb, &

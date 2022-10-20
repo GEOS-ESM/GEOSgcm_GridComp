@@ -5,7 +5,7 @@ module CNVegCarbonStateType
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
   use nanMod           , only : nan
-  use CNCLM_decompMod  , only : bounds_type
+  use decompMod        , only : bounds_type
   use pftconMod        , only : noveg, npcropmin, pftcon
   use PatchType        , only : patch
 
