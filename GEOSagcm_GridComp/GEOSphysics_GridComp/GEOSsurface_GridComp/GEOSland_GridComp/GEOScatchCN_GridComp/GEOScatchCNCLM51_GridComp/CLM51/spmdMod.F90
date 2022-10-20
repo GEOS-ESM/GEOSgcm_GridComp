@@ -90,15 +90,14 @@ contains
 !-----------------------------------------------------------------------
 
     call ESMF_VmGetCurrent(VM, rc=status)
-    VERIFY_(STATUS)
 
     ! Get MPI communicator
 
-    call ESMF_VmGet(VM, mpicommunicator=mpicom, __RC__) 
+    call ESMF_VmGet(VM, mpicommunicator=mpicom, RC=status) 
 
     ! Get my processor id and number of processors
 
-    call ESMF_VmGet(VM, localPet=MYID, petCount=npes, __RC__)
+    call ESMF_VmGet(VM, localPet=MYID, petCount=npes, RC=status)
 
     ! determine master process
     if (MAPL_Am_I_Root(vm)) then
