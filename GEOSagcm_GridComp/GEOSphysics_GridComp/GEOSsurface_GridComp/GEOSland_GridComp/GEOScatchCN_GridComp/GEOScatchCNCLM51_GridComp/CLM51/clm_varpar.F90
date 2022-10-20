@@ -123,6 +123,8 @@ contains
 ! !DESCRIPTION:
 ! This subroutine initializes parameters in clm_varpar
 !
+  use clm_varctl, only : use_vertsoilc, use_extralakelayers, use_fates, &
+                         use_century_decomp, use_crop
 !
 ! !ARGUMENTS:
     implicit none
