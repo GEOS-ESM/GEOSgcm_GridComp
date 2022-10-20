@@ -231,7 +231,9 @@ end function is_end_curr_day
 !=========================================================================================
 
 function is_first_step( )
-
+  
+  ! Return value
+  logical :: is_first_step
 
 end function is_first_step
 
