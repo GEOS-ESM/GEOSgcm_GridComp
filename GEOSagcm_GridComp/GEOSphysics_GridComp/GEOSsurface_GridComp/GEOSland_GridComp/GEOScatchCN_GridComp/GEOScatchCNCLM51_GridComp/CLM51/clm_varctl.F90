@@ -12,8 +12,9 @@ module clm_varctl
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public init_clm_varctl          ! set parameters
   implicit none
+
+  public init_clm_varctl          ! set parameters
 
   logical, public :: use_nguardrail         = .true.  ! true => use precision control
 
