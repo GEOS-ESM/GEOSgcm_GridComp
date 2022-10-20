@@ -21,7 +21,9 @@ module GEOS_GcmGridCompMod
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
-
+   use MAPL_HistoryGridCompMod,  only:  Hist_SetServices => SetServices
+   use MAPL_HistoryGridCompMod,  only:  HISTORY_ExchangeListWrap
+   use iso_fortran_env
 
   implicit none
   private
@@ -50,6 +52,7 @@ integer ::       AGCM
 integer ::       OGCM
 integer ::       AIAU
 integer ::       ADFI
+integer ::       hist
 
 integer :: bypass_ogcm
 integer ::       k
@@ -76,6 +79,8 @@ type T_GCM_STATE
    logical                    :: checkpointRequested = .false.
    character(len=ESMF_MAXSTR) :: checkpointFilename = ''
    character(len=ESMF_MAXSTR) :: checkpointFileType = ''
+   type(ESMF_GridComp)        :: history_parent
+   logical                    :: run_history = .false.
 end type T_GCM_STATE
 
 ! Wrapper for extracting internal state
@@ -624,7 +629,9 @@ contains
        VERIFY_(STATUS)
        ExtDataWrap%ptr => extdata_internal_state
        call ESMF_UserCompSetInternalState( GC, 'ExtData_state',ExtDataWrap,status)
-       VERIFY_(STATUS) 
+       VERIFY_(STATUS)
+      
+       call history_setservice(_RC)
     end if
 
  
@@ -656,6 +663,37 @@ contains
     RETURN_(ESMF_SUCCESS)
 
     contains
+
+      subroutine history_setservice(rc)
+         integer, intent(out), optional :: rc
+
+         integer :: status
+         type(ESMF_Config) :: hist_cf, gcm_cf
+         type(MAPL_MetaComp), pointer :: history_metaobj
+         type(StubComponent) :: stub_component
+         integer :: run_dt
+         character(len=ESMF_MAXSTR) :: replay_history
+         logical :: is_present
+
+         call ESMF_GridCompGet(gc,config=gcm_cf,_RC)
+         call ESMF_ConfigFindLabel(gcm_cf,"REPLAY_HISTORY_RC:",isPresent=is_present,_RC)
+
+         if (is_present) then
+            gcm_internal_state%run_history = .true. 
+            call MAPL_GetResource(MAPL,replay_history,"REPLAY_HISTORY_RC:",_RC)
+            hist_cf = ESMF_ConfigCreate(_RC)
+            call ESMF_ConfigLoadFile(hist_cf,trim(replay_history),_RC)
+            call MAPL_GetResource(MAPL,run_dt,"RUN_DT:",_RC)
+            call MAPL_ConfigSetAttribute(hist_cf,value=run_dt,label="RUN_DT:",_RC)
+            call MAPL_ConfigSetAttribute(hist_cf,value=replay_history,label="HIST_CF:",_RC)
+            gcm_internal_state%history_parent = ESMF_GridCompCreate(name="History_GCM_parent",config=hist_cf,_RC)
+            history_metaobj => null()
+            call MAPL_InternalStateCreate(gcm_internal_state%history_parent,history_metaobj,_RC)
+            call MAPL_Set(history_metaobj,cf=hist_cf,name="History_GCM_parent",component=stub_component,_RC)
+            hist = MAPL_AddChild(history_metaobj,name="History_GCM",ss=hist_setservices,_RC) 
+         end if
+         _RETURN(_SUCCESS)
+      end subroutine history_setservice
 
       subroutine OBIO_TerminateImports(DO_DATAATM, RC)
 
@@ -1035,17 +1073,23 @@ contains
            call ESMF_TimeIntervalGet( PREDICTOR_DURATION, S=i_PREDICTOR_DURATION, rc=status )
            call MAPL_ConfigSetAttribute(  CF, i_PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS)
            VERIFY_(STATUS)
-           IF(MAPL_AM_I_ROOT()) PRINT *,'Setting PREDICTOR_DURATION, to ',i_PREDICTOR_DURATION
+           IF(MAPL_AM_I_ROOT()) PRINT *,'Setting PREDICTOR_DURATION based on IAU Frequency: ',i_PREDICTOR_DURATION
        else
            call ESMF_TimeIntervalGet( PREDICTOR_DURATION, S=rep_S, rc=status )
-           if( rep_S .ne. i_PREDICTOR_DURATION ) then
+           if( rep_S .gt. i_PREDICTOR_DURATION ) then
                IF(MAPL_AM_I_ROOT()) then
                   PRINT * 
                   PRINT *,'ERROR!             User-Defined PREDICTOR_DURATION: ',i_PREDICTOR_DURATION
-                  PRINT *,'is INCONSISTENT with Calculated PREDICTOR_DURATION: ',rep_S
+                  PRINT *,'is SMALLER THAN required Calculated PREDICTOR_DURATION: ',rep_S
                   PRINT * 
                endif
                VERIFY_(ESMF_FAILURE)
+           else
+               if( rep_S .ne. i_PREDICTOR_DURATION ) then
+                   call ESMF_TimeIntervalSet( PREDICTOR_DURATION, S=i_PREDICTOR_DURATION, rc=status )
+                   VERIFY_(STATUS)
+                   IF(MAPL_AM_I_ROOT()) PRINT *,' (Note: PREDICTOR_DURATION based on USER Input) '
+               endif
            endif
        endif
        gcm_internal_state%predur = i_PREDICTOR_DURATION
@@ -1349,12 +1393,52 @@ contains
     if ( MAPL_am_I_root() ) call ESMF_StatePrint ( EXPORT, rc=STATUS )
 #endif
 
+    if(gcm_internal_state%rplRegular .and. gcm_internal_state%run_history) then
+       call initialize_history(_RC)
+    end if
+
     call MAPL_TimerOff(MAPL,"TOTAL")
     call MAPL_TimerOff(MAPL,"INITIALIZE")
 
    RETURN_(ESMF_SUCCESS)
 
  contains
+
+   subroutine initialize_history(rc)
+     integer, optional, intent(Out) :: rc
+
+     integer :: status,user_status
+     type(ESMF_State), allocatable :: gcm_exports(:),hist_imports(:),hist_exports(:)
+     type(ESMF_GridComp), allocatable :: hist_gcs(:)
+     type(ESMF_GridComp), allocatable :: gcm_gcs(:)
+     type(MAPL_MetaComp), pointer :: history_metaobj
+     type(HISTORY_ExchangeListWrap) :: lswrap
+     integer(kind=INT64), pointer   :: LSADDR(:) => null()
+
+     call MAPL_GetObjectFromGC ( gcm_internal_state%history_parent, history_metaobj, _RC)
+
+     call MAPL_Get(mapl,childrens_export_states = gcm_exports, childrens_gridcomps = gcm_gcs,  _RC)
+
+     call MAPL_Get(history_metaobj, &
+          childrens_export_states = hist_exports, &
+          childrens_import_states = hist_imports, &
+          childrens_gridcomps = hist_gcs, _RC)
+
+     allocate(lswrap%ptr, stat = status)
+     _VERIFY(STATUS)
+     call ESMF_UserCompSetInternalState(hist_gcs(hist), 'MAPL_LocStreamList', &
+          lswrap, _RC)
+     call MAPL_GetAllExchangeGrids(gcm_gcs(agcm), LSADDR, _RC)
+     lswrap%ptr%LSADDR_PTR => LSADDR
+
+     call ESMF_StateAdd(hist_imports(hist),[gcm_exports(agcm)],_RC)
+     call ESMF_GridCompInitialize(hist_gcs(hist),importState=hist_imports(hist),&
+                                       exportState=hist_exports(hist),&
+                                       clock=clock,userRC=user_status,_RC)
+
+     _RETURN(_SUCCESS)
+   end subroutine initialize_history
+
    subroutine AllocateExports(STATE, NAMES, RC)
      type(ESMF_State)          , intent(INOUT) ::  STATE
      character(len=*)          , intent(IN   ) ::  NAMES(:)
@@ -1753,6 +1837,10 @@ contains
                 call ESMF_VMBarrier(VM, rc=status)
                 VERIFY_(STATUS)
 
+                if (gcm_internal_state%run_history) then
+                   call run_history(_RC)
+                end if
+
                 DONE = ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%replayStopAlarm, RC=STATUS)
                 VERIFY_(STATUS)
                 if ( DONE ) exit
@@ -1767,6 +1855,7 @@ contains
              VERIFY_(STATUS)
 
              if( gcm_internal_state%predur .ne. 0 ) then
+                 if( MAPL_AM_I_Root() ) print *
                  do
                    call ESMF_ClockAdvance ( clock, rc=status )
                    VERIFY_(STATUS)
@@ -1878,6 +1967,29 @@ contains
 
      RETURN_(ESMF_SUCCESS)
    contains
+
+     subroutine run_history(rc)
+       integer, optional, intent(out) :: rc
+
+       integer :: user_status,status
+       type(ESMF_State), allocatable :: gcm_exports(:),hist_imports(:),hist_exports(:)
+       type(ESMF_GridComp), allocatable :: hist_gcs(:)
+       type(MAPL_MetaComp), pointer :: history_metaobj
+
+       call MAPL_GetObjectFromGC ( gcm_internal_state%history_parent, history_metaobj, _RC)
+
+       call MAPL_Get(history_metaobj, &
+            childrens_export_states = hist_exports, &
+            childrens_import_states = hist_imports, &
+            childrens_gridcomps = hist_gcs, _RC)
+
+       call ESMF_GridCompRun(hist_gcs(hist),importState=hist_imports(hist),&
+                                       exportState=hist_exports(hist),&
+                                       clock=clock,userRC=user_status,_RC)
+       _RETURN(_SUCCESS)
+ 
+     end subroutine run_history
+
      subroutine RUN_OCEAN(phase, rc)
        integer, optional, intent(IN)  :: phase
        integer, optional, intent(OUT) :: rc

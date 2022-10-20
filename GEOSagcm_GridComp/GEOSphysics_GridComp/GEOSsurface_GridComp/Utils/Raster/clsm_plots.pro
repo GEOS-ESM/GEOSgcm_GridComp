@@ -323,8 +323,7 @@ endfor
 
 close,1
 clm_file = '../CLM_veg_typs_fracs'
-clm45_file = '../CLM4.5_veg_typs_fracs'
-if (file_test (clm_file) or file_test (clm45_file))  then begin
+if (file_test (clm_file))  then begin
 endif else begin
 cti_mean = 0.961*cti_mean - 1.957  
 endelse
@@ -345,21 +344,13 @@ cti_skew = 0.
 
 plot_mosaic, ncat, tile_id
 clm_file = '../CLM_veg_typs_fracs'
-clm45_file = '../CLM4.5_veg_typs_fracs'
 
-if (file_test (clm_file) or file_test (clm45_file))  then begin
+if (file_test (clm_file))  then begin
 
 ;spawn, "/bin/cp /discover/nobackup/smahanam/GEOS5_misc/mask/images/ESA_LandCover_mask.jpg ." 
 
-if (file_test (clm_file)) then begin
-plot_clm   , ncat, tile_id
-plot_carbon, ncat, tile_id
-endif
-
-if (file_test (clm45_file)) then begin
-plot_clm45   , ncat, tile_id	
-plot_carbon45, ncat, tile_id
-endif
+  plot_clm   , ncat, tile_id
+  plot_carbon, ncat, tile_id
 
 ; Now plot Ndep, T2m and SoilAlb
 ; ------------------------------
@@ -381,31 +372,31 @@ endif
   a6 = 0.
   a7 = 0.
   
-openr,1,filename
+  openr,1,filename
 
-for i = 0l,ncat -1l  do begin
-   readf,1,a1, a2, a3, a4, a5, a6, a7
-   ndep (i) = a1
-   visdr(i) = a2
-   visdf(i) = a3
-   nirdr(i) = a4
-   nirdf(i) = a5
-   t2mm (i) = a6
-   t2mp (i) = a7
+  for i = 0l,ncat -1l  do begin
+    readf,1,a1, a2, a3, a4, a5, a6, a7
+    ndep (i) = a1
+    visdr(i) = a2
+    visdf(i) = a3
+    nirdr(i) = a4
+    nirdf(i) = a5
+    t2mm (i) = a6
+    t2mp (i) = a7
 
-endfor
+  endfor
 
-close,1
-plot_three_vars2, ncat, tile_id, ndep, t2mm, t2mp
-plot_soilalb, ncat, tile_id,VISDR, VISDF, NIRDR, NIRDF
+  close,1
+  plot_three_vars2, ncat, tile_id, ndep, t2mm, t2mp
+  plot_soilalb, ncat, tile_id,VISDR, VISDF, NIRDR, NIRDF
 
-ndep  = 0.
-visdr = 0.
-visdf = 0.
-nirdr = 0.
-nirdf = 0.
-t2mm  = 0.
-t2mp  = 0.
+  ndep  = 0.
+  visdr = 0.
+  visdf = 0.
+  nirdr = 0.
+  nirdf = 0.
+  t2mm  = 0.
+  t2mp  = 0.
 
 endif	
 
@@ -441,11 +432,12 @@ endfor
 
 close,1
 
-load_colors
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,800], Z_Buffer=0
+load_colors
 Erase,255
+
 !p.background = 255
 
 !P.position=0
@@ -553,6 +545,15 @@ compute_zo,'ascat' , SCALE4Z0, ASZ0, Z2, tile_id
 compute_zo,'icarus', SCALE4Z0, ASZ0, Z2, tile_id
 compute_zo,'merged', SCALE4Z0, ASZ0, Z2, tile_id
 
+; plotting irrigation parameters
+; ------------------------------
+
+;plot_crop_times, ncat, tile_id
+;irrig_method, ncat, tile_id 
+;plot_lai_minmax, ncat, tile_id
+;irrig_fractions, ncat, tile_id
+
+
 ; (12) generating NC_plot x NR_plot mask for plotting maps
 ;--------------------------------------------------------
 
@@ -619,205 +620,7 @@ make_movies, ncat, vec2grid, 'MODIS-NIR'
 END
 
 ; ==============================================================================
-;                                  CLM45-Carbon classes    
-; ==============================================================================
-
-PRO plot_carbon45,ncat, tile_id
-
-im = n_elements(tile_id[*,0])
-jm = n_elements(tile_id[0,*])
-
-dx = 360. / im
-dy = 180. / jm
-
-x = indgen(im)*dx -180. +  dx/2.
-y = indgen(jm)*dy -90.  +  dy/2.
-
-clm_type = intarr (ncat,4)
-clm_grid = intarr (im,jm,4)
-
-filename = '../CLM4.5_veg_typs_fracs'
-openr,1,filename
-k = 0
-v = 0
-fr= 0.
-v1= 0
-v2= 0
-v3= 0
-v4 =0
-
-for i = 0l,ncat -1l  do begin
-   readf,1,k,k,v1,v2,v3,v4,fr,fr,fr,fr,v,v
-   clm_type(i,0) = v1
-   clm_type(i,1) = v2	
-   clm_type(i,2) = v3
-   clm_type(i,3) = v4
-endfor
-
-close,1
-
-clm_grid (*,*,*) =  !VALUES.F_NAN
-
-for j = 0l, jm -1l do begin
-   for i = 0l, im -1 do begin
-      if(tile_id[i,j] gt 0) then begin
-	clm_grid(i,j,0) =  clm_type(tile_id[i,j] -1,0)
-	clm_grid(i,j,1) =  clm_type(tile_id[i,j] -1,1)
-	clm_grid(i,j,2) =  clm_type(tile_id[i,j] -1,2)
-	clm_grid(i,j,3) =  clm_type(tile_id[i,j] -1,3)
-      endif	
-   endfor
-endfor
-
-clm_type = 0
-
-limits = [-60,-180,90,180]
-if file_test ('limits.idl') then restore,'limits.idl'
-
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,1000], Z_Buffer=0
-;types= [  2,  3,  4,  5,  6,  7,  8,  9, 10, 11,11a, 12, 13, 14,14a, 15,15a, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 25]
-r_in  = [106,202,251,  0, 29, 77,109,142,233,255,255,255,127,164,164,217,217,234,220,201,185,165,145,125,105, 85, 60, 40]
-g_in  = [ 91,178,154, 85,115,145,165,185, 23,131,131,191, 39, 53, 53, 72, 72,234,220,201,185,165,145,125,105, 85, 60, 40]
-b_in  = [154,214,153,  0,  0,  0,  0, 13,  0,  0,200,  0,  4,  3,200,  1,200,234,220,201,185,165,145,125,105, 85, 60, 40]
-vtypes= [  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
-
-red  = intarr (256)
-green= intarr (256)
-blue = intarr (256)
-
-red  (255) = 255
-green(255) = 255
-blue (255) = 255
-
-for k = 0, n_elements(vtypes) -1 do begin 
-	red  (vtypes(k)) = r_in (k)
-	green(vtypes(k)) = g_in (k)
-	blue (vtypes(k)) = b_in (k)
-endfor
-
-TVLCT,red,green,blue
-
-colors = vtypes
-levels = vtypes
-
-clm_name = strarr(27)
-clm_name( 0)  = 'NLEt'  ;  1 	needleleaf evergreen temperate tree
-clm_name( 1)  = 'NLEB'  ;  2 	needleleaf evergreen boreal tree
-clm_name( 2)  = 'NLDB'  ;  3  	needleleaf deciduous boreal tree
-clm_name( 3)  = 'BLET'  ;  4 	broadleaf evergreen tropical tree
-clm_name( 4)  = 'BLEt'  ;  5 	broadleaf evergreen temperate tree
-clm_name( 5)  = 'BLDT'  ;  6 	broadleaf deciduous tropical tree
-clm_name( 6)  = 'BLDt'  ;  7 	broadleaf deciduous temperate tree
-clm_name( 7)  = 'BLDB'  ;  8 	broadleaf deciduous boreal tree
-clm_name( 8)  = 'BLEtS' ;  9 	broadleaf evergreen temperate shrub
-clm_name( 9)  = 'BLDtS' ; 10 	broadleaf deciduous temperate shrub [moisture +  deciduous]
-clm_name(10)  = 'BLDtSm'; 11 	broadleaf deciduous temperate shrub [moisture stress only]
-clm_name(11)  = 'BLDBS' ; 12 	broadleaf deciduous boreal shrub
-clm_name(12)  = 'AC3G'  ; 13 	arctic c3 grass
-clm_name(13)  = 'CC3G'  ; 14 	cool c3 grass [moisture +  deciduous]
-clm_name(14)  = 'CC3Gm' ; 15 	cool c3 grass [moisture stress only]
-clm_name(15)  = 'WC4G'  ; 16 	warm c4 grass [moisture +  deciduous]
-clm_name(16)  = 'WC4Gm' ; 17 	warm c4 grass [moisture stress only]
-clm_name(17)  = 'C3CROP'; 18    c3_crop                              
-clm_name(18)  = 'C3IRR' ; 19    c3_irrigated                         
-clm_name(19)  = 'CORN'  ; 20    corn                                 
-clm_name(20)  = 'ICORN' ; 21    irrigated corn                       
-clm_name(21)  = 'STCER' ; 22    spring temperate cereal              
-clm_name(22)  = 'ISTCER'; 23    irrigated spring temperate cereal    
-clm_name(23)  = 'WTCER' ; 24    winter temperate cereal              
-clm_name(24)  = 'IWTCER'; 25    irrigated winter temperate cereal    
-clm_name(25)  = 'SOYB'  ; 26    soybean                              
-clm_name(26)  = 'ISOYB' ; 27    irrigated soybean                    
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 2, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,0],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits,/advance
-contour, clm_grid[*,*,1],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 1000)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5-Carbon_PRIM_veg_typs.jpg', image24, True=1, Quality=100
-
-; now plotting secondary
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,1000], Z_Buffer=0
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 2, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,2],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits,/advance
-contour, clm_grid[*,*,3],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 1000)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5-Carbon_SEC_veg_typs.jpg', image24, True=1, Quality=100
-
-END
-
-; ==============================================================================
-;                                  CLM-Carbon classes    
+;                                  Catchment-CN classes    
 ; ==============================================================================
 
 PRO plot_carbon,ncat, tile_id
@@ -958,7 +761,7 @@ image24 = BytArr(3, 700, 1000)
 image24[0,*,*] = r[snapshot]
 image24[1,*,*] = g[snapshot]
 image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM-Carbon_PRIM_veg_typs.jpg', image24, True=1, Quality=100
+Write_JPEG, 'CatchmentCN_PRIM_veg_typs.jpg', image24, True=1, Quality=100
 
 ; now plotting secondary
 thisDevice = !D.Name
@@ -1002,189 +805,7 @@ image24 = BytArr(3, 700, 1000)
 image24[0,*,*] = r[snapshot]
 image24[1,*,*] = g[snapshot]
 image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM-Carbon_SEC_veg_typs.jpg', image24, True=1, Quality=100
-
-END
-
-; ==============================================================================
-;                                  CLM4.5 classes    
-; ==============================================================================
-
-PRO plot_clm45,ncat, tile_id
-
-im = n_elements(tile_id[*,0])
-jm = n_elements(tile_id[0,*])
-
-dx = 360. / im
-dy = 180. / jm
-
-x = indgen(im)*dx -180. +  dx/2.
-y = indgen(jm)*dy -90.  +  dy/2.
-
-clm_type = intarr (ncat,2)
-clm_grid = intarr (im,jm,2)
-
-filename = '../CLM4.5_veg_typs_fracs'
-openr,1,filename
-k = 0
-v = 0
-fr= 0.
-v1= 0
-v2= 0
-
-for i = 0l,ncat -1l  do begin
-   readf,1,k,k,v,v,v,v,fr,fr,fr,fr,v1,v2
-   clm_type(i,0) = v1
-   clm_type(i,1) = v2	
-endfor
-
-close,1
-
-clm_grid (*,*,*) =  !VALUES.F_NAN
-
-for j = 0l, jm -1l do begin
-   for i = 0l, im -1 do begin
-      if(tile_id[i,j] gt 0) then begin
-	clm_grid(i,j,0) =  clm_type(tile_id[i,j] -1,0)
-	clm_grid(i,j,1) =  clm_type(tile_id[i,j] -1,1)
-      endif	
-   endfor
-endfor
-
-clm_type = 0
-
-limits = [-60,-180,90,180]
-if file_test ('limits.idl') then restore,'limits.idl'
-
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,500], Z_Buffer=0
-
-r_in  = [255,106,202,251,  0, 29, 77,109,142,233,255,255,127,164,217,234,220,201,185,165,145,125,105, 85, 60, 40]
-g_in  = [245, 91,178,154, 85,115,145,165,185, 23,131,191, 39, 53, 72,234,220,201,185,165,145,125,105, 85, 60, 40]
-b_in  = [215,154,214,153,  0,  0,  0,  0, 13,  0,  0,  0,  4,  3,  1,234,220,201,185,165,145,125,105, 85, 60, 40]
-vtypes= [  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
-
-red  = intarr (256)
-green= intarr (256)
-blue = intarr (256)
-
-red  (255) = 255
-green(255) = 255
-blue (255) = 255
-
-for k = 0, n_elements(vtypes) -1 do begin 
-	red  (vtypes(k)) = r_in (k)
-	green(vtypes(k)) = g_in (k)
-	blue (vtypes(k)) = b_in (k)
-endfor
-
-TVLCT,red,green,blue
-
-colors = vtypes
-levels = vtypes
-
-clm_name = strarr(25)
-clm_name( 0)  = 'BARE' ;  1  	bare
-clm_name( 1)  = 'NLEt' ;  2 	needleleaf evergreen temperate tree
-clm_name( 2)  = 'NLEB' ;  3 	needleleaf evergreen boreal tree
-clm_name( 3)  = 'NLDB' ;  4  	needleleaf deciduous boreal tree
-clm_name( 4)  = 'BLET' ;  5 	broadleaf evergreen tropical tree
-clm_name( 5)  = 'BLEt' ;  6 	broadleaf evergreen temperate tree
-clm_name( 6)  = 'BLDT' ;  7 	broadleaf deciduous tropical tree
-clm_name( 7)  = 'BLDt' ;  8 	broadleaf deciduous temperate tree
-clm_name( 8)  = 'BLDB' ;  9 	broadleaf deciduous boreal tree
-clm_name( 9)  = 'BLEtS'; 10 	broadleaf evergreen temperate shrub
-clm_name(10)  = 'BLDtS'; 11 	broadleaf deciduous temperate shrub
-clm_name(11)  = 'BLDBS'; 12 	broadleaf deciduous boreal shrub
-clm_name(12)  = 'AC3G' ; 13 	arctic c3 grass
-clm_name(13)  = 'CC3G' ; 14 	cool c3 grass
-clm_name(14)  = 'WC4G' ; 15 	warm c4 grass
-clm_name(15)  = 'C3CROP'; 16    c3_crop                              
-clm_name(16)  = 'C3IRR' ; 17    c3_irrigated                         
-clm_name(17)  = 'CORN'  ; 18    corn                                 
-clm_name(18)  = 'ICORN' ; 19    irrigated corn                       
-clm_name(19)  = 'STCER' ; 20    spring temperate cereal              
-clm_name(20)  = 'ISTCER'; 21    irrigated spring temperate cereal    
-clm_name(21)  = 'WTCER' ; 22    winter temperate cereal              
-clm_name(22)  = 'IWTCER'; 23    irrigated winter temperate cereal    
-clm_name(23)  = 'SOYB'  ; 24    soybean                              
-clm_name(24)  = 'ISOYB' ; 25    irrigated soybean                    
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 1, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,0],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 500)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5_PRIM_veg_typs.jpg', image24, True=1, Quality=100
-
-; now plotting secondary
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[700,500], Z_Buffer=0
-
-Erase,255
-!p.background = 255
-!P.position=0
-!P.Multi = [0, 1, 1, 0, 1]
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-contour, clm_grid[*,*,1],x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
-
-n_levels = n_elements(vtypes)
-alpha=fltarr(n_levels,2)
-alpha(*,0)=levels (0:n_levels-1)
-alpha(*,1)=levels (0:n_levels-1)
-h=[0,1]
-
-!P.position=[0.15, 0.0+0.005, 0.85, 0.015+0.005]
-clev = levels
-clev (*) = 1
-contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
-           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
-           xtitle=' ', color=0,xtickv=levels, $
-           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
-contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
-      for k = 0,n_elements(clm_name) -1 do xyouts,levels[k]+0.5,1.1,clm_name(k) ,orientation=90,color=0
-snapshot = TVRD()
-
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 700, 500)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'CLM4.5_SEC_veg_typs.jpg', image24, True=1, Quality=100
+Write_JPEG, 'CatchmentCN_SEC_veg_typs.jpg', image24, True=1, Quality=100
 
 END
 
@@ -2143,7 +1764,7 @@ endfor
 upval = max(canop_tiles)
 
 limits = [-60,-180,90,180]
-load_colors
+
 colors = [27,26,25,24,23,22,21,20,40,41,42,43,44,45,46,47,48]
 colors = reverse (colors)
 n_levels = n_elements (colors)
@@ -2153,6 +1774,7 @@ levels = [lwval,lwval+(upval-lwval)/(n_levels -1) +indgen(n_levels -1)*(upval-lw
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[800,400], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 !P.position=0
@@ -2214,7 +1836,6 @@ END
 
 PRO plot_three_vars2, ncat, tile_id, data1, data2, data3
 
-load_colors
 im = n_elements(tile_id[*,0])
 jm = n_elements(tile_id[0,*])
 
@@ -2248,6 +1869,7 @@ n_levels = n_elements (colors)
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,900], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 
@@ -2325,10 +1947,11 @@ END
 
 pro plot_soilalb, ncat, tile_id,VISDR, VISDF, NIRDR, NIRDF
 
-load_colors
+
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,500], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 
@@ -2645,13 +2268,15 @@ for k = 0, N_levels -1 do begin
 	blue (k+1) = b_in (k)
 endfor
 
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[1080,600], Z_Buffer=0
+
 TVLCT,red,green,blue
 
 colors = indgen (N_levels) + 1
 
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[1080,600], Z_Buffer=0
+
 Erase,255
 !p.background = 255
 
@@ -2825,9 +2450,17 @@ r_type  = [255,106,202,251,  0, 29, 77,109,142,233,255,255,255,127,164,164,217,2
 g_type  = [245, 91,178,154, 85,115,145,165,185, 23,131,131,191, 39, 53, 53, 72, 72,204,104, 70]
 b_type  = [215,154,214,153,  0,  0,  0,  0, 13,  0,  0,200,  0,  4,  3,200,  1,200,204,200,200]
 
+r_lct2  = [  0,   0,   0,   0,   0,   0,   0,   0,   0,  55, 120, 190, 240, 255, 255, 255, 255, 255, 233, 197, 158]
+g_lct2  = [  0,   0,   0,  83, 115, 167, 195, 227, 255, 255, 255, 255, 255, 219, 187, 159, 131,  51,  23,   0,   0]
+b_lct2  = [130, 200, 255, 255, 255, 255, 255, 255, 255, 199, 135,  67,  15,   0,   0,   0,   0 ,  0,   0,   0,   0]
+
 r_veg  = [233,255,255,255,210,  0,  0,  0,204,170,255,220,205,  0,  0,170,  0, 40,120,140,190,150,255,255,  0,  0,  0,195,255,  0]
 g_veg  = [ 23,131,191,255,255,255,155,  0,204,240,255,240,205,100,160,200, 60,100,130,160,150,100,180,235,120,150,220, 20,245, 70]
 b_veg  = [  0,  0,  0,178,255,255,255,200,204,240,100,100,102,  0,  0,  0,  0,  0,  0,  0,  0,  0, 50,175, 90,120,130,  0,215,200]
+
+r_grads_rb = [160, 110, 30,   0,   0,   0,   0, 160, 230, 230, 240, 250, 240]
+g_grads_rb = [  0,  0,  60, 150, 200, 210, 220, 230, 220, 175, 130,  60,   0] 
+b_grads_rb = [200, 220, 255, 255, 200, 140,  0,  50,  50,  45,  40,  60, 130] 
 
 R (20:27) = r_green
 G (20:27) = g_green
@@ -2853,6 +2486,13 @@ R (90:119) = r_veg
 G (90:119) = g_veg
 B (90:119) = b_veg
 
+R (120:132) = r_grads_rb
+G (120:132) = g_grads_rb
+B (120:132) = b_grads_rb
+
+R (140:160) = r_lct2
+G (140:160) = g_lct2
+B (140:160) = b_lct2
 TVLCT,R ,G ,B
 
 end
@@ -2926,7 +2566,7 @@ upval = max(z2)
 lwval = min(z2)
 
 limits = [-60,-180,90,180]
-load_colors
+
 colors = [27,26,25,24,23,22,21,20,40,41,42,43,44,45,46,47,48]
 colors = reverse (colors)
 n_levels = n_elements (colors)
@@ -2936,6 +2576,7 @@ levels = [lwval,lwval+(upval-lwval)/(n_levels -1) +indgen(n_levels -1)*(upval-lw
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[800,400], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 !P.position=0
@@ -2985,8 +2626,6 @@ end
 ; ====================================================================================
 pro country_codes, tile_id
 
-load_random_colors
-
 im = n_elements(tile_id[*,0])
 jm = n_elements(tile_id[0,*])
 
@@ -3035,6 +2674,7 @@ limits = [-60,-180,90,180]
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[800,400], Z_Buffer=0
+load_random_colors
 Erase,255
 !p.background = 255
 !P.position=0
@@ -3198,11 +2838,11 @@ skip_lai:
 
 sea_label = ['DJF','MAM','JJA','SON']
 
-load_colors
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,600], Z_Buffer=0
 ;Device, Set_Resolution=[720,500], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 
@@ -3288,7 +2928,7 @@ pro proc_glass
 
 
 ;IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/AVHRR/V4/HDF/'
-;ODATA = '/discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/AVHRR.v4/'
+;ODATA = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/AVHRR.v4/'
 ;LABEL = 'GLASS01B02.V04.A'
 ;yearb = 1981
 ;YEARe = 2017
@@ -3333,14 +2973,14 @@ for k = 0, N_levels -1 do begin
 	green(k+1) = g_in (k)
 	blue (k+1) = b_in (k)
 endfor
-
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[800,500], Z_Buffer=0
 TVLCT,red,green,blue
 colors = indgen (N_levels) + 1
 
 limits = [-60,-180,90,180]
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[800,500], Z_Buffer=0
+
 Erase,255
 !p.background = 255
 
@@ -3451,5 +3091,651 @@ for j =0, nr -1 do begin
 NCDF_VARPUT, id, 'LAI',offset=[0,nr-1 -j],count=[nc,1]   , nint(indata [*,j])
 endfor
 NCDF_CLOSE, id 
+
+end
+
+; -------------------------------------------------------------------
+ pro irrig_method, ncat, tile_id
+
+; Rerad 0.25-degree GRIPC and MIRCA data
+
+filename = '../irrig.dat'
+limits = [-60.,-180.,90.,-180.]
+if file_test ('limits.idl') then restore,'limits.idl'
+
+id   = NCDF_OPEN (filename, /NOWRITE)
+
+NCDF_VARGET, id,'SPRINKLERFR',SPRINKLERV
+NCDF_VARGET, id,'DRIPFR',DRIPV
+NCDF_VARGET, id,'FLOODFR',FLOODV
+
+NCDF_CLOSE, id
+
+SPRINKLERV(where (SPRINKLERV gt 1.)) = !VALUES.F_NAN
+DRIPV     (where (DRIPV      gt 1.)) = !VALUES.F_NAN
+FLOODV    (where (FLOODV     gt 1.)) = !VALUES.F_NAN
+
+im = n_elements(tile_id[*,0])
+jm = n_elements(tile_id[0,*])
+
+dx = 360. / im
+dy = 180. / jm
+
+x = indgen(im)*dx -180. +  dx/2.
+y = indgen(jm)*dy -90.  +  dy/2.
+
+SPRINKLER = REPLICATE (!VALUES.F_NAN,IM, JM)
+DRIP      = REPLICATE (!VALUES.F_NAN,IM, JM)
+FLOOD     = REPLICATE (!VALUES.F_NAN,IM, JM)
+
+for j = 0l, jm -1l do begin
+   for i = 0l, im -1 do begin
+      if(tile_id[i,j] gt 0) then begin
+	SPRINKLER(i,j) = SPRINKLERV (tile_id[i,j] -1)
+	DRIP     (i,j) = DRIPV      (tile_id[i,j] -1)
+	FLOOD    (i,j) = FLOODV     (tile_id[i,j] -1)
+      endif	
+   endfor
+endfor
+
+SPRINKLER(where (SPRINKLER eq 0.)) = !VALUES.F_NAN
+DRIP     (where (DRIP      eq 0.)) = !VALUES.F_NAN
+FLOOD    (where (FLOOD     eq 0.)) = !VALUES.F_NAN
+
+colors = indgen (21) + 140
+levels = indgen (21)*0.1/2.
+
+position_row1 = [0.02, 0.70, 0.98, 0.95]
+position_row2 = [0.02, 0.40, 0.98, 0.65]
+position_row3 = [0.02, 0.10, 0.98, 0.35]
+
+position_col   = [0.20, 0.02, 0.80, 0.05] 
+
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+load_colors
+;set_plot,'PS'
+!P.font=0
+;Device, FILENAME= plotdir + 'IrrigMethod.ps',/color,/PORTRAIT,xsi=0.9*8.2, ysi=0.9*11.7, xoff=.7, yoff=.5, _extra=_extra,/INCHES
+Erase,255
+!p.background = 255 
+!P.position=0
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = .9, title = 'SPRINKLER FRACTION',  /noborder,/isotropic, position = position_row1
+contour,sprinkler,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = .9, title = 'DRIP FRACTION',  /noborder,/isotropic, position = position_row2
+contour,drip,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = .9, title = 'FLOOD FRACTION',  /noborder,/isotropic, position = position_row3
+contour,flood,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+
+colorbar,n_levels = 21, levels = levels, colors = colors, labels = levels, position = position_col
+;DEVICE, /CLOSE
+;Set_Plot, thisDevice
+snapshot = TVRD()
+TVLCT, r, g, b, /Get
+Device, Z_Buffer=1
+Set_Plot, thisDevice
+image24 = BytArr(3, 850, 1100)
+image24[0,*,*] = r[snapshot]
+image24[1,*,*] = g[snapshot]
+image24[2,*,*] = b[snapshot]
+Write_PNG, 'IrrigMethod.png' , image24
+
+end
+; ---------------------------------------------------------------------------------------------
+
+ pro plot_lai_minmax, ncat, tile_id
+
+; Rerad 0.25-degree GRIPC and MIRCA data
+
+filename = '../irrig.dat'
+limits = [-60.,-180.,90.,-180.]
+if file_test ('limits.idl') then restore,'limits.idl'
+
+id   = NCDF_OPEN (filename, /NOWRITE)
+
+NCDF_VARGET, id,'LAIMIN',LAI_MNV
+NCDF_VARGET, id,'LAIMAX',LAI_MXV
+
+NCDF_CLOSE, id
+
+LAI_MNV (where (LAI_MNV gt 100.)) = !VALUES.F_NAN
+LAI_MXV (where (LAI_MXV gt 100.)) = !VALUES.F_NAN
+
+im = n_elements(tile_id[*,0])
+jm = n_elements(tile_id[0,*])
+
+dx = 360. / im
+dy = 180. / jm
+
+x = indgen(im)*dx -180. +  dx/2.
+y = indgen(jm)*dy -90.  +  dy/2.
+
+LAI_MN = REPLICATE (!VALUES.F_NAN,IM, JM)
+LAI_MX = REPLICATE (!VALUES.F_NAN,IM, JM)
+for j = 0l, jm -1l do begin
+   for i = 0l, im -1 do begin
+      if(tile_id[i,j] gt 0) then begin
+	LAI_MN(i,j) = LAI_MNV (tile_id[i,j] -1)
+	LAI_MX(i,j) = LAI_MXV (tile_id[i,j] -1)
+      endif	
+   endfor
+endfor
+LAI_MN (where (LAI_MN eq 0.)) = !VALUES.F_NAN
+LAI_MX (where (LAI_MX eq 0.)) = !VALUES.F_NAN
+
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+
+load_colors
+r_in  = [253,224,255,238,205,193,152,  0,124,  0,  0,  0,  0,  0,  0, 48,110, 85]
+g_in  = [253,238,255,238,205,255,251,255,252,255,238,205,139,128,100,128,139,107]
+b_in  = [253,224,  0,  0,  0,193,152,127,  0,  0,  0,  0,  0,  0,  0, 20, 61, 47]
+
+n_levels = n_elements (r_in)
+levels=[0.,0.25,0.5,0.75,1.,1.25,1.5,10. * indgen(11)*0.05+2.]
+red  = intarr (256)
+green= intarr (256)
+blue = intarr (256)
+
+red  (255) = 255
+green(255) = 255
+blue (255) = 255
+
+for k = 0, N_levels -1 do begin 
+	red  (k+1) = r_in (k)
+	green(k+1) = g_in (k)
+	blue (k+1) = b_in (k)
+endfor
+
+TVLCT,red,green,blue
+
+colors = indgen (N_levels) + 1
+
+position_row1 = [0.02, 0.50, 0.98, 0.95]
+position_row2 = [0.02, 0.10, 0.98, 0.45]
+
+position_col   = [0.20, 0.02, 0.80, 0.05] 
+
+
+Erase,255
+!p.background = 255 
+!P.position=0
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = 1.5, title = 'LAI Minimum',  /noborder,/isotropic, position = position_row1
+contour,LAI_MN,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = 1.5, title = 'LAI Maximum',  /noborder,/isotropic, position = position_row2
+contour,LAI_MX,x,y,levels = levels, c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
+!P.position= position_col 
+alpha=fltarr(n_levels,2)
+alpha(*,0)=levels
+alpha(*,1)=levels
+h=[0,1]
+
+dx = (240.)/(n_levels-1)
+
+clev = levels
+clev (*) = 1
+contour,alpha,levels,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
+           /noerase,yticks=1,ytickname=[' ',' '] ,xrange=[min(levels),max(levels)], $
+           xtitle=' ', color=0,xtickv=levels, $
+           C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)"
+contour,alpha,levels,h,levels=levels,color=0,/overplot,c_label=clev
+      for k = 0,n_elements(colors) -1 do xyouts,levels[k],1.1,string(levels[k],format='(f4.2)') ,orientation=90,color=0,charsize =0.8
+
+
+snapshot = TVRD()
+TVLCT, r, g, b, /Get
+Device, Z_Buffer=1
+Set_Plot, thisDevice
+image24 = BytArr(3, 850, 1100)
+image24[0,*,*] = r[snapshot]
+image24[1,*,*] = g[snapshot]
+image24[2,*,*] = b[snapshot]
+Write_PNG, 'LAI_minmax.png' , image24
+
+end
+; ---------------------------------------------------------------------------------------------
+
+ pro irrig_fractions, ncat, tile_id
+
+; Rerad 0.25-degree GRIPC and MIRCA data
+filename = '../irrig.dat'
+limits = [-60.,-180.,90.,-180.]
+if file_test ('limits.idl') then restore,'limits.idl'
+
+id   = NCDF_OPEN (filename, /NOWRITE)
+
+NCDF_VARGET, id,'IRRIGFRAC',IRRIGFRACV
+NCDF_VARGET, id,'PADDYFRAC',PADDYFRACV
+NCDF_VARGET, id,'RAINFEDFRAC',RAINFEDFRACV
+
+NCDF_CLOSE, id
+
+IRRIGFRACV  (where (IRRIGFRACV   gt 1.)) = !VALUES.F_NAN
+PADDYFRACV  (where (PADDYFRACV   gt 1.)) = !VALUES.F_NAN
+RAINFEDFRACV(where (RAINFEDFRACV gt 1.)) = !VALUES.F_NAN
+
+im = n_elements(tile_id[*,0])
+jm = n_elements(tile_id[0,*])
+
+dx = 360. / im
+dy = 180. / jm
+
+x = indgen(im)*dx -180. +  dx/2.
+y = indgen(jm)*dy -90.  +  dy/2.
+
+IRRIGFRAC   = REPLICATE (!VALUES.F_NAN,IM, JM)
+PADDYFRAC   = REPLICATE (!VALUES.F_NAN,IM, JM)
+RAINFEDFRAC = REPLICATE (!VALUES.F_NAN,IM, JM)
+
+for j = 0l, jm -1l do begin
+   for i = 0l, im -1 do begin
+      if(tile_id[i,j] gt 0) then begin
+        IRRIGFRAC  (i,j) = IRRIGFRACV   (tile_id[i,j] -1)
+	PADDYFRAC  (i,j) = PADDYFRACV   (tile_id[i,j] -1)
+	RAINFEDFRAC(i,j) = RAINFEDFRACV (tile_id[i,j] -1)
+      endif	
+   endfor
+endfor
+
+IRRIGFRAC  (where (IRRIGFRAC   eq 0.)) = !VALUES.F_NAN
+PADDYFRAC  (where (PADDYFRAC   eq 0.)) = !VALUES.F_NAN
+RAINFEDFRAC(where (RAINFEDFRAC eq 0.)) = !VALUES.F_NAN
+
+colors = indgen (21) + 140
+levels = indgen (21)*0.05/2.
+
+position_row1 = [0.02, 0.70, 0.98, 0.95]
+position_row2 = [0.02, 0.40, 0.98, 0.65]
+position_row3 = [0.02, 0.10, 0.98, 0.35]
+
+position_col   = [0.20, 0.02, 0.80, 0.05] 
+
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+Erase,255
+!p.background = 255 
+!P.position=0
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = 1.5, title = 'IRRIGATED CROP FRACTION',  /noborder,/isotropic, position = position_row1
+contour,irrigfrac,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = 1.5, title = 'PADDY FRACTION',  /noborder,/isotropic, position = position_row2
+contour,paddyfrac,x,y,levels = levels, c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = 1.5, title = 'RAINFED FRACTION',  /noborder,/isotropic, position = position_row3
+contour,rainfedfrac,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+
+
+colorbar,n_levels = 21, levels = levels, colors = colors, labels = levels, position = position_col
+
+snapshot = TVRD()
+TVLCT, r, g, b, /Get
+Device, Z_Buffer=1
+Set_Plot, thisDevice
+image24 = BytArr(3, 850, 1100)
+image24[0,*,*] = r[snapshot]
+image24[1,*,*] = g[snapshot]
+image24[2,*,*] = b[snapshot]
+Write_PNG, 'GIA-Hybrid_IrrigFracs.png' , image24
+
+end
+
+; -------------------------------------------------------------------------------------------
+
+pro plot_crop_times, ncat, tile_id
+  
+
+filename = '../irrig.dat'
+limits = [-60.,-180.,90.,-180.]
+if file_test ('limits.idl') then restore,'limits.idl'
+
+id   = NCDF_OPEN (filename, /NOWRITE)
+
+NCDF_VARGET, id,'IRRIGPLANT',plantv
+NCDF_VARGET, id,'IRRIGHARVEST',harvestv
+NCDF_VARGET, id,'CROPIRRIGFRAC',Fracv
+NCDF_VARGET, id,'IRRIGTYPE',irrigtypev
+NCDF_VARGET, id,'CROPCLASSNAME',cropname
+NCDF_CLOSE, id
+
+cropname = string (cropname)
+
+im = n_elements(tile_id[*,0])
+jm = n_elements(tile_id[0,*])
+
+dx = 360. / im
+dy = 180. / jm
+
+xx = indgen(im)*dx -180. +  dx/2.
+yy = indgen(jm)*dy -90.  +  dy/2.
+x = fltarr (IM,JM)
+y = fltarr (IM,JM)
+PLANT     = REPLICATE (!VALUES.F_NAN,IM, JM, 2, 26)
+HARVEST   = REPLICATE (!VALUES.F_NAN,IM, JM, 2, 26)
+FRAC      = REPLICATE (!VALUES.F_NAN,IM, JM, 26)
+IRRIGTYPE = REPLICATE (!VALUES.F_NAN,IM, JM, 26)
+
+for j = 0l, jm -1l do begin
+   for i = 0l, im -1 do begin
+      x (i,j) = xx(i)
+      y (i,j) = yy(j)
+      if(tile_id[i,j] gt 0) then begin
+	PLANT    (i,j,*,*) = PLANTV     (tile_id[i,j] -1,*,*)
+        HARVEST  (i,j,*,*) = HARVESTV   (tile_id[i,j] -1,*,*)
+        FRAC     (i,j,*) = FRACV      (tile_id[i,j] -1,*)
+        IRRIGTYPE(i,j,*) = IRRIGTYPEV (tile_id[i,j] -1,*)
+      endif	
+   endfor
+endfor
+;for n = 0, 25 do begin
+;  data1 = frac    (*,*,n)
+;  data2 = plant   (*,*,0,n)
+;  data3 = harvest (*,*,0,n)
+;   for j = 0, nr - 1 do begin
+;      for i = 0, nc -1 do begin
+;         if (mask (i,j) gt 0.5) then begin
+;            
+;            if((Plant  (I,J,0,n) gt 400) and (frac (i,j,n) gt 0.)) then begin
+;               print , i,j, n,Plant  (I,J,0,0:3), frac (i,j,0:3)
+;            if((data2  (I,J) gt 400) and (data1 (i,j) gt 0.)) then begin
+;               print , i,j, n,data2  (I,J), data1 (i,j)
+;               
+;            endif 
+;         endif
+;      endfor
+;   endfor
+;endfor
+
+;fmask = where (frac gt  0.)
+;frac    (where (frac    eq  0.)) = !VALUES.F_NAN
+;plant   (where (plant   gt 400)) = !VALUES.F_NAN
+;harvest (where (harvest gt 400)) = !VALUES.F_NAN
+;stop
+
+colors = indgen (21) + 140
+levels = indgen (21)*0.05/2.
+DOY   = [ 1, 32, 60,  91, 121, 152, 182, 213, 244, 274, 305, 335, 366, 370]
+DOYM    = [15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349, 366, 370]
+DOYL   = [15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349, 366, 370]
+ITYP   = [1,2,3,4] 
+colors2= [69, 145, 64, 66, 70, 71,73,75,76, 78, 80, 113, 114, 116, 117]   
+colors3 = [69, 64,80]
+row_dims1 = [0.10, 0.32, 0.54, 0.76]
+row_dims2 = [0.27, 0.49, 0.71, 0.96]
+;col_dmis1 = [0.02, 0.34, 0.66]
+;col_dmis2 = [0.34, 0.66, 0.98]
+col_dmis1 = [0.02, 0.25, 0.50, 0.75]
+col_dmis2 = [0.25, 0.50, 0.75, 0.98]
+
+;position_col1   = [0.04, 0.02, 0.32, 0.05] 
+;position_col2   = [0.38, 0.02, 0.92, 0.05] 
+position_col1   = [0.04, 0.02, 0.32, 0.05] 
+position_col2   = [0.38, 0.02, 0.68, 0.05] 
+position_col3   = [0.70, 0.02, 0.92, 0.05] 
+
+page = 1
+Row = 1 
+A=findgen(16)*(!PI*2/16.)
+usersym,0.1*cos(a),0.1*sin(a),/fill
+thisDevice = !D.Name
+
+set_plot,'Z'
+Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+load_colors
+;set_plot,'PS'
+;!P.font=0
+;Device, FILENAME= plotdir + 'gia_irrig_params.ps',/color,/PORTRAIT,xsi=0.9*8.2, ysi=0.9*11.7, xoff=.7, yoff=.5, _extra=_extra,/INCHES
+Erase,255
+!p.background = 255 
+!P.position=0
+
+for n = 0, 25 do begin
+
+   if (row eq 1) then begin
+      thisDevice = !D.Name
+      set_plot,'Z'
+      Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+      Erase,255
+      !p.background = 255 
+      !P.position=0
+   endif
+   
+   data1 = frac    (*,*,n)
+   fmask = where (data1 gt 0.)
+   this = plant   (*,*,0,n)
+   data2 = this (fmask)
+   this = harvest (*,*,0,n)
+   data3 = this (fmask) 
+   this = irrigtype (*,*,n)
+   data4 = this (fmask)     
+   lons = x (fmask)
+   lats = y (fmask)
+
+   data1 (where (data1 le 0)) = !VALUES.F_NAN
+   
+   for col = 0,3 do begin
+      print, col
+      if (col eq 0) then begin
+         ptitle = ' : frac'
+         data_grid = data1
+      endif
+      
+      if (col eq 1) then begin
+         ptitle = ' : DOY plant' 
+         data_grid = data2
+      endif
+      
+      if (col eq 2) then begin
+         ptitle = ' : DOY harvest'
+         data_grid = data3
+      endif
+ 
+      if (col eq 3) then begin
+         ptitle = ' : IRRIGTYPE'
+         data_grid = data4
+      endif
+
+      plot_position = [col_dmis1(col),row_dims1(row-1), col_dmis2(col),row_dims2(row-1)]
+      print, col, row, plot_position
+      MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = 0.8, title = cropname(n) + ptitle,  /noborder, position = plot_position
+      
+      if(col eq 0) then begin
+         contour,data_grid,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+      endif else if (col eq 3) then begin
+	for i = 0l, n_elements (data_grid) -1l do begin
+	    if(data_grid(i) gt 0.)  then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors3(value_locate (ITYP,data_grid(i)))	
+	endfor
+      endif else begin
+	for i = 0l, n_elements (data_grid) -1l do begin
+	    if((data_grid(i) gt 0.) and (data_grid(i) le 366.))  then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors2(value_locate (doy,data_grid(i)))	
+	endfor
+
+      endelse
+      
+      MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+      
+   endfor
+   
+   row = row + 1
+   
+   if (row eq 5) then begin
+      
+      colorbar,n_levels = 21, levels = levels, colors = colors, labels = levels, position = position_col1
+      colorbar,n_levels = n_elements (DOY), levels = DOY, colors = colors2, labels = DOY, position = position_col2
+      colorbar,n_levels = 4, levels = [1,2,3,4], colors = colors3, labels = ['Sprinkler', 'Drip', 'Flood',''], position = position_col3
+;      ERASE
+      snapshot = TVRD()
+      TVLCT, r, g, b, /Get
+      Device, Z_Buffer=1
+      Set_Plot, thisDevice
+      image24 = BytArr(3, 850, 1100)
+      image24[0,*,*] = r[snapshot]
+      image24[1,*,*] = g[snapshot]
+      image24[2,*,*] = b[snapshot]
+      Write_PNG, 'gia_irrig_params_' + string (page, '(i2.2)') + '.png' , image24
+      
+      row = 1 
+      page = page + 1
+      
+   endif
+
+   this = plant   (*,*,1,n)
+   data2 = this (fmask)
+	
+   if(max (data2) gt 0) then begin
+      if (row eq 1) then begin
+         thisDevice = !D.Name
+         set_plot,'Z'
+         Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+         Erase,255
+         !p.background = 255 
+         !P.position=0
+      endif
+      
+      this = plant   (*,*,1,n)
+      data2 = this (fmask)
+      this = harvest (*,*,1,n)
+      data3 = this (fmask) 
+  
+      for col = 0,2 do begin
+         if (col eq 0) then begin
+            ptitle = ' : frac'
+            data_grid = data1
+         endif
+         
+         if (col eq 1) then begin
+            ptitle = ' : DOY plant' 
+            data_grid = data2
+         endif
+         
+         if (col eq 2) then begin
+            ptitle = ' : DOY harvest'
+            data_grid = data3
+         endif
+         
+         plot_position = [col_dmis1(col),row_dims1(row-1), col_dmis2(col),row_dims2(row-1)]
+         print, col, row, plot_position
+         MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits , charsize = 0.8, title = cropname(n) + ptitle,  /noborder, position = plot_position
+         if(col eq 0) then begin
+            contour,data_grid,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
+        endif else if (col eq 3) then begin
+	     for i = 0l, n_elements (data_grid) -1l do begin
+	         if(data_grid(i) gt 0.) then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors3(value_locate (ITYP,data_grid(i)))	
+	     endfor
+         endif else begin
+	     for i = 0l, n_elements (data_grid) -1l do begin
+	         if((data_grid(i) gt 0.) and (data_grid(i) le 366.)) then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors2(value_locate (doy,data_grid(i)))	
+	     endfor
+         endelse
+         
+         MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2   
+         
+      endfor
+      row = row + 1
+      
+      if (row eq 5) then begin
+         
+         colorbar,n_levels = 21, levels = levels, colors = colors, labels = levels, position = position_col1
+         colorbar,n_levels = n_elements (DOY), levels = DOY, colors = colors2, labels = DOY, position = position_col2
+         colorbar,n_levels = 4, levels = [1,2,3,4], colors = colors3, labels = ['Sprinkler', 'Drip', 'Flood',''], position = position_col3
+;	 ERASE
+         snapshot = TVRD()
+         TVLCT, r, g, b, /Get
+         Device, Z_Buffer=1
+         Set_Plot, thisDevice
+         image24 = BytArr(3, 850, 1100)
+         image24[0,*,*] = r[snapshot]
+         image24[1,*,*] = g[snapshot]
+         image24[2,*,*] = b[snapshot]
+         Write_PNG, 'gia_irrig_params_' + string (page, '(i2.2)') + '.png' , image24
+         
+         row = 1 
+         page = page + 1
+
+      endif      
+   endif   
+endfor
+
+;DEVICE, /CLOSE
+;Set_Plot, thisDevice
+end
+; =========================================================================
+
+pro colorbar,n_levels = n_levels, levels = levels, colors = colors, labels = labels,$
+             position = position, vertical= vertical, horizontal = horizontal
+
+  IF KEYWORD_SET(vertical) THEN BEGIN
+  
+     !P.position=[position(2) + 0.02, position(1) ,position(2) + 0.05, position(3)] 
+     
+     alpha=fltarr(2,n_levels)
+     alpha(0,*)=levels
+     alpha(1,*)=levels
+     h=[-1,1]
+     clev = levels
+     clev (*) = 1
+     k = 0
+     
+     levelsx = indgen (N_levels)
+
+     contour,alpha,h,levelsx,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
+             /noerase,xticks=1, xtickname=[' ',' '] ,yrange=[min(levelsx),max(levelsx)], $
+             ytitle=' ', color=0, $
+             C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)",ytickformat = "(A1)"
+     contour,alpha,h,levelsx,levels=levels,color=0,/overplot,c_label=clev
+     for k = 0,n_elements(levels) -1 do xyouts,1.1, levelsx[k],labels(k) ,color=0,charsize =1.2
+
+  endif else begin
+
+;     !P.position=[position(0) +0.1, position(1)-0.06 ,position(2) - 0.1, position(1)-0.04] 
+     !P.position=[0.15, 0.01, 0.85, 0.04]  
+     IF KEYWORD_SET(position) then !P.position=position ;
+
+     alpha=fltarr(n_levels,2)
+     alpha(*,0)=levels
+     alpha(*,1)=levels
+     h=[0,1]
+     clev = levels
+     clev (*) = 1
+     k = 0
+     
+     levelsx = indgen (N_levels)
+
+     contour,alpha,levelsx,h,levels=levels,c_colors=colors,/fill,/xstyle,/ystyle, $
+             /noerase,yticks=1, ytickname=[' ',' '] ,xrange=[min(levelsx),max(levelsx)], $
+             xtitle=' ', color=0, $
+             C_charsize=1.0, charsize=0.5 ,xtickformat = "(A1)",ytickformat = "(A1)"
+     contour,alpha,levelsx,h,levels=levels,color=0,/overplot,c_label=clev
+
+     if(n_levels eq 4) then begin
+ 
+	 for k = 0,n_elements(levels) -1 do xyouts, levelsx[k],1.1, strtrim(labels(k)), color=0,charsize =0.8,orientation=90    
+    endif else begin
+     if(max (labels) le 1.) then begin
+     for k = 0,n_elements(levels) -1 do xyouts, levelsx[k],1.1,string(labels(k),'(f5.2)') ,color=0,charsize =0.8,orientation=90    
+ 
+       endif else begin
+       for k = 0,n_elements(levels) -1 do xyouts, levelsx[k],1.1,string(labels(k),'(i3.3)') ,color=0,charsize =0.8,orientation=90    
+      endelse
+     endelse
+  endelse
+
+     !P.position=0
 
 end

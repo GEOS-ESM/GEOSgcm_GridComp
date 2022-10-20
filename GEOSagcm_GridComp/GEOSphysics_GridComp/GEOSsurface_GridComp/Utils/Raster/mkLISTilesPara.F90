@@ -7,13 +7,13 @@ PROGRAM mkLISTilesPara
   use MAPL_SortMod
 
   implicit none
-  integer  , parameter :: nc_esa = 129600, nr_esa = 64800, SRTM_maxcat = 291284
+  integer  , parameter :: nc_esa = 129600, nr_esa = 64800
   real     , parameter :: pi= MAPL_PI
   integer  , parameter :: HYDRO1k_maxcat = 6000000
   integer, parameter   :: nc_gswp2 = 360, nr_gswp2 = 180, n_gswp2 =15238 
   integer, parameter :: max_pfaf_smap = 100
   character(40) :: arg
-  integer       ::  i, N_args, iargc, status
+  integer       ::  i, N_args, command_argument_count, status
   character*300 :: latlon_vector_file
   integer       :: nc, nr
   character*200 :: gfile
@@ -23,7 +23,7 @@ PROGRAM mkLISTilesPara
   real :: dx, dy
   integer :: ncells, dateline, nc_domain,nr_domain,i_offset,j_offset
   
-  N_args = iargc()
+  N_args = command_argument_count()
 
   if(N_args /= 2) then
      print *,'USAGE : bin/mkLISTilesPara -vfile filename'
@@ -36,11 +36,11 @@ PROGRAM mkLISTilesPara
      
      i = i+1
      
-     call getarg(i,arg)
+     call get_command_argument(i,arg)
      
      if     ( trim(arg) == '-vfile' ) then
         i = i+1
-        call getarg(i,latlon_vector_file)
+        call get_command_argument(i,latlon_vector_file)
 	
      else ! stop for any other arguments
 
@@ -50,14 +50,14 @@ PROGRAM mkLISTilesPara
      endif     
 end do
 
-call system('mkdir -p data/ ; mkdir -p til/ ; mkdir -p rst/ ; mkdir -p clsm/plots')
-call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-call system('cd ..')
+call execute_command_line('mkdir -p data/ ; mkdir -p til/ ; mkdir -p rst/ ; mkdir -p clsm/plots')
+call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+call execute_command_line('cd ..')
      
 !   Check for the 10 arc-sec MaskFile
 ! -----------------------------------
 
-call getenv ("MASKFILE"        ,MaskFile        )
+call get_environment_variable ("MASKFILE"        ,MaskFile        )
 
 if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then       
    ! Use new ESA based MaskFile
@@ -80,14 +80,14 @@ endif
  ! create Grid2Catch transfer file
  ! -------------------------------
  
- CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), deltaXY=dx)  
+ ! CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), deltaXY=dx)  
 
 tmpstring1 = '-e EASE -g '//trim(gfile) 
 write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
-tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
+tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
 print *,trim(tmpstring)
 
-call system(tmpstring)
+call execute_command_line(tmpstring)
 
 contains
 
@@ -552,7 +552,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   
   nc_global = nint(360./dx)
   nr_global = nint(180./dy)
-  
+
   if (nc_domain == 0) nc_domain = nc_global
   if (nr_domain == 0) nr_domain = nr_global
   
@@ -597,7 +597,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   tileid   = 0
   
   write (20,*) ncells
-  write (20,*) 2
+  write (20,*) 1
   write (20,'(a11)') glabel1
   write (20,*) nc_global
   if (dateline == 0) then
@@ -605,13 +605,13 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   else
      write (20,*) nr_global
   endif
-  write (20,'(a9)') glabel2
-  write (20,*) nc_domain
-  if (dateline == 0) then
-     write (20,*) nr_domain + 1
-  else
-     write (20,*) nr_domain
-  endif
+ !  write (20,'(a9)') glabel2
+ ! write (20,*) nc_domain
+ ! if (dateline == 0) then
+ !    write (20,*) nr_domain + 1
+ ! else
+ !    write (20,*) nr_domain
+ ! endif
  
   regrid = .true.
   dx_esa = ceiling(real(nc_esa) / real(nc_global)) ! x-dimension (or # of ESA columns within the raster grid cell)
@@ -783,12 +783,12 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   write (20,*) nc_global
   read  (19,*) nr_global
   write (20,*) nr_global
-  read  (19,'(a9)') glabel2
-  write (20,'(a9)') glabel2
-  read (19,*) nc_domain
-  write (20,*) nc_domain
-  read (19,*) nr_domain
-  write (20,*) nr_domain
+!  read  (19,'(a9)') glabel2
+!  write (20,'(a9)') glabel2
+!  read (19,*) nc_domain
+!  write (20,*) nc_domain
+!  read (19,*) nr_domain
+!  write (20,*) nr_domain
   
   write(23,*) ncells
   

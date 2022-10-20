@@ -5,7 +5,7 @@ program Runoff
 
   implicit none
 
-  integer                :: nx, ny
+  integer                :: nx, ny, pf
   integer, allocatable   :: lats(:,:), lons(:,:)
   integer, pointer       :: rst(:,:), SortArr(:,:), key(:)
   integer, pointer       :: srctile(:),  srcweight(:), dstweight(:), dsttile(:)
@@ -18,7 +18,7 @@ program Runoff
   character*100          :: fileLL="data/CATCH/Outlet_latlon."
   character*5            :: C_NX, C_NY
 
-  call getarg(1,file)
+  call get_command_argument(1,file)
 
   fileT = "til/"//trim(file)//".til"
   fileR = "rst/"//trim(file)//".rst"
@@ -33,7 +33,7 @@ program Runoff
 
   open(10,file=fileT, form="formatted", status="old")
 
-  read(10,*) np, nx, ny
+  read(10,*) np, pf, nx, ny
   close(10)
 !  print *, nx, ny
 
