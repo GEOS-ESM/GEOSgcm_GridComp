@@ -74,7 +74,7 @@ contains
 ! !ARGUMENTS:
     implicit none
      type(ESMF_VM) :: vm
-     integer :: RC     ! Error code
+     integer :: status     ! Error code
 !    integer, intent(in) :: clm_mpicom
 !    integer, intent(in) :: LNDID
 !
