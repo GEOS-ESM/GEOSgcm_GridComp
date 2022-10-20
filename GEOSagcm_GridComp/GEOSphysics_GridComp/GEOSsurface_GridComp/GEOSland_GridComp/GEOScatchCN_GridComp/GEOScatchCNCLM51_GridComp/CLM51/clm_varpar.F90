@@ -109,11 +109,7 @@ module clm_varpar
   ! For CH4 code 
   integer, parameter :: ngases = 3 ! CH4, O2, & CO2
 
-  nlevmaxurbgrnd = max0(nlevurb,nlevgrnd)
-  nlevmaxurbgrnd = nlevgrnd ! jkolassa: set this here, since we are not modelling urban tiles for now
-
-
-  integer, public :: max_patch_per_col = maxsoil_patches ! since we don't have CFTs or urban patches
+  integer, public :: max_patch_per_col
 
 contains
 
@@ -130,6 +126,10 @@ contains
     implicit none
 
 !----------------------------
+
+    nlevmaxurbgrnd = max0(nlevurb,nlevgrnd)
+    nlevmaxurbgrnd = nlevgrnd ! jkolassa: set this here, since we are not modelling urban tiles for now
+    max_patch_per_col = maxsoil_patches ! since we don't have CFTs or urban patches
 
      ! here is a switch to set the number of soil levels for the biogeochemistry calculations.
     ! currently it works on either a single level or on nlevsoi and nlevgrnd levels
