@@ -26,6 +26,7 @@ module CatchmentCNRstMod
 
   type, extends(CatchmentRst) :: CatchmentCNRst
      logical :: isCLM45
+     logical :: isCLM40
      integer :: VAR_COL
      integer :: VAR_PFT
      real, allocatable ::    cnity(:,:)
@@ -106,6 +107,7 @@ contains
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
  
      catch%isCLM45 = .false.
+     catch%isCLM40 = .false.
      call formatter%open(filename, pFIO_READ, __RC__)
      meta  = formatter%read(__RC__)
      ntiles = meta%get_dimension('tile', __RC__)
@@ -115,6 +117,7 @@ contains
      if (index(cnclm, '40') /=0) then
         catch%VAR_COL = VAR_COL_CLM40
         catch%VAR_PFT = VAR_PFT_CLM40
+        catch%isCLM40 = .true.
      endif
      if (index(cnclm, '45') /=0) then
         catch%VAR_COL = VAR_COL_CLM45
@@ -157,8 +160,8 @@ contains
            call MAPL_VarRead(formatter,"RUNSRFM",   catch%runsrfm    , __RC__)
            call MAPL_VarRead(formatter,"AR1M",      catch%ar1m       , __RC__)
            call MAPL_VarRead(formatter,"T2M10D",    catch%T2M10D     , __RC__)
-           call MAPL_VarRead(formatter,"TPREC10D"   catch%TPREC10D   , __RC__)
-           call MAPL_VarRead(formatter,"TPREC60D"   catch%TPREC60D   , __RC__)
+           call MAPL_VarRead(formatter,"TPREC10D",  catch%TPREC10D   , __RC__)
+           call MAPL_VarRead(formatter,"TPREC60D",  catch%TPREC60D   , __RC__)
         endif
         call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL, __RC__)
 
@@ -198,12 +201,14 @@ contains
     character(len=256) :: Iam = "CatchmentCNRst_empty"
 
      catch%isCLM45 = .false.
+     catch%isCLM40 = .false.
      catch%ntiles = meta%get_dimension('tile', __RC__)
      catch%time = time
      catch%meta = meta
      if (index(cnclm, '40') /=0) then
         catch%VAR_COL = VAR_COL_CLM40
         catch%VAR_PFT = VAR_PFT_CLM40
+        catch%isCLM40 = .true.
      endif
      if (index(cnclm, '45') /=0) then
         catch%VAR_COL = VAR_COL_CLM45
@@ -250,58 +255,41 @@ contains
      call MAPL_VarWrite(formatter,"CNCOL",this%CNCOL)
      call MAPL_VarWrite(formatter,"CNPFT",this%CNPFT)
 
-     dim1 = meta%get_dimension('tile')
-     allocate (var(dim1),source = 0.)
-
-     call MAPL_VarWrite(formatter,"BFLOWM", var)
-     call MAPL_VarWrite(formatter,"TOTWATM",var)
-     call MAPL_VarWrite(formatter,"TAIRM",  var)
-     call MAPL_VarWrite(formatter,"TPM",    var)
-     call MAPL_VarWrite(formatter,"CNSUM",  var)
-     call MAPL_VarWrite(formatter,"SNDZM",  var)
-     call MAPL_VarWrite(formatter,"ASNOWM", var)
-
-     myVariable => meta%get_variable("TGWM")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     do j=1,dim1
-        call MAPL_VarWrite(formatter,"TGWM",var,offset1=j)
-        call MAPL_VarWrite(formatter,"RZMM",var,offset1=j)
-     end do
+     call MAPL_VarWrite(formatter,"BFLOWM", this%bflowm )
+     call MAPL_VarWrite(formatter,"TOTWATM",this%totwatm)
+     call MAPL_VarWrite(formatter,"TAIRM",  this%tairm  )
+     call MAPL_VarWrite(formatter,"TPM",    this%tpm    )
+     call MAPL_VarWrite(formatter,"CNSUM",  this%cnsum  )
+     call MAPL_VarWrite(formatter,"SNDZM",  this%sndzm  )
+     call MAPL_VarWrite(formatter,"ASNOWM", this%asnowm )
+     call MAPL_VarWrite(formatter,"TGWM",   this%tgwm)
+     call MAPL_VarWrite(formatter,"RZMM",   this%rzmm)
 
      if (this%isCLM45) then
-        do j=1,dim1
-           call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
-        enddo
+        call MAPL_VarWrite(formatter,"SFMM",  this%sfmm)
 
         call MAPL_VarWrite(formatter,"ABM",     this%ABM, rc =rc     )
         call MAPL_VarWrite(formatter,"FIELDCAP",this%FIELDCAP)
         call MAPL_VarWrite(formatter,"HDM",     this%HDM     )
         call MAPL_VarWrite(formatter,"GDP",     this%GDP     )
         call MAPL_VarWrite(formatter,"PEATF",   this%PEATF   )
-        call MAPL_VarWrite(formatter,"RHM",     var)
-        call MAPL_VarWrite(formatter,"WINDM",   var)
-        call MAPL_VarWrite(formatter,"RAINFM",  var)
-        call MAPL_VarWrite(formatter,"SNOWFM",  var)
-        call MAPL_VarWrite(formatter,"RUNSRFM", var)
-        call MAPL_VarWrite(formatter,"AR1M",    var)
-        call MAPL_VarWrite(formatter,"T2M10D",  var)
-        call MAPL_VarWrite(formatter,"TPREC10D",var)
-        call MAPL_VarWrite(formatter,"TPREC60D",var)
-     else
-        call MAPL_VarWrite(formatter,"SFMCM",  var)
+
+        call MAPL_VarWrite(formatter,"RHM",     this%rhm      )
+        call MAPL_VarWrite(formatter,"WINDM",   this%windm    )
+        call MAPL_VarWrite(formatter,"RAINFM",  this%rainfm   )
+        call MAPL_VarWrite(formatter,"SNOWFM",  this%snowfm   )
+        call MAPL_VarWrite(formatter,"RUNSRFM", this%runsrfm  )
+        call MAPL_VarWrite(formatter,"AR1M",    this%ar1m     )
+        call MAPL_VarWrite(formatter,"T2M10D",  this%t2m10d   )
+        call MAPL_VarWrite(formatter,"TPREC10D",this%tprec10d )
+        call MAPL_VarWrite(formatter,"TPREC60D",this%tprec60d )
      endif
-     myVariable => meta%get_variable("PSNSUNM")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     dname => myVariable%get_ith_dimension(3)
-     dim2 = meta%get_dimension(dname)
-     do i=1,dim2
-        do j=1,dim1
-           call MAPL_VarWrite(formatter,"PSNSUNM",var,offset1=j,offset2=i)
-           call MAPL_VarWrite(formatter,"PSNSHAM",var,offset1=j,offset2=i)
-        end do
-     end do
+
+     if (this%isCLM40)   call MAPL_VarWrite(formatter,"SFMCM",  this%sfmcm)
+
+     call MAPL_VarWrite(formatter,"PSNSUNM", this%PSNSUNM )
+     call MAPL_VarWrite(formatter,"PSNSHAM", this%PSNSHAM )
+
      call formatter%close()
      
      _RETURN(_SUCCESS)
@@ -340,29 +328,29 @@ contains
      allocate(this%GDP(ntiles))
      allocate(this%PEATF(ntiles))
 
-     allocate(this%bflowm  (ntiles)
-     allocate(this%totwatm (ntiles)
-     allocate(this%tairm   (ntiles)
-     allocate(this%tpm     (ntiles)
-     allocate(this%cnsum   (ntiles)
-     allocate(this%sndzm   (ntiles)
-     allocate(this%asnowm  (ntiles)
-     allocate(this%psnsunm(ntiles,nveg,nzone)
-     allocate(this%psnsham(ntiles,nveg,nzone)
+     allocate(this%bflowm  (ntiles))
+     allocate(this%totwatm (ntiles))
+     allocate(this%tairm   (ntiles))
+     allocate(this%tpm     (ntiles))
+     allocate(this%cnsum   (ntiles))
+     allocate(this%sndzm   (ntiles))
+     allocate(this%asnowm  (ntiles))
+     allocate(this%psnsunm(ntiles,nveg,nzone))
+     allocate(this%psnsham(ntiles,nveg,nzone))
 
      if (this%isCLM40) then
-        allocate(this%sfmcm   (ntiles)
+        allocate(this%sfmcm   (ntiles))
      endif
      if (this%isCLM45) then
-        allocate(this%ar1m    (ntiles)
-        allocate(this%rainfm  (ntiles)
-        allocate(this%rhm     (ntiles)
-        allocate(this%runsrfm (ntiles)
-        allocate(this%snowfm  (ntiles)
-        allocate(this%windm   (ntiles)
-        allocate(this%tprec10d(ntiles)
-        allocate(this%tprec60d(ntiles)
-        allocate(this%t2m10d  (ntiles)
+        allocate(this%ar1m    (ntiles))
+        allocate(this%rainfm  (ntiles))
+        allocate(this%rhm     (ntiles))
+        allocate(this%runsrfm (ntiles))
+        allocate(this%snowfm  (ntiles))
+        allocate(this%windm   (ntiles))
+        allocate(this%tprec10d(ntiles))
+        allocate(this%tprec60d(ntiles))
+        allocate(this%t2m10d  (ntiles))
      endif
 
      _RETURN(_SUCCESS)
@@ -567,7 +555,7 @@ contains
      integer, allocatable, dimension (:,:) :: Id_glb_cn, id_loc_cn
      integer, allocatable, dimension (:)   :: tid_offl, id_loc
      real, allocatable, dimension (:)      :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
-         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum2, var_dum3
+         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
      integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE
      real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:)
@@ -747,9 +735,8 @@ contains
 
         allocate (var_off_col (1: in_ntiles, 1 : nzone,1 : var_col))
         allocate (var_off_pft (1: in_ntiles, 1 : nzone,1 : nveg, 1 : var_pft))
-        allocate (var_dum2    (1:in_ntiles))
-        allocate (var_out     (1:out_ntiles))
-        allocate (var_psn     (1:out_ntiles), nveg, nzone)
+        allocate (var_out     (out_ntiles))
+        allocate (var_psn     (out_ntiles, nveg, nzone))
 
         this%tile_id = [(i*1.0, i=1, out_ntiles)]
 
