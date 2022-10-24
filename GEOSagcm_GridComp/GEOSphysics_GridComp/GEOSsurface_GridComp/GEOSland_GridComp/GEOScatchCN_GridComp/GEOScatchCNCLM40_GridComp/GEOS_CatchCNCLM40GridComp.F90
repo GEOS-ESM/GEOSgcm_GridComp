@@ -5003,7 +5003,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         type(ESMF_Config)           :: CF
         type(MAPL_SunOrbit)         :: ORBIT
-        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime
+        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime, NextRecordTime
         type(ESMF_Time)             :: BEFORE
         type(ESMF_Time)             :: NOW
         type(ESMF_Time)             :: MODELSTART
@@ -5167,6 +5167,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Variables for FPAR
         ! --------------------------
     real   , allocatable, dimension (:,:)      :: parzone
+    logical           :: record
+    type(ESMF_Alarm)  :: RecordAlarm 
+
 
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
 
@@ -6842,7 +6845,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
-       if(NextTime == StopTime) then
+       record = .false.
+       call ESMF_ClockGetAlarm ( CLOCK, alarmname="RecordAlarm001", ALARM=RecordAlarm, RC=STATUS )
+       if (status == 0) then
+           call ESMF_AlarmGet( RecordAlarm, RingTime=NextRecordTime, _RC)
+           if (NextTime == NextRecordTime) record = .true.
+       endif
+
+       if(NextTime == StopTime  .or. record ) then
           
           call CN_exit(ntiles,nveg,nzone,ityp,fveg,cncol,var_col,cnpft,var_pft)     
           i = 1
