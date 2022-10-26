@@ -50,7 +50,6 @@ module CatchmentCNRstMod
      real, allocatable ::    GDP     (:)
      real, allocatable ::    PEATF   (:) 
 
-     ! below is not necessary. It is not read. It is set to 0 during writing
      real, allocatable :: bflowm(:)
      real, allocatable :: totwatm(:)
      real, allocatable :: tairm(:)
