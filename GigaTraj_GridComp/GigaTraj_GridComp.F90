@@ -13,13 +13,23 @@ module GigaTraj_GridCompMod
 
   use ESMF
   use MAPL
-
+  use mpi
   implicit none
   private
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public :: SetServices
+
+  type GigaTrajInternal
+    integer :: npes
+    type (ESMF_Grid) :: LatLonGrid
+    integer, allocatable :: CellToRank(:,:)
+  end type
+
+  type GigatrajInternalWrap
+    type (GigaTrajInternal), pointer :: PTR
+  end type
 
 contains
 
@@ -42,6 +52,9 @@ contains
 
     type (ESMF_Config)                  :: CF
     type (MAPL_MetaComp),  pointer      :: MAPL
+
+    type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
+    type (GigatrajInternalWrap)      :: wrap
 
 ! Begin...
 
@@ -80,6 +93,11 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
+
+    allocate(GigaTrajInternalPtr)
+    wrap%ptr => GigaTrajInternalPtr
+    call ESMF_UserCompSetInternalState ( GC, 'GigaTrajInternal', wrap, status )
+    VERIFY_(STATUS) 
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS )
     VERIFY_(STATUS)
@@ -129,32 +147,15 @@ contains
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
 ! Local derived type aliases
-
-   type (MAPL_MetaComp),  pointer  :: STATE
-   type (ESMF_State),         pointer  :: GIM(:)
-   type (ESMF_State),         pointer  :: GEX(:)
-   type (ESMF_Field)                   :: FIELD
-   type (ESMF_Time)                    :: CurrTime, RingTime
-   type (ESMF_TimeInterval)            :: TIMEINT
-   type (ESMF_Alarm)                   :: ALARM
-   type (ESMF_Alarm)                   :: ALARM4D
-   type (ESMF_Config)                  :: cf
-   integer                             :: I, NQ
-   real                                :: POFFSET, DT             
-   real, pointer, dimension(:,:)       :: PHIS,SGH,VARFLT,PTR
-   real, pointer, dimension(:,:,:)     :: TEND!
-   character(len=ESMF_MAXSTR)          :: replayMode
-   real                                :: RPL_INTERVAL
-   real                                :: RPL_SHUTOFF
-   real                                :: IAU4dFREQ
-   integer                             :: PREDICTOR_DURATION
-   integer                             :: MKIAU_FREQUENCY
-   character(len=ESMF_MAXSTR), parameter :: INITIALIZED_EXPORTS(3) = &
-        (/'PHIS  ', 'SGH   ', 'VARFLT' /)
-
-   logical                             :: DasMode
-   character(len=ESMF_MAXSTR)          :: STRING
-   character(len=ESMF_MAXSTR)          :: rplMode
+  type (MAPL_MetaComp),  pointer  :: STATE 
+  type (ESMF_VM)                      :: vm
+  integer :: I1, I2, J1, J2, comm, npes, rank, ierror, NX, NY
+  type(ESMF_Grid) :: CubedGrid
+  integer, allocatable :: I1s(:), J1s(:), I2s(:),J2s(:)
+  integer :: DIMS(3)
+  type (GigaTrajInternal), pointer :: GigaTrajInternalPtr 
+  type (GigatrajInternalWrap)   :: wrap
+  
 
 ! =============================================================================
 
@@ -163,7 +164,7 @@ contains
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, config=cf, RC=STATUS )
+    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Initialize"
 
@@ -174,6 +175,7 @@ contains
     VERIFY_(STATUS)
 
 
+    call MAPL_TimerOn(STATE,"TOTAL")
     call MAPL_TimerOn(STATE,"INITIALIZE")
 
 ! Call Initialize for every Child
@@ -181,10 +183,53 @@ contains
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_TimerOn(STATE,"TOTAL")
+    call ESMF_VMGetCurrent(vm, rc=status)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, __RC__)
+    call MPI_Comm_size(comm, npes, ierror); _VERIFY(ierror)
 
-    call MAPL_TimerOff(STATE,"TOTAL")
+    call ESMF_GridCompGet(GC, grid=CubedGrid, rc=status)
+    call MAPL_GridGet(CubedGrid, globalCellCountPerDim=DIMS, RC=status)
+
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    VERIFY_(STATUS)
+    GigaTrajInternalPtr => wrap%ptr
+
+    GigaTrajInternalPtr%npes = npes
+    call MAPL_MakeDecomposition(NX,NY,rc=status)
+    VERIFY_(status)
+    GigaTrajInternalPtr%LatLonGrid = grid_manager%make_grid(                           &
+                 LatLonGridFactory(im_world=DIMS(1)*4, jm_world=DIMS(1)*2, lm=DIMS(3),  &
+                 nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status) ) 
+
+
+    call MAPL_Grid_interior(GigaTrajInternalPtr%LatLonGrid ,i1,i2,j1,j2)
+
+    allocate(I1s(npes),J1s(npes))
+    allocate(I2s(npes),J2s(npes))
+
+    call MPI_Allgather(i1, 1, MPI_INTEGER, I1s, 1, MPI_INTEGER, comm, ierror)
+    _VERIFY(ierror)
+    call MPI_Allgather(i2, 1, MPI_INTEGER, I2s, 1, MPI_INTEGER, comm, ierror)
+    _VERIFY(ierror)
+    call MPI_Allgather(j1, 1, MPI_INTEGER, J1s, 1, MPI_INTEGER, comm, ierror)
+    _VERIFY(ierror)
+    call MPI_Allgather(j2, 1, MPI_INTEGER, J2s, 1, MPI_INTEGER, comm, ierror)
+    _VERIFY(ierror)
+
+    call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, globalCellCountPerDim=DIMS, RC=status)
+
+    allocate(GigaTrajInternalPtr%CellToRank(DIMS(1),DIMS(2))) 
+    
+    do rank = 0, npes -1
+       I1 = I1s(rank+1)
+       I2 = I2s(rank+1)      
+       J1 = J1s(rank+1)
+       J2 = J2s(rank+1)
+       GigaTrajInternalPtr%CellToRank(I1:I2,J1:J2) = rank
+    enddo
+   
     call MAPL_TimerOff(STATE,"INITIALIZE")
+    call MAPL_TimerOff(STATE,"TOTAL")
 
 
     RETURN_(ESMF_SUCCESS)
@@ -194,7 +239,7 @@ contains
 
 !BOP
 
-! !IROUTINE: Run -- Run method for the composite Agcm Gridded Component
+! !IROUTINE: Run -- Run method for Gigatraj GridComp
 
 ! !INTERFACE:
 
@@ -210,17 +255,138 @@ contains
 
 ! !DESCRIPTION: 
  
-
 !EOP
 
 ! ErrLog Variables
 
-  character(len=ESMF_MAXSTR)           :: IAm 
-  integer                              :: STATUS
-  character(len=ESMF_MAXSTR)           :: COMP_NAME
+    character(len=ESMF_MAXSTR)       :: IAm 
+    integer                          :: STATUS
+    character(len=ESMF_MAXSTR)       :: COMP_NAME
+    integer        :: CSTAT, ESTAT, YY, MM, HH, DD, H, M,S, model_dtstep_m
+    character(512) :: CMSG
+    character(256) :: command_line
+    character(19)  :: begdate, enddate
+    character(64)  :: format_string
+    type(ESMF_TimeInterval) :: ModelTimeStep
+    type(ESMF_Time)         :: CurrentTime
+  
+    type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
+    type (GigatrajInternalWrap)   :: wrap
+    type(ESMF_Grid) :: CubedGrid
+  
+    integer :: num_parcels, i
+    integer,parameter :: seed = 86456
+    real, allocatable :: lats(:), lons(:), lons_send(:), lats_send(:), U(:), pos(:)
+    real, allocatable :: lons_recv(:), lats_recv(:), U_recv(:), U_send(:)
+    real :: rparcels, dlat, dlon
+    integer, allocatable :: counts_send(:),counts_recv(:), II(:), JJ(:), ranks(:)
+    integer, allocatable :: disp_send(:), disp_recv(:), tmp_position(:)
+    integer :: DIMS(3), rank, comm, ierror
+    type (ESMF_VM)   :: vm
+  
+    call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
+      _VERIFY(status)
+  
+    call ESMF_ClockGet(clock, timeStep=ModelTimeStep,rc=status)
+      _VERIFY(status)
 
 
-  RETURN_(ESMF_SUCCESS)
+!-----------------
+! Step 1) given lat lon, where it should go ?
+!-----------------
+
+
+    call ESMF_GridCompGet(GC, grid=CubedGrid, rc=status)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    VERIFY_(STATUS)
+    GigaTrajInternalPtr => wrap%ptr
+
+    call random_seed()
+    call random_number(rparcels)
+
+    num_parcels = nint(rparcels*10)
+
+    allocate(lats(num_parcels), lons(num_parcels))
+
+    call random_number(lats)
+    call random_number(lons)
+
+    lons = lons*2*MAPL_PI
+    lats = lats*MAPL_PI
+
+    allocate(II(num_parcels),JJ(num_parcels), ranks(num_parcels))
+    allocate(counts_send(GigaTrajInternalPtr%npes))
+    allocate(counts_recv(GigaTrajInternalPtr%npes))
+    allocate(disp_send(GigaTrajInternalPtr%npes))
+    allocate(disp_recv(GigaTrajInternalPtr%npes))
+
+    call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, globalCellCountPerDim=DIMS, RC=status)
+
+    dlon = 2*MAPL_PI / DIMS(1)
+    dlat = MAPL_PI / DIMS(2)
+
+    II = ceiling (lons/dlon)
+    JJ = ceiling (lats/dlat)
+
+    if (any(II > DIMS(1)) .or. any(II<0)) stop ("wrong II")
+    if (any(JJ > DIMS(2)) .or. any(JJ<0)) stop ("wrong JJ")
+    do i = 1, num_parcels
+       ranks(i) = GigaTrajInternalPtr%CellToRank(II(i), JJ(i))
+    enddo
+
+
+    do rank = 0, GigaTrajInternalPtr%npes-1
+       counts_send(rank+1) = count(ranks == rank)
+    enddo
+
+
+!---------------------
+!step 2) pack the location data and send them to where data sit
+!---------------------
+
+    call ESMF_VMGetCurrent(vm, rc=status)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, __RC__)
+    call MPI_AllToALL(counts_send, 1, MPI_INTEGER, counts_recv, 1, MPI_INTEGER, comm, ierror)
+ 
+    disp_send = 0
+    do rank = 1, GigaTrajInternalPtr%npes-1
+       disp_send(rank+1) = disp_send(rank)+ counts_send(rank)
+    enddo
+    disp_recv = 0
+    do rank = 1, GigaTrajInternalPtr%npes-1
+       disp_recv(rank+1) = disp_recv(rank)+ counts_recv(rank)
+    enddo
+
+    ! pack and regroup lats lons, and ids
+    tmp_position = disp_send
+    allocate(lons_send(num_parcels))
+    allocate(lons_recv(sum(counts_recv)))
+    allocate(pos(num_parcels))
+    do i = 1, num_parcels
+       rank   = ranks(i)
+       pos(i) = tmp_position(rank+1) +1
+       lons_send(pos(i)) = lons(i)
+       tmp_position(rank+1) = tmp_position(rank+1) + 1
+    enddo
+
+    call MPI_AllToALLv(lons_send, counts_send, disp_send, MPI_REAL, lons_recv, counts_recv, disp_recv, MPI_REAL, comm, ierror)
+
+!---------------------
+!step 3) Interpolate the data and send back where they request
+!---------------------
+
+    allocate(U_recv(sum(counts_recv)), source = rank*1.0)
+    allocate(U_send(num_parcels), source = -1.0)
+
+    call MPI_AllToALLv(U_recv, counts_recv, disp_recv, MPI_REAL, U_send, counts_send, disp_send, MPI_REAL, comm, ierror)
+
+
+    ! re-arrange U_send
+    allocate(U(num_parcels))
+    U(:) = U_send(pos(:))
+  
+    print*," Great, I am still alive" 
+    RETURN_(ESMF_SUCCESS)
   end subroutine Run
 
 end module GigaTraj_GridCompMod
