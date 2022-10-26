@@ -5093,7 +5093,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     real, allocatable, dimension(:) :: totwat ! total soil liquid water (kg/m2)
     real, save :: ashift = 0. ! for baseflow. gkw: this should match value in routine "base" in catchment
-    real, allocatable, dimension(:), save :: runsrf  ! surface runoff (kg/m2/s) 
     real :: Qair_sat                                 ! saturated specific humidity (kg/kg)
     real, allocatable, dimension(:) :: Qair_relative          ! relative humidity (%)
 
@@ -5576,11 +5575,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       ! -----------------------------------------------------------------------------------------
       allocate( lmrsunm(ntiles,nveg,nzone) )
       allocate( lmrsham(ntiles,nveg,nzone) )
-      allocate(             runsrf(ntiles) )      
       
       lmrsunm = 0.
       lmrsham = 0.      
-      runsrf = 0.
            
       first = .false.
       
@@ -6884,7 +6881,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     windm   = windm   + UU
     rainfm  = rainfm  + (PCU + PLS)
     snowfm  = snowfm  + SNO
-    runsrfm = runsrfm + runsrf
+    runsrfm = runsrfm + RUNSURF
     ar1m    = ar1m    + car1        
     psnsunm = psnsunm + psnsun*laisun
     psnsham = psnsham + psnsha*laisha
@@ -7519,9 +7516,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            TP4 = TP4 + MAPL_TICE
            TP5 = TP5 + MAPL_TICE
            TP6 = TP6 + MAPL_TICE
-
-
-             runsrf = RUNSURF    ! for N leaching, fzeng
 
         end if
 
