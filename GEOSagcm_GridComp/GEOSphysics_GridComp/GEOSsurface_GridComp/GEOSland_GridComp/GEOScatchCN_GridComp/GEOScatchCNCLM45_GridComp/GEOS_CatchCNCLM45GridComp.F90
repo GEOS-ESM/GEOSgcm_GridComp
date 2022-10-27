@@ -1909,6 +1909,17 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  ) 
   VERIFY_(STATUS)
    
+  call MAPL_AddInternalSpec(GC,                    &
+       LONG_NAME          = 'overland_runoff_including_throughflow'  ,&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'RUNSURF'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
   !---------- GOSWIM snow impurity related variables ----------
 
   if (N_CONST_LAND4SNWALB /= 0) then 
@@ -2251,14 +2262,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'overland_runoff_including_throughflow'  ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'RUNSURF'                   ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snowmelt_flux'             ,&
@@ -5391,6 +5394,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2M10D'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC10D   ,'TPREC10D'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC60D   ,'TPREC60D'   ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,RUNSURF    ,'RUNSURF'    ,RC=STATUS); VERIFY_(STATUS)
  
         if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
@@ -5432,7 +5436,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,ICESOI             , 'ICESOI' ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPSNO             , 'EVPSNO'              ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,BFLOW              , 'BASEFLOW',ALLOC=.true.,          RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RUNSURF            , 'RUNSURF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SMELT              , 'SMELT'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,HLWUP              , 'HLWUP'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF            , 'SWNDSRF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
