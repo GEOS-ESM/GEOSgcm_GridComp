@@ -1838,6 +1838,28 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
   
   call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for sunlit leaf maintenance respiration',&
+       UNITS              = 'umol CO2 m-2 s-1'                              ,&
+       SHORT_NAME         = 'LMRSUNM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for shaded leaf maintenance respiration',&
+       UNITS              = 'umol CO2 m-2 s-1'                   ,&
+       SHORT_NAME         = 'LMRSHAM'                  ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for snow depth'     ,&
        UNITS              = 'm'                         ,&
        SHORT_NAME         = 'SNDZM'                     ,&
@@ -1886,7 +1908,7 @@ subroutine SetServices ( GC, RC )
        RESTART            = MAPL_RestartOptional        ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
-    
+   
   !---------- GOSWIM snow impurity related variables ----------
 
   if (N_CONST_LAND4SNWALB /= 0) then 
@@ -4672,6 +4694,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: cnsum
         real, dimension(:,:,:), pointer :: psnsunm
         real, dimension(:,:,:), pointer :: psnsham
+        real, dimension(:,:,:), pointer :: lmrsunm
+        real, dimension(:,:,:), pointer :: lmrsham
         real, dimension(:),   pointer :: sndzm
         real, dimension(:),   pointer :: asnowm
         real, dimension(:,:), pointer :: RDU001
@@ -5106,7 +5130,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! static summing arrays for CN
     ! ----------------------------
-    real, allocatable, dimension(:,:,:), save :: lmrsunm, lmrsham
     real, allocatable, dimension(:) :: ht, tp, soilice
     real :: zbar, frice
 
@@ -5361,6 +5384,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,LMRSUNM    ,'LMRSUNM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,LMRSHAM    ,'LMRSHAM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2M10D'     ,RC=STATUS); VERIFY_(STATUS)
@@ -5573,11 +5598,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       ! variables used for summing CN inputs over multiple land model calls; not saved on restart 
       ! fzeng: run must end on a CN call step
       ! -----------------------------------------------------------------------------------------
-      allocate( lmrsunm(ntiles,nveg,nzone) )
-      allocate( lmrsham(ntiles,nveg,nzone) )
+      !allocate( lmrsunm(ntiles,nveg,nzone) )
+      !allocate( lmrsham(ntiles,nveg,nzone) )
       
-      lmrsunm = 0.
-      lmrsham = 0.      
+      !lmrsunm = 0.
+      !lmrsham = 0.      
            
       first = .false.
       
