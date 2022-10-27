@@ -230,7 +230,7 @@ subroutine SetServices ( GC, RC )
 
     ! SNOW ALBEDO 
     ! 0 : parameterization based on look-up table 
-    ! 1 : MODIS-derived snow albedo (where available, elsewhere fall back to option 0)
+    ! 1 : MODIS-derived snow albedo (where available, elsewhere no data values filled with global land average Snow_Albedo=0.56)
     call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
 
     ! GOSWIM SNOW_ALBEDO 

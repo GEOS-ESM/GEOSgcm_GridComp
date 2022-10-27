@@ -118,7 +118,7 @@
 #
 #    0  : Snow albedo parameterization based on look-up table (default)
 #    1  : Snow albedo derived from MODIS Collection MOD10A1.061 (Feb/2000 - Mar/2022)  [NOT YET AVAILABLE FOR CatchCN]
-#          where available, elsewhere fall back to option 0
+#          where available, elsewhere no data values filled with global land average Snow_Albedo=0.56
 #
 # GEOSagcm=>SNOW_ALBEDO_INFO: 0
 # GEOSldas=>SNOW_ALBEDO_INFO: 0

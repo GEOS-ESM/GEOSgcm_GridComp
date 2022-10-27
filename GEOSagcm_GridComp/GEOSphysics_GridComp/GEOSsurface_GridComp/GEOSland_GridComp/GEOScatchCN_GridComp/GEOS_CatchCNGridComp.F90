@@ -86,7 +86,7 @@ subroutine SetServices ( GC, RC )
 
     ! SNOW ALBEDO -- so far, only parameterization based on look-up table is implemented for CatchCN
     ! 0 : parameterization based on look-up table 
-    ! 1 : MODIS-derived snow albedo (where available, elsewhere fall back to option 0)
+    ! 1 : MODIS-derived snow albedo (where available, elsewhere no data values filled with global land average Snow_Albedo=0.56)
     call ESMF_ConfigGetAttribute (SCF, label='SNOW_ALBEDO_INFO:', value=SNOW_ALBEDO_INFO, DEFAULT=0, RC=STATUS) ; VERIFY_(STATUS)
 
     _ASSERT( SNOW_ALBEDO_INFO==0, "SNOW_ALBEDO_INFO must be 0 for CatchCN")

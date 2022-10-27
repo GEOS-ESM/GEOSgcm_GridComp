@@ -52,7 +52,7 @@ module rmTinyCatchParaMod
   logical,     public, save :: use_PEATMAP = .false.
   logical,     public, save :: jpl_height  = .false.
   character*8, public, save :: LAIBCS      = 'UNDEF'
-  character*4, public, save :: SOILBCS     = 'UNDEF'
+  character*6, public, save :: SOILBCS     = 'UNDEF'
   character*6, public, save :: MODALB      = 'UNDEF'
   character*8, public, save :: SNOWALB     = 'UNDEF'
   REAL,        public, save :: GNU         = MAPL_UNDEF

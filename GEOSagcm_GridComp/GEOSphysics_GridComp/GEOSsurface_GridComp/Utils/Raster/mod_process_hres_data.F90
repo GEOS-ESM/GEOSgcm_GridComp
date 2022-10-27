@@ -3010,15 +3010,13 @@ END SUBROUTINE modis_scale_para_high
   real,allocatable,dimension(:)   :: min_lon,max_lon,min_lat,max_lat,snw_alb
   integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
   real,parameter                  :: alb_res=10.0/1200.0
-  real,dimension(xdim)            :: lon_alb
-  real,dimension(ydim)            :: lat_alb
   real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
   real,dimension(36,18,xdim,ydim) :: stch_snw_alb
   real                            :: minlon,maxlon,minlat,maxlat,pad_lon,pad_lat
   real                            :: sno_alb_cnt,sno_alb_sum,sno_alb_cnt2,sno_alb_sum2
   integer                         :: vvtil_min,hhtil_min,vvtil_max,hhtil_max,hhtil,vvtil
   integer                         :: tindex1,pfaf1
-  integer(kind=4)                 :: dummy,varid1,varid2,varid3
+  integer(kind=4)                 :: dummy,varid1 
   integer(kind=4)                 :: imin,imax,jmin,jmax
   integer(kind=4)                 :: imin2,imax2,jmin2,jmax2,count_init_invalid
   logical                         :: file_exists
@@ -3073,18 +3071,20 @@ END SUBROUTINE modis_scale_para_high
       write(vv,'(i2.2)') vvtil
       write(hh,'(i2.2)') hhtil
 
-      fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v1/snow_alb_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+      ! MODIS-based climatology albedo raster files filled for NoData values using global land 
+      ! average Snow Albedo (0.56). Note: the average excludes Antarctica and Greenland ice 
+      ! sheets and is weighted by the grid-cell area.
+      fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+
+      ! MODIS-based climatology albedo raster files (NoData set to 1e+15)
+      !fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v1/snow_alb_noFill_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
 
       ! Open the file. (NF90_NOWRITE ensures read-only access to the file)
       status=NF_OPEN(trim(fname),NF_NOWRITE, ncid)   ; VERIFY_(STATUS)
       ! Based on vars name, get the varids.
       status=NF_INQ_VARID(ncid,'Snow_Albedo',VarID1) ; VERIFY_(STATUS)
-      status=NF_INQ_VARID(ncid,'lon'        ,VarID2) ; VERIFY_(STATUS)
-      status=NF_INQ_VARID(ncid,'lat'        ,VarID3) ; VERIFY_(STATUS)
       ! Read the data.
       status=NF_GET_VARA_REAL(ncid,VarID1,(/1,1/),(/xdim,ydim/),stch_snw_alb_tmp) ; VERIFY_(STATUS)
-      status=NF_GET_VARA_REAL(ncid,VarID2,(/1/)  ,(/xdim/)     ,lon_alb)          ; VERIFY_(STATUS)
-      status=NF_GET_VARA_REAL(ncid,VarID3,(/1/)  ,(/ydim/)     ,lat_alb)          ; VERIFY_(STATUS)
       ! Close the file, freeing all resources.
       status=NF_CLOSE(ncid); VERIFY_(STATUS)
 
@@ -3096,7 +3096,7 @@ END SUBROUTINE modis_scale_para_high
 
   ! loop over tiles
   print*, 'Starting tile loop for snow albedo. '
-  count_init_invalid=0 ! counter for non-valid snow albedo avalues (informational use only; not needed for) 
+  count_init_invalid=0 ! counter for non-valid snow albedo values (informational use only) 
 
   do n = 1, maxcat ! loop over tiles
 
@@ -3147,14 +3147,14 @@ END SUBROUTINE modis_scale_para_high
         jmax=min(jmax,ydim)
 
         ! Generate sums and counts using current tile corresponding indices
-        sno_alb_sum= sno_alb_sum +                                                                &
-                       sum(stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin:imax,jmin:jmax),             &
-                           stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin:imax,jmin:jmax).gt.0.0 .and. &
-                           stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin:imax,jmin:jmax).le.1.0)
+        sno_alb_sum= sno_alb_sum +                                                    &
+                       sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax),             &
+                           stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).gt.0.0 .and. &
+                           stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).le.1.0)
 
-        sno_alb_cnt= sno_alb_cnt +                                                                &
-                     count(stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin:imax,jmin:jmax).gt.0.0 .and. &
-                           stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin:imax,jmin:jmax).le.1.0)
+        sno_alb_cnt= sno_alb_cnt +                                                    &
+                     count(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).gt.0.0 .and. &
+                           stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).le.1.0)
 
       end do ! vvtil
     end do ! hhtil
@@ -3187,14 +3187,14 @@ END SUBROUTINE modis_scale_para_high
           jmin2=max(jmin2,1)
           jmax2=min(jmax2,ydim)
 
-          sno_alb_sum2= sno_alb_sum2 +                                                                   &
-                          sum(stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin2:imax2,jmin2:jmax2),             &
-                              stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin2:imax2,jmin2:jmax2).gt.0.0 .and. &
-                              stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin2:imax2,jmin2:jmax2).le.1.0)
+          sno_alb_sum2= sno_alb_sum2 +                                                       &
+                          sum(stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2),             &
+                              stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).gt.0.0 .and. &
+                              stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).le.1.0)
 
-          sno_alb_cnt2= sno_alb_cnt2 +                                                                   &
-                        count(stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin2:imax2,jmin2:jmax2).gt.0.0 .and. &
-                              stch_snw_alb(hhtil:hhtil,vvtil:vvtil,imin2:imax2,jmin2:jmax2).le.1.0)
+          sno_alb_cnt2= sno_alb_cnt2 +                                                       &
+                        count(stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).gt.0.0 .and. &
+                              stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).le.1.0)
 
         end do ! vvtil
       end do ! hhtil
