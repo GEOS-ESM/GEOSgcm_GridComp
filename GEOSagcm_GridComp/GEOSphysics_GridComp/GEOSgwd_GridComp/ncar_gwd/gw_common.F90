@@ -265,7 +265,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, tau,  utgw,  vtgw, &
      ttgw,  gwut, ro_adjust, tau_adjust, &
-     kwvrdg, satfac_in, lapply_effgw_in, tndmax_in )
+     kwvrdg, satfac_in, tndmax_in )
 
   !-----------------------------------------------------------------------
   ! Solve for the drag profile from the multiple gravity wave drag
@@ -363,8 +363,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   real, intent(in), optional :: &
        satfac_in
 
-  logical, intent(in), optional :: lapply_effgw_in
-
   real, intent(in), optional :: tndmax_in
 
   !---------------------------Local storage-------------------------------
@@ -401,8 +399,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   real(GW_PRC) :: near_zero = tiny(1.0_GW_PRC)
 
-  logical :: lapply_effgw
-
   ! LU decomposition.
   type(TriDiagDecomp) :: decomp
 
@@ -419,18 +415,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      tndmax = 400._GW_PRC / 86400._GW_PRC
   endif
 
-  ! Default behavior is to apply effgw and
-  ! tendency limiters as designed by Sean
-  ! Santos (lapply_effgw=.TRUE.). However,
-  ! WACCM non-oro GW need to be retuned before
-  ! this can done to them. --jtb 03/02/16
-  if (present(lapply_effgw_in)) then
-      lapply_effgw = lapply_effgw_in
-  else
-      lapply_effgw = .FALSE.
-  endif
-
-  
   ! Lowest levels that loops need to iterate over.
   kbot_tend = maxval(tend_level)
   kbot_src = maxval(src_level)
@@ -566,9 +550,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           ! near reversing c-u.
           ubtl(i) = min(ubtl(i), umcfac * abs(c(i,l)-ubm(i,k)) / dt)
 
-          ! Note: Here the limiter is being applied to each component wave
-          ubtl(i) = min(ubtl(i), tndmax)
-        
           if (k <= tend_level(i)) then
 
            ! Save tendency for each wave (for later computation of kzz).
@@ -583,7 +564,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
      end do
 
-     ! Apply second tendency limit to maintain numerical stability.
+     ! Apply tendency limit to maintain numerical stability.
      ! Enforce du/dt < tndmax so that ridicuously large tendencies are not
      ! permitted.
      ! This can only happen above tend_level, so don't bother checking the
