@@ -183,15 +183,8 @@ module GEOS_DataAtmGridCompMod
       VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
-      SHORT_NAME = 'LWGNTWTR',               &
-      LONG_NAME = 'open_water_net_downward_longwave_flux',                &
-      UNITS = 'W m-2',                       &
-      DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, __RC__)
-
-    call MAPL_AddImportSpec(GC,              &
-      SHORT_NAME = 'LWTUP',                  &
-      LONG_NAME = 'upwelling_longwave_flux_at_toa', &
+      SHORT_NAME = 'LWDN',               &
+      LONG_NAME = 'open_water_downward_longwave_flux',                &
       UNITS = 'W m-2',                       &
       DIMS = MAPL_DimsHorzOnly,              &
       VLOCATION = MAPL_VLocationNone, __RC__)
@@ -210,6 +203,14 @@ module GEOS_DataAtmGridCompMod
       UNITS = 'K',                           &
       DIMS = MAPL_DimsHorzOnly,              &
       VLOCATION = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddInternalSpec(GC,              &
+         SHORT_NAME         = 'EMIS',          &
+         LONG_NAME          = 'surface_emissivity', &
+         UNITS              = '1',              &
+         DEFAULT            = 1.0,              &
+         DIMS = MAPL_DimsHorzOnly,              &
+         VLOCATION = MAPL_VLocationNone, __RC__)
 
 
 ! Get my MAPL_Generic state
@@ -414,10 +415,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer                                   :: IM, JM
   real, dimension(:,:), allocatable         :: Uskin, Vskin, Qskin
-  real, dimension(:,:), allocatable, target :: swrad, lwdn
+  real, dimension(:,:), allocatable, target :: swrad
   real, dimension(:,:), pointer             :: PS, PSsurf, Tair, Qair, Uair, Vair, DZ, ALW, BLW, SPEED
   real, dimension(:,:), pointer             :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin, lwdnsrf
   real, dimension(:,:), pointer             :: DRPARN, DFPARN, DRNIRN, DFNIRN, DRUVRN, DFUVRN
+  real, dimension(:,:), pointer             :: EMISSRF
 
   real, allocatable, dimension(:,:) :: ZTH
   real, allocatable, dimension(:,:) :: SLR
@@ -457,13 +459,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:,:) :: PCU      ! => null()
   real, pointer, dimension(:,:) :: PLS      ! => null()
   real, pointer, dimension(:,:) :: SNO      ! => null()
-  real, pointer, dimension(:,:) :: LWGNTWTR ! => null()
-  real, pointer, dimension(:,:) :: LWTUP    ! => null()
+  real, pointer, dimension(:,:) :: LWDN ! => null()
   real, pointer, dimension(:,:) :: SWGDWN   ! => null()
 
 ! pointers to export - none???
 ! pointers to internal
   real, pointer, dimension(:,:) :: TS
+  real, pointer, dimension(:,:) :: EMIS
   type(ESMF_STATE) :: internal
 
 ! Andrea: OBSERVE????
@@ -518,6 +520,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to Internals
 !----------------------
     call MAPL_GetPointer(Internal, Tskin, 'TS', __RC__)
+    call MAPL_GetPointer(Internal, EMIS, 'EMIS', __RC__)
 
 !  Pointers to Exports ????
 !---------------------
@@ -543,6 +546,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !    call ReadForcingData(impName='PS', frcName='SLP', default=90000., __RC__)
     call MAPL_GetPointer(import, PS, 'PS', __RC__)
     call MAPL_GetPointer(SurfImport, PSsurf, 'PS', __RC__)
+    where(ps==0.0) ps=100000.
     PSsurf = PS 
 
 ! Read 10m temperature (K)
@@ -550,6 +554,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   call ReadForcingData(impName='TA', frcName='T10', default=290., __RC__) ! how about default T10 = 270+30*COS(LAT)
     call MAPL_GetPointer(SurfImport, Tair, 'TA', __RC__)
     call MAPL_GetPointer(import, TA, 'TA', __RC__)
+    where(ta==0.0) ta=MAPL_Tice
     Tair = TA
 
 ! Read 10m specific humidity (kg kg-1)
@@ -557,7 +562,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   call ReadForcingData(impName='QA', frcName='Q10', default=2.0e-6, __RC__)
     call MAPL_GetPointer(SurfImport, Qair, 'QA', __RC__)
     call MAPL_GetPointer(import, QA, 'QA', __RC__)
-!    Qair = QA * 0.001 ! SA: convert g/Kg to Kg/Kg
+!@@    Qair = QA * 0.001 ! SA: convert g/Kg to Kg/Kg
     Qair = QA
 
 ! Read 10m zonal wind speed (m s-1)
@@ -581,7 +586,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     IM = size(Uair, 1)
     JM = size(Uair, 1)
-    allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), lwdn(IM,JM), __STAT__)
+    allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
 
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
     DZ = 50.0 ! meters
@@ -620,11 +625,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Radiation
 !   call ReadForcingData(impName='LWDNSRF', frcName='LWRAD', default=100.0, __RC__)
-    call MAPL_GetPointer(import, LWGNTWTR, 'LWGNTWTR', __RC__)
-    call MAPL_GetPointer(import, LWTUP,    'LWTUP',    __RC__)
+    call MAPL_GetPointer(import, LWDN, 'LWDN', __RC__)
     call MAPL_GetPointer(SurfImport, lwdnsrf, 'LWDNSRF', __RC__)
-
-    lwdn = LWGNTWTR + LWTUP
 
 !   call ReadForcingData(swrad, frcName='SWRAD', default=0.200, __RC__)
     call MAPL_GetPointer(import, SWGDWN, 'SWGDWN', __RC__)
@@ -681,8 +683,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     DFPARN = swrad*FRPAR*0.4
     DRUVRN = swrad*FRUVR*0.6
     DFUVRN = swrad*FRUVR*0.4
-    DRNIRN = swrad*FRNIRDIR
-    DFNIRN = swrad*FRNIRDIF
+    DRNIRN = swrad*FRNIR*0.6
+    DFNIRN = swrad*FRNIR*0.4
 
 !@@   print *,'DEBUG:min/max DRPARN',minval(DRPARN),maxval(DRPARN)
 
@@ -699,13 +701,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        Tskin = TA
     end if
 
-   BLW = 4*MAPL_STFBOL * Tskin**3
-   ALW = MAPL_STFBOL * Tskin**4 - BLW*Tskin
+   BLW = EMIS*4*MAPL_STFBOL * Tskin**3
+   ALW = EMIS*MAPL_STFBOL * Tskin**4 - BLW*Tskin
 
-   lwdnsrf = 0.0
-   where(LWGNTWTR /=  MAPL_Undef)
-      lwdnsrf = -(LWGNTWTR - MAPL_STFBOL * Tskin**4)
-   end where
+   call MAPL_GetPointer(SurfExport, EMISSRF, 'EMIS', alloc=.true., __RC__)
+
+   lwdnsrf = lwdn
+!   lwdnsrf = 0.0
+ !  where(LWGNTWTR /=  MAPL_Undef)
+ !     lwdnsrf = -(LWGNTWTR - MAPL_STFBOL * Tskin**4)
+ !  end where
 
 !    call SetVarToZero('BLW', __RC__)
     
@@ -757,6 +762,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfExport, TS, 'TS', __RC__)
 
    WHERE (TS /= MAPL_Undef)   Tskin = Tskin + (TS - Tskin) * DT / (DT + TAU_TS)
+   WHERE (EMISSRF /= MAPL_Undef) EMIS = EMISSRF
 
 !-- still left to do
 ! modify GCM to always get the skin from Saltwater
@@ -774,7 +780,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                    NUM_DUDP, NUM_DUWT, NUM_DUSD)
 ! ------------------------------------------------
 
-    deallocate(Uskin, Vskin, Qskin, swrad, lwdn, __STAT__)
+    deallocate(Uskin, Vskin, Qskin, swrad, __STAT__)
 
 !  All done
 !-----------
