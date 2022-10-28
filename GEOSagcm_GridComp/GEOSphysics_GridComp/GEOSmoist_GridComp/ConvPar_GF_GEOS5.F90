@@ -104,8 +104,7 @@ CONTAINS
                                ,RADSW   ,RADLW ,DQDT_BL  ,DTDT_BL                 &
                                ,FRLAND  ,AREA  ,USTAR ,TSTAR ,QSTAR ,T2M ,Q2M     &
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
-                               ,KPBLIN         &
-                               ,MAPL_GRAV      &
+                               ,KPBLIN  ,CNVFRC,SRFTYPE                           &
                                ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
                                ,DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF                   &
                                ,MUPDP,MUPSH,MUPMD                                 &
@@ -113,7 +112,7 @@ CONTAINS
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
                                ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
-                               ,RSU_CN,REV_CN, PFI_CN, PFL_CN                     )
+                               ,REVSU, PRFIL)
 
     IMPLICIT NONE
     INCLUDE "mpif.h"
@@ -131,8 +130,8 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: CNV_MF0 ,CNV_PRC3,CNV_MFD,CNV_DQCDT  &
                                                      ,CNV_UPDF, CNV_CVW, CNV_QC, ENTLAM&
                                                      ,CNV_NICE, CNV_NDROP, CNV_FICE
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: RSU_CN,REV_CN
-    REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: PFI_CN, PFL_CN
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU
+    REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: PRFIL
 
     !- Tendencies
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF
@@ -144,12 +143,12 @@ CONTAINS
 
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(IN)   :: FRLAND ,AREA ,USTAR ,TSTAR ,QSTAR &
                                                      ,T2M ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS  &
-                                                     ,KPBLIN,LONS,LATS                  &
+                                                     ,KPBLIN,CNVFRC,SRFTYPE,LONS,LATS   &
                                                      ,STOCHASTIC_SIG
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: SIGMA_DEEP, SIGMA_MID
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: CNPCPRATE ! kg m-2 s-1
 
-    REAL                             ,INTENT(IN)   :: DT_moist ,MAPL_GRAV
+    REAL                             ,INTENT(IN)   :: DT_moist
 
     INTEGER      :: ims,ime, jms,jme, kms,kme,    &
                     its,ite, jts,jte, kts,kte,    &
@@ -185,8 +184,6 @@ CONTAINS
 
     REAL,  ALLOCATABLE, DIMENSION(:,:,:,:) :: SRC_CHEM ! tracer mixing ratio tendencies from the parameterized convection
     
-    CHARACTER(LEN=100) :: AER_CHEM_MECH
-
     REAL,    DIMENSION(mxp,myp) :: CONPRR
 
     REAL,    DIMENSION(mxp,myp) ::  aot500  ,temp2m  ,sfc_press &
@@ -249,8 +246,8 @@ CONTAINS
    CNV_NDROP = 0.0
    CNV_FICE = 0.0
    CNPCPRATE = 0.0
-   RSU_CN = 0.0
-   REV_CN = 0.0
+   REVSU = 0.0
+   PRFIL = 0.0
 
    DQDT_GF = 0.0
    DTDT_GF = 0.0
@@ -561,10 +558,8 @@ IF(ITEST==0) CNPCPRATE(i,j) =  0.
           DO k=1,mzp ! in the future, limit the vertical loop to ktop (DO k=mzp,flip(ktop),-1)?
               !- convert from d temp/dt to d theta/dt using PK => d theta/dt = (1/pk)*d temp/dt
               !- (think if PK must be the current one _or_ at the begin of the time step
-              DTDT_GF(i,j,k) = SRC_T(flip(k),i,j)
           !   TH1(i,j,k) = TH1(i,j,k) + DT_moist * SRC_T(flip(k),i,j) / PK(i,j,k)
 
-              DQDT_GF(i,j,k) = SRC_Q(flip(k),i,j)
           !   Q1 (i,j,k) = Q1 (i,j,k) + DT_moist * SRC_Q(flip(k),i,j)
 	  !   Q1 (i,j,k) = max(smallerQV, Q1 (i,j,k))
               !
@@ -584,13 +579,10 @@ IF(ITEST==3) then
 ENDIF
          ENDDO
          DO k=1,mzp
-              tem1 =  min(1., (max(0.,(T1(i,j,k)-T_ice))/(T_0-T_ice))**2)
          !--- sublimation/evaporation tendencies (kg/kg/s)
-              RSU_CN (i,j,k) = REVSU_GF(flip(k),i,j)* (1.0-tem1)
-              REV_CN (i,j,k) = REVSU_GF(flip(k),i,j)*  tem1
+              REVSU (i,j,k) = REVSU_GF(flip(k),i,j)
          !--- preciptation fluxes (kg/kg/s)
-              PFI_CN (i,j,k) = PRFIL_GF(flip(k),i,j)* (1.0-tem1)
-              PFL_CN (i,j,k) = PRFIL_GF(flip(k),i,j)*  tem1
+              PRFIL (i,j,k) = PRFIL_GF(flip(k),i,j)
          ENDDO
         ENDDO
       ENDDO
@@ -600,8 +592,6 @@ ENDIF
           DO i=1,mxp
 	    IF(do_this_column(i,j) == 0) CYCLE
             DO k=1,mzp
-              DUDT_GF(i,j,k) = SRC_U(flip(k),i,j)
-              DVDT_GF(i,j,k) = SRC_V(flip(k),i,j)
            !  U1 (i,j,k) = U1 (i,j,k) + DT_moist * SRC_U(flip(k),i,j)
            !  V1 (i,j,k) = V1 (i,j,k) + DT_moist * SRC_V(flip(k),i,j)
             ENDDO
@@ -756,6 +746,63 @@ ENDIF
         ENDDO; ENDDO; ENDDO; ENDDO
   ENDIF !2 moment
 
+!
+  IF(maxval(icumulus_gf)>0) then
+      !~ IF(ntimes==1) then
+        !~ print*,'plumes   deep-shallow-congestus:', icumulus_gf
+        !~ print*,'closures deep-shallow-congestus:', closure_choice
+        !~ print*,'use_scale_dep,dicycle          :',USE_SCALE_DEP,DICYCLE
+        !~ print*,'scale depend: MID ',maxval(DX2d),minval(DX2d),maxval(SIGMA4d(:,:,MID)) ,minval(SIGMA4d(:,:,MID))
+        !~ print*,'scale depend: DEEP',maxval(DX2d),minval(DX2d),maxval(SIGMA4d(:,:,DEEP)),minval(SIGMA4d(:,:,DEEP))
+        !~ flush(6)
+      !~ ENDIF
+      DO IENS=1, maxiens
+        if(icumulus_gf(IENS) == ON .and. IENS== DEEP) then
+         DO j=1,myp
+           DO i=1,mxp
+            if(ierr4d(i,j,DEEP) /= 0) cycle
+            MFDP (i,j)      =xmb4d(i,j,DEEP)
+            MUPDP(i,j,1:mzp)=xmb4d(i,j,DEEP)*zup5d(i,j,flip(1):flip(mzp):-1,DEEP)
+            SIGMA_DEEP(i,j) =sigma4d(i,j,DEEP)
+           ENDDO
+         ENDDO
+        elseif(icumulus_gf(IENS) == ON .and. IENS== SHAL) then
+         DO j=1,myp
+           DO i=1,mxp
+            if(ierr4d(i,j,SHAL) /= 0) cycle
+            MFSH (i,j)      =xmb4d(i,j,SHAL)
+            MUPSH(i,j,1:mzp)=xmb4d(i,j,SHAL)*zup5d(i,j,flip(1):flip(mzp):-1,SHAL)
+           ENDDO
+         ENDDO
+        elseif(icumulus_gf(IENS) == ON .and. IENS== MID) then
+         DO j=1,myp
+           DO i=1,mxp
+             if(ierr4d(i,j,MID) /= 0) cycle
+             MFMD (i,j)      = cprr4d(i,j,MID) ! xmb4d(i,j,MID)temporary saving for mid precip
+             MUPMD(i,j,1:mzp)=xmb4d(i,j,MID)*zup5d(i,j,flip(1):flip(mzp):-1,MID)
+             SIGMA_MID (i,j) =sigma4d(i,j,MID)
+           ENDDO
+         ENDDO
+        endif
+      ENDDO
+      !- for output purposes, ierr=0 (convection is ON) will be changed to 1
+      where(ierr4d==0)ierr4d=1
+      where(ierr4d>1)ierr4d=0
+      DO j=1,myp
+       DO i=1,mxp
+        !- Tendencies
+         DQDT_GF(i,j,1:mzp)=SRC_Q(flip(1):flip(mzp):-1,i,j)
+         DTDT_GF(i,j,1:mzp)=SRC_T(flip(1):flip(mzp):-1,i,j)
+         DUDT_GF(i,j,1:mzp)=SRC_U(flip(1):flip(mzp):-1,i,j)
+         DVDT_GF(i,j,1:mzp)=SRC_V(flip(1):flip(mzp):-1,i,j)
+        !- Error codes
+         ERRDP(i,j)=float(ierr4d(i,j,DEEP))
+         ERRSH(i,j)=float(ierr4d(i,j,SHAL))
+         ERRMD(i,j)=float(ierr4d(i,j,MID ))
+       ENDDO
+      ENDDO
+  ENDIF
+  !
   if( allocated(src_chem))  deallocate(src_chem,stat=alloc_stat) !tendency   from convection
 
   !- for debugging purposes only
@@ -3036,8 +3083,8 @@ IF(VERT_DISCR == 1) THEN
       enddo
 
       do i=its,itf
-        trash  = 0.0
-        trash2 = 0.0
+        !trash  = 0.0
+        !trash2 = 0.0
         if(ierr(i).eq.0)then
          do k=kts,ktop(i)
             ! these three are only used at or near mass detrainment and/or entrainment levels
@@ -3075,7 +3122,7 @@ IF(VERT_DISCR == 1) THEN
                                               - melting(i,k))*g/dp
 
             !- check H conservation
-            trash2 = trash2+ (dellah(i,k))*dp/g
+            !trash2 = trash2+ (dellah(i,k))*dp/g
 
             !-- take out cloud liquid/ice water for detrainment
             detup=up_massdetro(i,k)
@@ -3112,7 +3159,7 @@ IF(VERT_DISCR == 1) THEN
                          - C_up + E_dn
 
             !- check water conservation liq+condensed (including rainfall)
-            trash= trash+ (dellaq(i,k)+dellaqc(i,k)+ G_rain-E_dn)*dp/g
+            !trash= trash+ (dellaq(i,k)+dellaqc(i,k)+ G_rain-E_dn)*dp/g
 
             !write(3,*)'=>H= ',k,real(trash2,4),real(dellah(i,k),4)
             !write(4,*)'=>W= ',k,real(trash,4),real(dellaq(i,k),4)
@@ -3182,8 +3229,8 @@ shift = 1
       enddo
 
       do i=its,itf
-        trash  = 0.0
-        trash2 = 0.0
+        !trash  = 0.0
+        !trash2 = 0.0
         if(ierr(i).eq.0)then
          do k=kts,ktop(i)
             ! these three are only used at or near mass detrainment and/or entrainment levels
@@ -3231,7 +3278,7 @@ shift = 1
 !-------------
 
             !- check H conservation
-            trash2 = trash2+ (dellah(i,k))*dp/g
+            !trash2 = trash2+ (dellah(i,k))*dp/g
 
             !-- take out cloud liquid/ice water for detrainment
             detup=up_massdetro(i,k)
@@ -3268,7 +3315,7 @@ shift = 1
                          - C_up + E_dn
 
             !- check water conservation liq+condensed (including rainfall)
-            trash= trash+ (dellaq(i,k)+dellaqc(i,k)+ G_rain-E_dn)*dp/g
+            !trash= trash+ (dellaq(i,k)+dellaqc(i,k)+ G_rain-E_dn)*dp/g
 
             !write(3,*)'=>H= ',k,real(trash2,4),real(dellah(i,k),4)
             !write(4,*)'=>W= ',k,real(trash,4),real(dellaq(i,k),4)
@@ -3608,7 +3655,7 @@ IF(USE_TRACER_TRANSP==1)  THEN
             enddo
 	  endif
 	  
-	  !- include evaporation (this term must not be applied to the tracer 'QW')
+	  !- include evaporation
           if(USE_TRACER_EVAP == 1 .and. trim(cumulus) /= 'shallow') then
             do k=kts,ktop(i)
                  dp=100.*(po_cup(i,k)-po_cup(i,k+1))
@@ -3646,7 +3693,7 @@ IF(USE_TRACER_TRANSP==1)  THEN
 	      ddtr(:,k) = se_chem(:,i,k) - (zuo(i,k+1)*sc_up_chem(:,i,k+1) - zuo(i,k)*sc_up_chem(:,i,k))*beta1      &
                                          + (zdo(i,k+1)*sc_dn_chem(:,i,k+1) - zdo(i,k)*sc_dn_chem(:,i,k))*beta1*edto(i)
              
-              !- include evaporation (this term must not be applied to the tracer 'QW')
+              !- include evaporation
               if(USE_TRACER_EVAP == 1 .and. trim(cumulus) /= 'shallow') then
                  out_chem(:,i,k) = out_chem(:,i,k)    &
                                  - 0.5*edto(i)*(zdo(i,k)*pw_dn_chem(:,i,k)+zdo(i,k+1)*pw_dn_chem(:,i,k+1))*beta1 !&  ! evaporated ( pw_dn < 0 => E_dn > 0)
@@ -3722,7 +3769,7 @@ IF(USE_TRACER_TRANSP==1)  THEN
 	                          - (zuo(i,k+1)*sc_up_chem(:,i,k+1) - zuo(i,k)*sc_up_chem(:,i,k))*beta1      &
                                   + (zdo(i,k+1)*sc_dn_chem(:,i,k+1) - zdo(i,k)*sc_dn_chem(:,i,k))*beta1*edto(i)
 
-              !- include evaporation (this term must not be applied to the tracer 'QW')
+              !- include evaporation
               if(USE_TRACER_EVAP == 1 .and. trim(cumulus) /= 'shallow') then
                  out_chem(:,i,k) = out_chem(:,i,k)    &
                                  - 0.5*edto(i)*(zdo(i,k)*pw_dn_chem(:,i,k)+zdo(i,k+1)*pw_dn_chem(:,i,k+1))*beta1 !&  ! evaporated ( pw_dn < 0 => E_dn > 0)
@@ -3740,8 +3787,6 @@ IF(USE_TRACER_TRANSP==1)  THEN
 
         !--- check mass conservation for tracers 
         do ispc = 1, mtp
-          trash_ (:) = 0.
-          trash2_(:) = 0.
 	  evap_  (:) = 0.
 	  wetdep_(:) = 0.
 	  residu_(:) = 0.
@@ -3754,10 +3799,6 @@ IF(USE_TRACER_TRANSP==1)  THEN
              wetdep_(ispc) =   wetdep_(ispc) + wetdep*dp/g 
 	     residu_(ispc) =   residu_(ispc) + (wetdep - evap)*dp/g
 	     	 
-!            trash_ (ispc) =   trash_ (ispc) + (out_chem (ispc,i,k) - evap + wetdep)*dp/g 
-             trash_ (ispc) =   trash_ (ispc) + (out_chem (ispc,i,k)                )*dp/g 
-
-             trash2_(ispc) =   trash2_(ispc) + se_chem(ispc,i,k)*dp/g 
            enddo
 	   if(residu_(ispc) < 0.) then 
 	     beta1 = g/(po_cup(i,kts)-po_cup(i,ktop(i)+1)) 
@@ -5743,8 +5784,8 @@ loop0:        do k=kts,ktf
     IF(VERT_DISCR == 1) THEN
       do i=its,itf
         if(ierr(i).eq.0)then
-         trash=0.
-         trash2=0.
+         !trash=0.
+         !trash2=0.
          do k=kts,ktop(i)
 
            ! entrainment/detrainment for updraft
@@ -5783,8 +5824,8 @@ loop0:        do k=kts,ktf
                            - C_up
 
             !- check water conservation liq+condensed
-            trash =trash + (dellaq(i,k)+dellaqc(i,k))*dp/g
-            trash2=trash2+  dellah(i,k)*dp/g
+            !trash =trash + (dellaq(i,k)+dellaqc(i,k))*dp/g
+            !trash2=trash2+  dellah(i,k)*dp/g
 
           enddo   ! k
 
@@ -5799,8 +5840,8 @@ loop0:        do k=kts,ktf
     ELSEIF(VERT_DISCR == 2) THEN
       do i=its,itf
         if(ierr(i) /= 0) CYCLE
-         trash=0.
-         trash2=0.
+         !trash=0.
+         !trash2=0.
          do k=kts,ktop(i)
 
            ! entrainment/detrainment for updraft
@@ -5844,8 +5885,8 @@ loop0:        do k=kts,ktf
                            - C_up
 
             !- check water conservation liq+condensed
-            trash =trash + (dellaq(i,k)+dellaqc(i,k))*dp/g
-            trash2=trash2+  dellah(i,k)*dp/g
+            !trash =trash + (dellaq(i,k)+dellaqc(i,k))*dp/g
+            !trash2=trash2+  dellah(i,k)*dp/g
 
           enddo   ! k
 

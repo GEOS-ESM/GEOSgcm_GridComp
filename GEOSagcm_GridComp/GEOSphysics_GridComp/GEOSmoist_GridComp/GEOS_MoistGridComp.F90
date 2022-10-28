@@ -180,39 +180,49 @@ contains
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
 
-    ! !INTERNAL STATE:
-    ! contained in InterfaceMods
+    ! !IMPORT STATE:
+
+    call MAPL_AddImportSpec(GC,                              &
+         SHORT_NAME = 'PLK',                                 &
+         LONG_NAME  = 'layer_air_pressure_to_kappa',         &
+         UNITS      = 'Pa^kappa',                            &
+         DIMS       = MAPL_DimsHorzVert,                     &
+         VLOCATION  = MAPL_VLocationCenter,                  &
+         AVERAGING_INTERVAL = AVRGNINT,                      &
+         REFRESH_INTERVAL   = RFRSHINT,                      &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     ! !IMPORT STATE:
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PLE',                                         &
-         LONG_NAME  = 'air_pressure',                                &
-         UNITS      = 'Pa',                                          &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationEdge,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
+         SHORT_NAME = 'PLE',                                 &
+         LONG_NAME  = 'air_pressure',                        &
+         UNITS      = 'Pa',                                  &
+         DIMS       = MAPL_DimsHorzVert,                     &
+         VLOCATION  = MAPL_VLocationEdge,                    &
+         AVERAGING_INTERVAL = AVRGNINT,                      &
+         REFRESH_INTERVAL   = RFRSHINT,                      &
          RC=STATUS  )
     VERIFY_(STATUS)                                                                          
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PREF',                                       &
-         LONG_NAME  = 'reference_air_pressure',                     &
-         UNITS      = 'Pa',                                         &
-         DIMS       = MAPL_DimsVertOnly,                            &
-         VLOCATION  = MAPL_VLocationEdge,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
+         SHORT_NAME = 'PREF',                                &
+         LONG_NAME  = 'reference_air_pressure',              &
+         UNITS      = 'Pa',                                  &
+         DIMS       = MAPL_DimsVertOnly,                     &
+         VLOCATION  = MAPL_VLocationEdge,                    &
+         AVERAGING_INTERVAL = AVRGNINT,                      &
+         REFRESH_INTERVAL   = RFRSHINT,                      &
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'ZLE',                                       &
-         LONG_NAME  = 'geopotential_height',                       &
-         UNITS      = 'm',                                         &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationEdge,                         &
+    call MAPL_AddImportSpec(GC,                              &
+         SHORT_NAME = 'ZLE',                                        &
+         LONG_NAME  = 'geopotential_height',                        &
+         UNITS      = 'm',                                          &
+         DIMS       =  MAPL_DimsHorzVert,                           &
+         VLOCATION  =  MAPL_VLocationEdge,                          &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
                                                         RC=STATUS  )
@@ -2346,6 +2356,14 @@ contains
          SHORT_NAME='QCBL',                                      &
          LONG_NAME ='q_at_cloud_base_level',               &
          UNITS     ='kg/kg'  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='SRF_TYPE',                                      &
+         LONG_NAME ='surface type for ice_fraction',               &
+         UNITS     =''  ,                                         &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
@@ -5189,11 +5207,12 @@ contains
     real, allocatable, dimension(:,:,:) :: QST3, DQST3
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Internals
-    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
+    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
-    real, pointer, dimension(:,:)   :: FRLAND, SH, EVAP, KPBL
+    real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
+    real, pointer, dimension(:,:)   :: SH, EVAP, KPBL
     real, pointer, dimension(:,:,:) :: OMEGA
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
@@ -5204,7 +5223,7 @@ contains
     real, pointer, dimension(:,:  ) :: PTYPE, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, RAIN_STRAT, RAIN_CONV
     real, pointer, dimension(:,:,:) :: BYNCY
     real, pointer, dimension(:,:  ) :: CAPE, INHB
-    real, pointer, dimension(:,:  ) :: CNV_FRC
+    real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -5265,13 +5284,26 @@ contains
        call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, KPBL,    'KPBL'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'AERO',    AERO     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'MTR',     TR       , RC=STATUS); VERIFY_(STATUS)
+
+       ! Update SRF_TYPE for ice_fraction
+       call MAPL_GetPointer(IMPORT, FRLAND,    'FRLAND'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FRLANDICE, 'FRLANDICE' , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FRACI,     'FRACI'     , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, SNOMAS,    'SNOMAS'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SRF_TYPE,  'SRF_TYPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       SRF_TYPE = 0.0 ! Ocean
+       where (FRLAND > 0.1)
+         SRF_TYPE = 1.0 ! Land
+       end where
+       where ( (SNOMAS > 0.1) .OR. (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
+         SRF_TYPE = 2.0 ! Ice/Snow
+       end where
 
        ! Allocatables
         ! Edge variables 

@@ -179,7 +179,7 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CNV_2MOM                  , 'CNV_2MOM:'              ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .TRUE. , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ELSE
       ! Inititialize parameters of convection scheme GF (circa 2019)
       call MAPL_GetResource(MAPL, icumulus_gf(deep)   ,'DEEP:'             ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
@@ -212,7 +212,7 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, GF_ENV_SETTING      ,'GF_ENV_SETTING:'   ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CNV_2MOM            ,'CNV_2MOM:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .TRUE. , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ENDIF
 
 end subroutine GF_Initialize
@@ -267,6 +267,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: PL, PK, ZL0
     real,    allocatable, dimension(:,:,:) :: MASS, fQi, QST3
     real,    allocatable, dimension(:,:,:) :: TH, KE
+    real,    allocatable, dimension(:,:,:) :: REVSU, PRFIL
     integer, allocatable, dimension(:,:)   :: SEEDINI   
     real,    allocatable, dimension(:,:)   :: SEEDCNV 
     real,    allocatable, dimension(:,:,:) :: TMP3D
@@ -275,7 +276,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Required Exports (connectivities to moist siblings)
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_MFC, CNV_CVW, CNV_QC, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DTHDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
-    real, pointer, dimension(:,:  ) :: CNV_FRC
+    real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     ! Exports
     real, pointer, dimension(:,:,:) :: CNV_MF0, ENTLAM
     real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD
@@ -367,6 +368,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Allocatables
      ! Edge variables 
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
+    ALLOCATE ( PRFIL(IM,JM,0:LM) )
      ! Layer variables
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PL   (IM,JM,LM  ) )
@@ -376,6 +378,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( fQi  (IM,JM,LM  ) )
     ALLOCATE ( QST3 (IM,JM,LM  ) )
+    ALLOCATE ( REVSU(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! 2D Variables
     ALLOCATE ( SEEDINI(IM,JM) )
@@ -403,6 +406,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_FRC,    'CNV_FRC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Exports used below
     call MAPL_GetPointer(EXPORT, CNV_MF0,    'CNV_MF0'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -496,7 +500,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, TMP2D, USTAR, TSTAR, QSTAR, T2M           &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
-                                 ,KPBL ,CNV_FRC                                     &
+                                 ,KPBL ,CNV_FRC, SRF_TYPE                           &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
                                  ,MUPDP,MUPSH,MUPMD,MDNDP                           &
@@ -504,7 +508,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
-                                 ,RSU_CN, REV_CN, PFI_CN, PFL_CN                    &
+                                 ,REVSU, PRFIL                                      &
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
     ELSE
@@ -519,8 +523,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, TMP2D, USTAR, TSTAR, QSTAR, T2M, Q2M      &
                                  ,TA ,QA ,SH ,EVAP ,PHIS                            &  
-                                 ,KPBL      &
-                                 ,MAPL_GRAV &
+                                 ,KPBL ,CNV_FRC, SRF_TYPE                           &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
                                  ,MUPDP,MUPSH,MUPMD                                 &
@@ -528,7 +531,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
-                                 ,RSU_CN, REV_CN, PFI_CN, PFL_CN)
+                                 ,REVSU, PRFIL)
     ENDIF
 
     ! Fill the TH tendency
@@ -541,10 +544,19 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       TH = TH + DTHDT_DC*DT_MOIST
     ! update DeepCu QL/QI/CF tendencies
       TMP3D= CNV_DQCDT/MASS
-      fQi  = ice_fraction( T, CNV_FRC )
+      fQi  = ice_fraction( T, CNV_FRC, SRF_TYPE )
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
       DQADT_DC = CNV_MFD*SCLM_DEEP/MASS
+    ! evap/subl and precip fluxes
+      do L=1,LM
+         !--- sublimation/evaporation tendencies (kg/kg/s)
+           RSU_CN (:,:,L) = REVSU(:,:,L)*     fQi(:,:,L)
+           REV_CN (:,:,L) = REVSU(:,:,L)*(1.0-fQi(:,:,L))
+         !--- preciptation fluxes (kg/kg/s)
+           PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
+           PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
+      enddo
     ! 2Momoent
      !dNi = make_IceNumber (dQi, TE)
      !dNl = make_DropletNumber (dQl, 0.0, FRLAND)
@@ -567,8 +579,13 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       ! If still cant make suitable env RH then destroy anvil
       WHERE ( CLCN < 0.0 )
          CLCN = 0.
-         Q    = Q + QLCN + QICN
-         T    = T - (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
+         DQVDT_DC = DQVDT_DC + (QLCN + QICN)/DT_MOIST
+          Q       =  Q       +  QLCN + QICN
+         TMP3D    = (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
+         DTDT_DC  = DTDT_DC - TMP3D/DT_MOIST
+          T       =  T      - TMP3D
+          TH      =  T/PK
+         DTHDT_DC = DTHDT_DC - TMP3D/DT_MOIST/PK
          QLCN = 0.
          QICN = 0.
       END WHERE

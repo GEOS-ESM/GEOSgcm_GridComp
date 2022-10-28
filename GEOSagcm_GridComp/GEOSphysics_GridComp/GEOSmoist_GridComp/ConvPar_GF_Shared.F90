@@ -132,14 +132,14 @@ USE GEOSmoist_Process_Library
        do ispc=1,mtp
              call get_cloud_bc(cumulus,kts,kte,ktf,xland(i),po(i,kts:kte),se_cup(ispc,i,kts:kte),sc_b(ispc,i),k22(i))
        enddo
-       do k=kts,start_level(i)
+       do k=kts,k22(i)
             sc_up   (:,i,k) = sc_b  (:,i)
        enddo
      enddo
 
      do i=its,itf
           if(ierr(i) /= 0) cycle
-loopk:      do k=start_level(i)+1,ktop(i)+1
+loopk:      do k=k22(i)+1,ktop(i)+1
 
             !-- entr,detr, mass flux ...
             XZZ=             zuo(i,k-1)

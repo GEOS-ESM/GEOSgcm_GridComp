@@ -12,7 +12,6 @@ module GEOSmoist_Process_Library
   use GEOS_UtilsMod
   use Aer_Actv_Single_Moment
   use aer_cloud
-  use Henrys_law_ConstantsMod, only: get_HenrysLawCts
 
   implicit none
   private
@@ -26,6 +25,22 @@ module GEOSmoist_Process_Library
     module procedure ICE_FRACTION_1D
     module procedure ICE_FRACTION_SC
   end interface ICE_FRACTION
+  ! In anvil/convective clouds
+  real, parameter :: aT_ICE_ALL = 245.16
+  real, parameter :: aT_ICE_MAX = 261.16
+  real, parameter :: aICEFRPWR  = 2.0
+  ! Over snow/ice SRF_TYPE = 2
+  real, parameter :: iT_ICE_ALL = MAPL_TICE-40.0
+  real, parameter :: iT_ICE_MAX = MAPL_TICE
+  real, parameter :: iICEFRPWR  = 4.0
+  ! Over Land     SRF_TYPE = 1
+  real, parameter :: lT_ICE_ALL = 239.16
+  real, parameter :: lT_ICE_MAX = 261.16
+  real, parameter :: lICEFRPWR  = 2.0
+  ! Over Oceans   SRF_TYPE = 0
+  real, parameter :: oT_ICE_ALL = 238.16
+  real, parameter :: oT_ICE_MAX = 263.16
+  real, parameter :: oICEFRPWR  = 4.0
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
@@ -43,9 +58,6 @@ module GEOSmoist_Process_Library
   real, parameter :: alhlbcp = MAPL_ALHL/MAPL_CP
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
-
-  ! Surface Types
-  real, pointer, dimension(:,:)   :: SNOMAS,FRLANDICE,FRLAND,FRACI 
 
  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
@@ -71,16 +83,6 @@ module GEOSmoist_Process_Library
   public :: find_cldtop, find_cldbase, gw_prof
 
   contains
-
-  subroutine INIT_SURF_TYPES(IMPORT)
-    type(ESMF_State), INTENT(INOUT) :: IMPORT      ! Import state
-    character(len=ESMF_MAXSTR) :: IAm = "ProcessLibrary:INIT_SURF_TYPES"
-    INTEGER :: STATUS, rc
-    call MAPL_GetPointer(IMPORT, FRLAND,    'FRLAND'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FRLANDICE, 'FRLANDICE' , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FRACI,     'FRACI'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SNOMAS,    'SNOMAS'    , RC=STATUS); VERIFY_(STATUS)
-  end subroutine INIT_SURF_TYPES 
 
   subroutine CNV_Tracers_Init(TR, RC)
     type (ESMF_FieldBundle), intent(inout) :: TR
@@ -146,15 +148,6 @@ module GEOSmoist_Process_Library
                   CNV_Tracers(F)%CNAME = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
                   CNV_Tracers(F)%QNAME = trim(QNAME(ind+2:))
                end if
-              !! temporary section to fill Henrys cts for N2O and CH4 of PCHEM chemical mechanism
-              !!-------------------------------------------------------------------------------------
-              !if ( trim(CNV_Tracers(F)%QNAME) == 'N2O' .or. trim(CNV_Tracers(F)%QNAME) == 'CH4' ) then
-              !   call get_HenrysLawCts(trim(CNV_Tracers(F)%QNAME), &
-              !                              CNV_Tracers(F)%Vect_Hcts(1),     &
-              !                              CNV_Tracers(F)%Vect_Hcts(2),     &
-              !                              CNV_Tracers(F)%Vect_Hcts(3),     &
-              !                              CNV_Tracers(F)%Vect_Hcts(4) )
-              !endif
                ! Get pointer to friendly tracers
                !-----------------------------------------
                call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
@@ -167,10 +160,12 @@ module GEOSmoist_Process_Library
                    WRITE(STR_CNV_TRACER,102) TRIM(QNAME), CNV_Tracers(F)%Vect_Hcts
                    call WRITE_PARALLEL (trim(STR_CNV_TRACER))
                else
-                   call WRITE_PARALLEL (trim(QNAME))
+                   WRITE(STR_CNV_TRACER,103) TRIM(QNAME)
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
                endif
 101            FORMAT(a,' ScavengingFractionPerKm:',1(1x,f3.1))
 102            FORMAT(a,' SetofHenryLawCts:',4(1x,es9.2))
+103            FORMAT(a,' is transported by Moist')
             end if
          end if
       enddo
@@ -180,52 +175,44 @@ module GEOSmoist_Process_Library
 
   end subroutine CNV_Tracers_Init
 
-  function ICE_FRACTION_3D (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:)
+  function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
       real :: ICEFRCT(size(TEMP,1),size(TEMP,2),size(TEMP,3))
       integer :: i,j,l
       do l=1,size(TEMP,3)
       do j=1,size(TEMP,2)
       do i=1,size(TEMP,1)
-        ICEFRCT(i,j,l) = ICE_FRACTION_SC(TEMP(i,j,l),CNV_FRACTION(i,j))
+        ICEFRCT(i,j,l) = ICE_FRACTION_SC(TEMP(i,j,l),CNV_FRACTION(i,j),SRF_TYPE(i,j))
       enddo
       enddo
       enddo
   end function ICE_FRACTION_3D
 
-  function ICE_FRACTION_2D (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP(:,:),CNV_FRACTION(:,:)
+  function ICE_FRACTION_2D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP(:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
       real :: ICEFRCT(size(TEMP,1),size(TEMP,2))
       integer :: i,j
       do j=1,size(TEMP,2)
       do i=1,size(TEMP,1)
-        ICEFRCT(i,j) = ICE_FRACTION_SC(TEMP(i,j),CNV_FRACTION(i,j))
+        ICEFRCT(i,j) = ICE_FRACTION_SC(TEMP(i,j),CNV_FRACTION(i,j),SRF_TYPE(i,j))
       enddo
       enddo
   end function ICE_FRACTION_2D
 
-  function ICE_FRACTION_1D (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP(:),CNV_FRACTION(:)
+  function ICE_FRACTION_1D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP(:),CNV_FRACTION(:),SRF_TYPE(:)
       real :: ICEFRCT(size(TEMP))
       integer :: i
       do i=1,size(TEMP)
-        ICEFRCT(i) = ICE_FRACTION_SC(TEMP(i),CNV_FRACTION(i))
+        ICEFRCT(i) = ICE_FRACTION_SC(TEMP(i),CNV_FRACTION(i),SRF_TYPE(i))
       enddo
   end function ICE_FRACTION_1D
 
-  function ICE_FRACTION_SC (TEMP,CNV_FRACTION) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP,CNV_FRACTION
+  function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+      real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
       real             :: ICEFRCT
       real             :: tc, ptc
       real             :: ICEFRCT_C, ICEFRCT_M
-        ! In anvil/convective clouds
-      real, parameter :: aT_ICE_ALL = 245.16
-      real, parameter :: aT_ICE_MAX = 261.16
-      real, parameter :: aICEFRPWR  = 2.0
-        ! Over Oceans
-      real, parameter :: oT_ICE_ALL = 238.16
-      real, parameter :: oT_ICE_MAX = 263.16
-      real, parameter :: oICEFRPWR  = 4.0
 
       ! Anvil clouds
       ! Anvil-Convective sigmoidal function like figure 6(right)
@@ -245,6 +232,31 @@ module GEOSmoist_Process_Library
         ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
         ICEFRCT_M = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
 #else
+  ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+      if (SRF_TYPE == 2.0) then
+        ! Over snow/ice
+        ICEFRCT_M  = 0.00
+        if ( TEMP <= iT_ICE_ALL ) then
+           ICEFRCT_M = 1.000
+        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
+           ICEFRCT_M = 1.00 -  ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL )
+        end if
+        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+        ICEFRCT_M = ICEFRCT_M**iICEFRPWR
+      else if (SRF_TYPE > 1.0) then
+        ! Over Land
+        ICEFRCT_M  = 0.00
+        if ( TEMP <= lT_ICE_ALL ) then
+           ICEFRCT_M = 1.000
+        else if ( (TEMP > lT_ICE_ALL) .AND. (TEMP <= lT_ICE_MAX) ) then
+           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - lT_ICE_ALL ) / ( lT_ICE_MAX - lT_ICE_ALL ) ) )
+        end if
+        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+        ICEFRCT_M = ICEFRCT_M**lICEFRPWR
+      else
+        ! Over Oceans
         ICEFRCT_M  = 0.00
         if ( TEMP <= oT_ICE_ALL ) then
            ICEFRCT_M = 1.000
@@ -254,6 +266,7 @@ module GEOSmoist_Process_Library
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**oICEFRPWR
+      endif
 #endif
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
@@ -802,6 +815,7 @@ module GEOSmoist_Process_Library
          ALPHA       , &
          PDFSHAPE    , &
          CNVFRC      , &
+         SRFTYPE     , &
          PL          , &
          ZL          , &
          QV          , &
@@ -848,7 +862,7 @@ module GEOSmoist_Process_Library
          WQL,        &
          USE_AERO_NN )
 
-      real, intent(in)    :: DT,ALPHA,CNVFRC,PL,ZL
+      real, intent(in)    :: DT,ALPHA,CNVFRC,SRFTYPE,PL,ZL
       integer, intent(in) :: pdfshape
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
       real, intent(in)    :: NL,NI
@@ -928,7 +942,7 @@ module GEOSmoist_Process_Library
          elseif (PDFSHAPE.eq.5) then
 
             ! Update the liquid water static energy
-            fQi = ice_fraction( TEn, CNVFRC )
+            fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
             ALHX = (1.0-fQi)*alhlbcp + fQi*alhsbcp
             HL = TEn + gravbcp*ZL - ALHX*QCn
 
@@ -979,7 +993,7 @@ module GEOSmoist_Process_Library
            Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
-           fQi = ice_fraction( TEn, CNVFRC )
+           fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
            QLn = QCn*(1.0-AF)*(1.0-fQi) ! Just Large-Scale portion
            QIn = QCn*(1.0-AF)*     fQi  ! Just Large-Scale portion
            call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
@@ -993,10 +1007,11 @@ module GEOSmoist_Process_Library
                  NLv              , &
                  NIv              , &
                  CNVFRC           , &
+                 SRFTYPE          , &
                  DQCALL           , &
                  fQi)
          ELSE
-           fQi = ice_fraction( TEn, CNVFRC )
+           fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
          ENDIF
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1871,13 +1886,14 @@ module GEOSmoist_Process_Library
          NL               , &
          NI               , & 
          CNVFRC           , &
+         SRFTYPE          , &
          DQ               , &
          FQI )
 
       real ,  intent(in)  :: DTIME, PL, TE
       real ,  intent(in)  :: DQ
       real ,  intent(in)  :: QV, QL, QI
-      real ,  intent(in)  :: CF, NL, NI, CNVFRC
+      real ,  intent(in)  :: CF, NL, NI, CNVFRC, SRFTYPE
       real ,  intent(out) :: FQI
       
       real  :: DQALL, DC, TEFF, DEP, &
@@ -1893,7 +1909,7 @@ module GEOSmoist_Process_Library
 
       else !mixed phase or ice clouds
 
-         FQI   = ice_fraction( TE, CNVFRC )
+         FQI   = ice_fraction( TE, CNVFRC, SRFTYPE )
       
          DQALL=DQ/DTIME                                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
          TC=TE-MAPL_TICE

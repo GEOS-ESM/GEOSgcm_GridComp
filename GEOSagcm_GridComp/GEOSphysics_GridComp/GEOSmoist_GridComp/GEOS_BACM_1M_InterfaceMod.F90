@@ -136,15 +136,6 @@ subroutine BACM_1M_Setup (GC, CF, RC)
          VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )  
     VERIFY_(STATUS)                                                                          
 
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QW',                                        &
-         LONG_NAME  = 'mass_fraction_of_wet_air',                  &
-         UNITS      = 'kg kg-1',                                   &
-         RESTART    = MAPL_RestartSkip,                            &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                      
-
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME = 'NACTL',                                  &
          LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
@@ -175,7 +166,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     type (ESMF_Grid )                   :: GRID
     type (ESMF_State)                   :: INTERNAL
 
-    real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QW
+    real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN
 
     character(len=ESMF_MAXSTR) :: GRIDNAME
     character(len=4)           :: imchar
@@ -192,8 +183,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QLCN,     'QLCN'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QW,       'QW'      , RC=STATUS); VERIFY_(STATUS)
-    QW = Q+QLLS+QLCN+QILS+QICN
 
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
@@ -297,7 +286,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: LATS
 
     ! Internals
-    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QW
+    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, KH
@@ -307,7 +296,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
     ! Local
-    real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0
+    real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
     real, allocatable, dimension(:,:,:) :: DZET,  TH,  MASS
     real, allocatable, dimension(:,:,:) :: QDDF3, DQST3, QST3
@@ -341,7 +330,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CFPDF, RHCLR
     real, pointer, dimension(:,:,:) :: DQRL, WTHV2
     real, pointer, dimension(:,:,:) :: PDF_A
-    real, pointer, dimension(:,:  ) :: CNV_FRC
+    real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
     real, pointer, dimension(:,:  ) :: LS_ARF,  CN_ARF,  AN_ARF,  SC_ARF
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
@@ -418,7 +407,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      ! Edge variables 
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
-    ALLOCATE ( PKE  (IM,JM,0:LM) )
      ! Layer variables
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
@@ -438,7 +426,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Derived States
     PLEmb    =  PLE*.01
-    PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
     PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
     PK       = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
     DO L=0,LM
@@ -492,7 +479,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Imports which are Exports from local siblings
     ! Required export MUST have been filled in GridComp
-    call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_FRC,  'CNV_FRC' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SRF_TYPE, 'SRF_TYPE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! DeepCu : default to 0.0 in MAPL if not running DeepCu
     call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD '  ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_DQCDT,  'CNV_DQCDT' ,  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -655,6 +643,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               DZET              , &
               QDDF3             , &
               CNV_FRC           , &
+              SRF_TYPE          , &
               TROPP             , &
                                 ! Diagnostics
               RHX               , &
@@ -686,7 +675,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                VFALLRN_AN  , VFALLRN_LS  ,VFALLRN_CN  ,VFALLRN_SC  ,  &
               PDF_A, &
               WTHV2, WQL, &
-              .TRUE., &
               NACTL,    &
               NACTI,    &
               "GF" )
@@ -753,7 +741,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ! cleanup any negative QV/QC/CF
          call FILLQ2ZERO(Q       , MASS, TMP2D)
          call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = TMP2D
+         if (associated(PTR2D)) PTR2D = TMP2D/DT_MOIST
          call FILLQ2ZERO(QLLS    , MASS, TMP2D)
          call FILLQ2ZERO(QLCN    , MASS, TMP2D)
          call FILLQ2ZERO(QILS    , MASS, TMP2D)

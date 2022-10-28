@@ -100,6 +100,7 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: DZET_dev
    real, allocatable, dimension(:,:), device :: QDDF3_dev
    real, allocatable, dimension(:  ), device :: CNVFRC_dev
+   real, allocatable, dimension(:  ), device :: SRFTYPE_dev
    real, allocatable, dimension(:  ), device :: TROPP_dev
 
    ! Inoutputs
@@ -438,6 +439,7 @@ contains
          DZET_dev         , &
          QDDF3_dev        , &
          CNVFRC_dev       , &
+         SRFTYPE_dev      , &
          TROPP_dev        , &
          RHX_dev          , &
          REV_LS_dev       , &
@@ -474,7 +476,6 @@ contains
          PDF_RQTTH_dev, PDF_RWTH_dev, PDF_RWQT_dev, &
 #endif
          WTHV2_dev, wql_dev, &
-         DOSHLW, &
          NACTL_dev,    &
          NACTI_dev,    &
          CONVPAR_OPTION )
@@ -556,27 +557,28 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: DZET_dev   ! DZET
       real, intent(in   ), dimension(IRUN,  LM) :: QDDF3_dev  ! QDDF3
       real, intent(in   ), dimension(IRUN)      :: CNVFRC_dev   ! CNV_FRACTION
+      real, intent(in   ), dimension(IRUN)      :: SRFTYPE_dev
       real, intent(in   ), dimension(IRUN)      :: TROPP_dev   ! TROPP
 
       real, intent(  out), dimension(IRUN,  LM) :: RHX_dev    ! RHX
       real, intent(  out), dimension(IRUN,  LM) :: REV_LS_dev ! REV_LS
       real, intent(  out), dimension(IRUN,  LM) :: REV_AN_dev ! REV_AN
-      real, intent(  out), dimension(IRUN,  LM) :: REV_CN_dev ! REV_CN
+      real, intent(inout), dimension(IRUN,  LM) :: REV_CN_dev ! REV_CN
       real, intent(  out), dimension(IRUN,  LM) :: REV_SC_dev ! REV_SC
       real, intent(  out), dimension(IRUN,  LM) :: RSU_LS_dev ! RSU_LS
       real, intent(  out), dimension(IRUN,  LM) :: RSU_AN_dev ! RSU_AN
-      real, intent(  out), dimension(IRUN,  LM) :: RSU_CN_dev ! RSU_CN
+      real, intent(inout), dimension(IRUN,  LM) :: RSU_CN_dev ! RSU_CN
       real, intent(  out), dimension(IRUN,  LM) :: RSU_SC_dev ! RSU_SC
-      real, intent(  out), dimension(IRUN,  LM) :: ACLL_CN_dev ! ACLL_CN
-      real, intent(  out), dimension(IRUN,  LM) :: ACIL_CN_dev ! ACIL_CN
+      real, intent(inout), dimension(IRUN,  LM) :: ACLL_CN_dev ! ACLL_CN
+      real, intent(inout), dimension(IRUN,  LM) :: ACIL_CN_dev ! ACIL_CN
       real, intent(  out), dimension(IRUN,  LM) :: ACLL_AN_dev ! ACLL_AN
       real, intent(  out), dimension(IRUN,  LM) :: ACIL_AN_dev ! ACIL_AN
       real, intent(  out), dimension(IRUN,  LM) :: ACLL_LS_dev ! ACLL_LS
       real, intent(  out), dimension(IRUN,  LM) :: ACIL_LS_dev ! ACIL_LS
       real, intent(  out), dimension(IRUN,  LM) :: ACLL_SC_dev ! ACLL_SC
       real, intent(  out), dimension(IRUN,  LM) :: ACIL_SC_dev ! ACIL_SC
-      real, intent(  out), dimension(IRUN,0:LM) :: PFL_CN_dev ! PFL_CN
-      real, intent(  out), dimension(IRUN,0:LM) :: PFI_CN_dev ! PFI_CN
+      real, intent(inout), dimension(IRUN,0:LM) :: PFL_CN_dev ! PFL_CN
+      real, intent(inout), dimension(IRUN,0:LM) :: PFI_CN_dev ! PFI_CN
       real, intent(  out), dimension(IRUN,0:LM) :: PFL_AN_dev ! PFL_AN
       real, intent(  out), dimension(IRUN,0:LM) :: PFI_AN_dev ! PFI_AN
       real, intent(  out), dimension(IRUN,0:LM) :: PFL_LS_dev ! PFL_LS
@@ -644,7 +646,6 @@ contains
 !!$      real, intent(  out), dimension(IRUN,  LM) :: CURAINMOVE_dev ! CURAINMOVE
 !!$      real, intent(  out), dimension(IRUN,  LM) :: CUSNOWMOVE_dev ! CUSNOWMOVE
 
-      LOGICAL, INTENT(IN) :: DOSHLW
       character(LEN=*), INTENT(IN)              :: CONVPAR_OPTION
 
 #endif
@@ -817,8 +818,6 @@ contains
             CLDREFFL_dev(I,K)   = 0.
             CLDREFFI_dev(I,K)   = 0.
 
-            PFL_CN_dev(I,K) = 0.
-            PFI_CN_dev(I,K) = 0.
             PFL_SC_dev(I,K) = 0.
             PFI_SC_dev(I,K) = 0.
             PFL_AN_dev(I,K) = 0.
@@ -827,8 +826,6 @@ contains
             PFI_LS_dev(I,K) = 0.
 
             IF (K == 1) THEN
-               PFL_CN_dev(I,0) = 0.
-               PFI_CN_dev(I,0) = 0.
                PFL_SC_dev(I,0) = 0.
                PFI_SC_dev(I,0) = 0.
                PFL_AN_dev(I,0) = 0.
@@ -842,14 +839,10 @@ contains
             RHX_dev(I,K) = MAPL_UNDEF
             REV_LS_dev(I,K) = MAPL_UNDEF
             REV_AN_dev(I,K) = MAPL_UNDEF
-            IF(CONVPAR_OPTION .ne. 'GF')REV_CN_dev(I,K) = MAPL_UNDEF
             REV_SC_dev(I,K) = MAPL_UNDEF
             RSU_LS_dev(I,K) = MAPL_UNDEF
             RSU_AN_dev(I,K) = MAPL_UNDEF
-            IF(CONVPAR_OPTION .ne. 'GF')RSU_CN_dev(I,K) = MAPL_UNDEF
             RSU_SC_dev(I,K) = MAPL_UNDEF
-            IF(CONVPAR_OPTION .ne. 'GF')ACLL_CN_dev(I,K) = MAPL_UNDEF
-            IF(CONVPAR_OPTION .ne. 'GF')ACIL_CN_dev(I,K) = MAPL_UNDEF
             ACLL_SC_dev(I,K) = MAPL_UNDEF
             ACIL_SC_dev(I,K) = MAPL_UNDEF
             ACLL_AN_dev(I,K) = MAPL_UNDEF
@@ -887,14 +880,6 @@ contains
             VFALLRN_LS_dev(I,K) = MAPL_UNDEF
             VFALLRN_CN_dev(I,K) = MAPL_UNDEF
             VFALLRN_SC_dev(I,K) = MAPL_UNDEF
-
-
-            ! Copy QRN_CU into a temp scalar
-            !QRN_CU_1D = QRN_CU_dev(I,K)
-            !- GF scheme handles its own conv precipitation.
-            !- => QRN_CU_1D is equal to zero, in this case.
-            !- Otherwise, the surface convective precip must be set to zero inside GF main routine.
-            IF(CONVPAR_OPTION .ne. 'GF') QRN_CU_1D = QRN_CU_dev(I,K)
 
             MASS =  ( PPE_dev(I,K) - PPE_dev(I,K-1) )*100./MAPL_GRAV  ! layer-mass (kg/m**2)
 
@@ -951,6 +936,7 @@ contains
             CALL meltfrz_inst (    &
                   DT             , &
                   CNVFRC_dev(I)  , &
+                  SRFTYPE_dev(I) , &
                   TEMP           , &
                   QLW_LS_dev(I,K), & 
                   QLW_AN_dev(I,K), &
@@ -960,12 +946,14 @@ contains
             CALL meltfrz (         &
                   DT             , &
                   CNVFRC_dev(I)  , &
+                  SRFTYPE_dev(I) , &
                   TEMP           , &
                   QLW_LS_dev(I,K), & 
                   QIW_LS_dev(I,K))
             CALL meltfrz (         &
                   DT             , &
                   CNVFRC_dev(I)  , &
+                  SRFTYPE_dev(I) , &
                   TEMP           , &
                   QLW_AN_dev(I,K), & 
                   QIW_AN_dev(I,K))
@@ -975,11 +963,11 @@ contains
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
-            DCNVi_dev(I,K) = QIW_AN_dev(I,K)
-            DCNVL_dev(I,K) = QLW_AN_dev(I,K)
+         !  DCNVi_dev(I,K) = QIW_AN_dev(I,K)
+         !  DCNVL_dev(I,K) = QLW_AN_dev(I,K)
          !  cnvsrc is now handled inside convection codes
-            DCNVi_dev(I,K) = ( QIW_AN_dev(I,K) - DCNVi_dev(I,K) ) / DT
-            DCNVL_dev(I,K) = ( QLW_AN_dev(I,K) - DCNVL_dev(I,K) ) / DT
+         !  DCNVi_dev(I,K) = ( QIW_AN_dev(I,K) - DCNVi_dev(I,K) ) / DT
+         !  DCNVL_dev(I,K) = ( QLW_AN_dev(I,K) - DCNVL_dev(I,K) ) / DT
    
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
@@ -1019,6 +1007,7 @@ contains
                   ALPHA          , &
                   PDFFLAG        , &
                   CNVFRC_dev(I)  , &                  
+                  SRFTYPE_dev(I) , &
                   PP_dev(I,K)    , &
                   ZZ_dev(I,K)    , &
                   Q_dev(I,K)     , &
@@ -1280,7 +1269,6 @@ contains
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             !  Add in convective rain 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
             ! CU-FREEZE 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! Also "freeze" out any conv. precip that needs
@@ -1288,17 +1276,20 @@ contains
             ! precip w/ large particles, so freezing is 
             ! strict. Check up on this!!
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-            QTMP2 = 0.
-
-            if ( TEMP < MAPL_TICE ) then
-               QTMP2     = QRN_CU_1D
-               QSN_CU    = QRN_CU_1D
-               QRN_CU_1D = 0.
-               TEMP      = TEMP + QSN_CU*(MAPL_ALHS-MAPL_ALHL) / MAPL_CP
-            end if
-      
-            FRZ_PP_dev(I,K) = FRZ_PP_dev(I,K) +  QTMP2/DT
+            !- GF scheme handles its own conv precipitation.
+            !- => QRN_CU_1D is equal to zero, in this case.
+            !- Otherwise, the surface convective precip must be set to zero inside GF main routine.
+            IF(CONVPAR_OPTION .ne. 'GF') then
+              QRN_CU_1D = QRN_CU_dev(I,K)
+              QTMP2 = 0.
+              if ( TEMP < MAPL_TICE ) then
+                 QTMP2     = QRN_CU_1D
+                 QSN_CU    = QRN_CU_1D
+                 QRN_CU_1D = 0.
+                 TEMP      = TEMP + QSN_CU*(MAPL_ALHS-MAPL_ALHL) / MAPL_CP
+              end if
+              FRZ_PP_dev(I,K) = FRZ_PP_dev(I,K) +  QTMP2/DT
+            endif
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1372,6 +1363,12 @@ contains
         IF(CONVPAR_OPTION .ne. 'GF') then
             !  Convective
             ! ----------
+            PFL_CN_dev(I,K) = 0.
+            PFI_CN_dev(I,K) = 0.
+            REV_CN_dev(I,K) = MAPL_UNDEF
+            RSU_CN_dev(I,K) = MAPL_UNDEF
+            ACLL_CN_dev(I,K) = MAPL_UNDEF
+            ACIL_CN_dev(I,K) = MAPL_UNDEF
 
             call  PRECIP3(          &
                   K,LM            , &
@@ -1422,7 +1419,6 @@ contains
             end if
         ENDIF
 
-        if(DOSHLW) THEN 
             ! Shallow convective
             ! ------------------
 
@@ -1476,7 +1472,6 @@ contains
                end if
             end if
 
-        ENDIF
             ! Anvil
             ! -----
 
@@ -1760,9 +1755,9 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine meltfrz( DT, CNVFRC, TE, QL, QI )
+   subroutine meltfrz( DT, CNVFRC, SRFTYPE, TE, QL, QI )
 
-      real, intent(in)    :: DT, CNVFRC
+      real, intent(in)    :: DT, CNVFRC, SRFTYPE
       real, intent(inout) :: TE,QL,QI
 
       real  :: fQi,dQil
@@ -1773,7 +1768,7 @@ contains
 
       ! freeze liquid
       if ( TE <= MAPL_TICE ) then
-         fQi  = ice_fraction( TE, CNVFRC )
+         fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
          taufrz = 1000.
          dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
          dQil = max(  0., dQil )
@@ -1800,6 +1795,7 @@ contains
    subroutine meltfrz_inst  (     &
          Dt       , &
          CNVFRC   , &
+         SRFTYPE  , &
          TE       , &
          QCL      , &
          QAL      , &
@@ -1807,7 +1803,7 @@ contains
          QAI      )
 
       real ,   intent(inout) :: TE,QCL,QCI,QAL,QAI
-      real ,   intent(in   ) :: Dt, CNVFRC
+      real ,   intent(in   ) :: Dt, CNVFRC, SRFTYPE
       real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQA
       integer                :: n
       integer, parameter     :: MaxIterations=1
@@ -1825,7 +1821,7 @@ contains
       convergence: do n=1,MaxIterations
 
       ! melt ice using ICE_FRACTION
-      fQi = ice_fraction( TE, CNVFRC )
+      fQi = ice_fraction( TE, CNVFRC, SRFTYPE )
       if ( fQi < 1.0 ) then
          DQmax = (TE-MAPL_TICE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QITOT*(1.0-fQi)
@@ -1837,7 +1833,7 @@ contains
       end if
 
       ! freeze liquid using ICE_FRACTION 
-      fQi = ice_fraction( TE, CNVFRC )
+      fQi = ice_fraction( TE, CNVFRC, SRFTYPE )
       if ( fQi > 0.0 ) then
          DQmax = (MAPL_TICE-TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QLTOT *(1.0 - EXP( -Dt * fQi / taufrz ) )

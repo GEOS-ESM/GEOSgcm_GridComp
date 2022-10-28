@@ -184,6 +184,18 @@ contains
     VERIFY_(STATUS)
 !BOS
 
+! !INTERNAL STATE
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'QW',                                        &
+         LONG_NAME  = 'mass_fraction_of_wet_air',                  &
+         UNITS      = 'kg kg-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
+         FRIENDLYTO = 'TURBULENCE:MOIST',                          &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+
 ! !IMPORT STATE:
 
     call MAPL_AddImportSpec(GC,                                    &
@@ -1726,20 +1738,26 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
+! Add Friendlies from Physics
+    call MAPL_GridCompGetFriendlies(GC, "TURBULENCE", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
 ! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
-
     call MAPL_GridCompGetFriendlies(GCS(MOIST) , "TURBULENCE", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
 ! Add Friendlies from Chem (These are default tracers--zero surface flux)
-
     call MAPL_GridCompGetFriendlies(GCS(CHEM), "TURBULENCE", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Turbulence Tracer Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the TURBULENCE Bundle" )
+    end do
+    deallocate ( NAMES )
 
 ! Count tracers
 !--------------
@@ -1895,13 +1913,23 @@ contains
 
     call ESMF_StateGet(EXPORT, 'TRADV', BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+! Add Friendlies to DYNAMICS from all children of physics
+    call MAPL_GridCompGetFriendlies(GC,  "DYNAMICS", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+! Add Friendlies to DYNAMICS from all children of physics
     call MAPL_GridCompGetFriendlies(GCS, "DYNAMICS", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Advection Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the DYNAMICS Advection Bundle" )
+    end do
+    deallocate ( NAMES )
 
 ! Initialize Water rescale tendency bundle
 !--------------------------------------------
@@ -1912,13 +1940,23 @@ contains
 
     call ESMF_StateGet(EXPORT, 'TRANA', BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+! Add Friendlies to MOIST from Physics
+    call MAPL_GridCompGetFriendlies(GC, "ANALYSIS", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+! Add Friendlies ta ANALYSIS from all children of physics
     call MAPL_GridCompGetFriendlies(GCS, "ANALYSIS", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Analysis Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the ANALYSIS Bundle" )
+    end do
+    deallocate ( NAMES )
 
 ! Fill export bundle of child quantities to go thru CONVECTIVE transport
 !  No need for tendencies at this point; scavenging may be controled by
@@ -1927,13 +1965,23 @@ contains
 
     call ESMF_StateGet       (GIM(MOIST), 'MTR', BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+! Add Friendlies to MOIST from Physics
+    call MAPL_GridCompGetFriendlies(GC, "MOIST", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+! Add Friendlies to MOIST from all children of physics
     call MAPL_GridCompGetFriendlies(GCS, "MOIST", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the MOIST Convective transport Bundle" )
+    end do
+    deallocate ( NAMES )
 
 ! Fill the moist increments bundle
 !---------------------------------
@@ -1988,12 +2036,10 @@ contains
 ! Local derived type aliases
 
    type (MAPL_MetaComp),      pointer  :: STATE
-   type (MAPL_MetaComp),      pointer  :: MAPL_MOIST
    type (ESMF_GridComp),      pointer  :: GCS(:)
    type (ESMF_State),         pointer  :: GIM(:)
    type (ESMF_State),         pointer  :: GEX(:)
    type (ESMF_State)                   :: INTERNAL
-   type (ESMF_State)                   :: INTERNAL_MOIST
    type (ESMF_Grid)                    :: grid
    type( ESMF_VM )                     :: VMG
 
@@ -2016,7 +2062,7 @@ contains
   
    real, pointer, dimension(:,:,:)     :: S, T, ZLE, PLE, PK, U, V, W
    real, pointer, dimension(:,:,:)     :: DM, DPI, TOT, FRI, TTN, STN,TMP
-   real, pointer, dimension(:,:,:)     :: QV, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
+   real, pointer, dimension(:,:,:)     :: QW, QV, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
    real, pointer, dimension(:,:,:)     :: ptr3d
 
    real, pointer, dimension(:,:,:)     :: DUDT
@@ -2061,10 +2107,8 @@ contains
    real, pointer, dimension(:,:  )     :: AREA
 
    real*8, allocatable, dimension(:,:)   :: sumq
-   real,   allocatable, dimension(:,:)   :: psdry
    real*8, allocatable, dimension(:,:,:) :: ple_new
 
-   integer :: NWAT
    character(len=ESMF_MAXSTR), allocatable  :: NAMES(:)
 
 
@@ -2081,6 +2125,9 @@ contains
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
    real, allocatable, dimension(:,:)   :: qs,pmean
+
+   logical :: isPresent
+   real, allocatable, target :: zero(:,:,:)
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
    real(kind=MAPL_R8), allocatable, dimension(:,:) ::  dpe
@@ -2152,66 +2199,49 @@ contains
     VERIFY_(STATUS)
     DO_SKEB = (ISKEB/=0)
 
-       call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
-       VERIFY_(STATUS)
+    call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
 
-       NWAT = 0
-       call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NQ, RC=STATUS )
-       VERIFY_(STATUS)
-       if (NQ > 0) then
-         allocate( NAMES(NQ),STAT=STATUS )
-         VERIFY_(STATUS)
-         call ESMF_FieldBundleGet ( BUNDLE, itemorderflag=ESMF_ITEMORDER_ADDORDER, fieldNameList=NAMES, rc=STATUS )
-         VERIFY_(STATUS)
-         do N = 1,size(NAMES)
-            if( trim(NAMES(N)).eq.'Q'        ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QLCN'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QLLS'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QICN'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QILS'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QRAIN'    ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QSNOW'    ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QGRAUPEL' ) NWAT=NWAT+1
-         enddo 
-         deallocate( NAMES )
-       endif
-      
+    allocate(zero(IM,JM,LM),stat=status)
+    VERIFY_(status)
+    zero = 0.0
 
-       if (NWAT >= 5) then
-       call ESMFL_BundleGetPointertoData( BUNDLE,'Q'   ,QV  , RC=STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'Q'   ,QV  , RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QLLS',QLLS, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QLCN',QLCN, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QILS',QILS, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QICN',QICN, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldName='QRAIN', isPresent=isPresent, RC=STATUS)
+    if (isPresent) then
+       call ESMFL_BundleGetPointerToData( BUNDLE, 'QRAIN', QRAIN, RC=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QLLS',QLLS, RC=STATUS)
+    else
+       QRAIN => zero
+    end if
+    call ESMF_FieldBundleGet ( BUNDLE, fieldName='QSNOW', isPresent=isPresent, RC=STATUS)
+    if (isPresent) then
+       call ESMFL_BundleGetPointerToData( BUNDLE, 'QSNOW', QSNOW, RC=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QLCN',QLCN, RC=STATUS)
+    else     
+       QSNOW => zero
+    end if   
+    call ESMF_FieldBundleGet ( BUNDLE, fieldName='QGRAUPEL', isPresent=isPresent, RC=STATUS)
+    if (isPresent) then
+       call ESMFL_BundleGetPointerToData( BUNDLE, 'QGRAUPEL', QGRAUPEL, RC=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QILS',QILS, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QICN',QICN, RC=STATUS)
-       VERIFY_(STATUS)
-       endif
-       if (NWAT == 8) then
-         call ESMFL_BundleGetPointertoData( BUNDLE,'QRAIN',QRAIN, RC=STATUS)
-         VERIFY_(STATUS)
-         call ESMFL_BundleGetPointertoData( BUNDLE,'QSNOW',QSNOW, RC=STATUS)
-         VERIFY_(STATUS)
-         call ESMFL_BundleGetPointertoData( BUNDLE,'QGRAUPEL',QGRAUPEL, RC=STATUS)
-         VERIFY_(STATUS)
-       endif
-
-       call MAPL_GetObjectFromGC ( GCS(MOIST), MAPL_MOIST, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_Get ( MAPL_MOIST, INTERNAL_ESMF_STATE = INTERNAL_MOIST, RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL_MOIST, QW, 'QW', RC=STATUS)
-       VERIFY_(STATUS)
+    else     
+       QGRAUPEL => zero
+    end if   
 
 ! Initialize Passive Tracer QW
 ! ----------------------------
-       if (NWAT == 5) then
-         QW = QV+QLLS+QLCN+QILS+QICN
-       elseif (NWAT == 8) then
-         QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
-       endif
+    call MAPL_GetPointer(INTERNAL, QW, 'QW', RC=STATUS); VERIFY_(STATUS)
+    QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
 
 ! Get Global PHYSICS Parameters
 ! -----------------------------
@@ -2250,7 +2280,6 @@ contains
 
    ! Create Old Dry Mass Variables
    ! -----------------------------
-     allocate(  psdry( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
      allocate(   sumq( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
      allocate( ple_new(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
 
@@ -2836,10 +2865,14 @@ contains
     if(associated(TIT    )) TIT     = STN * DPI
     if(associated(TIF    )) TIF     = FRI * DPI
 
+   !  Compute Total Water Mass Change due to Physics Sources and Sinks
+   !  ----------------------------------------------------------------
+    allocate( DQ(IM,JM,LM) )
+    DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW
+
     if( DPEDT_PHYS ) then
        allocate(sumdq(IM,JM))
        allocate(  dpe(IM,JM))
-       allocate(   dq(IM,JM,LM))
 
        call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
        VERIFY_(STATUS)
@@ -2861,22 +2894,14 @@ contains
        if( associated(DQLDTSCL) ) DQLDTSCL = (QLLS+QLCN)
        if( associated(DQIDTSCL) ) DQIDTSCL = (QILS+QICN)
 
-   !  Compute Total Water Mass Change due to Physics Sources and Sinks
-   !  ----------------------------------------------------------------
-       if (NWAT == 5) then
-          DQ = QV+QLLS+QLCN+QILS+QICN                      - QW !- DT*DQVDTCHM ! Who added this comment::: We do not keep dry-mass budget for CHEM constituents
-       elseif (NWAT == 8) then
-          DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW !- DT*DQVDTCHM ! Who added this comment::: We do not keep dry-mass budget for CHEM constituents
-       endif
-
    !  Modify P and Q such that Pdry is conserved
    !  ------------------------------------------
        ple_new = ple*1.0_8
        sumdq = 0.0
        DPDT(:,:,0) = 0.0
        do l=1,lm
-                   sumdq = sumdq + dq(:,:,L) * ( ple(:,:,L)-ple(:,:,L-1) ) / DT
-             dpdt(:,:,L) = sumdq
+                    sumdq = sumdq + dq(:,:,L) * ( ple(:,:,L)-ple(:,:,L-1) ) / DT
+              dpdt(:,:,L) = sumdq
            ple_new(:,:,L) = ple_new(:,:,L) + dt*dpdt(:,:,L)
                dpe(:,:)   = (ple(:,:,L)-ple(:,:,L-1)) / (ple_new(:,:,L)-ple_new(:,:,L-1))
              do N=1,NQ
@@ -2886,27 +2911,8 @@ contains
                     trim(NAMES(N)) /= 'CLLS'     )  then   ! -------- Cloud Fractions
                 PTR3D(:,:,L) = PTR3d(:,:,L) * dpe(:,:)
                 endif
-              end do
+             end do
        end do
-
-   ! Create New Dry Mass Variables
-   ! -----------------------------
-#if debug
-       sumq = 0.0_8
-       do L=1,lm
-          sumq = sumq + ( qv(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L) )*( PLE_NEW(:,:,L)-PLE_NEW(:,:,L-1) )
-       enddo
-       psdry(:,:) = ple_new(:,:,LM) - sumq(:,:)
-       call MAPL_AreaMean( psdry_new, psdry, area, grid, rc=STATUS )
-       VERIFY_(STATUS)
-
-       psdry_dif = psdry_new - psdry_old
-
-       if(MAPL_AM_I_ROOT() ) then
-          write(6,1001) psdry_old/100, psdry_new/100, psdry_new/psdry_old,psdry_dif/100
- 1001     format(1x,'PSDRY_OLD: ',g21.14,'  PSDRY_NEW: ',g21.14,'  RATIO: ',g25.18,'  DIF: ',g21.14)
-       endif
-#endif
 
        ! Compute water rescale increments
        !----------------------------------
@@ -2922,7 +2928,6 @@ contains
        deallocate( dpe     )
        deallocate( names   )
        deallocate( sumq    )
-       deallocate( psdry   )
        deallocate( ple_new )
 
     else
@@ -2931,6 +2936,8 @@ contains
        if( associated(DQLDTSCL) ) DQLDTSCL = 0.0
        if( associated(DQIDTSCL) ) DQIDTSCL = 0.0
     endif
+
+    deallocate( DQ )
 
     if(associated(DMDT)) DMDT(:,:) = DPDT(:,:,LM)*(1.0/MAPL_GRAV)
 
@@ -2984,16 +2991,10 @@ contains
         ! ------------------------------------------------
           allocate( qdp_b4( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
           do L=1,lm
-          if (NWAT == 5) then
-              qdp_b4(:,:,L) = (   qv(:,:,L)                + &
-                                qlls(:,:,L) +  qlcn(:,:,L) + &
-                                qils(:,:,L) +  qicn(:,:,L) )*dp_mst(:,:,L)
-          elseif (NWAT == 8) then
               qdp_b4(:,:,L) = (   qv(:,:,L)                + &
                                 qlls(:,:,L) +  qlcn(:,:,L) + &
                                 qils(:,:,L) +  qicn(:,:,L) + &
                                qrain(:,:,L) + qsnow(:,:,L) + qgraupel(:,:,L) )*dp_mst(:,:,L)
-          endif
           enddo
 
         ! Compute Stochastic Perturbation
@@ -3022,16 +3023,10 @@ contains
         ! -----------------------------------------------
           allocate( qdp_af( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
           do L=1,lm
-          if (NWAT == 5) then
-              qdp_af(:,:,L) = (   qv(:,:,L)                + &
-                                qlls(:,:,L) +  qlcn(:,:,L) + &
-                                qils(:,:,L) +  qicn(:,:,L) )*dp_mst(:,:,L)
-          elseif (NWAT == 8) then
               qdp_af(:,:,L) = (   qv(:,:,L)                + &
                                 qlls(:,:,L) +  qlcn(:,:,L) + &
                                 qils(:,:,L) +  qicn(:,:,L) + &
                                qrain(:,:,L) + qsnow(:,:,L) + qgraupel(:,:,L) )*dp_mst(:,:,L)
-          endif
           enddo
 
         ! Vertically Integrate Water Mass where they Differ
@@ -3081,15 +3076,6 @@ contains
         ! Scale Water Variables for Dry-Mass Conservation
         ! -----------------------------------------------
           do L=1,lm
-          if (NWAT == 5) then
-              where(  qdp_af(:,:,L).ne. qdp_b4(:,:,L) )
-                        qv  (:,:,L) =     qv  (:,:,L) * gamma
-                        qlls(:,:,L) =     qlls(:,:,L) * gamma
-                        qlcn(:,:,L) =     qlcn(:,:,L) * gamma
-                        qils(:,:,L) =     qils(:,:,L) * gamma
-                        qicn(:,:,L) =     qicn(:,:,L) * gamma
-              end where
-          elseif (NWAT == 8) then
               where(  qdp_af(:,:,L).ne. qdp_b4(:,:,L) )
                         qv  (:,:,L) =     qv  (:,:,L) * gamma
                         qlls(:,:,L) =     qlls(:,:,L) * gamma
@@ -3100,7 +3086,6 @@ contains
                        qsnow(:,:,L) =    qsnow(:,:,L) * gamma
                     qgraupel(:,:,L) = qgraupel(:,:,L) * gamma
               end where
-          endif
           enddo
 
           if( associated(QVPERT)    ) QVPERT = QV
@@ -3221,6 +3206,8 @@ contains
     if(DO_SPPT) deallocate(TMP,RNDPERT)
     if(DO_SKEB) deallocate(SKEBU_WT,SKEBV_WT)
 !-stochastic-physics
+
+    deallocate( zero )
 
     call MAPL_TimerOff(STATE,"RUN")
 

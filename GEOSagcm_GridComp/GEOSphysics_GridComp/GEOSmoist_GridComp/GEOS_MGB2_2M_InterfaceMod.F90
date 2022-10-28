@@ -30,7 +30,6 @@ module GEOS_MGB2_2M_InterfaceMod
   ! specify how to handle friendlies with DYN:TRB:CHM:ANA
   type FRIENDLIES_TYPE
          character(len=ESMF_MAXSTR) :: QV
-         character(len=ESMF_MAXSTR) :: QW
          character(len=ESMF_MAXSTR) :: CLLS
          character(len=ESMF_MAXSTR) :: CLCN
          character(len=ESMF_MAXSTR) :: QLLS
@@ -91,7 +90,6 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     ! !INTERNAL STATE:
 
       FRIENDLIES%QV       = "DYNAMICS:TURBULENCE:CHEMISTRY:ANALYSIS"
-      FRIENDLIES%QW       = "TURBULENCE"
       FRIENDLIES%CLLS     = "DYNAMICS"
       FRIENDLIES%CLCN     = "DYNAMICS"
       FRIENDLIES%QLLS     = "DYNAMICS:TURBULENCE"
@@ -253,16 +251,6 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
     
-
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QW',                                        &
-         LONG_NAME  = 'mass_fraction_of_wet_air',                  &
-         UNITS      = 'kg kg-1',                                   &
-         RESTART    = MAPL_RestartSkip,                            &
-         FRIENDLYTO = trim(FRIENDLIES%QW),                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             __RC__  )  
-                                                          
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME = 'NACTL',                                  &
          LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
@@ -293,7 +281,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     type (ESMF_Grid )                   :: GRID
     type (ESMF_State)                   :: INTERNAL
 
-    real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
+    real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
     logical  :: nccons, nicons, ngcons, do_graupel
     real(ESMF_KIND_R8)  Dcsr8, qcvarr8,  micro_mg_berg_eff_factor_in, ncnstr8, ninstr8, ngnstr8, mui_cnstr8
@@ -320,8 +308,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QLCN,     'QLCN'    , __RC__)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , __RC__)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , __RC__)
-    call MAPL_GetPointer(INTERNAL, QW,       'QW'      , __RC__)
-    QW = Q+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
 
 !#ifdef NODISABLE
 
@@ -1531,6 +1517,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               PK                , &
               FRLAND            , &   ! <- surf
               CNV_FRC           , &   ! <- convective fraction
+              CNV_FRC           , &   ! <- convective fraction
               CNV_DQCDT         , &   ! <- dpcu              
               CNV_PRC3          , &   ! <- dpcu   
               CNV_UPDF          , &   ! <- dpcu
@@ -1973,7 +1960,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         
          call  micro_mg_tend_interface ( DT_MICRO, INT(CLDPARAMS%PDFSHAPE), ALPH_tmp, SCICE_tmp, FQA_tmp, &
                              ncolmicro,             LM,               dt_r8,       & 
-                             CNV_FRC(I,J), &
+                             CNV_FRC(I,J), CNV_FRC(I,J), &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -2155,6 +2142,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                          DT_MOIST                , &
                          ALPHT_X(I, J, K)        , &
                          INT(CLDPARAMS%PDFSHAPE) , &
+                         CNV_FRC(I, J)           , &
                          CNV_FRC(I, J)           , &
                          PLO(I, J, K)            , &
                          Q1 (I, J, K)            , &
