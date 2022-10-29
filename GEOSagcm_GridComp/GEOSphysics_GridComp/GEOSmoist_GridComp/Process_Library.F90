@@ -77,6 +77,7 @@ module GEOSmoist_Process_Library
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO, FILLQ2ZERO1
+  public :: meltfrz
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp
   public :: find_l, find_eis, FINDLCL
@@ -1964,6 +1965,32 @@ module GEOSmoist_Process_Library
       end if !=====  
 
    end subroutine Bergeron_iter
+
+   subroutine meltfrz( DT, CNVFRC, SRFTYPE, TE, QL, QI )
+      real, intent(in)    :: DT, CNVFRC, SRFTYPE
+      real, intent(inout) :: TE,QL,QI
+      real  :: fQi,dQil
+      real  ::  taufrz
+      integer :: K
+      ! freeze liquid first
+      if ( TE <= MAPL_TICE ) then
+         fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
+         taufrz = 1000.
+         dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
+         dQil = max(  0., dQil )
+         Qi   = Qi + dQil
+         Ql   = Ql - dQil
+         TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+      end if
+      ! melt ice instantly above 0^C
+      if ( TE > MAPL_TICE ) then
+         dQil = -Qi
+         dQil = min(  0., dQil )
+         Qi   = Qi + dQil
+         Ql   = Ql - dQil
+         TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+      end if
+   end subroutine meltfrz
 
   subroutine FILLQ2ZERO( Q, MASS, FILLQ  )
 

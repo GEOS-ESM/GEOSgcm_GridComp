@@ -567,6 +567,25 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       ! fix 'convective' cloud fraction 
       if (FIX_CNV_CLOUD) then
+      ! melt/freeze condensates
+      TMP3D = T
+      DO L=1,LM
+       DO J=1,JM
+        DO I=1,IM
+            CALL meltfrz (         &
+                  DT_MOIST       , &
+                  CNV_FRC(I,J)   , &
+                  SRF_TYPE(I,J)  , &
+                  T(I,J,L)       , &
+                  QLCN(I,J,L)    , &
+                  QICN(I,J,L))
+        END DO
+       END DO
+      END DO
+      DTDT_DC  = DTDT_DC  + (T-TMP3D)/DT_MOIST
+      DTHDT_DC = DTHDT_DC + (T-TMP3D)/DT_MOIST/PK
+      TH = T/PK
+      ! fix convective cloud
       TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
       TMP3D = QST3
       WHERE (CLCN < 1.0)
@@ -579,13 +598,15 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       ! If still cant make suitable env RH then destroy anvil
       WHERE ( CLCN < 0.0 )
          CLCN = 0.
+         DQLDT_DC = DQLDT_DC - (QLCN       )/DT_MOIST
+         DQIDT_DC = DQIDT_DC - (       QICN)/DT_MOIST
          DQVDT_DC = DQVDT_DC + (QLCN + QICN)/DT_MOIST
-          Q       =  Q       +  QLCN + QICN
+          Q       =  Q       + (QLCN + QICN)
          TMP3D    = (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
-         DTDT_DC  = DTDT_DC - TMP3D/DT_MOIST
-          T       =  T      - TMP3D
-          TH      =  T/PK
+         DTDT_DC  = DTDT_DC  - TMP3D/DT_MOIST
          DTHDT_DC = DTHDT_DC - TMP3D/DT_MOIST/PK
+          T       =  T       - TMP3D
+          TH      =  T/PK
          QLCN = 0.
          QICN = 0.
       END WHERE
