@@ -168,6 +168,15 @@ contains
        use_PEATMAP = .false.
        jpl_height  = .false.
        
+     case ("v09")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061'
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .false.
+
     end select
              
   END SUBROUTINE init_bcs_config

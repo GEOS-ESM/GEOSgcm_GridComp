@@ -115,6 +115,7 @@ echo "   ${C2}      = NL3 + JPL veg height + PEATMAP${CR}"
 echo "   ${C2}v06   = NL3 + JPL veg height + PEATMAP + MODIS snow alb${CR}"
 echo "   ${C2}v07   = NL3 + PEATMAP${CR}"
 echo "   ${C2}v08   = NL3 + MODIS snow alb${CR}"
+echo "   ${C2}v09   = NL3 + PEATMAP + MODIS snow alb${CR}"
 echo "  "
 if ( $HELPMODE != YES ) then        
    echo "                         ${C1}       *BCs produced by this code will differ from BCs in archived directories\!\!\! ${CR}"
@@ -142,7 +143,8 @@ if ( $HELPMODE != YES ) then
        $dummy == 'NL5'  | \
        $dummy == 'v06'  | \
        $dummy == 'v07'  | \
-       $dummy == 'v08') then
+       $dummy == 'v08'  | \
+       $dummy == 'v09') then
       set lbcsv = $dummy
    else if ( $dummy == '' ) then
       echo $lbcsv
