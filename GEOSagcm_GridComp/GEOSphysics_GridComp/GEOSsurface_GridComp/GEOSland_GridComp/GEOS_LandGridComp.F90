@@ -115,34 +115,6 @@ contains
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    pso_choice = 0
-    tmp = ''
-    if (NUM_LDAS_ENSEMBLE >1) then
-        ! land_exxxx
-        tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
-        if (pso_choice == 1) then
-            read(tmp,*,iostat=status) ens_int
-            pso_params%ens_num = ens_int + 1
-            pso_params%total_ens = NUM_LDAS_ENSEMBLE
-            !write(*,*) 'ens_int'
-            !write(*,*) ens_int
-            !write(*,*) 'pso_params%ens_num'
-            !write(*,*) pso_params%ens_num
-            !write(*,*) 'pso_params%total_ens'
-            !write(*,*) pso_params%total_ens
-            !intentional error
-        endif
-    else
-        if (pso_choice == 1) then
-            pso_params%ens_num = 1
-            pso_params%total_ens = 1
-            !write(*,*) 'pso_params%ens_num'
-            !write(*,*) pso_params%ens_num
-            !write(*,*) 'pso_params%total_ens'
-            !write(*,*) pso_params%total_ens
-        endif
-    endif
-    
 
 !------------------------------------------------------------
 ! Register services for this component

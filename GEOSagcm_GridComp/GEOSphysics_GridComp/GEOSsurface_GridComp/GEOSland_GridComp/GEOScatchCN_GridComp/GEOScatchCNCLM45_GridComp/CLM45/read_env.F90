@@ -29,35 +29,35 @@ contains
       integer :: ncid, ndim, nvar, natt, unlid, len1, varid, test
       real, allocatable, dimension(:) :: values
       
-      write(*,*) 'inside function'
+      !write(*,*) 'inside function'
 
       call check(nf90_open(met_path, nf90_nowrite, ncid))
-      write(*,*) 'after open'
+      !write(*,*) 'after open'
       call check(nf90_inquire(ncid, ndim, nvar, natt, unlid))
-      write(*,*) 'after inquire'
+      !write(*,*) 'after inquire'
       call check(nf90_inquire_dimension(ncid,1,len=len1))
       
-      write(*,*) 'file opened'
+      !write(*,*) 'file opened'
 
       if (.not. allocated(pso_params%map_vals)) then
         allocate(pso_params%map_vals(len1))
       endif
         
-      write(*,*) 'map vals allocated'
+      !write(*,*) 'map vals allocated'
 
       if (.not. allocated(values)) then
          allocate(values(len1))
       endif
 
-      write(*,*) 'values allocated'
+      !write(*,*) 'values allocated'
 
       call check(nf90_inq_varid(ncid,'MAP',varid))
       call check(nf90_get_var(ncid, varid, values))
       pso_params%map_vals = values
 
-      write(*,*) 'values assigned to map_vals'
-      write(*,*) 'pso_params%map_vals'
-      write(*,*) pso_params%map_vals
+      !write(*,*) 'values assigned to map_vals'
+      !write(*,*) 'pso_params%map_vals'
+      !write(*,*) pso_params%map_vals
       call check(nf90_close(ncid))
    end subroutine read_env_data
 

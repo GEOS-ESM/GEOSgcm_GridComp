@@ -67,6 +67,7 @@ module GEOS_CatchCNCLM45GridCompMod
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
+  use pso_params_mod_landshared
 
 implicit none
 private
@@ -5148,7 +5149,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: lai1, lai2, wght
     real, allocatable, dimension(:) :: ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp
     real, allocatable, dimension(:) :: SNOVR_tmp, SNONR_tmp, SNOVF_tmp, SNONF_tmp
-
+    
+    ! temporary variables for use with PSO optimization
+    ! -------------------------------------------------
+    integer :: NUM_LDAS_ENSEMBLE, ens_id_width, ens_int, pso_choice
+    integer :: start_string, comp_len 
+    character(len=4) :: ens_str
     ! Variables for FPAR
             ! --------------------------
                 real   , allocatable, dimension (:,:)      :: parzone
@@ -6740,7 +6746,32 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         albdir(:,nv) = albvr(:)*(1.-fsnow(:)) + snovr(:)*fsnow(:)
         albdif(:,nv) = albvf(:)*(1.-fsnow(:)) + snovf(:)*fsnow(:)
 
-      end do      
+      end do  
+      
+          
+      call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+      VERIFY_(STATUS)
+      pso_choice = 1
+      if (NUM_LDAS_ENSEMBLE >1) then
+          !tmp = COMP_NAME(start_string:18)
+          if (pso_choice == 1) then
+              ens_str = COMP_NAME(15:18)
+              read(ens_str,*,iostat=STATUS) ens_int
+              pso_params%ens_num = ens_int + 1
+              pso_params%total_ens = NUM_LDAS_ENSEMBLE
+          endif
+      else
+          if (pso_choice == 1) then
+              pso_params%ens_num = 1
+              pso_params%total_ens = 1
+              !write(*,*) 'pso_params%ens_num'
+              !write(*,*) pso_params%ens_num
+              !write(*,*) 'pso_params%total_ens'
+              !write(*,*) pso_params%total_ens
+          endif
+      endif
 
       call compute_rc(ntiles,nveg,TCx,QAx,T2M10D,TA,PS,ZTH,DRPAR,DFPAR,     &
                       albdir,albdif,elaz,esaz,ityz,fvez,btran,fwet,         &
