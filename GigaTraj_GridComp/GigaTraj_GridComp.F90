@@ -24,6 +24,7 @@ module GigaTraj_GridCompMod
   type GigaTrajInternal
     integer :: npes
     type (ESMF_Grid) :: LatLonGrid
+    class (AbstractRegridder), pointer :: cube2latlon => null()
     integer, allocatable :: CellToRank(:,:)
   end type
 
@@ -202,6 +203,7 @@ contains
                  nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status) ) 
 
 
+    GigaTrajInternalPtr%cube2latlon => new_regridder_manager%make_regridder(CubedGrid,  GigaTrajInternalPtr%LatLonGrid, REGRID_METHOD_CONSERVE, rc=status)
     call MAPL_Grid_interior(GigaTrajInternalPtr%LatLonGrid ,i1,i2,j1,j2)
 
     allocate(I1s(npes),J1s(npes))
@@ -284,22 +286,56 @@ contains
     integer :: DIMS(3), rank, comm, ierror
     type (ESMF_VM)   :: vm
   
-    call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
-      _VERIFY(status)
+    real, dimension(:,:,:), pointer     :: U_cube
+    real, dimension(:,:,:), allocatable :: U_latlon
+    real, dimension(:,:,:), pointer     :: U_latlon_halo
+    integer :: halowidth(3)
+    type(ESMF_Field)   :: U_field
+    type(ESMF_RouteHandle) :: rh
+
+    call ESMF_VMGetCurrent(vm, _RC)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
+    call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
+
+    call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
   
-    call ESMF_ClockGet(clock, timeStep=ModelTimeStep,rc=status)
-      _VERIFY(status)
+    call ESMF_ClockGet(clock, timeStep=ModelTimeStep, _RC)
 
+    call ESMF_GridCompGet(GC, grid=CubedGrid, _RC)
 
-!-----------------
-! Step 1) given lat lon, where it should go ?
-!-----------------
-
-
-    call ESMF_GridCompGet(GC, grid=CubedGrid, rc=status)
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
-    VERIFY_(STATUS)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
+
+    call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, localCellCountPerDim=DIMS, _RC)
+
+    allocate(U_latlon(DIMS(1), DIMS(2),DIMS(3)), source = 0.0)
+
+!---------------
+! Step 1) Regrid the metData field from cubed to lat-lon
+!---------------
+
+    call MAPL_GetPointer(Import, U_cube, "U", _RC)
+    call GigaTrajInternalPtr%cube2latlon%regrid(U_cube, U_latlon, _RC)
+
+!---------------
+! Step 2) Get halo of latlon metData field
+!         After this step, the local field has distributed horizonal + halo
+!---------------
+  
+     U_field = ESMF_FieldCreate(GigaTrajInternalPtr%LatLonGrid, ESMF_TYPEKIND_R4, name='U',  &
+                                ungriddedLBound=[1],ungriddedUBound=[DIMS(3)], &
+                                totalLWidth=[1,1],totalUWidth=[1,1])
+     call ESMF_FieldHaloStore(U_field,rh,rc=status)
+     _VERIFY(status)
+
+     call ESMF_FieldGet(U_field, farrayPtr=U_latlon_halo, _RC)
+     U_latlon_halo(2:DIMS(1)+1, 2:DIMS(2)+1, :) = U_latlon
+     call ESMF_FieldHalo(U_field,rh,rc=status)
+      _VERIFY(status)
+ 
+!-----------------
+! Step 3) Given partical position (lat lon), find out which processor it should go ?
+!-----------------
 
     call random_seed()
     call random_number(rparcels)
@@ -334,15 +370,13 @@ contains
        ranks(i) = GigaTrajInternalPtr%CellToRank(II(i), JJ(i))
     enddo
 
+!---------------------
+!step 4) Pack the location data and send them to where the metData sit
+!---------------------
 
     do rank = 0, GigaTrajInternalPtr%npes-1
        counts_send(rank+1) = count(ranks == rank)
     enddo
-
-
-!---------------------
-!step 2) pack the location data and send them to where data sit
-!---------------------
 
     call ESMF_VMGetCurrent(vm, rc=status)
     call ESMF_VMGet(vm, mpiCommunicator=comm, __RC__)
@@ -357,7 +391,7 @@ contains
        disp_recv(rank+1) = disp_recv(rank)+ counts_recv(rank)
     enddo
 
-    ! pack and regroup lats lons, and ids
+    ! re-arranged lats lons, and ids
     tmp_position = disp_send
     allocate(lons_send(num_parcels))
     allocate(lons_recv(sum(counts_recv)))
@@ -372,19 +406,25 @@ contains
     call MPI_AllToALLv(lons_send, counts_send, disp_send, MPI_REAL, lons_recv, counts_recv, disp_recv, MPI_REAL, comm, ierror)
 
 !---------------------
-!step 3) Interpolate the data and send back where they request
+!step 5) Interpolate the data ( horiontally and vertically) and send back where they are from
 !---------------------
 
     allocate(U_recv(sum(counts_recv)), source = rank*1.0)
     allocate(U_send(num_parcels), source = -1.0)
-
+    !
+    ! Horizontal and vertical interpolator here
+    !
     call MPI_AllToALLv(U_recv, counts_recv, disp_recv, MPI_REAL, U_send, counts_send, disp_send, MPI_REAL, comm, ierror)
 
 
-    ! re-arrange U_send
+!---------------------
+!step 6) Rearrange data ( not necessary if ids was rearranged ins step 4)
     allocate(U(num_parcels))
     U(:) = U_send(pos(:))
   
+    !deallocate(U_latlon_halo)
+    call ESMF_FieldDestroy(U_field)
+
     print*," Great, I am still alive" 
     RETURN_(ESMF_SUCCESS)
   end subroutine Run
