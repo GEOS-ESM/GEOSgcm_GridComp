@@ -770,7 +770,7 @@
    integer:: fake_num_ensemble
    integer:: reason
    integer:: pso_pft
-   real    :: pso_val, map_val_tile, offline_map
+   real    :: pso_val, map_val_tile, offline_const, offline_int
    logical:: pso_exists
    character (len = 100):: met_tag_map
 
@@ -893,9 +893,7 @@
       end if
 
       ! C3 and C4 dependent parameters
-      pso_choice = 0
-      !write(*,*) pso_params%ens_num
-      !write(*,*) 'pso_params%ens_num'
+      pso_choice = 1
       if (pso_choice == 0) then
          if (c3flag(p)) then
             qe(p) = 0._r8
@@ -920,129 +918,49 @@
          end if
       
          pso_alloc_stat =  allocated(pso_params%param_vals)
-         !fake_num_ensemble = 28
-         !write(*,*) 'pso_alloc_stat determined'
          if (pso_alloc_stat == .false.) then
             met_tag_map = '/discover/nobackup/trobinet/misc_and_testing/create_env_data/map_tile.nc4'
             met_tag_map = trim(met_tag_map)
-            !write(*,*) 'before calling read env data'
             call read_env_data(met_tag_map)
-            !write(*,*) 'after calling read env data'
             num_params = 5
-            !write(*,*) 'pso_alloc_stat inside'
-            !allocate(pso_params%param_vals(NUM_ENSEMBLE, num_params))
             if (pso_alloc_stat == .false.) then
                allocate(pso_params%param_vals(num_params, pso_params%total_ens))
-               !write(*,*) 'ityp'
-               !write(*,*) ityp
             endif
-            inquire(FILE='/discover/nobackup/trobinet/exps/GEOSldas_CN45_PSO_v2/run/position_vals.csv',EXIST = pso_exists) 
-            !write(*,*) 'pso_exists'
-            !write(*,*) pso_exists
+            inquire(FILE='/discover/nobackup/trobinet/exps/GEOSldas_CN45_EFPH/run/position_vals.csv',EXIST = pso_exists) 
             if (pso_exists == .true.) then
-                open(unit = 8, file='/discover/nobackup/trobinet/exps/GEOSldas_CN45_PSO_v2/run/position_vals.csv',IOSTAT = reason)
-                !write(*,*) 'file has been opened'
+                open(unit = 8, file='/discover/nobackup/trobinet/exps/GEOSldas_CN45_EFPH/run/position_vals.csv',IOSTAT = reason)
                 read(8, *,IOSTAT = reason) pso_params%param_vals
-                !write(*,*) 'read values'
                 close(8)
-                !write(*,*) 'file closed'
-                !write(*,*) 'pso_params%param_vals'
-                !write(*,*) pso_params%param_vals
             else
-                !write(*,*) 'pso doesnt exist'
                 pso_params%param_vals = 1._r8
-                !write(*,*) 'pso_params%param_vals'
-                !write(*,*) pso_params%param_vals
             endif
-
-            !write(*,*) 'pso_params%param_vals'
-            !write(*,*) pso_params%param_vals
-            !write(*,*) 'shape(pso_params%param_vals)'
-            !write(*,*) shape(pso_params%param_vals)
-            !write(*,*) 'fake_num_ensemble'
-            !write(*,*) fake_num_ensemble
-            !write(*,*) 'num_params'
-            !write(*,*) num_params
-            !pso_params%ens_num = 1
-            !write(*,*) 'pso_params%ens_num'
-            !write(*,*) pso_params%ens_num
          endif
-         !write(*,*) 'pso_params%ens_num'
-         !write(*,*) pso_params%ens_num
-         !write(*,*) 'pso_params%param_vals'
-         !write(*,*) pso_params%param_vals
-         !write(*,*) 'shape(pso_params%param_vals)'
-         !write(*,*) shape(pso_params%param_vals)
-         !write(*,*) 'pso_params%param_vals(1, 1)'
-         !write(*,*) pso_params%param_vals(1, 1)
-         !write(*,*) 'pso_params%this_is_wrong'
-
          this_ens = pso_params%ens_num
-
-         !write(*,*) 'this_ens'
-         !write(*,*) this_ens
-         !write(*,*) 'pso_params%ens_num'
-         !write(*,*) pso_params%ens_num
-         !write(*,*) 'ivt'
-         !write(*,*) ivt
-         !write(*,*) 'ityp'
-         !write(*,*) ityp  ! GOES THROUGH 18--CLM VERSION OF PFTS
-
-
-         !HERE WRITE SOMETHING TO FIGURE OUT THE PROPER COLUMN FROM PFT
-         !write(*,*) 'before pso_pft'
-         !write(*,*) 'p'
-         !write(*,*) p
-         !write(*,*) 'nv'
-         !write(*,*) nv
-         !write(*,*) 'ityp(p, :)'
-         !write(*,*) ityp(p, :)
-         !write(*,*) 'ityp(p, nv)'
-         !write(*,*) ityp(p, nv)
          call pft_clm_to_pso(ityp(p, nv), pso_pft)
-         !write(*,*) 'after pso_pft'
-         !write(*,*) 'pso_pft'
-         !write(*,*) pso_pft
          pso_val = pso_params%param_vals(pso_pft, this_ens)
-         !write(*,*) 'pso_val'
-         !write(*,*) pso_val
-         !write(*,*) 'pso_params%param_vals'
-         !write(*,*) pso_params%param_vals
-         !write(*,*) 'pso_val assigned'
-         offline_map = 0.025
+         offline_const = 0.025
+         offline_int = -0.163747
          map_val_tile = pso_params%map_vals(p)
-         !write(*,*) 'map_val_tile'
-         !write(*,*) map_val_tile
-         mbbopt(p) = pso_val*(map_val_tile*offline_map)
-         !write(*,*) 'mbbopt(p)'
-         !write(*,*) mbbopt(p)
-         !write(*,*) 'final mbbopt assigned'
-         !write(*,*) 'testing to find acceptable values for mbbopt'
-         !mbbopt = 4._r8 
-         !write(*,*) 'mbbopt(p)'
-         !write(*,*) mbbopt(p)
-         !write(*,*) 'this_ens'
-         !write(*,*) this_ens
-         !write(*,*) 'shape(pso_params%param_vals)'
-         !write(*,*) shape(pso_params%param_vals)
-         !write(*,*) 'pso_params%param_vals(1, 1)'
-         !write(*,*) pso_params%param_vals(1, 1)
-         !write(*,*) 'pso_params%param_vals(2, 2)'
-         !write(*,*) pso_params%param_vals(2, 2)
-         !pso_params%ens_num = pso_params%ens_num+1
-         !write(*,*) 'pso_params%ens_num'
-         !write(*,*) pso_params%ens_num
-
+         mbbopt(p) = pso_val*(offline_int + map_val_tile*offline_const)
+         if (mbbopt(p) < 0) then
+            mbbopt(p) = 0
+         endif
+         if (p == 1) then
+            !write(*,*) 'this_ens'
+            !write(*,*) this_ens
+            !write(*,*) 'pso_pft'
+            !write(*,*) pso_pft
+            !write(*,*) 'pso_val'
+            !write(*,*) pso_val
+            !write(*,*) 'ityp(p, nv)'
+            !write(*,*) ityp(p, nv)
+            continue
+         endif
       endif
       ! Soil water stress applied to Ball-Berry parameters
 
       bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
       mbb(p) = mbbopt(p)
-
-      !write(*,*) 'mbb(p)'
-      !write(*,*) mbb(p)
-      !write(*,*) 'bbb(p)'
-      !write(*,*) bbb(p)
 
       ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
       !
