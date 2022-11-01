@@ -30,7 +30,6 @@ module GEOS_LandGridCompMod
   use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
   use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
-  use pso_params_mod_landshared
 !  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
@@ -86,7 +85,7 @@ contains
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
-    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width, ens_int, pso_choice, test
+    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
     character(len=ESMF_MAXSTR)              :: SURFRC
 
 !=============================================================================
@@ -115,6 +114,14 @@ contains
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
+<<<<<<< HEAD
+=======
+    tmp = ''
+    if (NUM_LDAS_ENSEMBLE >1) then
+        ! land_exxxx
+        tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
+    endif
+>>>>>>> EF_PH_fix
 
 !------------------------------------------------------------
 ! Register services for this component
