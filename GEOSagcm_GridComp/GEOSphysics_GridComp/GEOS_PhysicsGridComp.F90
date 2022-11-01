@@ -1433,7 +1433,7 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-!AMM terminate imports to SURF for SYNCTQ
+! terminate imports to SURF for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
           SHORT_NAME = (/ 'UA','VA','TA','QA','SPEED' /),        &
@@ -1448,7 +1448,7 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-!AMM terminate imports to turb for SYNCTQ
+! terminate imports to turb for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
           SHORT_NAME = (/'U','V','T','TH' /),     & 
@@ -1468,7 +1468,7 @@ contains
           RC=STATUS)
      VERIFY_(STATUS)
 
-!AMM terminate imports to chem for SYNCTQ
+! terminate imports to chem for SYNCTQ
      if ( SYNCTQ.eq.1.) then
        call MAPL_TerminateImport  ( GC,    &
           SHORT_NAME = (/'T ','TH'/),      &
@@ -1477,7 +1477,7 @@ contains
        VERIFY_(STATUS)
      endif
 
-!AMM terminate imports to RAD for SYNCTQ
+! terminate imports to RAD for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport  ( GC,    &
           SHORT_NAME = (/'T'/),            &     
@@ -2134,7 +2134,6 @@ contains
    real(kind=MAPL_R8), allocatable, dimension(:,:,:) :: dq
 
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
-   INTEGER, PARAMETER :: DXDT_BL=1
  
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
@@ -2484,6 +2483,9 @@ contains
 
     call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
 
+    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+
 !  SYNCTQ - Stage 1 SYNC of T/Q and U/V
 !--------------------------------------
     if ( SYNCTQ.ge.1. ) then
@@ -2494,6 +2496,9 @@ contains
      call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  QAFMOIST,  'QAFMOIST', RC=STATUS); VERIFY_(STATUS)
+    ! Boundary Layer Tendencies for GF
+     DTDT_BL=TAFMOIST
+     DQDT_BL=QV
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
@@ -2636,6 +2641,13 @@ contains
         TFORCHEM = TFORRAD
        THFORCHEM = TFORRAD/PK
      endif
+    endif
+
+! Boundary Layer Tendencies for GF
+!--------------------------
+    if ( SYNCTQ.ge.1. ) then
+       DTDT_BL=(TFORRAD-DTDT_BL)/DT
+       DQDT_BL=(QV-DQDT_BL)/DT
     endif
 
 ! Aerosol/Chemistry Stage 2
@@ -3183,24 +3195,20 @@ contains
        DOXDTCHMINT = DOXDTCHMINT * (MAPL_O3MW/MAPL_AIRMW)
     end if
 
+    if(SYNCTQ.eq.0.) then
+      !- save 'boundary layer' tendencies of Q and T for the convection scheme
+      DQDT_BL = DQVDTTRB
+      DTDT_BL = 0.
+      !- for SCM setup, TIT/TIF are not associated
+      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
+      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
+    endif
+
     if(associated(DM )) deallocate(DM )
     if(associated(DPI)) deallocate(DPI)
     if(associated(FRI)) deallocate(FRI)
     if(associated(TTN)) deallocate(TTN)
     if(associated(STN)) deallocate(STN)
-
-!-srf-gf-scheme
-    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    DQDT_BL = 0.
-    DTDT_BL = 0.
-    if(DXDT_BL==1) then
-      !- save 'boundary layer' tendencies of Q and T for the convection scheme
-      if( associated(DQVDTTRB)) DQDT_BL = DQVDTTRB
-      if( associated(TIF     )) DTDT_BL = DTDT_BL + TIF
-      if( associated(TIT     )) DTDT_BL = DTDT_BL + TIT    
-    endif
-!-srf-gf-scheme
 
 !-stochastic-physics
     if(DO_SPPT) deallocate(TMP,RNDPERT)

@@ -2920,7 +2920,7 @@ contains
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
      real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, TSM, USM, VSM
-     real, dimension(IM,JM,0:LM)         :: ZSM, ZL0
+     real, dimension(IM,JM,0:LM)         :: ZL0
      integer, dimension(IM,JM)           :: SMTH_LEV
 
 !     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
@@ -3562,21 +3562,9 @@ contains
 
       call MAPL_TimerOn(MAPL,"---PRELIMS")
 
-      !===> Running 1-2-1 smooth of bottom levels of ZLE
       do L=0,LM
          ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! height above the surface 
       enddo
-      ZSM = ZL0
-      if (SMTH_HGT > 0) then
-        ZSM(:,:,LM) = ZL0(:,:,LM-1)*0.25 + ZL0(:,:,LM  )*0.75
-        do J=1,JM
-         do I=1,IM
-           do L=LM-1,SMTH_LEV(I,J),-1
-              ZSM(I,J,L) = ZL0(I,J,L-1)*0.25 + ZL0(I,J,L)*0.50 + ZL0(I,J,L+1)*0.25
-           end do
-         end do
-        end do
-      end if
 
       ! Layer height, pressure, and virtual temperatures
       !-------------------------------------------------
@@ -3584,11 +3572,11 @@ contains
       QL  = QLCN + QLLS
       QI  = QICN + QILS
       QA  = CLCN + CLLS ! Currently not used in REFRESHKS
-      Z   = 0.5*(ZSM(:,:,0:LM-1)+ZSM(:,:,1:LM))
+      Z   = 0.5*(ZL0(:,:,0:LM-1)+ZL0(:,:,1:LM))
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
 
       if (associated(ZLS))  ZLS = Z
-      if (associated(ZLES)) ZLES = ZSM
+      if (associated(ZLES)) ZLES = ZL0
 
       TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
       THV = TV*(TH/T)
@@ -3605,30 +3593,33 @@ contains
       TSM = THV
       USM = U
       VSM = V
+      if (DO_SHOC == 0) then
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
       if (SMTH_HGT >= 0) then
-        TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-        USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
-        VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
+        TSM(:,:,LM) = TSM(:,:,LM-1)*0.25 + TSM(:,:,LM  )*0.75
+        USM(:,:,LM) = USM(:,:,LM-1)*0.25 + USM(:,:,LM  )*0.75
+        VSM(:,:,LM) = VSM(:,:,LM-1)*0.25 + VSM(:,:,LM  )*0.75
         do J=1,JM
          do I=1,IM
            do L=LM-1,SMTH_LEV(I,J),-1
-              TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
-              USM(I,J,L) =   U(I,J,L-1)*0.25 +   U(I,J,L)*0.50 +   U(I,J,L+1)*0.25
-              VSM(I,J,L) =   V(I,J,L-1)*0.25 +   V(I,J,L)*0.50 +   V(I,J,L+1)*0.25
+              TSM(I,J,L) = TSM(I,J,L-1)*0.25 + TSM(I,J,L)*0.50 + TSM(I,J,L+1)*0.25
+              USM(I,J,L) = USM(I,J,L-1)*0.25 + USM(I,J,L)*0.50 + USM(I,J,L+1)*0.25
+              VSM(I,J,L) = VSM(I,J,L-1)*0.25 + VSM(I,J,L)*0.50 + VSM(I,J,L+1)*0.25
            end do
          end do
         end do
       else
-        TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+        TSM(:,:,LM) = TSM(:,:,LM-1)*0.25 + TSM(:,:,LM  )*0.75
         do J=1,JM
          do I=1,IM
            do L=LM-1,SMTH_LEV(I,J),-1
-              TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
+              TSM(I,J,L) = TSM(I,J,L-1)*0.25 + TSM(I,J,L)*0.50 + TSM(I,J,L+1)*0.25
            end do
          end do
         end do
       end if
+      end if
+
       RHOE(:,:,1:LM-1)=PLE(:,:,1:LM-1)/(MAPL_RGAS*TVE) 
       RHOE(:,:,0)=PLE(:,:,0)/(MAPL_RGAS*TV(:,:,1))
       RHOE(:,:,LM)=PLE(:,:,LM)/(MAPL_RGAS*TV(:,:,LM))
@@ -4008,7 +3999,7 @@ contains
 
       if (DO_SHOC == 0) then
         call LOUIS_KS(                      &
-            Z,ZSM(:,:,1:LM-1),TSM,USM,VSM,ZPBL, &    
+            Z,ZL0(:,:,1:LM-1),TSM,USM,VSM,ZPBL, &    
             KH(:,:,1:LM-1),KM(:,:,1:LM-1),  &
             RI(:,:,1:LM-1),DU(:,:,1:LM-1),  &    
             LOUIS, MINSHEAR, MINTHICK,      &
@@ -4460,9 +4451,9 @@ contains
           TKE = 1e-6 ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
           do L = 1,LM-1
             TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5)  *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
-            (KM(:,:,L)*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
-            (KM(:,:,L)*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
+            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5)  *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+            (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
+            (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
             TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
           enddo
           TKE = max(1e-6, TKE) ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
@@ -4549,8 +4540,8 @@ contains
          do I = 1, IM
             do J = 1, JM
                do L=LM-1,1,-1
-                  uv2h(I,J) = max(USM(I,J,L)**2+VSM(I,J,L)**2,1.0E-8)
-                  tcrib(I,J,L) = MAPL_GRAV*(TSM(I,J,L)-TSM(I,J,LM))*Z(I,J,L)/(TSM(I,J,LM)*uv2h(I,J))
+                  uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2,1.0E-8)
+                  tcrib(I,J,L) = MAPL_GRAV*(THV(I,J,L)-THV(I,J,LM))*Z(I,J,L)/(THV(I,J,LM)*uv2h(I,J))
                   if (tcrib(I,J,L) >= tcri_crit) then
                      TCZPBL(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
                      KPBLTC(I,J) = float(L)
@@ -4660,9 +4651,9 @@ contains
           TKE = MAPL_UNDEF
           do L = 1,LM-1
             TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5) *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
-            (KM(:,:,L)*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
-            (KM(:,:,L)*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
+            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+            (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
+            (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
             TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
           enddo
         end if
