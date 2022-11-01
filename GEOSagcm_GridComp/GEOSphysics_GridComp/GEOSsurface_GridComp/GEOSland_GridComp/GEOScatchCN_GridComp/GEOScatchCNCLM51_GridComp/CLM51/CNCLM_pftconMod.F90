@@ -1,7 +1,7 @@
 module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
-  use nanMod           , only : nan
+  use shr_infnan_mod ,   only : nan => shr_infnan_nan, assignment(=)
   use clm_varpar       , only : mxpft, numrad,nvariants
   use clm_varctl       , only : use_flexibleCN
   use netcdf 
@@ -37,7 +37,7 @@ module pftconMod
   integer, public :: nc3_nonarctic_grass   = 13   ! Cool c3 grass [moisture + deciduous]
   integer, public :: nc4_grass             = 14   ! Warm c4 grass [moisture + deciduous]
   integer, public :: nc3crop               = 15   ! C3_crop [moisture + deciduous]   
-  integer, public :: npcropmin                    ! value for first crop functional type (not including the more generic C3 crop PFT)
+  integer, public :: npcropmin             = 15   ! value for first crop functional type (not including the more generic C3 crop PFT)
 
  !
   type, public :: pftcon_type
@@ -256,7 +256,6 @@ contains
 
 
 !---------------------------------------------------------
-    ncropmin = nc3crop
 
     allocate( read_tmp_1         (0:78)) 
     allocate( read_tmp_2         (0:78,nvariants))
