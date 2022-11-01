@@ -3100,6 +3100,29 @@ END SUBROUTINE modis_scale_para_high
 
   do n = 1, maxcat ! loop over tiles
 
+    ! note: if a tile is within 30 arcsec of the date line, snow albedo value
+    ! will remain missing (no values between the edge of the map and tile).
+    ! There are very few tiles that fall into this gap. To save the computational
+    ! time required for looping over h01 and h36 files, those tiles are 'moved' 
+    ! ~30 arc sec away from the date line, which will result in the assignment of
+    ! "neighboring" snow albedo value
+    if (min_lon(n) .lt. -179.99 .or. max_lon(n) .lt. -179.99) then  
+      min_lon(n)=min_lon(n)+0.01
+      max_lon(n)=max_lon(n)+0.01
+    endif
+    if (min_lon(n) .gt.  179.99 .or. max_lon(n) .gt.  179.99) then  
+      min_lon(n)=min_lon(n)-0.01
+      max_lon(n)=max_lon(n)-0.01
+    endif
+    if (min_lat(n) .lt.  -89.99 .or. max_lat(n) .lt.  -89.99) then  
+      min_lat(n)=min_lat(n)+0.01
+      max_lat(n)=max_lat(n)+0.01
+    endif
+    if (min_lat(n) .gt.   89.99 .or. max_lat(n) .gt.   89.99) then  
+      min_lat(n)=min_lat(n)-0.01
+      max_lat(n)=max_lat(n)-0.01
+    endif
+
     ! Set sums and counts to zero
     sno_alb_sum =0.
     sno_alb_cnt =0.
