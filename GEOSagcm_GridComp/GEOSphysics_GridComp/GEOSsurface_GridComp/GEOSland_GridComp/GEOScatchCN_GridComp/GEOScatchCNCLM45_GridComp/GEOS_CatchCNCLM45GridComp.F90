@@ -1738,7 +1738,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for relative humidity',&
-       UNITS              = 'K'                         ,&
+       UNITS              = '%'                         ,&
        SHORT_NAME         = 'RHM'                       ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1748,7 +1748,7 @@ subroutine SetServices ( GC, RC )
      
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for wind speed'     ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'm s-1'                     ,&
        SHORT_NAME         = 'WINDM'                     ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1758,7 +1758,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for rainfall'       ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RAINFM'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1768,7 +1768,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for snow fall'      ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'SNOWFM'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1778,7 +1778,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for surface runoff' ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RUNSRFM'                   ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1788,7 +1788,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for frac saturated area',&
-       UNITS              = 'K'                         ,&
+       UNITS              = '1'                         ,&
        SHORT_NAME         = 'AR1M'                      ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
