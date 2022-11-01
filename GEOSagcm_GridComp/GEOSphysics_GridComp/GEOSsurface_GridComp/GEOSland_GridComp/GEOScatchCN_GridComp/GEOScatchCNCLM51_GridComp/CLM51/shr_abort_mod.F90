@@ -50,7 +50,7 @@ contains
 
     ! Local version of the string.
     ! (Gets a default value if string is not present.)
-    character(len=shr_kind_cx) :: local_string
+    character(len=shr_kind_cx) :: local_string, tmp_str, errCode_str
     !-------------------------------------------------------------------------------
 
     if (present(string)) then
@@ -66,7 +66,9 @@ contains
 !    call shr_mpi_initialized(flag)
 
     if (present(rc)) then
-       _ASSERT(.FALSE.,trim(local_string),rc)
+        write(errCode_str, '(i40)') rc
+        tmp_str = trim(local_string) // ' error code: ' // errCode_str
+       _ASSERT(.FALSE.,trim(tmp_str))
     else
        _ASSERT(.FALSE.,trim(local_string))
     endif
