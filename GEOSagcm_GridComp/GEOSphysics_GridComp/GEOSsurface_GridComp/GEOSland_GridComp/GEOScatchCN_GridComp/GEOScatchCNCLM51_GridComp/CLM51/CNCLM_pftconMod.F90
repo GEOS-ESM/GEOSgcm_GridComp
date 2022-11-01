@@ -2,7 +2,7 @@ module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
-  use clm_varpar       , only : mxpft, numrad
+  use clm_varpar       , only : mxpft, numrad,nvariants
   use clm_varctl       , only : use_flexibleCN
   use netcdf 
   use shr_log_mod      , only : errMsg => shr_log_errMsg
@@ -11,6 +11,8 @@ module pftconMod
 
   ! !PUBLIC TYPES:
   implicit none
+
+  INCLUDE 'netcdf.inc'
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -35,7 +37,7 @@ module pftconMod
   integer, public :: nc3_nonarctic_grass   = 13   ! Cool c3 grass [moisture + deciduous]
   integer, public :: nc4_grass             = 14   ! Warm c4 grass [moisture + deciduous]
   integer, public :: nc3crop               = 15   ! C3_crop [moisture + deciduous]   
-  integer, public :: npcropmin = nc3crop          ! value for first crop functional type (not including the more generic C3 crop PFT)
+  integer, public :: npcropmin                    ! value for first crop functional type (not including the more generic C3 crop PFT)
 
  !
   type, public :: pftcon_type
@@ -235,7 +237,8 @@ contains
 
   ! !DESCRIPTION:
 ! Initialize CTSM PFT constants                                
-!                                                                                                                       
+!                                                                              
+  use ncdio_pio   , only : ncd_io
 ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
@@ -243,8 +246,9 @@ contains
 
     !LOCAL
     character(300)     :: paramfile
-    integer            :: ierr, clm_varid, ncid
+    integer            :: ierr, clm_varid, ncid, status
     logical            :: readv ! has variable been read in or not
+    type(Netcdf4_fileformatter) :: ncid
 
     real(r8), allocatable, dimension(:)   :: read_tmp_1
     real(r8), allocatable, dimension(:,:) :: read_tmp_2
@@ -252,6 +256,7 @@ contains
 
 
 !---------------------------------------------------------
+    ncropmin = nc3crop
 
     allocate( read_tmp_1         (0:78)) 
     allocate( read_tmp_2         (0:78,nvariants))
@@ -403,7 +408,7 @@ contains
     ! TO DO: pass parameter file through rc files rather than hardcoding name here
 
     paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
-    call ncid%open(trim(paramfile),pFIO_READ, __RC__)
+    call ncid%open(trim(paramfile),pFIO_READ, RC=status)
 
     call ncd_io('pftname',pftname, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
