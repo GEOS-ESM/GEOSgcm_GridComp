@@ -84,7 +84,7 @@ set (srcs
   FireMethodType.F90
   initSubgridMod.F90
   landunit_varcon.F90
-  ncdio_pio.F90.in
+  ncdio_pio.F90
   NutrientCompetitionCLM45defaultMod.F90
   NutrientCompetitionFactoryMod.F90
   NutrientCompetitionFlexibleCNMod.F90
@@ -122,7 +122,7 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_LandShared GEOS_CatchCNShared 
+  DEPENDENCIES MAPL GEOS_LandShared GEOS_CatchCNShared esmf NetCDF::NetCDF_Fortran
   TYPE SHARED)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
