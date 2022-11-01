@@ -1,3 +1,5 @@
+#include "MAPL_Generic.h"
+
 module shr_abort_mod
   ! This module defines procedures that can be used to abort the model cleanly in a
   ! system-specific manner
@@ -66,7 +68,7 @@ contains
     if (present(rc)) then
        _ASSERT(.FALSE.,trim(local_string),rc)
     else
-       _ASSERT(.FALSE.,trim(local_string),)
+       _ASSERT(.FALSE.,trim(local_string))
     endif
 
     ! A compiler's abort method may print a backtrace or do other nice
