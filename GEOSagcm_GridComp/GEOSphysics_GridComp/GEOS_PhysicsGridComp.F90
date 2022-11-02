@@ -1127,23 +1127,9 @@ contains
 !----------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'SNO','ICE','FRZR'/),                     &
+         SHORT_NAME  = (/'SNO','ICE','FRZR','PCU','PLS'/),         &
          DST_ID      = SURF,                                       &
          SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
-     VERIFY_(STATUS)
-     call MAPL_AddConnectivity ( GC,                               &
-         SRC_NAME    = 'RAIN_CONV',                                &
-         DST_NAME    = 'PCU',                                      &
-         SRC_ID      = MOIST,                                      &
-         DST_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-     VERIFY_(STATUS)
-     call MAPL_AddConnectivity ( GC,                               &
-         SRC_NAME    = 'RAIN_STRAT',                               &
-         DST_NAME    = 'PLS',                                      &
-         SRC_ID      = MOIST,                                      &
-         DST_ID      = SURF,                                       &
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1223,15 +1209,7 @@ contains
                          'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
                          'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
-                         'LFR_GCC ',  'RH2     ' /),                      &
-        DST_ID      = CHEM,                                               &
-        SRC_ID      = MOIST,                                              &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddConnectivity ( GC,                                      &
-        SRC_NAME    = 'RAIN_CONV',                                        &
-        DST_NAME    = 'CN_PRCP',                                          &
+                         'LFR_GCC ',  'RH2     ', 'CN_PRCP ' /),          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
                                                        RC=STATUS  )
