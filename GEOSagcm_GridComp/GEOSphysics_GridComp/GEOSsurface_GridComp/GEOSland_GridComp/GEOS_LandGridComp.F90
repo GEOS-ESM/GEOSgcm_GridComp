@@ -114,14 +114,11 @@ contains
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-<<<<<<< HEAD
-=======
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
         ! land_exxxx
         tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
     endif
->>>>>>> EF_PH_fix
 
 !------------------------------------------------------------
 ! Register services for this component
