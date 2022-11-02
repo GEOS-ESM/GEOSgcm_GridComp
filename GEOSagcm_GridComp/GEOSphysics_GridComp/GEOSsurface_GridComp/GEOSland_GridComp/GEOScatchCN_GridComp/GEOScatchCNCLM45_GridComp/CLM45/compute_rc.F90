@@ -893,7 +893,7 @@
       end if
 
       ! C3 and C4 dependent parameters
-      pso_choice = 1
+      pso_choice = 0
       if (pso_choice == 0) then
          if (c3flag(p)) then
             qe(p) = 0._r8

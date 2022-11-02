@@ -6753,7 +6753,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       VERIFY_(STATUS)
       call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
       VERIFY_(STATUS)
-      pso_choice = 1
+      pso_choice = 0
       if (NUM_LDAS_ENSEMBLE >1) then
           !tmp = COMP_NAME(start_string:18)
           if (pso_choice == 1) then
