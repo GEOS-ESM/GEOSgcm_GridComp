@@ -33,17 +33,17 @@ module shr_abort_mod
   ! (shr_sys_abort, shr_sys_backtrace). (This is for consistency with older code, from
   ! when these routines were defined in shr_sys_mod.)
   public :: shr_abort_abort     ! abort a program
-  public :: shr_abort_backtrace ! print a backtrace, if possible
+  ! public :: shr_abort_backtrace ! print a backtrace, if possible
 
 contains
 
   !===============================================================================
-  subroutine shr_abort_abort(string,rc)
+  subroutine shr_abort_abort(string,ec)
     ! Consistent stopping mechanism
 
     !----- arguments -----
     character(len=*)    , intent(in), optional :: string  ! error message string
-    integer(shr_kind_in), intent(in), optional :: rc      ! error code
+    integer(shr_kind_in), intent(in), optional :: ec      ! error code
 
     !----- local -----
     logical :: flag
