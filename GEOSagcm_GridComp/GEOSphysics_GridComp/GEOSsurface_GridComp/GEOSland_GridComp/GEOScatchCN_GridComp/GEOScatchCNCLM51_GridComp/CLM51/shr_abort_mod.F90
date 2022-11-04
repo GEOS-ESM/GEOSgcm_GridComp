@@ -1,4 +1,4 @@
-#include "MAPL_Generic.h"
+!#include "MAPL_Generic.h"
 
 module shr_abort_mod
   ! This module defines procedures that can be used to abort the model cleanly in a
@@ -65,7 +65,7 @@ contains
 
 !    call shr_mpi_initialized(flag)
 
-    if (present(rc)) then
+    if (present(ec)) then
        _ASSERT(.FALSE.,trim(local_string))
     else
        _ASSERT(.FALSE.,trim(local_string))
