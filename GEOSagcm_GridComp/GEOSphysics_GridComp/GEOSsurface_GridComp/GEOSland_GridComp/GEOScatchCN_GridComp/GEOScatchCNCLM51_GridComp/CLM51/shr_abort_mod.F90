@@ -1,4 +1,4 @@
-!#include "MAPL_Generic.h"
+#include "MAPL_Generic.h"
 
 module shr_abort_mod
   ! This module defines procedures that can be used to abort the model cleanly in a
