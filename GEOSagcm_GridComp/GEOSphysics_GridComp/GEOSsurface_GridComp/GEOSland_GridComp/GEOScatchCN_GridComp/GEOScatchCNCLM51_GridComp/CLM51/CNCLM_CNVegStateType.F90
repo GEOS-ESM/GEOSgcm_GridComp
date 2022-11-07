@@ -3,9 +3,10 @@ module CNVegStateType
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
   use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevsoi, &
-                                num_zon, num_veg, var_col, var_pft
+                                num_zon, num_veg, var_col, var_pft, numpft
   use clm_varcon       , only : spval, ispval
   use decompMod        , only : bounds_type
+  use AnnualFluxDribbler, only : annual_flux_dribbler_type, annual_flux_dribbler_patch
 
 
   ! !PUBLIC TYPES:
@@ -209,8 +210,8 @@ contains
  ! initialize variables from restart file or set to cold start value
  n = 0
  np = 0
-    do nc = 1,nch        ! catchment tile loop
-       do nz = 1,nzone    ! CN zone loop
+    do nc = 1,nch           ! catchment tile loop
+       do nz = 1,num_zon    ! CN zone loop
           n = n + 1
           this%annsum_counter_col (n) = cncol(nc,nz, 31)
           this%annavg_t2m_col     (n) = cncol(nc,nz, 32) 
@@ -218,7 +219,7 @@ contains
 
           do p = 0,numpft  ! PFT index loop
              np = np + 1
-             do nv = 1,nveg ! defined veg loop
+             do nv = 1,num_veg ! defined veg loop
                 if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
                   
                   this%annavg_t2m_patch            (np) = cnpft(nc,nz,nv,  24)
