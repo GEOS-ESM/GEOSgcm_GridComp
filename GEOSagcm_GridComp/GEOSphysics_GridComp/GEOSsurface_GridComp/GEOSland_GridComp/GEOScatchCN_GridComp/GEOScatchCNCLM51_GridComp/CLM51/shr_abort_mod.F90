@@ -38,13 +38,13 @@ module shr_abort_mod
 contains
 
   !===============================================================================
-  subroutine shr_abort_abort(string,ec)
+  suIbroutine shr_abort_abort(string,rc)
     ! Consistent stopping mechanism
 
     !----- arguments -----
     character(len=*)    , intent(in), optional :: string  ! error message string
-    integer(shr_kind_in), intent(in), optional :: ec      ! error code
-
+    integer(shr_kind_in), intent(in), optional :: rc      ! error code
+    
     !----- local -----
     logical :: flag
 
@@ -65,7 +65,7 @@ contains
 
 !    call shr_mpi_initialized(flag)
 
-    if (present(ec)) then
+    if (present(rc)) then
        _ASSERT(.FALSE.,trim(local_string))
     else
        _ASSERT(.FALSE.,trim(local_string))
