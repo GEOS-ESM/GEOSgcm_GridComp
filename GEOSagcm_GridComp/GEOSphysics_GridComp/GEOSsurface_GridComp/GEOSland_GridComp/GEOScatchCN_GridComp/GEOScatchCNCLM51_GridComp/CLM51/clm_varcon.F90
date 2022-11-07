@@ -70,6 +70,8 @@ module clm_varcon
   character(len=16), public, parameter :: namep  = 'pft'          ! name of patches
   character(len=16), public, parameter :: nameCohort = 'cohort'   ! name of cohorts (ED specific)
 
+  integer, parameter, public :: max_lunit  = 9  !maximum value that lun%itype can have
+
 ! !PUBLIC MEMBER FUNCTIONS:
   public clm_varcon_init          ! Initialze constants that need to be initialized
 
