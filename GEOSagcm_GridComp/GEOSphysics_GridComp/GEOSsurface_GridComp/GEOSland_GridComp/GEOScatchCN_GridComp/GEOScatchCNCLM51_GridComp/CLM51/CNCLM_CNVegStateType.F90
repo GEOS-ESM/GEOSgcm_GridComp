@@ -1,8 +1,9 @@
 module CNVegStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
-  use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevsoi
+  use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevsoi, &
+                                num_zon, num_veg, var_col, var_pft
   use clm_varcon       , only : spval, ispval
   use decompMod        , only : bounds_type
 
