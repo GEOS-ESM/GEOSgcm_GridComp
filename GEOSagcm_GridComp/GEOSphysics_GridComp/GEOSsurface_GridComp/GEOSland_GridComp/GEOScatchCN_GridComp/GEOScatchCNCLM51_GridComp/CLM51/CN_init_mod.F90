@@ -156,7 +156,7 @@
 
     call init_patch_type                (bound, nch, ityp, fveg, patch)
 
-    call init_column_type               (bounds, col)
+    call init_column_type               (bounds, nch, col)
 
     call init_landunit_type             (bounds, lun)
 

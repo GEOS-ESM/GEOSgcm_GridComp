@@ -25,7 +25,7 @@ module ColumnType
   use clm_varcon     , only : zsoi, dzsoi, zisoi, dzsoi_decomp, spval, ispval
   use clm_varctl     , only : use_fates
   use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak, nlevmaxurbgrnd,nlevurb, &
-                              CN_zone_weight, numpft
+                              CN_zone_weight, numpft, num_zon
 
 
   ! !PUBLIC TYPES:
@@ -89,19 +89,20 @@ module ColumnType
  contains
 
 !-----------------------------------------------------
-  subroutine init_column_type(bounds, this)
+  subroutine init_column_type(bounds,nch, this)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
 
   ! INPUT:
     type(bounds_type), intent(in) :: bounds
+    integer,           intent(in) :: nch         ! number of Catchment tiles
     type(column_type), intent(inout) :: this
 
   ! LOCAL:
 
     integer :: begc, endc
-    integer :: nc, nz, n
+    integer :: nc, nz, n, nc
   !----------------------------
 
   begc = bounds%begc ; endc = bounds%endc
