@@ -3,7 +3,7 @@ module GridcellType
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4,  MAPL_PI
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
-  use clm_varcon       , only : ispval
+  use clm_varcon       , only : ispval, max_lunit
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft
 
   ! !PUBLIC TYPES:
