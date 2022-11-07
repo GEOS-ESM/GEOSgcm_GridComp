@@ -102,7 +102,7 @@ module ColumnType
   ! LOCAL:
 
     integer :: begc, endc
-    integer :: nc, nz, n, nc
+    integer :: nc, nz, n, c
   !----------------------------
 
   begc = bounds%begc ; endc = bounds%endc
