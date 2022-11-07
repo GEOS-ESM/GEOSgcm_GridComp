@@ -71,14 +71,13 @@ module CatchmentCNRstMod
      real, allocatable :: tprec10d(:)
      real, allocatable :: tprec60d(:)
      real, allocatable :: t2m10d(:)
+     real, allocatable :: sfmcm(:)
+     real, allocatable :: psnsunm(:,:,:)
+     real, allocatable :: psnsham(:,:,:)
      real, allocatable :: rh30d(:) 
      real, allocatable :: tg10d(:)
      real, allocatable :: t2mmin5d(:)
      real, allocatable :: sndzm5d(:)    
-
-     real, allocatable :: sfmcm(:)
-     real, allocatable :: psnsunm(:,:,:)
-     real, allocatable :: psnsham(:,:,:)
      
   contains
      procedure :: write_nc4
