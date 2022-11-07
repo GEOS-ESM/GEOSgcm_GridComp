@@ -38,7 +38,7 @@ module shr_abort_mod
 contains
 
   !===============================================================================
-  suIbroutine shr_abort_abort(string,rc)
+  subroutine shr_abort_abort(string,rc)
     ! Consistent stopping mechanism
 
     !----- arguments -----
