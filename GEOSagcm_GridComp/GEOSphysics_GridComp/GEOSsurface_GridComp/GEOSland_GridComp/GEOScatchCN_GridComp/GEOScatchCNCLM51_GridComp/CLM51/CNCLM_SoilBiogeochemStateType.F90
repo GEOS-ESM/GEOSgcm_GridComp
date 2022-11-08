@@ -4,7 +4,8 @@ module SoilBiogeochemStateType
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan, &
                                 nlevsno, nlevgrnd, nlevlak, nlevsoifl
-  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
+  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
+                                VAR_COL, VAR_PFT, num_zon
   use clm_varctl       , only : use_cn
   use clm_varcon       , only : spval
   use decompMod        , only : bounds_type
