@@ -979,7 +979,7 @@ contains
 
          slvcp = slv/MAPL_CP
 
-         if (kcldtop .le. ibot) then 
+         if (kcldtop .lt. ibot) then 
             call radml_depth(               &
                   i,j,icol,jcol,            &
                   nlev,kcldtop,ibot,        &

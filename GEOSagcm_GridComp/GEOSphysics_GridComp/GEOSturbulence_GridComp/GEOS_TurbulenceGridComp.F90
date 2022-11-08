@@ -4383,8 +4383,8 @@ contains
                       SH,                       &
                       T,                        &
                       Q,                        &
-                      QL,                       &
-                      QI,                       &
+                      QLLS,                     &
+                      QILS,                     &
                       U,                        &
                       V,                        &
                       Z,                        &
