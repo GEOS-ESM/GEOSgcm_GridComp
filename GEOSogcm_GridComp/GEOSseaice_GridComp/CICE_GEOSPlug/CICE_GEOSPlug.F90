@@ -403,9 +403,13 @@ contains
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('EVAP', SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
+    call AddSurfField('LHF', SURFST, GRID, 
+                     UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('FSURF', SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('DFSURFDTS', SURFST, GRID, 
+                     UGRID=NUM_ICE_CATEGORIES, __RC__)
+    call AddSurfField('DLHFDTS', SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('SNOW',  SURFST, GRID,  __RC__)
     call AddSurfField('RAIN',  SURFST, GRID,  __RC__)
@@ -416,6 +420,8 @@ contains
     call AddSurfField('DRUVR', SURFST, GRID,  __RC__)
     call AddSurfField('DFUVR', SURFST, GRID,  __RC__)
     call AddSurfField('COSZ',  SURFST, GRID,  __RC__)
+
+    ! callback return fields
     call AddSurfField('DTS',   SURFST, GRID, 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
 
@@ -679,7 +685,6 @@ contains
   !*CALLBACK*
   !=====================================================================================
   subroutine thermo_coupling(state, rc)
-!     implicit none
 
   !! Arguments
   !! ---------

@@ -2295,6 +2295,7 @@ contains
 
    real,               allocatable    :: FSURF         (:,:) ! non-solar part 
    real,               allocatable    :: DFSURFDTS     (:,:) ! 
+   real,               allocatable    :: DLHFDTS       (:,:) ! 
    real,               allocatable    :: EVAPN         (:,:) ! 
    real,               allocatable    :: RAIN          (:)   !
 
@@ -2455,6 +2456,7 @@ contains
 
     allocate(    FSURF(size(TS,1),   size(TS,2)), __STAT__) 
     allocate(DFSURFDTS(size(TS,1),   size(TS,2)), __STAT__) 
+    allocate(  DLHFDTS(size(TS,1),   size(TS,2)), __STAT__) 
     allocate(    EVAPN(size(TS,1),   size(TS,2)), __STAT__) 
     allocate(   TS_OLD(size(TS,1),   size(TS,2)), __STAT__) 
 
@@ -2700,7 +2702,8 @@ contains
           endif
 
           FSURF(:,N)      = LWDNSRF - SHF - LHF - (ALW + BLW*TS(:,N))
-          DFSURFDTS(:,N)  = SHD + EVD * MAPL_ALHS + BLW
+          DFSURFDTS(:,N)  = SHD + EVD * MAPL_ALHS + BLW !!! check the sign
+          DLHFDTS(:,N)    = EVD * MAPL_ALHS  !!! check the sign
           EVAPN(:,N)      = EVP !!! check the sign
 
 !         Some aggregation of fluxes to the Ocean has to be done now, before using in step2
@@ -2817,6 +2820,8 @@ contains
     call RegridA2O_2d(       TS, SURFST,  'TSKINICE', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(    FSURF, SURFST,     'FSURF', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(DFSURFDTS, SURFST, 'DFSURFDTS', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(  DLHFDTS, SURFST,   'DLHFDTS', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(      LHF, SURFST,       'LHF', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(    EVAPN, SURFST,      'EVAP', XFORM_A2O, locstreamO, __RC__)
 
     call RegridA2O_1d(     RAIN, SURFST,      'RAIN', XFORM_A2O, locstreamO, __RC__)
@@ -3067,6 +3072,7 @@ contains
     deallocate(     TS_OLD,      __STAT__)
     deallocate(      FSURF,      __STAT__)
     deallocate(  DFSURFDTS,      __STAT__)
+    deallocate(    DLHFDTS,      __STAT__)
     deallocate(      EVAPN,      __STAT__)
     deallocate(       RAIN,      __STAT__)
 
