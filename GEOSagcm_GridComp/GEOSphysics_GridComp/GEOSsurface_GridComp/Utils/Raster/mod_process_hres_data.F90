@@ -3100,29 +3100,6 @@ END SUBROUTINE modis_scale_para_high
 
   do n = 1, maxcat ! loop over tiles
 
-    ! note: if a tile is within 30 arcsec of the date line, snow albedo value
-    ! will remain missing (no values between the edge of the map and tile).
-    ! There are very few tiles that fall into this gap. To save the computational
-    ! time required for looping over h01 and h36 files, those tiles are 'moved' 
-    ! ~30 arc sec away from the date line, which will result in the assignment of
-    ! "neighboring" snow albedo value
-    if (min_lon(n) .lt. -179.99 .or. max_lon(n) .lt. -179.99) then  
-      min_lon(n)=min_lon(n)+0.01
-      max_lon(n)=max_lon(n)+0.01
-    endif
-    if (min_lon(n) .gt.  179.99 .or. max_lon(n) .gt.  179.99) then  
-      min_lon(n)=min_lon(n)-0.01
-      max_lon(n)=max_lon(n)-0.01
-    endif
-    if (min_lat(n) .lt.  -89.99 .or. max_lat(n) .lt.  -89.99) then  
-      min_lat(n)=min_lat(n)+0.01
-      max_lat(n)=max_lat(n)+0.01
-    endif
-    if (min_lat(n) .gt.   89.99 .or. max_lat(n) .gt.   89.99) then  
-      min_lat(n)=min_lat(n)-0.01
-      max_lat(n)=max_lat(n)-0.01
-    endif
-
     ! Set sums and counts to zero
     sno_alb_sum =0.
     sno_alb_cnt =0.
@@ -3131,10 +3108,15 @@ END SUBROUTINE modis_scale_para_high
 
     ! Use tile's min/max lat/lon info to identify the 10x10deg input file(s)
     ! and read in snow albedo value(s). The "ceiling" and "floor" implements the "halo".
-    vvtil_min=  floor((min_lat(n)+ 90.0)/10.)
-    hhtil_min=  floor((min_lon(n)+180.0)/10.)
-    vvtil_max=ceiling((max_lat(n)+ 90.0)/10.)
-    hhtil_max=ceiling((max_lon(n)+180.0)/10.)
+    vvtil_min=  floor((min_lat(n)+ 90.0)/10.)+1 
+    hhtil_min=  floor((min_lon(n)+180.0)/10.)+1   
+
+    ! if tile crosses the edge of the snow albedo 10x10deg box, expand the 
+    ! search area into the neighbouring 10x10deg box
+    hhtil_max=hhtil_min
+    vvtil_max=vvtil_min
+    if (floor(min_lon(n)/10) .ne. floor(max_lon(n)/10)) hhtil_max=hhtil_min+1
+    if (floor(min_lat(n)/10) .ne. floor(max_lat(n)/10)) vvtil_max=vvtil_min+1
 
     ! Safety checks: 
     ! 1. Make sure vv's and hh's are within the range. If min>max, swap them.
@@ -3159,10 +3141,10 @@ END SUBROUTINE modis_scale_para_high
       do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
 
         ! Find indices ranges corresponding to the current tile area.
-        imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0))
-        imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0))
-        jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))
-        jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))
+        imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1 
+        imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1  
+        jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
+        jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
         ! Keep within the range.
         imin=max(imin,1)
         imax=min(imax,xdim)
@@ -3201,10 +3183,10 @@ END SUBROUTINE modis_scale_para_high
         do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
 
           ! Repeat the steps for extracting snow albedo value
-          imin2=floor((min_lon(n)-pad_lon+180.0 - (hhtil-1)*10.0) * (xdim/10.0))
-          imax2=floor((max_lon(n)+pad_lon+180.0 - (hhtil-1)*10.0) * (xdim/10.0))
-          jmin2=floor((min_lat(n)-pad_lat+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))
-          jmax2=floor((max_lat(n)+pad_lat+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))
+          imin2=floor((min_lon(n)-pad_lon+180.0 - (hhtil-1)*10.0) * (xdim/10.0))+1
+          imax2=floor((max_lon(n)+pad_lon+180.0 - (hhtil-1)*10.0) * (xdim/10.0))+1
+          jmin2=floor((min_lat(n)-pad_lat+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))+1
+          jmax2=floor((max_lat(n)+pad_lat+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))+1
           imin2=max(imin2,1)
           imax2=min(imax2,xdim)
           jmin2=max(jmin2,1)
