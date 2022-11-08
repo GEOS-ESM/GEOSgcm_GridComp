@@ -893,18 +893,20 @@
       end if
 
       ! C3 and C4 dependent parameters
-      pso_choice = 1
+      pso_choice = 0
       if (pso_choice == 0) then
          if (c3flag(p)) then
             qe(p) = 0._r8
             theta_cj(p) = 0.98_r8
             bbbopt(p) = 10000._r8
-            mbbopt(p) = 9._r8
+            !mbbopt(p) = 9._r8
+            mbbopt(p) = 0.5
          else
             qe(p) = 0.05_r8
             theta_cj(p) = 0.80_r8
             bbbopt(p) = 40000._r8
-            mbbopt(p) = 4._r8
+            !mbbopt(p) = 4._r8
+            mbbopt(p) = 0.5
          endif
       elseif (pso_choice == 1) then
          if (c3flag(p)) then
