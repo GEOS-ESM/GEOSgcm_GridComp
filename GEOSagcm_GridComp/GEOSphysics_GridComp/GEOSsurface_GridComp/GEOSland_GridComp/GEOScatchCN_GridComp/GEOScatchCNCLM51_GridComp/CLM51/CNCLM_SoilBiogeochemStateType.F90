@@ -9,6 +9,7 @@ module SoilBiogeochemStateType
   use clm_varctl       , only : use_cn
   use clm_varcon       , only : spval
   use decompMod        , only : bounds_type
+  use MAPL_ExceptionHandling
 
   ! !PUBLIC TYPES:
   implicit none
@@ -69,8 +70,7 @@ contains
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
-       (size(cnpft,3).ne.var_pft)))
+    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col))
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
 
@@ -101,21 +101,6 @@ contains
 
           this%fpg_col(n) = cncol(nc,nz, 30)
           this%fpi_col(n) = cncol(nc,nz, 35)
-
-
-          ! "new" variables: introduced in CNCLM50
-          if (cold_start==.false.) then
-             do nw = 1,nlevdecomp_full
-                this%nfixation_prof_col(n,nw)    = cnpft(nc,nz,nv, XXX+(nw-1))
-                this%ndep_prof_col(n,nw)         = cnpft(nc,nz,nv, XXX+(nw-1))
-             end do
-          elseif (cold_start) then
-             this%nfixation_prof_col(n,1:nlevdecomp_full)    = 0._r8
-             this%ndep_prof_col(n,1:nlevdecomp_full)    = 0._r8
-          else
-            _ASSERT(.FALSE.,'missing CNCLM50_cold_start setting')
-          end if
-
 
           do np = 1,nlevdecomp_full
              this%fpi_vr_col(n,np) = cncol(nc,nz, 35)
