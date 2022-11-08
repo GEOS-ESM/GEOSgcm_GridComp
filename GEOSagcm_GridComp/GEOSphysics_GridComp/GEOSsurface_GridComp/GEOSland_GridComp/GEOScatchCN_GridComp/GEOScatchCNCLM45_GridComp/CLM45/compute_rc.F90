@@ -134,7 +134,7 @@
 
 
 !assign the type of stomatal model that you will use. 0 indicates Ball-Berry, 1 indicates Medlyn
-   stomatal_model_choice = 0
+   stomatal_model_choice = 1
 
 ! assign local pointers to derived type arrays
 ! --------------------------------------------
@@ -916,7 +916,7 @@
             theta_cj(p) = 0.80_r8
             bbbopt(p) = 40000._r8
          end if
-      
+          
          pso_alloc_stat =  allocated(pso_params%param_vals)
          if (pso_alloc_stat == .false.) then
             met_tag_map = '/discover/nobackup/trobinet/misc_and_testing/create_env_data/map_tile.nc4'
@@ -926,9 +926,9 @@
             if (pso_alloc_stat == .false.) then
                allocate(pso_params%param_vals(num_params, pso_params%total_ens))
             endif
-            inquire(FILE='/discover/nobackup/trobinet/exps/GEOSldas_CN45_EFPH/run/position_vals.csv',EXIST = pso_exists) 
+            inquire(FILE='/discover/nobackup/trobinet/exps/GEOSldas_CN45_PSO_quick/run/position_vals.csv',EXIST = pso_exists) 
             if (pso_exists == .true.) then
-                open(unit = 8, file='/discover/nobackup/trobinet/exps/GEOSldas_CN45_EFPH/run/position_vals.csv',IOSTAT = reason)
+                open(unit = 8, file='/discover/nobackup/trobinet/exps/GEOSldas_CN45_quick/run/position_vals.csv',IOSTAT = reason)
                 read(8, *,IOSTAT = reason) pso_params%param_vals
                 close(8)
             else
@@ -942,19 +942,23 @@
          offline_int = -0.163747
          map_val_tile = pso_params%map_vals(p)
          mbbopt(p) = pso_val*(offline_int + map_val_tile*offline_const)
+         if (this_ens == 1) then
+            mbbopt(p) = 0.5
+         else
+            mbbopt(p) = 8
          if (mbbopt(p) < 0) then
             mbbopt(p) = 0
          endif
-         if (p == 1) then
-            !write(*,*) 'this_ens'
-            !write(*,*) this_ens
+         if (p == 1 .and. nv == 1) then
             !write(*,*) 'pso_pft'
             !write(*,*) pso_pft
+            !write(*,*) 'this_ens'
+            !write(*,*) this_ens
+            !write(*,*) 'pso_params%param_vals'
+            !write(*,*) pso_params%param_vals
             !write(*,*) 'pso_val'
             !write(*,*) pso_val
-            !write(*,*) 'ityp(p, nv)'
-            !write(*,*) ityp(p, nv)
-            continue
+            !continue
          endif
       endif
       ! Soil water stress applied to Ball-Berry parameters
