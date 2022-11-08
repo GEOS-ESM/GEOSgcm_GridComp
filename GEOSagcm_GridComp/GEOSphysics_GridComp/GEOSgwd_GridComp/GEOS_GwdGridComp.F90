@@ -830,6 +830,7 @@ contains
     real    :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
     real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
     real    :: NCAR_ORO_SOUTH_FAC
+    real    :: NCAR_ORO_TNDMAX
     real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
     real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
     logical :: NCAR_DC_BERES
@@ -936,7 +937,10 @@ contains
          call MAPL_GetResource( MAPL, NCAR_NRDG,           Label="NCAR_NRDG:",           default=16,          RC=STATUS)
          VERIFY_(STATUS)
          if (NCAR_NRDG > 0) then
-           call gw_rdg_init ( NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV )
+           call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=25.0, RC=STATUS)
+           VERIFY_(STATUS)
+           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
+           call gw_rdg_init ( NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
          endif
 
       ! All done
@@ -1328,7 +1332,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          if (FIRST_RUN) then
            FIRST_RUN = .false.
            call gw_newtonian_set(LM, PREF)
-#ifdef DEBUG_GWD
+!#ifdef DEBUG_GWD
            if (NCAR_NRDG > 0) then
             IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
             call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
@@ -1343,7 +1347,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
             enddo
           endif
-#endif
+!#endif
          endif
 
          call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', RC=STATUS); VERIFY_(STATUS)

@@ -263,7 +263,7 @@ end subroutine gw_prof
 subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
-     effgw,      c, kvtt, tau,  utgw,  vtgw, &
+     c, kvtt, tau,  utgw,  vtgw, &
      ttgw,  gwut, ro_adjust, tau_adjust, &
      kwvrdg, satfac_in, tndmax_in )
 
@@ -316,8 +316,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   real, intent(in) :: ubm(ncol,pver), ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
   real, intent(in) :: xv(ncol), yv(ncol)
-  ! Tendency efficiency.
-  real, intent(in) :: effgw(ncol)
   ! Wave phase speeds for each column.
   real(GW_PRC), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
   ! Molecular thermal diffusivity.
@@ -386,8 +384,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Temporary ubar tendencies (overall, and at wave l).
   real(GW_PRC) :: ubt(ncol,pver), ubtl(ncol)
   real(GW_PRC) :: wrk(ncol)
-  ! Ratio used for ubt tndmax limiting.
-  real(GW_PRC) :: ubt_lim_ratio(ncol)
   ! Temporary effkwv
   real(GW_PRC) :: effkwv(ncol)
 
@@ -505,21 +501,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Force tau at the top of the model to zero, if requested.
   if (tau_0_ubc) tau(:,:,ktop) = 0.0
 
-  ! Apply efficiency to completed stress profile.
-!$OMP parallel do default(none) shared(pver,ktop,band,tau,tend_level,ncol,effgw) &
-!$OMP                          private(k,l,i)
-    do k = ktop, pver+1
-        do l = -band%ngwv, band%ngwv
-           do i=1,ncol
-            if (k-1 <= tend_level(i)) then
-              tau(i,l,k) = tau(i,l,k) * effgw(i)
-            else
-              tau(i,l,k) = 0.0
-            end if
-           end do
-        end do
-    end do
-
   !------------------------------------------------------------------------
   ! Compute the tendencies from the stress divergence.
   !------------------------------------------------------------------------
@@ -527,7 +508,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Loop over levels from top to bottom
 !$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
-!$OMP                                  gwut,ubt,xv,yv,ubt_lim_ratio,tend_level,near_zero) &
+!$OMP                                  gwut,ubt,xv,yv,tend_level,near_zero) &
 !$OMP                          private(k,l,i,ubtl)
   do k = ktop, kbot_tend
 
@@ -564,22 +545,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
      end do
 
-     ! Apply tendency limit to maintain numerical stability.
-     ! Enforce du/dt < tndmax so that ridicuously large tendencies are not
-     ! permitted.
-     ! This can only happen above tend_level, so don't bother checking the
-     ! level explicitly.
-     do i=1,ncol
-        if (abs(ubt(i,k)) > tndmax) then
-           ubt_lim_ratio(i) = tndmax/abs(ubt(i,k))
-           ubt(i,k) = ubt_lim_ratio(i) * ubt(i,k)
-        else
-           ubt_lim_ratio(i) = 1.0
-        end if
-     end do
-
      do l = -band%ngwv, band%ngwv
-        gwut(:,k,l) = ubt_lim_ratio*gwut(:,k,l)
         ! Redetermine the effective stress on the interface below from the
         ! wind tendency. If the wind tendency was limited above, then the
         ! new stress will be smaller than the old stress, causing stress
@@ -912,7 +878,8 @@ end subroutine energy_fixer
 !==========================================================================
 
 subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
-                               effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
+                               effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
+                               tndmax_in)
 
   integer, intent(in) :: ncol, pver, kbot
   ! Wavelengths.
@@ -931,6 +898,8 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
   real, intent(in) :: t(ncol,pver), ubm(ncol,pver), ubi(ncol,pver)
   ! projected winds.
   real, intent(in) :: xv(ncol), yv(ncol)
+  ! Tendency limiter
+  real, intent(in), optional :: tndmax_in
   ! Tendencies.
   real, intent(inout) :: utgw(ncol,pver)
   real, intent(inout) :: vtgw(ncol,pver)
@@ -943,7 +912,12 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
   ! Level index.
   integer :: i,k,l
 
-  tndmax = 400.0/86400.0
+! Maximum wind tendency from stress divergence (before efficiency applied).
+  if (present(tndmax_in)) then
+     tndmax = tndmax_in
+  else
+     tndmax = 400._GW_PRC / 86400._GW_PRC
+  endif
 
 ! GEOS efficiency and energy/momentum adjustments
   ktop=1

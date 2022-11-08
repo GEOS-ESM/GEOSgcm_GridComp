@@ -595,31 +595,15 @@ subroutine gw_beres_ifc( band, &
        enddo
      enddo
 
-      ! Solve for the drag profile with orographic sources.
+     ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          effgw, c, kvtt, tau, utgw, vtgw, &
+          c, kvtt, tau, utgw, vtgw, &
           ttgw, gwut, tau_adjust=pint_adj)
-
-#ifdef NCAR_ADJUST
-   ! ! Project stress into directional components.
-   ! taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
-
-   ! ! Find momentum flux, and use it to fix the wind tendencies below
-   ! ! the gravity wave region.
-   ! call momentum_flux(tend_level, taucd, um_flux, vm_flux)
-   ! call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
-
-   ! ! Find energy change in the current state, and use fixer to apply
-   ! ! the difference in lower levels.
-   ! call energy_change(ncol, pver, dt, delp, u, v, utgw, vtgw, ttgw, de)
-   ! call energy_fixer(ncol, pver, tend_level, pint, de-flx_heat, ttgw)
-   ! flx_heat=de
-#else
-   ! call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
-   !                             effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
-#endif
+     ! Apply efficiency and limiters
+     call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
+                                 effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
  
    deallocate(tau, gwut, c)
 

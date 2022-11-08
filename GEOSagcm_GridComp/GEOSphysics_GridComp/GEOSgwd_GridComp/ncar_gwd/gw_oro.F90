@@ -6,7 +6,7 @@ module gw_oro
 !
 
   use gw_utils, only: GW_PRC, get_unit_vector, dot_2d, midpoint_interp
-  use gw_common, only: GWBand, rair, gw_drag_prof 
+  use gw_common, only: GWBand, rair, gw_drag_prof, energy_momentum_adjust
 
 implicit none
 private
@@ -323,8 +323,11 @@ subroutine gw_oro_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          effgw, c,         kvtt,  tau,  utgw,  vtgw, &
+          c,         kvtt,  tau,  utgw,  vtgw, &
           ttgw, gwut, tau_adjust=pint_adj)
+     ! Apply efficiency and limiters
+     call energy_momentum_adjust(ncol, pver, pver, band, pint, delp, c, tau, &
+                        effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
 
 end subroutine gw_oro_ifc
 

@@ -68,6 +68,8 @@ real, protected :: orovmin
 real, protected :: orostratmin
 ! min stratification allowing wave behavior
 real, protected :: orom2min
+! tendency limiter for ridge scheme
+real, protected :: orotndmax
 
 real, parameter :: PINTADJ_0 = 0.9/19.0
 real, parameter :: PINTADJ_1 = TAN(20.*pi/21.-0.5*pi)
@@ -90,10 +92,10 @@ contains
 !------------------------------------
 !> \section arg_table_gw_rdg_init  Argument Table
 !! \htmlinclude gw_rdg_init.html
-subroutine gw_rdg_init (gw_dc, fcrit2, wavelength, pgwv)
+subroutine gw_rdg_init (gw_dc, fcrit2, wavelength, tndmax, pgwv)
 #include <netcdf.inc>
 
-  real, intent(in) :: gw_dc,fcrit2,wavelength
+  real, intent(in) :: gw_dc,fcrit2,wavelength,tndmax
   integer, intent(in)  :: pgwv
 
   !==============================================
@@ -117,6 +119,7 @@ subroutine gw_rdg_init (gw_dc, fcrit2, wavelength, pgwv)
   orovmin             = 1.0e-3
   orostratmin         = 0.002
   orom2min            = 0.1
+  orotndmax           = tndmax
  
 end subroutine gw_rdg_init
 
@@ -324,29 +327,9 @@ subroutine gw_rdg_ifc( &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          effrdg(:,nn), c, kvtt, tau, utgw, vtgw, &
+          c, kvtt, tau, utgw, vtgw, &
           ttgw, gwut, &
-          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj, &
-          tndmax_in=40.0/86400.0)
-
-#ifdef NCAR_ADJUST
-   ! ! Project stress into directional components.
-   ! taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
-
-   ! ! Find momentum flux, and use it to fix the wind tendencies below
-   ! ! the gravity wave region.
-   ! call momentum_flux(tend_level, taucd, um_flux, vm_flux)
-   ! call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
-
-   ! ! Find energy change in the current state, and use fixer to apply
-   ! ! the difference in lower levels.
-   ! call energy_change(ncol, pver, dt, delp, u, v, utgw, vtgw, ttgw, de)
-   ! call energy_fixer(ncol, pver, tend_level, pint, de-flx_heat, ttgw)
-   ! flx_heat=de
-#else
-   ! call energy_momentum_adjust(ncol, pver, src_level, band, pint, delp, c, tau, &
-   !                    effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
-#endif
+          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
 
      ! Add the tendencies from each ridge to the totals.
      do k = 1, pver
@@ -354,6 +337,9 @@ subroutine gw_rdg_ifc( &
         vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
      end do
+     ! Apply efficiency and limiters to the totals
+     call energy_momentum_adjust(ncol, pver, pver, band, pint, delp, c, tau, &
+                        effrdg(:,nn), t, ubm, ubi, xv, yv, utrdg, vtrdg, ttrdg, tndmax_in=orotndmax)
 
 #ifdef CAM
 ! disable tracer mixing in GW for now.
