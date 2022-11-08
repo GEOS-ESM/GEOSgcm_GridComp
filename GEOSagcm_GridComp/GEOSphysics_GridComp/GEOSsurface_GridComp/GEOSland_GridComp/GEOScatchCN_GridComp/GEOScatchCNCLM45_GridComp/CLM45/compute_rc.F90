@@ -960,7 +960,7 @@
             !write(*,*) pso_params%param_vals
             !write(*,*) 'pso_val'
             !write(*,*) pso_val
-            !continue
+            continue
          endif
       endif
       ! Soil water stress applied to Ball-Berry parameters
