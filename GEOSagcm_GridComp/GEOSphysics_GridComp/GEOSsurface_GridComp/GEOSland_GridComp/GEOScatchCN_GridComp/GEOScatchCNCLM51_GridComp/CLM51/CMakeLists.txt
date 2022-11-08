@@ -99,7 +99,7 @@ set (srcs
   shr_assert_mod.F90.in
   shr_const_mod.F90
   shr_file_mod.F90
-  shr_infnan_mod.F90.in
+  shr_infnan_mod.F90
   shr_kind_mod.F90
   shr_log_mod.F90
   shr_mpi_mod.F90
