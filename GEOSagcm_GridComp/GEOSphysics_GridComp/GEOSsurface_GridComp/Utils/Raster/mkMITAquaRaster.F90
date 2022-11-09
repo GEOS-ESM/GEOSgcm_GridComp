@@ -148,7 +148,7 @@
    GridDir = arg
 
    blanklist = 0
-   OPEN(UNIT=iUnit, name='data.exch2', form='formatted', status='old')
+   OPEN(UNIT=iUnit, file='data.exch2', form='formatted', status='old')
    READ(UNIT=iUnit,NML=W2_EXCH2_PARM01)
    CLOSE(iUnit)
    BLNKSZ =  count(blanklist /= 0)
