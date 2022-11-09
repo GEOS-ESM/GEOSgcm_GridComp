@@ -3,7 +3,7 @@ module SoilBiogeochemStateType
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan, &
-                                nlevsno, nlevgrnd, nlevlak, nlevsoifl
+                                nlevsno, nlevgrnd, nlevlak
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
                                 VAR_COL, VAR_PFT, num_zon
   use clm_varctl       , only : use_cn
@@ -57,7 +57,7 @@ contains
     ! !LOCAL VARIABLES:
     integer :: begp, endp
     integer :: begc,endc
-    integer :: n, nc, nz, n, np
+    integer :: n, nc, nz, np
     logical :: cold_start = .false.
     !-----------------------------------
 
@@ -70,7 +70,7 @@ contains
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col))
+    if ((cold_start==.false.) .and. (size(cncol,3).ne.var_col))
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
 
