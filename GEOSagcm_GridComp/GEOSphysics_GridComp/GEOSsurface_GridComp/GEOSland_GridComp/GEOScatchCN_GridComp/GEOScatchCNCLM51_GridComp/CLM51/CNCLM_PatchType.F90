@@ -5,6 +5,7 @@ module PatchType
   use decompMod        , only : bounds_type
   use clm_varcon       , only : ispval
   use clm_varctl       , only : use_fates
+  use clm_varpar       , only : numpft, NUM_ZON, NUM_VEG
 
  !-----------------------------------------------------------------------
   ! !DESCRIPTION:
