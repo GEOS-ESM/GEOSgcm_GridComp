@@ -353,7 +353,7 @@ contains
     do fi = 1,num_column
        i = filter_column(fi)
 
-       tndep_to_sminn_colhis%(i)             = value_column
+       this%ndep_to_sminn_col%(i)            = value_column
        this%nfix_to_sminn_col(i)             = value_column
        this%ffix_to_sminn_col(i)             = value_column
        this%fert_to_sminn_col(i)             = value_column
