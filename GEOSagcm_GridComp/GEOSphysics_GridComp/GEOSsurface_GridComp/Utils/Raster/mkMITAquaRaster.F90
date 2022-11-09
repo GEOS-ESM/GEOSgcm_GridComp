@@ -107,7 +107,7 @@
 ! Get source grid directory and destination raster file names
 !------------------------------------------------------------
 
-   i = iargc()
+   i = command_argument_count()
 
    if(I < 2 .or. i > 7) then
       print *, "Wrong Number of arguments: ", i
@@ -116,13 +116,13 @@
    end if
    
    nxt = 1
-   call getarg(nxt,arg)
+   call get_command_argument(nxt,arg)
    do while(arg(1:1)=='-')
       opt=arg(2:2)
       if(len(trim(arg))==2) then
          if(scan(opt,'zv')==0) then
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
          endif
       else
          arg = arg(3:)
@@ -142,7 +142,7 @@
          call exit(1)
       end select
       nxt = nxt + 1
-      call getarg(nxt,arg)
+      call get_command_argument(nxt,arg)
    end do
 
    GridDir = arg
