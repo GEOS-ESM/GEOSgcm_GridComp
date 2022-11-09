@@ -70,7 +70,7 @@ contains
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. (size(cncol,3).ne.var_col))
+    if ((cold_start==.false.) .and. (size(cncol,3).ne.var_col)) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
 
