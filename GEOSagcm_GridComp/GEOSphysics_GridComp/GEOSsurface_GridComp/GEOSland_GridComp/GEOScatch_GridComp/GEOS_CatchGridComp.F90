@@ -230,7 +230,7 @@ subroutine SetServices ( GC, RC )
 
     ! SNOW ALBEDO 
     ! 0 : parameterization based on look-up table 
-    ! 1 : MODIS-derived snow albedo (where available, elsewhere no data values filled with global land average Snow_Albedo=0.56)
+    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
     call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
 
     ! GOSWIM SNOW_ALBEDO 
@@ -4877,16 +4877,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (SNOW_ALBEDO_INFO == 1) then
            
-           ! where available, use MODIS-derived snow albedo from bcs (via Catch restart)
-           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
            call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
            
-           where (SNOWALB > 0. .and. SNOWALB <= 1.)
-              SNOVR = SNOWALB
-              SNONR = SNOWALB
-              SNOVF = SNOWALB
-              SNONF = SNOWALB
-           endwhere
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
            
         endif
 
@@ -5570,14 +5571,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (SNOW_ALBEDO_INFO == 1) then
            
-           ! where available, use MODIS-derived snow albedo from bcs (via Catch restart)
-           
-           where (SNOWALB > 0. .and. SNOWALB <= 1.)
-              SNOVR = SNOWALB
-              SNONR = SNOWALB
-              SNOVF = SNOWALB
-              SNONF = SNOWALB
-           endwhere
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
 
         endif
 

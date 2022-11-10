@@ -336,7 +336,7 @@ contains
        call MAPL_VarRead(formatter,"WW",this%ww, __RC__)
      endif
      _RETURN(_SUCCESS)
-   end subroutine
+   end subroutine read_shared_nc4
 
    subroutine write_nc4 (this, filename, rc)
      class(CatchmentRst), intent(inout):: this
@@ -522,7 +522,7 @@ contains
      _RETURN(_SUCCESS)
    end subroutine allocate_catch
 
-   ! This subroutine reads BCs from BCSDIR and hydrological varable
+   ! This subroutine reads BCs from BCSDIR and hydrological variable (??)
    subroutine add_bcs_to_rst(this, surflay, DataDir, rc)
       class(CatchmentRst), intent(inout) :: this
       real, intent(in) :: surflay
@@ -542,7 +542,7 @@ contains
       type(Variable)              :: var
       type(FileMetadata)          :: meta_
 
-      character*256               :: Iam = "add_bcs"
+      character*256               :: Iam = "add_bcs_to_rst"
 
       ntiles = this%ntiles
 
