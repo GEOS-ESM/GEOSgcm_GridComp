@@ -1901,11 +1901,18 @@ contains
       call MAPL_TimerOn(MAPL,"AGCM"        )
     endif
    
+#ifdef HAS_GIGATRAJ
+    ! use agcm export as gigatraj's import to get the initial state.
+    ! it only runs at the begining of the first time step
+    call ESMF_GridCompRun ( GCS(gigatraj), importState=GEX(AGCM), exportState=GEX(gigatraj), clock=clock, phase=1, userRC=status )
+    VERIFY_(STATUS)
+#endif
+
     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
     VERIFY_(STATUS)
 #ifdef HAS_GIGATRAJ
     ! use agcm export as gigatraj's import
-    call ESMF_GridCompRun ( GCS(gigatraj), importState=GEX(AGCM), exportState=GEX(gigatraj), clock=clock, userRC=status )
+    call ESMF_GridCompRun ( GCS(gigatraj), importState=GEX(AGCM), exportState=GEX(gigatraj), clock=clock, phase=2, userRC=status )
     VERIFY_(STATUS)
 #endif
 
