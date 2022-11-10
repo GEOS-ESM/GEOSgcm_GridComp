@@ -2993,16 +2993,13 @@ END SUBROUTINE modis_scale_para_high
 
 !----------------------------------------------------------------------  
 
-  SUBROUTINE MODIS_snow_alb (nx,ny,gfiler)  
+  SUBROUTINE MODIS_snow_alb ( )  
 
     ! Process static snow albedo calculated from MODIS climatology and write into clsm/catch_params.nc4
     !
     ! Biljana Orescanin July 2022, SSAI@NASA
     
     implicit none	    
-    integer, intent (in)                       :: nx, ny 
-    character(*)                               :: gfiler
-    integer,allocatable,target,dimension (:,:) :: tile_id
     
     character*200                   :: fname
     character*2                     :: vv,hh
@@ -3043,19 +3040,6 @@ END SUBROUTINE modis_scale_para_high
        max_lon(n) = maxlon
        min_lat(n) = minlat
        max_lat(n) = maxlat
-    end do
-    
-    close (10,status='keep')
-    
-    ! Read tile-id raster file
-    allocate(tile_id(1:nx,1:ny))
-    
-    fname=trim(gfiler)//'.rst'
-    open (10,file=fname,status='old',action='read',    &
-         form='unformatted',convert='little_endian')
-    
-    do j=1,ny
-       read(10)tile_id(:,j)
     end do
     
     close (10,status='keep')
