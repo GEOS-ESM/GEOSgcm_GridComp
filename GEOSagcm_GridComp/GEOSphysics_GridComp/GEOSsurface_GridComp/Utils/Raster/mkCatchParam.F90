@@ -661,7 +661,7 @@ integer :: n_threads=1
           tmpstring = 'Step 14: Static snow albedo from MODIS' 
           write (log_file,'(a)') trim(tmpstring)
           write (log_file,'(a)')'         Creating file...'
-          call MODIS_snow_alb (nc,nr,gridnamer)
+          call MODIS_snow_alb ( )
           write (log_file,'(a)')'         Done.'           
           write (log_file,'(a)')' '
        endif 
