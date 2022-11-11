@@ -1325,7 +1325,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DQIDT_SC',                                  &
          LONG_NAME  = 'Ice_tendency_from_shallow_convection',      &
-         UNITS      = 'kg ks-1 s-1',                               &
+         UNITS      = 'kg kg-1 s-1',                               &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )

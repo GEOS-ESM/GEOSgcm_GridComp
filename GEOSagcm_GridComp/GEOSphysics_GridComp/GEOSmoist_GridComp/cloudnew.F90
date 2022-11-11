@@ -927,7 +927,8 @@ contains
 
             FIXL_dev(I,K) = -( QLW_AN_dev(I,K) + QLW_LS_dev(I,K) - FIXL_dev(I,K) ) / DT 
             FIXI_dev(I,K) = -( QIW_AN_dev(I,K) + QIW_LS_dev(I,K) - FIXI_dev(I,K) ) / DT 
-   
+  
+#ifdef SKIP 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             FRZ_TT_dev(I,K) = QIW_AN_dev(I,K) + QIW_LS_dev(I,K)
             IF(USE_AEROSOL_NN) THEN
@@ -964,6 +965,7 @@ contains
          !  DCNVi_dev(I,K) = ( QIW_AN_dev(I,K) - DCNVi_dev(I,K) ) / DT
          !  DCNVL_dev(I,K) = ( QLW_AN_dev(I,K) - DCNVL_dev(I,K) ) / DT
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#endif
  
             PDFL_dev(I,K) = QLW_LS_dev(I,K)+QLW_AN_dev(I,K)
             PDFI_dev(I,K) = QIW_LS_dev(I,K)+QIW_AN_dev(I,K)
@@ -1095,7 +1097,7 @@ contains
                NI =  5.e6
             endif
 
-             ! 'Anvil' partition from RAS/Parameterized not done in hystpdf
+             ! 'Anvil' partition from Parameterized Convection not done in hystpdf
 
             RHCRIT = 1.0
             call evap3(            &

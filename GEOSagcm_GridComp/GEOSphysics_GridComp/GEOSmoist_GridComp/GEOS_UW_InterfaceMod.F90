@@ -13,6 +13,7 @@ module GEOS_UW_InterfaceMod
   use ESMF
   use MAPL
   use UWSHCU   ! using module that contains uwshcu code
+  use GEOSmoist_Process_Library
 
   implicit none
 
@@ -136,7 +137,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Required Exports (connectivities to moist siblings)
     real, pointer, dimension(:,:)   :: CNPCPRATE
-
+    real, pointer, dimension(:,:)   :: CNV_FRC, SRF_TYPE
     ! Exports
     real, pointer, dimension(:,:,:) :: CUFRC_SC
     real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC
@@ -247,6 +248,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_FRC ,   'CNV_FRC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Tendency Export
     call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -348,6 +351,13 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !-------------------------------------------------------------
         QLLS = QLLS + (QLSUB_SC+QLENT_SC)*DT_MOIST
         QILS = QILS + (QISUB_SC+QIENT_SC)*DT_MOIST
+      !  melt/freeze condensates
+        TMP3D = T
+        call MELTFRZ( DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN )
+        call MELTFRZ( DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS )
+        DTDT_SC  = DTDT_SC  + (T-TMP3D)/DT_MOIST
+        DTHDT_SC = DTHDT_SC + (T-TMP3D)/DT_MOIST/PK
+        TH = T/PK
       !  Number concentrations for 2-moment microphysics
       !--------------------------------------------------------------
         SC_NDROP = SC_NDROP*MASS
@@ -367,7 +377,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PTR2D = PTR2D + ( DQSDT_SC(:,:,L)+DQRDT_SC(:,:,L)+DQVDT_SC(:,:,L) &
                          +   QLENT_SC(:,:,L)+QLSUB_SC(:,:,L)+QIENT_SC(:,:,L) &
                          +   QISUB_SC(:,:,L) )*MASS(:,:,L) &
-                         +  QLDET_SC(:,:,L)+QIDET_SC(:,:,L)
+                         +   QLDET_SC(:,:,L)+QIDET_SC(:,:,L)
         END DO
         end if
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_MSE', RC=STATUS); VERIFY_(STATUS)

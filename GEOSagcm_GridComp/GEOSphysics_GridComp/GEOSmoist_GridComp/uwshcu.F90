@@ -376,7 +376,7 @@ contains
          endif
       end do
       dcm_inv(:idim,k0) = 0.
-      ! Re-scale liquid/ice water sub-tendencies to enforce conservation
+    ! Re-scale liquid/ice water sub-tendencies to enforce conservation
       where(ABS(qldet_inv+qlsub_inv).gt.1e-12)
         tmp2d = qlten_inv / (qldet_inv+qlsub_inv)
         qldet_inv = tmp2d*qldet_inv
@@ -387,7 +387,6 @@ contains
         qidet_inv = tmp2d*qidet_inv
         qisub_inv = tmp2d*qisub_inv
       end where
-      
 
    end subroutine compute_uwshcu_inv
 

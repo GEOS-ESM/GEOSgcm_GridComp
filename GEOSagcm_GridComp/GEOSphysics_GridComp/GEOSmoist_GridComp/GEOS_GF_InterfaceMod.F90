@@ -564,27 +564,15 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       QLCN =         QLCN + DQLDT_DC*DT_MOIST
       QICN =         QICN + DQIDT_DC*DT_MOIST
       CLCN = MAX(MIN(CLCN + DQADT_DC*DT_MOIST, 1.0), 0.0)
-
-      ! fix 'convective' cloud fraction 
-      if (FIX_CNV_CLOUD) then
-      ! melt/freeze condensates
+    ! melt/freeze condensates
       TMP3D = T
-      DO L=1,LM
-       DO J=1,JM
-        DO I=1,IM
-            CALL meltfrz (         &
-                  DT_MOIST       , &
-                  CNV_FRC(I,J)   , &
-                  SRF_TYPE(I,J)  , &
-                  T(I,J,L)       , &
-                  QLCN(I,J,L)    , &
-                  QICN(I,J,L))
-        END DO
-       END DO
-      END DO
+      call MELTFRZ( DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN )
       DTDT_DC  = DTDT_DC  + (T-TMP3D)/DT_MOIST
       DTHDT_DC = DTHDT_DC + (T-TMP3D)/DT_MOIST/PK
       TH = T/PK
+
+    ! fix 'convective' cloud fraction 
+      if (FIX_CNV_CLOUD) then
       ! fix convective cloud
       TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
       TMP3D = QST3

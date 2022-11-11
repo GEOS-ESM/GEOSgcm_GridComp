@@ -733,7 +733,9 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          elsewhere
             TMP3D = 0.0
          endwhere
-         LS_PRCP = LS_PRCP + SUM(TMP3D*MASS,3)/DT_MOIST
+         call MAPL_GetPointer(EXPORT, PTR2D,  'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         PTR2D = SUM(TMP3D*MASS,3)/DT_MOIST
+         LS_PRCP = LS_PRCP + PTR2D
          Q  =  Q - TMP3D
          TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
          T  = TH*PK

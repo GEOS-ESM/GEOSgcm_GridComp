@@ -19,6 +19,12 @@ module GEOSmoist_Process_Library
   character(len=ESMF_MAXSTR)              :: IAm="GEOSmoist_Process_Library"
   integer                                 :: STATUS
 
+  interface MELTFRZ
+    module procedure MELTFRZ_3D
+    module procedure MELTFRZ_2D
+    module procedure MELTFRZ_1D
+    module procedure MELTFRZ_SC
+  end interface MELTFRZ
   interface ICE_FRACTION
     module procedure ICE_FRACTION_3D
     module procedure ICE_FRACTION_2D
@@ -77,7 +83,7 @@ module GEOSmoist_Process_Library
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO, FILLQ2ZERO1
-  public :: meltfrz
+  public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp
   public :: find_l, find_eis, FINDLCL
@@ -994,17 +1000,17 @@ module GEOSmoist_Process_Library
            Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
+           fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
+           QLn = QCn*(1.0-AF)*(1.0-fQi) ! Just Large-Scale portion
+           QIn = QCn*(1.0-AF)*     fQi  ! Just Large-Scale portion
            call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
                  TEn              , &
                  QT               , &
-                 QCi              , &
-                 QAi              , &
-                 QCl              , &
-                 QAl              , &
+                 QIn              , &
+                 QLn              , &
                  CFn*(1.0-AF)     , &
-                 AF               , &
                  NLv              , &
                  NIv              , &
                  DQCALL           , &
@@ -1039,10 +1045,10 @@ module GEOSmoist_Process_Library
          DQCALL = QCn - QCp
          QVn = QVp - DQCALL
          TEn = TEp + ((1.0-fQi)*alhlbcp + fQi*alhsbcp) * ( DQCALL*(1.-AF) + (QAn-QAp)*AF )
+         QT  = QVn + QCn
+         DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
 
-         if (abs(TEn - TEp) .lt. 0.00001) exit 
-
-         DQS  = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         if (abs(TEn - TEp) .lt. 0.00001) exit
 
       enddo ! qsat iteration
 
@@ -1056,12 +1062,11 @@ module GEOSmoist_Process_Library
          ! Special case AF=1, i.e., box filled with anvil. 
          !   - Note: no guarantee QV_box > QS_box
          CF  = 0.          ! Remove any other cloud
-         QAn = QA  + QC    ! Add any LS condensate to anvil type
-         QCn = 0.          ! Remove same from LS   
-         QT  = QAn + QV    ! Total water
+         QCn = 0.          ! Remove same from LS condensate
+         QAn = QAn * AF    ! Update only anvil condensate
          ! Now set anvil condensate to any excess of total water 
          ! over QSn (saturation value at top)
-         QAn = MAX( QT - QSn, 0. )
+         QAn = MAX( QAn+QVn - QSn, 0. )
       end if
 
       ! Now take {\em New} condensate and partition into ice and liquid
@@ -1879,12 +1884,9 @@ module GEOSmoist_Process_Library
          PL               , &
          TE               , &
          QV               , &
-         QILS             , &
-         QICN             , &
-         QLLS             , &
-         QLCN             , &
+         QI               , &
+         QL               , &
          CF               , &
-         AF               , &
          NL               , &
          NI               , & 
          DQ               , &
@@ -1892,22 +1894,15 @@ module GEOSmoist_Process_Library
 
       real ,  intent(in)  :: DTIME, PL, TE
       real ,  intent(in)  :: DQ
-      real ,  intent(in)  :: QV, QLLS, QLCN, QICN, QILS
-      real ,  intent(in)  :: CF, AF, NL, NI
+      real ,  intent(in)  :: QV, QL, QI
+      real ,  intent(in)  :: CF, NL, NI
       real ,  intent(out) :: FQI
       
       real  :: DQALL, DC, TEFF, DEP, &
             DQSL, DQSI, TC, LHcorr, &
             DIFF, DENAIR, DENICE, AUX, &
-            QI, QL, QTOT, FQA, DQI, DQL, NIX, &
+            DQI, DQL, &
             QVINC, QSLIQ, QSICE
-
-      QI = QILS + QICN !neccesary because NI is for convective and large scale 
-      QL = QLLS + QLCN
-      QTOT=QI+QL
-      FQA = 0.0
-      if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
-      NIX= (1.0-FQA)*NI
 
       !Completelely glaciated cloud:
       if (TE .ge. MAPL_TICE) then   !liquid cloud
@@ -1931,27 +1926,27 @@ module GEOSmoist_Process_Library
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
          LHcorr = ( 1.0 + DQSI*alhsbcp) !must be ice deposition
 
-         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then 
-            DC=max((QI/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
+         if  ((NI .gt. 1.0) .and. (QI .gt. 1.0e-10)) then 
+            DC=max((QI/(NI*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
          else
             DC = 20.0e-6
          end if
 
-         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
+         TEFF= NI*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
 
          DEP=0.0
-         if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then 
+         if ((TEFF .gt. 0.0) .and. (QI .gt. 1.0e-14)) then 
             AUX =max(min(DTIME*TEFF, 20.0), 0.0)
             DEP=(QVINC-QSICE)*(1.0-EXP(-AUX))/DTIME
          end if
-         DEP=MAX(DEP, -QILS/DTIME) !only existing ice can be sublimated
+         DEP=MAX(DEP, -QI/DTIME) !only existing ice can be sublimated
 
          !Partition DQALL accounting for Bergeron-Findensen process
          DQI = 0.0
          DQL = 0.0
          if  (DQALL .ge. 0.0) then !net condensation.
             if (DEP .gt. 0.0) then 
-               DQI = min(DEP, DQALL + QLLS/DTIME)
+               DQI = min(DEP, DQALL + QL/DTIME)
                DQL = DQALL - DQI
             else
                DQL=DQALL ! could happen because the PDF allows condensation in subsaturated conditions
@@ -1959,8 +1954,8 @@ module GEOSmoist_Process_Library
             end if
          end if
          if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP   
-            DQL = max(DQALL      , -QLLS/DTIME)   
-            DQI = max(DQALL - DQL, -QILS/DTIME)        
+            DQL = max(DQALL      , -QL/DTIME)   
+            DQI = max(DQALL - DQL, -QI/DTIME)        
          end if
 
                               FQI=0.0
@@ -1970,8 +1965,41 @@ module GEOSmoist_Process_Library
 
    end subroutine Bergeron_iter
 
-   subroutine meltfrz( DT, CNVFRC, SRFTYPE, TE, QL, QI )
-      real, intent(in)    :: DT, CNVFRC, SRFTYPE
+   subroutine MELTFRZ_3D ( DT, CNVFRC, SRFTYPE, TE, QL, QI )
+      real, intent(in   ) :: DT, CNVFRC(:,:),SRFTYPE(:,:)
+      real, intent(inout) :: TE(:,:,:), QL(:,:,:), QI(:,:,:)
+      integer :: i,j,l
+      do l=1,size(TE,3)
+      do j=1,size(TE,2)
+      do i=1,size(TE,1)
+        call MELTFRZ_SC(DT, CNVFRC(i,j),SRFTYPE(i,j), TE(i,j,l), QL(i,j,l), QI(i,j,l))
+      enddo
+      enddo
+      enddo
+   end subroutine MELTFRZ_3D
+
+   subroutine MELTFRZ_2D ( DT, CNVFRC, SRFTYPE, TE, QL, QI )
+      real, intent(in   ) :: DT, CNVFRC(:,:),SRFTYPE(:,:)
+      real, intent(inout) :: TE(:,:), QL(:,:), QI(:,:)
+      integer :: i,j
+      do j=1,size(TE,2)
+      do i=1,size(TE,1)
+        call MELTFRZ_SC(DT, CNVFRC(i,j),SRFTYPE(i,j), TE(i,j), QL(i,j), QI(i,j))
+      enddo
+      enddo
+   end subroutine MELTFRZ_2D
+
+   subroutine MELTFRZ_1D ( DT, CNVFRC, SRFTYPE, TE, QL, QI )
+      real, intent(in   ) :: DT, CNVFRC(:),SRFTYPE(:)
+      real, intent(inout) :: TE(:), QL(:), QI(:)
+      integer :: i
+      do i=1,size(TE)
+        call MELTFRZ_SC(DT, CNVFRC(i),SRFTYPE(i), TE(i), QL(i), QI(i))
+      enddo
+   end subroutine MELTFRZ_1D
+
+   subroutine MELTFRZ_SC( DT, CNVFRC, SRFTYPE, TE, QL, QI )
+      real, intent(in   ) :: DT, CNVFRC, SRFTYPE
       real, intent(inout) :: TE,QL,QI
       real  :: fQi,dQil
       real  ::  taufrz
@@ -1979,7 +2007,7 @@ module GEOSmoist_Process_Library
       ! freeze liquid first
       if ( TE <= MAPL_TICE ) then
          fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
-         taufrz = 1000.
+         taufrz = 450.
          dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
          dQil = max(  0., dQil )
          Qi   = Qi + dQil
@@ -1994,7 +2022,7 @@ module GEOSmoist_Process_Library
          Ql   = Ql - dQil
          TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
       end if
-   end subroutine meltfrz
+   end subroutine MELTFRZ_SC
 
   subroutine FILLQ2ZERO( Q, MASS, FILLQ  )
 
