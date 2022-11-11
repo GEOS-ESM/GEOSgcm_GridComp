@@ -929,9 +929,7 @@ contains
             FIXI_dev(I,K) = -( QIW_AN_dev(I,K) + QIW_LS_dev(I,K) - FIXI_dev(I,K) ) / DT 
    
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   
             FRZ_TT_dev(I,K) = QIW_AN_dev(I,K) + QIW_LS_dev(I,K)
-
             IF(USE_AEROSOL_NN) THEN
             CALL meltfrz_inst (    &
                   DT             , &
@@ -958,19 +956,15 @@ contains
                   QLW_AN_dev(I,K), & 
                   QIW_AN_dev(I,K))
             ENDIF
-
             FRZ_TT_dev(I,K) = ( QIW_AN_dev(I,K) + QIW_LS_dev(I,K) - FRZ_TT_dev(I,K) ) / DT
-
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   
          !  DCNVi_dev(I,K) = QIW_AN_dev(I,K)
          !  DCNVL_dev(I,K) = QLW_AN_dev(I,K)
          !  cnvsrc is now handled inside convection codes
          !  DCNVi_dev(I,K) = ( QIW_AN_dev(I,K) - DCNVi_dev(I,K) ) / DT
          !  DCNVL_dev(I,K) = ( QLW_AN_dev(I,K) - DCNVL_dev(I,K) ) / DT
-   
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   
+ 
             PDFL_dev(I,K) = QLW_LS_dev(I,K)+QLW_AN_dev(I,K)
             PDFI_dev(I,K) = QIW_LS_dev(I,K)+QIW_AN_dev(I,K)
 
@@ -1022,8 +1016,6 @@ contains
                   NACTI_dev(I,K),  &
                   whl_dev(I,K),        &
                   wqt_dev(I,K),        &
-!                  wqtfac_dev(I,K),     &
-!                  whlfac_dev(I,K),     &
                   hl2_dev(I,K),        &
                   qt2_dev(I,K),        &
                   hlqt_dev(I,K),       & 
@@ -1707,7 +1699,6 @@ contains
 
          !  Use Slingo-Ritter (1985) formulation for critical relative humidity
          !  array a1 holds the critical rh, ranges from 0.8 to 1
-
          a1 = 1.0
          if (pp .le. turnrhcrit) then
             a1 = minrhcrit
@@ -1716,14 +1707,10 @@ contains
                   ((atan( (2.*(pp- turnrhcrit)/(1020.-turnrhcrit)-1.) * &
                   tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
          end if
-
          a1 = min(a1,1.)
-
          alpha = 1. - a1
-
          ALPHA = MIN( ALPHA , 0.25 )  ! restrict RHcrit to > 75% 
 #else
-
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
            ! lower turn from maxrhcrit
              if (pp .le. TURNRHCRIT) then
@@ -1745,7 +1732,6 @@ contains
              endif
            ! combine and limit
              ALPHA = min( 0.25, 1.0 - min(max(Al,Au),1.) ) ! restrict RHcrit to > 75% 
-
 #endif
 
       ALPHT_DIAG = ALPHA
@@ -2439,19 +2425,20 @@ contains
          LXIm = 0.0
       end if
 
+    ! Convective anvil
+       VF_A = 128.6 + 53.2*LXIm + 5.5*LXIm**2
+
+    ! Mid-latitude cirrus
+       VF_L = 109.0*(XIm**0.16)
+
+    ! Combine the two and convert from cm/s to m/s
+       VF = 0.01 * (CNVFRC*ANVIL*VF_A + (1.0-CNVFRC)*LARGESCALE*VF_L)
+
     ! Pressure factor
     ! Reduce/increase fall speeds for high/low pressure (NOT in LC98!!! ) 
     ! Assume unmodified they represent situation at 100 mb
-       PFAC = SIN( 0.5*MAPL_PI*MIN(1.0,100./PL))
-
-    ! Convective anvil
-       VF_A = (128.6 + 53.2*LXIm + 5.5*LXIm**2) * MIN(ANVIL,PFAC)
-
-    ! Mid-latitude cirrus
-       VF_L = (109.0*(XIm**0.16)) * MIN(LARGESCALE,PFAC)
- 
-    ! Combine the two and convert from cm/s to m/s
-       VF = 0.01 * (CNVFRC*VF_A + (1.0-CNVFRC)*VF_L)
+       PFAC = MIN( 0.5 , SIN(0.5*MAPL_PI*MIN(1.0,100./PL)) )
+       VF = VF * PFAC
 
    end SUBROUTINE SETTLE_VEL
 

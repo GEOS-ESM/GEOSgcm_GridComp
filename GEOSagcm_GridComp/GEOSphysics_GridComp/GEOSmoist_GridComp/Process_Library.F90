@@ -994,21 +994,19 @@ module GEOSmoist_Process_Library
            Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
-           fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
-           QLn = QCn*(1.0-AF)*(1.0-fQi) ! Just Large-Scale portion
-           QIn = QCn*(1.0-AF)*     fQi  ! Just Large-Scale portion
            call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
                  TEn              , &
                  QT               , &
-                 QIn              , &
-                 QLn              , &
+                 QCi              , &
+                 QAi              , &
+                 QCl              , &
+                 QAl              , &
                  CFn*(1.0-AF)     , &
+                 AF               , &
                  NLv              , &
                  NIv              , &
-                 CNVFRC           , &
-                 SRFTYPE          , &
                  DQCALL           , &
                  fQi)
          ELSE
@@ -1881,27 +1879,35 @@ module GEOSmoist_Process_Library
          PL               , &
          TE               , &
          QV               , &
-         QI               , &
-         QL               , &
+         QILS             , &
+         QICN             , &
+         QLLS             , &
+         QLCN             , &
          CF               , &
+         AF               , &
          NL               , &
          NI               , & 
-         CNVFRC           , &
-         SRFTYPE          , &
          DQ               , &
          FQI )
 
       real ,  intent(in)  :: DTIME, PL, TE
       real ,  intent(in)  :: DQ
-      real ,  intent(in)  :: QV, QL, QI
-      real ,  intent(in)  :: CF, NL, NI, CNVFRC, SRFTYPE
+      real ,  intent(in)  :: QV, QLLS, QLCN, QICN, QILS
+      real ,  intent(in)  :: CF, AF, NL, NI
       real ,  intent(out) :: FQI
       
       real  :: DQALL, DC, TEFF, DEP, &
             DQSL, DQSI, TC, LHcorr, &
             DIFF, DENAIR, DENICE, AUX, &
-            DQI, DQL, &
+            QI, QL, QTOT, FQA, DQI, DQL, NIX, &
             QVINC, QSLIQ, QSICE
+
+      QI = QILS + QICN !neccesary because NI is for convective and large scale 
+      QL = QLLS + QLCN
+      QTOT=QI+QL
+      FQA = 0.0
+      if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
+      NIX= (1.0-FQA)*NI
 
       !Completelely glaciated cloud:
       if (TE .ge. MAPL_TICE) then   !liquid cloud
@@ -1910,8 +1916,6 @@ module GEOSmoist_Process_Library
 
       else !mixed phase or ice clouds
 
-         FQI   = ice_fraction( TE, CNVFRC, SRFTYPE )
-      
          DQALL=DQ/DTIME                                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
          TC=TE-MAPL_TICE
    
@@ -1927,27 +1931,27 @@ module GEOSmoist_Process_Library
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
          LHcorr = ( 1.0 + DQSI*alhsbcp) !must be ice deposition
 
-         if  ((NI .gt. 1.0) .and. (QI .gt. 1.0e-10)) then 
-            DC=max((QI/(NI*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
+         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then 
+            DC=max((QI/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
          else
             DC = 20.0e-6
          end if
 
-         TEFF= NI*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
+         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
 
          DEP=0.0
-         if ((TEFF .gt. 0.0) .and. (QI .gt. 1.0e-14)) then 
+         if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then 
             AUX =max(min(DTIME*TEFF, 20.0), 0.0)
             DEP=(QVINC-QSICE)*(1.0-EXP(-AUX))/DTIME
          end if
-         DEP=MAX(DEP, -QI/DTIME) !only existing ice can be sublimated
+         DEP=MAX(DEP, -QILS/DTIME) !only existing ice can be sublimated
 
          !Partition DQALL accounting for Bergeron-Findensen process
          DQI = 0.0
          DQL = 0.0
          if  (DQALL .ge. 0.0) then !net condensation.
             if (DEP .gt. 0.0) then 
-               DQI = min(DEP, DQALL + QL/DTIME)
+               DQI = min(DEP, DQALL + QLLS/DTIME)
                DQL = DQALL - DQI
             else
                DQL=DQALL ! could happen because the PDF allows condensation in subsaturated conditions
@@ -1955,8 +1959,8 @@ module GEOSmoist_Process_Library
             end if
          end if
          if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP   
-            DQL = max(DQALL      , -QL/DTIME)   
-            DQI = max(DQALL - DQL, -QI/DTIME)        
+            DQL = max(DQALL      , -QLLS/DTIME)   
+            DQI = max(DQALL - DQL, -QILS/DTIME)        
          end if
 
                               FQI=0.0

@@ -214,15 +214,15 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
     SELECT CASE ( LM )
        CASE ( 72 )
-           TMP_ICEFALL = 0.5
+           TMP_ICEFALL = 1.0
        CASE ( 91 )
-           TMP_ICEFALL = 0.25
+           TMP_ICEFALL = 0.5
        CASE ( 181 )
-           TMP_ICEFALL = 0.125
+           TMP_ICEFALL = 0.25
        CASE DEFAULT
            TMP_ICEFALL = 1.0
     END SELECT
-    call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
+    call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL*0.5 )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  15.e-6 )
