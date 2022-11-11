@@ -105,7 +105,7 @@ INCLUDE "netcdf.inc"
 
     tol = 1.0e-12 ! the default for the rasterization routine
     !Atanas:  some heuristics for very coarse MOM grids
-    if (nr * (180/jm) > 55000) tol = 1.0e-5
+    if (nr  > 300*jm) tol = 1.0e-5
 
     call LRRasterize(GridName,xvert,yvert,nc=nc,nr=nr,&
                      SurfaceType=0,Verb=Verb,Here=Here,tol=tol)
