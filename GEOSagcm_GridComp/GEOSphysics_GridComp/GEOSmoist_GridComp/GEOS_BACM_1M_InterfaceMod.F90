@@ -211,18 +211,39 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_DDRF,       'ANV_DDRF:',       DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-    SELECT CASE ( LM )
+    call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 2.      )
+    if (CLDPARAMS%ICE_SETTLE == 1) then
+       ! Lawrence and Crutzen (1998, Tellus 50B, 263-289) 
+       SELECT CASE ( LM )
        CASE ( 72 )
            TMP_ICEFALL = 1.0
        CASE ( 91 )
            TMP_ICEFALL = 0.5
+       CASE ( 137 )
+           TMP_ICEFALL = 0.33
        CASE ( 181 )
            TMP_ICEFALL = 0.25
        CASE DEFAULT
            TMP_ICEFALL = 1.0
-    END SELECT
-    call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL*0.5 )
+       END SELECT
+    elseif (CLDPARAMS%ICE_SETTLE == 2) then
+       ! Deng and Mace, 2008: https://doi.org/10.1029/2008GL035054
+       SELECT CASE ( LM )
+       CASE ( 72 )
+           TMP_ICEFALL = 0.8
+       CASE ( 91 )
+           TMP_ICEFALL = 0.4
+       CASE ( 137 )
+           TMP_ICEFALL = 0.3
+       CASE ( 181 )
+           TMP_ICEFALL = 0.2
+       CASE DEFAULT
+           TMP_ICEFALL = 1.0
+       END SELECT
+    else
+       _ASSERT(.false.,'Invalid ICE_SETTLE parameter')
+    endif
+    call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  15.e-6 )

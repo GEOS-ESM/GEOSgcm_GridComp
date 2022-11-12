@@ -1187,33 +1187,24 @@ contains
 
             SDM_dev(I,K) = QIW_AN_dev(I,K)+QIW_LS_dev(I,K)
 
-            ! Parameterized (RAS) Ice Fall
-            ! ----------------------------
-
-            ! WMP: Adjustments to resolved scale ice fall speed options 
-                                      FRACTION_REMOVAL = fr_ls_ice
-            if (CNVFRC_dev(I) >= 0.5) FRACTION_REMOVAL = fr_an_ice
-
-            SELECT CASE( ICE_SETTLE )
-            CASE( 0 )
-             ! MERRA-2 Formulation
-              TROPICAL      = ANV_ICEFALL_C*1.0
-              EXTRATROPICAL = ANV_ICEFALL_C*0.0
-            CASE( 1 )
-              TROPICAL      = ANV_ICEFALL_C
-              EXTRATROPICAL =  LS_ICEFALL_C
-            END SELECT
-
             CALL SETTLE_VEL(       &
+                  QIW_LS_dev(I,K), &
                   QIW_AN_dev(I,K), &
                   PP_dev(I,K)    , &
                   TEMP           , &
+                  CLDFRC_dev(I,K), &
                   ANVFRC_dev(I,K), &
-                  KH_dev(I,K-1)  , &
                   VFALL          , &
-                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I) )
+                  ICE_SETTLE     , &
+                  ANV_ICEFALL_C, LS_ICEFALL_C, CNVFRC_dev(I) )
             VFALLICE_AN_dev(I,K) = VFALL
+            VFALLICE_LS_dev(I,K) = VFALL
 
+                                      FRACTION_REMOVAL = fr_ls_ice
+            if (CNVFRC_dev(I) >= 0.5) FRACTION_REMOVAL = fr_an_ice
+
+            ! Parameterized (CNV) Ice Fall
+            ! ----------------------------
             CALL ICEFALL(          &
                   QIW_AN_dev(I,K), &
                   DZET_dev(I,K)  , &
@@ -1225,28 +1216,6 @@ contains
 
             ! Resolved Scale Ice Fall
             ! -----------------------
-
-            ! WMP: Adjustments to resolved scale ice fall speed options 
-            SELECT CASE( ICE_SETTLE )
-            CASE( 0 )
-             ! MERRA-2 Formulation
-              TROPICAL      =  LS_ICEFALL_C*0.0
-              EXTRATROPICAL =  LS_ICEFALL_C*1.0
-            CASE( 1 )
-              TROPICAL      = ANV_ICEFALL_C
-              EXTRATROPICAL =  LS_ICEFALL_C
-            END SELECT
-
-            CALL SETTLE_VEL(       &
-                  QIW_LS_dev(I,K), &
-                  PP_dev(I,K)    , &
-                  TEMP           , &
-                  CLDFRC_dev(I,K), &
-                  KH_dev(I,K-1)  , &
-                  VFALL          , &
-                  EXTRATROPICAL, TROPICAL, CNVFRC_dev(I) )
-            VFALLICE_LS_dev(I,K) = VFALL
-
             CALL ICEFALL(          &
                   QIW_LS_dev(I,K), &
                   DZET_dev(I,K)  , &
@@ -2394,18 +2363,39 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine SETTLE_VEL( QI, PL, TE, F, KH, VF, LARGESCALE, ANVIL, CNVFRC )
+   subroutine SETTLE_VEL( QILS, QICN, PL, TE, CLLS, CLCN, VF, ICE_SETTLE, LARGESCALE, ANVIL, CNVFRC )
 
       real, intent(in   ) :: TE
-      real, intent(in   ) :: QI, F, PL
-      real, intent(in   ) :: KH
+      real, intent(in   ) :: QILS, QICN, CLLS, CLCN, PL
       real, intent(out  ) :: VF
+      real, intent(in   ) :: ANVIL, LARGESCALE, CNVFRC
+      integer, intent(in) :: ICE_SETTLE 
+      real :: QI, CF, TC, RHO, XIm, LXIm, VF_A, VF_L
 
-      real, intent(in) :: ANVIL, LARGESCALE, CNVFRC
-      
-      real :: RHO, XIm, LXIm, VF_A, VF_L
+      real, parameter :: aaC = - 4.18334e-5
+      real, parameter :: bbC = - 0.00525867
+      real, parameter :: ccC = - 0.0486519
+      real, parameter :: ddC = 0.00251197
+      real, parameter :: eeC = 1.91523
 
-      real :: PFAC
+      real, parameter :: aaL = - 1.70704e-5
+      real, parameter :: bbL = - 0.00319109
+      real, parameter :: ccL = - 0.0169876
+      real, parameter :: ddL = 0.00410839
+      real, parameter :: eeL = 1.93644
+
+      real, parameter :: aaA = - 4.14122e-5
+      real, parameter :: bbA = - 0.00538922
+      real, parameter :: ccA = - 0.0516344
+      real, parameter :: ddA = 0.00216078
+      real, parameter :: eeA = 1.9714
+
+      ! Combine convective+large-scale
+      QI = QILS + QICN
+      CF = CLLS + CLCN
+
+      SELECT CASE( ICE_SETTLE )
+      CASE( 1 )
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
       ! Uses Eq. 1 Lawrence and Crutzen (1998, Tellus 50B, 263-289) 
@@ -2415,8 +2405,8 @@ contains
 
       RHO = 1000.*100.*PL/(MAPL_RGAS*TE)  ! 1000 TAKES TO g m^-3 ; 100 takes mb TO Pa
 
-      if ( ( F > 0.) .and. ( QI > 0. ) ) then
-         XIm = (QI/F)*RHO
+      if ( ( CF > 0.) .and. ( QI > 0. ) ) then
+         XIm = (QI/CF)*RHO
       else
          XIm = 0.
       end if
@@ -2439,8 +2429,51 @@ contains
     ! Pressure factor
     ! Reduce/increase fall speeds for high/low pressure (NOT in LC98!!! ) 
     ! Assume unmodified they represent situation at 100 mb
-       PFAC = MIN( 0.5 , SIN(0.5*MAPL_PI*MIN(1.0,100./PL)) )
-       VF = VF * PFAC
+       VF = VF * MIN( 1.0 , SIN(0.5*MAPL_PI*MIN(1.0,100./PL)) )
+
+       CASE( 2 )
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      ! Deng and Mace, 2008:  https://doi.org/10.1029/2008GL035054
+      !  table 1 section 3.3 for equations and coeficients
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+       RHO = 1000.*100.*PL/(MAPL_RGAS*TE)  ! 1000 TAKES TO g m^-3 ; 100 takes mb TO Pa
+       if ( ( CF > 0.) .and. ( QI > 0. ) ) then
+          XIm = (QI/CF)*RHO
+       else
+          XIm = 0.
+       end if
+       if ( XIm > 0.) then
+          LXIm = ALOG10(XIm)
+       else
+          LXIm = 0.0
+       end if
+       TC  = TE - MAPL_TICE ! deg C
+       ! -----------------------------------------------------------------------
+       ! 'ALL:large-scale' Deng and Mace (2008, grl)
+       ! -----------------------------------------------------------------------
+       VF_L = 10.0**(LXIm * (TC * (aaA * TC + bbA) + ccA) + ddA * TC + eeA)
+       ! -----------------------------------------------------------------------
+       ! 'TWP:convective' Deng and Mace (2008, grl)
+       ! -----------------------------------------------------------------------
+       VF_A = 10.0**(LXIm * (TC * (aaC * TC + bbC) + ccC) + ddC * TC + eeC)
+       ! -----------------------------------------------------------------------
+       ! Combine the two and convert from cm/s to m/s
+       ! -----------------------------------------------------------------------
+       VF = 0.01 * (CNVFRC*ANVIL*VF_A + (1.0-CNVFRC)*LARGESCALE*VF_L)
+       ! -----------------------------------------------------------------------
+       ! Pressure factor
+       ! Reduce/increase fall speeds for high/low pressure (KLUDGE)
+       ! Assume unmodified they represent situation at 100 mb
+       ! -----------------------------------------------------------------------
+       VF = VF * SQRT(100.0/PL)
+       ! -----------------------------------------------------------------------
+       ! Limits
+       ! -----------------------------------------------------------------------
+       VF = MIN(0.5, MAX(1.e-5, VF))
+
+       END SELECT
 
    end SUBROUTINE SETTLE_VEL
 
