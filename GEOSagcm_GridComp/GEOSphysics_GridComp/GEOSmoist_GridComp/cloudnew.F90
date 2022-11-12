@@ -2391,8 +2391,8 @@ contains
       real, parameter :: eeA = 1.9714
 
       ! Combine convective+large-scale
-      QI = QILS + QICN
-      CF = CLLS + CLCN
+      QI =     QILS + QICN
+      CF = MIN(CLLS + CLCN, 1.0)
 
       SELECT CASE( ICE_SETTLE )
       CASE( 1 )
