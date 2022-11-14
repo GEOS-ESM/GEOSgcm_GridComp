@@ -1,3 +1,4 @@
+#define CPRINTEL 1
 ! Flag representing compiler support of Fortran 2003's
 ! ieee_arithmetic intrinsic module.
 #if defined CPRIBM || defined CPRPGI || defined CPRINTEL ||  defined CPRCRAY || defined CPRNAG
@@ -67,7 +68,7 @@ public :: shr_infnan_isnan
 !! Locally defined isnan.
 #ifndef HAVE_IEEE_ARITHMETIC
 interface shr_infnan_isnan
-   TYPE double,real
+   ! TYPE double,real
    module procedure shr_infnan_isnan_{TYPE}
 end interface
 #endif
@@ -90,16 +91,16 @@ end interface
 !! Derived types for generation of NaN/Inf
 !! Even though there's no reason to "use" the types directly, some compilers
 !! might have trouble with an object being used without its type.
-!public :: shr_infnan_nan_type
+public :: shr_infnan_nan_type
 !public :: shr_infnan_inf_type
-!public :: assignment(=)
+public :: assignment(=)
 !public :: shr_infnan_to_r4
 !public :: shr_infnan_to_r8
 !
 !! Type representing Not A Number.
-!type :: shr_infnan_nan_type
-!   logical :: quiet = .false.
-!end type shr_infnan_nan_type
+type :: shr_infnan_nan_type
+   logical :: quiet = .false.
+end type shr_infnan_nan_type
 !
 !! Type representing +/-Infinity.
 !type :: shr_infnan_inf_type
@@ -108,8 +109,8 @@ end interface
 !
 !! Allow assigning reals to NaN or Inf.
 interface assignment(=)
-   TYPE double,real
-   DIMS 0,1,2,3,4,5,6,7
+   ! TYPE double,real
+   ! DIMS 0,1,2,3,4,5,6,7
    module procedure set_nan_{DIMS}d_{TYPE}
    ! TYPE double,real
    ! DIMS 0,1,2,3,4,5,6,7
@@ -131,12 +132,12 @@ end interface
 !
 !! Default NaN is signaling, but also provide snan and qnan to choose
 !! explicitly.
-!type(shr_infnan_nan_type), public, parameter :: shr_infnan_nan = &
-!     shr_infnan_nan_type(.false.)
-!type(shr_infnan_nan_type), public, parameter :: shr_infnan_snan = &
-!     shr_infnan_nan_type(.false.)
-!type(shr_infnan_nan_type), public, parameter :: shr_infnan_qnan = &
-!     shr_infnan_nan_type(.true.)
+type(shr_infnan_nan_type), public, parameter :: shr_infnan_nan = &
+     shr_infnan_nan_type(.false.)
+type(shr_infnan_nan_type), public, parameter :: shr_infnan_snan = &
+     shr_infnan_nan_type(.false.)
+type(shr_infnan_nan_type), public, parameter :: shr_infnan_qnan = &
+     shr_infnan_nan_type(.true.)
 !
 !! Default Inf is positive, but provide posinf to go with neginf.
 !type(shr_infnan_inf_type), public, parameter :: shr_infnan_inf = &
@@ -149,20 +150,20 @@ end interface
 !! Bit patterns for implementation without ieee_arithmetic.
 !! Note that in order to satisfy gfortran's range check, we have to use
 !! ibset to set the sign bit from a BOZ pattern.
-!#ifndef HAVE_IEEE_ARITHMETIC
-!! Single precision.
-!integer(i4), parameter :: ssnan_pat = int(Z'7FA00000',i4)
-!integer(i4), parameter :: sqnan_pat = int(Z'7FC00000',i4)
-!integer(i4), parameter :: sposinf_pat = int(Z'7F800000',i4)
-!integer(i4), parameter :: sneginf_pat = ibset(sposinf_pat,bit_size(1_i4)-1)
-!! Double precision.
-!integer(i8), parameter :: dsnan_pat = int(Z'7FF4000000000000',i8)
-!integer(i8), parameter :: dqnan_pat = int(Z'7FF8000000000000',i8)
-!integer(i8), parameter :: dposinf_pat = int(Z'7FF0000000000000',i8)
-!integer(i8), parameter :: dneginf_pat = ibset(dposinf_pat,bit_size(1_i8)-1)
-!#endif
+#ifndef HAVE_IEEE_ARITHMETIC
+! Single precision.
+integer(i4), parameter :: ssnan_pat = int(Z'7FA00000',i4)
+integer(i4), parameter :: sqnan_pat = int(Z'7FC00000',i4)
+integer(i4), parameter :: sposinf_pat = int(Z'7F800000',i4)
+integer(i4), parameter :: sneginf_pat = ibset(sposinf_pat,bit_size(1_i4)-1)
+! Double precision.
+integer(i8), parameter :: dsnan_pat = int(Z'7FF4000000000000',i8)
+integer(i8), parameter :: dqnan_pat = int(Z'7FF8000000000000',i8)
+integer(i8), parameter :: dposinf_pat = int(Z'7FF0000000000000',i8)
+integer(i8), parameter :: dneginf_pat = ibset(dposinf_pat,bit_size(1_i8)-1)
+#endif
 !
-!contains
+contains
 !
 !!---------------------------------------------------------------------
 !! TEST FUNCTIONS
@@ -357,21 +358,21 @@ end subroutine set_nan_{DIMS}d_{TYPE}
 !! Function methods to get reals from nan/inf types.
 !!---------------------------------------------------------------------
 !
-!pure function nan_r8(nan) result(output)
-!  class(shr_infnan_nan_type), intent(in) :: nan
-!  real(r8) :: output
-!
-!  output = nan
-!
-!end function nan_r8
-!
-!pure function nan_r4(nan) result(output)
-!  class(shr_infnan_nan_type), intent(in) :: nan
-!  real(r4) :: output
-!
-!  output = nan
-!
-!end function nan_r4
+pure function nan_r8(nan) result(output)
+  class(shr_infnan_nan_type), intent(in) :: nan
+  real(r8) :: output
+
+  output = nan
+
+end function nan_r8
+
+pure function nan_r4(nan) result(output)
+  class(shr_infnan_nan_type), intent(in) :: nan
+  real(r4) :: output
+
+  output = nan
+
+end function nan_r4
 !
 !pure function inf_r8(inf) result(output)
 !  class(shr_infnan_inf_type), intent(in) :: inf
