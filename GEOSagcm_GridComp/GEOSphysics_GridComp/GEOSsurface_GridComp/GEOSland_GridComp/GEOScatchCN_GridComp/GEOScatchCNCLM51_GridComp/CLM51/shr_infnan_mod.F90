@@ -90,7 +90,7 @@ end interface
 !! might have trouble with an object being used without its type.
 public :: shr_infnan_nan_type
 !public :: shr_infnan_inf_type
-public :: assignment(=)
+!public :: assignment(=)
 !public :: shr_infnan_to_r4
 !public :: shr_infnan_to_r8
 !
@@ -105,14 +105,14 @@ end type shr_infnan_nan_type
 !end type shr_infnan_inf_type
 !
 !! Allow assigning reals to NaN or Inf.
-interface assignment(=)
-   ! TYPE double,real
-   ! DIMS 0,1,2,3,4,5,6,7
-   module procedure set_nan_{DIMS}d_{TYPE}
-   ! TYPE double,real
-   ! DIMS 0,1,2,3,4,5,6,7
-  ! module procedure set_inf_{DIMS}d_{TYPE}
-end interface
+!interface assignment(=)
+!   ! TYPE double,real
+!   ! DIMS 0,1,2,3,4,5,6,7
+!   module procedure set_nan_new
+!   ! TYPE double,real
+!   ! DIMS 0,1,2,3,4,5,6,7
+!  ! module procedure set_inf_{DIMS}d_{TYPE}
+!end interface
 !
 !! Conversion functions.
 !interface shr_infnan_to_r8
@@ -214,7 +214,6 @@ contains
 !#else
 !! Don't have ieee_arithmetic.
 !
-#ifdef CPRGNU
 ! NaN testing on gfortran.
 ! TYPE double,real
 elemental function shr_infnan_isnan_{TYPE}(x) result(is_nan)
@@ -225,8 +224,6 @@ elemental function shr_infnan_isnan_{TYPE}(x) result(is_nan)
 
 end function shr_infnan_isnan_{TYPE}
 ! End GNU section.
-#endif
-!
 !!---------------------------------------------------------------------
 !! The "isposinf" and "isneginf" functions just test against a known
 !! bit pattern if we don't have ieee_arithmetic.
@@ -281,31 +278,39 @@ end function shr_infnan_isnan_{TYPE}
 !
 !! TYPE double,real
 !! DIMS 0,1,2,3,4,5,6,7
-pure subroutine set_nan_{DIMS}d_{TYPE}(output, nan)
-#ifdef HAVE_IEEE_ARITHMETIC
-  use, intrinsic :: ieee_arithmetic, only: &
-       ieee_signaling_nan, &
-       ieee_quiet_nan, &
-       ieee_value
-#endif
-  {VTYPE}, intent(out) :: output{DIMSTR}
-  type(shr_infnan_nan_type), intent(in) :: nan
-
-  ! Use scalar temporary for performance reasons, to reduce the cost of
-  ! the ieee_value call.
-  {VTYPE} :: tmp
-
-#ifdef HAVE_IEEE_ARITHMETIC
-  if (nan%quiet) then
-     tmp = ieee_value(tmp, ieee_quiet_nan)
-  else
-     tmp = ieee_value(tmp, ieee_signaling_nan)
-  end if
-#endif
-
-  output = tmp
-
-end subroutine set_nan_{DIMS}d_{TYPE}
+!subroutine set_nan_new
+!#ifdef HAVE_IEEE_ARITHMETIC
+!  use, intrinsic :: ieee_arithmetic, only: &
+!       ieee_signaling_nan, &
+!       ieee_quiet_nan, &
+!       ieee_value
+!#endif
+!    public :: inf, nan, bigint
+!! signaling nan
+!  real*8, parameter :: inf8 = O'0777600000000000000000'
+!  real*8, parameter :: nan8 = O'0777610000000000000000'
+!  real*4, parameter :: inf4 = O'17740000000'
+!  real*4, parameter :: nan4 = O'17760000000'
+!  real,   parameter :: inf = inf4
+!  real,   parameter :: nan = nan4
+!  integer,  parameter :: bigint = O'17777777777'
+!  type(shr_infnan_nan_type), intent(in) :: nan
+!
+!  ! Use scalar temporary for performance reasons, to reduce the cost of
+!  ! the ieee_value call.
+!  {VTYPE} :: tmp
+!
+!#ifdef HAVE_IEEE_ARITHMETIC
+!  if (nan%quiet) then
+!     tmp = ieee_value(tmp, ieee_quiet_nan)
+!  else
+!     tmp = ieee_value(tmp, ieee_signaling_nan)
+!  end if
+!#endif
+!
+!  output = tmp
+!
+!end subroutine set_nan_new
 !
 !! TYPE double,real
 !! DIMS 0,1,2,3,4,5,6,7
