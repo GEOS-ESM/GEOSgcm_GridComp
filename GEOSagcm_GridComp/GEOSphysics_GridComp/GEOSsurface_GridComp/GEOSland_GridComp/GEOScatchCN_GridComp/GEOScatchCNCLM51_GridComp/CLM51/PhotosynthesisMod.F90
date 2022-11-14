@@ -12,7 +12,7 @@ module  PhotosynthesisMod
   use shr_sys_mod         , only : shr_sys_flush
   use shr_kind_mod        , only : r8 => shr_kind_r8
   use shr_log_mod         , only : errMsg => shr_log_errMsg
-  use shr_infnan_mod      , only : nan => shr_infnan_nan, assignment(=)
+  use shr_infnan_mod      , only : nan => shr_infnan_nan
   use abortutils          , only : endrun
   use clm_varctl          , only : use_c13, use_c14, use_cn, use_cndv, use_fates, use_luna, use_hydrstress
   use clm_varctl          , only : iulog

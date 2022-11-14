@@ -145,7 +145,7 @@ contains
   subroutine InitAllocate( this, bounds )
     !
     ! Initiaze memory allocate's
-    use shr_infnan_mod  , only : nan => shr_infnan_nan, assignment(=)
+    use shr_infnan_mod  , only : nan => shr_infnan_nan
     !
     ! !ARGUMENTS:
     class(cnfire_base_type) :: this

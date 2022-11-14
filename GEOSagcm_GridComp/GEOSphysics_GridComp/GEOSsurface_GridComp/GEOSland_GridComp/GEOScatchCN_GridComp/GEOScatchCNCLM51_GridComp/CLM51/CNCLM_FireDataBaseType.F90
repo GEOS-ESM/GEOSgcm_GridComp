@@ -82,7 +82,7 @@ contains
     ! !DESCRIPTION:
     ! Initialize CN Fire module
     ! !USES:
-    use shr_infnan_mod  , only : nan => shr_infnan_nan, assignment(=)
+      use nanMod      , only : nan
     !
     ! !ARGUMENTS:
     class(fire_base_type) :: this

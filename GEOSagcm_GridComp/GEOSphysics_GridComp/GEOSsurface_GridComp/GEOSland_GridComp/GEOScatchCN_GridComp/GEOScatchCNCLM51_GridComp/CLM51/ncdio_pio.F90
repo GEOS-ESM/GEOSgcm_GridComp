@@ -10,7 +10,7 @@ module ncdio_pio
   !
   ! !USES:
   use shr_kind_mod   , only : r8 => shr_kind_r8, i4=>shr_kind_i4, shr_kind_cl, r4 => shr_kind_r4
-  use shr_infnan_mod , only : nan => shr_infnan_nan,  isnan => shr_infnan_isnan, assignment(=)
+  use shr_infnan_mod , only : nan => shr_infnan_nan,  isnan => shr_infnan_isnan
   use shr_sys_mod    , only : shr_sys_abort
   use shr_log_mod    , only : errMsg => shr_log_errMsg
   use MAPL           , only : file_desc_t =>  NetCDF4_FileFormatter

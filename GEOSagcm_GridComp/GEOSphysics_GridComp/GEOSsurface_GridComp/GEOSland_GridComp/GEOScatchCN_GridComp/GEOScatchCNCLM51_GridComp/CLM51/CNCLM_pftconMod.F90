@@ -1,7 +1,7 @@
 module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
-  use shr_infnan_mod ,   only : nan => shr_infnan_nan, assignment(=)
+  use shr_infnan_mod ,   only : nan => shr_infnan_nan
   use clm_varpar       , only : mxpft, numrad,nvariants
   use clm_varctl       , only : use_flexibleCN
   use netcdf 

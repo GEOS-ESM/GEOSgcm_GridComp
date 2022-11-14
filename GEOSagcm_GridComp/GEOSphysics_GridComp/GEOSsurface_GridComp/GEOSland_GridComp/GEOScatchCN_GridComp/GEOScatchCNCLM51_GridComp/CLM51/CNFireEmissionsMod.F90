@@ -43,7 +43,7 @@ contains
   subroutine init_fireemis_type(bounds, this)
     !
     ! Allocate memory for module datatypes
-    use shr_infnan_mod  , only : nan => shr_infnan_nan, assignment(=)
+      use nanMod      , only : nan
     use clm_varcon      , only : spval
 
     ! !ARGUMENTS:

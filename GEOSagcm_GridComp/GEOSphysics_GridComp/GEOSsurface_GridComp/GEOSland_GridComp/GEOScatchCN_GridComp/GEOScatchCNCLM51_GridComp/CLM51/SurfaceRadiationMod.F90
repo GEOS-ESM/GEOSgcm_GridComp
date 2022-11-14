@@ -102,7 +102,7 @@ contains
   subroutine InitAllocate(this, bounds)
     !
     ! !USES:
-    use shr_infnan_mod, only : nan => shr_infnan_nan, assignment(=)
+    use shr_infnan_mod, only : nan => shr_infnan_nan
     !
     ! !ARGUMENTS:
     class(surfrad_type) :: this

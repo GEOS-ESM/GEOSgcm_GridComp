@@ -49,7 +49,7 @@ module Wateratm2lndBulkType
     ! Initialize module data structure
     !
     ! !USES:
-    use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
+      use nanMod      , only : nan
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds

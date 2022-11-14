@@ -84,7 +84,7 @@ contains
   !------------------------------------------------------------------------
   subroutine init_frictionvel_type( bounds, this)
 
-    use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
+    use shr_infnan_mod , only : nan => shr_infnan_nan
     
     type(bounds_type), intent(in) :: bounds
     type(frictionvel_type), intent(inout) :: this

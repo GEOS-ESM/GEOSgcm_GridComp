@@ -92,7 +92,7 @@ contains
     ! Allocate memory for the class data
     !
     ! !USES:
-    use shr_infnan_mod  , only : nan => shr_infnan_nan, assignment(=)
+    use shr_infnan_mod  , only : nan => shr_infnan_nan
     ! !ARGUMENTS:
     class(nutrient_competition_FlexibleCN_type) :: this
     type(bounds_type), intent(in) :: bounds

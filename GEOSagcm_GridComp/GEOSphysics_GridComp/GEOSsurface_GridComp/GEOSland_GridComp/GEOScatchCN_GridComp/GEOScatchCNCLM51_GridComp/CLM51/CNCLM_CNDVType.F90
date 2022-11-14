@@ -61,7 +61,7 @@ contains
 !------------------------------------------------------
   subroutine init_dgvs_type(bounds, this)
 
-    use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
+      use nanMod      , only : nan
     use clm_varpar     , only : maxveg
     use pftconMod      , only : allom1s, allom2s, allom1, allom2, allom3, reinickerp
     use pftconMod      , only : nbrdlf_dcd_brl_shrub
