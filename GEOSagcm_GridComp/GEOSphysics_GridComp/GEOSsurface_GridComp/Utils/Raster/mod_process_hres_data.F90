@@ -3003,19 +3003,16 @@ END SUBROUTINE modis_scale_para_high
     
     character*200                   :: fname
     character*2                     :: vv,hh
-    integer                         :: n,maxcat,j,ncid,status
+    integer                         :: n,maxcat,ncid,status
     real,allocatable,dimension(:)   :: min_lon,max_lon,min_lat,max_lat,snw_alb
     integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
-    real,parameter                  :: alb_res=10.0/1200.0
     real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
     real,dimension(36,18,xdim,ydim) :: stch_snw_alb
-    real                            :: minlon,maxlon,minlat,maxlat,pad_lon,pad_lat
-    real                            :: sno_alb_cnt,sno_alb_sum,sno_alb_cnt2,sno_alb_sum2
+    real                            :: minlon,maxlon,minlat,maxlat                   
+    real                            :: sno_alb_cnt,sno_alb_sum                            
     integer                         :: vvtil_min,hhtil_min,vvtil_max,hhtil_max,hhtil,vvtil
     integer                         :: tindex1,pfaf1
-    integer(kind=4)                 :: dummy,varid1 
-    integer(kind=4)                 :: imin,imax,jmin,jmax
-    integer(kind=4)                 :: imin2,imax2,jmin2,jmax2,count_init_invalid
+    integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
     logical                         :: file_exists
     
     ! Read number of catchment-tiles (maxcat) from catchment.def file
@@ -3077,122 +3074,67 @@ END SUBROUTINE modis_scale_para_high
           
        enddo
     enddo
+
+    if (minval(stch_snw_alb) .le. 0.0 .or. maxval(stch_snw_alb) .gt. 1.0) then
+      print*, 'There is a problem with snow albedo raster file. Non-physical values present. STOP!'
+      stop
+    endif
     
     ! loop over tiles
-    print*, 'Starting tile loop for snow albedo. '
-    count_init_invalid=0 ! counter for non-valid snow albedo values (informational use only) 
+    print*, 'Starting tile loop for snow albedo.'
     
     do n = 1, maxcat ! loop over tiles
-       
-       ! Set sums and counts to zero
-       sno_alb_sum =0.
-       sno_alb_cnt =0.
-       sno_alb_sum2=0.
-       sno_alb_cnt2=0.
-       
-       ! Use tile's min/max lat/lon info to identify the 10x10deg input file(s)
-       ! and read in snow albedo value(s). The "ceiling" and "floor" implements the "halo".
-       vvtil_min=  floor((min_lat(n)+ 90.0)/10.)+1 
-       hhtil_min=  floor((min_lon(n)+180.0)/10.)+1   
-       
-       ! if tile crosses the edge of the snow albedo 10x10deg box, expand the 
-       ! search area into the neighbouring 10x10deg box
-       hhtil_max=hhtil_min
-       vvtil_max=vvtil_min
-       if (floor(min_lon(n)/10) .ne. floor(max_lon(n)/10)) hhtil_max=hhtil_min+1
-       if (floor(min_lat(n)/10) .ne. floor(max_lat(n)/10)) vvtil_max=vvtil_min+1
-       
-       ! Safety checks: 
-       ! 1. Make sure vv's and hh's are within the range. If min>max, swap them.
-       if (vvtil_min .gt. vvtil_max) then
-          dummy    =vvtil_min
-          vvtil_min=vvtil_max
-          vvtil_max=dummy
-       endif
-       if (hhtil_min .gt. hhtil_max) then
-          dummy    =hhtil_min
-          hhtil_min=hhtil_max
-          hhtil_max=dummy
-       endif
-       
-       ! 2. Keep within the range.
-       vvtil_min=max(vvtil_min,1)
-       vvtil_max=min(vvtil_max,18)
-       hhtil_min=max(hhtil_min,1)
-       hhtil_max=min(hhtil_max,36)
-       
-       do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
-          do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
-             
-             ! Find indices ranges corresponding to the current tile area.
-             imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1 
-             imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1  
-             jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
-             jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
-             ! Keep within the range.
-             imin=max(imin,1)
-             imax=min(imax,xdim)
-             jmin=max(jmin,1)
-             jmax=min(jmax,ydim)
-             
-             ! Generate sums and counts using current tile corresponding indices
-             sno_alb_sum= sno_alb_sum +                                              &
-                  sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax),                 &
-                  stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).gt.0.0 .and.         &
-                  stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).le.1.0)
-             
-             sno_alb_cnt= sno_alb_cnt +                                              &
-                  count(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).gt.0.0 .and.   &
-                  stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax).le.1.0)
-             
-          end do ! vvtil
-       end do ! hhtil
-       
-       ! Calculate snow albedo for the current tile
-       snw_alb(n) = sno_alb_sum / max(1.0,sno_alb_cnt)
-       if (snw_alb(n) .le. 0.0 .or. snw_alb(n) .gt. 1.0 ) snw_alb(n)=MAPL_UNDEF !1.E15
-       
-       ! If no valid solution found, and if tile size smaller than snow albedo resolution,
-       !  expand search area by 1-tile padding.
-       
-       ! Size of a tile (in both directions)
-       pad_lon=(max_lon(n)-min_lon(n))
-       pad_lat=(max_lat(n)-min_lat(n))
-       
-       if (snw_alb(n) .le. 0.0 .and. (pad_lon .lt. alb_res .or. pad_lat .lt. alb_res)) then
+      
+      ! Set sums and counts to zero
+      sno_alb_sum=0.
+      sno_alb_cnt=0.
+      
+      ! Use tile's min/max lat/lon info to identify the 10x10deg input file(s)
+      ! indexes
+      vvtil_min=floor((min_lat(n)+ 90.0)/10.)+1 
+      hhtil_min=floor((min_lon(n)+180.0)/10.)+1   
+      
+      ! if tile crosses the edge of the snow albedo 10x10deg box, expand the 
+      ! search area into the neighbouring 10x10deg box
+      hhtil_max=hhtil_min
+      vvtil_max=vvtil_min
+      if (floor(min_lon(n)/10) .ne. floor(max_lon(n)/10)) hhtil_max=hhtil_min+1
+      if (floor(min_lat(n)/10) .ne. floor(max_lat(n)/10)) vvtil_max=vvtil_min+1
+      
+      ! Safety check; keep within the range
+      vvtil_min=max(vvtil_min,1)
+      vvtil_max=min(vvtil_max,18)
+      hhtil_min=max(hhtil_min,1)
+      hhtil_max=min(hhtil_max,36)
+      
+      do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
+        do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
           
-          count_init_invalid=count_init_invalid+1
+          ! Find indices ranges corresponding to the current tile area.
+          imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1 
+          imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1  
+          jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
+          jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
+
+          ! if no matching grids, go to the next vv/hh box
+          if (imin .gt. xdim .or. jmin .gt. ydim .or. imax .lt. 1 .or. jmax .lt. 1) cycle
+
+          ! Keep within the range, to include only the portion of the tile within this vv/hh box
+          imin=max(imin,1)
+          imax=min(imax,xdim)
+          jmin=max(jmin,1)
+          jmax=min(jmax,ydim)
           
-          do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
-             do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
-                
-                ! Repeat the steps for extracting snow albedo value
-                imin2=floor((min_lon(n)-pad_lon+180.0 - (hhtil-1)*10.0) * (xdim/10.0))+1
-                imax2=floor((max_lon(n)+pad_lon+180.0 - (hhtil-1)*10.0) * (xdim/10.0))+1
-                jmin2=floor((min_lat(n)-pad_lat+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))+1
-                jmax2=floor((max_lat(n)+pad_lat+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0))+1
-                imin2=max(imin2,1)
-                imax2=min(imax2,xdim)
-                jmin2=max(jmin2,1)
-                jmax2=min(jmax2,ydim)
-                
-                sno_alb_sum2= sno_alb_sum2 +                                                &
-                     sum(stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2),                 &
-                     stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).gt.0.0 .and.         &
-                     stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).le.1.0)
-                
-                sno_alb_cnt2= sno_alb_cnt2 +                                                &
-                     count(stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).gt.0.0 .and.   &
-                     stch_snw_alb(hhtil,vvtil,imin2:imax2,jmin2:jmax2).le.1.0)
-                
-             end do ! vvtil
-          end do ! hhtil
+          ! Generate sums and counts using current tile corresponding indices
+          sno_alb_sum = sno_alb_sum +   sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax))
+          sno_alb_cnt = sno_alb_cnt + (imax-imin+1)*(jmax-jmin+1)
           
-          snw_alb(n) = sno_alb_sum2 / max(1.0,sno_alb_cnt2)
-          if (snw_alb(n) .le. 0.0 .or. snw_alb(n) .gt. 1.0 ) snw_alb(n)=MAPL_UNDEF !1.E15
-          
-       endif
-       
+        end do ! vvtil
+      end do ! hhtil
+      
+      ! If matching grids found, calculate snow albedo for the current tile
+      if (sno_alb_sum .ne. 0.0 .and. sno_alb_cnt .ne. 0) snw_alb(n)=min(1.0,max(0.0,sno_alb_sum/sno_alb_cnt))
+      
     end do ! n-loop over tiles
     
     ! write snow albedo into clsm/catch_params.nc4
@@ -3205,7 +3147,6 @@ END SUBROUTINE modis_scale_para_high
     endif
     
     print*, 'Ended tile loop for snow albedo. '
-    print*, 'Initially found ', count_init_invalid, ' tiles with no-data values for snow albedo (out of ', maxcat,')'
     
   END SUBROUTINE MODIS_snow_alb
   
