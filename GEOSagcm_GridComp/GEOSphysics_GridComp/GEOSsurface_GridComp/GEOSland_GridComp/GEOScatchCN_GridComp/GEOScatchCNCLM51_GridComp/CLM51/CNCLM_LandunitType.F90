@@ -17,7 +17,7 @@ module LandunitType
   !   9  => (isturb_md)  urban md
   !
   use shr_kind_mod   , only : r8 => shr_kind_r8
-  use shr_infnan_mod , only : nan => shr_infnan_nan
+  use nanMod         , only : nan
   use clm_varcon     , only : ispval
   use decompMod      , only : bounds_type
 
