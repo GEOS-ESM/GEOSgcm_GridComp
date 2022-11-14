@@ -67,7 +67,7 @@ public :: shr_infnan_isnan
 !! Locally defined isnan.
 #ifndef HAVE_IEEE_ARITHMETIC
 interface shr_infnan_isnan
-    TYPE double,real
+   TYPE double,real
    module procedure shr_infnan_isnan_{TYPE}
 end interface
 #endif
@@ -108,8 +108,8 @@ end interface
 !
 !! Allow assigning reals to NaN or Inf.
 interface assignment(=)
-   ! TYPE double,real
-   ! DIMS 0,1,2,3,4,5,6,7
+   TYPE double,real
+   DIMS 0,1,2,3,4,5,6,7
    module procedure set_nan_{DIMS}d_{TYPE}
    ! TYPE double,real
    ! DIMS 0,1,2,3,4,5,6,7
