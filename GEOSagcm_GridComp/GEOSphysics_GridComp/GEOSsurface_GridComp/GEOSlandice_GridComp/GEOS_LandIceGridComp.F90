@@ -3202,7 +3202,7 @@ contains
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
 
-    if(associated(GHTSKIN )) GHTSKIN = (-1.0)*(ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)) !changed lca 11/05/22 to align with land gc
+    if(associated(GHTSKIN )) GHTSKIN = (-1.0)*(ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)) 
     if(associated(ACCUM )) ACCUM      = ACCUM + PRECIP   
     if(associated(EMISS )) EMISS      = LANDICEEMISS
 
