@@ -43,7 +43,7 @@ module SoilBiogeochemStateType
 contains
 
 !---------------------------------------
- subroutine init_soilbiogeochem_state_type(bounds, nch, cncol, cn5_cold_start,  this)
+ subroutine init_soilbiogeochem_state_type(bounds, nch, cncol, cn5_cold_start,  this, rc)
 
     !
     ! !ARGUMENTS:
@@ -53,6 +53,7 @@ contains
     real, dimension(nch,NUM_ZON,VAR_COL),  intent(in) :: cncol ! gkw: column CN restart
     logical, optional,                     intent(in) :: cn5_cold_start
     type(soilbiogeochem_state_type),       intent(inout) :: this
+    integer, optional,                     intent(out) :: rc
     !
     ! !LOCAL VARIABLES:
     integer :: begp, endp
