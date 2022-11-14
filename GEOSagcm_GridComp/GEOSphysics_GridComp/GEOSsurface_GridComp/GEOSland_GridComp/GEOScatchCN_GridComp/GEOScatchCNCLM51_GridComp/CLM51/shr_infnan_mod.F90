@@ -1,7 +1,3 @@
-! Flag representing compiler support of Fortran 2003's
-! ieee_arithmetic intrinsic module.
-#define HAVE_IEEE_ARITHMETIC
-
 module shr_infnan_mod
 !---------------------------------------------------------------------
 ! Module to test for IEEE Inf and NaN values, which also provides a
@@ -39,18 +35,13 @@ use shr_kind_mod, only: &
      r4 => SHR_KIND_R4, &
      r8 => SHR_KIND_R8
 
-#ifdef HAVE_IEEE_ARITHMETIC
-
 ! If we have IEEE_ARITHMETIC, the NaN test is provided for us.
 use, intrinsic :: ieee_arithmetic, only: &
      shr_infnan_isnan => ieee_is_nan
 
-#else
-
 ! Integers of correct size for bit patterns below.
 use shr_kind_mod, only: i4 => shr_kind_i4, i8 => shr_kind_i8
 
-#endif
 
 implicit none
 private
