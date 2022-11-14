@@ -59,18 +59,18 @@ private
 save
 
 ! Test functions for NaN/Inf values.
-!public :: shr_infnan_isnan
+public :: shr_infnan_isnan
 !public :: shr_infnan_isinf
 !public :: shr_infnan_isposinf
 !public :: shr_infnan_isneginf
 !
 !! Locally defined isnan.
-!#ifndef HAVE_IEEE_ARITHMETIC
-!interface shr_infnan_isnan
-!   ! TYPE double,real
-!   module procedure shr_infnan_isnan_{TYPE}
-!end interface
-!#endif
+#ifndef HAVE_IEEE_ARITHMETIC
+interface shr_infnan_isnan
+    TYPE double,real
+   module procedure shr_infnan_isnan_{TYPE}
+end interface
+#endif
 !
 !interface shr_infnan_isinf
 !   ! TYPE double,real
@@ -107,14 +107,14 @@ save
 !end type shr_infnan_inf_type
 !
 !! Allow assigning reals to NaN or Inf.
-!interface assignment(=)
-!   ! TYPE double,real
-!   ! DIMS 0,1,2,3,4,5,6,7
-!   module procedure set_nan_{DIMS}d_{TYPE}
-!   ! TYPE double,real
-!   ! DIMS 0,1,2,3,4,5,6,7
-!   module procedure set_inf_{DIMS}d_{TYPE}
-!end interface
+interface assignment(=)
+   ! TYPE double,real
+   ! DIMS 0,1,2,3,4,5,6,7
+   module procedure set_nan_{DIMS}d_{TYPE}
+   ! TYPE double,real
+   ! DIMS 0,1,2,3,4,5,6,7
+  ! module procedure set_inf_{DIMS}d_{TYPE}
+end interface
 !
 !! Conversion functions.
 !interface shr_infnan_to_r8
@@ -216,18 +216,18 @@ save
 !#else
 !! Don't have ieee_arithmetic.
 !
-!#ifdef CPRGNU
-!! NaN testing on gfortran.
-!! TYPE double,real
-!elemental function shr_infnan_isnan_{TYPE}(x) result(is_nan)
-!  {VTYPE}, intent(in) :: x
-!  logical :: is_nan
-!
-!  is_nan = isnan(x)
-!
-!end function shr_infnan_isnan_{TYPE}
-!! End GNU section.
-!#endif
+#ifdef CPRGNU
+! NaN testing on gfortran.
+! TYPE double,real
+elemental function shr_infnan_isnan_{TYPE}(x) result(is_nan)
+  {VTYPE}, intent(in) :: x
+  logical :: is_nan
+
+  is_nan = isnan(x)
+
+end function shr_infnan_isnan_{TYPE}
+! End GNU section.
+#endif
 !
 !!---------------------------------------------------------------------
 !! The "isposinf" and "isneginf" functions just test against a known
@@ -283,45 +283,45 @@ save
 !
 !! TYPE double,real
 !! DIMS 0,1,2,3,4,5,6,7
-!pure subroutine set_nan_{DIMS}d_{TYPE}(output, nan)
-!#ifdef HAVE_IEEE_ARITHMETIC
-!  use, intrinsic :: ieee_arithmetic, only: &
-!       ieee_signaling_nan, &
-!       ieee_quiet_nan, &
-!       ieee_value
-!#else
-!#if ({ITYPE} == TYPEREAL)
-!  integer(i4), parameter :: snan_pat = ssnan_pat
-!  integer(i4), parameter :: qnan_pat = sqnan_pat
-!#else
-!  integer(i8), parameter :: snan_pat = dsnan_pat
-!  integer(i8), parameter :: qnan_pat = dqnan_pat
-!#endif
-!#endif
-!  {VTYPE}, intent(out) :: output{DIMSTR}
-!  type(shr_infnan_nan_type), intent(in) :: nan
-!
-!  ! Use scalar temporary for performance reasons, to reduce the cost of
-!  ! the ieee_value call.
-!  {VTYPE} :: tmp
-!
-!#ifdef HAVE_IEEE_ARITHMETIC
-!  if (nan%quiet) then
-!     tmp = ieee_value(tmp, ieee_quiet_nan)
-!  else
-!     tmp = ieee_value(tmp, ieee_signaling_nan)
-!  end if
-!#else
-!  if (nan%quiet) then
-!     tmp = transfer(qnan_pat, tmp)
-!  else
-!     tmp = transfer(snan_pat, tmp)
-!  end if
-!#endif
-!
-!  output = tmp
-!
-!end subroutine set_nan_{DIMS}d_{TYPE}
+pure subroutine set_nan_{DIMS}d_{TYPE}(output, nan)
+#ifdef HAVE_IEEE_ARITHMETIC
+  use, intrinsic :: ieee_arithmetic, only: &
+       ieee_signaling_nan, &
+       ieee_quiet_nan, &
+       ieee_value
+#else
+#if ({ITYPE} == TYPEREAL)
+  integer(i4), parameter :: snan_pat = ssnan_pat
+  integer(i4), parameter :: qnan_pat = sqnan_pat
+#else
+  integer(i8), parameter :: snan_pat = dsnan_pat
+  integer(i8), parameter :: qnan_pat = dqnan_pat
+#endif
+#endif
+  {VTYPE}, intent(out) :: output{DIMSTR}
+  type(shr_infnan_nan_type), intent(in) :: nan
+
+  ! Use scalar temporary for performance reasons, to reduce the cost of
+  ! the ieee_value call.
+  {VTYPE} :: tmp
+
+#ifdef HAVE_IEEE_ARITHMETIC
+  if (nan%quiet) then
+     tmp = ieee_value(tmp, ieee_quiet_nan)
+  else
+     tmp = ieee_value(tmp, ieee_signaling_nan)
+  end if
+#else
+  if (nan%quiet) then
+     tmp = transfer(qnan_pat, tmp)
+  else
+     tmp = transfer(snan_pat, tmp)
+  end if
+#endif
+
+  output = tmp
+
+end subroutine set_nan_{DIMS}d_{TYPE}
 !
 !! TYPE double,real
 !! DIMS 0,1,2,3,4,5,6,7
