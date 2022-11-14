@@ -289,14 +289,6 @@ pure subroutine set_nan_{DIMS}d_{TYPE}(output, nan)
        ieee_signaling_nan, &
        ieee_quiet_nan, &
        ieee_value
-#else
-#if ({ITYPE} == TYPEREAL)
-  integer(i4), parameter :: snan_pat = ssnan_pat
-  integer(i4), parameter :: qnan_pat = sqnan_pat
-#else
-  integer(i8), parameter :: snan_pat = dsnan_pat
-  integer(i8), parameter :: qnan_pat = dqnan_pat
-#endif
 #endif
   {VTYPE}, intent(out) :: output{DIMSTR}
   type(shr_infnan_nan_type), intent(in) :: nan
@@ -310,12 +302,6 @@ pure subroutine set_nan_{DIMS}d_{TYPE}(output, nan)
      tmp = ieee_value(tmp, ieee_quiet_nan)
   else
      tmp = ieee_value(tmp, ieee_signaling_nan)
-  end if
-#else
-  if (nan%quiet) then
-     tmp = transfer(qnan_pat, tmp)
-  else
-     tmp = transfer(snan_pat, tmp)
   end if
 #endif
 
