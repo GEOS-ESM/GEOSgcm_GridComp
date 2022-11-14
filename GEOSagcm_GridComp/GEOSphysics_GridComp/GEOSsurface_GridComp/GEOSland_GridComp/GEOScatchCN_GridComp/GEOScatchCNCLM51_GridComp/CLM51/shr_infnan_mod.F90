@@ -1,9 +1,6 @@
-#define CPRINTEL 1
 ! Flag representing compiler support of Fortran 2003's
 ! ieee_arithmetic intrinsic module.
-#if defined CPRIBM || defined CPRPGI || defined CPRINTEL ||  defined CPRCRAY || defined CPRNAG
 #define HAVE_IEEE_ARITHMETIC
-#endif
 
 module shr_infnan_mod
 !---------------------------------------------------------------------
