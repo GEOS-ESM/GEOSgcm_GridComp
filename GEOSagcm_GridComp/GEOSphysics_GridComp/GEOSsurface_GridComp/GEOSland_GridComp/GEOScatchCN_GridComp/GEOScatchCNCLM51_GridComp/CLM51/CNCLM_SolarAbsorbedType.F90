@@ -87,9 +87,9 @@ contains
     type(solarabs_type), intent(inout):: this
 
     !LOCAL
-    integer, intent :: begp, endp
-    integer, intent :: begc, endc
-    integer, intent :: begl, endl
+    integer :: begp, endp
+    integer :: begc, endc
+    integer :: begl, endl
     !---------------------------------
 
     begp = bounds%begp ; endp = bounds%endp
