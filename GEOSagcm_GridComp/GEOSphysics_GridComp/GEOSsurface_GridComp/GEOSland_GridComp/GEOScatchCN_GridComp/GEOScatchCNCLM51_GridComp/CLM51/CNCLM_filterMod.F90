@@ -3,7 +3,7 @@ module filterMod
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
   use decompMod  , only : bounds_type
-  use clm_varcon , only : NUM_ZON
+  use clm_varpar , only : NUM_ZON, NUM_VEG, numpft
 
   ! !PUBLIC TYPES:
   implicit none
@@ -100,7 +100,7 @@ module filterMod
 contains
 
 !--------------------------------------------------------------
-  subroutine init_filter_type(bounds, nch, this_filter)
+  subroutine init_filter_type(bounds, nch, ityp, fveg,  this_filter)
 
   ! !DESCRIPTION:
   ! Initialize CTSM filters                                 
@@ -112,6 +112,8 @@ contains
     ! INPUT/OUTPUT
     type(bounds_type),                                intent(in) :: bounds
     integer,                                          intent(in) :: nch         ! number of Catchment tiles
+    integer, dimension(nch,num_veg,num_zon),          intent(in) :: ityp ! PFT index
+    real, dimension(nch,num_veg,num_zon),             intent(in) :: fveg    ! PFT fraction 
     type(clumpfilter), intent(inout), allocatable :: this_filter(:)  ! the filter to allocate
  
     ! LOCAL:
@@ -185,9 +187,9 @@ contains
             n = n + 1
 
             this_filter%num_soilc = this_filter%num_soilc + 1
-            this_filter%soilc(this_filter%num_soilc) = n 
+            this_filter(1)%soilc(this_filter%num_soilc) = n 
             this_filter%num_allc = this_filter%num_allc + 1
-            this_filter%allc(this_filter%num_allc) = n
+            this_filter(1)%allc(this_filter%num_allc) = n
 
             do p = 0,numpft  ! PFT index loop
                np = np + 1
@@ -195,27 +197,27 @@ contains
                   if(ityp(nc,nv,nz)==p) then
                     
                     this_filter%num_nourbanp = this_filter%num_nourbanp + 1
-                    this_filter%nourbanp(this_filter%num_nourbanp) = np
+                    this_filter(1)%nourbanp(this_filter%num_nourbanp) = np
 
                     this_filter%num_soilp = this_filter%num_soilp + 1
-                    this_filter%soilp(this_filter%num_soilp) = np
+                    this_filter(1)%soilp(this_filter%num_soilp) = np
 
                     ! jkolassa: not sure this is needed, since we do not use prognostic crop information
                     if(ityp(nc,nv,nz) >= npcropmin) then
                       this_filter%num_pcropp = this_filternum_pcropp + 1
-                      this_filter%pcropp(this_filter%num_pcropp) = np
+                      this_filter(1)%pcropp(this_filter%num_pcropp) = np
                     endif
 
 
                     if (fveg(nc,nv,nz)>1.e-4) then
 
                        this_filter%num_exposedvegp = this_filter%num_exposedvegp + 1
-                       this_filter%exposedvegp(this_filter%num_exposedvegp) = np
+                       this_filter(1)%exposedvegp(this_filter%num_exposedvegp) = np
 
                     elseif (fveg(nc,nv,nz)<=1.e-4) then
             
                        this_filter%num_noexposedvegp = this_filter%num_noexposedvegp + 1
-                       this_filter%noexposedvegp(this_filter%num_noexposedvegp) = np
+                       this_filter(1)%noexposedvegp(this_filter%num_noexposedvegp) = np
                        
                     end if
                   end if
