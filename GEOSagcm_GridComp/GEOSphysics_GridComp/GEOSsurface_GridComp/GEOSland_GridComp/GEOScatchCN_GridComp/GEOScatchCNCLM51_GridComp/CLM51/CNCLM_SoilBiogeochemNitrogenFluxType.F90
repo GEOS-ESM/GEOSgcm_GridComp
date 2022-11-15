@@ -5,6 +5,7 @@ module SoilBiogeochemNitrogenFluxType
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, ndecomp_cascade_outtransitions
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, ndecomp_pools_vr
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_crop, use_soil_matrixcn
+  use clm_varcon       , only : spval
   use decompMod        , only : bounds_type
   use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
 
@@ -59,6 +60,7 @@ module SoilBiogeochemNitrogenFluxType
      real(r8), pointer :: pot_f_nit_col                             (:)     ! col (gN/m2/s) potential soil nitrification flux
      real(r8), pointer :: pot_f_denit_col                           (:)     ! col (gN/m2/s) potential soil denitrification flux
      real(r8), pointer :: n2_n2o_ratio_denit_vr_col                 (:,:)   ! col ratio of N2 to N2O production by denitrification [gN/gN]
+     real(r8), pointer :: f_n2o_denit_vr_col                        (:,:)   ! col flux of N2o from denitrification [gN/m^3/s]
      real(r8), pointer :: f_n2o_denit_col                           (:)     ! col flux of N2o from denitrification [gN/m^2/s]
      real(r8), pointer :: f_n2o_nit_vr_col                          (:,:)   ! col flux of N2o from nitrification [gN/m^3/s]
      real(r8), pointer :: f_n2o_nit_col                             (:)     ! col flux of N2o from nitrification [gN/m^2/s]
