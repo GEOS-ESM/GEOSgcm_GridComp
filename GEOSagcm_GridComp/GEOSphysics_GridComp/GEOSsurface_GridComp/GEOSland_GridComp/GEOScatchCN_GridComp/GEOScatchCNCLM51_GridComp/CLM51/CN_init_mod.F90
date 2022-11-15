@@ -118,7 +118,6 @@
   type(cnveg_carbonflux_type)             :: cnveg_carbonflux_inst
   type(cnveg_nitrogenflux_type)           :: cnveg_nitrogenflux_inst
   type(gridcell_type)                     :: grc
-  type(clumpfilter_type)                  :: filter
   type(soilbiogeochem_carbonflux_type)    :: soilbiogeochem_carbonflux_inst
   type(soilbiogeochem_nitrogenflux_type)  :: soilbiogeochem_nitrogenflux_inst
   type(ch4_type)                          :: ch4_inst
@@ -168,7 +167,7 @@
 
     ! initialize filters
 
-    call init_filter_type               (bounds, nch, filter)
+    call init_filter_type               (bounds, nch, ityp, fveg,  filter)
 
     ! read parameters and configurations from namelist file
 
