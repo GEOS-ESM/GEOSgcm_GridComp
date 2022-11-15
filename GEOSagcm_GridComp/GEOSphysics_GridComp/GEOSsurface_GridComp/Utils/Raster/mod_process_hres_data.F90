@@ -2995,7 +2995,11 @@ END SUBROUTINE modis_scale_para_high
 
   SUBROUTINE MODIS_snow_alb ( )  
 
-    ! Process static snow albedo calculated from MODIS climatology and write into clsm/catch_params.nc4
+    ! Map static, MODIS climatology-based snow albedo from 30-arcsec raster 
+    !   grid to tile space and write into clsm/catch_params.nc4.
+    !
+    ! Assumes that input snow albedo on raster grid is backfilled
+    !   (i.e., does not contain no-data values).
     !
     ! Biljana Orescanin July 2022, SSAI@NASA
     
@@ -3003,7 +3007,7 @@ END SUBROUTINE modis_scale_para_high
     
     character*200                   :: fname
     character*2                     :: vv,hh
-    integer                         :: n,maxcat,ncid,status
+    integer                         :: n,N_tile,ncid,status
     real,allocatable,dimension(:)   :: min_lon,max_lon,min_lat,max_lat,snw_alb
     integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
     real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
@@ -3015,23 +3019,23 @@ END SUBROUTINE modis_scale_para_high
     integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
     logical                         :: file_exists
     
-    ! Read number of catchment-tiles (maxcat) from catchment.def file
+    ! Read number of catchment-tiles (N_tile) from catchment.def file
     fname='clsm/catchment.def'
     open (10,file=fname,status='old',action='read',form='formatted')
-    read(10,*) maxcat
+    read(10,*) N_tile
     
     ! Read min/max lat/lons to use when locating snow albedo grids in 
     ! the stitched MODIS albedo file
-    allocate (min_lon(1:maxcat))
-    allocate (min_lat(1:maxcat))
-    allocate (max_lon(1:maxcat))
-    allocate (max_lat(1:maxcat))
-    allocate (snw_alb(1:maxcat))
+    allocate (min_lon(1:N_tile))
+    allocate (min_lat(1:N_tile))
+    allocate (max_lon(1:N_tile))
+    allocate (max_lat(1:N_tile))
+    allocate (snw_alb(1:N_tile))
     
     ! Start by setting all snow albedo values to missing
     snw_alb(:)=MAPL_UNDEF 
     
-    do n = 1, maxcat
+    do n = 1, N_tile
        read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
        min_lon(n) = minlon
        max_lon(n) = maxlon
@@ -3041,7 +3045,7 @@ END SUBROUTINE modis_scale_para_high
     
     close (10,status='keep')
     
-    !------------ Get the information on snow albedo -----
+    ! ----------- Get the information on snow albedo -----
     ! ----------- The information on snow albedo is stored in 10x10deg 30-arcsec resolution files.
     ! ----------- Read in this information, then loop over the tiles to find a corresponding snow albedo.
     
@@ -3056,9 +3060,6 @@ END SUBROUTINE modis_scale_para_high
           ! average snow albedo (=0.56; average excludes Antarctica and Greenland ice 
           ! sheets and is weighted by the grid-cell area).
           fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
-          
-          ! MODIS-based climatology albedo raster files (NoData set to 1e+15)
-          !fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v1/snow_alb_noFill_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
           
           ! Open the file. (NF90_NOWRITE ensures read-only access to the file)
           status=NF_OPEN(trim(fname),NF_NOWRITE, ncid)   ; VERIFY_(STATUS)
@@ -3083,7 +3084,7 @@ END SUBROUTINE modis_scale_para_high
     ! loop over tiles
     print*, 'Starting tile loop for snow albedo.'
     
-    do n = 1, maxcat ! loop over tiles
+    do n = 1, N_tile ! loop over tiles
       
       ! Set sums and counts to zero
       sno_alb_sum=0.
@@ -3126,14 +3127,15 @@ END SUBROUTINE modis_scale_para_high
           jmax=min(jmax,ydim)
           
           ! Generate sums and counts using current tile corresponding indices
-          sno_alb_sum = sno_alb_sum +   sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax))
+          sno_alb_sum = sno_alb_sum + sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax))
           sno_alb_cnt = sno_alb_cnt + (imax-imin+1)*(jmax-jmin+1)
           
         end do ! vvtil
       end do ! hhtil
       
-      ! If matching grids found, calculate snow albedo for the current tile
-      if (sno_alb_sum .ne. 0.0 .and. sno_alb_cnt .ne. 0) snw_alb(n)=min(1.0,max(0.0,sno_alb_sum/sno_alb_cnt))
+      ! If matching grids found, calculate snow albedo for the current tile;
+      !   ensure that resulting value is within physical range [0,1].
+      if (sno_alb_cnt .ne. 0) snw_alb(n)=min(1.0,max(0.0,sno_alb_sum/sno_alb_cnt))
       
     end do ! n-loop over tiles
     
@@ -3142,7 +3144,7 @@ END SUBROUTINE modis_scale_para_high
     
     if(file_exists) then
        status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                             ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/maxcat/),real(snw_alb)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/N_tile/),real(snw_alb)) ; VERIFY_(STATUS)
        STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
     endif
     
