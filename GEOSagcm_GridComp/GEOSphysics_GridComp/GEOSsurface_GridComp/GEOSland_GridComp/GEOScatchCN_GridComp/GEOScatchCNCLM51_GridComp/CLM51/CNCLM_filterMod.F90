@@ -14,8 +14,7 @@ module filterMod
 
 
 
-decomp_cpools_vr_col
-endumpfilter
+  type clumpfilter
      integer, pointer :: allc(:)         ! all columns
      integer :: num_allc                 ! number of points in allc filter
 
