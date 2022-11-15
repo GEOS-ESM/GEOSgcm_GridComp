@@ -4,6 +4,7 @@ module filterMod
   use nanMod           , only : nan
   use decompMod  , only : bounds_type
   use clm_varpar , only : NUM_ZON, NUM_VEG, numpft
+  use pftconMod  , only : npcropmin
 
   ! !PUBLIC TYPES:
   implicit none
