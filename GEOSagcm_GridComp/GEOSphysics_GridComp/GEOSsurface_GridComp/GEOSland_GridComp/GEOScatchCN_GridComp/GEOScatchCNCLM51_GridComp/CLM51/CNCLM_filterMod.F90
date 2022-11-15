@@ -117,7 +117,7 @@ contains
     type(clumpfilter), intent(inout), allocatable :: this_filter(:)  ! the filter to allocate
  
     ! LOCAL:
-    integer :: n, nc ,nz
+    integer :: n, nc ,nz, p, np, nv
 
     !--------------------------------------
 
@@ -204,7 +204,7 @@ contains
 
                     ! jkolassa: not sure this is needed, since we do not use prognostic crop information
                     if(ityp(nc,nv,nz) >= npcropmin) then
-                      this_filter%num_pcropp = this_filternum_pcropp + 1
+                      this_filter%num_pcropp = this_filter%num_pcropp + 1
                       this_filter(1)%pcropp(this_filter%num_pcropp) = np
                     endif
 
