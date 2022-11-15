@@ -2,10 +2,11 @@ module SolarAbsorbedType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use clm_varcon       , only : spval
-  use clm_varpar       , only : nlevcan, numrad
+  use clm_varpar       , only : nlevcan, numrad, nlevsno
   use clm_varctl       , only : use_luna
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
+
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -86,9 +87,9 @@ contains
     type(solarabs_type), intent(inout):: this
 
     !LOCAL
-    integer, intent(in) :: begp, endp
-    integer, intent(in) :: begc, endc
-    integer, intent(in) :: begl, endl
+    integer, intent :: begp, endp
+    integer, intent :: begc, endc
+    integer, intent :: begl, endl
     !---------------------------------
 
     begp = bounds%begp ; endp = bounds%endp
