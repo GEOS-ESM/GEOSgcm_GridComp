@@ -144,13 +144,13 @@ contains
 
     np = 0
     do nc = 1,nch        ! catchment tile loop
-       do nz = 1,nzone    ! CN zone loop
+       do nz = 1,num_zon    ! CN zone loop
           do p = 0,numpft  ! PFT index loop
              np = np + 1
 
              this%nrad_patch(np) = 1
 
-             do nv = 1,nveg ! defined veg loop
+             do nv = 1,num_veg ! defined veg loop
                 do n = 1,nlevcan
                    this%tlai_z_patch(np,n) = cnpft(nc,nz,nv, 73)
                    this%tsai_z_patch(np,n) = cnpft(nc,nz,nv, 74)
