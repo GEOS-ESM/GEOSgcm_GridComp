@@ -111,9 +111,16 @@ contains
     ! INPUT/OUTPUT
     type(bounds_type),                                intent(in) :: bounds
     integer,                                          intent(in) :: nch         ! number of Catchment tiles
-     type(clumpfilter), intent(inout), allocatable :: this_filter(:)  ! the filter to allocate
+    type(clumpfilter), intent(inout), allocatable :: this_filter(:)  ! the filter to allocate
+ 
+    ! LOCAL:
+    integer :: n, nc ,nz
 
     !--------------------------------------
+
+       if( .not. allocated(this_filter)) then
+          allocate(this_filter(1))
+       end if
 
        allocate(this_filter%allc(bounds%endc-bounds%begc+1))
 
@@ -173,7 +180,7 @@ contains
 
       n = 0
       do nc = 1,nch
-         do nz = 1,nzone 
+         do nz = 1,num_zon
             n = n + 1
 
             this_filter%num_soilc = this_filter%num_soilc + 1
