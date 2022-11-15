@@ -1,3 +1,5 @@
+#include "MAPL_Generic.h"
+
 module CanopyStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
@@ -6,6 +8,7 @@ module CanopyStateType
   use clm_varcon       , only : spval
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
+  use MAPL_ExceptionHandling
 
   ! !PUBLIC TYPES:
   implicit none
@@ -57,7 +60,7 @@ module CanopyStateType
 contains
 
 !--------------------------------------------------------------
-  subroutine init_canopystate_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start)
+  subroutine init_canopystate_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start, rc)
 
   ! !DESCRIPTION:
   ! Initialize CTSM canopy state type  needed for calling CTSM routines                                 
@@ -75,6 +78,7 @@ contains
     real, dimension(nch,num_zon,num_veg,var_pft),     intent(in) :: cnpft ! pft-level (patch-level) restart variable array
     logical, optional,                                intent(in) :: cn5_cold_start
     type(canopystate_type),                           intent(inout):: this
+    integer, optional,                                intent(out) :: rc
 
     ! LOCAL
     integer :: begp, endp
@@ -95,7 +99,7 @@ contains
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
     if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
-       (size(cnpft,3).ne.var_pft)))
+       (size(cnpft,3).ne.var_pft))) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if 
 
@@ -165,8 +169,8 @@ contains
 
                   ! jkolassa Mar 2022: these two quantites are computed in Photosynthesis,
                   ! so maybe the do not need to be initialized here
-                  this%vegwp_ln_patch(np) = -2.5e4_r8
-                  this%vegwp_pd_patch(np) = -2.5e4_r8
+                  this%vegwp_ln_patch(np,1:nvegwcs) = -2.5e4_r8
+                  this%vegwp_pd_patch(np,1:nvegwcs) = -2.5e4_r8
 
                   ! jkolassa May 2022: we do not model vegetation on snow, so the variable below is 1 always
                   this%frac_veg_nosno_patch(np) = 1
