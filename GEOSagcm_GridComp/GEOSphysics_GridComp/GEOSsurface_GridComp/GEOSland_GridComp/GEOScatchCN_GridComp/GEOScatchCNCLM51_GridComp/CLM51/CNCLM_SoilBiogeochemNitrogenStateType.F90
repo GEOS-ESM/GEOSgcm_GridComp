@@ -3,10 +3,12 @@
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
-  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
+  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
+                                NUM_ZON, VAR_COL
   use clm_varcon       , only : spval, dzsoi_decomp, zisoi
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn
   use decompMod        , only : bounds_type
+  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
 
   ! !PUBLIC TYPES:
   implicit none
@@ -86,6 +88,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     integer               :: begc,endc
+    integer               :: n, nc, nz, np
     integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17,25, 26, 27, 28 /)
     !-----------------------------------
 
@@ -138,8 +141,8 @@ contains
        this%exit_nacc(:,:,:)= nan
        allocate(this%hori_tran_nacc(begc:endc,1:nlevdecomp_full,1:ndecomp_cascade_transitions))
        this%hori_tran_nacc(:,:,:)= nan
-       call this%AKXnacc%InitSM(ndecomp_pools*nlevdecomp,begc,endc,decomp_cascade_con%n_all_entries)
-       call this%matrix_Ninter%InitV (ndecomp_pools*nlevdecomp,begc,endc)
+       !call this%AKXnacc%InitSM(ndecomp_pools*nlevdecomp,begc,endc,decomp_cascade_con%n_all_entries)
+       !call this%matrix_Ninter%InitV (ndecomp_pools*nlevdecomp,begc,endc)
     end if
     allocate(this%decomp_soiln_vr_col(begc:endc,1:nlevdecomp_full))
     this%decomp_soiln_vr_col(:,:)= nan
@@ -148,7 +151,7 @@ contains
  ! initialize variables from restart file or set to cold start value
    n = 0
    do nc = 1,nch        ! catchment tile loop
-      do nz = 1,nzone    ! CN zone loop
+      do nz = 1,num_zon    ! CN zone loop
           n = n + 1
 
           this%ntrunc_vr_col (n,1:nlevdecomp_full) = cncol(nc,nz,16)
@@ -159,7 +162,7 @@ contains
           do np = 1,ndecomp_pools
              ! jkolassa May 2022: accounting for fact that pool order in CNCOL is different from CTSM
              this%decomp_npools_col    (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
-             this%decomp_npools_col_1m (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
+             this%decomp_npools_1m_col (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
              ! jkolassa May 2022: loop has to be added below if we add more biogeochemical (or soil) layers
              this%decomp_npools_vr_col (n,1,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
           end do !np
