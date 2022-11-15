@@ -9,7 +9,7 @@ PROGRAM mkCatchParam
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08)
+!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09)
 !     
 !
 ! This program is good to generate  
@@ -107,7 +107,7 @@ integer :: n_threads=1
     USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320              "
     USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)        "
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
-    USAGE(6) ="     -v  LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08)  "
+    USAGE(6) ="     -v  LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )  "
 
 ! Process Arguments                            
 !------------------ 
@@ -664,7 +664,7 @@ integer :: n_threads=1
           tmpstring = 'Step 14: Static snow albedo from MODIS' 
           write (log_file,'(a)') trim(tmpstring)
           write (log_file,'(a)')'         Creating file...'
-          call MODIS_snow_alb (nc,nr,gridnamer)
+          call MODIS_snow_alb ( )
           write (log_file,'(a)')'         Done.'           
           write (log_file,'(a)')' '
        endif 

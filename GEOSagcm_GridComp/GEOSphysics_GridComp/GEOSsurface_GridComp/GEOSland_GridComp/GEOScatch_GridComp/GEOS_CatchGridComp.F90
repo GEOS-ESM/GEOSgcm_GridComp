@@ -230,7 +230,7 @@ subroutine SetServices ( GC, RC )
 
     ! SNOW ALBEDO 
     ! 0 : parameterization based on look-up table 
-    ! 1 : MODIS-derived snow albedo (where available, elsewhere fall back to option 0)
+    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
     call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
 
     ! GOSWIM SNOW_ALBEDO 
@@ -4090,8 +4090,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
 
-        integer                     :: ens_id_width
-
 !#for_ldas_coupling
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
         type (CATCH_WRAP)                       :: wrap2
@@ -4233,10 +4231,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ldas_ens_id = ldas_first_ens_id
         
         if(NUM_LDAS_ENSEMBLE > 1) then
-           call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
-           VERIFY_(STATUS)           
-           !for GEOSldas comp_name should be catchxxxx
-           read(comp_name(6:6+ens_id_width-1), *) ldas_ens_id
+           !for GEOSldas comp_name should be catch_exxxx, digit starting from 8th character
+           read(comp_name(8:), *) ldas_ens_id
         endif
 
         call MAPL_GetResource(MAPL      ,&
@@ -4881,16 +4877,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (SNOW_ALBEDO_INFO == 1) then
            
-           ! where available, use MODIS-derived snow albedo from bcs (via Catch restart)
-           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
            call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
            
-           where (SNOWALB > 0. .and. SNOWALB <= 1.)
-              SNOVR = SNOWALB
-              SNONR = SNOWALB
-              SNOVF = SNOWALB
-              SNONF = SNOWALB
-           endwhere
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
            
         endif
 
@@ -5574,14 +5571,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (SNOW_ALBEDO_INFO == 1) then
            
-           ! where available, use MODIS-derived snow albedo from bcs (via Catch restart)
-           
-           where (SNOWALB > 0. .and. SNOWALB <= 1.)
-              SNOVR = SNOWALB
-              SNONR = SNOWALB
-              SNOVF = SNOWALB
-              SNONF = SNOWALB
-           endwhere
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
 
         endif
 
