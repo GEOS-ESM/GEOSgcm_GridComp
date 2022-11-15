@@ -229,7 +229,7 @@ contains
              end do
           end do
        end do
-       call this%matrix_Cinput%SetValueV_scaler(num_column,filter_column(1:num_column),value_column)
+      ! call this%matrix_Cinput%SetValueV_scaler(num_column,filter_column(1:num_column),value_column)
        ! IMPORTANT NOTE: Although it looks like the following if appears to be
        ! backwards (it should be 'if use_versoilc'), fixing it causes Carbon 
        ! balance checks to fail. EBK 10/21/2019
