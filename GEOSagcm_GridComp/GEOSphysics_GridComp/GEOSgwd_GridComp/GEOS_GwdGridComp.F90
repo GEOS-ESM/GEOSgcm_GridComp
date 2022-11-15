@@ -104,23 +104,17 @@ contains
 ! ---------------------------------------
 
     Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
     Iam = trim(COMP_NAME) // Iam
 
 ! Set the Run entry point
 ! -----------------------
 
-    call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  &
-                                      RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  &
-                                      RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    VERIFY_(STATUS)
-
+    call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  _RC)
+    call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  _RC)
+    
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
+    
 ! Set the state variable specs.
 ! -----------------------------
 
@@ -134,9 +128,8 @@ contains
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationEdge,                          &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'T',                                         &
         LONG_NAME  = 'air_temperature',                           &
@@ -144,9 +137,8 @@ contains
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'Q',                                         &
         LONG_NAME  = 'specific_humidity',                         &
@@ -154,9 +146,8 @@ contains
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'U',                                         &
         LONG_NAME  = 'eastward_wind',                             &
@@ -164,9 +155,8 @@ contains
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'V',                                         &
         LONG_NAME  = 'northward_wind',                            &
@@ -174,9 +164,8 @@ contains
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'PHIS',                              &
         LONG_NAME          = 'surface geopotential height',       &
@@ -184,9 +173,8 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         RESTART    = MAPL_RestartSkip,                            &
-                                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                        _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'SGH',                                       &
         LONG_NAME  = 'standard_deviation_of_topography',          &
@@ -194,9 +182,8 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'VARFLT',                                    &
         LONG_NAME  = 'variance_of_the_filtered_topography',       &
@@ -204,9 +191,8 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'PREF',                                      &
         LONG_NAME  = 'reference_air_pressure',                    &
@@ -214,9 +200,8 @@ contains
         DIMS       = MAPL_DimsVertOnly,                           &
         VLOCATION  = MAPL_VLocationEdge,                          &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME = 'AREA',                                      &
         LONG_NAME  = 'grid_box_area',                             &
@@ -224,41 +209,36 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &
         RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
+                                                       _RC  )
+     
 ! from moist
      call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME='DTDT_DC',                               &
          LONG_NAME ='T tendency due to deep convection',     &
          UNITS     ='K s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                      &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-     VERIFY_(STATUS)
+         VLOCATION = MAPL_VLocationCenter,              _RC  )
      call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME='DTDT_SC',                               &
          LONG_NAME ='T tendency due to shallow convection',  &
          UNITS     ='K s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                      &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-     VERIFY_(STATUS)
+         VLOCATION = MAPL_VLocationCenter,              _RC  )
      call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME = 'DQLDT',                                   &
          LONG_NAME = 'total_liq_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
-         RC=STATUS  )
-     VERIFY_(STATUS)
+         _RC  )
      call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME= 'DQIDT',                                   &
          LONG_NAME = 'total_ice_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
-         RC=STATUS  )
-     VERIFY_(STATUS)
-
+         _RC  )
+     
 ! !EXPORT STATE:
 
      call MAPL_AddExportSpec(GC,                             &
@@ -266,509 +246,437 @@ contains
         LONG_NAME  = 'air_pressure',                              &
         UNITS      = 'Pa',                                        &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationEdge,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'T',                                         &
         LONG_NAME  = 'air_temperature',                           &
         UNITS      = 'K',                                         &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'Q',                                         &
         LONG_NAME  = 'specific_humidity',                         &
         UNITS      = 'kg kg-1',                                   &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'U',                                         &
         LONG_NAME  = 'eastward_wind',                             &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'V',                                         &
         LONG_NAME  = 'northward_wind',                            &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'RDG1_MXDIS',                                &
         LONG_NAME  = 'ridge1_mxdis',                              &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'RDG1_HWDTH',                                &
         LONG_NAME  = 'ridge1_hwdth',                              &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'RDG1_CLNGT',                                &
         LONG_NAME  = 'ridge1_clngt',                              &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'RDG1_ANGLL',                                &
         LONG_NAME  = 'ridge1_angll',                              &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'RDG1_ANIXY',                                &
         LONG_NAME  = 'ridge1_anixy',                              &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'RDG1_GBXAR',                                &
         LONG_NAME  = 'ridge1_gridbox_area',                       &
         UNITS      = 'km^2',                                      &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'SGH',                                       &
         LONG_NAME  = 'standard_deviation_of_topography',          &
         UNITS      = 'm',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'PREF',                                      &
         LONG_NAME  = 'reference_air_pressure',                    &
         UNITS      = 'Pa',                                        &
         DIMS       = MAPL_DimsVertOnly,                           &
-        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationEdge,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DTDT',                                      &
         LONG_NAME  = 'mass_weighted_air_temperature_tendency_due_to_GWD',    &
         UNITS      = 'Pa K s-1',                                  &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TTMGW',                                     &
         LONG_NAME  = 'air_temperature_tendency_due_to_GWD',       &
         UNITS      = 'K s-1',                                  &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DUDT',                                      &
         LONG_NAME  = 'tendency_of_eastward_wind_due_to_GWD',                 &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DVDT',                                      &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_GWD',                &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DUDT_TFD',                                  &
         LONG_NAME  = 'tendency_of_eastward_wind_due_to_topographic_form_drag',               &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DVDT_TFD',                                  &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_topographic_form_dra',              &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DTDT_ORO',                                  &
         LONG_NAME  = 'air_temperature_tendency_due_to_orographic_GWD', &
         UNITS      = 'K s-1',                                  &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DUDT_ORO',                                  &
         LONG_NAME  = 'tendency_of_eastward_wind_due_to_orographic_GWD',               &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DVDT_ORO',                                  &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_orographic_GWD',              &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DTDT_BKG',                                  &
         LONG_NAME  = 'air_temperature_tendency_due_to_background_GWD', &
         UNITS      = 'K s-1',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DUDT_BKG',                                  &
         LONG_NAME  = 'tendency_of_eastward_wind_due_to_background_GWD',               &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DVDT_BKG',                                  &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_background_GWD',              &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DTDT_RAY',                                  &
         LONG_NAME  = 'air_temperature_tendency_due_to_Rayleigh_friction',        &
         UNITS      = 'K s-1',                                  &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DUDT_RAY',                                  &
         LONG_NAME  = 'tendency_of_eastward_wind_due_to_Rayleigh_friction',       &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DVDT_RAY',                                  &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_Rayleigh_friction',      &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationCenter,             _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUGWX',                                    &
         LONG_NAME  = 'surface_eastward_gravity_wave_stress',      &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUGWY',                                    &
         LONG_NAME  = 'surface_northward_gravity_wave_stress',     &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUOROX',                                   &
         LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUOROY',                                   &
         LONG_NAME  = 'surface_northward_orographic_gravity_wave_stress',     &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUBKGX',                                   &
         LONG_NAME  = 'surface_eastward_background_gravity_wave_stress',      &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUBKGY',                                   &
         LONG_NAME  = 'surface_northward_background_gravity_wave_stress',     &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUMSTX',                                   &
         LONG_NAME  = 'surface_eastward_gravity_wave_stress_due_to_Moist_Processes',      &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TAUMSTY',                                   &
         LONG_NAME  = 'surface_northward_gravity_wave_stress_due_to_Moist_Processes',     &
         UNITS      = 'N m-2',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'CLDSTD',                                    &
         LONG_NAME  = 'gravity_wave_drag_standard_deviation_due_to_clouds',     &
         UNITS      = 'm',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'UBASE',                                     &
         LONG_NAME  = 'eastward_component_of_base_level_wind',     &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'VBASE',                                     &
         LONG_NAME  = 'northward_component_of_base_level_wind',    &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'UBAR',                                      &
         LONG_NAME  = 'eastward_component_of_mean_level_wind',     &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'VBAR',                                      &
         LONG_NAME  = 'northward_component_of_mean_level_wind',    &
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     VERIFY_(STATUS)
-
+        VLOCATION  = MAPL_VLocationNone,               _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'PEGWD',                                                              &
          LONG_NAME  = 'vertically_integrated_potential_energy_tendency_across_gwd',         &
          UNITS      = 'W m-2',                                                              &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
-         VLOCATION  = MAPL_VLocationNone,                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                        _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'PEORO',                                                              &
          LONG_NAME  = 'vertically_integrated_potential_energy_tendency_due_to_orographic_gravity_waves',  &
          UNITS      = 'W m-2',                                                              &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
-         VLOCATION  = MAPL_VLocationNone,                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                        _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'PEBKG',                                                              &
          LONG_NAME  = 'vertically_integrated_potential_energy_tendency_due_to_gravity_wave_background',   &
          UNITS      = 'W m-2',                                                              &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
-         VLOCATION  = MAPL_VLocationNone,                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                        _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'PERAY',                                                              &
          LONG_NAME  = 'vertically_integrated_potential_energy_tendency_due_to_Rayleigh_friction',         &
          UNITS      = 'W m-2',                                                              &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
-         VLOCATION  = MAPL_VLocationNone,                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                        _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'KEGWD',                                                              &
          LONG_NAME  = 'vertically_integrated_kinetic_energy_tendency_across_gwd',           &
          UNITS      = 'W m-2',                                                              &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
-         VLOCATION  = MAPL_VLocationNone,                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                        _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                                         &
          SHORT_NAME = 'KEORO',                                                                            &
          LONG_NAME  = 'vertically_integrated_kinetic_energy_dissipation_due_to_orographic_gravity_waves', &
          UNITS      = 'W m-2',                                                                            &
          DIMS       = MAPL_DimsHorzOnly,                                                                  &
-         VLOCATION  = MAPL_VLocationNone,                                                      RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                                      _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                                  &
          SHORT_NAME = 'KERAY',                                                                     &
          LONG_NAME  = 'vertically_integrated_kinetic_energy_dissipation_due_to_Rayleigh_friction', &
          UNITS      = 'W m-2',                                                                     &
          DIMS       = MAPL_DimsHorzOnly,                                                           &
-         VLOCATION  = MAPL_VLocationNone,                                               RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                               _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                                        &
          SHORT_NAME = 'KEBKG',                                                                           &
          LONG_NAME  = 'vertically_integrated_kinetic_energy_dissipation_due_to_gravity_wave_background', &
          UNITS      = 'W m-2',                                                                           &
          DIMS       = MAPL_DimsHorzOnly,                                                                 &
-         VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                                     _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                                        &
          SHORT_NAME = 'KERES',                                                                           &
          LONG_NAME  = 'vertically_integrated_kinetic_energy_residual_for_total_energy_conservation',     &
          UNITS      = 'W m-2',                                                                           &
          DIMS       = MAPL_DimsHorzOnly,                                                                 &
-         VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
-     VERIFY_(STATUS)
-
+         VLOCATION  = MAPL_VLocationNone,                                                     _RC  )
+     
     call MAPL_AddExportSpec ( gc,                                                                        &
          SHORT_NAME = 'BKGERR',                                                                          &
          LONG_NAME  = 'vertically_integrated_kinetic_energy_residual_for_BKG_energy_conservation',       &
          UNITS      = 'W m-2',                                                                           &
          DIMS       = MAPL_DimsHorzOnly,                                                                 &
-         VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
-     VERIFY_(STATUS)
-
-        call MAPL_AddInternalSpec(GC, &
+         VLOCATION  = MAPL_VLocationNone,                                                     _RC  )
+     
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'SGH30', &
              LONG_NAME  = 'standard deviation of 30s elevation from 3km cube', &
              UNITS      = 'm', &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'KWVRDG', &
              LONG_NAME  = 'horizonal wwavenumber of mountain ridges', &
              UNITS      = 'km', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'EFFRDG', &
              LONG_NAME  = 'efficiency of mountain ridge scheme', &
              UNITS      = 'km', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'GBXAR', &
              LONG_NAME  = 'grid box area', &
              UNITS      = 'NA', &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'HWDTH', &
              LONG_NAME  = 'width of mountain ridges', &
              UNITS      = 'km', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'CLNGT', &
              LONG_NAME  = 'width of mountain ridges', &
              UNITS      = 'km', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'MXDIS', &
              LONG_NAME  = 'NA', &
              UNITS      = 'NA', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'ANGLL', &
              LONG_NAME  = 'NA', &
              UNITS      = 'NA', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-        call MAPL_AddInternalSpec(GC, &
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+    call MAPL_AddInternalSpec(GC, &
              SHORT_NAME = 'ANIXY', &
              LONG_NAME  = 'NA', &
              UNITS      = 'NA', &
              UNGRIDDED_DIMS     = (/16/),                      &
              DIMS       = MAPL_DimsHorzOnly,                    &
-             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-        VERIFY_(STATUS)
-
+             VLOCATION  = MAPL_VLocationNone,              _RC  )
+        
 !EOS
 
 ! Set the Profiling timers
 ! ------------------------
 
-    call MAPL_TimerAdd(GC,    name="DRIVER"  ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-DRIVER_RUN"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-INTR"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-INTR_NCAR"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-INTR_GEOS"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-BELJAARS_TOFD"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-DRIVER_DATA"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_DEVICE"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_CONST"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-DRIVER_ALLOC"   ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-DRIVER_DEALLOC"   ,RC=STATUS)
-    VERIFY_(STATUS)
-
+    call MAPL_TimerAdd(GC,    name="DRIVER"  ,_RC)
+    call MAPL_TimerAdd(GC,    name="-DRIVER_RUN"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="-INTR"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="-INTR_NCAR"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="-INTR_GEOS"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="-BELJAARS_TOFD"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="-DRIVER_DATA"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_DEVICE"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_CONST"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="-DRIVER_ALLOC"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="-DRIVER_DEALLOC"   ,_RC)
+    
 ! Set generic init and final methods
 ! ----------------------------------
 
-    call MAPL_GenericSetServices    ( gc, RC=STATUS)
-    VERIFY_(STATUS)
-
+    call MAPL_GenericSetServices    ( gc, _RC)
+    
     RETURN_(ESMF_SUCCESS)
 
   end subroutine SetServices
@@ -846,46 +754,37 @@ contains
    ! ---------------------------------------
 
       Iam = 'Initialize'
-      call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-      VERIFY_(STATUS)
+      call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
       Iam = trim(COMP_NAME) // Iam
 
       ! Get my internal MAPL_Generic state
       !-----------------------------------
 
-      call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-      VERIFY_(STATUS)
-
+      call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
+      
       ! Call Generic Initialize for GWD GC
       !-----------------------------------
 
-      call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-      VERIFY_(STATUS)
-
-      call MAPL_Get(MAPL, IM=IM, JM=JM, LATS=LATS, RC=STATUS)
-      VERIFY_(STATUS)
-
+      call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, _RC )
+      
+      call MAPL_Get(MAPL, IM=IM, JM=JM, LATS=LATS, _RC)
+      
      ! Get grid name to determine IMSIZE
-      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
-      VERIFY_(STATUS)
-      GRIDNAME =  AdjustL(GRIDNAME)
+      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', _RC)
+            GRIDNAME =  AdjustL(GRIDNAME)
       nn = len_trim(GRIDNAME)
       dateline = GRIDNAME(nn-1:nn)
       imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
       read(imchar,*) imsize
       if(dateline.eq.'CF') imsize = imsize*4
 
-         call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, RC=STATUS)
-         VERIFY_(STATUS)
-         NCAR_QBO_HDEPTH_SCALING = min( imsize/1440.0 , 1.0 )
-         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, RC=STATUS)
-         VERIFY_(STATUS)
-         NCAR_HR_CF = max( 20.0*360.0/imsize , 1.0 )
-         call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, RC=STATUS)
-         VERIFY_(STATUS)
-
+         call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
+         call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
+                  NCAR_QBO_HDEPTH_SCALING = min( imsize/1440.0 , 1.0 )
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
+                  NCAR_HR_CF = max( 20.0*360.0/imsize , 1.0 )
+         call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
+         
          call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
                               MAPL_GRAV , &
                               MAPL_RGAS , &
@@ -894,54 +793,37 @@ contains
 
          ! Beres Scheme File
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
-            default='/discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,    RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,   RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,   RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,  RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=50.0,  RC=STATUS)
-         VERIFY_(STATUS)
-        ! Beres DeepCu
-         call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, RC=STATUS)
-         VERIFY_(STATUS)
+            default='/discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', _RC)
+         call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,    _RC)
+         call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,   _RC)
+         call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,   _RC)
+         call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,  _RC)
+         call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=50.0,  _RC)
+                 ! Beres DeepCu
+         call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., _RC)
+         call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_dc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
                              NCAR_DC_BERES_SRC_LEVEL, 1000.0, .TRUE., NCAR_ET_TAUBGND, NCAR_DC_BERES, IM*JM, LATS)
         ! Beres ShallowCu
-         call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, RC=STATUS)
-         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., _RC)
+         call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, _RC)
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_sc_desc, NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, NCAR_BKG_WAVELENGTH, &
                              NCAR_SC_BERES_SRC_LEVEL, 0.0, .FALSE., NCAR_ET_TAUBGND, NCAR_SC_BERES, IM*JM, LATS)
 
          ! Orographic Scheme
-         call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0,  RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  RC=STATUS)
-         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           _RC)
+         call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  _RC)
+         call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
+         call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
+         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  _RC)
          call gw_oro_init ( oro_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, NCAR_ORO_SOUTH_FAC )
          ! Ridge Scheme
-         call MAPL_GetResource( MAPL, NCAR_NRDG,           Label="NCAR_NRDG:",           default=16,          RC=STATUS)
-         VERIFY_(STATUS)
-         if (NCAR_NRDG > 0) then
-           call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=25.0, RC=STATUS)
-           VERIFY_(STATUS)
-           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
-           call gw_rdg_init ( NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
-         endif
+         call MAPL_GetResource( MAPL, NCAR_NRDG,           Label="NCAR_NRDG:",           default=16,          _RC)
+                  if (NCAR_NRDG > 0) then
+         call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=25.0, _RC)
+                      NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
+         call gw_rdg_init ( NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
+      endif
 
       ! All done
       !---------
@@ -1008,16 +890,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
    Iam = "Run"
-   call ESMF_GridCompGet( GC, name=COMP_NAME, grid=ESMFGRID, RC=STATUS )
-   VERIFY_(STATUS)
+   call ESMF_GridCompGet( GC, name=COMP_NAME, grid=ESMFGRID, _RC )
    Iam = trim(COMP_NAME) // Iam
 
 ! Retrieve the pointer to the state
 !----------------------------------
 
-   call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   VERIFY_(STATUS)
-
+   call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+   
 ! Local aliases to the state, grid, and configuration
 ! ---------------------------------------------------
 
@@ -1029,12 +909,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, &
          IM=IM, JM=JM, LM=LM,        &
          RUNALARM=ALARM, LATS=LATS,  &
-                           RC=STATUS )
-    VERIFY_(STATUS)
-
+                           _RC )
+    
 ! Get grid name to determine IMSIZE
-    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', _RC)
     GRIDNAME =  AdjustL(GRIDNAME)
     nn = len_trim(GRIDNAME)
     dateline = GRIDNAME(nn-1:nn)
@@ -1050,44 +928,33 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     else
        GEOS_PGWV = NINT(32*LM/181.0)
     endif
-    call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
+    call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
+    call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, _RC)
+    call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
     NCAR_EFFGWBKG = min( imsize/720.0 , 1.0 )
-    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=NCAR_EFFGWBKG, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=NCAR_EFFGWBKG, _RC)
     if (NCAR_NRDG > 0) then
-      call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
-      VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
     else
-      call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.125, RC=STATUS)
-      VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.125, _RC)
     endif
 
 ! Rayleigh friction
 ! -----------------
-    CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  RC=STATUS)
-    VERIFY_(STATUS)
-   !CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
-    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=0.,      RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,   RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,   RC=STATUS)
-    VERIFY_(STATUS)
-
+    CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  _RC)
+    !CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., _RC)
+    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=0.,      _RC)
+    CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,   _RC)
+    CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,   _RC)
+    
 ! If its time, recalculate the GWD tendency
 ! -----------------------------------------
 
    if ( ESMF_AlarmIsRinging( ALARM ) ) then
-      call ESMF_AlarmRingerOff(ALARM, RC=STATUS); VERIFY_(STATUS)
+      call ESMF_AlarmRingerOff(ALARM, _RC)
       call MAPL_TimerOn (MAPL,"DRIVER")
-      call Gwd_Driver(RC=STATUS); VERIFY_(STATUS)
+      call Gwd_Driver(_RC)
       call MAPL_TimerOff(MAPL,"DRIVER")
    endif
 
@@ -1208,84 +1075,84 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get time step
 !-------------------------------------------------
 
-      call ESMF_AlarmGet( ALARM, ringInterval=TINT,    RC=STATUS); VERIFY_(STATUS)
-      call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8,      RC=STATUS); VERIFY_(STATUS)
-
+      call ESMF_AlarmGet( ALARM, ringInterval=TINT,    _RC)
+             call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8,      _RC)
+       
       DT = DT_R8
 
 ! Pointers to inputs
 !---------------------
 
-      call MAPL_GetPointer( IMPORT, PLE,      'PLE',     RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, T,        'T',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, Q,        'Q',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, U,        'U',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, V,        'V',       RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, PHIS,     'PHIS',    RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, SGH,      'SGH',     RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, PREF,     'PREF',    RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, AREA,     'AREA',    RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, HT_sc,    'DTDT_SC', RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT'  , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT'  , RC=STATUS ); VERIFY_(STATUS)
-
+      call MAPL_GetPointer( IMPORT, PLE,      'PLE',     _RC )
+      call MAPL_GetPointer( IMPORT, T,        'T',       _RC )
+      call MAPL_GetPointer( IMPORT, Q,        'Q',       _RC )
+      call MAPL_GetPointer( IMPORT, U,        'U',       _RC )
+      call MAPL_GetPointer( IMPORT, V,        'V',       _RC )
+      call MAPL_GetPointer( IMPORT, PHIS,     'PHIS',    _RC )
+      call MAPL_GetPointer( IMPORT, SGH,      'SGH',     _RC )
+      call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
+      call MAPL_GetPointer( IMPORT, AREA,     'AREA',    _RC )
+      call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  _RC )
+      call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', _RC )
+      call MAPL_GetPointer( IMPORT, HT_sc,    'DTDT_SC', _RC )
+      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT'  , _RC )
+      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT'  , _RC )
+       
 ! Allocate/refer to the outputs
 !------------------------------
 
-      call MAPL_GetPointer(EXPORT,  PLE_EXP, 'PLE'     , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    T_EXP, 'T'       , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    Q_EXP, 'Q'       , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    U_EXP, 'U'       , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    V_EXP, 'V'       , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  SGH_EXP, 'SGH'     , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, PREF_EXP, 'PREF'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    TTMGW, 'TTMGW'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DUDT_TFD, 'DUDT_TFD', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DVDT_TFD, 'DVDT_TFD', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DTDT_ORO, 'DTDT_ORO', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DUDT_ORO, 'DUDT_ORO', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DVDT_ORO, 'DVDT_ORO', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DTDT_BKG, 'DTDT_BKG', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DUDT_BKG, 'DUDT_BKG', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DVDT_BKG, 'DVDT_BKG', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DTDT_RAY, 'DTDT_RAY', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DUDT_RAY, 'DUDT_RAY', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DVDT_RAY, 'DVDT_RAY', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,   TAUGWX, 'TAUGWX'  , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,   TAUGWY, 'TAUGWY'  , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  TAUOROX, 'TAUOROX' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  TAUOROY, 'TAUOROY' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  TAUBKGX, 'TAUBKGX' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  TAUBKGY, 'TAUBKGY' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  TAUMSTX, 'TAUMSTX' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,  TAUMSTY, 'TAUMSTY' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    UBASE, 'UBASE'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    VBASE, 'VBASE'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,     UBAR, 'UBAR'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,     VBAR, 'VBAR'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,   CLDSTD, 'CLDSTD'  , RC=STATUS); VERIFY_(STATUS)
-
-      call MAPL_GetPointer(EXPORT,     DTDT, 'DTDT'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,     DUDT, 'DUDT'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,     DVDT, 'DVDT'    , RC=STATUS); VERIFY_(STATUS)
-
-      call MAPL_GetPointer(EXPORT,    PEGWD, 'PEGWD'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    PEORO, 'PEORO'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    PERAY, 'PERAY'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    PEBKG, 'PEBKG'   , RC=STATUS); VERIFY_(STATUS)
-
-      call MAPL_GetPointer(EXPORT,    KEGWD, 'KEGWD'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    KEORO, 'KEORO'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    KERAY, 'KERAY'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    KEBKG, 'KEBKG'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    KERES, 'KERES'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,   BKGERR, 'BKGERR'  , RC=STATUS); VERIFY_(STATUS)
-
+      call MAPL_GetPointer(EXPORT,  PLE_EXP, 'PLE'     , _RC)
+      call MAPL_GetPointer(EXPORT,    T_EXP, 'T'       , _RC)
+      call MAPL_GetPointer(EXPORT,    Q_EXP, 'Q'       , _RC)
+      call MAPL_GetPointer(EXPORT,    U_EXP, 'U'       , _RC)
+      call MAPL_GetPointer(EXPORT,    V_EXP, 'V'       , _RC)
+      call MAPL_GetPointer(EXPORT,  SGH_EXP, 'SGH'     , _RC)
+      call MAPL_GetPointer(EXPORT, PREF_EXP, 'PREF'    , _RC)
+      call MAPL_GetPointer(EXPORT,    TTMGW, 'TTMGW'   , _RC)
+      call MAPL_GetPointer(EXPORT, DUDT_TFD, 'DUDT_TFD', _RC)
+      call MAPL_GetPointer(EXPORT, DVDT_TFD, 'DVDT_TFD', _RC)
+      call MAPL_GetPointer(EXPORT, DTDT_ORO, 'DTDT_ORO', _RC)
+      call MAPL_GetPointer(EXPORT, DUDT_ORO, 'DUDT_ORO', _RC)
+      call MAPL_GetPointer(EXPORT, DVDT_ORO, 'DVDT_ORO', _RC)
+      call MAPL_GetPointer(EXPORT, DTDT_BKG, 'DTDT_BKG', _RC)
+      call MAPL_GetPointer(EXPORT, DUDT_BKG, 'DUDT_BKG', _RC)
+      call MAPL_GetPointer(EXPORT, DVDT_BKG, 'DVDT_BKG', _RC)
+      call MAPL_GetPointer(EXPORT, DTDT_RAY, 'DTDT_RAY', _RC)
+      call MAPL_GetPointer(EXPORT, DUDT_RAY, 'DUDT_RAY', _RC)
+      call MAPL_GetPointer(EXPORT, DVDT_RAY, 'DVDT_RAY', _RC)
+      call MAPL_GetPointer(EXPORT,   TAUGWX, 'TAUGWX'  , _RC)
+      call MAPL_GetPointer(EXPORT,   TAUGWY, 'TAUGWY'  , _RC)
+      call MAPL_GetPointer(EXPORT,  TAUOROX, 'TAUOROX' , _RC)
+      call MAPL_GetPointer(EXPORT,  TAUOROY, 'TAUOROY' , _RC)
+      call MAPL_GetPointer(EXPORT,  TAUBKGX, 'TAUBKGX' , _RC)
+      call MAPL_GetPointer(EXPORT,  TAUBKGY, 'TAUBKGY' , _RC)
+      call MAPL_GetPointer(EXPORT,  TAUMSTX, 'TAUMSTX' , _RC)
+      call MAPL_GetPointer(EXPORT,  TAUMSTY, 'TAUMSTY' , _RC)
+      call MAPL_GetPointer(EXPORT,    UBASE, 'UBASE'   , _RC)
+      call MAPL_GetPointer(EXPORT,    VBASE, 'VBASE'   , _RC)
+      call MAPL_GetPointer(EXPORT,     UBAR, 'UBAR'    , _RC)
+      call MAPL_GetPointer(EXPORT,     VBAR, 'VBAR'    , _RC)
+      call MAPL_GetPointer(EXPORT,   CLDSTD, 'CLDSTD'  , _RC)
+       
+      call MAPL_GetPointer(EXPORT,     DTDT, 'DTDT'    , _RC)
+      call MAPL_GetPointer(EXPORT,     DUDT, 'DUDT'    , _RC)
+      call MAPL_GetPointer(EXPORT,     DVDT, 'DVDT'    , _RC)
+       
+      call MAPL_GetPointer(EXPORT,    PEGWD, 'PEGWD'   , _RC)
+      call MAPL_GetPointer(EXPORT,    PEORO, 'PEORO'   , _RC)
+      call MAPL_GetPointer(EXPORT,    PERAY, 'PERAY'   , _RC)
+      call MAPL_GetPointer(EXPORT,    PEBKG, 'PEBKG'   , _RC)
+       
+      call MAPL_GetPointer(EXPORT,    KEGWD, 'KEGWD'   , _RC)
+      call MAPL_GetPointer(EXPORT,    KEORO, 'KEORO'   , _RC)
+      call MAPL_GetPointer(EXPORT,    KERAY, 'KERAY'   , _RC)
+      call MAPL_GetPointer(EXPORT,    KEBKG, 'KEBKG'   , _RC)
+      call MAPL_GetPointer(EXPORT,    KERES, 'KERES'   , _RC)
+      call MAPL_GetPointer(EXPORT,   BKGERR, 'BKGERR'  , _RC)
+       
 
       CALL PREGEO(IM*JM,   LM,   &
-                    PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
+             PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
 
 ! Compute ZM
 !-------------
@@ -1300,25 +1167,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOn(MAPL,"-INTR")
 
          ! get pointers from INTERNAL:MXDIS
-         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, MXDIS, 'MXDIS', RC=STATUS )
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, HWDTH, 'HWDTH', RC=STATUS )
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, CLNGT, 'CLNGT', RC=STATUS )
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, ANGLL, 'ANGLL', RC=STATUS )
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, ANIXY, 'ANIXY', RC=STATUS )
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', RC=STATUS )
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, KWVRDG, 'KWVRDG', RC=STATUS )
-         VERIFY_(STATUS)
-         call MAPL_GetPointer( INTERNAL, EFFRDG, 'EFFRDG', RC=STATUS )
-         VERIFY_(STATUS)
-
+         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+         call MAPL_GetPointer( INTERNAL, MXDIS, 'MXDIS', _RC )
+         call MAPL_GetPointer( INTERNAL, HWDTH, 'HWDTH', _RC )
+         call MAPL_GetPointer( INTERNAL, CLNGT, 'CLNGT', _RC )
+         call MAPL_GetPointer( INTERNAL, ANGLL, 'ANGLL', _RC )
+         call MAPL_GetPointer( INTERNAL, ANIXY, 'ANIXY', _RC )
+         call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', _RC )
+         call MAPL_GetPointer( INTERNAL, KWVRDG, 'KWVRDG', _RC )
+         call MAPL_GetPointer( INTERNAL, EFFRDG, 'EFFRDG', _RC )
+         
          GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
          WHERE (ANGLL < -180)
            ANGLL = 0.0
@@ -1350,17 +1208,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !#endif
          endif
 
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
          if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
          if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
          if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
          if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
          if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
          if(associated(TMP2D)) TMP2D = GBXAR_TMP
 
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
@@ -1390,8 +1248,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
               NCAR_EFFGWORO, &
               NCAR_EFFGWBKG, &
-              RC=STATUS)
-         VERIFY_(STATUS)
+              _RC)
          endif
          call MAPL_TimerOff(MAPL,"-INTR_NCAR")
 
@@ -1420,8 +1277,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                GEOS_BGSTRESS, &
                GEOS_EFFGWORO, &
                GEOS_EFFGWBKG, &
-               RC=STATUS)
-          VERIFY_(STATUS)
+               _RC)
          endif
          call MAPL_TimerOff(MAPL,"-INTR_GEOS")
 
@@ -1442,21 +1298,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! Topographic Form Drag [Beljaars et al (2004)]
     call MAPL_TimerOn(MAPL,"-BELJAARS_TOFD")
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=8.0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, limbeljaars, Label="BELJAARS_LIMITER:",  default=400.0, RC=STATUS)
-    VERIFY_(STATUS)
-    limbeljaars = limbeljaars/86400.0
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=8.0, _RC)
+    call MAPL_GetResource( MAPL, limbeljaars, Label="BELJAARS_LIMITER:",  default=400.0, _RC)
+        limbeljaars = limbeljaars/86400.0
     ! this approximation is invalid near the surface below 50m.
     if (LM .eq. 72) then
-      call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 0.0, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 0.0, _RC)
     else
-      call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, _RC)
     endif
     if (effbeljaars > 0.0) then
-    allocate(THV(IM,JM,LM),stat=status)
-    VERIFY_(STATUS)
-    THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
+    allocate(THV(IM,JM,LM),_STAT)
+        THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
     DO J=1,JM
        DO I=1,IM
 ! Find the PBL height
@@ -1916,12 +1769,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     real :: rng(3)
     integer :: DIMS(3), STATUS, rc
 
-    call MAPL_GridGet(GRID, localCellCountPerDim=DIMS, RC=STATUS)
-    _VERIFY(STATUS)
+    call MAPL_GridGet(GRID, localCellCountPerDim=DIMS, _RC)
     allocate (      locArr(DIMS(1),DIMS(2)) )
 
-    call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
-    _VERIFY(STATUS)
+    call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, _RC)
     allocate (      glbArr(DIMS(1),DIMS(2)) )
     allocate ( area_global(DIMS(1),DIMS(2)) )
     allocate ( avar_global(DIMS(1),DIMS(2)) )
