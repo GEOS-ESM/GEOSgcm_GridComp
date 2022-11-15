@@ -1,7 +1,9 @@
 #include "MAPL_Generic.h"
 
 module CatchmentRstMod
-  use mk_restarts_getidsMod
+  use mk_restarts_getidsMod, ONLY:      &
+       GetIds,                          &                              
+       ReadTileFile_RealLatLon
   use MAPL
   use MAPL_Base,         ONLY: MAPL_UNDEF
   use mpi

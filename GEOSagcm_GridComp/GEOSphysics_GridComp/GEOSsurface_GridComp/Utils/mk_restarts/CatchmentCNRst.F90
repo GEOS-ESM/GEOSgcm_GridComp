@@ -1,7 +1,8 @@
 #include "MAPL_Generic.h"
 
 module CatchmentCNRstMod
-  use mk_restarts_getidsMod
+  use mk_restarts_getidsMod, ONLY:      &
+       GetIds  
   use mpi
   use MAPL
   use CatchmentRstMod, only : CatchmentRst
