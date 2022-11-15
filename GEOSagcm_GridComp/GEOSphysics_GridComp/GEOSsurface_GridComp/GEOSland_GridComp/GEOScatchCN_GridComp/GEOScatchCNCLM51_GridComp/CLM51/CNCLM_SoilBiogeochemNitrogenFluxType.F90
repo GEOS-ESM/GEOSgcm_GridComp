@@ -5,7 +5,7 @@ module SoilBiogeochemNitrogenFluxType
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, ndecomp_cascade_outtransitions
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, ndecomp_pools_vr
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_crop, use_soil_matrixcn
-  use clm_varcon       , only : spval
+  use clm_varcon       , only : spval, dzsoi_decomp
   use decompMod        , only : bounds_type
   use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
 
