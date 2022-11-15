@@ -7,7 +7,7 @@ module WaterFluxType
   use netcdf
   use MAPL_ExceptionHandling
   use decompMod        , only : bounds_type
-
+  use AnnualFluxDribbler, only : annual_flux_dribbler_type
 
   ! !PUBLIC TYPES:
   implicit none
