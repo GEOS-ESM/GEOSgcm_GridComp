@@ -48,7 +48,7 @@ contains
     type(crop_type), intent(inout):: this
 
     !LOCAL
-    integer, intent(in) :: begp, endp
+    integer :: begp, endp
 
     !---------------------------------
 
