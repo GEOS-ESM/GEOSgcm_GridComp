@@ -96,7 +96,7 @@ set (srcs
   RootBiophysMod.F90
   shr_abort_mod.F90
   shr_assert.h
-  shr_assert_mod.F90.in
+  shr_assert_mod.F90
   shr_const_mod.F90
   shr_file_mod.F90
   shr_infnan_mod.F90
