@@ -1,12 +1,16 @@
 module SoilBiogeochemCarbonStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_log_mod      , only : errMsg => shr_log_errMsg
+  use abortutils       , only : endrun
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
-  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
+  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
+                                NUM_ZON, VAR_COL
   use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi, zsoi, c3_r2
   use clm_varctl       , only : iulog, use_vertsoilc, use_fates, use_soil_matrixcn
   use decompMod        , only : bounds_type
+  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
 
   ! !PUBLIC TYPES:
   implicit none
@@ -59,6 +63,10 @@ module SoilBiogeochemCarbonStateType
 
   end type soilbiogeochem_carbonstate_type
   type(soilbiogeochem_carbonstate_type), public, target, save :: soilbiogeochem_carbonstate_inst
+
+  character(len=*), parameter, private :: sourcefile = &
+       __FILE__
+
 
 contains
 
