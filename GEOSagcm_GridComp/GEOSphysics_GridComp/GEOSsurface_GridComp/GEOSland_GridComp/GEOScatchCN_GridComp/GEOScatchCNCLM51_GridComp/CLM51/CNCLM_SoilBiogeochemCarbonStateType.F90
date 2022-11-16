@@ -75,7 +75,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     integer               :: begc,endc
-    integer :: n, nc, nz, n
+    integer :: n, nc, nz, np
     integer, dimension(8) :: decomp_cpool_cncol_index = (/ 3, 4, 5, 2, 10, 11, 12, 13 /)
     !-----------------------------------
 
@@ -140,15 +140,15 @@ contains
       do nz = 1,num_zon    ! CN zone loop
           n = n + 1
 
-          this%ctrunc_vr_col (n) = cncol(nc,nz,1)
+          this%ctrunc_vr_col (n,1:nlevdecomp_full) = cncol(nc,nz,1)
           this%totlitc_col   (n) = cncol(nc,nz,15)
 
           do np = 1,ndecomp_pools
              ! jkolassa May 2022: accounting for fact that pool order in CNCOL is different from CTSM
              this%decomp_cpools_col    (n,np) = cncol(nc,nz,decomp_cpool_cncol_index(np))
-             this%decomp_cpools_col_1m (n,np) = cncol(nc,nz,decomp_cpool_cncol_index(np))
+             this%decomp_cpools_1m_col (n,np) = cncol(nc,nz,decomp_cpool_cncol_index(np))
              ! jkolassa May 2022: loop has to be added below if we add more biogeochemical (or soil) layers
-             this%decomp_cpools_vr_col (n,1,np) cncol(nc,nz,decomp_cpool_cncol_index(np))
+             this%decomp_cpools_vr_col (n,1,np) = cncol(nc,nz,decomp_cpool_cncol_index(np))
           end do !np
 
           ! sum soil carbon pools
@@ -157,7 +157,7 @@ contains
       end do !nz
    end do ! nc
 
- end init_soilbiogeochem_carbonstate_type
+ end subroutine init_soilbiogeochem_carbonstate_type
 
   !-----------------------------------------------------------------------
   subroutine Summary(this, bounds, num_allc, filter_allc)
