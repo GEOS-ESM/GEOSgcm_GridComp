@@ -7,5 +7,4 @@
 #define SHR_ASSERT_ANY(assert, my_msg) call shr_assert_any(assert, msg=my_msg)
 #define SHR_ASSERT_ANY_FL(assert, my_file, my_line) call shr_assert_any(assert, file=my_file, line=my_line)
 #define SHR_ASSERT_ANY_MFL(assert, my_msg, my_file, my_line) call shr_assert_any(assert, msg=my_msg, file=my_file, line=my_line)
-
 use shr_assert_mod
