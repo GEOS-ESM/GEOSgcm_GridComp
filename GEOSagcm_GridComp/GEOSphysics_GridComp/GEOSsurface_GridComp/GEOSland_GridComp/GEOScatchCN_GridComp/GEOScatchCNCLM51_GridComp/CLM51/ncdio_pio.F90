@@ -59,7 +59,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -80,7 +80,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -101,7 +101,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -122,7 +122,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -143,7 +143,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -165,7 +165,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -187,7 +187,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -209,7 +209,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -229,7 +229,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -249,7 +249,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -269,7 +269,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
@@ -289,7 +289,7 @@ module ncdio_pio
   logical,           intent(out)   :: readv
   !-------------------------------------
 
-   if flag == 'read'
+   if (flag == 'read') then
       readv = .false.
       call ncid%get_var(varname, data, rc=status)
       if (status ==0) readv = .true.
