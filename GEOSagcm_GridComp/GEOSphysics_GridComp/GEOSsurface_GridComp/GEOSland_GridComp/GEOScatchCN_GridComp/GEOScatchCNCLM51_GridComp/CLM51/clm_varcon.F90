@@ -72,6 +72,18 @@ module clm_varcon
 
   integer, parameter, public :: max_lunit  = 9  !maximum value that lun%itype can have
 
+   ! typical del13C for C3 photosynthesis (permil, relative to PDB)
+  real(r8), public, parameter :: c3_del13c = -28._r8
+
+  ! typical del13C for C4 photosynthesis (permil, relative to PDB)
+  real(r8), public, parameter :: c4_del13c = -13._r8
+
+  ! isotope ratio (13c/12c) for C3 photosynthesis
+  real(r8), public, parameter :: c3_r1 = SHR_CONST_PDB + ((c3_del13c*SHR_CONST_PDB)/1000._r8)
+
+  ! isotope ratio (13c/[12c+13c]) for C3 photosynthesis
+  real(r8), public, parameter :: c3_r2 = c3_r1/(1._r8 + c3_r1)
+
 ! !PUBLIC MEMBER FUNCTIONS:
   public clm_varcon_init          ! Initialze constants that need to be initialized
 
