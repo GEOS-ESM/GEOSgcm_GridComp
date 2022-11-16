@@ -194,7 +194,7 @@ module GEOS_OpenwaterGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
+        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -203,7 +203,7 @@ module GEOS_OpenwaterGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
+        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -212,7 +212,7 @@ module GEOS_OpenwaterGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -221,7 +221,7 @@ module GEOS_OpenwaterGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &

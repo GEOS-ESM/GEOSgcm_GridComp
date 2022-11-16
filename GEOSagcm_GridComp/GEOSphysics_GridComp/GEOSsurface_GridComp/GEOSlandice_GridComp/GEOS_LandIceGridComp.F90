@@ -192,7 +192,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
+        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -201,7 +201,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
+        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -210,7 +210,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -219,7 +219,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -563,7 +563,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'contribution_to_smb_from_refreezed_rain_over_bare_ice',   &
+    LONG_NAME          = 'contribution_to_smb_from_rain_frozen_onto_bare_ice',   &
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RAINRFZ'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -770,7 +770,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'evaporation'               ,&
+        LONG_NAME          = 'water_vapor_vertical_flux_at_glacier_surface'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'EVAPOUT'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -3202,7 +3202,7 @@ contains
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
 
-    if(associated(GHTSKIN )) GHTSKIN = ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)
+    if(associated(GHTSKIN )) GHTSKIN = (-1.0)*(ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)) 
     if(associated(ACCUM )) ACCUM      = ACCUM + PRECIP   
     if(associated(EMISS )) EMISS      = LANDICEEMISS
 

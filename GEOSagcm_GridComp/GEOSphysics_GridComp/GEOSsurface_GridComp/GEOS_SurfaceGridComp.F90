@@ -634,7 +634,7 @@ module GEOS_SurfaceGridCompMod
 !  !EXPORT STATE:
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
+        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
@@ -643,7 +643,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
+        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
@@ -652,7 +652,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_nearinfrared_beam', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
@@ -661,7 +661,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_nearinfraed_diffuse', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
@@ -717,7 +717,16 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRACI',                             &
-        LONG_NAME          = 'ice_covered_fraction_of_tile',      &
+        LONG_NAME          = 'ice_covered_fraction_of_grid_cell',      &
+        UNITS              = '1',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'OFRACI',                            &
+        LONG_NAME          = 'ice_covered_fraction_of_ocean_area',&
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -4874,6 +4883,7 @@ module GEOS_SurfaceGridCompMod
 
     real, pointer, dimension(:,:) :: LST       => NULL()
     real, pointer, dimension(:,:) :: FRI       => NULL()
+    real, pointer, dimension(:,:) :: OFRI      => NULL()
     real, pointer, dimension(:,:) :: EMISS     => NULL()
     real, pointer, dimension(:,:) :: ALBVR     => NULL()
     real, pointer, dimension(:,:) :: ALBVF     => NULL()
@@ -5178,6 +5188,7 @@ module GEOS_SurfaceGridCompMod
 
     real, pointer, dimension(:) :: LSTTILE      => NULL()
     real, pointer, dimension(:) :: FRTILE       => NULL()
+    real, pointer, dimension(:) :: OFRTILE      => NULL()
     real, pointer, dimension(:) :: EMISSTILE    => NULL()
     real, pointer, dimension(:) :: ALBVRTILE    => NULL()
     real, pointer, dimension(:) :: ALBVFTILE    => NULL()
@@ -6208,6 +6219,10 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , FRI     , 'FRACI'  ,  alloc=associated(LWI) , rC=STATUS)
     VERIFY_(STATUS)
 
+! Not sure about why alloc of FRI depends on LWI, but copy the logic anyway 
+    call MAPL_GetPointer(EXPORT  , OFRI    , 'OFRACI' ,  alloc=associated(LWI) , rC=STATUS)
+    VERIFY_(STATUS)
+
 !    FRI =  max(min(FRI,1.0),0.0)
 
 ! RiverRouting: force allocations of RUNOFF from continental components,
@@ -6578,6 +6593,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(ALBNF   ,ALBNFTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(EMISS   ,EMISSTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(FRI     ,FRTILE      ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(OFRI    ,OFRTILE     ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TSOIL1  ,TSOIL1TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TSOIL2  ,TSOIL2TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TSOIL3  ,TSOIL3TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -6774,6 +6790,7 @@ module GEOS_SurfaceGridCompMod
     END IF
 
     FRTILE = 0.0
+    OFRTILE = MAPL_UNDEF
 
 !  Cycle through all continental children (skip ocean),
 !   collecting RUNOFFTILE exports.
@@ -6948,6 +6965,10 @@ module GEOS_SurfaceGridCompMod
     endif
     if(associated( FRI  )) then
        call MAPL_LocStreamTransform( LOCSTREAM,  FRI  ,     FRTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    endif
+    if(associated( OFRI )) then
+       call MAPL_LocStreamTransform( LOCSTREAM,  OFRI ,    OFRTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
     if(associated(TSOIL1)) then
@@ -8145,6 +8166,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(ALBVRTILE ))  deallocate(ALBVRTILE)
     if(associated(EMISSTILE ))  deallocate(EMISSTILE)
     if(associated(FRTILE    ))  deallocate(FRTILE   )
+    if(associated(OFRTILE   ))  deallocate(OFRTILE  )
 
     if(associated(DUDP)) deallocate( DUDP )
     if(associated(DUWT)) deallocate( DUWT )
@@ -8415,6 +8437,9 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'SPSNOW'  , ALLOC=associated(SPSNOWTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'FRACI'   , ALLOC=associated(   FRTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+! in case FRACI removed in future
+      call MAPL_GetPointer(GEX(type), dum, 'FRACI'   , ALLOC=associated(  OFRTILE   ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'RDU001'  , ALLOC=associated(RDU001TILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
@@ -8702,6 +8727,10 @@ module GEOS_SurfaceGridCompMod
       end if
       if(associated(   FRTILE)) then
          call FILLOUT_TILE(GEX(type), 'FRACI',      FRTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if(associated(  OFRTILE)) then
+         call FILLOUT_TILE(GEX(type), 'FRACI',     OFRTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
       if(associated(TSOIL1TILE)) then
