@@ -267,7 +267,8 @@ contains
     real, allocatable :: ARW1(:),  ARW2(:),  ARW3(:), ARW4(:)
     real, allocatable :: TSA1(:),  TSA2(:),  TSB1(:), TSB2(:)
     real, allocatable :: ATAU2(:), BTAU2(:), DP2BR(:), rity(:)
-    
+    real, allocatable :: snowalb(:)   
+ 
     real              :: zdep1, zdep2, zdep3, zmet, term1, term2, rdum
     real, allocatable :: var1(:),var2(:,:)
     character*256     :: vname
@@ -280,9 +281,10 @@ contains
     integer, pointer    :: Ido(:), idx(:), id(:)
     logical             :: InIsOld
     type(NetCDF4_Fileformatter) :: InFmt,OutFmt,CatchFmt
-    type(FileMetadata) :: InCfg,OutCfg
+    type(FileMetadata) :: InCfg,OutCfg, meta_
     type(StringVariableMap), pointer :: variables
     type(Variable), pointer :: myVariable
+    type(Variable)          :: var
     type(StringVariableMapIterator) :: var_iter
     character(len=:), pointer :: var_name,dname
     type(StringVector), pointer :: var_dimensions
@@ -303,15 +305,6 @@ contains
       
        call InFmt%open(InRestart,pFIO_READ,__RC__)
        InCfg=InFmt%read(__RC__)
-       call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),__RC__)
-       i = index(InRestart,'/',back=.true.)
-       OutFileName = "OutData/"//trim(InRestart(i+1:))
-       call OutFmt%create(OutFileName,__RC__)
-       call OutFmt%write(OutCfg,__RC__)
-       call MAPL_IOCountNonDimVars(OutCfg,nvars,__RC__)
-
-       allocate(written(nvars))
-       written=.false. 
        
     else
        
@@ -411,6 +404,13 @@ contains
           call MAPL_VarRead ( catchFmt ,'WPWET', WPWET, __RC__)
           call MAPL_VarRead ( catchFmt ,'DP2BR', DP2BR, __RC__)
           call MAPL_VarRead ( catchFmt ,'POROS', POROS, __RC__)
+
+          meta_ = CatchFmt%read(__RC__)
+          if (meta_%has_variable('SNOWALB')) then
+            allocate(snowalb(ntiles))
+            call MAPL_VarRead ( CatchFmt ,'SNOWALB', snowalb, __RC__)
+          endif
+
           call catchFmt%close(__RC__)
 
        else
@@ -571,6 +571,23 @@ contains
     endif HAVE
 
     if (filetype == 0) then
+
+       call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),__RC__)
+       i = index(InRestart,'/',back=.true.)
+       OutFileName = "OutData/"//trim(InRestart(i+1:))
+       call OutFmt%create(OutFileName,__RC__)
+
+       if (allocated(snowalb)) then
+          var = Variable(type=pFIO_REAL32, dimensions='tile')
+          call var%add_attribute('long_name', 'snow_albedo')
+          call var%add_attribute('units', '1')
+          call OutCFG%add_variable('SNOWALB', var)
+       endif
+
+       call OutFmt%write(OutCfg,__RC__)
+
+
+
        call MAPL_VarWrite(OutFmt,names(1),BF1(Idx))
        call MAPL_VarWrite(OutFmt,names(2),BF2(Idx))
        call MAPL_VarWrite(OutFmt,names(3),BF3(Idx))
@@ -602,8 +619,13 @@ contains
        call MAPL_VarWrite(OutFmt,names(29),BTAU2(Idx))
        call MAPL_VarWrite(OutFmt,'OLD_ITY',rity(Idx))
 
+       if (allocated(snowalb)) then
+          call MAPL_VarWrite(OutFmt,'SNOWALB',snowalb(Idx))
+       endif
 
        call MAPL_IOCountNonDimVars(InCfg,nvars)
+       allocate(written(nvars))
+       written=.false. 
 
        variables => InCfg%get_variables()
        var_iter = variables%begin()
@@ -616,6 +638,7 @@ contains
              if ( trim(var_name) == trim(names(j)) ) written(i) = .true.
           enddo
           if (trim(var_name) == "OLD_ITY" ) written(i) = .true.
+          if (trim(var_name) == "SNOWALB" ) written(i) = .true.
 
           call var_iter%next()
 
