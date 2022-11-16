@@ -10,6 +10,9 @@ module ActiveLayerMod
   use shr_const_mod   , only : SHR_CONST_TKFRZ
   use clm_varctl      , only : iulog, use_cn
   use clm_varcon      , only : spval
+  use TemperatureType , only : temperature_type
+  use ColumnType      , only : col
+  use GridcellType    , only : grc
 
   ! !PUBLIC TYPES:
   implicit none
