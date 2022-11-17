@@ -48,7 +48,7 @@ module ncdio_pio
     module procedure ncd_io_i4_3d
     module procedure ncd_io_i4_4d
 
-  end interface ncd_io
+  end interface
 
  contains 
 
