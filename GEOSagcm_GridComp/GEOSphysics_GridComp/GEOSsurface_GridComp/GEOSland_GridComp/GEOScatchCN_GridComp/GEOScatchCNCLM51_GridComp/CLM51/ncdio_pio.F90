@@ -12,7 +12,8 @@ module ncdio_pio
   !
   ! !USES:
   use shr_kind_mod   , only : r8 => shr_kind_r8, i4=>shr_kind_i4, shr_kind_cl, r4 => shr_kind_r4
-  use shr_infnan_mod , only : nan => shr_infnan_nan,  isnan => shr_infnan_isnan
+  !use shr_infnan_mod , only : nan => shr_infnan_nan,  isnan => shr_infnan_isnan
+  use nanMod         , only : nan
   use shr_sys_mod    , only : shr_sys_abort
   use shr_log_mod    , only : errMsg => shr_log_errMsg
   use MAPL           , only : file_desc_t =>  NetCDF4_FileFormatter
@@ -62,6 +63,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -262,7 +268,7 @@ module ncdio_pio
  ! ARGUMENTS:
  !-------------
   type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
-  real(i4),          intent(inout) :: data(:)
+  integer(i4),       intent(inout) :: data(:)
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
@@ -287,7 +293,7 @@ module ncdio_pio
  ! ARGUMENTS:
  !-------------
   type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
-  real(i4),          intent(inout) :: data(:,:)
+  integer(i4),       intent(inout) :: data(:,:)
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
@@ -312,7 +318,7 @@ module ncdio_pio
  ! ARGUMENTS:
  !-------------
   type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
-  real(i4),          intent(inout) :: data(:,:,:)
+  integer(i4),       intent(inout) :: data(:,:,:)
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
@@ -337,7 +343,7 @@ module ncdio_pio
  ! ARGUMENTS:
  !-------------
   type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
-  real(i4),          intent(inout) :: data(:,:,:,:)
+  integer(i4),       intent(inout) :: data(:,:,:,:)
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
@@ -358,7 +364,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
-  subroutine ncd_pio_openfile(file, fname, mode)
+  subroutine ncd_pio_openfile(file, fname, mode, rc)
     !
     ! !DESCRIPTION:
     ! Open a NetCDF PIO file
@@ -367,6 +373,7 @@ module ncdio_pio
     class(file_desc_t) , intent(inout) :: file   ! Output PIO file handle
     character(len=*)   , intent(in)    :: fname  ! Input filename to open
     integer            , intent(in)    :: mode   ! file mode
+    integer, optional  , intent(out)   :: rc
     
     ! LOCAL:
 
@@ -383,4 +390,19 @@ module ncdio_pio
     end if 
 
   end subroutine ncd_pio_openfile
+
+  !-----------------------------------------------------------------------
+  subroutine ncd_pio_closefile(file)
+    !
+    ! !DESCRIPTION:
+    ! Close a NetCDF PIO file
+    !
+    ! !ARGUMENTS:
+    class(file_desc_t), intent(inout) :: file   ! PIO file handle to close
+    !-----------------------------------------------------------------------
+
+    call file%close()
+
+  end subroutine ncd_pio_closefile
+
 end module ncdio_pio
