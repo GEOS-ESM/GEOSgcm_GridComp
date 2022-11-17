@@ -146,7 +146,7 @@ subroutine shr_assert_in_domain_{DIMS}d_{TYPE}(var, varname, msg, &
 
 ! Flag for floating point types.
 
-#if ({ITYPE} == TYPEREAL) || ({ITYPE} == TYPEDOUBLE)
+#if (({ITYPE} == TYPEREAL) || ({ITYPE} == TYPEDOUBLE)) then
 #define TYPEFP
 #else
 #undef TYPEFP
@@ -155,7 +155,7 @@ subroutine shr_assert_in_domain_{DIMS}d_{TYPE}(var, varname, msg, &
 ! "Generalized" macro functions allow transformational intrinsic functions
 ! to handle both scalars and arrays.
 
-#if ({DIMS} != 0)
+#if ({DIMS} != 0) then
 ! When given an array, use the intrinsics.
 #define GEN_SIZE(x) size(x)
 #define GEN_ALL(x) all(x)
@@ -359,7 +359,7 @@ subroutine print_bad_loc_{DIMS}d_{TYPE}(var, loc_vec, varname)
   write(shr_log_Unit,*) &
        "ERROR: shr_assert_in_domain: ",trim(varname_to_write), &
        " has invalid value ", &
-#if ({DIMS} != 0)
+#if ({DIMS} != 0) then
        var({REPEAT:loc_vec(#)}), &
        " at location: ",loc_vec
 #else
@@ -383,7 +383,7 @@ pure function find_first_loc_{DIMS}d(mask) result (loc_vec)
   logical, intent(in) :: mask{DIMSTR}
   integer :: loc_vec({DIMS})
 
-#if ({DIMS} != 0)
+#if ({DIMS} != 0) then
   integer :: flags({REPEAT:size(mask,#)})
 
   where (mask)
@@ -397,7 +397,7 @@ pure function find_first_loc_{DIMS}d(mask) result (loc_vec)
 
 ! Remove compiler warnings (statement will be optimized out).
 
-#if (! defined CPRPGI && ! defined CPRCRAY)
+#if (! defined CPRPGI && ! defined CPRCRAY) then
   if (.false. .and. mask) loc_vec = loc_vec
 #endif
 
