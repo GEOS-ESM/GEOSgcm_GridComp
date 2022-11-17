@@ -16,7 +16,7 @@ module ncdio_pio
   use nanMod         , only : nan
   use shr_sys_mod    , only : shr_sys_abort
   use shr_log_mod    , only : errMsg => shr_log_errMsg
-  use MAPL           , only : file_desc_t =>  NetCDF4_FileFormatter
+  use MAPL           , only : file_desc_t =>  NetCDF4_FileFormatter, pFIO_READ
   use MAPL_ExceptionHandling
 
   !
@@ -74,7 +74,7 @@ module ncdio_pio
    if (flag == 'read') then
       readv = .false.
      ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
@@ -82,7 +82,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
- subroutine ncd_io_r4_2d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r4_2d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -91,6 +91,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -99,7 +100,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+     ! call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
@@ -107,7 +109,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
- subroutine ncd_io_r4_3d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r4_3d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -116,6 +118,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -125,7 +128,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
@@ -133,7 +137,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
- subroutine ncd_io_r4_4d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r4_4d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -142,6 +146,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -151,7 +156,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+     ! call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
@@ -159,7 +165,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
- subroutine ncd_io_r8_1d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r8_1d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -168,6 +174,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -177,7 +184,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
@@ -186,7 +194,7 @@ module ncdio_pio
   !-----------------------------------------------------------------------
 
 
- subroutine ncd_io_r8_2d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r8_2d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -195,6 +203,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -204,7 +213,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+     ! call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
@@ -213,7 +223,7 @@ module ncdio_pio
   !-----------------------------------------------------------------------
 
 
- subroutine ncd_io_r8_3d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r8_3d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -222,6 +232,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -231,7 +242,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
@@ -240,7 +252,7 @@ module ncdio_pio
   !-----------------------------------------------------------------------
 
 
- subroutine ncd_io_r8_4d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r8_4d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -249,6 +261,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -258,14 +271,15 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
  end subroutine ncd_io_r8_4d
 
   !-----------------------------------------------------------------------
- subroutine ncd_io_i4_1d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_i4_1d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -274,6 +288,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -283,14 +298,15 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
  end subroutine ncd_io_i4_1d
 
   !-----------------------------------------------------------------------
- subroutine ncd_io_i4_2d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_i4_2d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -299,6 +315,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -308,14 +325,15 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
  end subroutine ncd_io_i4_2d
 
   !-----------------------------------------------------------------------
- subroutine ncd_io_i4_3d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_i4_3d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -324,6 +342,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -333,14 +352,15 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
  end subroutine ncd_io_i4_3d
 
   !-----------------------------------------------------------------------
- subroutine ncd_io_i4_4d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_i4_4d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -349,6 +369,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer, optional, intent(out)   :: rc
 
   ! LOCAL:
 
@@ -358,7 +379,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+      !call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readv = .true.
    endif
 
