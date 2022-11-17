@@ -72,7 +72,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readv = .false.
-      call ncid%get_var(varname, data, rc=status)
+     ! call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data, rc=status)
       if (status ==0) readv = .true.
    endif
 
