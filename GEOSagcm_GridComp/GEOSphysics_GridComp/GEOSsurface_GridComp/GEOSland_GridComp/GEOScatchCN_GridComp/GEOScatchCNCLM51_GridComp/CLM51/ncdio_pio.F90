@@ -54,7 +54,7 @@ module ncdio_pio
  contains 
 
 !----------------------------------------------------
- subroutine ncd_io_r4_1d ( varname, data, flag, ncid, readv)
+ subroutine ncd_io_r4_1d ( varname, data, flag, ncid, readv, rc)
 
  ! ARGUMENTS:
  !-------------
@@ -63,6 +63,7 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+  integer,optional,  intent(out)   :: rc
 
   ! LOCAL:
 
@@ -73,7 +74,7 @@ module ncdio_pio
    if (flag == 'read') then
       readv = .false.
      ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call MAPL_VarRead(ncid,varname,data,rc=status)
       if (status ==0) readv = .true.
    endif
 
