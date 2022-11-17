@@ -266,12 +266,13 @@ contains
      integer, optional, intent(out):: rc
      integer :: status
      
-     ! the four variables are used as scaler
+     ! these four (time-invariant) variables are used for rescaling of prognostic variables
      call MAPL_VarRead(formatter,"VGWMAX",this%vgwmax, __RC__)
      call MAPL_VarRead(formatter,"CDCR1",this%cdcr1, __RC__)
      call MAPL_VarRead(formatter,"CDCR2",this%cdcr2, __RC__)
      call MAPL_VarRead(formatter,"POROS",this%poros, __RC__)
 
+     ! Catchment model prognostic variables (and some diagnostics needed in Catch restart for GCM) 
      call MAPL_VarRead(formatter,"TC",this%tc, __RC__)
      call MAPL_VarRead(formatter,"QC",this%qc, __RC__)
      call MAPL_VarRead(formatter,"CAPAC",this%capac, __RC__)
@@ -1146,7 +1147,7 @@ contains
 
      endif
 
- ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
+  ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
   ! -------------------------------------------------------------------------------
 
      where ( (this%old_poros < PEATCLSM_POROS_THRESHOLD) .and. (this%poros >= PEATCLSM_POROS_THRESHOLD) )
