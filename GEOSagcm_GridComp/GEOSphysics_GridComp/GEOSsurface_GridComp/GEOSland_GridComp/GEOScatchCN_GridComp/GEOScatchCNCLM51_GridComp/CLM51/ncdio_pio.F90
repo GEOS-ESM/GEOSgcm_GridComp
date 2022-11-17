@@ -1,3 +1,5 @@
+#include "MAPL_Generic.h"
+
 module ncdio_pio
 
   !-----------------------------------------------------------------------
@@ -28,8 +30,8 @@ module ncdio_pio
   public :: ncd_pio_closefile  ! close a file
   public :: ncd_io             ! write local data
 
+  public file_desc_t
   !
-  contains
 
   interface ncd_io
 
@@ -47,6 +49,9 @@ module ncdio_pio
     module procedure ncd_io_i4_4d
 
   end interface ncd_io
+
+ contains 
+
 !----------------------------------------------------
  subroutine ncd_io_r4_1d ( varname, data, flag, ncid, readv)
 
@@ -78,6 +83,10 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status                 
   !-------------------------------------
 
    if (flag == 'read') then
@@ -99,6 +108,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -120,6 +134,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -141,6 +160,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -163,6 +187,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -185,6 +214,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -207,6 +241,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -227,6 +266,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -247,6 +291,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -267,6 +316,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -287,6 +341,11 @@ module ncdio_pio
   character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readv
+
+  ! LOCAL:
+
+  integer :: status
+
   !-------------------------------------
 
    if (flag == 'read') then
@@ -308,14 +367,17 @@ module ncdio_pio
     class(file_desc_t) , intent(inout) :: file   ! Output PIO file handle
     character(len=*)   , intent(in)    :: fname  ! Input filename to open
     integer            , intent(in)    :: mode   ! file mode
+    
+    ! LOCAL:
+
+    integer :: status
+
     !
-    ! !LOCAL VARIABLES:
-    integer :: rc
     !-----------------------------------------------------------------------
 
 
     if (mode==0) then
-       call file%open(trim(fname),pFIO_READ, __RC__)
+       call file%open(trim(fname),pFIO_READ, rc=status)
     else
        _ASSERT(status==0, "Unrecognized netcdf opening mode")
     end if 
