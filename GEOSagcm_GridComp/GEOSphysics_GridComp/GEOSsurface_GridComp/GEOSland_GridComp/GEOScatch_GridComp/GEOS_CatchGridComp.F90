@@ -1645,7 +1645,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'totoal soil moisture'      ,&
+    LONG_NAME          = 'total soil moisture'       ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'WATSOI'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2388,7 +2388,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWUPSNOW',                    &
-    LONG_NAME          = 'Net_longwave_flux_snow',         &
+    LONG_NAME          = 'surface_upwelling_longwave_flux_snow',         &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2397,7 +2397,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWDNSNOW',                    &
-    LONG_NAME          = 'Net_longwave_flux_snow',         &
+    LONG_NAME          = 'surface_downwelling_longwave_flux_snow',         &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
