@@ -1217,16 +1217,16 @@ contains
                 ! No 3D Mask from MOM6. Do nothing for now!
           end select
 
-          if (associated(HEATe)) HEATe = HEAT
-          if (associated(TAUXe)) TAUXe = TAUX
-          if (associated(TAUYe)) TAUYe = TAUY
-          if (associated(DISCHARGEe)) DISCHARGEe = DISCHARGE
-          if (associated(LWFLXe)) LWFLXe = LWFLX
-          if (associated(SWFLXe)) SWFLXe = PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR
-          if (associated(SHFLXe)) SHFLXe = SHFLX
-          if (associated(QFLUXe)) QFLUXe = QFLUX
-          if (associated(RAINe)) RAINe = RAIN
-          if (associated(SNOWe)) SNOWe = SNOW
+          if (associated(HEATe)) HEATe = HEATi
+          if (associated(TAUXe)) TAUXe = TAUXi
+          if (associated(TAUYe)) TAUYe = TAUYi
+          if (associated(DISCHARGEe)) DISCHARGEe = DISCHARGEi
+          if (associated(LWFLXe)) LWFLXe = LWFLXi
+          if (associated(SWFLXe)) SWFLXe = PENUVRi+PENPARi+PENUVFi+PENPAFi+DRNIRi+DFNIRi-PEN_OCN
+          if (associated(SHFLXe)) SHFLXe = SHFLXi
+          if (associated(QFLUXe)) QFLUXe = QFLUXi
+          if (associated(RAINe)) RAINe = RAINi
+          if (associated(SNOWe)) SNOWe = SNOWi
           if (associated(SFLXe)) SFLXe = SFLX
           if (associated(PEN_OCNe)) PEN_OCNe = PEN_OCN
        end if !DO_DATASEA
@@ -1371,7 +1371,7 @@ contains
 
           where(wght>0.0)
              TS_FOUND=TS_FOUND+ &
-                      DT*(LWFLXi+(PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR - PEN_OCN)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
+                      DT*(LWFLXi+(PENUVRi+PENPARi+PENUVFi+PENPAFi+DRNIRi+DFNIRi - PEN_OCN)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
              FRZMLTe = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
              TS_FOUND=max(TS_FOUND, Tfreeze)
           end where

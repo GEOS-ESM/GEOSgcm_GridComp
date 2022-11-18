@@ -294,6 +294,70 @@ contains
 
 !ALT: These were brought from  the original CICEdyna
 
+! section to debug seaice thermo tendencies
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'FRACICE',                           &
+    LONG_NAME          = 'fractional_cover_of_seaice_from_last_time_step',  &
+    UNITS              = '1',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'VOLICE',                           &
+    LONG_NAME          = 'ice_category_volume_per_unit_area_of_grid_cell',&
+    UNITS              = '1',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  call MAPL_AddExportSpec(GC,                                    &
+       SHORT_NAME         = 'DEL_FRACICE_THERM',                 &
+       LONG_NAME          = 'delta_fractional_cover_of_seaice',  &
+       UNITS              = '1',                                 &
+       DIMS               = MAPL_DimsHorzOnly,                   &
+       UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC,                                &
+    SHORT_NAME         = 'DEL_VOLICE_THERM',                            &
+    LONG_NAME          = 'delta_ice_category_volume_per_unit_area_of_grid_cell',&
+    UNITS              = 'm',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+! add internal state vars
+  call MAPL_AddInternalSpec(GC,                            &
+    SHORT_NAME         = 'FRACICE',                           &
+    LONG_NAME          = 'fractional_cover_of_seaice_from_last_time_step',  &
+    UNITS              = '1',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    RESTART            = MAPL_RestartOptional,                &
+    DEFAULT            = 0.0,                                 &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC,                            &
+    SHORT_NAME         = 'VOLICE',                           &
+    LONG_NAME          = 'ice_category_volume_per_unit_area_of_grid_cell',&
+    UNITS              = '1',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    RESTART            = MAPL_RestartOptional,                &
+    DEFAULT            = 0.0,                                 &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
 ! Set the Initialize, Run, Finalize entry points
 ! ----------------------------------------------
 
@@ -652,6 +716,13 @@ contains
     REAL_, pointer                         :: DEL_TAUAGE(:,:,:)
     REAL_, pointer                         :: DEL_HI(:,:)
 
+    logical, save :: firstime = .true.
+    type (ESMF_State)                      :: INTERNAL
+    REAL_, pointer                         :: FRACICEn(:,:,:)
+    REAL_, pointer                         :: DEL_FRACICE_THERM(:,:,:)
+    REAL_, pointer                         :: VOLICEn(:,:,:)
+    REAL_, pointer                         :: DEL_VOLICE_THERM(:,:,:)
+
 ! Begin
 !------
 
@@ -740,17 +811,30 @@ contains
     call MAPL_GetPointer(EXPORT,   DISCHARGEe, 'DISCHARGEe', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MASK, trim(COMP_NAME)//'_3D_MASK',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
-#ifdef SEAICE_EXPORTS
-    CALL MAPL_GetPointer(exportSI, TIe,   'TI', __RC__)
-    CALL MAPL_GetPointer(exportSI, SIe,   'SI', __RC__)
-    CALL MAPL_GetPointer(exportSI, VOLICEe, 'VOLICE', __RC__)
-    CALL MAPL_GetPointer(exportSI, VOLSNOe, 'VOLSNO', __RC__)
-    CALL MAPL_GetPointer(exportSI, ERGICEe, 'ERGICE', __RC__)
-    CALL MAPL_GetPointer(exportSI, ERGSNOe, 'ERGSNO', __RC__)
-    CALL MAPL_GetPointer(exportSI, MPONDe, 'MPOND', __RC__)
-    CALL MAPL_GetPointer(exportSI, TAUAGEe, 'TAUAGE', __RC__)
-    CALL MAPL_GetPointer(exportSI, HIe, 'HI', __RC__)
-#endif
+    CALL MAPL_GetPointer(export, FRACICEe, 'FRACICE', __RC__)
+!    CALL MAPL_GetPointer(exportSI, TIe,   'TI', __RC__)
+!    CALL MAPL_GetPointer(exportSI, SIe,   'SI', __RC__)
+!    CALL MAPL_GetPointer(exportSI, VOLSNOe, 'VOLSNO', __RC__)
+!    CALL MAPL_GetPointer(exportSI, ERGICEe, 'ERGICE', __RC__)
+!    CALL MAPL_GetPointer(exportSI, ERGSNOe, 'ERGSNO', __RC__)
+!    CALL MAPL_GetPointer(exportSI, MPONDe, 'MPOND', __RC__)
+!    CALL MAPL_GetPointer(exportSI, TAUAGEe, 'TAUAGE', __RC__)
+!    CALL MAPL_GetPointer(exportSI, HIe, 'HI', __RC__)
+
+    ! add diagnostics for sea ice thermo tendencies
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE = INTERNAL, __RC__)
+
+!   get pointer to FRACICE from internal (i.e. saved from previous step)
+    CALL MAPL_GetPointer(INTERNAL, FRACICEn,'FRACICE', __RC__)
+    CALL MAPL_GetPointer(INTERNAL, VOLICEn,'VOLICE', __RC__)
+    CALL MAPL_GetPointer(EXPORT, DEL_FRACICE_THERM,'DEL_FRACICE_THERM', __RC__)
+    CALL MAPL_GetPointer(EXPORT, DEL_VOLICE_THERM,'DEL_VOLICE_THERM', __RC__)
+ 
+    if (firstime) then
+       firstime = .false.
+       FRACICEn = FRACICE
+       VOLICEn = VOLICE
+    end if
 
     ! Actual copy (only if needed)
     if (associated(TAUXe)) TAUXe = TAUX
@@ -905,10 +989,6 @@ contains
 
     ! ALT: for now we leave FRACICE alone and pass the increment to SALT
 
-    if (associated(FRACICEe)) then
-       FRACICEe = FRACICE
-    end if
-
     ! Update the sea-ice fields
  
     DO J = 1, JM
@@ -968,6 +1048,23 @@ contains
            end if
        END DO
     END DO
+
+    CALL MAPL_GetPointer(export, VOLICEe, 'VOLICE', __RC__)
+    if(associated(VOLICEe)) VOLICEe = VOLICE
+
+    if(associated(FRACICEe)) FRACICEe = FRACICE
+
+! set diagnostics for sea ice thermo tendencies
+    if (associated(DEL_FRACICE_THERM)) then
+       DEL_FRACICE_THERM = FRACICE - FRACICEn 
+    end if
+    if (associated(DEL_VOLICE_THERM)) then
+       DEL_VOLICE_THERM = VOLICE - VOLICEn 
+    end if
+
+    ! save vars for next time step
+    FRACICEn = FRACICE
+    VOLICEn = VOLICE
   
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )
