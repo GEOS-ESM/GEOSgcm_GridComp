@@ -1243,7 +1243,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'interception_reservoir_capac',&
+    LONG_NAME          = 'vegetation_interception_water_storage',&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CAPAC'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
