@@ -581,8 +581,9 @@ contains
               call var%add_attribute('units', '1')
               call this%meta%add_variable('SNOWALB', var)
            endif
+        elseif (this%meta%has_variable('SNOWALB')) then
+           call this%meta%remove_variable('SNOWALB')
         endif
-
         call CatchFmt%close()
       else
         open(unit=21, file=trim(DataDir)//'/clsm/mosaic_veg_typs_fracs',form='formatted')
