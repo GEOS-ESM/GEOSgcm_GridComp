@@ -578,7 +578,7 @@ contains
        call OutFmt%create(OutFileName,__RC__)
 
        if (allocated(snowalb)) then
-          if (.not. OutCFG%has_varibale('SNOWALB') then
+          if (.not. OutCFG%has_varibale('SNOWALB')) then
             var = Variable(type=pFIO_REAL32, dimensions='tile')
             call var%add_attribute('long_name', 'snow_albedo')
             call var%add_attribute('units', '1')
