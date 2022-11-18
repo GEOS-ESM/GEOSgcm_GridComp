@@ -523,6 +523,7 @@ contains
       this%TSA2  = DP2BR      
       this%TSB1  = DP2BR      
       this%TSB2  = DP2BR      
+      this%GNU   = DP2BR      
       this%COND  = DP2BR      
       this%WPWET = DP2BR      
       this%POROS = DP2BR
