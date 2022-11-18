@@ -329,6 +329,43 @@ contains
 
 ! !EXPORT STATE:
 
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QVBKG',                                     &
+         LONG_NAME  = 'specific_humidity_background',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QVANA',                                     &
+         LONG_NAME  = 'specific_humidity_after_analysis',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QVCON',                                     &
+         LONG_NAME  = 'specific_humidity_after_constraint',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'DPBKG',                                     &
+         LONG_NAME  = 'delta_pressure_background',      &
+         UNITS      = 'Pa',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'DPANA',                                     &
+         LONG_NAME  = 'delta_pressure_after_analysis',      &
+         UNITS      = 'Pa',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DPSDT_CON',                                     &
          LONG_NAME  = 'surface_pressure_adjustment_due_to_constraint', &
@@ -398,6 +435,30 @@ contains
     call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME = 'DQIDT_ANA',                                        &
          LONG_NAME  = 'total_specific_humidity_ice_analysis_tendency',    &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQRDT_ANA',                                        &
+         LONG_NAME  = 'total_suspended_rain_analysis_tendency',    &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQSDT_ANA',                                        &
+         LONG_NAME  = 'total_suspended_snow_analysis_tendency',    &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQGDT_ANA',                                        &
+         LONG_NAME  = 'total_suspended_graupe_analysis_tendency',    &
          UNITS      = 'kg kg-1 s-1',                                      &
          DIMS       = MAPL_DimsHorzVert,                                  &
          VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
@@ -997,7 +1058,7 @@ contains
 
      call MAPL_TerminateImport    ( GC,                                                     &
           SHORT_NAME = (/'DUDT  ','DVDT  ','DWDT  ','DTDT  ','DPEDT ','DQVANA','DQLANA',    &
-                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS  '/),  &
+                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS','VARFLT'/),  &
           CHILD      = SDYN,                                                                &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -1034,8 +1095,6 @@ contains
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="AGCM_BARRIER"           ,RC=STATUS)
     VERIFY_(STATUS)
 
 ! All done
@@ -1165,21 +1224,24 @@ contains
     call MAPL_GetPointer(EXPORT, VARFLT, 'VARFLT', ALLOC=.true., rc=STATUS)
     VERIFY_(STATUS)
 
-! PHIS ...
+! PHIS (topography)...
 !---------
     call ESMF_StateGet( GIM(SDYN), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
+    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
+    PHIS = PTR
 
+! Pass PHIS into PHYS
+!---------
     call ESMF_StateGet( GIM(PHYS), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
-    PHIS = PTR
 
-! GWDVAR ...
+! GWDVAR (standard deviation)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'SGH', FIELD, rc=STATUS )
     VERIFY_(STATUS)
@@ -1188,14 +1250,22 @@ contains
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     SGH = PTR
 
-! TRBVAR ...
+! TRBVAR (variance)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'VARFLT', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
     VERIFY_(STATUS)
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
     VARFLT = PTR
+
+! Pass variance into SDYN
+!-----------
+    call ESMF_StateGet( GIM(SDYN), 'VARFLT', FIELD, rc=STATUS )
+    VERIFY_(STATUS)
+    Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
+    VERIFY_(STATUS)
 
 ! ======================================================================
 !ALT: the next section addresses the problem when export variables have been
@@ -1390,7 +1460,6 @@ contains
    real, pointer, dimension(:,:,:)     :: V      => null()
    real, pointer, dimension(:,:,:)     :: W      => null()
    real, pointer, dimension(:,:,:)     :: T      => null()
-   real, pointer, dimension(:,:  )     :: TS     => null()
    real, pointer, dimension(:,:,:)     :: Q      => null()
    real, pointer, dimension(:,:,:)     :: QLLS   => null()
    real, pointer, dimension(:,:,:)     :: QLCN   => null()
@@ -1407,7 +1476,7 @@ contains
    real, pointer, dimension(:,:,:)     :: DTDT   => null()
    real, pointer, dimension(:,:,:)     :: TENDAN => null()
 
-   real,   allocatable, dimension(:,:)   :: ALPHA2D
+!! real,   allocatable, dimension(:,:)   :: ALPHA2D
    real,   allocatable, dimension(:,:)   :: QFILL
    real,   allocatable, dimension(:,:)   :: QINT 
    real,   allocatable, dimension(:,:)   :: ALF_BKS_INT
@@ -1482,8 +1551,8 @@ contains
    real,   allocatable, dimension(:,:,:) ::     qdp_ana
    real,   allocatable, dimension(:,:,:) ::     dry_ana
    real,   allocatable, dimension(:,:,:) ::     dry_bkg
-   real*8, allocatable, dimension(:,:,:) ::  ple_ana
-   real*8, allocatable, dimension(:,:,:) ::   dp_ana
+   real,   allocatable, dimension(:,:,:) ::  ple_ana
+   real,   allocatable, dimension(:,:,:) ::   dp_ana
    real,   allocatable, dimension(:,:,:) :: tdpold
    real,   allocatable, dimension(:,:,:) :: tdpnew
    real,   allocatable, dimension(:,:,:) :: DQVCON
@@ -1853,14 +1922,6 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call MAPL_GetPointer( GEX(SDYN), BK,  'BK',  rc=STATUS )
     VERIFY_(STATUS)
 
-!-srf-gf-scheme
-    call MAPL_GetPointer( GEX(PHYS), Q,  'Q',  rc=STATUS )
-    VERIFY_(STATUS)
-!-srf-gf-scheme
-
-    call MAPL_GetPointer( GEX(PHYS), TS,  'TS',  rc=STATUS )
-    VERIFY_(STATUS)
-
     call MAPL_GetPointer( GEX(SDYN), PEPHY_SDYN, 'PEPHY', alloc=.true., rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer( GEX(PHYS), PEPHY_PHYS, 'PEPHY', alloc=.true., rc=STATUS )
@@ -1885,7 +1946,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     VERIFY_(STATUS)
 
     PL  = 0.5*(PLE(:,:,1:LM)+PLE(:,:,0:LM-1))
-    DP  = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
+    DP  =      PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
 
 ! --------------------------------------------------------
 ! ALPHA and BETA BIAS Correction Coefficients 
@@ -2064,6 +2125,13 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                    QGRAUPEL => zero
                 end if
 
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QVBKG', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = Q
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'DPBKG', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = DP
+
                 DQVANA = Q
                 DQLANA = QLLS + QLCN
                 DQIANA = QILS + QICN
@@ -2073,19 +2141,20 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                 if(TYPE  == CORRECTOR) then
 
-                    IF( CONSTRAIN_DAS == 1 .or. CONSTRAIN_DAS == 2 ) then
                     ! ---------------------------------------------------
-
                     ! Create BKG Water Variables
                     ! --------------------------
-                       allocate( dry_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                    IF( CONSTRAIN_DAS == 1 ) then
                        allocate( qdp_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
-                       do L=1,lm
-                          dry_bkg(:,:,L) = ( 1.0 - (     q(:,:,L)+ qlls(:,:,L)+qlcn(:,:,L) + qils(:,:,L)+qicn(:,:,L)  &
-                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L)) )*dp(:,:,L)
-                          qdp_bkg(:,:,L) = (             q(:,:,L)+ qlls(:,:,L)+qlcn(:,:,L) + qils(:,:,L)+qicn(:,:,L)  &
-                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L)  )*dp(:,:,L)
-                       enddo
+                       qdp_bkg = (         q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel   ) * dp
+#if debug              
+                       allocate( dry_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                       dry_bkg = ( 1.0 - ( q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel ) ) * dp
+#endif
+                    ENDIF
+                    IF( CONSTRAIN_DAS == 2 ) then
+                       allocate( dry_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                       dry_bkg = ( 1.0 - ( q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel ) ) * dp
                     ENDIF
 
                 ENDIF ! End CORRECTOR Test
@@ -2106,23 +2175,28 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 allocate( DQVCON(IM,JM,LM),STAT=STATUS ) ; VERIFY_(STATUS)
                 DQVCON = Q                               ! Initialize Constraint Tendency
 
+                ! Proxies for Pressure Changes due to Analysis
+                ! --------------------------------------------
+                ple_ana = ple + dt*dpedt
+                 dp_ana  = ple_ana(:,:,1:LM) - ple_ana(:,:,0:LM-1)
+
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QVANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = Q
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'DPANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = DP_ANA
+
                 if(TYPE  == CORRECTOR) then
 
                     IF( CONSTRAIN_DAS == 1 ) then
                     ! ---------------------------
 
-                    ! Proxies for Pressure Changes due to Analysis
-                    ! --------------------------------------------
-                       ple_ana = ple + dt*dpedt
-                       dp_ana  = real(ple_ana(:,:,1:LM),kind=4) - real(ple_ana(:,:,0:LM-1),kind=4)  ! Kind=4 for consistency with old tag
-
                     ! Create ANA Water Mass
                     ! ---------------------
                        allocate(  qdp_ana(IM,JM,LM),STAT=STATUS ); VERIFY_(STATUS)
-                       do L=1,lm
-                          qdp_ana(:,:,L) = ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)+qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) )*dp_ana(:,:,L)
-                       enddo
-   
+                       qdp_ana = (         q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel   ) * dp_ana
+ 
                     ! Vertically Integrate ANA & BKG Water Mass where they Differ
                     ! -----------------------------------------------------------
                        allocate( sum_qdp_bkg( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
@@ -2130,7 +2204,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                        sum_qdp_bkg = 0.0_8
                        sum_qdp_ana = 0.0_8
                        do L=1,lm
-                       where( qdp_ana(:,:,L).ne.qdp_bkg(:,:,L) )
+                       where( ABS(qdp_ana(:,:,L)-qdp_bkg(:,:,L)) > tiny(1.0_4) )
                               sum_qdp_bkg = sum_qdp_bkg + qdp_bkg(:,:,L)
                               sum_qdp_ana = sum_qdp_ana + qdp_ana(:,:,L)
                        end where
@@ -2160,10 +2234,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                     ! Compute Dry-Mass Scaling Parameter
                     ! ----------------------------------
-                       if( real(qdp_bkg_ave,kind=4).ne.MAPL_UNDEF .and. &
-                           real(qdp_ana_ave,kind=4).ne.MAPL_UNDEF       ) then
-                         ! gamma = qdp_bkg_ave / qdp_ana_ave                  ! Prefered Method
-                           gamma = real( qdp_bkg_ave / qdp_ana_ave, kind=4 )  ! Method for Zero-diff Backward Compatibility
+                       if( qdp_bkg_ave.ne.MAPL_UNDEF .and. &
+                           qdp_ana_ave.ne.MAPL_UNDEF       ) then
+                           gamma = qdp_bkg_ave / qdp_ana_ave                  ! Prefered Method
+                         ! gamma = real( qdp_bkg_ave / qdp_ana_ave, kind=4 )  ! Method for Zero-diff Backward Compatibility
                        else
                            gamma = 1.0_8
                        endif
@@ -2171,7 +2245,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     ! Scale ANA Water Variables for Dry-Mass Conservation
                     ! ---------------------------------------------------
                        do L=1,lm
-                       where( qdp_ana(:,:,L).ne.qdp_bkg(:,:,L) )
+                       where( ABS(qdp_ana(:,:,L)-qdp_bkg(:,:,L)) > tiny(1.0_4) )
                                  q   (:,:,L) =     q   (:,:,L) * gamma
                                  qlls(:,:,L) =     qlls(:,:,L) * gamma
                                  qlcn(:,:,L) =     qlcn(:,:,L) * gamma
@@ -2185,8 +2259,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 #if debug
                        i=1
                        call Dry_Mass_Check (im,jm,lm,i)
-#endif
                        deallocate( dry_bkg )
+#endif
                        deallocate( qdp_bkg )
                        deallocate( qdp_ana )
                        deallocate( qdp_bkg_int )
@@ -2199,24 +2273,16 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     IF( CONSTRAIN_DAS == 2 ) then  ! Constrain Dry_Mass Conservation using Least-Squares of P
                     ! ---------------------------------------------------------------------------------------
 
-                    ! Proxies for Pressure Changes due to Analysis
-                    ! --------------------------------------------
-                       ple_ana = real(ple,kind=8) + real(dt,kind=8)*real(dpedt,kind=8)
-                       dp_ana  = ple_ana(:,:,1:LM)-ple_ana(:,:,0:LM-1)
-
                        call MAPL_GetPointer ( EXPORT, ptr2d, 'DPSDT_CON', rc=STATUS )
                        VERIFY_(STATUS)
-                       if(associated(ptr2d)) ptr2d = real( ple_ana(:,:,LM),kind=4 )   ! Initialize Constraint Tendency
+                       if(associated(ptr2d)) ptr2d = ple_ana(:,:,LM)   ! Initialize Constraint Tendency
 
                        do i=1,10
 
                     ! Create ANA Dry Mass
                     ! -------------------
                        allocate( dry_ana(IM,JM,LM),STAT=STATUS ); VERIFY_(STATUS)
-                       do L=1,lm
-                          dry_ana(:,:,L) = ( 1.0 - ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)  &
-                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) ) )*dp_ana(:,:,L)
-                       enddo
+                       dry_ana = ( 1.0 - ( q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel ) ) * dp_ana
 
                     ! allocate(  ALPHA2D(IM,JM),STAT=STATUS ) ; VERIFY_(STATUS)
                     !            ALPHA2D = 1.0
@@ -2241,7 +2307,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                             dry_bkg_int =   sum_dry_bkg
                             dry_ana_int =   sum_dry_ana
-                            alf_bks_int = ( sum_dry_ana/ple_ana(:,:,LM) )**2 ! * alpha2d    Multiply for generic alpha2d NE 1.0
+                            alf_bks_int = ( sum_dry_ana/ple_ana(:,:,LM) )**2 ! * ALPHA2D    Multiply for generic ALPHA2D NE 1.0
 
                        call MAPL_AreaMean( alf_bks_ave, alf_bks_int, area, grid, rc=STATUS )
                        VERIFY_(STATUS)
@@ -2253,16 +2319,18 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     ! Compute Dry-Mass Constraint Parameter
                     ! -------------------------------------
                                    gamma = ( dry_ana_ave - dry_bkg_ave ) / alf_bks_ave
-                         ple_ana(:,:,LM) = ple_ana(:,:,LM) - gamma * sum_dry_ana/ple_ana(:,:,LM) ! * alpha2d    Multiply for generic alpha2d NE 1.0
+                         ple_ana(:,:,LM) = ple_ana(:,:,LM) - gamma * sum_dry_ana/ple_ana(:,:,LM) ! * ALPHA2D    Multiply for generic ALPHA2D NE 1.0
 
                          do L=0,LM-1
                          ple_ana(:,:,L) = AK(L) + BK(L)*ple_ana(:,:,LM)
                          enddo
                          dpedt = ( ple_ana-ple )/dt
 
+#if debug
                        call Dry_Mass_Check (im,jm,lm,i)
+#endif
 
-                    !  deallocate( alpha2d )
+                    !  deallocate( ALPHA2D )
                        deallocate( dry_ana )
                        deallocate( alf_bks_int )
                        deallocate( dry_bkg_int )
@@ -2274,19 +2342,25 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                        call MAPL_GetPointer ( EXPORT, ptr2d, 'DPSDT_CON', rc=STATUS )
                        VERIFY_(STATUS)
-                       if(associated(ptr2d)) ptr2d = ( real( ple_ana(:,:,LM),kind=4 ) - ptr2d )/DT
+                       if(associated(ptr2d)) ptr2d = ( ple_ana(:,:,LM) - ptr2d )/DT
 
                        deallocate( dry_bkg )
-                       deallocate( qdp_bkg )
 
                     ENDIF  ! End CONSTRAIN_DAS == 2 Test
 
                 ENDIF  ! End CORRECTOR Test
 
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QVCON', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = Q
+
                 DQVCON = Q           - DQVCON
                 DQVANA = Q           - DQVANA
                 DQLANA = QLLS + QLCN - DQLANA
                 DQIANA = QILS + QICN - DQIANA
+                DQRANA = QRAIN       - DQRANA
+                DQSANA = QSNOW       - DQSANA
+                DQGANA = QGRAUPEL    - DQGANA
 
                 ! Update Tendency Diagnostic due to CONSTRAINTS
                 ! ---------------------------------------------
@@ -2306,6 +2380,19 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call MAPL_GetPointer ( EXPORT, TENDAN, 'DQIDT_ANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(TENDAN)) TENDAN = DQIANA/DT
+
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQRDT_ANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQRANA/DT
+
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQSDT_ANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQSANA/DT
+
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQGDT_ANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQGANA/DT
+
 
                 deallocate(  dp_ana )
                 deallocate( ple_ana )
@@ -2880,18 +2967,15 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                      if(      qave1        .ne.MAPL_UNDEF  .and. &
                               qave2        .ne.MAPL_UNDEF ) then
-                   ! if( real(qave1,kind=4).ne.MAPL_UNDEF  .and. &
-                   !     real(qave2,kind=4).ne.MAPL_UNDEF ) then
                          qave3 = qave2 + qave1*dt*IAUcoeff ! qave3 = AreaMean( P_n+1 = P_n + ANAINC*dt/tau )
                      else
                          qave3 = MAPL_UNDEF
                      endif
 
                      if(      qave3        .ne.MAPL_UNDEF ) then
-                   ! if( real(qave3,kind=4).ne.MAPL_UNDEF ) then
                          where( ANAINC(:,:,LU).ne.0.0 )
-                              ! dummy = ANAINC(:,:,LU)*(qave2/qave3) - dummy*(qave1/qave3)   ! Preferred Method
-                                dummy = ANAINC(:,:,LU)*real(qave2/qave3,kind=4) - dummy * real(qave1/qave3,kind=4)
+                                dummy = ANAINC(:,:,LU)*(qave2/qave3) - dummy*(qave1/qave3)   ! Preferred Method
+                              ! dummy = ANAINC(:,:,LU)*real(qave2/qave3,kind=4) - dummy * real(qave1/qave3,kind=4)
                          elsewhere
                                 dummy = ANAINC(:,:,LU)
                          endwhere
