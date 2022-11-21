@@ -635,7 +635,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'runoff_flux'               ,&
+    LONG_NAME          = 'runoff_total_flux'         ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RUNOFF'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -770,7 +770,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'water_vapor_vertical_flux_at_glacier_surface'               ,&
+        LONG_NAME          = 'evaporation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'EVAPOUT'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
