@@ -1,10 +1,9 @@
 esma_set_this()
 
-
-set (dependencies MAPL esmf)
+set (dependencies MAPL esmf metsources)
 
 esma_add_library (${this}
-  SRCS GigaTraj_GridComp.F90
+  SRCS GEOS_Giga_InterOp.F90 GigaTraj_GridComp.F90
   DEPENDENCIES ${dependencies})
 
-add_subdirectory (@GigaTraj)
+esma_add_subdirectories( @GigaTraj)

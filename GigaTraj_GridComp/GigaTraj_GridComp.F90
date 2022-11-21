@@ -70,30 +70,24 @@ contains
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
     Iam = trim(COMP_NAME) // 'SetServices'
 
 ! Register services for this component
 ! ------------------------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  GetInitVars , RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run         , RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, _RC )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  GetInitVars , _RC )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run         , _RC )
 
 ! Get the configuration from the component
 !-----------------------------------------
 
-    call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, CONFIG = CF, _RC )
 
 ! Set the state variable specs.
 ! -----------------------------
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
     call MAPL_AddExportSpec ( gc,                                &
          SHORT_NAME = 'DVDT',                                      &
@@ -101,24 +95,20 @@ contains
          UNITS      = 'm s-2',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          FIELD_TYPE = MAPL_VectorField,                            &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+         VLOCATION  = MAPL_VLocationCenter,             _RC  )
 
 
     allocate(GigaTrajInternalPtr)
     wrap%ptr => GigaTrajInternalPtr
-    call ESMF_UserCompSetInternalState ( GC, 'GigaTrajInternal', wrap, status )
-    VERIFY_(STATUS) 
+    call ESMF_UserCompSetInternalState ( GC, 'GigaTrajInternal', wrap, status ); _VERIFY(STATUS) 
 
-    call MAPL_GenericSetServices    ( GC, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GenericSetServices    ( GC, _RC )
+
 ! Clocks
 !-------
 
-    call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="INITIALIZE"    ,_RC)
+    call MAPL_TimerAdd(GC, name="RUN"           ,_RC)
 
 ! All done
 !---------
@@ -175,15 +165,13 @@ contains
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet ( GC, name=COMP_NAME, _RC )
     Iam = trim(COMP_NAME) // "Initialize"
 
 ! Get my MAPL_Generic state
 !--------------------------
 
-    call MAPL_GetObjectFromGC ( GC, STATE, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, STATE, _RC)
 
 
     call MAPL_TimerOn(STATE,"TOTAL")
@@ -191,44 +179,37 @@ contains
 
 ! Call Initialize for every Child
 
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  _RC)
 
-    call ESMF_VMGetCurrent(vm, rc=status)
-    call ESMF_VMGet(vm, mpiCommunicator=comm, __RC__)
+    call ESMF_VMGetCurrent(vm, _RC)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call MPI_Comm_size(comm, npes, ierror); _VERIFY(ierror)
 
-    call ESMF_GridCompGet(GC, grid=CubedGrid, rc=status)
-    call MAPL_GridGet(CubedGrid, globalCellCountPerDim=DIMS, RC=status)
+    call ESMF_GridCompGet(GC, grid=CubedGrid, _RC)
+    call MAPL_GridGet(CubedGrid, globalCellCountPerDim=DIMS, _RC)
 
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
-    VERIFY_(STATUS)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status); _VERIFY(STATUS)
     GigaTrajInternalPtr => wrap%ptr
 
     GigaTrajInternalPtr%npes = npes
-    call MAPL_MakeDecomposition(NX,NY,rc=status)
-    VERIFY_(status)
+    call MAPL_MakeDecomposition(NX,NY,_RC)
     GigaTrajInternalPtr%LatLonGrid = grid_manager%make_grid(                           &
                  LatLonGridFactory(im_world=DIMS(1)*4, jm_world=DIMS(1)*2, lm=DIMS(3),  &
-                 nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status) ) 
+                 nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status) ); _VERIFY(status) 
 
 
-    GigaTrajInternalPtr%cube2latlon => new_regridder_manager%make_regridder(CubedGrid,  GigaTrajInternalPtr%LatLonGrid, REGRID_METHOD_CONSERVE, rc=status)
+    GigaTrajInternalPtr%cube2latlon => new_regridder_manager%make_regridder(CubedGrid,  GigaTrajInternalPtr%LatLonGrid, REGRID_METHOD_CONSERVE, _RC)
     call MAPL_Grid_interior(GigaTrajInternalPtr%LatLonGrid ,i1,i2,j1,j2)
 
     allocate(I1s(npes),J1s(npes))
     allocate(I2s(npes),J2s(npes))
 
-    call MPI_Allgather(i1, 1, MPI_INTEGER, I1s, 1, MPI_INTEGER, comm, ierror)
-    _VERIFY(ierror)
-    call MPI_Allgather(i2, 1, MPI_INTEGER, I2s, 1, MPI_INTEGER, comm, ierror)
-    _VERIFY(ierror)
-    call MPI_Allgather(j1, 1, MPI_INTEGER, J1s, 1, MPI_INTEGER, comm, ierror)
-    _VERIFY(ierror)
-    call MPI_Allgather(j2, 1, MPI_INTEGER, J2s, 1, MPI_INTEGER, comm, ierror)
-    _VERIFY(ierror)
+    call MPI_Allgather(i1, 1, MPI_INTEGER, I1s, 1, MPI_INTEGER, comm, ierror); _VERIFY(ierror)
+    call MPI_Allgather(i2, 1, MPI_INTEGER, I2s, 1, MPI_INTEGER, comm, ierror); _VERIFY(ierror)
+    call MPI_Allgather(j1, 1, MPI_INTEGER, J1s, 1, MPI_INTEGER, comm, ierror); _VERIFY(ierror)
+    call MPI_Allgather(j2, 1, MPI_INTEGER, J2s, 1, MPI_INTEGER, comm, ierror); _VERIFY(ierror)
 
-    call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, globalCellCountPerDim=DIMS, RC=status)
+    call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, globalCellCountPerDim=DIMS, _RC)
 
     allocate(GigaTrajInternalPtr%CellToRank(DIMS(1),DIMS(2))) 
     do rank = 0, npes -1
@@ -341,23 +322,19 @@ contains
                                ungriddedLBound=[1],ungriddedUBound=[counts(3)], &
                                totalLWidth=[1,1],totalUWidth=[1,1])
 
-    call ESMF_FieldHaloStore(field,rh,rc=status)
-     _VERIFY(status)
+    call ESMF_FieldHaloStore(field,rh,_RC)
 
     call ESMF_FieldGet(field, farrayPtr=with_halo, _RC)
     with_halo(2:counts(1)+1, 2:counts(2)+1, :) = U_latlon
-    call ESMF_FieldHalo(field,rh,rc=status)
-    _VERIFY(status)
+    call ESMF_FieldHalo(field,rh,_RC)
     GigaTrajInternalPtr%preU = with_halo
 
     with_halo(2:counts(1)+1, 2:counts(2)+1, :) = V_latlon
-    call ESMF_FieldHalo(field,rh,rc=status)
-    _VERIFY(status)
+    call ESMF_FieldHalo(field,rh,_RC)
     GigaTrajInternalPtr%preV = with_halo
 
     with_halo(2:counts(1)+1, 2:counts(2)+1, :) = W_latlon
-    call ESMF_FieldHalo(field,rh,rc=status)
-    _VERIFY(status)
+    call ESMF_FieldHalo(field,rh,_RC)
     GigaTrajInternalPtr%preW = with_halo
 
     call ESMF_FieldDestroy(field)
@@ -502,27 +479,23 @@ contains
      halo_field = ESMF_FieldCreate(GigaTrajInternalPtr%LatLonGrid, ESMF_TYPEKIND_R4, name='halo_field',  &
                                 ungriddedLBound=[1],ungriddedUBound=[counts(3)], &
                                 totalLWidth=[1,1],totalUWidth=[1,1])
-     call ESMF_FieldHaloStore(halo_field,rh,rc=status)
-     _VERIFY(status)
+     call ESMF_FieldHaloStore(halo_field, rh, _RC)
 
      call ESMF_FieldGet(halo_field, farrayPtr=with_halo, _RC)
 
      ! get U + halo
      with_halo(2:counts(1)+1, 2:counts(2)+1, :) = U_latlon
-     call ESMF_FieldHalo(halo_field,rh,rc=status)
-     _VERIFY(status)
+     call ESMF_FieldHalo(halo_field, rh, _RC)
      U_latlon_halo = with_halo
      
      ! get V + halo
      with_halo(2:counts(1)+1, 2:counts(2)+1, :) = V_latlon
-     call ESMF_FieldHalo(halo_field,rh,rc=status)
-     _VERIFY(status)
+     call ESMF_FieldHalo(halo_field, rh, _RC)
      V_latlon_halo = with_halo
 
      ! get W + halo
      with_halo(2:counts(1)+1, 2:counts(2)+1, :) = W_latlon
-     call ESMF_FieldHalo(halo_field,rh,rc=status)
-     _VERIFY(status)
+     call ESMF_FieldHalo(halo_field, rh, _RC)
      W_latlon_halo = with_halo
  
 !-----------------
@@ -554,8 +527,8 @@ contains
        counts_send(rank+1) = count(ranks == rank)
     enddo
 
-    call ESMF_VMGetCurrent(vm, rc=status)
-    call ESMF_VMGet(vm, mpiCommunicator=comm, __RC__)
+    call ESMF_VMGetCurrent(vm, _RC)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call MPI_AllToALL(counts_send, 1, MPI_INTEGER, counts_recv, 1, MPI_INTEGER, comm, ierror)
  
     disp_send = 0
