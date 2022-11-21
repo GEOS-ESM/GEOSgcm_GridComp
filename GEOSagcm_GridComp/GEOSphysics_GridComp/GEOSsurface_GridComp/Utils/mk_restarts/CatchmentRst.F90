@@ -624,6 +624,9 @@ contains
         CLOSE (24, STATUS = 'KEEP')
         CLOSE (25, STATUS = 'KEEP')
         CLOSE (26, STATUS = 'KEEP')
+
+        if (this%meta%has_variable('SNOWALB'))  call this%meta%remove_variable('SNOWALB')
+
       endif
 
       do n=1,ntiles
