@@ -4,12 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import array
 import matplotlib.cm as cm
-from mpl_toolkits.basemap import Basemap
 import glob
 import struct
 import time
 import sys
-from mpl_toolkits.basemap import Basemap, shiftgrid, addcyclic
 from scipy import interpolate
 import getopt
 import string
@@ -22,10 +20,143 @@ import scipy.optimize as optm
 import scipy.stats as scstats
 import os.path
 import math
-from scipy.io import netcdf
 import calendar
 import datetime
 import os.path
+
+
+c0 = np.float64(0.0)
+c1 = np.float64(1.0)
+c2 = np.float64(2.0)
+c3 = np.float64(3.0)
+c4 = np.float64(4.0)
+puny = np.float64(1.0e-11)
+c1000 = np.float64(1000.0)
+
+rhos      = np.float64(330.0)   # density of snow (kg/m^3)
+rhoi      = np.float64(917.0)   # density of ice (kg/m^3)
+rhosi     = np.float64(940.0)   # average sea ice density
+                    # Cox and Weeks, 1982: 919-974 kg/m^2
+rhow      = np.float64(1026.0)  # density of seawater (kg/m^3)
+rhofresh  = np.float64(1000.0)  # density of fresh water (kg/m^3)
+
+cp_ice    = np.float64(2106.)  # specific heat of fresh ice (J/kg/K)
+cp_ocn    = np.float64(4218.)  # specific heat of ocn    (J/kg/K)
+                   # freshwater value needed for enthalpy
+
+Lsub      = np.float64(2.835e6) # latent heat, sublimation freshwater (J/kg)
+Lvap      = np.float64(2.501e6)  # latent heat, vaporization freshwater (J/kg)
+Lfresh    = Lsub-Lvap
+
+# liquidus relation - higher temperature region
+az1_liq = np.float64(-18.48)
+bz1_liq =  np.float64(0.0)
+
+# liquidus relation - lower temperature region
+az2_liq = np.float64(-10.3085)
+bz2_liq =     np.float64(62.4)
+
+# liquidus break
+Tb_liq = np.float64(-7.6362968855167352) # temperature of liquidus break
+Sb_liq =  np.float64(123.66702800276086)    # salinity of liquidus break
+
+# basic liquidus relation constants
+az1p_liq = az1_liq / c1000
+bz1p_liq = bz1_liq / c1000
+az2p_liq = az2_liq / c1000
+bz2p_liq = bz2_liq / c1000
+
+ki = np.float64(2.3) # fresh ice conductivity (W m-1 K-1)
+kb = np.float64(0.5375) # brine conductivity (W m-1 K-1)
+
+
+# quadratic constants - higher temperature region
+AS1_liq = az1p_liq * (rhow * cp_ocn - rhoi * cp_ice)
+AC1_liq = rhoi * cp_ice * az1_liq
+BS1_liq = (c1 + bz1p_liq) * (rhow * cp_ocn - rhoi * cp_ice)  \
+           + rhoi * Lfresh * az1p_liq
+BQ1_liq = -az1_liq
+BC1_liq = rhoi * cp_ice * bz1_liq - rhoi * Lfresh * az1_liq
+CS1_liq = rhoi * Lfresh * (c1 + bz1p_liq)
+CQ1_liq = -bz1_liq
+CC1_liq = -rhoi * Lfresh * bz1_liq
+
+# quadratic constants - lower temperature region
+AS2_liq = az2p_liq * (rhow * cp_ocn - rhoi * cp_ice)
+AC2_liq = rhoi * cp_ice * az2_liq
+BS2_liq = (c1 + bz2p_liq) * (rhow * cp_ocn - rhoi * cp_ice)  \
+           + rhoi * Lfresh * az2p_liq
+BQ2_liq = -az2_liq
+BC2_liq = rhoi * cp_ice * bz2_liq - rhoi * Lfresh * az2_liq
+CS2_liq = rhoi * Lfresh * (c1 + bz2p_liq)
+CQ2_liq = -bz2_liq
+CC2_liq = -rhoi * Lfresh * bz2_liq
+
+# break enthalpy constants
+D_liq = ((c1 + az1p_liq*Tb_liq + bz1p_liq)    \
+          / (   az1_liq*Tb_liq + bz1_liq))    \
+        * ((cp_ocn*rhow - cp_ice*rhoi)*Tb_liq + Lfresh*rhoi)
+E_liq = cp_ice*rhoi*Tb_liq - Lfresh*rhoi
+
+#  just fully melted enthapy constants
+F1_liq = (  -c1000 * cp_ocn * rhow) / az1_liq
+G1_liq =    -c1000
+H1_liq = (-bz1_liq * cp_ocn * rhow) / az1_liq
+F2_liq = (  -c1000 * cp_ocn * rhow) / az2_liq
+G2_liq =    -c1000
+H2_liq = (-bz2_liq * cp_ocn * rhow) / az2_liq
+
+
+# warmer than fully melted constants
+I_liq = c1 / (cp_ocn * rhow)
+
+
+def icepack_mushy_temperature_mush(zqin, zSin):
+    '''
+    taken from icepack_mushy_physics.F90 
+
+    '''
+
+    zTin = np.zeros(zqin.shape, dtype='float64')
+    # just melted enthalpy
+    # S_low = merge(c1, c0, (zSin < Sb_liq))
+    S_low = np.zeros(zSin.shape, dtype='float64')
+    S_low[:] = c0
+    S_low[zSin < Sb_liq] = c1 
+
+    q0 = ((F1_liq * zSin) / (G1_liq + zSin) + H1_liq) * S_low +  \
+         ((F2_liq * zSin) / (G2_liq + zSin) + H2_liq) * (c1 - S_low)
+    #q_melt = merge(c1, c0, (zqin > q0))
+    q_melt = np.zeros(zqin.shape, dtype='float64')
+    q_melt[:] = c0
+    q_melt[zqin > q0] = c1 
+     
+
+    # break enthalpy
+    qb = D_liq * zSin + E_liq
+    # t_high = merge(c1, c0, (zqin > qb))
+    t_high = np.zeros(zqin.shape, dtype='float64')
+    t_high[:] = c0
+    t_high[zqin > qb] = c1 
+    t_low = c1 - t_high
+
+    # quadratic values
+    A = (AS1_liq * zSin                 + AC1_liq) * t_high + \
+        (AS2_liq * zSin                 + AC2_liq) * t_low
+
+    B = (BS1_liq * zSin + BQ1_liq * zqin + BC1_liq) * t_high + \
+        (BS2_liq * zSin + BQ2_liq * zqin + BC2_liq) * t_low
+
+    C = (CS1_liq * zSin + CQ1_liq * zqin + CC1_liq) * t_high + \
+        (CS2_liq * zSin + CQ2_liq * zqin + CC2_liq) * t_low
+
+    zTin = (-B + np.sqrt(np.maximum(B**2 - c4 * A * C,puny))) / (c2 * A)
+
+    # change T if all melted
+    zTin = q_melt * zqin * I_liq + (c1 - q_melt) * zTin
+
+    return zTin
+
 
 
 def nearest_interp_new(lon, lat, z, LON, LAT):
@@ -95,6 +226,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('-ig', '--inputgrid', default=None, required=False, help='source grid file')
     parser.add_argument('-o', '--outputfile', default=None, required=True, help='CICE restart file on target grid')
     parser.add_argument('-og', '--outputgrid', default=None, required=True, help='target grid file')
+    parser.add_argument('-fs', '--fixedsalin', default=False, required=False, help='whether use BL99 fixed salinity profile')
     return parser.parse_args()
 
 
@@ -106,12 +238,39 @@ def main() -> None:
    #print(args.inputfile)
    #print(args.outputfile)
 
+   print('fixed salin: ', args.fixedsalin) 
+
    LON, LAT, wet = get_dst_grid(args.outputgrid)
 
    jm, im = LON.shape
    #print(im, jm)
    if args.inputgrid:
        lons, lats, mask = get_src_grid(args.inputgrid)
+
+   if args.fixedsalin:
+      with Dataset(args.inputfile) as src:
+          nilyr, nslyr = 0, 0
+          qi, si = [], []
+          for name in src.variables:
+             if 'qice' in name:
+                 nilyr += 1
+                 qi.append(src[name][:])
+             if 'sice' in name:
+                 si.append(src[name][:])
+             if 'qsno' in name:
+                 nslyr += 1
+      ti = []
+      for q,s in zip(qi, si):
+         ti.append(icepack_mushy_temperature_mush(q, s))       
+      saltmax = 3.2
+      nsal = 0.407
+      msal = 0.573
+      salinz = np.zeros((nilyr))
+      for k in range(nilyr):
+         zn = (k+1-0.5)/nilyr
+         salinz[k] = (saltmax/2.0)*(1.0-np.cos(np.pi*np.power(zn, nsal/(msal+zn))))
+      print(salinz)
+
 
    with Dataset(args.inputfile) as src, Dataset(args.outputfile, "w") as dst:
      # copy global attributes all at once via dictionary
@@ -137,6 +296,12 @@ def main() -> None:
         #dst[name][:] = src[name][:]
         if 'vel' in name or 'stress' in name or 'strocn' in name:
            dst[name][:] = 0.0 
+        elif args.fixedsalin and 'sice' in name:
+           k = int(name[4:]) - 1
+           var = src[name][:]
+           for i in range(var.shape[0]):
+              dst[name][i,:,:] = salinz[k]
+              dst[name][i][wet<0.5] = 0.0
         else:
            msk = mask.mask 
            lon_in = lons[~msk]  
