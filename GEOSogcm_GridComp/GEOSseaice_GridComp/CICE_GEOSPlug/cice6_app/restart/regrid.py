@@ -198,7 +198,7 @@ def lon_lat_to_cartesian(lon, lat, R = 1):
 
 
 def get_src_grid(fname): #reads lat lon for tripolar ocean grid 
-    ncfile=Dataset(fname, "r")
+    ncfile  = Dataset(fname, "r")
     LON     = ncfile.variables['lon'][:]
     LAT     = ncfile.variables['lat'][:]
     bat     = ncfile.variables['Bathymetry'][:]
@@ -209,14 +209,16 @@ def get_src_grid(fname): #reads lat lon for tripolar ocean grid
     return LON, LAT, bat
 
 def get_dst_grid(fname): #reads lat lon for tripolar ocean grid 
-    ncfile=Dataset(fname, "r")
+    ncfile  = Dataset(fname, "r")
     LON     = ncfile.variables['lon_centers'][:]
     LAT     = ncfile.variables['lat_centers'][:]
+    ULON    = ncfile.variables['lon_corners'][1:, 1:]
+    ULAT    = ncfile.variables['lat_corners'][1:, 1:]
     wet     = ncfile.variables['mask'][:]
     #wet     = ncfile.variables['mask'][:]
     ncfile.close()
 
-    return LON, LAT, wet
+    return LON, LAT, ULON, ULAT, wet
 
 missing=np.float32(-32767.0)
 
@@ -240,7 +242,7 @@ def main() -> None:
 
    print('fixed salin: ', args.fixedsalin) 
 
-   LON, LAT, wet = get_dst_grid(args.outputgrid)
+   LON, LAT, ULON, ULAT, wet = get_dst_grid(args.outputgrid)
 
    jm, im = LON.shape
    #print(im, jm)
@@ -296,6 +298,14 @@ def main() -> None:
         #dst[name][:] = src[name][:]
         if 'vel' in name or 'stress' in name or 'strocn' in name:
            dst[name][:] = 0.0 
+        elif 'ulon' == name:
+           dst[name][:] = ULON
+        elif 'ulat' == name:
+           dst[name][:] = ULAT
+        elif 'tlon' == name:
+           dst[name][:] = LON
+        elif 'tlat' == name:
+           dst[name][:] = LAT
         elif args.fixedsalin and 'sice' in name:
            k = int(name[4:]) - 1
            var = src[name][:]
