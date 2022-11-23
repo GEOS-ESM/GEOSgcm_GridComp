@@ -571,6 +571,7 @@ contains
     endif HAVE
 
     if (filetype == 0) then
+
        call MAPL_VarWrite(OutFmt,names(1),BF1(Idx))
        call MAPL_VarWrite(OutFmt,names(2),BF2(Idx))
        call MAPL_VarWrite(OutFmt,names(3),BF3(Idx))

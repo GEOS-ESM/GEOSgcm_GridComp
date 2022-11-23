@@ -523,6 +523,7 @@ contains
       this%TSA2  = DP2BR      
       this%TSB1  = DP2BR      
       this%TSB2  = DP2BR      
+      this%GNU   = DP2BR      
       this%COND  = DP2BR      
       this%WPWET = DP2BR      
       this%POROS = DP2BR
@@ -581,8 +582,9 @@ contains
               call var%add_attribute('units', '1')
               call this%meta%add_variable('SNOWALB', var)
            endif
+        elseif (this%meta%has_variable('SNOWALB')) then
+           call this%meta%remove_variable('SNOWALB')
         endif
-
         call CatchFmt%close()
       else
         open(unit=21, file=trim(DataDir)//'/clsm/mosaic_veg_typs_fracs',form='formatted')
@@ -622,6 +624,9 @@ contains
         CLOSE (24, STATUS = 'KEEP')
         CLOSE (25, STATUS = 'KEEP')
         CLOSE (26, STATUS = 'KEEP')
+
+        if (this%meta%has_variable('SNOWALB'))  call this%meta%remove_variable('SNOWALB')
+
       endif
 
       do n=1,ntiles
