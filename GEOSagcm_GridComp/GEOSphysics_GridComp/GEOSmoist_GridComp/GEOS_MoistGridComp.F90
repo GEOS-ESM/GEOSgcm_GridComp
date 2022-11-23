@@ -7314,23 +7314,22 @@ contains
 
            ! GEOS-Chem stuff, only needed for GF and if species is actually friendly to MOIST
            !------------------------------------
+           Hcts(k)%is_gcc = .FALSE. 
            if (IS_FRIENDLY(K)) then
               SpcName = QNAMES(K)
               call GCC_check_params(EXPORT,k,SpcName,FIELD,is_gcc,Vect_KcScal,retfactor,liq_and_gas,&
                                     convfaci2g,online_cldliq,online_vud,use_gocart,ftemp_threshold, __RC__ )
-              if ( is_gcc ) then
-                 Hcts(k)%is_gcc          = .TRUE.
-                 Hcts(k)%KcScal1         = Vect_KcScal(1)
-                 Hcts(k)%KcScal2         = Vect_KcScal(2)
-                 Hcts(k)%KcScal3         = Vect_KcScal(3)
-                 Hcts(k)%retfactor       = retfactor
-                 Hcts(k)%liq_and_gas     = liq_and_gas
-                 Hcts(k)%convfaci2g      = convfaci2g
-                 Hcts(k)%online_cldliq   = online_cldliq
-                 Hcts(k)%online_vud      = online_vud
-                 Hcts(k)%use_gocart      = use_gocart
-                 Hcts(k)%ftemp_threshold = ftemp_threshold
-              end if
+              Hcts(k)%is_gcc          = is_gcc 
+              Hcts(k)%KcScal1         = Vect_KcScal(1)
+              Hcts(k)%KcScal2         = Vect_KcScal(2)
+              Hcts(k)%KcScal3         = Vect_KcScal(3)
+              Hcts(k)%retfactor       = retfactor
+              Hcts(k)%liq_and_gas     = liq_and_gas
+              Hcts(k)%convfaci2g      = convfaci2g
+              Hcts(k)%online_cldliq   = online_cldliq
+              Hcts(k)%online_vud      = online_vud
+              Hcts(k)%use_gocart      = use_gocart
+              Hcts(k)%ftemp_threshold = ftemp_threshold
            end if
          ENDIF
 
