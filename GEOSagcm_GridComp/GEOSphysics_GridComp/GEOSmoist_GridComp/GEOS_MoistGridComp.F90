@@ -5572,7 +5572,7 @@ contains
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PLS = PLS + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) PCU = PCU + PTR2D
+          if (associated(PTR2D)) PLS = PLS + PTR2D
           PLS = MAX(PLS, 0.0)
        endif
 
