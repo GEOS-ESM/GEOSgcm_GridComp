@@ -186,6 +186,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
+    call MAPL_GetResource( MAPL, CLDPARAMS%HYSTPDFOPT,     'HYSTPDFOPT:',     DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_BETA,       'ANV_BETA:',       DEFAULT= 4.0     )
@@ -212,37 +213,19 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
     call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 2.      )
-    if (CLDPARAMS%ICE_SETTLE == 1) then
-       ! Lawrence and Crutzen (1998, Tellus 50B, 263-289) 
-       SELECT CASE ( LM )
-       CASE ( 72 )
+    SELECT CASE ( LM )
+    CASE ( 72 )
            TMP_ICEFALL = 1.0
-       CASE ( 91 )
+    CASE ( 91 )
            TMP_ICEFALL = 0.5
-       CASE ( 137 )
+    CASE ( 137 )
            TMP_ICEFALL = 0.33
-       CASE ( 181 )
+    CASE ( 181 )
            TMP_ICEFALL = 0.25
-       CASE DEFAULT
+    CASE DEFAULT
            TMP_ICEFALL = 1.0
-       END SELECT
-    elseif (CLDPARAMS%ICE_SETTLE == 2) then
-       ! Deng and Mace, 2008: https://doi.org/10.1029/2008GL035054
-       SELECT CASE ( LM )
-       CASE ( 72 )
-           TMP_ICEFALL = 0.8
-       CASE ( 91 )
-           TMP_ICEFALL = 0.4
-       CASE ( 137 )
-           TMP_ICEFALL = 0.3
-       CASE ( 181 )
-           TMP_ICEFALL = 0.2
-       CASE DEFAULT
-           TMP_ICEFALL = 1.0
-       END SELECT
-    else
-       _ASSERT(.false.,'Invalid ICE_SETTLE parameter')
-    endif
+    END SELECT
+    if (CLDPARAMS%ICE_SETTLE==2) TMP_ICEFALL=TMP_ICEFALL*0.8
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
