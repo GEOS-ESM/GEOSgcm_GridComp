@@ -543,8 +543,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       T  = T  +  DTDT_DC*DT_MOIST
       TH = TH + DTHDT_DC*DT_MOIST
     ! update DeepCu QL/QI/CF tendencies
-      TMP3D= CNV_DQCDT/MASS
-      fQi  = ice_fraction( T, CNV_FRC, SRF_TYPE )
+      fQi = ice_fraction( T, CNV_FRC, SRF_TYPE )
+      TMP3D    = CNV_DQCDT/MASS
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
       DQADT_DC = CNV_MFD*SCLM_DEEP/MASS
@@ -564,12 +564,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       QLCN =         QLCN + DQLDT_DC*DT_MOIST
       QICN =         QICN + DQIDT_DC*DT_MOIST
       CLCN = MAX(MIN(CLCN + DQADT_DC*DT_MOIST, 1.0), 0.0)
-    ! melt/freeze condensates
-      TMP3D = T
-      call MELTFRZ( DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN )
-      DTDT_DC  = DTDT_DC  + (T-TMP3D)/DT_MOIST
-      DTHDT_DC = DTHDT_DC + (T-TMP3D)/DT_MOIST/PK
-      TH = T/PK
 
     ! fix 'convective' cloud fraction 
       if (FIX_CNV_CLOUD) then

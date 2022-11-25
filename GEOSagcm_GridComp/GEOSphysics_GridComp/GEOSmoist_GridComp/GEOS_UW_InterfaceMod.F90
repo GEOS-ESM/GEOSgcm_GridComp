@@ -351,13 +351,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !-------------------------------------------------------------
         QLLS = QLLS + (QLSUB_SC+QLENT_SC)*DT_MOIST
         QILS = QILS + (QISUB_SC+QIENT_SC)*DT_MOIST
-      !  melt/freeze condensates
-        TMP3D = T
-        call MELTFRZ( DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN )
-        call MELTFRZ( DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS )
-        DTDT_SC  = DTDT_SC  + (T-TMP3D)/DT_MOIST
-        DTHDT_SC = DTHDT_SC + (T-TMP3D)/DT_MOIST/PK
-        TH = T/PK
       !  Number concentrations for 2-moment microphysics
       !--------------------------------------------------------------
         SC_NDROP = SC_NDROP*MASS
