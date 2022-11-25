@@ -146,29 +146,29 @@ subroutine shr_assert_in_domain_{DIMS}d_{TYPE}(var, varname, msg, &
 
 ! Flag for floating point types.
 
-#if (({ITYPE} == TYPEREAL) || ({ITYPE} == TYPEDOUBLE)) then
-#define TYPEFP
-#else
-#undef TYPEFP
-#endif
+!#if (({ITYPE} == TYPEREAL) || ({ITYPE} == TYPEDOUBLE))
+!#define TYPEFP
+!#else
+!#undef TYPEFP
+!#endif
 
 ! "Generalized" macro functions allow transformational intrinsic functions
 ! to handle both scalars and arrays.
 
-#if ({DIMS} != 0) then
-! When given an array, use the intrinsics.
-#define GEN_SIZE(x) size(x)
-#define GEN_ALL(x) all(x)
-#else
-
-! Scalar extensions:
-!   GEN_SIZE always returns 1 for a scalar.
-!   GEN_ALL (logical reduction) is a no-op for a scalar.
-!   GEN_[MAX,MIN]LOC should return a 1D, size 0 (empty), integer array.
-#define GEN_SIZE(x) 1
-#define GEN_ALL(x) x
-
-#endif
+!#if ({DIMS} != 0) 
+!! When given an array, use the intrinsics.
+!#define GEN_SIZE(x) size(x)
+!#define GEN_ALL(x) all(x)
+!#else
+!
+!! Scalar extensions:
+!!   GEN_SIZE always returns 1 for a scalar.
+!!   GEN_ALL (logical reduction) is a no-op for a scalar.
+!!   GEN_[MAX,MIN]LOC should return a 1D, size 0 (empty), integer array.
+!#define GEN_SIZE(x) 1
+!#define GEN_ALL(x) x
+!
+!#endif
 
 !-----------------------------
 ! END macro section
@@ -359,15 +359,15 @@ subroutine print_bad_loc_{DIMS}d_{TYPE}(var, loc_vec, varname)
   write(shr_log_Unit,*) &
        "ERROR: shr_assert_in_domain: ",trim(varname_to_write), &
        " has invalid value ", &
-#if ({DIMS} != 0) then
-       var({REPEAT:loc_vec(#)}), &
-       " at location: ",loc_vec
-#else
-       var
-
-  ! Kill compiler spam for unused loc_vec.
-  if (.false.) write(*,*) loc_vec
-#endif
+!#if ({DIMS} != 0) 
+!       var({REPEAT:loc_vec(#)}), &
+!       " at location: ",loc_vec
+!#else
+!       var
+!
+!  ! Kill compiler spam for unused loc_vec.
+!  if (.false.) write(*,*) loc_vec
+!#endif
 
 end subroutine print_bad_loc_{DIMS}d_{TYPE}
 
@@ -383,25 +383,25 @@ pure function find_first_loc_{DIMS}d(mask) result (loc_vec)
   logical, intent(in) :: mask{DIMSTR}
   integer :: loc_vec({DIMS})
 
-#if ({DIMS} != 0) then
-  integer :: flags({REPEAT:size(mask,#)})
-
-  where (mask)
-     flags = 1
-  elsewhere
-     flags = 0
-  end where
-
-  loc_vec = maxloc(flags)
-#else
-
-! Remove compiler warnings (statement will be optimized out).
-
-#if (! defined CPRPGI && ! defined CPRCRAY) then
-  if (.false. .and. mask) loc_vec = loc_vec
-#endif
-
-#endif
+!#if ({DIMS} != 0) 
+!  integer :: flags({REPEAT:size(mask,#)})
+!
+!  where (mask)
+!     flags = 1
+!  elsewhere
+!     flags = 0
+!  end where
+!
+!  loc_vec = maxloc(flags)
+!#else
+!
+!! Remove compiler warnings (statement will be optimized out).
+!
+!#if (! defined CPRPGI && ! defined CPRCRAY)
+!  if (.false. .and. mask) loc_vec = loc_vec
+!#endif
+!
+!#endif
 
 end function find_first_loc_{DIMS}d
 
