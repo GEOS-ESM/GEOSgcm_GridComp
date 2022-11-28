@@ -43,7 +43,7 @@ rhofresh  = np.float64(1000.0)  # density of fresh water (kg/m^3)
 cp_ice    = np.float64(2106.)  # specific heat of fresh ice (J/kg/K)
 cp_ocn    = np.float64(4218.)  # specific heat of ocn    (J/kg/K)
                    # freshwater value needed for enthalpy
-
+depressT = np.float64(0.054)
 Lsub      = np.float64(2.835e6) # latent heat, sublimation freshwater (J/kg)
 Lvap      = np.float64(2.501e6)  # latent heat, vaporization freshwater (J/kg)
 Lfresh    = Lsub-Lvap
@@ -109,6 +109,20 @@ H2_liq = (-bz2_liq * cp_ocn * rhow) / az2_liq
 
 # warmer than fully melted constants
 I_liq = c1 / (cp_ocn * rhow)
+
+def icepack_enthalpy_temperature_bl99(zTin, Tmlt):
+    '''
+    '''
+
+    zQin = np.zeros(zTin.shape, dtype='float64')
+
+    msk = zTin < c0
+
+    zQin[msk] = -rhoi*(cp_ice*(Tmlt-zTin[msk]) + 
+                   Lfresh*(c1 - Tmlt/zTin[msk]) -cp_ocn*Tmlt)
+
+    return zQin  
+
 
 
 def icepack_mushy_temperature_mush(zqin, zSin):
@@ -249,6 +263,12 @@ def main() -> None:
    if args.inputgrid:
        lons, lats, mask = get_src_grid(args.inputgrid)
 
+   #zSin = np.zeros(5, dtype='float64')
+   #zQin = np.zeros(5, dtype='float64')
+   #zTin = icepack_mushy_temperature_mush(zQin, zSin) 
+   #print(zTin)   
+
+
    if args.fixedsalin:
       with Dataset(args.inputfile) as src:
           nilyr, nslyr = 0, 0
@@ -268,9 +288,11 @@ def main() -> None:
       nsal = 0.407
       msal = 0.573
       salinz = np.zeros((nilyr))
+      Tmlt = np.zeros((nilyr))
       for k in range(nilyr):
          zn = (k+1-0.5)/nilyr
          salinz[k] = (saltmax/2.0)*(1.0-np.cos(np.pi*np.power(zn, nsal/(msal+zn))))
+         Tmlt[k] = -depressT * salinz[k] 
       print(salinz)
 
 
@@ -295,6 +317,7 @@ def main() -> None:
         else:
             x = dst.createVariable(name, variable.datatype,  ('nj', 'ni',))
         #print(variable.dimensions)   
+        print('processing: ', name)   
         #dst[name][:] = src[name][:]
         if 'vel' in name or 'stress' in name or 'strocn' in name:
            dst[name][:] = 0.0 
@@ -307,11 +330,23 @@ def main() -> None:
         elif 'tlat' == name:
            dst[name][:] = LAT
         elif args.fixedsalin and 'sice' in name:
-           k = int(name[4:]) - 1
+           k = int(name[4:]) - 1 # layer index
            var = src[name][:]
            for i in range(var.shape[0]):
               dst[name][i,:,:] = salinz[k]
               dst[name][i][wet<0.5] = 0.0
+        elif args.fixedsalin and 'qice' in name:
+           k = int(name[4:]) - 1 # layer index
+           msk = mask.mask 
+           lon_in = lons[~msk]  
+           lat_in = lats[~msk]  
+           var = ti[k]
+           for i in range(var.shape[0]):
+               h_in = var[i][~msk]  
+               hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               qin = icepack_enthalpy_temperature_bl99(hout, Tmlt[k]) 
+               qin[wet<0.5] = 0.0
+               dst[name][i,:,:] = qin    
         else:
            msk = mask.mask 
            lon_in = lons[~msk]  
