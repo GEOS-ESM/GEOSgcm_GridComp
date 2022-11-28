@@ -1,6 +1,16 @@
 esma_set_this ()
 string (REPLACE GEOScatchCN_GridComp_ "" is_openmp ${this})
 
+list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+include(genf90_utils)
+
+find_program(GENF90 genf90.pl PATHS ${CMAKE_CURRENT_LIST_DIR})
+
+set(genf90_files shr_infnan_mod.F90.in shr_assert_mod.F90.in)
+
+process_genf90_source_list("${genf90_files}" ${CMAKE_CURRENT_BINARY_DIR}
+  share_genf90_sources)
+
 set (srcs
   abortutils.F90
   AnnualFluxDribbler.F90
@@ -96,10 +106,8 @@ set (srcs
   RootBiophysMod.F90
   shr_abort_mod.F90
   shr_assert.h
-  shr_assert_mod.F90
   shr_const_mod.F90
   shr_file_mod.F90
-  shr_infnan_mod.F90
   shr_kind_mod.F90
   shr_log_mod.F90
   shr_mpi_mod.F90
@@ -119,6 +127,9 @@ set (srcs
   TridiagonalMod.F90
   update_model_para4cn.F90
   )
+
+list(APPEND srcs
+    ${share_genf90_sources})
 
 esma_add_library (${this}
   SRCS ${srcs}

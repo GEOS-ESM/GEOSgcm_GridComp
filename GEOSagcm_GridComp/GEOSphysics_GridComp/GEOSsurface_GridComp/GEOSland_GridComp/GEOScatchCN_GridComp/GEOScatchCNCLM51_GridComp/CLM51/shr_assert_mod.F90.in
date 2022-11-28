@@ -16,7 +16,7 @@ use shr_log_mod, only: &
 
 use shr_infnan_mod, only: shr_infnan_isnan
 
-!use shr_strconvert_mod, only: toString
+use shr_strconvert_mod, only: toString
 
 implicit none
 private
@@ -79,17 +79,14 @@ subroutine shr_assert(var, msg, file, line)
   character(len=*), intent(in), optional :: file
   integer         , intent(in), optional :: line
 
-  character(len=40) :: line_str
   character(len=:), allocatable :: full_msg
-  
-  full_msg = ''
+
   if (.not. var) then
      full_msg = 'ERROR'
      if (present(file)) then
         full_msg = full_msg // ' in ' // trim(file)
         if (present(line)) then
-           write(line_str, '(i40)') line
-           full_msg = full_msg // ' at line ' // trim(line_str)
+           full_msg = full_msg // ' at line ' // toString(line)
         end if
      end if
      if (present(msg)) then
@@ -146,7 +143,7 @@ subroutine shr_assert_in_domain_{DIMS}d_{TYPE}(var, varname, msg, &
 
 ! Flag for floating point types.
 
-#if (({ITYPE} == TYPEREAL) || ({ITYPE} == TYPEDOUBLE))
+#if ({ITYPE} == TYPEREAL) || ({ITYPE} == TYPEDOUBLE)
 #define TYPEFP
 #else
 #undef TYPEFP
@@ -155,7 +152,7 @@ subroutine shr_assert_in_domain_{DIMS}d_{TYPE}(var, varname, msg, &
 ! "Generalized" macro functions allow transformational intrinsic functions
 ! to handle both scalars and arrays.
 
-#if ({DIMS} != 0) 
+#if ({DIMS} != 0)
 ! When given an array, use the intrinsics.
 #define GEN_SIZE(x) size(x)
 #define GEN_ALL(x) all(x)
@@ -359,7 +356,7 @@ subroutine print_bad_loc_{DIMS}d_{TYPE}(var, loc_vec, varname)
   write(shr_log_Unit,*) &
        "ERROR: shr_assert_in_domain: ",trim(varname_to_write), &
        " has invalid value ", &
-#if ({DIMS} != 0) 
+#if ({DIMS} != 0)
        var({REPEAT:loc_vec(#)}), &
        " at location: ",loc_vec
 #else
@@ -383,7 +380,7 @@ pure function find_first_loc_{DIMS}d(mask) result (loc_vec)
   logical, intent(in) :: mask{DIMSTR}
   integer :: loc_vec({DIMS})
 
-#if ({DIMS} != 0) 
+#if ({DIMS} != 0)
   integer :: flags({REPEAT:size(mask,#)})
 
   where (mask)
