@@ -24,6 +24,7 @@ module GEOS_TurbulenceGridCompMod
   use shoc
   use edmf_mod, only: run_edmf
   use scm_surface, only : surface_layer, surface
+  !$ use omp_lib
 
 #ifdef _CUDA
   use cudafor
