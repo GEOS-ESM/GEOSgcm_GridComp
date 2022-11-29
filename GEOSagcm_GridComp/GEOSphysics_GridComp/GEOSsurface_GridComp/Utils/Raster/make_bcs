@@ -103,13 +103,19 @@ if ( $HELPMODE != YES ) then
 else
    echo "Options for land BCs version:"
 endif
-echo "   ${C2}F25 : Fortuna-2_5   (archived${CR}${C1}*${CR}${C2}: n/a)${CR}"
-echo "   ${C2}GM4 : Ganymed-4_0   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)${CR}"
-echo "   ${C2}ICA : Icarus        (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus/)${CR}"
-echo "   ${C2}NL3 : Icarus-NLv3   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)${CR}"
-echo "   ${C2}NL4 : NLv4 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)${CR}"
-echo "   ${C2}NL5 : NLv5 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)${CR}"
-echo "   ${C2}DEV : Development version${CR}"
+
+echo "   ${C2}F25 = Fortuna-2_5   (archived${CR}${C1}*${CR}${C2}: n/a)${CR}"
+echo "   ${C2}GM4 = Ganymed-4_0   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)${CR}"
+echo "   ${C2}ICA = Icarus        (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus/)${CR}"
+echo "   ${C2}NL3 = Icarus-NLv3   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)${CR}"
+echo "   ${C2}NL4 = NLv4 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)${CR}"
+echo "   ${C2}      = NL3 + JPL veg height{CR}"
+echo "   ${C2}NL5 = NLv5 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)${CR}"
+echo "   ${C2}      = NL3 + JPL veg height + PEATMAP${CR}"
+echo "   ${C2}v06   = NL3 + JPL veg height + PEATMAP + MODIS snow alb${CR}"
+echo "   ${C2}v07   = NL3 + PEATMAP${CR}"
+echo "   ${C2}v08   = NL3 + MODIS snow alb${CR}"
+echo "   ${C2}v09   = NL3 + PEATMAP + MODIS snow alb${CR}"
 echo "  "
 if ( $HELPMODE != YES ) then        
    echo "                         ${C1}       *BCs produced by this code will differ from BCs in archived directories\!\!\! ${CR}"
@@ -128,7 +134,6 @@ if ( $HELPMODE != YES ) then
 
    set dummy = `echo $<`
    
-   set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
    
    if( $dummy == 'F25'  | \
        $dummy == 'GM4'  | \
@@ -136,8 +141,11 @@ if ( $HELPMODE != YES ) then
        $dummy == 'NL3'  | \
        $dummy == 'NL4'  | \
        $dummy == 'NL5'  | \
-       $dummy == 'DEV') then
-      set lbcsv        = $dummy
+       $dummy == 'v06'  | \
+       $dummy == 'v07'  | \
+       $dummy == 'v08'  | \
+       $dummy == 'v09') then
+      set lbcsv = $dummy
    else if ( $dummy == '' ) then
       echo $lbcsv
    else
