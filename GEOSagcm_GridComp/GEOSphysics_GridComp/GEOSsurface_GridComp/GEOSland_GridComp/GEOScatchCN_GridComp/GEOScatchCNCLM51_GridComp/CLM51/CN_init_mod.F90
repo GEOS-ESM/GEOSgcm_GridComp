@@ -1,4 +1,6 @@
- module CN_initMod
+#include "MAPL_Generic.h" 
+
+module CN_initMod
 
   use ESMF
 

@@ -1,3 +1,5 @@
+#include "MAPL_Generic.h"
+
 module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
