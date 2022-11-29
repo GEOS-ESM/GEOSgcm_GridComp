@@ -6,7 +6,7 @@ include(genf90_utils)
 
 find_program(GENF90 genf90.pl PATHS ${CMAKE_CURRENT_LIST_DIR})
 
-set(genf90_files shr_infnan_mod.F90.in shr_assert_mod.F90.in ncdio_pio.F90.in)
+set(genf90_files shr_infnan_mod.F90.in shr_assert_mod.F90.in)
 
 process_genf90_source_list("${genf90_files}" ${CMAKE_CURRENT_BINARY_DIR}
   share_genf90_sources)
@@ -94,6 +94,7 @@ set (srcs
   FireMethodType.F90
   initSubgridMod.F90
   landunit_varcon.F90
+  ncdio_pio.F90
   NutrientCompetitionCLM45defaultMod.F90
   NutrientCompetitionFactoryMod.F90
   NutrientCompetitionFlexibleCNMod.F90
