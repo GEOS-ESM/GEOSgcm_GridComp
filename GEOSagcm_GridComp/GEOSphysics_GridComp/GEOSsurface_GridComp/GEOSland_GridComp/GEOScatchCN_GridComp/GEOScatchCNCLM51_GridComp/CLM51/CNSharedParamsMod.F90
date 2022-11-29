@@ -4,7 +4,8 @@ module CNSharedParamsMod
   !
   ! !USES:
   use shr_kind_mod , only: r8 => shr_kind_r8
-  use ncdio_pio    , only : file_desc_t, ncd_io
+  use ncdio_pio    , only : file_desc_t
+  use ncdio_pio    , only : ncd_io
 
   implicit none
 
@@ -51,7 +52,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine CNParamsReadShared_netcdf(ncid)
     !
-    use ncdio_pio   , only : file_desc_t, ncd_io
+   ! use ncdio_pio   , only : file_desc_t, ncd_io
     use abortutils  , only : endrun
     use shr_log_mod , only : errMsg => shr_log_errMsg
     !
