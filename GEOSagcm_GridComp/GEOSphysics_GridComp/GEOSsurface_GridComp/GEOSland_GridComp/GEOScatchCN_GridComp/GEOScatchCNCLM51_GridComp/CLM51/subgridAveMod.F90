@@ -9,14 +9,14 @@ module subgridAveMod
   ! !USES:
   use shr_kind_mod  , only : r8 => shr_kind_r8
   use shr_log_mod   , only : errMsg => shr_log_errMsg
-!  use column_varcon , only : icol_roof, icol_sunwall, icol_shadewall
-!  use column_varcon , only : icol_road_perv , icol_road_imperv
-!  use clm_varcon    , only : grlnd, nameg, namel, namec, namep,spval 
+  use column_varcon , only : icol_roof, icol_sunwall, icol_shadewall
+  use column_varcon , only : icol_road_perv , icol_road_imperv
+  use clm_varcon    , only : grlnd, nameg, namel, namec, namep,spval 
   use clm_varcon    , only : namec, spval
   use clm_varctl    , only : iulog
   use abortutils    , only : endrun
   use decompMod     , only : bounds_type
-!  use LandunitType  , only : lun                
+  use LandunitType  , only : lun                
   use ColumnType    , only : col                
   use PatchType     , only : patch                
   !
@@ -27,11 +27,11 @@ module subgridAveMod
   !
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: p2c   ! Perform an average patches to columns
-  public :: p2l   ! Perform an average patches to landunits
-  public :: p2g   ! Perform an average patches to gridcells
-  public :: c2l   ! Perform an average columns to landunits
+ ! public :: p2l   ! Perform an average patches to landunits
+ ! public :: p2g   ! Perform an average patches to gridcells
+ ! public :: c2l   ! Perform an average columns to landunits
   public :: c2g   ! Perform an average columns to gridcells
-  public :: l2g   ! Perform an average landunits to gridcells
+ ! public :: l2g   ! Perform an average landunits to gridcells
 
   interface p2c
      module procedure p2c_1d
@@ -61,8 +61,8 @@ module subgridAveMod
 !  end interface
   !
   ! !PRIVATE MEMBER FUNCTIONS:
-  private :: build_scale_l2g
-  private :: create_scale_l2g_lookup
+!  private :: build_scale_l2g
+!  private :: create_scale_l2g_lookup
 
   ! Note about the urban scaling types used for c2l_scale_type (urbanf / urbans), from
   ! Bill Sacks and Keith Oleson: These names originally meant to distinguish between
