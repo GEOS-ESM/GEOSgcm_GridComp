@@ -4,6 +4,7 @@ module CNSharedParamsMod
   !
   ! !USES:
   use shr_kind_mod , only: r8 => shr_kind_r8
+  use ncdio_pio    , only : file_desc_t, ncd_io
   implicit none
 
   ! CNParamsShareInst.  PGI wants the type decl. public but the instance
