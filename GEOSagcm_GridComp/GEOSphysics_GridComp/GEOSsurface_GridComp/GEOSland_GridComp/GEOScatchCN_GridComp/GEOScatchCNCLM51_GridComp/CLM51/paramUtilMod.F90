@@ -3,6 +3,7 @@ module paramUtilMod
    ! module that deals with reading parameter files
    !
    use shr_kind_mod , only: r8 => shr_kind_r8
+   use ncdio_pio    , only : file_desc_t, ncd_io
    implicit none
    save
    private
