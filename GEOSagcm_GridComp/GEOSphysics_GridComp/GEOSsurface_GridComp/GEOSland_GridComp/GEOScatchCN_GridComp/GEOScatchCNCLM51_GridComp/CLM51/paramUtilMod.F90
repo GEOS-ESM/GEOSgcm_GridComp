@@ -36,7 +36,7 @@ contains
      ! read the netcdf file...generic, could be used for any parameter read
      !
      use abortutils   , only : endrun
-     use ncdio_pio    , only : file_desc_t,ncd_io
+     use ncdio_pio    , only : file_desc_t, ncd_io
 
      implicit none
 
@@ -72,7 +72,7 @@ contains
      ! read the netcdf file...generic, could be used for any parameter read
      !
      use abortutils   , only : endrun
-     use ncdio_pio    , only : file_desc_t,ncd_io
+     use ncdio_pio    , only : file_desc_t, ncd_io
 
      implicit none
 
@@ -108,7 +108,7 @@ contains
      ! read the netcdf file...generic, could be used for any parameter read
      !
      use abortutils   , only : endrun
-     use ncdio_pio    , only : file_desc_t,ncd_io
+     use ncdio_pio    , only : file_desc_t, ncd_io
 
      implicit none
 
