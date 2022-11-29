@@ -16,7 +16,7 @@ use shr_log_mod, only: &
 
 use shr_infnan_mod, only: shr_infnan_isnan
 
-use shr_strconvert_mod, only: toString
+!use shr_strconvert_mod, only: toString
 
 implicit none
 private
@@ -79,6 +79,7 @@ subroutine shr_assert(var, msg, file, line)
   character(len=*), intent(in), optional :: file
   integer         , intent(in), optional :: line
 
+  character(len=40) :: line_str
   character(len=:), allocatable :: full_msg
 
   if (.not. var) then
@@ -86,7 +87,8 @@ subroutine shr_assert(var, msg, file, line)
      if (present(file)) then
         full_msg = full_msg // ' in ' // trim(file)
         if (present(line)) then
-           full_msg = full_msg // ' at line ' // toString(line)
+           write(line_str, '(i40)') line
+           full_msg = full_msg // ' at line ' // trim(line_str)
         end if
      end if
      if (present(msg)) then
