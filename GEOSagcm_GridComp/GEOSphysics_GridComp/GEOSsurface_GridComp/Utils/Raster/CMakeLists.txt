@@ -17,6 +17,8 @@ if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
    list(APPEND srcs findloc.F90)
 endif ()
 
+set_source_files_properties(mkMITAquaRaster.F90 PROPERTIES COMPILE_FLAGS "${BYTERECLEN}")
+
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
 
 if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
