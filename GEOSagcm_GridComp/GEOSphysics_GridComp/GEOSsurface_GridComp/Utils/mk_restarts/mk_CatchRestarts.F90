@@ -572,22 +572,6 @@ contains
 
     if (filetype == 0) then
 
-       call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),__RC__)
-       i = index(InRestart,'/',back=.true.)
-       OutFileName = "OutData/"//trim(InRestart(i+1:))
-       call OutFmt%create(OutFileName,__RC__)
-
-       if (allocated(snowalb)) then
-          var = Variable(type=pFIO_REAL32, dimensions='tile')
-          call var%add_attribute('long_name', 'snow_albedo')
-          call var%add_attribute('units', '1')
-          call OutCFG%add_variable('SNOWALB', var)
-       endif
-
-       call OutFmt%write(OutCfg,__RC__)
-
-
-
        call MAPL_VarWrite(OutFmt,names(1),BF1(Idx))
        call MAPL_VarWrite(OutFmt,names(2),BF2(Idx))
        call MAPL_VarWrite(OutFmt,names(3),BF3(Idx))
