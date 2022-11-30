@@ -1744,6 +1744,18 @@ module GEOS_CICE4ColumnPhysGridComp
           RC=STATUS  )
    VERIFY_(STATUS)
 
+! budget terms
+
+   call MAPL_AddExportSpec(GC, &
+        SHORT_NAME         = 'DELTAVOL1',                         &
+        LONG_NAME          = 'total_change_in_ice_volume_each_cat',&
+        UNITS              = 'm',                                 &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+   VERIFY_(STATUS)
+
 !-------------------Internal--------------------------------------------------------------
 
     call MAPL_AddInternalSpec(GC,                                  &
@@ -3375,6 +3387,8 @@ contains
    real(kind=MAPL_R8)                  :: ERGICE_TMP(NUM_ICE_LAYERS,  NUM_ICE_CATEGORIES)
    real(kind=MAPL_R8)                  :: ERGSNO_TMP(NUM_SNOW_LAYERS, NUM_ICE_CATEGORIES)
 
+   real(kind=MAPL_R8), allocatable     :: TEMPVOLICE(:,:)
+   real, pointer                       :: DELTAVOL1 (:,:)
 
 !  -------------------------------------------------------------------
 
@@ -3580,6 +3594,9 @@ contains
    call MAPL_GetPointer(EXPORT,RSUSSI_C5,      'rsussi_CMIP5',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FSITHERM_CMIP5,'fsitherm_CMIP5',   RC=STATUS); VERIFY_(STATUS)
 
+! Pointers for debugging
+   call MAPL_GetPointer(EXPORT,DELTAVOL1,'DELTAVOL1',RC=STATUS); VERIFY_(STATUS)
+
 ! Get the time step
 ! -----------------
 
@@ -3716,11 +3733,16 @@ contains
     VERIFY_(STATUS)
     allocate(VOLICE_DELTA(NT,NUM_ICE_CATEGORIES),              STAT=STATUS)
     VERIFY_(STATUS)
+    allocate(TEMPVOLICE(NT,NUM_ICE_CATEGORIES),              STAT=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, LATSO, Label="LATSO:", DEFAULT=70.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, LONSO, Label="LONSO:", DEFAULT=70.0, RC=STATUS)
     VERIFY_(STATUS)
+
+    ! Tracking changes in VOLICE
+    TEMPVOLICE = VOLICE
 
 !     initialize arrays for CICE Thermodynamics
     call CICE_PREP_THERMO(TF,TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
@@ -3729,6 +3751,10 @@ contains
                             FR8,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
                             NEWICEERG, SBLX, RC=STATUS)
     VERIFY_(STATUS)
+
+    ! Tracking changes in VOLICE
+    if (associated(DELTAVOL1)) DELTAVOL1 = VOLICE - TEMPVOLICE 
+
 
     FR_OLD     = FRCICE   ! FRCICE is initialized by above subroutine CICE_PREP_THERMO
     TS_OLD     = TS
@@ -4630,6 +4656,7 @@ contains
     deallocate(VOLSNO_OLD)
     deallocate(VOLICE_OLD)
     deallocate(VOLICE_DELTA)
+    deallocate(TEMPVOLICE)
 
 !  All done
 !-----------

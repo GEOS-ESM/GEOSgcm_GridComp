@@ -91,28 +91,6 @@ module GEOS_OradGridCompMod
 ! !INTERNAL STATE:
 
 
-   call MAPL_AddInternalSpec(GC                                        ,&
-        LONG_NAME          = 'KPAR_previous'                                ,&
-        UNITS              = 'm-1'                                          ,&
-        SHORT_NAME         = 'KPAR_PREV'                                    ,&
-        DIMS               = MAPL_DimsHorzOnly                              ,&
-        VLOCATION          = MAPL_VLocationNone                             ,&
-        REFRESH_INTERVAL   = -1, &! kludgy flag to indicate time not set
-        RC=STATUS                                                            )
-
-     VERIFY_(STATUS)
-
-   call MAPL_AddInternalSpec(GC                                        ,&
-        LONG_NAME          = 'KPAR_next'                                    ,&
-        UNITS              = 'm-1'                                          ,&
-        SHORT_NAME         = 'KPAR_NEXT'                                    ,&
-        DIMS               = MAPL_DimsHorzOnly                              ,&
-        VLOCATION          = MAPL_VLocationNone                             ,&
-        REFRESH_INTERVAL   = -1, & ! kludgy flag to indicate time not set
-        RC=STATUS                                                            )
-
-     VERIFY_(STATUS)
-
 !  !EXPORT STATE:
 
      call MAPL_AddExportSpec(GC,                             &
@@ -485,8 +463,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
    VERIFY_(STATUS)
 
-   call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
-   VERIFY_(STATUS)
+   if (datafile == '/dev/null') then
+      kpar = 1.0
+   else
+      call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
+      VERIFY_(STATUS)
+   end if
 
 ! Use Beer'S Law to compute flux divergence
 !------------------------------------------

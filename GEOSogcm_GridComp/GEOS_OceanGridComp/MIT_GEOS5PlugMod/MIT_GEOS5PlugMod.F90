@@ -836,6 +836,14 @@ contains
        VOLICEn = VOLICE
     end if
 
+! set diagnostics for sea ice thermo tendencies
+    if (associated(DEL_FRACICE_THERM)) then
+       DEL_FRACICE_THERM = FRACICE - FRACICEn 
+    end if
+    if (associated(DEL_VOLICE_THERM)) then
+       DEL_VOLICE_THERM = VOLICE - VOLICEn 
+    end if
+
     ! Actual copy (only if needed)
     if (associated(TAUXe)) TAUXe = TAUX
     if (associated(TAUYe)) TAUYe = TAUY
@@ -1053,14 +1061,6 @@ contains
     if(associated(VOLICEe)) VOLICEe = VOLICE
 
     if(associated(FRACICEe)) FRACICEe = FRACICE
-
-! set diagnostics for sea ice thermo tendencies
-    if (associated(DEL_FRACICE_THERM)) then
-       DEL_FRACICE_THERM = FRACICE - FRACICEn 
-    end if
-    if (associated(DEL_VOLICE_THERM)) then
-       DEL_VOLICE_THERM = VOLICE - VOLICEn 
-    end if
 
     ! save vars for next time step
     FRACICEn = FRACICE
