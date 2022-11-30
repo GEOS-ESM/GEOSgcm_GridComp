@@ -249,7 +249,7 @@ contains
 
     !LOCAL
     character(300)     :: paramfile
-    integer            :: ierr, clm_varid, ncid, status
+    integer            :: ierr, clm_varid,  status
     logical            :: readv ! has variable been read in or not
     type(Netcdf4_fileformatter) :: ncid
 
@@ -257,6 +257,7 @@ contains
     real(r8), allocatable, dimension(:,:) :: read_tmp_2
     integer , allocatable, dimension(:)   :: read_tmp_3
 
+    character(len=512) :: msg
 
 !---------------------------------------------------------
 
