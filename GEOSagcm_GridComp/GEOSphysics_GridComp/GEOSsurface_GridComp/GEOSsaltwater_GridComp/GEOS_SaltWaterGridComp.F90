@@ -37,6 +37,7 @@ module GEOS_SaltwaterGridCompMod
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
   use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
+  use GEOS_SeaiceInterfaceGridComp,         only : SeaiceInterfaceSetServices => SetServices
   use GEOS_ObioGridCompMod,                 only : ObioSetServices            => SetServices
   
   implicit none

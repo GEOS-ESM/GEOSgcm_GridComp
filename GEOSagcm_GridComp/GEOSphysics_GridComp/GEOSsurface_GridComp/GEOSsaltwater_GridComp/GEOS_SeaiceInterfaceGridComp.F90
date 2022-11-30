@@ -42,6 +42,7 @@ module GEOS_SeaiceInterfaceGridComp
 !EOP
 
   integer, parameter :: ICE = 1         
+  real,    parameter :: puny = 1.e-11  ! should come from CICE       
 
   logical ::      DUAL_OCEAN
 
@@ -670,17 +671,6 @@ module GEOS_SeaiceInterfaceGridComp
 
 !  !INTERNAL STATE:
 
-     call MAPL_AddInternalSpec(GC,                           &
-        SHORT_NAME         = 'HSKINI',                            &
-        LONG_NAME          = 'ice_skin_layer_mass',               &
-        UNITS              = 'kg m-2',                            &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        FRIENDLYTO         = 'SEAICE',                            &
-        DEFAULT            = 0.5*MAPL_RHOWTR,                     &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
      call MAPL_AddInternalSpec(GC,                                &
          SHORT_NAME         = 'TSKINI',                            &
          LONG_NAME          = 'ice_skin_temperature',              &
@@ -1066,9 +1056,9 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'FRACICE',                           &
         LONG_NAME          = 'ice_covered_fraction_of_tile',      &
         UNITS              = '1',                                 &
+        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        DEFAULT            = 0.0,                                 &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1556,8 +1546,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource ( MAPL, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" ,     RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, NUM_ICE_LAYERS    , Label="CICE_N_ICE_LAYERS:"     ,     RC=STATUS)
-    VERIFY_(STATUS)
     NUM_SUBTILES  = NUM_ICE_CATEGORIES 
 
 ! Start Total timer
@@ -1599,7 +1587,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
     VERIFY_(STATUS)
-    DTDB = REAL(DT, kind=MAPL_R8)
 
 ! Pointers to inputs
 !-------------------
@@ -2157,6 +2144,9 @@ contains
    real, pointer, dimension(:  )  :: SWNDSRF => null()
    real, pointer, dimension(:  )  :: SWNDICE => null()
    real, pointer, dimension(:  )  :: LWNDICE => null()
+   real, pointer, dimension(:  )  :: LWDNSRFe=> null()
+   real, pointer, dimension(:  )  :: SWDNSRFe=> null()
+
    real, pointer, dimension(:  )  :: TSKINICE=> null()
 
    real, pointer, dimension(:  )  :: DELTS  => null()
@@ -2191,6 +2181,7 @@ contains
 
 
 ! pointers to import
+   real, pointer, dimension(:,:)  :: FR => null()
 
    real, pointer, dimension(:)    :: ALW => null()
    real, pointer, dimension(:)    :: BLW => null()
@@ -2233,6 +2224,7 @@ contains
 
    !*CALLBACK*
    real, pointer, dimension(:,:)  :: AS_PTR_2D => null()
+   integer                        :: AS_STATUS
    type(ESMF_State)               :: SURFST
    type(MAPL_LocStream)           :: locStreamO
    type(MAPL_LocStreamXform)      :: xform_A2O
@@ -2260,6 +2252,7 @@ contains
    real,    dimension(NT)              :: SLR
    real,    dimension(NT)              :: VSUVR
    real,    dimension(NT)              :: VSUVF
+   real,    dimension(NT)              :: FRCICE
 
    integer                             :: N
    real                                :: DT
@@ -2297,6 +2290,7 @@ contains
    real,               allocatable    :: DFSURFDTS     (:,:) ! 
    real,               allocatable    :: DLHFDTS       (:,:) ! 
    real,               allocatable    :: EVAPN         (:,:) ! 
+   real,               allocatable    :: LHFN          (:,:) ! 
    real,               allocatable    :: RAIN          (:)   !
 
 
@@ -2367,11 +2361,9 @@ contains
    call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,CMATM  , 'CMATM'  ,    RC=STATUS); VERIFY_(STATUS)
 
-   call MAPL_GetPointer(IMPORT,TAUXBOT, 'TAUXBOT',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TAUYBOT, 'TAUYBOT',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,TW     , 'TS_FOUND',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,FRZMLT , 'FRZMLT' ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,FR     , 'FRACICE' ,    RC=STATUS); VERIFY_(STATUS)
 
 ! Pointers to internals
 !----------------------
@@ -2423,16 +2415,6 @@ contains
    call MAPL_GetPointer(EXPORT,TSKINICE,'TSKINICE',    RC=STATUS); VERIFY_(STATUS)
 
 
-   ! category dimensional exports
-   call MAPL_GetPointer(EXPORT,SHICEN   ,  'SHICEN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLWUPN   ,  'HLWUPN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,LWNDSRFN ,  'LWNDSRFN'  ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSURFN   ,  'FSURFN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TSURFN   ,  'TSURFN'    ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSWSFCN  ,  'FSWSFCN'   ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBINe   ,  'ALBIN'     ,  RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBSNe   ,  'ALBSN'     ,  RC=STATUS); VERIFY_(STATUS)
-
 ! Get the time step
 ! -----------------
 
@@ -2458,6 +2440,7 @@ contains
     allocate(DFSURFDTS(size(TS,1),   size(TS,2)), __STAT__) 
     allocate(  DLHFDTS(size(TS,1),   size(TS,2)), __STAT__) 
     allocate(    EVAPN(size(TS,1),   size(TS,2)), __STAT__) 
+    allocate(     LHFN(size(TS,1),   size(TS,2)), __STAT__) 
     allocate(   TS_OLD(size(TS,1),   size(TS,2)), __STAT__) 
 
     allocate(    RAIN(size(TS,1)),  __STAT__) 
@@ -2584,14 +2567,9 @@ contains
     if(associated(FSURFe )) FSURFe  = 0.0
     if(associated(FSURFICE)) FSURFICE = 0.0
     if(associated(SHICE  )) SHICE   = 0.0
-    if(associated(MELTTL )) MELTTL  = 0.0
-    if(associated(MELTBL )) MELTBL  = 0.0
-    if(associated(MELTSL )) MELTSL  = 0.0
-    if(associated(CONGELO)) CONGELO = 0.0
-    if(associated(SNOICEO)) SNOICEO = 0.0
-    if(associated(FBOTL  )) FBOTL   = 0.0
-    if(associated(SBLXOUT)) SBLXOUT = 0.0
 
+
+    FRCICE = sum(FR(:,ICE:), dim=2) 
 
 ! Atmospheric surface stresses
 !-----------------------------
@@ -2604,8 +2582,8 @@ contains
 !----------------
 
     where(FRCICE > puny)
-        TXI = sum(CM(:,ICE:)*FR8(:,ICE:), dim=2)/FRCICE*(UUA - UI)
-        TYI = sum(CM(:,ICE:)*FR8(:,ICE:), dim=2)/FRCICE*(VVA - VI)
+        TXI = sum(CM(:,ICE:)*FR(:,ICE:), dim=2)/FRCICE*(UUA - UI)
+        TYI = sum(CM(:,ICE:)*FR(:,ICE:), dim=2)/FRCICE*(VVA - VI)
     elsewhere
         TXI = 0.0
         TYI = 0.0
@@ -2629,17 +2607,11 @@ contains
           EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
           LHF = EVP * MAPL_ALHS
 
-          if(associated(SHICEN)) then
-               SHICEN(:,N)  = SHF 
-               where(FR8(:,N) <= puny)
-                  SHICEN(:,N) = MAPL_UNDEF
-               endwhere   
-          endif
-
           FSURF(:,N)      = LWDNSRF - SHF - LHF - (ALW + BLW*TS(:,N))
           DFSURFDTS(:,N)  = SHD + EVD * MAPL_ALHS + BLW !!! check the sign
           DLHFDTS(:,N)    = EVD * MAPL_ALHS  !!! check the sign
           EVAPN(:,N)      = EVP !!! check the sign
+          LHFN(:,N)       = LHF !!! check the sign
 
     end do categories_th1_
 
@@ -2692,7 +2664,7 @@ contains
     call RegridA2O_2d(    FSURF, SURFST,     'FSURF', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(DFSURFDTS, SURFST, 'DFSURFDTS', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(  DLHFDTS, SURFST,   'DLHFDTS', XFORM_A2O, locstreamO, __RC__)
-    call RegridA2O_2d(      LHF, SURFST,       'LHF', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_2d(     LHFN, SURFST,       'LHF', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(    EVAPN, SURFST,      'EVAP', XFORM_A2O, locstreamO, __RC__)
 
     call RegridA2O_1d(     RAIN, SURFST,      'RAIN', XFORM_A2O, locstreamO, __RC__)
@@ -2726,7 +2698,6 @@ contains
     deallocate(AS_PTR_2D)
 
 
-    FRCICE = sum(FR8(:,ICE:), dim=2) 
 
     call MAPL_TimerOff(MAPL,  "-Thermo1")
 
@@ -2753,11 +2724,12 @@ contains
     deallocate(  DFSURFDTS,      __STAT__)
     deallocate(    DLHFDTS,      __STAT__)
     deallocate(      EVAPN,      __STAT__)
+    deallocate(       LHFN,      __STAT__)
     deallocate(       RAIN,      __STAT__)
 
-    deallocate(ALBIN)
-    deallocate(ALBSN)
-    deallocate(ALBPND)
+    !deallocate(ALBIN)
+    !deallocate(ALBSN)
+    !deallocate(ALBPND)
 
 !  All done
 !-----------
