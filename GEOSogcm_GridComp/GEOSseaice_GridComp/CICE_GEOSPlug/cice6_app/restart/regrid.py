@@ -319,8 +319,8 @@ def main() -> None:
         #print(variable.dimensions)   
         print('processing: ', name)   
         #dst[name][:] = src[name][:]
-        if 'vel' in name or 'stress' in name or 'strocn' in name:
-           dst[name][:] = 0.0 
+        if 'vel' in name or 'stress' in name or 'strocn' in name or 'iceu' in name:
+           dst[name][:] = c0 
         elif 'ulon' == name:
            dst[name][:] = ULON
         elif 'ulat' == name:
