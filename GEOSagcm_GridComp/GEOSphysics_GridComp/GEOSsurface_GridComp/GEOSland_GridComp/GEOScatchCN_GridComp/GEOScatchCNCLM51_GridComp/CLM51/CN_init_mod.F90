@@ -69,6 +69,8 @@ module CN_initMod
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
 
+  use MAPL             , only : NetCDF4_FileFormatter
+
  implicit none 
  private 
 

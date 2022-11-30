@@ -3,11 +3,12 @@
 module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
-  use shr_infnan_mod ,   only : nan => shr_infnan_nan
+  use nanMod           , only : nan
   use clm_varpar       , only : mxpft, numrad,nvariants
   use clm_varctl       , only : use_flexibleCN
   use netcdf 
   use shr_log_mod      , only : errMsg => shr_log_errMsg
+  use MAPL             , only : NetCDF4_FileFormatter
   use MAPL_ExceptionHandling
 
 
