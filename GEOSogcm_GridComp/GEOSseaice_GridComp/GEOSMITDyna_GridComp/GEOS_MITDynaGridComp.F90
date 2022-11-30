@@ -117,8 +117,8 @@ module GEOS_MITDynaGridCompMod
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
 
-!    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run,        RC=STATUS)
-!    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run,        RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=status)
     VERIFY_(STATUS)
@@ -1613,6 +1613,112 @@ module GEOS_MITDynaGridCompMod
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
+
+!BOP
+
+! ! IROUTINE: RUN -- Run stage for the DataSeaIce component
+
+! !INTERFACE:
+
+subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+
+! !ARGUMENTS:
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+  integer, optional,   intent(  out) :: RC     ! Error code:
+
+! ! DESCRIPTION: Periodically refreshes the SST and Ice information.
+
+!EOP
+
+! ErrLog Variables
+
+  character(len=ESMF_MAXSTR)          :: IAm
+  integer                             :: STATUS
+  character(len=ESMF_MAXSTR)          :: COMP_NAME
+
+! Locals
+
+  type (MAPL_MetaComp), pointer       :: MAPL
+         
+! pointers to export
+
+   real, pointer, dimension(:,:)  :: FRESH
+   real, pointer, dimension(:,:)  :: FSALT
+   real, pointer, dimension(:,:)  :: FHOCN
+
+! pointers to import
+
+   real, pointer, dimension(:,:)  :: FROCEAN
+   real, pointer, dimension(:,:)  :: FRESHTHM
+   real, pointer, dimension(:,:)  :: FSALTTHM
+   real, pointer, dimension(:,:)  :: FHOCNTHM
+
+
+!  Begin...
+!----------
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    Iam = "Run"
+    call ESMF_GridCompGet( GC, name=COMP_NAME, _RC )
+    Iam = trim(COMP_NAME) // Iam
+
+
+! Get my internal MAPL_Generic state
+!----------------------------------
+
+    call MAPL_GetObjectFromGC(GC, MAPL, _RC)
+
+! Start Total timer
+!------------------
+
+    call MAPL_TimerOn(MAPL,"TOTAL")
+    call MAPL_TimerOn(MAPL,"RUN" )
+   
+    call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN', _RC)
+    call MAPL_GetPointer(IMPORT, FRESHTHM ,  'FRESH'     , _RC)
+    call MAPL_GetPointer(IMPORT, FSALTTHM ,  'FSALT'     , _RC)
+    call MAPL_GetPointer(IMPORT, FHOCNTHM ,  'FHOCN'     , _RC)
+   
+    call MAPL_GetPointer(EXPORT, FSALT   ,  'FSALT'  , _RC)
+    call MAPL_GetPointer(EXPORT, FHOCN   ,  'FHOCN'  , _RC)
+
+     if(associated(FRESH)) then
+         FRESH = 0.0
+!@         call get_ocn_fluxes(fre=FRESH) 
+         where(FROCEAN /= MAPL_UNDEF)
+            FRESH = FRESH + FRESHTHM 
+         end where
+     endif  
+     if(associated(FSALT)) then
+         FSALT = 0.0
+!@         call get_ocn_fluxes(sal=FSALT) 
+         where(FROCEAN /= MAPL_UNDEF)
+            FSALT = FSALT + FSALTTHM
+         end where
+     endif  
+     if(associated(FHOCN)) then
+         FHOCN = 0.0
+ !@        call get_ocn_fluxes(hea=FHOCN) 
+         where(FROCEAN /= MAPL_UNDEF)
+            FHOCN = FHOCN + FHOCNTHM
+         end where
+     endif  
+
+!  All done
+!-----------
+
+   call MAPL_TimerOff(MAPL,"RUN"  )
+   call MAPL_TimerOff(MAPL,"TOTAL")
+
+   RETURN_(ESMF_SUCCESS)
+end subroutine RUN
 
 ! !IROUTINE: Finalize        -- Finalize method for CICEDyna wrapper
 
