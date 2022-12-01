@@ -31,6 +31,8 @@ module CICE_GEOSPlugMod
   !PUBLIC MEMBER FUNCTIONS:
   public :: SetServices
 
+  integer            :: NUM_ICE_CATEGORIES
+
 contains
 
   
@@ -62,6 +64,7 @@ contains
     character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 ! Locals
+    type (ESMF_Config)                  :: CF
 
 !=============================================================================
 
@@ -71,10 +74,13 @@ contains
 ! ---------------------------------------
 
     Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME,  CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
+
+    call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Set the Initialize, Run, Finalize entry points
 ! ----------------------------------------------
@@ -249,9 +255,9 @@ contains
     integer                                :: YEAR,MONTH,DAY,HR,MN,SC
 
 ! Locals 
+    integer                                :: Comm 
+    integer                                :: NUM_ICE_CATEGORIES 
 
-    type(time_type)                        :: Time
-    type(time_type)                        :: DT
 
 ! Locals with ESMF and MAPL types
 
@@ -288,6 +294,7 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+
 ! Profilers
 !----------
 
@@ -318,7 +325,7 @@ contains
                                         RC=STATUS )
     VERIFY_(STATUS)
 
-    CALL ESMF_TimeIntervalGet(TINT, S=DT_OCEAN, RC=status)
+    CALL ESMF_TimeIntervalGet(TINT, S=DT_SEAICE, RC=status)
     VERIFY_(status)
 
 ! Allocate this instance of the internal state and wrap
@@ -399,17 +406,17 @@ contains
 
     ! create and add some fields to the callback state (i.e. SURFSTATE)
     call ESMF_GridCompGet(gc, grid=grid, __RC__)
-    call AddSurfField('TSKINICE', SURFST, GRID, 
+    call AddSurfField('TSKINICE', SURFST, GRID,     &    
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
-    call AddSurfField('EVAP', SURFST, GRID, 
+    call AddSurfField('EVAP', SURFST, GRID,         &
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
-    call AddSurfField('LHF', SURFST, GRID, 
+    call AddSurfField('LHF', SURFST, GRID,          &
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
-    call AddSurfField('FSURF', SURFST, GRID, 
+    call AddSurfField('FSURF', SURFST, GRID,        &
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
-    call AddSurfField('DFSURFDTS', SURFST, GRID, 
+    call AddSurfField('DFSURFDTS', SURFST, GRID,    &
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
-    call AddSurfField('DLHFDTS', SURFST, GRID, 
+    call AddSurfField('DLHFDTS', SURFST, GRID,      &
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('SNOW',  SURFST, GRID,  __RC__)
     call AddSurfField('RAIN',  SURFST, GRID,  __RC__)
@@ -422,7 +429,7 @@ contains
     call AddSurfField('COSZ',  SURFST, GRID,  __RC__)
 
     ! callback return fields
-    call AddSurfField('DTS',   SURFST, GRID, 
+    call AddSurfField('DTS',   SURFST, GRID,        & 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
 
     RETURN_(ESMF_SUCCESS)
@@ -523,8 +530,6 @@ contains
     integer                            :: IM, JM
 
     integer                            :: YEAR,MONTH,DAY,HR,MN,SC
-    type(time_type)                    :: Time
-    type(time_type)                    :: DT
 
 
 
@@ -627,7 +632,6 @@ contains
 
 ! Locals 
 
-    type(time_type)                  :: Time
     integer                          :: YEAR,MONTH,DAY,HR,MN,SC
 
 ! Get the target components name and set-up traceback handle.
