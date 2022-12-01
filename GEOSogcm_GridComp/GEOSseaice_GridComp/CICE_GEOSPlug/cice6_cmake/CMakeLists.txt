@@ -106,6 +106,8 @@ list( APPEND CICE6_SRCS
    cicecore/drivers/mapl/geos/CICE_FinalMod.F90
    cicecore/drivers/mapl/geos/CICE_InitMod.F90
    cicecore/drivers/mapl/geos/CICE_RunMod.F90
+   cicecore/drivers/mapl/geos/ice_import_export.F90
+   cicecore/drivers/mapl/geos/ice_shr_methods.F90
    cicecore/drivers/mapl/geos/ice_prescribed_mod.F90
 )
 
@@ -120,9 +122,9 @@ endforeach ()
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES NetCDF::NetCDF_Fortran
+  DEPENDENCIES ESMF NetCDF::NetCDF_Fortran
   TYPE SHARED
 )
 
-target_compile_definitions (${this} PRIVATE USE_NETCDF FORTRANUNDERSCORE)
+target_compile_definitions (${this} PRIVATE USE_NETCDF GEOSCOUPLED FORTRANUNDERSCORE)
 
