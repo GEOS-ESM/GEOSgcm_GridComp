@@ -72,6 +72,6 @@ def main():
  
 
 if __name__ == '__main__' :
-  exit("Not ready")
+  exit("The python version of make_bcs is not yet ready for general use.  Until further notice, please use csh script make_bcs")
   main()
 
