@@ -439,9 +439,9 @@ contains
   subroutine AddSurfField(FLD_NAME, SURFST, GRID, UGRID, RC)
 
 ! !ARGUMENTS:
-    character(len=ESMF_MAXSTR)         :: FLD_NAME
+    character(len=*),    intent(IN)    :: FLD_NAME
     type(ESMF_State), intent(INOUT)    :: SURFST
-    type(ESMF_Grid),     intent(IN)    :: GRID
+    type(ESMF_Grid),  intent(INOUT)    :: GRID
     integer, optional,   intent(IN)    :: UGRID
     integer, optional,  intent(OUT)    :: RC
 
@@ -577,9 +577,9 @@ contains
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'  ,    RC=STATUS); VERIFY_(STATUS)
 
 
-    call ice_import_thermo2()
+    !call ice_import_thermo2()
 
-    call ice_import_dyna(TAUX, TAUY)
+    !call ice_import_dyna(TAUX, TAUY)
 
 
     call CICE_Run
@@ -587,9 +587,9 @@ contains
 ! Get exports needed by GEOS
 !---------------------
 
-    call ice_export_thermo2
+    !call ice_export_thermo2
 
-    call ice_export_dyna
+    !call ice_export_dyna
 
 
 
