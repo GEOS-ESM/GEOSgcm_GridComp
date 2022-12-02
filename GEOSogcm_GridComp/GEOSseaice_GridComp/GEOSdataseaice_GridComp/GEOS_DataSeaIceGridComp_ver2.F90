@@ -16,9 +16,6 @@ module GEOS_DataSeaIceGridCompMod
   use ESMF
   use MAPL
 
-  use ice_state,          only: nt_Tsfc, nt_iage, nt_volpn, init_trcr_depend
-  use ice_prescribed_mod
-
   implicit none
   private
 
@@ -27,7 +24,6 @@ module GEOS_DataSeaIceGridCompMod
 
   public SetServices
 
-  integer, parameter :: NUM_3D_ICE_TRACERS=3
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: NUM_ICE_CATEGORIES
   integer            :: NUM_ICE_LAYERS
@@ -41,7 +37,7 @@ module GEOS_DataSeaIceGridCompMod
 ! 
 !   {\tt GEOS\_DataSeaIce} is a gridded component that reads the 
 !   ocean\_bcs file 
-!   This module interpolates the sea ice fraction data from 
+!   This module interpolates the sea ice fraction and optionally thickness data from 
 !   either daily or monthly values to the correct time of the simulation.
 !   Data are read only if the simulation time is not in the save interval.
 !
@@ -143,7 +139,7 @@ module GEOS_DataSeaIceGridCompMod
 
   if (ocean_extData) then
     call MAPL_AddImportSpec(GC,                  &
-      SHORT_NAME         = 'DATA_ICE',           &
+      SHORT_NAME         = 'DATA_ICEC',          &
       LONG_NAME          = 'sea_ice_concentration',        &
       UNITS              = '1',                  &
       DIMS               = MAPL_DimsHorzOnly,    &
@@ -297,35 +293,6 @@ module GEOS_DataSeaIceGridCompMod
        RC=STATUS  )
   VERIFY_(STATUS)
 
-  if (DO_CICE_THERMO /= 0) then
-     call MAPL_AddExportSpec(GC,                                     &
-          SHORT_NAME         = 'TAUYBOT',                           &
-          LONG_NAME          = 'northward_stress_at_base_of_ice',   &
-          UNITS              = 'N m-2',                             &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddExportSpec(GC,                                 &
-          SHORT_NAME         = 'HICE',                              &
-          LONG_NAME          = 'mean_ice_thickness_of_grid_cell',   &
-          UNITS              = 'm',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-
-     call MAPL_AddExportSpec(GC,                                 &
-          SHORT_NAME         = 'HSNO',                              &
-          LONG_NAME          = 'mean_snow_thickness_of_grid_cell',  &
-          UNITS              = 'm',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  end if
 !EOS
 
   call MAPL_TimerAdd(GC,    name="RUN"     ,RC=STATUS)
@@ -343,8 +310,6 @@ module GEOS_DataSeaIceGridCompMod
   
   end subroutine SetServices
 
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !BOP
@@ -355,7 +320,6 @@ module GEOS_DataSeaIceGridCompMod
 
 subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
-
 ! !ARGUMENTS:
 
   type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
@@ -364,10 +328,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code:
 
-! !DESCRIPTION: Periodically refreshes the SST and Ice information.
+! !DESCRIPTION: Periodically refreshes the ocean bcs information.
 
 !EOP
-
 
 ! ErrLog Variables
 
@@ -378,8 +341,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Locals
 
   type (MAPL_MetaComp),  pointer      :: MAPL  => null()
-  logical                             :: FRIENDLY
-  type(ESMF_FIELD)                    :: FIELD
   type (ESMF_Time)                    :: CurrentTime
   character(len=ESMF_MAXSTR)          :: DataFrtFile
   integer                             :: IFCST
@@ -387,26 +348,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: TAU_SIT
   real                                :: DT
   real                                :: RUN_DT
-  real                                :: CTB  ! Ocean-ice turbulent mixing coefficient (m/sec)
-  real, parameter                     :: CW=MAPL_CAPWTR
-  real                                :: TICE
-  integer                             :: I, J, IM, JM, N
+  integer                             :: I, J, IM, JM
 
 ! below are for CICE Thermo
   real(kind=ESMF_KIND_R8), allocatable  :: FRCICE(:,:)
-  real(kind=ESMF_KIND_R8)               :: FRACICEDB(1)
-  real(kind=ESMF_KIND_R8)               :: FRWATERDB(1)
-  real(kind=ESMF_KIND_R8)               :: LATSDB(1)
-  real(kind=ESMF_KIND_R8)               :: TFDB(1)
-  real(kind=ESMF_KIND_R8)               :: FRDB(NUM_ICE_CATEGORIES)
   real(kind=ESMF_KIND_R8)               :: VOLICEDB(NUM_ICE_CATEGORIES)
   real(kind=ESMF_KIND_R8)               :: VOLSNODB(NUM_ICE_CATEGORIES)
   real(kind=ESMF_KIND_R8)               :: ERGICEDB(NUM_ICE_LAYERS_ALL)
   real(kind=ESMF_KIND_R8)               :: ERGSNODB(NUM_SNOW_LAYERS_ALL)
-
-  real(kind=ESMF_KIND_R8), dimension(NUM_3D_ICE_TRACERS, NUM_ICE_CATEGORIES) :: TRACERSDB2
-  real,                    dimension(NUM_3D_ICE_TRACERS,NUM_ICE_CATEGORIES)  :: TRACERS
-  real                                  :: TNH, TSH
 ! above were for CICE Thermo
 
 ! pointers to export
@@ -439,7 +388,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable, dimension(:,:)  :: FRT 
    real :: f
 
-   real, pointer :: DATA_ice(:,:) => null()
+   real, pointer :: DATA_icec(:,:) => null()
 ! above were for CICE Thermo
 
 
@@ -472,12 +421,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_TimerOn(MAPL,"TOTAL")
    call MAPL_TimerOn(MAPL,"RUN" )
 
-
 ! Pointers to Imports
 !--------------------
 
    if (ocean_extData) then
-     call MAPL_GetPointer(IMPORT, DATA_ice     ,  'DATA_ICE', __RC__)
+     call MAPL_GetPointer(IMPORT, DATA_icec    ,  'DATA_ICEC', __RC__)
    endif
 
    if (DO_CICE_THERMO == 0) then
@@ -545,19 +493,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL,DT     , LABEL="DT:"    , default=RUN_DT, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL,CTB    , LABEL="CTB:"   , default=1.0e-4, RC=STATUS)
-    VERIFY_(STATUS)
-
-! If using CICE Thermodynamics in AMIP mode, get prescribed ice thickness
-! FOR NOW, following way sets thickness to a constant value in either hemisphere- 
-! And in future (>04/2016) we will explore "other" ideas. [BZ/SA/MT]
-!----------------------------------------------------------------------------------
-    if (DO_CICE_THERMO /= 0) then
-      call MAPL_GetResource (MAPL, TNH, Label="PRESCRIBED_ICE_NH:" , DEFAULT=1.0, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource (MAPL, TSH, Label="PRESCRIBED_ICE_SH:" , DEFAULT=0.75, RC=STATUS)
-      VERIFY_(STATUS)
-    end if
 
 !  Update the friendly skin values
 !---------------------------------
@@ -573,7 +508,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    if (DO_CICE_THERMO == 0) then
      if(associated(FR)) then
        if (ocean_extData) then
-         FR = data_ice ! netcdf variable
+         FR = DATA_icec ! netcdf variable
        else ! binary
          call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
        end if
@@ -585,7 +520,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      end if
    else
      if (ocean_extData) then
-       frt = data_ice ! netcdf variable
+       frt = DATA_icec ! netcdf variable
      else ! binary
        call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FRT, INIT_ONLY=FCST, __RC__)
      end if
