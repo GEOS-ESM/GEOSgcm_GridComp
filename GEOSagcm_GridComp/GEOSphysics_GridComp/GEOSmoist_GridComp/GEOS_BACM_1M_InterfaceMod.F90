@@ -311,8 +311,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: TMP2D
     type(ESMF_State)                    :: AERO
     ! Exports
-    real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
-    real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro, DTHDT_micro
+    real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro, DQVDT_ER
+    real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro, DTHDT_micro, DTHDT_ER
     real, pointer, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
     real, pointer, dimension(:,:,:) :: CLDREFFL, CLDREFFI 
     real, pointer, dimension(:,:,:) :: RHX
@@ -731,6 +731,10 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
          ! Rain-out and Relative Humidity where RH > 110%
+         call MAPL_GetPointer(EXPORT, DTHDT_ER, 'DTHDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         DTHDT_ER = TH
+         DQVDT_ER = Q
          DQST3 = GEOS_DQSAT(TH*PK, PLmb, QSAT=QST3)
          where ( Q > 1.1*QST3 )
             TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
@@ -743,6 +747,9 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          Q  =  Q - TMP3D
          TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
          T  = TH*PK
+         DTHDT_ER = (TH - DTHDT_ER)/DT_MOIST
+         DQVDT_ER = (Q  - DQVDT_ER)/DT_MOIST
+
 
          ! cleanup any negative QV/QC/CF
          call FILLQ2ZERO(Q       , MASS, TMP2D)
@@ -767,14 +774,14 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (associated(DQADT_micro)) DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
          if (associated( DUDT_micro))  DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
          if (associated( DVDT_micro))  DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
-         if (associated( DTDT_micro))  DTDT_micro = (TH*PK       -  DTDT_micro) / DT_MOIST
-         if (associated(DTHDT_micro)) DTHDT_micro = (TH          - DTHDT_micro) / DT_MOIST
+         if (associated( DTDT_micro))  DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
+         if (associated(DTHDT_micro)) DTHDT_micro = ( TH         - DTHDT_micro) / DT_MOIST
 
          ! Compute DBZ radar reflectivity
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D) .OR. associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,TH*PK,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
             if (associated(PTR3D)) PTR3D = TMP3D
             if (associated(PTR2D)) then
                PTR2D=-9999.0

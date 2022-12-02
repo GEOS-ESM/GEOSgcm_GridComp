@@ -594,16 +594,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       END WHERE
       endif
 
-      ! Heating from cumulus friction
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
-      if(associated(PTR3D)) then
-          KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
-          TMP3D = 1.e-4 ! KEX
-          TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
-          do L=1,LM
-             PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
-          end do
-      end if
+     !! Heating from cumulus friction
+     !call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+     !if(associated(PTR3D)) then
+     !    KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
+     !    TMP3D = 1.e-4 ! KEX
+     !    TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
+     !    do L=1,LM
+     !       PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
+     !    end do
+     !end if
 
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST

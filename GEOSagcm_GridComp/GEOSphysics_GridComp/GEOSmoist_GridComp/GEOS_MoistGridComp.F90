@@ -2000,6 +2000,24 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DTHDT_ER',                                  &
+         LONG_NAME  = 'Potential_temperature_tendency_from_RH_cleanup',            &
+         UNITS      = 'K s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DQVDT_ER',                                  &
+         LONG_NAME  = 'specific_humidty_tendency_from_RH_cleanup',            &
+         UNITS      = 'kg m-2 s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='SC_MSE',                                     & 
          LONG_NAME ='shallow_convective_column_MSE_tendency',      &
          UNITS     ='W m-2',                                       &
@@ -5044,9 +5062,11 @@ contains
 
     ! Local variables
     real                                :: Tmax
+    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3
+    real, allocatable, dimension(:,:)   :: IKEX, IKEX2
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
@@ -5154,6 +5174,8 @@ contains
        ALLOCATE ( PLEmb(IM,JM,0:LM) )
        ALLOCATE ( PKE  (IM,JM,0:LM) )
         ! Layer variables
+       ALLOCATE ( U0   (IM,JM,LM  ) )
+       ALLOCATE ( V0   (IM,JM,LM  ) )
        ALLOCATE ( ZL0  (IM,JM,LM  ) )
        ALLOCATE ( DZET (IM,JM,LM  ) )
        ALLOCATE ( PLmb (IM,JM,LM  ) )
@@ -5162,6 +5184,10 @@ contains
        ALLOCATE (  QST3(IM,JM,LM  ) )
        ALLOCATE ( MASS (IM,JM,LM  ) )
        ALLOCATE ( TMP2D(IM,JM     ) )
+
+       ! Save input winds
+       U0 = U
+       V0 = V
 
        ! Derived States
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
@@ -5266,6 +5292,8 @@ contains
           if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
           call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_micro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DTHDT_ER'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DTHDT = DTHDT + PTR3D
           DTHDT = DTHDT*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)) ! Pressure weighted tendency
        endif
 
@@ -5279,6 +5307,8 @@ contains
           call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_macro', RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQDT = DQDT + PTR3D
           call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_micro', RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR3D)) DQDT = DQDT + PTR3D
+          call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_ER'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR3D)) DQDT = DQDT + PTR3D
        endif
 
@@ -5608,6 +5638,23 @@ contains
           enddo
        endif
 
+       ! Cumulus Friction
+       IKEX  = SUM( (0.5/DT_MOIST)*((V**2+U**2)  - (V0**2+U0**2))*MASS , 3 )
+       IKEX2 = MAX(  SUM( 1.E-04 * MASS , 3 ) ,  1.0e-6 ) ! floor at 1e-6 W m-2
+       !scaled 3D kinetic energy dissipation
+       call MAPL_GetPointer(EXPORT, PTR3D, 'KEDISS', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D))  then
+          do L=1,LM
+             PTR3D(:,:,L) = (IKEX/IKEX2) * 1.E-04
+          enddo
+       end if
+       call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+       if(associated(PTR3D)) then
+          do L=1,LM
+             PTR3D(:,:,L) = -(1./MAPL_CP)*(IKEX/IKEX2) * 1.E-04 * (PLE(:,:,L)-PLE(:,:,L-1))
+          end do
+       end if
+
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
@@ -5640,6 +5687,8 @@ contains
        ALLOCATE ( PLmb (IM,JM,LM  ) )
        ALLOCATE ( PK   (IM,JM,LM  ) )
        ALLOCATE ( MASS (IM,JM,LM  ) )
+       ALLOCATE ( IKEX (IM,JM     ) )
+       ALLOCATE ( IKEX2(IM,JM     ) )
        ALLOCATE ( TMP2D(IM,JM     ) )
        ! dervied states
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
