@@ -4,14 +4,12 @@ PROGRAM mkCatchParam
 !
 ! !ARGUMENTS:
 !
-!  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE"       
+!  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV "       
 !     -x: Size of longitude dimension of input raster. DEFAULT: 8640
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
 !     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09)
-!     -e: EASE  : This is optional if catchment.def file is available already or                    
-!                  the til file format is pre-Fortuna-2.                                                    
 !     
 !
 ! This program is good to generate  
@@ -20,7 +18,7 @@ PROGRAM mkCatchParam
 !  
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
-
+  use EASE_conv
   use rmTinyCatchParaMod 
   use process_hres_data
   !   use module_irrig_params, ONLY : create_irrig_params
@@ -40,13 +38,12 @@ PROGRAM mkCatchParam
   character*1          :: opt
   character*7          :: PEATSOURCE   = 'GDLHWSD'
   character*3          :: VEGZSOURCE   = 'D&S'
-  character*4          :: EASE ='    '
   character*2          :: DL ='DC'    
   integer              :: II, JJ, Type
   integer              :: I, J, command_argument_count, nxt
   real*8               :: dx, dy, lon0
   logical              :: regrid
-  character(len=400), dimension (8) ::  Usage 
+  character(len=400), dimension (6) ::  Usage 
   character*128        ::  Grid2
   character*2          :: poles
   character*128        :: GridNameR = ''
@@ -61,6 +58,8 @@ PROGRAM mkCatchParam
   character*200        :: fname_tmp, fname_tmp2, fname_tmp3, fname_tmp4
   integer              :: N_tile
   logical              :: process_snow_albedo = .false. 
+  character(len=10)    :: nc_string, nr_string
+  integer              :: nc_ease, nr_ease
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -103,14 +102,12 @@ integer :: n_threads=1
 !   call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
 !   call execute_command_line('cd ..')
 
-    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE                    "
-    USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                   "
-    USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320                   "
-    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)             "
-    USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC       "
-    USAGE(6) ="     -e: EASE  : This is optional if catchment.def file is available already or       "          
-    USAGE(7) ="                  the til file format is pre-Fortuna-2.                               "
-    USAGE(8) ="     -v  LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09)  "
+    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV                       "
+    USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640              "
+    USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320              "
+    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)        "
+    USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
+    USAGE(6) ="     -v  LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )  "
 
 ! Process Arguments                            
 !------------------ 
@@ -159,9 +156,6 @@ integer :: n_threads=1
           call init_bcs_config (trim(LBCSV))       ! get bcs details from version string
        case ('b')
           DL = trim(arg)
-       case ('e')
-          EASE = trim(arg)
-	  if(EASE=='EASE') ease_grid=.true.
        case default
           do j = 1,size(usage)
              print "(sp,a100)", Usage(j)
@@ -174,17 +168,26 @@ integer :: n_threads=1
 
    call get_environment_variable ("MASKFILE"        ,MaskFile        )
  
-  if(trim(Gridname) == '') then
+   if(trim(Gridname) == '') then
       write (log_file,'(a)')'Unable to create parameters without til/rst files.... !'
       stop
    endif
    
    regrid = nc/=i_raster .or. nr/=j_raster
+  
+   if (index(Gridname,'EASEv') /=0) then
+      ! here gridname has alias EASELabel
+      call ease_extent(Gridname, nc_ease, nr_ease )
+      write(nc_string, '(i0)') nc_ease
+      write(nr_string, '(i0)') nr_ease
+      gridname = trim(Gridname)//'_'//trim(nc_string)//'x'//trim(nr_string)
+      ease_grid = .true.
+   endif
 
    if(index(Gridname,'Pfaf.notiny')/=0) then 
       GridnameR='clsm/'//trim(Gridname)
       GridnameT='clsm/'//trim(Gridname)
-      else
+   else
       GridnameR='rst/'//trim(Gridname)  
       GridnameT='til/'//trim(Gridname)  
     endif 
