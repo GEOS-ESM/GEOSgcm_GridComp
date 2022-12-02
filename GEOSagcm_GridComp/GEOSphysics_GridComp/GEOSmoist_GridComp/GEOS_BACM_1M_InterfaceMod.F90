@@ -212,7 +212,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_DDRF,       'ANV_DDRF:',       DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 2.      )
+    call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
     SELECT CASE ( LM )
     CASE ( 72 )
            TMP_ICEFALL = 1.0
