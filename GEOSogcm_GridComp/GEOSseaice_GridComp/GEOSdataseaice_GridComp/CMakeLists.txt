@@ -17,8 +17,8 @@ endif ()
 message(STATUS "DATA_SEAICE set to: ${DATA_SEAICE}")
 
 if (DATA_SEAICE STREQUAL "VERSION_1")
-  esma_add_library (${this} SRCS GEOS_DataSeaIceGridComp.F90      DEPENDENCIES MAPL CICE4 esmf NetCDF::NetCDF_Fortran)
+  esma_add_library (${this} SRCS GEOS_DataSeaIceGridComp.F90         DEPENDENCIES MAPL CICE4 esmf NetCDF::NetCDF_Fortran)
 else ()
-  esma_add_library (${this} SRCS GEOS_DataSeaIceGridComp_ver2.F90 DEPENDENCIES MAPL CICE4 esmf NetCDF::NetCDF_Fortran)
+  esma_add_library (${this} SRCS GEOS_DataSeaIceGridComp_ExtData.F90 DEPENDENCIES MAPL esmf NetCDF::NetCDF_Fortran)
 endif ()
 
