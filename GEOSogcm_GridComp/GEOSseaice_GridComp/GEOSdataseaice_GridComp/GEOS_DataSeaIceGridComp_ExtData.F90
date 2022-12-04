@@ -129,7 +129,6 @@ module GEOS_DataSeaIceGridCompMod
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
     VERIFY_(STATUS)
 
-
 ! Set the state variable specs.
 ! -----------------------------
 
@@ -176,93 +175,6 @@ module GEOS_DataSeaIceGridCompMod
     VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
    VERIFY_(STATUS)
-
-  if (DO_CICE_THERMO /= 0) then
-     call MAPL_AddImportSpec(GC,                               &
-          SHORT_NAME         = 'FRACICE',                           &
-          LONG_NAME          = 'fractional_cover_of_seaice',        &
-          UNITS              = '1',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                 &
-          SHORT_NAME         = 'TI',                                &
-          LONG_NAME          = 'seaice_skin_temperature',           &
-          UNITS              = 'K',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                 &
-          SHORT_NAME         = 'VOLICE',                            &
-          LONG_NAME          = 'ice_category_volume_per_unit_area_of_grid_cell',&
-          UNITS              = 'm',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                 &
-          SHORT_NAME         = 'VOLSNO',                            &
-          LONG_NAME          = 'sno_category_volume_per_unit_area_of_grid_cell',&
-          UNITS              = 'm',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                 &
-          SHORT_NAME         = 'ERGICE',                            &
-          LONG_NAME          = 'ice_category_layer_internal_energy',&
-          UNITS              = 'J m-2',                             &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          UNGRIDDED_DIMS     = (/NUM_ICE_LAYERS_ALL/),              &
-          RESTART            = MAPL_RestartSkip,                    &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                &
-          SHORT_NAME         = 'ERGSNO',                            &
-          LONG_NAME          = 'snow_category_layer_internal_energy',&
-          UNITS              = 'J m-2',                             &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          UNGRIDDED_DIMS     = (/NUM_SNOW_LAYERS_ALL/),             &
-          RESTART            = MAPL_RestartSkip,                    &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC                                ,&
-          LONG_NAME          = 'melt_pond_volume'                  ,&
-          UNITS              = 'm'                                 ,&
-          SHORT_NAME         = 'MPOND'                             ,&
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RESTART            = MAPL_RestartSkip,                    &
-          RC=STATUS                                                 )
-
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                &
-          SHORT_NAME         = 'TAUAGE',                            &
-          LONG_NAME          = 'volume_weighted_mean_ice_age',      &
-          UNITS              = 's',                                 &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RESTART            = MAPL_RestartSkip,                    &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  end if ! (DO_CICE_THERMO /= 0)
 
 !  !Export state:
 
@@ -431,27 +343,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    if (DO_CICE_THERMO == 0) then
       call MAPL_GetPointer(IMPORT, TI    ,  'TI'   , RC=STATUS)
       VERIFY_(STATUS)
-   else
-      call MAPL_GetPointer(IMPORT, TI8   ,  'TI'   , RC=STATUS)
-      VERIFY_(STATUS)
    end if
    call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS) 
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, SI      ,  'SI'   , RC=STATUS)
    VERIFY_(STATUS)
-
-   if (DO_CICE_THERMO /= 0) then
-     call MAPL_GetPointer(IMPORT, FR8     ,  'FRACICE', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, VOLICE  ,  'VOLICE' , RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, ERGICE  ,  'ERGICE' , RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, VOLSNO  ,  'VOLSNO' , RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, ERGSNO  ,  'ERGSNO' , RC=STATUS)
-     VERIFY_(STATUS)
-   end if
 
 !  Pointers to Exports
 !---------------------
@@ -499,12 +395,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    call MAPL_TimerOn(MAPL,"-UPDATE" )
 
-   if (DO_CICE_THERMO /= 0) then
-     call MAPL_Get(MAPL, IM=IM, JM=JM, RC=STATUS)
-     VERIFY_(STATUS)
-     allocate(FRT(IM,JM), FRCICE(IM,JM))
-   end if
-
    if (DO_CICE_THERMO == 0) then
      if(associated(FR)) then
        if (ocean_extData) then
@@ -513,31 +403,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
        end if
 
+!      Sanity check
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
           if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
           _ASSERT(.FALSE.,'needs informative message')
        endif
      end if
-   else
-     if (ocean_extData) then
-       frt = DATA_icec ! netcdf variable
-     else ! binary
-       call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FRT, INIT_ONLY=FCST, __RC__)
-     end if
-
-! Sanity checks
-     do I=1, size(FRT,1)
-        do J=1, size(FRT,2)
-           f=FRT(I,J)
-           if (f==MAPL_UNDEF) cycle
-           if ((f < 0.0) .or. (f > 1.0)) then
-              print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-              _ASSERT(.FALSE.,'needs informative message')
-           end if
-        end do
-     end do
-
-     if(associated(FR)) FR = FRT
    end if ! (DO_CICE_THERMO == 0)
 
    if (DO_CICE_THERMO == 0) then
@@ -561,11 +432,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Clean-up
 !---------
-
-   if (DO_CICE_THERMO /= 0) then
-     deallocate(FRT)
-     deallocate(FRCICE)
-   end if
 
 !  All done
 !-----------
