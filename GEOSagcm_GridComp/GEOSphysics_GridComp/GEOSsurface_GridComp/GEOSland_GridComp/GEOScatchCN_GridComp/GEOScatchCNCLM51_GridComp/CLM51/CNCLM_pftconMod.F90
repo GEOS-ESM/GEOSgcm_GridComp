@@ -3,7 +3,7 @@
 module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
-  use nanMod           , only : nan, nan8
+  use nanMod           , only : nan, bigint
   use clm_varpar       , only : mxpft, numrad,nvariants
   use clm_varctl       , only : use_flexibleCN
   use netcdf 
@@ -283,7 +283,7 @@ contains
     allocate( this%roota_par     (0:mxpft) ); this%roota_par(:) = nan
     allocate( this%rootb_par     (0:mxpft) ); this%rootb_par(:) = nan
     allocate( this%crop          (0:mxpft) ); this%crop     (:) = nan  !#
-    allocate( this%mergetoclmpft (0:mxpft) ); this%mergetoclmpft (:) = nan8 !#
+    allocate( this%mergetoclmpft (0:mxpft) ); this%mergetoclmpft (:) = bigint !#
     allocate( this%is_pft_known_to_model  (0:mxpft) ); this%is_pft_known_to_model(:) = nan !#
     allocate( this%irrigated     (0:mxpft) ); this%irrigated (:) = nan   !#
     allocate( this%smpso         (0:mxpft) ); this%smpso     (:) = nan   !#
@@ -323,7 +323,7 @@ contains
     allocate( this%mbbopt        (0:mxpft) ); this%mbbopt    (:) = nan !#
     allocate( this%medlynslope   (0:mxpft) ); this%medlynslope (:) = nan !#
     allocate( this%medlynintercept(0:mxpft) ); this%medlynintercept = nan !#
-    allocate( this%mxmat         (0:mxpft) ); this%mxmat     (:) = nan8
+    allocate( this%mxmat         (0:mxpft) ); this%mxmat     (:) = bigint
     allocate( this%mnNHplantdate (0:mxpft) ); this%mnNHplantdate (:) = huge(1)
     allocate( this%mxNHplantdate (0:mxpft) ); this%mxNHplantdate (:) = huge(1)
     allocate( this%mnSHplantdate (0:mxpft) ); this%mnSHplantdate (:) = huge(1)
