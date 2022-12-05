@@ -37,6 +37,7 @@ module ncdio_pio
   interface ncd_io
 
     module procedure ncd_io_char
+    module procedure ncd_io_log_1d
     module procedure ncd_io_r4_0d
     module procedure ncd_io_r4_1d
     module procedure ncd_io_r4_2d
@@ -82,6 +83,32 @@ module ncdio_pio
    endif
 
  end subroutine ncd_io_char
+
+ subroutine ncd_io_log_1d ( varname, data, flag, ncid, readvar, rc)
+
+ ! ARGUMENTS:
+ !-------------
+  type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
+  logical,           intent(inout) :: data(:)
+  character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
+  character(len=*),  intent(in)    :: varname      ! variable name
+  logical,           intent(out)   :: readvar
+  integer,optional,  intent(out)   :: rc
+
+  ! LOCAL:
+
+  integer :: status
+
+  !-------------------------------------
+
+   if (flag == 'read') then
+      readvar = .false.
+     ! call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
+      if (status ==0) readvar = .true.
+   endif
+
+ end subroutine ncd_io_log_1d
 
 !----------------------------------------------------
  subroutine ncd_io_r4_0d ( varname, data, flag, ncid, readvar, rc)
