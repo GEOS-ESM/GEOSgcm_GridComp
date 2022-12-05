@@ -10,7 +10,7 @@ module pftconMod
   use shr_log_mod      , only : errMsg => shr_log_errMsg
   use MAPL             , only : NetCDF4_FileFormatter
   use MAPL_ExceptionHandling
-
+  use ncdio_pio        , only : ncd_io
 
   ! !PUBLIC TYPES:
   implicit none
