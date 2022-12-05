@@ -8,7 +8,7 @@ module pftconMod
   use clm_varctl       , only : use_flexibleCN
   use netcdf 
   use shr_log_mod      , only : errMsg => shr_log_errMsg
-  use MAPL             , only : NetCDF4_FileFormatter
+  use MAPL             , only : NetCDF4_FileFormatter, pFIO_READ
   use MAPL_ExceptionHandling
   use ncdio_pio        , only : ncd_io
 
@@ -241,8 +241,8 @@ contains
   ! !DESCRIPTION:
 ! Initialize CTSM PFT constants                                
 !                                                                              
-  use ncdio_pio   , only : ncd_io
   use abortutils  , only : endrun
+
 ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
