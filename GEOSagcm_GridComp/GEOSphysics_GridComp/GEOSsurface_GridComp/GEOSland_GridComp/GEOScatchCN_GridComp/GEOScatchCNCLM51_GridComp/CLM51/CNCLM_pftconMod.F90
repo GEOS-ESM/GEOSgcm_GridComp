@@ -242,6 +242,7 @@ contains
 ! Initialize CTSM PFT constants                                
 !                                                                              
   use ncdio_pio   , only : ncd_io
+  use abortutils  , only : endrun
 ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
