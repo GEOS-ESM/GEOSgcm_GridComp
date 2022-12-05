@@ -77,7 +77,7 @@ contains
     type  (ESMF_Config)                :: CF
     integer                            :: iDUAL_OCEAN
     character(len=ESMF_MAXSTR)         :: charbuf_
-    !character(len=ESMF_MAXSTR)         :: sharedObj
+    character(len=ESMF_MAXSTR)         :: sharedObj
 
 ! Begin...
 
@@ -113,7 +113,10 @@ contains
           case ("CICE4")
              ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE4SeaIceSetServices, __RC__)
           case ("CICE6")
-             ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE6SeaIceSetServices, __RC__)
+             call MAPL_GetResource ( MAPL, sharedObj,  Label="CICE_GEOSPLUG:", DEFAULT="libCICE_GEOSPlug.so", __RC__ )
+             ICE = MAPL_AddChild(SEAICE_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
+
+             !ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE6SeaIceSetServices, __RC__)
           case default
              charbuf_ = "SEAICE_NAME: " // trim(SEAICE_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)
