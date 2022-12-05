@@ -36,6 +36,7 @@ module clm_varctl
   logical, public :: use_dynroot         = .false.
   logical, public :: use_bedrock = .false. ! true => use spatially variable soil depth
   logical, public :: use_extralakelayers = .false.
+  logical, public :: use_biomass_heat_storage = .false.
 
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
