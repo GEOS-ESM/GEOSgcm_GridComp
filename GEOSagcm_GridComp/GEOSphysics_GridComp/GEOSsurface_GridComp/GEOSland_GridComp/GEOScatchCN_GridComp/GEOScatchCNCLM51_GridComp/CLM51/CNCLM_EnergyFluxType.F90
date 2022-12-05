@@ -14,6 +14,7 @@ module EnergyFluxType
   use LandunitType   , only : lun
   use ColumnType     , only : col
   use PatchType      , only : patch
+  use clm_varpar   , only: nlevgrnd
 
  !
   implicit none
