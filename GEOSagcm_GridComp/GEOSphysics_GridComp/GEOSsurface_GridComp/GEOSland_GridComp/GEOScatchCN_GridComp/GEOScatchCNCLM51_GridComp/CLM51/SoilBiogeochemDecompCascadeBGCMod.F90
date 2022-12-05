@@ -17,7 +17,7 @@ module SoilBiogeochemDecompCascadeBGCMod
   use spmdMod                            , only : masterproc
   use abortutils                         , only : endrun
   use CNSharedParamsMod                  , only : CNParamsShareInst, nlev_soildecomp_standard 
-  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con, InitSoilTransfer
+  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
   use SoilBiogeochemStateType            , only : soilbiogeochem_state_type
   use SoilBiogeochemCarbonFluxType       , only : soilbiogeochem_carbonflux_type
   use SoilStateType                      , only : soilstate_type
@@ -670,7 +670,7 @@ contains
          end if
       end if
  
-      if(use_soil_matrixcn) call InitSoilTransfer()
+   !   if(use_soil_matrixcn) call InitSoilTransfer()
 
       deallocate(rf_s1s2)
       deallocate(rf_s1s3)
@@ -755,7 +755,7 @@ contains
          w_scalar       => soilbiogeochem_carbonflux_inst%w_scalar_col , & ! Output: [real(r8) (:,:)   ]  soil water scalar for decomp                           
          o_scalar       => soilbiogeochem_carbonflux_inst%o_scalar_col , & ! Output: [real(r8) (:,:)   ]  fraction by which decomposition is limited by anoxia   
          decomp_k       => soilbiogeochem_carbonflux_inst%decomp_k_col , & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)
-         Ksoil          => soilbiogeochem_carbonflux_inst%Ksoil        , & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)
+        ! Ksoil          => soilbiogeochem_carbonflux_inst%Ksoil        , & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)
          spinup_factor  => decomp_cascade_con%spinup_factor            & ! Input:  [real(r8)          (:)     ]  factor for AD spinup associated with each pool           
 !         matrix_decomp_k  => soilbiogeochem_carbonflux_inst%matrix_decomp_k_col & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)
          )
@@ -1064,14 +1064,14 @@ contains
                                        * spinup_geogterm_s2(c)
                decomp_k(c,j,i_soil3) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) &
                                        * spinup_geogterm_s3(c)
-               if(use_soil_matrixcn)then
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l1(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s1(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s2(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s3(c) * dt
-               end if !use_soil_matrixcn
+!               if(use_soil_matrixcn)then
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l1(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s1(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s2(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s3(c) * dt
+!               end if !use_soil_matrixcn
             end do
          end do
       else
@@ -1084,14 +1084,14 @@ contains
                decomp_k(c,j,i_soil1) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s1(c)
                decomp_k(c,j,i_soil2) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s2(c)
                decomp_k(c,j,i_soil3) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s3(c)
-               if(use_soil_matrixcn)then
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l1(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s1(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s2(c) * dt
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s3(c) * dt
-               end if !use_soil_matrixcn
+!               if(use_soil_matrixcn)then
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l1(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l2_l3 * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_l23(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s1(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s2(c) * dt
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) * spinup_geogterm_s3(c) * dt
+!               end if !use_soil_matrixcn
             end do
          end do
       end if
@@ -1104,10 +1104,10 @@ contains
                   c = filter_soilc(fc)
                   decomp_k(c,j,i_cwd)   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * &
                        o_scalar(c,j) * spinup_geogterm_cwd(c)
-                  if(use_soil_matrixcn)then
-                     Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * &
-                            o_scalar(c,j) * spinup_geogterm_cwd(c) * dt
-                  end if !use_soil_matrixcn
+!                  if(use_soil_matrixcn)then
+!                     Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * &
+!                            o_scalar(c,j) * spinup_geogterm_cwd(c) * dt
+!                  end if !use_soil_matrixcn
                end do
             end do
          else
@@ -1116,10 +1116,10 @@ contains
                   c = filter_soilc(fc)
                   decomp_k(c,j,i_cwd)   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * &
                        o_scalar(c,j) * spinup_geogterm_cwd(c)
-                  if(use_soil_matrixcn)then
-                      Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * &
-                             o_scalar(c,j) * spinup_geogterm_cwd(c) * dt
-                  end if !use_soil_matrixcn
+!                  if(use_soil_matrixcn)then
+!                      Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * &
+!                             o_scalar(c,j) * spinup_geogterm_cwd(c) * dt
+!                  end if !use_soil_matrixcn
                end do
             end do
          end if
