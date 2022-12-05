@@ -16,7 +16,7 @@ module SoilBiogeochemDecompCascadeCNMod
   use decompMod                          , only : bounds_type
   use abortutils                         , only : endrun
   use CNSharedParamsMod                  , only : CNParamsShareInst, nlev_soildecomp_standard 
-  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con, InitSoilTransfer
+  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
   use SoilBiogeochemStateType            , only : soilbiogeochem_state_type
   use SoilBiogeochemCarbonFluxType       , only : soilbiogeochem_carbonflux_type
   use SoilStateType                      , only : soilstate_type
@@ -576,7 +576,7 @@ contains
          end if
       end if
 
-      if(use_soil_matrixcn)call InitSoilTransfer()
+      !if(use_soil_matrixcn)call InitSoilTransfer()
 
     end associate
 
@@ -663,7 +663,7 @@ contains
           w_scalar       => soilbiogeochem_carbonflux_inst%w_scalar_col , & ! Output: [real(r8) (:,:)   ]  soil water scalar for decomp                           
           o_scalar       => soilbiogeochem_carbonflux_inst%o_scalar_col , & ! Output: [real(r8) (:,:)   ]  fraction by which decomposition is limited by anoxia   
           decomp_k       => soilbiogeochem_carbonflux_inst%decomp_k_col , & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)             
-          Ksoil          => soilbiogeochem_carbonflux_inst%Ksoil          & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)
+      !    Ksoil          => soilbiogeochem_carbonflux_inst%Ksoil          & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)
           )
 
        mino2lim = CNParamsShareInst%mino2lim
@@ -927,15 +927,15 @@ contains
                 decomp_k(c,j,i_soil2) = k_s2 * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) / dt
                 decomp_k(c,j,i_soil3) = k_s3 * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) / dt
                 decomp_k(c,j,i_soil4) = k_s4 * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) / dt
-                if(use_soil_matrixcn)then
-                   Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
-                   Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
-                   Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l3    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
-                   Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
-                   Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
-                   Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
-                   Ksoil%DM(c,j+nlevdecomp*(i_soil4-1)) = k_s4    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
-                end if
+!                if(use_soil_matrixcn)then
+!                   Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
+!                   Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
+!                   Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l3    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
+!                   Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
+!                   Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
+!                   Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
+!                   Ksoil%DM(c,j+nlevdecomp*(i_soil4-1)) = k_s4    * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j)
+!                end if
              end do
           end do
        else
@@ -949,15 +949,15 @@ contains
                 decomp_k(c,j,i_soil2) = k_s2 * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) / dt
                 decomp_k(c,j,i_soil3) = k_s3 * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) / dt
                 decomp_k(c,j,i_soil4) = k_s4 * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) / dt
-               if(use_soil_matrixcn)then
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
-                  Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l3    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
-                  Ksoil%DM(c,j+nlevdecomp*(i_soil4-1)) = k_s4    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
-               end if
+!               if(use_soil_matrixcn)then
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr1-1)) = k_l1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr2-1)) = k_l2    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
+!                  Ksoil%DM(c,j+nlevdecomp*(i_litr3-1)) = k_l3    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil1-1)) = k_s1    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil2-1)) = k_s2    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil3-1)) = k_s3    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
+!                  Ksoil%DM(c,j+nlevdecomp*(i_soil4-1)) = k_s4    * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j)
+!               end if
              end do
           end do
        end if
@@ -969,10 +969,10 @@ contains
                 do fc = 1,num_soilc
                    c = filter_soilc(fc)
                    decomp_k(c,j,i_cwd) = k_frag * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * o_scalar(c,j) / dt
-                   if(use_soil_matrixcn)then
-                      Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * &
-                             o_scalar(c,j)
-                   end if
+!                   if(use_soil_matrixcn)then
+!                      Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * depth_scalar(c,j) * &
+!                             o_scalar(c,j)
+!                   end if
                 end do
              end do
           else
@@ -980,10 +980,10 @@ contains
                 do fc = 1,num_soilc
                    c = filter_soilc(fc)
                    decomp_k(c,j,i_cwd) = k_frag * t_scalar(c,j) * w_scalar(c,j) * o_scalar(c,j) / dt
-                   if(use_soil_matrixcn)then
-                      Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * &
-                             o_scalar(c,j)
-                   end if
+!                   if(use_soil_matrixcn)then
+!                      Ksoil%DM(c,j+nlevdecomp*(i_cwd-1))   = k_frag  * t_scalar(c,j) * w_scalar(c,j) * &
+!                             o_scalar(c,j)
+!                   end if
                 end do
              end do
           end if
