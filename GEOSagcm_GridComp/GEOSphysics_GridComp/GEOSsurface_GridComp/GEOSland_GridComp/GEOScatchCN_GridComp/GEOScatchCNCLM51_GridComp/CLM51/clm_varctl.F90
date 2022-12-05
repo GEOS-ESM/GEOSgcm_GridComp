@@ -60,6 +60,14 @@ module clm_varctl
   logical, public :: CNratio_floating = .false.
   integer, public :: CN_evergreen_phenology_opt = 0
 
+  !----------------------------------------------------------
+  ! BGC logic and datasets
+  !----------------------------------------------------------
+
+  ! true => anoxia is applied to heterotrophic respiration also considered in CH4 model
+  ! default value reset in controlMod
+  logical, public :: anoxia  = .true.
+
   ! State of the model for the accelerated decomposition (AD) spinup. 
   ! 0 (default) = normal model; 1 = AD SPINUP
   integer, public :: spinup_state = 0
