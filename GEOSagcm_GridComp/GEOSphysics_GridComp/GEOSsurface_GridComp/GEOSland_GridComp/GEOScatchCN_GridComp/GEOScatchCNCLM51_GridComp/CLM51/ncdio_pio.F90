@@ -58,7 +58,7 @@ module ncdio_pio
 
  contains 
 
- subroutine ncd_io_char ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_char ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -68,6 +68,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer,optional,  intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -84,7 +86,7 @@ module ncdio_pio
 
  end subroutine ncd_io_char
 
- subroutine ncd_io_log_1d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_log_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -94,6 +96,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer,optional,  intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -111,7 +115,7 @@ module ncdio_pio
  end subroutine ncd_io_log_1d
 
 !----------------------------------------------------
- subroutine ncd_io_r4_0d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r4_0d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -121,6 +125,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer,optional,  intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -138,7 +144,7 @@ module ncdio_pio
  end subroutine ncd_io_r4_0d
 
 !----------------------------------------------------
- subroutine ncd_io_r4_1d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r4_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -148,6 +154,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer,optional,  intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -166,7 +174,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
- subroutine ncd_io_r4_2d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r4_2d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -176,6 +184,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -193,7 +203,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
- subroutine ncd_io_r4_3d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r4_3d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -203,6 +213,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -221,7 +233,7 @@ module ncdio_pio
 
   !-----------------------------------------------------------------------
 
- subroutine ncd_io_r4_4d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r4_4d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -231,6 +243,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -249,7 +263,7 @@ module ncdio_pio
 
  !-----------------------------------------------------------------------
 
- subroutine ncd_io_r8_0d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r8_0d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -259,6 +273,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -277,7 +293,7 @@ module ncdio_pio
 
  !-----------------------------------------------------------------------
 
- subroutine ncd_io_r8_1d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r8_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -287,6 +303,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -305,7 +323,7 @@ module ncdio_pio
 
  !-----------------------------------------------------------------------
 
- subroutine ncd_io_r8_2d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r8_2d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -315,6 +333,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -334,7 +354,7 @@ module ncdio_pio
   !-----------------------------------------------------------------------
 
 
- subroutine ncd_io_r8_3d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r8_3d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -344,6 +364,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -363,7 +385,7 @@ module ncdio_pio
   !-----------------------------------------------------------------------
 
 
- subroutine ncd_io_r8_4d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_r8_4d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -373,6 +395,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -390,7 +414,7 @@ module ncdio_pio
  end subroutine ncd_io_r8_4d
 
  !-----------------------------------------------------------------------
- subroutine ncd_io_i4_0d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_i4_0d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -400,6 +424,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -418,7 +444,7 @@ module ncdio_pio
 
  !-----------------------------------------------------------------------
 
- subroutine ncd_io_i4_1d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_i4_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -428,6 +454,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -446,7 +474,7 @@ module ncdio_pio
 
  !-----------------------------------------------------------------------
 
- subroutine ncd_io_i4_2d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_i4_2d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -456,6 +484,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -473,7 +503,7 @@ module ncdio_pio
  end subroutine ncd_io_i4_2d
 
   !-----------------------------------------------------------------------
- subroutine ncd_io_i4_3d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_i4_3d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -483,6 +513,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
@@ -500,7 +532,7 @@ module ncdio_pio
  end subroutine ncd_io_i4_3d
 
   !-----------------------------------------------------------------------
- subroutine ncd_io_i4_4d ( varname, data, flag, ncid, readvar, rc)
+ subroutine ncd_io_i4_4d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
