@@ -16,6 +16,7 @@ module WaterStateType
   use clm_varcon     , only : spval
   use LandunitType   , only : lun
   use ColumnType     , only : col
+  use nanMod         , only : nan
 
   implicit none
   save
@@ -79,8 +80,8 @@ contains
 
     allocate(this%h2osoi_vol_col(begc:endc,1:nlevmaxurbgrnd))         ;  this%h2osoi_vol_col(begc:endc,         1:) = spval
     allocate(this%h2osoi_vol_prs_grc(begg:endg,1:nlevgrnd))           ;  this%h2osoi_vol_prs_grc(begg:endg,     1:) = spval
-    allocate(this%h2osoi_liq_col(begc:endc,-nlevsno+1nlevmaxurbgrnd)) ;  this%h2osoi_liq_col(begc:endc,-nlevsno+1:) = spval
-    allocate(this%h2osoi_ice_col(begc:endc,-nlevsno+1nlevmaxurbgrnd)) ;  this%h2osoi_ice_col(bounds%begc:bounds%endc,-nlevsno+1:) = spval
+    allocate(this%h2osoi_liq_col(begc:endc,-nlevsno+1:nlevmaxurbgrnd)) ;  this%h2osoi_liq_col(begc:endc,-nlevsno+1:) = spval
+    allocate(this%h2osoi_ice_col(begc:endc,-nlevsno+1:nlevmaxurbgrnd)) ;  this%h2osoi_ice_col(bounds%begc:bounds%endc,-nlevsno+1:) = spval
    
     allocate( this%wa_col (begc:endc))                 ; this%wa_col(begc:endc) = spval
     allocate( this%h2osno_no_layers_col (begc:endc))   ; this%h2osno_no_layers_col(begc:endc) = nan
