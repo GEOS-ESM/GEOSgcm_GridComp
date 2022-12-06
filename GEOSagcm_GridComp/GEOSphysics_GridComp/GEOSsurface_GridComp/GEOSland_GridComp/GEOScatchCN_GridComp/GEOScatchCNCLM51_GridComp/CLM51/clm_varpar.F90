@@ -42,6 +42,8 @@ module clm_varpar
   integer, public, parameter :: nvariants   =   2     ! number of variants of PFT constants
 
   integer, public, parameter :: numrad      =   2     ! number of solar radiation bands: vis, nir
+  integer, public, parameter :: ivis        =   1     ! index for visible band
+  integer, public, parameter :: inir        =   2     ! index for near-infrared band
   integer, public, parameter :: nlevcan     =   1     ! number of leaf layers in canopy layer
   integer, public, parameter :: nvegwcs     =   4     ! number of vegetation water conductance segments
 
