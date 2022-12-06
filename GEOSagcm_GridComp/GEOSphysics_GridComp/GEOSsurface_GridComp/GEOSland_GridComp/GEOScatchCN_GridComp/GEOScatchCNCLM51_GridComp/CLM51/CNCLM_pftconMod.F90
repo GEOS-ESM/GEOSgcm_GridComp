@@ -4,8 +4,8 @@ module pftconMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
   use nanMod           , only : nan, bigint
-  use clm_varpar       , only : mxpft, numrad,nvariants
-  use clm_varctl       , only : use_flexibleCN
+  use clm_varpar       , only : mxpft, numrad,nvariants, ivis, inir
+  use clm_varctl       , only : use_flexibleCN, use_cndv
   use netcdf 
   use shr_log_mod      , only : errMsg => shr_log_errMsg
   use MAPL             , only : NetCDF4_FileFormatter, pFIO_READ
@@ -250,7 +250,7 @@ contains
 
     !LOCAL
     character(300)     :: paramfile
-    integer            :: ierr, clm_varid,  status
+    integer            :: ierr, clm_varid,  status, m
     logical            :: readv ! has variable been read in or not
     type(Netcdf4_fileformatter) :: ncid
 
