@@ -542,6 +542,8 @@ module ncdio_pio
   character(len=*),  intent(in)    :: varname      ! variable name
   logical,           intent(out)   :: readvar
   integer, optional, intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
 
   ! LOCAL:
 
