@@ -13,6 +13,7 @@ module SaturatedExcessRunoffMod
   use decompMod    , only : bounds_type
   use abortutils   , only : endrun
   use clm_varcon   , only : spval
+  use nanMod       , only : nan
 
   implicit none
   save
@@ -44,7 +45,6 @@ contains
   subroutine init_saturated_excess_runoff_type(bounds, this)
 
     ! !USES:
-    use shr_infnan_mod , only : nan => shr_infnan_nan
   !                                                                                                    
   ! !ARGUMENTS:                                                         
     implicit none
