@@ -1442,7 +1442,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! Topographic Form Drag [Beljaars et al (2004)]
     call MAPL_TimerOn(MAPL,"-BELJAARS_TOFD")
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=8.0, RC=STATUS)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=6.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, limbeljaars, Label="BELJAARS_LIMITER:",  default=400.0, RC=STATUS)
     VERIFY_(STATUS)

@@ -469,10 +469,10 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PLE, ZLE, U, V, T, KH, TKE
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, &
                                        DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro, &
-                                       DTHDT_macro,  DTDT_macro,  DUDT_macro,  DVDT_macro, &
+                                       DTDT_macro,  DUDT_macro,  DVDT_macro, &
                                        DQVDT_micro, DQIDT_micro, DQLDT_micro, &
                                        DQADT_micro, DQRDT_micro, DQSDT_micro, DQGDT_micro, &
-                                       DTHDT_micro,  DTDT_micro,  DUDT_micro,  DVDT_micro, &
+                                       DTDT_micro,  DUDT_micro,  DVDT_micro, &
                                        SC_ICE, CLDREFFR, CLDREFFS, & 
                                        CLDREFFG, CLDREFFL, CLDREFFI, RAD_CF  , &
                                        RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QV, &
@@ -1490,11 +1490,9 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_macro,  'DUDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_macro,  'DVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_macro,  'DTDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_macro, 'DTHDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (associated( DUDT_macro))  DUDT_macro=U1
     if (associated( DVDT_macro))  DVDT_macro=V1
     if (associated( DTDT_macro))  DTDT_macro=TEMP
-    if (associated(DTHDT_macro)) DTHDT_macro=TH1
     if (associated(DQVDT_macro)) DQVDT_macro=Q
     if (associated(DQLDT_macro)) DQLDT_macro=QLCN+QLLS
     if (associated(DQIDT_macro)) DQIDT_macro=QICN+QILS
@@ -1668,7 +1666,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (associated( DUDT_macro))  DUDT_macro=( U1        - DUDT_macro)/DT_MOIST
     if (associated( DVDT_macro))  DVDT_macro=( V1        - DVDT_macro)/DT_MOIST
     if (associated( DTDT_macro))  DTDT_macro=( TEMP      - DTDT_macro)/DT_MOIST
-    if (associated(DTHDT_macro)) DTHDT_macro=( TH1       -DTHDT_macro)/DT_MOIST
     if (associated(DQVDT_macro)) DQVDT_macro=( Q1        -DQVDT_macro)/DT_MOIST
     if (associated(DQLDT_macro)) DQLDT_macro=((QLCN+QLLS)-DQLDT_macro)/DT_MOIST
     if (associated(DQIDT_macro)) DQIDT_macro=((QICN+QILS)-DQIDT_macro)/DT_MOIST
@@ -1689,7 +1686,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_micro, 'DTHDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (associated(DQVDT_micro)) DQVDT_micro = Q1
     if (associated(DQLDT_micro)) DQLDT_micro = QLLS + QLCN
     if (associated(DQIDT_micro)) DQIDT_micro = QILS + QICN
@@ -1700,7 +1696,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (associated( DUDT_micro))  DUDT_micro = U1
     if (associated( DVDT_micro))  DVDT_micro = V1
     if (associated( DTDT_micro))  DTDT_micro = TEMP
-    if (associated(DTHDT_micro)) DTHDT_micro = TH1
 
              !initialize MG variables
          nimmr8 = 0.0_r8
@@ -2448,7 +2443,6 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       if (associated( DUDT_micro))  DUDT_micro = ( U1         -  DUDT_micro) / DT_MOIST
       if (associated( DVDT_micro))  DVDT_micro = ( V1         -  DVDT_micro) / DT_MOIST
       if (associated( DTDT_micro))  DTDT_micro = ( TEMP       -  DTDT_micro) / DT_MOIST
-      if (associated(DTHDT_micro)) DTHDT_micro = ( TH1        - DTHDT_micro) / DT_MOIST
       call MAPL_TimerOff (MAPL,"---CLDMICRO", __RC__)
 
       ! Exports

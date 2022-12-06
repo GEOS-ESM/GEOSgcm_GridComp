@@ -131,7 +131,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
     real,    allocatable, dimension(:,:,:) :: PL, PK, PKE, DP
     real,    allocatable, dimension(:,:,:) :: MASS
-    real,    allocatable, dimension(:,:,:) :: TH
     real,    allocatable, dimension(:,:,:) :: TMP3D
     real,    allocatable, dimension(:,:)   :: TMP2D
 
@@ -142,7 +141,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CUFRC_SC
     real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC
     real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
-    real, pointer, dimension(:,:,:) :: DTDT_SC, DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
+    real, pointer, dimension(:,:,:) :: DTDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
                                        DUDT_SC,  DVDT_SC, DQIDT_SC, DQLDT_SC, DQADT_SC
     real, pointer, dimension(:,:,:) :: ENTR_SC, DETR_SC, QLDET_SC, &
                                        QIDET_SC, QLENT_SC, QIENT_SC, &
@@ -223,7 +222,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PL   (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
-    ALLOCATE ( TH   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
@@ -238,7 +236,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-    TH       = T/PK
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
 
@@ -254,7 +251,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_SC,   'DTHDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQVDT_SC,   'DQVDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_SC,   'DQIDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDT_SC,   'DQLDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -281,11 +277,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM,       DT_MOIST,  & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
-            U, V, Q, QLLS, QILS, TH, TKE, KPBL_SC,        &
+            U, V, Q, QLLS, QILS, T, TKE, KPBL_SC,        &
             SH, EVAP, CNPCPRATE, FRLAND,                  &
             CUSH,                                         & ! INOUT
             UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
-            DTHDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,         &
+            DTDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,          &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
             SC_NDROP, SC_NICE, TPERT_SC, QPERT_SC,        &
@@ -304,13 +300,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !  Apply tendencies
       !--------------------------------------------------------------
         Q  = Q  + DQVDT_SC * DT_MOIST    ! note this adds to the convective
-        TH = TH + DTHDT_SC * DT_MOIST    !  tendencies calculated below
-        T  = TH*PK
+        T  = T  +  DTDT_SC * DT_MOIST    !  tendencies calculated below
         U  = U  +  DUDT_SC * DT_MOIST
         V  = V  +  DVDT_SC * DT_MOIST
-      !  Update the temperature tendency
-      !--------------------------------------------------------------
-        DTDT_SC = DTHDT_SC*PK
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
         where (DETR_SC.ne.MAPL_UNDEF)
@@ -378,8 +370,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! column integral of UW moist static energy tendency
         PTR2D = 0.
         DO L = 1,LM
-           PTR2D = PTR2D + (MAPL_CP  *DTHDT_SC(:,:,L)*PK(:,:,L) &
-                         +  MAPL_ALHL*DQVDT_SC(:,:,L)          &
+           PTR2D = PTR2D + (MAPL_CP  * DTDT_SC(:,:,L) &
+                         +  MAPL_ALHL*DQVDT_SC(:,:,L) &
                          -  MAPL_ALHF*DQIDT_SC(:,:,L))*MASS(:,:,L)
         END DO
         end if
