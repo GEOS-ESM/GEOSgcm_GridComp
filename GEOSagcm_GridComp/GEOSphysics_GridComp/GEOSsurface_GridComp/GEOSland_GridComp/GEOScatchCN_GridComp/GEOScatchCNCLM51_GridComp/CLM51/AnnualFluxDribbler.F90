@@ -61,11 +61,11 @@ module AnnualFluxDribbler
   use shr_log_mod      , only : errMsg => shr_log_errMsg
   use abortutils       , only : endrun
   use shr_kind_mod     , only : r8 => shr_kind_r8
-  use decompMod        , only : bounds_type, get_beg, get_end
-  use decompMod        , only : BOUNDS_SUBGRID_GRIDCELL, BOUNDS_SUBGRID_PATCH
+  use decompMod        , only : bounds_type
+!  use decompMod        , only : BOUNDS_SUBGRID_GRIDCELL, BOUNDS_SUBGRID_PATCH
   use clm_varcon       , only : secspday, nameg, namep
-  use clm_time_manager , only : get_days_per_year, get_step_size_real, is_beg_curr_year
-  use clm_time_manager , only : get_curr_yearfrac, get_prev_yearfrac, get_prev_date
+  use clm_time_manager , only : get_days_per_year, get_step_size_real
+ ! use clm_time_manager , only : get_curr_yearfrac, get_prev_yearfrac, get_prev_date
   use clm_time_manager , only : is_first_step
   !
   implicit none
@@ -104,20 +104,20 @@ module AnnualFluxDribbler
      real(r8), pointer :: amount_from_this_timestep(:)
    contains
      ! Public infrastructure methods
-     procedure, public :: Restart
-     procedure, public :: Clean
+   !  procedure, public :: Restart
+   !  procedure, public :: Clean
 
      ! Public science methods
-     procedure, public :: set_curr_delta  ! Set the delta state for this time step
-     procedure, public :: get_curr_flux   ! Get the current flux for this time step
-     procedure, public :: get_dribbled_delta  ! Similar to get_curr_flux, but gets result as a delta rather than a per-second flux
-     procedure, public :: get_amount_left_to_dribble_beg  ! Get the pseudo-state representing the amount that still needs to be dribbled in this and future time steps
-     procedure, public :: get_amount_left_to_dribble_end  ! Get the pseudo-state representing the amount that still needs to be dribbled in just future time steps
+   !  procedure, public :: set_curr_delta  ! Set the delta state for this time step
+   !  procedure, public :: get_curr_flux   ! Get the current flux for this time step
+   !  procedure, public :: get_dribbled_delta  ! Similar to get_curr_flux, but gets result as a delta rather than a per-second flux
+   !  procedure, public :: get_amount_left_to_dribble_beg  ! Get the pseudo-state representing the amount that still needs to be dribbled in this and future time steps
+   !  procedure, public :: get_amount_left_to_dribble_end  ! Get the pseudo-state representing the amount that still needs to be dribbled in just future time steps
 
      ! Private methods
      procedure, private :: allocate_and_initialize_data
      procedure, private :: set_metadata
-     procedure, private :: get_amount_left_to_dribble
+ !    procedure, private :: get_amount_left_to_dribble
   end type annual_flux_dribbler_type
 
   public :: annual_flux_dribbler_gridcell  ! Creates an annual_flux_dribbler_type object at the gridcell-level
@@ -217,284 +217,284 @@ contains
   ! ========================================================================
 
   !-----------------------------------------------------------------------
-  subroutine set_curr_delta(this, bounds, delta)
-    !
-    ! !DESCRIPTION:
-    ! Sets the delta state for this time step. Note that the delta is specified just as
-    ! the change in state - NOT as a flux (per-second) quantity.
-    !
-    ! This must be called every timestep, even if the deltas are currently 0, in order to
-    ! zero out any existing stored delta. This can (and generally should) even be called
-    ! when it isn't the first timestep of the year. For deltas that are non-zero at times
-    ! other than the first timestep of the year, they will simply be passed on to the
-    ! output flux in get_curr_flux, making for easier handling by the client. (i.e., this
-    ! class handles the addition of the dribbled flux and the current flux for you.)
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(inout) :: this
-    type(bounds_type), intent(in) :: bounds
-    real(r8), intent(in) :: delta( get_beg(bounds, this%bounds_subgrid_level) : )
-    !
-    ! !LOCAL VARIABLES:
-    integer :: beg_index, end_index
-    integer :: i
-    integer :: yr, mon, day, tod
-
-    character(len=*), parameter :: subname = 'set_curr_delta'
-    !-----------------------------------------------------------------------
-
-    beg_index = lbound(delta, 1)
-    end_index = get_end(bounds, this%bounds_subgrid_level)
-    SHR_ASSERT_ALL_FL((ubound(delta) == (/end_index/)), sourcefile, __LINE__)
-
-    if (is_beg_curr_year()) then
-       do i = beg_index, end_index
-          this%amount_to_dribble(i) = delta(i)
-
-          ! On the first timestep of the year, we don't have any pass-through flux. Need
-          ! to zero out any previously-set amount_from_this_timestep.
-          this%amount_from_this_timestep(i) = 0._r8
-       end do
-    else
-       do i = beg_index, end_index
-          this%amount_from_this_timestep(i) = delta(i)
-       end do
-       if (.not. this%allows_non_annual_delta .and. .not. is_first_step()) then
-          do i = beg_index, end_index
-             if (this%amount_from_this_timestep(i) /= 0._r8) then
-                write(iulog,*) subname//' ERROR: found unexpected non-zero delta mid-year'
-                write(iulog,*) 'Dribbler name: ', trim(this%name)
-                write(iulog,*) 'i, delta = ', i, this%amount_from_this_timestep(i)
-                call get_prev_date(yr, mon, day, tod)
-                write(iulog,*) 'Start of time step date (yr, mon, day, tod) = ', &
-                     yr, mon, day, tod
-                write(iulog,*) 'This indicates that some non-zero flux was generated at a time step'
-                write(iulog,*) 'other than the first time step of the year, which this dribbler was told not to expect.'
-                write(iulog,*) 'If this non-zero mid-year delta is expected, then you can suppress this error'
-                write(iulog,*) 'by setting allows_non_annual_delta to .true. when constructing this dribbler.'
-                call endrun(decomp_index=i, clmlevel=this%name_subgrid, &
-                     msg=subname//': found unexpected non-zero delta mid-year: ' // &
-                     errMsg(sourcefile, __LINE__))
-             end if
-          end do
-       end if
-    end if
-
-  end subroutine set_curr_delta
-
-  !-----------------------------------------------------------------------
-  subroutine get_curr_flux(this, bounds, flux)
-    !
-    ! !DESCRIPTION:
-    ! Gets the current flux for this timestep, and stores it in the flux argument.
-    !
-    ! This should be called AFTER set_curr_delta is called for the given timestep.
-    !
-    ! This will get the current flux for this timestep, which is the sum of (1) the
-    ! dribbled flux from the last start-of-year timestep, and (2) the current timestep's
-    ! flux, based on the delta passed in to set_curr_delta in this timestep, if this is
-    ! not the start-of-year timestep.
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(in) :: this
-    type(bounds_type), intent(in) :: bounds
-    real(r8), intent(out) :: flux( get_beg(bounds, this%bounds_subgrid_level) : )
-    !
-    ! !LOCAL VARIABLES:
-    integer :: beg_index, end_index
-    integer :: i
-    real(r8) :: secs_per_year
-    real(r8) :: dtime
-    real(r8) :: flux_from_dribbling
-    real(r8) :: flux_from_this_timestep
-
-    character(len=*), parameter :: subname = 'get_curr_flux'
-    !-----------------------------------------------------------------------
-
-    beg_index = lbound(flux, 1)
-    end_index = get_end(bounds, this%bounds_subgrid_level)
-    SHR_ASSERT_ALL_FL((ubound(flux) == (/end_index/)), sourcefile, __LINE__)
-
-    secs_per_year = get_days_per_year() * secspday
-    dtime = get_step_size_real()
-
-    do i = beg_index, end_index
-       flux_from_dribbling = this%amount_to_dribble(i) / secs_per_year
-       flux_from_this_timestep = this%amount_from_this_timestep(i) / dtime
-       flux(i) = flux_from_dribbling + flux_from_this_timestep
-    end do
-
-  end subroutine get_curr_flux
-
-  !-----------------------------------------------------------------------
-  subroutine get_dribbled_delta(this, bounds, delta)
-    !
-    ! !DESCRIPTION:
-    ! Gets the current delta for this timestep, and stores it in the delta argument.
-    !
-    ! This is similar to get_curr_flux, but returns the total, dribbled delta over this
-    ! timestep, rather than a per-second flux. See documentation in get_curr_flux for
-    ! more usage details.
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(in) :: this
-    type(bounds_type), intent(in) :: bounds
-    real(r8), intent(out) :: delta( get_beg(bounds, this%bounds_subgrid_level) : )
-    !
-    ! !LOCAL VARIABLES:
-    integer :: beg_index, end_index
-    integer :: i
-    real(r8) :: dtime
-    real(r8), allocatable :: flux(:)
-
-    character(len=*), parameter :: subname = 'get_dribbled_delta'
-    !-----------------------------------------------------------------------
-
-    beg_index = lbound(delta, 1)
-    end_index = get_end(bounds, this%bounds_subgrid_level)
-    SHR_ASSERT_ALL_FL((ubound(delta) == (/end_index/)), sourcefile, __LINE__)
-
-    allocate(flux(beg_index:end_index))
-
-    call this%get_curr_flux(bounds, flux(beg_index:end_index))
-
-    dtime = get_step_size_real()
-    do i = beg_index, end_index
-       delta(i) = flux(i) * dtime
-    end do
-
-  end subroutine get_dribbled_delta
-
-
-  !-----------------------------------------------------------------------
-  subroutine get_amount_left_to_dribble_beg(this, bounds, amount_left_to_dribble)
-    !
-    ! !DESCRIPTION:
-    ! Get the pseudo-state representing the amount that still needs to be dribbled in
-    ! this and future time steps. This represents the pseudo-state before this time
-    ! step's dribbling flux has been removed. (This behavior is regardless of whether
-    ! get_curr_flux has been called already this time step.)
-    !
-    ! As a special case, this returns 0 in the first time step of the year, because we
-    ! haven't created this year's dribbling pool as of the beginning of this time step.
-    !
-    ! i.e., if we imagined that the total amount to dribble was added to a state
-    ! variable, and then this state variable was updated each time step as the flux
-    ! dribbles out, then this subroutine gives the amount left in that state. (However,
-    ! the actual implementation doesn't explicitly track this state, which is why we
-    ! refer to it as a pseudo-state.)
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(in) :: this
-    type(bounds_type), intent(in) :: bounds
-    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
-    !
-    ! !LOCAL VARIABLES:
-    real(r8) :: yearfrac
-
-    character(len=*), parameter :: subname = 'get_amount_left_to_dribble_beg'
-    !-----------------------------------------------------------------------
-
-    yearfrac = get_prev_yearfrac()
-    call this%get_amount_left_to_dribble(bounds, yearfrac, amount_left_to_dribble)
-
-  end subroutine get_amount_left_to_dribble_beg
-
-
-  !-----------------------------------------------------------------------
-  subroutine get_amount_left_to_dribble_end(this, bounds, amount_left_to_dribble)
-    !
-    ! !DESCRIPTION:
-    ! Gets the pseudo-state representing the amount that still needs to be dribbled in
-    ! future time steps. This represents the pseudo-state after this time step's dribbling
-    ! flux has been removed. i.e., this includes the amount that will be dribbled starting
-    ! with the *next* time step, through the end of this year. So this will return 0 on
-    ! the last time step of the year. (This behavior is regardless of whether
-    ! get_curr_flux has been called already this time step.)
-    !
-    ! See documentation of get_amount_left_to_dribble_beg for more details.
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(in) :: this
-    type(bounds_type), intent(in) :: bounds
-    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
-    !
-    ! !LOCAL VARIABLES:
-    real(r8) :: yearfrac
-
-    character(len=*), parameter :: subname = 'get_amount_left_to_dribble_end'
-    !-----------------------------------------------------------------------
-
-    yearfrac = get_curr_yearfrac()
-    call this%get_amount_left_to_dribble(bounds, yearfrac, amount_left_to_dribble)
-
-  end subroutine get_amount_left_to_dribble_end
-
-
-  !-----------------------------------------------------------------------
-  subroutine Restart(this, bounds, ncid, flag)
-    !
-    ! !USES:
-    use ncdio_pio, only : file_desc_t, ncd_double
-    use restUtilMod
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(inout) :: this
-    type(bounds_type), intent(in)    :: bounds 
-    type(file_desc_t), intent(inout) :: ncid   ! netcdf id
-    character(len=*) , intent(in)    :: flag   ! 'read' or 'write'
-    !
-    ! !LOCAL VARIABLES:
-    character(len=:), allocatable :: restname  ! name of field on restart file
-    logical :: readvar
-
-    character(len=*), parameter :: subname = 'Restart'
-    !-----------------------------------------------------------------------
-
-    restname = trim(this%name) // '_amt_to_dribble'
-    call restartvar(ncid=ncid, flag=flag, varname=restname, xtype=ncd_double, &
-         dim1name = this%dim1name, &
-         long_name = 'total amount to dribble over the year for ' // trim(this%name), &
-         units = trim(this%units), &
-         interpinic_flag = 'interp', &
-         readvar = readvar, &
-         data = this%amount_to_dribble)
-
-  end subroutine Restart
-
-  !-----------------------------------------------------------------------
-  subroutine Clean(this)
-    !
-    ! !DESCRIPTION:
-    ! Deallocate memory associated with this object
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(inout) :: this
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'Clean'
-    !-----------------------------------------------------------------------
-
-    deallocate(this%amount_to_dribble)
-    deallocate(this%amount_from_this_timestep)
-
-  end subroutine Clean
-
-  ! ========================================================================
-  ! Private methods
-  ! ========================================================================
-
+!  subroutine set_curr_delta(this, bounds, delta)
+!    !
+!    ! !DESCRIPTION:
+!    ! Sets the delta state for this time step. Note that the delta is specified just as
+!    ! the change in state - NOT as a flux (per-second) quantity.
+!    !
+!    ! This must be called every timestep, even if the deltas are currently 0, in order to
+!    ! zero out any existing stored delta. This can (and generally should) even be called
+!    ! when it isn't the first timestep of the year. For deltas that are non-zero at times
+!    ! other than the first timestep of the year, they will simply be passed on to the
+!    ! output flux in get_curr_flux, making for easier handling by the client. (i.e., this
+!    ! class handles the addition of the dribbled flux and the current flux for you.)
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(inout) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    real(r8), intent(in) :: delta( get_beg(bounds, this%bounds_subgrid_level) : )
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: beg_index, end_index
+!    integer :: i
+!    integer :: yr, mon, day, tod
+!
+!    character(len=*), parameter :: subname = 'set_curr_delta'
+!    !-----------------------------------------------------------------------
+!
+!    beg_index = lbound(delta, 1)
+!    end_index = get_end(bounds, this%bounds_subgrid_level)
+!    SHR_ASSERT_ALL_FL((ubound(delta) == (/end_index/)), sourcefile, __LINE__)
+!
+!    if (is_beg_curr_year()) then
+!       do i = beg_index, end_index
+!          this%amount_to_dribble(i) = delta(i)
+!
+!          ! On the first timestep of the year, we don't have any pass-through flux. Need
+!          ! to zero out any previously-set amount_from_this_timestep.
+!          this%amount_from_this_timestep(i) = 0._r8
+!       end do
+!    else
+!       do i = beg_index, end_index
+!          this%amount_from_this_timestep(i) = delta(i)
+!       end do
+!       if (.not. this%allows_non_annual_delta .and. .not. is_first_step()) then
+!          do i = beg_index, end_index
+!             if (this%amount_from_this_timestep(i) /= 0._r8) then
+!                write(iulog,*) subname//' ERROR: found unexpected non-zero delta mid-year'
+!                write(iulog,*) 'Dribbler name: ', trim(this%name)
+!                write(iulog,*) 'i, delta = ', i, this%amount_from_this_timestep(i)
+!                call get_prev_date(yr, mon, day, tod)
+!                write(iulog,*) 'Start of time step date (yr, mon, day, tod) = ', &
+!                     yr, mon, day, tod
+!                write(iulog,*) 'This indicates that some non-zero flux was generated at a time step'
+!                write(iulog,*) 'other than the first time step of the year, which this dribbler was told not to expect.'
+!                write(iulog,*) 'If this non-zero mid-year delta is expected, then you can suppress this error'
+!                write(iulog,*) 'by setting allows_non_annual_delta to .true. when constructing this dribbler.'
+!                call endrun(decomp_index=i, clmlevel=this%name_subgrid, &
+!                     msg=subname//': found unexpected non-zero delta mid-year: ' // &
+!                     errMsg(sourcefile, __LINE__))
+!             end if
+!          end do
+!       end if
+!    end if
+!
+!  end subroutine set_curr_delta
+!
+!  !-----------------------------------------------------------------------
+!  subroutine get_curr_flux(this, bounds, flux)
+!    !
+!    ! !DESCRIPTION:
+!    ! Gets the current flux for this timestep, and stores it in the flux argument.
+!    !
+!    ! This should be called AFTER set_curr_delta is called for the given timestep.
+!    !
+!    ! This will get the current flux for this timestep, which is the sum of (1) the
+!    ! dribbled flux from the last start-of-year timestep, and (2) the current timestep's
+!    ! flux, based on the delta passed in to set_curr_delta in this timestep, if this is
+!    ! not the start-of-year timestep.
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(in) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    real(r8), intent(out) :: flux( get_beg(bounds, this%bounds_subgrid_level) : )
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: beg_index, end_index
+!    integer :: i
+!    real(r8) :: secs_per_year
+!    real(r8) :: dtime
+!    real(r8) :: flux_from_dribbling
+!    real(r8) :: flux_from_this_timestep
+!
+!    character(len=*), parameter :: subname = 'get_curr_flux'
+!    !-----------------------------------------------------------------------
+!
+!    beg_index = lbound(flux, 1)
+!    end_index = get_end(bounds, this%bounds_subgrid_level)
+!    SHR_ASSERT_ALL_FL((ubound(flux) == (/end_index/)), sourcefile, __LINE__)
+!
+!    secs_per_year = get_days_per_year() * secspday
+!    dtime = get_step_size_real()
+!
+!    do i = beg_index, end_index
+!       flux_from_dribbling = this%amount_to_dribble(i) / secs_per_year
+!       flux_from_this_timestep = this%amount_from_this_timestep(i) / dtime
+!       flux(i) = flux_from_dribbling + flux_from_this_timestep
+!    end do
+!
+!  end subroutine get_curr_flux
+!
+!  !-----------------------------------------------------------------------
+!  subroutine get_dribbled_delta(this, bounds, delta)
+!    !
+!    ! !DESCRIPTION:
+!    ! Gets the current delta for this timestep, and stores it in the delta argument.
+!    !
+!    ! This is similar to get_curr_flux, but returns the total, dribbled delta over this
+!    ! timestep, rather than a per-second flux. See documentation in get_curr_flux for
+!    ! more usage details.
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(in) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    real(r8), intent(out) :: delta( get_beg(bounds, this%bounds_subgrid_level) : )
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: beg_index, end_index
+!    integer :: i
+!    real(r8) :: dtime
+!    real(r8), allocatable :: flux(:)
+!
+!    character(len=*), parameter :: subname = 'get_dribbled_delta'
+!    !-----------------------------------------------------------------------
+!
+!    beg_index = lbound(delta, 1)
+!    end_index = get_end(bounds, this%bounds_subgrid_level)
+!    SHR_ASSERT_ALL_FL((ubound(delta) == (/end_index/)), sourcefile, __LINE__)
+!
+!    allocate(flux(beg_index:end_index))
+!
+!    call this%get_curr_flux(bounds, flux(beg_index:end_index))
+!
+!    dtime = get_step_size_real()
+!    do i = beg_index, end_index
+!       delta(i) = flux(i) * dtime
+!    end do
+!
+!  end subroutine get_dribbled_delta
+!
+!
+!  !-----------------------------------------------------------------------
+!  subroutine get_amount_left_to_dribble_beg(this, bounds, amount_left_to_dribble)
+!    !
+!    ! !DESCRIPTION:
+!    ! Get the pseudo-state representing the amount that still needs to be dribbled in
+!    ! this and future time steps. This represents the pseudo-state before this time
+!    ! step's dribbling flux has been removed. (This behavior is regardless of whether
+!    ! get_curr_flux has been called already this time step.)
+!    !
+!    ! As a special case, this returns 0 in the first time step of the year, because we
+!    ! haven't created this year's dribbling pool as of the beginning of this time step.
+!    !
+!    ! i.e., if we imagined that the total amount to dribble was added to a state
+!    ! variable, and then this state variable was updated each time step as the flux
+!    ! dribbles out, then this subroutine gives the amount left in that state. (However,
+!    ! the actual implementation doesn't explicitly track this state, which is why we
+!    ! refer to it as a pseudo-state.)
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(in) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
+!    !
+!    ! !LOCAL VARIABLES:
+!    real(r8) :: yearfrac
+!
+!    character(len=*), parameter :: subname = 'get_amount_left_to_dribble_beg'
+!    !-----------------------------------------------------------------------
+!
+!    yearfrac = get_prev_yearfrac()
+!    call this%get_amount_left_to_dribble(bounds, yearfrac, amount_left_to_dribble)
+!
+!  end subroutine get_amount_left_to_dribble_beg
+!
+!
+!  !-----------------------------------------------------------------------
+!  subroutine get_amount_left_to_dribble_end(this, bounds, amount_left_to_dribble)
+!    !
+!    ! !DESCRIPTION:
+!    ! Gets the pseudo-state representing the amount that still needs to be dribbled in
+!    ! future time steps. This represents the pseudo-state after this time step's dribbling
+!    ! flux has been removed. i.e., this includes the amount that will be dribbled starting
+!    ! with the *next* time step, through the end of this year. So this will return 0 on
+!    ! the last time step of the year. (This behavior is regardless of whether
+!    ! get_curr_flux has been called already this time step.)
+!    !
+!    ! See documentation of get_amount_left_to_dribble_beg for more details.
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(in) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
+!    !
+!    ! !LOCAL VARIABLES:
+!    real(r8) :: yearfrac
+!
+!    character(len=*), parameter :: subname = 'get_amount_left_to_dribble_end'
+!    !-----------------------------------------------------------------------
+!
+!    yearfrac = get_curr_yearfrac()
+!    call this%get_amount_left_to_dribble(bounds, yearfrac, amount_left_to_dribble)
+!
+!  end subroutine get_amount_left_to_dribble_end
+!
+!
+!  !-----------------------------------------------------------------------
+!  subroutine Restart(this, bounds, ncid, flag)
+!    !
+!    ! !USES:
+!    use ncdio_pio, only : file_desc_t, ncd_double
+!    use restUtilMod
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(inout) :: this
+!    type(bounds_type), intent(in)    :: bounds 
+!    type(file_desc_t), intent(inout) :: ncid   ! netcdf id
+!    character(len=*) , intent(in)    :: flag   ! 'read' or 'write'
+!    !
+!    ! !LOCAL VARIABLES:
+!    character(len=:), allocatable :: restname  ! name of field on restart file
+!    logical :: readvar
+!
+!    character(len=*), parameter :: subname = 'Restart'
+!    !-----------------------------------------------------------------------
+!
+!    restname = trim(this%name) // '_amt_to_dribble'
+!    call restartvar(ncid=ncid, flag=flag, varname=restname, xtype=ncd_double, &
+!         dim1name = this%dim1name, &
+!         long_name = 'total amount to dribble over the year for ' // trim(this%name), &
+!         units = trim(this%units), &
+!         interpinic_flag = 'interp', &
+!         readvar = readvar, &
+!         data = this%amount_to_dribble)
+!
+!  end subroutine Restart
+!
+!  !-----------------------------------------------------------------------
+!  subroutine Clean(this)
+!    !
+!    ! !DESCRIPTION:
+!    ! Deallocate memory associated with this object
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(inout) :: this
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'Clean'
+!    !-----------------------------------------------------------------------
+!
+!    deallocate(this%amount_to_dribble)
+!    deallocate(this%amount_from_this_timestep)
+!
+!  end subroutine Clean
+!
+!  ! ========================================================================
+!  ! Private methods
+!  ! ========================================================================
+!
   !-----------------------------------------------------------------------
   subroutine allocate_and_initialize_data(this, bounds)
     !
@@ -573,43 +573,43 @@ contains
   end subroutine set_metadata
 
   !-----------------------------------------------------------------------
-  subroutine get_amount_left_to_dribble(this, bounds, yearfrac, amount_left_to_dribble)
-    !
-    ! !DESCRIPTION:
-    ! Helper method shared by get_amount_left_to_dribble_beg and
-    ! get_amount_left_to_dribble_end. Returns amount left to dribble as of a given
-    ! yearfrac.
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(annual_flux_dribbler_type), intent(in) :: this
-    type(bounds_type), intent(in) :: bounds
-    real(r8), intent(in)  :: yearfrac
-    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
-    !
-    ! !LOCAL VARIABLES:
-    integer :: beg_index, end_index
-    integer :: i
-
-    character(len=*), parameter :: subname = 'get_amount_left_to_dribble'
-    !-----------------------------------------------------------------------
-
-    beg_index = lbound(amount_left_to_dribble, 1)
-    end_index = get_end(bounds, this%bounds_subgrid_level)
-    SHR_ASSERT_ALL_FL((ubound(amount_left_to_dribble) == (/end_index/)), sourcefile, __LINE__)
-
-    do i = beg_index, end_index
-       if (yearfrac < 1.e-15_r8) then
-          ! last time step of year; we'd like this to be given a yearfrac of 1 rather than
-          ! 0 in this case; since it's given as 0, we need to handle it specially
-          amount_left_to_dribble(i) = 0._r8
-       else
-          amount_left_to_dribble(i) = this%amount_to_dribble(i) * (1._r8 - yearfrac)
-       end if
-    end do
-
-  end subroutine get_amount_left_to_dribble
-
+!  subroutine get_amount_left_to_dribble(this, bounds, yearfrac, amount_left_to_dribble)
+!    !
+!    ! !DESCRIPTION:
+!    ! Helper method shared by get_amount_left_to_dribble_beg and
+!    ! get_amount_left_to_dribble_end. Returns amount left to dribble as of a given
+!    ! yearfrac.
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(annual_flux_dribbler_type), intent(in) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    real(r8), intent(in)  :: yearfrac
+!    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: beg_index, end_index
+!    integer :: i
+!
+!    character(len=*), parameter :: subname = 'get_amount_left_to_dribble'
+!    !-----------------------------------------------------------------------
+!
+!    beg_index = lbound(amount_left_to_dribble, 1)
+!    end_index = get_end(bounds, this%bounds_subgrid_level)
+!    SHR_ASSERT_ALL_FL((ubound(amount_left_to_dribble) == (/end_index/)), sourcefile, __LINE__)
+!
+!    do i = beg_index, end_index
+!       if (yearfrac < 1.e-15_r8) then
+!          ! last time step of year; we'd like this to be given a yearfrac of 1 rather than
+!          ! 0 in this case; since it's given as 0, we need to handle it specially
+!          amount_left_to_dribble(i) = 0._r8
+!       else
+!          amount_left_to_dribble(i) = this%amount_to_dribble(i) * (1._r8 - yearfrac)
+!       end if
+!    end do
+!
+!  end subroutine get_amount_left_to_dribble
+!
 
 end module AnnualFluxDribbler
