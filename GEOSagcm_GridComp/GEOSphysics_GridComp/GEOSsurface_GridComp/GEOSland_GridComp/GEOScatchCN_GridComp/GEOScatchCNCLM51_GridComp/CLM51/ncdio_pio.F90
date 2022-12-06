@@ -36,7 +36,8 @@ module ncdio_pio
 
   interface ncd_io
 
-    module procedure ncd_io_char
+    module procedure ncd_io_char_0d
+    module procedure ncd_io_char_1d
     module procedure ncd_io_log_1d
     module procedure ncd_io_r4_0d
     module procedure ncd_io_r4_1d
@@ -58,7 +59,7 @@ module ncdio_pio
 
  contains 
 
- subroutine ncd_io_char ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
+ subroutine ncd_io_char_0d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
  ! ARGUMENTS:
  !-------------
@@ -84,7 +85,35 @@ module ncdio_pio
       if (status ==0) readvar = .true.
    endif
 
- end subroutine ncd_io_char
+ end subroutine ncd_io_char_0d
+
+ subroutine ncd_io_char_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
+
+ ! ARGUMENTS:
+ !-------------
+  type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
+  character(len=*),  intent(inout) :: data(:)
+  character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
+  character(len=*),  intent(in)    :: varname      ! variable name
+  logical,           intent(out)   :: readvar
+  integer,optional,  intent(out)   :: rc
+  integer, optional  , intent(in)    :: nt        ! time sample index
+  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
+
+  ! LOCAL:
+
+  integer :: status
+
+  !-------------------------------------
+
+   if (flag == 'read') then
+      readvar = .false.
+     ! call ncid%get_var(varname, data, rc=status)
+      call MAPL_VarRead(ncid,varname,data,status)
+      if (status ==0) readvar = .true.
+   endif
+
+ end subroutine ncd_io_char_1d
 
  subroutine ncd_io_log_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
 
