@@ -106,19 +106,14 @@ module GEOS_DataSeaIceGridCompMod
 
     call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    if (DO_CICE_THERMO /=0) then
+      _ASSERT(.FALSE.,'Must not use CICE_Thermo in (Ext) data sea ice. Fix and try.')
+    endif
 
     call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
 
-    cice_init_: if (DO_CICE_THERMO /= 0) then
-       if(MAPL_AM_I_ROOT()) print *, 'Using Data Sea Ice GC to do CICE Thermo in AMIP mode'
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       NUM_ICE_CATEGORIES = 1
-       NUM_ICE_LAYERS     = 1
-    end if cice_init_
+    NUM_ICE_CATEGORIES = 1
+    NUM_ICE_LAYERS     = 1
 
     NUM_ICE_LAYERS_ALL=NUM_ICE_LAYERS*NUM_ICE_CATEGORIES
     NUM_SNOW_LAYERS_ALL=NUM_SNOW_LAYERS*NUM_ICE_CATEGORIES
@@ -156,16 +151,14 @@ module GEOS_DataSeaIceGridCompMod
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-  if (DO_CICE_THERMO == 0) then
-     call MAPL_AddImportSpec(GC,                                 &
-          SHORT_NAME         = 'TI',                                &
-          LONG_NAME          = 'seaice_skin_temperature',           &
-          UNITS              = 'K',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  end if
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME         = 'TI',                                &
+       LONG_NAME          = 'seaice_skin_temperature',           &
+       UNITS              = 'K',                                 &
+       DIMS               = MAPL_DimsHorzOnly,                   &
+       VLOCATION          = MAPL_VLocationNone,                  &
+       RC=STATUS  )
+       VERIFY_(STATUS)
 
   call MAPL_AddImportSpec(GC,                                 &
     SHORT_NAME         = 'SI',                                &
@@ -340,10 +333,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      call MAPL_GetPointer(IMPORT, DATA_icec    ,  'DATA_ICEC', __RC__)
    endif
 
-   if (DO_CICE_THERMO == 0) then
-      call MAPL_GetPointer(IMPORT, TI    ,  'TI'   , RC=STATUS)
-      VERIFY_(STATUS)
-   end if
+   call MAPL_GetPointer(IMPORT, TI    ,  'TI'   , RC=STATUS)
+   VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS) 
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, SI      ,  'SI'   , RC=STATUS)
@@ -395,31 +386,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    call MAPL_TimerOn(MAPL,"-UPDATE" )
 
-   if (DO_CICE_THERMO == 0) then
-     if(associated(FR)) then
-       if (ocean_extData) then
-         FR = DATA_icec ! netcdf variable
-       else ! binary
-         call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
-       end if
-
-!      Sanity check
-       if (any(FR < 0.0) .or. any(FR > 1.0)) then
-          if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          _ASSERT(.FALSE.,'needs informative message')
-       endif
+   if(associated(FR)) then
+     if (ocean_extData) then
+       FR = DATA_icec ! netcdf variable
+     else ! binary
+       call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
      end if
-   end if ! (DO_CICE_THERMO == 0)
 
-   if (DO_CICE_THERMO == 0) then
-  
-     where (TI /= MAPL_Undef)
-       TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
-     end where
-
-     HI   = HI
+!    Sanity check
+     if (any(FR < 0.0) .or. any(FR > 1.0)) then
+        if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
+        _ASSERT(.FALSE.,'needs informative message')
+     endif
    end if
 
+  
+   where (TI /= MAPL_Undef)
+     TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
+   end where
+
+   HI   = HI
    SI   = 30.0
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )
