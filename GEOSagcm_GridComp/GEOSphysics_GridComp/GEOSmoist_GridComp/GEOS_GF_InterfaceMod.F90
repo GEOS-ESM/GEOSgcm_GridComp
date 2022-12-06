@@ -275,7 +275,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Required Exports (connectivities to moist siblings)
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_MFC, CNV_CVW, CNV_QC, CNV_DQCDT, CNV_PRC3, CNV_UPDF
-    real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DTHDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
+    real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     ! Exports
     real, pointer, dimension(:,:,:) :: CNV_MF0, ENTLAM
@@ -458,7 +458,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_DC,   'DTHDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -534,14 +533,12 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
-    ! Fill the TH tendency
-      DTHDT_DC = DTDT_DC/PK
     ! add tendencies to the moist import state
       U  = U  +  DUDT_DC*DT_MOIST
       V  = V  +  DVDT_DC*DT_MOIST
       Q  = Q  + DQVDT_DC*DT_MOIST
       T  = T  +  DTDT_DC*DT_MOIST
-      TH = TH + DTHDT_DC*DT_MOIST
+      TH = T/PK
     ! update DeepCu QL/QI/CF tendencies
       fQi = ice_fraction( T, CNV_FRC, SRF_TYPE )
       TMP3D    = CNV_DQCDT/MASS
@@ -586,7 +583,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           Q       =  Q       + (QLCN + QICN)
          TMP3D    = (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
          DTDT_DC  = DTDT_DC  - TMP3D/DT_MOIST
-         DTHDT_DC = DTHDT_DC - TMP3D/DT_MOIST/PK
           T       =  T       - TMP3D
           TH      =  T/PK
          QLCN = 0.
@@ -594,16 +590,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       END WHERE
       endif
 
-      ! Heating from cumulus friction
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
-      if(associated(PTR3D)) then
-          KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
-          TMP3D = 1.e-4 ! KEX
-          TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
-          do L=1,LM
-             PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
-          end do
-      end if
+     !! Heating from cumulus friction
+     !call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+     !if(associated(PTR3D)) then
+     !    KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
+     !    TMP3D = 1.e-4 ! KEX
+     !    TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
+     !    do L=1,LM
+     !       PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
+     !    end do
+     !end if
 
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST

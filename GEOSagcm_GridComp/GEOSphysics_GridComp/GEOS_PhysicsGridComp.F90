@@ -457,15 +457,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME = 'THIM',                                      &
-         LONG_NAME  = 'pressure_weighted_tendency_of_potential_temperature_due_to_moist_processes',&
-         UNITS      = 'Pa K s-1',                                  &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'TIM',                                       &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_moist_processes',&
          UNITS      = 'K s-1',                                     &
@@ -2034,7 +2025,6 @@ contains
    logical                             :: DO_SPPT,DO_SKEB
    logical                             :: NEED_TOT
    logical                             :: NEED_FRI
-   logical                             :: NEED_TTN
    logical                             :: NEED_STN
    logical                             :: DPEDT_PHYS
    real                                :: DT
@@ -2072,7 +2062,7 @@ contains
    real, pointer, dimension(:,:,:)     :: QVPERT, QVUNPERT
    real, pointer, dimension(:,:,:)     :: DTDTUNPERT, DUDTUNPERT, DVDTUNPERT, DQVDTUNPERT
    real, pointer, dimension(:,:,:)     :: TIR, TIM, TIMFRIC, TIT, TIF
-   real, pointer, dimension(:,:,:)     :: UIM, VIM, WIM, THIM
+   real, pointer, dimension(:,:,:)     :: UIM, VIM, WIM
    real, pointer, dimension(:,:,:)     :: UIT, VIT, SIT
    real, pointer, dimension(:,:,:)     :: UIG, VIG, TIG, TICU
    real, pointer, dimension(:,:,:)     :: FTU, FTV
@@ -2332,7 +2322,7 @@ contains
     end if
 
     if(associated(DTDT) .or. associated(TIM) .or. associated(DTDTTOT)) then
-       call MAPL_GetPointer(GEX(MOIST) ,  THIM,   'DTHDT', alloc=.true., RC=STATUS)
+       call MAPL_GetPointer(GEX(MOIST) ,   TTN,   'DTDT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
  
@@ -2699,19 +2689,12 @@ contains
 !   NEED_TOT = associated(DTDTTOT) .or. associated(DTDT)
     NEED_TOT = .TRUE.
     NEED_FRI = associated(    TIF) .or. NEED_TOT 
-    NEED_TTN = associated(    TIM) .or. NEED_TOT 
     NEED_STN = associated(    TIT) .or. NEED_TOT 
 
     if(NEED_FRI) then
        allocate(FRI(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
        FRI         = INTDIS + TOPDIS
-    end if
-
-    if(NEED_TTN) then
-       allocate(TTN(IM,JM,LM),stat=STATUS)
-       VERIFY_(STATUS)
-       TTN = THIM*( 0.5*(PLE(:,:,1:LM)+PLE(:,:,0:LM-1))/MAPL_P00 )**MAPL_KAPPA  ! Note: P**Kappa consistent with MOIST version
     end if
 
     if(NEED_STN) then
@@ -3188,7 +3171,6 @@ contains
     if(associated(DM )) deallocate(DM )
     if(associated(DPI)) deallocate(DPI)
     if(associated(FRI)) deallocate(FRI)
-    if(associated(TTN)) deallocate(TTN)
     if(associated(STN)) deallocate(STN)
 
 !-stochastic-physics

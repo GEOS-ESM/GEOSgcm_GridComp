@@ -1042,7 +1042,7 @@ module GEOSmoist_Process_Library
            QV  = QV  - (dQCi+dQCl)
            ! adjust temperatures
            TE  = TEp + alhlbcp*(dQCi+dQCl) + alhfbcp*(dQCi)
-           if (abs(TEn - TEp) .lt. 0.00001) exit
+           if (abs(TE - TEp) .lt. 0.00001) exit
          else
            ! Special case AF=1, i.e., box filled with anvil. 
            !   - Note: no guarantee QV_box > QS_box
@@ -1071,7 +1071,7 @@ module GEOSmoist_Process_Library
            QV  = QV  - (dQAi+dQCi+dQAl+dQCl)
            ! adjust temperatures
            TE  = TEp + alhlbcp*(dQAi+dQAl) + alhfbcp*(dQAi)
-           exit
+           exit ! no more large-scale cloud remaining
          end if
 
        ! at this point AF must be < 1.0

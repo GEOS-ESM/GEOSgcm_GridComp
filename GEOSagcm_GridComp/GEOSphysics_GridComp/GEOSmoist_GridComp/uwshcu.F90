@@ -74,9 +74,9 @@ contains
    subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         th0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,      & 
+         t0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,      & 
          cush,                                                      & ! INOUT
-         umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, thten_inv, & ! OUTPUT
+         umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
          qisub_inv, ndrop_inv, nice_inv, tpert_out, qpert_out,      & 
@@ -109,7 +109,7 @@ contains
       real,   intent(in)    :: qv0_inv(idim,k0)         !  Environmental water vapor specific humidity [ kg/kg ]
       real,   intent(in)    :: ql0_inv(idim,k0)         !  Environmental liquid water specific humidity [ kg/kg ]
       real,   intent(in)    :: qi0_inv(idim,k0)         !  Environmental ice specific humidity [ kg/kg ]
-      real,   intent(in)    :: th0_inv(idim,k0)         !  Environmental temperature [ K ]
+      real,   intent(in)    :: t0_inv(idim,k0)          !  Environmental temperature [ K ]
       real,   intent(in)    :: tke_inv(idim,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
                                                         !  at the previous time step [ fraction ]
       real, intent(in)    :: kpbl_inv(idim)           !  Height of PBL [ m ]
@@ -124,7 +124,7 @@ contains
       real, intent(out)   :: qvten_inv(idim,k0)       !  Tendency of water vapor specific humidity [ kg/kg/s ]
       real, intent(out)   :: qlten_inv(idim,k0)         !  Tendency of liquid water specific humidity [ kg/kg/s ]
       real, intent(out)   :: qiten_inv(idim,k0)         !  Tendency of ice specific humidity [ kg/kg/s ]
-      real, intent(out)   :: thten_inv(idim,k0)       !  Tendency of potential temperature [ K/s ]
+      real, intent(out)   ::  tten_inv(idim,k0)       !  Tendency of temperature [ K/s ]
       real, intent(out)   :: uten_inv(idim,k0)        !  Tendency of zonal wind [ m/s2 ]
       real, intent(out)   :: vten_inv(idim,k0)        !  Tendency of meridional wind [ m/s2 ]
 !      real, intent(out)   :: trten_inv(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
@@ -267,7 +267,7 @@ contains
          qv0(:idim,k)        = qv0_inv(:idim,k_inv)
          ql0(:idim,k)        = ql0_inv(:idim,k_inv)
          qi0(:idim,k)        = qi0_inv(:idim,k_inv)
-         th0(:idim,k)        = th0_inv(:idim,k_inv)
+         th0(:idim,k)        = t0_inv(:idim,k_inv)/exnmid0_inv(:idim,k_inv)
          do m = 1, ncnst
             tr0(:idim,k,m)   = reshape(CNV_Tracers(m)%Q(:,:,k_inv), (/idim/))
          enddo
@@ -342,7 +342,7 @@ contains
          qvten_inv(:idim,k_inv)   = qvten(:idim,k)   
          qlten_inv(:idim,k_inv)   = qlten(:idim,k)   
          qiten_inv(:idim,k_inv)   = qiten(:idim,k)   
-         thten_inv(:idim,k_inv)   = sten(:idim,k) / (cp*exnmid0(:idim,k))
+         tten_inv(:idim,k_inv)    = sten(:idim,k) / cp
          uten_inv(:idim,k_inv)    = uten(:idim,k)    
          vten_inv(:idim,k_inv)    = vten(:idim,k)    
          qrten_inv(:idim,k_inv)   = qrten(:idim,k)   
@@ -451,7 +451,7 @@ contains
       real, intent(in)    :: qv0_in( idim,k0 )        ! Environmental specific humidity
       real, intent(in)    :: ql0_in( idim,k0 )        ! Environmental liquid water specific humidity
       real, intent(in)    :: qi0_in( idim,k0 )        ! Environmental ice specific humidity
-      real, intent(in)    :: th0_in ( idim,k0 )       ! Environmental potential temperature [K]
+      real, intent(in)    :: th0_in( idim,k0 )        ! Environmental potential temperature [K]
       real, intent(in)    :: tke_in( idim,0:k0 )      ! Turbulent kinetic energy at interfaces
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation

@@ -1442,8 +1442,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! Topographic Form Drag [Beljaars et al (2004)]
     call MAPL_TimerOn(MAPL,"-BELJAARS_TOFD")
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=8.0, RC=STATUS)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=0.0, RC=STATUS)
     VERIFY_(STATUS)
+    if (effbeljaars > 0.0) then
     call MAPL_GetResource( MAPL, limbeljaars, Label="BELJAARS_LIMITER:",  default=400.0, RC=STATUS)
     VERIFY_(STATUS)
     limbeljaars = limbeljaars/86400.0
@@ -1453,7 +1454,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     else
       call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS); VERIFY_(STATUS)
     endif
-    if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),stat=status)
     VERIFY_(STATUS)
     THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
