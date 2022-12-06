@@ -192,6 +192,20 @@ module GEOS_TurbulenceGridCompMod
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
     integer                             :: imsize
+!
+!! wdb DELETEME
+!   type :: ThreadWorkspace 
+!      real, allocatable, dimension(:)   :: PREF
+!   end type ThreadWorkspace
+!
+!   type :: WorkspaceArray
+!      type (ThreadWorkspace), allocatable :: workspaces(:)
+!   end type WorkspaceArray
+!
+!   type wrap_
+!      type (WorkspaceArray), pointer :: PTR
+!   end type wrap_
+!
 contains
 
 !=============================================================================
@@ -221,7 +235,19 @@ contains
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     integer, optional                  :: RC  ! return code
 !EOP
+
+!=============================================================================
+!
+! locals
     integer                            :: DO_SHOC
+    type (ESMF_Config)                 :: myCF      ! GEOS_TurbulenceGridComp.rc ! wdb
+    type (MAPL_MetaComp), pointer      :: MAPL !wdb
+    logical                            :: use_threads ! wdb
+    integer                            :: num_threads ! wdb
+    character(len=*), parameter        :: MYCF_NAME = 'GEOS_TurbulenceGridComp.rc'
+!    type (WorkspaceArray), pointer     :: self ! wdb deleteme
+!    type (wrap_)                       :: wrap ! wdb deleteme
+
 !=============================================================================
 !
 ! ErrLog Variables
@@ -244,6 +270,25 @@ contains
     call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, _RC)
     Iam = trim(COMP_NAME) // Iam
 
+! Get use_threads
+! ---------------
+    myCF = ESMF_ConfigCreate (_RC)
+    call ESMF_ConfigLoadFile(myCF, MYCF_NAME, _RC)
+    call ESMF_ConfigGetAttribute (myCF, use_threads, label='use_threads:', default=.FALSE., _RC)
+
+ !   Get my internal MAPL_Generic state
+ !   -----------------------------------
+    call MAPL_GetObjectFromGC(GC, MAPL, _RC)
+
+    !   set use_threads
+    call MAPL%set_use_threads(use_threads)
+
+!!   Wrap internal state for storing in GC !wdb deleteme
+!!   -------------------------------------
+!    allocate (self, __STAT__)
+!    wrap%ptr => self
+!    num_threads = MAPL_get_num_threads()
+!    allocate(self%workspaces(0:num_threads-1), __STAT__)
 ! Set the Run entry points
 ! ------------------------
 
@@ -2389,6 +2434,10 @@ contains
     real, dimension(:,:), pointer :: cu_scm, ct_scm, ssurf_scm, qsurf_scm
 #endif
 
+!! Theading setup !wdb deleteme
+!    type (WorkspaceArray), pointer :: self
+!    type (ThreadWorkspace), pointer :: workspace
+!    integer :: thread !wdb Do I need this?
 ! Begin... 
 !---------
 
@@ -2398,6 +2447,10 @@ contains
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
     Iam = trim(COMP_NAME) // 'Run1'
 
+!! Get thread ! wdb deleteme
+!    thread = MAPL_get_current_thread !wdb Do I need this?
+!    workspace => self%workspaces(thread)
+!
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
@@ -2413,7 +2466,7 @@ contains
          IM=IM, JM=JM, LM=LM,               &
          RUNALARM=ALARM,                    &
          INTERNAL_ESMF_STATE=INTERNAL,      &
-        _RC)
+         _RC)
 
 ! Get configuration from component
 !---------------------------------
@@ -2526,7 +2579,7 @@ contains
        call ESMF_AlarmRingerOff(ALARM, _RC)
 
        call MAPL_TimerOn (MAPL,"--REFRESHKS")
-        call REFRESH(IM,JM,LM,_RC)
+       call REFRESH(IM,JM,LM,_RC)
        call MAPL_TimerOff(MAPL,"--REFRESHKS")
     endif
 
@@ -2534,7 +2587,7 @@ contains
 ! ---------------------------------
 
     call MAPL_TimerOn (MAPL,"--DIFFUSE")
-     call DIFFUSE(IM,JM,LM,_RC)
+    call DIFFUSE(IM,JM,LM,_RC)
     call MAPL_TimerOff(MAPL,"--DIFFUSE")
 
 !  All done with RUN1
@@ -2645,16 +2698,16 @@ contains
 !     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
      real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND
-     real, dimension(:,:  ), pointer     :: TCZPBL => null()
-     real, dimension(:,:  ), pointer     :: ZPBL2 => null()
-     real, dimension(:,:  ), pointer     :: ZPBL10P => null()
-     real, dimension(:,:  ), pointer     :: ZPBLHTKE => null()
-     real, dimension(:,:,:), pointer     :: TKE => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRI => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
-     real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
-     real, dimension(:,:  ), pointer     :: KPBL => null()
-     real, dimension(:,:  ), pointer     :: KPBL_SC => null()
+     real, dimension(:,:  ), pointer     :: TCZPBL ! => null() !wdb
+     real, dimension(:,:  ), pointer     :: ZPBL2 ! => null()!wdb
+     real, dimension(:,:  ), pointer     :: ZPBL10P ! => null()!wdb
+     real, dimension(:,:  ), pointer     :: ZPBLHTKE ! => null()!wdb
+     real, dimension(:,:,:), pointer     :: TKE ! => null()!wdb
+     real, dimension(:,:  ), pointer     :: ZPBLRI ! => null()!wdb
+     real, dimension(:,:  ), pointer     :: ZPBLRI2 ! => null()!wdb
+     real, dimension(:,:  ), pointer     :: ZPBLTHV ! => null()!wdb
+     real, dimension(:,:  ), pointer     :: KPBL ! => null()!wdb
+     real, dimension(:,:  ), pointer     :: KPBL_SC ! => null()!wdb
      real, dimension(:,:  ), pointer     :: WEBRV,VSCBRV,DSIEMS,CHIS,ZCLDTOP,DELSINV,SMIXT,ZRADBS,CLDRF,VSCSFC,RADRCODE
 
      real, dimension(:,:,:), pointer     :: AKSODT, CKSODT
