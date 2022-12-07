@@ -22,7 +22,7 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran)
+  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran CLM40 CLM45)
 
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".F90" ".x" exe ${src})
