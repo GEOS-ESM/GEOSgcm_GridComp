@@ -662,9 +662,9 @@ contains
           t_scalar       => soilbiogeochem_carbonflux_inst%t_scalar_col , & ! Output: [real(r8) (:,:)   ]  soil temperature scalar for decomp                     
           w_scalar       => soilbiogeochem_carbonflux_inst%w_scalar_col , & ! Output: [real(r8) (:,:)   ]  soil water scalar for decomp                           
           o_scalar       => soilbiogeochem_carbonflux_inst%o_scalar_col , & ! Output: [real(r8) (:,:)   ]  fraction by which decomposition is limited by anoxia   
-          decomp_k       => soilbiogeochem_carbonflux_inst%decomp_k_col , & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)             
+          decomp_k       => soilbiogeochem_carbonflux_inst%decomp_k_col  & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)             
       !    Ksoil          => soilbiogeochem_carbonflux_inst%Ksoil          & ! Output: [real(r8) (:,:,:) ]  rate constant for decomposition (1./sec)
-         ! )
+          )
 
        mino2lim = CNParamsShareInst%mino2lim
 
