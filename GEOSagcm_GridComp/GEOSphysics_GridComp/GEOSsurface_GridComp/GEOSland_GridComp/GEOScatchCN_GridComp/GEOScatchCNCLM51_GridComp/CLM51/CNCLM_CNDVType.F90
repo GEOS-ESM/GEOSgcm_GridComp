@@ -71,7 +71,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(solarabs_type), intent(inout):: this
+    type(dgvs_type), intent(inout):: this
 
     !LOCAL
     integer, intent(in) :: begp, endp
