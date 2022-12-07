@@ -6,6 +6,9 @@ module CatchmentCNRstMod
   use mpi
   use MAPL
   use CatchmentRstMod, only : CatchmentRst
+  use clm_varpar     , only : nzone => NUM_ZON, nveg => NUM_VEG, &
+                              VAR_COL, VAR_PFT, numpft
+  
   implicit none
 
   real, parameter :: ECCENTRICITY  = 0.0167
@@ -13,8 +16,6 @@ module CatchmentCNRstMod
   real, parameter :: OBLIQUITY     = 23.45
   integer, parameter :: EQUINOX    = 80
 
-  integer, parameter :: nveg    = 4
-  integer, parameter :: nzone = 3
   integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
   integer, parameter :: npft    = 19
