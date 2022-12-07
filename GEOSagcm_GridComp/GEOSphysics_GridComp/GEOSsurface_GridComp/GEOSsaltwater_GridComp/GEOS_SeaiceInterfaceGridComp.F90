@@ -680,7 +680,7 @@ module GEOS_SeaiceInterfaceGridComp
          VLOCATION          = MAPL_VLocationNone,                  &
          FRIENDLYTO         = 'SEAICE',                            &
          DEFAULT            = MAPL_TICE-1.8,                       &
-                                           RC=STATUS  )
+                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
      call MAPL_AddInternalSpec(GC,                           &
@@ -712,6 +712,7 @@ module GEOS_SeaiceInterfaceGridComp
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
         DEFAULT            = 1.0e-4,                              &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
@@ -723,6 +724,7 @@ module GEOS_SeaiceInterfaceGridComp
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
         DEFAULT            = 1.0e-4,                              &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
@@ -734,6 +736,7 @@ module GEOS_SeaiceInterfaceGridComp
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
         DEFAULT            = 1.0e-4,                              &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
@@ -746,6 +749,7 @@ module GEOS_SeaiceInterfaceGridComp
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -757,6 +761,7 @@ module GEOS_SeaiceInterfaceGridComp
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -768,6 +773,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -777,6 +783,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -786,6 +793,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -795,6 +803,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'DRPAR'                             ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
+        RESTART            = MAPL_RestartSkip                    ,&
                                                        RC=STATUS  ) 
     VERIFY_(STATUS)
 
@@ -804,6 +813,7 @@ module GEOS_SeaiceInterfaceGridComp
          SHORT_NAME         = 'DFPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
+         RESTART            = MAPL_RestartSkip              ,&
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
@@ -813,6 +823,7 @@ module GEOS_SeaiceInterfaceGridComp
          SHORT_NAME         = 'DRNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
+         RESTART            = MAPL_RestartSkip              ,&
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
@@ -822,6 +833,7 @@ module GEOS_SeaiceInterfaceGridComp
          SHORT_NAME         = 'DFNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
+         RESTART            = MAPL_RestartSkip              ,&
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
@@ -831,6 +843,7 @@ module GEOS_SeaiceInterfaceGridComp
          SHORT_NAME         = 'DRUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
+         RESTART            = MAPL_RestartSkip              ,&
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
@@ -840,6 +853,7 @@ module GEOS_SeaiceInterfaceGridComp
          SHORT_NAME         = 'DFUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
+         RESTART            = MAPL_RestartSkip              ,&
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
@@ -849,6 +863,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'EVAP ',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -858,6 +873,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'SH',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -867,6 +883,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'TAUX',                              &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -876,6 +893,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'TAUY',                              &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -885,6 +903,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'DEVAP',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -894,6 +913,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'DSH',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -903,6 +923,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'SNO',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -914,6 +935,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'TA',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -923,6 +945,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'QA',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -932,6 +955,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'UU',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -941,6 +965,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'UWINDLMTILE',                       &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -950,6 +975,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'VWINDLMTILE',                       &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -959,6 +985,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'DZ',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -968,6 +995,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'PS',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -977,6 +1005,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'PCU'                               ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
+        RESTART            = MAPL_RestartSkip                    ,&
                                                        RC=STATUS  ) 
      VERIFY_(STATUS)
 
@@ -986,6 +1015,7 @@ module GEOS_SeaiceInterfaceGridComp
         SHORT_NAME         = 'PLS'                              ,&
         DIMS               = MAPL_DimsTileOnly                  ,&
         VLOCATION          = MAPL_VLocationNone                 ,&
+        RESTART            = MAPL_RestartSkip                   ,&
                                                       RC=STATUS  ) 
      VERIFY_(STATUS)
 
@@ -995,6 +1025,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1004,6 +1035,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'kg kg-1',                           &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1013,6 +1045,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1022,6 +1055,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1031,6 +1065,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1040,6 +1075,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1049,6 +1085,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1102,8 +1139,8 @@ module GEOS_SeaiceInterfaceGridComp
                                                            __RC__ )
 
 
-    !*CALLBACK*
-      ! an ESMF state to pass information b.w. GCs using callback
+   !*CALLBACK*
+   ! an ESMF state to pass information b.w. GCs using callback
    call MAPL_AddImportSpec(GC                                    ,&
           SHORT_NAME         = 'SURFSTATE'                       ,&
           LONG_NAME          = 'surface_state_for_seaice_thermo_coupling',  &
