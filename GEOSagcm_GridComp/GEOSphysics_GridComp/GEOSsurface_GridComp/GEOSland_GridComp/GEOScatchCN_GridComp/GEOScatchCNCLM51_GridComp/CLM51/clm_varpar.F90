@@ -37,6 +37,7 @@ module clm_varpar
 
   integer, parameter :: numpft         = 15!19   ! actual # of pfts (without bare), 16 here, since we are removing the split types
   integer, parameter :: mxpft          = 15      !
+  integer, public    :: maxveg           ! # of pfts + cfts
   integer, public    :: maxsoil_patches = numpft + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
 
   integer, public, parameter :: nvariants   =   2     ! number of variants of PFT constants
@@ -132,6 +133,7 @@ contains
     nlevmaxurbgrnd = max0(nlevurb,nlevgrnd)
     nlevmaxurbgrnd = nlevgrnd ! jkolassa: set this here, since we are not modelling urban tiles for now
     max_patch_per_col = maxsoil_patches ! since we don't have CFTs or urban patches
+    maxveg = maxsoil_patches - 1  ! # of patches without bare ground
 
      ! here is a switch to set the number of soil levels for the biogeochemistry calculations.
     ! currently it works on either a single level or on nlevsoi and nlevgrnd levels
