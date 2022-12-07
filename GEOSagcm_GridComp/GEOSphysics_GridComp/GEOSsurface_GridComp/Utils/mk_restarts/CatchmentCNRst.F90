@@ -7,7 +7,8 @@ module CatchmentCNRstMod
   use MAPL
   use CatchmentRstMod, only : CatchmentRst
   use clm_varpar     , only : nzone => NUM_ZON, nveg => NUM_VEG, &
-                              VAR_COL, VAR_PFT, numpft
+                              VAR_COL, VAR_PFT, npft => numpft
+  use nanMod         , only : nan
   
   implicit none
 
@@ -16,13 +17,6 @@ module CatchmentCNRstMod
   real, parameter :: OBLIQUITY     = 23.45
   integer, parameter :: EQUINOX    = 80
 
-  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
-  integer, parameter :: npft    = 19
-  integer, parameter :: npft_clm45    = 19
-  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column 
-  real,    parameter :: nan = O'17760000000'
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
   integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
 
@@ -115,14 +109,12 @@ contains
      catch%ntiles = ntiles
      catch%meta  = meta
      catch%time = time
+     catch%VAR_COL = VAR_COL
+     catch%VAR_PFT = VAR_PFT
      if (index(cnclm, '40') /=0) then
-        catch%VAR_COL = VAR_COL_CLM40
-        catch%VAR_PFT = VAR_PFT_CLM40
         catch%isCLM40 = .true.
      endif
      if (index(cnclm, '45') /=0) then
-        catch%VAR_COL = VAR_COL_CLM45
-        catch%VAR_PFT = VAR_PFT_CLM45
         catch%isCLM45 = .true.
      endif
 
@@ -206,14 +198,12 @@ contains
      catch%ntiles = meta%get_dimension('tile', __RC__)
      catch%time = time
      catch%meta = meta
+     catch%VAR_COL = VAR_COL
+     catch%VAR_PFT = VAR_PFT
      if (index(cnclm, '40') /=0) then
-        catch%VAR_COL = VAR_COL_CLM40
-        catch%VAR_PFT = VAR_PFT_CLM40
         catch%isCLM40 = .true.
      endif
      if (index(cnclm, '45') /=0) then
-        catch%VAR_COL = VAR_COL_CLM45
-        catch%VAR_PFT = VAR_PFT_CLM45
         catch%isCLM45 = .true.
      endif
 
