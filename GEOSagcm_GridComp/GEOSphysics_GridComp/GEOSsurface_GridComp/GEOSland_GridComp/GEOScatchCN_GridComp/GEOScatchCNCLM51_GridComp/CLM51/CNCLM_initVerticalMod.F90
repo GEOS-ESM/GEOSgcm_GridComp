@@ -21,9 +21,7 @@ module initVerticalMod
   use fileutils         , only : getfil
   use LandunitType      , only : lun                
   use GridcellType      , only : grc                
-  use ColumnType        , only : col                
-  use glcBehaviorMod    , only : glc_behavior_type
-  use SnowHydrologyMod  , only : InitSnowLayers             
+  use ColumnType        , only : col                          
   use abortUtils        , only : endrun    
   use ncdio_pio
   !
