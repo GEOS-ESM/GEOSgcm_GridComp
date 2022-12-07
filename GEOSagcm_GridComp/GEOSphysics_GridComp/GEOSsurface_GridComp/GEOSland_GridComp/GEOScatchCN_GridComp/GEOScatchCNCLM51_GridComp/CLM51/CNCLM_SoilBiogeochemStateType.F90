@@ -20,6 +20,7 @@ module SoilBiogeochemStateType
 !
 ! !PUBLIC MEMBER FUNCTIONS:
   public :: init_soilbiogeochem_state_type
+  public :: get_spinup_latitude_term
 
   ! !PUBLIC TYPES:
   type, public :: soilbiogeochem_state_type
@@ -112,4 +113,25 @@ contains
    end do ! nc
 
  end  subroutine init_soilbiogeochem_state_type
+
+!-----------------------------------------------
+  function get_spinup_latitude_term(latitude) result(ans)
+
+    !!DESCRIPTION:
+    ! calculate a logistic function to scale spinup factors so that spinup is more accelerated in high latitude regions
+    !
+    ! !REVISION HISTORY
+    ! charlie koven, nov. 2015
+    !
+    ! !ARGUMENTS:
+    real(r8), intent(in) :: latitude
+    !
+    ! !LOCAL VARIABLES:
+    real(r8) :: ans
+
+    ans = 1._r8 + 50._r8 / ( 1._r8 + exp(-0.15_r8 * (abs(latitude) - 60._r8) ) )
+
+    return
+  end function get_spinup_latitude_term
+
 end module SoilBiogeochemStateType
