@@ -40,6 +40,15 @@ module clm_varctl
 
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
+  
+  ! use subgrid fluxes
+  logical,  public :: use_subgrid_fluxes = .true.
+
+  !----------------------------------------------------------
+  ! SSRE diagnostic
+  !----------------------------------------------------------
+  logical, public :: use_SSRE = .false.   ! flag for SSRE diagnostic
+
   !----------------------------------------------------------
   ! CN matrix
   !----------------------------------------------------------  
