@@ -1,6 +1,7 @@
  module SoilBiogeochemNitrogenStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use shr_log_mod      , only : errMsg => shr_log_errMsg
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
@@ -73,6 +74,9 @@
 
   end type soilbiogeochem_nitrogenstate_type
   type(soilbiogeochem_nitrogenstate_type), public, target, save :: soilbiogeochem_nitrogenstate_inst
+
+  character(len=*), parameter, private :: sourcefile = &
+       __FILE__
 
 contains
 
