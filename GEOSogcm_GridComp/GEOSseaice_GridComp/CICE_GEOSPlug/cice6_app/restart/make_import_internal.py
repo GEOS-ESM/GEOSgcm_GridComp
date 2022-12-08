@@ -12,6 +12,7 @@ import sys
 from mpl_toolkits.basemap import Basemap, shiftgrid, addcyclic
 from scipy import interpolate
 import getopt
+import argparse
 import string
 import datetime
 import scipy.interpolate as interp
@@ -59,72 +60,65 @@ def write_state_aice(fname, AICE):
     aice[:] = AICE
     ncfile.close()
 
-def write_state_chl(fname, HICE, LON=None, LAT=None, Time=None):
+def write_import(fname, fr, Time=None):
 
-    nx=HICE.shape[1]
-    ny=HICE.shape[0]
+    ntiles = fr.shape[1]
+    ncat   = fr.shape[0]
 
     ncfile = Dataset(fname,'w')
-    #ncfile.createDimension('xaxis_1',nx)
-    #ncfile.createDimension('yaxis_1',ny)
-    ncfile.createDimension('nx',nx)
-    ncfile.createDimension('ny',ny)
+    ncfile.createDimension('tile', ntiles)
+    ncfile.createDimension('unknown_dim1', ncat)
+    ncfile.createDimension('subtile', ncat)
+    ncfile.createDimension('time', 1)
 
-    chl = ncfile.createVariable('tideamp',np.dtype('float32').char,('ny','nx'), 
-                             fill_value=missing)
+    chl = ncfile.createVariable('FRACICE',np.dtype('float32').char,('unknown_dim1','tile')) 
 
-    chl[:] = HICE
+    chl[:] = fr 
 
-    chl.missing_value = missing
-    chl.units = "m s-1"
+    chl.units = "1"
+    chl.long_name = 'ice_covered_fraction_of_tile'
     
 
-    #mask = ncfile.createVariable('MASK',np.dtype('float32').char,('Time','yaxis_1','xaxis_1'))
-    #mask[:] = MASK
-    if LON is not None:
-       lon = ncfile.createVariable('nx',np.dtype('float64').char,('nx'))
-       lon.units = 'degrees_east' 
-       lon.cartesian_axis = "X" 
-       lon[:] = LON
-    if LAT is not None:
-       lat = ncfile.createVariable('ny',np.dtype('float64').char,('ny'))
-       lat.units = 'degrees_north' 
-       lat.cartesian_axis = "Y" 
-       lat[:] = LAT
     if Time is not None:
-       t = ncfile.createVariable('time',np.dtype('float32').char,('time'))
-       t.units = "days since 0001-01-01 00:00:00" 
-       t.calendar = "noleap" 
-       t.long_name = "Time" 
-       t.cartesian_axis = "T"
-       t.modulo = " " 
-       t[:] = Time
+       t = ncfile.createVariable('time',np.dtype('float64').char,('time'))
+       t.units =  "minutes since " + Time[:4]+'-'+Time[4:6]+'-'+Time[6:]+" 00:00:00" 
+       t.begin_date = int(Time) 
+       t.begin_time = 0
+       t.long_name = "time" 
+       t[:] = np.float64(0.0)
     ncfile.close()
 
-def nearest_interp_new(lon, lat, z, LON, LAT):
-    lon[lon>80.0]=lon[lon>80.0]-360.0
-    xs, ys, zs = lon_lat_to_cartesian(lon.flatten(), lat.flatten())
-    xt, yt, zt = lon_lat_to_cartesian(LON.flatten(), LAT.flatten())
-    tree = cKDTree(zip(xs, ys, zs))
-    #find indices of the nearest neighbors in the flattened array
-    #d, inds = tree.query(zip(xt, yt, zt), k = 1)
-    #get interpolated 2d field
-    zout = LON.copy().flatten()
+def write_internal(fname, ti, si, Time=None):
 
-    d, inds = tree.query(zip(xt, yt, zt), k = 1)
-    #rs=tree.query_ball_point(zip(xt, yt, zt), r)
-    #zout = np.sum(w * z.flatten()[inds], axis=1) / np.sum(w, axis=1)
-    zout = z.flatten()[inds]
-  
-    '''
-    for i,r in enumerate(rs):                                                   
-        if r:
-            zout[i] = np.mean(z[r])
-        else:
-            zout[i] = 0.0 
-    '''
-    zout.shape = LON.shape
-    return zout
+    ntiles = ti.shape[1]
+    ncat   = ti.shape[0]
+
+    ncfile = Dataset(fname,'w')
+    ncfile.createDimension('tile', ntiles)
+    ncfile.createDimension('unknown_dim1', ncat)
+    ncfile.createDimension('subtile', ncat)
+    ncfile.createDimension('time', 1)
+
+    chl = ncfile.createVariable('TSKINI',np.dtype('float32').char,('unknown_dim1','tile')) 
+    chl[:] = ti 
+    chl.units = "K"
+    chl.long_name = 'ice_skin_temperature'
+
+    chl = ncfile.createVariable('SSKINI',np.dtype('float32').char,('tile')) 
+    chl[:] = si 
+    chl.units = "psu"
+    chl.long_name = 'ice_skin_salinity'
+    
+
+    if Time is not None:
+       t = ncfile.createVariable('time',np.dtype('float64').char,('time'))
+       t.units =  "minutes since " + Time[:4]+'-'+Time[4:6]+'-'+Time[6:]+" 00:00:00" 
+       t.begin_date = int(Time) 
+       t.begin_time = 0
+       t.long_name = "time" 
+       t[:] = np.float64(0.0)
+    ncfile.close()
+
 
 class saltwatertile:
 
@@ -178,10 +172,11 @@ missing=np.float32(-1.e20)
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--inputfile', default=None, required=True, help='CICE restart file on source grid')
-    parser.add_argument('-ig', '--inputgrid', default=None, required=True, help='source grid file')
-    parser.add_argument('-im', '--import', default=None, required=True, help='import restart file on tiles')
+    parser.add_argument('-g', '--inputgrid', default=None, required=True, help='source grid file')
+    parser.add_argument('-im', '--imp', default=None, required=True, help='import restart file on tiles')
     parser.add_argument('-in', '--internal', default=None, required=True, help='internal restart file on tiles')
-    parser.add_argument('-ti', '--tilefile', default=None, required=True, help='whether use BL99 fixed salinity profile')
+    parser.add_argument('-t', '--tilefile', default=None, required=True, help='whether use BL99 fixed salinity profile')
+    parser.add_argument('-d', '--date', default=None, required=True, help='date in format yyyymmdd')
     return parser.parse_args()
 
 def main() -> None:
@@ -190,8 +185,33 @@ def main() -> None:
 
    LON, LAT, _, _, wet = get_grid(args.inputgrid)
 
+   print(wet.shape)
+
    sw = saltwatertile(args.tilefile)  
 
+   with Dataset(args.inputfile) as src:
+       aicen = src['aicen'][:] 
+       tsf = src['Tsfcn'][:] 
+  
+
+   fr = np.zeros((aicen.shape[0], sw.size), dtype='float32') 
+   si = np.zeros(sw.size, dtype='float32') 
+   si[:] = 30.0
+   tskin = np.zeros((aicen.shape[0], sw.size), dtype='float32') 
+
+   for k in range(sw.size):
+      i, j = sw.gi[k]-1, sw.gj[k]-1
+      if wet[j,i] > 0.5:
+         fr[:,k]    = np.float32(aicen[:,j,i])       
+         tskin[:,k] = np.float32(tsf[:,j,i]) + 273.15       
+      else:
+         tskin[:,k] = np.float32(273.16)      
+ 
+         
+       
+   print(aicen.shape)
+   write_import(args.imp, fr, Time=args.date)
+   write_internal(args.internal, tskin, si, Time=args.date)
 
 if __name__=="__main__":
    main()
