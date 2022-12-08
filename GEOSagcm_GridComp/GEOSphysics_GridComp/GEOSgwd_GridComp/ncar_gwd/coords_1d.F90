@@ -6,7 +6,8 @@ module coords_1d
 
 implicit none
 private
-save
+!AOO commented out "save" for OpenMP to work correctly
+!save
 
 public :: Coords1D
 

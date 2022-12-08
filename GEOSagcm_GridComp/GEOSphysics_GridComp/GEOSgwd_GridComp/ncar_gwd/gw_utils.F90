@@ -6,7 +6,8 @@ module gw_utils
 
 implicit none
 private
-save
+!AOO commented out "save" for OpenMP to work correctly
+!save
 
 ! Real kind for gravity wave parameterization.
 integer,public,parameter :: GW_R4 = SELECTED_REAL_KIND(6,37)

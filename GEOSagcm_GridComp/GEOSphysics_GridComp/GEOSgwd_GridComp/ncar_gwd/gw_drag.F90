@@ -57,7 +57,7 @@ contains
 
 
   subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,              &    
-          beres_dc_desc, beres_sc_desc, beres_band,   oro_band,                      &
+          beres_dc_desc, beres_sc_desc, beres_band,   oro_band, rdg_band,         &
           pint_dev,      t_dev,         u_dev,        v_dev,                         &
           ht_dc_dev,     ht_sc_dev,     dqcdt_dev,                                   &
           sgh_dev,       mxdis_dev,     hwdth_dev,    clngt_dev,  angll_dev,         &
@@ -68,7 +68,7 @@ contains
           dudt_org_dev,  dvdt_org_dev,  dtdt_org_dev,                                &
           taugwdx_dev,   taugwdy_dev,   &
           taubkgx_dev,   taubkgy_dev,   &
-          effgworo,      effgwbkg,      rc            )
+          effgworo,      effgwbkg,      alpha, rc            )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
@@ -82,6 +82,7 @@ contains
 !--jtb
     real,    intent(in   ) :: dt                       ! time step
     type(GWBand),          intent(inout) :: oro_band   ! Band descriptor
+    type(GWBand),          intent(inout) :: rdg_band   ! Band descriptor
     type(GWBand),          intent(inout) :: beres_band ! Band descriptor
     type(BeresSourceDesc), intent(inout) :: beres_dc_desc ! Table descriptor for DeepCu Beres scheme
     type(BeresSourceDesc), intent(inout) :: beres_sc_desc ! Table descriptor for ShallowCu Beres scheme
@@ -124,6 +125,7 @@ contains
     real,    intent(  out) :: taugwdy_dev(pcols)       ! meridional gravity wave surface    stress
     real,    intent(  out) :: taubkgx_dev(pcols)       ! zonal      gravity wave background stress
     real,    intent(  out) :: taubkgy_dev(pcols)       ! meridional gravity wave background stress
+    real,    intent(  in) ::  alpha(:)
 
     integer, optional, intent(out) :: RC               ! return code
 
@@ -213,7 +215,7 @@ contains
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        dqcdt_dev, &
-       ht_dc_dev,beres_dc_desc,rlat_dev, &
+       ht_dc_dev,beres_dc_desc,rlat_dev, alpha, &
        utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
@@ -229,7 +231,7 @@ contains
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        dqcdt_dev, &
-       ht_sc_dev,beres_sc_desc,rlat_dev, &
+       ht_sc_dev,beres_sc_desc,rlat_dev, alpha, &
        utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
@@ -240,7 +242,7 @@ contains
      if (nrdg > 0) then
        trpd_leewv    = .FALSE.
        rdg_cd_llb    = 1.0
-       call gw_rdg_ifc( &
+       call gw_rdg_ifc( rdg_band, &
          pcols, pver, pverp, pcnst, nrdg, dt, &
          u_dev , v_dev, t_dev, &
          pint_dev, pmid_dev, &
@@ -251,7 +253,7 @@ contains
          kwvrdg_dev, effrdg_dev, &
          hwdth_dev, clngt_dev, gbxar_dev, &
          mxdis_dev, angll_dev, anixy_dev, &
-         rdg_cd_llb, trpd_leewv, &
+         rdg_cd_llb, trpd_leewv, alpha, &
          utgw, vtgw, ttgw, flx_heat)
      else
        call gw_oro_ifc( oro_band, &
@@ -261,7 +263,7 @@ contains
          pdel_dev , rpdel_dev, lnpint_dev, &
          zm_dev, zi, &
          nm, ni, rhoi, kvtt,  &
-         sgh_dev   ,rlat_dev, &
+         sgh_dev   ,rlat_dev, alpha, &
          utgw, vtgw, ttgw)
      endif
      dudt_org_dev = utgw

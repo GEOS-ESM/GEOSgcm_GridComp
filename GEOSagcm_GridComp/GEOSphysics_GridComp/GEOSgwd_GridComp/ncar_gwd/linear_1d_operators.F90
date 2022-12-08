@@ -48,7 +48,8 @@ use coords_1d, only: Coords1D
 
 implicit none
 private
-save
+!AOO commented out "save" for OpenMP to work correctly
+!save
 
 ! Main type.
 public :: TriDiagOp

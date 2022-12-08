@@ -7,7 +7,8 @@ use gw_utils, only: GW_PRC, midpoint_interp
 !
 implicit none
 private
-save
+!AOO commented out "save" for OpenMP to work correctly
+!save
 
 ! Public interface.
 
@@ -71,7 +72,7 @@ real(GW_PRC), parameter :: dback = 0.05_GW_PRC
 
 
 ! Newtonian cooling coefficients.
-real, allocatable :: alpha(:)
+!real, allocatable :: alpha(:) ! AOO global save/alloctable variable not thread-safe 
 
 !
 ! Limits to keep values reasonable.
@@ -264,7 +265,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      c, kvtt, tau,  utgw,  vtgw, &
-     ttgw,  gwut, ro_adjust, tau_adjust, &
+     ttgw,  gwut, alpha, ro_adjust, tau_adjust, &
      kwvrdg, satfac_in, tndmax_in )
 
   !-----------------------------------------------------------------------
@@ -342,6 +343,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Gravity wave wind tendency for each wave.
   real(GW_PRC), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
+  real, intent(in) :: alpha(:)
 
   ! Adjustment parameter for IGWs.
   real, intent(in), optional :: &
@@ -442,9 +444,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop from bottom to top to get stress profiles.
-!$OMP parallel do default(none) shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni,satfac, &
-!$OMP                                  ro_adjust,ncol,alpha,piln,t,rog,src_level,tau_adjust,tau) &
-!$OMP                          private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
+! !$OMP parallel do default(none) shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni,satfac, &
+! !$OMP                                  ro_adjust,ncol,alpha,piln,t,rog,src_level,tau_adjust,tau) &
+! !$OMP                          private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
   do k = kbot_src, ktop, -1  !++ but this is in model now 
      
      ! Determine the diffusivity for each column.
@@ -493,7 +495,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           tau(i,l,k) = min(taudmp(i), tausat(i))
 
         endif
-
         end do
      end do
   end do
@@ -507,9 +508,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
 
   ! Loop over levels from top to bottom
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
-!$OMP                                  gwut,ubt,xv,yv,tend_level,near_zero) &
-!$OMP                          private(k,l,i,ubtl)
+! !$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
+! !$OMP                                  gwut,ubt,xv,yv,tend_level,near_zero) &
+! !$OMP                          private(k,l,i,ubtl)
   do k = ktop, kbot_tend
 
      ! Accumulate the mean wind tendency over wavenumber.
@@ -579,8 +580,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Evaluate second temperature tendency term: Conversion of kinetic
   ! energy into thermal.
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ttgw,ubm,c,gwut) &
-!$OMP                          private(k,l)
+! !$OMP parallel do default(none) shared(kbot_tend,ktop,band,ttgw,ubm,c,gwut) &
+! !$OMP                          private(k,l)
   do k = ktop, kbot_tend
      do l = -band%ngwv, band%ngwv
         ttgw(:,k) = ttgw(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
@@ -594,12 +595,14 @@ end subroutine gw_drag_prof
 !==========================================================================
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine gw_newtonian_set( pver, pref )
+subroutine gw_newtonian_set( pver, pref, alpha )
 
 use interpolate_data, only: lininterp
 
   integer,  intent(in)  :: pver
   real, intent(in)  :: pref( pver+1 )
+! Newtonian cooling coefficients.
+  real, intent(inout) :: alpha(:)  ! Make alpha argument instead of global for correct behavior under threading
   
   ! Levels of pre-calculated Newtonian cooling (1/day).
   ! The following profile is digitized from:
@@ -661,7 +664,8 @@ use interpolate_data, only: lininterp
      palph(k) = palph(k)*1.e2
   end do
 
-  allocate (alpha(pver+1))
+  !allocate (alpha(pver+1)) ! Make alpha local instead of global for correct behavior under threading
+
   ! interpolate to current vertical grid and obtain alpha
   call lininterp (alpha0, palph, nalph , alpha, pref, pver+1)
 

@@ -13,7 +13,8 @@ use gw_utils, only:  GW_PRC, dot_2d, midpoint_interp
 
 implicit none
 private
-save
+!AOO commented out "save" for OpenMP to work correctly
+!save
 
 
 ! Public interface(s)
@@ -77,7 +78,7 @@ real, parameter :: PINTADJ_2 = 0.5*pi
 real, parameter :: PINTADJ_3 = 21./pi
 
 ! Some description of GW spectrum
-type(GWBand)   :: band         ! I hate this variable  ... it just hides information from view
+!type(GWBand)   :: band         ! I hate this variable  ... it just hides information from view
 
 
 !==========================================================================
@@ -92,9 +93,10 @@ contains
 !------------------------------------
 !> \section arg_table_gw_rdg_init  Argument Table
 !! \htmlinclude gw_rdg_init.html
-subroutine gw_rdg_init (gw_dc, fcrit2, wavelength, tndmax, pgwv)
+subroutine gw_rdg_init (band, gw_dc, fcrit2, wavelength, tndmax, pgwv)
 #include <netcdf.inc>
 
+  type(GWBand), intent(inout)   :: band         ! I hate this variable  ... it just hides information from view
   real, intent(in) :: gw_dc,fcrit2,wavelength,tndmax
   integer, intent(in)  :: pgwv
 
@@ -129,7 +131,7 @@ end subroutine gw_rdg_init
 !------------------------------------
 !> \section arg_table_gw_rdg_ifc  Argument Table
 !! \htmlinclude gw_rdg_ifc.html
-subroutine gw_rdg_ifc( &
+subroutine gw_rdg_ifc( band, &
    ncol, pver, pverp, pcnst, n_rdg, dt, &
    u, v, t, pint, pmid, delp, rdelp, &
    piln, zm, zi, z, &
@@ -138,11 +140,12 @@ subroutine gw_rdg_ifc( &
    kwvrdg, effrdg, &
    hwdth, clngt, gbxar, &
    mxdis, angll, anixy, &
-   rdg_cd_llb, trpd_leewv, &
+   rdg_cd_llb, trpd_leewv, alpha, &
    utrdg, vtrdg, ttrdg, &
    flx_heat )
 
    !!character(len=5), intent(in) :: type         ! BETA or GAMMA
+   type(GWBand), intent(in)   :: band         ! I hate this variable  ... it just hides information from view
    integer,          intent(in) :: ncol         ! number of atmospheric columns
    integer,          intent(in) :: pverp        ! Layer Vertical dimension
    integer,          intent(in) :: pver         ! Intfc Vertical dimension
@@ -181,6 +184,7 @@ subroutine gw_rdg_ifc( &
 
    real,         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
    logical,      intent(in) :: trpd_leewv
+   real,         intent(in) :: alpha(:)
 
 
    ! OUTPUTS
@@ -306,19 +310,19 @@ subroutine gw_rdg_ifc( &
  
    do nn = 1, n_rdg
   
-    call gw_rdg_src(ncol, pver, pint, pmid, delp, &
+    call gw_rdg_src(band, ncol, pver, pint, pmid, delp, &
          u, v, t, mxdis(:,nn), angll(:,nn), anixy(:,nn), kwvrdg(:,nn), isoflag, zi, nm, &
          src_level, tend_level, bwv_level, tlb_level, tau, ubm, ubi, xv, yv,  & 
          ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, c)
 
-    call gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
+    call gw_rdg_belowpeak(band, ncol, pver, rdg_cd_llb, &
          t, mxdis(:,nn), anixy(:,nn), kwvrdg(:,nn), & 
          zi, nm, ni, rhoi, &
          src_level, tau, & 
          ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, & 
          tauoro, taudsw, hdspwv, hdspdw)
 
-    call gw_rdg_break_trap(ncol, pver, &
+    call gw_rdg_break_trap(band, ncol, pver, &
          zi, nm, ni, ubm, ubi, rhoi, kwvrdg(:,nn) , bwv, tlb, wbr, & 
          src_level, tlb_level, hdspwv, hdspdw,  mxdis(:,nn), & 
          tauoro, taudsw, tau, & 
@@ -328,7 +332,7 @@ subroutine gw_rdg_ifc( &
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, &
+          ttgw, gwut, alpha, &
           kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
 
      ! Add the tendencies from each ridge to the totals.
@@ -380,7 +384,7 @@ subroutine gw_rdg_ifc( &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !------------------------
-subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
+subroutine gw_rdg_src(band, ncol, pver , pint, pmid, delp, &
      u, v, t, mxdis, angxy, anixy, kwvrdg, iso, zi, nm, &
      src_level, tend_level, bwv_level ,tlb_level , tau, ubm, ubi, xv, yv,  & 
      ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, c)
@@ -392,6 +396,7 @@ subroutine gw_rdg_src(ncol, pver , pint, pmid, delp, &
   ! For points where the orographic variance is small (including ocean),
   ! the returned stress is zero.
   !------------------------------Arguments--------------------------------
+   type(GWBand), intent(in)   :: band         ! I hate this variable  ... it just hides information from view
   ! Column dimension.
   integer, intent(in) :: ncol
   ! Vertical dimension.
@@ -730,7 +735,7 @@ end subroutine gw_rdg_src
 
 !==========================================================================
 
-subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
+subroutine gw_rdg_belowpeak(band, ncol, pver, rdg_cd_llb, &
      t, mxdis, anixy, kwvrdg, zi, nm, ni, rhoi, &
      src_level , tau,  & 
      ubmsrc, nsrc, rsrc, m2src,tlb,bwv,Fr1,Fr2,Frx, & 
@@ -743,6 +748,7 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
   ! For points where the orographic variance is small (including ocean),
   ! the returned stress is zero.
   !------------------------------Arguments--------------------------------
+   type(GWBand), intent(in)   :: band         ! I hate this variable  ... it just hides information from view
   ! Column dimension.
   integer, intent(in) :: ncol
   ! Vertical dimension.
@@ -999,7 +1005,7 @@ subroutine gw_rdg_belowpeak(ncol, pver, rdg_cd_llb, &
 end subroutine gw_rdg_belowpeak
 
 !==========================================================================
-subroutine gw_rdg_break_trap(ncol, pver, &
+subroutine gw_rdg_break_trap(band, ncol, pver, &
      zi, nm, ni, ubm, ubi, rhoi, kwvrdg, bwv, tlb, wbr, & 
      src_level, tlb_level, & 
      hdspwv, hdspdw, mxdis, &
@@ -1010,6 +1016,7 @@ subroutine gw_rdg_break_trap(ncol, pver, &
   !
   !------------------------------Arguments--------------------------------
   ! Column dimension.
+   type(GWBand), intent(in)   :: band         ! I hate this variable  ... it just hides information from view
   integer, intent(in) :: ncol
   ! Vertical dimension.
   integer, intent(in) :: pver

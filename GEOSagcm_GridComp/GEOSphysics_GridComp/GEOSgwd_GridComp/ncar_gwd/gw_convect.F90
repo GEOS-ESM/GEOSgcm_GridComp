@@ -14,7 +14,8 @@ module gw_convect
 
 implicit none
 private
-save
+!AOO commented out "save" for OpenMP to work correctly
+!save
 
 public :: BeresSourceDesc
 public :: gw_beres_ifc
@@ -275,6 +276,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
   ! Averaging length.
   real, parameter :: AL = 1.0e5
+  integer :: thread
 
   !----------------------------------------------------------------------
   ! Initialize tau array
@@ -283,6 +285,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   hdepth = 0.0
   q0 = 0.0
   tau0 = 0.0
+  ubi = 0.0
 
   !------------------------------------------------------------------------
   ! Determine wind and unit vectors approximately at the source level, then
@@ -454,7 +457,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
        tau(i,:,desc%k+1) = desc%taubck(i,:)
        topi(i) = desc%k
 
-    endif
+     endif
 
   enddo
   !-----------------------------------------------------------------------
@@ -480,7 +483,7 @@ subroutine gw_beres_ifc( band, &
    u, v, t, pref, pint, delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
    dqcdt, &
-   netdt,desc,lats, &
+   netdt,desc,lats, alpha, &
    utgw,vtgw,ttgw,flx_heat)
 
    type(BeresSourceDesc), intent(inout) :: desc
@@ -508,6 +511,7 @@ subroutine gw_beres_ifc( band, &
    real, intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
 
    real,         intent(in) :: lats(ncol)      ! latitudes
+   real,         intent(in) :: alpha(:)
 
    real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
    real, intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
@@ -600,7 +604,7 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, tau_adjust=pint_adj)
+          ttgw, gwut, alpha, tau_adjust=pint_adj)
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
