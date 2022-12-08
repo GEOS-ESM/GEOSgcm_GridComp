@@ -403,6 +403,7 @@ contains
 
     class(soilbiogeochem_nitrogenstate_type)           :: this
     real(r8)                              , intent(in) :: totvegcthresh
+    character(len=512) :: msg
 
     if ( totvegcthresh <= 0.0_r8 )then
         call endrun(msg=' Error totvegcthresh is zero or negative and should be > 0'//&
