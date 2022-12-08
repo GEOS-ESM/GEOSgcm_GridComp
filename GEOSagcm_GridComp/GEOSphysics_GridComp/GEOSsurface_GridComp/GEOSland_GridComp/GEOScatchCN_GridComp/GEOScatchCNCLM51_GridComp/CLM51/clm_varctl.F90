@@ -73,6 +73,7 @@ module clm_varctl
   ! 0 (default) = normal model; 1 = AD SPINUP
   integer, public :: spinup_state = 0
 
+  logical, public :: use_snicar_frc      = .false.
 contains
 
 !---------------------------------------
