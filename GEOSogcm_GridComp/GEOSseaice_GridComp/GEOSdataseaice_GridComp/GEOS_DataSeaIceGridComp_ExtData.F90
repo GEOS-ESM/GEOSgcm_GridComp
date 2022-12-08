@@ -5,7 +5,7 @@
 !=============================================================================
 !BOP
 
-! !MODULE: GEOS_DataSeaIce -- A {\it fake} seaice model
+! !MODULE: GEOS_DataSeaIce -- A {\it fake} ocean sea ice
 
 ! !INTERFACE:
 
@@ -19,18 +19,11 @@ module GEOS_DataSeaIceGridCompMod
   implicit none
   private
 
-
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
 
-  integer, parameter :: NUM_SNOW_LAYERS=1
-  integer            :: NUM_ICE_CATEGORIES
-  integer            :: NUM_ICE_LAYERS
-  integer            :: NUM_ICE_LAYERS_ALL
-  integer            :: NUM_SNOW_LAYERS_ALL
   integer            :: DO_CICE_THERMO
-
   logical            :: ocean_extData
 
 ! !DESCRIPTION:
@@ -91,38 +84,23 @@ module GEOS_DataSeaIceGridCompMod
 ! ---------------------------------------
 
     Iam = "SetServices"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF,  _RC )
     Iam = trim(COMP_NAME) // Iam
-
-! Get my internal MAPL_Generic state
-!-----------------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
-
-! Get constants from CF
-! ---------------------
-
-    call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    if (DO_CICE_THERMO /=0) then
-      _ASSERT(.FALSE.,'Must not use CICE_Thermo in (Ext) data sea ice. Fix and try.')
-    endif
-
-    call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
-
-    NUM_ICE_CATEGORIES = 1
-    NUM_ICE_LAYERS     = 1
-
-    NUM_ICE_LAYERS_ALL=NUM_ICE_LAYERS*NUM_ICE_CATEGORIES
-    NUM_SNOW_LAYERS_ALL=NUM_SNOW_LAYERS*NUM_ICE_CATEGORIES
 
 ! Set the Run entry point
 ! -----------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,  _RC )
+
+    call MAPL_GetObjectFromGC ( GC, MAPL,  _RC )
+
+    call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0,  _RC )
+
+    if (DO_CICE_THERMO /=0) then
+      _ASSERT(.FALSE.,'Must not use CICE_Thermo in (Ext) data sea ice. Fix and try.')
+    endif
+
+    call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -138,8 +116,7 @@ module GEOS_DataSeaIceGridCompMod
       UNITS              = '1',                  &
       DIMS               = MAPL_DimsHorzOnly,    &
       VLOCATION          = MAPL_VLocationNone,   &
-      RC=STATUS)
-    VERIFY_(status)
+       _RC )
   endif
 
   call MAPL_AddImportSpec(GC,                                 &
@@ -148,8 +125,7 @@ module GEOS_DataSeaIceGridCompMod
     UNITS              = 'm',                                 &
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
+                                                    _RC )
 
   call MAPL_AddImportSpec(GC,                                 &
        SHORT_NAME         = 'TI',                                &
@@ -157,8 +133,7 @@ module GEOS_DataSeaIceGridCompMod
        UNITS              = 'K',                                 &
        DIMS               = MAPL_DimsHorzOnly,                   &
        VLOCATION          = MAPL_VLocationNone,                  &
-       RC=STATUS  )
-       VERIFY_(STATUS)
+        _RC )
 
   call MAPL_AddImportSpec(GC,                                 &
     SHORT_NAME         = 'SI',                                &
@@ -166,8 +141,7 @@ module GEOS_DataSeaIceGridCompMod
     UNITS              = 'psu',                               &
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
+                                                        _RC )
 
 !  !Export state:
 
@@ -177,8 +151,7 @@ module GEOS_DataSeaIceGridCompMod
     UNITS              = 'm s-1 ',                            &
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
+                                                    _RC )
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'VI',                                &
@@ -186,30 +159,25 @@ module GEOS_DataSeaIceGridCompMod
     UNITS              = 'm s-1 ',                            &
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
+                                                    _RC )
 
   call MAPL_AddExportSpec(GC,                                 &
-       SHORT_NAME         = 'FRACICE',                           &
-       LONG_NAME          = 'fractional_cover_of_seaice',        &
-       UNITS              = '1',                                 &
-       DIMS               = MAPL_DimsHorzOnly,                   &
-       VLOCATION          = MAPL_VLocationNone,                  &
-       RC=STATUS  )
-  VERIFY_(STATUS)
+       SHORT_NAME         = 'FRACICE',                        &
+       LONG_NAME          = 'fractional_cover_of_seaice',     &
+       UNITS              = '1',                              &
+       DIMS               = MAPL_DimsHorzOnly,                &
+       VLOCATION          = MAPL_VLocationNone,               &
+        _RC )
 
 !EOS
 
-  call MAPL_TimerAdd(GC,    name="RUN"     ,RC=STATUS)
-  VERIFY_(STATUS)
-  call MAPL_TimerAdd(GC,    name="-UPDATE" ,RC=STATUS)
-  VERIFY_(STATUS)
+  call MAPL_TimerAdd(GC,    name="RUN"     ,  _RC )
+  call MAPL_TimerAdd(GC,    name="-UPDATE" ,  _RC )
 
 ! Set generic init and final methods
 ! ----------------------------------
 
-  call MAPL_GenericSetServices    ( GC, RC=STATUS)
-  VERIFY_(STATUS)
+  call MAPL_GenericSetServices    ( GC,  _RC )
 
   RETURN_(ESMF_SUCCESS)
   
@@ -253,15 +221,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: TAU_SIT
   real                                :: DT
   real                                :: RUN_DT
-  integer                             :: I, J, IM, JM
-
-! below are for CICE Thermo
-  real(kind=ESMF_KIND_R8), allocatable  :: FRCICE(:,:)
-  real(kind=ESMF_KIND_R8)               :: VOLICEDB(NUM_ICE_CATEGORIES)
-  real(kind=ESMF_KIND_R8)               :: VOLSNODB(NUM_ICE_CATEGORIES)
-  real(kind=ESMF_KIND_R8)               :: ERGICEDB(NUM_ICE_LAYERS_ALL)
-  real(kind=ESMF_KIND_R8)               :: ERGSNODB(NUM_SNOW_LAYERS_ALL)
-! above were for CICE Thermo
 
 ! pointers to export
 
@@ -274,28 +233,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: TI   => null()
    real, pointer, dimension(:,:)  :: HI   => null()
    real, pointer, dimension(:,:)  :: SI   => null()
-
-! below are for CICE Thermo
-   real, pointer, dimension(:,:,:):: FR8     => null()
-   real, pointer, dimension(:,:,:):: TI8     => null()
-
-   real, pointer, dimension(:,:,:):: VOLICE  => null()
-   real, pointer, dimension(:,:,:):: VOLSNO  => null()
-   real, pointer, dimension(:,:,:):: TAUAGE  => null()
-   real, pointer, dimension(:,:,:):: MPOND   => null()
-
-   real, pointer, dimension(:,:,:):: ERGICE  => null()
-   real, pointer, dimension(:,:,:):: ERGSNO  => null()
-
-   real, pointer, dimension(:,:)  :: LATS    => null()
-   real, pointer, dimension(:,:)  :: LONS    => null()
-
-   real, allocatable, dimension(:,:)  :: FRT 
-   real :: f
-
-   real, pointer :: DATA_icec(:,:) => null()
-! above were for CICE Thermo
-
+   real, pointer, dimension(:,:)  :: DATA_icec => null()
 
 !  Begin...
 !----------
@@ -304,21 +242,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
     Iam = "Run"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, name=COMP_NAME,  _RC )
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !----------------------------------
 
-    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_Get(MAPL,                      &
-         LATS  = LATS ,                      &
-         LONS  = LONS ,                      &
-                                RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC(GC, MAPL,  _RC )
 
 ! Start Total timer
 !------------------
@@ -330,56 +260,44 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------
 
    if (ocean_extData) then
-     call MAPL_GetPointer(IMPORT, DATA_icec    ,  'DATA_ICEC', __RC__)
+     call MAPL_GetPointer(IMPORT, DATA_icec    ,  'DATA_ICEC', _RC )
    endif
 
-   call MAPL_GetPointer(IMPORT, TI    ,  'TI'   , RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS) 
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT, SI      ,  'SI'   , RC=STATUS)
-   VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT, TI    ,  'TI'  , _RC )
+   call MAPL_GetPointer(IMPORT, HI    ,  'HI'  , _RC ) 
+   call MAPL_GetPointer(IMPORT, SI    ,  'SI'  , _RC )
 
 !  Pointers to Exports
 !---------------------
 
-    call MAPL_GetPointer(EXPORT,      UI  , 'UI'       , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,      VI  , 'VI'       , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,      FR  , 'FRACICE'  , RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, UI  , 'UI'       ,  _RC )
+    call MAPL_GetPointer(EXPORT, VI  , 'VI'       ,  _RC )
+    call MAPL_GetPointer(EXPORT, FR  , 'FRACICE'  ,  _RC )
 
 ! Set current time and calendar
 !------------------------------
 
-    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_ClockGet(CLOCK, currTime=CurrentTime,  _RC )
 
    if (.not. ocean_extData) then
     ! Get the file name from the resource file
     !-----------------------------------------
-    call MAPL_GetResource(MAPL,DataFrtFile,LABEL="DATA_FRT_FILE:", RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL,DataFrtFile,LABEL="DATA_FRT_FILE:",  _RC )
   endif
 
 ! In atmospheric forecast mode we do not have future Sea Ice Conc
 !---------------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0,   RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0, _RC )
 
     FCST = IFCST==1
 
 ! Get relaxation time
 !--------------------
 
-    call MAPL_GetResource(MAPL,TAU_SIT, LABEL="TAU_SIT:", default=86400.0,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL,RUN_DT , LABEL="RUN_DT:" ,                 RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL,DT     , LABEL="DT:"    , default=RUN_DT, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL,TAU_SIT, LABEL="TAU_SIT:", default=86400.0, _RC )
+    call MAPL_GetResource(MAPL,RUN_DT , LABEL="RUN_DT:" ,                  _RC )
+    call MAPL_GetResource(MAPL,DT     , LABEL="DT:"    , default=RUN_DT,   _RC )
 
 !  Update the friendly skin values
 !---------------------------------
@@ -390,16 +308,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      if (ocean_extData) then
        FR = DATA_icec ! netcdf variable
      else ! binary
-       call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
+       call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, _RC)
      end if
 
 !    Sanity check
      if (any(FR < 0.0) .or. any(FR > 1.0)) then
-        if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-        _ASSERT(.FALSE.,'needs informative message')
+        if(MAPL_AM_I_ROOT()) print *, 'Error in sea fraci file: negative or larger-than-one fraction found.'
+        _ASSERT(.FALSE.,'Fix sea fraci and try.')
      endif
    end if
-
   
    where (TI /= MAPL_Undef)
      TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
