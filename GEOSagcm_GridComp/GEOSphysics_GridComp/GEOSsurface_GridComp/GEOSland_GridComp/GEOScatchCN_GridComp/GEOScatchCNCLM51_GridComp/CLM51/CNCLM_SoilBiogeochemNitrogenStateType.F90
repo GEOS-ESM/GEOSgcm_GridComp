@@ -68,7 +68,8 @@
 
   contains
    
-     procedure, public :: Summary
+     procedure , public :: Summary
+     procedure , public  :: SetTotVgCThresh
 
   end type soilbiogeochem_nitrogenstate_type
   type(soilbiogeochem_nitrogenstate_type), public, target, save :: soilbiogeochem_nitrogenstate_inst
@@ -396,5 +397,20 @@ contains
    end do
 
  end subroutine Summary
+
+  !------------------------------------------------------------------------
+  subroutine SetTotVgCThresh(this, totvegcthresh)
+
+    class(soilbiogeochem_nitrogenstate_type)           :: this
+    real(r8)                              , intent(in) :: totvegcthresh
+
+    if ( totvegcthresh <= 0.0_r8 )then
+        call endrun(msg=' Error totvegcthresh is zero or negative and should be > 0'//&
+               errMsg(sourcefile, __LINE__))
+    end if
+    this%totvegcthresh = totvegcthresh
+
+  end subroutine SetTotVgCThresh
+
 
 end module SoilBiogeochemNitrogenStateType
