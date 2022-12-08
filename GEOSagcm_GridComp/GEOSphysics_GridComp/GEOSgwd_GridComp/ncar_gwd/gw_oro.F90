@@ -10,8 +10,6 @@ module gw_oro
 
 implicit none
 private
-!AOO commented out "save" for OpenMP to work correctly
-!save
 
 public :: gw_oro_ifc
 public :: gw_oro_src

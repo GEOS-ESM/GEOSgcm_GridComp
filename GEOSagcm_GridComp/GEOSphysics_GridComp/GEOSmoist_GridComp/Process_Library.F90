@@ -88,7 +88,8 @@ module GEOSmoist_Process_Library
   public :: VertInterp
   public :: find_l, find_eis, FINDLCL
   public :: find_cldtop, find_cldbase, gw_prof
-
+  public :: pdffrac, pdfcondensate, partition_dblgss
+ 
   contains
 
   subroutine CNV_Tracers_Init(TR, RC)
@@ -911,16 +912,13 @@ module GEOSmoist_Process_Library
 
                         QVn = ( QV - QSn*AF )*tmpARR
       if ( AF >= 1.0 )  QVn = QSn*1.e-4
-                        QAp = 0.0
-      if ( AF >  0.0 )  QAp = QA/AF
 
       CFn = CF*tmpARR
       QCn = QC*tmpARR
       QT  = QCn + QVn
       TEn = TE
 
-                       nmax = 1
-      if (USE_AERO_NN) nmax = 20
+      nmax = 20
       do n=1,nmax
 
          QVp = QVn
@@ -994,23 +992,21 @@ module GEOSmoist_Process_Library
                                  WQL,          &
                                  CFn)
          endif
+         CF = CFn * ( 1.-AF)
 
          DQCALL = QCn - QCp
          IF(USE_AERO_NN) THEN
            Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
-           fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
-           QLn = QCn*(1.0-AF)*(1.0-fQi) ! Just Large-Scale portion
-           QIn = QCn*(1.0-AF)*     fQi  ! Just Large-Scale portion
            call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
                  TEn              , &
                  QT               , &
-                 QIn              , &
-                 QLn              , &
-                 CFn*(1.0-AF)     , &
+                 QCi              , &
+                 QCl              , &
+                 CF               , &
                  NLv              , &
                  NIv              , &
                  DQCALL           , &
@@ -1018,20 +1014,6 @@ module GEOSmoist_Process_Library
          ELSE
            fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
          ENDIF
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         ! These lines represent adjustments
-         ! to anvil condensate due to the 
-         ! assumption of a stationary TOTAL 
-         ! water PDF subject to a varying 
-         ! QSAT value during the iteration
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-         if ( AF > 0. ) then
-            QAn = QAp
-         else
-            QAn = 0.
-         end if
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
          ALHX = (1.0-fQi)*alhlbcp + fQi*alhsbcp
          if(PDFSHAPE.eq.1) then 
@@ -1042,70 +1024,66 @@ module GEOSmoist_Process_Library
             if (n.ne.nmax) QCn = QCp + DQCALL *0.5
          endif
 
-         DQCALL = QCn - QCp
-         QVn = QVp - DQCALL
-         TEn = TEp + ((1.0-fQi)*alhlbcp + fQi*alhsbcp) * ( DQCALL*(1.-AF) + (QAn-QAp)*AF )
-         QT  = QVn + QCn
-         DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         if ( AF < 1.0 ) then
+           ! large scale   
+           dQCl = 0.0
+           dQCi = 0.0
+           dQCx = (QCn - QCp)*(1.-AF)
+           if (dQCx .lt. 0.0) then  !net evaporation. Water evaporates first
+              dQCl = max(dQCx       , -QCl)
+              dQCi = max(dQCx - dQCl, -QCi)
+           else
+              dQCl  = (1.0-fQi)*dQCx
+              dQCi  =      fQi *dQCx
+           end if
+           ! update water species
+           QCi = QCi + dQCi
+           QCl = QCl + dQCl
+           QV  = QV  - (dQCi+dQCl)
+           ! adjust temperatures
+           TE  = TEp + alhlbcp*(dQCi+dQCl) + alhfbcp*(dQCi)
+           if (abs(TE - TEp) .lt. 0.00001) exit
+         else
+           ! Special case AF=1, i.e., box filled with anvil. 
+           !   - Note: no guarantee QV_box > QS_box
+           CF  = 0.          ! Remove any other cloud
+           QA  = QA + QCn    ! Add any LS condensate to anvil type
+           QCi = 0.          ! Remove same from LS   
+           QCl = 0.          ! Remove same from LS   
+           QT  = QA + QV     ! Total water
+           ! Now set anvil condensate to any excess of total water 
+           ! over QSn (saturation value at top)
+           QA = MAX( QT - QSn, 0. )
+           ! anvil   
+           dQAl = 0.0
+           dQAi = 0.0
+           dQAx = MAX( QT - QSn, 0. )
+           if (dQAx .lt. 0.0) then  !net evaporation. Water evaporates first
+              dQAl = max(dQAx       , -QAl)
+              dQAi = max(dQAx - dQAl, -QAi)
+           else
+              dQAl  = (1.0-fQi)*dQAx
+              dQAi  =      fQi *dQAx
+           end if
+           ! update water species
+           QAi = QAi + dQAi
+           QAl = QAl + dQAl
+           QV  = QV  - (dQAi+dQCi+dQAl+dQCl)
+           ! adjust temperatures
+           TE  = TEp + alhlbcp*(dQAi+dQAl) + alhfbcp*(dQAi)
+           exit ! no more large-scale cloud remaining
+         end if
 
-         if (abs(TEn - TEp) .lt. 0.00001) exit
+       ! at this point AF must be < 1.0
+         DQS  = GEOS_DQSAT( TE, PL, QSAT=QSn )
+         tmpARR = 1. / (1.-AF)
+         QVn = (QV - QSn*AF )*tmpARR
+         CFn = (CF          )*tmpARR
+         QCn = (QCl + QCi   )*tmpARR
+         QT  =  QCn + QVn
+         TEn =  TE
 
       enddo ! qsat iteration
-
-      ! Update prognostic variables.  Deal with special case of AF=1
-      ! Temporary variables QCn, QAn become updated grid means.
-      if ( AF < 1.0 ) then
-         CF  = CFn * ( 1.-AF)
-         QCn = QCn * ( 1.-AF)
-         QAn = QAn *   AF
-      else
-         ! Special case AF=1, i.e., box filled with anvil. 
-         !   - Note: no guarantee QV_box > QS_box
-         CF  = 0.          ! Remove any other cloud
-         QCn = 0.          ! Remove same from LS condensate
-         QAn = QAn * AF    ! Update only anvil condensate
-         ! Now set anvil condensate to any excess of total water 
-         ! over QSn (saturation value at top)
-         QAn = MAX( QAn+QVn - QSn, 0. )
-      end if
-
-      ! Now take {\em New} condensate and partition into ice and liquid
-      ! taking care to keep both >=0 separately. New condensate can be
-      ! less than old, so $\Delta$ can be < 0.
-      !
-      ! large scale   
-      dQCl = 0.0
-      dQCi = 0.0
-      dQCx  = QCn - QC
-      if (dQCx .lt. 0.0) then  !net evaporation. Water evaporates first
-         dQCl = max(dQCx       , -QCl)   
-         dQCi = max(dQCx - dQCl, -QCi)
-      else
-         dQCl  = (1.0-fQi)*dQCx
-         dQCi  =      fQi *dQCx
-      end if
-      !
-      ! anvil   
-      dQAl = 0.0
-      dQAi = 0.0
-      dQAx  = QAn - QA
-      if (dQAx .lt. 0.0) then  !net evaporation. Water evaporates first
-         dQAl = max(dQAx       , -QAl)
-         dQAi = max(dQAx - dQAl, -QAi)
-      else
-         dQAl  = (1.0-fQi)*dQAx
-         dQAi  =      fQi *dQAx
-      end if
-
-      ! update exports
-      QAi = QAi + dQAi
-      QAl = QAl + dQAl
-      QCi = QCi + dQCi
-      QCl = QCl + dQCl
-      QV  = QV  - (dQAi+dQCi+dQAl+dQCl)
-
-      ! adjust temperatures
-      TE  = TE + alhlbcp*(dQAi+dQCi+dQAl+dQCl) + alhfbcp*(dQAi+dQCi)
 
       ! We need to take care of situations where QS moves past QC
       ! during QSAT iteration. This should be only when QA/AF is small
@@ -1114,7 +1092,7 @@ module GEOSmoist_Process_Library
       !
       ! We get rid of anvil fraction also, although strictly
       ! speaking, PDF-wise, we should not do this.
-      if ( QAn <= 0. ) then
+      if ( QA <= 0. ) then
          QV  = QV + QAi + QAl
          TE  = TE - alhsbcp*QAi - alhlbcp*QAl
          QAi = 0.

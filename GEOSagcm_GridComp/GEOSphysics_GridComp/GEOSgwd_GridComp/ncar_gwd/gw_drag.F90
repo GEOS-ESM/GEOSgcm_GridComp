@@ -20,7 +20,6 @@ module gw_drag_ncar
   use gw_convect, only : BeresSourceDesc, gw_beres_ifc
   use gw_common, only  : GWBand,gw_prof
 
-  !save
   private                          ! Make default type private to the module
 !
 ! PUBLIC: interfaces

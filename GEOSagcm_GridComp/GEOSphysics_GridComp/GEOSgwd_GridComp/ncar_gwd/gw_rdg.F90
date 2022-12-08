@@ -13,9 +13,6 @@ use gw_utils, only:  GW_PRC, dot_2d, midpoint_interp
 
 implicit none
 private
-!AOO commented out "save" for OpenMP to work correctly
-!save
-
 
 ! Public interface(s)
 public :: gw_rdg_init

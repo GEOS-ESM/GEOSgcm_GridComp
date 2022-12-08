@@ -7,8 +7,6 @@ use gw_utils, only: GW_PRC, midpoint_interp
 !
 implicit none
 private
-!AOO commented out "save" for OpenMP to work correctly
-!save
 
 ! Public interface.
 

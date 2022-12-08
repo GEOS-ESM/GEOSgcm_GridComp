@@ -254,10 +254,11 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     read(imchar,*) imsize
     if(dateline.eq.'CF') imsize = imsize*4
 
-    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= -999.0 , RC=STATUS); VERIFY_(STATUS)
-    tmprhL = min(0.99,(1.0-min(0.30, max(0.01, dw_land  * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
-    tmprhO = min(0.99,(1.0-min(0.30, max(0.01, dw_ocean * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
-    call MAPL_GetResource( MAPL, MINRHCRITLND    , 'MINRHCRITLND:'    , DEFAULT=tmprhL , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= 750.0 , RC=STATUS); VERIFY_(STATUS)
+    tmprhL = CEILING(100.0*(1.0-min(0.20, max(0.01, dw_land  * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0 ! roundup by 0.01s
+    tmprhO = CEILING(100.0*(1.0-min(0.20, max(0.01, dw_ocean * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0 ! roundup by 0.01s
+    tmprhL = min(0.99,tmprhL)
+    tmprhO = min(0.99,tmprhO)
     call MAPL_GetResource( MAPL, MINRHCRITOCN    , 'MINRHCRITOCN:'    , DEFAULT=tmprhO , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAXRHCRITLND    , 'MAXRHCRITOCN:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -305,7 +306,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
-    real, allocatable, dimension(:,:,:) :: DQST3, QST3, TH
+    real, allocatable, dimension(:,:,:) :: DQST3, QST3
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
@@ -318,9 +319,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro
-    real, pointer, dimension(:,:,:) ::  DUDT_macro,  DVDT_macro,  DTDT_macro, DTHDT_macro
+    real, pointer, dimension(:,:,:) ::  DUDT_macro,  DVDT_macro,  DTDT_macro
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro, DQRDT_micro, DQSDT_micro, DQGDT_micro
-    real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro, DTHDT_micro
+    real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro
     real, pointer, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
     real, pointer, dimension(:,:,:) :: CLDREFFL, CLDREFFI
     real, pointer, dimension(:,:,:) :: EVAPC, SUBLC
@@ -412,7 +413,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( DZET (IM,JM,LM  ) )
     ALLOCATE ( DZ   (IM,JM,LM  ) )
-    ALLOCATE ( TH   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( iMASS(IM,JM,LM  ) )
@@ -444,7 +444,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
-    TH       = T/PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
@@ -514,18 +513,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_macro,  'DUDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_macro,  'DVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_macro,  'DTDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_macro, 'DTHDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    if (associated( DUDT_macro))  DUDT_macro=U
-    if (associated( DVDT_macro))  DVDT_macro=V
-    if (associated( DTDT_macro))  DTDT_macro=T
-    if (associated(DTHDT_macro)) DTHDT_macro=TH
-    if (associated(DQVDT_macro)) DQVDT_macro=Q
-    if (associated(DQLDT_macro)) DQLDT_macro=QLCN+QLLS
-    if (associated(DQIDT_macro)) DQIDT_macro=QICN+QILS
-    if (associated(DQADT_macro)) DQADT_macro=CLCN+CLLS
-    if (associated(DQRDT_macro)) DQRDT_macro=QRAIN
-    if (associated(DQSDT_macro)) DQSDT_macro=QSNOW
-    if (associated(DQGDT_macro)) DQGDT_macro=QGRAUPEL
+    DUDT_macro=U
+    DVDT_macro=V
+    DTDT_macro=T
+    DQVDT_macro=Q
+    DQLDT_macro=QLCN+QLLS
+    DQIDT_macro=QICN+QILS
+    DQADT_macro=CLCN+CLLS
+    DQRDT_macro=QRAIN
+    DQSDT_macro=QSNOW
+    DQGDT_macro=QGRAUPEL
+
       ! Include shallow precip condensates if present
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then
@@ -642,21 +640,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          end do ! JM loop
        end do ! LM loop
 
-       ! Update TH
-       TH = T/PK
-
     ! Update macrophysics tendencies
-    if (associated( DUDT_macro))  DUDT_macro=( U         - DUDT_macro)/DT_MOIST
-    if (associated( DVDT_macro))  DVDT_macro=( V         - DVDT_macro)/DT_MOIST
-    if (associated( DTDT_macro))  DTDT_macro=( T         - DTDT_macro)/DT_MOIST
-    if (associated(DTHDT_macro)) DTHDT_macro=( TH        -DTHDT_macro)/DT_MOIST
-    if (associated(DQVDT_macro)) DQVDT_macro=( Q         -DQVDT_macro)/DT_MOIST
-    if (associated(DQLDT_macro)) DQLDT_macro=((QLCN+QLLS)-DQLDT_macro)/DT_MOIST
-    if (associated(DQIDT_macro)) DQIDT_macro=((QICN+QILS)-DQIDT_macro)/DT_MOIST
-    if (associated(DQADT_macro)) DQADT_macro=((CLCN+CLLS)-DQADT_macro)/DT_MOIST
-    if (associated(DQRDT_macro)) DQRDT_macro=( QRAIN     -DQRDT_macro)/DT_MOIST
-    if (associated(DQSDT_macro)) DQSDT_macro=( QSNOW     -DQSDT_macro)/DT_MOIST
-    if (associated(DQGDT_macro)) DQGDT_macro=( QGRAUPEL  -DQGDT_macro)/DT_MOIST
+     DUDT_macro=( U         - DUDT_macro)/DT_MOIST
+     DVDT_macro=( V         - DVDT_macro)/DT_MOIST
+     DTDT_macro=( T         - DTDT_macro)/DT_MOIST
+    DQVDT_macro=( Q         -DQVDT_macro)/DT_MOIST
+    DQLDT_macro=((QLCN+QLLS)-DQLDT_macro)/DT_MOIST
+    DQIDT_macro=((QICN+QILS)-DQIDT_macro)/DT_MOIST
+    DQADT_macro=((CLCN+CLLS)-DQADT_macro)/DT_MOIST
+    DQRDT_macro=( QRAIN     -DQRDT_macro)/DT_MOIST
+    DQSDT_macro=( QSNOW     -DQSDT_macro)/DT_MOIST
+    DQGDT_macro=( QGRAUPEL  -DQGDT_macro)/DT_MOIST
     call MAPL_TimerOff(MAPL,"---CLDMACRO")
 
     call MAPL_TimerOn(MAPL,"---CLDMICRO")
@@ -671,18 +665,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_micro, 'DTHDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    if (associated(DQVDT_micro)) DQVDT_micro = Q
-    if (associated(DQLDT_micro)) DQLDT_micro = QLLS + QLCN
-    if (associated(DQIDT_micro)) DQIDT_micro = QILS + QICN
-    if (associated(DQRDT_micro)) DQRDT_micro = QRAIN
-    if (associated(DQSDT_micro)) DQSDT_micro = QSNOW
-    if (associated(DQGDT_micro)) DQGDT_micro = QGRAUPEL
-    if (associated(DQADT_micro)) DQADT_micro = CLLS + CLCN
-    if (associated( DUDT_micro))  DUDT_micro = U
-    if (associated( DVDT_micro))  DVDT_micro = V
-    if (associated( DTDT_micro))  DTDT_micro = T
-    if (associated(DTHDT_micro)) DTHDT_micro = TH
+    DQVDT_micro = Q
+    DQLDT_micro = QLLS + QLCN
+    DQIDT_micro = QILS + QICN
+    DQRDT_micro = QRAIN
+    DQSDT_micro = QSNOW
+    DQGDT_micro = QGRAUPEL
+    DQADT_micro = CLLS + CLCN
+     DUDT_micro = U
+     DVDT_micro = V
+     DTDT_micro = T
 
         ! Delta-Z layer thickness (gfdl expects this to be negative)
          DZ = -1.0*DZET
@@ -782,8 +774,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              do I = 1, IM
               ! cleanup clouds
                call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
-              ! Get new TH
-               TH(I,J,L) = T(I,J,L)/PK(I,J,L)
               ! get radiative properties
                call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
@@ -801,61 +791,24 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
          call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
-         ! Cloud fraction exports
-         call MAPL_GetPointer(EXPORT, PTR3D, 'CFICE', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR3D)) then
-           PTR3D=0.0
-           WHERE (RAD_QI .gt. 1.0e-12)
-              PTR3D=RAD_CF*RAD_QI/(RAD_QL+RAD_QI)
-           END WHERE
-           PTR3D=MAX(MIN(PTR3D, 1.0), 0.0)
-         endif
-         call MAPL_GetPointer(EXPORT, PTR3D, 'CFLIQ', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR3D)) then
-           PTR3D=0.0
-           WHERE (RAD_QL .gt. 1.0e-12)
-              PTR3D=RAD_CF*RAD_QL/(RAD_QL+RAD_QI)
-           END WHERE
-           PTR3D=MAX(MIN(PTR3D, 1.0), 0.0)
-         endif
-         ! Rain-out and Relative Humidity where RH > 110%
-         DQST3 = GEOS_DQSAT(T, PLmb, QSAT=QST3)
-         where ( Q > 1.1*QST3 )
-            TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
-         elsewhere
-            TMP3D = 0.0
-         endwhere
-         LS_PRCP = LS_PRCP + SUM(TMP3D*MASS,3)/DT_MOIST
-         Q  =  Q - TMP3D
-         T  =  T + (MAPL_ALHL/MAPL_CP)*TMP3D
-         TH =  T / PK
-
-         ! cleanup any negative QV/QC/CF
-         call FILLQ2ZERO(Q       , MASS, TMP2D)
-         call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = TMP2D
-         call FILLQ2ZERO(QLLS    , MASS, TMP2D)
-         call FILLQ2ZERO(QLCN    , MASS, TMP2D)
-         call FILLQ2ZERO(QILS    , MASS, TMP2D)
-         call FILLQ2ZERO(QICN    , MASS, TMP2D)
-         call FILLQ2ZERO(CLLS    , MASS, TMP2D)
-         call FILLQ2ZERO(CLCN    , MASS, TMP2D)
-         call FILLQ2ZERO(QRAIN   , MASS, TMP2D)
-         call FILLQ2ZERO(QSNOW   , MASS, TMP2D)
-         call FILLQ2ZERO(QGRAUPEL, MASS, TMP2D)
+         where (QILS+QICN .le. 0.0)
+            CLDREFFI = 36.0e-6
+         end where
+         where (QLLS+QLCN .le. 0.0)
+            CLDREFFL = 14.0e-6
+         end where
 
          ! Update microphysics tendencies
-         if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
-         if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
-         if (associated(DQIDT_micro)) DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST
-         if (associated(DQADT_micro)) DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
-         if (associated(DQRDT_micro)) DQRDT_micro = ( QRAIN      - DQRDT_micro) / DT_MOIST
-         if (associated(DQSDT_micro)) DQSDT_micro = ( QSNOW      - DQSDT_micro) / DT_MOIST
-         if (associated(DQGDT_micro)) DQGDT_micro = ( QGRAUPEL   - DQGDT_micro) / DT_MOIST
-         if (associated( DUDT_micro))  DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
-         if (associated( DVDT_micro))  DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
-         if (associated( DTDT_micro))  DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
-         if (associated(DTHDT_micro)) DTHDT_micro = ( TH         - DTHDT_micro) / DT_MOIST
+         DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
+         DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
+         DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST
+         DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
+         DQRDT_micro = ( QRAIN      - DQRDT_micro) / DT_MOIST
+         DQSDT_micro = ( QSNOW      - DQSDT_micro) / DT_MOIST
+         DQGDT_micro = ( QGRAUPEL   - DQGDT_micro) / DT_MOIST
+          DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
+          DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
+          DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)

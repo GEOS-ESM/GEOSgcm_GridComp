@@ -11,8 +11,6 @@ use linear_1d_operators, only: TriDiagOp, operator(+), TriDiagDecomp
 
 implicit none
 private
-!AOO commented out "save" for OpenMP to work correctly
-!save
 
 ! Public interfaces
 public :: vd_lu_decomp

@@ -14,8 +14,6 @@ module gw_convect
 
 implicit none
 private
-!AOO commented out "save" for OpenMP to work correctly
-!save
 
 public :: BeresSourceDesc
 public :: gw_beres_ifc
