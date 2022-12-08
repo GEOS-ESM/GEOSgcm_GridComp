@@ -151,198 +151,198 @@ contains
   end subroutine InitAllocate
 
   !-----------------------------------------------------------------------
-  subroutine InitHistory(this, bounds)
-    !
-    ! History fields initialization
-    !
-    ! !USES:
-    use shr_infnan_mod, only : nan => shr_infnan_nan, assignment(=)
-    use clm_varcon    , only : spval
-    use histFileMod   , only : hist_addfld1d, hist_addfld2d
-    use clm_varctl    , only : use_SSRE
-    !
-    ! !ARGUMENTS:
-    class(surfrad_type) :: this
-    type(bounds_type), intent(in) :: bounds
-    !
-    ! !LOCAL VARIABLES:
-    integer :: begp, endp
-    integer :: begc, endc
-    real(r8), pointer :: data2dptr(:,:) ! temp. pointers for slicing larger arrays
-    !---------------------------------------------------------------------
-
-    begp = bounds%begp; endp = bounds%endp
-    begc = bounds%begc; endc = bounds%endc
-
-    if (use_snicar_frc) then
-       this%sfc_frc_aer_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNOAERFRCL', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of all aerosols in snow (land) ', &
-            ptr_patch=this%sfc_frc_aer_patch, set_urb=spval)
-
-       this%sfc_frc_aer_sno_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNOAERFRC2L', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of all aerosols in snow, averaged only when snow is present (land)', &
-            ptr_patch=this%sfc_frc_aer_sno_patch, set_urb=spval)
-
-       this%sfc_frc_bc_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNOBCFRCL', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of BC in snow (land) ', &
-            ptr_patch=this%sfc_frc_bc_patch, set_urb=spval)
-
-       this%sfc_frc_bc_sno_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNOBCFRC2L', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of BC in snow, averaged only when snow is present (land)', &
-            ptr_patch=this%sfc_frc_bc_sno_patch, set_urb=spval)
-
-       this%sfc_frc_oc_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNOOCFRCL', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of OC in snow (land) ', &
-            ptr_patch=this%sfc_frc_oc_patch, set_urb=spval)
-
-       this%sfc_frc_oc_sno_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNOOCFRC2L', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of OC in snow, averaged only when snow is present (land)', &
-            ptr_patch=this%sfc_frc_oc_sno_patch, set_urb=spval)
-
-       this%sfc_frc_dst_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNODSTFRCL', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of dust in snow (land) ', &
-            ptr_patch=this%sfc_frc_dst_patch, set_urb=spval)
-
-       this%sfc_frc_dst_sno_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SNODSTFRC2L', units='W/m^2', &
-            avgflag='A', long_name='surface forcing of dust in snow, averaged only when snow is present (land)', &
-            ptr_patch=this%sfc_frc_dst_sno_patch, set_urb=spval)
-    end if
-
-    this%fsds_vis_d_patch(begp:endp) = spval
-    call hist_addfld1d (fname='FSDSVD', units='W/m^2',  &
-         avgflag='A', long_name='direct vis incident solar radiation', &
-         ptr_patch=this%fsds_vis_d_patch)
-
-    this%fsds_vis_i_patch(begp:endp) = spval
-    call hist_addfld1d (fname='FSDSVI', units='W/m^2',  &
-         avgflag='A', long_name='diffuse vis incident solar radiation', &
-         ptr_patch=this%fsds_vis_i_patch)
-
-    this%fsr_vis_d_patch(begp:endp) = spval
-    call hist_addfld1d (fname='FSRVD', units='W/m^2',  &
-         avgflag='A', long_name='direct vis reflected solar radiation', &
-         ptr_patch=this%fsr_vis_d_patch, c2l_scale_type='urbanf')
-    this%fsr_vis_i_patch(begp:endp) = spval
-    call hist_addfld1d (fname='FSRVI', units='W/m^2',  &
-         avgflag='A', long_name='diffuse vis reflected solar radiation', &
-         ptr_patch=this%fsr_vis_i_patch, c2l_scale_type='urbanf')
-    ! diagnostic fluxes
-    if (use_SSRE) then
-       this%fsrSF_vis_d_patch(begp:endp) = spval
-       call hist_addfld1d (fname='FSRSFVD', units='W/m^2',  &
-            avgflag='A', long_name='direct vis reflected solar radiation', &
-            ptr_patch=this%fsrSF_vis_d_patch, c2l_scale_type='urbanf')
-       this%fsrSF_vis_i_patch(begp:endp) = spval
-       call hist_addfld1d (fname='FSRSFVI', units='W/m^2',  &
-            avgflag='A', long_name='diffuse vis reflected solar radiation', &
-            ptr_patch=this%fsrSF_vis_i_patch, c2l_scale_type='urbanf')
-
-       this%ssre_fsr_vis_d_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SSRE_FSRVD', units='W/m^2',  &
-            avgflag='A', long_name='surface snow radiatve effect on direct vis reflected solar radiation', &
-            ptr_patch=this%ssre_fsr_vis_d_patch, c2l_scale_type='urbanf')
-       this%ssre_fsr_vis_i_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SSRE_FSRVI', units='W/m^2',  &
-            avgflag='A', long_name='surface snow radiatve effect on diffuse vis reflected solar radiation', &
-            ptr_patch=this%ssre_fsr_vis_i_patch, c2l_scale_type='urbanf')
-    end if
-    this%fsds_vis_d_ln_patch(begp:endp) = spval
-    call hist_addfld1d (fname='FSDSVDLN', units='W/m^2',  &
-         avgflag='A', long_name='direct vis incident solar radiation at local noon', &
-         ptr_patch=this%fsds_vis_d_ln_patch)
-
-    this%fsds_vis_i_ln_patch(begp:endp) = spval
-    call hist_addfld1d (fname='FSDSVILN', units='W/m^2',  &
-         avgflag='A', long_name='diffuse vis incident solar radiation at local noon', &
-         ptr_patch=this%fsds_vis_i_ln_patch)
-
-    this%parveg_ln_patch(begp:endp) = spval
-    call hist_addfld1d (fname='PARVEGLN', units='W/m^2',  &
-         avgflag='A', long_name='absorbed par by vegetation at local noon', &
-         ptr_patch=this%parveg_ln_patch)
-
-    this%fsr_vis_d_ln_patch(begp:endp) = spval
-    call hist_addfld1d (fname='FSRVDLN', units='W/m^2',  &
-         avgflag='A', long_name='direct vis reflected solar radiation at local noon', &
-         ptr_patch=this%fsr_vis_d_ln_patch, c2l_scale_type='urbanf')
-    ! diagnostic flux
-    if (use_SSRE) then
-       this%fsrSF_vis_d_ln_patch(begp:endp) = spval
-       call hist_addfld1d (fname='FSRSFVDLN', units='W/m^2',  &
-            avgflag='A', long_name='direct vis reflected solar radiation at local noon', &
-            ptr_patch=this%fsrSF_vis_d_ln_patch, c2l_scale_type='urbanf')
-       this%ssre_fsr_vis_d_ln_patch(begp:endp) = spval
-       call hist_addfld1d (fname='SSRE_FSRVDLN', units='W/m^2',  &
-            avgflag='A', long_name='surface snow radiatve effect on direct vis reflected solar radiation at local noon', &
-            ptr_patch=this%ssre_fsr_vis_d_ln_patch, c2l_scale_type='urbanf')
-    end if
-    this%fsds_sno_vd_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSDSVD', units='W/m^2',  &
-         avgflag='A', long_name='direct vis incident solar radiation on snow', &
-         ptr_patch=this%fsds_sno_vd_patch, default='inactive')
-
-    this%fsds_sno_nd_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSDSND', units='W/m^2',  &
-         avgflag='A', long_name='direct nir incident solar radiation on snow', &
-         ptr_patch=this%fsds_sno_nd_patch, default='inactive')
-
-    this%fsds_sno_vi_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSDSVI', units='W/m^2',  &
-         avgflag='A', long_name='diffuse vis incident solar radiation on snow', &
-         ptr_patch=this%fsds_sno_vi_patch, default='inactive')
-
-    this%fsds_sno_ni_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSDSNI', units='W/m^2',  &
-         avgflag='A', long_name='diffuse nir incident solar radiation on snow', &
-         ptr_patch=this%fsds_sno_ni_patch, default='inactive')
-
-    this%fsr_sno_vd_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSRVD', units='W/m^2',  &
-         avgflag='A', long_name='direct vis reflected solar radiation from snow', &
-         ptr_patch=this%fsr_sno_vd_patch)
-
-    this%fsr_sno_nd_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSRND', units='W/m^2',  &
-         avgflag='A', long_name='direct nir reflected solar radiation from snow', &
-         ptr_patch=this%fsr_sno_nd_patch)
-
-    this%fsr_sno_vi_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSRVI', units='W/m^2',  &
-         avgflag='A', long_name='diffuse vis reflected solar radiation from snow', &
-         ptr_patch=this%fsr_sno_vi_patch)
-
-    this%fsr_sno_ni_patch(begp:endp) = spval
-    call hist_addfld1d (fname='SNOFSRNI', units='W/m^2',  &
-         avgflag='A', long_name='diffuse nir reflected solar radiation from snow', &
-         ptr_patch=this%fsr_sno_ni_patch)
-
-
-  end subroutine InitHistory
-
-  !------------------------------------------------------------------------
-  subroutine InitCold(this, bounds)
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(surfrad_type) :: this
-    type(bounds_type), intent(in) :: bounds
-    !
-    ! !LOCAL VARIABLES:
-    integer :: p,l
-    !-----------------------------------------------------------------------
-
-    ! nothing for now
-
-  end subroutine InitCold
+!  subroutine InitHistory(this, bounds)
+!    !
+!    ! History fields initialization
+!    !
+!    ! !USES:
+!    use shr_infnan_mod, only : nan => shr_infnan_nan, assignment(=)
+!    use clm_varcon    , only : spval
+!    use histFileMod   , only : hist_addfld1d, hist_addfld2d
+!    use clm_varctl    , only : use_SSRE
+!    !
+!    ! !ARGUMENTS:
+!    class(surfrad_type) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: begp, endp
+!    integer :: begc, endc
+!    real(r8), pointer :: data2dptr(:,:) ! temp. pointers for slicing larger arrays
+!    !---------------------------------------------------------------------
+!
+!    begp = bounds%begp; endp = bounds%endp
+!    begc = bounds%begc; endc = bounds%endc
+!
+!    if (use_snicar_frc) then
+!       this%sfc_frc_aer_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNOAERFRCL', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of all aerosols in snow (land) ', &
+!            ptr_patch=this%sfc_frc_aer_patch, set_urb=spval)
+!
+!       this%sfc_frc_aer_sno_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNOAERFRC2L', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of all aerosols in snow, averaged only when snow is present (land)', &
+!            ptr_patch=this%sfc_frc_aer_sno_patch, set_urb=spval)
+!
+!       this%sfc_frc_bc_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNOBCFRCL', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of BC in snow (land) ', &
+!            ptr_patch=this%sfc_frc_bc_patch, set_urb=spval)
+!
+!       this%sfc_frc_bc_sno_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNOBCFRC2L', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of BC in snow, averaged only when snow is present (land)', &
+!            ptr_patch=this%sfc_frc_bc_sno_patch, set_urb=spval)
+!
+!       this%sfc_frc_oc_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNOOCFRCL', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of OC in snow (land) ', &
+!            ptr_patch=this%sfc_frc_oc_patch, set_urb=spval)
+!
+!       this%sfc_frc_oc_sno_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNOOCFRC2L', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of OC in snow, averaged only when snow is present (land)', &
+!            ptr_patch=this%sfc_frc_oc_sno_patch, set_urb=spval)
+!
+!       this%sfc_frc_dst_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNODSTFRCL', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of dust in snow (land) ', &
+!            ptr_patch=this%sfc_frc_dst_patch, set_urb=spval)
+!
+!       this%sfc_frc_dst_sno_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SNODSTFRC2L', units='W/m^2', &
+!            avgflag='A', long_name='surface forcing of dust in snow, averaged only when snow is present (land)', &
+!            ptr_patch=this%sfc_frc_dst_sno_patch, set_urb=spval)
+!    end if
+!
+!    this%fsds_vis_d_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='FSDSVD', units='W/m^2',  &
+!         avgflag='A', long_name='direct vis incident solar radiation', &
+!         ptr_patch=this%fsds_vis_d_patch)
+!
+!    this%fsds_vis_i_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='FSDSVI', units='W/m^2',  &
+!         avgflag='A', long_name='diffuse vis incident solar radiation', &
+!         ptr_patch=this%fsds_vis_i_patch)
+!
+!    this%fsr_vis_d_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='FSRVD', units='W/m^2',  &
+!         avgflag='A', long_name='direct vis reflected solar radiation', &
+!         ptr_patch=this%fsr_vis_d_patch, c2l_scale_type='urbanf')
+!    this%fsr_vis_i_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='FSRVI', units='W/m^2',  &
+!         avgflag='A', long_name='diffuse vis reflected solar radiation', &
+!         ptr_patch=this%fsr_vis_i_patch, c2l_scale_type='urbanf')
+!    ! diagnostic fluxes
+!    if (use_SSRE) then
+!       this%fsrSF_vis_d_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='FSRSFVD', units='W/m^2',  &
+!            avgflag='A', long_name='direct vis reflected solar radiation', &
+!            ptr_patch=this%fsrSF_vis_d_patch, c2l_scale_type='urbanf')
+!       this%fsrSF_vis_i_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='FSRSFVI', units='W/m^2',  &
+!            avgflag='A', long_name='diffuse vis reflected solar radiation', &
+!            ptr_patch=this%fsrSF_vis_i_patch, c2l_scale_type='urbanf')
+!
+!       this%ssre_fsr_vis_d_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SSRE_FSRVD', units='W/m^2',  &
+!            avgflag='A', long_name='surface snow radiatve effect on direct vis reflected solar radiation', &
+!            ptr_patch=this%ssre_fsr_vis_d_patch, c2l_scale_type='urbanf')
+!       this%ssre_fsr_vis_i_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SSRE_FSRVI', units='W/m^2',  &
+!            avgflag='A', long_name='surface snow radiatve effect on diffuse vis reflected solar radiation', &
+!            ptr_patch=this%ssre_fsr_vis_i_patch, c2l_scale_type='urbanf')
+!    end if
+!    this%fsds_vis_d_ln_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='FSDSVDLN', units='W/m^2',  &
+!         avgflag='A', long_name='direct vis incident solar radiation at local noon', &
+!         ptr_patch=this%fsds_vis_d_ln_patch)
+!
+!    this%fsds_vis_i_ln_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='FSDSVILN', units='W/m^2',  &
+!         avgflag='A', long_name='diffuse vis incident solar radiation at local noon', &
+!         ptr_patch=this%fsds_vis_i_ln_patch)
+!
+!    this%parveg_ln_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='PARVEGLN', units='W/m^2',  &
+!         avgflag='A', long_name='absorbed par by vegetation at local noon', &
+!         ptr_patch=this%parveg_ln_patch)
+!
+!    this%fsr_vis_d_ln_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='FSRVDLN', units='W/m^2',  &
+!         avgflag='A', long_name='direct vis reflected solar radiation at local noon', &
+!         ptr_patch=this%fsr_vis_d_ln_patch, c2l_scale_type='urbanf')
+!    ! diagnostic flux
+!    if (use_SSRE) then
+!       this%fsrSF_vis_d_ln_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='FSRSFVDLN', units='W/m^2',  &
+!            avgflag='A', long_name='direct vis reflected solar radiation at local noon', &
+!            ptr_patch=this%fsrSF_vis_d_ln_patch, c2l_scale_type='urbanf')
+!       this%ssre_fsr_vis_d_ln_patch(begp:endp) = spval
+!       call hist_addfld1d (fname='SSRE_FSRVDLN', units='W/m^2',  &
+!            avgflag='A', long_name='surface snow radiatve effect on direct vis reflected solar radiation at local noon', &
+!            ptr_patch=this%ssre_fsr_vis_d_ln_patch, c2l_scale_type='urbanf')
+!    end if
+!    this%fsds_sno_vd_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSDSVD', units='W/m^2',  &
+!         avgflag='A', long_name='direct vis incident solar radiation on snow', &
+!         ptr_patch=this%fsds_sno_vd_patch, default='inactive')
+!
+!    this%fsds_sno_nd_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSDSND', units='W/m^2',  &
+!         avgflag='A', long_name='direct nir incident solar radiation on snow', &
+!         ptr_patch=this%fsds_sno_nd_patch, default='inactive')
+!
+!    this%fsds_sno_vi_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSDSVI', units='W/m^2',  &
+!         avgflag='A', long_name='diffuse vis incident solar radiation on snow', &
+!         ptr_patch=this%fsds_sno_vi_patch, default='inactive')
+!
+!    this%fsds_sno_ni_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSDSNI', units='W/m^2',  &
+!         avgflag='A', long_name='diffuse nir incident solar radiation on snow', &
+!         ptr_patch=this%fsds_sno_ni_patch, default='inactive')
+!
+!    this%fsr_sno_vd_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSRVD', units='W/m^2',  &
+!         avgflag='A', long_name='direct vis reflected solar radiation from snow', &
+!         ptr_patch=this%fsr_sno_vd_patch)
+!
+!    this%fsr_sno_nd_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSRND', units='W/m^2',  &
+!         avgflag='A', long_name='direct nir reflected solar radiation from snow', &
+!         ptr_patch=this%fsr_sno_nd_patch)
+!
+!    this%fsr_sno_vi_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSRVI', units='W/m^2',  &
+!         avgflag='A', long_name='diffuse vis reflected solar radiation from snow', &
+!         ptr_patch=this%fsr_sno_vi_patch)
+!
+!    this%fsr_sno_ni_patch(begp:endp) = spval
+!    call hist_addfld1d (fname='SNOFSRNI', units='W/m^2',  &
+!         avgflag='A', long_name='diffuse nir reflected solar radiation from snow', &
+!         ptr_patch=this%fsr_sno_ni_patch)
+!
+!
+!  end subroutine InitHistory
+!
+!  !------------------------------------------------------------------------
+!  subroutine InitCold(this, bounds)
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(surfrad_type) :: this
+!    type(bounds_type), intent(in) :: bounds
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: p,l
+!    !-----------------------------------------------------------------------
+!
+!    ! nothing for now
+!
+!  end subroutine InitCold
 
 
   subroutine CanopySunShadeFracs(filter_nourbanp, num_nourbanp,  &
