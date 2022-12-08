@@ -8,6 +8,7 @@ module FrictionVelocityMod
   ! !USES:
 #include "shr_assert.h"
   use shr_kind_mod            , only : r8 => shr_kind_r8
+  use nanMod                  , only : nan
   use shr_log_mod             , only : errMsg => shr_log_errMsg
   use shr_const_mod           , only : SHR_CONST_PI
   use decompMod               , only : bounds_type
@@ -84,7 +85,7 @@ contains
   !------------------------------------------------------------------------
   subroutine init_frictionvel_type( bounds, this)
 
-    use shr_infnan_mod , only : nan => shr_infnan_nan
+  !  use shr_infnan_mod , only : nan => shr_infnan_nan
     
     type(bounds_type), intent(in) :: bounds
     type(frictionvel_type), intent(inout) :: this
