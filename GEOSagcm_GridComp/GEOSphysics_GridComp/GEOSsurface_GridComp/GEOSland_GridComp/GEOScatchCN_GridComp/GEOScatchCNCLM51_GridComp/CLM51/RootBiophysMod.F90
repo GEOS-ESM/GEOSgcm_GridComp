@@ -12,7 +12,7 @@ module RootBiophysMod
   private
   !
   public  :: init_vegrootfr
-  public  :: init_rootprof
+!  public  :: init_rootprof
 
   integer, private, parameter :: zeng_2001_root    = 0 !the zeng 2001 root profile function
   integer, private, parameter :: jackson_1996_root = 1 !the jackson 1996 root profile function
