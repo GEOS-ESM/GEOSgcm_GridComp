@@ -10,6 +10,14 @@ set (srcs
   edmfparams.F90
   )
 
+set (resource_files
+  GEOS_TurbulenceGridComp.rc
+  )
+
+install( FILES ${resource_files}
+  DESTINATION etc
+  )
+
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared MAPL esmf NetCDF::NetCDF_Fortran)
