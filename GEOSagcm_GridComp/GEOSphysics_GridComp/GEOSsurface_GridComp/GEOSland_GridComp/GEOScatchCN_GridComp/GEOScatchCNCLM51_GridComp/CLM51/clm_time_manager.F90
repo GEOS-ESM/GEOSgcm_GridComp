@@ -31,6 +31,7 @@ module clm_time_manager
       is_end_curr_day,          &! return true on last timestep in current day
       is_restart,               &! return true if this is a restart run
       is_first_step              ! dummy function here, because it is loaded, but not used
+      is_near_local_noon,       &! return true if near local noon
 contains
 
 !=========================================================================================
@@ -246,5 +247,34 @@ logical function is_restart( )
  is_restart = .false.
 
 end function is_restart
+
+!=========================================================================================
+
+  logical function is_near_local_noon( londeg, deltasec )
+
+    !---------------------------------------------------------------------------------
+    ! Is this longitude near it's local noon?
+    !
+    ! uses
+    use clm_varcon, only: degpsec, isecspday
+    ! Arguments
+    real(r8), intent(in) :: londeg   ! Longitude in degrees
+    integer , intent(in) :: deltasec ! Number of seconds before or after local noon
+
+    ! Local variables
+    integer :: local_secs                         ! Local time in seconds
+    integer, parameter :: noonsec = isecspday / 2 ! seconds at local noon
+    !---------------------------------------------------------------------------------
+    SHR_ASSERT( deltasec < noonsec, "deltasec must be less than 12 hours" )
+    local_secs = get_local_timestep_time( londeg )
+
+    if ( local_secs >= (noonsec - deltasec) .and. local_secs <= (noonsec + deltasec)) then
+       is_near_local_noon = .true.
+    else
+       is_near_local_noon = .false.
+    end if
+
+    !---------------------------------------------------------------------------------
+  end function is_near_local_noon
 
 end module clm_time_manager
