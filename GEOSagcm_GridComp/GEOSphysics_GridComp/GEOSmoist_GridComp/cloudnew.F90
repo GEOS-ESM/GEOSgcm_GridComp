@@ -22,7 +22,7 @@ module cloudnew
                                 MAPL_R4   , MAPL_AVOGAD
 
    use MAPL_BaseMod,      only: MAPL_UNDEF
-   use Aer_Actv_Single_Moment,only: USE_AEROSOL_NN
+   use Aer_Actv_Single_Moment,only: USE_BERGERON, USE_AEROSOL_NN
    use GEOSmoist_Process_Library
 
    implicit none
@@ -490,7 +490,7 @@ contains
          VFALLWAT_AN_dev,VFALLWAT_LS_dev,   &
          VFALLSN_AN_dev,VFALLSN_LS_dev,VFALLSN_CN_dev,VFALLSN_SC_dev, &
          VFALLRN_AN_dev,VFALLRN_LS_dev,VFALLRN_CN_dev,VFALLRN_SC_dev,  &
-         PDF_A_dev, & 
+         PDF_A_dev, PDFITERS_dev, & 
 #ifdef PDFDIAG
          PDF_SIGW1_dev, PDF_SIGW2_dev, PDF_W1_dev, PDF_W2_dev, & 
          PDF_SIGTH1_dev, PDF_SIGTH2_dev, PDF_TH1_dev, PDF_TH2_dev, &
@@ -638,6 +638,7 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_CN_dev ! VFALLRN_CN
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_SC_dev ! VFALLRN_SC
       real, intent(inout), dimension(IRUN,  LM) :: PDF_A_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDFITERS_dev
 #ifdef PDFDIAG
       real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW1_dev
       real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW2_dev
@@ -1052,6 +1053,7 @@ contains
                   hl3_dev(I,K),        &
                   mf_frc_dev(I,K),     &
                   PDF_A_dev(I,K),      &  ! can remove these after development
+                  PDFITERS_dev(I,K),   &
 #ifdef PDFDIAG
                   PDF_SIGW1_dev(I,K),  &
                   PDF_SIGW2_dev(I,K),  &
@@ -1101,6 +1103,7 @@ contains
                   hl3_dev(I,K),        &
                   mf_frc_dev(I,K),     &
                   PDF_A_dev(I,K),      &  ! can remove these after development
+                  PDFITERS_dev(I,K),   &
 #ifdef PDFDIAG
                   PDF_SIGW1_dev(I,K),  &
                   PDF_SIGW2_dev(I,K),  &
@@ -1120,7 +1123,8 @@ contains
 #endif
                   WTHV2_dev(I,K),      &
                   wql_dev(I,K),        &
-                  USE_AEROSOL_NN)
+                  .false.,             &
+                  USE_BERGERON)
             endif
 
             LSPDFLIQNEW = QLW_LS_dev(I,K) - LSPDFLIQNEW
@@ -1895,6 +1899,7 @@ contains
          MFHL3       , &
          MF_FRC      , &
          PDF_A,      &  ! can remove these after development
+         PDFITERS,   &
 #ifdef PDFDIAG
          PDF_SIGW1,  &
          PDF_SIGW2,  &
@@ -1926,7 +1931,7 @@ contains
                              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
                              PDF_RHLQT,  PDF_RWHL, PDF_RWQT
 #endif
-      real, intent(out)   :: WTHV2, WQL
+      real, intent(out)   :: WTHV2, WQL, PDFITERS
 
       ! internal arrays
       real :: QCO, QVO, CFO, QAO, TAU,HL
@@ -2116,6 +2121,7 @@ contains
          TEn = TEp + (1.0-fQi)*(MAPL_ALHL/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF ) &
                +      fQi* (MAPL_ALHS/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF )
 
+         PDFITERS = n
          if (abs(Ten - Tep) .lt. 0.00001) exit 
 
          DQS  = DQSAT( TEn, PL, QSAT=QSn )

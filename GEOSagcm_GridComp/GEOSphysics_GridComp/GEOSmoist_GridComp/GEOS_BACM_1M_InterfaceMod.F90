@@ -333,12 +333,11 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ALPHT, ALPH1, ALPH2
     real, pointer, dimension(:,:,:) :: CFPDF, RHCLR
     real, pointer, dimension(:,:,:) :: DQRL, WTHV2
-    real, pointer, dimension(:,:,:) :: PDF_A
+    real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
     real, pointer, dimension(:,:  ) :: LS_ARF,  CN_ARF,  AN_ARF,  SC_ARF
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
-    real, pointer, dimension(:,:,:) :: NCPL_VOL, NCPI_VOL
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -573,6 +572,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, RHCLR,     'RHCLR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQRL,      'DQRL'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PDF_A,     'PDF_A'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WTHV2,     'WTHV2'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQL,       'WQL'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
@@ -674,7 +674,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               VFALLWAT_AN  ,VFALLWAT_LS  , &
                VFALLSN_AN  , VFALLSN_LS  ,VFALLSN_CN  ,VFALLSN_SC  ,  &
                VFALLRN_AN  , VFALLRN_LS  ,VFALLRN_CN  ,VFALLRN_SC  ,  &
-              PDF_A, &
+              PDF_A, PDFITERS, &
               WTHV2, WQL, &
               NACTL,    &
               NACTI,    &
