@@ -34,7 +34,7 @@ ExternalProject_Add(modelE
    CONFIGURE_COMMAND ""
    UPDATE_COMMAND ""
    BUILD_ALWAYS 1
-   BUILD_COMMAND make clean OVERWRITE=YES && make rundeck RUN=$ENV{ModelE_Run} RUNSRC=$ENV{ModelE_Template} OVERWRITE=YES && $(MAKE) gcm RUN=$ENV{ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=$ENV{MODELERC}
+   BUILD_COMMAND make clean OVERWRITE=YES && make rundeck RUN=$ENV{ModelE_Run} RUNSRC=$ENV{ModelE_Template} OVERWRITE=YES && $(MAKE) gcm RUN=$ENV{ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=$ENV{MODELERC} MPI=YES
    BUILD_IN_SOURCE 1
    INSTALL_COMMAND find ../model/ -type f -name "*.a" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/lib $<SEMICOLON> &&  find ../model/ -type f -name "*.mod" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/include/modelE $<SEMICOLON>
    DEPENDS MAPL
