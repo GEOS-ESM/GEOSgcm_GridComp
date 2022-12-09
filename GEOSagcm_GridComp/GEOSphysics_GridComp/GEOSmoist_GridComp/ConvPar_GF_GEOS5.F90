@@ -111,7 +111,6 @@ CONTAINS
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
-                               ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
                                ,REVSU, PRFIL)
 
     IMPLICIT NONE
@@ -125,11 +124,11 @@ CONTAINS
                                                      ,QV_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                                      ,DTDTDYN,DQVDTDYN
 
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: T1,TH1,Q1,U1,V1,QLCN,QICN,QLLS,QILS,CLCN,NCPL,NCPI
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: T1,TH1,Q1,U1,V1,QLCN,QICN,QLLS,QILS,CLCN
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: CNV_MFC
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: CNV_MF0 ,CNV_PRC3,CNV_MFD,CNV_DQCDT  &
-                                                     ,CNV_UPDF, CNV_CVW, CNV_QC, ENTLAM&
-                                                     ,CNV_NICE, CNV_NDROP, CNV_FICE
+                                                     ,CNV_UPDF, CNV_CVW, CNV_QC, ENTLAM
+                                                     
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: PRFIL
 
@@ -242,9 +241,6 @@ CONTAINS
    CNV_CVW = 0.0
    CNV_QC = 0.0
    ENTLAM = 0.0
-   CNV_NICE = 0.0
-   CNV_NDROP = 0.0
-   CNV_FICE = 0.0
    CNPCPRATE = 0.0
    REVSU = 0.0
    PRFIL = 0.0
@@ -694,57 +690,6 @@ ENDIF
       ENDDO
   ENDIF
 
-  IF(CNV_2MOM) then ! DONIF
-   
-    !- we adjust convective cloud condensate and number here
-        DO j=1,myp
-         DO i=1,mxp
-          DO k=1,mzp 
-
-             tem1 = T1(i,j,k)             
-             RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
-             RL =   min(max(RL, 10.0), 30.0)*1.e-6              
-             RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
-             RI =   min(max(RI, 20.0), 250.0)*1.e-6
-             
-          !  tem1 =  min(1., (max(0.,(T1(i,j,k)-T_ice))/(T_0-T_ice))**2)   
-             tem1 = 1.- (tem1 - 235.0) /38.0 
-             tem1 =  min(max(0.0, tem1), 1.0)
- 
-             ! make up some "number" sources. In the future this should depend explicitly on the convective mphysics
-             disp_factor =  10.0 ! used to account somehow for the size dist
- 
-             !-outputs 
-           ! QLCN (i,j,k) = QLCN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
-           ! QICN (i,j,k) = QICN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * tem1
-
-             SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
-             SRC_NI(flip(k),i,j) = SRC_CI(flip(k),i,j) *     tem1  /(1.333 * MAPL_PI*RI*RI*RI*500.0*disp_factor)
-
-           ! NCPL (i,j,k) = NCPL (i,j,k) + DT_moist *SRC_NL(flip(k),i,j)                
-           ! NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
-	     CNV_FICE (i, j, k)   =   tem1
-
-             if (CNV_MFD (i,j,k)  .gt. 0.) then 
-                CNV_NICE (i,j,k)=   SRC_NI(flip(k),i,j)*DZ(i,j,k)*AIR_DEN(i,j,k)/CNV_MFD (i,j,k) 
-                CNV_NDROP(i,j,k)=   SRC_NL(flip(k),i,j)*DZ(i,j,k)*AIR_DEN(i,j,k)/CNV_MFD (i,j,k) 
-             endif 
-          ENDDO
-         ENDDO 
-        ENDDO
-        !--- special section for convective cloud fraction
-        DO iens=1,maxiens 
-	 if(icumulus_gf(iens) .ne. ON) CYCLE
-         DO j=1,myp
-           DO i=1,mxp
-             if(ierr4d(i,j,IENS) .ne. 0) cycle
-             DO k=mzp,flip(ktop4d(i,j,IENS))-1,-1
-
-              ! CLCN(i,j,k) = CLCN(i,j,k) + (1.0-CLCN(i,j,k))*(up_massdetr5d(i,j,flip(k),iens) &
-              !                           * dt_moist/(DZ(i,j,k)*AIR_DEN(i,j,k))+CNV_UPDF(i,j,k))
-              ! CLCN(i,j,k) = max(0.,min(CLCN(i,j,k),0.99))			  
-        ENDDO; ENDDO; ENDDO; ENDDO
-  ENDIF !2 moment
 
 !
   IF(maxval(icumulus_gf)>0) then
