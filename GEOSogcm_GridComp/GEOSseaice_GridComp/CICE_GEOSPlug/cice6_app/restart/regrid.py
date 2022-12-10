@@ -213,8 +213,16 @@ def lon_lat_to_cartesian(lon, lat, R = 1):
 
 def get_src_grid(fname): #reads lat lon for tripolar ocean grid 
     ncfile  = Dataset(fname, "r")
-    LON     = ncfile.variables['lon'][:]
-    LAT     = ncfile.variables['lat'][:]
+    try:
+        LON     = ncfile.variables['lon'][:]
+        LAT     = ncfile.variables['lat'][:]
+    except:
+        pass   
+    try:
+        LON     = ncfile.variables['TLON'][:]
+        LAT     = ncfile.variables['TLAT'][:]
+    except:
+        pass   
     bat     = ncfile.variables['Bathymetry'][:]
     #wet     = ncfile.variables['mask'][:]
     ncfile.close()
