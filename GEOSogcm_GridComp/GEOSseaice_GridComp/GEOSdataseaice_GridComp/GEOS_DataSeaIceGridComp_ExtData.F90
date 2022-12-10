@@ -25,6 +25,7 @@ module GEOS_DataSeaIceGridCompMod
 
   integer            :: DO_CICE_THERMO
   logical            :: ocean_extData
+  logical            :: seaIceT_extData
 
 ! !DESCRIPTION:
 ! 
@@ -100,7 +101,10 @@ module GEOS_DataSeaIceGridCompMod
       _ASSERT(.FALSE.,'Must not use CICE_Thermo in (Ext) data sea ice. Fix and try.')
     endif
 
-    call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
+    call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",    DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
+
+    ! This feature (ice thickness data) will be with ExtData ONLY.
+    call MAPL_GetResource ( MAPL,    seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -119,29 +123,39 @@ module GEOS_DataSeaIceGridCompMod
        _RC )
   endif
 
-  call MAPL_AddImportSpec(GC,                                 &
-    SHORT_NAME         = 'HI',                                &
-    LONG_NAME          = 'seaice_skin_layer_depth',           &
-    UNITS              = 'm',                                 &
-    DIMS               = MAPL_DimsHorzOnly,                   &
-    VLOCATION          = MAPL_VLocationNone,                  &
-                                                    _RC )
+  if (seaIceT_extData) then
+    call MAPL_AddImportSpec(GC,                  &
+      SHORT_NAME         = 'DATA_SIT',           &
+      LONG_NAME          = 'sea_ice_thickness',  &
+      UNITS              = 'm',                  &
+      DIMS               = MAPL_DimsHorzOnly,    &
+      VLOCATION          = MAPL_VLocationNone,   &
+      _RC )
+  else
+    call MAPL_AddImportSpec(GC,                         &
+      SHORT_NAME         = 'HI',                        &
+      LONG_NAME          = 'seaice_skin_layer_depth',   &
+      UNITS              = 'm',                         &
+      DIMS               = MAPL_DimsHorzOnly,           &
+      VLOCATION          = MAPL_VLocationNone,          &
+      _RC )
 
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME         = 'TI',                                &
-       LONG_NAME          = 'seaice_skin_temperature',           &
-       UNITS              = 'K',                                 &
-       DIMS               = MAPL_DimsHorzOnly,                   &
-       VLOCATION          = MAPL_VLocationNone,                  &
-        _RC )
+    call MAPL_AddImportSpec(GC,                         &
+      SHORT_NAME         = 'TI',                        &
+      LONG_NAME          = 'seaice_skin_temperature',   &
+      UNITS              = 'K',                         &
+      DIMS               = MAPL_DimsHorzOnly,           &
+      VLOCATION          = MAPL_VLocationNone,          &
+      _RC )
 
-  call MAPL_AddImportSpec(GC,                                 &
-    SHORT_NAME         = 'SI',                                &
-    LONG_NAME          = 'seaice_skin_salinity',              &
-    UNITS              = 'psu',                               &
-    DIMS               = MAPL_DimsHorzOnly,                   &
-    VLOCATION          = MAPL_VLocationNone,                  &
-                                                        _RC )
+    call MAPL_AddImportSpec(GC,                         &
+      SHORT_NAME         = 'SI',                        &
+      LONG_NAME          = 'seaice_skin_salinity',      &
+      UNITS              = 'psu',                       &
+      DIMS               = MAPL_DimsHorzOnly,           &
+      VLOCATION          = MAPL_VLocationNone,          &
+      _RC )
+  endif
 
 !  !Export state:
 
@@ -151,7 +165,7 @@ module GEOS_DataSeaIceGridCompMod
     UNITS              = 'm s-1 ',                            &
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
-                                                    _RC )
+    _RC )
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'VI',                                &
@@ -159,15 +173,25 @@ module GEOS_DataSeaIceGridCompMod
     UNITS              = 'm s-1 ',                            &
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
-                                                    _RC )
+    _RC )
 
   call MAPL_AddExportSpec(GC,                                 &
-       SHORT_NAME         = 'FRACICE',                        &
-       LONG_NAME          = 'fractional_cover_of_seaice',     &
-       UNITS              = '1',                              &
-       DIMS               = MAPL_DimsHorzOnly,                &
-       VLOCATION          = MAPL_VLocationNone,               &
-        _RC )
+    SHORT_NAME         = 'FRACICE',                        &
+    LONG_NAME          = 'fractional_cover_of_seaice',     &
+    UNITS              = '1',                              &
+    DIMS               = MAPL_DimsHorzOnly,                &
+    VLOCATION          = MAPL_VLocationNone,               &
+    _RC )
+
+  if (seaIceT_extData) then
+    call MAPL_AddExportSpec(GC,                            &
+      SHORT_NAME         = 'SEAICETHICKNESS',              &
+      LONG_NAME          = 'seaice_thickness',             &
+      UNITS              = 'm',                            &
+      DIMS               = MAPL_DimsHorzOnly,              &
+      VLOCATION          = MAPL_VLocationNone,             &
+      _RC )
+  endif
 
 !EOS
 
@@ -227,6 +251,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: UI   => null()
    real, pointer, dimension(:,:)  :: VI   => null()
    real, pointer, dimension(:,:)  :: FR   => null()
+   real, pointer, dimension(:,:)  :: SIT  => null()
 
 ! pointers to import
 
@@ -234,6 +259,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: HI   => null()
    real, pointer, dimension(:,:)  :: SI   => null()
    real, pointer, dimension(:,:)  :: DATA_icec => null()
+   real, pointer, dimension(:,:)  :: DATA_sit  => null()
 
 !  Begin...
 !----------
@@ -263,9 +289,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      call MAPL_GetPointer(IMPORT, DATA_icec    ,  'DATA_ICEC', _RC )
    endif
 
-   call MAPL_GetPointer(IMPORT, TI    ,  'TI'  , _RC )
-   call MAPL_GetPointer(IMPORT, HI    ,  'HI'  , _RC ) 
-   call MAPL_GetPointer(IMPORT, SI    ,  'SI'  , _RC )
+   if (seaIceT_extData) then
+     call MAPL_GetPointer(IMPORT, DATA_sit     ,  'DATA_SIT', _RC )
+   else
+     call MAPL_GetPointer(IMPORT, TI    ,  'TI'  , _RC )
+     call MAPL_GetPointer(IMPORT, HI    ,  'HI'  , _RC ) 
+     call MAPL_GetPointer(IMPORT, SI    ,  'SI'  , _RC )
+  endif
 
 !  Pointers to Exports
 !---------------------
@@ -286,21 +316,22 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   endif
 
 ! In atmospheric forecast mode we do not have future Sea Ice Conc
-!---------------------------------------------------------------
+!----------------------------------------------------------------
 
     call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0, _RC )
-
     FCST = IFCST==1
 
 ! Get relaxation time
 !--------------------
 
+   if (.not. seaIceT_extData) then
     call MAPL_GetResource(MAPL,TAU_SIT, LABEL="TAU_SIT:", default=86400.0, _RC )
     call MAPL_GetResource(MAPL,RUN_DT , LABEL="RUN_DT:" ,                  _RC )
     call MAPL_GetResource(MAPL,DT     , LABEL="DT:"    , default=RUN_DT,   _RC )
+   endif
 
-!  Update the friendly skin values
-!---------------------------------
+!  Update data
+!-------------
 
    call MAPL_TimerOn(MAPL,"-UPDATE" )
 
@@ -318,12 +349,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      endif
    end if
   
-   where (TI /= MAPL_Undef)
-     TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
-   end where
-
-   HI   = HI
-   SI   = 30.0
+   if (seaIceT_extData) then
+     call MAPL_GetPointer(EXPORT, SIT , 'SEAICETHICKNESS'  ,  _RC )
+     SIT = DATA_sit ! netcdf variable
+   else
+     where (TI /= MAPL_Undef)
+       TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
+     end where
+     HI   = HI
+     SI   = 30.0
+   end if
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )
 
@@ -332,9 +367,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if(associated(UI)) UI = 0.0
    if(associated(VI)) VI = 0.0
-
-! Clean-up
-!---------
 
 !  All done
 !-----------
