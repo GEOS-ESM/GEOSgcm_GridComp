@@ -507,16 +507,16 @@ contains
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__ )
 ! phase 1
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        __RC__ )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,        __RC__ )
     if (DUAL_OCEAN) then
 ! phase 2 - this is only used in the predictor part of the replay for dual ocean
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,     __RC__ )
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,     __RC__ )
 ! phase 3 - this is only used in the corrector part of the replay for dual ocean
 !           ice nudging only
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run2,    __RC__ )
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2,    __RC__ )
 ! phase 4 - this is only used in the predictor part of the replay for dual ocean
 !           ice nudging only
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run2,    __RC__ )
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2,    __RC__ )
     end if
 
 
