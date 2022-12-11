@@ -4,11 +4,13 @@ esma_set_this ()
 ## We default to VERSION_1 and look if something is passed in.
 ### VERSION_1 is what was used in MERRAA, MERRA-2 reanalyses, 
 ### VERSION_2 is a "test" with ice thickness from ExtData.
-#set(DATA_SEAICE "VERSION_1" CACHE INTERNAL "Version of Data Seaice")
-set (DEFAULT_DATA_SEAICE "VERSION_1")
-if (NOT DATA_SEAICE)
-  set (DATA_SEAICE ${DEFAULT_DATA_SEAICE})
-endif ()
+
+set(DATA_SEAICE "VERSION_1" CACHE INTERNAL "Version of Data Seaice")
+# Following four (4) lines accomplish same as above line.
+#set (DEFAULT_DATA_SEAICE "VERSION_1")
+#if (NOT DATA_SEAICE)
+#  set (DATA_SEAICE ${DEFAULT_DATA_SEAICE})
+#endif ()
 #
 
 ## ... and make sure it is allowed
