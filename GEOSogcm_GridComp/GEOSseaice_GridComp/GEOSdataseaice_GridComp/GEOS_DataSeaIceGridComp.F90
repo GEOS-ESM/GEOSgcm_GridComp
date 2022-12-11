@@ -36,6 +36,7 @@ module GEOS_DataSeaIceGridCompMod
   integer            :: DO_CICE_THERMO
 
   logical            :: ocean_extData
+  logical            :: seaIceT_extData
 
 ! !DESCRIPTION:
 ! 
@@ -112,6 +113,11 @@ module GEOS_DataSeaIceGridCompMod
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+    call MAPL_GetResource ( MAPL,    seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
+    if (seaIceT_extData) then
+      if(MAPL_AM_I_ROOT()) print *, 'You have set SEAICE_THICKNESS_EXT_DATA: .TRUE. For this feature, a _newer_: version-2 of data sea ice must be used.'
+      _ASSERT(.FALSE.,'Recompile and try.')
+    endif
 
     cice_init_: if (DO_CICE_THERMO /= 0) then
        if(MAPL_AM_I_ROOT()) print *, 'Using Data Sea Ice GC to do CICE Thermo in AMIP mode'
