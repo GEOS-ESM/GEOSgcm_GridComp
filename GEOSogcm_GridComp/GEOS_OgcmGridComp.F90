@@ -2197,9 +2197,11 @@ contains
     endif
 
     if (DO_CICE_THERMO == 0) then  
-       call MAPL_LocStreamTransform( ExchGrid, TI     ,  TIO   , _RC)
        call MAPL_LocStreamTransform( ExchGrid, FR     ,  FRO   , INTERP=useInterp, _RC)
-       if (seaIceT_extData) then
+
+       if (.not. seaIceT_extData) then
+         call MAPL_LocStreamTransform( ExchGrid, TI     ,  TIO   , _RC)
+       else
          call MAPL_LocStreamTransform( ExchGrid, SEAICETHICKNESS,  SEAICETHICKNESSO, INTERP=useInterp, _RC)
        endif
     else
