@@ -43,6 +43,7 @@ module GEOS_SimpleSeaiceGridCompMod
 
   integer, parameter    :: ICE = 1  
   integer, parameter    :: NUM_SUBTILES = 1      
+  logical               :: seaIceT_extData
 
   type ssi_state
        integer:: CHOOSEMOSFC
@@ -107,21 +108,20 @@ module GEOS_SimpleSeaiceGridCompMod
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, _RC)
     Iam = trim(COMP_NAME) // 'SetServices'
 
+
 ! Get my MAPL_Generic state
 !--------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
-! Sea-Ice Thermodynamics computation: using CICE or not?
-!-------------------------------------------------------
-
-
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, _RC)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, _RC)
 
-! Set the state variable specs.
-! -----------------------------
+! Set the state variable specs
+! ----------------------------
+
+    call MAPL_GetResource ( MAPL,    seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
 
 !BOS
 
@@ -136,122 +136,122 @@ module GEOS_SimpleSeaiceGridCompMod
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBVR',                             &
         LONG_NAME          = 'surface_albedo_for_visible_beam',   &
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBVF',                             &
         LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBNR',                             &
         LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBNF',                             &
         LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'EVAPOUT'                   ,&
         LONG_NAME          = 'evaporation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
-        SHORT_NAME         = 'EVAPOUT'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'SUBLIM'                    ,&
         LONG_NAME          = 'sublimation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
-        SHORT_NAME         = 'SUBLIM'                    ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'SHOUT'                     ,&
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SHOUT'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'SHICE'                     ,&
         LONG_NAME          = 'sea_ice_upward_sensible_heat_flux' ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SHICE'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'HLWUP'                     ,&
         LONG_NAME          = 'surface_outgoing_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'HLWUP'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'LWNDICE'                   ,&
         LONG_NAME          = 'sea_ice_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'LWNDICE'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'LWNDSRF'                   ,&
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'LWNDSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'SWNDICE'                   ,&
         LONG_NAME          = 'sea_ice_net_downward_shortwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SWNDICE'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'SWNDSRF'                   ,&
         LONG_NAME          = 'surface_net_downward_shortwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SWNDSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'HLATN'                     ,&
         LONG_NAME          = 'total_latent_energy_flux'  ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'HLATN'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'HLATICE'                   ,&
         LONG_NAME          = 'sea_ice_latent_energy_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'HLATICE'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
@@ -401,17 +401,17 @@ module GEOS_SimpleSeaiceGridCompMod
                                                _RC)
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'Z0'                        ,&
         LONG_NAME          = 'surface_roughness'         ,&
         UNITS              = 'm'                         ,&
-        SHORT_NAME         = 'Z0'                        ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'Z0H'                       ,&
         LONG_NAME          = 'surface_roughness_for_heat',&
         UNITS              = 'm'                         ,&
-        SHORT_NAME         = 'Z0H'                       ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
@@ -497,17 +497,17 @@ module GEOS_SimpleSeaiceGridCompMod
                                                _RC)
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'TAUXI'                     ,&
         LONG_NAME          = 'eastward_stress_over_ice',  &
         UNITS              = 'N m-2'                     ,&
-        SHORT_NAME         = 'TAUXI'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'TAUYI'                     ,&
         LONG_NAME          = 'northward_stress_over_ice',  &
         UNITS              = 'N m-2'                     ,&
-        SHORT_NAME         = 'TAUYI'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
@@ -561,9 +561,9 @@ module GEOS_SimpleSeaiceGridCompMod
         _RC)
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'FSURF'                     ,&
         LONG_NAME          = 'total_surface_heat_flux_over_the_whole_tile' ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'FSURF'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
@@ -575,6 +575,22 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                       _RC  )
+     if (seaIceT_extData) then
+       call MAPL_AddExportSpec(GC,                          &
+            SHORT_NAME         = 'SEAICETHICKNESS',         &
+            LONG_NAME          = 'ice_skin_layer_mass',     &
+            UNITS              = 'm'                       ,&
+            DIMS               = MAPL_DimsTileOnly         ,&
+            VLOCATION          = MAPL_VLocationNone        ,&
+                                                      _RC  )
+       call MAPL_AddExportSpec(GC,                          &
+            SHORT_NAME         = 'HSNO',                    &
+            LONG_NAME          = 'snow_skin_layer_mass',    &
+            UNITS              = 'm'                       ,&
+            DIMS               = MAPL_DimsTileOnly         ,&
+            VLOCATION          = MAPL_VLocationNone        ,&
+                                                      _RC  )
+     endif
 
 !  !INTERNAL STATE:
 
@@ -670,6 +686,17 @@ module GEOS_SimpleSeaiceGridCompMod
 
 !  !IMPORT STATE:
 
+     if (seaIceT_extData) then
+       call MAPL_AddImportSpec(GC,                          &
+            SHORT_NAME         = 'SEAICETHICKNESS',         &
+            LONG_NAME          = 'ice_skin_layer_mass',     &
+            UNITS              = 'm'                       ,&
+            DIMS               = MAPL_DimsTileOnly         ,&
+            VLOCATION          = MAPL_VLocationNone        ,&
+            DEFAULT            = 0.7                       ,&
+                                                      _RC  )
+     endif
+
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'ALW',                               &
         LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
@@ -695,105 +722,105 @@ module GEOS_SimpleSeaiceGridCompMod
                                                        _RC)
 
      call MAPL_AddImportSpec(GC                             ,&
+        SHORT_NAME         = 'DRPAR'                             ,&
         LONG_NAME          = 'surface_downwelling_par_beam_flux' ,&
         UNITS              = 'W m-2'                             ,&
-        SHORT_NAME         = 'DRPAR'                             ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
                                                        _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DFPAR'                       ,&
          LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DFPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DRNIR'                       ,&
          LONG_NAME          = 'surface_downwelling_nir_beam_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DRNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DFNIR'                       ,&
          LONG_NAME          = 'surface_downwelling_nir_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DFNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DRUVR'                       ,&
          LONG_NAME          = 'surface_downwelling_uvr_beam_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DRUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DFUVR'                       ,&
          LONG_NAME          = 'surface_downwelling_uvr_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DFUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   _RC  ) 
 
     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'EVAP ',                             &
         LONG_NAME          = 'evaporation',                       &
         UNITS              = 'kg m-2 s-1',                        &
-        SHORT_NAME         = 'EVAP ',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'SH',                                &
         LONG_NAME          = 'upward_sensible_heat_flux',         &
         UNITS              = 'W m-2',                             &
-        SHORT_NAME         = 'SH',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'TAUX',                              &
         LONG_NAME          = 'eastward_surface_stress',           &
         UNITS              = 'N m-2',                             &
-        SHORT_NAME         = 'TAUX',                              &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'TAUY',                              &
         LONG_NAME          = 'northward_surface_stress',          &
         UNITS              = 'N m-2',                             &
-        SHORT_NAME         = 'TAUY',                              &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'DEVAP',                             &
         LONG_NAME          = 'derivative_of_evaporation',         &
         UNITS              = 'kg m-2 s-1',                        &
-        SHORT_NAME         = 'DEVAP',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'DSH',                               &
         LONG_NAME          = 'derivative_of_upward_sensible_heat_flux', &
         UNITS              = 'W m-2',                             &
-        SHORT_NAME         = 'DSH',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'SNO',                               &
         LONG_NAME          = 'snowfall',                          &
         UNITS              = 'kg m-2 s-1',                        &
-        SHORT_NAME         = 'SNO',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
@@ -801,73 +828,73 @@ module GEOS_SimpleSeaiceGridCompMod
 ! Surface air quantities
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'TA',                                &
         LONG_NAME          = 'surface_air_temperature',           &
         UNITS              = 'K',                                 &
-        SHORT_NAME         = 'TA',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'QA',                                &
         LONG_NAME          = 'surface_air_specific_humidity',     &
         UNITS              = 'kg kg-1',                           &
-        SHORT_NAME         = 'QA',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'UU',                                &
         LONG_NAME          = 'surface_wind_speed',                &
         UNITS              = 'm s-1',                             &
-        SHORT_NAME         = 'UU',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'UWINDLMTILE',                       &
         LONG_NAME          = 'levellm_uwind',                     &
         UNITS              = 'm s-1',                             &
-        SHORT_NAME         = 'UWINDLMTILE',                       &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'VWINDLMTILE',                       &
         LONG_NAME          = 'levellm_vwind',                     &
         UNITS              = 'm s-1',                             &
-        SHORT_NAME         = 'VWINDLMTILE',                       &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'DZ',                                &
         LONG_NAME          = 'surface_layer_height',              &
         UNITS              = 'm',                                 &
-        SHORT_NAME         = 'DZ',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'PS',                                &
         LONG_NAME          = 'surface_pressure',                  &
         UNITS              = 'Pa',                                &
-        SHORT_NAME         = 'PS',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'PCU'                               ,&
         LONG_NAME          = 'liquid_water_convective_precipitation',&
         UNITS              = 'kg m-2 s-1'                        ,&
-        SHORT_NAME         = 'PCU'                               ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
                                                        _RC  ) 
 
      call MAPL_AddImportSpec(GC                            ,&
+        SHORT_NAME         = 'PLS'                              ,&
         LONG_NAME          = 'liquid_water_large_scale_precipitation',&
         UNITS              = 'kg m-2 s-1'                       ,&
-        SHORT_NAME         = 'PLS'                              ,&
         DIMS               = MAPL_DimsTileOnly                  ,&
         VLOCATION          = MAPL_VLocationNone                 ,&
                                                       _RC  ) 
@@ -1695,6 +1722,7 @@ contains
    real, pointer, dimension(:  )  :: LWNDICE => null()
    real, pointer, dimension(:  )  :: FSURF   => null()
    real, pointer, dimension(:  )  :: TSKINICE=> null()
+   real, pointer, dimension(:  )  :: HSNO    => null()
 
    real, pointer, dimension(:  )  :: DELTS  => null()
    real, pointer, dimension(:  )  :: DELQS  => null()
@@ -1713,6 +1741,7 @@ contains
    real, pointer, dimension(:  )  :: FHOCN      => null()
    real, pointer, dimension(:  )  :: PICE       => null()
    real, pointer, dimension(:  )  :: GHTSKIN    => null()
+   real, pointer, dimension(: )   :: SEAICETHICKNESSe => null()
 
 ! pointers to internal
 
@@ -1759,6 +1788,7 @@ contains
    real, pointer, dimension(:)    :: CMATM => null()
    real, pointer, dimension(:)    :: UI => null()
    real, pointer, dimension(:)    :: VI => null()
+   real, pointer, dimension(: )   :: SEAICETHICKNESSi => null()
 
    real, pointer, dimension(:)    :: TAUXBOT   => null()                  ! CICE related
    real, pointer, dimension(:)    :: TAUYBOT   => null()
@@ -1867,6 +1897,10 @@ contains
    call MAPL_GetPointer(IMPORT,TAUXBOT, 'TAUXBOT',    _RC)
    call MAPL_GetPointer(IMPORT,TAUYBOT, 'TAUYBOT',    _RC)
 
+   if (seaIceT_extData) then
+     call MAPL_GetPointer(IMPORT,SEAICETHICKNESSi, 'SEAICETHICKNESS',    _RC)
+   endif
+
 ! Pointers to internals
 !----------------------
 
@@ -1908,6 +1942,11 @@ contains
    call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    _RC)
    call MAPL_GetPointer(EXPORT,TSKINICE, 'TSKINICE',   _RC)
 
+   if (seaIceT_extData) then
+     call MAPL_GetPointer(EXPORT,HSNO ,            'HSNO'    ,        _RC)
+     call MAPL_GetPointer(EXPORT,SEAICETHICKNESSe, 'SEAICETHICKNESS', _RC)
+   endif
+
    call MAPL_GetPointer(EXPORT,DRUVRTHRU  , 'PENUVR'     ,    _RC)
    call MAPL_GetPointer(EXPORT,DFUVRTHRU  , 'PENUVF'     ,    _RC)
    call MAPL_GetPointer(EXPORT,DRPARTHRU  , 'PENPAR'     ,    _RC)
@@ -1932,8 +1971,11 @@ contains
 ! Get parameters
 ! --------------
 
-    call MAPL_GetResource ( MAPL, MAXICEDEPTH  , Label="MAX_SEAICE_DEPTH:", DEFAULT=2.0  , _RC)
-    call MAPL_GetResource ( MAPL, MINICEDEPTH  , Label="MIN_SEAICE_DEPTH:", DEFAULT=1.E-6, _RC)
+    if (.not. seaIceT_extData) then
+      call MAPL_GetResource ( MAPL, MAXICEDEPTH  , Label="MAX_SEAICE_DEPTH:", DEFAULT=2.0  , _RC)
+      call MAPL_GetResource ( MAPL, MINICEDEPTH  , Label="MIN_SEAICE_DEPTH:", DEFAULT=1.E-6, _RC)
+    endif
+
     call MAPL_GetResource ( MAPL, EMSICE,        Label="CICE_EMSICE:",      DEFAULT=0.99999, _RC)
 
     MAXICEDEPTH     = MAXICEDEPTH  * water_RHO('fresh_water')
@@ -1943,10 +1985,16 @@ contains
 ! Copy friendly internals into tile-tile local variables
 !-------------------------------------------------------
 
-    HH(:,ICE  ) = HI
-    SS(:,ICE  ) = SI*HI
+    if (.not. seaIceT_extData) then
+      HH(:,ICE  ) = HI
+      SS(:,ICE  ) = SI*HI
+    else
+      HH(:,ICE  ) = SEAICETHICKNESSi*water_RHO('fresh_water')
+      SS(:,ICE  ) = SI*HH(:,ICE)
+    endif
+
     TS(:,ICE  ) = TI
-    FR(:,ICE  ) = 1.0
+    FR(:,ICE  ) = 1.0 ! SA: [Dec, 2022] Here is another problem with the tiled approach!
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------
@@ -2056,7 +2104,7 @@ contains
 !          able to reproduce Heracles-4_0 results (zero diff). 
 ! ---------------------------------------------------------------------------------------------------
 
-! If using GEOS CICE Thermodynamics. If using LANL CICE, this is accomplished in Thermo1
+! If using GEOS CICE Thermodynamics.
 !---------------------------------------------------------------------------------------
 
        N   = ICE
@@ -2094,14 +2142,16 @@ contains
        endif
 
 ! Update SEA-ICE surface temperature and moisture
-!----------------------------------------
+!------------------------------------------------
 
        TS(:,N) = TS(:,N) + DTS
        DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
        QS(:,N) = QS(:,N) + DQS
 
-       HH(:,N) = HH(:,N) + DT*(SNO - EVP)
-       HH(:,N) = max(min(HH(:,N),  MAXICEDEPTH),  MINICEDEPTH)
+       if (.not. seaIceT_extData) then
+         HH(:,N) = HH(:,N) + DT*(SNO - EVP)
+         HH(:,N) = max(min(HH(:,N),  MAXICEDEPTH),  MINICEDEPTH)
+       endif
 
        if(associated(SUBLIM  ))SUBLIM  =           EVP    *FR(:,N)
        if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + EVP    *FR(:,N)
@@ -2110,11 +2160,19 @@ contains
        if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
        if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
 
+       if (seaIceT_extData) then
+         if(associated(HSNO )) HSNO = (DT*(SNO - EVP))/water_RHO('fresh_water')
+         if(associated(SEAICETHICKNESSe )) SEAICETHICKNESSe = SEAICETHICKNESSi
+       endif
+
 ! Copy back to friendly internal variables
 !-----------------------------------------
 
-       HI = HH(:,ICE  )
-       SI = SS(:,ICE  )/HI
+       if (.not. seaIceT_extData) then
+         HI = HH(:,ICE  )
+         SI = SS(:,ICE  )/HI  ! SA: [Dec, 2022] anyway SI or SS(:,ICE) is not being used for anything!
+       endif
+
        TI = TS(:,ICE  )
 
 ! Stress over ice
@@ -2127,7 +2185,6 @@ contains
           TXI = MAPL_UNDEF
           TYI = MAPL_UNDEF
        end where
-
 
     if(associated(TAUXI)) TAUXI = TXI
     if(associated(TAUYI)) TAUYI = TYI

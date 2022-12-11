@@ -659,7 +659,8 @@ module GEOS_SaltwaterGridCompMod
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUAGE' , CHILD_ID =   ICE, _RC)
   else
     if (seaIceT_extData) then
-      call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSNO' , CHILD_ID =   ICE, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME = 'SEAICETHICKNESS', CHILD_ID =   ICE, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSNO',            CHILD_ID =   ICE, _RC)
     endif
   endif 
 
