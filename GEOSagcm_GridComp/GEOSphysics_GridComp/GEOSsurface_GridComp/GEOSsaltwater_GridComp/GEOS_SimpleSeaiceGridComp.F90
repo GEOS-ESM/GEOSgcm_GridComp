@@ -1974,12 +1974,13 @@ contains
     if (.not. seaIceT_extData) then
       call MAPL_GetResource ( MAPL, MAXICEDEPTH  , Label="MAX_SEAICE_DEPTH:", DEFAULT=2.0  , _RC)
       call MAPL_GetResource ( MAPL, MINICEDEPTH  , Label="MIN_SEAICE_DEPTH:", DEFAULT=1.E-6, _RC)
+
+      MAXICEDEPTH     = MAXICEDEPTH  * water_RHO('fresh_water')
+      MINICEDEPTH     = MINICEDEPTH  * water_RHO('fresh_water')
     endif
 
     call MAPL_GetResource ( MAPL, EMSICE,        Label="CICE_EMSICE:",      DEFAULT=0.99999, _RC)
 
-    MAXICEDEPTH     = MAXICEDEPTH  * water_RHO('fresh_water')
-    MINICEDEPTH     = MINICEDEPTH  * water_RHO('fresh_water')
 
 
 ! Copy friendly internals into tile-tile local variables
