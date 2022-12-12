@@ -2765,5 +2765,40 @@ module GEOSmoist_Process_Library
 
 !+---+-----------------------------------------------------------------+ 
 
+   SUBROUTINE  dissipative_ke_heating(its,ite, kts,kte &
+                             ,pe,us,vs,du,dv,ttend)
+
+   implicit none
+   integer                              ,intent (in ) :: its,ite, kts,kte
+   real   , dimension (its:ite,kts:kte) ,intent (in ) :: pe ! Pascals
+   real   , dimension (its:ite,kts:kte) ,intent (in ) :: us,vs,du,dv
+   real   , dimension (its:ite,kts:kte) ,intent (out) :: ttend
+
+   real :: dts,fp,dp,fpi,ke(kts:kte)
+   integer ::i,k
+
+! since kinetic energy is being dissipated, add heating accordingly (from ECMWF)
+!
+   ttend = 0.0
+   do i=its,ite
+          dts=0.
+          fpi=0.
+          do k=kts,kte
+             dp=(pe(i,k+1)-pe(i,k))
+             !total KE dissiptaion estimate
+             dts = dts - (du(i,k)*us(i,k)+dv(i,k)*vs(i,k))*dp/MAPL_GRAV
+             !
+             ! fpi needed for calcualtion of conversion to pot. energyintegrated
+             ke(k) = sqrt(du(i,k)*du(i,k) + dv(i,k)*dv(i,k))
+             fpi = fpi + ke(k)*dp
+          enddo
+          if(fpi.gt.0.)then
+             do k=kts,kte
+                ttend(i,k) = ttend(i,k) + (ke(k)/fpi)*dts*gravbcp
+             enddo
+          endif
+   enddo
+
+  end SUBROUTINE  dissipative_ke_heating
 
 end module GEOSmoist_Process_Library
