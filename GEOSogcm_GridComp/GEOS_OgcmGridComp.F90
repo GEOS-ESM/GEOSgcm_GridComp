@@ -804,20 +804,20 @@ contains
     if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
       if (ocean_sssData .or. seaIceT_extData) then
         if (ocean_sssData .and. (.not. seaIceT_extData)) then ! only data_sss only
-         call MAPL_TerminateImport   ( GC, ["DATA_SST ","DATA_SSS ", "DATA_ICEC ","DATA_KPAR"], [ocean,ocean,seaice,orad], RC=STATUS  )
+         call MAPL_TerminateImport   ( GC, ["DATA_SST  ","DATA_SSS  ", "DATA_ICEC ","DATA_KPAR "], [ocean,ocean,seaice,orad], RC=STATUS  )
         endif
         if ((.not. ocean_sssData) .and. seaIceT_extData) then ! only data_sit only
-         call MAPL_TerminateImport   ( GC, ["DATA_SST ","DATA_ICEC", "DATA_SIT ","DATA_KPAR"], [ocean,seaice,seaice,orad], RC=STATUS  )
+         call MAPL_TerminateImport   ( GC, ["DATA_SST  ","DATA_ICEC ", "DATA_SIT  ","DATA_KPAR "], [ocean,seaice,seaice,orad], RC=STATUS  )
         endif
         ! both data_sss and data_sit
-        call MAPL_TerminateImport   ( GC, ["DATA_SST ","DATA_SSS ", "DATA_ICEC ", "DATA_SIT ", "DATA_KPAR"], [ocean,ocean,seaice,seaice,orad], RC=STATUS  )
+        call MAPL_TerminateImport   ( GC, ["DATA_SST  ","DATA_SSS  ", "DATA_ICEC ", "DATA_SIT  ", "DATA_KPAR "], [ocean,ocean,seaice,seaice,orad], RC=STATUS  )
       else
         ! no data_sss and data_sit
-        call MAPL_TerminateImport    ( GC, ["DATA_SST ",             "DATA_ICEC ","DATA_KPAR"], [ocean,seaice,orad], RC=STATUS  )
+        call MAPL_TerminateImport    ( GC, ["DATA_SST  ",             "DATA_ICEC ","DATA_KPAR "], [ocean,seaice,orad], RC=STATUS  )
       endif
 
     else ! we got real ocean and sea ice in case of coupled model, and only data KPAR is used.
-      call MAPL_TerminateImport    ( GC, ["DATA_KPAR"], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
+      call MAPL_TerminateImport    ( GC, ["DATA_KPAR "], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
     endif
   else
     call MAPL_TerminateImport ( GC, ALL=.true., __RC__)
