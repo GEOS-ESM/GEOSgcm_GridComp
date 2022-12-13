@@ -3033,7 +3033,7 @@ END SUBROUTINE modis_scale_para_high
 
   QSize = nint(dxy*nc_data/360.) ! # of columns on global grid
 
-  ! Reading number of cathment-tiles from catchment.def file
+  ! Reading number of catchment-tiles from catchment.def file
   ! -------------------------------------------------------- 
   fname='clsm/catchment.def'
   open (10,file=fname,status='old',action='read',form='formatted')
@@ -3041,7 +3041,7 @@ END SUBROUTINE modis_scale_para_high
   allocate (tile_lon(1:N_tile))  
   allocate (tile_lat(1:N_tile))
 
-  do n = 1, N_tile                ! catchemnt.def provides min/max lat/lon. Find lat/lon of the center of a tile
+  do n = 1, N_tile                ! catchment.def provides min/max lat/lon. Find lat/lon of the center of a tile
      read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
      tile_lon(n) = (minlon + maxlon)/2.
      tile_lat(n) = (minlat + maxlat)/2.
@@ -3125,7 +3125,7 @@ END SUBROUTINE modis_scale_para_high
   DO n =1,N_tile ! loop over all elements of the output array
       if(count_snow_alb(n)==0.)  then ! if an element is zero, take action
 
-        ! Get (i,j) where lat/lon of the tile falls inbetween two consecutive 
+        ! Get (i,j) where lat/lon of the tile falls in between two consecutive 
         ! grids of global dxy (e.g. 1deg) grid. This to be the beggining i,j 
         ! for subsetting the global grid when searching for a fill value
         DO i = 1,nx - 1
