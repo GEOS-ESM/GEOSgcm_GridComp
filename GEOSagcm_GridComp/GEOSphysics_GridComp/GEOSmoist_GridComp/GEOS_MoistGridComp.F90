@@ -5700,6 +5700,7 @@ contains
           enddo
        endif
 
+#ifdef SKIP
        ! Cumulus Friction
        IKEX  = SUM( (0.5/DT_MOIST)*((V**2+U**2)  - (V0**2+U0**2))*MASS , 3 )
        IKEX2 = MAX(  SUM( 1.E-04 * MASS , 3 ) ,  1.0e-6 ) ! floor at 1e-6 W m-2
@@ -5716,6 +5717,7 @@ contains
              PTR3D(:,:,L) = -(1./MAPL_CP)*(IKEX/IKEX2) * 1.E-04 * (PLE(:,:,L)-PLE(:,:,L-1))
           end do
        end if
+#endif
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)

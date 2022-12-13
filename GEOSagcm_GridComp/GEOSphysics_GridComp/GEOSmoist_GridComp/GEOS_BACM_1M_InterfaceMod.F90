@@ -300,6 +300,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
     ! Local
+    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
     real, allocatable, dimension(:,:,:) :: DZET,  TH,  MASS
@@ -410,6 +411,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
      ! Layer variables
+    ALLOCATE ( U0   (IM,JM,LM  ) )
+    ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
@@ -438,6 +441,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     TH       = T/PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+    U0       = U
+    V0       = V
 
     WHERE ( ZL0 < 3000. )
        QDDF3 = -( ZL0-3000. ) * ZL0 * MASS
@@ -726,6 +731,13 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
           DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
           DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
+
+        ! dissipative heating tendency from KE across the macro/micro physics
+         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+         if(associated(PTR3D)) then
+           call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
+                                       DUDT_micro,DVDT_micro,PTR3D)
+         endif
 
          ! Compute DBZ radar reflectivity
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)

@@ -89,7 +89,7 @@ module GEOSmoist_Process_Library
   public :: find_l, find_eis, FINDLCL
   public :: find_cldtop, find_cldbase, gw_prof
   public :: make_IceNumber, make_DropletNumber
-
+  public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
  
   contains
@@ -2765,38 +2765,40 @@ module GEOSmoist_Process_Library
 
 !+---+-----------------------------------------------------------------+ 
 
-   SUBROUTINE  dissipative_ke_heating(its,ite, kts,kte &
-                             ,pe,us,vs,du,dv,ttend)
+   SUBROUTINE  dissipative_ke_heating(IM,JM,LM &
+                             ,mass,us,vs,du,dv,ttend)
 
    implicit none
-   integer                              ,intent (in ) :: its,ite, kts,kte
-   real   , dimension (its:ite,kts:kte) ,intent (in ) :: pe ! Pascals
-   real   , dimension (its:ite,kts:kte) ,intent (in ) :: us,vs,du,dv
-   real   , dimension (its:ite,kts:kte) ,intent (out) :: ttend
+   integer                       ,intent (in ) :: IM,JM,LM
+   real   , dimension (IM,JM,LM) ,intent (in ) :: mass  ! delp/gravity
+   real   , dimension (IM,JM,LM) ,intent (in ) :: us,vs ! winds prior to cumulus process
+   real   , dimension (IM,JM,LM) ,intent (in ) :: du,dv ! wind tendency due to cumulus process
+   real   , dimension (IM,JM,LM) ,intent (out) :: ttend ! K/s
 
-   real :: dts,fp,dp,fpi,ke(kts:kte)
-   integer ::i,k
+   real :: dts,fp,dp,fpi,ke(LM)
+   integer ::i,j,l
 
 ! since kinetic energy is being dissipated, add heating accordingly (from ECMWF)
 !
    ttend = 0.0
-   do i=its,ite
+   do j=1,JM
+     do i=1,IM
           dts=0.
           fpi=0.
-          do k=kts,kte
-             dp=(pe(i,k+1)-pe(i,k))
+          do l=1,LM
              !total KE dissiptaion estimate
-             dts = dts - (du(i,k)*us(i,k)+dv(i,k)*vs(i,k))*dp/MAPL_GRAV
+             dts = dts - (du(i,j,l)*us(i,j,l)+dv(i,j,l)*vs(i,j,l))*mass(i,j,l)
              !
              ! fpi needed for calcualtion of conversion to pot. energyintegrated
-             ke(k) = sqrt(du(i,k)*du(i,k) + dv(i,k)*dv(i,k))
-             fpi = fpi + ke(k)*dp
+             ke(l) = sqrt(du(i,j,l)*du(i,j,l) + dv(i,j,l)*dv(i,j,l))
+             fpi = fpi + ke(l)*mass(i,j,l)
           enddo
           if(fpi.gt.0.)then
-             do k=kts,kte
-                ttend(i,k) = ttend(i,k) + (ke(k)/fpi)*dts*gravbcp
+             do l=1,LM
+                ttend(i,j,l) = (ke(l)/fpi)*dts*(1.0/MAPL_CP)
              enddo
           endif
+     enddo
    enddo
 
   end SUBROUTINE  dissipative_ke_heating
