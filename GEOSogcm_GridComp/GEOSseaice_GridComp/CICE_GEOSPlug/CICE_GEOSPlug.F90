@@ -347,9 +347,8 @@ contains
 
 ! Init CICE 
 !---------------
-    ! BZ: need to properly initialze CICE's calendar??
     call cice_init1(Comm)
-    call cice_init2
+    call cice_init2(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
 
     !*CALLBACK*
     !=====================================================================================
