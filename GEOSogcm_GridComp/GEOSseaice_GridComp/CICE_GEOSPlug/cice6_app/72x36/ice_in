@@ -273,12 +273,12 @@
     block_size_x      = 20
     block_size_y      = 29
     max_blocks        = 1
-    processor_shape   = 'slenderX2'
-    distribution_type = 'roundrobin'
-    distribution_wght = 'latitude'
+    processor_shape   = 'square-pop'
+    distribution_type = 'cartesian'
+    distribution_wght = 'block'
     distribution_wght_file = 'unknown'
     ew_boundary_type  = 'cyclic'
-    ns_boundary_type  = 'open'
+    ns_boundary_type  = 'tripole'
     maskhalo_dyn      = .false.
     maskhalo_remap    = .false.
     maskhalo_bound    = .false.
