@@ -1375,10 +1375,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       endif 
    enddo
 
-!AT: to fix the missing ICE contribution to AOxxx fluxes
-   call MAPL_GetPointer(GEX(ICE), dummy, 'SHICE', alloc=.true., _RC)
-   call MAPL_GetPointer(GEX(ICE), dummy, 'LWNDICE', alloc=.true., _RC)
-
    NT = size(LONS)
 
    allocate(CHB(NT)  ,   STAT=STATUS)
@@ -1707,8 +1703,6 @@ contains
    real, pointer, dimension(:)    :: PAR       => null()
    real, pointer, dimension(:)    :: PAF       => null()
    real, pointer, dimension(:)    :: FSUR      => null()
-   real, pointer, dimension(:)    :: AOSHFLX   => null()
-   real, pointer, dimension(:)    :: AOLWFLX   => null()
    real, pointer, dimension(:)    :: dummy     => null()
 
    real,    dimension(NT,NUM_SUBTILES) :: FR     ! note: rank-2
@@ -1992,15 +1986,6 @@ contains
     if(associated(PSEX )) PSEX  = PS 
     if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/water_RHO('salt_water'))**3
     if(associated(UUEX))  UUEX  = UU
-
-!AT: to fix the missing ICE contribution to AOxxx fluxes
-    call MAPL_GetPointer(EXPORT, AOSHFLX, 'AO_SHFLX', _RC)
-    call MAPL_GetPointer(GEX(ICE), dummy, 'SHICE', _RC)
-    if (associated(AOSHFLX)) AOSHFLX = AOSHFLX + dummy
-
-    call MAPL_GetPointer(EXPORT, AOLWFLX, 'AO_LWFLX', _RC)
-    call MAPL_GetPointer(GEX(ICE), dummy, 'LWNDICE', _RC)
-    if (associated(AOLWFLX)) AOLWFLX = AOLWFLX + dummy
 
 !  All done with SALTWATERCORE
 !-----------------------------
