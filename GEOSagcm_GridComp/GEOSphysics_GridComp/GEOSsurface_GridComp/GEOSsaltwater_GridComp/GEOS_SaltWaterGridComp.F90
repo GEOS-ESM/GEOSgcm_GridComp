@@ -99,6 +99,7 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: I, k
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
+    logical                                 :: seaIceT_extData ! default (=.FALSE.) is to NOT use data sea ice thickness from ExtData
 
     character(len = 2) :: suffix
 
@@ -126,6 +127,11 @@ module GEOS_SaltwaterGridCompMod
 !------------------------------------------------
 
     call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, _RC)
+
+! Data sea ice thickness from ExtData or not?
+!--------------------------------------------
+
+    call MAPL_GetResource ( MAPL,  seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC )
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, _RC)
 
@@ -372,9 +378,9 @@ module GEOS_SaltwaterGridCompMod
                                                        _RC)
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'SWFLX'                    ,&
         LONG_NAME          = 'surface_net_downward_shortwave_flux_at_ocean_surface',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SWFLX'                    ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
@@ -396,17 +402,17 @@ module GEOS_SaltwaterGridCompMod
                                                _RC)
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'Z0'                        ,&
         LONG_NAME          = 'surface_roughness'         ,&
         UNITS              = 'm'                         ,&
-        SHORT_NAME         = 'Z0'                        ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'Z0H'                       ,&
         LONG_NAME          = 'surface_roughness_for_heat',&
         UNITS              = 'm'                         ,&
-        SHORT_NAME         = 'Z0H'                       ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
@@ -492,33 +498,33 @@ module GEOS_SaltwaterGridCompMod
                                                _RC)
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'TAUXO'                     ,&
         LONG_NAME          = 'eastward_stress_on_ocean'  ,&
         UNITS              = 'N m-2'                     ,&
-        SHORT_NAME         = 'TAUXO'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'TAUYO'                     ,&
         LONG_NAME          = 'northward_stress_on_ocean', &
         UNITS              = 'N m-2'                     ,&
-        SHORT_NAME         = 'TAUYO'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'OUSTAR3'                   ,&
         LONG_NAME          = 'ocean_ustar_cubed',         &
         UNITS              = 'm+3 s-3'                   ,&
-        SHORT_NAME         = 'OUSTAR3'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'UU'                        ,&
         LONG_NAME          = 'surface_wind_speed',        &
         UNITS              = 'm s-1'                     ,&
-        SHORT_NAME         = 'UU'                        ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
@@ -526,17 +532,17 @@ module GEOS_SaltwaterGridCompMod
 ! Following export of DISCHARGE is here in saltwater only for the sake of 
 ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
      call MAPL_AddExportSpec(GC,                            &      
+          SHORT_NAME         = 'DISCHARGE'                 ,&
           LONG_NAME          = 'river_discharge_at_ocean_points',& 
           UNITS              = 'kg m-2 s-1'                ,&
-          SHORT_NAME         = 'DISCHARGE'                 ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           _RC  ) 
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'PS',                                &
         LONG_NAME          = 'surface_pressure',                  &
         UNITS              = 'Pa',                                &
-        SHORT_NAME         = 'PS',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
@@ -609,17 +615,17 @@ module GEOS_SaltwaterGridCompMod
 !  !IMPORT STATE:
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'UU',                                &
         LONG_NAME          = 'surface_wind_speed',                &
         UNITS              = 'm s-1',                             &
-        SHORT_NAME         = 'UU',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'PS',                                &
         LONG_NAME          = 'surface_pressure',                  &
         UNITS              = 'Pa',                                &
-        SHORT_NAME         = 'PS',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
@@ -627,9 +633,9 @@ module GEOS_SaltwaterGridCompMod
   ! Following import is here in saltwater only for the sake of 
   ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
     call MAPL_AddImportSpec(GC,                    &
+          SHORT_NAME         = 'DISCHARGE'                 ,&
           LONG_NAME          = 'river_discharge_at_ocean_points',&
           UNITS              = 'kg m-2 s-1'                ,&
-          SHORT_NAME         = 'DISCHARGE'                 ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartSkip            ,&
@@ -651,6 +657,11 @@ module GEOS_SaltwaterGridCompMod
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGSNO' , CHILD_ID =   ICE, _RC)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLPOND', CHILD_ID =   ICE, _RC)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUAGE' , CHILD_ID =   ICE, _RC)
+  else
+    if (seaIceT_extData) then
+      call MAPL_AddExportSpec(GC, SHORT_NAME = 'SEAICETHICKNESS', CHILD_ID =   ICE, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSNO',            CHILD_ID =   ICE, _RC)
+    endif
   endif 
 
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXW'     , CHILD_ID = WATER, _RC)
