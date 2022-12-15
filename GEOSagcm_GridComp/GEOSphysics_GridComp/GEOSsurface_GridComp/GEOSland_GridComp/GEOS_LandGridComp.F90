@@ -30,6 +30,7 @@ module GEOS_LandGridCompMod
   use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
   use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
+  use GEOS_IgniGridCompMod,    only : IgniSetServices     => SetServices
 !  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
@@ -43,7 +44,7 @@ module GEOS_LandGridCompMod
 !EOP
 
 
-  integer                                 :: VEGDYN
+  integer                                 :: VEGDYN, IGNI
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
   INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
 
@@ -205,6 +206,9 @@ contains
 !       end if
 !    ENDIF
     
+    IGNI = MAPL_AddChild(GC, NAME='IGNI'//trim(tmp), SS=IgniSetServices, RC=STATUS)
+    VERIFY_(STATUS)
+
 !BOS
 
 !------------------------------------------------------------
@@ -1367,6 +1371,16 @@ contains
                                                       RC=STATUS )
           VERIFY_(STATUS)
 
+                    call MAPL_AddConnectivity (                                    &
+            GC                                                 ,         &
+            SHORT_NAME  = (/'MOU2M ', 'MOV2M ', 'MOT2M ', 'MOQ2M ',      &
+                            'MOU10M', 'MOV10M', 'MOT10M', 'MOQ10M',      &
+                            'PRLAND'/),                                  &
+            DST_ID =  IGNI                                     ,         &
+            SRC_ID =  CATCH(I)                                 ,         &
+                                                      RC=STATUS )
+          VERIFY_(STATUS)
+
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
 !                  GC                                                 ,&
@@ -1386,6 +1400,16 @@ contains
             DST_ID =  CATCHCN(I)                               ,         &
             SRC_ID =  VEGDYN                                   ,         &
                                                       RC=STATUS ) 
+
+          call MAPL_AddConnectivity (                                    &
+            GC                                                 ,         &
+            SHORT_NAME  = (/'MOU2M ', 'MOV2M ', 'MOT2M ', 'MOQ2M ',      &
+                            'MOU10M', 'MOV10M', 'MOT10M', 'MOQ10M',      &  
+                            'PRLAND'/),                                  &
+            DST_ID =  IGNI                                     ,         &
+            SRC_ID =  CATCHCN(I)                               ,         &
+                                                      RC=STATUS )
+          VERIFY_(STATUS)
 
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
