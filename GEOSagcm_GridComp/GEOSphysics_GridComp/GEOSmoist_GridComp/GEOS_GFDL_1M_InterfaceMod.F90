@@ -262,8 +262,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MINRHCRITOCN    , 'MINRHCRITOCN:'    , DEFAULT=tmprhO , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAXRHCRITLND    , 'MAXRHCRITOCN:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CCW_EVAP_EFF    , 'CCW_EVAP_EFF:'    , DEFAULT= 2.0e-3, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CCI_EVAP_EFF    , 'CCI_EVAP_EFF:'    , DEFAULT= 1.0e-3, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CCW_EVAP_EFF    , 'CCW_EVAP_EFF:'    , DEFAULT= 4.0e-3, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CCI_EVAP_EFF    , 'CCI_EVAP_EFF:'    , DEFAULT= 4.0e-3, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
@@ -303,6 +303,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: WTHV2
     real, pointer, dimension(:,:,:) :: OMEGA
     ! Local
+    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
@@ -328,7 +329,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: RHX, REV_LS, RSU_LS
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
-    real, pointer, dimension(:,:,:) :: PDF_A
+    real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -409,6 +410,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
      ! Layer variables
+    ALLOCATE ( U0   (IM,JM,LM  ) )
+    ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( DZET (IM,JM,LM  ) )
@@ -448,6 +451,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
     iMASS    = 1.0/MASS
+    U0       = U
+    V0       = V
 
     do J=1,JM
        do I=1,IM
@@ -494,6 +499,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PDF_A,     'PDF_A'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WTHV2,     'WTHV2'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQL,       'WQL'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Unused Exports (foreced to 0.0)
     call MAPL_GetPointer(EXPORT, PTR2D,  'CN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     call MAPL_GetPointer(EXPORT, PTR2D,  'AN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
@@ -564,9 +570,44 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
              endif
            ! combine and limit
-             ALPHA = min( 0.30, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 70% 
+             ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
+       ! Put condensates in touch with the PDF
+             call hystpdf( &
+                      DT_MOIST       , &
+                      ALPHA          , &
+                      PDFSHAPE       , &
+                      CNV_FRC(I,J)   , &
+                      SRF_TYPE(I,J)  , &
+                      PLmb(I,J,L)    , &
+                      ZL0(I,J,L)     , &
+                      Q(I,J,L)       , &
+                      QLLS(I,J,L)    , &
+                      QLCN(I,J,L)    , &
+                      QILS(I,J,L)    , &
+                      QICN(I,J,L)    , &
+                      T(I,J,L)       , &
+                      CLLS(I,J,L)    , &
+                      CLCN(I,J,L)    , &
+                      NACTL(I,J,L)   , &
+                      NACTI(I,J,L)   , &
+                      WHL(I,J,L)     , &
+                      WQT(I,J,L)     , &
+                      HL2(I,J,L)     , &
+                      QT2(I,J,L)     , &
+                      HLQT(I,J,L)    , &
+                      W3(I,J,L)      , &
+                      W2(I,J,L)      , &
+                      QT3(I,J,L)     , &
+                      HL3(I,J,L)     , &
+                      EDMF_FRC(I,J,L), &
+                      PDF_A(I,J,L)   , &
+                      PDFITERS(I,J,L), &
+                      WTHV2(I,J,L)   , &
+                      WQL(I,J,L)     , &
+                      .false.        , & 
+                      USE_BERGERON)
        ! evaporation for CN/LS
-             RHCRIT = 1.0 
+             RHCRIT = 1.0
              EVAPC(I,J,L) = Q(I,J,L)
              call EVAP3 (         &
                   DT_MOIST      , &
@@ -599,39 +640,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
-       ! Put condensates in touch with the PDF
-             call hystpdf( &
-                      DT_MOIST       , &
-                      ALPHA          , &
-                      PDFSHAPE       , &
-                      CNV_FRC(I,J)   , &
-                      SRF_TYPE(I,J)  , &
-                      PLmb(I,J,L)    , &
-                      ZL0(I,J,L)     , &
-                      Q(I,J,L)       , &
-                      QLLS(I,J,L)    , &
-                      QLCN(I,J,L)    , &
-                      QILS(I,J,L)    , &
-                      QICN(I,J,L)    , &
-                      T(I,J,L)       , &
-                      CLLS(I,J,L)    , &
-                      CLCN(I,J,L)    , &
-                      NACTL(I,J,L)   , &
-                      NACTI(I,J,L)   , &
-                      WHL(I,J,L)     , &
-                      WQT(I,J,L)     , &
-                      HL2(I,J,L)     , &
-                      QT2(I,J,L)     , &
-                      HLQT(I,J,L)    , &
-                      W3(I,J,L)      , &
-                      W2(I,J,L)      , &
-                      QT3(I,J,L)     , &
-                      HL3(I,J,L)     , &
-                      EDMF_FRC(I,J,L), &
-                      PDF_A(I,J,L)   , &
-                      WTHV2(I,J,L)   , &
-                      WQL(I,J,L)     , &
-                      USE_AEROSOL_NN)
        ! cleanup clouds
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
@@ -814,6 +822,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
+        ! dissipative heating tendency from KE across the macro/micro physics
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) then
+          call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
+                                      DUDT_macro+DUDT_micro,&
+                                      DVDT_macro+DVDT_micro,PTR3D)
+        endif
+
         ! Compute DBZ radar reflectivity
         call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
@@ -827,18 +843,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               END DO ; END DO ; END DO
            endif
         endif
-
-        ! Other Exports
-        call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QICN+QILS )*MASS , 3 )
-        call MAPL_GetPointer(EXPORT, PTR2D, 'CLWP', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
-        call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
-        call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
-        call MAPL_GetPointer(EXPORT, PTR2D, 'TPW', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = SUM(   Q*MASS , 3 )
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 

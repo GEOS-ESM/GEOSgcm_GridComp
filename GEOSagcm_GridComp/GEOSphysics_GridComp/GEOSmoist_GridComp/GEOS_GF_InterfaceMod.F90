@@ -178,7 +178,6 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CNV_2MOM                  , 'CNV_2MOM:'              ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ELSE
       ! Inititialize parameters of convection scheme GF (circa 2019)
@@ -211,10 +210,9 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, QRC_CRIT            ,'QRC_CRIT:'         ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, GF_ENV_SETTING      ,'GF_ENV_SETTING:'   ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CNV_2MOM            ,'CNV_2MOM:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ENDIF
-
+    
 end subroutine GF_Initialize
 
 
@@ -244,7 +242,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
-    real, pointer, dimension(:,:,:) :: NACTL, NACTI
     real, pointer, dimension(:,:,:) :: CNV_TR ! tracer memory
 
     ! Imports
@@ -287,8 +284,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: TPWI,TPWI_star,LFR_GF,CNPCPRATE
     real, pointer, dimension(:,:,:) :: RSU_CN,REV_CN,PFL_CN,PFI_CN
     real, pointer, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
-    real, pointer, dimension(:,:,:) :: CNV_NICE, CNV_NDROP, CNV_FICE
-    real, pointer, dimension(:,:,:) :: NCPL, NCPI
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -327,8 +322,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, NACTL,  'NACTL'   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, NACTI,  'NACTI'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
 
     ! Imports
@@ -444,15 +437,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    ! 2-moment stuff
-    call MAPL_GetPointer(EXPORT, NCPL     ,'NCPL_VOL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, NCPI     ,'NCPL_VOL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    TMP3D = PL*R_AIR/T
-    NCPL = NACTL/TMP3D ! kg-1
-    NCPI = NACTI/TMP3D ! kg-1
-    call MAPL_GetPointer(EXPORT, CNV_FICE , 'CNV_FICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP',ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_NICE , 'CNV_NICE' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
 
     ! Initialize tendencies
     call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -506,7 +490,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
-                                 ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
                                  ,REVSU, PRFIL                                      &
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
@@ -529,7 +512,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
-                                 ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE         &
                                  ,REVSU, PRFIL)
     ENDIF
 
@@ -554,14 +536,13 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
            PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
       enddo
-    ! 2Momoent
-     !dNi = make_IceNumber (dQi, TE)
-     !dNl = make_DropletNumber (dQl, 0.0, FRLAND)
     ! add QI/QL/CL tendencies
       QLCN =         QLCN + DQLDT_DC*DT_MOIST
       QICN =         QICN + DQIDT_DC*DT_MOIST
       CLCN = MAX(MIN(CLCN + DQADT_DC*DT_MOIST, 1.0), 0.0)
-
+    ! Export
+      call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+      if (associated(PTR3D)) PTR3D = fQi
     ! fix 'convective' cloud fraction 
       if (FIX_CNV_CLOUD) then
       ! fix convective cloud

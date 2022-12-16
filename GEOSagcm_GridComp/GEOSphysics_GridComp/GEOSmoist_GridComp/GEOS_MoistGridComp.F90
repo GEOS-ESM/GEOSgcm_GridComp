@@ -50,7 +50,7 @@ module GEOS_MoistGridCompMod
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
-
+  
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -196,33 +196,33 @@ contains
     ! !IMPORT STATE:
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PLE',                                 &
-         LONG_NAME  = 'air_pressure',                        &
-         UNITS      = 'Pa',                                  &
-         DIMS       = MAPL_DimsHorzVert,                     &
-         VLOCATION  = MAPL_VLocationEdge,                    &
-         AVERAGING_INTERVAL = AVRGNINT,                      &
-         REFRESH_INTERVAL   = RFRSHINT,                      &
+         SHORT_NAME = 'PLE',                                         &
+         LONG_NAME  = 'air_pressure',                                &
+         UNITS      = 'Pa',                                          &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationEdge,                           &
+         AVERAGING_INTERVAL = AVRGNINT,                             &
+         REFRESH_INTERVAL   = RFRSHINT,                             &
          RC=STATUS  )
     VERIFY_(STATUS)                                                                          
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PREF',                                &
-         LONG_NAME  = 'reference_air_pressure',              &
-         UNITS      = 'Pa',                                  &
-         DIMS       = MAPL_DimsVertOnly,                     &
-         VLOCATION  = MAPL_VLocationEdge,                    &
-         AVERAGING_INTERVAL = AVRGNINT,                      &
-         REFRESH_INTERVAL   = RFRSHINT,                      &
+         SHORT_NAME = 'PREF',                                       &
+         LONG_NAME  = 'reference_air_pressure',                     &
+         UNITS      = 'Pa',                                         &
+         DIMS       = MAPL_DimsVertOnly,                            &
+         VLOCATION  = MAPL_VLocationEdge,                           &
+         AVERAGING_INTERVAL = AVRGNINT,                             &
+         REFRESH_INTERVAL   = RFRSHINT,                             &
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'ZLE',                                        &
-         LONG_NAME  = 'geopotential_height',                        &
-         UNITS      = 'm',                                          &
-         DIMS       =  MAPL_DimsHorzVert,                           &
-         VLOCATION  =  MAPL_VLocationEdge,                          &
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'ZLE',                                       &
+         LONG_NAME  = 'geopotential_height',                       &
+         UNITS      = 'm',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
                                                         RC=STATUS  )
@@ -770,6 +770,15 @@ contains
 !-srf-gf-scheme
 
     ! !EXPORT STATE:
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'HYSTPDF_iterations',                                    &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PDFITERS',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_relative_area_fraction',                       &
@@ -1807,15 +1816,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'FCLD'  ,                                    & 
-         LONG_NAME = 'cloud_fraction_for_radiation',               &
-         UNITS     = '1',                                          &
+         SHORT_NAME = 'FCLD'  ,                                      & 
+         LONG_NAME = 'cloud_fraction_for_radiation',                &
+         UNITS     = '1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='QV',                                         & 
+         SHORT_NAME ='QV',                                          & 
          LONG_NAME ='water_vapor_for_radiation',                   &
          UNITS     ='kg kg-1',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -1823,95 +1832,95 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QL',                                        & 
-         LONG_NAME = 'in_cloud_cloud_liquid_for_radiation',        &
-         UNITS     = 'kg kg-1',                                    &
+         SHORT_NAME = 'QL',                                          & 
+         LONG_NAME = 'in_cloud_cloud_liquid_for_radiation',                  &
+         UNITS     = 'kg kg-1',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QI',                                        & 
-         LONG_NAME = 'in_cloud_cloud_ice_for_radiation',           &
-         UNITS     = 'kg kg-1',                                    &
+         SHORT_NAME = 'QI',                                          & 
+         LONG_NAME = 'in_cloud_cloud_ice_for_radiation',                     &
+         UNITS     = 'kg kg-1',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QR',                                        & 
-         LONG_NAME = 'Falling_rain_for_radiation',                 &
-         UNITS     = 'kg kg-1',                                    &
+         SHORT_NAME = 'QR',                                          & 
+         LONG_NAME = 'Falling_rain_for_radiation',                  &
+         UNITS     = 'kg kg-1',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QS',                                        & 
-         LONG_NAME = 'Falling_snow_for_radiation',                 &
-         UNITS     = 'kg kg-1',                                    &
+         SHORT_NAME = 'QS',                                          & 
+         LONG_NAME = 'Falling_snow_for_radiation',                  &
+         UNITS     = 'kg kg-1',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QG',                                        &
-         LONG_NAME = 'Falling_graupel_for_radiation',              &
-         UNITS     = 'kg kg-1',                                    &
+         SHORT_NAME = 'QG',                                          &
+         LONG_NAME = 'Falling_graupel_for_radiation',                  &
+         UNITS     = 'kg kg-1',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ',                                       &
-         LONG_NAME = 'Simulated_radar_reflectivity',               &
-         UNITS     = 'dBZ',                                        &
+         SHORT_NAME = 'DBZ',                                          &
+         LONG_NAME = 'Simulated_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_MAX',                                   &
-         LONG_NAME = 'Maximum_simulated_radar_reflectivity',       &
-         UNITS     = 'dBZ',                                        &
+         SHORT_NAME = 'DBZ_MAX',                                          &
+         LONG_NAME = 'Maximum_simulated_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='PRCP_RAIN',                                  &
-         LONG_NAME ='falling_rain_precipitation_at_surface',       &
+         SHORT_NAME ='PRCP_RAIN',                                     &
+         LONG_NAME ='falling_rain_precipitation_at_surface',          &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='PRCP_SNOW',                                  &
-         LONG_NAME ='falling_snow_precipitation_at_surface',       &
+         SHORT_NAME ='PRCP_SNOW',                                     &
+         LONG_NAME ='falling_snow_precipitation_at_surface',          &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='PRCP_ICE',                                   &
-         LONG_NAME ='falling_ice_precipitation_at_surface',        &
+         SHORT_NAME ='PRCP_ICE',                                     &
+         LONG_NAME ='falling_ice_precipitation_at_surface',          &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='PRCP_GRAUPEL',                               &
-         LONG_NAME ='falling_graupel_precipitation_at_surface',    &
+         SHORT_NAME ='PRCP_GRAUPEL',                                     &
+         LONG_NAME ='falling_graupel_precipitation_at_surface',          &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='LS_PRCP',                                    & 
+         SHORT_NAME ='LS_PRCP',                                     & 
          LONG_NAME ='nonanvil_large_scale_precipitation',          &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
@@ -1919,15 +1928,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'AN_PRCP',                                   & 
-         LONG_NAME = 'anvil_precipitation',                        &
-         UNITS     = 'kg m-2 s-1',                                 &
+         SHORT_NAME = 'AN_PRCP',                                     & 
+         LONG_NAME = 'anvil_precipitation',                         &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='CN_PRCP',                                    & 
+         SHORT_NAME ='CN_PRCP',                                     & 
          LONG_NAME ='deep_convective_precipitation',               &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
@@ -1959,9 +1968,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'AN_SNR',                                    &
-         LONG_NAME = 'anvil_snow',                                 &
-         UNITS     = 'kg m-2 s-1',                                 &
+         SHORT_NAME = 'AN_SNR',                                     &
+         LONG_NAME = 'anvil_snow',                         &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
@@ -1975,17 +1984,17 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='SC_SNR',                                     &
-         LONG_NAME ='shallow_convective_snow',                     &
+         SHORT_NAME ='SC_SNR',                                    &
+         LONG_NAME ='shallow_convective_snow',            &
          UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'ER_PRCP',                                   & 
-         LONG_NAME = 'spurious_rain_from_RH_cleanup',              &
-         UNITS     = 'kg m-2 s-1',                                 &
+         SHORT_NAME = 'ER_PRCP',                                     & 
+         LONG_NAME = 'spurious_rain_from_RH_cleanup',          &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
@@ -2009,7 +2018,7 @@ contains
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='SC_MSE',                                     & 
+         SHORT_NAME ='SC_MSE',                                    & 
          LONG_NAME ='shallow_convective_column_MSE_tendency',      &
          UNITS     ='W m-2',                                       &
          DIMS      = MAPL_DimsHorzOnly,                            & 
@@ -2100,7 +2109,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'PREC_STRAT',                                &
          LONG_NAME = 'all_stratiform_precipitation',               &
-         UNITS     = 'kg m-2 s-1',                                 &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
@@ -2108,53 +2117,53 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'PREC_CONV',                                 &
          LONG_NAME = 'all_convective_precipitation',               &
-         UNITS     = 'kg m-2 s-1',                                 &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'RAIN',                                      &
-         LONG_NAME = 'rainfall',                                   &
-         UNITS     = 'kg m-2 s-1',                                 &
+         SHORT_NAME = 'RAIN',                                         &
+         LONG_NAME = 'rainfall',                                    &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'FRZR',                                      &
-         LONG_NAME = 'freezing_rain_fall',                         &
-         UNITS     = 'kg m-2 s-1',                                 &
+         SHORT_NAME = 'FRZR',                                         &
+         LONG_NAME = 'freezing_rain_fall',                                    &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'ICE',                                       &
+         SHORT_NAME = 'ICE',                                         &
          LONG_NAME = 'icefall',                                    &
-         UNITS     = 'kg m-2 s-1',                                 &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'SNO',                                       & 
-         LONG_NAME = 'snowfall',                                   &
-         UNITS     = 'kg m-2 s-1',                                 &
+         SHORT_NAME = 'SNO',                                         & 
+         LONG_NAME = 'snowfall',                                    &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'SNOWTOTAL',                                 &
-         LONG_NAME = 'snowfall_total',                             &
+         SHORT_NAME = 'SNOWTOTAL',                                &
+         LONG_NAME = 'snowfall_total',                       &
          UNITS     = 'mm',                                         &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'PRECTOTAL',                                 &
+         SHORT_NAME = 'PRECTOTAL',                                &
          LONG_NAME = 'precipitation_total',                        &     
          UNITS     = 'mm',                                         &
          DIMS      = MAPL_DimsHorzOnly,                            &
@@ -2162,25 +2171,25 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'KUCHERA_RATIO',                             &
-         LONG_NAME = 'kuchera_snow_to_liquid_ratio',               &
-         UNITS     = 'unitless',                                   &
+         SHORT_NAME = 'KUCHERA_RATIO',                       &
+         LONG_NAME = 'kuchera_snow_to_liquid_ratio',     &
+         UNITS     = 'unitless',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'PCU',                                       & 
+         SHORT_NAME = 'PCU',                                         & 
          LONG_NAME = 'liquid_convective_precipitation',            &
-         UNITS     = 'kg m-2 s-1',                                 &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'PLS',                                       & 
+         SHORT_NAME = 'PLS',                                         & 
          LONG_NAME = 'liquid_large_scale_precipitation',           &
-         UNITS     = 'kg m-2 s-1',                                 &
+         UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
@@ -4087,6 +4096,16 @@ contains
          DIMS      = MAPL_DimsHorzVert,                                  &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
+    
+    
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='NWFA',                                      &
+         LONG_NAME ='Number concentration of water-friendly aerosol',               &
+         UNITS     ='Kg-1'  ,                                         &
+         DIMS      = MAPL_DimsHorzVert,                                  &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
 
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='CNV_NICE',                                          & 
@@ -4961,7 +4980,8 @@ contains
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
       call MAPL_GetResource( MAPL, USE_AERO_BUFFER , 'USE_AERO_BUFFER:' , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
       call aer_cloud_init()
@@ -5032,7 +5052,7 @@ contains
     real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
-    real, allocatable, dimension(:,:,:) :: QST3, DQST3
+    real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: IKEX, IKEX2
     real, allocatable, dimension(:,:)   :: TMP2D
@@ -5057,8 +5077,14 @@ contains
     real, pointer, dimension(:,:  ) :: CAPE, INHB
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
+    real, pointer, dimension(:,:,:  ) :: NWFA
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+    
+
+    
+    real :: CNV_NUMLIQ_SC, CNV_NUMICE_SC
+    
 
     integer :: IM,JM,LM
     integer :: I, J, L
@@ -5177,6 +5203,7 @@ contains
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
        ! These may be used by children
+       call MAPL_GetPointer(EXPORT, NWFA, 'NWFA', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)        
        call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5204,7 +5231,7 @@ contains
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI)
+                             AeroProps, AERO, NACTL, NACTI, NWFA)
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6
@@ -5222,7 +5249,7 @@ contains
 
        ! Exports
          ! Cloud fraction exports
-         call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', ALLOC=.true., RC=STATUS); VERIFY_(STATUS)
          if (associated(CFICE)) then
            CFICE=0.0
            WHERE (QILS+QICN .gt. 1.0e-12)
@@ -5243,7 +5270,28 @@ contains
          call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           DTDT_ER = T
          DQVDT_ER = Q
-         DQST3 = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+         ! some diagnostics to export
+         QST3=GEOS_QsatICE (T, PLmb*100.0)
+         call MAPL_GetPointer(EXPORT, PTR3D, 'SAT_RAT', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) then
+           where (CFICE .lt. 0.99 .and. QST3 .gt. 1.0e-20)
+            TMP3D = max((Q - QST3*CFICE), 0.0)/(1.0-CFICE)
+            PTR3D = min(TMP3D/QST3, 2.0)
+           elsewhere
+            PTR3D = 1.0
+           end where
+         endif
+         call MAPL_GetPointer(EXPORT, PTR3D, 'RHICE', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) then
+           PTR3D = Q/QST3
+           where (T>MAPL_TICE)
+             PTR3D=0.0
+           end where
+         endif
+     !!! QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
+         DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
+         call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = Q/QST3
          where ( Q > 1.1*QST3 )
             TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
          elsewhere
@@ -5265,6 +5313,7 @@ contains
        if (USE_AEROSOL_NN) then
          deallocate ( AeroProps )
        endif
+       
 
        ! Export Total Moist Tendencies
 
@@ -5651,6 +5700,7 @@ contains
           enddo
        endif
 
+#ifdef SKIP
        ! Cumulus Friction
        IKEX  = SUM( (0.5/DT_MOIST)*((V**2+U**2)  - (V0**2+U0**2))*MASS , 3 )
        IKEX2 = MAX(  SUM( 1.E-04 * MASS , 3 ) ,  1.0e-6 ) ! floor at 1e-6 W m-2
@@ -5667,15 +5717,20 @@ contains
              PTR3D(:,:,L) = -(1./MAPL_CP)*(IKEX/IKEX2) * 1.E-04 * (PLE(:,:,L)-PLE(:,:,L-1))
           end do
        end if
+#endif
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
-
-       ! Aerosol activation exports
-       call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTL/(100.*PLmb*R_AIR/(T)) ! kg-1
-       call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTI/(100.*PLmb*R_AIR/(T)) ! kg-1
+       call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QICN+QILS )*MASS , 3 )
+       call MAPL_GetPointer(EXPORT, PTR2D, 'CLWP', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
+       call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS) *MASS , 3 )
+       call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS ) *MASS , 3 )
+       call MAPL_GetPointer(EXPORT, PTR2D, 'TPW', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = SUM( ( Q         ) *MASS , 3 )
 
        ! Lightning Exports
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)

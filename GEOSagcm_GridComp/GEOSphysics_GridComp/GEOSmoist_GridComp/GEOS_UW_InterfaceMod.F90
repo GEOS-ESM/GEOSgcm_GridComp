@@ -27,7 +27,7 @@ module GEOS_UW_InterfaceMod
   integer                                 :: STATUS
 
   public :: UW_Setup, UW_Initialize, UW_Run
-
+   
 contains
 
 subroutine UW_Setup (GC, CF, RC)
@@ -272,7 +272,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-
+    
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM,       DT_MOIST,  & ! IN
@@ -311,11 +311,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           MFD_SC = 0.0
         end where
        ! Tiedtke-style cloud fraction !!
-        if (JASON_UW) then
-          DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
-        else
-          DQADT_SC= DCM_SC*SCLM_SHALLOW/MASS
-        endif
+        DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
         CLCN = CLCN + DQADT_SC*DT_MOIST
         CLCN = MIN( CLCN , 1.0 )
       !  Convert detrained water units before passing to cloud
@@ -343,10 +339,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !-------------------------------------------------------------
         QLLS = QLLS + (QLSUB_SC+QLENT_SC)*DT_MOIST
         QILS = QILS + (QISUB_SC+QIENT_SC)*DT_MOIST
-      !  Number concentrations for 2-moment microphysics
-      !--------------------------------------------------------------
-        SC_NDROP = SC_NDROP*MASS
-        SC_NICE  = SC_NICE *MASS
       !  Precipitation
       !--------------------------------------------------------------
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', RC=STATUS); VERIFY_(STATUS)

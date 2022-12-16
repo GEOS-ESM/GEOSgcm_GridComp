@@ -88,6 +88,8 @@ module GEOSmoist_Process_Library
   public :: VertInterp
   public :: find_l, find_eis, FINDLCL
   public :: find_cldtop, find_cldbase, gw_prof
+  public :: make_IceNumber, make_DropletNumber
+  public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
  
   contains
@@ -818,290 +820,6 @@ module GEOSmoist_Process_Library
 
    end subroutine fix_up_clouds_2M
 
-   subroutine hystpdf( &
-         DT          , &
-         ALPHA       , &
-         PDFSHAPE    , &
-         CNVFRC      , &
-         SRFTYPE     , &
-         PL          , &
-         ZL          , &
-         QV          , &
-         QCl         , &
-         QAl         , &
-         QCi         , &
-         QAi         , &
-         TE          , &
-         CF          , &
-         AF          , &
-         NL          , &
-         NI          , &
-         WHL         , &
-         WQT         , &
-!         wqtfac      , &
-!         whlfac      , &
-         HL2         , &
-         QT2         , &
-         HLQT        , & 
-         W3          , &
-         W2          , &
-         MFQT3       , &
-         MFHL3       , &
-         MF_FRC      , &
-         PDF_A,      &  ! can remove these after development
-#ifdef PDFDIAG
-         PDF_SIGW1,  &
-         PDF_SIGW2,  &
-         PDF_W1,     &
-         PDF_W2,     &
-         PDF_SIGHL1, &
-         PDF_SIGHL2, &
-         PDF_HL1,    &
-         PDF_HL2,    &
-         PDF_SIGQT1, &
-         PDF_SIGQT2, &
-         PDF_QT1,    &
-         PDF_QT2,    &
-         PDF_RHLQT,  &
-         PDF_RWHL,   &
-         PDF_RWQT,   &
-#endif
-         WTHV2,      &
-         WQL,        &
-         USE_AERO_NN )
-
-      real, intent(in)    :: DT,ALPHA,CNVFRC,SRFTYPE,PL,ZL
-      integer, intent(in) :: pdfshape
-      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
-      real, intent(in)    :: NL,NI
-      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
-#ifdef PDFDIAG
-      real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
-                             PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
-                             PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
-                             PDF_RHLQT,  PDF_RWHL, PDF_RWQT
-#endif
-      real, intent(out)   :: WTHV2, WQL
-      logical, intent(in) :: USE_AERO_NN
-
-      ! internal arrays
-      real :: QT, sigmaqt1, sigmaqt2
-      real :: QSn,DQS,HL
-
-      real :: TEp, CFp, QVp, QCp, QAp
-      real :: TEn, CFn, QVn, QCn, QAn, QIn, QLn
-
-      real :: dQCl, dQCi, dQCx, CFx, QCx, QC, QA, fQi
-      real :: dQAl, dQAi, dQAx
-
-      real :: tmpARR
-      real :: ALHX, DQCALL
-      real :: Nfac, NLv, NIv
-
-      ! internal scalars
-      integer :: N, nmax
-
-      QC = QCl+QCi
-      QA = QAl+QAi
-
-      ! Use in-cloud formulation
-                    tmpARR = 0.0
-      if (AF < 1.0) tmpARR = 1. / (1.-AF)
-
-      DQS = GEOS_DQSAT( TE, PL, QSAT=QSn )
-
-                        QVn = ( QV - QSn*AF )*tmpARR
-      if ( AF >= 1.0 )  QVn = QSn*1.e-4
-
-      CFn = CF*tmpARR
-      QCn = QC*tmpARR
-      QT  = QCn + QVn
-      TEn = TE
-
-      nmax = 20
-      do n=1,nmax
-
-         QVp = QVn
-         QCp = QCn
-         CFp = CFn
-         TEp = TEn
-
-         if(PDFSHAPE.lt.2) then
-
-            sigmaqt1  = ALPHA*QSn
-            sigmaqt2  = ALPHA*QSn
-
-         elseif(PDFSHAPE.eq.2) then  ! triangular
-            ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
-            ! try: skewed right below 500 mb
-            sigmaqt1  = ALPHA*QSn
-            sigmaqt2  = ALPHA*QSn
-
-         elseif(PDFSHAPE .eq. 4) then !lognormal (sigma is dimmensionless)
-            sigmaqt1 =  max(ALPHA/sqrt(3.0), 0.001)
-         endif
-
-         if (PDFSHAPE.lt.5) then
-           call pdffrac(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,CFn)
-           call pdfcondensate(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,QCn)
-         elseif (PDFSHAPE.eq.5) then
-
-            ! Update the liquid water static energy
-            fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
-            ALHX = (1.0-fQi)*alhlbcp + fQi*alhsbcp
-            HL = TEn + gravbcp*ZL - ALHX*QCn
-
-           call partition_dblgss(DT/nmax,           &
-                                 TEn,          &
-                                 QVn,          &
-                                 QCn,          &
-                                 0.0,          & ! assume OMEGA=0
-                                 ZL,           &
-                                 PL*100.,      &
-                                 QT,           &
-                                 HL,          &
-                                 WHL,         &
-                                 WQT,         &
-                                 HL2,         &
-                                 QT2,         &
-                                 HLQT,        & 
-                                 W3,           &
-                                 W2,           &
-                                 MFQT3,        &
-                                 MFHL3,        &
-                                 MF_FRC,       &
-                                 PDF_A,        &
-#ifdef PDFDIAG
-                                 PDF_SIGW1,    &
-                                 PDF_SIGW2,    &
-                                 PDF_W1,       &
-                                 PDF_W2,       &
-                                 PDF_SIGHL1,   &
-                                 PDF_SIGHL2,   &
-                                 PDF_HL1,      &
-                                 PDF_HL2,      &
-                                 PDF_SIGQT1,   &
-                                 PDF_SIGQT2,   &
-                                 PDF_QT1,      &
-                                 PDF_QT2,      &
-                                 PDF_RHLQT,    &
-                                 PDF_RWHL,     &
-                                 PDF_RWQT,     &
-#endif
-                                 WTHV2,        &
-                                 WQL,          &
-                                 CFn)
-         endif
-         CF = CFn * ( 1.-AF)
-
-         DQCALL = QCn - QCp
-         IF(USE_AERO_NN) THEN
-           Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
-           NLv = NL/Nfac
-           NIv = NI/Nfac
-           call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
-                 DT               , &
-                 PL               , &
-                 TEn              , &
-                 QT               , &
-                 QCi              , &
-                 QCl              , &
-                 CF               , &
-                 NLv              , &
-                 NIv              , &
-                 DQCALL           , &
-                 fQi)
-         ELSE
-           fQi = ice_fraction( TEn, CNVFRC, SRFTYPE )
-         ENDIF
-
-         ALHX = (1.0-fQi)*alhlbcp + fQi*alhsbcp
-         if(PDFSHAPE.eq.1) then 
-            QCn = QCp + DQCALL / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX)             
-         elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
-            ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
-            ! for now, just use relaxation of 1/2.
-            if (n.ne.nmax) QCn = QCp + DQCALL *0.5
-         endif
-
-         if ( AF < 1.0 ) then
-           ! large scale   
-           dQCl = 0.0
-           dQCi = 0.0
-           dQCx = (QCn - QCp)*(1.-AF)
-           if (dQCx .lt. 0.0) then  !net evaporation. Water evaporates first
-              dQCl = max(dQCx       , -QCl)
-              dQCi = max(dQCx - dQCl, -QCi)
-           else
-              dQCl  = (1.0-fQi)*dQCx
-              dQCi  =      fQi *dQCx
-           end if
-           ! update water species
-           QCi = QCi + dQCi
-           QCl = QCl + dQCl
-           QV  = QV  - (dQCi+dQCl)
-           ! adjust temperatures
-           TE  = TEp + alhlbcp*(dQCi+dQCl) + alhfbcp*(dQCi)
-           if (abs(TE - TEp) .lt. 0.00001) exit
-         else
-           ! Special case AF=1, i.e., box filled with anvil. 
-           !   - Note: no guarantee QV_box > QS_box
-           CF  = 0.          ! Remove any other cloud
-           QA  = QA + QCn    ! Add any LS condensate to anvil type
-           QCi = 0.          ! Remove same from LS   
-           QCl = 0.          ! Remove same from LS   
-           QT  = QA + QV     ! Total water
-           ! Now set anvil condensate to any excess of total water 
-           ! over QSn (saturation value at top)
-           QA = MAX( QT - QSn, 0. )
-           ! anvil   
-           dQAl = 0.0
-           dQAi = 0.0
-           dQAx = MAX( QT - QSn, 0. )
-           if (dQAx .lt. 0.0) then  !net evaporation. Water evaporates first
-              dQAl = max(dQAx       , -QAl)
-              dQAi = max(dQAx - dQAl, -QAi)
-           else
-              dQAl  = (1.0-fQi)*dQAx
-              dQAi  =      fQi *dQAx
-           end if
-           ! update water species
-           QAi = QAi + dQAi
-           QAl = QAl + dQAl
-           QV  = QV  - (dQAi+dQCi+dQAl+dQCl)
-           ! adjust temperatures
-           TE  = TEp + alhlbcp*(dQAi+dQAl) + alhfbcp*(dQAi)
-           exit ! no more large-scale cloud remaining
-         end if
-
-       ! at this point AF must be < 1.0
-         DQS  = GEOS_DQSAT( TE, PL, QSAT=QSn )
-         tmpARR = 1. / (1.-AF)
-         QVn = (QV - QSn*AF )*tmpARR
-         CFn = (CF          )*tmpARR
-         QCn = (QCl + QCi   )*tmpARR
-         QT  =  QCn + QVn
-         TEn =  TE
-
-      enddo ! qsat iteration
-
-      ! We need to take care of situations where QS moves past QC
-      ! during QSAT iteration. This should be only when QA/AF is small
-      ! to begin with. Effect is to make QAn negative. So, we 
-      ! "evaporate" offending QA's
-      !
-      ! We get rid of anvil fraction also, although strictly
-      ! speaking, PDF-wise, we should not do this.
-      if ( QA <= 0. ) then
-         QV  = QV + QAi + QAl
-         TE  = TE - alhsbcp*QAi - alhlbcp*QAl
-         QAi = 0.
-         QAl = 0.
-         AF  = 0.  
-      end if
-
-   end subroutine hystpdf
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #ifdef _CUDA
    attributes(device) &
@@ -1344,7 +1062,7 @@ module GEOSmoist_Process_Library
    real, parameter :: sqrt2 = sqrt(2.0)
    real, parameter :: sqrtpii = 1.0/sqrt(pi+pi)
    real, parameter :: tbgmin = 233.16
-   real, parameter :: tbgmax = 273.16
+   real, parameter :: tbgmax = MAPL_TICE
    real, parameter :: a_bg   = 1.0/(tbgmax-tbgmin)
    real, parameter :: thl_tol = 1.e-2
    real, parameter :: w_thresh = 0.001
@@ -1854,6 +1572,356 @@ module GEOSmoist_Process_Library
 
   end subroutine partition_dblgss
 
+   subroutine hystpdf( &
+         DT          , &
+         ALPHA       , &
+         PDFSHAPE    , &
+         CNVFRC      , &
+         SRF_TYPE    , &
+         PL          , &
+         ZL          , &
+         QV          , &
+         QCl         , &
+         QAl         , &
+         QCi         , &
+         QAi         , &
+         TE          , &
+         CF          , &
+         AF          , &
+         NL          , &
+         NI          , &
+         WHL         , &
+         WQT         , &
+!         wqtfac      , &
+!         whlfac      , &
+         HL2         , &
+         QT2         , &
+         HLQT        , & 
+         W3          , &
+         W2          , &
+         MFQT3       , &
+         MFHL3       , &
+         MF_FRC      , &
+         PDF_A,      &  ! can remove these after development
+         PDFITERS,   &
+#ifdef PDFDIAG
+         PDF_SIGW1,  &
+         PDF_SIGW2,  &
+         PDF_W1,     &
+         PDF_W2,     &
+         PDF_SIGHL1, &
+         PDF_SIGHL2, &
+         PDF_HL1,    &
+         PDF_HL2,    &
+         PDF_SIGQT1, &
+         PDF_SIGQT2, &
+         PDF_QT1,    &
+         PDF_QT2,    &
+         PDF_RHLQT,  &
+         PDF_RWHL,   &
+         PDF_RWQT,   &
+#endif
+         WTHV2,      &
+         WQL,        &
+         needs_preexisting, &
+         USE_BERGERON )
+
+      real, intent(in)    :: DT,ALPHA,PL,ZL
+      integer, intent(in) :: PDFSHAPE
+      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
+      real, intent(in)    :: NL,NI,CNVFRC,SRF_TYPE
+      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
+#ifdef PDFDIAG
+      real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
+                             PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
+                             PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+                             PDF_RHLQT,  PDF_RWHL, PDF_RWQT
+#endif
+      real, intent(out)   :: WTHV2, WQL
+      real, intent(out)   :: PDFITERS
+      logical, intent(in) :: needs_preexisting, USE_BERGERON
+
+      ! internal arrays
+      real :: QCO, QVO, CFO, QAO, TAU,HL
+      real :: QT, QMX, QMN, DQ, sigmaqt1, sigmaqt2
+
+      real :: TEO,QSx,DQsx,QS,DQs
+
+      real :: TEp, QSp, CFp, QVp, QCp
+      real :: TEn, QSn, CFn, QVn, QCn
+
+      real :: QCx, QVx, CFx, QAx, QC, QA, fQi
+      real :: dQAi, dQAl, dQCi, dQCl, Nfac, NLv, NIv 
+
+!      real :: fQip
+
+      real :: tmpARR
+      real :: ALHX, DQCALL
+      ! internal scalars
+      integer :: N, nmax
+
+      QC = QCl + QCi
+      QA = QAl + QAi
+      QT  =  QC  + QA + QV  !Total water after microphysics
+      tmpARR = 0.0
+      nmax =  20
+      QAx = 0.0
+
+      if ( AF < 1.0 )  tmpARR = 1./(1.-AF)
+
+      TEo = TE
+
+      DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
+      CFx = CF*tmpARR
+      QCx = QC*tmpARR
+      QVx = ( QV - QSx*AF )*tmpARR
+
+      if ( AF >= 1.0 )  QVx = QSx*1.e-4 
+      if ( AF >  0.0 )  QAx = QA/AF
+
+      QT  = QCx + QVx
+
+      TEp = TEo
+      QSn = QSx
+      TEn = TEo
+      CFn = CFx
+      QVn = QVx
+      QCn = QCx
+      DQS = DQSx
+
+      fQi = ice_fraction( TE, CNVFRC,SRF_TYPE )
+      ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+
+      HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+
+      do n=1,nmax
+
+         QVp = QVn
+         QCp = QCn
+         CFp = CFn
+         TEp = TEn
+
+         if(PDFSHAPE.lt.2) then
+
+            sigmaqt1  = ALPHA*QSn
+            sigmaqt2  = ALPHA*QSn
+
+         elseif(PDFSHAPE.eq.2) then  ! triangular
+            ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
+            ! for triangular, skewed r : sigmaqt1 < sigmaqt2
+            ! try: skewed right below 500 mb
+            sigmaqt1  = ALPHA*QSn
+            sigmaqt2  = ALPHA*QSn
+!         elseif(pdffrac .eq. 3) then ! single gaussian
+
+         elseif(PDFSHAPE .eq. 4) then !lognormal (sigma is dimmensionless)
+            sigmaqt1 =  max(ALPHA/sqrt(3.0), 0.001)
+         endif
+
+         if (PDFSHAPE.lt.5) then
+           call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
+           call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+         elseif (PDFSHAPE.eq.5) then
+
+            ! Update the liquid water static energy
+            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+
+           call partition_dblgss(DT/nmax,           &
+                                 TEn,          &
+                                 QVn,          &
+                                 QCn,          &
+                                 0.0,          & ! assume OMEGA=0
+                                 ZL,           &
+                                 PL*100.,      &
+                                 QT,           &
+                                 HL,          &
+                                 WHL,         &
+                                 WQT,         &
+                                 HL2,         &
+                                 QT2,         &
+                                 HLQT,        & 
+                                 W3,           &
+                                 W2,           &
+                                 MFQT3,        &
+                                 MFHL3,        &
+                                 MF_FRC,       &
+                                 PDF_A,        &
+#ifdef PDFDIAG
+                                 PDF_SIGW1,    &
+                                 PDF_SIGW2,    &
+                                 PDF_W1,       &
+                                 PDF_W2,       &
+                                 PDF_SIGHL1,   &
+                                 PDF_SIGHL2,   &
+                                 PDF_HL1,      &
+                                 PDF_HL2,      &
+                                 PDF_SIGQT1,   &
+                                 PDF_SIGQT2,   &
+                                 PDF_QT1,      &
+                                 PDF_QT2,      &
+                                 PDF_RHLQT,    &
+                                 PDF_RWHL,     &
+                                 PDF_RWQT,     &
+#endif
+                                 WTHV2,        &
+                                 WQL,          &
+                                 CFn)
+         endif
+
+         IF(USE_BERGERON) THEN
+           DQCALL = QCn - QCp
+           CF  = CFn * ( 1.-AF)
+           Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
+           NLv = NL/Nfac
+           NIv = NI/Nfac
+           call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
+                 DT               , &
+                 PL               , &
+                 TEp              , &
+                 QT               , &
+                 QCi              , &
+                 QAi              , &
+                 QCl              , &
+                 QAl              , &
+                 CF               , &
+                 AF               , &
+                 NLv              , &
+                 NIv              , &
+                 DQCALL           , &
+                 fQi              , & 
+                 CNVFRC,SRF_TYPE  , &
+                 needs_preexisting)
+         ELSE
+           fQi = ice_fraction( TEp, CNVFRC,SRF_TYPE )
+         ENDIF
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         ! These lines represent adjustments
+         ! to anvil condensate due to the 
+         ! assumption of a stationary TOTAL 
+         ! water PDF subject to a varying 
+         ! QSAT value during the iteration
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+         if ( AF > 0. ) then
+            QAo = QAx  ! + QSx - QS 
+         else
+            QAo = 0.
+         end if
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+         ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+
+         if(PDFSHAPE.eq.1) then 
+            QCn = QCp + ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX/MAPL_CP)             
+         elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
+            ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
+            ! for now, just use relaxation of 1/2.
+            if (n.ne.nmax) QCn = QCp + ( QCn - QCp ) *0.5
+         endif
+
+         QVn = QVp - (QCn - QCp)
+         TEn = TEp + (1.0-fQi)*(MAPL_ALHL/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF ) &
+               +      fQi* (MAPL_ALHS/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF )
+
+         PDFITERS = n
+         if (abs(Ten - Tep) .lt. 0.00001) exit 
+
+         DQS  = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+
+      enddo ! qsat iteration
+
+      CFo = CFn
+      CF = CFn
+      QCo = QCn
+      QVo = QVn
+      TEo = TEn
+
+      ! Update prognostic variables.  Deal with special case of AF=1
+      ! Temporary variables QCo, QAo become updated grid means.
+      if ( AF < 1.0 ) then
+         CF  = CFo * ( 1.-AF)
+         QCo = QCo * ( 1.-AF)
+         QAo = QAo *   AF  
+      else
+
+         ! Special case AF=1, i.e., box filled with anvil. 
+         !   - Note: no guarantee QV_box > QS_box
+         CF  = 0.          ! Remove any other cloud
+         QAo = QA  + QC    ! Add any LS condensate to anvil type
+         QCo = 0.          ! Remove same from LS   
+         QT  = QAo + QV    ! Total water
+         ! Now set anvil condensate to any excess of total water 
+         ! over QSx (saturation value at top)
+         QAo = MAX( QT - QSx, 0. )
+      end if
+
+      ! Now take {\em New} condensate and partition into ice and liquid
+      ! taking care to keep both >=0 separately. New condensate can be
+      ! less than old, so $\Delta$ can be < 0.
+
+      dQCl = 0.0
+      dQCi = 0.0
+      dQAl = 0.0
+      dQAi = 0.0
+
+      !large scale   
+
+      QCx   = QCo - QC
+      if  (QCx .lt. 0.0) then  !net evaporation. Water evaporates first
+         dQCl = max(QCx, -QCl)   
+         dQCi = max(QCx - dQCl, -QCi)
+      else
+         dQCl  = (1.0-fQi)*QCx
+         dQCi  =    fQi  * QCx
+      end if
+
+      !Anvil   
+      QAx   = QAo - QA
+
+      if  (QAx .lt. 0.0) then  !net evaporation. Water evaporates first
+         dQAl = max(QAx, -QAl)   
+         dQAi = max(QAx - dQAl, -QAi)
+      else            
+         dQAl  =  (1.0-fQi)*QAx
+         dQAi  = QAx*fQi
+      end if
+
+      ! Clean-up cloud if fractions are too small
+      if ( AF < 1.e-5 ) then
+         dQAi = -QAi
+         dQAl = -QAl
+      end if
+      if ( CF < 1.e-5 ) then
+         dQCi = -QCi
+         dQCl = -QCl
+      end if
+
+      QAi    = QAi + dQAi
+      QAl    = QAl + dQAl
+      QCi    = QCi + dQCi
+      QCl    = QCl + dQCl
+      QV     = QV  - ( dQAi+dQCi+dQAl+dQCl) 
+
+      TE  = TE + (MAPL_ALHL*( dQAi+dQCi+dQAl+dQCl)+MAPL_ALHF*(dQAi+dQCi))/ MAPL_CP
+
+      ! We need to take care of situations where QS moves past QA
+      ! during QSAT iteration. This should be only when QA/AF is small
+      ! to begin with. Effect is to make QAo negative. So, we 
+      ! "evaporate" offending QA's
+      !
+      ! We get rid of anvil fraction also, although strictly
+      ! speaking, PDF-wise, we should not do this.
+      if ( QAo <= 0. ) then
+         QV  = QV + QAi + QAl
+         TE  = TE - (MAPL_ALHS/MAPL_CP)*QAi - (MAPL_ALHL/MAPL_CP)*QAl
+         QAi = 0.
+         QAl = 0.
+         AF  = 0.  
+      end if
+
+   end subroutine hystpdf
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1862,69 +1930,99 @@ module GEOSmoist_Process_Library
          PL               , &
          TE               , &
          QV               , &
-         QI               , &
-         QL               , &
+         QILS             , &
+         QICN             , &
+         QLLS             , &
+         QLCN             , &     
          CF               , &
+         AF               , &
          NL               , &
          NI               , & 
-         DQ               , &
-         FQI )
+         DQALL            , &
+         FQI              , &
+         CNVFRC, SRF_TYPE , &
+         needs_preexisting )
 
-      real ,  intent(in)  :: DTIME, PL, TE
-      real ,  intent(in)  :: DQ
-      real ,  intent(in)  :: QV, QL, QI
-      real ,  intent(in)  :: CF, NL, NI
-      real ,  intent(out) :: FQI
+      real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
+      real ,  intent(inout   )    ::  DQALL 
+      real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
+      real ,  intent(in)    :: CF, AF, NL, NI
+      real, intent (out) :: FQI
+      real, intent(in) :: CNVFRC, SRF_TYPE
+      logical, intent (in)  :: needs_preexisting
       
-      real  :: DQALL, DC, TEFF, DEP, &
-            DQSL, DQSI, TC, LHcorr, &
+      real  :: DC, TEFF,QCm,DEP, &
+            QC, QS, RHCR, DQSL, DQSI, QI, TC, &
             DIFF, DENAIR, DENICE, AUX, &
-            DQI, DQL, &
-            QVINC, QSLIQ, QSICE
+            DCF, QTOT, LHCORR,  QL, DQI, DQL, &
+            QVINC, QSLIQ, CFALL,  new_QI, new_QL, &
+            QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
+
+      DIFF = 0.0     
+      DEP=0.0 
+      QI = QILS + QICN !neccesary because NI is for convective and large scale 
+      QL = QLLS +QLCN
+      QTOT=QI+QL
+      FQA = 0.0
+      if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
+      NIX= (1.0-FQA)*NI
+
+      DQALL=DQALL/DTIME                                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      CFALL= min(CF+AF, 1.0)
+      TC=TE-MAPL_TICE
+      fQI_0 = fQI
 
       !Completelely glaciated cloud:
-      if (TE .ge. MAPL_TICE) then   !liquid cloud
-
+      if (TE .ge. iT_ICE_MAX) then   !liquid cloud
          FQI   = 0.0
-
-      else !mixed phase or ice clouds
-
-         DQALL=DQ/DTIME                                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-         TC=TE-MAPL_TICE
-   
-         QVINC = QV 
-         QSLIQ = GEOS_QsatLQU(TE, PL*100.0, DQ=DQSL )
-         QSICE = GEOS_QsatICE(TE, PL*100.0, DQ=DQSI )
-         QVINC = MIN(QVINC, QSLIQ) !limit to below water saturation 
+      elseif(TE .le. iT_ICE_ALL) then !ice cloud
+         FQI   = 1.0
+      else !mixed phase cloud
+         FQI   = 0.0
+         if (QILS .le. 0.0) then 
+              if (needs_preexisting) then
+              ! new 0518 this line ensures that only preexisting ice can grow by deposition.
+              ! Only works if explicit ice nucleation is available (2 moment muphysics and up)                        
+              else
+                  fQi  =   ice_fraction( TE, CNVFRC, SRF_TYPE )
+              end if                      
+              return 
+         end if 
+         
+         QVINC=  QV 
+         QSLIQ  = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQSL )
+         QSICE  = GEOS_QsatICE( TE, PL*100.0 , DQ=DQSI )
+         QVINC =MIN(QVINC, QSLIQ) !limit to below water saturation 
 
          ! Calculate deposition onto preexisting ice 
 
          DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/MAPL_TICE)**1.94)*1e-4  !From Seinfeld and Pandis 2006
          DENAIR=PL*100.0/MAPL_RGAS/TE
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
-         LHcorr = ( 1.0 + DQSI*alhsbcp) !must be ice deposition
+         LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
 
-         if  ((NI .gt. 1.0) .and. (QI .gt. 1.0e-10)) then 
-            DC=max((QI/(NI*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
+         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then 
+            DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
          else
             DC = 20.0e-6
          end if
 
-         TEFF= NI*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
+         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
 
          DEP=0.0
-         if ((TEFF .gt. 0.0) .and. (QI .gt. 1.0e-14)) then 
+         if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then 
             AUX =max(min(DTIME*TEFF, 20.0), 0.0)
             DEP=(QVINC-QSICE)*(1.0-EXP(-AUX))/DTIME
          end if
-         DEP=MAX(DEP, -QI/DTIME) !only existing ice can be sublimated
+         DEP=MAX(DEP, -QILS/DTIME) !only existing ice can be sublimated
 
-         !Partition DQALL accounting for Bergeron-Findensen process
          DQI = 0.0
          DQL = 0.0
-         if  (DQALL .ge. 0.0) then !net condensation.
+         FQI=0.0
+         !Partition DQALL accounting for Bergeron-Findensen process
+         if  (DQALL .ge. 0.0) then !net condensation. Note: do not allow bergeron with QLCN
             if (DEP .gt. 0.0) then 
-               DQI = min(DEP, DQALL + QL/DTIME)
+               DQI = min(DEP, DQALL + QLLS/DTIME)
                DQL = DQALL - DQI
             else
                DQL=DQALL ! could happen because the PDF allows condensation in subsaturated conditions
@@ -1932,11 +2030,9 @@ module GEOSmoist_Process_Library
             end if
          end if
          if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP   
-            DQL = max(DQALL      , -QL/DTIME)   
-            DQI = max(DQALL - DQL, -QI/DTIME)        
+            DQL = max(DQALL, -QLLS/DTIME)   
+            DQI = max(DQALL - DQL, -QILS/DTIME)        
          end if
-
-                              FQI=0.0
          if (DQALL .ne. 0.0)  FQI=max(min(DQI/DQALL, 1.0), 0.0)
 
       end if !=====  
@@ -2537,5 +2633,174 @@ module GEOSmoist_Process_Library
 
     return
   end subroutine gw_prof
+
+
+!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+  
+!----- module_mp_thompson_make_number_concentrations
+!- Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
+!-----------------------------------------------------------------------
+!      Q_ice              is cloud ice mixing ratio, units of kg/m3
+!      Q_cloud            is cloud water mixing ratio, units of kg/m3
+!      Q_rain             is rain mixing ratio, units of kg/m3
+!      temp               is air temperature in Kelvin
+!      make_IceNumber     is cloud droplet number mixing ratio, units of number per m3
+!      make_DropletNumber is rain number mixing ratio, units of number per kg of m3
+!      make_RainNumber    is rain number mixing ratio, units of number per kg of m3
+!      qnwfa              is number of water-friendly aerosols in number per kg
+
+!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+ 
+      elemental real function make_IceNumber (Q_ice, temp)
+
+      implicit none
+      real, parameter:: ice_density = 890.0
+      real, parameter:: pi = 3.1415926536
+      real, intent(in):: q_ice, temp
+      integer idx_rei
+      real corr, reice, deice
+      double precision lambda
+
+!+---+-----------------------------------------------------------------+ 
+!..Table of lookup values of radiative effective radius of ice crystals
+!.. as a function of Temperature from -94C to 0C.  Taken from WRF RRTMG
+!.. radiation code where it is attributed to Jon Egill Kristjansson
+!.. and coauthors.
+!+---+-----------------------------------------------------------------+ 
+
+      real, dimension(95), parameter:: retab = (/                       &
+         5.92779, 6.26422, 6.61973, 6.99539, 7.39234,                   &
+         7.81177, 8.25496, 8.72323, 9.21800, 9.74075, 10.2930,          &
+         10.8765, 11.4929, 12.1440, 12.8317, 13.5581, 14.2319,          &
+         15.0351, 15.8799, 16.7674, 17.6986, 18.6744, 19.6955,          &
+         20.7623, 21.8757, 23.0364, 24.2452, 25.5034, 26.8125,          &
+         27.7895, 28.6450, 29.4167, 30.1088, 30.7306, 31.2943,          &
+         31.8151, 32.3077, 32.7870, 33.2657, 33.7540, 34.2601,          &
+         34.7892, 35.3442, 35.9255, 36.5316, 37.1602, 37.8078,          &
+         38.4720, 39.1508, 39.8442, 40.5552, 41.2912, 42.0635,          &
+         42.8876, 43.7863, 44.7853, 45.9170, 47.2165, 48.7221,          &
+         50.4710, 52.4980, 54.8315, 57.4898, 60.4785, 63.7898,          &
+         65.5604, 71.2885, 75.4113, 79.7368, 84.2351, 88.8833,          &
+         93.6658, 98.5739, 103.603, 108.752, 114.025, 119.424,          &
+         124.954, 130.630, 136.457, 142.446, 148.608, 154.956,          &
+         161.503, 168.262, 175.248, 182.473, 189.952, 197.699,          &
+         205.728, 214.055, 222.694, 231.661, 240.971, 250.639 /)
+
+      if (Q_ice == 0) then
+         make_IceNumber = 0
+         return
+      end if
+
+!+---+-----------------------------------------------------------------+ 
+!..From the model 3D temperature field, subtract 179K for which
+!.. index value of retab as a start.  Value of corr is for
+!.. interpolating between neighboring values in the table.
+!+---+-----------------------------------------------------------------+ 
+
+      idx_rei = int(temp-179.)
+      idx_rei = min(max(idx_rei,1),94)
+      corr = temp - int(temp)
+      reice = retab(idx_rei)*(1.-corr) + retab(idx_rei+1)*corr
+      deice = 2.*reice * 1.E-6
+
+!+---+-----------------------------------------------------------------+ 
+!..Now we have the final radiative effective size of ice (as function
+!.. of temperature only).  This size represents 3rd moment divided by
+!.. second moment of the ice size distribution, so we can compute a
+!.. number concentration from the mean size and mass mixing ratio.
+!.. The mean (radiative effective) diameter is 3./Slope for an inverse
+!.. exponential size distribution.  So, starting with slope, work
+!.. backwords to get number concentration.
+!+---+-----------------------------------------------------------------+ 
+
+      lambda = 3.0 / deice
+      make_IceNumber = Q_ice * lambda*lambda*lambda / (PI*Ice_density)
+
+!+---+-----------------------------------------------------------------+ 
+!..Example1: Common ice size coming from Thompson scheme is about 30 microns.
+!.. An example ice mixing ratio could be 0.001 g/kg for a temperature of -50C.
+!.. Remember to convert both into MKS units.  This gives N_ice=357652 per kg.
+!..Example2: Lower in atmosphere at T=-10C matching ~162 microns in retab,
+!.. and assuming we have 0.1 g/kg mixing ratio, then N_ice=28122 per kg, 
+!.. which is 28 crystals per liter of air if the air density is 1.0.
+!+---+-----------------------------------------------------------------+ 
+
+      return
+      end function make_IceNumber
+
+!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+ 
+
+      elemental real function make_DropletNumber (Q_cloud, qnwfa)
+
+      implicit none
+      real, intent(in):: q_cloud, qnwfa
+      real, parameter:: am_r = 3.1415927*1000./6.
+      real, dimension(15), parameter:: g_ratio = (/24,60,120,210,336,   &
+                      504,720,990,1320,1716,2184,2730,3360,4080,4896/)
+      double precision:: lambda, qnc
+      real:: q_nwfa, x1, xDc
+      integer:: nu_c
+
+      if (Q_cloud .le. 0.) then
+         make_DropletNumber = 0.0
+         return
+      end if
+
+!+---+
+
+      q_nwfa = MAX(99.E6, MIN(qnwfa,5.E10))
+      nu_c = MAX(2, MIN(NINT(2.5E10/q_nwfa), 15))
+
+      x1 = MAX(1., MIN(q_nwfa*1.E-9, 10.)) - 1.
+      xDc = (30. - x1*20./9.) * 1.E-6
+
+      lambda = (4.0D0 + nu_c) / xDc
+      qnc = Q_cloud / g_ratio(nu_c) * lambda*lambda*lambda / am_r
+      make_DropletNumber = SNGL(qnc)
+      
+
+      return
+      end function make_DropletNumber
+
+!+---+-----------------------------------------------------------------+ 
+
+   SUBROUTINE  dissipative_ke_heating(IM,JM,LM &
+                             ,mass,us,vs,du,dv,ttend)
+
+   implicit none
+   integer                       ,intent (in ) :: IM,JM,LM
+   real   , dimension (IM,JM,LM) ,intent (in ) :: mass  ! delp/gravity
+   real   , dimension (IM,JM,LM) ,intent (in ) :: us,vs ! winds prior to cumulus process
+   real   , dimension (IM,JM,LM) ,intent (in ) :: du,dv ! wind tendency due to cumulus process
+   real   , dimension (IM,JM,LM) ,intent (out) :: ttend ! K/s
+
+   real :: dts,fp,dp,fpi,ke(LM)
+   integer ::i,j,l
+
+! since kinetic energy is being dissipated, add heating accordingly (from ECMWF)
+!
+   ttend = 0.0
+   do j=1,JM
+     do i=1,IM
+          dts=0.
+          fpi=0.
+          do l=1,LM
+             !total KE dissiptaion estimate
+             dts = dts - (du(i,j,l)*us(i,j,l)+dv(i,j,l)*vs(i,j,l))*mass(i,j,l)
+             !
+             ! fpi needed for calcualtion of conversion to pot. energyintegrated
+             ke(l) = sqrt(du(i,j,l)*du(i,j,l) + dv(i,j,l)*dv(i,j,l))
+             fpi = fpi + ke(l)*mass(i,j,l)
+          enddo
+          if(fpi.gt.0.)then
+             do l=1,LM
+                ttend(i,j,l) = (ke(l)/fpi)*dts*(1.0/MAPL_CP)
+             enddo
+          endif
+     enddo
+   enddo
+
+  end SUBROUTINE  dissipative_ke_heating
 
 end module GEOSmoist_Process_Library

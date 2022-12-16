@@ -2866,7 +2866,7 @@ contains
      type (SHOCPARAMS_TYPE) :: SHOCPARAMS
      type (EDMFPARAMS_TYPE) :: EDMFPARAMS
 
-     integer :: JASON_TUNING
+     logical :: JASON_TUNING
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AERTOT
      real, dimension(:,:,:), pointer     :: S
      integer :: NTR, K, LTOP, LMAX
@@ -2910,9 +2910,9 @@ contains
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', _RC)
 
      if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1, _RC)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.TRUE., _RC)
      else
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0, _RC)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.FALSE., _RC)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -2923,7 +2923,7 @@ contains
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
-     if (JASON_TUNING .eq. 1) then
+     if (JASON_TUNING) then
        call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0, _RC)
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2, _RC)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2, _RC)
@@ -2934,6 +2934,7 @@ contains
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1, _RC)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=20.0, _RC)
      endif
+
      call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0, _RC)
      call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0, _RC)
      call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0, _RC)
@@ -2942,13 +2943,13 @@ contains
      call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000., _RC)
      call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=0.1, _RC)
      call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, _RC)
-     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.0, _RC)
+     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0, _RC)
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500., _RC)
      call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500., _RC)
      call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1, _RC)
      call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0, _RC)
      call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75, _RC)
-     if (JASON_TUNING .eq. 1) then
+     if (JASON_TUNING) then
        call MAPL_GetResource (MAPL, BETA_SURF,  trim(COMP_NAME)//"_BETA_SURF:",    default=0.25, _RC)
        call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.20, _RC)
        call MAPL_GetResource (MAPL, KHRADFAC,   trim(COMP_NAME)//"_KHRADFAC:",     default=0.85, _RC)
@@ -2957,7 +2958,8 @@ contains
        call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.20, _RC)
        call MAPL_GetResource (MAPL, KHRADFAC,   trim(COMP_NAME)//"_KHRADFAC:",     default=1.00, _RC)
      endif
-     if (JASON_TUNING .eq. 1) then
+
+     if (JASON_TUNING) then
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60, _RC)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30, _RC)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0, _RC)
