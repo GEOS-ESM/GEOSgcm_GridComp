@@ -185,7 +185,7 @@
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
     kalg            = 0.6
-    sw_redist         = .false.
+    sw_redist         = .true.
     sw_frac           = 0.9d0
     sw_dtemp          = 0.02d0
 /
@@ -240,7 +240,7 @@
     fbot_xfer_type  = 'constant'
     update_ocn_f    = .false.
     l_mpond_fresh   = .false.
-    tfrz_option     = 'mushy'
+    tfrz_option     = 'linear_salt'
     oceanmixed_ice  = .true.
     wave_spec_type  = 'none'
     wave_spec_file  = 'unknown_wave_spec_file'
