@@ -12,7 +12,7 @@ module GEOS_SeaIceGridCompMod
   use ESMF
   use MAPL
   use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices  => SetServices
-  use CICE_GEOSPlugMod,                  only : CICE6SeaIceSetServices  => SetServices
+ ! use CICE_GEOSPlugMod,                  only : CICE6SeaIceSetServices  => SetServices
   use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices   => SetServices
   use ice_prescribed_mod,                only : ice_nudging
 

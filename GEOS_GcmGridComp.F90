@@ -177,11 +177,13 @@ contains
     call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    if (DO_CICE_THERMO /= 0) then
+    if (DO_CICE_THERMO > 0) then
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
        VERIFY_(STATUS)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO == 1) then
+          call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+          VERIFY_(STATUS)
+       endif  
     else 
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1  
