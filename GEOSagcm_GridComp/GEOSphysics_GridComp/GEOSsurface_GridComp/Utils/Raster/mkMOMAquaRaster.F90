@@ -35,6 +35,7 @@ program MOMraster
   integer                :: Nc    = 8640
   integer                :: NR    = 4320
 
+  REAL_                  :: tol
 INCLUDE "netcdf.inc"
 
 ! Process Arguments
@@ -102,8 +103,12 @@ INCLUDE "netcdf.inc"
 
 ! Get surface types from integer raster file
 
+    tol = 1.0e-12 ! the default for the rasterization routine
+    !Atanas:  some heuristics for very coarse MOM grids
+    if (nr  > 300*jm) tol = 1.0e-5
+
     call LRRasterize(GridName,xvert,yvert,nc=nc,nr=nr,&
-                     SurfaceType=0,Verb=Verb,Here=Here)
+                     SurfaceType=0,Verb=Verb,Here=Here,tol=tol)
 
     call exit(0)
 
