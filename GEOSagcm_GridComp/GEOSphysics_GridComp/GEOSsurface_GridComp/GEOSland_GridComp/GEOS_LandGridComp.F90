@@ -1371,10 +1371,9 @@ contains
                                                       RC=STATUS )
           VERIFY_(STATUS)
 
-                    call MAPL_AddConnectivity (                                    &
+          call MAPL_AddConnectivity (                                    &
             GC                                                 ,         &
-            SHORT_NAME  = (/'MOU2M ', 'MOV2M ', 'MOT2M ', 'MOQ2M ',      &
-                            'MOU10M', 'MOV10M', 'MOT10M', 'MOQ10M',      &
+            SHORT_NAME  = (/'MOT2M ', 'MOQ2M ', 'MOU10M', 'MOV10M',      &
                             'PRLAND'/),                                  &
             DST_ID =  IGNI                                     ,         &
             SRC_ID =  CATCH(I)                                 ,         &
@@ -1403,8 +1402,7 @@ contains
 
           call MAPL_AddConnectivity (                                    &
             GC                                                 ,         &
-            SHORT_NAME  = (/'MOU2M ', 'MOV2M ', 'MOT2M ', 'MOQ2M ',      &
-                            'MOU10M', 'MOV10M', 'MOT10M', 'MOQ10M',      &  
+            SHORT_NAME  = (/'MOT2M ', 'MOQ2M ', 'MOU10M', 'MOV10M',      &
                             'PRLAND'/),                                  &
             DST_ID =  IGNI                                     ,         &
             SRC_ID =  CATCHCN(I)                               ,         &

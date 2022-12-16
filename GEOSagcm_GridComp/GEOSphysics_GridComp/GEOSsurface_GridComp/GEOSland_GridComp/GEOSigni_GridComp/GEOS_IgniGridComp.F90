@@ -154,24 +154,7 @@ contains
 
 ! -----------------------------------------------------------
 !   Import States
-! None at the moment
 ! -----------------------------------------------------------
-   call MAPL_AddImportSpec(GC,                     &
-         SHORT_NAME = 'MOU2M',                     & 
-         LONG_NAME  = 'zonal 2m wind from MO sfc', &
-         UNITS      = 'm s-1',                     &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone,          &
-         RESTART    = MAPL_RestartSkip, __RC__)
-
-    call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME = 'MOV2M',                     & 
-         LONG_NAME  = 'meridional 2m wind from MO sfc', &
-         UNITS      = 'm s-1',                     &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone,          &
-         RESTART    = MAPL_RestartSkip, __RC__)
-
     call MAPL_AddImportSpec(GC,                    &
          SHORT_NAME = 'MOT2M',                     & 
          LONG_NAME  = 'temperature 2m from MO sfc',&
@@ -204,22 +187,6 @@ contains
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartSkip, __RC__)
 
-    call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME = 'MOT10M',                    & 
-         LONG_NAME  = 'temperature 10m from MO sfc', &
-         UNITS      = 'K',                         &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone,          &
-         RESTART    = MAPL_RestartSkip, __RC__)
-
-    call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME = 'MOQ10M',                    & 
-         LONG_NAME  = 'humidity 10m from MO sfc',  &
-         UNITS      = 'kg kg-1',                   &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone,          &
-         RESTART    = MAPL_RestartSkip, __RC__)
-
 #if (0)
     call MAPL_AddImportSpec(GC,                    &
          SHORT_NAME = 'PRLAND',                    & 
@@ -229,7 +196,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional, __RC__)
 #else
-     call MAPL_AddImportSpec(GC,                   &
+    call MAPL_AddImportSpec(GC,                    &
          LONG_NAME  = 'liquid_water_convective_precipitation', &
          UNITS      = 'kg m-2 s-1',                &
          SHORT_NAME = 'PCU',                       &
