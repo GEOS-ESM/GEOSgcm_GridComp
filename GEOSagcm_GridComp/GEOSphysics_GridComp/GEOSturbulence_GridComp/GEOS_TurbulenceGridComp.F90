@@ -243,7 +243,7 @@ contains
     type (ESMF_Config)                 :: myCF      ! GEOS_TurbulenceGridComp.rc ! wdb
     type (MAPL_MetaComp), pointer      :: MAPL !wdb
     logical                            :: use_threads ! wdb
-    integer                            :: num_threads ! wdb
+!    integer                            :: num_threads ! wdb
     character(len=*), parameter        :: MYCF_NAME = 'GEOS_TurbulenceGridComp.rc'
 !    type (WorkspaceArray), pointer     :: self ! wdb deleteme
 !    type (wrap_)                       :: wrap ! wdb deleteme
