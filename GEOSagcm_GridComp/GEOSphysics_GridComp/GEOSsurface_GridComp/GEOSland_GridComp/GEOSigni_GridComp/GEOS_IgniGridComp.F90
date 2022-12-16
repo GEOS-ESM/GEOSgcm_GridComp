@@ -489,8 +489,6 @@ contains
 
     real, dimension(:), pointer :: U10M
     real, dimension(:), pointer :: V10M
-    real, dimension(:), pointer :: T10M
-    real, dimension(:), pointer :: Q10M
 
     real, dimension(:), pointer :: PS
 #if (0)
@@ -607,15 +605,11 @@ contains
 
 ! get pointers to internal variables
 ! ----------------------------------
-    call MAPL_GetPointer(IMPORT,   U2M,    'MOU2M',   __RC__)
-    call MAPL_GetPointer(IMPORT,   V2M,    'MOV2M',   __RC__)
     call MAPL_GetPointer(IMPORT,   Q2M,    'MOQ2M',   __RC__)
     call MAPL_GetPointer(IMPORT,   T2M,    'MOT2M',   __RC__)
 
     call MAPL_GetPointer(IMPORT,   U10M,   'MOU10M',  __RC__)
     call MAPL_GetPointer(IMPORT,   V10M,   'MOV10M',  __RC__)
-    call MAPL_GetPointer(IMPORT,   Q10M,   'MOQ10M',  __RC__)
-    call MAPL_GetPointer(IMPORT,   T10M,   'MOT10M',  __RC__)
 
     call MAPL_GetPointer(IMPORT,     PS,   'PS',      __RC__)
 #if (0)
