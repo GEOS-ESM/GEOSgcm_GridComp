@@ -49,13 +49,13 @@ module rmTinyCatchParaMod
   ! The following variables define the details of the BCS version (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
 
-  logical,     public, save :: use_PEATMAP = .false.
-  logical,     public, save :: jpl_height  = .false.
-  character*8, public, save :: LAIBCS      = 'UNDEF'
-  character*6, public, save :: SOILBCS     = 'UNDEF'
-  character*6, public, save :: MODALB      = 'UNDEF'
-  character*8, public, save :: SNOWALB     = 'UNDEF'
-  REAL,        public, save :: GNU         = MAPL_UNDEF
+  logical,      public, save :: use_PEATMAP = .false.
+  logical,      public, save :: jpl_height  = .false.
+  character*8,  public, save :: LAIBCS      = 'UNDEF'
+  character*6,  public, save :: SOILBCS     = 'UNDEF'
+  character*6,  public, save :: MODALB      = 'UNDEF'
+  character*10, public, save :: SNOWALB     = 'UNDEF'
+  REAL,         public, save :: GNU         = MAPL_UNDEF
 
   type :: mineral_perc
      real :: clay_perc
@@ -84,8 +84,10 @@ contains
     !   MODIS2   :  8-day clim, 30"x30"(43200x21600) MODIS data, 2001-2011 
     !
     ! SNOWALB: Snow albedo data.                DEFAULT : LUT
-    !   LUT      : Parameterization based on look-up table values. 
-    !   MODC061  : Static snow albedo derived from MODIS Collection 6.1 data where available, LUT elsewhere. 
+    !   LUT       : Parameterization based on look-up table values. 
+    !   MODC061   : Static snow albedo derived from MODIS Collection 6.1 data where available, fill value of 0.56 elsewhere. 
+    !   MODC061ID : Static snow albedo derived from MODIS Collection 6.1 data where available, 
+    !                        tile_id used to go from raster grid into tile space, fill value of 0.56 elsewhere. 
     !
     ! SOILBCS: Soil parameter data.             DEFAULT : HWSD                                                       
     !   HWSD     : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
@@ -177,6 +179,23 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .false.
 
+     case ("v10")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061ID'
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .false.
+
+     case ("v11")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061ID'
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
     case default
 
        print *,'init_bcs_config(): unknown land boundary conditions version (LBCSV)'

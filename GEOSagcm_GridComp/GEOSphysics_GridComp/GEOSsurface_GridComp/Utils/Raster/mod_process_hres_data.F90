@@ -39,7 +39,7 @@ include 'netcdf.inc'
 private
 
 public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
-public :: MODIS_snow_alb 
+public :: MODIS_snow_alb, MODIS_snow_alb_tileid 
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
 public :: histogram, create_mapping, esa2mosaic , esa2clm
 public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
@@ -2992,9 +2992,9 @@ END SUBROUTINE modis_scale_para_high
   END SUBROUTINE hres_gswp2
 
 !----------------------------------------------------------------------  
+  SUBROUTINE MODIS_snow_alb_tileid (nc_data,nr_data,rmap)
 
-  SUBROUTINE MODIS_snow_alb (nc_data,nr_data,rmap)
-
+    !--- Implement Snow Albedo using Tile ID -------------------- 
     ! Map static, MODIS climatology-based snow albedo from 30-arcsec raster 
     !   grid to tile space and write into clsm/catch_params.nc4.
     !
@@ -3171,10 +3171,171 @@ END SUBROUTINE modis_scale_para_high
   deallocate (count_snow_alb)
   deallocate (snw_alb)
 
+  END SUBROUTINE MODIS_snow_alb_tileid
+  
+!----------------------------------------------------------------------  
+
+  SUBROUTINE MODIS_snow_alb ( )
+
+    ! Map static, MODIS climatology-based snow albedo from 30-arcsec raster 
+    !   grid to tile space and write into clsm/catch_params.nc4.
+    !
+    ! Assumes that input snow albedo on raster grid is backfilled
+    !   (i.e., does not contain no-data values).
+    !
+    ! Biljana Orescanin July 2022, SSAI@NASA
+
+    implicit none
+
+    character*200                   :: fname
+    character*2                     :: vv,hh
+    integer                         :: n,N_tile,ncid,status
+    real,allocatable,dimension(:)   :: min_lon,max_lon,min_lat,max_lat,snw_alb
+    integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
+    real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
+    real,dimension(36,18,xdim,ydim) :: stch_snw_alb
+    real                            :: minlon,maxlon,minlat,maxlat
+    real                            :: sno_alb_cnt,sno_alb_sum
+    integer                         :: vvtil_min,hhtil_min,vvtil_max,hhtil_max,hhtil,vvtil
+    integer                         :: tindex1,pfaf1
+    integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
+    logical                         :: file_exists
+
+    ! Read number of catchment-tiles (N_tile) from catchment.def file
+    fname='clsm/catchment.def'
+    open (10,file=fname,status='old',action='read',form='formatted')
+    read(10,*) N_tile
+
+    ! Read min/max lat/lons to use when locating snow albedo grids in 
+    ! the stitched MODIS albedo file
+    allocate (min_lon(1:N_tile))
+    allocate (min_lat(1:N_tile))
+    allocate (max_lon(1:N_tile))
+    allocate (max_lat(1:N_tile))
+    allocate (snw_alb(1:N_tile))
+
+    ! Start by setting all snow albedo values to missing
+    snw_alb(:)=MAPL_UNDEF
+
+    do n = 1, N_tile
+       read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
+       min_lon(n) = minlon
+       max_lon(n) = maxlon
+       min_lat(n) = minlat
+       max_lat(n) = maxlat
+    end do
+
+    close (10,status='keep')
+
+    ! ----------- Get the information on snow albedo -----
+    ! ----------- The information on snow albedo is stored in 10x10deg 30-arcsec resolution files.
+    ! ----------- Read in this information, then loop over the tiles to find a corresponding snow albedo.
+
+    ! Read in all 10x10deg snow albedo files into a single [36,18,1200,1200] array
+    do hhtil=1,36  ! loop over input files - horizontal direction
+       do vvtil=1,18 ! loop over input files - vertical direction
+
+          write(vv,'(i2.2)') vvtil
+          write(hh,'(i2.2)') hhtil
+
+          ! MODIS-based climatology albedo raster files, backfilled with global land 
+          ! average snow albedo (=0.56; average excludes Antarctica and Greenland ice 
+          ! sheets and is weighted by the grid-cell area).
+          fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+
+          ! Open the file. (NF90_NOWRITE ensures read-only access to the file)
+          status=NF_OPEN(trim(fname),NF_NOWRITE, ncid)   ; VERIFY_(STATUS)
+          ! Based on vars name, get the varids.
+          status=NF_INQ_VARID(ncid,'Snow_Albedo',VarID1) ; VERIFY_(STATUS)
+          ! Read the data.
+          status=NF_GET_VARA_REAL(ncid,VarID1,(/1,1/),(/xdim,ydim/),stch_snw_alb_tmp) ; VERIFY_(STATUS)
+          ! Close the file, freeing all resources.
+          status=NF_CLOSE(ncid); VERIFY_(STATUS)
+
+          ! Store snow albedo values into a single 4D aray
+          stch_snw_alb(hhtil,vvtil,:,:)=stch_snw_alb_tmp
+
+       enddo
+    enddo
+
+    if (minval(stch_snw_alb) .le. 0.0 .or. maxval(stch_snw_alb) .gt. 1.0) then
+      print*, 'There is a problem with snow albedo raster file. Non-physical values present. STOP!'
+      stop
+    endif
+
+    ! loop over tiles
+    print*, 'Starting tile loop for snow albedo.'
+
+    do n = 1, N_tile ! loop over tiles
+
+      ! Set sums and counts to zero
+      sno_alb_sum=0.
+      sno_alb_cnt=0.
+
+      ! Use tile's min/max lat/lon info to identify the 10x10deg input file(s)
+      ! indexes
+      vvtil_min=floor((min_lat(n)+ 90.0)/10.)+1
+      hhtil_min=floor((min_lon(n)+180.0)/10.)+1
+
+      ! if tile crosses the edge of the snow albedo 10x10deg box, expand the 
+      ! search area into the neighbouring 10x10deg box
+      hhtil_max=hhtil_min
+      vvtil_max=vvtil_min
+      if (floor(min_lon(n)/10) .ne. floor(max_lon(n)/10)) hhtil_max=hhtil_min+1
+      if (floor(min_lat(n)/10) .ne. floor(max_lat(n)/10)) vvtil_max=vvtil_min+1
+
+      ! Safety check; keep within the range
+      vvtil_min=max(vvtil_min,1)
+      vvtil_max=min(vvtil_max,18)
+      hhtil_min=max(hhtil_min,1)
+      hhtil_max=min(hhtil_max,36)
+
+      do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
+        do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
+
+          ! Find indices ranges corresponding to the current tile area.
+          imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1
+          imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1
+          jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1
+          jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1
+
+          ! if no matching grids, go to the next vv/hh box
+          if (imin .gt. xdim .or. jmin .gt. ydim .or. imax .lt. 1 .or. jmax .lt. 1) cycle
+
+          ! Keep within the range, to include only the portion of the tile within this vv/hh box
+          imin=max(imin,1)
+          imax=min(imax,xdim)
+          jmin=max(jmin,1)
+          jmax=min(jmax,ydim)
+
+          ! Generate sums and counts using current tile corresponding indices
+          sno_alb_sum = sno_alb_sum + sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax))
+          sno_alb_cnt = sno_alb_cnt + (imax-imin+1)*(jmax-jmin+1)
+
+        end do ! vvtil
+      end do ! hhtil
+
+      ! If matching grids found, calculate snow albedo for the current tile;
+      !   ensure that resulting value is within physical range [0,1].
+      if (sno_alb_cnt .ne. 0) snw_alb(n)=min(1.0,max(0.0,sno_alb_sum/sno_alb_cnt))
+
+    end do ! n-loop over tiles
+
+    ! write snow albedo into clsm/catch_params.nc4
+    inquire(file='clsm/catch_params.nc4', exist=file_exists)
+
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                             ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/N_tile/),real(snw_alb)) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    endif
+
+    print*, 'Ended tile loop for snow albedo. '
+
   END SUBROUTINE MODIS_snow_alb
-  
+
   !--------------------------------------------------------------------------------------
-  
+
   SUBROUTINE soil_para_hwsd (nx,ny,gfiler)
 
 ! Processing NGDC-HWSD-STATSGO merged soil properties with Woesten Soil

@@ -195,7 +195,7 @@ integer :: n_threads=1
     if(use_PEATMAP)  PEATSOURCE   = 'PEATMAP'
     if(jpl_height)   VEGZSOURCE   = 'JPL'
 
-    if (trim(SNOWALB)=='MODC061')  process_snow_albedo=.true.
+    if (trim(SNOWALB)=='MODC061' .or. trim(SNOWALB) =='MODC061ID')  process_snow_albedo=.true.
 
     if(n_threads == 1) then
 
@@ -659,16 +659,20 @@ integer :: n_threads=1
           write (log_file,'(a)')'         Using existing file.'
        endif
        write (log_file,'(a)')' '
-       
+
        if(process_snow_albedo)then
           tmpstring = 'Step 14: Static snow albedo from MODIS' 
           write (log_file,'(a)') trim(tmpstring)
           write (log_file,'(a)')'         Creating file...'
+          if (trim(SNOWALB)=='MODC061') then 
+           call MODIS_snow_alb ( )
+          else    !if (trim(SNOWALB)=='MODC061ID') then
            call create_mapping (nc,nr,43200,21600,maparc30,gridnamer)
-           call MODIS_snow_alb(43200,21600,maparc30) 
+           call MODIS_snow_alb_tileid(43200,21600,maparc30) 
+          endif
           write (log_file,'(a)')'         Done.'           
           write (log_file,'(a)')' '
-       endif 
+       endif
 
        !      inquire(file='clsm/irrig.dat', exist=file_exists)
        !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
