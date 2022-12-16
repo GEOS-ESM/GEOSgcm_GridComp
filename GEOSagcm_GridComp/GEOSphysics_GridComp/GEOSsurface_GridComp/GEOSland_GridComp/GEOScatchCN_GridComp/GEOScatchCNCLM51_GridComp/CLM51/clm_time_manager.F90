@@ -30,8 +30,8 @@ module clm_time_manager
       
       is_end_curr_day,          &! return true on last timestep in current day
       is_restart,               &! return true if this is a restart run
-      is_first_step              ! dummy function here, because it is loaded, but not used
-      is_near_local_noon,       &! return true if near local noon
+      is_first_step,            &  ! dummy function here, because it is loaded, but not used
+      is_near_local_noon        ! return true if near local noon
 contains
 
 !=========================================================================================
