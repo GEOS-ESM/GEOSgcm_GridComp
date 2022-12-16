@@ -27,6 +27,7 @@ module clm_time_manager
 !      get_calendar,             &! return calendar
       
       get_days_per_year,        &! return the days per year for current year
+      get_local_timestep_time,  &! return the local time for the input longitude to the nearest time-step
       
       is_end_curr_day,          &! return true on last timestep in current day
       is_restart,               &! return true if this is a restart run
@@ -276,5 +277,40 @@ end function is_restart
 
     !---------------------------------------------------------------------------------
   end function is_near_local_noon
+
+  !=========================================================================================
+
+  integer function get_local_timestep_time( londeg, offset )
+
+    !---------------------------------------------------------------------------------
+    ! Get the local time for this longitude that is evenly divisible by the time-step
+    !
+    ! uses
+    use clm_varcon, only: degpsec, isecspday
+    ! Arguments
+    real(r8)         , intent(in) :: londeg  ! Longitude in degrees
+    integer, optional, intent(in) :: offset  ! Offset from current time in seconds (either sign)
+
+    ! Local variables
+    integer  :: yr, mon, day    ! year, month, day, unused
+    integer  :: secs            ! seconds into the day
+    real(r8) :: lon             ! positive longitude
+    integer  :: offset_sec      ! offset seconds (either 0 for current time or -dtime for previous time)
+    !---------------------------------------------------------------------------------
+    if ( present(offset) ) then
+       offset_sec = offset
+    else
+       offset_sec = 0
+    end if
+    SHR_ASSERT( londeg >= -180.0_r8, "londeg must be greater than -180" )
+    SHR_ASSERT( londeg <= 360.0_r8,  "londeg must be less than 360" )
+    call  get_curr_date(yr, mon, day, secs, offset=offset_sec )
+    lon = londeg
+    if ( lon < 0.0_r8 ) lon = lon + 360.0_r8
+    get_local_timestep_time  = secs + nint((lon/degpsec)/real(dtime,r8))*dtime
+    get_local_timestep_time  = mod(get_local_timestep_time,isecspday)
+  end function get_local_timestep_time
+
+  !=========================================================================================
 
 end module clm_time_manager
