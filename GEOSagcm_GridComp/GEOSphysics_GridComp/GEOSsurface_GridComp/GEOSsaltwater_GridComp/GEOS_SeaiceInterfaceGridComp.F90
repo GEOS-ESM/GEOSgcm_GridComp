@@ -462,6 +462,14 @@ module GEOS_SeaiceInterfaceGridComp
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME         = 'FRACINEW',                          &
+        LONG_NAME          = 'ice_covered_fraction_of_tile_after_update',      &
+        UNITS              = '1',                                 &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                             _RC  )
+
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'GUST',                      &
         LONG_NAME          = 'gustiness',                 &
@@ -668,6 +676,14 @@ module GEOS_SeaiceInterfaceGridComp
         VLOCATION          = MAPL_VLocationNone          ,&
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                          &
+        SHORT_NAME         = 'GHTSKIN',                   &
+        LONG_NAME          = 'Ground_heating_for_skin_temp',&
+        UNITS              = 'W m-2',                     &
+        DIMS               = MAPL_DimsTileOnly,           &
+        VLOCATION          = MAPL_VLocationNone,          &
+                                                     _RC  )
 
 !  !INTERNAL STATE:
 
@@ -1465,6 +1481,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:  )  :: VNT    => null()
    real, pointer, dimension(:  )  :: TF     => null()
    real, pointer, dimension(:  )  :: FRACI  => null()
+   real, pointer, dimension(:  )  :: FRACIN => null()
 
    real, pointer, dimension(:,:)  :: QSAT1  => null()
    real, pointer, dimension(:,:)  :: QSAT2  => null()
@@ -1478,7 +1495,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: CQ  => null()
    real, pointer, dimension(:,:)  :: WW  => null()
    real, pointer, dimension(:,:)  :: Z0  => null()
-   real(kind=MAPL_R8), pointer, dimension(:,:)   :: FR      => null()  
+   real, pointer, dimension(:,:)  :: FR  => null()  
 
 ! pointers to import
 
@@ -1545,7 +1562,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: PSMB(:)
    real, allocatable              :: PSL(:)
    integer, allocatable           :: IWATER(:)
-   real(kind=MAPL_R8), allocatable:: FRI(:)
+   real, allocatable              :: FRI(:)
 
 
    integer                        :: K
@@ -1982,7 +1999,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(CQT   )) CQT = CQB
    if(associated(CMT   )) CMT = CMB
 
-   if(associated(FRACI )) FRACI = REAL(FRI, KIND=MAPL_R4)
+   if(associated(FRACI )) FRACI = min(FRI, 1.0)
 
 
    deallocate(UUU)
@@ -2204,6 +2221,7 @@ contains
    real, pointer, dimension(:  )  :: PENPAR => null()
    real, pointer, dimension(:  )  :: PENPAF => null()
    real, pointer, dimension(:  )  :: FRACI  => null()
+   real, pointer, dimension(:  )  :: FRACIN => null()
 
 
 ! pointers to internal
@@ -2447,6 +2465,7 @@ contains
    call MAPL_GetPointer(EXPORT,LWNDICE, 'LWNDICE' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWNDICE, 'SWNDICE' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRACI  , 'FRACI'   ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,FRACIN , 'FRACINEW',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWDNSRFe,'LWDNSRF' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWDNSRFe,'SWDNSRF' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TSKINICE,'TSKINICE',    RC=STATUS); VERIFY_(STATUS)
@@ -2739,6 +2758,9 @@ contains
     call MAPL_TimerOff(MAPL,  "-Thermo1")
 
 
+    if(associated(FRACI))   FRACI = min(FRCICE, 1.0)
+    if(associated(FRACIN)) FRACIN = min(FRCICE, 1.0)
+
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     call MAPL_TimerOn(MAPL,    "-Albedo")
 
@@ -2946,10 +2968,10 @@ end subroutine RUN2
   subroutine Normalize(ptr, frac)
 
      real,              dimension(:),  intent(inout)  :: ptr 
-     real(KIND=MAPL_R8),dimension(:),     intent(in)  :: frac 
+     real,              dimension(:),     intent(in)  :: frac 
  
      where(frac > puny)  
-         ptr = ptr / real(frac, kind=MAPL_R4)
+         ptr = ptr / frac
      endwhere  
 
      return  

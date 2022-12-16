@@ -177,8 +177,10 @@ contains
     if (DO_CICE_THERMO /= 0) then
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
        VERIFY_(STATUS)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO == 1) then
+          call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+          VERIFY_(STATUS)
+       endif 
     else
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1
@@ -776,6 +778,14 @@ contains
        VERIFY_(STATUS)
      endif
   end if
+
+  if (DO_CICE_THERMO > 1) then
+     call MAPL_AddExportSpec ( GC   ,                            &
+            SHORT_NAME = 'SURFSTATE',                            &
+            CHILD_ID   = SEAICE ,                                &
+                                                             _RC )
+  endif
+ 
 
 ! Children's imports are in the ocean grid and are all satisfied
 ! by OGCM from exchange grid quantities.

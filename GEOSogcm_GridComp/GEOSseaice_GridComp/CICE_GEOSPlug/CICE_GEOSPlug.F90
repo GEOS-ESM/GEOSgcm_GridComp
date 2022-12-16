@@ -180,6 +180,107 @@ contains
   VERIFY_(status)
 
 
+  ! === Exports
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'UI',                                &
+    LONG_NAME          = 'zonal_velocity_of_surface_seaice',   &
+    UNITS              = 'm s-1 ',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'VI',                                &
+    LONG_NAME          = 'meridional_velocity_of_surface_seaice',&
+    UNITS              = 'm s-1 ',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                &
+    SHORT_NAME         = 'AICE',                            &
+    LONG_NAME          = 'ice_concentration_of_grid_cell',   &
+    UNITS              = '1',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                             &
+    SHORT_NAME         = 'FRACICE',                       &
+    LONG_NAME          = 'fractional_cover_of_seaice',    &
+    UNITS              = '1',                             &
+    DIMS               = MAPL_DimsHorzOnly,               &
+    VLOCATION          = MAPL_VLocationNone,              &
+                                                     _RC  )
+
+  call MAPL_AddExportSpec(GC,                             &
+    SHORT_NAME         = 'HICE',                          &
+    LONG_NAME          = 'mean_ice_thickness_of_grid_cell', &
+    UNITS              = 'm',                             &
+    DIMS               = MAPL_DimsHorzOnly,               &
+    VLOCATION          = MAPL_VLocationNone,              &
+                                                      _RC )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                &
+    SHORT_NAME         = 'HSNO',                            &
+    LONG_NAME          = 'mean_snow_thickness_of_grid_cell',   &
+    UNITS              = 'm',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'FRESH',                         &
+    LONG_NAME          = 'fresh_water_flux_into_ocean', &
+    UNITS              = 'kg m-2 s-1',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'FSALT',                         &
+    LONG_NAME          = 'salt_flux_into_ocean', &
+    UNITS              = 'kg m-2 s-1',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'FHOCN',                         &
+    LONG_NAME          = 'heat_flux_into_ocean', &
+    UNITS              = 'W m-2',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME         = 'TAUXBOT',                           &
+        LONG_NAME          = 'eastward_stress_at_base_of_ice',    &
+        UNITS              = 'N m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME         = 'TAUYBOT',                           &
+        LONG_NAME          = 'northward_stress_at_base_of_ice',   &
+        UNITS              = 'N m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+
   !*CALLBACK*
   !=================================================================================
   ! an ESMF state to pass information b.w. GCs using callback
@@ -741,3 +842,11 @@ contains
 
 
 end module CICE_GEOSPlugMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use CICE_GEOSPlugMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine

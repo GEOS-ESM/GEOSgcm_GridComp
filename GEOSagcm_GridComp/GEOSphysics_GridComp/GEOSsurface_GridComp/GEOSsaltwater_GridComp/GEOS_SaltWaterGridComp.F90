@@ -646,10 +646,12 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINW'    , CHILD_ID = WATER, _RC)  
 
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID = ICE,   _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID = ICE,   _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID = ICE,   _RC)
+  if (DO_CICE_THERMO <= 1) then 
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID = ICE,   _RC)
+  endif
      
-  if(DO_CICE_THERMO /= 0) then ! additional exports from CICE4 sea ice thermodynamics
+  if(DO_CICE_THERMO == 1) then ! additional exports from CICE4 sea ice thermodynamics
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FR'     , CHILD_ID =   ICE, _RC)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLICE' , CHILD_ID =   ICE, _RC)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLSNO' , CHILD_ID =   ICE, _RC)
@@ -697,10 +699,13 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDICE'   , CHILD_ID =   ICE, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHICE'     , CHILD_ID =   ICE, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'GHTSKIN'   , CHILD_ID =   ICE, _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINICE'  , CHILD_ID =   ICE, _RC)
+
+  if (DO_CICE_THERMO <= 1) then 
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, _RC)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, _RC)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, _RC)
+  endif
 
 ! Atmosphere-Ocean Fluxes
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_SHFLX'  , CHILD_ID = WATER, _RC)
