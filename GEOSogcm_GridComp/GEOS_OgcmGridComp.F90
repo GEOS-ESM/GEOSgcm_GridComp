@@ -400,7 +400,7 @@ contains
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-  if (DO_CICE_THERMO /= 0) then  
+  if (DO_CICE_THERMO == 1) then  
      call MAPL_AddImportSpec(GC,                            &
           SHORT_NAME         = 'FRACICE',                         &
           LONG_NAME          = 'fractional_cover_of_seaice',        &
@@ -1644,7 +1644,7 @@ contains
     call MAPL_GetPointer(IMPORT, SI      ,  'SI'     , RC=STATUS)
     VERIFY_(STATUS)
 
-    if (DO_CICE_THERMO /= 0) then  
+    if (DO_CICE_THERMO == 1) then  
        call MAPL_GetPointer(IMPORT, TI8     ,  'TI'     , RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, FR8     , 'FRACICE' , RC=STATUS)
@@ -1710,7 +1710,7 @@ contains
     VERIFY_(STATUS)
     _ASSERT(FRIENDLY,'needs informative message')
 
-    if(DO_CICE_THERMO/=0) then
+    if(DO_CICE_THERMO==1) then
        call ESMF_StateGet (IMPORT, 'FRACICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
 
