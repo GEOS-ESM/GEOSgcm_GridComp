@@ -1330,18 +1330,10 @@ contains
 
        if(associated(FRZMLTe)) then
           if(DO_DATASEA == 0) then
-            if(trim(OCEAN_NAME) == "MIT") then
-! for now, when MIT fill frzmlt here (not filled inside)
-! and also for now we set the depth of the top ocean level to 50. m in MIT plug
-             where(WGHT > 0.0 )
-               FRZMLTe = (MAPL_TICE-0.054*SW - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*50.)/DT
-             end where
-            else
-! when NOT MIT assume frzmlt filled inside and get from ocean export
+! assume frzmlt filled inside and get from ocean export
              where(WGHT > 0.0 )
                 FRZMLTe = FRZMLT
              end where
-            endif
           else
              FRZMLTe = 0.0
           end if          
