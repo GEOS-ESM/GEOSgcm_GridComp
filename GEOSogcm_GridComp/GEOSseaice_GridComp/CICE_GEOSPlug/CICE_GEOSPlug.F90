@@ -402,8 +402,8 @@ contains
 ! Profilers
 !----------
 
-    call MAPL_TimerOn(MAPL,"TOTAL"     )
     call MAPL_TimerOn(MAPL,"INITIALIZE")
+    call MAPL_TimerOn(MAPL,"TOTAL"     )
 
 ! Get the grid, configuration
 !----------------------------
@@ -481,9 +481,8 @@ contains
 
 ! Profilers
 ! ---------
-
-    call MAPL_TimerOff(MAPL,"INITIALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"     )
+    call MAPL_TimerOff(MAPL,"INITIALIZE")
 
 ! Generic initialize
 ! ------------------
