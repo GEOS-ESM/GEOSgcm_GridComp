@@ -403,6 +403,13 @@ contains
 !----------
 
     call MAPL_TimerOn(MAPL,"INITIALIZE")
+
+! Generic initialize
+! ------------------
+
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+    VERIFY_(STATUS)
+
     call MAPL_TimerOn(MAPL,"TOTAL"     )
 
 ! Get the grid, configuration
@@ -479,16 +486,13 @@ contains
     !=====================================================================================
 
 
+
+    call MAPL_TimerOff(MAPL,"TOTAL"     )
+
+
 ! Profilers
 ! ---------
-    call MAPL_TimerOff(MAPL,"TOTAL"     )
     call MAPL_TimerOff(MAPL,"INITIALIZE")
-
-! Generic initialize
-! ------------------
-
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
 
 ! Make sure exports neede by the parent prior to our run call are initialized
 !----------------------------------------------------------------------------
