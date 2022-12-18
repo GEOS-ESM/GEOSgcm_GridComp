@@ -1621,7 +1621,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call ESMF_UserCompGetInternalState(gc,'cice_private',wrap,status)
+    call ESMF_UserCompGetInternalState(gc,'seaice_interface_private',wrap,status)
     VERIFY_(status)
     mystate => wrap%ptr
     CHOOSEMOSFC = mystate%CHOOSEMOSFC
@@ -1665,18 +1665,15 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS)
    VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND' ,  RC=STATUS)
-   VERIFY_(STATUS)
-   ! the call below may be needed in dual-ocean mode 
-   !   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    RC=STATUS)
-   !   VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,FR   , 'FRACICE'  ,    RC=STATUS)
+   VERIFY_(STATUS) 
 
 
 ! Pointers to internals
 !----------------------
 
-   call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
-   VERIFY_(STATUS) 
+   !call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
+   !VERIFY_(STATUS) 
    call MAPL_GetPointer(INTERNAL,TI   , 'TSKINI' ,    RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,QS   , 'QS'     ,    RC=STATUS)
@@ -2416,8 +2413,8 @@ contains
    call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,CMATM  , 'CMATM'  ,    RC=STATUS); VERIFY_(STATUS)
 
-   call MAPL_GetPointer(IMPORT,TW     , 'TS_FOUND',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND',    RC=STATUS); VERIFY_(STATUS)
+   !call MAPL_GetPointer(IMPORT,TW     , 'TS_FOUND',    RC=STATUS); VERIFY_(STATUS)
+   !call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,FR     , 'FRACICE' ,    RC=STATUS); VERIFY_(STATUS)
 
 ! Pointers to internals
