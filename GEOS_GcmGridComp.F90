@@ -602,7 +602,7 @@ contains
         VERIFY_(STATUS)
      end if
 
-    if (DO_CICE_THERMO /= 0) then  
+    if (DO_CICE_THERMO == 1) then  
        call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/ &
                          'FRACICE', 'VOLICE ', 'VOLSNO ',              &
@@ -1353,9 +1353,17 @@ contains
         'OUSTAR3  ', 'PS       ',                          &
         'AO_LWFLX', 'AO_SHFLX', 'AO_QFLUX',                &
         'AO_SNOW', 'AO_RAIN', 'AO_DRNIR', 'AO_DFNIR',      &
-        'FRESH', 'FSALT','FHOCN', 'PEN_OCN'],              &
+        'PEN_OCN'],              &
         RC=STATUS)
    VERIFY_(STATUS)
+
+   if (DO_CICE_THERMO <= 1) then  
+      call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+        [ character(len=8) :: &
+        'FRESH', 'FSALT','FHOCN'],                     &
+        RC=STATUS)
+      VERIFY_(STATUS)
+   endif
 
    if (DO_CICE_THERMO /= 0) then  
       call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
