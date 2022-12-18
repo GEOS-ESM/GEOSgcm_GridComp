@@ -1483,8 +1483,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:  )  :: FRACI  => null()
    real, pointer, dimension(:  )  :: FRACIN => null()
 
-   real, pointer, dimension(:,:)  :: QSAT1  => null()
-   real, pointer, dimension(:,:)  :: QSAT2  => null()
 
 ! pointers to internal
 
@@ -1495,10 +1493,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: CQ  => null()
    real, pointer, dimension(:,:)  :: WW  => null()
    real, pointer, dimension(:,:)  :: Z0  => null()
-   real, pointer, dimension(:,:)  :: FR  => null()  
 
 ! pointers to import
 
+   real, pointer, dimension(:,:)  :: FR  => null()  
    real, pointer, dimension(:)    :: UU  => null()
    real, pointer, dimension(:)    :: UWINDLMTILE => null()
    real, pointer, dimension(:)    :: VWINDLMTILE => null()
@@ -1744,10 +1742,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
    VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QSAT1 , 'QSAT1'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QSAT2 , 'QSAT2'   ,    RC=STATUS)
-   VERIFY_(STATUS)
 
   ! export to openwater
    call MAPL_GetPointer(EXPORT,FRACI , 'FRACI'   ,    RC=STATUS)
@@ -1848,7 +1842,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    do N=1,NUM_SUBTILES
      QS(:,N) = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) 
    enddo
-   if(associated(QSAT1)) QSAT1 = QS
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -1957,7 +1950,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       WW(:,N) = max(CH(:,N)*(TS(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ(:,N)*(QS(:,N)-QA),0.0)
       WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
       if(associated(GST)) GST     = GST + WW(:,N)*FR(:,N)
-      if(associated(QSAT2)) QSAT2(:,N) = 1.0/RHO*11637800.0*exp(-5897.8/TS(:,N))
 
    end do SUB_TILES
 
