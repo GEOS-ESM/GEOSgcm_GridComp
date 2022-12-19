@@ -20,7 +20,7 @@ module clm_time_manager
       get_nstep,                &! return CN timestep number
 
       get_curr_date,            &! return date components at end of current timestep
-      get_curr_ESMF_Time,       &! get current time in terms of the ESMF_Time
+!      get_curr_ESMF_Time,       &! get current time in terms of the ESMF_Time
 !      get_start_date,           &! return components of the start date
 !      get_driver_start_ymd,     &! return year/month/day (as integer in YYYYMMDD format) of driver start date
 !      get_ref_date,             &! return components of the reference date
@@ -43,6 +43,9 @@ module clm_time_manager
 contains
 
 !=========================================================================================
+
+    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
+    VERIFY_(STATUS)
 
 integer function get_step_size( dt )
 
@@ -104,45 +107,20 @@ end function get_rad_step_size
 
   subroutine get_curr_date(yr, mon, day, tod, offset)
 
-    !-----------------------------------------------------------------------------------------
-    ! Return date components valid at end of current timestep with an optional
-    ! offset (positive or negative) in seconds.
+  ! Return date components valid at end of current timestep with an optional
+  ! offset (positive or negative) in seconds.  
 
-    integer, intent(out) ::&
-         yr,    &! year
-         mon,   &! month
-         day,   &! day of month
-         tod     ! time of day (seconds past 0Z)
+  implicit none
+  integer, intent(out) ::&
+      yr,    &! year
+      mon,   &! month
+      day,   &! day of month
+      tod     ! time of day (seconds past 0Z)
 
-    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-    ! Positive for future times, negative 
-    ! for previous times.
-
-    character(len=*), parameter :: sub = 'clm::get_curr_date'
-    integer :: rc, status
-    type(ESMF_Time) :: date
-    type(ESMF_TimeInterval) :: off
-    !-----------------------------------------------------------------------------------------
-
-    if ( .not. check_timemgr_initialized(sub) ) return
-
-    call ESMF_ClockGet( tm_clock, currTime=date, rc=STATUS )
-    VERIFY_(STATUS)
-
-    if (present(offset)) then
-       if (offset > 0) then
-          call ESMF_TimeIntervalSet( off, s=offset, rc=STATUS )
-          VERIFY_(STATUS)
-          date = date + off
-       else if (offset < 0) then
-          call ESMF_TimeIntervalSet( off, s=-offset, rc=STATUS )
-          VERIFY_(STATUS)
-          date = date - off
-       end if
-    end if
-
-    call ESMF_TimeGet(date, yy=yr, mm=mon, dd=day, s=tod, rc=STATUS)
-    VERIFY_(STATUS)
+  yr  = curr_year
+  mon = curr_month
+  day = curr_day
+  tod = 3600*curr_hour + 60*curr_min + curr_sec
 
   end subroutine get_curr_date
 !=========================================================================================
@@ -330,12 +308,13 @@ end function is_restart
     !---------------------------------------------------------------------------------
     if ( present(offset) ) then
        offset_sec = offset
+       _ASSERT(.FALSE.,"offset function not enabled")
     else
        offset_sec = 0
     end if
     SHR_ASSERT( londeg >= -180.0_r8, "londeg must be greater than -180" )
     SHR_ASSERT( londeg <= 360.0_r8,  "londeg must be less than 360" )
-    call  get_curr_date(yr, mon, day, secs, offset=offset_sec )
+    call  get_curr_date(yr, mon, day, secs )
     lon = londeg
     if ( lon < 0.0_r8 ) lon = lon + 360.0_r8
     get_local_timestep_time  = secs + nint((lon/degpsec)/real(dtime,r8))*dtime
@@ -346,18 +325,18 @@ end function is_restart
 
   !=========================================================================================
 
-  function get_curr_ESMF_Time( )
-
-    ! Return the current time as ESMF_Time
-
-    type(ESMF_Time) :: get_curr_ESMF_Time
-    character(len=*), parameter :: sub = 'clm::get_curr_ESMF_Time'
-    integer :: rc
-
-    if ( .not. check_timemgr_initialized(sub) ) return
-
-    call ESMF_ClockGet( tm_clock, currTime=get_curr_ESMF_Time, rc=STATUS )
-    VERIFY_(STATUS)
-
-  end function get_curr_ESMF_Time
+!  function get_curr_ESMF_Time( )
+!
+!    ! Return the current time as ESMF_Time
+!
+!    type(ESMF_Time) :: get_curr_ESMF_Time
+!    character(len=*), parameter :: sub = 'clm::get_curr_ESMF_Time'
+!    integer :: rc, status
+!
+!   ! if ( .not. check_timemgr_initialized(sub) ) return
+!
+!    call ESMF_ClockGet( tm_clock, currTime=get_curr_ESMF_Time, rc=STATUS )
+!    VERIFY_(STATUS)
+!
+!  end function get_curr_ESMF_Time
 end module clm_time_manager
