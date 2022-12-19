@@ -894,7 +894,7 @@ contains
 
          ! Beres Scheme File
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
-            default='/discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
+            default='ExtData/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,    RC=STATUS)
          VERIFY_(STATUS)
