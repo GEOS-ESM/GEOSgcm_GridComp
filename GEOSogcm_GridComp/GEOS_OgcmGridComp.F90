@@ -1937,7 +1937,7 @@ contains
     if (DO_CICE_THERMO == 0) then  
       call MAPL_LocStreamTransform( ExchGrid, TIO    ,  TI    , RC=STATUS)
       VERIFY_(STATUS)
-    else
+    elseif (DO_CICE_THERMO == 1) then
        allocate(VARTILE(size(TI8,dim=1)), STAT=STATUS) 
        VERIFY_(STATUS)
        do n=1,NUM_ICE_CATEGORIES 
@@ -2167,8 +2167,10 @@ contains
 
     call MAPL_LocStreamTransform( ExchGrid, SI     ,  SIO   , RC=STATUS) 
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , RC=STATUS)
-    VERIFY_(STATUS)
+    if (DO_CICE_THERMO <= 1) then  
+       call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , RC=STATUS)
+       VERIFY_(STATUS)
+    endif
 
     ! call Run2 of SEAICE to do ice nudging 
     if (dual_ocean) then
@@ -2199,6 +2201,7 @@ contains
        do n=1,NUM_ICE_CATEGORIES
            call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
+           if (DO_CICE_THERMO == 1) then
            call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8(:,:,N),  & 
                 INTERP=useInterp, RC=STATUS) 
            VERIFY_(STATUS)
@@ -2224,8 +2227,10 @@ contains
                   ERGSNOO(:,:,NUM_SNOW_LAYERS*(N-1)+K),RC=STATUS) 
              VERIFY_(STATUS)
           enddo
+          endif
        enddo
        
+       if (DO_CICE_THERMO == 1) then
        if(associated(TAUXIBOT)) then
           call MAPL_LocStreamTransform( ExchGrid, TAUXIBOT, TAUXIBOTO, RC=STATUS) 
           VERIFY_(STATUS)
@@ -2235,6 +2240,7 @@ contains
           call MAPL_LocStreamTransform( ExchGrid, TAUYIBOT, TAUYIBOTO, RC=STATUS) 
           VERIFY_(STATUS)
        end if
+       endif
     endif
 
     call MAPL_GetResource(MAPL, iUseInterp, 'INTERPOLATE_OCEAN_ICE_CURRENTS:', &
