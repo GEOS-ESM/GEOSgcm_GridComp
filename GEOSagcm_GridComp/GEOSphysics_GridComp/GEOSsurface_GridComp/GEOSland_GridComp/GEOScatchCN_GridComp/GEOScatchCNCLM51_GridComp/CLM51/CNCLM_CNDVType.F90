@@ -74,7 +74,8 @@ contains
     type(dgvs_type), intent(inout):: this
 
     !LOCAL
-    integer, intent(in) :: begp, endp
+    integer :: begp, endp
+    integer :: m
     !---------------------------------------------------------------------
 
     begp = bounds%begp; endp = bounds%endp
