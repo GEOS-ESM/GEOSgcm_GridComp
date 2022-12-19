@@ -1,7 +1,6 @@
 module clm_time_manager
 
 #include "shr_assert.h"
-   use MAPL
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
    use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec
    use clm_varctl  , only: iulog
@@ -40,11 +39,11 @@ module clm_time_manager
 
    integer, save ::&
         dtime          = uninit_int,  &! timestep in seconds
-contains
+ contains
 
 !=========================================================================================
 
-integer function get_step_size( dt )
+ integer function get_step_size( dt )
 
   ! Return the step size in seconds.
 
@@ -59,7 +58,7 @@ integer function get_step_size( dt )
  if(dt_default < 0) stop 'CN: dt_default < 0'
  get_step_size = dt_default 
   
-end function get_step_size
+ end function get_step_size
 
 !=========================================================================================
 
