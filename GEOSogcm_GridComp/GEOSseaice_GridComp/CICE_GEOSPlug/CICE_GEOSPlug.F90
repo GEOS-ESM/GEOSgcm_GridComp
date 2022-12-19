@@ -357,7 +357,6 @@ contains
 
 ! Locals 
     integer                                :: Comm 
-    integer                                :: NUM_ICE_CATEGORIES 
 
     integer                                :: NPES
     integer                                :: OGCM_IM, OGCM_JM
@@ -833,6 +832,7 @@ contains
      call ice_export_thermo1(state, rc=rc)
 
      ! pack them back into state 
+     print*, Iam, ' returned successfully'
 
      RETURN_(ESMF_SUCCESS)
 

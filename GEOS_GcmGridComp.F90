@@ -577,7 +577,7 @@ contains
           SHORT_NAME = [character(len=7) :: &
                          'TAUXW  ','TAUYW  ','TAUXI  ','TAUYI  ',   &
                          'OUSTAR3','PS     ',                       &
-                         'HI     ','TI     ','SI     ' ,            &
+                         'TI     ','SI     ' ,                      &
                          'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
                          'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
                          'DRNIR'  , 'DFNIR',                        &
@@ -587,7 +587,14 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-
+     if (DO_CICE_THERMO <= 1) then  
+          call MAPL_TerminateImport    ( GC,   &
+               SHORT_NAME = [character(len=7) :: &
+                         'HI     '],                                &
+               CHILD      = OGCM,                                   &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+     endif 
 
      if (DO_OBIO/=0) then
       call OBIO_TerminateImports(DO_DATAATM, RC)
@@ -2030,13 +2037,15 @@ contains
 
 ! Copy attributes to deal with friendliness
 !------------------------------------------
-       call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', RC=STATUS)
+       call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI', RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', RC=STATUS)
        VERIFY_(STATUS)
-       if (DO_CICE_THERMO /= 0) then  
+       if (DO_CICE_THERMO <= 1) then  
+          call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', RC=STATUS)
+          VERIFY_(STATUS)
+       endif
+       if (DO_CICE_THERMO == 1) then  
           call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR', RC=STATUS)
           VERIFY_(STATUS)
           call MAPL_CopyFriendliness(GIM(OGCM),'VOLICE',expSKIN,'VOLICE', RC=STATUS)
@@ -2055,16 +2064,18 @@ contains
        
 ! Do the routing between the atm and ocean's decompositions of the exchage grid
 !------------------------------------------------------------------------------
-       call DO_A2O(GIM(OGCM),'HI'     ,expSKIN,'HSKINI' , RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO <= 1) then  
+          call DO_A2O(GIM(OGCM),'HI'  ,expSKIN,'HSKINI' , RC=STATUS)
+          VERIFY_(STATUS)
+       endif
        call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , RC=STATUS)
        VERIFY_(STATUS)
        if (DO_CICE_THERMO == 0) then
-          call DO_A2O(GIM(OGCM),'TI'     ,expSKIN,'TSKINI' , RC=STATUS)
+          call DO_A2O(GIM(OGCM),'TI'  ,expSKIN,'TSKINI' , RC=STATUS)
           VERIFY_(STATUS)
        endif
 
-       if (DO_CICE_THERMO /= 0) then  
+       if (DO_CICE_THERMO == 1) then  
           call DO_A2O_SUBTILES_R4R4(GIM(OGCM),'TI'     , SUBINDEXO, &
                expSKIN  ,'TSKINI' , SUBINDEXO, RC=STATUS)
           VERIFY_(STATUS)

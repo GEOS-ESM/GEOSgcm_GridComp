@@ -380,15 +380,17 @@ contains
 ! These are supposed to be friendly to us
 !----------------------------------------------
 
-  call MAPL_AddImportSpec(GC,                            &
-    SHORT_NAME         = 'HI',                                &
-    LONG_NAME          = 'seaice_skin_layer_mass',            &
-    UNITS              = 'kg',                                &
-    DIMS               = MAPL_DimsTileOnly,                   &
-    VLOCATION          = MAPL_VLocationNone,                  &
-    DEFAULT            = 0.0,                                 &
+  if (DO_CICE_THERMO <= 1) then  
+     call MAPL_AddImportSpec(GC,                            &
+        SHORT_NAME         = 'HI',                                &
+        LONG_NAME          = 'seaice_skin_layer_mass',            &
+        UNITS              = 'kg',                                &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        DEFAULT            = 0.0,                                 &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+     VERIFY_(STATUS)
+  endif
 
   call MAPL_AddImportSpec(GC,                            &
     SHORT_NAME         = 'SI',                                &
@@ -400,17 +402,7 @@ contains
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-  if (DO_CICE_THERMO == 1) then  
-     call MAPL_AddImportSpec(GC,                            &
-          SHORT_NAME         = 'FRACICE',                         &
-          LONG_NAME          = 'fractional_cover_of_seaice',        &
-          UNITS              = '1',                                 &
-          DIMS               = MAPL_DimsTileOnly,                   &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
+  if (DO_CICE_THERMO /= 0) then  
      call MAPL_AddImportSpec(GC,                            &
           SHORT_NAME         = 'TI',                                &
           LONG_NAME          = 'seaice_skin_temperature',           &
@@ -419,6 +411,28 @@ contains
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           DEFAULT            = MAPL_TICE,                           &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+  else
+     call MAPL_AddImportSpec(GC,                            &
+          SHORT_NAME         = 'TI',                                &
+          LONG_NAME          = 'seaice_skin_temperature',           &
+          UNITS              = 'K',                                 &
+          DIMS               = MAPL_DimsTileOnly,                   &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          DEFAULT            = MAPL_TICE,                           &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+  endif
+
+  if (DO_CICE_THERMO == 1) then  
+     call MAPL_AddImportSpec(GC,                            &
+          SHORT_NAME         = 'FRACICE',                         &
+          LONG_NAME          = 'fractional_cover_of_seaice',        &
+          UNITS              = '1',                                 &
+          DIMS               = MAPL_DimsTileOnly,                   &
+          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+          VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -485,16 +499,6 @@ contains
           DIMS               = MAPL_DimsTileOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           DEFAULT            = 0.0,                                 &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  else
-     call MAPL_AddImportSpec(GC,                            &
-          SHORT_NAME         = 'TI',                                &
-          LONG_NAME          = 'seaice_skin_temperature',           &
-          UNITS              = 'K',                                 &
-          DIMS               = MAPL_DimsTileOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          DEFAULT            = MAPL_TICE,                           &
           RC=STATUS  )
      VERIFY_(STATUS)
   endif
@@ -1639,14 +1643,22 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DISCHARGE, 'DISCHRG', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, HI      ,  'HI'     , RC=STATUS)
-    VERIFY_(STATUS)
+    if (DO_CICE_THERMO <= 1) then  
+       call MAPL_GetPointer(IMPORT, HI      ,  'HI'     , RC=STATUS)
+       VERIFY_(STATUS)
+    endif
     call MAPL_GetPointer(IMPORT, SI      ,  'SI'     , RC=STATUS)
     VERIFY_(STATUS)
 
-    if (DO_CICE_THERMO == 1) then  
+    if (DO_CICE_THERMO /= 0) then  
        call MAPL_GetPointer(IMPORT, TI8     ,  'TI'     , RC=STATUS)
        VERIFY_(STATUS)
+    else
+       call MAPL_GetPointer(IMPORT, TI      ,  'TI'     , RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+    
+    if (DO_CICE_THERMO == 1) then  
        call MAPL_GetPointer(IMPORT, FR8     , 'FRACICE' , RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, VOLICE  , 'VOLICE'  , RC=STATUS)
@@ -1660,9 +1672,6 @@ contains
        call MAPL_GetPointer(IMPORT, TAUAGE  , 'TAUAGE'  , RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, MPOND   , 'MPOND'   , RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       call MAPL_GetPointer(IMPORT, TI      ,  'TI'     , RC=STATUS)
        VERIFY_(STATUS)
     endif 
     
@@ -1704,16 +1713,17 @@ contains
     VERIFY_(STATUS)
     _ASSERT(FRIENDLY,'needs informative message')
 
-    call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(FRIENDLY,'needs informative message')
+    if(DO_CICE_THERMO <= 1) then
+       call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
+       VERIFY_(STATUS)
+       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
+       VERIFY_(STATUS)
+       _ASSERT(FRIENDLY,'needs informative message')
+    endif
 
     if(DO_CICE_THERMO==1) then
        call ESMF_StateGet (IMPORT, 'FRACICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
        _ASSERT(FRIENDLY,'needs informative message')
@@ -1796,8 +1806,11 @@ contains
     call MAPL_GetPointer(GIM(ORAD  ), DFNIRO ,  'DFNIR',  RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetPointer(GIM(SEAICE), HIO     ,  'HI'    ,  RC=STATUS)
-    VERIFY_(STATUS)
+   
+    if (DO_CICE_THERMO <= 1) then  
+       call MAPL_GetPointer(GIM(SEAICE), HIO     ,  'HI'    ,  RC=STATUS)
+       VERIFY_(STATUS)
+    endif
     call MAPL_GetPointer(GIM(SEAICE), SIO     ,  'SI'    ,  RC=STATUS)
     VERIFY_(STATUS)
     if (DO_CICE_THERMO == 0) then  
@@ -1806,6 +1819,8 @@ contains
     else
        call MAPL_GetPointer(GIM(SEAICE), TIO8    ,  'TI'    ,  RC=STATUS)
        VERIFY_(STATUS)
+    endif
+    if (DO_CICE_THERMO == 1) then  
        call MAPL_GetPointer(GIM(SEAICE), FRO8    , 'FRACICE',  RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(GIM(SEAICE), VOLICEO , 'VOLICE' ,  RC=STATUS)
@@ -1914,9 +1929,10 @@ contains
     
     call MAPL_LocStreamTransform( ExchGrid, SIO    ,  SI    , RC=STATUS) 
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( ExchGrid, HIO    ,  HI    , RC=STATUS)
-    VERIFY_(STATUS)
-
+    if (DO_CICE_THERMO <= 1) then  
+        call MAPL_LocStreamTransform( ExchGrid, HIO    ,  HI    , RC=STATUS)
+        VERIFY_(STATUS)
+    endif
     
     if (DO_CICE_THERMO == 0) then  
       call MAPL_LocStreamTransform( ExchGrid, TIO    ,  TI    , RC=STATUS)

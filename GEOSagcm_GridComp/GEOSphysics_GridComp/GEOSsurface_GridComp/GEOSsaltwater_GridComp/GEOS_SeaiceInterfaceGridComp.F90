@@ -2216,7 +2216,6 @@ contains
 ! pointers to internal
 
    real, pointer, dimension(:,:)  :: TI    => null()
-   real, pointer, dimension(:  )  :: HI    => null()
    real, pointer, dimension(:  )  :: SI    => null()
    real, pointer, dimension(:,:)  :: QS    => null()
    real, pointer, dimension(:,:)  :: CH    => null()
@@ -2257,9 +2256,7 @@ contains
    real, pointer, dimension(:)    :: CTATM => null()
    real, pointer, dimension(:)    :: CQATM => null()
    real, pointer, dimension(:)    :: CMATM => null()
-   real, pointer, dimension(:)    :: UW => null()
    real, pointer, dimension(:)    :: UI => null()
-   real, pointer, dimension(:)    :: VW => null()
    real, pointer, dimension(:)    :: VI => null()
 
    real, pointer, dimension(:)    :: TW        => null()
@@ -2391,8 +2388,6 @@ contains
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS); VERIFY_(STATUS)
 
-   call MAPL_GetPointer(IMPORT,UW     , 'UW'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VW     , 'VW'     ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  ,    RC=STATUS); VERIFY_(STATUS)
@@ -2413,7 +2408,6 @@ contains
 !----------------------
 
    call MAPL_GetPointer(INTERNAL,TI     ,'TSKINI',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,HI     ,'HSKINI',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,SI     ,'SSKINI',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,QS     , 'QS'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CH     , 'CH'   ,    RC=STATUS); VERIFY_(STATUS)
@@ -2730,7 +2724,7 @@ contains
     allocate(AS_PTR_2D(size(TS,1),size(TS,2)), __STAT__)
 
 
-    call RegridO2A_2d(AS_PTR_2D, SURFST, 'surface_ice_temperature', &
+    call RegridO2A_2d(AS_PTR_2D, SURFST, 'DTS', &
          XFORM_O2A, locstreamO, __RC__)
 
     !************************************************************************************************
