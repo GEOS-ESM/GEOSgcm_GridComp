@@ -1,6 +1,7 @@
 module clm_time_manager
 
 #include "shr_assert.h"
+
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
    use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec
    use clm_varctl  , only: iulog
@@ -10,8 +11,6 @@ module clm_time_manager
    private
 
 ! Public methods
-
-! gkw: this is just to get code to compile
    
    public ::&
       get_step_size,            &! return step size in seconds
@@ -38,7 +37,7 @@ module clm_time_manager
       is_near_local_noon        ! return true if near local noon
 
    integer, save ::&
-        dtime          = uninit_int,  &! timestep in seconds
+        dtime          = uninit_int ! timestep in seconds
  contains
 
 !=========================================================================================
@@ -335,4 +334,5 @@ end function is_restart
 !    VERIFY_(STATUS)
 !
 !  end function get_curr_ESMF_Time
+
 end module clm_time_manager
