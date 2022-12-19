@@ -5,6 +5,7 @@ module clm_time_manager
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
    use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec
    use clm_varctl  , only: iulog
+   use MAPL_ExceptionHandling
 
    implicit none
    private
@@ -39,13 +40,9 @@ module clm_time_manager
 
    integer, save ::&
         dtime          = uninit_int,  &! timestep in seconds
-   type(ESMF_Clock),    save   :: tm_clock     ! model clock  
 contains
 
 !=========================================================================================
-
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
-    VERIFY_(STATUS)
 
 integer function get_step_size( dt )
 
