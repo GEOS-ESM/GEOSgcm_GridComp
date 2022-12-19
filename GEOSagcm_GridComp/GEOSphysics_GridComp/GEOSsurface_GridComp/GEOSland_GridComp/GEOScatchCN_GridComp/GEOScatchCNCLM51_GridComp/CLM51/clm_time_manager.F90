@@ -20,6 +20,7 @@ module clm_time_manager
       get_nstep,                &! return CN timestep number
 
       get_curr_date,            &! return date components at end of current timestep
+      get_curr_ESMF_Time,       &! get current time in terms of the ESMF_Time
 !      get_start_date,           &! return components of the start date
 !      get_driver_start_ymd,     &! return year/month/day (as integer in YYYYMMDD format) of driver start date
 !      get_ref_date,             &! return components of the reference date
@@ -35,6 +36,10 @@ module clm_time_manager
       is_restart,               &! return true if this is a restart run
       is_first_step,            &  ! dummy function here, because it is loaded, but not used
       is_near_local_noon        ! return true if near local noon
+
+   integer, save ::&
+        dtime          = uninit_int,  &! timestep in seconds
+   type(ESMF_Clock),    save   :: tm_clock     ! model clock  
 contains
 
 !=========================================================================================
@@ -339,4 +344,20 @@ end function is_restart
 
   !=========================================================================================
 
+  !=========================================================================================
+
+  function get_curr_ESMF_Time( )
+
+    ! Return the current time as ESMF_Time
+
+    type(ESMF_Time) :: get_curr_ESMF_Time
+    character(len=*), parameter :: sub = 'clm::get_curr_ESMF_Time'
+    integer :: rc
+
+    if ( .not. check_timemgr_initialized(sub) ) return
+
+    call ESMF_ClockGet( tm_clock, currTime=get_curr_ESMF_Time, rc=STATUS )
+    VERIFY_(STATUS)
+
+  end function get_curr_ESMF_Time
 end module clm_time_manager
