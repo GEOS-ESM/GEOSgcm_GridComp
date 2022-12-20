@@ -99,7 +99,7 @@
     restart_pond_cesm = .false.
     tr_pond_topo = .false.
     restart_pond_topo = .false.
-    tr_pond_lvl  = .true.
+    tr_pond_lvl  = .false.
     restart_pond_lvl  = .false.
     tr_snow      = .false.
     restart_snow = .false.
@@ -172,7 +172,7 @@
 /
 
 &shortwave_nml
-    shortwave       = 'dEdd'
+    shortwave       = 'ccsm3'
     albedo_type     = 'ccsm3'
     albicev         = 0.78
     albicei         = 0.36
