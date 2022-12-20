@@ -259,9 +259,10 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     tmprhO = CEILING(100.0*(1.0-min(0.20, max(0.01, dw_ocean * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0 ! roundup by 0.01s
     tmprhL = min(0.99,tmprhL)
     tmprhO = min(0.99,tmprhO)
+    call MAPL_GetResource( MAPL, MINRHCRITLND    , 'MINRHCRITLND:'    , DEFAULT=tmprhL , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MINRHCRITOCN    , 'MINRHCRITOCN:'    , DEFAULT=tmprhO , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAXRHCRITLND    , 'MAXRHCRITOCN:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MAXRHCRITLND    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITOCN:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF    , 'CCW_EVAP_EFF:'    , DEFAULT= 4.0e-3, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF    , 'CCI_EVAP_EFF:'    , DEFAULT= 4.0e-3, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
@@ -303,6 +304,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: WTHV2
     real, pointer, dimension(:,:,:) :: OMEGA
     ! Local
+    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
@@ -409,6 +411,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
      ! Layer variables
+    ALLOCATE ( U0   (IM,JM,LM  ) )
+    ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( DZET (IM,JM,LM  ) )
@@ -448,6 +452,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
     iMASS    = 1.0/MASS
+    U0       = U
+    V0       = V
 
     do J=1,JM
        do I=1,IM
@@ -816,6 +822,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
+
+        ! dissipative heating tendency from KE across the macro/micro physics
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) then
+          call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
+                                      DUDT_macro+DUDT_micro,&
+                                      DVDT_macro+DVDT_micro,PTR3D)
+        endif
 
         ! Compute DBZ radar reflectivity
         call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)

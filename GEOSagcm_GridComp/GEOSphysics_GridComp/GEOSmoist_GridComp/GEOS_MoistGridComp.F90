@@ -3609,6 +3609,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                            &
+         SHORT_NAME = 'UMST0',                                    &
+         LONG_NAME  = 'zonal_wind_before_moist_processes',       &
+         UNITS      = 'm s-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                            &
+         SHORT_NAME = 'VMST0',                                    &
+         LONG_NAME  = 'meridonal_wind_before_moist_processes',       &
+         UNITS      = 'm s-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                            &
          SHORT_NAME = 'KEDISS',                                    &
          LONG_NAME  = 'kinetic_energy_diss_in_RAS',       &
          UNITS      = 'W m-2',                                    &
@@ -5049,12 +5065,10 @@ contains
 
     ! Local variables
     real                                :: Tmax
-    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
     real, allocatable, dimension(:,:,:) :: TMP3D
-    real, allocatable, dimension(:,:)   :: IKEX, IKEX2
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
@@ -5170,8 +5184,6 @@ contains
        ALLOCATE ( PLEmb(IM,JM,0:LM) )
        ALLOCATE ( PKE  (IM,JM,0:LM) )
         ! Layer variables
-       ALLOCATE ( U0   (IM,JM,LM  ) )
-       ALLOCATE ( V0   (IM,JM,LM  ) )
        ALLOCATE ( ZL0  (IM,JM,LM  ) )
        ALLOCATE ( DZET (IM,JM,LM  ) )
        ALLOCATE ( PLmb (IM,JM,LM  ) )
@@ -5183,8 +5195,10 @@ contains
        ALLOCATE ( TMP2D(IM,JM     ) )
 
        ! Save input winds
-       U0 = U
-       V0 = V
+       call MAPL_GetPointer(EXPORT, PTR3D, 'UMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       PTR3D = U
+       call MAPL_GetPointer(EXPORT, PTR3D, 'VMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       PTR3D = V
 
        ! Derived States
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
@@ -5700,23 +5714,6 @@ contains
           enddo
        endif
 
-       ! Cumulus Friction
-       IKEX  = SUM( (0.5/DT_MOIST)*((V**2+U**2)  - (V0**2+U0**2))*MASS , 3 )
-       IKEX2 = MAX(  SUM( 1.E-04 * MASS , 3 ) ,  1.0e-6 ) ! floor at 1e-6 W m-2
-       !scaled 3D kinetic energy dissipation
-       call MAPL_GetPointer(EXPORT, PTR3D, 'KEDISS', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D))  then
-          do L=1,LM
-             PTR3D(:,:,L) = (IKEX/IKEX2) * 1.E-04
-          enddo
-       end if
-       call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
-       if(associated(PTR3D)) then
-          do L=1,LM
-             PTR3D(:,:,L) = -(1./MAPL_CP)*(IKEX/IKEX2) * 1.E-04 * (PLE(:,:,L)-PLE(:,:,L-1))
-          end do
-       end if
-
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
        call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
@@ -5753,8 +5750,6 @@ contains
        ALLOCATE ( PLmb (IM,JM,LM  ) )
        ALLOCATE ( PK   (IM,JM,LM  ) )
        ALLOCATE ( MASS (IM,JM,LM  ) )
-       ALLOCATE ( IKEX (IM,JM     ) )
-       ALLOCATE ( IKEX2(IM,JM     ) )
        ALLOCATE ( TMP2D(IM,JM     ) )
        ! dervied states
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV

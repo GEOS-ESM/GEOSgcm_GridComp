@@ -50,7 +50,6 @@ module GEOSmoist_Process_Library
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
-  real, parameter :: R_AIR   =  3.47e-3   ! m3 Pa kg-1K-1
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
   ! LDRADIUS4
@@ -89,7 +88,7 @@ module GEOSmoist_Process_Library
   public :: find_l, find_eis, FINDLCL
   public :: find_cldtop, find_cldbase, gw_prof
   public :: make_IceNumber, make_DropletNumber
-
+  public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
  
   contains
@@ -1775,7 +1774,7 @@ module GEOSmoist_Process_Library
            Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
-           call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
+           call Bergeron_Partition( &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
                  TEp              , &
@@ -1925,7 +1924,7 @@ module GEOSmoist_Process_Library
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine Bergeron_iter    (           &
+   subroutine Bergeron_Partition (           &
          DTIME            , &
          PL               , &
          TE               , &
@@ -2037,7 +2036,7 @@ module GEOSmoist_Process_Library
 
       end if !=====  
 
-   end subroutine Bergeron_iter
+   end subroutine Bergeron_Partition
 
    subroutine MELTFRZ_3D ( DT, CNVFRC, SRFTYPE, TE, QL, QI )
       real, intent(in   ) :: DT, CNVFRC(:,:),SRFTYPE(:,:)
@@ -2765,5 +2764,42 @@ module GEOSmoist_Process_Library
 
 !+---+-----------------------------------------------------------------+ 
 
+   SUBROUTINE  dissipative_ke_heating(IM,JM,LM &
+                             ,mass,us,vs,du,dv,ttend)
+
+   implicit none
+   integer                       ,intent (in ) :: IM,JM,LM
+   real   , dimension (IM,JM,LM) ,intent (in ) :: mass  ! delp/gravity
+   real   , dimension (IM,JM,LM) ,intent (in ) :: us,vs ! winds prior to cumulus process
+   real   , dimension (IM,JM,LM) ,intent (in ) :: du,dv ! wind tendency due to cumulus process
+   real   , dimension (IM,JM,LM) ,intent (out) :: ttend ! K/s
+
+   real :: dts,fp,dp,fpi,ke(LM)
+   integer ::i,j,l
+
+! since kinetic energy is being dissipated, add heating accordingly (from ECMWF)
+!
+   ttend = 0.0
+   do j=1,JM
+     do i=1,IM
+          dts=0.
+          fpi=0.
+          do l=1,LM
+             !total KE dissiptaion estimate
+             dts = dts - (du(i,j,l)*us(i,j,l)+dv(i,j,l)*vs(i,j,l))*mass(i,j,l)
+             !
+             ! fpi needed for calcualtion of conversion to pot. energyintegrated
+             ke(l) = sqrt(du(i,j,l)*du(i,j,l) + dv(i,j,l)*dv(i,j,l))
+             fpi = fpi + ke(l)*mass(i,j,l)
+          enddo
+          if(fpi.gt.0.)then
+             do l=1,LM
+                ttend(i,j,l) = (ke(l)/fpi)*dts*(1.0/MAPL_CP)
+             enddo
+          endif
+     enddo
+   enddo
+
+  end SUBROUTINE  dissipative_ke_heating
 
 end module GEOSmoist_Process_Library

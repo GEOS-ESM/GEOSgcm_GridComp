@@ -3094,7 +3094,7 @@ contains
      type (SHOCPARAMS_TYPE) :: SHOCPARAMS
      type (EDMFPARAMS_TYPE) :: EDMFPARAMS
 
-     integer :: JASON_TUNING
+     logical :: JASON_TUNING
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AERTOT
      real, dimension(:,:,:), pointer     :: S
      integer :: NTR, K, LTOP, LMAX
@@ -3139,9 +3139,9 @@ contains
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
      if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.TRUE. , RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.FALSE., RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -3152,7 +3152,7 @@ contains
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
-     if (JASON_TUNING .eq. 1) then
+     if (JASON_TUNING) then
        call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
@@ -3177,7 +3177,7 @@ contains
      call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,         RC=STATUS); VERIFY_(STATUS)
-     if (JASON_TUNING .eq. 1) then
+     if (JASON_TUNING) then
        call MAPL_GetResource (MAPL, BETA_SURF,  trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,   trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
@@ -3186,7 +3186,7 @@ contains
        call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,   trim(COMP_NAME)//"_KHRADFAC:",     default=1.00,         RC=STATUS); VERIFY_(STATUS)
      endif
-     if (JASON_TUNING .eq. 1) then
+     if (JASON_TUNING) then
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)

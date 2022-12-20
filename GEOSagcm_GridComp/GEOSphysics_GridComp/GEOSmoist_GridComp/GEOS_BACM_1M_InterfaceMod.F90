@@ -258,8 +258,8 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     tmprhO = min(0.99,tmprhL)
     call MAPL_GetResource( MAPL, MINRHCRITLND,             'MINRHCRITLND:',   DEFAULT=tmprhL   )
     call MAPL_GetResource( MAPL, MINRHCRITOCN,             'MINRHCRITOCN:',   DEFAULT=tmprhO   )
-    call MAPL_GetResource( MAPL, MAXRHCRITLND,             'MAXRHCRITOCN:',   DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, MAXRHCRITOCN,             'MAXRHCRITLND:',   DEFAULT= 1.0     )
+    call MAPL_GetResource( MAPL, MAXRHCRITLND,             'MAXRHCRITLND:',   DEFAULT= 1.0     )
+    call MAPL_GetResource( MAPL, MAXRHCRITOCN,             'MAXRHCRITOCN:',   DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, TURNRHCRIT,               'TURNRHCRIT:',     DEFAULT= 750.0  )
 
 end subroutine BACM_1M_Initialize
@@ -299,7 +299,9 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: OMEGA
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
+    real, pointer, dimension(:,:,:) :: UMST0, VMST0
     ! Local
+    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
     real, allocatable, dimension(:,:,:) :: DZET,  TH,  MASS
@@ -308,6 +310,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
+    real, allocatable, dimension(:,:)   :: IKEX, IKEX2
     real, allocatable, dimension(:,:)   :: TMP2D
     type(ESMF_State)                    :: AERO
     ! Exports
@@ -410,6 +413,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
      ! Layer variables
+    ALLOCATE ( U0   (IM,JM,LM  ) )
+    ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
@@ -424,6 +429,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( turnrhcrit2D (IM,JM) )
     ALLOCATE ( minrhcrit2D  (IM,JM) )
     ALLOCATE ( maxrhcrit2D  (IM,JM) )
+    ALLOCATE ( IKEX         (IM,JM) )
+    ALLOCATE ( IKEX2        (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
     ! Derived States
@@ -438,6 +445,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     TH       = T/PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+    U0       = U
+    V0       = V
 
     WHERE ( ZL0 < 3000. )
        QDDF3 = -( ZL0-3000. ) * ZL0 * MASS
@@ -726,6 +735,34 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
           DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
           DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
+
+#ifdef KEDISS_MICRO
+        ! dissipative heating tendency from KE across the macro/micro physics
+         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+         if(associated(PTR3D)) then
+           call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
+                                       DUDT_micro,DVDT_micro,PTR3D)
+         endif
+#else
+        ! Cumulus Friction
+        call MAPL_GetPointer(EXPORT, UMST0, 'UMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, VMST0, 'VMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        IKEX  = SUM( (0.5/DT_MOIST)*((V**2+U**2)  - (VMST0**2+UMST0**2))*MASS , 3 )
+        IKEX2 = MAX(  SUM( 1.E-04 * MASS , 3 ) ,  1.0e-6 ) ! floor at 1e-6 W m-2
+        !scaled 3D kinetic energy dissipation
+        call MAPL_GetPointer(EXPORT, PTR3D, 'KEDISS', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D))  then
+           do L=1,LM
+              PTR3D(:,:,L) = (IKEX/IKEX2) * 1.E-04
+           enddo
+        end if
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) then
+           do L=1,LM
+              PTR3D(:,:,L) = -(1./MAPL_CP)*(IKEX/IKEX2) * 1.E-04 * (PLE(:,:,L)-PLE(:,:,L-1))
+           end do
+        end if
+#endif
 
          ! Compute DBZ radar reflectivity
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
