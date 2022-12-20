@@ -552,6 +552,7 @@ contains
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
      real,pointer,dimension(:) :: lats
      real,pointer,dimension(:) :: lons
+     type(MAPL_MetaComp),pointer :: MAPL_MC
      type(MAPL_SunOrbit)         :: ORBIT
      type(ESMF_Time)             :: CURRENT_TIME
      type(ESMF_State)            :: INTERNAL
@@ -632,7 +633,7 @@ contains
         ! Get parameters from generic state.
         ! --------------------------------------------------------------------------
 
-        call MAPL_Get ( MAPL                 ,&   
+        call MAPL_Get ( MAPL_MC               ,&   
              RUNALARM  = ALARM                            ,&   
              ORBIT     = ORBIT                            ,&   
              TILELATS  = LATS                             ,&   
