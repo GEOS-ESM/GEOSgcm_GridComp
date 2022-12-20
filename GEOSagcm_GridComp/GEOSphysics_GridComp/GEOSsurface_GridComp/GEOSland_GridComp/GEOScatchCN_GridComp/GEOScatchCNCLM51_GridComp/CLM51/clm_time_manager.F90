@@ -1,5 +1,6 @@
 module clm_time_manager
 
+#include "MAPL_Generic.h"
 #include "shr_assert.h"
 
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
@@ -36,6 +37,7 @@ module clm_time_manager
       is_first_step,            &  ! dummy function here, because it is loaded, but not used
       is_near_local_noon        ! return true if near local noon
 
+   integer,  parameter :: uninit_int = -999999999
    integer, save ::&
         dtime          = uninit_int ! timestep in seconds
  contains
@@ -111,6 +113,8 @@ end function get_rad_step_size
       mon,   &! month
       day,   &! day of month
       tod     ! time of day (seconds past 0Z)
+
+  integer, optional, intent(in) :: offset  ! Offset from current time in seconds (not used)
 
   yr  = curr_year
   mon = curr_month
