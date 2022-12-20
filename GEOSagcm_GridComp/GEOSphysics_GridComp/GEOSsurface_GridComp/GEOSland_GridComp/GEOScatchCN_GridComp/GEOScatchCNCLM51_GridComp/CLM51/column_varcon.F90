@@ -30,7 +30,7 @@ module column_varcon
   public :: is_hydrologically_active   ! returns true if the given column type is hydrologically active
   public :: icemec_class_to_col_itype  ! convert an icemec class (1..maxpatch_glcmec) into col%itype
   public :: col_itype_to_icemec_class  ! convert col%itype into an icemec class (1..maxpatch_glcmec)
-  public :: write_coltype_metadata     ! write column type metadata to a netcdf file
+!  public :: write_coltype_metadata     ! write column type metadata to a netcdf file
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
