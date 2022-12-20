@@ -54,7 +54,7 @@ module rmTinyCatchParaMod
   character*8,  public, save :: LAIBCS      = 'UNDEF'
   character*6,  public, save :: SOILBCS     = 'UNDEF'
   character*6,  public, save :: MODALB      = 'UNDEF'
-  character*10, public, save :: SNOWALB     = 'UNDEF'
+  character*9,  public, save :: SNOWALB     = 'UNDEF'
   REAL,         public, save :: GNU         = MAPL_UNDEF
 
   type :: mineral_perc
@@ -70,27 +70,26 @@ contains
     ! determine BCs details from land BCs version string (LBCSV)
     !
     ! LAIBCS:  Leaf-Area-Index data set.        DEFAULT : MODGEO
-    !   GLASSA   : 8-day AVHRR clim, 1981-2017,        7200x3600  grid
-    !   GLASSM   : 8-day MODIS clim, 2000-2017,        7200x3600  grid
-    !   MODISV6  : 8-day       clim, 2002.01-2016.10, 86400x43200 grid
-    !   MODGEO   : MODIS with GEOLAND2 overlaid on South America, Africa, and Australia
-    !   GEOLAND2 : 10-day  clim,     1999-2011,       40320x20160 grid               
-    !   GSWP2    : Monthly clim,     1982-1998,         360x180   grid                  
-    !   MODIS    : 8-day   clim,     2000-2013,       43200x21600 grid
-    !   GSWPH    : Monthly clim,     1982-1998,       43200x21600 grid           
+    !   GLASSA    : 8-day AVHRR clim, 1981-2017,        7200x3600  grid
+    !   GLASSM    : 8-day MODIS clim, 2000-2017,        7200x3600  grid
+    !   MODISV6   : 8-day       clim, 2002.01-2016.10, 86400x43200 grid
+    !   MODGEO    : MODIS with GEOLAND2 overlaid on South America, Africa, and Australia
+    !   GEOLAND2  : 10-day  clim,     1999-2011,       40320x20160 grid               
+    !   GSWP2     : Monthly clim,     1982-1998,         360x180   grid                  
+    !   MODIS     : 8-day   clim,     2000-2013,       43200x21600 grid
+    !   GSWPH     : Monthly clim,     1982-1998,       43200x21600 grid           
     !
     ! MODALB:  MODIS Albedo data (snow-free).   DEFAULT : MODIS2                                            
-    !   MODIS1   : 16-day clim,  1'x1' (21600x10800) MODIS data, 2000-2004 
-    !   MODIS2   :  8-day clim, 30"x30"(43200x21600) MODIS data, 2001-2011 
+    !   MODIS1    : 16-day clim,  1'x1' (21600x10800) MODIS data, 2000-2004 
+    !   MODIS2    :  8-day clim, 30"x30"(43200x21600) MODIS data, 2001-2011 
     !
     ! SNOWALB: Snow albedo data.                DEFAULT : LUT
     !   LUT       : Parameterization based on look-up table values. 
     !   MODC061   : Static snow albedo derived from MODIS Collection 6.1 data where available, fill value of 0.56 elsewhere. 
-    !   MODC061ID : Static snow albedo derived from MODIS Collection 6.1 data where available, 
-    !                        tile_id used to go from raster grid into tile space, fill value of 0.56 elsewhere. 
+    !   MODC061v2 : Same as MODC061 but using tile ID instead of tile bounding box for mapping from raster to tile.
     !
     ! SOILBCS: Soil parameter data.             DEFAULT : HWSD                                                       
-    !   HWSD     : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
+    !   HWSD      : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     
     implicit none
     
@@ -183,7 +182,7 @@ contains
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061ID'
+       SNOWALB = 'MODC061v2'
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
@@ -192,7 +191,7 @@ contains
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061ID'
+       SNOWALB = 'MODC061v2'
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.

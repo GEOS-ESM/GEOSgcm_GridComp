@@ -47,12 +47,12 @@ public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2t
 
 ! Below structure is used to regrid high resolution data to high resolution tile raster
 
-integer, parameter   :: N_tiles_per_cell = 9
-integer  , parameter :: nc_esa = 129600, nr_esa = 64800
-real, parameter      :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
-integer, parameter   :: N_GADM = 256 + 1, N_STATES = 50
+integer, parameter :: N_tiles_per_cell = 9
+integer, parameter :: nc_esa = 129600, nr_esa = 64800
+real,    parameter :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
+integer, parameter :: N_GADM = 256 + 1, N_STATES = 50
 
-real, parameter      :: SOILDEPTH_MIN_HWSD = 1334.   ! minimum soil depth for HWSD soil parameters
+real,    parameter :: SOILDEPTH_MIN_HWSD = 1334.   ! minimum soil depth for HWSD soil parameters
 
 type :: do_regrid
    integer                               :: NT
@@ -2991,7 +2991,8 @@ END SUBROUTINE modis_scale_para_high
 
   END SUBROUTINE hres_gswp2
 
-!----------------------------------------------------------------------  
+  !----------------------------------------------------------------------  
+
   SUBROUTINE MODIS_snow_alb_tileid (nc_data,nr_data,rmap)
 
     !--- Implement Snow Albedo using Tile ID -------------------- 
