@@ -1,6 +1,6 @@
 module WaterFluxBulkType
 
-  use MAPL_ConstantsMod    , ONLY : r8 => MAPL_R4
+  use MAPL_ConstantsMod    , ONLY : r8 => MAPL_R8
   use nanMod               , only : nan
   use clm_varpar           , only : nlevsno, nlevsoi
   use clm_varcon           , only : spval

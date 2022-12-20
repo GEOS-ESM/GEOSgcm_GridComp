@@ -9,7 +9,7 @@ module clm_varcon
 ! Module containing various model constants
 !
 ! !USES:
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use shr_const_mod, only: SHR_CONST_G,     &
                            SHR_CONST_RHOFW, &
                            SHR_CONST_TKFRZ, &

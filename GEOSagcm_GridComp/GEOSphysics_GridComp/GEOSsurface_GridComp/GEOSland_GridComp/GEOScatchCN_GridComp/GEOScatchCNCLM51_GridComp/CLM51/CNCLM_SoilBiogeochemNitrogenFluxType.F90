@@ -1,6 +1,6 @@
 module SoilBiogeochemNitrogenFluxType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, ndecomp_cascade_outtransitions
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, ndecomp_pools_vr

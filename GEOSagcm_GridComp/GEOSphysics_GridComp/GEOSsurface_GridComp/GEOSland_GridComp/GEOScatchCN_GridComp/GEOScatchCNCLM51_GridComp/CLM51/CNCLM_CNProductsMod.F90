@@ -1,6 +1,6 @@
 module CNProductsMod
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use MAPL_ExceptionHandling
   use nanMod           , only : nan
   use decompMod        , only : bounds_type

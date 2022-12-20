@@ -1,6 +1,6 @@
 module PatchType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
   use clm_varcon       , only : ispval

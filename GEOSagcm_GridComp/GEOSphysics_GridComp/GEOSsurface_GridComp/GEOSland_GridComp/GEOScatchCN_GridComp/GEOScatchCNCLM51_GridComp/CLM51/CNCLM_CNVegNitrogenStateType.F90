@@ -1,6 +1,6 @@
 module CNVegNitrogenStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use MAPL_ExceptionHandling
   use clm_varctl       , only : use_matrixcn
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp

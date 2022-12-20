@@ -1,6 +1,6 @@
 module decompMod
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varpar       , only: NUM_ZON, NUM_VEG, numpft
 
   ! !PUBLIC TYPES:

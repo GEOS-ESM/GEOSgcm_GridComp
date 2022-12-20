@@ -1,6 +1,6 @@
 module SolarAbsorbedType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varcon       , only : spval
   use clm_varpar       , only : nlevcan, numrad, nlevsno
   use clm_varctl       , only : use_luna

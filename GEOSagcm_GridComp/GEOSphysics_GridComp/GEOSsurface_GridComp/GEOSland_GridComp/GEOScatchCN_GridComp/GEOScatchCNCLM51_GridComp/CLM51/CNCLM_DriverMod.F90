@@ -1,6 +1,6 @@
 module CNCLM_DriverMod
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
   use CNVegetationFacade
   use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,

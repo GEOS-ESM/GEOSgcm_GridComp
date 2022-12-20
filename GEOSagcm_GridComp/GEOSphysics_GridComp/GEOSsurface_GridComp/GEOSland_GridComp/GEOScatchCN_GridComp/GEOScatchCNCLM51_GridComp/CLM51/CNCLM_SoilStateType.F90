@@ -1,6 +1,6 @@
 module SoilStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use clm_varpar       , only : nlevsoi, nlevgrnd, nlevmaxurbgrnd, &
                                 nlayer, nlevsno
   use clm_varcon       , only : spval
