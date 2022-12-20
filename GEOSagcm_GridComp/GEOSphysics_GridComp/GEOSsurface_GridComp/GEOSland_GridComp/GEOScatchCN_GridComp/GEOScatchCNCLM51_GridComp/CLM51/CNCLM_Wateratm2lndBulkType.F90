@@ -81,4 +81,4 @@ module Wateratm2lndBulkType
 
 
   end subroutine init_wateratm2lndbulk_type
-module Wateratm2lndBulkType
+end module Wateratm2lndBulkType
