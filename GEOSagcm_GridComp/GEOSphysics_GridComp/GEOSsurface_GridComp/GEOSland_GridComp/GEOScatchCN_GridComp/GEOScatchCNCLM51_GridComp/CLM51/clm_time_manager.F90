@@ -288,7 +288,7 @@ end function is_restart
 
   !=========================================================================================
 
-  integer function get_local_timestep_time( londeg, offset )
+  integer function get_local_timestep_time( londeg, offset, rc )
 
     !---------------------------------------------------------------------------------
     ! Get the local time for this longitude that is evenly divisible by the time-step
@@ -298,6 +298,7 @@ end function is_restart
     ! Arguments
     real(r8)         , intent(in) :: londeg  ! Longitude in degrees
     integer, optional, intent(in) :: offset  ! Offset from current time in seconds (either sign)
+    integer, optional, intent(out) :: rc
 
     ! Local variables
     integer  :: yr, mon, day    ! year, month, day, unused
