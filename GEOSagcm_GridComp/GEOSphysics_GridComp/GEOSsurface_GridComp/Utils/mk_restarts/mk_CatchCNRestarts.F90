@@ -195,9 +195,12 @@ program  mk_CatchCNRestarts
 ! 1104-1115: PSNSHAM (n,nz*nv)
 
   use MAPL
+  use ESMF
   use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
   use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
+  use clm_varpar     , only : nzone => NUM_ZON, nveg => NUM_VEG, &
+                              VAR_COL, VAR_PFT, npft => numpft
 
   implicit none
   include 'mpif.h'
@@ -207,20 +210,6 @@ program  mk_CatchCNRestarts
 
   integer  :: myid=0, numprocs=1, mpierr, mpistatus(MPI_STATUS_SIZE)  
   logical  :: root_proc=.true.
-
-  ! Carbon model specifics
-  ! ----------------------
-
-  real, parameter :: ECCENTRICITY  = 0.0167
-  real, parameter :: PERIHELION    = 102.0
-  real, parameter :: OBLIQUITY     = 23.45
-  integer, parameter :: EQUINOX    = 80
-  
-  integer, parameter :: nveg    = 4
-  integer, parameter :: nzone   = 3
-  integer, parameter :: VAR_COL = 40 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT = 74 ! number of CN PFT variables per column
-  integer, parameter :: npft    = 19  
 
   real, parameter :: nan = O'17760000000'
   real, parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
@@ -1108,7 +1097,16 @@ contains
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:) 
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
-  
+    integer :: AGCM_MI, AGCM_S, dofyr
+    real,pointer,dimension(:) :: lats
+    real,pointer,dimension(:) :: lons
+    type(MAPL_MetaComp),pointer :: MAPL_MC
+    type(MAPL_SunOrbit)         :: ORBIT
+    type(ESMF_Time)             :: CURRENT_TIME
+    type(ESMF_State)            :: INTERNAL
+    type(ESMF_Alarm)            :: ALARM
+
+
     allocate (tid_offl  (ntiles_cn))
     allocate (ityp_offl (ntiles_cn,nveg))
     allocate (fveg_offl (ntiles_cn,nveg))
@@ -1159,12 +1157,41 @@ contains
 
        call ReadTileFile_RealLatLon (OutTileFile, i, long, latg)
 
-       ! Compute DAYX
-       ! ------------
+       !-----------------------
+       ! COMPUTE DAYX
+       !-----------------------
 
-       call compute_dayx (                                     &
-            NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-            LATG, DAYX)   
+        AGCM_MI = 0
+        AGCM_S = 0
+
+       ! get current date & time
+       ! -----------------------
+        call ESMF_TimeGet  ( CURRENT_TIME, YY = AGCM_YY,       &
+                                           MM = AGCM_MM,       &
+                                           DD = AGCM_DD,       &
+                                           H  = AGCM_HR,       &
+                                           M  = AGCM_MI,       &
+                                           S  = AGCM_S ,       &
+                                           dayOfYear = dofyr , &
+                                           rc=status )
+         VERIFY_(STATUS)
+
+        ! Get parameters from generic state.
+        ! -----------------------------------
+
+        call MAPL_Get ( MAPL_MC               ,&
+             RUNALARM  = ALARM                            ,&
+             ORBIT     = ORBIT                            ,&
+             TILELATS  = LATS                             ,&
+             TILELONS  = LONS                             ,&
+             INTERNAL_ESMF_STATE = INTERNAL               ,&
+             RC=STATUS )
+        VERIFY_(STATUS)
+
+        ! compute current daylight duration
+        !----------------------------------
+        call MAPL_SunGetDaylightDuration(ORBIT,lats,dayx,currTime=CURRENT_TIME,RC=STATUS)
+        VERIFY_(STATUS)
 
        ! ---------------------------------------------
        ! Read exact lonc, latc from offline .til File 
@@ -1744,161 +1771,6 @@ contains
 
      
   END SUBROUTINE regrid_carbon_vars
-
-  ! *****************************************************************************
-
-  subroutine compute_dayx (                               &
-       NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-       LATT, DAYX)
- 
-    implicit none
-
-    integer, intent (in) :: NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR 
-    real, dimension (NTILES), intent (in)  :: LATT
-    real, dimension (NTILES), intent (out) :: DAYX
-    integer, parameter :: DT = 900
-    integer, parameter :: ncycle = 1461 ! number of days in a 4-year leap cycle (365*4 + 1)   
-    real, dimension(ncycle) :: zc, zs
-    integer :: dofyr, sec,YEARS_PER_CYCLE, DAYS_PER_CYCLE, year, iday, idayp1, nn 
-    real    :: fac, YEARLEN, zsin, zcos, declin
-    
-    dofyr = AGCM_DD
-    if(AGCM_MM >  1) dofyr = dofyr + 31
-    if(AGCM_MM >  2) then
-       dofyr = dofyr + 28
-       if(mod(AGCM_YY,4) == 0) dofyr = dofyr + 1
-    endif
-    if(AGCM_MM >  3) dofyr = dofyr + 31
-    if(AGCM_MM >  4) dofyr = dofyr + 30
-    if(AGCM_MM >  5) dofyr = dofyr + 31
-    if(AGCM_MM >  6) dofyr = dofyr + 30
-    if(AGCM_MM >  7) dofyr = dofyr + 31
-    if(AGCM_MM >  8) dofyr = dofyr + 31
-    if(AGCM_MM >  9) dofyr = dofyr + 30
-    if(AGCM_MM > 10) dofyr = dofyr + 31
-    if(AGCM_MM > 11) dofyr = dofyr + 30
-      
-    sec = AGCM_HR * 3600 - DT ! subtract DT to get time of previous physics step
-    fac = real(sec) / 86400.
-
-    call orbit_create(zs,zc,ncycle) ! GEOS5 leap cycle routine
-    
-    YEARLEN = 365.25
-  
-    !  Compute length of leap cycle
-    !------------------------------
-
-    if(YEARLEN-int(YEARLEN) > 0.) then
-       YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
-    else
-       YEARS_PER_CYCLE = 1
-    endif
-  
-    DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
-    
-    ! declination & daylength
-    ! -----------------------
-
-    YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)
-  
-    IDAY = YEAR*int(YEARLEN)+dofyr
-    IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
-
-    ZSin = ZS(IDAYP1)*FAC + ZS(IDAY)*(1.-FAC) !   sine of solar declination
-    ZCos = ZC(IDAYP1)*FAC + ZC(IDAY)*(1.-FAC) ! cosine of solar declination
-    
-    nn = 0
-    do n = 1,days_per_cycle
-       nn = nn + 1
-       if(nn > 365) nn = nn - 365
-       !     print *, 'cycle:',n,nn,asin(ZS(n))
-    end do
-    
-    declin = asin(ZSin)
-  
-    ! compute daylength on input tile space (accounts for any change in physics time step)  
-    !  do n = 1,ntiles_cn
-    !     fac = -(sin((latc(n)/zoom)*(MAPL_PI/180.))*zsin)/(cos((latc(n)/zoom)*(MAPL_PI/180.))*zcos)
-    !     fac = min(1.,max(-1.,fac))
-    !     dayl(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-    !  end do
-  
-    ! compute daylength on output tile space (accounts for lat shift due to split & change in time step)
-    
-    do n = 1,ntiles
-       fac = -(sin(latt(n)*(MAPL_PI/180.))*zsin)/(cos(latt(n)*(MAPL_PI/180.))*zcos)
-       fac = min(1.,max(-1.,fac))
-       dayx(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-    end do
-    
-    ! print *,'DAYX : ', minval(dayx),maxval(dayx), minval(latt), maxval(latt), zsin, zcos, dofyr, iday, idayp1, declin
- 
-  end subroutine compute_dayx
-
-  ! *****************************************************************************
-
-   subroutine orbit_create(zs,zc,ncycle)
-     
-     implicit none
-     
-     integer, intent(in) :: ncycle
-     real, intent(out), dimension(ncycle) :: zs, zc
-     
-     integer :: YEARS_PER_CYCLE, DAYS_PER_CYCLE
-     integer :: K, KP !, KM
-     real*8  :: T1, T2, T3, T4, FUN, Y, SOB, OMG, PRH, TT
-     real*8  :: YEARLEN
-     
-     !  STATEMENT FUNCTION
-     
-     FUN(Y) = OMG*(1.0-ECCENTRICITY*cos(Y-PRH))**2
-     
-     YEARLEN = 365.25
-     
-     !  Factors involving the orbital parameters
-     !------------------------------------------
-     
-     OMG  = (2.0*MAPL_PI/YEARLEN) / (sqrt(1.-ECCENTRICITY**2)**3)
-     PRH  = PERIHELION*(MAPL_PI/180.)
-     SOB  = sin(OBLIQUITY*(MAPL_PI/180.))
-     
-     !  Compute length of leap cycle
-     !------------------------------
-     
-     if(YEARLEN-int(YEARLEN) > 0.) then
-        YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
-     else
-        YEARS_PER_CYCLE = 1
-     endif
-     
-     DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
-     
-     if(days_per_cycle /= ncycle) stop 'bad cycle'
-     
-     !   ZS:   Sine of declination
-     !   ZC:   Cosine of declination
-     
-     !  Begin integration at vernal equinox
-     
-     KP           = EQUINOX
-     TT           = 0.0
-     ZS(KP) = sin(TT)*SOB
-     ZC(KP) = sqrt(1.0-ZS(KP)**2)
-     
-     !  Integrate orbit for entire leap cycle using Runge-Kutta
-     
-     do K=2,DAYS_PER_CYCLE
-        T1 = FUN(TT       )
-        T2 = FUN(TT+T1*0.5)
-        T3 = FUN(TT+T2*0.5)
-        T4 = FUN(TT+T3    )
-        KP  = mod(KP,DAYS_PER_CYCLE) + 1
-        TT  = TT + (T1 + 2.0*(T2 + T3) + T4) / 6.0
-        ZS(KP) = sin(TT)*SOB
-        ZC(KP) = sqrt(1.0-ZS(KP)**2)
-     end do
-     
-   end subroutine orbit_create
 
  ! ***************************************************************************** 
 
