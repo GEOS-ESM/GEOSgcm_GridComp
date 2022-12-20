@@ -75,8 +75,8 @@ module SurfaceRadiationMod
 
      procedure, public  :: Init
      procedure, private :: InitAllocate
-     procedure, private :: InitHistory
-     procedure, private :: InitCold
+    ! procedure, private :: InitHistory
+    ! procedure, private :: InitCold
 
   end type surfrad_type
 
@@ -93,8 +93,8 @@ contains
     type(bounds_type), intent(in) :: bounds
 
     call this%InitAllocate(bounds)
-    call this%InitHistory(bounds)
-    call this%InitCold(bounds)
+   ! call this%InitHistory(bounds)
+   ! call this%InitCold(bounds)
 
   end subroutine Init
 
@@ -480,7 +480,7 @@ contains
      use landunit_varcon  , only : istsoil, istcrop 
      use clm_varctl       , only : use_subgrid_fluxes, use_snicar_frc, iulog, use_SSRE
      use clm_time_manager , only : get_step_size_real, is_near_local_noon
-     use SnowSnicarMod    , only : DO_SNO_OC
+  !   use SnowSnicarMod    , only : DO_SNO_OC
      use abortutils       , only : endrun
      !
      ! !ARGUMENTS:
@@ -857,11 +857,11 @@ contains
              sfc_frc_bc(p) = sabg(p) - sabg_bc(p)
 
              ! OC aerosol forcing (patch-level):
-             if (DO_SNO_OC) then
-                sfc_frc_oc(p) = sabg(p) - sabg_oc(p)
-             else
-                sfc_frc_oc(p) = 0._r8
-             endif
+!             if (DO_SNO_OC) then
+!                sfc_frc_oc(p) = sabg(p) - sabg_oc(p)
+!             else
+!                sfc_frc_oc(p) = 0._r8
+!             endif
 
              ! dust aerosol forcing (patch-level):
              sfc_frc_dst(p) = sabg(p) - sabg_dst(p)
