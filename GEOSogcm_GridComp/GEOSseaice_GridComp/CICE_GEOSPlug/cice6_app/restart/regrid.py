@@ -118,6 +118,10 @@ def icepack_enthalpy_temperature_bl99(zTin, Tmlt):
 
     msk = zTin < c0
 
+    # the T dereived from mushy layer scheme could go above Tmlt
+    # reset to just below Tmlt if that is the case
+    zTin[zTin >= Tmlt] = Tmlt*1.05
+
     zQin[msk] = -rhoi*(cp_ice*(Tmlt-zTin[msk]) + 
                    Lfresh*(c1 - Tmlt/zTin[msk]) -cp_ocn*Tmlt)
 
@@ -292,13 +296,13 @@ def main() -> None:
       ti = []
       for q,s in zip(qi, si):
          ti.append(icepack_mushy_temperature_mush(q, s))       
-      saltmax = 3.2
-      nsal = 0.407
-      msal = 0.573
-      salinz = np.zeros((nilyr))
-      Tmlt = np.zeros((nilyr))
+      saltmax = np.float64(3.2)
+      nsal =  np.float64(0.407)
+      msal = np.float64(0.573)
+      salinz = np.zeros((nilyr), dtype='float64')
+      Tmlt = np.zeros((nilyr), dtype='float64')
       for k in range(nilyr):
-         zn = (k+1-0.5)/nilyr
+         zn = np.float64((k+1-0.5)/nilyr)
          salinz[k] = (saltmax/2.0)*(1.0-np.cos(np.pi*np.power(zn, nsal/(msal+zn))))
          Tmlt[k] = -depressT * salinz[k] 
       print(salinz)
