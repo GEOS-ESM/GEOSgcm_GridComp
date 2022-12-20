@@ -832,7 +832,6 @@ contains
      call ice_export_thermo1(state, rc=rc)
 
      ! pack them back into state 
-     print*, Iam, ' returned successfully'
 
      RETURN_(ESMF_SUCCESS)
 
