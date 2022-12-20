@@ -1170,10 +1170,10 @@ contains
 
        ! get current date & time
        ! -----------------------
-        call ESMF_TimeGet  ( CURRENT_TIME, YY = AGCM_YY,       &
-                                           MM = AGCM_MM,       &
-                                           DD = AGCM_DD,       &
-                                           H  = AGCM_HR,       &
+        call ESMF_TimeGet  ( CURRENT_TIME, YY = AGCM_YYY,       &
+                                           MM = AGCM_MMM,       &
+                                           DD = AGCM_DDD,       &
+                                           H  = AGCM_HRR,       &
                                            M  = AGCM_MI,       &
                                            S  = AGCM_S ,       &
                                            dayOfYear = dofyr , &
