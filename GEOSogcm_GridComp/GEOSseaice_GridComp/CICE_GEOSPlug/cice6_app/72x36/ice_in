@@ -7,8 +7,8 @@
     sec_init       = 0
     istep0         = 0
     dt             = 450.0
-    npt_unit       = 'm'
-    npt            = 99999
+    npt_unit       = '1'
+    npt            = 9999999
     ndtd           = 1
     runtype        = 'initial'
     ice_ic         = './INPUT/iced.nc'
@@ -21,7 +21,7 @@
     restart_dir    = './RESTART/'
     restart_file   = 'iced'
     pointer_file   = './ice.restart_file'
-    dumpfreq       = 'y'
+    dumpfreq       = 'x'
     dumpfreq_n     = 99999
     dumpfreq_base  = 'init'
     dump_last      = .false.
@@ -36,8 +36,8 @@
     debug_model_iblk = -1
     debug_model_task = -1
     debug_forcing  = .false.
-    print_global   = .true.
-    print_points   = .true.
+    print_global   = .false.
+    print_points   = .false.
     timer_stats    = .false.
     conserv_check  = .false.
     latpnt(1)      =  90.
@@ -48,12 +48,12 @@
     histfreq_n     =  1 , 1 , 1 , 1 , 1
     histfreq_base  = 'zero'
     hist_avg       = .true.
-    history_dir    = './history/'
+    history_dir    = './'
     history_file   = 'iceh'
     history_precision = 4
     history_format = 'default'
     write_ic       = .true.
-    incond_dir     = './history/'
+    incond_dir     = './'
     incond_file    = 'iceh_ic'
     version_name   = 'CICE_6.3.1'
 /
