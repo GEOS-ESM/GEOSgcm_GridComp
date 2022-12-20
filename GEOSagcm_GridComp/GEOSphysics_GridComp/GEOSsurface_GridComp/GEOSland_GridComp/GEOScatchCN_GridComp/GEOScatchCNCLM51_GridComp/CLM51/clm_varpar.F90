@@ -114,6 +114,8 @@ module clm_varpar
 
   integer, public :: max_patch_per_col
 
+  integer, public :: maxpatch_glcmec = 0   ! max number of elevation classes (set to 0 here, not specified in CLM clm_varpar.F90)
+
 contains
 
 !------------------------------------
