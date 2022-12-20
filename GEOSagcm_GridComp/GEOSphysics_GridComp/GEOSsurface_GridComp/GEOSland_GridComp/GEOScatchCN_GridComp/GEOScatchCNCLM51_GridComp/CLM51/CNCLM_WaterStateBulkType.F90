@@ -15,6 +15,7 @@ module WaterStateBulkType
   use clm_varpar     , only : nlevmaxurbgrnd, nlevsno
   use clm_varcon     , only : spval
   use WaterStateType , only : waterstate_type
+  use nanMod         , only : nan
   !
   implicit none
   save
