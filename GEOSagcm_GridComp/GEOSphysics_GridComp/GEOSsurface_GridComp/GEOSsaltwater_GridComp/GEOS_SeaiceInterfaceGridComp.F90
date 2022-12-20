@@ -2647,10 +2647,10 @@ contains
           LHF = EVP * MAPL_ALHS
 
           FSURF(:,N)      = LWDNSRF - SHF - LHF - (ALW + BLW*TS(:,N))
-          DFSURFDTS(:,N)  = SHD + EVD * MAPL_ALHS + BLW !!! check the sign
-          DLHFDTS(:,N)    = EVD * MAPL_ALHS  !!! check the sign
-          EVAPN(:,N)      = EVP !!! check the sign
-          LHFN(:,N)       = LHF !!! check the sign
+          DFSURFDTS(:,N)  = -(SHD + EVD * MAPL_ALHS + BLW) !!! check the sign
+          DLHFDTS(:,N)    = -EVD * MAPL_ALHS  !!! check the sign
+          EVAPN(:,N)      = -EVP !!! check the sign
+          LHFN(:,N)       = -LHF !!! check the sign
 
     end do categories_th1_
 
