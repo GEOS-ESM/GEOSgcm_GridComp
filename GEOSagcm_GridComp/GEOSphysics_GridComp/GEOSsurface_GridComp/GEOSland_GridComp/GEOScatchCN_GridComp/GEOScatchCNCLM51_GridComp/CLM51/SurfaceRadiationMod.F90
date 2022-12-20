@@ -20,6 +20,7 @@ module SurfaceRadiationMod
   use ColumnType        , only : col
   use PatchType         , only : patch
   use landunit_varcon   , only : istdlak
+  use nanMod            , only : nan
 
   ! !PRIVATE TYPES:
   implicit none
@@ -102,7 +103,7 @@ contains
   subroutine InitAllocate(this, bounds)
     !
     ! !USES:
-    use shr_infnan_mod, only : nan => shr_infnan_nan
+  !  use shr_infnan_mod, only : nan => shr_infnan_nan
     !
     ! !ARGUMENTS:
     class(surfrad_type) :: this
