@@ -1097,7 +1097,7 @@ contains
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:) 
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
-    integer :: AGCM_MI, AGCM_S, dofyr
+    integer :: AGCM_YYY, AGCM_MMM, AGCM_DDD, AGCM_HRR, AGCM_MI, AGCM_S, dofyr
     real,pointer,dimension(:) :: lats
     real,pointer,dimension(:) :: lons
     type(MAPL_MetaComp),pointer :: MAPL_MC
@@ -1161,6 +1161,10 @@ contains
        ! COMPUTE DAYX
        !-----------------------
 
+        AGCM_YYY = AGCM_YY
+        AGCM_MMM = AGCM_MM
+        AGCM_DDD = AGCM_DD
+        AGCM_HRR = AGCM_HR
         AGCM_MI = 0
         AGCM_S = 0
 
