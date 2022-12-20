@@ -50,7 +50,6 @@ module GEOSmoist_Process_Library
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
-  real, parameter :: R_AIR   =  3.47e-3   ! m3 Pa kg-1K-1
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
   ! LDRADIUS4
@@ -1775,7 +1774,7 @@ module GEOSmoist_Process_Library
            Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
-           call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
+           call Bergeron_Partition( &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
                  TEp              , &
@@ -1925,7 +1924,7 @@ module GEOSmoist_Process_Library
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine Bergeron_iter    (           &
+   subroutine Bergeron_Partition (           &
          DTIME            , &
          PL               , &
          TE               , &
@@ -2037,7 +2036,7 @@ module GEOSmoist_Process_Library
 
       end if !=====  
 
-   end subroutine Bergeron_iter
+   end subroutine Bergeron_Partition
 
    subroutine MELTFRZ_3D ( DT, CNVFRC, SRFTYPE, TE, QL, QI )
       real, intent(in   ) :: DT, CNVFRC(:,:),SRFTYPE(:,:)

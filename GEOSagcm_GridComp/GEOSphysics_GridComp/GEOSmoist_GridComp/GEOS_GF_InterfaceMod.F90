@@ -263,7 +263,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0
     real,    allocatable, dimension(:,:,:) :: PL, PK, ZL0
     real,    allocatable, dimension(:,:,:) :: MASS, fQi, QST3
-    real,    allocatable, dimension(:,:,:) :: TH, KE
+    real,    allocatable, dimension(:,:,:) :: TH
     real,    allocatable, dimension(:,:,:) :: REVSU, PRFIL
     integer, allocatable, dimension(:,:)   :: SEEDINI   
     real,    allocatable, dimension(:,:)   :: SEEDCNV 
@@ -367,7 +367,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( PL   (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
     ALLOCATE ( TH   (IM,JM,LM  ) )
-    ALLOCATE ( KE   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( fQi  (IM,JM,LM  ) )
     ALLOCATE ( QST3 (IM,JM,LM  ) )
@@ -388,7 +387,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     TH       = T/PK
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
-    KE       = (V**2+U**2)
 
     ! Required Exports (connectivities to moist siblings)
     call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -570,17 +568,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QICN = 0.
       END WHERE
       endif
-
-     !! Heating from cumulus friction
-     !call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
-     !if(associated(PTR3D)) then
-     !    KE = (0.5/DT_MOIST)*(KE - (V**2+U**2))*MASS
-     !    TMP3D = 1.e-4 ! KEX
-     !    TMP2D = SUM(KE,3)/MAX(SUM(TMP3D*MASS,3), 1.0e-6) ! IKEX/IKEX2 
-     !    do L=1,LM
-     !       PTR3D(:,:,L) = -(1./MAPL_CP) * TMP2D * TMP3D(:,:,L) * (PLE(:,:,L)-PLE(:,:,L-1))
-     !    end do
-     !end if
 
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST
