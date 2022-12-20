@@ -179,6 +179,28 @@ contains
          RC=status  )
   VERIFY_(status)
 
+  call MAPL_AddImportSpec(GC,                                 &
+        SHORT_NAME         = 'SI',                                &
+        LONG_NAME          = 'seaice_skin_salinity',              &
+        UNITS              = 'psu',                               &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
+        DEFAULT            = 4.,                                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                            &
+    SHORT_NAME         = 'TI',                                &
+    LONG_NAME          = 'seaice_skin_temperature',           &
+    UNITS              = 'K',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    RESTART            = MAPL_RestartSkip,                    &
+    DEFAULT            = MAPL_TICE,                           &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
 
   ! === Exports
 
