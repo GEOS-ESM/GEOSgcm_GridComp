@@ -249,13 +249,13 @@ contains
             conc_ptr          => soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col
             source            => soilbiogeochem_carbonflux_inst%decomp_cpools_sourcesink_col
             trcr_tendency_ptr => soilbiogeochem_carbonflux_inst%decomp_cpools_transport_tendency_col
-            matrix_input      => soilbiogeochem_carbonflux_inst%matrix_Cinput%V
+          !  matrix_input      => soilbiogeochem_carbonflux_inst%matrix_Cinput%V
          case (2)  ! N
             if (use_cn ) then
                conc_ptr          => soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col
                source            => soilbiogeochem_nitrogenflux_inst%decomp_npools_sourcesink_col
                trcr_tendency_ptr => soilbiogeochem_nitrogenflux_inst%decomp_npools_transport_tendency_col
-               matrix_input      => soilbiogeochem_nitrogenflux_inst%matrix_Ninput%V
+          !     matrix_input      => soilbiogeochem_nitrogenflux_inst%matrix_Ninput%V
             endif
          case (3)
             if ( use_c13 ) then
