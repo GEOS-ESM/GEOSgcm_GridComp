@@ -324,38 +324,6 @@ end function is_restart
 
   !=========================================================================================
 
-  integer function get_local_timestep_time( londeg, offset )
-
-    !---------------------------------------------------------------------------------
-    ! Get the local time for this longitude that is evenly divisible by the time-step
-    !
-    ! uses
-    use clm_varcon, only: degpsec, isecspday
-    ! Arguments
-    real(r8)         , intent(in) :: londeg  ! Longitude in degrees
-    integer, optional, intent(in) :: offset  ! Offset from current time in seconds (either sign)
-
-    ! Local variables
-    integer  :: yr, mon, day    ! year, month, day, unused
-    integer  :: secs            ! seconds into the day
-    real(r8) :: lon             ! positive longitude
-    integer  :: offset_sec      ! offset seconds (either 0 for current time or -dtime for previous time)
-    !---------------------------------------------------------------------------------
-    if ( present(offset) ) then
-       offset_sec = offset
-    else
-       offset_sec = 0
-    end if
-    SHR_ASSERT( londeg >= -180.0_r8, "londeg must be greater than -180" )
-    SHR_ASSERT( londeg <= 360.0_r8,  "londeg must be less than 360" )
-    call  get_curr_date(yr, mon, day, secs, offset=offset_sec )
-    lon = londeg
-    if ( lon < 0.0_r8 ) lon = lon + 360.0_r8
-    get_local_timestep_time  = secs + nint((lon/degpsec)/real(dtime,r8))*dtime
-    get_local_timestep_time  = mod(get_local_timestep_time,isecspday)
-  end function get_local_timestep_time
-  !=========================================================================================
-
 !  function get_curr_ESMF_Time( )
 !
 !    ! Return the current time as ESMF_Time
@@ -371,4 +339,44 @@ end function is_restart
 !
 !  end function get_curr_ESMF_Time
 
+  integer function get_local_time( londeg, starttime, offset )
+
+    !---------------------------------------------------------------------------------
+    ! Get the local time for this longitude
+    !
+    ! uses
+    use clm_varcon, only: degpsec, isecspday
+    ! Arguments
+    real(r8)         , intent(in) :: londeg       ! Longitude in degrees
+    integer, optional, intent(in) :: starttime    ! Start time (sec)
+    integer, optional, intent(in) :: offset       ! Offset from current time in seconds (either sign)
+
+    ! Local variables
+    integer  :: yr, mon, day    ! year, month, day, unused
+    integer  :: secs            ! seconds into the day
+    integer  :: start           ! start seconds
+    integer  :: offset_sec      ! offset seconds (either 0 for current time or -dtime for previous time)
+    real(r8) :: lon             ! positive longitude
+    !---------------------------------------------------------------------------------
+    if ( present(starttime) ) then
+       start = starttime
+    else
+       start = 0
+    end if
+    if ( present(offset) ) then
+       offset_sec = offset
+    else
+       offset_sec = 0
+    end if
+    SHR_ASSERT( start >= 0,            "starttime must be greater than or equal to zero" )
+    SHR_ASSERT( start <= isecspday,    "starttime must be less than or equal to number of seconds in a day" )
+    SHR_ASSERT( londeg >= -180.0_r8,   "londeg must be greater than -180" )
+    SHR_ASSERT( londeg <= 360.0_r8,    "londeg must be less than 360" )
+    SHR_ASSERT( (offset_sec == 0) .or. (offset_sec == -dtime), "offset must be zero or negative time-step" )
+    call  get_curr_date(yr, mon, day, secs, offset=offset_sec )
+    lon = londeg
+    if ( lon < 0.0_r8 ) lon = lon + 360.0_r8
+    get_local_time  = modulo(secs + nint(londeg/degpsec), isecspday)
+    get_local_time  = modulo(get_local_time - start,isecspday)
+  end function get_local_time
 end module clm_time_manager
