@@ -22,7 +22,7 @@ module cloudnew
                                 MAPL_R4   , MAPL_AVOGAD
 
    use MAPL_BaseMod,      only: MAPL_UNDEF
-   use Aer_Actv_Single_Moment,only: USE_AEROSOL_NN
+   use Aer_Actv_Single_Moment,only: USE_BERGERON, USE_AEROSOL_NN
    use GEOSmoist_Process_Library
 
    implicit none
@@ -72,6 +72,7 @@ module cloudnew
            real               :: FAC_RL                ! 55
            real               :: FAC_RI                ! 56
            real               :: PDFSHAPE              ! 58
+           real               :: HYSTPDFOPT
       endtype CLDPARAM_TYPE
       type (CLDPARAM_TYPE) :: CLDPARAMS
 
@@ -238,6 +239,7 @@ module cloudnew
    real,    constant :: FAC_RL
    real,    constant :: FAC_RI
    integer, constant :: PDFFLAG
+   integer, constant :: HYSTPDFOPT
 
    ! Parameters for Internal DQSAT
    ! -----------------------------
@@ -338,7 +340,7 @@ module cloudnew
    real    :: LSDDRFC
    real    :: MIN_RI, MAX_RI, FAC_RI, MIN_RL, MAX_RL, FAC_RL
    integer :: FR_LS_WAT, FR_LS_ICE, FR_AN_WAT, FR_AN_ICE
-   integer :: pdfflag
+   integer :: PDFFLAG, HYSTPDFOPT
 #endif
 
    real, parameter :: ESFAC        = MAPL_H2OMW/MAPL_AIRMW
@@ -356,6 +358,26 @@ module cloudnew
    real, parameter :: be   = r13 - 0.11
    real, parameter :: aewc = 0.13*(3./(4.*MAPL_PI*RHO_W*1.e3))**r13
    real, parameter :: aeic = 0.13*(3./(4.*MAPL_PI*RHO_I*1.e3))**r13
+
+! ------ For polar stratospheric clouds with single-moment microphysics ------
+      REAL :: ricecm,ndensice,h2ocond
+      REAL :: rmedice,radius,rhoi,mdens,mfp,dynvis,wgt1,wgt2,tpp_hPa
+      REAL, PARAMETER :: sigsq=1.3323e-19
+      REAL, PARAMETER :: bet=1.458e-6
+      REAL, PARAMETER :: s=110.4
+      REAL, PARAMETER :: a=1.249
+      REAL, PARAMETER :: b=0.42
+      REAL, PARAMETER :: cc=0.87
+      REAL, PARAMETER :: nice = 1.e-2
+      REAL, PARAMETER :: sigice = 1.6
+      REAL, PARAMETER :: logsigicesq = LOG(sigice)*LOG(sigice)
+      REAL, PARAMETER :: expl1 = EXP(-3.0/2.0*logsigicesq)
+      REAL, PARAMETER :: fluxcorr = EXP(8.0*LOG(sigice)*LOG(sigice))
+      REAL, PARAMETER :: oneThird = 1./3.
+      REAL, PARAMETER :: massh2o = 2.991e-23
+      REAL, PARAMETER :: densice = 1.
+      REAL, PARAMETER :: BLEND_DEPTH_hPa = 50.
+! ----------------------------------------------------------------------------
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -468,7 +490,7 @@ contains
          VFALLWAT_AN_dev,VFALLWAT_LS_dev,   &
          VFALLSN_AN_dev,VFALLSN_LS_dev,VFALLSN_CN_dev,VFALLSN_SC_dev, &
          VFALLRN_AN_dev,VFALLRN_LS_dev,VFALLRN_CN_dev,VFALLRN_SC_dev,  &
-         PDF_A_dev, & 
+         PDF_A_dev, PDFITERS_dev, & 
 #ifdef PDFDIAG
          PDF_SIGW1_dev, PDF_SIGW2_dev, PDF_W1_dev, PDF_W2_dev, & 
          PDF_SIGTH1_dev, PDF_SIGTH2_dev, PDF_TH1_dev, PDF_TH2_dev, &
@@ -616,6 +638,7 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_CN_dev ! VFALLRN_CN
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_SC_dev ! VFALLRN_SC
       real, intent(inout), dimension(IRUN,  LM) :: PDF_A_dev
+      real, intent(  out), dimension(IRUN,  LM) :: PDFITERS_dev
 #ifdef PDFDIAG
       real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW1_dev
       real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW2_dev
@@ -670,7 +693,7 @@ contains
       real :: TEMP
       real :: RHCRIT
       real :: AA3, BB3, ALPHA
-      real :: VFALL, VFALLRN, VFALLSN
+      real :: VFALLRN, VFALLSN
 
       real :: TOT_PREC_UPD
       real :: TOT_PREC_ANV
@@ -751,6 +774,7 @@ contains
          FAC_RL        = CLDPARAMS%FAC_RL
          FAC_RI        = CLDPARAMS%FAC_RI
          PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
+         HYSTPDFOPT    = INT(CLDPARAMS%HYSTPDFOPT)
 #endif
 
       use_autoconv_timescale = .false.
@@ -806,7 +830,6 @@ contains
             QSN_AN    = 0.
             QSN_CU    = 0.
             QSN_SC_1D = 0.
-            VFALL     = 0.
 
             RAD_QV_dev(I,K)     = 0.
             RAD_QL_dev(I,K)     = 0.
@@ -927,10 +950,11 @@ contains
 
             FIXL_dev(I,K) = -( QLW_AN_dev(I,K) + QLW_LS_dev(I,K) - FIXL_dev(I,K) ) / DT 
             FIXI_dev(I,K) = -( QIW_AN_dev(I,K) + QIW_LS_dev(I,K) - FIXI_dev(I,K) ) / DT 
-  
-#ifdef SKIP 
+   
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   
             FRZ_TT_dev(I,K) = QIW_AN_dev(I,K) + QIW_LS_dev(I,K)
+
             IF(USE_AEROSOL_NN) THEN
             CALL meltfrz_inst (    &
                   DT             , &
@@ -957,7 +981,9 @@ contains
                   QLW_AN_dev(I,K), & 
                   QIW_AN_dev(I,K))
             ENDIF
+
             FRZ_TT_dev(I,K) = ( QIW_AN_dev(I,K) + QIW_LS_dev(I,K) - FRZ_TT_dev(I,K) ) / DT
+
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          !  DCNVi_dev(I,K) = QIW_AN_dev(I,K)
          !  DCNVL_dev(I,K) = QLW_AN_dev(I,K)
@@ -965,8 +991,7 @@ contains
          !  DCNVi_dev(I,K) = ( QIW_AN_dev(I,K) - DCNVi_dev(I,K) ) / DT
          !  DCNVL_dev(I,K) = ( QLW_AN_dev(I,K) - DCNVL_dev(I,K) ) / DT
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
- 
+   
             PDFL_dev(I,K) = QLW_LS_dev(I,K)+QLW_AN_dev(I,K)
             PDFI_dev(I,K) = QIW_LS_dev(I,K)+QIW_AN_dev(I,K)
 
@@ -993,12 +1018,13 @@ contains
 
             ! impose a minimum amount of variability
             ALPHA    = MAX(  ALPHA , 1.0 - RH00 )
- 
+   
             LSPDFLIQNEW = QLW_LS_dev(I,K)
             LSPDFICENEW = QIW_LS_dev(I,K)
             LSPDFFRACNEW= CLDFRC_dev(I,K)
 
-            call hystpdf(      &
+            IF(HYSTPDFOPT==1) THEN
+            call hystpdf_new(      &
                   DT             , &
                   ALPHA          , &
                   PDFFLAG        , &
@@ -1027,6 +1053,57 @@ contains
                   hl3_dev(I,K),        &
                   mf_frc_dev(I,K),     &
                   PDF_A_dev(I,K),      &  ! can remove these after development
+                  PDFITERS_dev(I,K),   &
+#ifdef PDFDIAG
+                  PDF_SIGW1_dev(I,K),  &
+                  PDF_SIGW2_dev(I,K),  &
+                  PDF_W1_dev(I,K),     &
+                  PDF_W2_dev(I,K),     &
+                  PDF_SIGTH1_dev(I,K), &
+                  PDF_SIGTH2_dev(I,K), &
+                  PDF_TH1_dev(I,K),    &
+                  PDF_TH2_dev(I,K),    &
+                  PDF_SIGQT1_dev(I,K), &
+                  PDF_SIGQT2_dev(I,K), &
+                  PDF_QT1_dev(I,K),    &
+                  PDF_QT2_dev(I,K),    &
+                  PDF_RQTTH_dev(I,K),  &
+                  PDF_RWTH_dev(I,K),   &
+                  PDF_RWQT_dev(I,K),   &
+#endif
+                  WTHV2_dev(I,K),      &
+                  wql_dev(I,K))
+            else
+            call hystpdf(          &
+                  DT             , &
+                  ALPHA          , &
+                  PDFFLAG        , &
+                  CNVFRC_dev(I)  , &
+                  SRFTYPE_dev(I) , &
+                  PP_dev(I,K)    , &
+                  ZZ_dev(I,K)    , &
+                  Q_dev(I,K)     , &
+                  QLW_LS_dev(I,K), &
+                  QLW_AN_dev(I,K), &
+                  QIW_LS_dev(I,K), &
+                  QIW_AN_dev(I,K), &
+                  TEMP           , &
+                  CLDFRC_dev(I,K), &
+                  ANVFRC_dev(I,K), &
+                  NACTL_dev(I,K),  &
+                  NACTI_dev(I,K),  &
+                  whl_dev(I,K),        &
+                  wqt_dev(I,K),        &
+                  hl2_dev(I,K),        &
+                  qt2_dev(I,K),        &
+                  hlqt_dev(I,K),       &
+                  w3_dev(I,K),         &
+                  w2_dev(I,K),         &
+                  qt3_dev(I,K),        &
+                  hl3_dev(I,K),        &
+                  mf_frc_dev(I,K),     &
+                  PDF_A_dev(I,K),      &  ! can remove these after development
+                  PDFITERS_dev(I,K),   &
 #ifdef PDFDIAG
                   PDF_SIGW1_dev(I,K),  &
                   PDF_SIGW2_dev(I,K),  &
@@ -1046,7 +1123,9 @@ contains
 #endif
                   WTHV2_dev(I,K),      &
                   wql_dev(I,K),        &
-                  USE_AEROSOL_NN)
+                  .false.,             &
+                  USE_BERGERON)
+            endif
 
             LSPDFLIQNEW = QLW_LS_dev(I,K) - LSPDFLIQNEW
             LSPDFICENEW = QIW_LS_dev(I,K) - LSPDFICENEW
@@ -1156,11 +1235,9 @@ contains
                   LS_SDQV3       , &   
                   LS_SDQVT1      , &
                   DZET_dev(I,K)  , &
-                  VFALL          , &
+                  VFALLWAT_LS_dev(I,K), &
                   FRACTION_REMOVAL )
          
-            VFALLWAT_LS_dev(I,K) = VFALL
-
             FRACTION_REMOVAL = fr_an_wat
 
             call autocon3(         &
@@ -1175,10 +1252,9 @@ contains
                   ANV_SDQV3      , &
                   ANV_SDQVT1     , &
                   DZET_dev(I,K)  , &
-                  VFALL          , &
+                  VFALLWAT_AN_dev(I,K), &
                   FRACTION_REMOVAL )
 
-            VFALLWAT_AN_dev(I,K) = VFALL
             AUT_dev(I,K) = ( AUT_dev(I,K) - ( QLW_AN_dev(I,K) + QLW_LS_dev(I,K) ) )/DT
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1187,40 +1263,45 @@ contains
 
             SDM_dev(I,K) = QIW_AN_dev(I,K)+QIW_LS_dev(I,K)
 
-            CALL SETTLE_VEL(       &
-                  QIW_LS_dev(I,K), &
-                  QIW_AN_dev(I,K), &
-                  PP_dev(I,K)    , &
-                  TEMP           , &
-                  CLDFRC_dev(I,K), &
-                  ANVFRC_dev(I,K), &
-                  VFALL          , &
-                  ICE_SETTLE     , &
-                  ANV_ICEFALL_C, LS_ICEFALL_C, CNVFRC_dev(I) )
-            VFALLICE_AN_dev(I,K) = VFALL
-            VFALLICE_LS_dev(I,K) = VFALL
-
                                       FRACTION_REMOVAL = fr_ls_ice
             if (CNVFRC_dev(I) >= 0.5) FRACTION_REMOVAL = fr_an_ice
 
             ! Parameterized (CNV) Ice Fall
             ! ----------------------------
+            CALL SETTLE_VEL(       &
+                  QIW_AN_dev(I,K), &
+                  PP_dev(I,K)    , &
+                  TEMP           , &
+                  ANVFRC_dev(I,K), &
+                  TROPP_dev(I)   , &
+                  VFALLICE_AN_dev(I,K), &
+                  ICE_SETTLE     , &
+                  ANV_ICEFALL_C, LS_ICEFALL_C, CNVFRC_dev(I) )
             CALL ICEFALL(          &
                   QIW_AN_dev(I,K), &
                   DZET_dev(I,K)  , &
                   QSN_AN         , &
-                  VFALL          , &
+                  VFALLICE_AN_dev(I,K), &
                   ANVFRC_dev(I,K), &
                   DT             , &
                   FRACTION_REMOVAL )
 
             ! Resolved Scale Ice Fall
             ! -----------------------
+            CALL SETTLE_VEL(       &
+                  QIW_LS_dev(I,K), &
+                  PP_dev(I,K)    , &
+                  TEMP           , &
+                  CLDFRC_dev(I,K), &
+                  TROPP_dev(I)   , &
+                  VFALLICE_LS_dev(I,K), &
+                  ICE_SETTLE     , &
+                  ANV_ICEFALL_C, LS_ICEFALL_C, CNVFRC_dev(I) )
             CALL ICEFALL(          &
                   QIW_LS_dev(I,K), &
                   DZET_dev(I,K)  , &
                   QSN_LS         , &
-                  VFALL          , &
+                  VFALLICE_LS_dev(I,K), &
                   CLDFRC_dev(I,K), &
                   DT             , &
                   FRACTION_REMOVAL )
@@ -1678,7 +1759,9 @@ contains
                   ((atan( (2.*(pp- turnrhcrit)/(1020.-turnrhcrit)-1.) * &
                   tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
          end if
+
          a1 = min(a1,1.)
+
          alpha = 1. - a1
          ALPHA = MIN( ALPHA , 0.25 )  ! restrict RHcrit to > 75% 
 #else
@@ -1785,12 +1868,506 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
+   subroutine hystpdf_new( &
+         DT          , &
+         ALPHA       , &
+         PDFSHAPE    , &
+         CNVFRC      , &
+         SRF_TYPE    , &
+         PL          , &
+         ZL          , &
+         QV          , &
+         QCl         , &
+         QAl         , &
+         QCi         , &
+         QAi         , &
+         TE          , &
+         CF          , &
+         AF          , &
+         NL          , &
+         NI          , &
+         WHL         , &
+         WQT         , &
+!         wqtfac      , &
+!         whlfac      , &
+         HL2         , &
+         QT2         , &
+         HLQT        , & 
+         W3          , &
+         W2          , &
+         MFQT3       , &
+         MFHL3       , &
+         MF_FRC      , &
+         PDF_A,      &  ! can remove these after development
+         PDFITERS,   &
+#ifdef PDFDIAG
+         PDF_SIGW1,  &
+         PDF_SIGW2,  &
+         PDF_W1,     &
+         PDF_W2,     &
+         PDF_SIGHL1, &
+         PDF_SIGHL2, &
+         PDF_HL1,    &
+         PDF_HL2,    &
+         PDF_SIGQT1, &
+         PDF_SIGQT2, &
+         PDF_QT1,    &
+         PDF_QT2,    &
+         PDF_RHLQT,  &
+         PDF_RWHL,   &
+         PDF_RWQT,   &
+#endif
+         WTHV2,      &
+         WQL)
+
+      real, intent(in)    :: DT,ALPHA,PL,ZL
+      integer, intent(in) :: pdfshape
+      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
+      real, intent(in)    :: NL,NI,CNVFRC,SRF_TYPE
+      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
+#ifdef PDFDIAG
+      real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
+                             PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
+                             PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+                             PDF_RHLQT,  PDF_RWHL, PDF_RWQT
+#endif
+      real, intent(out)   :: WTHV2, WQL, PDFITERS
+
+      ! internal arrays
+      real :: QCO, QVO, CFO, QAO, TAU,HL
+      real :: QT, QMX, QMN, DQ, sigmaqt1, sigmaqt2
+
+      real :: TEO,QSx,DQsx,QS,DQs
+
+      real :: TEp, QSp, CFp, QVp, QCp
+      real :: TEn, QSn, CFn, QVn, QCn
+
+      real :: QCx, QVx, CFx, QAx, QC, QA, fQi
+      real :: dQAi, dQAl, dQCi, dQCl, Nfac, NLv, NIv 
+
+!      real :: fQip
+
+      real :: tmpARR
+      real :: ALHX, DQCALL
+      ! internal scalars
+      integer :: N, nmax
+
+      pdfflag = PDFSHAPE
+
+      QC = QCl + QCi
+      QA = QAl + QAi
+      QT  =  QC  + QA + QV  !Total water after microphysics
+      tmpARR = 0.0
+      nmax =  20
+      QAx = 0.0
+
+      if ( AF < 1.0 )  tmpARR = 1./(1.-AF)
+
+      TEo = TE
+
+      fQi = ice_fraction( TE, CNVFRC,SRF_TYPE )
+      DQSx  = DQSAT( TE, PL, QSAT=QSx )
+      CFx = CF*tmpARR
+      QCx = QC*tmpARR
+      QVx = ( QV - QSx*AF )*tmpARR
+
+      if ( AF >= 1.0 )    QVx = QSx*1.e-4 
+      if ( AF > 0. )  QAx = QA/AF
+
+      QT  = QCx + QVx
+
+      TEp = TEo
+      QSn = QSx
+      TEn = TEo
+      CFn = CFx
+      QVn = QVx
+      QCn = QCx
+      DQS = DQSx
+
+      ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+
+      HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+!           QT = QVn+QCn
+
+      do n=1,nmax
+
+         QVp = QVn
+         QCp = QCn
+         CFp = CFn
+         TEp = TEn
+!         fQip= fQi
+
+         if(pdfflag.lt.2) then
+
+            sigmaqt1  = ALPHA*QSn
+            sigmaqt2  = ALPHA*QSn
+
+         elseif(pdfflag.eq.2) then  ! triangular
+            ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
+            ! for triangular, skewed r : sigmaqt1 < sigmaqt2
+            ! try: skewed right below 500 mb
+            sigmaqt1  = ALPHA*QSn
+            sigmaqt2  = ALPHA*QSn
+!         elseif(pdffrac .eq. 3) then ! single gaussian
+
+         elseif(pdfflag .eq. 4) then !lognormal (sigma is dimmensionless)
+            sigmaqt1 =  max(ALPHA/sqrt(3.0), 0.001)
+         endif
+
+         if (pdfflag.lt.5) then
+           call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
+           call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+         elseif (pdfflag.eq.5) then
+
+            ! Update the liquid water static energy
+            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+
+           call partition_dblgss(DT/nmax,           &
+                                 TEn,          &
+                                 QVn,          &
+                                 QCn,          &
+                                 0.0,          & ! assume OMEGA=0
+                                 ZL,           &
+                                 PL*100.,      &
+                                 QT,           &
+                                 HL,          &
+                                 WHL,         &
+                                 WQT,         &
+                                 HL2,         &
+                                 QT2,         &
+                                 HLQT,        & 
+                                 W3,           &
+                                 W2,           &
+                                 MFQT3,        &
+                                 MFHL3,        &
+                                 MF_FRC,       &
+                                 PDF_A,        &
+#ifdef PDFDIAG
+                                 PDF_SIGW1,    &
+                                 PDF_SIGW2,    &
+                                 PDF_W1,       &
+                                 PDF_W2,       &
+                                 PDF_SIGHL1,   &
+                                 PDF_SIGHL2,   &
+                                 PDF_HL1,      &
+                                 PDF_HL2,      &
+                                 PDF_SIGQT1,   &
+                                 PDF_SIGQT2,   &
+                                 PDF_QT1,      &
+                                 PDF_QT2,      &
+                                 PDF_RHLQT,    &
+                                 PDF_RWHL,     &
+                                 PDF_RWQT,     &
+#endif
+                                 WTHV2,        &
+                                 WQL,          &
+                                 CFn)
+
+           fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
+
+         endif
+
+         IF(USE_AEROSOL_NN) THEN
+           DQCALL = QCn - QCp
+           CF  = CFn * ( 1.-AF)
+           Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
+           NLv = NL/Nfac
+           NIv = NI/Nfac
+           call Bergeron_iter    (  &         !Microphysically-based partitions the new condensate
+                 DT               , &
+                 PL               , &
+                 TEp              , &
+                 QT               , &
+                 QCi              , &
+                 QAi              , &
+                 QCl              , &
+                 QAl              , &
+                 CF               , &
+                 AF               , &
+                 NLv              , &
+                 NIv              , &
+                 DQCALL           , &
+                 fQi              , & 
+                 CNVFRC,SRF_TYPE  , &
+                 .false.)
+         ENDIF
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         ! These lines represent adjustments
+         ! to anvil condensate due to the 
+         ! assumption of a stationary TOTAL 
+         ! water PDF subject to a varying 
+         ! QSAT value during the iteration
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+         if ( AF > 0. ) then
+            QAo = QAx  ! + QSx - QS 
+         else
+            QAo = 0.
+         end if
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+         ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+
+         if(pdfflag.eq.1) then 
+            QCn = QCp + ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX/MAPL_CP)             
+         elseif(pdfflag.eq.2 .or. pdfflag.eq.5) then
+            ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
+            ! for now, just use relaxation of 1/2.
+            if (n.ne.nmax) QCn = QCp + ( QCn - QCp ) *0.5
+         endif
+
+         QVn = QVp - (QCn - QCp)
+         TEn = TEp + (1.0-fQi)*(MAPL_ALHL/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF ) &
+               +      fQi* (MAPL_ALHS/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF )
+
+         PDFITERS = n
+         if (abs(Ten - Tep) .lt. 0.00001) exit 
+
+         DQS  = DQSAT( TEn, PL, QSAT=QSn )
+
+      enddo ! qsat iteration
+
+      CFo = CFn
+      CF = CFn
+      QCo = QCn
+      QVo = QVn
+      TEo = TEn
+
+      ! Update prognostic variables.  Deal with special case of AF=1
+      ! Temporary variables QCo, QAo become updated grid means.
+      if ( AF < 1.0 ) then
+         CF  = CFo * ( 1.-AF)
+         QCo = QCo * ( 1.-AF)
+         QAo = QAo *   AF  
+      else
+
+         ! Special case AF=1, i.e., box filled with anvil. 
+         !   - Note: no guarantee QV_box > QS_box
+         CF  = 0.          ! Remove any other cloud
+         QAo = QA  + QC    ! Add any LS condensate to anvil type
+         QCo = 0.          ! Remove same from LS   
+         QT  = QAo + QV    ! Total water
+         ! Now set anvil condensate to any excess of total water 
+         ! over QSx (saturation value at top)
+         QAo = MAX( QT - QSx, 0. )
+      end if
+
+      ! Now take {\em New} condensate and partition into ice and liquid
+      ! taking care to keep both >=0 separately. New condensate can be
+      ! less than old, so $\Delta$ can be < 0.
+
+      dQCl = 0.0
+      dQCi = 0.0
+      dQAl = 0.0
+      dQAi = 0.0
+
+      !large scale   
+
+      QCx   = QCo - QC
+      if  (QCx .lt. 0.0) then  !net evaporation. Water evaporates first
+         dQCl = max(QCx, -QCl)   
+         dQCi = max(QCx - dQCl, -QCi)
+      else
+         dQCl  = (1.0-fQi)*QCx
+         dQCi  =    fQi  * QCx
+      end if
+
+      !Anvil   
+      QAx   = QAo - QA
+
+      if  (QAx .lt. 0.0) then  !net evaporation. Water evaporates first
+         dQAl = max(QAx, -QAl)   
+         dQAi = max(QAx - dQAl, -QAi)
+      else            
+         dQAl  =  (1.0-fQi)*QAx
+         dQAi  = QAx*fQi
+      end if
+
+      ! Clean-up cloud if fractions are too small
+      if ( AF < 1.e-5 ) then
+         dQAi = -QAi
+         dQAl = -QAl
+      end if
+      if ( CF < 1.e-5 ) then
+         dQCi = -QCi
+         dQCl = -QCl
+      end if
+
+      QAi    = QAi + dQAi
+      QAl    = QAl + dQAl
+      QCi    = QCi + dQCi
+      QCl    = QCl + dQCl
+      QV     = QV  - ( dQAi+dQCi+dQAl+dQCl) 
+
+      TE  = TE + (MAPL_ALHL*( dQAi+dQCi+dQAl+dQCl)+MAPL_ALHF*(dQAi+dQCi))/ MAPL_CP
+
+      ! We need to take care of situations where QS moves past QA
+      ! during QSAT iteration. This should be only when QA/AF is small
+      ! to begin with. Effect is to make QAo negative. So, we 
+      ! "evaporate" offending QA's
+      !
+      ! We get rid of anvil fraction also, although strictly
+      ! speaking, PDF-wise, we should not do this.
+      if ( QAo <= 0. ) then
+         QV  = QV + QAi + QAl
+         TE  = TE - (MAPL_ALHS/MAPL_CP)*QAi - (MAPL_ALHL/MAPL_CP)*QAl
+         QAi = 0.
+         QAl = 0.
+         AF  = 0.  
+      end if
+
+   end subroutine hystpdf_new
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   subroutine Bergeron_iter    (           &
+         DTIME            , &
+         PL               , &
+         TE               , &
+         QV               , &
+         QILS             , &
+         QICN             , &
+         QLLS             , &
+         QLCN             , &     
+         CF               , &
+         AF               , &
+         NL               , &
+         NI               , & 
+         DQALL            , &
+         FQI              , &
+         CNVFRC, SRF_TYPE , &
+         needs_preexisting )
+
+      real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
+      real ,  intent(inout   )    ::  DQALL 
+      real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
+      real ,  intent(in)    :: CF, AF, NL, NI
+      real, intent (out) :: FQI
+      real, intent(in) :: CNVFRC, SRF_TYPE
+      logical, intent (in)  :: needs_preexisting
+      
+      real  :: DC, TEFF,QCm,DEP, &
+            QC, QS, RHCR, DQSL, DQSI, QI, TC, &
+            DIFF, DENAIR, DENICE, AUX, &
+            DCF, QTOT, LHCORR,  QL, DQI, DQL, &
+            QVINC, QSLIQ, CFALL,  new_QI, new_QL, &
+            QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
+
+      DIFF = 0.0     
+      DEP=0.0 
+      QI = QILS + QICN !neccesary because NI is for convective and large scale 
+      QL = QLLS +QLCN
+      QTOT=QI+QL
+      FQA = 0.0
+      if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
+      NIX= (1.0-FQA)*NI
+
+      DQALL=DQALL/DTIME                                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      CFALL= min(CF+AF, 1.0)
+      TC=TE-273.0
+      fQI_0 = fQI
+
+      !Completelely glaciated cloud:
+      if (TE .ge. T_ICE_MAX) then   !liquid cloud
+         FQI   = 0.0
+
+      elseif(TE .le. T_ICE_ALL) then !ice cloud
+
+         FQI   = 1.0
+
+      else !mixed phase cloud
+
+         FQI   = 0.0
+         
+          if (QILS .le. 0.0) then 
+           
+                    if (needs_preexisting) then
+                  ! new 0518 this line ensures that only preexisting ice can grow by deposition.
+                  ! Only works if explicit ice nucleation is available (2 moment muphysics and up)                        
+                    else
+                      fQi  =   ice_fraction( TE, CNVFRC, SRF_TYPE )
+                    end if                      
+                  return 
+         end if 
+         
+         
+         QVINC=  QV 
+         QSLIQ  = QSATLQ(         &
+               TE   , &
+               PL*100.0 , DQ=DQSL )
+
+         QSICE  = QSATIC(         &
+               TE   , &
+               PL*100.0 , DQ=DQSI )
+
+         QVINC =MIN(QVINC, QSLIQ) !limit to below water saturation 
+
+         ! Calculate deposition onto preexisting ice 
+
+         DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/273.0)**1.94)*1e-4  !From Seinfeld and Pandis 2006
+         DENAIR=PL*100.0/MAPL_RGAS/TE
+         DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
+         LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
+
+         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then 
+            DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
+         else
+            DC = 20.0e-6
+         end if
+
+         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
+
+         DEP=0.0
+         if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then 
+            AUX =max(min(DTIME*TEFF, 20.0), 0.0)
+            DEP=(QVINC-QSICE)*(1.0-EXP(-AUX))/DTIME
+         end if
+
+         DEP=MAX(DEP, -QILS/DTIME) !only existing ice can be sublimated
+
+         !DEP=max(DEP, 0.0)
+
+         DQI = 0.0
+         DQL = 0.0
+         FQI=0.0
+         !QS_MIX=QSLIQ
+         !DQS_MIX = DQSL
+         !Partition DQALL accounting for Bergeron-Findensen process
+
+         if  (DQALL .ge. 0.0) then !net condensation. Note: do not allow bergeron with QLCN
+
+            if (DEP .gt. 0.0) then 
+               DQI = min(DEP, DQALL + QLLS/DTIME)
+               DQL = DQALL - DQI
+            else
+               DQL=DQALL ! could happen because the PDF allows condensation in subsaturated conditions
+               DQI = 0.0 
+            end if
+         end if
+
+         if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP   
+            DQL = max(DQALL, -QLLS/DTIME)   
+            DQI = max(DQALL - DQL, -QILS/DTIME)        
+         end if
+
+         if (DQALL .ne. 0.0)  FQI=max(min(DQI/DQALL, 1.0), 0.0)
+
+      end if !=====  
+
+   end subroutine Bergeron_iter
+
+
+#ifdef _CUDA
+   attributes(device) &
+#endif
    subroutine autocon3( &
-         DT       , &
+         DT          , &
          QC       , &
          QP       , &
-         TE       , &
-         PL       , &
+         TE          , &
+                 PL               , &
          KH       , &
          F        , &
          SUNDQV2  , &
@@ -2363,15 +2940,16 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine SETTLE_VEL( QILS, QICN, PL, TE, CLLS, CLCN, VF, ICE_SETTLE, LARGESCALE, ANVIL, CNVFRC )
+   subroutine SETTLE_VEL( QI, PL, TE, CF, TROPP_Pa, VF, ICE_SETTLE, LARGESCALE, ANVIL, CNVFRC )
 
       real, intent(in   ) :: TE
-      real, intent(in   ) :: QILS, QICN, CLLS, CLCN, PL
+      real, intent(in   ) :: QI, CF, PL, TROPP_Pa
       real, intent(out  ) :: VF
-      real, intent(in   ) :: ANVIL, LARGESCALE, CNVFRC
-      integer, intent(in) :: ICE_SETTLE 
-      real :: QI, CF, TC, RHO, XIm, LXIm, VF_A, VF_L
 
+      real, intent(in) :: ANVIL, LARGESCALE, CNVFRC
+      integer, intent(in) :: ICE_SETTLE 
+      real :: TC, RHO, XIm, LXIm, VF_A, VF_L
+      
       real, parameter :: aaC = - 4.18334e-5
       real, parameter :: bbC = - 0.00525867
       real, parameter :: ccC = - 0.0486519
@@ -2389,10 +2967,6 @@ contains
       real, parameter :: ccA = - 0.0516344
       real, parameter :: ddA = 0.00216078
       real, parameter :: eeA = 1.9714
-
-      ! Combine convective+large-scale
-      QI =     QILS + QICN
-      CF = MIN(CLLS + CLCN, 1.0)
 
       SELECT CASE( ICE_SETTLE )
       CASE( 1 )
@@ -2422,14 +2996,16 @@ contains
 
     ! Mid-latitude cirrus
        VF_L = 109.0*(XIm**0.16)
-
+ 
     ! Combine the two and convert from cm/s to m/s
        VF = 0.01 * (CNVFRC*ANVIL*VF_A + (1.0-CNVFRC)*LARGESCALE*VF_L)
 
     ! Pressure factor
     ! Reduce/increase fall speeds for high/low pressure (NOT in LC98!!! ) 
     ! Assume unmodified they represent situation at 100 mb
-       VF = VF * MIN( 1.0 , SIN(0.5*MAPL_PI*MIN(1.0,100./PL)) )
+       VF = VF * MIN( 0.5 , SIN(0.5*MAPL_PI*MIN(1.0,100./PL)) )
+    ! Limits
+       VF = MIN(0.5, MAX(1.e-5, VF))
 
        CASE( 2 )
 
@@ -2467,7 +3043,7 @@ contains
        ! Reduce/increase fall speeds for high/low pressure (KLUDGE)
        ! Assume unmodified they represent situation at 100 mb
        ! -----------------------------------------------------------------------
-       VF = VF * SQRT(100.0/PL)
+       VF = VF * SIN(0.5*MAPL_PI*MIN(1.0,100./PL))
        ! -----------------------------------------------------------------------
        ! Limits
        ! -----------------------------------------------------------------------
@@ -2475,9 +3051,63 @@ contains
 
        END SELECT
 
+    ! ! -- include stratospheric ice cloud settling adjustment
+    ! VF = PSC_ICE_SETTLE_VEL(VF, QI, RHO, TE, PL, TROPP_Pa)
+
    end SUBROUTINE SETTLE_VEL
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+FUNCTION PSC_ICE_SETTLE_VEL(VF, QI, RHO, TE, PL, TROPP_Pa) RESULT(VF_PSC) 
+
+      real, intent(in   ) :: VF, QI, RHO, TE, PL, TROPP_Pa
+
+      REAL :: VF_PSC
+      REAL :: ricecm,ndensice,h2ocond
+      REAL :: rmedice,radius,rhoi,mdens,mfp,dynvis,wgt1,wgt2,tpp_hPa
+
+!    Change TROPP_Pa from Pa to hPa to match units of PL
+      tpp_hPa = TROPP_Pa/100.
+
+!    If tropopause pressure is undefined set equal to 100. hPa
+      IF (TROPP_Pa == MAPL_UNDEF) tpp_hPa = 100.
+      IF( (PL < tpp_hPa) .AND.(QI > 0.) ) THEN
+       mdens = (RHO/1000.)*MAPL_AVOGAD*1.00E-06/MAPL_AIRMW
+       h2ocond = mdens*QI*MAPL_AIRMW/MAPL_H2OMW
+       ndensice = densice/massh2o
+       rmedice = (3.0*h2ocond/(ndensice*4.0*MAPL_PI*nice))**(oneThird)*expl1
+       IF(rmedice == 0.0 ) VF_PSC = 0.0
+! rmedice comes in as cm but need m so divide by 100
+! densice is g/cm**3 but needs kg/m**3 so multiply by 1000
+! -------------------------------------------------------------
+       radius = 0.01*rmedice
+       rhoi = densice*1000.
+       mfp = .22508/(sigsq*mdens*1.e6)
+       dynvis = bet*TE**1.5/(TE+s)
+! took out divide by 100 so VF units m/s
+! --------------------------------------
+       VF_PSC = fluxcorr*(0.2222*rhoi*radius*radius*MAPL_GRAV/dynvis*(1.+ mfp/radius*(a+b*exp(-cc*radius/mfp))))
+      END IF
+
+! --------- Blend VF with VF_PSC in the lower stratosphere ---------
+      IF( (PL < tpp_hPa) .AND. (PL > (tpp_hPa-BLEND_DEPTH_hPa)) .AND. (QI > 0.) ) THEN
+       wgt1 = ((tpp_hPa-BLEND_DEPTH_hPa)-PL)/(-BLEND_DEPTH_hPa)
+       wgt2 = 1.-wgt1
+      ELSE IF (PL <= (tpp_hPa-BLEND_DEPTH_hPa) .AND. (QI > 0.) ) THEN
+       wgt1 = 0.0
+       wgt2 = 1.0
+      ELSE
+      END IF
+
+! --------- provide updated velocity
+      IF( (PL < tpp_hPa) .AND. (QI > 0.) ) THEN
+        VF_PSC = VF*wgt1+VF_PSC*wgt2
+      ELSE
+        VF_PSC = VF
+      END IF
+
+end FUNCTION PSC_ICE_SETTLE_VEL
+
 
 #ifdef _CUDA
    attributes(device) &

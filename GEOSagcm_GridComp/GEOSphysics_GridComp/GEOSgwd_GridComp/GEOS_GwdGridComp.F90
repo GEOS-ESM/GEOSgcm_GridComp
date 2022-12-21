@@ -1298,18 +1298,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! Topographic Form Drag [Beljaars et al (2004)]
     call MAPL_TimerOn(MAPL,"-BELJAARS_TOFD")
-    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=8.0, _RC)
+    call MAPL_GetResource( MAPL, effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=0.0, _RC)
+    if (effbeljaars > 0.0) then
     call MAPL_GetResource( MAPL, limbeljaars, Label="BELJAARS_LIMITER:",  default=400.0, _RC)
-        limbeljaars = limbeljaars/86400.0
+    limbeljaars = limbeljaars/86400.0
     ! this approximation is invalid near the surface below 50m.
     if (LM .eq. 72) then
       call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 0.0, _RC)
     else
       call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, _RC)
     endif
-    if (effbeljaars > 0.0) then
     allocate(THV(IM,JM,LM),_STAT)
-        THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
+    THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
     DO J=1,JM
        DO I=1,IM
 ! Find the PBL height

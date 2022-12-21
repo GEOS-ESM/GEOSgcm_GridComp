@@ -1,7 +1,7 @@
 MODULE ConvPar_GF_SharedParams
 
 USE MAPL
-USE GEOSmoist_Process_Library
+USE GEOSmoist_Process_Library, only : CNV_Tracers 
 
  IMPLICIT NONE
 

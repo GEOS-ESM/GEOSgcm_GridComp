@@ -116,7 +116,7 @@ contains
 
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
-        !landxxxx
+        ! land_exxxx
         tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
     endif
 

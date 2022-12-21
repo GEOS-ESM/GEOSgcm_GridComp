@@ -186,6 +186,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
+    call MAPL_GetResource( MAPL, CLDPARAMS%HYSTPDFOPT,     'HYSTPDFOPT:',     DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_BETA,       'ANV_BETA:',       DEFAULT= 4.0     )
@@ -211,38 +212,20 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_DDRF,       'ANV_DDRF:',       DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 2.      )
-    if (CLDPARAMS%ICE_SETTLE == 1) then
-       ! Lawrence and Crutzen (1998, Tellus 50B, 263-289) 
-       SELECT CASE ( LM )
-       CASE ( 72 )
+    call MAPL_GetResource( MAPL, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
+    SELECT CASE ( LM )
+    CASE ( 72 )
            TMP_ICEFALL = 1.0
-       CASE ( 91 )
+    CASE ( 91 )
            TMP_ICEFALL = 0.5
-       CASE ( 137 )
+    CASE ( 137 )
            TMP_ICEFALL = 0.33
-       CASE ( 181 )
+    CASE ( 181 )
            TMP_ICEFALL = 0.25
-       CASE DEFAULT
+    CASE DEFAULT
            TMP_ICEFALL = 1.0
-       END SELECT
-    elseif (CLDPARAMS%ICE_SETTLE == 2) then
-       ! Deng and Mace, 2008: https://doi.org/10.1029/2008GL035054
-       SELECT CASE ( LM )
-       CASE ( 72 )
-           TMP_ICEFALL = 0.8
-       CASE ( 91 )
-           TMP_ICEFALL = 0.4
-       CASE ( 137 )
-           TMP_ICEFALL = 0.3
-       CASE ( 181 )
-           TMP_ICEFALL = 0.2
-       CASE DEFAULT
-           TMP_ICEFALL = 1.0
-       END SELECT
-    else
-       _ASSERT(.false.,'Invalid ICE_SETTLE parameter')
-    endif
+    END SELECT
+    if (CLDPARAMS%ICE_SETTLE==2) TMP_ICEFALL=TMP_ICEFALL*0.8
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
@@ -275,8 +258,8 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     tmprhO = min(0.99,tmprhL)
     call MAPL_GetResource( MAPL, MINRHCRITLND,             'MINRHCRITLND:',   DEFAULT=tmprhL   )
     call MAPL_GetResource( MAPL, MINRHCRITOCN,             'MINRHCRITOCN:',   DEFAULT=tmprhO   )
-    call MAPL_GetResource( MAPL, MAXRHCRITLND,             'MAXRHCRITOCN:',   DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, MAXRHCRITOCN,             'MAXRHCRITLND:',   DEFAULT= 1.0     )
+    call MAPL_GetResource( MAPL, MAXRHCRITLND,             'MAXRHCRITLND:',   DEFAULT= 1.0     )
+    call MAPL_GetResource( MAPL, MAXRHCRITOCN,             'MAXRHCRITOCN:',   DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, TURNRHCRIT,               'TURNRHCRIT:',     DEFAULT= 750.0  )
 
 end subroutine BACM_1M_Initialize
@@ -316,7 +299,9 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: OMEGA
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
+    real, pointer, dimension(:,:,:) :: UMST0, VMST0
     ! Local
+    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  PK,  ZL0
     real, allocatable, dimension(:,:,:) :: DZET,  TH,  MASS
@@ -325,11 +310,12 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
+    real, allocatable, dimension(:,:)   :: IKEX, IKEX2
     real, allocatable, dimension(:,:)   :: TMP2D
     type(ESMF_State)                    :: AERO
     ! Exports
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
-    real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro, DTHDT_micro
+    real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro
     real, pointer, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
     real, pointer, dimension(:,:,:) :: CLDREFFL, CLDREFFI 
     real, pointer, dimension(:,:,:) :: RHX
@@ -350,13 +336,11 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ALPHT, ALPH1, ALPH2
     real, pointer, dimension(:,:,:) :: CFPDF, RHCLR
     real, pointer, dimension(:,:,:) :: DQRL, WTHV2
-    real, pointer, dimension(:,:,:) :: PDF_A
+    real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
     real, pointer, dimension(:,:  ) :: LS_ARF,  CN_ARF,  AN_ARF,  SC_ARF
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
-    real, pointer, dimension(:,:,:) :: NCPL_VOL, NCPI_VOL
-    real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -429,6 +413,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
      ! Layer variables
+    ALLOCATE ( U0   (IM,JM,LM  ) )
+    ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( PK   (IM,JM,LM  ) )
@@ -443,6 +429,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( turnrhcrit2D (IM,JM) )
     ALLOCATE ( minrhcrit2D  (IM,JM) )
     ALLOCATE ( maxrhcrit2D  (IM,JM) )
+    ALLOCATE ( IKEX         (IM,JM) )
+    ALLOCATE ( IKEX2        (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
     ! Derived States
@@ -457,6 +445,8 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     TH       = T/PK
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+    U0       = U
+    V0       = V
 
     WHERE ( ZL0 < 3000. )
        QDDF3 = -( ZL0-3000. ) * ZL0 * MASS
@@ -488,15 +478,13 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTHDT_micro, 'DTHDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    if (associated(DQVDT_micro)) DQVDT_micro = Q
-    if (associated(DQLDT_micro)) DQLDT_micro = QLLS + QLCN
-    if (associated(DQIDT_micro)) DQIDT_micro = QILS + QICN
-    if (associated(DQADT_micro)) DQADT_micro = CLLS + CLCN
-    if (associated( DUDT_micro))  DUDT_micro  = U
-    if (associated( DVDT_micro))  DVDT_micro  = V
-    if (associated( DTDT_micro))  DTDT_micro  = T
-    if (associated(DTHDT_micro)) DTHDT_micro  = TH
+    DQVDT_micro = Q
+    DQLDT_micro = QLLS + QLCN
+    DQIDT_micro = QILS + QICN
+    DQADT_micro = CLLS + CLCN
+     DUDT_micro = U
+     DVDT_micro = V
+     DTDT_micro = T
 
     ! Imports which are Exports from local siblings
     ! Required export MUST have been filled in GridComp
@@ -593,6 +581,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, RHCLR,     'RHCLR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQRL,      'DQRL'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PDF_A,     'PDF_A'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WTHV2,     'WTHV2'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQL,       'WQL'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
@@ -694,12 +683,14 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               VFALLWAT_AN  ,VFALLWAT_LS  , &
                VFALLSN_AN  , VFALLSN_LS  ,VFALLSN_CN  ,VFALLSN_SC  ,  &
                VFALLRN_AN  , VFALLRN_LS  ,VFALLRN_CN  ,VFALLRN_SC  ,  &
-              PDF_A, &
+              PDF_A, PDFITERS, &
               WTHV2, WQL, &
               NACTL,    &
               NACTI,    &
               "GF" )
-
+         ! update T
+         T = TH*PK
+         ! Exports
          call MAPL_GetPointer(EXPORT, DTSX, 'DTSX', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          DTSX = TS - TH(:,:,LM)*PK(:,:,LM) + (MAPL_GRAV/MAPL_CP)*ZL0(:,:,LM)
          if (CFPBL_EXP > 1) then
@@ -730,47 +721,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
          RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
-         ! Cloud fraction exports
-         call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', RC=STATUS); VERIFY_(STATUS)
-         if (associated(CFICE)) then
-           CFICE=0.0
-           WHERE (RAD_QI .gt. 1.0e-12)
-              CFICE=RAD_CF*RAD_QI/(RAD_QL+RAD_QI)
-           END WHERE
-           CFICE=MAX(MIN(CFICE, 1.0), 0.0)
-         endif
-         call MAPL_GetPointer(EXPORT, CFLIQ, 'CFLIQ', RC=STATUS); VERIFY_(STATUS)
-         if (associated(CFLIQ)) then
-           CFLIQ=0.0
-           WHERE (RAD_QL .gt. 1.0e-12)
-              CFLIQ=RAD_CF*RAD_QL/(RAD_QL+RAD_QI)
-           END WHERE
-           CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
-         endif
-         ! Rain-out and Relative Humidity where RH > 110%
-         DQST3 = GEOS_DQSAT(TH*PK, PLmb, QSAT=QST3)
-         where ( Q > 1.1*QST3 )
-            TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
-         elsewhere
-            TMP3D = 0.0
-         endwhere
-         call MAPL_GetPointer(EXPORT, PTR2D,  'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-         PTR2D = SUM(TMP3D*MASS,3)/DT_MOIST
-         LS_PRCP = LS_PRCP + PTR2D
-         Q  =  Q - TMP3D
-         TH = TH + (MAPL_ALHL/MAPL_CP)*TMP3D/PK
-         T  = TH*PK
-
-         ! cleanup any negative QV/QC/CF
-         call FILLQ2ZERO(Q       , MASS, TMP2D)
-         call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = TMP2D/DT_MOIST
-         call FILLQ2ZERO(QLLS    , MASS, TMP2D)
-         call FILLQ2ZERO(QLCN    , MASS, TMP2D)
-         call FILLQ2ZERO(QILS    , MASS, TMP2D)
-         call FILLQ2ZERO(QICN    , MASS, TMP2D)
-         call FILLQ2ZERO(CLLS    , MASS, TMP2D)
-         call FILLQ2ZERO(CLCN    , MASS, TMP2D)
          where (QILS+QICN .le. 0.0)
             CLDREFFI = 36.0e-6
          end where
@@ -778,20 +728,47 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             CLDREFFL = 14.0e-6
          end where
 
-         if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
-         if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
-         if (associated(DQIDT_micro)) DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST
-         if (associated(DQADT_micro)) DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
-         if (associated( DUDT_micro))  DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
-         if (associated( DVDT_micro))  DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
-         if (associated( DTDT_micro))  DTDT_micro = (TH*PK       -  DTDT_micro) / DT_MOIST
-         if (associated(DTHDT_micro)) DTHDT_micro = (TH          - DTHDT_micro) / DT_MOIST
+         DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
+         DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
+         DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST
+         DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
+          DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
+          DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
+          DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
+
+#ifdef KEDISS_MICRO
+        ! dissipative heating tendency from KE across the macro/micro physics
+         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+         if(associated(PTR3D)) then
+           call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
+                                       DUDT_micro,DVDT_micro,PTR3D)
+         endif
+#else
+        ! Cumulus Friction
+        call MAPL_GetPointer(EXPORT, UMST0, 'UMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, VMST0, 'VMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        IKEX  = SUM( (0.5/DT_MOIST)*((V**2+U**2)  - (VMST0**2+UMST0**2))*MASS , 3 )
+        IKEX2 = MAX(  SUM( 1.E-04 * MASS , 3 ) ,  1.0e-6 ) ! floor at 1e-6 W m-2
+        !scaled 3D kinetic energy dissipation
+        call MAPL_GetPointer(EXPORT, PTR3D, 'KEDISS', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D))  then
+           do L=1,LM
+              PTR3D(:,:,L) = (IKEX/IKEX2) * 1.E-04
+           enddo
+        end if
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) then
+           do L=1,LM
+              PTR3D(:,:,L) = -(1./MAPL_CP)*(IKEX/IKEX2) * 1.E-04 * (PLE(:,:,L)-PLE(:,:,L-1))
+           end do
+        end if
+#endif
 
          ! Compute DBZ radar reflectivity
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D) .OR. associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,TH*PK,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
             if (associated(PTR3D)) PTR3D = TMP3D
             if (associated(PTR2D)) then
                PTR2D=-9999.0
