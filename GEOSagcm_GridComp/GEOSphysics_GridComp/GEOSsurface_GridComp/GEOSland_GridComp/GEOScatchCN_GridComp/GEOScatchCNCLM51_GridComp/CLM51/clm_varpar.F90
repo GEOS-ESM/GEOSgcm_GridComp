@@ -37,8 +37,9 @@ module clm_varpar
 
   integer, parameter :: numpft         = 15!19   ! actual # of pfts (without bare), 16 here, since we are removing the split types
   integer, parameter :: mxpft          = 15      !
-  integer, public    :: maxveg           ! # of pfts + cfts
+  integer, public    :: maxveg                   ! # of pfts + cfts
   integer, public    :: maxsoil_patches = numpft + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
+  integer, public    :: natpft_lb      = 0       ! In PATCH arrays, lower bound of Patches on the natural veg landunit (i.e., bare ground index)
 
   integer, public, parameter :: nvariants   =   2     ! number of variants of PFT constants
 
