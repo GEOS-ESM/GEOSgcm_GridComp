@@ -14,7 +14,8 @@ module clm_varctl
 ! !PUBLIC MEMBER FUNCTIONS:
   implicit none
 
-  public init_clm_varctl          ! set parameters
+  public :: init_clm_varctl          ! set parameters
+  public :: cnallocate_carbon_only
 
   logical, public :: use_nguardrail         = .true.  ! true => use precision control
 
@@ -37,6 +38,9 @@ module clm_varctl
   logical, public :: use_bedrock = .false. ! true => use spatially variable soil depth
   logical, public :: use_extralakelayers = .false.
   logical, public :: use_biomass_heat_storage = .false.
+  logical, public :: lnc_opt = .false.
+  logical, public :: reduce_dayl_factor = .false.
+  integer, public :: vcmax_opt = 0
 
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
@@ -100,5 +104,10 @@ contains
   end if
 
  end subroutine init_clm_varctl
+
+  ! Get module carbon_only flag
+  logical function CNAllocate_Carbon_only()
+    cnallocate_carbon_only = carbon_only
+  end function CNAllocate_Carbon_only
 
 end module clm_varctl

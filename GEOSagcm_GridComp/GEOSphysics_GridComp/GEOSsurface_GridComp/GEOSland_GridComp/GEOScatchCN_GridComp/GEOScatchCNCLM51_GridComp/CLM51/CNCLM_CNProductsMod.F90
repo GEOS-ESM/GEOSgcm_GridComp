@@ -1,7 +1,7 @@
+module CNProductsMod
+
 #include "MAPL_Generic.h"
 #include "shr_assert.h"
-
-module CNProductsMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use MAPL_ExceptionHandling

@@ -10,10 +10,9 @@ module  PhotosynthesisMod
   ! a multi-layer canopy
   !
   ! !USES:
-  use shr_sys_mod         , only : shr_sys_flush
   use shr_kind_mod        , only : r8 => shr_kind_r8
   use shr_log_mod         , only : errMsg => shr_log_errMsg
-  use shr_infnan_mod      , only : nan => shr_infnan_nan
+  use nanMod              , only : nan
   use abortutils          , only : endrun
   use clm_varctl          , only : use_c13, use_c14, use_cn, use_cndv, use_fates, use_luna, use_hydrstress
   use clm_varctl          , only : iulog
@@ -21,7 +20,7 @@ module  PhotosynthesisMod
   use clm_varcon          , only : namep, spval, isecspday
   use decompMod           , only : bounds_type
   use QuadraticMod        , only : quadratic
-  use CNCLM_pftconMod           , only : pftcon
+  use pftconMod           , only : pftcon
   use atm2lndType         , only : atm2lnd_type
   use CanopyStateType     , only : canopystate_type
   use WaterDiagnosticBulkType      , only : waterdiagnosticbulk_type
@@ -34,6 +33,7 @@ module  PhotosynthesisMod
   use LandunitType        , only : lun
   use PatchType           , only : patch
   use GridcellType        , only : grc
+  use MAPL_ExceptionHandling
   !
   implicit none
   private
@@ -229,7 +229,7 @@ module  PhotosynthesisMod
 contains
 
   !------------------------------------------------------------------------
-  subroutine Init(bounds,nch,ityp,fveg,cncol,cnpft,cn5_cold_start,this)
+  subroutine Init(this,bounds,nch,ityp,fveg,cncol,cnpft,cn5_cold_start,rc)
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds
@@ -240,6 +240,7 @@ contains
     real,    dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft  ! pft-level (patch-level) restart variable array
     logical, optional,                               intent(in) :: cn5_cold_start
     class(photosyns_type) :: this
+    integer, optional, intent(out) :: rc
 
     !
     ! !LOCAL VARIABLES:
@@ -259,7 +260,7 @@ contains
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
     if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
-       (size(cnpft,3).ne.var_pft)))
+       (size(cnpft,3).ne.var_pft))) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
 
@@ -377,7 +378,7 @@ contains
                 if (cold_start) then
                    photosyns_inst%alphapsnsun_patch(np) = 0._r8
                    photosyns_inst%alphapsnsha_patch(np) = 0._r8
-                else (cold_start=.false.) then
+                else (cold_start==.false.) then
                     photosyns_inst%alphapsnsun_patch(np) = cnpft(nc,nz,nv, 76)
                     photosyns_inst%alphapsnsha_patch(np) = cnpft(nc,nz,nv, 77)
                 end if
@@ -604,115 +605,115 @@ contains
   end subroutine ReadNML
 
   !------------------------------------------------------------------------
-  subroutine Restart(this, bounds, ncid, flag)
-    !
-    ! !USES:
-    use ncdio_pio  , only : file_desc_t, ncd_defvar, ncd_io, ncd_double, ncd_int, ncd_inqvdlen
-    use restUtilMod
-    !
-    ! !ARGUMENTS:
-    class(photosyns_type) :: this
-    type(bounds_type), intent(in)    :: bounds
-    type(file_desc_t), intent(inout) :: ncid   ! netcdf id
-    character(len=*) , intent(in)    :: flag   ! 'read' or 'write'
-    !
-    ! !LOCAL VARIABLES:
-    integer :: j,c ! indices
-    logical :: readvar      ! determine if variable is on initial file
-    !-----------------------------------------------------------------------
-
-    if ( use_c13 ) then
-       call restartvar(ncid=ncid, flag=flag, varname='rc13_canair', xtype=ncd_double,  &
-            dim1name='pft', long_name='', units='', &
-            interpinic_flag='interp', readvar=readvar, data=this%rc13_canair_patch)
-
-       call restartvar(ncid=ncid, flag=flag, varname='rc13_psnsun', xtype=ncd_double,  &
-            dim1name='pft', long_name='', units='', &
-            interpinic_flag='interp', readvar=readvar, data=this%rc13_psnsun_patch)
-
-       call restartvar(ncid=ncid, flag=flag, varname='rc13_psnsha', xtype=ncd_double,  &
-            dim1name='pft', long_name='', units='', &
-            interpinic_flag='interp', readvar=readvar, data=this%rc13_psnsha_patch)
-    endif
-
-    call restartvar(ncid=ncid, flag=flag, varname='GSSUN', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='sunlit leaf stomatal conductance', units='umol H20/m2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sun_patch)
-    
-    call restartvar(ncid=ncid, flag=flag, varname='GSSHA', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='shaded leaf stomatal conductance', units='umol H20/m2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sha_patch)
-
-    call restartvar(ncid=ncid, flag=flag, varname='GSSUNLN', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='sunlit leaf stomatal conductance averaged over 1 hour before to 1 hour after local noon', &
-         units='umol H20/m2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sun_ln_patch)
-
-    call restartvar(ncid=ncid, flag=flag, varname='GSSHALN', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='shaded leaf stomatal conductance averaged over 1 hour before to 1 hour after local noon', &
-         units='umol H20/m2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sha_ln_patch)
-    
-    call restartvar(ncid=ncid, flag=flag, varname='lnca', xtype=ncd_double,  &
-       dim1name='pft', long_name='leaf N concentration', units='gN leaf/m^2', &
-       interpinic_flag='interp', readvar=readvar, data=this%lnca_patch)
-
-    if(use_luna) then
-      call restartvar(ncid=ncid, flag=flag, varname='vcmx25_z', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='Maximum carboxylation rate at 25 Celcius for canopy layers', units='umol CO2/m**2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%vcmx25_z_patch)
-      call restartvar(ncid=ncid, flag=flag, varname='jmx25_z', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='Maximum rate of electron transport at 25 Celcius for canopy layers', units='umol electrons/m**2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%jmx25_z_patch)
-      call restartvar(ncid=ncid, flag=flag, varname='vcmx25_z_last_valid_patch:vcmx_prevyr', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='avg carboxylation rate at 25 celsius for canopy layers', units='umol CO2/m**2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%vcmx25_z_last_valid_patch)
-      call restartvar(ncid=ncid, flag=flag, varname='jmx25_z_last_valid_patch:jmx_prevyr', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='avg rate of electron transport at 25 Celcius for canopy layers', units='umol electrons/m**2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%jmx25_z_last_valid_patch)
-      call restartvar(ncid=ncid, flag=flag, varname='pnlc_z', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='proportion of leaf nitrogen allocated for light capture', units='unitless', &
-         interpinic_flag='interp', readvar=readvar, data=this%pnlc_z_patch )
-      call restartvar(ncid=ncid, flag=flag, varname='enzs_z', xtype=ncd_double,  &
-         dim1name='pft', dim2name='levcan', switchdim=.true., &
-         long_name='enzyme decay status during stress: 1.0-fully active; 0.0-all decayed', units='unitless', &
-         interpinic_flag='interp', readvar=readvar, data=this%enzs_z_patch )
-      call restartvar(ncid=ncid, flag=flag, varname='gpp24', xtype=ncd_double,  &
-            dim1name='pft', long_name='accumulative gross primary production', units='umol CO2/m**2 ground/day', &
-            interpinic_flag='interp', readvar=readvar, data=this%fpsn24_patch)    
-   endif
-   call restartvar(ncid=ncid, flag=flag, varname='vcmx25t', xtype=ncd_double,  &
-         dim1name='pft', long_name='canopy profile of vcmax25', &
-         units='umol/m2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%luvcmax25top_patch)    
-
-   call restartvar(ncid=ncid, flag=flag, varname='jmx25t', xtype=ncd_double,  &
-         dim1name='pft', long_name='canopy profile of jmax', &
-         units='umol/m2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%lujmax25top_patch)    
-
-   call restartvar(ncid=ncid, flag=flag, varname='tpu25t', xtype=ncd_double,  &
-         dim1name='pft', long_name='canopy profile of tpu', &
-         units='umol/m2/s', &
-         interpinic_flag='interp', readvar=readvar, data=this%lutpu25top_patch)    
-
-   call restartvar(ncid=ncid, flag=flag, varname='VPD_CAN', xtype=ncd_double,  &
-         dim1name='pft', long_name='canopy vapor pressure deficit', &
-         units='kPa', &                                             
-         interpinic_flag='interp', readvar=readvar, data=this%vpd_can_patch)
-
-
-
-  end subroutine Restart
+!  subroutine Restart(this, bounds, ncid, flag)
+!    !
+!    ! !USES:
+!    use ncdio_pio  , only : file_desc_t, ncd_defvar, ncd_io, ncd_double, ncd_int, ncd_inqvdlen
+!    use restUtilMod
+!    !
+!    ! !ARGUMENTS:
+!    class(photosyns_type) :: this
+!    type(bounds_type), intent(in)    :: bounds
+!    type(file_desc_t), intent(inout) :: ncid   ! netcdf id
+!    character(len=*) , intent(in)    :: flag   ! 'read' or 'write'
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: j,c ! indices
+!    logical :: readvar      ! determine if variable is on initial file
+!    !-----------------------------------------------------------------------
+!
+!    if ( use_c13 ) then
+!       call restartvar(ncid=ncid, flag=flag, varname='rc13_canair', xtype=ncd_double,  &
+!            dim1name='pft', long_name='', units='', &
+!            interpinic_flag='interp', readvar=readvar, data=this%rc13_canair_patch)
+!
+!       call restartvar(ncid=ncid, flag=flag, varname='rc13_psnsun', xtype=ncd_double,  &
+!            dim1name='pft', long_name='', units='', &
+!            interpinic_flag='interp', readvar=readvar, data=this%rc13_psnsun_patch)
+!
+!       call restartvar(ncid=ncid, flag=flag, varname='rc13_psnsha', xtype=ncd_double,  &
+!            dim1name='pft', long_name='', units='', &
+!            interpinic_flag='interp', readvar=readvar, data=this%rc13_psnsha_patch)
+!    endif
+!
+!    call restartvar(ncid=ncid, flag=flag, varname='GSSUN', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='sunlit leaf stomatal conductance', units='umol H20/m2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sun_patch)
+!    
+!    call restartvar(ncid=ncid, flag=flag, varname='GSSHA', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='shaded leaf stomatal conductance', units='umol H20/m2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sha_patch)
+!
+!    call restartvar(ncid=ncid, flag=flag, varname='GSSUNLN', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='sunlit leaf stomatal conductance averaged over 1 hour before to 1 hour after local noon', &
+!         units='umol H20/m2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sun_ln_patch)
+!
+!    call restartvar(ncid=ncid, flag=flag, varname='GSSHALN', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='shaded leaf stomatal conductance averaged over 1 hour before to 1 hour after local noon', &
+!         units='umol H20/m2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%gs_mol_sha_ln_patch)
+!    
+!    call restartvar(ncid=ncid, flag=flag, varname='lnca', xtype=ncd_double,  &
+!       dim1name='pft', long_name='leaf N concentration', units='gN leaf/m^2', &
+!       interpinic_flag='interp', readvar=readvar, data=this%lnca_patch)
+!
+!    if(use_luna) then
+!      call restartvar(ncid=ncid, flag=flag, varname='vcmx25_z', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='Maximum carboxylation rate at 25 Celcius for canopy layers', units='umol CO2/m**2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%vcmx25_z_patch)
+!      call restartvar(ncid=ncid, flag=flag, varname='jmx25_z', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='Maximum rate of electron transport at 25 Celcius for canopy layers', units='umol electrons/m**2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%jmx25_z_patch)
+!      call restartvar(ncid=ncid, flag=flag, varname='vcmx25_z_last_valid_patch:vcmx_prevyr', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='avg carboxylation rate at 25 celsius for canopy layers', units='umol CO2/m**2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%vcmx25_z_last_valid_patch)
+!      call restartvar(ncid=ncid, flag=flag, varname='jmx25_z_last_valid_patch:jmx_prevyr', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='avg rate of electron transport at 25 Celcius for canopy layers', units='umol electrons/m**2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%jmx25_z_last_valid_patch)
+!      call restartvar(ncid=ncid, flag=flag, varname='pnlc_z', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='proportion of leaf nitrogen allocated for light capture', units='unitless', &
+!         interpinic_flag='interp', readvar=readvar, data=this%pnlc_z_patch )
+!      call restartvar(ncid=ncid, flag=flag, varname='enzs_z', xtype=ncd_double,  &
+!         dim1name='pft', dim2name='levcan', switchdim=.true., &
+!         long_name='enzyme decay status during stress: 1.0-fully active; 0.0-all decayed', units='unitless', &
+!         interpinic_flag='interp', readvar=readvar, data=this%enzs_z_patch )
+!      call restartvar(ncid=ncid, flag=flag, varname='gpp24', xtype=ncd_double,  &
+!            dim1name='pft', long_name='accumulative gross primary production', units='umol CO2/m**2 ground/day', &
+!            interpinic_flag='interp', readvar=readvar, data=this%fpsn24_patch)    
+!   endif
+!   call restartvar(ncid=ncid, flag=flag, varname='vcmx25t', xtype=ncd_double,  &
+!         dim1name='pft', long_name='canopy profile of vcmax25', &
+!         units='umol/m2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%luvcmax25top_patch)    
+!
+!   call restartvar(ncid=ncid, flag=flag, varname='jmx25t', xtype=ncd_double,  &
+!         dim1name='pft', long_name='canopy profile of jmax', &
+!         units='umol/m2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%lujmax25top_patch)    
+!
+!   call restartvar(ncid=ncid, flag=flag, varname='tpu25t', xtype=ncd_double,  &
+!         dim1name='pft', long_name='canopy profile of tpu', &
+!         units='umol/m2/s', &
+!         interpinic_flag='interp', readvar=readvar, data=this%lutpu25top_patch)    
+!
+!   call restartvar(ncid=ncid, flag=flag, varname='VPD_CAN', xtype=ncd_double,  &
+!         dim1name='pft', long_name='canopy vapor pressure deficit', &
+!         units='kPa', &                                             
+!         interpinic_flag='interp', readvar=readvar, data=this%vpd_can_patch)
+!
+!
+!
+!  end subroutine Restart
 
   !------------------------------------------------------------------------------
   subroutine TimeStepInit (this, bounds)
