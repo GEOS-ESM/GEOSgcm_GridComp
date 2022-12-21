@@ -1,5 +1,6 @@
 module  PhotosynthesisMod
 
+#include "MAPL_Generic.h"
 #include "shr_assert.h"
 
   !------------------------------------------------------------------------------

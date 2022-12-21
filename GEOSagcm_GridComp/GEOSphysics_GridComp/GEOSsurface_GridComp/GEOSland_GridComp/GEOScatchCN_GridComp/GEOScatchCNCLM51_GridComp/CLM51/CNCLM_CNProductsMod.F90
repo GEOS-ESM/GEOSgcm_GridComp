@@ -1,3 +1,5 @@
+#include "MAPL_Generic.h"
+
 module CNProductsMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
