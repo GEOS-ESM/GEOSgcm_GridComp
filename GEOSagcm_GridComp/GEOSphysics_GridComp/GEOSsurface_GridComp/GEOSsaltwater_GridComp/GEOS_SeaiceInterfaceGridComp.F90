@@ -2306,7 +2306,6 @@ contains
    logical, dimension(1)               :: OBSERVE
 
 
-   real,    dimension(NT)              :: FSWABS
    real                                :: YDAY 
    real,    dimension(NT)              :: ALBVRI
    real,    dimension(NT)              :: ALBVFI
@@ -2319,11 +2318,6 @@ contains
    real,               allocatable    :: ALBNFN        (:,:)
 
    real,               allocatable    :: TS_OLD        (:,:)
-
-   real,               allocatable    :: DRUVRTHRU     (:,:)
-   real,               allocatable    :: DFUVRTHRU     (:,:)
-   real,               allocatable    :: DRPARTHRU     (:,:)
-   real,               allocatable    :: DFPARTHRU     (:,:)
 
    real,               allocatable    :: FSURF         (:,:) ! non-solar part 
    real,               allocatable    :: DFSURFDTS     (:,:) ! 
@@ -2656,44 +2650,8 @@ contains
     !*CALLBACK*
     !==============================================================================================
 
-! retrieve the regridding from the "private" wrapped state
-! if block only executes during the first time step
-! check with Atanas about moving this block to Initialize()?
-
-    if (.not. mystate%retrievedRootGC) then
-       block
-         type WRAP_X
-            type (MAPL_LocStreamXform), pointer :: PTR => null()
-         end type WRAP_X
-         type WRAP_L
-            type (MAPL_LocStream), pointer :: PTR => null()
-         end type WRAP_L
-
-         type(ESMF_GridComp) :: rootGC
-         type(WRAP_X) :: wrap_xform
-         type(WRAP_L) :: wrap_locstream
-
-         rootGC = MAPL_RootGcRetrieve(MAPL)
-!??         ASSERT_(associated(rootGC%ptr))
-
-         call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_A2O', &
-              wrap_xform,status )
-         VERIFY_(STATUS)
-         mystate%XFORM_A2O => wrap_xform%ptr
-         call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_O2A', &
-              wrap_xform, status )
-         VERIFY_(STATUS)
-         mystate%XFORM_O2A => wrap_xform%ptr
-         call ESMF_UserCompGetInternalState ( rootGC, 'GCM_LOCSTREAM_OCEAN', &
-              wrap_locstream, status )
-         VERIFY_(STATUS)
-         mystate%locStreamO => wrap_locstream%ptr
-       end block
-       mystate%retrievedRootGC = .true.
-    end if
-    XFORM_A2O = mystate%XFORM_A2O
-    XFORM_O2A = mystate%XFORM_O2A
-    locStreamO = mystate%locStreamO
+    ! retrieve the regridding from the "private" wrapped state
+    call RetrieveTransforms(mapl, mystate, XFORM_A2O, XFORM_O2A, locStreamO, __RC__) 
 
     call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, __RC__)
 
@@ -2730,7 +2688,7 @@ contains
           CFQ     = (CQ(:,N)/CQATM)
 !         Aggregate ts and qs change over ice categories
           TS(:,N) = TS(:,N) + AS_PTR_2D(:,N)
-          DTS     =  AS_PTR_2D(:,N)           
+          DTS     = AS_PTR_2D(:,N)           
           DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
           QS(:,N) = QS(:,N) + DQS
 
@@ -2745,7 +2703,6 @@ contains
     !
     !      surface flux and temperature updated by sea ice
     !      continue updating relevant fields and pass them to surf
-    !    DTS = AS_PTR_2D - TS
     !    .....
     !
     deallocate(AS_PTR_2D)
@@ -3108,6 +3065,63 @@ end subroutine RUN2
   end subroutine ALBSEAICEM2
 
 
+  subroutine RetrieveTransforms(mapl, mystate, XFORM_A2O, XFORM_O2A, locStreamO, rc) 
+
+    type (MAPL_MetaComp),         pointer, intent(in    ) :: MAPL
+    type(seaice_interface_state), pointer, intent(inout ) :: mystate
+    type(MAPL_LocStream),                  intent(out   ) :: locStreamO
+    type(MAPL_LocStreamXform),             intent(out   ) :: xform_A2O
+    type(MAPL_LocStreamXform),             intent(out   ) :: xform_O2A
+    integer, optional,                     intent(out   ) :: rc
+
+    type WRAP_X
+            type (MAPL_LocStreamXform), pointer :: PTR => null()
+    end type WRAP_X
+    type WRAP_L
+            type (MAPL_LocStream), pointer :: PTR => null()
+    end type WRAP_L
+
+    type(ESMF_GridComp) :: rootGC
+    type(WRAP_X)        :: wrap_xform
+    type(WRAP_L)        :: wrap_locstream
+    integer             :: status
+
+    character(len=ESMF_MAXSTR)              :: IAm
+
+    Iam = "RetrieveTransforms"
+
+    if (mystate%retrievedRootGC) then 
+       XFORM_A2O = mystate%XFORM_A2O
+       XFORM_O2A = mystate%XFORM_O2A
+       locStreamO = mystate%locStreamO
+       RETURN_(ESMF_SUCCESS)
+    endif
+
+
+    rootGC = MAPL_RootGcRetrieve(MAPL)
+!??         ASSERT_(associated(rootGC%ptr))
+
+    call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_A2O', &
+              wrap_xform,status )
+    VERIFY_(STATUS)
+    mystate%XFORM_A2O => wrap_xform%ptr
+    call ESMF_UserCompGetInternalState ( rootGC, 'GCM_XFORM_O2A', &
+              wrap_xform, status )
+    VERIFY_(STATUS)
+    mystate%XFORM_O2A => wrap_xform%ptr
+    call ESMF_UserCompGetInternalState ( rootGC, 'GCM_LOCSTREAM_OCEAN', &
+              wrap_locstream, status )
+    VERIFY_(STATUS)
+    mystate%locStreamO => wrap_locstream%ptr
+
+    mystate%retrievedRootGC = .true.
+    XFORM_A2O = mystate%XFORM_A2O
+    XFORM_O2A = mystate%XFORM_O2A
+    locStreamO = mystate%locStreamO
+
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine RetrieveTransforms
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end module GEOS_SeaiceInterfaceGridComp
