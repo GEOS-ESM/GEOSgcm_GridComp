@@ -50,7 +50,9 @@ subroutine SetServices ( GC, RC )
     character(len=ESMF_MAXSTR)   :: CATCHCN_VERSION
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF
-    integer :: DO_GOSWIM, LSM_CHOICE, ATM_CO2
+    integer :: DO_GOSWIM, LSM_CHOICE, ATM_CO2, SNOW_ALBEDO_INFO
+    character(len=ESMF_MAXSTR)              :: tmp
+    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
 
 ! Begin...
 ! --------
@@ -63,19 +65,38 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
+    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    tmp = ''
+    if (NUM_LDAS_ENSEMBLE >1) then
+        !catchcn_exxxx
+        tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
+    endif
+
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=2, RC=STATUS) ; VERIFY_(STATUS)
+
+    ! SNOW ALBEDO -- so far, only parameterization based on look-up table is implemented for CatchCN
+    ! 0 : parameterization based on look-up table 
+    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
+    call ESMF_ConfigGetAttribute (SCF, label='SNOW_ALBEDO_INFO:', value=SNOW_ALBEDO_INFO, DEFAULT=0, RC=STATUS) ; VERIFY_(STATUS)
+
+    _ASSERT( SNOW_ALBEDO_INFO==0, "SNOW_ALBEDO_INFO must be 0 for CatchCN")
+
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
     if ( LSM_CHOICE == 2 ) then
-       CATCHCN = MAPL_AddChild('CATCHCNCLM40', 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
+       CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)       
     else if ( LSM_CHOICE == 3 ) then
-       CATCHCN = MAPL_AddChild('CATCHCNCLM45', 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM45_GridComp.so', RC=STATUS)
+       CATCHCN = MAPL_AddChild('CATCHCNCLM45'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM45_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)       
     else
        _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 3 (CLM45)")

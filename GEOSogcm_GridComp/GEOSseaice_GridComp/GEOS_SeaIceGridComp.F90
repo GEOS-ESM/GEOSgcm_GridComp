@@ -26,6 +26,7 @@ module GEOS_SeaIceGridCompMod
 
   character(len=ESMF_MAXSTR)          :: SEAICE_NAME
   integer                             :: DO_DATASEAICE
+  logical                             :: seaIceT_extData
 
 ! !DESCRIPTION:
 !
@@ -97,6 +98,8 @@ contains
 ! ---------------------
 
     call MAPL_GetResource ( MAPL,  DO_DATASEAICE,  Label="USE_DATASEAICE:" ,  DEFAULT=1, __RC__ )
+
+    call MAPL_GetResource ( MAPL,  seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
 
 ! Initialize these IDs (0 means not used)
 ! ---------------------------------------
@@ -174,6 +177,12 @@ contains
              SHORT_NAME = 'VI',                                   &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
+    if (seaIceT_extData) then
+      call MAPL_AddExportSpec ( GC   ,                          &
+           SHORT_NAME = 'SEAICETHICKNESS',                      &
+           CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+    endif
 
     if(DO_DATASEAICE==0) then
 
@@ -507,16 +516,16 @@ contains
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__ )
 ! phase 1
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        __RC__ )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,        __RC__ )
     if (DUAL_OCEAN) then
 ! phase 2 - this is only used in the predictor part of the replay for dual ocean
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,     __RC__ )
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,     __RC__ )
 ! phase 3 - this is only used in the corrector part of the replay for dual ocean
 !           ice nudging only
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run2,    __RC__ )
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2,    __RC__ )
 ! phase 4 - this is only used in the predictor part of the replay for dual ocean
 !           ice nudging only
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run2,    __RC__ )
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2,    __RC__ )
     end if
 
 

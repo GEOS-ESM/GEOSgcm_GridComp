@@ -39,6 +39,7 @@ module GEOS_GcmGridCompMod
   integer            :: DO_DATAATM
   integer            :: DO_OBIO
   integer            :: DO_DATASEA
+  logical            :: seaIceT_extData
 
 !=============================================================================
 
@@ -174,32 +175,25 @@ contains
 ! Get constants from CF
 ! ---------------------
 
-    call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, _RC)
 
     if (DO_CICE_THERMO /= 0) then
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
+       call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , _RC)
+       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     _RC)
     else 
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1  
     endif
 
-    call MAPL_GetResource ( MAPL, DO_OBIO,     Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATAATM,  Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATASEA,  Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_OBIO,     Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATAATM,  Label="USE_DATAATM:" ,        DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATASEA,  Label="USE_DATASEA:" ,        DEFAULT=1, _RC)
+    call MAPL_GetResource ( MAPL, seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
 
-    call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", _RC )
 
     ! Default is not to do dual_ocean
-    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, _RC)
     DUAL_OCEAN = iDUAL_OCEAN /= 0
     if (DUAL_OCEAN) then
        ASSERT_( adjustl(ReplayMode)=="Regular" )
@@ -274,9 +268,6 @@ contains
         IF(MAPL_AM_I_ROOT()) PRINT *,'Setting CORRECTOR_DURATION, to ',CORRECTOR_DURATION
     endif
 
-
-
-
   ! Get REPLAY Frequency and Reference Time Associated with Forcing Files
   ! ---------------------------------------------------------------------
     call MAPL_GetResource(MAPL,REPLAY_FILE_FREQUENCY,      Label="REPLAY_FILE_FREQUENCY:",      default=-999, rc=STATUS )
@@ -290,8 +281,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL,MKIAU_REFERENCE_TIME, Label="MKIAU_REFERENCE_TIME:", default=-999, rc=STATUS )
     VERIFY_(STATUS)
-
-
 
   ! Set MKIAU_FREQUENCY and REPLAY_FILE_FREQUENCY Defaults
   ! ------------------------------------------------------
@@ -318,7 +307,6 @@ contains
              IF(MAPL_AM_I_ROOT()) PRINT *,'Setting REPLAY_FILE_FREQUENCY, to ',REPLAY_FILE_FREQUENCY
     endif
 
-
   ! Set MKIAU_REFERENCE_TIME and REPLAY_FILE_REFERENCE_TIME Defaults
   ! ----------------------------------------------------------------
     if( (MKIAU_REFERENCE_TIME .eq. -999) .and. (REPLAY_FILE_REFERENCE_TIME .eq. -999) ) then
@@ -343,8 +331,6 @@ contains
              VERIFY_(STATUS)
              IF(MAPL_AM_I_ROOT()) PRINT *,'Setting REPLAY_FILE_REFERENCE_TIME, to ',REPLAY_FILE_REFERENCE_TIME
     endif
-
-
 
 ! Get REPLAY Parameters
 ! ---------------------
@@ -557,11 +543,11 @@ contains
     endif
 
 ! Next vars are explicitly connected through exchange grid transforms Run
-!---------------------------------------------------------------------------
+!-------------------------------------------------------------------------
 
-
-     call MAPL_TerminateImport    ( GC,   &
-          SHORT_NAME = [character(len=7) :: &
+    if (.not. seaIceT_extData) then
+       call MAPL_TerminateImport    ( GC,                           &
+            SHORT_NAME = [character(len=7) ::                       &
                          'TAUXW  ','TAUYW  ','TAUXI  ','TAUYI  ',   &
                          'OUSTAR3','PS     ',                       &
                          'HI     ','TI     ','SI     ' ,            &
@@ -570,24 +556,33 @@ contains
                          'DRNIR'  , 'DFNIR',                        &
                          'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
                          'FHOCN', 'PEN_OCN'],                       &
-          CHILD      = OGCM,                                        &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+            CHILD      = OGCM,                                      &
+            _RC)
+    else
+       call MAPL_TerminateImport    ( GC,                           &
+            SHORT_NAME = [character(len=7) ::                       &
+                         'TAUXW  ','TAUYW  ','TAUXI  ','TAUYI  ',   &
+                         'OUSTAR3','PS     ',                       &
+                         'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
+                         'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
+                         'DRNIR'  , 'DFNIR',                        &
+                         'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
+                         'FHOCN', 'PEN_OCN'],                       &
+            CHILD      = OGCM,                                      &
+            _RC)
+    endif
 
-
-
-     if (DO_OBIO/=0) then
+    if (DO_OBIO/=0) then
       call OBIO_TerminateImports(DO_DATAATM, RC)
-     end if
+    end if
 
-     if(DO_DATAATM /= 0) then
+    if(DO_DATAATM /= 0) then
         call MAPL_TerminateImport    ( GC,   & 
              SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
              'VI     ','TAUXBOT','TAUYBOT'/),         &
              CHILD      = AGCM,           &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-     end if
+             _RC)
+    endif
 
     if (DO_CICE_THERMO /= 0) then  
        call MAPL_TerminateImport    ( GC,   &
@@ -595,9 +590,8 @@ contains
                          'FRACICE', 'VOLICE ', 'VOLSNO ',              &
                          'ERGICE ', 'ERGSNO ', 'TAUAGE ', 'MPOND  '/),   &
           CHILD      = OGCM,           &
-          RC=STATUS  )
-       VERIFY_(STATUS)
-   endif 
+          _RC)
+    endif 
 
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
@@ -623,7 +617,6 @@ contains
        call history_setservice(_RC)
     end if
 
- 
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
@@ -864,7 +857,6 @@ contains
     call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCNAMES=GCNAMES, RC=STATUS )
     VERIFY_(STATUS)
 
-
 ! Create Atmospheric grid
 !------------------------
     call MAPL_GridCreate(GCS(AGCM), rc=status)
@@ -1008,7 +1000,6 @@ contains
                           calendar=cal, rc = STATUS  )
        VERIFY_(STATUS)
 
-
      ! Compute Time of First Call to MKIAU
      ! -----------------------------------
        if (rep_RefTime < currTime ) then
@@ -1026,7 +1017,6 @@ contains
           VERIFY_(STATUS)
        end if
 
-
      ! Create Alarms for REPLAYs Requiring 09 files
      ! --------------------------------------------
               ! EXACT REPLAY may require Correct_Step: agcm09_import
@@ -1043,7 +1033,6 @@ contains
                                                           RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
                 VERIFY_(STATUS)
 
-
      ! Compute PREDICTOR Duration
      ! --------------------------
        PREDICTOR_DURATION = rep_RefTime - currTime
@@ -1052,7 +1041,6 @@ contains
                  RingTime  = RingTime + MKIAU_FREQUENCY
        PREDICTOR_DURATION  = PREDICTOR_DURATION + MKIAU_FREQUENCY
        end do
-
 
      ! Check for User-Defined PREDICTOR_DURATION, and Check for Consistency with Computed Value
      ! ----------------------------------------------------------------------------------------
@@ -1119,7 +1107,6 @@ contains
            endif
        endif
 
-
        ! Creating REPLAY Alarms
        ! ----------------------
        RingTime = rep_StartTime
@@ -1146,7 +1133,6 @@ contains
 
        replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, RingInterval = Shutoff, sticky=.true., RC=STATUS )
        VERIFY_(STATUS)
-
 
      ! Put MKIAU_RingDate and MKIAU_RingTime into MAPL Config
      ! ------------------------------------------------------
@@ -1190,7 +1176,6 @@ contains
        CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
        VERIFY_(STATUS)
      ! IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Predictor Alarm is ringing? ",ESMF_AlarmIsRinging(PredictorIsActive)
-       
 
     if(gcm_internal_state%rplRegular) then
 
@@ -1324,8 +1309,10 @@ contains
                                      'TS_FOUND', 'SS_FOUND' /), RC=STATUS)
    VERIFY_(STATUS)
    if (DO_CICE_THERMO == 0) then  
-      call AllocateExports(GEX(OGCM), (/'FRACICE '/), RC=STATUS)
-      VERIFY_(STATUS)
+      call AllocateExports(GEX(OGCM), (/'FRACICE '/), _RC)
+      if (seaIceT_extData) then
+        call AllocateExports(GEX(OGCM), (/'SEAICETHICKNESS '/), _RC)
+      endif
    else
       call AllocateExports(GEX(OGCM), (/'TAUXIBOT', 'TAUYIBOT'/), RC=STATUS)
    end if
@@ -1968,67 +1955,52 @@ contains
 
 ! Copy attributes to deal with friendliness
 !------------------------------------------
-       call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', RC=STATUS)
-       VERIFY_(STATUS)
+       if (.not. seaIceT_extData) then
+         call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' ,_RC)
+         call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', _RC)
+         call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', _RC)
+       endif
        if (DO_CICE_THERMO /= 0) then  
-          call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR', RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_CopyFriendliness(GIM(OGCM),'VOLICE',expSKIN,'VOLICE', RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_CopyFriendliness(GIM(OGCM),'VOLSNO',expSKIN,'VOLSNO', RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_CopyFriendliness(GIM(OGCM),'ERGICE',expSKIN,'ERGICE', RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_CopyFriendliness(GIM(OGCM),'ERGSNO',expSKIN,'ERGSNO', RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_CopyFriendliness(GIM(OGCM),'TAUAGE',expSKIN,'TAUAGE', RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_CopyFriendliness(GIM(OGCM),'MPOND',expSKIN,'VOLPOND', RC=STATUS)
-          VERIFY_(STATUS)
+          call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR',    _RC)
+          call MAPL_CopyFriendliness(GIM(OGCM),'VOLICE',expSKIN,'VOLICE', _RC)
+          call MAPL_CopyFriendliness(GIM(OGCM),'VOLSNO',expSKIN,'VOLSNO', _RC)
+          call MAPL_CopyFriendliness(GIM(OGCM),'ERGICE',expSKIN,'ERGICE', _RC)
+          call MAPL_CopyFriendliness(GIM(OGCM),'ERGSNO',expSKIN,'ERGSNO', _RC)
+          call MAPL_CopyFriendliness(GIM(OGCM),'TAUAGE',expSKIN,'TAUAGE', _RC)
+          call MAPL_CopyFriendliness(GIM(OGCM),'MPOND',expSKIN,'VOLPOND', _RC)
        endif 
        
 ! Do the routing between the atm and ocean's decompositions of the exchage grid
 !------------------------------------------------------------------------------
-       call DO_A2O(GIM(OGCM),'HI'     ,expSKIN,'HSKINI' , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , RC=STATUS)
-       VERIFY_(STATUS)
+       if (.not. seaIceT_extData) then
+         call DO_A2O(GIM(OGCM),'HI'     ,expSKIN,'HSKINI' , _RC)
+         call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , _RC)
+       endif
        if (DO_CICE_THERMO == 0) then
-          call DO_A2O(GIM(OGCM),'TI'     ,expSKIN,'TSKINI' , RC=STATUS)
-          VERIFY_(STATUS)
+         if (.not. seaIceT_extData) then
+            call DO_A2O(GIM(OGCM),'TI'  ,expSKIN,'TSKINI' , _RC)
+         endif
        endif
 
        if (DO_CICE_THERMO /= 0) then  
           call DO_A2O_SUBTILES_R4R4(GIM(OGCM),'TI'     , SUBINDEXO, &
-               expSKIN  ,'TSKINI' , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
+               expSKIN  ,'TSKINI' , SUBINDEXO, _RC)
           call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'FRACICE', SUBINDEXO, &
-               expSKIN  ,'FR'     , SUBINDEXA, RC=STATUS)
-          VERIFY_(STATUS)
+               expSKIN  ,'FR'     , SUBINDEXA, _RC)
           call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'VOLICE' , SUBINDEXO, &
-               expSKIN  ,'VOLICE' , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
+               expSKIN  ,'VOLICE' , SUBINDEXO, _RC)
           call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'VOLSNO' , SUBINDEXO, &
-               expSKIN  ,'VOLSNO' , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
+               expSKIN  ,'VOLSNO' , SUBINDEXO, _RC)
           call DO_A2O_SUBTILES2D_R4R8(GIM(OGCM),'ERGICE' , SUBINDEXO, &
                expSKIN  ,'ERGICE' , SUBINDEXO, &
-               NUM_ICE_LAYERS, RC=STATUS)
-          VERIFY_(STATUS)
+               NUM_ICE_LAYERS,                 _RC)
           call DO_A2O_SUBTILES2D_R4R8(GIM(OGCM),'ERGSNO' , SUBINDEXO, &
                expSKIN  ,'ERGSNO' , SUBINDEXO, &
-               NUM_SNOW_LAYERS, RC=STATUS)
-          VERIFY_(STATUS)
+               NUM_SNOW_LAYERS,                _RC)
           call DO_A2O_SUBTILES_R4R4(GIM(OGCM),'TAUAGE' , SUBINDEXO, &
-               expSKIN  ,'TAUAGE' , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
+               expSKIN  ,'TAUAGE' , SUBINDEXO, _RC)
           call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'MPOND'   , SUBINDEXO, &
-               expSKIN  ,'VOLPOND' , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
+               expSKIN  ,'VOLPOND' , SUBINDEXO, _RC)
        endif
 
        if (DO_CICE_THERMO /= 0) then  
@@ -2101,18 +2073,18 @@ contains
        call MAPL_TimerOff(MAPL,"OGCM"     )
        call MAPL_TimerOff(MAPL,"--OCEAN"  )
 
-
        call MAPL_TimerOn (MAPL,"--O2A"  )
 
        if (DO_CICE_THERMO == 0) then
-         call DO_O2A(expSKIN, 'TSKINI'   , GIM(OGCM), 'TI'    , RC=STATUS)
-         VERIFY_(STATUS)
+         if (.not. seaIceT_extData) then
+           call DO_O2A(expSKIN, 'TSKINI'   , GIM(OGCM), 'TI'    , _RC)
+         endif
        endif
 
-       call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_O2A(expSKIN, 'SSKINI'   , GIM(OGCM), 'SI'    , RC=STATUS)
-       VERIFY_(STATUS)
+       if (.not. seaIceT_extData) then
+         call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , _RC)
+         call DO_O2A(expSKIN, 'SSKINI'   , GIM(OGCM), 'SI'    , _RC)
+       endif
 
        if (DO_CICE_THERMO /= 0) then  
           call DO_O2A_SUBTILES_R4R4(expSKIN  , 'TSKINI'     , SUBINDEXO,  &
@@ -2143,41 +2115,30 @@ contains
           VERIFY_(STATUS)
        endif  
 
-       call DO_O2A(impSKIN, 'UW'       , GEX(OGCM), 'UW'    , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_O2A(impSKIN, 'VW'       , GEX(OGCM), 'VW'    , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_O2A(impSKIN, 'KPAR'     , GEX(OGCM), 'KPAR'  , RC=STATUS)
-       VERIFY_(STATUS)
+       call DO_O2A(impSKIN, 'UW'       , GEX(OGCM), 'UW'    , _RC)
+       call DO_O2A(impSKIN, 'VW'       , GEX(OGCM), 'VW'    , _RC)
+       call DO_O2A(impSKIN, 'KPAR'     , GEX(OGCM), 'KPAR'  , _RC)
 
        if (DO_CICE_THERMO == 0) then
-          call DO_O2A(impSKIN, 'FRACICE'  , GEX(OGCM), 'FRACICE', RC=STATUS)
-          VERIFY_(STATUS)
+          call DO_O2A(impSKIN, 'FRACICE'  , GEX(OGCM), 'FRACICE', _RC)
+          if (seaIceT_extData) then
+            call DO_O2A(impSKIN, 'SEAICETHICKNESS'  , GEX(OGCM), 'SEAICETHICKNESS', _RC)
+          endif
        else
-          call DO_O2A(impSKIN, 'TAUXBOT'  , GEX(OGCM), 'TAUXIBOT', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_O2A(impSKIN, 'TAUYBOT'  , GEX(OGCM), 'TAUYIBOT', RC=STATUS)
-          VERIFY_(STATUS)
+          call DO_O2A(impSKIN, 'TAUXBOT'  , GEX(OGCM), 'TAUXIBOT', _RC)
+          call DO_O2A(impSKIN, 'TAUYBOT'  , GEX(OGCM), 'TAUYIBOT', _RC)
        end if
 
-       call DO_O2A(impSKIN, 'UI'       , GEX(OGCM), 'UI'    , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_O2A(impSKIN, 'VI'       , GEX(OGCM), 'VI'    , RC=STATUS)
-       VERIFY_(STATUS)
+       call DO_O2A(impSKIN, 'UI'       , GEX(OGCM), 'UI'    , _RC)
+       call DO_O2A(impSKIN, 'VI'       , GEX(OGCM), 'VI'    , _RC)
 
 ! OGCM export of TS_FOUND and SS_FOUND to SKIN
 !---------------------------------------------
-        call DO_O2A(impSKIN, 'TS_FOUND' , GEX(OGCM), 'TS_FOUND' , RC=STATUS)
-        VERIFY_(STATUS)
+        call DO_O2A(impSKIN, 'TS_FOUND' , GEX(OGCM), 'TS_FOUND' , _RC)
+        call DO_O2A(impSKIN, 'SS_FOUND' , GEX(OGCM), 'SS_FOUND' , _RC)
+        call DO_O2A(impSKIN, 'FRZMLT'   , GEX(OGCM), 'FRZMLT'   , _RC)
 
-        call DO_O2A(impSKIN, 'SS_FOUND' , GEX(OGCM), 'SS_FOUND' , RC=STATUS)
-        VERIFY_(STATUS)
-
-        call DO_O2A(impSKIN, 'FRZMLT'   , GEX(OGCM), 'FRZMLT'   , RC=STATUS)
-        VERIFY_(STATUS)
-
-        call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%alarmOcn, RC=STATUS)
-        VERIFY_(STATUS)
+        call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%alarmOcn, _RC)
 
        call MAPL_TimerOff(MAPL,"--O2A"  )
 

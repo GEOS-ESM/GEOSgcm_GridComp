@@ -9,7 +9,7 @@ if ( "$1" == "-h" | "$1" == "-help" | "$1" == "--help" ) set HELPMODE = YES
 
 if ( $HELPMODE == YES ) then
 
-   echo "Usage: `basename $0` [option]                                           "
+   echo "Usage: `basename $0` [-h]                                               "
    echo "                                                                        "
    echo "Boundary Conditions (BCs) Package:                                      " 
    echo "   Creates surface tile and other model parameter input files           "
@@ -24,8 +24,9 @@ if ( $HELPMODE == YES ) then
    echo "           Answer the following interactive questions:                  "
    echo "           a) Select Land BCs version.                                  "
    echo "           b) Select atmospheric resolution(s).                         "
+   echo "                (If applicable, select EASE grid version.)              "
    echo "           c) Select ocean resolution(s).                               "
-   echo "                (Not relevant for land-only EASE-grid BCs.)             "
+   echo "                (Not relevant for land-only EASE grid BCs.)             "
    echo "           d) Enter BCs output directory.                               "
    echo "           e) Enter sponsor code for computing account.                 "
    echo "                                                                        "
@@ -96,20 +97,23 @@ if ( $HELPMODE != YES ) then
    echo "----------------------------------------------------------------------------------------------"
    echo "                  Boundary Conditions (BCs) Package:"    
    echo "----------------------------------------------------------------------------------------------"
-   echo " "
-   echo "Enter 3-character alphanumeric code for land BCs version:"
-   echo "(Select only one.)"
-   echo " "
-else
-   echo "Options for land BCs version:"
 endif
-echo "   ${C2}F25 : Fortuna-2_5   (archived${CR}${C1}*${CR}${C2}: n/a)${CR}"
-echo "   ${C2}GM4 : Ganymed-4_0   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)${CR}"
-echo "   ${C2}ICA : Icarus        (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus/)${CR}"
-echo "   ${C2}NL3 : Icarus-NLv3   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)${CR}"
-echo "   ${C2}NL4 : NLv4 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)${CR}"
-echo "   ${C2}NL5 : NLv5 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)${CR}"
-echo "   ${C2}DEV : Development version${CR}"
+   
+echo " "
+echo "Options for land BCs version:"
+echo " "
+echo "   ${C2}F25 = Fortuna-2_5   (archived${CR}${C1}*${CR}${C2}: n/a)${CR}"
+echo "   ${C2}GM4 = Ganymed-4_0   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)${CR}"
+echo "   ${C2}ICA = Icarus        (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus/)${CR}"
+echo "   ${C2}NL3 = Icarus-NLv3   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)${CR}"
+echo "   ${C2}NL4 = NLv4 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)${CR}"
+echo "   ${C2}      = NL3 + JPL veg height{CR}"
+echo "   ${C2}NL5 = NLv5 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)${CR}"
+echo "   ${C2}      = NL3 + JPL veg height + PEATMAP${CR}"
+echo "   ${C2}v06   = NL3 + JPL veg height + PEATMAP + MODIS snow alb${CR}"
+echo "   ${C2}v07   = NL3 + PEATMAP${CR}"
+echo "   ${C2}v08   = NL3 + MODIS snow alb${CR}"
+echo "   ${C2}v09   = NL3 + PEATMAP + MODIS snow alb${CR}"
 echo "  "
 if ( $HELPMODE != YES ) then        
    echo "                         ${C1}       *BCs produced by this code will differ from BCs in archived directories\!\!\! ${CR}"
@@ -119,16 +123,12 @@ if ( $HELPMODE != YES ) then
    echo "                                 science is insignificant, and the parameter files produced by current"
    echo "                                 code are scientifically equivalent to the corresponding archived BCs."
    echo "                                 "
-   echo " OR press ENTER to select $lbcsv (current default).${CR}"
+   echo " Enter one 3-character alphanumeric code for land BCs version from the above list"
+   echo "   OR press ENTER to select $lbcsv (current default):${CR}"
    echo " "
-endif
 
-LBCSV:
-if ( $HELPMODE != YES ) then
-
+   LBCSV:
    set dummy = `echo $<`
-   
-   set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
    
    if( $dummy == 'F25'  | \
        $dummy == 'GM4'  | \
@@ -136,13 +136,16 @@ if ( $HELPMODE != YES ) then
        $dummy == 'NL3'  | \
        $dummy == 'NL4'  | \
        $dummy == 'NL5'  | \
-       $dummy == 'DEV') then
-      set lbcsv        = $dummy
+       $dummy == 'v06'  | \
+       $dummy == 'v07'  | \
+       $dummy == 'v08'  | \
+       $dummy == 'v09') then
+      set lbcsv = $dummy
    else if ( $dummy == '' ) then
       echo $lbcsv
    else
       echo " "
-      echo " ${C1} Invalid choice, try again:${CR}"
+      echo " ${C1} Invalid choice.  Note that entry is case-sensitive.  Try again:${CR}"
       goto LBCSV
    endif
 
@@ -152,19 +155,14 @@ endif
 #
 # Atmospheric Horizontal Resolution (HRCODE)
 
-if ( $HELPMODE != YES ) then
-   echo " "
-   echo "Enter 1-5 character alphanumeric code(s) for atmospheric horizontal resolution:"
-   echo "(Separate multiple entries by spaces.)"
-else
-   echo "Options for atmospheric horizontal resolution:"
-endif
+echo "Options for atmospheric horizontal resolution:"
+echo " "
 echo "   Lat/Lon            Cubed-Sphere                   EASE (land-only)"
-echo "   ${C2}b -- 2   deg         c12 -- 8    deg              m1  --  1km EASEv2 Grid ${CR}"
-echo "   ${C2}c -- 1   deg         c24 -- 4    deg              m3  --  3km EASEv2 Grid ${CR}"
-echo "   ${C2}d -- 1/2 deg         c48 -- 2    deg              m9  --  9km EASEv2 Grid ${CR}"
-echo "   ${C2}e -- 1/4 deg         c90 -- 1    deg              m36 -- 36km EASEv2 Grid ${CR}"
-echo "   ${C2}                    c180 -- 1/2  deg ${C1}( 56   km) ${CR}  ${C2}m25 -- 25km EASEv1 Grid ${CR}"
+echo "   ${C2}b -- 2   deg         c12 -- 8    deg              M01 --  1-km EASE Grid ${CR}"
+echo "   ${C2}c -- 1   deg         c24 -- 4    deg              M03 --  3-km EASE Grid ${CR}"
+echo "   ${C2}d -- 1/2 deg         c48 -- 2    deg              M09 --  9-km EASE Grid ${CR}"
+echo "   ${C2}e -- 1/4 deg         c90 -- 1    deg              M25 -- 25-km EASE Grid ${CR}"
+echo "   ${C2}                    c180 -- 1/2  deg ${C1}( 56   km) ${CR}  ${C2}M36 -- 36-km EASE Grid ${CR}"
 echo "   ${C2}                    c360 -- 1/4  deg ${C1}( 28   km) ${CR}"
 echo "   ${C2}                    c720 -- 1/8  deg ${C1}( 14   km) ${CR}"
 echo "   ${C2}                    c768 -- 1/10 deg ${C1}( 12   km) ${CR}"
@@ -176,15 +174,18 @@ echo "   ${C2}                   c2880 -- 1/32 deg ${C1}(  3   km) ${CR}"
 echo "   ${C2}                   c3072 -- 1/32 deg ${C1}(  3   km) ${CR}"
 echo "   ${C2}                   c5760 -- 1/64 deg ${C1}(  1.5 km) ${CR}"
 #echo "   ${C2}o --  other${CR} Lat/Lon or Cube"
-echo " "
+echo " "                                                        
 
-HRCODE:
 if ( $HELPMODE != YES ) then
 
+   echo " "
+   echo "Enter alphanumeric code(s) for atmospheric horizontal resolution from the above list"
+   echo "(separate multiple entries by spaces):"
+
+   HRCODE:
    set dummy = `echo $<`
    if (${%dummy} == 0) set dummy = "BLANK"
    
-   set dummy = `echo $dummy | tr "[:upper:]" "[:lower:]"`
    set HRCODES =  $dummy[1]
 
    foreach HRCODE ($dummy)
@@ -208,12 +209,12 @@ if ( $HELPMODE != YES ) then
           $HRCODE != 'c2880'   & \
           $HRCODE != 'c3072'   & \
           $HRCODE != 'c5760'   & \
-          $HRCODE != 'm1'      & \
-          $HRCODE != 'm3'      & \
-          $HRCODE != 'm9'      & \
-          $HRCODE != 'm36'     & \
-          $HRCODE != 'm25')    then  
-          echo " ${C1} Invalid choice, try again:${CR}"
+          $HRCODE != 'M01'     & \
+          $HRCODE != 'M03'     & \
+          $HRCODE != 'M09'     & \
+          $HRCODE != 'M25'     & \
+          $HRCODE != 'M36')    then  
+          echo " ${C1} Invalid choice.  Note that entries are case-sensitive.  Try again:${CR}"
           goto HRCODE
       endif
       if( $HRCODE != "$HRCODES" ) set HRCODES = `echo ${HRCODES} ${HRCODE}`
@@ -225,27 +226,64 @@ if ( $HELPMODE != YES ) then
       set Resolution = `echo $<`
    endif
 
-   # figure out if one or more of the selected atmospheric resolutions is an EASE grid
-
-   set isEASE = 0
-
-   foreach HRCODE ($HRCODES)
-      if( $HRCODE == 'm1'      | \
-          $HRCODE == 'm3'      | \
-          $HRCODE == 'm9'      | \
-          $HRCODE == 'm36'     | \
-          $HRCODE == 'm25')    then  
-	  set isEASE = 1
-      endif
-   end
-   
 else
 
    set HRCODE  = null
    set HRCODES = null
    
-endif
+endif   # if ( $HELPMODE != YES )
 
+# --------------------------------
+# 
+# EASE Grid Version (EASEVERSION)
+
+# set default EASE version
+set EASEVERSION = EASEv2
+
+echo "                                                     Options for EASE grid version (land-only):"
+echo "                                                     ${C2}EASEv1${CR}"
+echo "                                                     ${C2}EASEv2 (default)${CR}"
+echo " "
+
+set isEASE = 0
+
+if ( $HELPMODE != YES ) then
+
+    # figure out if one or more of the selected atmospheric resolutions is an EASE grid
+
+    foreach HRCODE ($HRCODES)
+	if( $HRCODE == 'M01'    | \
+            $HRCODE == 'M03'    | \
+            $HRCODE == 'M09'    | \
+            $HRCODE == 'M25'    | \
+            $HRCODE == 'M36')         then  
+	      set isEASE = 1
+        endif
+    end
+
+    if ( $isEASE > 0 ) then
+
+	echo "Enter one EASE grid version from the above list"
+	echo "  OR press ENTER to select $EASEVERSION (current default):${CR}"
+	echo " "
+
+	EASE_VERSION:
+	set dummy = `echo $<`
+
+	if( $dummy == 'EASEv1'  | \
+	    $dummy == 'EASEv2')       then 
+	    set EASEVERSION = $dummy
+	else if ( $dummy == '' ) then
+	    echo $EASEVERSION
+	else
+	    echo " "
+	    echo " ${C1} Invalid choice.  Note that entry is case-sensitive.  Try again:${CR}"
+	    echo " "
+	    goto EASE_VERSION
+	endif
+    endif
+   
+endif
 
 #######################################################################
 #
@@ -254,21 +292,16 @@ endif
 if ($isEASE > 0) then
    set orslvs = O1
 
-   echo " ${C1}---------------------------------------------------------------------- ${CR}"
-   echo " ${C1}   Selected atmospheric resolution(s) include(s) EASE grid(s).         ${CR}"
-   echo " ${C1}   Setting ocean resolution to $orslvs \!\!\!                          ${CR}"
-   echo " ${C1}   For a choice of ocean resolutions, exclude EASE grid selection(s)   ${CR}"
-   echo " ${C1}   from selected atmospheric resolution(s) and process separately.     ${CR}"
-   echo " ${C1}-----------------------------------------------------------------------${CR}"
+   echo " ${C1}----------------------------------------------------------------------- ${CR}"
+   echo " ${C1}   Selected atmospheric resolution(s) include(s) at least one EASE grid.${CR}"
+   echo " ${C1}   Setting ${CR}ocean resolution ${C1}to $orslvs \!\!\!                 ${CR}"
+   echo " ${C1}   For a choice of ocean resolutions, exclude EASE grid selection(s)    ${CR}"
+   echo " ${C1}   from selected atmospheric resolution(s) and process separately.      ${CR}"
+   echo " ${C1}------------------------------------------------------------------------${CR}"
    echo " "
 else
-   if ( $HELPMODE != YES ) then
-      echo " "
-      echo "Enter 2-6 character alphanumeric code(s) for ocean horizontal resolution:"
-      echo "(Separate multiple entries by spaces.)"
-   else
-      echo "Options for ocean horizontal resolution:"
-   endif
+   echo "Options for ocean horizontal resolution:"
+   echo " "
    echo "   ${C2}O1     --  Low-Resolution  Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:    360x180 )"
    echo "   ${C2}O2     --  Med-Resolution  Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean:   1440x720 )"
    echo "   ${C2}O3     --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean:   2880x1440)"
@@ -283,13 +316,16 @@ else
 
    if ( $HELPMODE == YES ) exit 
 
+   echo " "
+   echo "Enter 2-6 character alphanumeric code(s) for ocean horizontal resolution from the above list."
+   echo "(Separate multiple entries by spaces.)"
+
 ORSLV:
 
    set dummy = `echo $<`
 
    if (${%dummy} == 0) set dummy = "BLANK"
    
-   set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
    set orslvs =  $dummy[1]
 
    foreach orslv ($dummy)
@@ -303,7 +339,7 @@ ORSLV:
           $orslv != 'T2MOM6' & \
           $orslv != 'T4MOM6' & \
           $orslv != 'CS')    then
-          echo " ${C1} Invalid choice, try again:${CR}"
+          echo " ${C1} Invalid choice.  Note that entries are case-sensitive.  Try again:${CR}"
           goto ORSLV
       endif
       if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
@@ -356,11 +392,14 @@ endif
 
 #######################################################################
 
-echo ""
-echo "${C1} Land BCs version:${CR}       ${C2}$lbcsv${CR}"
-echo "${C1} Atmospheric resolution:${CR} ${C2}$HRCODES${CR}"
-echo "${C1} Ocean resolution:${CR}       ${C2}$orslvs${CR}"
-echo "${C1} Output directory:${CR}       ${C2}$EXPDIR${CR}"
+echo    ""
+echo    "${C1} Land BCs version:${CR}       ${C2}$lbcsv${CR}"
+echo    "${C1} Atmospheric resolution:${CR} ${C2}$HRCODES${CR}"
+if ( $isEASE > 0) then
+   echo "${C1} EASE grid version:${CR}      ${C2}$EASEVERSION${CR}"
+endif
+echo    "${C1} Ocean resolution:${CR}       ${C2}$orslvs${CR}"
+echo    "${C1} Output directory:${CR}       ${C2}$EXPDIR${CR}"
 
 #######################################################################
 #######################################################################
@@ -418,7 +457,7 @@ else
 
 endif
 
-if($HRCODE == m1 | $HRCODE == m3 | $HRCODE == m9 | $HRCODE == m36 | $HRCODE == m25) then
+if($HRCODE == M01 | $HRCODE == M03 | $HRCODE == M09 | $HRCODE == M25 | $HRCODE == M36) then
      set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask.nc
 endif
 
@@ -620,36 +659,68 @@ if( $HRCODE == c5760 ) then
      @ NX = 43200
      @ NY = 21600
 endif
-if( $HRCODE == m1 ) then
-     set im = 34704
-     set jm = 14616
-     set grid = ease
-     set MGRID = M01
+
+if ( $isEASE > 0 ) then
+
+    set grid = ease
+
+    # im, jm must be consistent with values Fortran module EASE_conv
+
+    if      ( $EASEVERSION == EASEv1 ) then
+
+	if( $HRCODE == M01 ) then
+	    set im = 34668                
+	    set jm = 14688
+	endif
+	if( $HRCODE == M03 ) then
+	    set im = 11556
+	    set jm = 4896
+	endif
+	if( $HRCODE == M09 ) then
+	    set im = 3852
+	    set jm = 1632
+	endif
+	if( $HRCODE == M25 ) then
+	    set im = 1383
+	    set jm = 586
+	endif
+	if( $HRCODE == M36 ) then
+	    set im = 963
+	    set jm = 408
+	endif
+
+    else if ( $EASEVERSION == EASEv2 ) then
+
+	if( $HRCODE == M01 ) then
+	    set im = 34704                
+	    set jm = 14616
+	endif
+	if( $HRCODE == M03 ) then
+	    set im = 11568
+	    set jm = 4872
+	endif
+	if( $HRCODE == M09 ) then
+	    set im = 3856
+	    set jm = 1624
+	endif
+	if( $HRCODE == M25 ) then
+	    set im = 1388
+	    set jm = 584
+	endif
+	if( $HRCODE == M36 ) then
+	    set im = 964
+	    set jm = 406
+	endif
+
+    else
+
+	echo " \!\!\!\! Invalid EASE grid version, stopping \!\!\!\! "
+	exit
+	
+    endif
 endif
-if( $HRCODE == m3 ) then
-     set im = 11568
-     set jm = 4872
-     set grid = ease
-     set MGRID = M03
-endif
-if( $HRCODE == m9 ) then
-     set im = 3856
-     set jm = 1624
-     set grid = ease
-     set MGRID = M09
-endif
-if( $HRCODE == m36 ) then
-     set im = 964
-     set jm = 406
-     set grid = ease
-     set MGRID = M36
-endif
-if( $HRCODE == m25 ) then
-     set im = 1383
-     set jm = 586
-     set grid = ease
-     set MGRID = M25
-endif
+
+
 if( $MASKFILE == GEOS5_10arcsec_mask_freshwater-lakes.nc | $MASKFILE == GEOS5_10arcsec_mask.nc ) then
      @ NX = 43200
      @ NY = 21600
@@ -928,7 +999,6 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/M
 
 cd data 
 ln -s $input_dir CATCH
-
 cd ../
  
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
@@ -1254,41 +1324,35 @@ endif # End Cube Test
 #######################################################################
 
 if( $grid == ease ) then
-echo $HRCODE 
+  echo $HRCODE 
 
-if( $HRCODE == m25 ) then
-set EVERSION = EASE
-else
-set EVERSION = EASEv2
-endif
+  set RS  = ${im}x${jm}
+  set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
+  set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
-set RS  = ${im}x${jm}
-set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
-set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
+  set             BCNAME = SMAP_${EASEVERSION}_${HRCODE}
+  set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
+  set             BCJOB  = $BCDIR/$BCNAME.j
+  set             THISGRID = SMAP-${EASEVERSION}-${HRCODE}
 
-set             BCNAME = SMAP_${EVERSION}_${MGRID}
-set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
-set             BCJOB  = $BCDIR/$BCNAME.j
-set           THISGRID = SMAP-${EVERSION}-${MGRID}
+  set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
+  if( $nfiles >= 1 ) then
+    echo ""
+    echo "${C1} ----------------------------------------------------${CR}"
+    echo "${C1}                 Abort:                              ${CR}"
+    echo "${C2} This BCS run $BCDIR ${CR}"
+    echo "${C2} will create resolution dir already present: $BCNAME ${CR}"
+    echo "${C2} Please delete run dir and same resolution BCS files and resubmit"
+    echo "${C1} ----------------------------------------------------${CR}"
+    echo ""
+    exit
+  endif
 
-set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
-if( $nfiles >= 1 ) then
-  echo ""
-  echo "${C1} ----------------------------------------------------${CR}"
-  echo "${C1}                 Abort:                              ${CR}"
-  echo "${C2} This BCS run $BCDIR ${CR}"
-  echo "${C2} will create resolution dir already present: $BCNAME ${CR}"
-  echo "${C2} Please delete run dir and same resolution BCS files and resubmit"
-  echo "${C1} ----------------------------------------------------${CR}"
-  echo ""
-  exit
-endif
+  mkdir -p $BCDIR 
+  mkdir -p $EXPDIR/$OUTDIR/logs
 
-mkdir -p $BCDIR 
-mkdir -p $EXPDIR/$OUTDIR/logs
-
-echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
-/bin/rm -f     $BCJOB
+  echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
+  /bin/rm -f     $BCJOB
 
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
@@ -1310,38 +1374,31 @@ cd data
 ln -s $input_dir CATCH
 cd ../
 limit stacksize unlimited
-if ( $EVERSION == EASEv2 ) then
-setenv MASKFILE ${MASKFILE}
-## This section was used to make Irrigated Tiles
-##if(${MGRID} == M09 | ${MGRID} == M36) then 
-##    bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
-##    bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -pfaf_til T
-##    bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
-##    bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
-##    /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
-##endif
-setenv OMP_NUM_THREADS 1
-bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -v $lbcsv 
-setenv OMP_NUM_THREADS ${NCPUS}
-head -1 clsm/mkCatchParam.log > smap_cmd
-chmod 755 smap_cmd
-./smap_cmd
-chmod 755 bin/create_README.csh
-bin/create_README.csh
-else
+
+#if ( $EASEVERSION == EASEv2 ) then
+   ## This section was used to make Irrigated Tiles
+   ##if(${HRCODE} == M09 | ${HRCODE} == M36) then 
+   ##    bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
+   ##    bin/mkEASETilesParam.x -ease_label ${HRCODE} -pfaf_til T
+   ##    bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
+   ##    bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
+   ##    /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
+   ##endif
+#endif
+
 setenv MASKFILE ${MASKFILE}
 setenv OMP_NUM_THREADS 1
-bin/mkSMAPTilesPara.x -smap_grid ${MGRID}
+bin/mkEASETilesParam.x -ease_label ${BCNAME} 
+
+setenv OMP_NUM_THREADS 1
+bin/mkCatchParam.x -g ${BCNAME} -v $lbcsv -x ${NX} -y ${NY}
 setenv OMP_NUM_THREADS ${NCPUS}
-head -1 clsm/mkCatchParam.log > smap_cmd
-chmod 755 smap_cmd
-./smap_cmd
+bin/mkCatchParam.x -g ${BCNAME} -v $lbcsv -x ${NX} -y ${NY}
 chmod 755 bin/create_README.csh
 bin/create_README.csh
-endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
-/bin/cp til/SMAP_${EVERSION}_${MGRID}_${RS}.til clsm.${IM}x${JM}
+/bin/cp til/SMAP_${EASEVERSION}_${HRCODE}_${RS}.til clsm.${IM}x${JM}
 ##/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.TIL clsm.${IM}x${JM}
 
 cd clsm.${IM}x${JM}
@@ -1357,9 +1414,9 @@ cd clsm.${IM}x${JM}
 
 cd ../
 
-/bin/rm -rf              SMAP_${EVERSION}_${MGRID}
-/bin/mv clsm.${IM}x${JM} SMAP_${EVERSION}_${MGRID}
-                     cd  SMAP_${EVERSION}_${MGRID} 
+/bin/rm -rf              SMAP_${EASEVERSION}_${HRCODE}
+/bin/mv clsm.${IM}x${JM} SMAP_${EASEVERSION}_${HRCODE}
+                     cd  SMAP_${EASEVERSION}_${HRCODE} 
                    mkdir clsm
                  /bin/mv ar.new \
                          bf.dat \
@@ -1389,8 +1446,8 @@ cd ../
                          clsm
                      cd  ../ 
 
-/bin/mv rst  SMAP_${EVERSION}_${MGRID}
-/bin/mv til  SMAP_${EVERSION}_${MGRID}
+/bin/mv rst  SMAP_${EASEVERSION}_${HRCODE}
+/bin/mv til  SMAP_${EASEVERSION}_${HRCODE}
 
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
@@ -1400,7 +1457,7 @@ cd ../../
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm IRRIG/$BCNAME/rst
-#bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t SMAP_${EVERSION}_${MGRID}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
+#bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t SMAP_${EASEVERSION}_${HRCODE}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
 #/bin/cp $BCNAME/${THISGRID}_${THISGRID}-Pfafstetter.TIL IRRIG/$BCNAME/.
 _EOF_
 
