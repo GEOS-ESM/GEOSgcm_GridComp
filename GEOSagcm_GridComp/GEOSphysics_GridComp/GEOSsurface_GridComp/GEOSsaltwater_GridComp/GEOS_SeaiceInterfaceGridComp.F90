@@ -2284,8 +2284,6 @@ contains
    real,    dimension(NT)              :: TYI
    real,    dimension(NT)              :: DQS
    real,    dimension(NT)              :: DTS
-   real,    dimension(NT)              :: DTX
-   real,    dimension(NT)              :: DTY
    real,    dimension(NT)              :: SWN
    real,    dimension(NT)              :: PEN
    real,    dimension(NT)              :: LHF
@@ -2652,7 +2650,7 @@ contains
           EVAPN(:,N)      = -EVP !!! check the sign
           LHFN(:,N)       = -LHF !!! check the sign
 
-    end do categories_th1_
+    enddo categories_th1_
 
 
     !*CALLBACK*
@@ -2726,6 +2724,22 @@ contains
 
     call RegridO2A_2d(AS_PTR_2D, SURFST, 'DTS', &
          XFORM_O2A, locstreamO, __RC__)
+
+    update_surf: do N=ICE, NUM_SUBTILES   ! Loop over ice catgories. 
+          CFT     = (CH(:,N)/CTATM)
+          CFQ     = (CQ(:,N)/CQATM)
+!         Aggregate ts and qs change over ice categories
+          TS(:,N) = TS(:,N) + AS_PTR_2D(:,N)
+          DTS     =  AS_PTR_2D(:,N)           
+          DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
+          QS(:,N) = QS(:,N) + DQS
+
+          if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
+          if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
+    end do update_surf
+
+    if(associated(DELTS  )) call Normalize(DELTS,  FRCICE) 
+    if(associated(DELQS  )) call Normalize(DELQS,  FRCICE) 
 
     !************************************************************************************************
     !
