@@ -83,6 +83,8 @@ module clm_varctl
   integer, public :: spinup_state = 0
 
   logical, public :: use_snicar_frc      = .false.
+
+  integer, public :: carbon_resp_opt = 0
 contains
 
 !---------------------------------------

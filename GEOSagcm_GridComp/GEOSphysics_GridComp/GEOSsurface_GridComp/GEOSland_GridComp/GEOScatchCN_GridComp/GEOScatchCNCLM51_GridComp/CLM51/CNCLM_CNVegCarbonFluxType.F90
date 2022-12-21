@@ -17,7 +17,11 @@ module CNVegCarbonFluxType
                                 igrain,igrain_st,igrain_xf,ioutc
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
+  use clm_varctl       , only : use_crop, use_matrixcn, use_cndv, use_grainproduct
+  use clm_varcon       , only : dzsoi_decomp
+  use pftconMod        , only : npcropmin
   use clm_varcon       , only : spval
+  use ColumnType       , only : col
   use PatchType        , only : patch
   use AnnualFluxDribbler                 , only : annual_flux_dribbler_type, annual_flux_dribbler_gridcell
 
@@ -479,7 +483,7 @@ type(cnveg_carbonflux_type), public, target, save :: cnveg_carbonflux_inst
 contains
 
 !---------------------------------------
- subroutine init_cnveg_carbonflux_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start)
+ subroutine init_cnveg_carbonflux_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start, rc)
 
 ! !DESCRIPTION:
 ! Initialize CTSM carbon fluxes
@@ -498,6 +502,7 @@ contains
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
     logical, optional,                            intent(in) :: cn5_cold_start
     type(cnveg_carbonflux_type),                  intent(inout):: this
+    integer, optional,                            intent(out) :: rc
 
     ! LOCAL
     integer  :: begp, endp
@@ -513,8 +518,8 @@ contains
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
-       (size(cnpft,3).ne.var_pft)))
+    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. 
+       (size(cnpft,3).ne.var_pft))) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
 

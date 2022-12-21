@@ -109,7 +109,7 @@ module AnnualFluxDribbler
 
      ! Public science methods
    !  procedure, public :: set_curr_delta  ! Set the delta state for this time step
-   !  procedure, public :: get_curr_flux   ! Get the current flux for this time step
+     procedure, public :: get_curr_flux   ! Get the current flux for this time step
    !  procedure, public :: get_dribbled_delta  ! Similar to get_curr_flux, but gets result as a delta rather than a per-second flux
    !  procedure, public :: get_amount_left_to_dribble_beg  ! Get the pseudo-state representing the amount that still needs to be dribbled in this and future time steps
    !  procedure, public :: get_amount_left_to_dribble_end  ! Get the pseudo-state representing the amount that still needs to be dribbled in just future time steps
@@ -285,50 +285,50 @@ contains
 !  end subroutine set_curr_delta
 !
 !  !-----------------------------------------------------------------------
-!  subroutine get_curr_flux(this, bounds, flux)
-!    !
-!    ! !DESCRIPTION:
-!    ! Gets the current flux for this timestep, and stores it in the flux argument.
-!    !
-!    ! This should be called AFTER set_curr_delta is called for the given timestep.
-!    !
-!    ! This will get the current flux for this timestep, which is the sum of (1) the
-!    ! dribbled flux from the last start-of-year timestep, and (2) the current timestep's
-!    ! flux, based on the delta passed in to set_curr_delta in this timestep, if this is
-!    ! not the start-of-year timestep.
-!    !
-!    ! !USES:
-!    !
-!    ! !ARGUMENTS:
-!    class(annual_flux_dribbler_type), intent(in) :: this
-!    type(bounds_type), intent(in) :: bounds
-!    real(r8), intent(out) :: flux( get_beg(bounds, this%bounds_subgrid_level) : )
-!    !
-!    ! !LOCAL VARIABLES:
-!    integer :: beg_index, end_index
-!    integer :: i
-!    real(r8) :: secs_per_year
-!    real(r8) :: dtime
-!    real(r8) :: flux_from_dribbling
-!    real(r8) :: flux_from_this_timestep
-!
-!    character(len=*), parameter :: subname = 'get_curr_flux'
-!    !-----------------------------------------------------------------------
-!
-!    beg_index = lbound(flux, 1)
-!    end_index = get_end(bounds, this%bounds_subgrid_level)
-!    SHR_ASSERT_ALL_FL((ubound(flux) == (/end_index/)), sourcefile, __LINE__)
-!
-!    secs_per_year = get_days_per_year() * secspday
-!    dtime = get_step_size_real()
-!
-!    do i = beg_index, end_index
-!       flux_from_dribbling = this%amount_to_dribble(i) / secs_per_year
-!       flux_from_this_timestep = this%amount_from_this_timestep(i) / dtime
-!       flux(i) = flux_from_dribbling + flux_from_this_timestep
-!    end do
-!
-!  end subroutine get_curr_flux
+  subroutine get_curr_flux(this, bounds, flux)
+    !
+    ! !DESCRIPTION:
+    ! Gets the current flux for this timestep, and stores it in the flux argument.
+    !
+    ! This should be called AFTER set_curr_delta is called for the given timestep.
+    !
+    ! This will get the current flux for this timestep, which is the sum of (1) the
+    ! dribbled flux from the last start-of-year timestep, and (2) the current timestep's
+    ! flux, based on the delta passed in to set_curr_delta in this timestep, if this is
+    ! not the start-of-year timestep.
+    !
+    ! !USES:
+    !
+    ! !ARGUMENTS:
+    class(annual_flux_dribbler_type), intent(in) :: this
+    type(bounds_type), intent(in) :: bounds
+    real(r8), intent(out) :: flux( get_beg(bounds, this%bounds_subgrid_level) : )
+    !
+    ! !LOCAL VARIABLES:
+    integer :: beg_index, end_index
+    integer :: i
+    real(r8) :: secs_per_year
+    real(r8) :: dtime
+    real(r8) :: flux_from_dribbling
+    real(r8) :: flux_from_this_timestep
+
+    character(len=*), parameter :: subname = 'get_curr_flux'
+    !-----------------------------------------------------------------------
+
+    beg_index = lbound(flux, 1)
+    end_index = get_end(bounds, this%bounds_subgrid_level)
+    SHR_ASSERT_ALL_FL((ubound(flux) == (/end_index/)), sourcefile, __LINE__)
+
+    secs_per_year = get_days_per_year() * secspday
+    dtime = get_step_size_real()
+
+    do i = beg_index, end_index
+       flux_from_dribbling = this%amount_to_dribble(i) / secs_per_year
+       flux_from_this_timestep = this%amount_from_this_timestep(i) / dtime
+       flux(i) = flux_from_dribbling + flux_from_this_timestep
+    end do
+
+  end subroutine get_curr_flux
 !
 !  !-----------------------------------------------------------------------
 !  subroutine get_dribbled_delta(this, bounds, delta)
