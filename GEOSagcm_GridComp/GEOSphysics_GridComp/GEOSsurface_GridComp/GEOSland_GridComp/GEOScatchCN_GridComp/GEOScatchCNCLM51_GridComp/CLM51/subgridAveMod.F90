@@ -28,7 +28,7 @@ module subgridAveMod
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: p2c   ! Perform an average patches to columns
  ! public :: p2l   ! Perform an average patches to landunits
- ! public :: p2g   ! Perform an average patches to gridcells
+  public :: p2g   ! Perform an average patches to gridcells
  ! public :: c2l   ! Perform an average columns to landunits
   public :: c2g   ! Perform an average columns to gridcells
  ! public :: l2g   ! Perform an average landunits to gridcells
@@ -43,10 +43,10 @@ module subgridAveMod
 !     module procedure p2l_1d
 !     module procedure p2l_2d
 !  end interface
-!  interface p2g
-!     module procedure p2g_1d
-!     module procedure p2g_2d
-!  end interface
+  interface p2g
+     module procedure p2g_1d
+     module procedure p2g_2d
+  end interface
 !  interface c2l
 !     module procedure c2l_1d
 !     module procedure c2l_2d
@@ -503,235 +503,235 @@ contains
 !  end subroutine p2l_2d
 !
 !  !-----------------------------------------------------------------------
-!  subroutine p2g_1d(bounds, parr, garr, p2c_scale_type, c2l_scale_type, l2g_scale_type)
-!    !
-!    ! !DESCRIPTION:
-!    ! Perfrom subgrid-average from patches to gridcells.
-!    ! Averaging is only done for points that are not equal to "spval".
-!    !
-!    ! !ARGUMENTS:
-!    type(bounds_type), intent(in) :: bounds        
-!    real(r8), intent(in)  :: parr( bounds%begp: )  ! input patch array
-!    real(r8), intent(out) :: garr( bounds%begg: )  ! output gridcell array
-!    character(len=*), intent(in) :: p2c_scale_type ! scale factor type for averaging
-!    character(len=*), intent(in) :: c2l_scale_type ! scale factor type for averaging (see note at top of module)
-!    character(len=*), intent(in) :: l2g_scale_type ! scale factor type for averaging
-!    !
-!    !  !LOCAL VARIABLES:
-!    integer  :: p,c,l,g,index                   ! indices
-!    logical  :: found                              ! temporary for error check
-!    real(r8) :: scale_p2c(bounds%begp:bounds%endp) ! scale factor
-!    real(r8) :: scale_c2l(bounds%begc:bounds%endc) ! scale factor
-!    real(r8) :: scale_l2g(bounds%begl:bounds%endl) ! scale factor
-!    real(r8) :: sumwt(bounds%begg:bounds%endg)     ! sum of weights
-!    !------------------------------------------------------------------------
-!
-!    ! Enforce expected array sizes
-!    SHR_ASSERT_ALL_FL((ubound(parr) == (/bounds%endp/)), sourcefile, __LINE__)
-!    SHR_ASSERT_ALL_FL((ubound(garr) == (/bounds%endg/)), sourcefile, __LINE__)
-!
-!    call build_scale_l2g(bounds, l2g_scale_type, &
-!         scale_l2g(bounds%begl:bounds%endl))
-!
-!    if (c2l_scale_type == 'unity') then
-!       do c = bounds%begc,bounds%endc
-!          scale_c2l(c) = 1.0_r8
-!       end do
-!    else if (c2l_scale_type == 'urbanf') then
-!       do c = bounds%begc,bounds%endc
-!          l = col%landunit(c) 
-!          if (lun%urbpoi(l)) then
-!             if (col%itype(c) == icol_sunwall) then
-!                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
-!             else if (col%itype(c) == icol_shadewall) then
-!                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
-!             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
-!                scale_c2l(c) = 3.0_r8
-!             else if (col%itype(c) == icol_roof) then
-!                scale_c2l(c) = 1.0_r8
-!             end if
-!          else
-!             scale_c2l(c) = 1.0_r8
-!          end if
-!       end do
-!    else if (c2l_scale_type == 'urbans') then
-!       do c = bounds%begc,bounds%endc
-!          l = col%landunit(c) 
-!          if (lun%urbpoi(l)) then
-!             if (col%itype(c) == icol_sunwall) then
-!                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
-!             else if (col%itype(c) == icol_shadewall) then
-!                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
-!             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
-!                scale_c2l(c) = 3.0 / (2.*lun%canyon_hwr(l) + 1.)
-!             else if (col%itype(c) == icol_roof) then
-!                scale_c2l(c) = 1.0_r8
-!             end if
-!          else
-!             scale_c2l(c) = 1.0_r8
-!          end if
-!       end do
-!    else
-!       write(iulog,*)'p2g_1d error: scale type ',c2l_scale_type,' not supported'
-!       call endrun(msg=errMsg(sourcefile, __LINE__))
-!    end if
-!
-!    if (p2c_scale_type == 'unity') then
-!       do p = bounds%begp,bounds%endp
-!          scale_p2c(p) = 1.0_r8
-!       end do
-!    else
-!       write(iulog,*)'p2g_1d error: scale type ',c2l_scale_type,' not supported'
-!       call endrun(msg=errMsg(sourcefile, __LINE__))
-!    end if
-!
-!    garr(bounds%begg : bounds%endg) = spval
-!    sumwt(bounds%begg : bounds%endg) = 0._r8
-!    do p = bounds%begp,bounds%endp
-!       if (patch%active(p) .and. patch%wtgcell(p) /= 0._r8) then
-!          c = patch%column(p)
-!          l = patch%landunit(p)
-!          if (parr(p) /= spval .and. scale_c2l(c) /= spval .and. scale_l2g(l) /= spval) then
-!             g = patch%gridcell(p)
-!             if (sumwt(g) == 0._r8) garr(g) = 0._r8
-!             garr(g) = garr(g) + parr(p) * scale_p2c(p) * scale_c2l(c) * scale_l2g(l) * patch%wtgcell(p)
-!             sumwt(g) = sumwt(g) + patch%wtgcell(p)
-!          end if
-!       end if
-!    end do
-!    found = .false.
-!    do g = bounds%begg, bounds%endg
-!       if (sumwt(g) > 1.0_r8 + 1.e-6_r8) then
-!          found = .true.
-!          index = g
-!       else if (sumwt(g) /= 0._r8) then
-!          garr(g) = garr(g)/sumwt(g)
-!       end if
-!    end do
-!    if (found) then
-!       write(iulog,*)'p2g_1d error: sumwt is greater than 1.0 at g= ',index
-!       call endrun(decomp_index=index, clmlevel=nameg, msg=errMsg(sourcefile, __LINE__))
-!    end if
-!
-!  end subroutine p2g_1d
-!
-!  !-----------------------------------------------------------------------
-!  subroutine p2g_2d(bounds, num2d, parr, garr, p2c_scale_type, c2l_scale_type, l2g_scale_type)
-!    !
-!    ! !DESCRIPTION:
-!    ! Perfrom subgrid-average from patches to gridcells.
-!    ! Averaging is only done for points that are not equal to "spval".
-!    !
-!    ! !USES:
-!    !
-!    ! !ARGUMENTS:
-!    type(bounds_type), intent(in) :: bounds            
-!    integer , intent(in)  :: num2d                     ! size of second dimension
-!    real(r8), intent(in)  :: parr( bounds%begp: , 1: ) ! input patch array
-!    real(r8), intent(out) :: garr( bounds%begg: , 1: ) ! output gridcell array
-!    character(len=*), intent(in) :: p2c_scale_type     ! scale factor type for averaging
-!    character(len=*), intent(in) :: c2l_scale_type     ! scale factor type for averaging (see note at top of module)
-!    character(len=*), intent(in) :: l2g_scale_type     ! scale factor type for averaging
-!    !
-!    ! !LOCAL VARIABLES:
-!    integer  :: j,p,c,l,g,index                     ! indices
-!    logical  :: found                                  ! temporary for error check
-!    real(r8) :: scale_p2c(bounds%begp:bounds%endp)     ! scale factor
-!    real(r8) :: scale_c2l(bounds%begc:bounds%endc)     ! scale factor
-!    real(r8) :: scale_l2g(bounds%begl:bounds%endl)     ! scale factor
-!    real(r8) :: sumwt(bounds%begg:bounds%endg)         ! sum of weights
-!    !------------------------------------------------------------------------
-!
-!    ! Enforce expected array sizes
-!    SHR_ASSERT_ALL_FL((ubound(parr) == (/bounds%endp, num2d/)), sourcefile, __LINE__)
-!    SHR_ASSERT_ALL_FL((ubound(garr) == (/bounds%endg, num2d/)), sourcefile, __LINE__)
-!
-!    call build_scale_l2g(bounds, l2g_scale_type, &
-!         scale_l2g(bounds%begl:bounds%endl))
-!
-!    if (c2l_scale_type == 'unity') then
-!       do c = bounds%begc,bounds%endc
-!          scale_c2l(c) = 1.0_r8
-!       end do
-!    else if (c2l_scale_type == 'urbanf') then
-!       do c = bounds%begc,bounds%endc
-!          l = col%landunit(c) 
-!          if (lun%urbpoi(l)) then
-!             if (col%itype(c) == icol_sunwall) then
-!                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
-!             else if (col%itype(c) == icol_shadewall) then
-!                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
-!             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
-!                scale_c2l(c) = 3.0_r8
-!             else if (col%itype(c) == icol_roof) then
-!                scale_c2l(c) = 1.0_r8
-!             end if
-!          else
-!             scale_c2l(c) = 1.0_r8
-!          end if
-!       end do
-!    else if (c2l_scale_type == 'urbans') then
-!       do c = bounds%begc,bounds%endc
-!          l = col%landunit(c) 
-!          if (lun%urbpoi(l)) then
-!             if (col%itype(c) == icol_sunwall) then
-!                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
-!             else if (col%itype(c) == icol_shadewall) then
-!                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
-!             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
-!                scale_c2l(c) = 3.0 / (2.*lun%canyon_hwr(l) + 1.)
-!             else if (col%itype(c) == icol_roof) then
-!                scale_c2l(c) = 1.0_r8
-!             end if
-!          else
-!             scale_c2l(c) = 1.0_r8
-!          end if
-!       end do
-!    else
-!       write(iulog,*)'p2g_2d error: scale type ',c2l_scale_type,' not supported'
-!       call endrun(msg=errMsg(sourcefile, __LINE__))
-!    end if
-!
-!    if (p2c_scale_type == 'unity') then
-!       do p = bounds%begp,bounds%endp
-!          scale_p2c(p) = 1.0_r8
-!       end do
-!    else
-!       write(iulog,*)'p2g_2d error: scale type ',c2l_scale_type,' not supported'
-!       call endrun(msg=errMsg(sourcefile, __LINE__))
-!    end if
-!
-!    garr(bounds%begg : bounds%endg, :) = spval
-!    do j = 1,num2d
-!       sumwt(bounds%begg : bounds%endg) = 0._r8
-!       do p = bounds%begp,bounds%endp 
-!          if (patch%active(p) .and. patch%wtgcell(p) /= 0._r8) then
-!             c = patch%column(p)
-!             l = patch%landunit(p)
-!             if (parr(p,j) /= spval .and. scale_c2l(c) /= spval .and. scale_l2g(l) /= spval) then
-!                g = patch%gridcell(p)
-!                if (sumwt(g) == 0._r8) garr(g,j) = 0._r8
-!                garr(g,j) = garr(g,j) + parr(p,j) * scale_p2c(p) * scale_c2l(c) * scale_l2g(l) * patch%wtgcell(p)
-!                sumwt(g) = sumwt(g) + patch%wtgcell(p)
-!             end if
-!          end if
-!       end do
-!       found = .false.
-!       do g = bounds%begg, bounds%endg
-!          if (sumwt(g) > 1.0_r8 + 1.e-6_r8) then
-!             found = .true.
-!             index = g
-!          else if (sumwt(g) /= 0._r8) then
-!             garr(g,j) = garr(g,j)/sumwt(g)
-!          end if
-!       end do
-!       if (found) then
-!          write(iulog,*)'p2g_2d error: sumwt gt 1.0 at g/sumwt = ',index,sumwt(index)
-!          call endrun(decomp_index=index, clmlevel=nameg, msg=errMsg(sourcefile, __LINE__))
-!       end if
-!    end do
-!
-!  end subroutine p2g_2d
+  subroutine p2g_1d(bounds, parr, garr, p2c_scale_type, c2l_scale_type, l2g_scale_type)
+    !
+    ! !DESCRIPTION:
+    ! Perfrom subgrid-average from patches to gridcells.
+    ! Averaging is only done for points that are not equal to "spval".
+    !
+    ! !ARGUMENTS:
+    type(bounds_type), intent(in) :: bounds        
+    real(r8), intent(in)  :: parr( bounds%begp: )  ! input patch array
+    real(r8), intent(out) :: garr( bounds%begg: )  ! output gridcell array
+    character(len=*), intent(in) :: p2c_scale_type ! scale factor type for averaging
+    character(len=*), intent(in) :: c2l_scale_type ! scale factor type for averaging (see note at top of module)
+    character(len=*), intent(in) :: l2g_scale_type ! scale factor type for averaging
+    !
+    !  !LOCAL VARIABLES:
+    integer  :: p,c,l,g,index                   ! indices
+    logical  :: found                              ! temporary for error check
+    real(r8) :: scale_p2c(bounds%begp:bounds%endp) ! scale factor
+    real(r8) :: scale_c2l(bounds%begc:bounds%endc) ! scale factor
+    real(r8) :: scale_l2g(bounds%begl:bounds%endl) ! scale factor
+    real(r8) :: sumwt(bounds%begg:bounds%endg)     ! sum of weights
+    !------------------------------------------------------------------------
+
+    ! Enforce expected array sizes
+    SHR_ASSERT_ALL_FL((ubound(parr) == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(garr) == (/bounds%endg/)), sourcefile, __LINE__)
+
+    call build_scale_l2g(bounds, l2g_scale_type, &
+         scale_l2g(bounds%begl:bounds%endl))
+
+    if (c2l_scale_type == 'unity') then
+       do c = bounds%begc,bounds%endc
+          scale_c2l(c) = 1.0_r8
+       end do
+    else if (c2l_scale_type == 'urbanf') then
+       do c = bounds%begc,bounds%endc
+          l = col%landunit(c) 
+          if (lun%urbpoi(l)) then
+             if (col%itype(c) == icol_sunwall) then
+                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
+             else if (col%itype(c) == icol_shadewall) then
+                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
+             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
+                scale_c2l(c) = 3.0_r8
+             else if (col%itype(c) == icol_roof) then
+                scale_c2l(c) = 1.0_r8
+             end if
+          else
+             scale_c2l(c) = 1.0_r8
+          end if
+       end do
+    else if (c2l_scale_type == 'urbans') then
+       do c = bounds%begc,bounds%endc
+          l = col%landunit(c) 
+          if (lun%urbpoi(l)) then
+             if (col%itype(c) == icol_sunwall) then
+                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
+             else if (col%itype(c) == icol_shadewall) then
+                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
+             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
+                scale_c2l(c) = 3.0 / (2.*lun%canyon_hwr(l) + 1.)
+             else if (col%itype(c) == icol_roof) then
+                scale_c2l(c) = 1.0_r8
+             end if
+          else
+             scale_c2l(c) = 1.0_r8
+          end if
+       end do
+    else
+       write(iulog,*)'p2g_1d error: scale type ',c2l_scale_type,' not supported'
+       call endrun(msg=errMsg(sourcefile, __LINE__))
+    end if
+
+    if (p2c_scale_type == 'unity') then
+       do p = bounds%begp,bounds%endp
+          scale_p2c(p) = 1.0_r8
+       end do
+    else
+       write(iulog,*)'p2g_1d error: scale type ',c2l_scale_type,' not supported'
+       call endrun(msg=errMsg(sourcefile, __LINE__))
+    end if
+
+    garr(bounds%begg : bounds%endg) = spval
+    sumwt(bounds%begg : bounds%endg) = 0._r8
+    do p = bounds%begp,bounds%endp
+       if (patch%active(p) .and. patch%wtgcell(p) /= 0._r8) then
+          c = patch%column(p)
+          l = patch%landunit(p)
+          if (parr(p) /= spval .and. scale_c2l(c) /= spval .and. scale_l2g(l) /= spval) then
+             g = patch%gridcell(p)
+             if (sumwt(g) == 0._r8) garr(g) = 0._r8
+             garr(g) = garr(g) + parr(p) * scale_p2c(p) * scale_c2l(c) * scale_l2g(l) * patch%wtgcell(p)
+             sumwt(g) = sumwt(g) + patch%wtgcell(p)
+          end if
+       end if
+    end do
+    found = .false.
+    do g = bounds%begg, bounds%endg
+       if (sumwt(g) > 1.0_r8 + 1.e-6_r8) then
+          found = .true.
+          index = g
+       else if (sumwt(g) /= 0._r8) then
+          garr(g) = garr(g)/sumwt(g)
+       end if
+    end do
+    if (found) then
+       write(iulog,*)'p2g_1d error: sumwt is greater than 1.0 at g= ',index
+       call endrun(decomp_index=index, clmlevel=nameg, msg=errMsg(sourcefile, __LINE__))
+    end if
+
+  end subroutine p2g_1d
+
+  !-----------------------------------------------------------------------
+  subroutine p2g_2d(bounds, num2d, parr, garr, p2c_scale_type, c2l_scale_type, l2g_scale_type)
+    !
+    ! !DESCRIPTION:
+    ! Perfrom subgrid-average from patches to gridcells.
+    ! Averaging is only done for points that are not equal to "spval".
+    !
+    ! !USES:
+    !
+    ! !ARGUMENTS:
+    type(bounds_type), intent(in) :: bounds            
+    integer , intent(in)  :: num2d                     ! size of second dimension
+    real(r8), intent(in)  :: parr( bounds%begp: , 1: ) ! input patch array
+    real(r8), intent(out) :: garr( bounds%begg: , 1: ) ! output gridcell array
+    character(len=*), intent(in) :: p2c_scale_type     ! scale factor type for averaging
+    character(len=*), intent(in) :: c2l_scale_type     ! scale factor type for averaging (see note at top of module)
+    character(len=*), intent(in) :: l2g_scale_type     ! scale factor type for averaging
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: j,p,c,l,g,index                     ! indices
+    logical  :: found                                  ! temporary for error check
+    real(r8) :: scale_p2c(bounds%begp:bounds%endp)     ! scale factor
+    real(r8) :: scale_c2l(bounds%begc:bounds%endc)     ! scale factor
+    real(r8) :: scale_l2g(bounds%begl:bounds%endl)     ! scale factor
+    real(r8) :: sumwt(bounds%begg:bounds%endg)         ! sum of weights
+    !------------------------------------------------------------------------
+
+    ! Enforce expected array sizes
+    SHR_ASSERT_ALL_FL((ubound(parr) == (/bounds%endp, num2d/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(garr) == (/bounds%endg, num2d/)), sourcefile, __LINE__)
+
+    call build_scale_l2g(bounds, l2g_scale_type, &
+         scale_l2g(bounds%begl:bounds%endl))
+
+    if (c2l_scale_type == 'unity') then
+       do c = bounds%begc,bounds%endc
+          scale_c2l(c) = 1.0_r8
+       end do
+    else if (c2l_scale_type == 'urbanf') then
+       do c = bounds%begc,bounds%endc
+          l = col%landunit(c) 
+          if (lun%urbpoi(l)) then
+             if (col%itype(c) == icol_sunwall) then
+                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
+             else if (col%itype(c) == icol_shadewall) then
+                scale_c2l(c) = 3.0 * lun%canyon_hwr(l) 
+             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
+                scale_c2l(c) = 3.0_r8
+             else if (col%itype(c) == icol_roof) then
+                scale_c2l(c) = 1.0_r8
+             end if
+          else
+             scale_c2l(c) = 1.0_r8
+          end if
+       end do
+    else if (c2l_scale_type == 'urbans') then
+       do c = bounds%begc,bounds%endc
+          l = col%landunit(c) 
+          if (lun%urbpoi(l)) then
+             if (col%itype(c) == icol_sunwall) then
+                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
+             else if (col%itype(c) == icol_shadewall) then
+                scale_c2l(c) = (3.0 * lun%canyon_hwr(l)) / (2.*lun%canyon_hwr(l) + 1.)
+             else if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
+                scale_c2l(c) = 3.0 / (2.*lun%canyon_hwr(l) + 1.)
+             else if (col%itype(c) == icol_roof) then
+                scale_c2l(c) = 1.0_r8
+             end if
+          else
+             scale_c2l(c) = 1.0_r8
+          end if
+       end do
+    else
+       write(iulog,*)'p2g_2d error: scale type ',c2l_scale_type,' not supported'
+       call endrun(msg=errMsg(sourcefile, __LINE__))
+    end if
+
+    if (p2c_scale_type == 'unity') then
+       do p = bounds%begp,bounds%endp
+          scale_p2c(p) = 1.0_r8
+       end do
+    else
+       write(iulog,*)'p2g_2d error: scale type ',c2l_scale_type,' not supported'
+       call endrun(msg=errMsg(sourcefile, __LINE__))
+    end if
+
+    garr(bounds%begg : bounds%endg, :) = spval
+    do j = 1,num2d
+       sumwt(bounds%begg : bounds%endg) = 0._r8
+       do p = bounds%begp,bounds%endp 
+          if (patch%active(p) .and. patch%wtgcell(p) /= 0._r8) then
+             c = patch%column(p)
+             l = patch%landunit(p)
+             if (parr(p,j) /= spval .and. scale_c2l(c) /= spval .and. scale_l2g(l) /= spval) then
+                g = patch%gridcell(p)
+                if (sumwt(g) == 0._r8) garr(g,j) = 0._r8
+                garr(g,j) = garr(g,j) + parr(p,j) * scale_p2c(p) * scale_c2l(c) * scale_l2g(l) * patch%wtgcell(p)
+                sumwt(g) = sumwt(g) + patch%wtgcell(p)
+             end if
+          end if
+       end do
+       found = .false.
+       do g = bounds%begg, bounds%endg
+          if (sumwt(g) > 1.0_r8 + 1.e-6_r8) then
+             found = .true.
+             index = g
+          else if (sumwt(g) /= 0._r8) then
+             garr(g,j) = garr(g,j)/sumwt(g)
+          end if
+       end do
+       if (found) then
+          write(iulog,*)'p2g_2d error: sumwt gt 1.0 at g/sumwt = ',index,sumwt(index)
+          call endrun(decomp_index=index, clmlevel=nameg, msg=errMsg(sourcefile, __LINE__))
+       end if
+    end do
+
+  end subroutine p2g_2d
 !
 !  !-----------------------------------------------------------------------
 !  subroutine c2l_1d (bounds, carr, larr, c2l_scale_type, include_inactive)

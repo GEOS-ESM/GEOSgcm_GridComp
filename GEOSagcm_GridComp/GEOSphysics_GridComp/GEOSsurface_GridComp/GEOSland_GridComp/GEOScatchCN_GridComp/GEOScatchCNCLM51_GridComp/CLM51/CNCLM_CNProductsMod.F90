@@ -1,4 +1,5 @@
 #include "MAPL_Generic.h"
+#include "shr_assert.h"
 
 module CNProductsMod
 
@@ -7,6 +8,8 @@ module CNProductsMod
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
   use clm_varpar       , only : num_zon, var_col, cn_zone_weight
+  use clm_time_manager , only : get_step_size_real
+  use PatchType        , only : patch
 
   ! !PUBLIC TYPES:
   implicit none
@@ -70,7 +73,7 @@ module CNProductsMod
 contains
 
 !--------------------------------------------------------------
-  subroutine init_cn_products_type(bounds, nch, cncol, species,  this)
+  subroutine init_cn_products_type(bounds, nch, cncol, species,  this, rc)
 
   ! !DESCRIPTION:
   ! Initialize CTSM wood products type  needed for calling CTSM routines                                 
@@ -85,6 +88,7 @@ contains
     real, dimension(nch,num_zon,var_col), intent(in) :: cncol     ! column-level restart variable array 
     character(*),                         intent(in) :: species   ! C or N
     type(cn_products_type),               intent(inout):: this
+    integer, optional,                    intent(out) :: rc
 
     ! LOCAL
     integer :: begp, endp
