@@ -38,9 +38,6 @@ module clm_varctl
   logical, public :: use_bedrock = .false. ! true => use spatially variable soil depth
   logical, public :: use_extralakelayers = .false.
   logical, public :: use_biomass_heat_storage = .false.
-  logical, public :: lnc_opt = .false.
-  logical, public :: reduce_dayl_factor = .false.
-  integer, public :: vcmax_opt = 0
 
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
@@ -73,6 +70,9 @@ module clm_varctl
   logical, public :: use_flexibleCN = .false.
   logical, public :: CNratio_floating = .false.
   integer, public :: CN_evergreen_phenology_opt = 0
+  logical, public :: lnc_opt = .false.
+  logical, public :: reduce_dayl_factor = .false.
+  integer, public :: vcmax_opt = 0
 
   !----------------------------------------------------------
   ! BGC logic and datasets
@@ -89,6 +89,9 @@ module clm_varctl
   logical, public :: use_snicar_frc      = .false.
 
   integer, public :: carbon_resp_opt = 0
+
+  ! Set in CNAllocationInit (TODO - had to move it here to avoid circular dependency)
+  logical, private:: carbon_only
 contains
 
 !---------------------------------------
