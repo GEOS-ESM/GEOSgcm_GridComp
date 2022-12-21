@@ -13,7 +13,7 @@
 ! !IROUTINE: LRRasterize -- Rasterizes a 2-D array of polygons.
 
   subroutine LRRasterize2File(GridName, xv,yv,nc,nr,xmn,xmx,ymn,ymx,     &
-                              SurfaceType, Verb, Here,jseg               )
+                              SurfaceType, Verb, Here,jseg, tol      )
 
 ! This routine rasterizes a grid defined by a 2-D array of polygons.
 ! The raster value assigned each pixel is either sign((I*pushleft + J),sgn),
@@ -70,6 +70,7 @@
     logical, optional, intent(IN) :: here  ! write here
     integer, optional, intent(IN) :: SurfaceType
     integer, optional, intent(IN) :: jseg
+    REAL_, optional   :: tol
 
     character*(128)       :: TileFile
     character*(128)       :: TilDir='', RstDir=''
@@ -136,7 +137,7 @@
 
     call LRRasterize2Mem (Raster, xv, yv, TileFile,   &
             xmn, xmx, ymn, ymx,         &
-            SurfaceType, verb, jseg           )
+            SurfaceType, verb, jseg, tol           )
 
 ! Make sure it worked
 !--------------------
@@ -171,7 +172,7 @@
 
   subroutine LRRasterize2Mem(Raster,xv,yv,Tilefile,    &
                              xmn,xmx,ymn,ymx,          &
-                             SurfaceType,verb,jseg     )
+                             SurfaceType,verb,jseg, tol     )
 
 ! This routine rasterizes a grid defined by a 2-D array of polygons.
 ! The raster value assigned is an index to the table.
@@ -205,6 +206,7 @@
     logical, optional, intent(IN) :: verb  ! Verbose
     integer, optional, intent(IN) :: SurfaceType
     integer, optional, intent(IN) :: jseg
+    REAL_, optional   :: tol
 
     !  X abd Y bounds of each polygon
 
@@ -243,8 +245,14 @@
             :: xvc, yvc, xvs, yvs, xrd, yrd, x3, y3, z3, &
                dx3, dy3, dz3, x31, x32, y31, y32, z31, z32, &
                dx4, dy4, x4, y4,   xu,  yu
+    REAL_   :: tol_
 
 ! Process optionals
+
+    tol_ = 1.0e-12
+    if (present(tol)) then
+       tol_ = tol
+    end if
 
     if(present(jseg)) then
        useg = jseg
@@ -622,7 +630,7 @@
              y0 = ycs(jj)*xss(ii)
              
              do n=1,NV
-                Isin = (x0*z31(n) + y0*x31(n) + yss(jj)*y31(n) - dx3(n)) <= 1.e-12
+                Isin = (x0*z31(n) + y0*x31(n) + yss(jj)*y31(n) - dx3(n)) <= tol_
                 if(.not.IsIn) exit
              end do
 

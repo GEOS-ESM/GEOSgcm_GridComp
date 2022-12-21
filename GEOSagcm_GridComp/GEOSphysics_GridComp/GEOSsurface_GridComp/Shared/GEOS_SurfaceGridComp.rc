@@ -114,6 +114,16 @@
 #
 # GEOSagcm=>MODIS_DVG: 0                     # NOT yet used in GEOSldas
 
+# ---- SNOW ALBEDO  
+#
+#    0  : Snow albedo parameterization based on look-up table (default)
+#    1  : Snow albedo derived from MODIS Collection MOD10A1.061 (Feb/2000 - Mar/2022)  
+#           - backfilled with global land average snow albedo where unavailable
+#           - must use compatible bcs version (e.g., v06, v08, v09)
+#           - NOT YET AVAILABLE FOR CatchCN
+#
+# GEOSagcm=>SNOW_ALBEDO_INFO: 0
+# GEOSldas=>SNOW_ALBEDO_INFO: 0
 
 #--------------------------------------------------------#
 #    GOSWIM aerosol deposition on surface snow           #
@@ -234,3 +244,5 @@
 #
 # GEOSagcm=>PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
+
+

@@ -4,14 +4,12 @@ PROGRAM mkCatchParam
 !
 ! !ARGUMENTS:
 !
-!  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -v LBSV -e EASE"       
+!  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV "       
 !     -x: Size of longitude dimension of input raster. DEFAULT: 8640
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -v: LBCSV : Choose bcs version (ICA, NL3, NL4, NL5, or development)             
-!     -e: EASE : This is optional if catchment.def file is available already or                    
-!         the til file format is pre-Fortuna-2.                                                    
+!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09)
 !     
 !
 ! This program is good to generate  
@@ -20,8 +18,8 @@ PROGRAM mkCatchParam
 !  
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
-
-  use rmTinyCatchParaMod
+  use EASE_conv
+  use rmTinyCatchParaMod 
   use process_hres_data
   !   use module_irrig_params, ONLY : create_irrig_params
 
@@ -33,20 +31,19 @@ PROGRAM mkCatchParam
   ! NC and NR are typically overwritten through command-line arguments "-x nx -y ny".
  
   integer              :: NC = i_raster, NR = j_raster    
-  character*4          :: LBSV = 'DEF'
+  character*5          :: LBCSV = 'UNDEF'
   character*128        :: GridName = ''
   character*128        :: ARG, MaskFile
   character*256        :: CMD
   character*1          :: opt
   character*7          :: PEATSOURCE   = 'GDLHWSD'
   character*3          :: VEGZSOURCE   = 'D&S'
-  character*4          :: EASE ='    '
   character*2          :: DL ='DC'    
   integer              :: II, JJ, Type
   integer              :: I, J, command_argument_count, nxt
   real*8               :: dx, dy, lon0
   logical              :: regrid
-  character(len=400), dimension (8) ::  Usage 
+  character(len=400), dimension (6) ::  Usage 
   character*128        ::  Grid2
   character*2          :: poles
   character*128        :: GridNameR = ''
@@ -60,6 +57,9 @@ PROGRAM mkCatchParam
   character*200        :: tmpstring, tmpstring1, tmpstring2
   character*200        :: fname_tmp, fname_tmp2, fname_tmp3, fname_tmp4
   integer              :: N_tile
+  logical              :: process_snow_albedo = .false. 
+  character(len=10)    :: nc_string, nr_string
+  integer              :: nc_ease, nr_ease
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -102,14 +102,12 @@ integer :: n_threads=1
 !   call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
 !   call execute_command_line('cd ..')
 
-    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV -e EASE                                      "
-    USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640                                     "
-    USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320                                     "
-    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)                               "
-    USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                         "
-    USAGE(6) ="     -e: EASE : This is optional if catchment.def file is available already or                          "          
-    USAGE(7) ="                the til file format is pre-Fortuna-2.                                                   "
-    USAGE(8) ="     -v  LBCSV : Choose bcs version (F25, GM4, ICA, NL3, NL4, NL5, or DEV)                              "
+    USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV                       "
+    USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640              "
+    USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320              "
+    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)        "
+    USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
+    USAGE(6) ="     -v  LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )  "
 
 ! Process Arguments                            
 !------------------ 
@@ -153,14 +151,11 @@ integer :: n_threads=1
        case ('g')
           GridName = trim(arg)
        case ('v')
-          LBSV = trim(arg)
+          LBCSV = trim(arg)
           if (trim(arg).eq."F25") F25Tag = .true.
-          call init_bcs_config (trim(LBSV))
+          call init_bcs_config (trim(LBCSV))       ! get bcs details from version string
        case ('b')
           DL = trim(arg)
-       case ('e')
-          EASE = trim(arg)
-	  if(EASE=='EASE') ease_grid=.true.
        case default
           do j = 1,size(usage)
              print "(sp,a100)", Usage(j)
@@ -173,17 +168,26 @@ integer :: n_threads=1
 
    call get_environment_variable ("MASKFILE"        ,MaskFile        )
  
-  if(trim(Gridname) == '') then
+   if(trim(Gridname) == '') then
       write (log_file,'(a)')'Unable to create parameters without til/rst files.... !'
       stop
    endif
    
    regrid = nc/=i_raster .or. nr/=j_raster
+  
+   if (index(Gridname,'EASEv') /=0) then
+      ! here gridname has alias EASELabel
+      call ease_extent(Gridname, nc_ease, nr_ease )
+      write(nc_string, '(i0)') nc_ease
+      write(nr_string, '(i0)') nr_ease
+      gridname = trim(Gridname)//'_'//trim(nc_string)//'x'//trim(nr_string)
+      ease_grid = .true.
+   endif
 
    if(index(Gridname,'Pfaf.notiny')/=0) then 
       GridnameR='clsm/'//trim(Gridname)
       GridnameT='clsm/'//trim(Gridname)
-      else
+   else
       GridnameR='rst/'//trim(Gridname)  
       GridnameT='til/'//trim(Gridname)  
     endif 
@@ -191,11 +195,14 @@ integer :: n_threads=1
     if(use_PEATMAP)  PEATSOURCE   = 'PEATMAP'
     if(jpl_height)   VEGZSOURCE   = 'JPL'
 
+    if (trim(SNOWALB)=='MODC061')  process_snow_albedo=.true.
+
     if(n_threads == 1) then
 
        write (log_file,'(a)')trim(LAIBCS)
        write (log_file,'(a)')trim(MODALB)
        write (log_file,'(a)')trim(SOILBCS)   
+       write (log_file,'(a)')trim(SNOWALB)
        write (log_file,'(a)')trim(MaskFile)
        write (log_file,'(a)')trim(PEATSOURCE)
        write (log_file,'(a)')trim(VEGZSOURCE)
@@ -249,7 +256,7 @@ integer :: n_threads=1
         close (10, status = 'keep')
 
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       if (.not.file_exists) CALL open_landparam_nc4_files(N_tile)  
+       if (.not.file_exists) CALL open_landparam_nc4_files(N_tile,process_snow_albedo)  
 
        ! Creating cti_stats.dat 
        ! ----------------------
@@ -564,7 +571,7 @@ integer :: n_threads=1
              if(     F25Tag) call soil_para_high (nc,nr,regrid,gridnamer,F25Tag=F25Tag)
              if(.not.F25Tag) call soil_para_high (nc,nr,regrid,gridnamer)
           endif
-          if(SOILBCS=='HWSD')  call soil_para_hwsd (nc,nr,gridnamer)
+          if(SOILBCS=='HWSD') call soil_para_hwsd (nc,nr,gridnamer)
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a,a)')'         Using existing file.'
@@ -653,6 +660,15 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
        
+       if(process_snow_albedo)then
+          tmpstring = 'Step 14: Static snow albedo from MODIS' 
+          write (log_file,'(a)') trim(tmpstring)
+          write (log_file,'(a)')'         Creating file...'
+          call MODIS_snow_alb ( )
+          write (log_file,'(a)')'         Done.'           
+          write (log_file,'(a)')' '
+       endif 
+
        !      inquire(file='clsm/irrig.dat', exist=file_exists)
        !      if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
        !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
