@@ -1,7 +1,7 @@
+module CNVegCarbonFluxType
+
 #include "MAPL_Generic.h"
 #include "shr_assert.h"
-
-module CNVegCarbonFluxType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
