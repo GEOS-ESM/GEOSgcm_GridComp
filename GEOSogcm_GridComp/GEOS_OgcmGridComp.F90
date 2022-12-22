@@ -1181,6 +1181,7 @@ contains
 
     type (T_OGCM_STATE), pointer        :: ogcm_internal_state => null() 
     type (OGCM_wrap)                    :: wrap
+    type(ESMF_State)                    :: SURFST
 
     type (ESMF_StateItem_Flag) :: itemType
 
@@ -1278,6 +1279,13 @@ contains
           VERIFY_(STATUS)
        end if
     end do
+
+    if (DO_CICE_THERMO > 1) then
+        call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
+        call MAPL_GetPointer(SURFST, FROCEAN, 'FROCEAN', __RC__)
+        call MAPL_LocStreamFracArea( EXCH, MAPL_OCEAN, FROCEAN, RC=STATUS) 
+        VERIFY_(STATUS)
+    endif 
 
 ! Put OBIO tracers into the OCEAN's tracer bundle.
 !-------------------------------------------------

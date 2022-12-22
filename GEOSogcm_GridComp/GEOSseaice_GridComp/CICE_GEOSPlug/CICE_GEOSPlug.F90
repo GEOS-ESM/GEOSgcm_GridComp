@@ -32,6 +32,7 @@ module CICE_GEOSPlugMod
   public :: SetServices
 
   integer            :: NUM_ICE_CATEGORIES
+  logical, private   :: ice_grid_init2 
 
 contains
 
@@ -78,6 +79,7 @@ contains
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
+    ice_grid_init2 = .false.
 
     call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
     VERIFY_(STATUS)
@@ -169,15 +171,15 @@ contains
          RC=status  )
   VERIFY_(status)
 
-  call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME         = 'FROCEAN',                           &
-         LONG_NAME          = 'fraction_of_gridbox_covered_by_skin',&
-         UNITS              = '1',                                 &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RESTART            = MAPL_RestartSkip,                    &
-         RC=status  )
-  VERIFY_(status)
+  !call MAPL_AddImportSpec(GC,                               &
+  !       SHORT_NAME         = 'FROCEAN',                           &
+  !       LONG_NAME          = 'fraction_of_gridbox_covered_by_skin',&
+  !       UNITS              = '1',                                 &
+  !       DIMS               = MAPL_DimsHorzOnly,                   &
+  !       VLOCATION          = MAPL_VLocationNone,                  &
+  !       RESTART            = MAPL_RestartSkip,                    &
+  !       RC=status  )
+  !VERIFY_(status)
 
   call MAPL_AddImportSpec(GC,                                 &
         SHORT_NAME         = 'SI',                                &
@@ -397,8 +399,7 @@ contains
     type(ESMF_State)                       :: SURFST
 
 
-    REAL_, pointer                         :: AREA(:,:)        => null()
-    REAL_, pointer                         :: MASK(:,:)        => null()
+    REAL_, pointer                         :: FROCEAN(:,:)        => null()
 
     integer                                :: DT_SEAICE
 
@@ -435,6 +436,7 @@ contains
 
 ! Get the grid, configuration
 !----------------------------
+    !call MAPL_GetPointer(IMPORT, FROCEAN,     'FROCEAN'  ,    __RC__)
 
     call ESMF_GridCompGet( GC, grid=Grid,  RC=status )
     VERIFY_(STATUS)
@@ -472,20 +474,6 @@ contains
     ASSERT_(mod(OGCM_JM,OGCM_NY)==0)
 
 
-
-! Allocate this instance of the internal state and wrap
-! -----------------------------------------------------
-
-
-! Save pointer to the wrapped internal state in the GC
-! ----------------------------------------------------
-
-
-
-
-! FMS initialization using the communicator from the VM
-!------------------------------------------------------
-
     call ESMF_VMGet(VM, mpiCommunicator=Comm,  petCount=NPES, rc=STATUS)
     VERIFY_(STATUS)
 
@@ -493,7 +481,11 @@ contains
 ! Init CICE 
 !---------------
     call cice_init1(Comm, NPES, OGCM_IM/OGCM_NX, OGCM_JM/OGCM_NY)
-    call cice_init2(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
+
+    !call ice_import_grid(FROCEAN, __RC__)
+     
+    !call cice_init2(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
+    call cice_cal_init(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
 
     !*CALLBACK*
     !=====================================================================================
@@ -567,6 +559,8 @@ contains
     call AddSurfField('DRUVR', SURFST, GRID,  __RC__)
     call AddSurfField('DFUVR', SURFST, GRID,  __RC__)
     call AddSurfField('COSZ',  SURFST, GRID,  __RC__)
+
+    call AddSurfField('FROCEAN',  SURFST, GRID,  __RC__)
 
     ! callback return fields
     call AddSurfField('DTS',   SURFST, GRID,        & 
@@ -837,21 +831,30 @@ contains
 
 !EOP
 
-     real, dimension(:,:,:), pointer         :: ts
+     integer                               :: status
+     REAL_, pointer                        :: FRO(:,:)          => null()
+
+
 ! ErrLog Variables
 
      character(len=ESMF_MAXSTR), parameter   :: IAm=' thermo_coupling'
 
-     !call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
+     if (.not. ice_grid_init2) then
+        call MAPL_GetPointer(state, FRO, 'FROCEAN', __RC__)
+        call ice_import_grid(FRO, rc=STATUS)
+        VERIFY_(STATUS)
+        call cice_init2
+        ice_grid_init2 = .TRUE.
+     endif
 
      ! unpack fields and send them to cice
-     call ice_import_thermo1(state, rc=rc)
+     call ice_import_thermo1(state, rc=STATUS)
      
      ! let cice update surface temperature and fluxes 
      call ice_fast_physics     
 
      ! export the relevant fields from cice
-     call ice_export_thermo1(state, rc=rc)
+     call ice_export_thermo1(state, rc=STATUS)
 
      ! pack them back into state 
 
