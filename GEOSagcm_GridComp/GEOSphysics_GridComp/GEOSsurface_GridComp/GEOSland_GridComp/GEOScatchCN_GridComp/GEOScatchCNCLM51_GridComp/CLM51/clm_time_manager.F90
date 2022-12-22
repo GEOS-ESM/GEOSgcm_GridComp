@@ -397,7 +397,7 @@ end function is_restart
     character(len=*), parameter :: subname = 'is_beg_curr_year'
     !-----------------------------------------------------------------------
 
-    if ( .not. check_timemgr_initialized(subname) ) return
+   ! if ( .not. check_timemgr_initialized(subname) ) return
 
     call get_curr_date(yr, mon, day, tod)
     is_beg_curr_year = (mon == 1 .and. day == 1 .and. tod == dtime)
