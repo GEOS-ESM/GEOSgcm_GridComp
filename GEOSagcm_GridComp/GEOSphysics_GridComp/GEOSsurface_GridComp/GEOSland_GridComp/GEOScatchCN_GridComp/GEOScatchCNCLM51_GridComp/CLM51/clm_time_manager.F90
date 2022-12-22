@@ -34,6 +34,7 @@ module clm_time_manager
       get_local_time,           &! return the local time for the input longitude
 
       is_end_curr_day,          &! return true on last timestep in current day
+      is_beg_curr_year,         &! return true on first timestep in current year
       is_restart,               &! return true if this is a restart run
       is_first_step,            &  ! dummy function here, because it is loaded, but not used
       is_near_local_noon        ! return true if near local noon
@@ -379,4 +380,27 @@ end function is_restart
     get_local_time  = modulo(secs + nint(londeg/degpsec), isecspday)
     get_local_time  = modulo(get_local_time - start,isecspday)
   end function get_local_time
+
+  !-----------------------------------------------------------------------
+  logical function is_beg_curr_year()
+    !
+    ! !DESCRIPTION:
+    ! Return true if current timestep is first timestep in current year.
+    !
+    ! !LOCAL VARIABLES:
+    integer ::&
+         yr,    &! year
+         mon,   &! month
+         day,   &! day of month
+         tod     ! time of day (seconds past 0Z)
+
+    character(len=*), parameter :: subname = 'is_beg_curr_year'
+    !-----------------------------------------------------------------------
+
+    if ( .not. check_timemgr_initialized(subname) ) return
+
+    call get_curr_date(yr, mon, day, tod)
+    is_beg_curr_year = (mon == 1 .and. day == 1 .and. tod == dtime)
+
+  end function is_beg_curr_year
 end module clm_time_manager

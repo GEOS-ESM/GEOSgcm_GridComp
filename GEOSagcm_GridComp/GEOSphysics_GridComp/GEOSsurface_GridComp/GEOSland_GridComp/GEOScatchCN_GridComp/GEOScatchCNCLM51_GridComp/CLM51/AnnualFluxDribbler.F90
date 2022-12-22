@@ -64,7 +64,7 @@ module AnnualFluxDribbler
   use decompMod        , only : bounds_type, get_beg, get_end
   use decompMod        , only : BOUNDS_SUBGRID_GRIDCELL, BOUNDS_SUBGRID_PATCH
   use clm_varcon       , only : secspday, nameg, namep
-  use clm_time_manager , only : get_days_per_year, get_step_size_real
+  use clm_time_manager , only : get_days_per_year, get_step_size_real, is_beg_curr_year
  ! use clm_time_manager , only : get_curr_yearfrac, get_prev_yearfrac, get_prev_date
   use clm_time_manager , only : is_first_step
   !
