@@ -61,6 +61,7 @@
 &grid_nml
     grid_format  = 'nc'
     grid_type    = 'tripole'
+    grid_subtype = 'geosmom'
     grid_file    = 'cice6_grid.nc'
     kmt_file     = 'cice6_kmt.nc'
     bathymetry_file = 'cice6_global.bathy.nc'
