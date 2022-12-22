@@ -204,6 +204,9 @@ module CNVegCarbonStateType
 
 type(cnveg_carbonstate_type), public, target, save :: cnveg_carbonstate_inst
 
+  character(len=*), parameter :: sourcefile = &
+       __FILE__
+
 contains
 
 !----------------------------------------------
