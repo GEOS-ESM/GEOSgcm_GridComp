@@ -3,16 +3,17 @@ module CNVegNitrogenFluxType
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
-  use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools,&
-                                nvegcpool,ncphtrans,ncgmtrans,ncfitrans,&
-                                ncphouttrans,ncgmouttrans,ncfiouttrans
+  use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools
   use clm_varpar       , only : nlevdecomp_full, nlevgrnd,nlevdecomp
-  use clm_varpar       , only : ileaf,ileaf_st,ileaf_xf,ifroot,ifroot_st,ifroot_xf,&
-                                ilivestem,ilivestem_st,ilivestem_xf,&
-                                ideadstem,ideadstem_st,ideadstem_xf,&
-                                ilivecroot,ilivecroot_st,ilivecroot_xf,&
-                                ideadcroot,ideadcroot_st,ideadcroot_xf,&
-				igrain,igrain_st,igrain_xf,ioutc
+  use clm_varpar       , only : nlevdecomp_full, nlevdecomp,nvegnpool,&
+                                nnphtrans,nngmtrans,nnfitrans,nnphouttrans,&
+                                nngmouttrans,nnfiouttrans
+  use clm_varpar        , only : ileaf,ileaf_st,ileaf_xf,ifroot,ifroot_st,ifroot_xf,&
+                                 ilivestem,ilivestem_st,ilivestem_xf,&
+                                 ideadstem,ideadstem_st,ideadstem_xf,&
+                                 ilivecroot,ilivecroot_st,ilivecroot_xf,&
+                                 ideadcroot,ideadcroot_st,ideadcroot_xf,&
+                                 igrain,igrain_st,igrain_xf,iretransn,ioutn
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
   use clm_varcon       , only : spval, ispval, dzsoi_decomp
