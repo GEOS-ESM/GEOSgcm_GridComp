@@ -24,7 +24,8 @@ module CNVegCarbonFluxType
   use clm_varcon       , only : spval
   use ColumnType       , only : col
   use PatchType        , only : patch
-  use AnnualFluxDribbler                 , only : annual_flux_dribbler_type, annual_flux_dribbler_gridcell
+  use AnnualFluxDribbler  , only : annual_flux_dribbler_type, annual_flux_dribbler_gridcell
+  use MAPL_ExceptionHandling
 
   ! !PUBLIC TYPES:
   implicit none
@@ -480,6 +481,9 @@ module CNVegCarbonFluxType
  end type cnveg_carbonflux_type
 
 type(cnveg_carbonflux_type), public, target, save :: cnveg_carbonflux_inst
+
+  character(len=*), parameter, private :: sourcefile = &
+       __FILE__
 
 contains
 
