@@ -199,8 +199,9 @@ program  mk_CatchCNRestarts
   use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
   use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
-  use clm_varpar     , only : nzone => NUM_ZON, nveg => NUM_VEG, &
-                              VAR_COL, VAR_PFT, npft => numpft
+  use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg => NUM_VEG_CN, &
+                                 VAR_COL => VAR_COL_40, VAR_PFT => VAR_PFT_40, &
+                                 npft => numpft_CN
 
   implicit none
   include 'mpif.h'
