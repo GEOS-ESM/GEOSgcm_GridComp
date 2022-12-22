@@ -1,7 +1,9 @@
 module CNVegCarbonStateType
 
+#include "shr_assert.h"
+
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
-  use clm_varctl       , only : iulog, use_cndv, use_crop, use_matrixc
+  use clm_varctl       , only : iulog, use_cndv, use_crop, use_matrixcn
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
   use nanMod           , only : nan
@@ -49,6 +51,7 @@ module CNVegCarbonStateType
      real(r8), pointer :: deadstemc_patch                     (:) ! (gC/m2) dead stem C       
      real(r8), pointer :: deadstemc_storage_patch             (:) ! (gC/m2) dead stem C storage
      real(r8), pointer :: deadstemc_xfer_patch                (:) ! (gC/m2) dead stem C transfer
+     real(r8), pointer :: matrix_cap_deadstemc_patch          (:) ! (gC/m2) Capacity of dead stem C
      real(r8), pointer :: matrix_cap_deadstemc_storage_patch  (:) ! (gC/m2) Capacity of dead stem C storage
      real(r8), pointer :: matrix_cap_deadstemc_xfer_patch     (:) ! (gC/m2) Capacity of dead stem C transfer
      real(r8), pointer :: livecrootc_patch                    (:) ! (gC/m2) live coarse root C
