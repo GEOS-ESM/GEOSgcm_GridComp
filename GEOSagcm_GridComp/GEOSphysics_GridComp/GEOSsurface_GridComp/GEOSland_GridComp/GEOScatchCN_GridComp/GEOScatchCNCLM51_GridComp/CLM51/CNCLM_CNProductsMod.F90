@@ -70,6 +70,9 @@ module CNProductsMod
   end type cn_products_type
   type(cn_products_type), public, target, save :: cn_products_inst
 
+  character(len=*), parameter, private :: sourcefile = &
+       __FILE__
+
 contains
 
 !--------------------------------------------------------------
