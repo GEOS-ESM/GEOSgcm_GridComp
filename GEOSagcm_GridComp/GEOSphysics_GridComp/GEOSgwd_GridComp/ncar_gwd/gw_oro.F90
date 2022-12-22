@@ -10,7 +10,6 @@ module gw_oro
 
 implicit none
 private
-save
 
 public :: gw_oro_ifc
 public :: gw_oro_src
@@ -221,7 +220,7 @@ subroutine gw_oro_ifc( band, &
    u, v, t, pint, pmid, &
    delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
-   sgh, lats, &
+   sgh, lats, alpha, &
    utgw,vtgw,ttgw)
 
    type(GWBand),     intent(in) :: band         ! I hate this variable  ... it just hides information from view
@@ -247,6 +246,7 @@ subroutine gw_oro_ifc( band, &
 
    real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
    real,         intent(in) :: lats(ncol)      ! latitudes
+   real,         intent(in) :: alpha(:)
 
 
    real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
@@ -324,7 +324,7 @@ subroutine gw_oro_ifc( band, &
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           c,         kvtt,  tau,  utgw,  vtgw, &
-          ttgw, gwut, tau_adjust=pint_adj)
+          ttgw, gwut, alpha, tau_adjust=pint_adj)
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, pver, band, pint, delp, c, tau, &
                         effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)

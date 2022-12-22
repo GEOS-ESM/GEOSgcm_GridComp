@@ -19,7 +19,6 @@ module gw_drag
 
   implicit none
 
-  !save
   private                          ! Make default type private to the module
 !
 ! PUBLIC: interfaces

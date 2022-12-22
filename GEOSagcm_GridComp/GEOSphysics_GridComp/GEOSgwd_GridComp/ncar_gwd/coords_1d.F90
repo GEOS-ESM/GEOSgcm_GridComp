@@ -6,7 +6,6 @@ module coords_1d
 
 implicit none
 private
-save
 
 public :: Coords1D
 
