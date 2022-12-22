@@ -108,7 +108,7 @@ module AnnualFluxDribbler
    !  procedure, public :: Clean
 
      ! Public science methods
-   !  procedure, public :: set_curr_delta  ! Set the delta state for this time step
+     procedure, public :: set_curr_delta  ! Set the delta state for this time step
      procedure, public :: get_curr_flux   ! Get the current flux for this time step
    !  procedure, public :: get_dribbled_delta  ! Similar to get_curr_flux, but gets result as a delta rather than a per-second flux
    !  procedure, public :: get_amount_left_to_dribble_beg  ! Get the pseudo-state representing the amount that still needs to be dribbled in this and future time steps
@@ -217,73 +217,73 @@ contains
   ! ========================================================================
 
   !-----------------------------------------------------------------------
-!  subroutine set_curr_delta(this, bounds, delta)
-!    !
-!    ! !DESCRIPTION:
-!    ! Sets the delta state for this time step. Note that the delta is specified just as
-!    ! the change in state - NOT as a flux (per-second) quantity.
-!    !
-!    ! This must be called every timestep, even if the deltas are currently 0, in order to
-!    ! zero out any existing stored delta. This can (and generally should) even be called
-!    ! when it isn't the first timestep of the year. For deltas that are non-zero at times
-!    ! other than the first timestep of the year, they will simply be passed on to the
-!    ! output flux in get_curr_flux, making for easier handling by the client. (i.e., this
-!    ! class handles the addition of the dribbled flux and the current flux for you.)
-!    !
-!    ! !USES:
-!    !
-!    ! !ARGUMENTS:
-!    class(annual_flux_dribbler_type), intent(inout) :: this
-!    type(bounds_type), intent(in) :: bounds
-!    real(r8), intent(in) :: delta( get_beg(bounds, this%bounds_subgrid_level) : )
-!    !
-!    ! !LOCAL VARIABLES:
-!    integer :: beg_index, end_index
-!    integer :: i
-!    integer :: yr, mon, day, tod
-!
-!    character(len=*), parameter :: subname = 'set_curr_delta'
-!    !-----------------------------------------------------------------------
-!
-!    beg_index = lbound(delta, 1)
-!    end_index = get_end(bounds, this%bounds_subgrid_level)
-!    SHR_ASSERT_ALL_FL((ubound(delta) == (/end_index/)), sourcefile, __LINE__)
-!
-!    if (is_beg_curr_year()) then
-!       do i = beg_index, end_index
-!          this%amount_to_dribble(i) = delta(i)
-!
-!          ! On the first timestep of the year, we don't have any pass-through flux. Need
-!          ! to zero out any previously-set amount_from_this_timestep.
-!          this%amount_from_this_timestep(i) = 0._r8
-!       end do
-!    else
-!       do i = beg_index, end_index
-!          this%amount_from_this_timestep(i) = delta(i)
-!       end do
-!       if (.not. this%allows_non_annual_delta .and. .not. is_first_step()) then
-!          do i = beg_index, end_index
-!             if (this%amount_from_this_timestep(i) /= 0._r8) then
-!                write(iulog,*) subname//' ERROR: found unexpected non-zero delta mid-year'
-!                write(iulog,*) 'Dribbler name: ', trim(this%name)
-!                write(iulog,*) 'i, delta = ', i, this%amount_from_this_timestep(i)
-!                call get_prev_date(yr, mon, day, tod)
-!                write(iulog,*) 'Start of time step date (yr, mon, day, tod) = ', &
-!                     yr, mon, day, tod
-!                write(iulog,*) 'This indicates that some non-zero flux was generated at a time step'
-!                write(iulog,*) 'other than the first time step of the year, which this dribbler was told not to expect.'
-!                write(iulog,*) 'If this non-zero mid-year delta is expected, then you can suppress this error'
-!                write(iulog,*) 'by setting allows_non_annual_delta to .true. when constructing this dribbler.'
-!                call endrun(decomp_index=i, clmlevel=this%name_subgrid, &
-!                     msg=subname//': found unexpected non-zero delta mid-year: ' // &
-!                     errMsg(sourcefile, __LINE__))
-!             end if
-!          end do
-!       end if
-!    end if
-!
-!  end subroutine set_curr_delta
-!
+  subroutine set_curr_delta(this, bounds, delta)
+    !
+    ! !DESCRIPTION:
+    ! Sets the delta state for this time step. Note that the delta is specified just as
+    ! the change in state - NOT as a flux (per-second) quantity.
+    !
+    ! This must be called every timestep, even if the deltas are currently 0, in order to
+    ! zero out any existing stored delta. This can (and generally should) even be called
+    ! when it isn't the first timestep of the year. For deltas that are non-zero at times
+    ! other than the first timestep of the year, they will simply be passed on to the
+    ! output flux in get_curr_flux, making for easier handling by the client. (i.e., this
+    ! class handles the addition of the dribbled flux and the current flux for you.)
+    !
+    ! !USES:
+    !
+    ! !ARGUMENTS:
+    class(annual_flux_dribbler_type), intent(inout) :: this
+    type(bounds_type), intent(in) :: bounds
+    real(r8), intent(in) :: delta( get_beg(bounds, this%bounds_subgrid_level) : )
+    !
+    ! !LOCAL VARIABLES:
+    integer :: beg_index, end_index
+    integer :: i
+    integer :: yr, mon, day, tod
+
+    character(len=*), parameter :: subname = 'set_curr_delta'
+    !-----------------------------------------------------------------------
+
+    beg_index = lbound(delta, 1)
+    end_index = get_end(bounds, this%bounds_subgrid_level)
+    SHR_ASSERT_ALL_FL((ubound(delta) == (/end_index/)), sourcefile, __LINE__)
+
+    if (is_beg_curr_year()) then
+       do i = beg_index, end_index
+          this%amount_to_dribble(i) = delta(i)
+
+          ! On the first timestep of the year, we don't have any pass-through flux. Need
+          ! to zero out any previously-set amount_from_this_timestep.
+          this%amount_from_this_timestep(i) = 0._r8
+       end do
+    else
+       do i = beg_index, end_index
+          this%amount_from_this_timestep(i) = delta(i)
+       end do
+       if (.not. this%allows_non_annual_delta .and. .not. is_first_step()) then
+          do i = beg_index, end_index
+             if (this%amount_from_this_timestep(i) /= 0._r8) then
+                write(iulog,*) subname//' ERROR: found unexpected non-zero delta mid-year'
+                write(iulog,*) 'Dribbler name: ', trim(this%name)
+                write(iulog,*) 'i, delta = ', i, this%amount_from_this_timestep(i)
+                call get_prev_date(yr, mon, day, tod)
+                write(iulog,*) 'Start of time step date (yr, mon, day, tod) = ', &
+                     yr, mon, day, tod
+                write(iulog,*) 'This indicates that some non-zero flux was generated at a time step'
+                write(iulog,*) 'other than the first time step of the year, which this dribbler was told not to expect.'
+                write(iulog,*) 'If this non-zero mid-year delta is expected, then you can suppress this error'
+                write(iulog,*) 'by setting allows_non_annual_delta to .true. when constructing this dribbler.'
+                call endrun(decomp_index=i, clmlevel=this%name_subgrid, &
+                     msg=subname//': found unexpected non-zero delta mid-year: ' // &
+                     errMsg(sourcefile, __LINE__))
+             end if
+          end do
+       end if
+    end if
+
+  end subroutine set_curr_delta
+
 !  !-----------------------------------------------------------------------
   subroutine get_curr_flux(this, bounds, flux)
     !
