@@ -187,7 +187,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartSkip, __RC__)
 
-#if (0)
+#if (1)
     call MAPL_AddImportSpec(GC,                    &
          SHORT_NAME = 'PRLAND',                    & 
          LONG_NAME  = 'total_precipitation_land',  &
@@ -482,8 +482,6 @@ contains
 
 
 ! IMPORT pointers
-    real, dimension(:), pointer :: U2M
-    real, dimension(:), pointer :: V2M
     real, dimension(:), pointer :: T2M
     real, dimension(:), pointer :: Q2M
 
@@ -491,7 +489,7 @@ contains
     real, dimension(:), pointer :: V10M
 
     real, dimension(:), pointer :: PS
-#if (0)
+#if (1)
     real, dimension(:), pointer :: PRLAND
 #else
     real, dimension(:), pointer :: PCU
@@ -612,7 +610,7 @@ contains
     call MAPL_GetPointer(IMPORT,   V10M,   'MOV10M',  __RC__)
 
     call MAPL_GetPointer(IMPORT,     PS,   'PS',      __RC__)
-#if (0)
+#if (1)
     call MAPL_GetPointer(IMPORT, PRLAND,   'PRLAND',  __RC__)
 #else
     call MAPL_GetPointer(IMPORT,    PCU,   'PCU',     __RC__)
@@ -675,7 +673,7 @@ contains
 
 
         ! accumulate precip
-#if (0)
+#if (1)
         PRA_ = PRA_ + PRLAND*dt
 #else
         PRA_ = PRA_ + (PCU+PLS+SNO)*dt
