@@ -7,8 +7,9 @@ module CatchmentCNRstMod
   use ESMF
   use MAPL
   use CatchmentRstMod, only : CatchmentRst
-  use clm_varpar     , only : nzone => NUM_ZON, nveg => NUM_VEG, &
-                              VAR_COL, VAR_PFT, npft => numpft
+  use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg => NUM_VEG_CN, &
+                                 VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
+                                 npft => numpft_CN
   use nanMod         , only : nan
   
   implicit none
@@ -105,13 +106,15 @@ contains
      catch%ntiles = ntiles
      catch%meta  = meta
      catch%time = time
-     catch%VAR_COL = VAR_COL
-     catch%VAR_PFT = VAR_PFT
      if (index(cnclm, '40') /=0) then
         catch%isCLM40 = .true.
+        catch%VAR_COL = VAR_COL_40
+        catch%VAR_PFT = VAR_PFT_40
      endif
      if (index(cnclm, '45') /=0) then
         catch%isCLM45 = .true.
+        catch%VAR_COL = VAR_COL_45
+        catch%VAR_PFT = VAR_PFT_45
      endif
 
      if (myid == 0) then
@@ -194,13 +197,15 @@ contains
      catch%ntiles = meta%get_dimension('tile', __RC__)
      catch%time = time
      catch%meta = meta
-     catch%VAR_COL = VAR_COL
-     catch%VAR_PFT = VAR_PFT
      if (index(cnclm, '40') /=0) then
         catch%isCLM40 = .true.
+        catch%VAR_COL = VAR_COL_40
+        catch%VAR_PFT = VAR_PFT_40
      endif
      if (index(cnclm, '45') /=0) then
         catch%isCLM45 = .true.
+        catch%VAR_COL = VAR_COL_45
+        catch%VAR_PFT = VAR_PFT_45
      endif
 
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
