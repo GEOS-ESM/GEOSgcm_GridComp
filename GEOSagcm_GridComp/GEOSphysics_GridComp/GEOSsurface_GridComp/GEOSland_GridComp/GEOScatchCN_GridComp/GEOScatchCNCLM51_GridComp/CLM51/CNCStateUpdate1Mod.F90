@@ -150,7 +150,7 @@ contains
     ! variables (except for gap-phase mortality and fire fluxes)
     !
     use clm_varctl    , only : carbon_resp_opt
-    use CNVegMatrixMod, only : matrix_update_phc
+    !use CNVegMatrixMod, only : matrix_update_phc
     ! !ARGUMENTS:
     integer                              , intent(in)    :: num_soilc       ! number of soil columns filter
     integer                              , intent(in)    :: filter_soilc(:) ! filter for soil columns
@@ -211,12 +211,12 @@ contains
                ! time step, but to be safe, I'm explicitly setting it to zero here.
                   cf_soil%decomp_cpools_sourcesink_col(c,j,i_cwd) = 0._r8
                else
-                  cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) = &
-                       cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) + cf_veg%phenology_c_to_litr_met_c_col(c,j) *dt
-                  cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) = &
-                       cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) + cf_veg%phenology_c_to_litr_cel_c_col(c,j) *dt
-                  cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) = &
-                       cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) + cf_veg%phenology_c_to_litr_lig_c_col(c,j) *dt
+!                  cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) = &
+!                       cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) + cf_veg%phenology_c_to_litr_met_c_col(c,j) *dt
+!                  cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) = &
+!                       cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) + cf_veg%phenology_c_to_litr_cel_c_col(c,j) *dt
+!                  cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) = &
+!                       cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) + cf_veg%phenology_c_to_litr_lig_c_col(c,j) *dt
                end if
             end do
          end do
@@ -537,8 +537,8 @@ ptch: do fp = 1,num_soilp
                   if(.not. use_matrixcn)then
                      cf_veg%xsmrpool_to_atm_patch(p) = cf_veg%xsmrpool_to_atm_patch(p) + cs_veg%frootc_patch(p)/dt
                   else
-                     cf_veg%xsmrpool_to_atm_patch(p) = cf_veg%xsmrpool_to_atm_patch(p) &
-                       + cs_veg%frootc_patch(p) * matrix_update_phc(p,cf_veg%ifroot_to_iout_ph,1._r8/dt,dt,cnveg_carbonflux_inst,.true.,.true.)
+!                     cf_veg%xsmrpool_to_atm_patch(p) = cf_veg%xsmrpool_to_atm_patch(p) &
+!                       + cs_veg%frootc_patch(p) * matrix_update_phc(p,cf_veg%ifroot_to_iout_ph,1._r8/dt,dt,cnveg_carbonflux_inst,.true.,.true.)
                   end if
                   ! Save xsmrpool, cpool, frootc to loss state variable for
                   ! dribbling
@@ -552,8 +552,8 @@ ptch: do fp = 1,num_soilp
                   if(.not. use_matrixcn)then
                      cs_veg%xsmrpool_loss_patch(p) = cs_veg%xsmrpool_loss_patch(p) + cs_veg%frootc_patch(p)
                   else
-                     cs_veg%xsmrpool_loss_patch(p) = cs_veg%xsmrpool_loss_patch(p) &
-                       + cs_veg%frootc_patch(p) * matrix_update_phc(p,cf_veg%ifroot_to_iout_ph,1._r8/dt,dt,cnveg_carbonflux_inst,.true.,.true.)
+!                     cs_veg%xsmrpool_loss_patch(p) = cs_veg%xsmrpool_loss_patch(p) &
+!                       + cs_veg%frootc_patch(p) * matrix_update_phc(p,cf_veg%ifroot_to_iout_ph,1._r8/dt,dt,cnveg_carbonflux_inst,.true.,.true.)
                   end if
                end if
                if (.not. use_matrixcn) then

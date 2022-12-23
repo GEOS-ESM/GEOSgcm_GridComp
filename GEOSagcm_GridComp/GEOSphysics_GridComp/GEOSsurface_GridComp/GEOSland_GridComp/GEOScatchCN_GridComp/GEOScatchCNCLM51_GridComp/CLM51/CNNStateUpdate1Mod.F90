@@ -147,14 +147,14 @@ contains
                nf_soil%decomp_npools_sourcesink_col(c,j,i_cwd) = 0._r8
 
             else
-               nf_soil%matrix_Ninput%V(c,j+(i_met_lit-1)*nlevdecomp) = &
-                    nf_soil%matrix_Ninput%V(c,j+(i_met_lit-1)*nlevdecomp) + nf_veg%phenology_n_to_litr_met_n_col(c,j) *dt
-
-               nf_soil%matrix_Ninput%V(c,j+(i_cel_lit-1)*nlevdecomp) = &
-                    nf_soil%matrix_Ninput%V(c,j+(i_cel_lit-1)*nlevdecomp) + nf_veg%phenology_n_to_litr_cel_n_col(c,j) *dt
-
-               nf_soil%matrix_Ninput%V(c,j+(i_lig_lit-1)*nlevdecomp) = &
-                    nf_soil%matrix_Ninput%V(c,j+(i_lig_lit-1)*nlevdecomp) + nf_veg%phenology_n_to_litr_lig_n_col(c,j) *dt
+!               nf_soil%matrix_Ninput%V(c,j+(i_met_lit-1)*nlevdecomp) = &
+!                    nf_soil%matrix_Ninput%V(c,j+(i_met_lit-1)*nlevdecomp) + nf_veg%phenology_n_to_litr_met_n_col(c,j) *dt
+!
+!               nf_soil%matrix_Ninput%V(c,j+(i_cel_lit-1)*nlevdecomp) = &
+!                    nf_soil%matrix_Ninput%V(c,j+(i_cel_lit-1)*nlevdecomp) + nf_veg%phenology_n_to_litr_cel_n_col(c,j) *dt
+!
+!               nf_soil%matrix_Ninput%V(c,j+(i_lig_lit-1)*nlevdecomp) = &
+!                    nf_soil%matrix_Ninput%V(c,j+(i_lig_lit-1)*nlevdecomp) + nf_veg%phenology_n_to_litr_lig_n_col(c,j) *dt
 
             end if
          end do

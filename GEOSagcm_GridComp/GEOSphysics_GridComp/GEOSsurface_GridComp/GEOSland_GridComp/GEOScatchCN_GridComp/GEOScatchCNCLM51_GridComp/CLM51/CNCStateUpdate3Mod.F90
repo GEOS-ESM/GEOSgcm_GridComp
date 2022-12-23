@@ -77,17 +77,17 @@ contains
                cs_soil%decomp_cpools_vr_col(c,j,i_lig_lit) = cs_soil%decomp_cpools_vr_col(c,j,i_lig_lit) + &
                  cf_veg%m_c_to_litr_lig_fire_col(c,j)* dt
             else
-            ! patch-level wood to column-level CWD (uncombusted wood)
-               cf_soil%matrix_Cinput%V(c,j+(i_cwd-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_cwd-1)*nlevdecomp) + &
-                 cf_veg%fire_mortality_c_to_cwdc_col(c,j) * dt
-
-            ! patch-level wood to column-level litter (uncombusted wood)
-               cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) + &
-                 cf_veg%m_c_to_litr_met_fire_col(c,j)* dt
-               cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) + &
-                 cf_veg%m_c_to_litr_cel_fire_col(c,j)* dt
-               cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) + &
-                 cf_veg%m_c_to_litr_lig_fire_col(c,j)* dt
+!            ! patch-level wood to column-level CWD (uncombusted wood)
+!               cf_soil%matrix_Cinput%V(c,j+(i_cwd-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_cwd-1)*nlevdecomp) + &
+!                 cf_veg%fire_mortality_c_to_cwdc_col(c,j) * dt
+!
+!            ! patch-level wood to column-level litter (uncombusted wood)
+!               cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_met_lit-1)*nlevdecomp) + &
+!                 cf_veg%m_c_to_litr_met_fire_col(c,j)* dt
+!               cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_cel_lit-1)*nlevdecomp) + &
+!                 cf_veg%m_c_to_litr_cel_fire_col(c,j)* dt
+!               cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) = cf_soil%matrix_Cinput%V(c,j+(i_lig_lit-1)*nlevdecomp) + &
+!                 cf_veg%m_c_to_litr_lig_fire_col(c,j)* dt
             end if
          end do
       end do
