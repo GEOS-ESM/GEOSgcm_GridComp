@@ -4,7 +4,7 @@
  use clm_varpar,         only : numpft, numrad, num_veg, num_zon
  use decompMod,          only : bounds_type
  use PatchType,          only : patch
- use clm_varcon          only : rair
+ use clm_varcon,          only : rair
  
  use CNVegNitrogenstateType
  use CNVegCarbonstateType
