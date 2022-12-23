@@ -157,7 +157,7 @@ module CNVegetationFacade
      procedure, public :: InitAccBuffer
      procedure, public :: InitAccVars
      procedure, public :: UpdateAccVars
-     procedure, public :: Restart
+   !  procedure, public :: Restart
 
      procedure, public :: Init2                         ! Do initialization in initialize phase, after subgrid weights are determined
      procedure, public :: InitEachTimeStep              ! Do initializations at the start of each time step
@@ -430,106 +430,106 @@ contains
 
 
   !-----------------------------------------------------------------------
-  subroutine Restart(this, bounds, ncid, flag)
-    !
-    ! !DESCRIPTION:
-    ! Handle restart (read / write) for CNVeg
-    !
-    ! Should be called regardless of whether use_cn is true
-    !
-    ! !USES:
-    use ncdio_pio,       only : file_desc_t
-    use clm_varcon,      only : c3_r2, c14ratio
-    use clm_varctl,      only : use_soil_matrixcn, use_matrixcn
-    use CNVegMatrixMod,  only : CNVegMatrixRest
-    use CNSoilMatrixMod, only : CNSoilMatrixRest
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(inout) :: this
-    type(bounds_type), intent(in)    :: bounds 
-    type(file_desc_t), intent(inout) :: ncid   
-    character(len=*) , intent(in)    :: flag   
-    integer  :: reseed_patch(bounds%endp-bounds%begp+1)
-    integer  :: num_reseed_patch
-    !
-    ! !LOCAL VARIABLES:
-
-    integer :: begp, endp
-    real(r8) :: spinup_factor4deadwood    ! Spinup factor used for deadwood (dead-stem and dead course root)
-
-    character(len=*), parameter :: subname = 'Restart'
-    !-----------------------------------------------------------------------
-
-    if (use_cn) then
-       begp = bounds%begp
-       endp = bounds%endp
-       call this%cnveg_carbonstate_inst%restart(bounds, ncid, flag=flag, carbon_type='c12', &
-               reseed_dead_plants=this%reseed_dead_plants, filter_reseed_patch=reseed_patch, &
-               num_reseed_patch=num_reseed_patch, spinup_factor4deadwood=spinup_factor4deadwood )
-       if ( flag /= 'read' .and. num_reseed_patch /= 0 )then
-          call endrun(msg="ERROR num_reseed should be zero and is not"//errmsg(sourcefile, __LINE__))
-       end if
-       if ( flag /= 'read' .and. spinup_factor4deadwood /= 10_r8 )then
-          call endrun(msg="ERROR spinup_factor4deadwood should be 10 and is not"//errmsg(sourcefile, __LINE__))
-       end if
-       if (use_c13) then
-          call this%c13_cnveg_carbonstate_inst%restart(bounds, ncid, flag=flag, carbon_type='c13', &
-               reseed_dead_plants=this%reseed_dead_plants, c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
-       end if
-       if (use_c14) then
-          call this%c14_cnveg_carbonstate_inst%restart(bounds, ncid, flag=flag, carbon_type='c14', &
-               reseed_dead_plants=this%reseed_dead_plants, c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
-       end if
-
-       call this%cnveg_carbonflux_inst%restart(bounds, ncid, flag=flag, carbon_type='c12')
-       if (use_c13) then
-          call this%c13_cnveg_carbonflux_inst%restart(bounds, ncid, flag=flag, carbon_type='c13')
-       end if
-       if (use_c14) then
-          call this%c14_cnveg_carbonflux_inst%restart(bounds, ncid, flag=flag, carbon_type='c14')
-       end if
-
-       call this%cnveg_nitrogenstate_inst%restart(bounds, ncid, flag=flag,  &
-            leafc_patch=this%cnveg_carbonstate_inst%leafc_patch(begp:endp),         &
-            leafc_storage_patch=this%cnveg_carbonstate_inst%leafc_storage_patch(begp:endp), &
-            frootc_patch=this%cnveg_carbonstate_inst%frootc_patch(begp:endp), &
-            frootc_storage_patch=this%cnveg_carbonstate_inst%frootc_storage_patch(begp:endp), &
-            deadstemc_patch=this%cnveg_carbonstate_inst%deadstemc_patch(begp:endp), &
-            filter_reseed_patch=reseed_patch, num_reseed_patch=num_reseed_patch, &
-            spinup_factor_deadwood=spinup_factor4deadwood )
-       call this%cnveg_nitrogenflux_inst%restart(bounds, ncid, flag=flag)
-       call this%cnveg_state_inst%restart(bounds, ncid, flag=flag, &
-            cnveg_carbonstate=this%cnveg_carbonstate_inst, &
-            cnveg_nitrogenstate=this%cnveg_nitrogenstate_inst, &
-            filter_reseed_patch=reseed_patch, num_reseed_patch=num_reseed_patch)
-
-       call this%c_products_inst%restart(bounds, ncid, flag)
-       if (use_c13) then
-          call this%c13_products_inst%restart(bounds, ncid, flag, &
-               template_for_missing_fields = this%c_products_inst, &
-               template_multiplier = c3_r2)
-       end if
-       if (use_c14) then
-          call this%c14_products_inst%restart(bounds, ncid, flag, &
-               template_for_missing_fields = this%c_products_inst, &
-               template_multiplier = c14ratio)
-       end if
-       call this%n_products_inst%restart(bounds, ncid, flag)
-
-       if ( use_matrixcn )then
-          call CNVegMatrixRest( ncid, flag )
-       end if
-    end if
-
-    if ( use_soil_matrixcn )then
-       call CNSoilMatrixRest( ncid, flag )
-    end if
-
-    if (use_cndv) then
-       call this%dgvs_inst%Restart(bounds, ncid, flag=flag)
-    end if
-
-  end subroutine Restart
+!  subroutine Restart(this, bounds, ncid, flag)
+!    !
+!    ! !DESCRIPTION:
+!    ! Handle restart (read / write) for CNVeg
+!    !
+!    ! Should be called regardless of whether use_cn is true
+!    !
+!    ! !USES:
+!    use ncdio_pio,       only : file_desc_t
+!    use clm_varcon,      only : c3_r2, c14ratio
+!    use clm_varctl,      only : use_soil_matrixcn, use_matrixcn
+!    use CNVegMatrixMod,  only : CNVegMatrixRest
+!    use CNSoilMatrixMod, only : CNSoilMatrixRest
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(inout) :: this
+!    type(bounds_type), intent(in)    :: bounds 
+!    type(file_desc_t), intent(inout) :: ncid   
+!    character(len=*) , intent(in)    :: flag   
+!    integer  :: reseed_patch(bounds%endp-bounds%begp+1)
+!    integer  :: num_reseed_patch
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    integer :: begp, endp
+!    real(r8) :: spinup_factor4deadwood    ! Spinup factor used for deadwood (dead-stem and dead course root)
+!
+!    character(len=*), parameter :: subname = 'Restart'
+!    !-----------------------------------------------------------------------
+!
+!    if (use_cn) then
+!       begp = bounds%begp
+!       endp = bounds%endp
+!       call this%cnveg_carbonstate_inst%restart(bounds, ncid, flag=flag, carbon_type='c12', &
+!               reseed_dead_plants=this%reseed_dead_plants, filter_reseed_patch=reseed_patch, &
+!               num_reseed_patch=num_reseed_patch, spinup_factor4deadwood=spinup_factor4deadwood )
+!       if ( flag /= 'read' .and. num_reseed_patch /= 0 )then
+!          call endrun(msg="ERROR num_reseed should be zero and is not"//errmsg(sourcefile, __LINE__))
+!       end if
+!       if ( flag /= 'read' .and. spinup_factor4deadwood /= 10_r8 )then
+!          call endrun(msg="ERROR spinup_factor4deadwood should be 10 and is not"//errmsg(sourcefile, __LINE__))
+!       end if
+!       if (use_c13) then
+!          call this%c13_cnveg_carbonstate_inst%restart(bounds, ncid, flag=flag, carbon_type='c13', &
+!               reseed_dead_plants=this%reseed_dead_plants, c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
+!       end if
+!       if (use_c14) then
+!          call this%c14_cnveg_carbonstate_inst%restart(bounds, ncid, flag=flag, carbon_type='c14', &
+!               reseed_dead_plants=this%reseed_dead_plants, c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
+!       end if
+!
+!       call this%cnveg_carbonflux_inst%restart(bounds, ncid, flag=flag, carbon_type='c12')
+!       if (use_c13) then
+!          call this%c13_cnveg_carbonflux_inst%restart(bounds, ncid, flag=flag, carbon_type='c13')
+!       end if
+!       if (use_c14) then
+!          call this%c14_cnveg_carbonflux_inst%restart(bounds, ncid, flag=flag, carbon_type='c14')
+!       end if
+!
+!       call this%cnveg_nitrogenstate_inst%restart(bounds, ncid, flag=flag,  &
+!            leafc_patch=this%cnveg_carbonstate_inst%leafc_patch(begp:endp),         &
+!            leafc_storage_patch=this%cnveg_carbonstate_inst%leafc_storage_patch(begp:endp), &
+!            frootc_patch=this%cnveg_carbonstate_inst%frootc_patch(begp:endp), &
+!            frootc_storage_patch=this%cnveg_carbonstate_inst%frootc_storage_patch(begp:endp), &
+!            deadstemc_patch=this%cnveg_carbonstate_inst%deadstemc_patch(begp:endp), &
+!            filter_reseed_patch=reseed_patch, num_reseed_patch=num_reseed_patch, &
+!            spinup_factor_deadwood=spinup_factor4deadwood )
+!       call this%cnveg_nitrogenflux_inst%restart(bounds, ncid, flag=flag)
+!       call this%cnveg_state_inst%restart(bounds, ncid, flag=flag, &
+!            cnveg_carbonstate=this%cnveg_carbonstate_inst, &
+!            cnveg_nitrogenstate=this%cnveg_nitrogenstate_inst, &
+!            filter_reseed_patch=reseed_patch, num_reseed_patch=num_reseed_patch)
+!
+!       call this%c_products_inst%restart(bounds, ncid, flag)
+!       if (use_c13) then
+!          call this%c13_products_inst%restart(bounds, ncid, flag, &
+!               template_for_missing_fields = this%c_products_inst, &
+!               template_multiplier = c3_r2)
+!       end if
+!       if (use_c14) then
+!          call this%c14_products_inst%restart(bounds, ncid, flag, &
+!               template_for_missing_fields = this%c_products_inst, &
+!               template_multiplier = c14ratio)
+!       end if
+!       call this%n_products_inst%restart(bounds, ncid, flag)
+!
+!       if ( use_matrixcn )then
+!          call CNVegMatrixRest( ncid, flag )
+!       end if
+!    end if
+!
+!    if ( use_soil_matrixcn )then
+!       call CNSoilMatrixRest( ncid, flag )
+!    end if
+!
+!    if (use_cndv) then
+!       call this%dgvs_inst%Restart(bounds, ncid, flag=flag)
+!    end if
+!
+!  end subroutine Restart
 
   !-----------------------------------------------------------------------
   subroutine Init2(this, bounds, NLFilename)

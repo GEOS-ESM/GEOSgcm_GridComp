@@ -216,7 +216,7 @@ contains
                                        ilivecroot,ilivecroot_st,ilivecroot_xf,&
                                        ideadcroot,ideadcroot_st,ideadcroot_xf,&
                                        igrain,igrain_st,igrain_xf,iretransn,ioutc,ioutn,nvegnpool
-    use CNVegMatrixMod        , only : matrix_update_phn
+   ! use CNVegMatrixMod        , only : matrix_update_phn
     
     !
     ! !ARGUMENTS:
@@ -501,11 +501,11 @@ contains
        
          plant_nalloc(p) = sminn_to_npool(p) + retransn_to_npool(p)
          if(use_matrixcn)then
-            associate( &
-              matrix_Ninput => cnveg_nitrogenflux_inst%matrix_Ninput_patch & ! N input of matrix
-            )
-            matrix_Ninput(p) =  sminn_to_npool(p)! + retransn_to_npool(p)
-            end associate
+!            associate( &
+!              matrix_Ninput => cnveg_nitrogenflux_inst%matrix_Ninput_patch & ! N input of matrix
+!            )
+!            matrix_Ninput(p) =  sminn_to_npool(p)! + retransn_to_npool(p)
+!            end associate
          end if
          
          if(.not.use_fun)then
@@ -516,10 +516,10 @@ contains
                     excess_cflux(p) = availc(p) - plant_calloc(p)
 
                     if(use_matrixcn)then
-                       associate( &
-                           matrix_Cinput => cnveg_carbonflux_inst%matrix_Cinput_patch  & ! C input of matrix 
-                       )
-                       matrix_Cinput(p) = plant_nalloc(p) * (c_allometry(p)/n_allometry(p))
+!                       associate( &
+!                           matrix_Cinput => cnveg_carbonflux_inst%matrix_Cinput_patch  & ! C input of matrix 
+!                       )
+!                       matrix_Cinput(p) = plant_nalloc(p) * (c_allometry(p)/n_allometry(p))
                        end associate
                     end if
 
@@ -1278,26 +1278,26 @@ contains
                matrix_Ninput(p) = npool_to_veg - retransn_to_npool(p)
            else
                if(retransn(p) .ne. 0)then
-                  retransn_to_npool(p) = retransn(p) * matrix_update_phn(p,iretransn_to_iout,retransn_to_npool(p)/retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+                !  retransn_to_npool(p) = retransn(p) * matrix_update_phn(p,iretransn_to_iout,retransn_to_npool(p)/retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
                end if
            end if
             
            if(retransn(p) .ne. 0)then
-               tmp = matrix_update_phn(p,iretransn_to_ileaf             ,matrix_nalloc(p,ileaf )         * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ileafst           ,matrix_nalloc(p,ileaf_st )      * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ifroot            ,matrix_nalloc(p,ifroot )        * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ifrootst          ,matrix_nalloc(p,ifroot_st )     * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ilivestem         ,matrix_nalloc(p,ilivestem )     * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ilivestemst       ,matrix_nalloc(p,ilivestem_st )  * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ideadstem         ,matrix_nalloc(p,ideadstem )     * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ideadstemst       ,matrix_nalloc(p,ideadstem_st )  * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ilivecroot        ,matrix_nalloc(p,ilivecroot )    * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ilivecrootst      ,matrix_nalloc(p,ilivecroot_st ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ideadcroot        ,matrix_nalloc(p,ideadcroot )    * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               tmp = matrix_update_phn(p,iretransn_to_ideadcrootst      ,matrix_nalloc(p,ideadcroot_st ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               if(ivt(p) >= npcropmin)then
-                 tmp = matrix_update_phn(p,iretransn_to_igrain   ,matrix_nalloc(p,igrain    ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-                 tmp = matrix_update_phn(p,iretransn_to_igrainst ,matrix_nalloc(p,igrain_st ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ileaf             ,matrix_nalloc(p,ileaf )         * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ileafst           ,matrix_nalloc(p,ileaf_st )      * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ifroot            ,matrix_nalloc(p,ifroot )        * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ifrootst          ,matrix_nalloc(p,ifroot_st )     * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ilivestem         ,matrix_nalloc(p,ilivestem )     * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ilivestemst       ,matrix_nalloc(p,ilivestem_st )  * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ideadstem         ,matrix_nalloc(p,ideadstem )     * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ideadstemst       ,matrix_nalloc(p,ideadstem_st )  * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ilivecroot        ,matrix_nalloc(p,ilivecroot )    * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ilivecrootst      ,matrix_nalloc(p,ilivecroot_st ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ideadcroot        ,matrix_nalloc(p,ideadcroot )    * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               tmp = matrix_update_phn(p,iretransn_to_ideadcrootst      ,matrix_nalloc(p,ideadcroot_st ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!               if(ivt(p) >= npcropmin)then
+!                 tmp = matrix_update_phn(p,iretransn_to_igrain   ,matrix_nalloc(p,igrain    ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
+!                 tmp = matrix_update_phn(p,iretransn_to_igrainst ,matrix_nalloc(p,igrain_st ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
                end if
            end if
            end associate
@@ -1403,7 +1403,7 @@ contains
                                        ilivecroot,ilivecroot_st,ilivecroot_xf,&
                                        ideadcroot,ideadcroot_st,ideadcroot_xf,&
                                        igrain,igrain_st,igrain_xf,iretransn,ioutc,ioutn
-    use CNVegMatrixMod         , only : matrix_update_phn
+  !  use CNVegMatrixMod         , only : matrix_update_phn
     ! !ARGUMENTS:
     class(nutrient_competition_FlexibleCN_type), intent(inout) :: this
     type(bounds_type)               , intent(in)    :: bounds
@@ -1790,14 +1790,14 @@ contains
                         end if
                         grain_flag(p) = 1._r8
                         if(use_matrixcn)then
-                           if(leafn(p) .ne. 0._r8)then
-                               leafn_to_retransn(p) = leafn(p) * matrix_update_phn(p,ileaf_to_iretransn_phn,leafn_to_retransn(p) / leafn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,acc_ph)
-                           end if
-                           if(frootn(p) .ne. 0._r8)then
-                               frootn_to_retransn(p) = frootn(p) * matrix_update_phn(p,ifroot_to_iretransn_phn,frootn_to_retransn(p) / frootn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,acc_ph)
-                           end if
-                           if(livestemn(p) .ne. 0._r8)then
-                               livestemn_to_retransn(p) = livestemn(p) * matrix_update_phn(p,ilivestem_to_iretransn_phn,livestemn_to_retransn(p) / livestemn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,acc_ph)
+!                           if(leafn(p) .ne. 0._r8)then
+!                               leafn_to_retransn(p) = leafn(p) * matrix_update_phn(p,ileaf_to_iretransn_phn,leafn_to_retransn(p) / leafn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,acc_ph)
+!                           end if
+!                           if(frootn(p) .ne. 0._r8)then
+!                               frootn_to_retransn(p) = frootn(p) * matrix_update_phn(p,ifroot_to_iretransn_phn,frootn_to_retransn(p) / frootn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,acc_ph)
+!                           end if
+!                           if(livestemn(p) .ne. 0._r8)then
+!                               livestemn_to_retransn(p) = livestemn(p) * matrix_update_phn(p,ilivestem_to_iretransn_phn,livestemn_to_retransn(p) / livestemn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,acc_ph)
                            end if
                         end if
                            
