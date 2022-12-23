@@ -667,12 +667,8 @@ contains
     call MAPL_GridCreate(GCS(AGCM), rc=status)
     VERIFY_(STATUS)
 
-! Recursive setup of grids (should be disabled)
-    call ESMF_GridCompSet(GCS(AGCM),  grid=agrid, rc=status)
+    call ESMF_GridCompGet(GCS(AGCM),  grid=agrid, rc=status)
     VERIFY_(STATUS)
-
-!ALT we need a grid for GCM - we put either the Agrid or the Ogrid
-! depending of what exports are we propagating up
 
     call ESMF_GridCompSet(GC, grid=agrid, rc=status)
     VERIFY_(STATUS)

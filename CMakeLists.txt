@@ -52,12 +52,27 @@ ExternalProject_Add(modelE
    UPDATE_COMMAND ""
    BUILD_ALWAYS 1
    #BUILD_COMMAND make clean OVERWRITE=YES && make rundeck RUN=${ModelE_Run} RUNSRC=${ModelE_Template} OVERWRITE=YES && $(MAKE) setup RUN=${ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=${MODELERC} MPI=YES
-   BUILD_COMMAND make rundeck RUN=${ModelE_Run} RUNSRC=${ModelE_Template} OVERWRITE=YES && $(MAKE) setup RUN=${ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=${MODELERC} MPI=YES
+   BUILD_COMMAND make rundeck RUN=${ModelE_Run} RUNSRC=${ModelE_Template} OVERWRITE=YES 
+         COMMAND $(MAKE) setup RUN=${ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=${MODELERC} MPI=YES
+         COMMAND find ../model/ -type f -name "*.a" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/lib $<SEMICOLON>
+         COMMAND find ../model/ -type f -name "*.mod" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/include/modelE $<SEMICOLON>
    BUILD_IN_SOURCE 1
-   INSTALL_COMMAND find ../model/ -type f -name "*.a" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/lib $<SEMICOLON> &&  find ../model/ -type f -name "*.mod" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/include/modelE $<SEMICOLON>
+   INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
+   INSTALL_COMMAND find <SOURCE_DIR>/../model/ -type f -name "*.a" -exec /bin/cp {} <INSTALL_DIR>/lib  $<SEMICOLON>
+           COMMAND find <SOURCE_DIR>/../model/ -type f -name "*.mod" -exec /bin/cp {} <INSTALL_DIR>/include/modelE  $<SEMICOLON>
    DEPENDS MAPL
 )
-
+set(modele_lib_dir ${CMAKE_BINARY_DIR}/lib CACHE PATH "ModelE library dir" FORCE)
+set(modele_inc_dir ${CMAKE_BINARY_DIR}/include/modelE CACHE STRING "ModelE include dir" FORCE)
+set(modele_model_lib ${modele_lib_dir}/libmodel.a CACHE PATH "ModelE library" FORCE)
+#set(modele_model_lib "${modele_lib_dir}/libmodel.a ${modele_lib_dir}/libprofiler.a ${modele_lib_dir}/libdd2d.a ${modele_lib_dir}/libgiss_LSM.a ${modele_lib_dir}/libEnt.a ${modele_lib_dir}/libsolvers.a ${modele_lib_dir}/libMPI_Support.a ${modele_lib_dir}/libshared.a"  CACHE PATH "ModelE library" FORCE)
+set(modele_dd2d_lib ${modele_lib_dir}/libdd2d.a CACHE PATH "ModelE library" FORCE)
+set(modele_solvers_lib ${modele_lib_dir}/libsolvers.a CACHE PATH "ModelE library" FORCE)
+set(modele_prof_lib ${modele_lib_dir}/libprofiler.a CACHE PATH "ModelE library" FORCE)
+set(modele_ent_lib ${modele_lib_dir}/libEnt.a CACHE PATH "ModelE library" FORCE)
+set(modele_gisslsm_lib ${modele_lib_dir}/libgiss_LSM.a CACHE PATH "ModelE library" FORCE)
+set(modele_mpi_lib ${modele_lib_dir}/libMPI_Support.a CACHE PATH "ModelE library" FORCE)
+set(modele_shared_lib ${modele_lib_dir}/libshared.a CACHE PATH "ModelE library" FORCE)
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_GcmGridComp.F90)
 
