@@ -4,7 +4,7 @@
  use clm_varpar,         only : numpft, numrad, num_veg, num_zon
  use decompMod,          only : bounds_type
  use PatchType,          only : patch
- use clm_varcon,          only : rair
+ use clm_varcon,         only : rair
  
  use CNVegNitrogenstateType
  use CNVegCarbonstateType
@@ -17,7 +17,7 @@
  use SolarAbsorbedType
  use CanopyStateType
  use OzoneBaseMod
- use PhotosynsType
+ use PhotosynthesisMod
  use WaterFluxBulkType
  use filterMod,  only: filter
 
@@ -96,19 +96,19 @@
  real, dimension(nch*NUM_ZON*(numpft+1)) :: laisun_dt, laisha_dt, rssun_dt, rssha_dt
 
  ! local variables to compute Photosynthesis inputs
- real, dimension (nch) :: esat_tv     ! vapor pressure inside leaf (sat vapor press at tc) (Pa)
- real, dimension (nch) :: eair        ! vapor pressure of canopy air
+ real, dimension (nch, NUM_ZON) :: esat_tv     ! vapor pressure inside leaf (sat vapor press at tc) (Pa)
+ real, dimension (nch, NUM_ZON) :: eair        ! vapor pressure of canopy air
  real, dimension (nch) :: oair        ! Atmospheric O2 partial pressure (Pa)
  real, dimension (nch) :: deldT       ! d(es)/d(T)
  real, dimension (nch) :: cair        ! compute CO2 partial pressure
  real, dimension (nch) :: rb          ! boundary layer resistance (s/m)
  real, dimension (nch) :: el          ! vapor pressure on leaf surface [pa]
- real, dimension (nch) :: qsatl       ! leaf specific humidity [kg/kg]
- real, dimension (nch) :: qsatldT     ! derivative of "qsatl" on "t_veg"
- real, dimension (nch) :: qaf         ! canopy air humidity [kg/kg]
- real, dimension (nch*num_zon*(numpft+1)) :: coszen_clm ! cosine solar zenith angle for next time step in CLM dimensions
+ real, dimension (nch, NUM_ZON) :: qsatl       ! leaf specific humidity [kg/kg]
+ real, dimension (nch, NUM_ZON) :: qsatldT     ! derivative of "qsatl" on "t_veg"
+ real, dimension (nch, NUM_ZON) :: qaf         ! canopy air humidity [kg/kg]
 
  ! local inputs to Photosynthesis in CLM space
+ real, dimension(nch*NUM_ZON*(numpft+1)) :: coszen_clm ! cosine solar zenith angle for next time step in CLM dimensions
  real, dimension(nch*NUM_ZON*(numpft+1)) :: esat_tv_clm
  real, dimension(nch*NUM_ZON*(numpft+1)) :: eair_clm
  real, dimension(nch*NUM_ZON*(numpft+1)) :: cair_clm
@@ -117,11 +117,16 @@
  real, dimension(nch*NUM_ZON*(numpft+1)) :: dayl_factor_clm
  real, dimension(nch*NUM_ZON*(numpft+1)) :: qsatl_clm
  real, dimension(nch*NUM_ZON*(numpft+1)) :: qaf_clm
+ real, dimension(nch*NUM_ZON*(numpft+1)) :: deldT_clm
 
  ! local pointers for Photosynthesis inputs
  real, pointer :: leafn(:)    ! leaf N (gN/m2)   
  real, pointer :: froot_carbon(:) ! fine root carbon (gC/m2) [pft]
  real, pointer :: croot_carbon(:) ! live coarse root carbon (gC/m2) [pft] 
+
+ ! other local variables
+ 
+ integer :: num_vegsol, num_novegsol
 
  ! CLM variables
  type(bounds_type)              :: bounds
@@ -135,6 +140,8 @@
  type(ozone_base_type)          :: ozone_inst
  type(photosyns_type)           :: photosyns_inst
  type(waterfluxbulk_type)       :: waterfluxbulk_inst
+ type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
+ type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
 
  ! associate variables
 
@@ -145,23 +152,28 @@
        xl                      => pftcon%xl                       , & 
        rhol                    => pftcon%rhol                     , &   
        taul                    => pftcon%taul                     , &
-       leafn                   => cnveg_nitrogenstate%leafn_patch , &
-       froot_carbon            => cnveg_carbonstate%frootc_patch  , &
-       croot_carbon            => cnveg_carbonstate%liverootc_patch, &
+       leafn                   => cnveg_nitrogenstate_inst%leafn_patch , &
+       froot_carbon            => cnveg_carbonstate_inst%frootc_patch  , &
+       croot_carbon            => cnveg_carbonstate_inst%liverootc_patch, &
        elai                    => canopystate_inst%elai_patch      , &
-       esai                    => canopystate_inst%esai_patch      , &
+       esai                    => canopystate_inst%esai_patch        &
         )
 
 ! compute saturation vapor pressure
 ! ---------------------------------
    do n = 1,nch
-     esat_tv(n) = MAPL_EQsat(tc(n),DQ=deldT(n))
+      do nz = 1,NUM_ZON
+         esat_tv(n,nz) = MAPL_EQsat(tc(n,nz),DQ=deldT(n))
+      end do
    end do
 
  ! compute canopy air vapor pressure
  !----------------------------------
-  eair(:) = pbot(:) * qa(:) / (0.622 + qa(:))  ! canopy air vapor pressure (Pa);  jk: this is different from the formulation in the CLM code, which is different from the formulation in the CLM documentation
-
+   do n = 1,nch
+      do nz = 1,NUM_ZON
+         eair(n,nz) = pbot(n) * qa(n,nz) / (0.622 + qa(n-nz))  ! canopy air vapor pressure (Pa);  jk: this is different from the formulation in the CLM code, which is different from the formulation in the CLM documentation
+      end do
+   end do
  ! compute atmospheric O2 partial pressure
  !-----------------------------------------
   oair(:) = 0.20946*pbot
@@ -177,14 +189,21 @@
  ! leaf specific humidity
  !------------------------
  do n = 1,nch
- call QSat(tc(n), pbot(n), qsatl(n), &
+    do nz = 1,NUM_ZON
+       call QSat(tc(n,nz), pbot(n), qsatl(n,nz), &
                  el(n), &
                  qsatldT(n))
+    end do
  end do
 
  ! canopy air humidity
  !--------------------
- qaf = qa
+
+ do n = 1,nch
+    do nz = 1,NUM_ZON
+       qaf(n,nz) = qa(n,nz)
+    end do
+ end do
 
  ! atmospheric pressure and density downscaled to column level
  ! vegetation temperature, 2m 10-day running mean temperature, temperature at AGCM ref. height
@@ -201,13 +220,13 @@
     do nz = 1,num_zon
        n = n + 1
        atm2lnd_inst%forc_pbot_downscaled_col (n)  = pbot(nc)
-       atm2lnd_inst%forc_rho_downscaled_col  (n)  = pbot(nc)-0.378*eair(nc)/(rair*tc(nc)) 
+       atm2lnd_inst%forc_rho_downscaled_col  (n)  = pbot(nc)-0.378*eair(nc,nz)/(rair*tc(nc,nz)) 
 
        soilstate_inst%hk_sat_col (n) = 1000.*COND(nc)                          ! saturated hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
-       soilstate_inst%hk_l_col   (n) = 1000.*COND(nc)*(wet3(nc)^(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
+       soilstate_inst%hk_l_col   (n) = 1000.*COND(nc)*(wet3(nc)**(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
-       soilstate_inst%smp_l_col  (n) = 1000.*PSIS(nc)*(wet3(nc)^(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
+       soilstate_inst%smp_l_col  (n) = 1000.*PSIS(nc)*(wet3(nc)**(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
                                                                                ! and converted to [mm]
        soilstate_inst%bsw_col    (n) = bee(nc)                                 ! Clapp-Hornberger 'b'
        soilstate_inst%sucsat_col (n) = 1000.*psis(nc)*(-1)                     ! minimum soil suction [mm]
@@ -242,17 +261,18 @@
           soilstate_inst%rootfr_patch(p,1) = 0.
 
           ! map Photosynthesis inputs to CLM space
-          esat_tv_clm    (p) = esat_tv(nc)
+          esat_tv_clm    (p) = esat_tv(nc,nz)
           oair_clm       (p) = oair(nc)
           cair_clm       (p) = cair(nc)
           rb_clm         (p) = rb(nc)
-          qsatl_clm      (p) = qsatl(nc)
-          qaf_clm        (p) = qaf(nc)
+          qsatl_clm      (p) = qsatl(nc,nz)
+          qaf_clm        (p) = qaf(nc,nz)
           dayl_factor_clm(p) = dayl_factor(nc)
           coszen_clm     (p) = coszen(nc)
+          deldT_clm      (p) = deldT(nc)
 
           ! compute canopy air vapor pressure (in CLM space)
-          eair_ clm      (p) = pbot(nc) * qa(nc,nz) / (0.622 + qa(nc,nz))
+          eair_clm      (p) = eair(nc,nz)
 
           do nv = 1,num_veg
              if (ityp(nc,nv,nz).eq.np) then 
@@ -294,7 +314,7 @@
  
  call TwoStream(bounds, &
         filter_vegsol, num_vegsol, &
-        coszen, rho, tau, &
+        coszen_clm, rho, tau, &
         canopystate_inst, temperature_inst, waterdiagnosticbulk_inst, surfalb_inst)
 
  ! compute canopy shaded and sunlit variables (jk: needed to fill solarabs_inst before PHS call)
@@ -309,11 +329,11 @@
 
 !  compute resistance with small delta ea
 
- eair_pert(:) = eair(:) + dea
+ eair_pert(:) = eair_clm(:) + dea
 
  call PhotosynthesisHydraulicStress ( bounds, filter%num_exposedvegp, filter%exposedvegp, &
-       esat_tv, eair_pert, oair, cair, rb, bsun, bsha, btran, dayl_factor, leafn, &
-       qsatl, qaf, &
+       esat_tv_clm, eair_pert, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
+       qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterstate_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
        photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
@@ -327,11 +347,11 @@
 
    temp_unpert =  temperature_inst%t_veg_patch
    temperature_inst%t_veg_patch = temperature_inst%t_veg_patch + dtc
-   esat_tv_pert(:) = esat_tv(:) + deldT(:)*dtc 
+   esat_tv_pert(:) = esat_tv_clm(:) + deldT_clm(:)*dtc 
 
  call PhotosynthesisHydraulicStress ( bounds, fn, filterp, &
-       esat_tv_pert, eair, oair, cair, rb, bsun, bsha, btran, dayl_factor, leafn, &
-       qsatl, qaf, &
+       esat_tv_pert, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
+       qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterstate_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
        photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
@@ -346,8 +366,8 @@
    temperature_inst%t_veg_patch = temp_unpert ! reset canopy temperature to unperturbed value
 
  call PhotosynthesisHydraulicStress ( bounds, fn, filterp, &
-       esat_tv, eair, oair, cair, rb, bsun, bsha, btran, dayl_factor, leafn, &
-       qsatl, qaf, &
+       esat_tv_clm, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
+       qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterstate_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
        photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
