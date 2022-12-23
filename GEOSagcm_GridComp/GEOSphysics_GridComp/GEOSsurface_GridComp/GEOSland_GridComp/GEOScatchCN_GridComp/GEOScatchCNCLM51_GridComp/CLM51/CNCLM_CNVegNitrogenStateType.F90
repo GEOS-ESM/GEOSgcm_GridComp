@@ -2,7 +2,7 @@ module CNVegNitrogenStateType
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use MAPL_ExceptionHandling
-  use clm_varctl       , only : use_matrixcn
+  use clm_varctl       , only : use_matrixcn, use_crop
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp
   use clm_varpar       , only : NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT, &
                                 numpft, CN_zone_weight
@@ -11,6 +11,7 @@ module CNVegNitrogenStateType
   use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
+  use pftconMod                          , only : npcropmin
   use PatchType        , only : patch
 
   ! !PUBLIC TYPES:
@@ -235,7 +236,7 @@ contains
 
   ! LOCAL:
 
-    integer  :: begp, endp, begg, endgg, begc, endc
+    integer  :: begp, endp, begg, endg, begc, endc
     integer  :: np, nc, nz, p, nv, n
   !---------------------------------------------------------------------
 
