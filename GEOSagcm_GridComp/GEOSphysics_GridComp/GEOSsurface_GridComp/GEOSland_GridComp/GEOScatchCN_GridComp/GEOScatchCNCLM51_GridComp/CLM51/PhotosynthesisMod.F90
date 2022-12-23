@@ -17,6 +17,7 @@ module  PhotosynthesisMod
   use clm_varctl          , only : use_c13, use_c14, use_cn, use_cndv, use_fates, use_luna, use_hydrstress
   use clm_varctl          , only : iulog
   use clm_varpar          , only : nlevcan, nvegwcs, mxpft
+  use clm_varpar          , only : numpft, NUM_VEG, NUM_ZON, VAR_COL, VAR_PFT
   use clm_varcon          , only : namep, spval, isecspday
   use decompMod           , only : bounds_type
   use QuadraticMod        , only : quadratic
@@ -376,11 +377,11 @@ contains
           do nv = 1,num_veg ! defined veg loop
              if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
                 if (cold_start) then
-                   photosyns_inst%alphapsnsun_patch(np) = 0._r8
-                   photosyns_inst%alphapsnsha_patch(np) = 0._r8
-                else (cold_start==.false.) then
-                    photosyns_inst%alphapsnsun_patch(np) = cnpft(nc,nz,nv, 76)
-                    photosyns_inst%alphapsnsha_patch(np) = cnpft(nc,nz,nv, 77)
+                   this%alphapsnsun_patch(np) = 0._r8
+                   this%alphapsnsha_patch(np) = 0._r8
+                else if (cold_start==.false.) then
+                    this%alphapsnsun_patch(np) = cnpft(nc,nz,nv, 76)
+                    this%alphapsnsha_patch(np) = cnpft(nc,nz,nv, 77)
                 end if
               end if ! ityp =p  
           end do !nv
@@ -791,7 +792,7 @@ contains
     ! !LOCAL VARIABLES:
     integer :: f,fp,p,l,g               ! indices
 
-    real(r8) :: rc14_atm(nsectors_c14), rc13_atm
+   ! real(r8) :: rc14_atm(nsectors_c14), rc13_atm
     integer :: sector_c14
     !-----------------------------------------------------------------------
 
