@@ -3,7 +3,9 @@
 !           Index (CFFWI), Van Wagner, C.E. and  T.L. Picket, 1985
 !
 !
-! Anton Darmenov, NASA GSFC, 2010
+! 
+! Anton Darmenov, NASA GSFC, 2021  -- refactor
+! Anton Darmenov, NASA GSFC, 2010  -- initial implementation
 !
 
 module cffwi
@@ -19,6 +21,8 @@ public:: initial_spread_index
 public:: buildup_index
 public:: fire_weather_index
 public:: daily_severity_rating
+
+public:: cffwi_indexes
 
 real, public, parameter :: FFMC_INIT = 85.0
 real, public, parameter :: DMC_INIT  =  6.0
@@ -115,15 +119,8 @@ function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
     ! current FFMC
     result = 59.5*(250 - m)/(147.2 + m)
     
-    if (result < 0) then
-        result = 0.0
-    else
-        if (result > 101) then
-            result = 101.0
-        end if
-    end if
-
-    fine_fuel_moisture_code = result
+    ! clamp FFMC within [0, 101]
+    fine_fuel_moisture_code = max(0.0, min(101.0, result))
 
 end function fine_fuel_moisture_code
 
@@ -154,7 +151,7 @@ function duff_moisture_code(dmc, T, RH, Pr, month)
 
     real, dimension (12), parameter ::                               &
         EFFECTIVE_DAY_LENGTH = (/ 6.5,  7.5,  9.0, 12.8, 13.9, 13.9, &
-                                  12.4, 10.9,  9.4,  8.0,  7.0,  6.0 /)
+                                 12.4, 10.9,  9.4,  8.0,  7.0,  6.0 /)
 
 
     real,    intent (in) :: dmc, T, RH, Pr
@@ -163,7 +160,7 @@ function duff_moisture_code(dmc, T, RH, Pr, month)
 
     !local
     real :: p_0, L_e
-    real :: p, M_0, b, M_r, p_r, k, r_e, result
+    real :: p, M_0, b, M_r, p_r, k, r_e
 
 
     ! use the same variable names as in the DMC equation and 
@@ -182,10 +179,8 @@ function duff_moisture_code(dmc, T, RH, Pr, month)
 
         if (p_0 <= 33) then
             b = 100/(0.5 + 0.3*p_0)
-
         else if (p_0 <= 65) then
             b = 14 - 1.3 * log(p_0)
-
         else ! p_0 > 65
             b = 6.2 * log(p_0) - 17.2
         end if
@@ -193,27 +188,18 @@ function duff_moisture_code(dmc, T, RH, Pr, month)
         M_r = M_0 + 1000*r_e/(48.77 + b*r_e)
         p_r = 244.72 - 43.43 * log(M_r - 20.0)
 
-        ! p_r cannot be negative
-        if (p_r < 0) then
-            p_r = 0.0
-        end if
-
-        p = p_r
+        ! p_r should be positive
+        p = max(0.0, p_r)
     end if
 
 
-    ! don't allow  T < -1.1C
-    if (T < -1.1) then 
-        k = 0.0
-    else
-        k = 1.894e-6*(T + 1.1)*(100 - RH) * L_e
-    end if
+    ! if T < -1.1C then k is set to 0.0
+    k = 1.894e-6 * max(0.0, (T + 1.1)) * (100 - RH) * L_e
 
 
     ! current DMC
-    result = p + 100*k
+    duff_moisture_code = p + 100*k
 
-    duff_moisture_code = result
 
 end function duff_moisture_code
 
@@ -264,19 +250,15 @@ function drought_code(dc, T, Pr, month)
 
     ! rainfall correction
     if (Pr > 2.8) then
-        r_d = 0.83*Pr - 1.27
+        r_d = 0.83 * Pr - 1.27
 
         Q_0 = 800 * exp(-d_0 / 400)
         Q_r = Q_0 + 3.937 * r_d
 
         d_r = 400 * log(800 / Q_r)
 
-        ! d_r cannot be less than zero
-        if (d_r < 0) then
-            d_r = 0.0
-        end if
-
-        d = d_r
+        ! d_r should be positive
+        d = max(0.0, d_r)
     end if
 
     ! don't allow T < -2.8C
@@ -290,11 +272,7 @@ function drought_code(dc, T, Pr, month)
     ! current DMC
     result = d + 0.5*V
 
-    if (result < 0) then 
-        result = 0.0
-    endif
-
-    drought_code = result
+    drought_code = max(0.0, result)
 
 end function drought_code
 
@@ -327,7 +305,7 @@ function initial_spread_index(ffmc, wind)
     ! convert the units if necessary
     w = 3.6 * wind  ! convert from m/s to km/h
     
-    m = 147.2 * (101.053 -  ffmc)/(59.5 +  ffmc)
+    m = 147.2 * (101.053 - ffmc)/(59.5 + ffmc)
     
     fun_w = exp(0.05039 * w)
     fun_f = 91.9 * exp(-0.1386 * m) * (1 + (m**5.31)/4.93e7)
@@ -369,11 +347,7 @@ function buildup_index(dmc, dc)
     end if
 
     ! current BUI
-    if (result < 0) then
-        result = 0.0
-    end if
-
-    buildup_index = result
+    buildup_index = max(0.0, result)
 
 end function buildup_index
 
@@ -441,7 +415,6 @@ function daily_severity_rating(fwi)
 end function daily_severity_rating
 
 
-#if (0)
 subroutine cffwi_indexes(prev_day_ffmc, prev_day_dmc, prev_day_dc, &
                          T, RH, wind, Pr,                          &
                          month,                                    &
@@ -470,15 +443,6 @@ subroutine cffwi_indexes(prev_day_ffmc, prev_day_dmc, prev_day_dc, &
     integer, intent(in) :: month
     real, intent(inout) :: ffmc, dmc, dc, isi, bui, fwi, dsr
 
-    real                :: fine_fuel_moisture_code, &
-                           duff_moisture_code,      &
-                           drought_code,            &
-                           initial_spread_index,    &
-                           buildup_index,           &
-                           fire_weather_index,      &
-                           daily_severity_rating
-
-
 
     ffmc = fine_fuel_moisture_code(prev_day_ffmc, T, RH, wind, Pr)
 
@@ -498,7 +462,7 @@ subroutine cffwi_indexes(prev_day_ffmc, prev_day_dmc, prev_day_dc, &
 end subroutine cffwi_indexes
 
 
-
+#if (0)
 subroutine cffwi_indexes_grid(prev_day_ffmc, prev_day_dmc, prev_day_dc,        &
                               T, RH, wind, Pr,                                 &
                               month,                                           &
