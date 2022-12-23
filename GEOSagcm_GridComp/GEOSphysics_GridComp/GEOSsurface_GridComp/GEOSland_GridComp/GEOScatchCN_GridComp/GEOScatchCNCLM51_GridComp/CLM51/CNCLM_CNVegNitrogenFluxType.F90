@@ -263,6 +263,7 @@ module CNVegNitrogenFluxType
      real(r8), pointer :: matrix_ngmtransfer_patch                  (:,:)   ! A-matrix_gap mortality for nitrogen
      real(r8), pointer :: matrix_ngmturnover_patch                  (:,:)   ! K-matrix_gap mortality for nitrogen 
      integer,  pointer :: matrix_ngmtransfer_doner_patch            (:)     ! A-matrix_gap mortality non-zero indices (column indices) for nitrogen
+     integer,  pointer :: matrix_ngmtransfer_receiver_patch         (:)     ! A-matrix_gap mortality non-zero indices (row indices) for nitrogen
 
      real(r8), pointer :: matrix_nfitransfer_patch                  (:,:)   ! A-matrix_fire for nitrogen
      real(r8), pointer :: matrix_nfiturnover_patch                  (:,:)   ! K-matrix_fire for nitrogen
