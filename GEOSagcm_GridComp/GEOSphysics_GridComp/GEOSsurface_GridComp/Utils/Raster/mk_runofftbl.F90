@@ -18,7 +18,39 @@ program Runoff
   character*100          :: fileLL="data/CATCH/Outlet_latlon."
   character*5            :: C_NX, C_NY
 
-  call get_command_argument(1,file)
+  logical                :: adjust_oceanLandSea_mask = .false. ! default is .false.
+  integer                :: nxt, command_argument_count
+  character*(128)        :: arg, &
+                            Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter"
+
+! Read inputs -----------------------------------------------------
+  I = command_argument_count()
+  if (I < 1 .or. I > 2) then
+    print *, " "
+    print *, "Wrong number of input arguments, got: ", I
+    print *, "Example usage with defaults: "
+    print *, " "
+    print *, trim(Usage)
+    print *, " "
+    call exit(1)
+  end if
+
+  nxt = 1
+  call get_command_argument(nxt, file)
+  print *, " "
+  print*, "Working on with input BCs string: ", file
+  print *, " "
+  if (I > 1) then
+    nxt = nxt + 1
+    call get_command_argument(nxt, arg)
+    if ( trim(arg) .ne. 'yes') then
+      print *, "Incorrect optional second argument, should be: yes"
+      call exit(2)
+    else
+      adjust_oceanLandSea_mask = .true.
+    endif
+  endif
+! ------------------------------------------------------------------
 
   fileT = "til/"//trim(file)//".til" ! input
   fileR = "rst/"//trim(file)//".rst" ! input
@@ -275,6 +307,13 @@ program Runoff
   enddo
 
   print *, "area of land   = ",    sum(real(area*out,kind=8))
+
+  if (adjust_oceanLandSea_mask) then
+    print *, " "
+    print *, "Accounting for any mismatch between land-sea masks:"
+    print *, "of GEOS land and external ocean model."
+    print *, " "
+  endif
 
   print *, "Completed successfully"
 
