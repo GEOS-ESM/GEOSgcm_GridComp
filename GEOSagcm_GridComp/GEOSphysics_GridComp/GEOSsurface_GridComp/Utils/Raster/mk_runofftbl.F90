@@ -20,10 +20,10 @@ program Runoff
 
   call get_command_argument(1,file)
 
-  fileT = "til/"//trim(file)//".til"
-  fileR = "rst/"//trim(file)//".rst"
-  fileO = "til/"//trim(file)//".trn"
-  fileB = "til/"//trim(file)//".TRN"
+  fileT = "til/"//trim(file)//".til" ! input
+  fileR = "rst/"//trim(file)//".rst" ! input
+  fileO = "til/"//trim(file)//".trn" ! output
+  fileB = "til/"//trim(file)//".TRN" ! output
 
 ! Read I and J indeces of river outlets.
 ! These should all be ocean pixels
@@ -245,8 +245,8 @@ program Runoff
 
   print *, '>>>', sum(SrcFraction*area(DstTile))
 
-! Write output file
-!------------------
+! Write output files
+!-------------------
 
   print *, "Writing output file..."
 
