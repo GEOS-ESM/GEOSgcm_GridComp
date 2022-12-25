@@ -283,39 +283,42 @@ program Runoff
   print *, "Writing output file..."
 
   open(10,file=fileO, form="formatted", status="unknown")
-
   write(10,*) NumTrans
-
   do k=1,NumTrans
      write(10,"(2I10,f16.8)") SrcTile(k),DstTile(k),SrcFraction(k)
   end do
-
   close(10)
 
-
-  open(10,file=fileB, form="unformatted", status="unknown")
-
-  write(10) NumTrans
-  write(10) SrcTile
-  write(10) DstTile
-  write(10) SrcFraction
-
-  close(10)
+  call write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
 
   do j=1,NumTrans
      Out(DstTile(j)) = Out(DstTile(j)) + In(SrcTile(J))*SrcFraction(J)
   enddo
-
   print *, "area of land   = ",    sum(real(area*out,kind=8))
 
+! If asked for
+! adjust for ocean model land-sea mask and write ANOTHER output file
+!---------------------------------------------------------------------------------
+
   if (adjust_oceanLandSea_mask) then
+    fileB = "til/"//trim(file)//"_oceanMask_adj.TRN" ! output
+
     print *, " "
     print *, "Accounting for any mismatch between land-sea masks:"
-    print *, "of GEOS land and external ocean model."
+    print *, "- Of GEOS land and external ocean model."
+    print *, "- Output file: ", fileB
     print *, " "
+!   call (...)
+    call write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
   endif
 
   print *, "Completed successfully"
+
+  deallocate( SrcFraction)
+  deallocate( SortArr)
+  deallocate( rst)
+  deallocate( area)
+  deallocate( lats, lons)
 
   call exit(0)
 
@@ -364,6 +367,22 @@ contains
   
   print*, 'Total tiles re-routed: ', nmoved
   end subroutine reroute
+! ----------------------
+
+  subroutine write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
+  implicit none
+  character*100,    intent(in) :: fileB
+  integer,          intent(in) :: NumTrans
+  integer, pointer, intent(in) :: srctile(:), dsttile(:)
+  real,             intent(in) :: SrcFraction(:)
+
+  open(10,file=fileB, form="unformatted", status="unknown")
+  write(10) NumTrans
+  write(10) SrcTile
+  write(10) DstTile
+  write(10) SrcFraction
+  close(10)
+  end subroutine write_route_file
 ! -----------------------------------------------------------------
 
 end program Runoff
