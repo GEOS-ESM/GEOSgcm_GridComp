@@ -2,6 +2,7 @@ program Runoff
 
   use mapl_hashmod
   use mapl_sortmod
+  use netcdf
 
   implicit none
 
@@ -21,11 +22,12 @@ program Runoff
   logical                :: adjust_oceanLandSea_mask = .false. ! default is .false.
   integer                :: nxt, command_argument_count
   character*(128)        :: arg, &
-                            Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter"
+                            Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter", &
+                            mapl_tp_file
 
 ! Read inputs -----------------------------------------------------
   I = command_argument_count()
-  if (I < 1 .or. I > 2) then
+  if (I < 1 .or. I > 3) then
     print *, " "
     print *, "Wrong number of input arguments, got: ", I
     print *, "Example usage with defaults: "
@@ -48,6 +50,8 @@ program Runoff
       call exit(2)
     else
       adjust_oceanLandSea_mask = .true.
+      nxt = nxt + 1
+      call get_command_argument(nxt, mapl_tp_file)
     endif
   endif
 ! ------------------------------------------------------------------
@@ -308,7 +312,7 @@ program Runoff
     print *, "- Of GEOS land and external ocean model."
     print *, "- Output file: ", fileB
     print *, " "
-!   call (...)
+    call read_oceanModel_mask( mapl_tp_file)
     call write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
   endif
 
@@ -366,6 +370,34 @@ contains
   end subroutine reroute
 ! ----------------------
 
+  subroutine read_oceanModel_mask( mask_file)
+  implicit none
+  character*128,    intent(in)  :: mask_file
+  integer                       :: nx, ny
+  real, allocatable             :: wetMask(:,:)
+
+  integer :: ncid, varid
+
+  print *, "Reading ocean model mask from : ", mask_file
+  call check( nf90_open(mask_file, nf90_nowrite, ncid)) ! open nc file
+
+  call check( nf90_inq_dimid(ncid, "n_center_x", varid)) ! read dimenstion (x)
+  call check( nf90_inquire_dimension(ncid, varid, len=nx))
+
+  call check( nf90_inq_dimid(ncid, "n_center_y", varid)) ! read dimenstion (y)
+  call check( nf90_inquire_dimension(ncid, varid, len=ny))
+
+  allocate( wetMask(nx, ny))
+  call check( nf90_inq_varid(ncid, "mask", varid))  ! read mask
+  call check( nf90_get_var(ncid, varid,  wetMask))
+
+  call check( nf90_close(ncid)) ! close nc file
+
+  deallocate( wetMask)
+
+  end subroutine read_oceanModel_mask 
+! ----------------------
+
   subroutine write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
   implicit none
   character*100,    intent(in) :: fileB
@@ -380,6 +412,17 @@ contains
   write(10) SrcFraction
   close(10)
   end subroutine write_route_file
+! ----------------------
+
+  subroutine check(status)
+  implicit none
+  integer, intent (in) :: status
+  if (status /= nf90_noerr) then
+  print *, trim(nf90_strerror(status))
+  print *, "Error in reading ocean mask file."
+  stop
+  end if
+  end subroutine check
 ! -----------------------------------------------------------------
 
 end program Runoff
