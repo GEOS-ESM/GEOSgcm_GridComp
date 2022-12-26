@@ -83,9 +83,10 @@ C--   grease ice uses SItracer:
 # define ALLOW_SITRACER_ADVCAP
 #endif
 
-C--   By default the seaice model is discretized on a B-Grid (for
-C     historical reasons). Define the following flag to use a new
-C     (not thoroughly) test version on a C-grid
+C--   Historically, the seaice model was discretized on a B-Grid. This
+C     discretization should still work but it is not longer actively tested
+C     and supported. The following flag should always be set in order to use
+C     the operational C-grid discretization.
 #define SEAICE_CGRID
 
 C--   Only for the C-grid version it is possible to
@@ -156,6 +157,10 @@ C     like all of the others -- residuals heat and fw stocks are passed to
 C     the ocean at the end of seaice_growth in a conservative manner.
 C     SEAICE_CAP_SUBLIM is not needed as of now, but kept just in case.
 #undef SEAICE_CAP_SUBLIM
+
+C--   Enable the adjointable sea-ice thermodynamic model
+C     uses seaice_growth_adx.F and seaice_solve4temp_adx.F
+#undef ALLOW_SEAICE_GROWTH_ADX
 
 C--   Enable free drift code
 #undef SEAICE_ALLOW_FREEDRIFT
