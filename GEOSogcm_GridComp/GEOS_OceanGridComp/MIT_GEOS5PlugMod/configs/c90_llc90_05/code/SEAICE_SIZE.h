@@ -12,10 +12,6 @@ C SItrMaxNum :: number of passive tracers to allocate
 C nITD       :: number of seaice categories to allocate
 CEOP
 
-C-    Maximum Number of tracers
-      INTEGER SItrMaxNum
-      PARAMETER(SItrMaxNum = 3 )
-
 C-    Maximum Number of categories
       INTEGER nITD
 C--
@@ -27,6 +23,10 @@ C Bitz et al. (2001, JGR) suggest a minimum of nITD = 5
 #else
       PARAMETER (nITD = 7)
 #endif
+
+C-    Maximum Number of tracers
+      INTEGER SItrMaxNum
+      PARAMETER(SItrMaxNum = 3 )
 
 #ifdef HACK_FOR_GMAO_CPL
 C   nIceLayers  :: number of Ice  layers (in each category)
