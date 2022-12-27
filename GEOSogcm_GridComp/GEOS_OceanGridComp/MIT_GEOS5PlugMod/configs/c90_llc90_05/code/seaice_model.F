@@ -346,9 +346,29 @@ CML   CALL EXCH_UV_XY_RS(fu,fv,.TRUE.,myThid)
 
 #ifdef HACK_FOR_GMAO_CPL
 C-    Save advective increments:
-        CALL SEAICE_SAVE4GMAO( myTime, 2, myIter, myThid )
+      CALL SEAICE_SAVE4GMAO( myTime, 2, myIter, myThid )
 C-    for now, reset increments to zero
-c       CALL SEAICE_SAVE4GMAO( myTime, 0, myIter, myThid )
+c     CALL SEAICE_SAVE4GMAO( myTime, 0, myIter, myThid )
+
+C-    Compute SI_FRZMLT, the  available heat (W/m^2) to freeze (>0) or melt (<0)
+C     sea ice so that surface level ocean reaches freezing temperature.
+C     FRZMLT = (-0.054*SW - TW) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*10.)/DT
+C     where -0.054*SW is the CICE freezing point of sea water in deg C.
+C     The freezing potential (>0) is subtracted from QNET.
+      DO bj=myByLo(myThid),myByHi(myThid)
+       DO bi=myBxLo(myThid),myBxHi(myThid)
+        DO j=1-OLy,sNy+OLy
+         DO i=1-OLx,sNx+OLx
+          SI_FRZMLT(i,j,bi,bj) = maskC(i,j,1,bi,bj) *
+     &           (-0.054*salt(i,j,1,bi,bj) - theta(i,j,1,bi,bj)) *
+     &           rhoNil * HeatCapacity_Cp * drF(1) / deltaT
+          Qnet(i,j,bi,bj) = Qnet(i,j,bi,bj) -
+     &           MAX( SI_FRZMLT(i,j,bi,bj) , zeroRL )
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+
 #endif /* HACK_FOR_GMAO_CPL */
 
 #ifdef ALLOW_EXF

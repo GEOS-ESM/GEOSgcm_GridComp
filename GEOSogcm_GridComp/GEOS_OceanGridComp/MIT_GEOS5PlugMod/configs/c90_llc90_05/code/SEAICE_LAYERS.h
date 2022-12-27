@@ -72,6 +72,13 @@ C     oceWeight    :: grid-cell ocean fraction from GEOS [0-1]
       _RL oceWeight(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       COMMON /DIAGS_GMAO_CPL/
      &        oceWeight
+
+C     SI_FRZMLT    :: available heat (W/m^2) to freeze (>0) or melt (<0) sea ice
+C                     so that surface level ocean reaches freezing temperature
+      _RL SI_FRZMLT(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      COMMON /SEAICE_FRZMLT/
+     &        SI_FRZMLT
+
 #endif /* HACK_FOR_GMAO_CPL */
 
 CEH3 ;;; Local Variables: ***
