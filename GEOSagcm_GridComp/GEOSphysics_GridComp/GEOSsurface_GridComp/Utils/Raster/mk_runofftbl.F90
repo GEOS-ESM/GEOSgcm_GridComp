@@ -15,7 +15,7 @@ program Runoff
   integer                :: type, np,lnd, is,ie,ww
   integer                :: numtrans,  numclosed
   integer                :: status
-  character*100          :: file, fileT, fileR, fileO, fileB
+  character*100          :: file, fileT, fileR, fileO, fileB, fileBB
   character*100          :: fileLL="data/CATCH/Outlet_latlon."
   character*5            :: C_NX, C_NY
 
@@ -114,6 +114,23 @@ program Runoff
 ! Count the number of Ocean and land tiles in the tile file
 !  All land tiles preceed the ocean tiles.
 !----------------------------------------------------------
+
+! If asked for, adjust tiles to be 
+! comptabile with ocean model land-sea mask and write ANOTHER output file
+!-------------------------------------------------------------------------
+
+  if (adjust_oceanLandSea_mask) then
+    fileBB = "til/"//trim(file)//"_oceanMask_adj.TRN" ! output
+
+    print *, " "
+    print *, "Accounting for any mismatch between land-sea masks:"
+    print *, "- Of GEOS land and external ocean model."
+    print *, "- Output file: ", fileB
+    print *, " "
+    call read_oceanModel_mask( mapl_tp_file)
+!   ... some adjustment of following variable: `type` 
+!   ... using ocean model land-sea mask should be done here
+  endif
 
 !  print *, "Reading til file "//trim(fileT) 
 
@@ -294,27 +311,14 @@ program Runoff
   close(10)
 
   call write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
+  if (adjust_oceanLandSea_mask) &
+     call write_route_file( fileBB, NumTrans, SrcTile, DstTile, SrcFraction)
 
   do j=1,NumTrans
      Out(DstTile(j)) = Out(DstTile(j)) + In(SrcTile(J))*SrcFraction(J)
   enddo
   print *, "area of land   = ",    sum(real(area*out,kind=8))
 
-! If asked for
-! adjust for ocean model land-sea mask and write ANOTHER output file
-!---------------------------------------------------------------------------------
-
-  if (adjust_oceanLandSea_mask) then
-    fileB = "til/"//trim(file)//"_oceanMask_adj.TRN" ! output
-
-    print *, " "
-    print *, "Accounting for any mismatch between land-sea masks:"
-    print *, "- Of GEOS land and external ocean model."
-    print *, "- Output file: ", fileB
-    print *, " "
-    call read_oceanModel_mask( mapl_tp_file)
-    call write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
-  endif
 
   print *, "Completed successfully"
 
