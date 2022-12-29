@@ -44,7 +44,7 @@ C !USES: ===============================================================
 # include "tamc.h"
 #endif
 #ifdef HACK_FOR_GMAO_CPL
-# include SEAICE_LAYERS.h
+# include "SEAICE_LAYERS.h"
 #endif /* HACK_FOR_GMAO_CPL */
 
 C !INPUT PARAMETERS: ===================================================
