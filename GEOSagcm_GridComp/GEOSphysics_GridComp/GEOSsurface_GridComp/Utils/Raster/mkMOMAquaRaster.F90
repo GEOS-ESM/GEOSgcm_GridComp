@@ -89,7 +89,7 @@ INCLUDE "netcdf.inc"
     IM = size(xvert,1)
     JM = size(xvert,2)
 
-    if(trim(GridName)=='')write(Gridname,'(A2,I4.4,A3,I4.4)') "TM",im,"xTM",jm
+    write(Gridname,'(A5,I4.4,A1,I4.4)')trim(Gridname),im,"x",jm
 
     if(DoZip) GridName = trim(Gridname)//'.gz'
 
