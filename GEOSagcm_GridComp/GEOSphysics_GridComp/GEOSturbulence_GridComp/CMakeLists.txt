@@ -21,3 +21,7 @@ install( FILES ${resource_files}
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared MAPL esmf NetCDF::NetCDF_Fortran)
+
+if (NOT CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+  target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran)
+endif ()
