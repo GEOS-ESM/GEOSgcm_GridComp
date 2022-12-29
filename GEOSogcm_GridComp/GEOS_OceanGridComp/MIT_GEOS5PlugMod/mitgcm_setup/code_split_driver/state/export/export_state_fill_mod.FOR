@@ -154,6 +154,8 @@
             p%DELSI(iSLo+i,jSLo+j) = SIadv_skinS(i,j,bi,bj)
 !     increment of seaice skin layer depth [m]
             p%DELHI(iSLo+i,jSLo+j) = SIadv_skinH(i,j,bi,bj)
+! Add FRZMLT
+            p%FRZMLT(iSLo+i,jSLo+j) = SI_FRZMLT(i,j,bi,bj)
           ENDDO
         ENDDO
 

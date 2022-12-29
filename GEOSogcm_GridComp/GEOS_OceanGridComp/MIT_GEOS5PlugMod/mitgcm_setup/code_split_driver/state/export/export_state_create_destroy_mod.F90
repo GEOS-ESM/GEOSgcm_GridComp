@@ -56,6 +56,7 @@
       ALLOCATE ( p%DELTI(   1:snx*nSx,1:sny*nSy,1:nItd)  )
       ALLOCATE ( p%DELSI(   1:snx*nSx,1:sny*nSy)  )
       ALLOCATE ( p%DELHI(   1:snx*nSx,1:sny*nSy)  )
+      ALLOCATE ( p%FRZMLT(  1:snx*nSx,1:sny*nSy)  )
 
       RETURN
       END SUBROUTINE
@@ -88,6 +89,7 @@
        _DEALLOC ( p%DELTI )
        _DEALLOC ( p%DELSI )
        _DEALLOC ( p%DELHI )
+       _DEALLOC ( p%FRZMLT )
        _DEALLOC( exportPtr )
       ENDIF
 

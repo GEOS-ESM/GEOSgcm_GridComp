@@ -41,6 +41,7 @@
        _RL, POINTER  :: DELTI    (:,:,:) => NULL()
        _RL, POINTER  :: DELSI    (  :,:) => NULL()
        _RL, POINTER  :: DELHI    (  :,:) => NULL()
+       _RL, POINTER  :: FRZMLT   (  :,:) => NULL()
       END TYPE
 
       END MODULE

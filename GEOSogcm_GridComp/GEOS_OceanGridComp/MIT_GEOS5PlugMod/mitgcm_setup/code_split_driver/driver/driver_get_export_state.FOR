@@ -72,10 +72,14 @@ C     == Local variables ==
       ELSEIF ( code .EQ. 'DELHI' ) THEN
 !     Copy DELHI to fld
          fld = mitgcmIState%export%DELHI
+      ELSEIF ( code .EQ. 'FRZMLT' ) THEN
+!     Copy FRZMLT to fld
+         fld = mitgcmIState%export%FRZMLT
 #else  /* ALLOW_SEAICE */
       ELSEIF ( code .EQ. 'UI'
      &    .OR. code .EQ. 'VI'
      &    .OR. code .EQ. 'DELSI'
+     &    .OR. code .EQ. 'FRZMLT'
      &    .OR. code .EQ. 'DELHI' ) THEN
          fld = 0.0
 #endif /* ALLOW_SEAICE */

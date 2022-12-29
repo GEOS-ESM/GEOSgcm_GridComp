@@ -875,11 +875,7 @@ contains
 !US MIT gets net upward heat flux without short-wave radiation
     HFLX=-LWFLX+SHFLX+Av*QFLUX
 
-    ! add the heat from creating sea ice
     call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', _RC)
-    where (frzmlt > 0)
-       HFLX = HFLX - FRZMLT
-    end where
 
 !US Net fresh water flux, downward positive (flip sign inside the MIT driver)
     QFLX=RAIN+SNOW-QFLUX
@@ -966,12 +962,6 @@ contains
     CALL MAPL_GetPointer(EXPORT,   TW,   'TW', RC=STATUS); VERIFY_(STATUS)
     CALL MAPL_GetPointer(EXPORT,   SW,   'SW', RC=STATUS); VERIFY_(STATUS)
 
-    where(WGHT > 0.0 )
-       FRZMLT = (MAPL_TICE-0.054*SW - TW) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*10.)/DT
-    elsewhere
-       FRZMLT = 0.0
-    end where
-
     CALL MAPL_GetPointer(exportSI, DEL_FRACICE,'DEL_FRACICE', alloc=.true., __RC__)
     CALL MAPL_GetPointer(exportSI, DEL_TI,   'DEL_TI', alloc=.true., __RC__)
     CALL MAPL_GetPointer(exportSI, DEL_SI,   'DEL_SI', alloc=.true., __RC__)
@@ -1010,6 +1000,8 @@ contains
     CALL DRIVER_GET_EXPORT_STATE( istate,'DELMPOND', DEL_MPOND )
     CALL DRIVER_GET_EXPORT_STATE( istate,'DELTAUAGE', DEL_TAUAGE )
     CALL DRIVER_GET_EXPORT_STATE( istate,'DELHI', DEL_HI )
+
+    CALL DRIVER_GET_EXPORT_STATE( istate,'FRZMLT', FRZMLT )
 
     ! ALT: for now, we need to implement ridging
     ! and/or make sure it stays between 0 and 1
