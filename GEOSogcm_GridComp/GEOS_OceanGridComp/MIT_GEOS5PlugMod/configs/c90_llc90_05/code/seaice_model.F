@@ -43,6 +43,9 @@ C !USES: ===============================================================
 #ifdef ALLOW_AUTODIFF_TAMC
 # include "tamc.h"
 #endif
+#ifdef HACK_FOR_GMAO_CPL
+# include SEAICE_LAYERS.h
+#endif /* HACK_FOR_GMAO_CPL */
 
 C !INPUT PARAMETERS: ===================================================
 C     myTime :: Current time in simulation
