@@ -120,7 +120,7 @@ PROGRAM mkEASETilesParam
      ! endif      
       
       ! WY noted: should do it in the script that calls this program 
-      !call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
+      !call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ CATCH')  
       !call execute_command_line('cd ..')
       
       ! Setting EASE Grid specifications
@@ -197,7 +197,7 @@ PROGRAM mkEASETilesParam
          allocate(geos_msk    (1:nc_esa,1:dy_esa))
          allocate(SRTM_CatchArea (1:SRTM_maxcat))
 
-         OPEN (10, FILE = 'data/CATCH/SRTM-TopoData/Pfafcatch-routing.dat', &
+         OPEN (10, FILE = 'data/CATCH/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat', &
               FORM = 'FORMATTED',STATUS='OLD',ACTION='READ') 
 
          READ (10,*) I
@@ -217,7 +217,7 @@ PROGRAM mkEASETilesParam
          catid_index  = 0
          veg          = 0
          
-         status    = NF90_OPEN ('data/CATCH/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
+         status    = NF90_OPEN ('data/CATCH/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
          status    = nf90_inq_varid(ncid, name='PfafID', varid=varid)
          status    = nf90_get_var(ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/))
          if(status /=0) then
@@ -354,7 +354,7 @@ PROGRAM mkEASETilesParam
          ! 2.5'x2.5' vegetation raster file is global 1min IGBP data 
          ! (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
          
-         open (10,file='data/CATCH/sib22.5_v2.0.dat', &
+         open (10,file='data/CATCH/land/veg/pft/v1/sib22.5_v2.0.dat', &
               form='unformatted', &
               action='read', convert='big_endian',status='old')
          
@@ -378,7 +378,7 @@ PROGRAM mkEASETilesParam
          !    1 global inland water (lakes) catchment : Pfafstetter ID 6190000
          !    1 global ice catchment                  : Pfafstetter ID 6200000
          
-         open (10,file='data/CATCH/global.cat_id.catch.DL', form='formatted', &
+         open (10,file='data/CATCH/shared/mask/global.cat_id.catch.DL', form='formatted', &
               action='read', status='old')!
          
          do j=1,j_raster
@@ -404,7 +404,7 @@ PROGRAM mkEASETilesParam
          !  1 global ice catchment                  : tile_index 36718
          ! ------------------------------------------------------------
          
-         open (10,file='data/CATCH/'  &
+         open (10,file='data/CATCH/land/topo/'  &
               //'PfafstatterDL.rst', form='unformatted',        &
               action='read',convert='little_endian', status='old')
          
@@ -469,7 +469,7 @@ PROGRAM mkEASETilesParam
       allocate(raster      (i_raster,j_raster))
       allocate(q0(nc,nr)) 
       
-      gtopo30 = 'data/CATCH/srtm30_withKMS_2.5x2.5min.data'
+      gtopo30 = 'data/CATCH/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
      
       open (10,file=trim(gtopo30),form='unformatted',status='old',convert='little_endian')
       read (10) raster

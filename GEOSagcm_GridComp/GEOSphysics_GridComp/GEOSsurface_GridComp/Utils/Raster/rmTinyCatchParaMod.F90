@@ -28,7 +28,8 @@ module rmTinyCatchParaMod
   logical, parameter ::  bug =.false.
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
-  character*100 :: c_data = 'data/CATCH/'
+  character*100 :: c_data = 'data/CATCH/'      
+  ! /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/  CATCH
   
 
   private
@@ -315,7 +316,7 @@ implicit none
      end do  
      close (10,status='keep')
 
-    open (10,file=trim(c_data)//'gswp2_mask_2.5.rst',&
+    open (10,file=trim(c_data)//'/shared/mask/mapping_2.5_grid_to_gswp2_tile_index.rst',&
              form='unformatted',status='old',action='read',convert='little_endian')
 
     do j =1,j_raster
@@ -347,7 +348,7 @@ implicit none
 
     mon_climate(:,:)=0.
 
-    iret = NF_OPEN(trim(c_data)//trim(vname)//'_uk.nc',NF_NOWRITE, ncid)
+    iret = NF_OPEN(trim(c_data)//'/land/veg/lai_grn/'//trim(vname)//'_uk.nc',NF_NOWRITE, ncid)
 
     ASSERT_(iret==NF_NOERR)
 
@@ -779,7 +780,7 @@ integer :: n_threads=1
           
           if (present(F25Tag)) then 
 
-             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid1)
+             iret = NF_OPEN('data/CATCH/land/soil/SOIL-DATA/soil_depth/v1/SoilDepth.nc',NF_NOWRITE, ncid1)
              ASSERT_(iret==NF_NOERR)
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 
@@ -803,7 +804,7 @@ integer :: n_threads=1
               deallocate (soildepth_gswp2,land_gswp2)
           else
                           
-             open (10,file='data/CATCH/soil_depth_2.5.rst',&
+             open (10,file='data/CATCH/land/soil/SOIL-DATA/soil_depth/v1/soil_depth_2.5.rst',&
                   form='unformatted',status='old',action='read',convert='little_endian')
              
              do j =1,j_raster
@@ -1450,7 +1451,7 @@ integer :: n_threads=1
              
              if(ialbs.eq.1)albspec='0.3_0.7/'
              if(ialbs.eq.2)albspec='0.7_5.0/'           
-             ifile=trim(c_data)//'AlbMap.'//bw//'.2x5.'//trim(cyy)//        &
+             ifile=trim(c_data)//'/land/albedo/AlbMap.'//bw//'.2x5.'//trim(cyy)//        &
                   '.monthly.'//albspec(1:index(albspec,'/')-1)//'.dat' 
              ofile='clsm/AlbMap.'//bw//'.2x5.'//trim(cyy)//'.monthly-tile.' &
                   //albspec(1:index(albspec,'/')-1)//'.dat'
@@ -1972,7 +1973,7 @@ END SUBROUTINE modis_scale_para
     character*2 :: dateline
     real*4, allocatable , target :: q0 (:,:)
 
-    gtopo30   = 'data/CATCH/srtm30_withKMS_2.5x2.5min.data'
+    gtopo30   = 'data/CATCH/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
     allocate (q0(1:i_raster,1:j_raster))
 
     i_sib = nx
@@ -2259,8 +2260,8 @@ integer :: n_threads=1
     allocate(catid(1:nx,1:ny))
     catid =0
 
-    ifile=trim(c_data)//'dtex_tp1.bin'
-    ifile2=trim(c_data)//'dtex_sb1.bin'
+    ifile=trim(c_data)//'/land/soil/SOIL-DATA/soil_properties/v1/'//'dtex_tp1.bin'
+    ifile2=trim(c_data)//'/land/soil/SOIL-DATA/soil_properties/v1/'//'dtex_sb1.bin'
     ofile1='clsm/soil_text.top'
     ofile2='clsm/soil_text.com'     
 
@@ -2530,7 +2531,7 @@ integer :: n_threads=1
     allocate(sib_veg2(1:i_raster,1:j_raster))
     allocate(sib_veg (1:i_raster,1:j_raster))
 
-    open (10,file=trim(c_data)//'sib22.5_v2.0.dat',form='unformatted',      &
+    open (10,file=trim(c_data)//'/land/veg/pft/v1/sib22.5_v2.0.dat',form='unformatted',      &
          status='old',action='read',convert='big_endian')
     READ(10)sib_veg2
     
@@ -2803,10 +2804,10 @@ integer :: n_threads=1
     allocate(colin2cat(1:6000000))
     colin2cat=0
     if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
-       open (10,file=trim(c_data)//'/SRTM-TopoData/Pfafcatch-routing.dat',   &
+       open (10,file=trim(c_data)//'/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat',   &
             form='formatted', status='old',action='read')       
     else
-       open (10,file=trim(c_data)//'/catchment.def',   &
+       open (10,file=trim(c_data)//'/land/misc/old_land/catchment.def',   &
             form='formatted', status='old',action='read')
     endif
 
@@ -2822,10 +2823,10 @@ integer :: n_threads=1
     close (10,status='keep')
 
     if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
-       open (10,file=trim(c_data)//'/SRTM-TopoData/SRTM_cti_stats.dat',       &
+       open (10,file=trim(c_data)//'/land/topo/v1/SRTM-TopoData/SRTM_cti_stats.dat',       &
             form='formatted', status='old',action='read')
     else
-       open (10,file=trim(c_data)//'/cti_stats.dat',       &
+       open (10,file=trim(c_data)//'/land/misc/old_land/cti_stats.dat',       &
             form='formatted', status='old',action='read')
     endif
 
@@ -2961,7 +2962,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
       
 !c-------------------------------------------------------------------------
-      losfile =trim(c_data)//'GSWP2_loss_perday/loss_perday'
+      losfile =trim(c_data)//'/land/soil/soil_water_loss/v1/loss_perday'
 !c     opening files
 
 
@@ -3655,15 +3656,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! NLv5  3.79e-6   2.80e-5   <== note *typo* in Table 2 of Bechtold et al. 2019, which erroneously lists K_s=2.8e-5
 
       if(use_PEATMAP) then 
-         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap' 
+         fname = trim(c_data)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap' 
       else
-         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
+         fname = trim(c_data)//'land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
       endif
       open (11, file=trim(fname), form='formatted',status='old', &
               action = 'read')
       read (11,'(a)')fout        ! read header line
           
-      losfile =trim(c_data)//'/Woesten_SoilParam/loss_pd_top/loss_perday_rz1m_'
+      losfile =trim(c_data)//'/land/soil/soil_water_loss/v2/loss_pd_top/loss_perday_rz1m_'
 
       allocate (a_sand (1:n_SoilClasses))
       allocate (a_silt (1:n_SoilClasses))
@@ -7412,7 +7413,7 @@ END SUBROUTINE compute_stats
       ! READ ASCAT source data and regrid
       ! ---------------------------------
 
-      status  = NF_OPEN ('data/CATCH/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN ('data/CATCH/land/misc/roughness_length/v1/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
             
       allocate (z0_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_ascat, 1 : N_lat_ascat)) 
@@ -7476,7 +7477,7 @@ END SUBROUTINE compute_stats
       implicit none
 
       ! 1) JPL Canopy Height 
-      ! /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001//Simard_Pinto_3DGlobalVeg_JGR.nc4
+      ! /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4
      
       integer, intent (in)               :: nc, nr
       real, pointer, dimension (:), intent (inout) :: z2
@@ -7501,7 +7502,7 @@ END SUBROUTINE compute_stats
       ! READ JPL source data files and regrid
       ! -------------------------------------
 
-      status  = NF_OPEN ('data/CATCH/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN ('data/CATCH/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
             
       allocate (z2_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_jpl, 1 : N_lat_jpl)) 

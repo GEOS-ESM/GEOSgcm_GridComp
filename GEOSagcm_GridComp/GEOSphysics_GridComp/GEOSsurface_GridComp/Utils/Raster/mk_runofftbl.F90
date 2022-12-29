@@ -15,7 +15,7 @@ program Runoff
   integer                :: numtrans,  numclosed
   integer                :: status
   character*100          :: file, fileT, fileR, fileO, fileB
-  character*100          :: fileLL="data/CATCH/Outlet_latlon."
+  character*100          :: fileLL="data/CATCH/land/route/Outlet_latlon."
   character*5            :: C_NX, C_NY
 
   call get_command_argument(1,file)

@@ -347,8 +347,6 @@ clm_file = '../CLM_veg_typs_fracs'
 
 if (file_test (clm_file))  then begin
 
-;spawn, "/bin/cp /discover/nobackup/smahanam/GEOS5_misc/mask/images/ESA_LandCover_mask.jpg ." 
-
   plot_clm   , ncat, tile_id
   plot_carbon, ncat, tile_id
 
@@ -1681,7 +1679,7 @@ end
 
 PRO canop_Height, nc, nr, tileid_plot, gfile, path
 
-CanopH=read_tiff(path + '/data/CATCH/Simard_Pinto_3DGlobalVeg_JGR.tif')
+CanopH=read_tiff(path + '/data/CATCH/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.tif')
 im=n_elements(CanopH(*,0))
 jm=n_elements(CanopH(0,*))
 CanopH = reverse(CanopH,2,/overwrite)
@@ -2084,7 +2082,7 @@ nr_esa = 64800l
 nx = nc_esa/nc
 ny = nr_esa/nr
 
-ncid = NCDF_OPEN('/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc')
+ncid = NCDF_OPEN('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/shared/mask/GEOS5_10arcsec_mask.nc')
 ;NCDF_VARGET, ncid,0, y
 ;NCDF_VARGET, ncid,1, x
 
@@ -2501,7 +2499,7 @@ end
 
 pro jpl_tif2nc4
 
-CanopH=read_tiff('/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001//Simard_Pinto_3DGlobalVeg_JGR.tif')
+CanopH=read_tiff('/data/CATCH/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.tif')
 im=n_elements(CanopH(*,0))
 jm=n_elements(CanopH(0,*))
 CanopH = reverse(CanopH,2,/overwrite)
@@ -2511,11 +2509,11 @@ for i = 0l,jm -1l do yh(i) = i*1./120 -90.  + 1./240.
 xh = dblarr(im)
 for i = 0l,im -1l do xh(i) = i*1./120 -180. + 1./240.
 
-id   = NCDF_CREATE('/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001//Simard_Pinto_3DGlobalVeg_JGR.nc4', /clobber, /NETCDF4_FORMAT) 
+id   = NCDF_CREATE('/data/CATCH/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', /clobber, /NETCDF4_FORMAT) 
 xid  = NCDF_DIMDEF(id, 'N_lon' , im)     ;Define x-dimension
 yid  = NCDF_DIMDEF(id, 'N_lat' , jm)     ;Define y-dimension
-NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama GMAO/GSFC/NASA',/global
-NCDF_ATTPUT,id, 'Contact', 'sarith.p.mahanama@nasa.gov',/global
+NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama GSFC/NASA',/global
+NCDF_ATTPUT,id, 'Contact', 'Anyone from GMAO Land Group',/global
    
 str_date=systime()
 NCDF_ATTPUT,id, 'Date', str_date,/global 
@@ -2928,13 +2926,13 @@ pro proc_glass
 
 
 ;IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/AVHRR/V4/HDF/'
-;ODATA = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/AVHRR.v4/'
+;ODATA = '/data/CATCH/land/veg/lai_grn/v4/GLASS-LAI/AVHRR.v4/'
 ;LABEL = 'GLASS01B02.V04.A'
 ;yearb = 1981
 ;YEARe = 2017
 
 IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/'
-ODATA = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/MODIS.v4/'
+ODATA = '/data/CATCH/land/veg/lai_grn/v4/GLASS-LAI/MODIS.v4/'
 LABEL = 'GLASS01B01.V04.A'
 yearb = 2000
 YEARe = 2017
@@ -2985,7 +2983,7 @@ Erase,255
 !p.background = 255
 
 ;file1 = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/2008/GLASS01B01.V04.A2008185.hdf'
-file1 = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY105.nc4'
+file1 = '/data/CATCH/land/veg/lai_grn/v4/GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY105.nc4'
 ncid = ncdf_open (file1)
 NCDF_VARGET, ncid,'LAI', adum
 ncdf_close,ncid
@@ -3065,8 +3063,8 @@ id   = NCDF_CREATE(ofile, /clobber) ;Create netCDF output file
 xid  = NCDF_DIMDEF(id, 'N_lon', nc)                                              ;Define x-dimension
 yid  = NCDF_DIMDEF(id, 'N_lat', nr)                                              ;Define y-dimension
 NCDF_ATTPUT,id, 'CellSize_arcmin' , 3,/global
-NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama',/global
-NCDF_ATTPUT,id, 'Contact', 'sarith.p.mahanama@nasa.gov',/global
+NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama GSFC/NASA',/global
+NCDF_ATTPUT,id, 'Contact', 'Anyone from GMAO Land Group',/global
 str_date=systime()
 NCDF_ATTPUT,id, 'Date', str_date,/global
 vid  = NCDF_VARDEF(id, 'lat',  yid, /DOUBLE)         ;Define latitude variable

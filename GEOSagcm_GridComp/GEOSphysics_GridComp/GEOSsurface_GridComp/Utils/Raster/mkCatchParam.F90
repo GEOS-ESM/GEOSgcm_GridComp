@@ -99,7 +99,7 @@ integer :: n_threads=1
 !
 !$OMP ENDPARALLEL
 
-!   call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
+!   call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ CATCH')
 !   call execute_command_line('cd ..')
 
     USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV                       "

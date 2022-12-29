@@ -98,8 +98,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       end do 
      end if
 
-     soilfile='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/' &
-           //'/Woesten_SoilParam/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
+     soilfile='/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' &
+           //'/land/soil/soil_water_loss/v2/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
 
      open (10, file=trim(soilfile),form='formatted',status='old', &
           action='read')
@@ -113,8 +113,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      close (10,status='keep')
 
       
-     path = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/' &
-          //'//Woesten_SoilParam/loss_ph/'
+     path = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' &
+          //'/land/soil/soil_water_loss/v2/loss_ph/'
 
 if(.not.skip) then
 !$OMP PARALLELDO DEFAULT(NONE)                                    &
@@ -386,10 +386,10 @@ end do
 !$OMP ENDPARALLELDO
 if(layer_2cm) STOP
 endif
-   opath   = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/' & 
-          //'//SoilClasses-SoilHyd-TauParam.dat'
-   soilfile='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/' &
-        //'/Woesten_SoilParam/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
+   opath   = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' & 
+          //'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
+   soilfile='/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' &
+        //'/land/soil/soil_water_loss/v2/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
 
    open (20, file=trim(soilfile),form='formatted',status='old', &
         action='read')

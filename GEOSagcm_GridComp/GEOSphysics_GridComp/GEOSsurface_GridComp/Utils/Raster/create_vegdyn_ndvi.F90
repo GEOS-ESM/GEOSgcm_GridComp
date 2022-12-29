@@ -53,7 +53,7 @@ PROGRAM create_vegdyn_ndvi
   ! create dirs/links
   ! -----------------
 
-  call execute_command_line('mkdir -p data ; cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
+  call execute_command_line('mkdir -p data ; cd data/ ; ln -s /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ CATCH')
   call execute_command_line('mkdir -p '//trim(OUTDIR)) 
 
   open (10,file = trim(BCSDIR)//'/clsm/catchment.def', &
@@ -130,7 +130,7 @@ contains
       ! READ CLM4.5 source data files and regrid
       ! ----------------------------------------
 
-      status  = NF_OPEN ('data/CATCH/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN ('data/CATCH/land/misc/roughness_length/v1/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
             
       allocate (z0_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_ascat, 1 : N_lat_ascat)) 
@@ -225,8 +225,8 @@ contains
       ! READ GIMMS NDVI source data files and regrid
       ! ----------------------------------------
       
-      status  = NF_OPEN ('data/CATCH/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; VERIFY_(STATUS)
-      status  = NF_OPEN ('data/CATCH/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; VERIFY_(STATUS)
+      status  = NF_OPEN ('data/CATCH/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; VERIFY_(STATUS)
+      status  = NF_OPEN ('data/CATCH/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; VERIFY_(STATUS)
       status  = NF_INQ_VARID (ncid2,'ndvi',VarID) ; VERIFY_(STATUS)
       
       allocate (ndvi_grid   (1:NC,1:NR))
@@ -370,7 +370,7 @@ contains
       ! READ JPL source data files and regrid
       ! -------------------------------------
 
-      status  = NF_OPEN ('data/CATCH/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN ('data/CATCH/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
             
       allocate (z2_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_jpl, 1 : N_lat_jpl)) 

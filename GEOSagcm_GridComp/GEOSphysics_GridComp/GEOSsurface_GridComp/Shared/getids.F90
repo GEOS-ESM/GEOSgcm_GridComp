@@ -10,18 +10,6 @@ module mk_restarts_getidsMod
   public :: to_radian                 ! should really be replaced with "MAPL_DEGREES_TO_RADIANS" 
   public :: haversine
 
-  ! Copies of the following subroutines 
-  !
-  !    to_radian()
-  !    haversine()
-  !    ReadCNTilFile()   [renamed here to ReadTileFile_RealLatLon()]
-  !
-  ! also exist in
-  !   
-  !   ./GEOSsurface_GridComp/Shared/Raster/comp_CATCHCN_AlbScale_parameters.F90
-  !
-  ! - reichle, 4 Mar 2020
-
   interface GetIds
      module procedure GetIds_fast_1p
      module procedure GetIds_accurate_mpi
