@@ -42,6 +42,8 @@ module pftconMod
   integer, public :: nc3crop               = 15   ! C3_crop [moisture + deciduous]   
   integer, public :: npcropmin             = 15   ! value for first crop functional type (not including the more generic C3 crop PFT)
 
+  integer, public :: nc3irrig              = 16   ! value for irrigated generic crop (ir)
+  integer, public :: npcropmax              ! value for last prognostic crop in list
  !
   type, public :: pftcon_type
 
@@ -788,7 +790,7 @@ contains
 
     call ncd_io('max_SH_planting_date', this%mxSHplantdate, 'read', ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
-
+    npcropmax            = mxpft                ! last prognostic crop in list
 
     do m = 0,mxpft
        this%dwood(m) = dwood
