@@ -111,13 +111,13 @@ module AnnualFluxDribbler
      procedure, public :: set_curr_delta  ! Set the delta state for this time step
      procedure, public :: get_curr_flux   ! Get the current flux for this time step
    !  procedure, public :: get_dribbled_delta  ! Similar to get_curr_flux, but gets result as a delta rather than a per-second flux
-   !  procedure, public :: get_amount_left_to_dribble_beg  ! Get the pseudo-state representing the amount that still needs to be dribbled in this and future time steps
-   !  procedure, public :: get_amount_left_to_dribble_end  ! Get the pseudo-state representing the amount that still needs to be dribbled in just future time steps
+     procedure, public :: get_amount_left_to_dribble_beg  ! Get the pseudo-state representing the amount that still needs to be dribbled in this and future time steps
+     procedure, public :: get_amount_left_to_dribble_end  ! Get the pseudo-state representing the amount that still needs to be dribbled in just future time steps
 
      ! Private methods
      procedure, private :: allocate_and_initialize_data
      procedure, private :: set_metadata
- !    procedure, private :: get_amount_left_to_dribble
+     procedure, private :: get_amount_left_to_dribble
   end type annual_flux_dribbler_type
 
   public :: annual_flux_dribbler_gridcell  ! Creates an annual_flux_dribbler_type object at the gridcell-level
@@ -573,43 +573,107 @@ contains
   end subroutine set_metadata
 
   !-----------------------------------------------------------------------
-!  subroutine get_amount_left_to_dribble(this, bounds, yearfrac, amount_left_to_dribble)
-!    !
-!    ! !DESCRIPTION:
-!    ! Helper method shared by get_amount_left_to_dribble_beg and
-!    ! get_amount_left_to_dribble_end. Returns amount left to dribble as of a given
-!    ! yearfrac.
-!    !
-!    ! !USES:
-!    !
-!    ! !ARGUMENTS:
-!    class(annual_flux_dribbler_type), intent(in) :: this
-!    type(bounds_type), intent(in) :: bounds
-!    real(r8), intent(in)  :: yearfrac
-!    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
-!    !
-!    ! !LOCAL VARIABLES:
-!    integer :: beg_index, end_index
-!    integer :: i
-!
-!    character(len=*), parameter :: subname = 'get_amount_left_to_dribble'
-!    !-----------------------------------------------------------------------
-!
-!    beg_index = lbound(amount_left_to_dribble, 1)
-!    end_index = get_end(bounds, this%bounds_subgrid_level)
-!    SHR_ASSERT_ALL_FL((ubound(amount_left_to_dribble) == (/end_index/)), sourcefile, __LINE__)
-!
-!    do i = beg_index, end_index
-!       if (yearfrac < 1.e-15_r8) then
-!          ! last time step of year; we'd like this to be given a yearfrac of 1 rather than
-!          ! 0 in this case; since it's given as 0, we need to handle it specially
-!          amount_left_to_dribble(i) = 0._r8
-!       else
-!          amount_left_to_dribble(i) = this%amount_to_dribble(i) * (1._r8 - yearfrac)
-!       end if
-!    end do
-!
-!  end subroutine get_amount_left_to_dribble
+  subroutine get_amount_left_to_dribble(this, bounds, yearfrac, amount_left_to_dribble)
+    !
+    ! !DESCRIPTION:
+    ! Helper method shared by get_amount_left_to_dribble_beg and
+    ! get_amount_left_to_dribble_end. Returns amount left to dribble as of a given
+    ! yearfrac.
+    !
+    ! !USES:
+    !
+    ! !ARGUMENTS:
+    class(annual_flux_dribbler_type), intent(in) :: this
+    type(bounds_type), intent(in) :: bounds
+    real(r8), intent(in)  :: yearfrac
+    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
+    !
+    ! !LOCAL VARIABLES:
+    integer :: beg_index, end_index
+    integer :: i
+
+    character(len=*), parameter :: subname = 'get_amount_left_to_dribble'
+    !-----------------------------------------------------------------------
+
+    beg_index = lbound(amount_left_to_dribble, 1)
+    end_index = get_end(bounds, this%bounds_subgrid_level)
+    SHR_ASSERT_ALL_FL((ubound(amount_left_to_dribble) == (/end_index/)), sourcefile, __LINE__)
+
+    do i = beg_index, end_index
+       if (yearfrac < 1.e-15_r8) then
+          ! last time step of year; we'd like this to be given a yearfrac of 1 rather than
+          ! 0 in this case; since it's given as 0, we need to handle it specially
+          amount_left_to_dribble(i) = 0._r8
+       else
+          amount_left_to_dribble(i) = this%amount_to_dribble(i) * (1._r8 - yearfrac)
+       end if
+    end do
+
+  end subroutine get_amount_left_to_dribble
 !
 
+  !-----------------------------------------------------------------------
+  subroutine get_amount_left_to_dribble_beg(this, bounds, amount_left_to_dribble)
+    !
+    ! !DESCRIPTION:
+    ! Get the pseudo-state representing the amount that still needs to be dribbled in
+    ! this and future time steps. This represents the pseudo-state before this time
+    ! step's dribbling flux has been removed. (This behavior is regardless of whether
+    ! get_curr_flux has been called already this time step.)
+    !
+    ! As a special case, this returns 0 in the first time step of the year, because we
+    ! haven't created this year's dribbling pool as of the beginning of this time step.
+    !
+    ! i.e., if we imagined that the total amount to dribble was added to a state
+    ! variable, and then this state variable was updated each time step as the flux
+    ! dribbles out, then this subroutine gives the amount left in that state. (However,
+    ! the actual implementation doesn't explicitly track this state, which is why we
+    ! refer to it as a pseudo-state.)
+    !
+    ! !USES:
+    !
+    ! !ARGUMENTS:
+    class(annual_flux_dribbler_type), intent(in) :: this
+    type(bounds_type), intent(in) :: bounds
+    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
+    !
+    ! !LOCAL VARIABLES:
+    real(r8) :: yearfrac
+
+    character(len=*), parameter :: subname = 'get_amount_left_to_dribble_beg'
+    !-----------------------------------------------------------------------
+
+    yearfrac = get_prev_yearfrac()
+    call this%get_amount_left_to_dribble(bounds, yearfrac, amount_left_to_dribble)
+
+  end subroutine get_amount_left_to_dribble_beg
+
+  !-----------------------------------------------------------------------
+  subroutine get_amount_left_to_dribble_end(this, bounds, amount_left_to_dribble)
+    !
+    ! !DESCRIPTION:
+    ! Gets the pseudo-state representing the amount that still needs to be dribbled in
+    ! future time steps. This represents the pseudo-state after this time step's dribbling
+    ! flux has been removed. i.e., this includes the amount that will be dribbled starting
+    ! with the *next* time step, through the end of this year. So this will return 0 on
+    ! the last time step of the year. (This behavior is regardless of whether
+    ! get_curr_flux has been called already this time step.)
+    !
+    ! See documentation of get_amount_left_to_dribble_beg for more details.
+    !
+    ! !ARGUMENTS:
+    class(annual_flux_dribbler_type), intent(in) :: this
+    type(bounds_type), intent(in) :: bounds
+    real(r8), intent(out) :: amount_left_to_dribble( get_beg(bounds, this%bounds_subgrid_level) : )
+    !
+    ! !LOCAL VARIABLES:
+    real(r8) :: yearfrac
+
+    character(len=*), parameter :: subname = 'get_amount_left_to_dribble_end'
+    !-----------------------------------------------------------------------
+
+    yearfrac = get_curr_yearfrac()
+    call this%get_amount_left_to_dribble(bounds, yearfrac, amount_left_to_dribble)
+
+  end subroutine get_amount_left_to_dribble_end
 end module AnnualFluxDribbler
