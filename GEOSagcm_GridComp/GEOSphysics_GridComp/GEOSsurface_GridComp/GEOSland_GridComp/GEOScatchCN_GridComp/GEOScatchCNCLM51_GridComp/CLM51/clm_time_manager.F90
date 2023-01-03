@@ -32,6 +32,9 @@ module clm_time_manager
       get_days_per_year,        &! return the days per year for current year
       get_local_timestep_time,  &! return the local time for the input longitude to the nearest time-step
       get_local_time,           &! return the local time for the input longitude
+      get_curr_yearfrac,        &! return the fractional position in the current year, as of the end of the current timestep
+      get_prev_yearfrac,        &! return the fractional position in the current year, as of the beginning of the current timestep
+
 
       is_end_curr_day,          &! return true on last timestep in current day
       is_beg_curr_year,         &! return true on first timestep in current year
@@ -403,4 +406,54 @@ end function is_restart
     is_beg_curr_year = (mon == 1 .and. day == 1 .and. tod == dtime)
 
   end function is_beg_curr_year
+
+  !=========================================================================================
+
+  function get_curr_yearfrac( offset )
+
+    !---------------------------------------------------------------------------------
+    ! Get the fractional position in the current year, as of the end of the current
+    ! timestep. This is 0 at midnight on Jan 1, and 1 at the end of Dec 31.
+
+    !
+    ! Arguments
+    real(r8) :: get_curr_yearfrac  ! function result
+
+    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
+    ! Positive for future times, negative 
+    ! for previous times.
+
+    character(len=*), parameter :: sub = 'clm::get_curr_yearfrac'
+    real(r8) :: cday               ! current calendar day (1.0 = 0Z on Jan 1)
+    real(r8) :: days_per_year      ! days per year
+
+    if ( .not. check_timemgr_initialized(sub) ) return
+
+    cday          = get_curr_calday(offset=offset)
+    days_per_year = get_days_per_year()
+
+    get_curr_yearfrac = (cday - 1._r8)/days_per_year
+
+  end function get_curr_yearfrac
+
+  !=========================================================================================
+
+  function get_prev_yearfrac()
+
+    !---------------------------------------------------------------------------------
+    ! Get the fractional position in the current year, as of the beginning of the current
+    ! timestep. This is 0 at midnight on Jan 1, and 1 at the end of Dec 31.
+
+    !
+    ! Arguments
+    real(r8) :: get_prev_yearfrac  ! function result
+
+    character(len=*), parameter :: sub = 'clm::get_curr_yearfrac'
+
+    if ( .not. check_timemgr_initialized(sub) ) return
+
+    get_prev_yearfrac = get_curr_yearfrac(offset = -dtime)
+
+  end function get_prev_yearfrac
+
 end module clm_time_manager
