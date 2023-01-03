@@ -201,8 +201,8 @@ contains
     GigaTrajInternalPtr%npes = npes
     call MAPL_MakeDecomposition(NX,NY,_RC)
     GigaTrajInternalPtr%LatLonGrid = grid_manager%make_grid(                           &
-                 LatLonGridFactory(im_world=DIMS(1)*4, jm_world=DIMS(1)*2, lm=DIMS(3),  &
-                 nx=NX, ny=NY, pole='PE', dateline= 'DE', rc=status) ); _VERIFY(status) 
+                 LatLonGridFactory(im_world=DIMS(1)*4, jm_world=DIMS(1)*2+1, lm=DIMS(3),  &
+                 nx=NX, ny=NY, pole='PC', dateline= 'DE', rc=status) ); _VERIFY(status) 
 
 
     GigaTrajInternalPtr%cube2latlon => new_regridder_manager%make_regridder(CubedGrid,  GigaTrajInternalPtr%LatLonGrid, REGRID_METHOD_CONSERVE, _RC)
@@ -210,13 +210,15 @@ contains
     call MAPL_Grid_interior(GigaTrajInternalPtr%LatLonGrid ,i1,i2,j1,j2)
     call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
 
+    ! lat and lon centers need to hold the halo
     allocate(lons_center(counts(1)+2))
     allocate(lats_center(counts(2)+2))
     allocate(levs_center(counts(3)  ))
     dlon = 360.0/dims(1) 
     lons_center = [(-dlon/2+ dlon*i, i= i1-1, i2+1)]
-    dlat = 180.0/dims(2) 
-    lats_center = [(-dlat/2+ dlat*j-90.0, j= j1-1, j2+1)] 
+    ! for PC grid
+    dlat = 180.0/(dims(2)-1) 
+    lats_center = [(-dlat + dlat*j-90.0, j= j1-1, j2+1)] 
     npz = 42
     GigaTrajInternalPtr%npz = npz
     allocate(levs_center(GigaTrajInternalPtr%npz))   
@@ -282,7 +284,7 @@ contains
 
       call MAPL_Grid_interior(GigaTrajInternalPtr%LatLonGrid ,i1,i2,j1,j2)
       dlon  = 360.0/DIMS(1)
-      dlat = 180.0/DIMS(2)
+      dlat = 180.0/(DIMS(2)-1)
       lons = [(i1+i2)*dlon/2.0]
       lats = [(j1+j2)*dlat/2.0 - 90.0]
       zs  = [my_rank*10.0+10.0]
@@ -375,8 +377,7 @@ contains
     allocate(W_latlon(counts(1),counts(2),counts(3)))
     allocate(P_latlon(counts(1),counts(2),counts(3)))
 
-    call GigaTrajInternalPtr%cube2latlon%regrid(U, U_latlon, _RC)
-    call GigaTrajInternalPtr%cube2latlon%regrid(V, V_latlon, _RC)
+    call GigaTrajInternalPtr%cube2latlon%regrid(U,V, U_latlon, V_latlon, _RC)
     call GigaTrajInternalPtr%cube2latlon%regrid(W, W_latlon, _RC)
     call GigaTrajInternalPtr%cube2latlon%regrid(P, P_latlon, _RC)
 
