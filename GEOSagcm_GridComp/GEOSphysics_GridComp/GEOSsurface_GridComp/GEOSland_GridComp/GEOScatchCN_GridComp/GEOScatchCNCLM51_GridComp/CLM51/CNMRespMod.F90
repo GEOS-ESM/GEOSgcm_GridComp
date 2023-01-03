@@ -128,13 +128,8 @@ contains
     !-----------------------------------------------------------------------
 
     tString='br_mr'
-    ierr = NF90_INQ_VARID(ncid,trim(tString),clm_varid)
-    ierr = NF90_GET_VAR(ncid, clm_varid, tempr)
-
- !   call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
- !   if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    if ( ierr/=0 ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-
+    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
     params_inst%br=tempr
 
     if ( params_inst%br_root == spval ) then
