@@ -4,7 +4,8 @@
  use clm_varpar,         only : numpft, numrad, num_veg, num_zon
  use decompMod,          only : bounds_type
  use PatchType,          only : patch
- use clm_varcon,         only : rair
+ use pftconMod,          only : pftcon
+ use filterMod,          only : clumpfilter
  
  use CNVegNitrogenstateType
  use CNVegCarbonstateType
@@ -19,7 +20,7 @@
  use OzoneBaseMod
  use PhotosynthesisMod
  use WaterFluxBulkType
- use filterMod,  only: filter
+ use WaterStateType, only : waterstate_type
 
  implicit none
 
@@ -80,9 +81,13 @@
 ! LOCAL
 
  ! temporary and loop variables                                                                                        
- integer :: n, p, pft_num, nv, nc, nz, np
- real    :: bare, elai_pft, esai_pft, tmp_albgrd_vis,tmp_albgrd_nir,&
+ integer :: n, p, pft_num, nv, nc, nz, np, ib
+ real    :: bare, tmp_albgrd_vis,tmp_albgrd_nir,&
             tmp_albgri_vis,tmp_albgri_nir
+
+ ! filter variables
+ integer, allocatable, save :: filter_vegsol(:), filter_novegsol(:)
+ integer                    :: num_vegsol, num_novegsol
 
  ! constants and parameters 
  real :: rair = MAPL_RDRY
@@ -96,13 +101,15 @@
  real, dimension(nch*NUM_ZON*(numpft+1)) :: laisun_dt, laisha_dt, rssun_dt, rssha_dt
 
  ! local variables to compute Photosynthesis inputs
+ real                           :: ws, wl
+ real, allocatable, dimension(:,:) :: rho, tau
  real, dimension (nch, NUM_ZON) :: esat_tv     ! vapor pressure inside leaf (sat vapor press at tc) (Pa)
  real, dimension (nch, NUM_ZON) :: eair        ! vapor pressure of canopy air
- real, dimension (nch) :: oair        ! Atmospheric O2 partial pressure (Pa)
- real, dimension (nch) :: deldT       ! d(es)/d(T)
- real, dimension (nch) :: cair        ! compute CO2 partial pressure
- real, dimension (nch) :: rb          ! boundary layer resistance (s/m)
- real, dimension (nch) :: el          ! vapor pressure on leaf surface [pa]
+ real, dimension (nch)          :: oair        ! Atmospheric O2 partial pressure (Pa)
+ real, dimension (nch)          :: deldT       ! d(es)/d(T)
+ real, dimension (nch)          :: cair        ! compute CO2 partial pressure
+ real, dimension (nch)          :: rb          ! boundary layer resistance (s/m)
+ real, dimension (nch)          :: el          ! vapor pressure on leaf surface [pa]
  real, dimension (nch, NUM_ZON) :: qsatl       ! leaf specific humidity [kg/kg]
  real, dimension (nch, NUM_ZON) :: qsatldT     ! derivative of "qsatl" on "t_veg"
  real, dimension (nch, NUM_ZON) :: qaf         ! canopy air humidity [kg/kg]
@@ -124,10 +131,6 @@
  real, pointer :: froot_carbon(:) ! fine root carbon (gC/m2) [pft]
  real, pointer :: croot_carbon(:) ! live coarse root carbon (gC/m2) [pft] 
 
- ! other local variables
- 
- integer :: num_vegsol, num_novegsol
-
  ! CLM variables
  type(bounds_type)              :: bounds
  type(atm2lnd_type)             :: atm2lnd_inst
@@ -142,10 +145,16 @@
  type(waterfluxbulk_type)       :: waterfluxbulk_inst
  type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
  type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
+ type(waterstate_type)          :: waterstate_inst
+ type(clumpfilter)              :: filter
 
  ! associate variables
 
  associate(&
+       rhol                    => pftcon%rhol                     , & ! Input:  leaf reflectance: 1=vis, 2=nir        
+       rhos                    => pftcon%rhos                     , & ! Input:  stem reflectance: 1=vis, 2=nir        
+       taul                    => pftcon%taul                     , & ! Input:  leaf transmittance: 1=vis, 2=nir      
+       taus                    => pftcon%taus                     , & ! Input:  stem transmittance: 1=vis, 2=nir   
        vcmaxcintsun            => surfalb_inst%vcmaxcintsun_patch , &
        vcmaxcintsha            => surfalb_inst%vcmaxcintsha_patch , &
        f_sun_z                 => surfalb_inst%fsun_z_patch       , &
@@ -154,10 +163,24 @@
        taul                    => pftcon%taul                     , &
        leafn                   => cnveg_nitrogenstate_inst%leafn_patch , &
        froot_carbon            => cnveg_carbonstate_inst%frootc_patch  , &
-       croot_carbon            => cnveg_carbonstate_inst%liverootc_patch, &
+       croot_carbon            => cnveg_carbonstate_inst%livecrootc_patch, &
        elai                    => canopystate_inst%elai_patch      , &
        esai                    => canopystate_inst%esai_patch        &
         )
+
+! allocate filters
+!-----------------------------
+
+ allocate (filter_vegsol(bounds%endp-bounds%begp+1))
+ allocate (filter_novegsol(bounds%endp-bounds%begp+1))
+ num_vegsol   = 0
+ num_novegsol = 0
+
+! allocate variables for radiation calculations
+!---------------------------------
+
+ allocate(rho(bounds%begp:bounds%endp,numrad))
+ allocate(tau(bounds%begp:bounds%endp,numrad))
 
 ! compute saturation vapor pressure
 ! ---------------------------------
@@ -171,7 +194,7 @@
  !----------------------------------
    do n = 1,nch
       do nz = 1,NUM_ZON
-         eair(n,nz) = pbot(n) * qa(n,nz) / (0.622 + qa(n-nz))  ! canopy air vapor pressure (Pa);  jk: this is different from the formulation in the CLM code, which is different from the formulation in the CLM documentation
+         eair(n,nz) = pbot(n) * qa(n,nz) / (0.622 + qa(n,nz))  ! canopy air vapor pressure (Pa);  jk: this is different from the formulation in the CLM code, which is different from the formulation in the CLM documentation
       end do
    end do
  ! compute atmospheric O2 partial pressure
@@ -192,7 +215,7 @@
     do nz = 1,NUM_ZON
        call QSat(tc(n,nz), pbot(n), qsatl(n,nz), &
                  el(n), &
-                 qsatldT(n))
+                 qsatldT(n,nz))
     end do
  end do
 
@@ -210,26 +233,23 @@
  !------------------------------------------------
  p = 0
  n = 0
- 
- num_vegsol = 0
- num_novegsol = 0
 
  do nc = 1,nch
-    atm2lnd_inst%forc_solad (nc,1)  = pardir(nc) 
-    atm2lnd_inst%forc_solai (nc,1)  = pardif(nc)
+    atm2lnd_inst%forc_solad_grc (nc,1)  = pardir(nc) 
+    atm2lnd_inst%forc_solai_grc (nc,1)  = pardif(nc)
     do nz = 1,num_zon
        n = n + 1
        atm2lnd_inst%forc_pbot_downscaled_col (n)  = pbot(nc)
        atm2lnd_inst%forc_rho_downscaled_col  (n)  = pbot(nc)-0.378*eair(nc,nz)/(rair*tc(nc,nz)) 
 
-       soilstate_inst%hk_sat_col (n) = 1000.*COND(nc)                          ! saturated hydraulic conductivity mapped to CLM space
+       soilstate_inst%hksat_col (n) = 1000.*COND(nc)                          ! saturated hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
-       soilstate_inst%hk_l_col   (n) = 1000.*COND(nc)*(wet3(nc)**(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
+       soilstate_inst%hk_l_col   (n,1:nlevgrnd) = 1000.*COND(nc)*(wet3(nc)**(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
-       soilstate_inst%smp_l_col  (n) = 1000.*PSIS(nc)*(wet3(nc)**(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
+       soilstate_inst%smp_l_col  (n,1:nlevgrnd) = 1000.*PSIS(nc)*(wet3(nc)**(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
                                                                                ! and converted to [mm]
-       soilstate_inst%bsw_col    (n) = bee(nc)                                 ! Clapp-Hornberger 'b'
-       soilstate_inst%sucsat_col (n) = 1000.*psis(nc)*(-1)                     ! minimum soil suction [mm]
+       soilstate_inst%bsw_col    (n,1:nlevgrnd) = bee(nc)                                 ! Clapp-Hornberger 'b'
+       soilstate_inst%sucsat_col (n,1:nlevgrnd) = 1000.*psis(nc)*(-1)                     ! minimum soil suction [mm]
 
        ! compute column level direct and diffuse albedos (vis and nir) from pft level quantities
        tmp_albgrd_vis = 0.
@@ -274,21 +294,14 @@
           ! compute canopy air vapor pressure (in CLM space)
           eair_clm      (p) = eair(nc,nz)
 
-          do nv = 1,num_veg
-             if (ityp(nc,nv,nz).eq.np) then 
-                 elai_pft = elai(nc,nv,nz)
-                 esai_pft = esai(nc,nv,nz)
-             end if
-          end do ! nv
-
-          if (coszen_clm(p)>0. .and. (elai_pft + esai_pft)>0.) then 
+          if (coszen_clm(p)>0. .and. (elai(p) + esai(p))>0.) then 
               ! calculate solar vegetated filter
               num_vegsol = num_vegsol + 1
               filter_vegsol(num_vegsol) = p
 
               ! calculate rho (weighted reflectance) and tau (weighted transmittance) needed for call to TwoStream later
-              wl = elai_pft / max( elai_pft+esai_pft, 1.e-06_r8 )
-              ws = esai_pft / max( elai_pft+esai_pft, 1.e-06_r8 )
+              wl = elai(p) / max( elai(p)+esai(p), 1.e-06_r8 )
+              ws = esai(p) / max( elai(p)+esai(p), 1.e-06_r8 )
             
               do ib = 1, numrad
                  rho(p,ib) = max( rhol(np,ib)*wl + rhos(np,ib)*ws, 1.e-06_r8 )
@@ -299,7 +312,7 @@
               filter_novegsol(num_novegsol) = p
           end if
 
-          waterstate_inst%fdry_patch(p)    = (1-fwet(nc))*elai_pft/(elai_pft+esai_pft)
+          waterstate_inst%fdry_patch(p)    = (1-fwet(nc))*elai(p)/(elai(p)+esai(p))
           waterstate_inst%fwet_patch(p)    = fwet(nc)
           waterstate_inst%fcansno_patch(p) = fwet(nc)   !jk: This is not a mistake, see notes on why we set fcansno = fwet
        end do 
