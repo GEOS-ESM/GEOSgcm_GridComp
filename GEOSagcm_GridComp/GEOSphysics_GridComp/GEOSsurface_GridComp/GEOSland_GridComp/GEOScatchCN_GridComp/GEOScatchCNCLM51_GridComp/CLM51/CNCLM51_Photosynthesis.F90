@@ -4,7 +4,6 @@
  use clm_varpar,         only : numpft, numrad, num_veg, num_zon
  use decompMod,          only : bounds_type
  use PatchType,          only : patch
- use pftconMod,          only : pftcon
  use filterMod,          only : clumpfilter
  
  use CNVegNitrogenstateType
@@ -80,6 +79,23 @@
 
 ! LOCAL
 
+ ! CLM variables
+ type(bounds_type)              :: bounds
+ type(atm2lnd_type)             :: atm2lnd_inst
+ type(temperature_type)         :: temperature_inst
+ type(soilstate_type)           :: soilstate_inst
+ type(waterdiagnosticbulk_type) :: waterdiagnosticbulk_inst
+ type(surfalb_type)             :: surfalb_inst
+ type(solarabs_type)            :: solarabs_inst
+ type(canopystate_type)         :: canopystate_inst
+ type(ozone_base_type)          :: ozone_inst
+ type(photosyns_type)           :: photosyns_inst
+ type(waterfluxbulk_type)       :: waterfluxbulk_inst
+ type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
+ type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
+ type(waterstate_type)          :: waterstate_inst
+ type(clumpfilter)              :: filter
+
  ! temporary and loop variables                                                                                        
  integer :: n, p, pft_num, nv, nc, nz, np, ib
  real    :: bare, tmp_albgrd_vis,tmp_albgrd_nir,&
@@ -115,38 +131,29 @@
  real, dimension (nch, NUM_ZON) :: qaf         ! canopy air humidity [kg/kg]
 
  ! local inputs to Photosynthesis in CLM space
- real, dimension(nch*NUM_ZON*(numpft+1)) :: coszen_clm ! cosine solar zenith angle for next time step in CLM dimensions
- real, dimension(nch*NUM_ZON*(numpft+1)) :: esat_tv_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: eair_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: cair_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: oair_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: rb_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: dayl_factor_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: qsatl_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: qaf_clm
- real, dimension(nch*NUM_ZON*(numpft+1)) :: deldT_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: coszen_clm ! cosine solar zenith angle for next time step in CLM dimensions
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: esat_tv_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: eair_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: cair_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: oair_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: rb_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: dayl_factor_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: qsatl_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: qaf_clm
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: deldT_clm
+
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: eair_pert
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: temp_unpert
 
  ! local pointers for Photosynthesis inputs
  real, pointer :: leafn(:)    ! leaf N (gN/m2)   
  real, pointer :: froot_carbon(:) ! fine root carbon (gC/m2) [pft]
  real, pointer :: croot_carbon(:) ! live coarse root carbon (gC/m2) [pft] 
 
- ! CLM variables
- type(bounds_type)              :: bounds
- type(atm2lnd_type)             :: atm2lnd_inst
- type(temperature_type)         :: temperature_inst
- type(soilstate_type)           :: soilstate_inst
- type(waterdiagnosticbulk_type) :: waterdiagnosticbulk_inst
- type(surfalb_type)             :: surfalb_inst
- type(solarabs_type)            :: solarabs_inst
- type(canopystate_type)         :: canopystate_inst
- type(ozone_base_type)          :: ozone_inst
- type(photosyns_type)           :: photosyns_inst
- type(waterfluxbulk_type)       :: waterfluxbulk_inst
- type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
- type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
- type(waterstate_type)          :: waterstate_inst
- type(clumpfilter)              :: filter
+ ! local outputs from Photosynthesis routine
+  real(r8)  , dimension(bounds%begp:bounds%endp)   :: bsun        ! sunlit canopy transpiration wetness factor (0 to 1)
+  real(r8)  , dimension(bounds%begp:bounds%endp)   :: bsha       ! shaded canopy transpiration wetness factor (0 to 1)
+  real(r8)  , dimension(bounds%begp:bounds%endp)   :: btran         ! transpiration wetness factor (0 to 1) [pft]
 
  ! associate variables
 
@@ -159,8 +166,6 @@
        vcmaxcintsha            => surfalb_inst%vcmaxcintsha_patch , &
        f_sun_z                 => surfalb_inst%fsun_z_patch       , &
        xl                      => pftcon%xl                       , & 
-       rhol                    => pftcon%rhol                     , &   
-       taul                    => pftcon%taul                     , &
        leafn                   => cnveg_nitrogenstate_inst%leafn_patch , &
        froot_carbon            => cnveg_carbonstate_inst%frootc_patch  , &
        croot_carbon            => cnveg_carbonstate_inst%livecrootc_patch, &
@@ -242,7 +247,7 @@
        atm2lnd_inst%forc_pbot_downscaled_col (n)  = pbot(nc)
        atm2lnd_inst%forc_rho_downscaled_col  (n)  = pbot(nc)-0.378*eair(nc,nz)/(rair*tc(nc,nz)) 
 
-       soilstate_inst%hksat_col (n) = 1000.*COND(nc)                          ! saturated hydraulic conductivity mapped to CLM space
+       soilstate_inst%hksat_col (n,1:nlevgrnd) = 1000.*COND(nc)                          ! saturated hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
        soilstate_inst%hk_l_col   (n,1:nlevgrnd) = 1000.*COND(nc)*(wet3(nc)**(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
@@ -312,9 +317,9 @@
               filter_novegsol(num_novegsol) = p
           end if
 
-          waterstate_inst%fdry_patch(p)    = (1-fwet(nc))*elai(p)/(elai(p)+esai(p))
-          waterstate_inst%fwet_patch(p)    = fwet(nc)
-          waterstate_inst%fcansno_patch(p) = fwet(nc)   !jk: This is not a mistake, see notes on why we set fcansno = fwet
+          waterdiagnosticbulk_inst%fdry_patch(p)    = (1-fwet(nc))*elai(p)/(elai(p)+esai(p))
+          waterdiagnosticbulk_inst%fwet_patch(p)    = fwet(nc)
+          waterdiagnosticbulk_inst%fcansno_patch(p) = fwet(nc)   !jk: This is not a mistake, see notes on why we set fcansno = fwet
        end do 
     end do
  end do
@@ -347,7 +352,7 @@
  call PhotosynthesisHydraulicStress ( bounds, filter%num_exposedvegp, filter%exposedvegp, &
        esat_tv_clm, eair_pert, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
-       atm2lnd_inst, temperature_inst, soilstate_inst, waterstate_inst, &
+       atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
        photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
  
@@ -365,7 +370,7 @@
  call PhotosynthesisHydraulicStress ( bounds, fn, filterp, &
        esat_tv_pert, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
-       atm2lnd_inst, temperature_inst, soilstate_inst, waterstate_inst, &
+       atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
        photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
 
@@ -381,7 +386,7 @@
  call PhotosynthesisHydraulicStress ( bounds, fn, filterp, &
        esat_tv_clm, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
-       atm2lnd_inst, temperature_inst, soilstate_inst, waterstate_inst, &
+       atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
        photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
  
