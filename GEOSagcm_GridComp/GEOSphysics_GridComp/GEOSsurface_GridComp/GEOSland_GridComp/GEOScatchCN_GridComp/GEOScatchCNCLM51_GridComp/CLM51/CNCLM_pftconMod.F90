@@ -42,8 +42,13 @@ module pftconMod
   integer, public :: nc3crop               = 15   ! C3_crop [moisture + deciduous]   
   integer, public :: npcropmin             = 15   ! value for first crop functional type (not including the more generic C3 crop PFT)
 
+  ! variables that do not apply here, but are needed; set to mxpft + 1
   integer, public :: nc3irrig              = 16   ! value for irrigated generic crop (ir)
-  integer, public :: npcropmax              ! value for last prognostic crop in list
+  integer, public :: npcropmax             = 16   ! value for last prognostic crop in list
+  integer, public :: ntmp_soybean          = 16   ! value for temperate soybean (rf)
+  integer, public :: nirrig_tmp_soybean    = 16   ! value for temperate soybean (ir)
+  integer, public :: ntrp_soybean          = 16   !value for tropical soybean (rf)
+  integer, public :: nirrig_trp_soybean    = 16   !value for tropical soybean (ir)
  !
   type, public :: pftcon_type
 
