@@ -157,7 +157,7 @@ contains
 
 
     use clm_time_manager , only : get_days_per_year
-    use shr_sys_mod      , only : shr_sys_flush
+  !  use shr_sys_mod      , only : shr_sys_flush
     use clm_varcon       , only : secspday, spval
  
     integer                                , intent(in)    :: num_soilc       ! number of soil columns in filter                                                                                                                     
@@ -201,7 +201,7 @@ contains
     !
     ! !USES:
     use clm_time_manager , only : get_days_per_year
-    use shr_sys_mod      , only : shr_sys_flush
+   ! use shr_sys_mod      , only : shr_sys_flush
     use clm_varcon       , only : secspday, spval
     use CNSharedParamsMod    , only: use_fun
     !
