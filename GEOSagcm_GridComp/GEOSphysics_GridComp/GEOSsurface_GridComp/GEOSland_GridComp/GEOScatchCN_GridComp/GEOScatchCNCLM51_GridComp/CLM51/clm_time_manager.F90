@@ -130,16 +130,16 @@ end function get_rad_step_size
   end subroutine get_curr_date
 !=========================================================================================
 
-function get_curr_calday()
-
-  ! Return calendar day at end of current timestep with optional offset.
-  ! Calendar day 1.0 = 0Z on Jan 1.
-  
- real :: get_curr_calday
-  
- get_curr_calday = curr_dofyr
-
-end function get_curr_calday
+!function get_curr_calday()
+!
+!  ! Return calendar day at end of current timestep with optional offset.
+!  ! Calendar day 1.0 = 0Z on Jan 1.
+!  
+! real :: get_curr_calday
+!  
+! get_curr_calday = curr_dofyr
+!
+!end function get_curr_calday
 
 !=========================================================================================
 
