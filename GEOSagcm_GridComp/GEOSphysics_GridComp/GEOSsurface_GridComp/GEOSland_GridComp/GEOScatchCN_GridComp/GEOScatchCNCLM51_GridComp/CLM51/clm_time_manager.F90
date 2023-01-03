@@ -7,6 +7,7 @@ module clm_time_manager
    use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec
    use clm_varctl  , only: iulog
    use MAPL_ExceptionHandling
+   use ESMF
 
    implicit none
    private
@@ -427,7 +428,7 @@ end function is_restart
     real(r8) :: cday               ! current calendar day (1.0 = 0Z on Jan 1)
     real(r8) :: days_per_year      ! days per year
 
-    if ( .not. check_timemgr_initialized(sub) ) return
+  !  if ( .not. check_timemgr_initialized(sub) ) return
 
     cday          = get_curr_calday(offset=offset)
     days_per_year = get_days_per_year()
@@ -450,10 +451,78 @@ end function is_restart
 
     character(len=*), parameter :: sub = 'clm::get_curr_yearfrac'
 
-    if ( .not. check_timemgr_initialized(sub) ) return
+  !  if ( .not. check_timemgr_initialized(sub) ) return
 
     get_prev_yearfrac = get_curr_yearfrac(offset = -dtime)
 
   end function get_prev_yearfrac
 
+  !=========================================================================================
+
+  function get_curr_calday(offset)
+
+    ! Return calendar day at end of current timestep with optional offset.
+    ! Calendar day 1.0 = 0Z on Jan 1.
+
+    ! Arguments
+    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
+    ! Positive for future times, negative 
+    ! for previous times.
+    ! Return value
+    real(r8) :: get_curr_calday
+
+    ! Local variables
+    character(len=*), parameter :: sub = 'clm::get_curr_calday'
+    integer :: rc
+    type(ESMF_Time) :: date
+    type(ESMF_TimeInterval) :: off, diurnal
+    integer :: year, month, day, tod
+    !-----------------------------------------------------------------------------------------
+
+!    if ( .not. check_timemgr_initialized(sub) ) return
+
+    call ESMF_ClockGet( tm_clock, currTime=date, rc=rc )
+    call chkrc(rc, sub//': error return from ESMF_ClockGet')
+
+    if (present(offset)) then
+       if (offset > 0) then
+          call ESMF_TimeIntervalSet( off, s=offset, rc=rc )
+          call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet')
+          date = date + off
+       else if (offset < 0) then
+          call ESMF_TimeIntervalSet( off, s=-offset, rc=rc )
+          call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet')
+          date = date - off
+       end if
+    end if
+
+    if ( tm_perp_calendar ) then
+       call ESMF_TimeGet(date, yy=year, mm=month, dd=day, s=tod, rc=rc)
+       call chkrc(rc, sub//': error return from ESMF_TimeGet')
+       call ESMF_TimeIntervalSet( diurnal, s=tod, rc=rc )
+       call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet')
+       date = tm_perp_date + diurnal
+    end if
+
+    call ESMF_TimeGet( date, dayOfYear_r8=get_curr_calday, rc=rc )
+    call chkrc(rc, sub//': error return from ESMF_TimeGet')
+    !----------------------------------------------------------------------------------------!
+    !!!!!!!!!!!!!! WARNING HACK TO ENABLE Gregorian CALENDAR WITH SHR_ORB !!!!!!!!!!!!!!!!!!!!
+    !!!! The following hack fakes day 366 by reusing day 365. This is just because the  !!!!!!
+    !!!! current shr_orb_decl calculation can't handle days > 366.                      !!!!!!
+    !!!!       Dani Bundy-Coleman and Erik Kluzek Aug/2008                              !!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if ( (get_curr_calday > 366.0) .and. (get_curr_calday <= 367.0) .and. &
+         (trim(calendar) == GREGORIAN_C) )then
+       get_curr_calday = get_curr_calday - 1.0_r8
+    end if
+    !!!!!!!!!!!!!! END HACK TO ENABLE Gregorian CALENDAR WITH SHR_ORB !!!!!!!!!!!!!!!!!!!!!!!!
+    !----------------------------------------------------------------------------------------!
+    if ( (get_curr_calday < 1.0) .or. (get_curr_calday > 366.0) )then
+       write(iulog,*) sub, ' = ', get_curr_calday
+       if ( present(offset) ) write(iulog,*) 'offset = ', offset
+       call shr_sys_abort( sub//': error get_curr_calday out of bounds' )
+    end if
+
+  end function get_curr_calday
 end module clm_time_manager
