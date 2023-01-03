@@ -108,6 +108,7 @@ set (srcs
   shr_assert.h
   shr_const_mod.F90
   shr_file_mod.F90
+  shr_fire_emis_mod.F90
   shr_kind_mod.F90
   shr_log_mod.F90
   shr_mpi_mod.F90
