@@ -6,7 +6,7 @@ module CNBalanceCheckMod
   !
   ! !USES:
   use shr_kind_mod                    , only : r8 => shr_kind_r8
-  use shr_infnan_mod                  , only : nan => shr_infnan_nan
+  use nanMod                          , only : nan
   use shr_log_mod                     , only : errMsg => shr_log_errMsg
   use decompMod                       , only : bounds_type
   use abortutils                      , only : endrun

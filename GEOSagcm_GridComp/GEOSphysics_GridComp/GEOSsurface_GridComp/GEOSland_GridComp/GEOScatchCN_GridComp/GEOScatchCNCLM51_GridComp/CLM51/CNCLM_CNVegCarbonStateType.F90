@@ -204,6 +204,17 @@ module CNVegCarbonStateType
 
 type(cnveg_carbonstate_type), public, target, save :: cnveg_carbonstate_inst
 
+  real(r8), public  :: spinup_factor_deadwood = 1.0_r8        ! Spinup factor used for this simulation
+  real(r8), public  :: spinup_factor_AD       = 10.0_r8       ! Spinup factor used when in Accelerated Decomposition mode
+
+  ! !PRIVATE DATA:
+
+  type, private :: cnvegcarbonstate_const_type
+      ! !PRIVATE MEMBER DATA:
+      real(r8) :: initial_vegC = 20._r8    ! Initial vegetation carbon for leafc/frootc and storage
+  end type
+  type(cnvegcarbonstate_const_type), private :: cnvegcstate_const    ! Constants used here
+
   character(len=*), parameter :: sourcefile = &
        __FILE__
 
