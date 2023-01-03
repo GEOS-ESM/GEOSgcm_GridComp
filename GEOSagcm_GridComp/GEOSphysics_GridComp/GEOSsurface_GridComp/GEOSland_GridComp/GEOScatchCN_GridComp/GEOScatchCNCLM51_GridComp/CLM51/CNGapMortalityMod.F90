@@ -255,7 +255,7 @@ contains
 !            cnveg_carbonflux_inst%m_deadstemc_to_litter_patch(p)         = cnveg_carbonstate_inst%deadstemc_patch(p)   * matrix_update_gmc(p,ideadstem_to_iout_gmc, &
 !                                                                             m*spinup_factor_deadwood,dt,cnveg_carbonflux_inst,matrixcheck_gm,.True.)
 !            cnveg_carbonflux_inst%m_deadcrootc_to_litter_patch(p)        = cnveg_carbonstate_inst%deadcrootc_patch(p)  * matrix_update_gmc(p,ideadcroot_to_iout_gmc, &
-                                                                             m*spinup_factor_deadwood,dt,cnveg_carbonflux_inst,matrixcheck_gm,.True.)
+                                                                          !   m*spinup_factor_deadwood,dt,cnveg_carbonflux_inst,matrixcheck_gm,.True.)
          end if !use_matrixcn
 
          ! storage pools
@@ -321,7 +321,7 @@ contains
 !               cnveg_nitrogenflux_inst%m_deadstemn_to_litter_patch(p)     = cnveg_nitrogenstate_inst%deadstemn_patch(p)  * matrix_update_gmn(p,ideadstem_to_iout_gmn , &
 !                                                                              m*spinup_factor_deadwood,dt,cnveg_nitrogenflux_inst,matrixcheck_gm,.True.)
 !               cnveg_nitrogenflux_inst%m_deadcrootn_to_litter_patch(p)    = cnveg_nitrogenstate_inst%deadcrootn_patch(p) * matrix_update_gmn(p,ideadcroot_to_iout_gmn, &
-                                                                              m*spinup_factor_deadwood,dt,cnveg_nitrogenflux_inst,matrixcheck_gm,.True.)
+                                                                              !m*spinup_factor_deadwood,dt,cnveg_nitrogenflux_inst,matrixcheck_gm,.True.)
             end if !.not. use_matrixcn
          else
             if (.not. use_matrixcn) then
@@ -337,7 +337,7 @@ contains
             if(.not. use_matrixcn)then
                cnveg_nitrogenflux_inst%m_retransn_to_litter_patch(p) = cnveg_nitrogenstate_inst%retransn_patch(p) * m
             else
-               cnveg_nitrogenflux_inst%m_retransn_to_litter_patch(p) = cnveg_nitrogenstate_inst%retransn_patch(p) * matrix_update_gmn(p,iretransn_to_iout_gmn,m,dt,cnveg_nitrogenflux_inst,matrixcheck_gm,.True.)
+               !cnveg_nitrogenflux_inst%m_retransn_to_litter_patch(p) = cnveg_nitrogenstate_inst%retransn_patch(p) * matrix_update_gmn(p,iretransn_to_iout_gmn,m,dt,cnveg_nitrogenflux_inst,matrixcheck_gm,.True.)
             end if
          end if
             
