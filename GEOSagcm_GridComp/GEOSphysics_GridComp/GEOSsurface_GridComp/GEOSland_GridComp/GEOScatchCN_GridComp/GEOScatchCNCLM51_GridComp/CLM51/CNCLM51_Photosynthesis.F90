@@ -97,9 +97,10 @@
  type(clumpfilter)              :: filter
 
  ! temporary and loop variables                                                                                        
- integer :: n, p, pft_num, nv, nc, nz, np, ib
+ integer :: n, p, pft_num, nv, nc, nz, np, ib, nl
  real    :: bare, tmp_albgrd_vis,tmp_albgrd_nir,&
-            tmp_albgri_vis,tmp_albgri_nir
+            tmp_albgri_vis,tmp_albgri_nir, &
+            tmp_parsun, tmp_parsha
 
  ! filter variables
  integer, allocatable, save :: filter_vegsol(:), filter_novegsol(:)
@@ -143,6 +144,7 @@
  real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: deldT_clm
 
  real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: eair_pert
+ real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: esat_tv_pert
  real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: temp_unpert
 
  ! local pointers for Photosynthesis inputs
@@ -151,9 +153,9 @@
  real, pointer :: croot_carbon(:) ! live coarse root carbon (gC/m2) [pft] 
 
  ! local outputs from Photosynthesis routine
-  real(r8)  , dimension(bounds%begp:bounds%endp)   :: bsun        ! sunlit canopy transpiration wetness factor (0 to 1)
-  real(r8)  , dimension(bounds%begp:bounds%endp)   :: bsha       ! shaded canopy transpiration wetness factor (0 to 1)
-  real(r8)  , dimension(bounds%begp:bounds%endp)   :: btran         ! transpiration wetness factor (0 to 1) [pft]
+  real(r8)  , allocatable, dimension(:)   :: bsun        ! sunlit canopy transpiration wetness factor (0 to 1)
+  real(r8)  , allocatable, dimension(:)   :: bsha       ! shaded canopy transpiration wetness factor (0 to 1)
+  real(r8)  , allocatable, dimension(:)   :: btran         ! transpiration wetness factor (0 to 1) [pft]
 
  ! associate variables
 
@@ -181,11 +183,18 @@
  num_vegsol   = 0
  num_novegsol = 0
 
-! allocate variables for radiation calculations
+! allocate variables for radiation calculations 
 !---------------------------------
 
  allocate(rho(bounds%begp:bounds%endp,numrad))
  allocate(tau(bounds%begp:bounds%endp,numrad))
+
+! allocate Photosynthesis outputs
+!--------------------------------
+
+ allocate(bsun(bounds%begp:bounds%endp))
+ allocate(bsha(bounds%begp:bounds%endp))
+ allocate(btran(bounds%begp:bounds%endp))
 
 ! compute saturation vapor pressure
 ! ---------------------------------
@@ -367,7 +376,7 @@
    temperature_inst%t_veg_patch = temperature_inst%t_veg_patch + dtc
    esat_tv_pert(:) = esat_tv_clm(:) + deldT_clm(:)*dtc 
 
- call PhotosynthesisHydraulicStress ( bounds, fn, filterp, &
+ call PhotosynthesisHydraulicStress ( bounds, filter%num_exposedvegp, filter%exposedvegp, &
        esat_tv_pert, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
@@ -383,7 +392,7 @@
 
    temperature_inst%t_veg_patch = temp_unpert ! reset canopy temperature to unperturbed value
 
- call PhotosynthesisHydraulicStress ( bounds, fn, filterp, &
+ call PhotosynthesisHydraulicStress ( bounds, filter%num_exposedvegp, filter%exposedvegp, &
        esat_tv_clm, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
@@ -395,7 +404,7 @@
   rssun  = photosyns_inst%rssun_patch
   rssha  = photosyns_inst%rssha_patch   
 
- call PhotosynthesisTotal (fn, filterp, &
+ call PhotosynthesisTotal (filter%num_exposedvegp, filter%exposedvegp, &
        atm2lnd_inst, canopystate_inst, photosyns_inst)
 
    np = 0
@@ -457,6 +466,14 @@
   end do ! nc
 
  end associate 
+
+ deallocate(filter_vegsol)
+ deallocate(filter_novegsol)
+ deallocate(rho)
+ deallocate(tau)
+ deallocate(bsun)
+ deallocate(bsha)
+ deallocate(btran)
 
  end subroutine catchcn_calc_rc
 
