@@ -31,12 +31,11 @@ module GigaTraj_GridCompMod
 
   type GigaTrajInternal
     integer :: npes
+    integer :: npz ! number of pressure levels
     type (ESMF_Grid) :: LatLonGrid
     class (AbstractRegridder), pointer :: cube2latlon => null()
     integer, allocatable :: CellToRank(:,:)
-    real, dimension(:,:,:), allocatable :: preU, PreV, preW
     type(horde) :: parcels
-    type(c_ptr) :: u0_field, u1_field, v0_field, v1_field, w0_field, w1_field
     type(c_ptr) :: metSrc
   end type
 
@@ -154,7 +153,7 @@ contains
 ! Local derived type aliases
   type (MAPL_MetaComp),  pointer  :: STATE 
   type (ESMF_VM)                  :: vm
-  integer :: I1, I2, J1, J2, comm, npes, rank, ierror, NX, NY
+  integer :: I1, I2, J1, J2, comm, npes, rank, ierror, NX, NY, NPZ
   type(ESMF_Grid) :: CubedGrid
   integer, allocatable :: I1s(:), J1s(:), I2s(:),J2s(:)
   integer :: DIMS(3), counts(3), i,j,k
@@ -217,37 +216,17 @@ contains
     dlon = 360.0/dims(1) 
     lons_center = [(-dlon/2+ dlon*i, i= i1-1, i2+1)]
     dlat = 180.0/dims(2) 
-    lats_center = [(-dlat/2+ dlat*j-90.0, j= j1-1, j2+1)]    
-    levs_center = [(k*1.0, k = 1, counts(3))]
+    lats_center = [(-dlat/2+ dlat*j-90.0, j= j1-1, j2+1)] 
+    npz = 42
+    GigaTrajInternalPtr%npz = npz
+    allocate(levs_center(GigaTrajInternalPtr%npz))   
+    levs_center = [1000.,  975.,  950.,  925.,  900., 875., 850., 825., 800., 775., 750., 725.,700., 650., 600., 550., 500., &
+                   450., 400., 350., 300., 250., 200., 150., 100.,  70.,  50.,  40.,  30., 20., 10., 7., 5., 4., 3., 2., &
+                   1.  , 0.7,  0.5, 0.4,  0.3, 0.1]
 
     call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
     call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime)
     ctime(20:20) = c_null_char
-    unit_="m/s"//c_null_char
-
-    name_="U"//c_null_char
-    GigaTrajInternalPtr%u0_field= initGigaGridLatLonField3d(counts(1)+2, counts(2)+2, counts(3),             &
-                                                 c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), &
-                                                 c_loc(name_),       c_loc(unit_),       c_loc(ctime))
-    GigaTrajInternalPtr%u1_field= initGigaGridLatLonField3d(counts(1)+2, counts(2)+2, counts(3),             &
-                                                 c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), &
-                                                 c_loc(name_),       c_loc(unit_),       c_loc(ctime))
-
-    name_="V"//c_null_char
-    GigaTrajInternalPtr%v0_field= initGigaGridLatLonField3d(counts(1)+2, counts(2)+2, counts(3),             &
-                                                 c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), &
-                                                 c_loc(name_),       c_loc(unit_),       c_loc(ctime))
-    GigaTrajInternalPtr%v1_field= initGigaGridLatLonField3d(counts(1)+2, counts(2)+2, counts(3),             &
-                                                 c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), &
-                                                 c_loc(name_),       c_loc(unit_),       c_loc(ctime))
- 
-    name_="W"//c_null_char
-    GigaTrajInternalPtr%w0_field= initGigaGridLatLonField3d(counts(1)+2, counts(2)+2, counts(3),             &
-                                                 c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), &
-                                                 c_loc(name_),       c_loc(unit_),       c_loc(ctime))
-    GigaTrajInternalPtr%w1_field= initGigaGridLatLonField3d(counts(1)+2, counts(2)+2, counts(3),             &
-                                                 c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), &
-                                                 c_loc(name_),       c_loc(unit_),       c_loc(ctime))
 
     allocate(I1s(npes),J1s(npes))
     allocate(I2s(npes),J2s(npes))
@@ -269,12 +248,9 @@ contains
     enddo
 
     GigaTrajInternalPtr%metSrc = initMetGEOSDistributedData(comm, c_loc(GigaTrajInternalPtr%CellToRank), DIMS(1), DIMS(2),   &
-                                   GigaTrajInternalPtr%u0_field, &
-                                   GigaTrajInternalPtr%v0_field, &
-                                   GigaTrajInternalPtr%w0_field, &
-                                   GigaTrajInternalPtr%u1_field, &
-                                   GigaTrajInternalPtr%v1_field, &
-                                   GigaTrajInternalPtr%w1_field)
+                                   dims(3), counts(1)+2, counts(2)+2, npz, &
+                                   c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), c_loc(ctime))
+
 
 ! initialize partical positions. It will be read and distribted across processors.
 ! for now, it is genrated randomly
@@ -284,22 +260,33 @@ contains
       real, allocatable :: lats(:), lons(:), zs(:)
       integer, allocatable :: nums_all(:)
  
+
+      call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
+
       !call random_seed()
       !call random_number(rparcels)
 
       !num_parcels = nint(rparcels*10)
-      num_parcels = 20
+      num_parcels = 1
 
       allocate(lats(num_parcels), lons(num_parcels), zs(num_parcels))
 
-      call random_number(lats)
-      call random_number(lons)
-      call random_number(zs)
+      !call random_number(lats)
+      !call random_number(lons)
+      !call random_number(zs)
 
-      lons = lons*360.0 
+      !lons = lons*360.0 
       !lats = lats*180.0  - 90.0
-      lats = lats*20.0  - 10.0
-      zs   = ceiling(DIMS(3)*zs)*1.0 
+      !lats = lats*20.0  - 10.0
+      !zs   = (999.9*zs) + 0.1 
+
+      call MAPL_Grid_interior(GigaTrajInternalPtr%LatLonGrid ,i1,i2,j1,j2)
+      dlon  = 360.0/DIMS(1)
+      dlat = 180.0/DIMS(2)
+      lons = [(i1+i2)*dlon/2.0]
+      lats = [(j1+j2)*dlat/2.0 - 90.0]
+      zs  = [my_rank*10.0+10.0]
+
       GigaTrajInternalPtr%parcels%num_parcels = num_parcels
       GigaTrajInternalPtr%parcels%lats = lats
       GigaTrajInternalPtr%parcels%lons = lons
@@ -309,7 +296,6 @@ contains
       allocate(nums_all(npes))
       call MPI_AllGather(num_parcels, 1, MPI_INTEGER, nums_all, 1, MPI_INTEGER, comm, ierror)
 
-      call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
       if (my_rank > 0) then
         GigaTrajInternalPtr%parcels%IDS = GigaTrajInternalPtr%parcels%IDS + sum(nums_all(1:my_rank))
       endif
@@ -354,9 +340,9 @@ contains
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)   :: wrap
 
-    real, dimension(:,:,:), pointer     :: U, V, W, with_halo
-    real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon
-    real, dimension(:,:,:), allocatable, target :: preU, preV, preW
+    real, dimension(:,:,:), pointer     :: U, V, W, with_halo, P
+    real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon, P_latlon
+    real, dimension(:,:,:), allocatable, target :: preU, preV, preW, preP
     integer :: counts(3), dims(3)
     type(ESMF_Field)   :: field
     type(ESMF_RouteHandle) :: rh
@@ -381,15 +367,18 @@ contains
 
     call MAPL_GetPointer(Import, U, "U", _RC)
     call MAPL_GetPointer(Import, V, "V", _RC)
-    call MAPL_GetPointer(Import, W, "W", _RC)
+    call MAPL_GetPointer(Import, W, "OMEGA", _RC)
+    call MAPL_GetPointer(Import, P, "PL", _RC)
 
     allocate(U_latlon(counts(1),counts(2),counts(3)))
     allocate(V_latlon(counts(1),counts(2),counts(3)))
     allocate(W_latlon(counts(1),counts(2),counts(3)))
+    allocate(P_latlon(counts(1),counts(2),counts(3)))
 
     call GigaTrajInternalPtr%cube2latlon%regrid(U, U_latlon, _RC)
     call GigaTrajInternalPtr%cube2latlon%regrid(V, V_latlon, _RC)
     call GigaTrajInternalPtr%cube2latlon%regrid(W, W_latlon, _RC)
+    call GigaTrajInternalPtr%cube2latlon%regrid(P, P_latlon, _RC)
 
     field = ESMF_FieldCreate(GigaTrajInternalPtr%LatLonGrid, ESMF_TYPEKIND_R4, name='halo_field',  &
                                ungriddedLBound=[1],ungriddedUBound=[counts(3)], &
@@ -410,13 +399,11 @@ contains
     call ESMF_FieldHalo(field,rh,_RC)
     preW = with_halo
 
-    call updateFields(c_loc(ctime), c_loc(preU), c_loc(preV), c_loc(preW),   &
-                        GigaTrajInternalPtr%u0_field, &
-                        GigaTrajInternalPtr%v0_field, &
-                        GigaTrajInternalPtr%w0_field, &
-                        GigaTrajInternalPtr%u1_field, &
-                        GigaTrajInternalPtr%v1_field, &
-                        GigaTrajInternalPtr%w1_field)
+    with_halo(2:counts(1)+1, 2:counts(2)+1, :) = p_latlon
+    call ESMF_FieldHalo(field,rh,_RC)
+    preP = with_halo
+
+    call updateFields( GigaTrajInternalPtr%metSrc, c_loc(ctime), c_loc(preU), c_loc(preV), c_loc(preW), c_loc(preP))
 
     call ESMF_FieldDestroy(field)
  
@@ -453,7 +440,7 @@ contains
     character(len=ESMF_MAXSTR)       :: IAm 
     integer                          :: STATUS
     character(len=ESMF_MAXSTR)       :: COMP_NAME
-    integer        :: CSTAT, ESTAT, YY, MM, HH, DD, H, M,S, model_dtstep_m
+    integer        :: CSTAT, ESTAT, YY, MM, HH, DD, H, M,S
     character(512) :: CMSG
     character(256) :: command_line
     character(19)  :: begdate, enddate
@@ -471,12 +458,11 @@ contains
     integer ::counts(3), DIMS(3), rank, comm, ierror
     type (ESMF_VM)   :: vm
   
-    real, dimension(:,:,:), pointer     :: U_cube, V_cube, W_cube, with_halo
-    real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon
-    real, dimension(:,:,:), allocatable, target  :: U_latlon_halo, V_latlon_halo, W_latlon_halo
+    real, dimension(:,:,:), pointer     :: U_cube, V_cube, W_cube, p_cube, with_halo
+    real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon, P_latlon
+    real, dimension(:,:,:), allocatable, target  :: U_latlon_halo, V_latlon_halo, W_latlon_halo, p_latlon_halo
 
     real(ESMF_KIND_R8) :: DT
-    integer :: halowidth(3), model_dtstep
 
     type(ESMF_Field)   :: halo_field
     type(ESMF_RouteHandle) :: rh
@@ -489,11 +475,14 @@ contains
 
     call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
     call ESMF_ClockGet(clock, timeStep=ModelTimeStep, _RC)
-
+ 
+    ! W.J note: this run is after agcm's run. The clock is not yet ticked
+    !           So the values we are using are at (CurrentTime + ModelTimeStep)
+    CurrentTime = CurrentTime + ModelTimeStep
     call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime) 
     ctime(20:20) = c_null_char
 
-    call ESMF_TimeIntervalGet(ModelTimeStep, s=model_dtstep,d_r8=DT, _RC)
+    call ESMF_TimeIntervalGet(ModelTimeStep,d_r8=DT, _RC)
 
     call ESMF_GridCompGet(GC, grid=CubedGrid, _RC)
 
@@ -506,10 +495,12 @@ contains
     allocate(U_latlon(counts(1), counts(2),counts(3)), source = 0.0)
     allocate(V_latlon(counts(1), counts(2),counts(3)), source = 0.0)
     allocate(W_latlon(counts(1), counts(2),counts(3)), source = 0.0)
+    allocate(P_latlon(counts(1), counts(2),counts(3)), source = 0.0)
 
     allocate(U_latlon_halo(counts(1)+2, counts(2)+2,counts(3)), source = 0.0)
     allocate(V_latlon_halo(counts(1)+2, counts(2)+2,counts(3)), source = 0.0)
     allocate(W_latlon_halo(counts(1)+2, counts(2)+2,counts(3)), source = 0.0)
+    allocate(P_latlon_halo(counts(1)+2, counts(2)+2,counts(3)), source = 0.0)
 
 !---------------
 ! Step 1) Regrid the metData field from cubed to lat-lon
@@ -517,11 +508,13 @@ contains
 
     call MAPL_GetPointer(Import, U_cube, "U", _RC)
     call MAPL_GetPointer(Import, V_cube, "V", _RC)
-    call MAPL_GetPointer(Import, W_cube, "W", _RC)
+    call MAPL_GetPointer(Import, W_cube, "OMEGA", _RC)
+    call MAPL_GetPointer(Import, P_cube, "PL", _RC)
 
     call GigaTrajInternalPtr%cube2latlon%regrid(U_cube, U_latlon, _RC)
     call GigaTrajInternalPtr%cube2latlon%regrid(V_cube, V_latlon, _RC)
     call GigaTrajInternalPtr%cube2latlon%regrid(W_cube, W_latlon, _RC)
+    call GigaTrajInternalPtr%cube2latlon%regrid(P_cube, P_latlon, _RC)
 
 !---------------
 ! Step 2) Get halo of latlon metData field
@@ -550,33 +543,33 @@ contains
      call ESMF_FieldHalo(halo_field, rh, _RC)
      W_latlon_halo = with_halo
 
-     call updateFields(c_loc(ctime),c_loc(U_latlon_halo), c_loc(V_latlon_halo), c_loc(W_latlon_halo),   &
-                        GigaTrajInternalPtr%u0_field, &
-                        GigaTrajInternalPtr%v0_field, &
-                        GigaTrajInternalPtr%w0_field, &
-                        GigaTrajInternalPtr%u1_field, &
-                        GigaTrajInternalPtr%v1_field, &
-                        GigaTrajInternalPtr%w1_field)
- 
+     ! get W + halo
+     with_halo(2:counts(1)+1, 2:counts(2)+1, :) = P_latlon
+     call ESMF_FieldHalo(halo_field, rh, _RC)
+     P_latlon_halo = with_halo
 
-    num_parcels = GigaTrajInternalPtr%parcels%num_parcels
+     call updateFields( GigaTrajInternalPtr%metSrc, c_loc(ctime),c_loc(U_latlon_halo),  &
+                       c_loc(V_latlon_halo), c_loc(W_latlon_halo), c_loc(P_latlon_halo))
 
-    lons = GigaTrajInternalPtr%parcels%lons
-    lats = GigaTrajInternalPtr%parcels%lats
-    zs   = GigaTrajInternalPtr%parcels%zs
 
-    call test_dataflow(num_parcels, lons, lats, zs, GigaTrajInternalPtr%CellToRank, DIMS, comm)
+     num_parcels = GigaTrajInternalPtr%parcels%num_parcels
 
-    allocate(U(num_parcels))
-    allocate(V(num_parcels))
-    allocate(W(num_parcels)) 
+    !lons = GigaTrajInternalPtr%parcels%lons
+    !lats = GigaTrajInternalPtr%parcels%lats
+    !zs   = GigaTrajInternalPtr%parcels%zs
 
-    call test_metData( GigaTrajInternalPtr%metSrc, 0.01d0, num_parcels, c_loc(lons), c_loc(lats), c_loc(zs), c_loc(U), c_loc(V), c_loc(W))
+    !call test_dataflow(num_parcels, lons, lats, zs, GigaTrajInternalPtr%CellToRank, DIMS, comm)
 
-    !call rk4a_advance( GigaTrajInternalPtr%metSrc, c_loc(ctime), DT, num_parcels,  &
-    !                   c_loc(GigaTrajInternalPtr%parcels%lons), &
-    !                   c_loc(GigaTrajInternalPtr%parcels%lats), &
-    !                   c_loc(GigaTrajInternalPtr%parcels%zs))
+    !allocate(U(num_parcels))
+    !allocate(V(num_parcels))
+    !allocate(W(num_parcels)) 
+
+    !call test_metData( GigaTrajInternalPtr%metSrc, 0.01d0, num_parcels, c_loc(lons), c_loc(lats), c_loc(zs), c_loc(U), c_loc(V), c_loc(W))
+
+    call rk4a_advance( GigaTrajInternalPtr%metSrc, c_loc(ctime), DT, num_parcels,  &
+                       c_loc(GigaTrajInternalPtr%parcels%lons), &
+                       c_loc(GigaTrajInternalPtr%parcels%lats), &
+                       c_loc(GigaTrajInternalPtr%parcels%zs))
  
   
     call ESMF_FieldDestroy( halo_field)

@@ -25,18 +25,18 @@ module GEOS_Giga_InterOpMod
        type(c_ptr) :: field_ptr
      end function
 
-     function initMetGEOSDistributedData(comm, ijToRank, Ig, Jg, u0_ptr, v0_ptr, w0_ptr, u1_ptr, v1_ptr, w1_ptr) result (metdata_ptr) bind(C, name="initGigaGridDistributedData")
+     function initMetGEOSDistributedData(comm, ijToRank, Ig, Jg,lev, nlon_local, nlat_local, nzs, lons_ptr, lats_ptr, eta_ptr, ctime_ptr) result (metdata_ptr) bind(C, name="initGigaGridDistributedData")
        import :: c_int, c_ptr
        implicit none
-       integer(c_int), intent(in), value :: comm, Ig, Jg
-       type(c_ptr), intent(in), value    :: ijToRank, u0_ptr, v0_ptr, w0_ptr, u1_ptr,v1_ptr, w1_ptr
+       integer(c_int), intent(in), value :: comm, Ig, Jg, lev, nlon_local, nlat_local, nzs
+       type(c_ptr), intent(in), value    :: ijToRank, lons_ptr, lats_ptr, eta_ptr, ctime_ptr
        type(c_ptr) :: metdata_ptr
      end function
 
-     subroutine updateFields( ctime_ptr, u_ptr, v_ptr, w_ptr, u0_ptr, v0_ptr, w0_ptr, u1_ptr, v1_ptr, w1_ptr) bind(C, name="updateFields")
+     subroutine updateFields( metSrc_ptr, ctime_ptr, u_ptr, v_ptr, w_ptr, p_ptr) bind(C, name="updateFields")
        import :: c_ptr
        implicit none
-       type(c_ptr), intent(in), value    :: ctime_ptr, u_ptr, v_ptr, w_ptr, u0_ptr, v0_ptr, w0_ptr, u1_ptr, v1_ptr, w1_ptr
+       type(c_ptr), intent(in), value    :: metSrc_ptr, ctime_ptr, u_ptr, v_ptr, w_ptr, p_ptr
      end subroutine
 
      subroutine rk4a_advance(metsrc_ptr, ctime_ptr, dt, n, lons_ptr, lats_ptr, levs_ptr) bind( C, name='rk4a_advance')
@@ -81,7 +81,6 @@ contains
 
     integer, allocatable :: counts_send(:),counts_recv(:), II(:), JJ(:), ranks(:)
     integer, allocatable :: disp_send(:), disp_recv(:), tmp_position(:)
-
       
     dlon = 360.0 / DIMS(1)
     dlat = 180.0 / DIMS(2)
@@ -149,7 +148,6 @@ contains
 !-- -------------------
 !step 5) Interpolate the data ( horiontally and vertically) and send back where they are from
 !-- -------------------
-
      allocate(U_recv(sum(counts_recv)), source = my_rank*1.0)
      allocate(U_send(num_parcels), source = -1.0)
      !
