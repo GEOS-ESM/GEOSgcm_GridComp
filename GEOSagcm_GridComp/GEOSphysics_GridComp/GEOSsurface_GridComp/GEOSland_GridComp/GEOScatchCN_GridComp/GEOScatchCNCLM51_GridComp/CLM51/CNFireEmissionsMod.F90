@@ -10,6 +10,8 @@ module CNFireEmissionsMod
   use abortutils,   only : endrun
   use PatchType,    only : patch                
   use decompMod,    only : bounds_type
+  use shr_fire_emis_mod,  only : shr_fire_emis_comps_n, shr_fire_emis_comp_t, shr_fire_emis_linkedlist
+  use shr_fire_emis_mod,  only : shr_fire_emis_mechcomps_n, shr_fire_emis_mechcomps
   !
   implicit none
   private 
