@@ -96,7 +96,7 @@ module filterMod
 
   ! This is the standard set of filters, which should be used in most places in the code.
   ! These filters only include 'active' points.
-  type(clumpfilter), allocatable, public :: filter(:)
+  type(clumpfilter), public, target, save :: filter
 
 contains
 
