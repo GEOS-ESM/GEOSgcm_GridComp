@@ -52,7 +52,7 @@ module FireMethodType
      !   consistent between different implementations.
      !
      !---------------------------------------------------------------------------
-  subroutine FireInit_interface(this, bounds, NLFilename )
+  subroutine FireInit_interface(this, bounds)
     !
     ! !DESCRIPTION:
     ! Initialize Fire datasets
@@ -63,7 +63,7 @@ module FireMethodType
     ! !ARGUMENTS:
     class(fire_method_type)     :: this
     type(bounds_type), intent(in) :: bounds
-    character(len=*),  intent(in) :: NLFilename
+   ! character(len=*),  intent(in) :: NLFilename
     !-----------------------------------------------------------------------
 
   end subroutine FireInit_interface
