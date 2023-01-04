@@ -41,7 +41,7 @@ module NutrientCompetitionCLM45defaultMod
   !
   interface nutrient_competition_clm45default_type
      ! initialize a new nutrient_competition_clm45default_type object
-     module procedure constructor  
+    ! module procedure constructor  
   end interface nutrient_competition_clm45default_type
   !
 
@@ -52,13 +52,13 @@ module NutrientCompetitionCLM45defaultMod
 contains
 
   !------------------------------------------------------------------------
-  type(nutrient_competition_clm45default_type) function constructor()
-    !
-    ! !DESCRIPTION:
-    ! Creates an object of type nutrient_competition_clm45default_type.
-    ! For now, this is simply a place-holder.
-
-  end function constructor
+!  type(nutrient_competition_clm45default_type) function constructor()
+!    !
+!    ! !DESCRIPTION:
+!    ! Creates an object of type nutrient_competition_clm45default_type.
+!    ! For now, this is simply a place-holder.
+!
+!  end function constructor
 
   !------------------------------------------------------------------------
   subroutine Init(this, bounds)
