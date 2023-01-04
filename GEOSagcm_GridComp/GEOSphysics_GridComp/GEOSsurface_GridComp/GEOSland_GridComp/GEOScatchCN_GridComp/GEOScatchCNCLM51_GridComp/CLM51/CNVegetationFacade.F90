@@ -40,7 +40,7 @@ module CNVegetationFacade
   ! !USES:
 #include "shr_assert.h"
   use shr_kind_mod                    , only : r8 => shr_kind_r8
-  use shr_infnan_mod                  , only : nan => shr_infnan_nan
+  use nanMod                          , only : nan 
   use shr_log_mod                     , only : errMsg => shr_log_errMsg
   use perf_mod                        , only : t_startf, t_stopf
   use decompMod                       , only : bounds_type
@@ -58,8 +58,8 @@ module CNVegetationFacade
   use FireMethodType                  , only : fire_method_type
   use CNProductsMod                   , only : cn_products_type
   use NutrientCompetitionMethodMod    , only : nutrient_competition_method_type
-  use SpeciesIsotopeType              , only : species_isotope_type
-  use SpeciesNonIsotopeType           , only : species_non_isotope_type
+!  use SpeciesIsotopeType              , only : species_isotope_type
+!  use SpeciesNonIsotopeType           , only : species_non_isotope_type
   use CanopyStateType                 , only : canopystate_type
   use PhotosynthesisMod               , only : photosyns_type
   use atm2lndType                     , only : atm2lnd_type
@@ -72,7 +72,7 @@ module CNVegetationFacade
   use CropType                        , only : crop_type
   use ch4Mod                          , only : ch4_type
   use CNDVType                        , only : dgvs_type
-  use CNDVDriverMod                   , only : CNDVDriver, CNDVHIST
+ ! use CNDVDriverMod                   , only : CNDVDriver, CNDVHIST
   use EnergyFluxType                  , only : energyflux_type
   use SaturatedExcessRunoffMod        , only : saturated_excess_runoff_type
   use FrictionVelocityMod             , only : frictionvel_type
@@ -83,7 +83,7 @@ module CNVegetationFacade
   use SoilBiogeochemNitrogenStateType , only : soilbiogeochem_nitrogenstate_type
   use SoilBiogeochemNitrogenFluxType  , only : soilbiogeochem_nitrogenflux_type
   use CNFireEmissionsMod              , only : fireemis_type, CNFireEmisUpdate
-  use CNDriverMod                     , only : CNDriverInit
+  !use CNDriverMod                     , only : CNDriverInit
   use CNDriverMod                     , only : CNDriverSummarizeStates, CNDriverSummarizeFluxes
   use CNDriverMod                     , only : CNDriverNoLeaching, CNDriverLeaching
   use CNCStateUpdate1Mod              , only : CStateUpdateDynPatch
@@ -153,23 +153,23 @@ module CNVegetationFacade
      ! - drydepvel_inst
      
    contains
-     procedure, public :: Init
+    ! procedure, public :: Init
      procedure, public :: InitAccBuffer
      procedure, public :: InitAccVars
      procedure, public :: UpdateAccVars
    !  procedure, public :: Restart
 
-     procedure, public :: Init2                         ! Do initialization in initialize phase, after subgrid weights are determined
+   !  procedure, public :: Init2                         ! Do initialization in initialize phase, after subgrid weights are determined
      procedure, public :: InitEachTimeStep              ! Do initializations at the start of each time step
      procedure, public :: InterpFileInputs              ! Interpolate inputs from files
-     procedure, public :: UpdateSubgridWeights          ! Update subgrid weights if running with prognostic patch weights
-     procedure, public :: DynamicAreaConservation       ! Conserve C & N with updates in subgrid weights
+   !  procedure, public :: UpdateSubgridWeights          ! Update subgrid weights if running with prognostic patch weights
+   !  procedure, public :: DynamicAreaConservation       ! Conserve C & N with updates in subgrid weights
      procedure, public :: InitColumnBalance             ! Set the starting point for col-level balance checks
      procedure, public :: InitGridcellBalance           ! Set the starting point for gridcell-level balance checks
      procedure, public :: EcosystemDynamicsPreDrainage  ! Do the main science that needs to be done before hydrology-drainage
      procedure, public :: EcosystemDynamicsPostDrainage ! Do the main science that needs to be done after hydrology-drainage
      procedure, public :: BalanceCheck                  ! Check the carbon and nitrogen balance
-     procedure, public :: EndOfTimeStepVegDynamics      ! Do vegetation dynamics that should be done at the end of each time step
+   !  procedure, public :: EndOfTimeStepVegDynamics      ! Do vegetation dynamics that should be done at the end of each time step
      procedure, public :: WriteHistory                  ! Do any history writes that are specific to veg dynamics
 
      procedure, public :: get_net_carbon_exchange_grc   ! Get gridcell-level net carbon exchange array
@@ -195,92 +195,92 @@ module CNVegetationFacade
 contains
 
   !-----------------------------------------------------------------------
-  subroutine Init(this, bounds, NLFilename, nskip_steps, params_ncid)
-    !
-    ! !DESCRIPTION:
-    ! Initialize a CNVeg object.
-    !
-    ! Should be called regardless of whether use_cn is true
-    !
-    ! !USES:
-    use CNFireFactoryMod , only : create_cnfire_method
-    use clm_varcon       , only : c13ratio, c14ratio
-    use ncdio_pio        , only : file_desc_t
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(inout) :: this
-    type(bounds_type), intent(in)    :: bounds
-    character(len=*) , intent(in)    :: NLFilename  ! namelist filename
-    integer          , intent(in)    :: nskip_steps ! Number of steps to skip at startup
-    type(file_desc_t), intent(inout) :: params_ncid ! NetCDF handle to parameter file
-    !
-    ! !LOCAL VARIABLES:
-    integer :: begp, endp
-
-    character(len=*), parameter :: subname = 'Init'
-    !-----------------------------------------------------------------------
-
-    begp = bounds%begp
-    endp = bounds%endp
-
-    ! Note - always initialize the memory for cnveg_state_inst (used in biogeophys/)
-    call this%cnveg_state_inst%Init(bounds)
-    
-    skip_steps = nskip_steps
-
-    if (use_cn) then
-
-       ! Read in the general CN namelist
-       call this%CNReadNML( NLFilename )    ! MUST be called first as passes down control information to others
-
-       call this%cnveg_carbonstate_inst%Init(bounds, carbon_type='c12', ratio=1._r8, &
-                                             NLFilename=NLFilename,  dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm )
-       if (use_c13) then
-          call this%c13_cnveg_carbonstate_inst%Init(bounds, carbon_type='c13', ratio=c13ratio, &
-               NLFilename=NLFilename, dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm,        &
-               c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
-       end if
-       if (use_c14) then
-          call this%c14_cnveg_carbonstate_inst%Init(bounds, carbon_type='c14', ratio=c14ratio, &
-               NLFilename=NLFilename, dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm,        &
-               c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
-       end if
-       call this%cnveg_carbonflux_inst%Init(bounds, carbon_type='c12', dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm )
-       if (use_c13) then
-          call this%c13_cnveg_carbonflux_inst%Init(bounds, carbon_type='c13', dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm)
-       end if
-       if (use_c14) then
-          call this%c14_cnveg_carbonflux_inst%Init(bounds, carbon_type='c14', dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm)
-       end if
-       call this%cnveg_nitrogenstate_inst%Init(bounds,    &
-            this%cnveg_carbonstate_inst%leafc_patch(begp:endp),          &
-            this%cnveg_carbonstate_inst%leafc_storage_patch(begp:endp),  &
-            this%cnveg_carbonstate_inst%frootc_patch(begp:endp),         &
-            this%cnveg_carbonstate_inst%frootc_storage_patch(begp:endp), &
-            this%cnveg_carbonstate_inst%deadstemc_patch(begp:endp) )
-       call this%cnveg_nitrogenflux_inst%Init(bounds) 
-
-       call this%c_products_inst%Init(bounds, species_non_isotope_type('C'))
-       if (use_c13) then
-          call this%c13_products_inst%Init(bounds, species_isotope_type('C', '13'))
-       end if
-       if (use_c14) then
-          call this%c14_products_inst%Init(bounds, species_isotope_type('C', '14'))
-       end if
-       call this%n_products_inst%Init(bounds, species_non_isotope_type('N'))
-
-       call this%cn_balance_inst%Init(bounds)
-
-       ! Initialize the memory for the dgvs_inst data structure regardless of whether
-       ! use_cndv is true so that it can be used in associate statements (nag compiler
-       ! complains otherwise)
-       call this%dgvs_inst%Init(bounds)
-    end if
-
-    call create_cnfire_method(NLFilename, this%cnfire_method)
-    call this%cnfire_method%CNFireReadParams( params_ncid )
-
-  end subroutine Init
+!  subroutine Init(this, bounds, NLFilename, nskip_steps, params_ncid)
+!    !
+!    ! !DESCRIPTION:
+!    ! Initialize a CNVeg object.
+!    !
+!    ! Should be called regardless of whether use_cn is true
+!    !
+!    ! !USES:
+!    use CNFireFactoryMod , only : create_cnfire_method
+!    use clm_varcon       , only : c13ratio, c14ratio
+!    use ncdio_pio        , only : file_desc_t
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(inout) :: this
+!    type(bounds_type), intent(in)    :: bounds
+!    character(len=*) , intent(in)    :: NLFilename  ! namelist filename
+!    integer          , intent(in)    :: nskip_steps ! Number of steps to skip at startup
+!    type(file_desc_t), intent(inout) :: params_ncid ! NetCDF handle to parameter file
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer :: begp, endp
+!
+!    character(len=*), parameter :: subname = 'Init'
+!    !-----------------------------------------------------------------------
+!
+!    begp = bounds%begp
+!    endp = bounds%endp
+!
+!    ! Note - always initialize the memory for cnveg_state_inst (used in biogeophys/)
+!    call this%cnveg_state_inst%Init(bounds)
+!    
+!    skip_steps = nskip_steps
+!
+!    if (use_cn) then
+!
+!       ! Read in the general CN namelist
+!       call this%CNReadNML( NLFilename )    ! MUST be called first as passes down control information to others
+!
+!       call this%cnveg_carbonstate_inst%Init(bounds, carbon_type='c12', ratio=1._r8, &
+!                                             NLFilename=NLFilename,  dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm )
+!       if (use_c13) then
+!          call this%c13_cnveg_carbonstate_inst%Init(bounds, carbon_type='c13', ratio=c13ratio, &
+!               NLFilename=NLFilename, dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm,        &
+!               c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
+!       end if
+!       if (use_c14) then
+!          call this%c14_cnveg_carbonstate_inst%Init(bounds, carbon_type='c14', ratio=c14ratio, &
+!               NLFilename=NLFilename, dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm,        &
+!               c12_cnveg_carbonstate_inst=this%cnveg_carbonstate_inst)
+!       end if
+!       call this%cnveg_carbonflux_inst%Init(bounds, carbon_type='c12', dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm )
+!       if (use_c13) then
+!          call this%c13_cnveg_carbonflux_inst%Init(bounds, carbon_type='c13', dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm)
+!       end if
+!       if (use_c14) then
+!          call this%c14_cnveg_carbonflux_inst%Init(bounds, carbon_type='c14', dribble_crophrv_xsmrpool_2atm=this%dribble_crophrv_xsmrpool_2atm)
+!       end if
+!       call this%cnveg_nitrogenstate_inst%Init(bounds,    &
+!            this%cnveg_carbonstate_inst%leafc_patch(begp:endp),          &
+!            this%cnveg_carbonstate_inst%leafc_storage_patch(begp:endp),  &
+!            this%cnveg_carbonstate_inst%frootc_patch(begp:endp),         &
+!            this%cnveg_carbonstate_inst%frootc_storage_patch(begp:endp), &
+!            this%cnveg_carbonstate_inst%deadstemc_patch(begp:endp) )
+!       call this%cnveg_nitrogenflux_inst%Init(bounds) 
+!
+!       call this%c_products_inst%Init(bounds, species_non_isotope_type('C'))
+!       if (use_c13) then
+!          call this%c13_products_inst%Init(bounds, species_isotope_type('C', '13'))
+!       end if
+!       if (use_c14) then
+!          call this%c14_products_inst%Init(bounds, species_isotope_type('C', '14'))
+!       end if
+!       call this%n_products_inst%Init(bounds, species_non_isotope_type('N'))
+!
+!       call this%cn_balance_inst%Init(bounds)
+!
+!       ! Initialize the memory for the dgvs_inst data structure regardless of whether
+!       ! use_cndv is true so that it can be used in associate statements (nag compiler
+!       ! complains otherwise)
+!       call this%dgvs_inst%Init(bounds)
+!    end if
+!
+!    call create_cnfire_method(NLFilename, this%cnfire_method)
+!    call this%cnfire_method%CNFireReadParams( params_ncid )
+!
+!  end subroutine Init
 
   !-----------------------------------------------------------------------
   subroutine CNReadNML( this, NLFilename )
@@ -532,33 +532,33 @@ contains
 !  end subroutine Restart
 
   !-----------------------------------------------------------------------
-  subroutine Init2(this, bounds, NLFilename)
-    !
-    ! !DESCRIPTION:
-    ! Do initialization that is needed in the initialize phase, after subgrid weights are
-    ! determined
-    !
-    ! Should only be called if use_cn is true
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type) , intent(inout) :: this
-    type(bounds_type) , intent(in)    :: bounds
-    character(len=*)  , intent(in)    :: NLFilename ! namelist filename
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'Init2'
-    !-----------------------------------------------------------------------
-
-    call CNDriverInit(bounds, NLFilename, this%cnfire_method)
-
-    if (use_cndv) then
-       call dynCNDV_init(bounds, this%dgvs_inst)
-    end if
-
-  end subroutine Init2
+!  subroutine Init2(this, bounds, NLFilename)
+!    !
+!    ! !DESCRIPTION:
+!    ! Do initialization that is needed in the initialize phase, after subgrid weights are
+!    ! determined
+!    !
+!    ! Should only be called if use_cn is true
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type) , intent(inout) :: this
+!    type(bounds_type) , intent(in)    :: bounds
+!    character(len=*)  , intent(in)    :: NLFilename ! namelist filename
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'Init2'
+!    !-----------------------------------------------------------------------
+!
+!    call CNDriverInit(bounds, NLFilename, this%cnfire_method)
+!
+!    if (use_cndv) then
+!       call dynCNDV_init(bounds, this%dgvs_inst)
+!    end if
+!
+!  end subroutine Init2
 
 
   !-----------------------------------------------------------------------
@@ -628,137 +628,137 @@ contains
 
 
   !-----------------------------------------------------------------------
-  subroutine UpdateSubgridWeights(this, bounds)
-    !
-    ! !DESCRIPTION:
-    ! Update subgrid weights if running with prognostic patch weights
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type) , intent(inout) :: this
-    type(bounds_type) , intent(in)    :: bounds
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'UpdateSubgridWeights'
-    !-----------------------------------------------------------------------
-
-    if (use_cndv) then
-       call dynCNDV_interp(bounds, this%dgvs_inst)
-    end if
-
-  end subroutine UpdateSubgridWeights
+!  subroutine UpdateSubgridWeights(this, bounds)
+!    !
+!    ! !DESCRIPTION:
+!    ! Update subgrid weights if running with prognostic patch weights
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type) , intent(inout) :: this
+!    type(bounds_type) , intent(in)    :: bounds
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'UpdateSubgridWeights'
+!    !-----------------------------------------------------------------------
+!
+!    if (use_cndv) then
+!       call dynCNDV_interp(bounds, this%dgvs_inst)
+!    end if
+!
+!  end subroutine UpdateSubgridWeights
 
 
   !-----------------------------------------------------------------------
-  subroutine DynamicAreaConservation(this, bounds, clump_index, &
-       num_soilp_with_inactive, filter_soilp_with_inactive, &
-       num_soilc_with_inactive, filter_soilc_with_inactive, &
-       prior_weights, patch_state_updater, column_state_updater, &
-       canopystate_inst, photosyns_inst, &
-       soilbiogeochem_carbonflux_inst, soilbiogeochem_carbonstate_inst, &
-       c13_soilbiogeochem_carbonstate_inst, c14_soilbiogeochem_carbonstate_inst, &
-       soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst, ch4_inst, soilbiogeochem_state_inst)
-    !
-    ! !DESCRIPTION:
-    ! Conserve C & N with updates in subgrid weights
-    !
-    ! Should only be called if use_cn is true
-    !
-    ! !USES:
-    use dynPriorWeightsMod      , only : prior_weights_type
-    use dynPatchStateUpdaterMod, only : patch_state_updater_type
-    use dynColumnStateUpdaterMod, only : column_state_updater_type
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(inout) :: this
-    type(bounds_type)                       , intent(in)    :: bounds        
-
-    ! Index of clump on which we're currently operating. Note that this implies that this
-    ! routine must be called from within a clump loop.
-    integer                                 , intent(in)    :: clump_index
-
-    integer                                 , intent(in)    :: num_soilp_with_inactive ! number of points in filter_soilp_with_inactive
-    integer                                 , intent(in)    :: filter_soilp_with_inactive(:) ! soil patch filter that includes inactive points
-    integer                                 , intent(in)    :: num_soilc_with_inactive ! number of points in filter_soilc_with_inactive
-    integer                                 , intent(in)    :: filter_soilc_with_inactive(:) ! soil column filter that includes inactive points
-    type(prior_weights_type)                , intent(in)    :: prior_weights         ! weights prior to the subgrid weight updates
-    type(patch_state_updater_type)          , intent(in)    :: patch_state_updater
-    type(column_state_updater_type)         , intent(in)    :: column_state_updater
-    type(canopystate_type)                  , intent(inout) :: canopystate_inst
-    type(photosyns_type)                    , intent(inout) :: photosyns_inst
-    type(soilbiogeochem_carbonflux_type)    , intent(inout) :: soilbiogeochem_carbonflux_inst
-    type(soilbiogeochem_carbonstate_type)   , intent(inout) :: soilbiogeochem_carbonstate_inst
-    type(soilbiogeochem_carbonstate_type)   , intent(inout) :: c13_soilbiogeochem_carbonstate_inst
-    type(soilbiogeochem_carbonstate_type)   , intent(inout) :: c14_soilbiogeochem_carbonstate_inst
-    type(soilbiogeochem_nitrogenstate_type) , intent(inout) :: soilbiogeochem_nitrogenstate_inst
-    type(soilbiogeochem_nitrogenflux_type)  , intent(inout) :: soilbiogeochem_nitrogenflux_inst
-    type(ch4_type)                          , intent(inout) :: ch4_inst
-    type(soilbiogeochem_state_type)         , intent(in)    :: soilbiogeochem_state_inst
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'DynamicAreaConservation'
-    !-----------------------------------------------------------------------
-
-    call t_startf('dyn_cnbal_patch')
-    call dyn_cnbal_patch(bounds, &
-         num_soilp_with_inactive, filter_soilp_with_inactive, &
-         prior_weights, patch_state_updater, &
-         canopystate_inst, photosyns_inst, &
-         this%cnveg_state_inst, &
-         this%cnveg_carbonstate_inst, this%c13_cnveg_carbonstate_inst, this%c14_cnveg_carbonstate_inst, &
-         this%cnveg_carbonflux_inst, this%c13_cnveg_carbonflux_inst, this%c14_cnveg_carbonflux_inst, &
-         this%cnveg_nitrogenstate_inst, this%cnveg_nitrogenflux_inst, &
-         soilbiogeochem_carbonflux_inst, soilbiogeochem_state_inst)
-    call t_stopf('dyn_cnbal_patch')
-
-    ! It is important to update column-level state variables based on the fluxes
-    ! generated by dyn_cnbal_patch (which handles the change in aboveground / patch-level
-    ! C/N due to shrinking patches), before calling dyn_cnbal_col (which handles the
-    ! change in belowground / column-level C/N due to changing column areas). This way,
-    ! any aboveground biomass which is sent to litter or soil due to shrinking patch
-    ! areas is accounted for by the column-level conservation. This is important if
-    ! column weights on the grid cell are changing at the same time as patch weights on
-    ! the grid cell (which will typically be the case when columns change in area).
-    !
-    ! The filters here need to include inactive points as well as active points so that
-    ! we correctly update column states in columns that have just shrunk to 0 area -
-    ! since those column states are still important in the following dyn_cnbal_col.
-    call t_startf('CNUpdateDynPatch')
-    call CStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
-         this%cnveg_carbonflux_inst, this%cnveg_carbonstate_inst, soilbiogeochem_carbonstate_inst )
-    if (use_c13) then
-       call CStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
-            this%c13_cnveg_carbonflux_inst, this%c13_cnveg_carbonstate_inst, &
-            c13_soilbiogeochem_carbonstate_inst)
-    end if
-    if (use_c14) then
-       call CStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
-            this%c14_cnveg_carbonflux_inst, this%c14_cnveg_carbonstate_inst, &
-            c14_soilbiogeochem_carbonstate_inst)
-    end if
-    call NStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
-         this%cnveg_nitrogenflux_inst, this%cnveg_nitrogenstate_inst, soilbiogeochem_nitrogenstate_inst, &
-         soilbiogeochem_nitrogenflux_inst )
-    call t_stopf('CNUpdateDynPatch')
-
-    ! This call fixes issue #741 by performing precision control on decomp_cpools_vr_col
-    call t_startf('SoilBiogeochemPrecisionControl')
-    call SoilBiogeochemPrecisionControl(num_soilc_with_inactive, filter_soilc_with_inactive,  &
-         soilbiogeochem_carbonstate_inst, c13_soilbiogeochem_carbonstate_inst, &
-         c14_soilbiogeochem_carbonstate_inst,soilbiogeochem_nitrogenstate_inst)
-    call t_stopf('SoilBiogeochemPrecisionControl')
-
-    call t_startf('dyn_cnbal_col')
-    call dyn_cnbal_col(bounds, clump_index, column_state_updater, &
-         soilbiogeochem_carbonstate_inst, c13_soilbiogeochem_carbonstate_inst, &
-         c14_soilbiogeochem_carbonstate_inst, soilbiogeochem_nitrogenstate_inst, &
-         ch4_inst)
-    call t_stopf('dyn_cnbal_col')
-
-  end subroutine DynamicAreaConservation
+!  subroutine DynamicAreaConservation(this, bounds, clump_index, &
+!       num_soilp_with_inactive, filter_soilp_with_inactive, &
+!       num_soilc_with_inactive, filter_soilc_with_inactive, &
+!       prior_weights, patch_state_updater, column_state_updater, &
+!       canopystate_inst, photosyns_inst, &
+!       soilbiogeochem_carbonflux_inst, soilbiogeochem_carbonstate_inst, &
+!       c13_soilbiogeochem_carbonstate_inst, c14_soilbiogeochem_carbonstate_inst, &
+!       soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst, ch4_inst, soilbiogeochem_state_inst)
+!    !
+!    ! !DESCRIPTION:
+!    ! Conserve C & N with updates in subgrid weights
+!    !
+!    ! Should only be called if use_cn is true
+!    !
+!    ! !USES:
+!    use dynPriorWeightsMod      , only : prior_weights_type
+!    use dynPatchStateUpdaterMod, only : patch_state_updater_type
+!    use dynColumnStateUpdaterMod, only : column_state_updater_type
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(inout) :: this
+!    type(bounds_type)                       , intent(in)    :: bounds        
+!
+!    ! Index of clump on which we're currently operating. Note that this implies that this
+!    ! routine must be called from within a clump loop.
+!    integer                                 , intent(in)    :: clump_index
+!
+!    integer                                 , intent(in)    :: num_soilp_with_inactive ! number of points in filter_soilp_with_inactive
+!    integer                                 , intent(in)    :: filter_soilp_with_inactive(:) ! soil patch filter that includes inactive points
+!    integer                                 , intent(in)    :: num_soilc_with_inactive ! number of points in filter_soilc_with_inactive
+!    integer                                 , intent(in)    :: filter_soilc_with_inactive(:) ! soil column filter that includes inactive points
+!    type(prior_weights_type)                , intent(in)    :: prior_weights         ! weights prior to the subgrid weight updates
+!    type(patch_state_updater_type)          , intent(in)    :: patch_state_updater
+!    type(column_state_updater_type)         , intent(in)    :: column_state_updater
+!    type(canopystate_type)                  , intent(inout) :: canopystate_inst
+!    type(photosyns_type)                    , intent(inout) :: photosyns_inst
+!    type(soilbiogeochem_carbonflux_type)    , intent(inout) :: soilbiogeochem_carbonflux_inst
+!    type(soilbiogeochem_carbonstate_type)   , intent(inout) :: soilbiogeochem_carbonstate_inst
+!    type(soilbiogeochem_carbonstate_type)   , intent(inout) :: c13_soilbiogeochem_carbonstate_inst
+!    type(soilbiogeochem_carbonstate_type)   , intent(inout) :: c14_soilbiogeochem_carbonstate_inst
+!    type(soilbiogeochem_nitrogenstate_type) , intent(inout) :: soilbiogeochem_nitrogenstate_inst
+!    type(soilbiogeochem_nitrogenflux_type)  , intent(inout) :: soilbiogeochem_nitrogenflux_inst
+!    type(ch4_type)                          , intent(inout) :: ch4_inst
+!    type(soilbiogeochem_state_type)         , intent(in)    :: soilbiogeochem_state_inst
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'DynamicAreaConservation'
+!    !-----------------------------------------------------------------------
+!
+!    call t_startf('dyn_cnbal_patch')
+!    call dyn_cnbal_patch(bounds, &
+!         num_soilp_with_inactive, filter_soilp_with_inactive, &
+!         prior_weights, patch_state_updater, &
+!         canopystate_inst, photosyns_inst, &
+!         this%cnveg_state_inst, &
+!         this%cnveg_carbonstate_inst, this%c13_cnveg_carbonstate_inst, this%c14_cnveg_carbonstate_inst, &
+!         this%cnveg_carbonflux_inst, this%c13_cnveg_carbonflux_inst, this%c14_cnveg_carbonflux_inst, &
+!         this%cnveg_nitrogenstate_inst, this%cnveg_nitrogenflux_inst, &
+!         soilbiogeochem_carbonflux_inst, soilbiogeochem_state_inst)
+!    call t_stopf('dyn_cnbal_patch')
+!
+!    ! It is important to update column-level state variables based on the fluxes
+!    ! generated by dyn_cnbal_patch (which handles the change in aboveground / patch-level
+!    ! C/N due to shrinking patches), before calling dyn_cnbal_col (which handles the
+!    ! change in belowground / column-level C/N due to changing column areas). This way,
+!    ! any aboveground biomass which is sent to litter or soil due to shrinking patch
+!    ! areas is accounted for by the column-level conservation. This is important if
+!    ! column weights on the grid cell are changing at the same time as patch weights on
+!    ! the grid cell (which will typically be the case when columns change in area).
+!    !
+!    ! The filters here need to include inactive points as well as active points so that
+!    ! we correctly update column states in columns that have just shrunk to 0 area -
+!    ! since those column states are still important in the following dyn_cnbal_col.
+!    call t_startf('CNUpdateDynPatch')
+!    call CStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
+!         this%cnveg_carbonflux_inst, this%cnveg_carbonstate_inst, soilbiogeochem_carbonstate_inst )
+!    if (use_c13) then
+!       call CStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
+!            this%c13_cnveg_carbonflux_inst, this%c13_cnveg_carbonstate_inst, &
+!            c13_soilbiogeochem_carbonstate_inst)
+!    end if
+!    if (use_c14) then
+!       call CStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
+!            this%c14_cnveg_carbonflux_inst, this%c14_cnveg_carbonstate_inst, &
+!            c14_soilbiogeochem_carbonstate_inst)
+!    end if
+!    call NStateUpdateDynPatch(bounds, num_soilc_with_inactive, filter_soilc_with_inactive, &
+!         this%cnveg_nitrogenflux_inst, this%cnveg_nitrogenstate_inst, soilbiogeochem_nitrogenstate_inst, &
+!         soilbiogeochem_nitrogenflux_inst )
+!    call t_stopf('CNUpdateDynPatch')
+!
+!    ! This call fixes issue #741 by performing precision control on decomp_cpools_vr_col
+!    call t_startf('SoilBiogeochemPrecisionControl')
+!    call SoilBiogeochemPrecisionControl(num_soilc_with_inactive, filter_soilc_with_inactive,  &
+!         soilbiogeochem_carbonstate_inst, c13_soilbiogeochem_carbonstate_inst, &
+!         c14_soilbiogeochem_carbonstate_inst,soilbiogeochem_nitrogenstate_inst)
+!    call t_stopf('SoilBiogeochemPrecisionControl')
+!
+!    call t_startf('dyn_cnbal_col')
+!    call dyn_cnbal_col(bounds, clump_index, column_state_updater, &
+!         soilbiogeochem_carbonstate_inst, c13_soilbiogeochem_carbonstate_inst, &
+!         c14_soilbiogeochem_carbonstate_inst, soilbiogeochem_nitrogenstate_inst, &
+!         ch4_inst)
+!    call t_stopf('dyn_cnbal_col')
+!
+!  end subroutine DynamicAreaConservation
 
   !-----------------------------------------------------------------------
   subroutine InitColumnBalance(this, bounds, num_allc, filter_allc, &
@@ -1175,65 +1175,65 @@ contains
   end subroutine BalanceCheck
 
   !-----------------------------------------------------------------------
-  subroutine EndOfTimeStepVegDynamics(this, bounds, num_natvegp, filter_natvegp, &
-       atm2lnd_inst, wateratm2lndbulk_inst)
-    !
-    ! !DESCRIPTION:
-    ! Do vegetation dynamics that should be done at the end of each time step
-    !
-    ! Should only be called if use_cn is true
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(inout) :: this
-    type(bounds_type)  , intent(in)    :: bounds                  
-    integer            , intent(inout) :: num_natvegp       ! number of naturally-vegetated patches in filter
-    integer            , intent(inout) :: filter_natvegp(:) ! filter for naturally-vegetated patches
-    type(atm2lnd_type) , intent(inout) :: atm2lnd_inst
-    type(wateratm2lndbulk_type) , intent(inout) :: wateratm2lndbulk_inst
-    !
-    ! !LOCAL VARIABLES:
-    integer  :: nstep  ! time step number
-    integer  :: yr     ! year (0, ...)
-    integer  :: mon    ! month (1, ..., 12)
-    integer  :: day    ! day of month (1, ..., 31)
-    integer  :: sec    ! seconds of the day
-    integer  :: ncdate ! current date
-    integer  :: nbdate ! base date (reference date)
-    integer  :: kyr    ! thousand years, equals 2 at end of first year
-
-    character(len=*), parameter :: subname = 'EndOfTimeStepVegDynamics'
-    !-----------------------------------------------------------------------
-
-    if (use_cndv) then
-       ! Call dv (dynamic vegetation) at last time step of year
-
-       call t_startf('d2dgvm')
-       if (is_end_curr_year() .and. .not. is_first_step())  then
-
-          ! Get date info.  kyr is used in lpj().  At end of first year, kyr = 2.
-          call get_curr_date(yr, mon, day, sec)
-          ncdate = yr*10000 + mon*100 + day
-          call get_ref_date(yr, mon, day, sec)
-          nbdate = yr*10000 + mon*100 + day
-          kyr = ncdate/10000 - nbdate/10000 + 1
-
-          if (masterproc) then
-             nstep = get_nstep()
-             write(iulog,*) 'End of year. CNDV called now: ncdate=', &
-                  ncdate,' nbdate=',nbdate,' kyr=',kyr,' nstep=', nstep
-          end if
-
-          call CNDVDriver(bounds, &
-               num_natvegp, filter_natvegp, kyr,  &
-               atm2lnd_inst, wateratm2lndbulk_inst, &
-               this%cnveg_carbonflux_inst, this%cnveg_carbonstate_inst, this%dgvs_inst)
-       end if
-       call t_stopf('d2dgvm')
-    end if
-
-  end subroutine EndOfTimeStepVegDynamics
+!  subroutine EndOfTimeStepVegDynamics(this, bounds, num_natvegp, filter_natvegp, &
+!       atm2lnd_inst, wateratm2lndbulk_inst)
+!    !
+!    ! !DESCRIPTION:
+!    ! Do vegetation dynamics that should be done at the end of each time step
+!    !
+!    ! Should only be called if use_cn is true
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(inout) :: this
+!    type(bounds_type)  , intent(in)    :: bounds                  
+!    integer            , intent(inout) :: num_natvegp       ! number of naturally-vegetated patches in filter
+!    integer            , intent(inout) :: filter_natvegp(:) ! filter for naturally-vegetated patches
+!    type(atm2lnd_type) , intent(inout) :: atm2lnd_inst
+!    type(wateratm2lndbulk_type) , intent(inout) :: wateratm2lndbulk_inst
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer  :: nstep  ! time step number
+!    integer  :: yr     ! year (0, ...)
+!    integer  :: mon    ! month (1, ..., 12)
+!    integer  :: day    ! day of month (1, ..., 31)
+!    integer  :: sec    ! seconds of the day
+!    integer  :: ncdate ! current date
+!    integer  :: nbdate ! base date (reference date)
+!    integer  :: kyr    ! thousand years, equals 2 at end of first year
+!
+!    character(len=*), parameter :: subname = 'EndOfTimeStepVegDynamics'
+!    !-----------------------------------------------------------------------
+!
+!    if (use_cndv) then
+!       ! Call dv (dynamic vegetation) at last time step of year
+!
+!       call t_startf('d2dgvm')
+!       if (is_end_curr_year() .and. .not. is_first_step())  then
+!
+!          ! Get date info.  kyr is used in lpj().  At end of first year, kyr = 2.
+!          call get_curr_date(yr, mon, day, sec)
+!          ncdate = yr*10000 + mon*100 + day
+!          call get_ref_date(yr, mon, day, sec)
+!          nbdate = yr*10000 + mon*100 + day
+!          kyr = ncdate/10000 - nbdate/10000 + 1
+!
+!          if (masterproc) then
+!             nstep = get_nstep()
+!             write(iulog,*) 'End of year. CNDV called now: ncdate=', &
+!                  ncdate,' nbdate=',nbdate,' kyr=',kyr,' nstep=', nstep
+!          end if
+!
+!          call CNDVDriver(bounds, &
+!               num_natvegp, filter_natvegp, kyr,  &
+!               atm2lnd_inst, wateratm2lndbulk_inst, &
+!               this%cnveg_carbonflux_inst, this%cnveg_carbonstate_inst, this%dgvs_inst)
+!       end if
+!       call t_stopf('d2dgvm')
+!    end if
+!
+!  end subroutine EndOfTimeStepVegDynamics
 
   !-----------------------------------------------------------------------
   subroutine WriteHistory(this, bounds)
