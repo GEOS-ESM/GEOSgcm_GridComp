@@ -51,6 +51,7 @@ set (srcs
   CNCLM_SaturatedExcessRunoffMod.F90
   CNCLM_SoilBiogeochemCarbonFluxType.F90
   CNCLM_SoilBiogeochemCarbonStateType.F90
+  CNCLM_SoilBiogeochemCompetitionMod.F90
   CNCLM_SoilBiogeochemDecompCascadeConType.F90
   CNCLM_SoilBiogeochemNitrogenFluxType.F90
   CNCLM_SoilBiogeochemNitrogenStateType.F90
@@ -116,6 +117,7 @@ set (srcs
   shr_sys_mod.F90
   SoilBiogeochemDecompCascadeBGCMod.F90
   SoilBiogeochemDecompCascadeCNMod.F90
+  SoilBiogeochemDecompMod.F90
   SoilBiogeochemLittVertTranspMod.F90
   SoilBiogeochemNLeachingMod.F90
   SoilBiogeochemNStateUpdate1Mod.F90
