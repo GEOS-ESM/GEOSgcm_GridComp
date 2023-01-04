@@ -101,6 +101,10 @@ contains
     allocate(this%actual_leafcn(bounds%begp:bounds%endp))         ; this%actual_leafcn(:)         = nan
     allocate(this%actual_storage_leafcn(bounds%begp:bounds%endp)) ; this%actual_storage_leafcn(:) = nan
 
+
+    this%actual_leafcn(bounds%begp:bounds%endp) = spval
+    this%actual_storage_leafcn(bounds%begp:bounds%endp) = spval
+
   end subroutine InitAllocate
 
   !------------------------------------------------------------------------
