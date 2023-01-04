@@ -52,7 +52,7 @@ module NutrientCompetitionFlexibleCNMod
   !
   interface nutrient_competition_FlexibleCN_type
      ! initialize a new nutrient_competition_FlexibleCN_type object
-     module procedure constructor
+    ! module procedure constructor
   end interface nutrient_competition_FlexibleCN_type
   !
 
@@ -65,12 +65,12 @@ module NutrientCompetitionFlexibleCNMod
 contains
 
   !------------------------------------------------------------------------
-  type(nutrient_competition_FlexibleCN_type) function constructor()
-    !
-    ! !DESCRIPTION:
-    ! Creates an object of type nutrient_competition_FlexibleCN_type.
-    ! For now, this is simply a place-holder.
-  end function constructor
+!  type(nutrient_competition_FlexibleCN_type) function constructor()
+!    !
+!    ! !DESCRIPTION:
+!    ! Creates an object of type nutrient_competition_FlexibleCN_type.
+!    ! For now, this is simply a place-holder.
+!  end function constructor
 
   !------------------------------------------------------------------------
   subroutine Init(this, bounds)
@@ -521,7 +521,7 @@ contains
 !                           matrix_Cinput => cnveg_carbonflux_inst%matrix_Cinput_patch  & ! C input of matrix 
 !                       )
 !                       matrix_Cinput(p) = plant_nalloc(p) * (c_allometry(p)/n_allometry(p))
-                       end associate
+                      ! end associate
                     end if
 
 	            ! reduce gpp fluxes due to N limitation
@@ -1299,7 +1299,7 @@ contains
 !               if(ivt(p) >= npcropmin)then
 !                 tmp = matrix_update_phn(p,iretransn_to_igrain   ,matrix_nalloc(p,igrain    ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
 !                 tmp = matrix_update_phn(p,iretransn_to_igrainst ,matrix_nalloc(p,igrain_st ) * retransn_to_npool(p) / retransn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,.True.)
-               end if
+               ! end if
            end if
            end associate
          end if !end use_matrixcn  
@@ -1799,7 +1799,7 @@ contains
 !                           end if
 !                           if(livestemn(p) .ne. 0._r8)then
 !                               livestemn_to_retransn(p) = livestemn(p) * matrix_update_phn(p,ilivestem_to_iretransn_phn,livestemn_to_retransn(p) / livestemn(p),dt,cnveg_nitrogenflux_inst,matrixcheck_ph,acc_ph)
-                           end if
+                         !  end if
                         end if
                            
                      end if
