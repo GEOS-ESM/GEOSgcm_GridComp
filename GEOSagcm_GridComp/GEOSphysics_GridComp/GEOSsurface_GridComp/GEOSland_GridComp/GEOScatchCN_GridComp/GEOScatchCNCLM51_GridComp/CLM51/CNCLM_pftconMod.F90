@@ -107,7 +107,6 @@ module pftconMod
   integer, public :: ntrp_soybean           !value for tropical soybean (rf)
   integer, public :: nirrig_trp_soybean     !value for tropical soybean (ir)
   integer, public :: npcropmax              ! value for last prognostic crop in list
-  integer, public :: nc3crop                ! value for generic crop (rf)
   integer, public :: nc3irrig               ! value for irrigated generic crop (ir)
 
  !
@@ -924,7 +923,6 @@ contains
    ntrp_soybean       = mxpft + 1    !value for tropical soybean (rf)
    nirrig_trp_soybean = mxpft + 1    !value for tropical soybean (ir)
    npcropmax          = mxpft + 1    ! value for last prognostic crop in list
-   nc3crop            = mxpft + 1    ! value for generic crop (rf)
    nc3irrig           = mxpft + 1    ! value for irrigated generic crop (ir)
 
     do m = 0,mxpft
