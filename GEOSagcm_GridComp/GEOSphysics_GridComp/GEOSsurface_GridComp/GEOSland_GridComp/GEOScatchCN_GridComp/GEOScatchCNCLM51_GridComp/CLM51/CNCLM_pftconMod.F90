@@ -42,13 +42,74 @@ module pftconMod
   integer, public :: nc3crop               = 15   ! C3_crop [moisture + deciduous]   
   integer, public :: npcropmin             = 15   ! value for first crop functional type (not including the more generic C3 crop PFT)
 
-  ! variables that do not apply here, but are needed; set to mxpft + 1
-  integer, public :: nc3irrig              = 16   ! value for irrigated generic crop (ir)
-  integer, public :: npcropmax             = 16   ! value for last prognostic crop in list
-  integer, public :: ntmp_soybean          = 16   ! value for temperate soybean (rf)
-  integer, public :: nirrig_tmp_soybean    = 16   ! value for temperate soybean (ir)
-  integer, public :: ntrp_soybean          = 16   !value for tropical soybean (rf)
-  integer, public :: nirrig_trp_soybean    = 16   !value for tropical soybean (ir)
+  ! variables that do not apply here, but are needed; set to mxpft + 1 in initialization routine
+
+  integer, public :: ntmp_corn                    ! value for temperate corn, rain fed (rf)
+  integer, public :: nirrig_tmp_corn        ! value for temperate corn, irrigated (ir)
+  integer, public :: nswheat                ! value for spring temperate cereal (rf)
+  integer, public :: nirrig_swheat          ! value for spring temperate cereal (ir)
+  integer, public :: nwwheat                ! value for winter temperate cereal (rf)
+  integer, public :: nirrig_wwheat          ! value for winter temperate cereal (ir)
+  integer, public :: ntmp_soybean           ! value for temperate soybean (rf)
+  integer, public :: nirrig_tmp_soybean     ! value for temperate soybean (ir)
+  integer, public :: nbarley                ! value for spring barley (rf)
+  integer, public :: nirrig_barley          ! value for spring barley (ir)
+  integer, public :: nwbarley               ! value for winter barley (rf)
+  integer, public :: nirrig_wbarley         ! value for winter barley (ir)
+  integer, public :: nrye                   ! value for spring rye (rf)
+  integer, public :: nirrig_rye             ! value for spring rye (ir)
+  integer, public :: nwrye                  ! value for winter rye (rf)
+  integer, public :: nirrig_wrye            ! value for winter rye (ir)
+  integer, public :: ncassava               ! ...and so on
+  integer, public :: nirrig_cassava
+  integer, public :: ncitrus
+  integer, public :: nirrig_citrus
+  integer, public :: ncocoa
+  integer, public :: nirrig_cocoa
+  integer, public :: ncoffee
+  integer, public :: nirrig_coffee
+  integer, public :: ncotton
+  integer, public :: nirrig_cotton
+  integer, public :: ndatepalm
+  integer, public :: nirrig_datepalm
+  integer, public :: nfoddergrass
+  integer, public :: nirrig_foddergrass
+  integer, public :: ngrapes
+  integer, public :: nirrig_grapes
+  integer, public :: ngroundnuts
+  integer, public :: nirrig_groundnuts
+  integer, public :: nmillet
+  integer, public :: nirrig_millet
+  integer, public :: noilpalm
+  integer, public :: nirrig_oilpalm
+  integer, public :: npotatoes
+  integer, public :: nirrig_potatoes
+  integer, public :: npulses
+  integer, public :: nirrig_pulses
+  integer, public :: nrapeseed
+  integer, public :: nirrig_rapeseed
+  integer, public :: nrice
+  integer, public :: nirrig_rice
+  integer, public :: nsorghum
+  integer, public :: nirrig_sorghum
+  integer, public :: nsugarbeet
+  integer, public :: nirrig_sugarbeet
+  integer, public :: nsugarcane
+  integer, public :: nirrig_sugarcane
+  integer, public :: nsunflower
+  integer, public :: nirrig_sunflower
+  integer, public :: nmiscanthus
+  integer, public :: nirrig_miscanthus
+  integer, public :: nswitchgrass
+  integer, public :: nirrig_switchgrass
+  integer, public :: ntrp_corn              !value for tropical corn (rf)
+  integer, public :: nirrig_trp_corn        !value for tropical corn (ir)
+  integer, public :: ntrp_soybean           !value for tropical soybean (rf)
+  integer, public :: nirrig_trp_soybean     !value for tropical soybean (ir)
+  integer, public :: npcropmax              ! value for last prognostic crop in list
+  integer, public :: nc3crop                ! value for generic crop (rf)
+  integer, public :: nc3irrig               ! value for irrigated generic crop (ir)
+
  !
   type, public :: pftcon_type
 
@@ -795,7 +856,76 @@ contains
 
     call ncd_io('max_SH_planting_date', this%mxSHplantdate, 'read', ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
-    npcropmax            = mxpft                ! last prognostic crop in list
+    
+   npcropmax          = mxpft            ! last prognostic crop in list
+
+   ! jkolassa Jan 2023: we do not model these crops, but the below variables are needed
+   ! for some checks; setting them to mxpft + 1
+   ntmp_corn          = mxpft + 1        ! value for temperate corn, rain fed (rf)
+   nirrig_tmp_corn    = mxpft + 1        ! value for temperate corn, irrigated (ir)
+   nswheat            = mxpft + 1        ! value for spring temperate cereal (rf)
+   nirrig_swheat      = mxpft + 1        ! value for spring temperate cereal (ir)
+   nwwheat            = mxpft + 1        ! value for winter temperate cereal (rf)
+   nirrig_wwheat      = mxpft + 1        ! value for winter temperate cereal (ir)
+   ntmp_soybean       = mxpft + 1        ! value for temperate soybean (rf)
+   nirrig_tmp_soybean = mxpft + 1        ! value for temperate soybean (ir)
+   nbarley            = mxpft + 1        ! value for spring barley (rf)
+   nirrig_barley      = mxpft + 1        ! value for spring barley (ir)
+   nwbarley           = mxpft + 1        ! value for winter barley (rf)
+   nirrig_wbarley     = mxpft + 1        ! value for winter barley (ir)
+   nrye               = mxpft + 1        ! value for spring rye (rf)
+   nirrig_rye         = mxpft + 1        ! value for spring rye (ir)
+   nwrye              = mxpft + 1        ! value for winter rye (rf)
+   nirrig_wrye        = mxpft + 1        ! value for winter rye (ir)
+   ncassava           = mxpft + 1        ! ...and so on
+   nirrig_cassava     = mxpft + 1
+   ncitrus            = mxpft + 1
+   nirrig_citrus      = mxpft + 1
+   ncocoa             = mxpft + 1
+   nirrig_cocoa       = mxpft + 1
+   ncoffee            = mxpft + 1
+   nirrig_coffee      = mxpft + 1
+   ncotton            = mxpft + 1
+   nirrig_cotton      = mxpft + 1
+   ndatepalm          = mxpft + 1
+   nirrig_datepalm    = mxpft + 1
+   nfoddergrass       = mxpft + 1
+   nirrig_foddergrass = mxpft + 1
+   ngrapes            = mxpft + 1
+   nirrig_grapes      = mxpft + 1
+   ngroundnuts        = mxpft + 1
+   nirrig_groundnuts  = mxpft + 1
+   nmillet            = mxpft + 1
+   nirrig_millet      = mxpft + 1
+   noilpalm           = mxpft + 1
+   nirrig_oilpalm     = mxpft + 1
+   npotatoes          = mxpft + 1
+   nirrig_potatoes    = mxpft + 1
+   npulses            = mxpft + 1
+   nirrig_pulses      = mxpft + 1
+   nrapeseed          = mxpft + 1
+   nirrig_rapeseed    = mxpft + 1
+   nrice              = mxpft + 1
+   nirrig_rice        = mxpft + 1
+   nsorghum           = mxpft + 1
+   nirrig_sorghum     = mxpft + 1
+   nsugarbeet         = mxpft + 1
+   nirrig_sugarbeet   = mxpft + 1
+   nsugarcane         = mxpft + 1
+   nirrig_sugarcane   = mxpft + 1
+   nsunflower         = mxpft + 1
+   nirrig_sunflower   = mxpft + 1
+   nmiscanthus        = mxpft + 1
+   nirrig_miscanthus  = mxpft + 1
+   nswitchgrass       = mxpft + 1
+   nirrig_switchgrass = mxpft + 1
+   ntrp_corn          = mxpft + 1    !value for tropical corn (rf)
+   nirrig_trp_corn    = mxpft + 1    !value for tropical corn (ir)
+   ntrp_soybean       = mxpft + 1    !value for tropical soybean (rf)
+   nirrig_trp_soybean = mxpft + 1    !value for tropical soybean (ir)
+   npcropmax          = mxpft + 1    ! value for last prognostic crop in list
+   nc3crop            = mxpft + 1    ! value for generic crop (rf)
+   nc3irrig           = mxpft + 1    ! value for irrigated generic crop (ir)
 
     do m = 0,mxpft
        this%dwood(m) = dwood
