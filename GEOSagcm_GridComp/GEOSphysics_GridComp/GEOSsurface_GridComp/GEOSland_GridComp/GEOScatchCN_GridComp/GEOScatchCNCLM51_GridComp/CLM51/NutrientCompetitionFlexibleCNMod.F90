@@ -26,6 +26,7 @@ module NutrientCompetitionFlexibleCNMod
   use NutrientCompetitionMethodMod, only : nutrient_competition_method_type
   use NutrientCompetitionMethodMod, only : params_inst
   use clm_varctl          , only : iulog, use_matrixcn
+  use clm_varcon          , only : spval
   !
   implicit none
   private
