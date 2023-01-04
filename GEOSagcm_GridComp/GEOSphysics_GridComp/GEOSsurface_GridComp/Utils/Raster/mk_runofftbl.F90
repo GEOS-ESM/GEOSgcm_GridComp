@@ -40,7 +40,7 @@ program Runoff
   nxt = 1
   call get_command_argument(nxt, file)
   print *, " "
-  print*, "Working on with input BCs string: ", file
+  print*, "Working with input BCs string: ", file
   print *, " "
   if (I > 1) then
     nxt = nxt + 1
