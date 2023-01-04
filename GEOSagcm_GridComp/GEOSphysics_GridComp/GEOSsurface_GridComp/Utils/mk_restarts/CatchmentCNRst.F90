@@ -557,11 +557,9 @@ contains
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
      real,pointer,dimension(:) :: lats
      real,pointer,dimension(:) :: lons
-     type(MAPL_MetaComp),pointer :: MAPL_MC
      type(MAPL_SunOrbit)         :: ORBIT
      type(ESMF_Time)             :: CURRENT_TIME
-     type(ESMF_State)            :: INTERNAL
-     type(ESMF_Alarm)            :: ALARM
+     type(ESMF_TimeInterval)     :: timeStep
 
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
@@ -623,32 +621,38 @@ contains
         AGCM_S = 0
 
 
-        ! get current date & time
+        !1) Set current date & time
         ! -----------------------
-         call ESMF_TimeGet  ( CURRENT_TIME, YY = AGCM_YY,       &
+        call ESMF_TimeSet  ( CURRENT_TIME, YY = AGCM_YY,       &
                                             MM = AGCM_MM,       &
                                             DD = AGCM_DD,       &
                                             H  = AGCM_HR,       &
                                             M  = AGCM_MI,       &
                                             S  = AGCM_S ,       &
-                                            dayOfYear = dofyr , &
                                             rc=status )
          VERIFY_(STATUS)
 
-        ! Get parameters from generic state.
-        ! --------------------------------------------------------------------------
+        !2) create a clock
+        ! time interval value is not critical here, just for a clock
 
-        call MAPL_Get ( MAPL_MC               ,&   
-             RUNALARM  = ALARM                            ,&   
-             ORBIT     = ORBIT                            ,&   
-             TILELATS  = LATS                             ,&   
-             TILELONS  = LONS                             ,&   
-             INTERNAL_ESMF_STATE = INTERNAL               ,&   
-             RC=STATUS )
+        call ESMF_TimeIntervalSet(TimeStep,  S=450, RC=status)
+        clock = ESMF_ClockCreate(TimeStep, startTime = CURRENT_TIME, RC=status)
         VERIFY_(STATUS)
+        call ESMFL_ClockSet ( clock, CurrTime=CURRENT_Time, rc=status )
 
-        ! current daylight duration
-        call MAPL_SunGetDaylightDuration(ORBIT,lats,dayx,currTime=CURRENT_TIME,RC=STATUS)
+        !3) create an orbit
+        ORBIT = MAPL_SunOrbitCreate(CLOCK, ECC, OB, PER, EQNX, &
+                 EOT, ORBIT_ANAL2B, ORB2B_YEARLEN, &
+                 ORB2B_REF_YYYYMMDD, ORB2B_REF_HHMMSS, &
+                 ORB2B_ECC_REF, ORB2B_ECC_RATE, &
+                 ORB2B_OBQ_REF, ORB2B_OBQ_RATE, &
+                 ORB2B_LAMBDAP_REF, ORB2B_LAMBDAP_RATE, &
+                 ORB2B_EQUINOX_YYYYMMDD, ORB2B_EQUINOX_HHMMSS, &
+                 FIX_SUN=FIX_SUN,RC=status)
+        VERIFY_(status) 
+
+        !4) current daylight duration
+        call MAPL_SunGetDaylightDuration(ORBIT, this%latg, dayx, currTime=CURRENT_TIME,RC=STATUS)
         VERIFY_(STATUS)
 
         ! save the old vaues dimension (in_ntiles, nv)
