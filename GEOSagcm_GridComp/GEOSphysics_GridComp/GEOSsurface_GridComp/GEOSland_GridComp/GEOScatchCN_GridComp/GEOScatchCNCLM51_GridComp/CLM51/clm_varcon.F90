@@ -85,8 +85,7 @@ module clm_varcon
   real(r8), public, parameter :: c3_r2 = c3_r1/(1._r8 + c3_r1)
 
   real(r8), public :: c13ratio = 1. !jkolassa Jan 2023: dummy value since this is only needed to compile the code, but not used
-  real(r8), public :: c14ratio = 1. !jkolassa Jan 2023: dummy value since this is only needed to compile the co
-de, but not used
+  real(r8), public :: c14ratio = 1. !jkolassa Jan 2023: dummy value since this is only needed to compile the code, but not used
 
 
   real(r8), public, parameter :: nitrif_n2o_loss_frac = 6.e-4_r8 ! fraction of N lost as N2O in nitrification (Li et al., 2000)
