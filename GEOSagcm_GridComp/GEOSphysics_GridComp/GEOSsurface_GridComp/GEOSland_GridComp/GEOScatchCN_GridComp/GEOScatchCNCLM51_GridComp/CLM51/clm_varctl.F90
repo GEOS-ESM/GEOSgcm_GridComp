@@ -40,6 +40,14 @@ module clm_varctl
   logical, public :: use_biomass_heat_storage = .false.
   logical, public :: use_fertilizer      = .false.
 
+  logical, public :: downreg_opt = .true.
+  logical, public :: nscalar_opt = .true.
+  integer, public :: plant_ndemand_opt = 0
+  logical, public :: substrate_term_opt = .true.
+  logical, public :: temp_scalar_opt = .true.
+  integer, public :: CN_residual_opt = 0
+  integer, public :: CN_partition_opt = 0
+
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
   
