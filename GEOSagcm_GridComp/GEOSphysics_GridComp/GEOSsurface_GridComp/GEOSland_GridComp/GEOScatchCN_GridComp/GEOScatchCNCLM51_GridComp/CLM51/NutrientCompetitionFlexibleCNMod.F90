@@ -18,6 +18,7 @@ module NutrientCompetitionFlexibleCNMod
   !
   ! !USES:
   use shr_kind_mod        , only : r8 => shr_kind_r8
+  use nanMod              , only : nan
   use decompMod           , only : bounds_type
   use LandunitType        , only : lun
   use ColumnType          , only : col
@@ -44,7 +45,7 @@ module NutrientCompetitionFlexibleCNMod
      !
      ! private methods
      procedure, private :: InitAllocate
-     procedure, private :: InitHistory
+     !procedure, private :: InitHistory
      procedure, private :: calc_plant_cn_alloc
      procedure, private :: calc_plant_nitrogen_demand
   end type nutrient_competition_FlexibleCN_type
@@ -81,7 +82,7 @@ contains
     type(bounds_type), intent(in) :: bounds
 
     call this%InitAllocate(bounds)
-    call this%InitHistory(bounds)
+  !  call this%InitHistory(bounds)
 
   end subroutine Init
 
@@ -92,7 +93,7 @@ contains
     ! Allocate memory for the class data
     !
     ! !USES:
-    use shr_infnan_mod  , only : nan => shr_infnan_nan
+    !use shr_infnan_mod  , only : nan => shr_infnan_nan
     ! !ARGUMENTS:
     class(nutrient_competition_FlexibleCN_type) :: this
     type(bounds_type), intent(in) :: bounds
@@ -103,35 +104,35 @@ contains
   end subroutine InitAllocate
 
   !------------------------------------------------------------------------
-  subroutine InitHistory(this, bounds)
-    !
-    ! !DESCRIPTION:
-    ! Send data to history file
-    !
-    ! !USES:
-    use histFileMod    , only : hist_addfld1d
-    use clm_varcon     , only : spval
-    !
-    ! !ARGUMENTS:
-    class(nutrient_competition_FlexibleCN_type), intent(in) :: this
-    type(bounds_type), intent(in) :: bounds  
-    !
-    ! !LOCAL VARIABLES:
-    integer           :: begp, endp
-    !------------------------------------------------------------------------
-
-    begp = bounds%begp; endp= bounds%endp
-
-    this%actual_leafcn(begp:endp) = spval
-    call hist_addfld1d (fname='LEAFCN', units='gC/gN', &
-         avgflag='A', long_name='Leaf CN ratio used for flexible CN', &
-         ptr_patch=this%actual_leafcn )
-    this%actual_storage_leafcn(begp:endp) = spval
-    call hist_addfld1d (fname='LEAFCN_STORAGE', units='gC/gN', &
-         avgflag='A', long_name='Storage Leaf CN ratio used for flexible CN', &
-         ptr_patch=this%actual_storage_leafcn, default='inactive')
-
-  end subroutine InitHistory
+!  subroutine InitHistory(this, bounds)
+!    !
+!    ! !DESCRIPTION:
+!    ! Send data to history file
+!    !
+!    ! !USES:
+!    use histFileMod    , only : hist_addfld1d
+!    use clm_varcon     , only : spval
+!    !
+!    ! !ARGUMENTS:
+!    class(nutrient_competition_FlexibleCN_type), intent(in) :: this
+!    type(bounds_type), intent(in) :: bounds  
+!    !
+!    ! !LOCAL VARIABLES:
+!    integer           :: begp, endp
+!    !------------------------------------------------------------------------
+!
+!    begp = bounds%begp; endp= bounds%endp
+!
+!    this%actual_leafcn(begp:endp) = spval
+!    call hist_addfld1d (fname='LEAFCN', units='gC/gN', &
+!         avgflag='A', long_name='Leaf CN ratio used for flexible CN', &
+!         ptr_patch=this%actual_leafcn )
+!    this%actual_storage_leafcn(begp:endp) = spval
+!    call hist_addfld1d (fname='LEAFCN_STORAGE', units='gC/gN', &
+!         avgflag='A', long_name='Storage Leaf CN ratio used for flexible CN', &
+!         ptr_patch=this%actual_storage_leafcn, default='inactive')
+!
+!  end subroutine InitHistory
 
   !-----------------------------------------------------------------------
   subroutine calc_plant_nutrient_competition (this, &
