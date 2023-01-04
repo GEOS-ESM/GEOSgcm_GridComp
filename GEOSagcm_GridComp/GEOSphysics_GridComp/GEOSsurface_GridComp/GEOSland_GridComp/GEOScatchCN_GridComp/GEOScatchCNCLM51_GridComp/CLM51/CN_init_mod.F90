@@ -65,6 +65,7 @@ module CN_initMod
   use CNFireFactoryMod                   , only : CNFireReadNML, create_cnfire_method
   use FireMethodType                     , only : fire_method_type
   use SoilBiogeochemNLeachingMod         , only : readSoilBiogeochemNLeachingParams      => readParams
+  use SoilBiogeochemCompetitionMod       , only : readSoilBiogeochemCompetitionParams    => readParams
 
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
@@ -296,6 +297,7 @@ module CN_initMod
    call photosyns_inst%ReadParams( ncid )
    call cnfire_method%CNFireReadParams( ncid )
    call readSoilBiogeochemNLeachingParams(ncid)
+   call readSoilBiogeochemCompetitionParams(ncid)
 
    call ncid%close(rc=status)
 
