@@ -116,12 +116,12 @@ contains
     use CropType                          , only: crop_type
     use CNNDynamicsMod                    , only: CNNDeposition,CNNFixation, CNNFert, CNSoyfix,CNFreeLivingFixation
     use CNMRespMod                        , only: CNMResp
-    use CNFUNMod                          , only: CNFUNInit  !, CNFUN 
+   ! use CNFUNMod                          , only: CNFUNInit  !, CNFUN 
     use CNPhenologyMod                    , only: CNPhenology
     use CNGRespMod                        , only: CNGResp
     use FireMethodType                    , only: fire_method_type
-    use CNCIsoFluxMod                     , only: CIsoFlux1, CIsoFlux2, CIsoFlux2h, CIsoFlux3
-    use CNC14DecayMod                     , only: C14Decay
+   ! use CNCIsoFluxMod                     , only: CIsoFlux1, CIsoFlux2, CIsoFlux2h, CIsoFlux3
+   ! use CNC14DecayMod                     , only: C14Decay
     use CNCStateUpdate1Mod                , only: CStateUpdate1,CStateUpdate0
     use CNCStateUpdate2Mod                , only: CStateUpdate2, CStateUpdate2h
     use CNCStateUpdate3Mod                , only: CStateUpdate3
@@ -137,7 +137,7 @@ contains
     use SoilBiogeochemLittVertTranspMod   , only: SoilBiogeochemLittVertTransp
     use SoilBiogeochemPotentialMod        , only: SoilBiogeochemPotential 
     use SoilBiogeochemVerticalProfileMod  , only: SoilBiogeochemVerticalProfile
-    use SoilBiogeochemNitrifDenitrifMod   , only: SoilBiogeochemNitrifDenitrif
+  !  use SoilBiogeochemNitrifDenitrifMod   , only: SoilBiogeochemNitrifDenitrif
     use SoilBiogeochemNStateUpdate1Mod    , only: SoilBiogeochemNStateUpdate1
     use NutrientCompetitionMethodMod      , only: nutrient_competition_method_type
     use CNRootDynMod                      , only: CNRootDyn
@@ -351,9 +351,9 @@ contains
 
     ! calculate nitrification and denitrification rates (previously subroutine nitrif_denitrif called from CNDecompAlloc)
     if (use_nitrif_denitrif) then 
-       call SoilBiogeochemNitrifDenitrif(bounds, num_soilc, filter_soilc, &
-            soilstate_inst, waterstatebulk_inst, temperature_inst, ch4_inst, &
-            soilbiogeochem_carbonflux_inst, soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst)
+!       call SoilBiogeochemNitrifDenitrif(bounds, num_soilc, filter_soilc, &
+!            soilstate_inst, waterstatebulk_inst, temperature_inst, ch4_inst, &
+!            soilbiogeochem_carbonflux_inst, soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst)
     end if
     call t_stopf('SoilBiogeochem')
 
@@ -388,9 +388,9 @@ contains
             phase=1)
        call t_stopf('CNPhenology_phase1')
 
-       call t_startf('CNFUNInit')
-       call CNFUNInit(bounds,cnveg_state_inst,cnveg_carbonstate_inst,cnveg_nitrogenstate_inst)
-       call t_stopf('CNFUNInit')
+!     call t_startf('CNFUNInit')
+!       call CNFUNInit(bounds,cnveg_state_inst,cnveg_carbonstate_inst,cnveg_nitrogenstate_inst)
+!       call t_stopf('CNFUNInit')
 
      end if
 
