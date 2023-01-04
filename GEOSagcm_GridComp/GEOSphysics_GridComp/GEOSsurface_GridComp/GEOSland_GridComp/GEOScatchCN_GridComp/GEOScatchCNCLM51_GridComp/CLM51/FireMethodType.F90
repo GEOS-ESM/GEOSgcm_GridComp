@@ -68,7 +68,7 @@ module FireMethodType
 
   end subroutine FireInit_interface
 
-  subroutine FireReadNML_interface(this, NLFilename )
+  subroutine FireReadNML_interface(this, fire_method )
     !
     ! !DESCRIPTION:
     ! Read general fire namelist
@@ -77,7 +77,7 @@ module FireMethodType
     import :: fire_method_type
     ! !ARGUMENTS:
     class(fire_method_type)     :: this
-    character(len=*),  intent(in) :: NLFilename
+    character(len=*), intent(in) :: fire_method 
     !-----------------------------------------------------------------------
 
   end subroutine FireReadNML_interface
