@@ -12,7 +12,7 @@ module CNPhenologyMod
   ! !USES:
   use shr_kind_mod                    , only : r8 => shr_kind_r8
   use shr_log_mod                     , only : errMsg => shr_log_errMsg
-  use shr_sys_mod                     , only : shr_sys_flush
+ ! use shr_sys_mod                     , only : shr_sys_flush
   use decompMod                       , only : bounds_type
   use clm_varpar                      , only : ileaf,ileaf_st,ileaf_xf,ifroot,ifroot_st,ifroot_xf,&
                                                ilivestem,ilivestem_st,ilivestem_xf,&
