@@ -76,7 +76,7 @@ contains
     !-----------------------------------------------------------------------
     call SoilBiogeochemCompetitionInit(bounds)
     call CNPhenologyInit(bounds)
-    call cnfire_method%FireInit(bounds, NLFilename)
+    call cnfire_method%FireInit(bounds
     
   end subroutine CNDriverInit
 
