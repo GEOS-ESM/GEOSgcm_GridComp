@@ -94,7 +94,7 @@ module CNFireBaseMod
       procedure, public :: CNFire_calc_fire_root_wetness_Li2021 ! Calculate CN-fire specific root wetness: 2021 version
       ! !PRIVATE MEMBER FUNCTIONS:
       procedure, private :: InitAllocate                 ! Memory allocation of Fire
-      procedure, private :: InitHistory                  ! History file assignment of fire
+     ! procedure, private :: InitHistory                  ! History file assignment of fire
       !
   end type cnfire_base_type
   !-----------------------------------------------------------------------
