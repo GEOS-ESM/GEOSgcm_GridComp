@@ -9,6 +9,7 @@ module NutrientCompetitionFactoryMod
   use abortutils          , only : endrun
   use shr_log_mod         , only : errMsg => shr_log_errMsg
   use clm_varctl          , only : iulog
+  use clm_varcon       , only : spval
 
   implicit none
   save
