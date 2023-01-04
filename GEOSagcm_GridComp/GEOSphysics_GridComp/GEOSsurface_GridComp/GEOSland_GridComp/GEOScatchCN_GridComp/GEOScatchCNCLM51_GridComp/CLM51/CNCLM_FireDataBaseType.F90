@@ -64,7 +64,7 @@ module FireDataBaseType
 contains
 
   !-----------------------------------------------------------------------
-  subroutine FireReadNML_interface( this, NLFilename )
+  subroutine FireReadNML_interface( this, fire_method )
     !
     ! !DESCRIPTION:
     ! Read the namelist for Fire
@@ -73,7 +73,7 @@ contains
     !
     ! !ARGUMENTS:
     class(fire_base_type) :: this
-    character(len=*), intent(in) :: NLFilename ! Namelist filename
+    character(len=*), intent(in) :: fire_method 
   end subroutine FireReadNML_interface
 
   !-----------------------------------------------------------------------
