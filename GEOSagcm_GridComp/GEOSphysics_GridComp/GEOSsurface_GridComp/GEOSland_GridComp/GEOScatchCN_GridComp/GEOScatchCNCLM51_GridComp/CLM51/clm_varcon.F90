@@ -84,6 +84,11 @@ module clm_varcon
   ! isotope ratio (13c/[12c+13c]) for C3 photosynthesis
   real(r8), public, parameter :: c3_r2 = c3_r1/(1._r8 + c3_r1)
 
+  real(r8), public :: c13ratio = 1. !jkolassa Jan 2023: dummy value since this is only needed to compile the code, but not used
+  real(r8), public :: c14ratio = 1. !jkolassa Jan 2023: dummy value since this is only needed to compile the co
+de, but not used
+
+
   real(r8), public, parameter :: nitrif_n2o_loss_frac = 6.e-4_r8 ! fraction of N lost as N2O in nitrification (Li et al., 2000)
 
   real(r8), public, parameter :: degpsec = 15._r8/3600.0_r8 ! Degree's earth rotates per second
