@@ -2969,10 +2969,10 @@ contains
 !                  else
 !                     frootc_to_litter(p) = 0
 !                  end if
-!               else
-!                  ! NOTE: The non matrix version of this is in CNCStateUpdate1::CStateUpdate1 EBK (11/26/2019)
-!                  !                                        and CNNStateUpdate1::NStateUpdate1
-!               end if !use_matrixcn
+               else
+                  ! NOTE: The non matrix version of this is in CNCStateUpdate1::CStateUpdate1 EBK (11/26/2019)
+                  !                                        and CNNStateUpdate1::NStateUpdate1
+               end if !use_matrixcn
             end if
             
             if ( use_fun ) then
