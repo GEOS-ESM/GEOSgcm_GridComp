@@ -16,6 +16,7 @@ module clm_varctl
 
   public :: init_clm_varctl          ! set parameters
   public :: cnallocate_carbon_only
+  public :: cnallocate_carbon_only_set
 
   logical, public :: use_nguardrail         = .true.  ! true => use precision control
 
@@ -122,4 +123,9 @@ contains
     cnallocate_carbon_only = carbon_only
   end function CNAllocate_Carbon_only
 
+  ! Set module carbon_only flag
+  subroutine cnallocate_carbon_only_set(carbon_only_in)
+    logical, intent(in) :: carbon_only_in
+    carbon_only = carbon_only_in
+  end subroutine cnallocate_carbon_only_set
 end module clm_varctl
