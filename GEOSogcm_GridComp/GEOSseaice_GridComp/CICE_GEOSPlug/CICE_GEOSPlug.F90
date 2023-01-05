@@ -563,8 +563,15 @@ contains
     call AddSurfField('FROCEAN',  SURFST, GRID,  __RC__)
 
     ! callback return fields
+
+    ! fields with categories
     call AddSurfField('DTS',   SURFST, GRID,        & 
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
+    ! aggregated fields
+    call AddSurfField('ALBVR',  SURFST, GRID,  __RC__)
+    call AddSurfField('ALBVF',  SURFST, GRID,  __RC__)
+    call AddSurfField('ALBNR',  SURFST, GRID,  __RC__)
+    call AddSurfField('ALBNF',  SURFST, GRID,  __RC__)
 
     RETURN_(ESMF_SUCCESS)
     

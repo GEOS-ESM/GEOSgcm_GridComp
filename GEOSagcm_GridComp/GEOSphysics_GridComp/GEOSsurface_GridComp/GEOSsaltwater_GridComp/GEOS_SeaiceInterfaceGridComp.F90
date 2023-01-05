@@ -2699,6 +2699,15 @@ contains
     if(associated(DELTS  )) call Normalize(DELTS,  FRCICE) 
     if(associated(DELQS  )) call Normalize(DELQS,  FRCICE) 
 
+    call RegridO2A_1d(ALBVR, SURFST, 'ALBVR', &
+         XFORM_O2A, locstreamO, __RC__)
+    call RegridO2A_1d(ALBVF, SURFST, 'ALBVF', &
+         XFORM_O2A, locstreamO, __RC__)
+    call RegridO2A_1d(ALBNR, SURFST, 'ALBNR', &
+         XFORM_O2A, locstreamO, __RC__)
+    call RegridO2A_1d(ALBNF, SURFST, 'ALBNF', &
+         XFORM_O2A, locstreamO, __RC__)
+
     !************************************************************************************************
     !
     !      surface flux and temperature updated by sea ice
@@ -2853,6 +2862,37 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine RegridO2A_2d
 
+  subroutine RegridO2A_1d(ptr_1d, state, name, xform, locstream, rc)
+    real :: ptr_1d(:)
+    type (ESMF_State) :: state
+    character(len=*) :: name
+    type (MAPL_LocStreamXform), intent(IN) :: xform
+    type (MAPL_LocStream), intent(IN) :: locstream
+    integer, optional, intent(OUT) :: rc
+
+    real, pointer, dimension(:,:) :: PTR_2D  => null()
+    real, pointer, dimension(:)   :: ptrO    => null()
+    integer :: status
+    integer :: nt
+
+    call MAPL_LocStreamGet(LocStream, nt_local=nt, __RC__)
+!@@    if(NT == 0) then
+!@@       RETURN_(ESMF_SUCCESS)
+!@@    endif
+    call MAPL_GetPointer(state, ptr_2d, name, __RC__)
+
+    allocate(ptrO(NT), __STAT__)
+
+    !
+    !   !perform locstreamTrans_G2T+T2T(ts) => tsg (tile)
+    !
+    call MAPL_LocStreamTransform( locStream, ptrO, ptr_2d, __RC__)
+    call MAPL_LocStreamTransform( ptr_1d, XFORM,  ptrO, __RC__ )
+    deallocate (ptrO)
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine RegridO2A_1d
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -2933,137 +2973,6 @@ end subroutine RUN2
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: ALBSEAICEM2 - Computes albedos as a function of  $cos(\zeta)$ over sea-ice surfaces
-
-! !INTERFACE:
-
-  subroutine ALBSEAICEM2 (ALBVR,ALBVF,ALBNR,ALBNF,ZTH,LATS,currTime)
-
-! !ARGUMENTS:
-
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS,RC
-    character(len=ESMF_MAXSTR)              :: COMP_NAME
-
-    type(ESMF_Time), intent(INOUT)    :: currTime
-    real,    intent(IN)  :: LATS(:)
-    real,    intent(IN)  :: ZTH  (:)
-    real,    intent(OUT) :: ALBVR(:) ! visible beam    albedo
-    real,    intent(OUT) :: ALBVF(:) ! visible diffuse albedo
-    real,    intent(OUT) :: ALBNR(:) ! nearIr  beam    albedo
-    real,    intent(OUT) :: ALBNF(:) ! nearIr  diffuse albedo
-
-!  !DESCRIPTION:
-!        Compute albedo for ocean points
-!          based on Heracles GEOS-AGCM
-
-      !real, parameter :: SEAICEALBVR  = .60
-      !real, parameter :: SEAICEALBVF  = .60
-      !real, parameter :: SEAICEALBNR  = .60
-      !real, parameter :: SEAICEALBNF  = .60
-      real                  :: SEAICEALBVRN
-      real                  :: SEAICEALBVFN
-      real                  :: SEAICEALBNRN
-      real                  :: SEAICEALBNFN
-
-      real                  :: SEAICEALBVRS
-      real                  :: SEAICEALBVFS
-      real                  :: SEAICEALBNRS
-      real                  :: SEAICEALBNFS
-
-      real, dimension(0:13) :: shebavis
-      real, dimension(0:13) :: shebanir
-      real, dimension(0:13) :: nday
-      real                  :: afracv,aslopev,abasev
-      real                  :: afraci,aslopei,abasei
-
-      character(len=ESMF_MAXSTR)     :: string
-      integer               :: YEAR,MONTH,DAY
-
-
-      shebavis = (/0.820,0.820,0.820,0.820,0.820,0.820,0.751, &
-       0.467,0.663,0.820,0.820,0.820,0.820,0.820/)
-      shebanir = (/0.820,0.820,0.820,0.820,0.820,0.820,0.751, &
-       0.467,0.663,0.820,0.820,0.820,0.820,0.820/)
-
-      !attempt to use spec albedoes had poor results
-      !shebavis = (/0.826,0.826,0.826,0.826,0.826,0.762,0.499, &
-      ! 0.681,0.719,0.826,0.826,0.826,0.826,0.826/)
-      !shebanir = (/0.809,0.809,0.809,0.809,0.809,0.731,0.411, &
-      ! 0.632,0.678,0.809,0.809,0.809,0.809,0.809/)
-      !Rotate albedoes by 6 months for S Hemis. -not a good idea
-      !shem = (/0.751,0.467,0.663,0.820,0.820,0.820,0.820, &
-      ! 0.820,0.820,0.820,0.820,0.820,0.751,0.467/)
-
-      nday = (/31.,31.,29.,31.,30.,31.,30.,31.,31.,30.,31.,30.,31.,31./)
-
-      call ESMF_TimeGet  ( currTime, TimeString=string  ,rc=STATUS ) ; VERIFY_(STATUS)
-      read(string( 1: 4),'(i4.4)') YEAR
-      read(string( 6: 7),'(i2.2)') MONTH
-      read(string( 9:10),'(i2.2)') DAY
-
-      if(mod(YEAR,4).eq.0) then
-        nday(2)=29.
-      else
-        nday(2)=28.
-      endif
-
-
-
-      if(DAY.ge.15) then
-        afracv=(float(DAY)-15.)/nday(MONTH)
-        aslopev=(shebavis(MONTH+1)-shebavis(MONTH))/nday(MONTH)
-        abasev=shebavis(MONTH)
-        afraci=(float(DAY)-15.)/nday(MONTH)
-        aslopei=(shebanir(MONTH+1)-shebanir(MONTH))/nday(MONTH)
-        abasei=shebanir(MONTH)
-      else
-        afracv=(float(DAY)+nday(MONTH-1)-15.)/nday(MONTH-1)
-        aslopev=(shebavis(MONTH)-shebavis(MONTH-1))/nday(MONTH-1)
-        abasev=shebavis(MONTH-1)
-        afraci=(float(DAY)+nday(MONTH-1)-15.)/nday(MONTH-1)
-        aslopei=(shebanir(MONTH)-shebanir(MONTH-1))/nday(MONTH-1)
-        abasei=shebanir(MONTH-1)
-      endif
-
-  
-      SEAICEALBVRN=abasev+aslopev*afracv
-      SEAICEALBVFN=abasev+aslopev*afracv
-      SEAICEALBNRN=abasei+aslopei*afraci
-      SEAICEALBNFN=abasei+aslopei*afraci
-
-      SEAICEALBVRS=0.6
-      SEAICEALBVFS=0.6
-      SEAICEALBNRS=0.6
-      SEAICEALBNFS=0.6
-
-      where(LATS.ge.0.)
-! Beam albedos
-!-------------
-        ALBVR = SEAICEALBVRN
-        ALBNR = SEAICEALBNRN
-
-! Diffuse albedos
-!----------------
-        ALBVF = SEAICEALBVFN
-        ALBNF = SEAICEALBNFN
-      elsewhere
-! Beam albedos
-!-------------
-        ALBVR = SEAICEALBVRS
-        ALBNR = SEAICEALBNRS
-
-! Diffuse albedos
-!----------------
-        ALBVF = SEAICEALBVFS
-        ALBNF = SEAICEALBNFS
-      end where
-
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine ALBSEAICEM2
-
 
   subroutine RetrieveTransforms(mapl, mystate, XFORM_A2O, XFORM_O2A, locStreamO, rc) 
 
