@@ -47,8 +47,8 @@ module CNVegetationFacade
   use clm_varctl                      , only : iulog, use_cn, use_cndv, use_c13, use_c14
   use abortutils                      , only : endrun
   use spmdMod                         , only : masterproc
-  use clm_time_manager                , only : get_curr_date, get_ref_date
-  use clm_time_manager                , only : get_nstep, is_end_curr_year, is_first_step
+  use clm_time_manager                , only : get_curr_date
+  use clm_time_manager                , only : get_nstep, is_first_step
   use CNBalanceCheckMod               , only : cn_balance_type
   use CNVegStateType                  , only : cnveg_state_type
   use CNVegCarbonFluxType             , only : cnveg_carbonflux_type
@@ -90,8 +90,8 @@ module CNVegetationFacade
   use CNNStateUpdate1Mod              , only : NStateUpdateDynPatch
   use CNVegStructUpdateMod            , only : CNVegStructUpdate
   use CNAnnualUpdateMod               , only : CNAnnualUpdate
-  use dynConsBiogeochemMod            , only : dyn_cnbal_patch, dyn_cnbal_col
-  use dynCNDVMod                      , only : dynCNDV_init, dynCNDV_interp
+  !use dynConsBiogeochemMod            , only : dyn_cnbal_patch, dyn_cnbal_col
+  !use dynCNDVMod                      , only : dynCNDV_init, dynCNDV_interp
   use CNPrecisionControlMod           , only: CNPrecisionControl
   use SoilBiogeochemPrecisionControlMod , only: SoilBiogeochemPrecisionControl
   use GridcellType                    , only : grc
@@ -154,9 +154,9 @@ module CNVegetationFacade
      
    contains
     ! procedure, public :: Init
-     procedure, public :: InitAccBuffer
-     procedure, public :: InitAccVars
-     procedure, public :: UpdateAccVars
+!     procedure, public :: InitAccBuffer
+!     procedure, public :: InitAccVars
+!     procedure, public :: UpdateAccVars
    !  procedure, public :: Restart
 
    !  procedure, public :: Init2                         ! Do initialization in initialize phase, after subgrid weights are determined
@@ -170,7 +170,7 @@ module CNVegetationFacade
      procedure, public :: EcosystemDynamicsPostDrainage ! Do the main science that needs to be done after hydrology-drainage
      procedure, public :: BalanceCheck                  ! Check the carbon and nitrogen balance
    !  procedure, public :: EndOfTimeStepVegDynamics      ! Do vegetation dynamics that should be done at the end of each time step
-     procedure, public :: WriteHistory                  ! Do any history writes that are specific to veg dynamics
+   !  procedure, public :: WriteHistory                  ! Do any history writes that are specific to veg dynamics
 
      procedure, public :: get_net_carbon_exchange_grc   ! Get gridcell-level net carbon exchange array
      procedure, public :: get_leafn_patch               ! Get patch-level leaf nitrogen array
@@ -348,85 +348,85 @@ contains
 
 
   !-----------------------------------------------------------------------
-  subroutine InitAccBuffer(this, bounds)
-    !
-    ! !DESCRIPTION:
-    ! Initialize accumulation buffer for types contained here 
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(inout) :: this
-    type(bounds_type), intent(in)    :: bounds
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'InitAccBuffer'
-    !-----------------------------------------------------------------------
-
-    if (use_cndv) then
-       call this%dgvs_inst%InitAccBuffer(bounds)
-    end if
-
-  end subroutine InitAccBuffer
-
-  !-----------------------------------------------------------------------
-  subroutine InitAccVars(this, bounds)
-    !
-    ! !DESCRIPTION:
-    ! Initialize variables that are associated with accumulated fields
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(inout) :: this
-    type(bounds_type), intent(in)    :: bounds
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'InitAccVars'
-    !-----------------------------------------------------------------------
-
-    if (use_cndv) then
-       call this%dgvs_inst%initAccVars(bounds)
-    end if
-
-  end subroutine InitAccVars
-
-  !-----------------------------------------------------------------------
-  subroutine UpdateAccVars(this, bounds, t_a10_patch, t_ref2m_patch)
-    !
-    ! !DESCRIPTION:
-    ! Update accumulated variables
-    !
-    ! Should be called every time step
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(inout) :: this
-    type(bounds_type), intent(in)    :: bounds
-    ! NOTE(wjs, 2016-02-23) These need to be pointers to agree with the interface of
-    ! UpdateAccVars in CNDVType (they are pointers there as a workaround for a compiler
-    ! bug).
-    real(r8), pointer , intent(in)   :: t_a10_patch(:)      ! 10-day running mean of the 2 m temperature (K)
-    real(r8), pointer , intent(in)   :: t_ref2m_patch(:)    ! 2 m height surface air temperature (K)
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'UpdateAccVars'
-    !-----------------------------------------------------------------------
-
-    SHR_ASSERT_ALL_FL((ubound(t_a10_patch) == (/bounds%endp/)), sourcefile, __LINE__)
-    SHR_ASSERT_ALL_FL((ubound(t_ref2m_patch) == (/bounds%endp/)), sourcefile, __LINE__)
-
-    if (use_cndv) then
-       call this%dgvs_inst%UpdateAccVars(bounds, &
-            t_a10_patch = t_a10_patch, &
-            t_ref2m_patch = t_ref2m_patch)
-    end if
-
-  end subroutine UpdateAccVars
+!  subroutine InitAccBuffer(this, bounds)
+!    !
+!    ! !DESCRIPTION:
+!    ! Initialize accumulation buffer for types contained here 
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(inout) :: this
+!    type(bounds_type), intent(in)    :: bounds
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'InitAccBuffer'
+!    !-----------------------------------------------------------------------
+!
+!    if (use_cndv) then
+!       call this%dgvs_inst%InitAccBuffer(bounds)
+!    end if
+!
+!  end subroutine InitAccBuffer
+!
+!  !-----------------------------------------------------------------------
+!  subroutine InitAccVars(this, bounds)
+!    !
+!    ! !DESCRIPTION:
+!    ! Initialize variables that are associated with accumulated fields
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(inout) :: this
+!    type(bounds_type), intent(in)    :: bounds
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'InitAccVars'
+!    !-----------------------------------------------------------------------
+!
+!    if (use_cndv) then
+!       call this%dgvs_inst%initAccVars(bounds)
+!    end if
+!
+!  end subroutine InitAccVars
+!
+!  !-----------------------------------------------------------------------
+!  subroutine UpdateAccVars(this, bounds, t_a10_patch, t_ref2m_patch)
+!    !
+!    ! !DESCRIPTION:
+!    ! Update accumulated variables
+!    !
+!    ! Should be called every time step
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(inout) :: this
+!    type(bounds_type), intent(in)    :: bounds
+!    ! NOTE(wjs, 2016-02-23) These need to be pointers to agree with the interface of
+!    ! UpdateAccVars in CNDVType (they are pointers there as a workaround for a compiler
+!    ! bug).
+!    real(r8), pointer , intent(in)   :: t_a10_patch(:)      ! 10-day running mean of the 2 m temperature (K)
+!    real(r8), pointer , intent(in)   :: t_ref2m_patch(:)    ! 2 m height surface air temperature (K)
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'UpdateAccVars'
+!    !-----------------------------------------------------------------------
+!
+!    SHR_ASSERT_ALL_FL((ubound(t_a10_patch) == (/bounds%endp/)), sourcefile, __LINE__)
+!    SHR_ASSERT_ALL_FL((ubound(t_ref2m_patch) == (/bounds%endp/)), sourcefile, __LINE__)
+!
+!    if (use_cndv) then
+!       call this%dgvs_inst%UpdateAccVars(bounds, &
+!            t_a10_patch = t_a10_patch, &
+!            t_ref2m_patch = t_ref2m_patch)
+!    end if
+!
+!  end subroutine UpdateAccVars
 
 
   !-----------------------------------------------------------------------
@@ -1236,41 +1236,41 @@ contains
 !  end subroutine EndOfTimeStepVegDynamics
 
   !-----------------------------------------------------------------------
-  subroutine WriteHistory(this, bounds)
-    !
-    ! !DESCRIPTION:
-    ! Do any history writes that are specific to vegetation dynamics
-    !
-    ! NOTE(wjs, 2016-02-23) This could probably be combined with
-    ! EndOfTimeStepVegDynamics, except for the fact that (currently) history writes are
-    ! done with proc bounds rather than clump bounds. If that were changed, then the body
-    ! of this could be moved into EndOfTimeStepVegDynamics, inside a "if (.not.
-    ! use_noio)" conditional.
-    !
-    ! Should only be called if use_cn is true
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type), intent(in) :: this
-    type(bounds_type)  , intent(in) :: bounds                  
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'WriteHistory'
-    !-----------------------------------------------------------------------
-
-    ! Write to CNDV history buffer if appropriate
-    if (use_cndv) then
-       if (is_end_curr_year() .and. .not. is_first_step())  then
-          call t_startf('clm_drv_io_hdgvm')
-          call CNDVHist( bounds, this%dgvs_inst )
-          if (masterproc) write(iulog,*) 'Annual CNDV calculations are complete'
-          call t_stopf('clm_drv_io_hdgvm')
-       end if
-    end if
-
-  end subroutine WriteHistory
+!  subroutine WriteHistory(this, bounds)
+!    !
+!    ! !DESCRIPTION:
+!    ! Do any history writes that are specific to vegetation dynamics
+!    !
+!    ! NOTE(wjs, 2016-02-23) This could probably be combined with
+!    ! EndOfTimeStepVegDynamics, except for the fact that (currently) history writes are
+!    ! done with proc bounds rather than clump bounds. If that were changed, then the body
+!    ! of this could be moved into EndOfTimeStepVegDynamics, inside a "if (.not.
+!    ! use_noio)" conditional.
+!    !
+!    ! Should only be called if use_cn is true
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type), intent(in) :: this
+!    type(bounds_type)  , intent(in) :: bounds                  
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'WriteHistory'
+!    !-----------------------------------------------------------------------
+!
+!    ! Write to CNDV history buffer if appropriate
+!    if (use_cndv) then
+!       if (is_end_curr_year() .and. .not. is_first_step())  then
+!          call t_startf('clm_drv_io_hdgvm')
+!          call CNDVHist( bounds, this%dgvs_inst )
+!          if (masterproc) write(iulog,*) 'Annual CNDV calculations are complete'
+!          call t_stopf('clm_drv_io_hdgvm')
+!       end if
+!    end if
+!
+!  end subroutine WriteHistory
 
 
   !-----------------------------------------------------------------------
