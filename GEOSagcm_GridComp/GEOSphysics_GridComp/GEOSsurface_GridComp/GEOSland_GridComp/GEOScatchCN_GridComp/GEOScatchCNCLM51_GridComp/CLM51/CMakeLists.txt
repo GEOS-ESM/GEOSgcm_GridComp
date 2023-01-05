@@ -89,6 +89,7 @@ set (srcs
   CNRootDynMod.F90
   CNSharedParamsMod.F90
   CNVegetationFacade.F90
+  CNVegStructUpdateMod.F90
   column_varcon.F90
   fileutils.F90
   filterColMod.F90
