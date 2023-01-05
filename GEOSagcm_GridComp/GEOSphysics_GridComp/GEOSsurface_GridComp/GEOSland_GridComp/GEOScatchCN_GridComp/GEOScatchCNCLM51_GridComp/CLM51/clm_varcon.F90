@@ -45,8 +45,9 @@ module clm_varcon
   real(r8) :: rgas   = SHR_CONST_RGAS   !universal gas constant [J/K/kmole]
   real(r8) :: tfrz   = SHR_CONST_TKFRZ  !freezing temperature [K]
   real(r8), public, parameter ::  secspday= SHR_CONST_CDAY  ! Seconds per day
-  real(r8), public, parameter ::  spval = 1.e36_r8  ! special value for real data
-  integer , public, parameter :: ispval = -9999     ! special value for int data
+  real(r8), public, parameter ::  secsphr = 3600._r8        ! Seconds in an hour
+  real(r8), public, parameter ::  spval = 1.e36_r8          ! special value for real data
+  integer , public, parameter ::  ispval = -9999            ! special value for int data
 
   !------------------------------------------------------------------
   ! Soil depths
