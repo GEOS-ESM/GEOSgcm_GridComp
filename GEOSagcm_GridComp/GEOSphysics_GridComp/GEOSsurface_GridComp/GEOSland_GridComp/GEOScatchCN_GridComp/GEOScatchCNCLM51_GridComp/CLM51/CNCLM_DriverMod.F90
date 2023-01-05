@@ -2,8 +2,8 @@ module CNCLM_DriverMod
 
   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
   use nanMod           , only : nan
-  use CNVegetationFacade
-  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,
+  use CNVegetationFacade, only : cn_vegetation_type
+  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
                                 var_col, var_pft
   use clm_varcon       , only : grav, denh2o
 
@@ -29,19 +29,20 @@ contains
                       sminn_to_npoolg,ndep_to_sminng,totvegng,totlitng,totsomng,&
                       retransng,retransn_to_npoolg,fuelcg,totlitcg,cwdcg,rootcg)
 
- use decompMod, only : bounds
- use filterMod, only : filter
- use SoilBiogeochemCarbonFluxType  , only : soilbiogeochem_carbonflux_inst
- use SoilBiogeochemNitrogenFluxType, only : soilbiogeochem_nitrogenflux_inst
- use ActiveLayerMod
- use GridcellType
- use FireMethodType              , only : fire_method_inst
- use SaturatedExcessRunoffMod    , only : saturated_excess_runoff_inst
- use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_inst
- use atm2lndType                 , only : atm2lnd_inst
- use Wateratm2lndBulkType        , only : wateratm2lndbulk_inst
- use CNVegStateType              , only : cnveg_state_inst
- use WaterStateBulkType          , only : waterstatebulk_inst
+ use decompMod, only : bounds_type
+ use filterMod, only : clumpfilter
+ use SoilBiogeochemCarbonFluxType  , only : soilbiogeochem_carbonflux_type
+ use SoilBiogeochemNitrogenFluxType, only : soilbiogeochem_nitrogenflux_type
+ use ActiveLayerMod                , only : active_layer_type
+ use GridcellType                  , only : gridcell_type
+ use FireMethodType              , only : fire_method_type
+ use SaturatedExcessRunoffMod    , only : saturated_excess_runoff_type
+ use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_type
+ use atm2lndType                 , only : atm2lnd_type
+ use Wateratm2lndBulkType        , only : wateratm2lndbulk_type
+ use CNVegStateType              , only : cnveg_state_type
+ use WaterStateBulkType          , only : waterstatebulk_type
+ use SoilStateType               , only : soilstate_type
 
  !ARGUMENTS
  implicit none
@@ -139,6 +140,8 @@ contains
  type(cn_vegetation_type), public       :: bgc_vegetation_inst
  type(fire_method_type)                 :: cnfire_method
  type(saturated_excess_runoff_type)     :: saturated_excess_runoff_inst
+ type(wateratm2lndbulk_type)            :: wateratm2lndbulk_inst
+ type(soilstate_type)                   :: soilstate_inst 
 
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.
@@ -186,7 +189,7 @@ contains
           saturated_excess_runoff_inst%fsat_col(n) = min(max(0.,car1m(nc)/CN_zone_weight(nz)),1.)
         elseif(nz==2) then
           saturated_excess_runoff_inst%fsat_col(n) = min(max(0.,(car1m(nc)-CN_zone_weight(1))/CN_zone_weight(nz)),1.)
-        elseif(nz==3)
+        elseif(nz==3) then
           saturated_excess_runoff_inst%fsat_col(n) = min(max(0.,(car1m(nc)-CN_zone_weight(1)-CN_zone_weight(2))/CN_zone_weight(nz)),1.)
         endif
 
@@ -601,4 +604,4 @@ contains
 
 
   end subroutine get_CN_LAI
-end module CN_DriverMod
+end module CNCLM_DriverMod
