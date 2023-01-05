@@ -56,7 +56,7 @@ module clm_varcon
   real(r8), pointer :: dzsoi(:)        !soil dz (thickness)
   real(r8), pointer :: zisoi(:)        !soil zi (interfaces)
   real(r8), pointer :: dzsoi_decomp(:) !soil dz (thickness)
-
+  real(r8), public, parameter :: zmin_bedrock = 0.4_r8 ! minimum soil depth [m]
 
   !------------------------------------------------------------------
   ! Set subgrid names
