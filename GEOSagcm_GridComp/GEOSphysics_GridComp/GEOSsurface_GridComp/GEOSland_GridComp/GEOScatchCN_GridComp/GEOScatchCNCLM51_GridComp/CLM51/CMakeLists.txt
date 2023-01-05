@@ -121,7 +121,9 @@ set (srcs
   SoilBiogeochemLittVertTranspMod.F90
   SoilBiogeochemNLeachingMod.F90
   SoilBiogeochemNStateUpdate1Mod.F90
+  SoilBiogeochemPotentialMod.F90
   SoilBiogeochemPrecisionControlMod.F90
+  SoilBiogeochemVerticalProfileMod.F90
   SoilWaterRetentionCurveMod.F90
   spmdMod.F90
   subgridAveMod.F90
