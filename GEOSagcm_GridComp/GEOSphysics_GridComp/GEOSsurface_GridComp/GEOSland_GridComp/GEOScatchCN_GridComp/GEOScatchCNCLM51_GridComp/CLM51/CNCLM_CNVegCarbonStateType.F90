@@ -199,6 +199,7 @@ module CNVegCarbonStateType
   contains
 
      procedure , public  :: Summary => Summary_carbonstate
+     procedure , public  :: ZeroDWT
 
  end type cnveg_carbonstate_type
 
@@ -665,5 +666,27 @@ contains
     end do
 
   end subroutine Summary_carbonstate
+
+  !-----------------------------------------------------------------------
+  subroutine ZeroDwt( this, bounds )
+    !
+    ! !DESCRIPTION
+    ! Initialize variables needed for dynamic land use.
+    !
+    ! !ARGUMENTS:
+    class(cnveg_carbonstate_type) :: this
+    type(bounds_type), intent(in)  :: bounds
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: p          ! indices
+    !-----------------------------------------------------------------------
+
+    do p = bounds%begp,bounds%endp
+       this%dispvegc_patch(p)   = 0._r8
+       this%storvegc_patch(p)   = 0._r8
+       this%totc_patch(p)       = 0._r8
+    end do
+
+  end subroutine ZeroDwt
 
 end module CNVegCarbonStateType
