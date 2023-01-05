@@ -161,7 +161,7 @@ module CNVegetationFacade
 
    !  procedure, public :: Init2                         ! Do initialization in initialize phase, after subgrid weights are determined
      procedure, public :: InitEachTimeStep              ! Do initializations at the start of each time step
-     procedure, public :: InterpFileInputs              ! Interpolate inputs from files
+   !  procedure, public :: InterpFileInputs              ! Interpolate inputs from files
    !  procedure, public :: UpdateSubgridWeights          ! Update subgrid weights if running with prognostic patch weights
    !  procedure, public :: DynamicAreaConservation       ! Conserve C & N with updates in subgrid weights
      procedure, public :: InitColumnBalance             ! Set the starting point for col-level balance checks
@@ -598,33 +598,33 @@ contains
   end subroutine InitEachTimeStep
 
   !-----------------------------------------------------------------------
-  subroutine InterpFileInputs(this, bounds)
-    !
-    ! !DESCRIPTION:
-    ! Interpolate inputs from files
-    !
-    ! NOTE(wjs, 2016-02-23) Stuff done here could probably be done at the end of
-    ! InitEachTimeStep, rather than in this separate routine, except for the fact that
-    ! (currently) this Interp stuff is done with proc bounds rather thna clump bounds. I
-    ! think that is needed so that you don't update a given stream multiple times. If we
-    ! rework the handling of threading / clumps so that there is a separate object for
-    ! each clump, then I think this problem would disappear - at which point we could
-    ! remove this Interp routine, moving its body to the end of InitEachTimeStep.
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    class(cn_vegetation_type) , intent(inout) :: this
-    type(bounds_type) , intent(in)    :: bounds
-    !
-    ! !LOCAL VARIABLES:
-
-    character(len=*), parameter :: subname = 'InterpFileInputs'
-    !-----------------------------------------------------------------------
-
-    call this%cnfire_method%FireInterp(bounds)
-
-  end subroutine InterpFileInputs
+!  subroutine InterpFileInputs(this, bounds)
+!    !
+!    ! !DESCRIPTION:
+!    ! Interpolate inputs from files
+!    !
+!    ! NOTE(wjs, 2016-02-23) Stuff done here could probably be done at the end of
+!    ! InitEachTimeStep, rather than in this separate routine, except for the fact that
+!    ! (currently) this Interp stuff is done with proc bounds rather thna clump bounds. I
+!    ! think that is needed so that you don't update a given stream multiple times. If we
+!    ! rework the handling of threading / clumps so that there is a separate object for
+!    ! each clump, then I think this problem would disappear - at which point we could
+!    ! remove this Interp routine, moving its body to the end of InitEachTimeStep.
+!    !
+!    ! !USES:
+!    !
+!    ! !ARGUMENTS:
+!    class(cn_vegetation_type) , intent(inout) :: this
+!    type(bounds_type) , intent(in)    :: bounds
+!    !
+!    ! !LOCAL VARIABLES:
+!
+!    character(len=*), parameter :: subname = 'InterpFileInputs'
+!    !-----------------------------------------------------------------------
+!
+!    call this%cnfire_method%FireInterp(bounds)
+!
+!  end subroutine InterpFileInputs
 
 
   !-----------------------------------------------------------------------
