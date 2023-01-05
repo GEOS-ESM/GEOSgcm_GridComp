@@ -94,6 +94,8 @@ module clm_varcon
   real(r8), public, parameter :: degpsec = 15._r8/3600.0_r8 ! Degree's earth rotates per second
   integer,  public, parameter :: isecspday= secspday        ! Integer seconds per day
 
+  real(r8), public, parameter :: c_to_b = 2.0_r8         ! conversion between mass carbon and total biomass (g biomass /g C)
+
 ! !PUBLIC MEMBER FUNCTIONS:
   public clm_varcon_init          ! Initialze constants that need to be initialized
 
