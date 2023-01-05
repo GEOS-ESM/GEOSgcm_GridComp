@@ -557,22 +557,22 @@ contains
     ! Set the carbon isotopic flux variables (except for gap-phase mortality and fire fluxes)
     if ( use_c13 ) then
 
-       call CIsoFlux1(num_soilc, filter_soilc, num_soilp, filter_soilp,              &
-            soilbiogeochem_state_inst,                                               &
-            soilbiogeochem_carbonflux_inst,  soilbiogeochem_carbonstate_inst,        &
-            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                           &
-            c13_soilbiogeochem_carbonflux_inst, c13_soilbiogeochem_carbonstate_inst, &
-            c13_cnveg_carbonflux_inst, c13_cnveg_carbonstate_inst,                   &
-            isotope='c13')
+!       call CIsoFlux1(num_soilc, filter_soilc, num_soilp, filter_soilp,              &
+!            soilbiogeochem_state_inst,                                               &
+!            soilbiogeochem_carbonflux_inst,  soilbiogeochem_carbonstate_inst,        &
+!            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                           &
+!            c13_soilbiogeochem_carbonflux_inst, c13_soilbiogeochem_carbonstate_inst, &
+!            c13_cnveg_carbonflux_inst, c13_cnveg_carbonstate_inst,                   &
+!            isotope='c13')
     end if
     if ( use_c14 ) then
-       call CIsoFlux1(num_soilc, filter_soilc, num_soilp, filter_soilp,              &
-            soilbiogeochem_state_inst,                                               &
-            soilbiogeochem_carbonflux_inst,  soilbiogeochem_carbonstate_inst,        &
-            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                           &
-            c14_soilbiogeochem_carbonflux_inst, c14_soilbiogeochem_carbonstate_inst, &
-            c14_cnveg_carbonflux_inst, c14_cnveg_carbonstate_inst,                   &
-            isotope='c14')
+!       call CIsoFlux1(num_soilc, filter_soilc, num_soilp, filter_soilp,              &
+!            soilbiogeochem_state_inst,                                               &
+!            soilbiogeochem_carbonflux_inst,  soilbiogeochem_carbonstate_inst,        &
+!            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                           &
+!            c14_soilbiogeochem_carbonflux_inst, c14_soilbiogeochem_carbonstate_inst, &
+!            c14_cnveg_carbonflux_inst, c14_cnveg_carbonstate_inst,                   &
+!            isotope='c14')
     end if
 
     ! Update all prognostic carbon state variables (except for gap-phase mortality and fire fluxes)
@@ -650,18 +650,18 @@ contains
 
     ! Set the carbon isotopic fluxes for gap mortality
     if ( use_c13 ) then
-       call CIsoFlux2(num_soilc, filter_soilc, num_soilp, filter_soilp,               &
-            soilbiogeochem_state_inst, cnveg_carbonflux_inst, cnveg_carbonstate_inst, &
-            iso_cnveg_carbonflux_inst=c13_cnveg_carbonflux_inst,                      &
-            iso_cnveg_carbonstate_inst=c13_cnveg_carbonstate_inst,                    &
-            isotope='c13')
+!       call CIsoFlux2(num_soilc, filter_soilc, num_soilp, filter_soilp,               &
+!            soilbiogeochem_state_inst, cnveg_carbonflux_inst, cnveg_carbonstate_inst, &
+!            iso_cnveg_carbonflux_inst=c13_cnveg_carbonflux_inst,                      &
+!            iso_cnveg_carbonstate_inst=c13_cnveg_carbonstate_inst,                    &
+!            isotope='c13')
     end if
     if ( use_c14 ) then
-       call CIsoFlux2(num_soilc, filter_soilc, num_soilp, filter_soilp,               &
-            soilbiogeochem_state_inst, cnveg_carbonflux_inst, cnveg_carbonstate_inst, &
-            iso_cnveg_carbonflux_inst=c14_cnveg_carbonflux_inst,                      &
-            iso_cnveg_carbonstate_inst=c14_cnveg_carbonstate_inst,                    &
-            isotope='c14')
+!       call CIsoFlux2(num_soilc, filter_soilc, num_soilp, filter_soilp,               &
+!            soilbiogeochem_state_inst, cnveg_carbonflux_inst, cnveg_carbonstate_inst, &
+!            iso_cnveg_carbonflux_inst=c14_cnveg_carbonflux_inst,                      &
+!            iso_cnveg_carbonstate_inst=c14_cnveg_carbonstate_inst,                    &
+!            isotope='c14')
     end if
 
     ! Update all the prognostic carbon state variables affected by gap-phase mortality fluxes
@@ -696,18 +696,18 @@ contains
     end if
 
     if ( use_c13 ) then
-       call CIsoFlux2h(num_soilc, filter_soilc, num_soilp, filter_soilp,   &
-            soilbiogeochem_state_inst,                                     &
-            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                 &
-            c13_cnveg_carbonflux_inst, c13_cnveg_carbonstate_inst,         &                         
-            isotope='c13')
+!       call CIsoFlux2h(num_soilc, filter_soilc, num_soilp, filter_soilp,   &
+!            soilbiogeochem_state_inst,                                     &
+!            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                 &
+!            c13_cnveg_carbonflux_inst, c13_cnveg_carbonstate_inst,         &                         
+!            isotope='c13')
     end if
     if ( use_c14 ) then
-       call CIsoFlux2h(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-            soilbiogeochem_state_inst,                                     &
-            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                 &
-            c14_cnveg_carbonflux_inst, c14_cnveg_carbonstate_inst,         &                         
-            isotope='c14')
+!       call CIsoFlux2h(num_soilc, filter_soilc, num_soilp, filter_soilp, &
+!            soilbiogeochem_state_inst,                                     &
+!            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                 &
+!            c14_cnveg_carbonflux_inst, c14_cnveg_carbonstate_inst,         &                         
+!            isotope='c14')
     end if
 
     call CStateUpdate2h( num_soilc, filter_soilc,  num_soilp, filter_soilp, &
@@ -811,20 +811,20 @@ contains
 
     call t_startf('CNUpdate3')
     if ( use_c13 ) then
-       call CIsoFlux3(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-            soilbiogeochem_state_inst , soilbiogeochem_carbonstate_inst,         &
-            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                       &
-            c13_cnveg_carbonflux_inst, c13_cnveg_carbonstate_inst,               &
-            c13_soilbiogeochem_carbonstate_inst, &
-            isotope='c13')
+!       call CIsoFlux3(num_soilc, filter_soilc, num_soilp, filter_soilp, &
+!            soilbiogeochem_state_inst , soilbiogeochem_carbonstate_inst,         &
+!            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                       &
+!            c13_cnveg_carbonflux_inst, c13_cnveg_carbonstate_inst,               &
+!            c13_soilbiogeochem_carbonstate_inst, &
+!            isotope='c13')
     end if
     if ( use_c14 ) then
-       call CIsoFlux3(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-            soilbiogeochem_state_inst , soilbiogeochem_carbonstate_inst,         &
-            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                       &
-            c14_cnveg_carbonflux_inst, c14_cnveg_carbonstate_inst,               &
-            c14_soilbiogeochem_carbonstate_inst, &
-            isotope='c14')
+!       call CIsoFlux3(num_soilc, filter_soilc, num_soilp, filter_soilp, &
+!            soilbiogeochem_state_inst , soilbiogeochem_carbonstate_inst,         &
+!            cnveg_carbonflux_inst, cnveg_carbonstate_inst,                       &
+!            c14_cnveg_carbonflux_inst, c14_cnveg_carbonstate_inst,               &
+!            c14_soilbiogeochem_carbonstate_inst, &
+!            isotope='c14')
     end if
 
     call CStateUpdate3( num_soilc, filter_soilc, num_soilp, filter_soilp, &
