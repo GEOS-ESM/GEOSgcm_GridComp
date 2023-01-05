@@ -207,6 +207,7 @@ module CNVegNitrogenStateType
   contains 
 
      procedure , public  :: Summary => Summary_nitrogenstate
+     procedure , public  :: ZeroDWT
 
 end type cnveg_nitrogenstate_type
 type(cnveg_nitrogenstate_type), public, target, save :: cnveg_nitrogenstate_inst
@@ -601,6 +602,29 @@ contains
     end do
 
   end subroutine Summary_nitrogenstate
+
+  !-----------------------------------------------------------------------
+  subroutine ZeroDwt( this, bounds )
+    !
+    ! !DESCRIPTION
+    ! Initialize variables needed for dynamic land use.
+    !
+    ! !ARGUMENTS:
+    class(cnveg_nitrogenstate_type) :: this
+    type(bounds_type), intent(in)  :: bounds
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: p          ! indices
+    !-----------------------------------------------------------------------
+
+    do p = bounds%begp,bounds%endp
+       this%dispvegn_patch(p) = 0._r8
+       this%storvegn_patch(p) = 0._r8
+       this%totvegn_patch(p)  = 0._r8
+       this%totn_patch(p)     = 0._r8
+    end do
+
+  end subroutine ZeroDwt
 
 end module CNVegNitrogenStateType
 
