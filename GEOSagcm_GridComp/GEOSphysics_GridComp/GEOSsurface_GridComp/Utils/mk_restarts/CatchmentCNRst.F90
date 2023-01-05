@@ -560,6 +560,7 @@ contains
      type(MAPL_SunOrbit)         :: ORBIT
      type(ESMF_Time)             :: CURRENT_TIME
      type(ESMF_TimeInterval)     :: timeStep
+     type(ESMF_Clock)            :: CLOCK  
 
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
@@ -638,17 +639,18 @@ contains
         call ESMF_TimeIntervalSet(TimeStep,  S=450, RC=status)
         clock = ESMF_ClockCreate(TimeStep, startTime = CURRENT_TIME, RC=status)
         VERIFY_(STATUS)
-        call ESMFL_ClockSet ( clock, CurrTime=CURRENT_Time, rc=status )
+        call ESMF_ClockSet ( clock, CurrTime=CURRENT_TIME, rc=status )
 
         !3) create an orbit
-        ORBIT = MAPL_SunOrbitCreate(CLOCK, ECC, OB, PER, EQNX, &
-                 EOT, ORBIT_ANAL2B, ORB2B_YEARLEN, &
+        ORBIT = MAPL_SunOrbitCreate(CLOCK, ORBIT_ECCENTRICITY, ORBIT_OBLIQUITY, ORBIT_PERIHELION,&
+                 ORBIT_EQUINOX, .false., .false.,  &
+                 ORB2B_YEARLEN, &
                  ORB2B_REF_YYYYMMDD, ORB2B_REF_HHMMSS, &
                  ORB2B_ECC_REF, ORB2B_ECC_RATE, &
                  ORB2B_OBQ_REF, ORB2B_OBQ_RATE, &
                  ORB2B_LAMBDAP_REF, ORB2B_LAMBDAP_RATE, &
                  ORB2B_EQUINOX_YYYYMMDD, ORB2B_EQUINOX_HHMMSS, &
-                 FIX_SUN=FIX_SUN,RC=status)
+                 FIX_SUN=.false., RC=status)
         VERIFY_(status) 
 
         !4) current daylight duration
