@@ -21,6 +21,7 @@ module dynSubgridControlMod
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: get_do_transient_pfts   ! return the value of the do_transient_pfts control flag
   public :: get_do_transient_crops  ! return the value of the do_transient_crops control flag
+  public :: get_do_harvest          ! return the value of the do_harvest control flag
   public :: run_has_transient_landcover ! returns true if any aspects of prescribed transient landcover are enabled
   !
   ! !PRIVATE TYPES:
@@ -115,5 +116,16 @@ contains
   end function run_has_transient_landcover
 
   !-----------------------------------------------------------------------
+
+  logical function get_do_harvest()
+    ! !DESCRIPTION:
+    ! Return the value of the do_harvest control flag
+    !-----------------------------------------------------------------------
+
+    SHR_ASSERT_FL(dyn_subgrid_control_inst%initialized, sourcefile, __LINE__)
+
+    get_do_harvest = dyn_subgrid_control_inst%do_harvest
+
+  end function get_do_harvest
 
 end module dynSubgridControlMod
