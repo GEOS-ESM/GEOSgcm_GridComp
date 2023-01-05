@@ -361,6 +361,7 @@ module CNVegNitrogenFluxType
 
      procedure , public  :: SetValues
      procedure , public  :: Summary => Summary_nitrogenflux
+     procedure , public  :: ZeroDWT
 
  end type cnveg_nitrogenflux_type
 
@@ -1329,5 +1330,37 @@ contains
     end do
 
   end subroutine Summary_nitrogenflux
+
+  !-----------------------------------------------------------------------
+  subroutine ZeroDwt( this, bounds )
+    !
+    ! !DESCRIPTION
+    ! Initialize flux variables needed for dynamic land use.
+    !
+    ! !ARGUMENTS:
+    class(cnveg_nitrogenflux_type) :: this
+    type(bounds_type), intent(in)  :: bounds
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c, g, j          ! indices
+    !-----------------------------------------------------------------------
+
+    do g = bounds%begg, bounds%endg
+       this%dwt_seedn_to_leaf_grc(g)     = 0._r8
+       this%dwt_seedn_to_deadstem_grc(g) = 0._r8
+       this%dwt_conv_nflux_grc(g)        = 0._r8
+    end do
+
+    do j = 1, nlevdecomp_full
+       do c = bounds%begc,bounds%endc
+          this%dwt_frootn_to_litr_met_n_col(c,j) = 0._r8
+          this%dwt_frootn_to_litr_cel_n_col(c,j) = 0._r8
+          this%dwt_frootn_to_litr_lig_n_col(c,j) = 0._r8
+          this%dwt_livecrootn_to_cwdn_col(c,j)   = 0._r8
+          this%dwt_deadcrootn_to_cwdn_col(c,j)   = 0._r8
+       end do
+    end do
+
+  end subroutine ZeroDwt
 
 end module CNVegNitrogenFluxType
