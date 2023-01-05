@@ -26,7 +26,7 @@ module FireMethodType
      procedure(CNFireReadParams_interface), public, deferred :: CNFireReadParams
 
      ! Interpolate the fire datasets
-     procedure(FireInterp_interface) , public, deferred :: FireInterp
+ !    procedure(FireInterp_interface) , public, deferred :: FireInterp
 
      ! Figure out the fire area
      procedure(CNFireArea_interface)   , public, deferred :: CNFireArea
@@ -82,20 +82,20 @@ module FireMethodType
 
   end subroutine FireReadNML_interface
 
-  subroutine FireInterp_interface(this, bounds)
-    !
-    ! !DESCRIPTION:
-    ! Interpolate Fire datasets
-    !
-    ! USES
-    use decompMod              , only : bounds_type
-    import :: fire_method_type
-    ! !ARGUMENTS:
-    class(fire_method_type)     :: this
-    type(bounds_type), intent(in) :: bounds
-    !-----------------------------------------------------------------------
-
-  end subroutine FireInterp_interface
+!  subroutine FireInterp_interface(this, bounds)
+!    !
+!    ! !DESCRIPTION:
+!    ! Interpolate Fire datasets
+!    !
+!    ! USES
+!    use decompMod              , only : bounds_type
+!    import :: fire_method_type
+!    ! !ARGUMENTS:
+!    class(fire_method_type)     :: this
+!    type(bounds_type), intent(in) :: bounds
+!    !-----------------------------------------------------------------------
+!
+!  end subroutine FireInterp_interface
 
   !-----------------------------------------------------------------------
   subroutine CNFireReadParams_interface( this, ncid )
