@@ -477,6 +477,7 @@ module CNVegCarbonFluxType
 
      procedure , public  :: SetValues
      procedure , public  :: Summary => Summary_carbonflux
+     procedure , public  :: ZeroDWT
 
  end type cnveg_carbonflux_type
 
@@ -2146,8 +2147,42 @@ contains
     end associate
 
   end subroutine Summary_carbonflux
+!-----------------------------------
+  subroutine ZeroDwt( this, bounds )
+    !
+    ! !DESCRIPTION
+    ! Initialize flux variables needed for dynamic land use.
+    !
+    ! !ARGUMENTS:
+    class(cnveg_carbonflux_type) :: this
+    type(bounds_type), intent(in)  :: bounds
+    !
+    ! !LOCAL VARIABLES:
+    integer  :: c, g, j          ! indices
+    !-----------------------------------------------------------------------
 
+    ! set conversion and product pool fluxes to 0 at the beginning of every timestep
 
+    do g = bounds%begg, bounds%endg
+       this%dwt_seedc_to_leaf_grc(g)        = 0._r8
+       this%dwt_seedc_to_deadstem_grc(g)    = 0._r8
+       this%dwt_conv_cflux_grc(g)           = 0._r8
+       this%dwt_slash_cflux_grc(g)           = 0._r8
+    end do
+
+    do j = 1, nlevdecomp_full
+       do c = bounds%begc,bounds%endc
+          this%dwt_frootc_to_litr_met_c_col(c,j)    = 0._r8
+          this%dwt_frootc_to_litr_cel_c_col(c,j)    = 0._r8
+          this%dwt_frootc_to_litr_lig_c_col(c,j)    = 0._r8
+          this%dwt_livecrootc_to_cwdc_col(c,j)      = 0._r8
+          this%dwt_deadcrootc_to_cwdc_col(c,j)      = 0._r8
+       end do
+    end do
+
+  end subroutine ZeroDwt
+
+  !-----------------------------------------------------------------------
 end module CNVegCarbonFluxType
 
 
