@@ -79,7 +79,7 @@ module CN_initMod
  contains
 
 !------------------------------------------------------
- subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start)
+ subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cnfire_method,cn5_cold_start)
 
   !ARGUMENTS
   implicit none
@@ -92,6 +92,7 @@ module CN_initMod
   real,    dimension(nch),                         intent(in) :: lats  ! Catchment tile latitudes [rad]
   real,    dimension(nch),                         intent(in) :: lons  ! Catchment tile longitudes [rad]
   logical, optional,                               intent(in) :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
+  class(fire_method_type),                         intent(out) :: cnfire_method
                                                                                                         
   !LOCAL
 
@@ -129,7 +130,6 @@ module CN_initMod
   type(ch4_type)                          :: ch4_inst
   type(crop_type)                         :: crop_inst
   type(dgvs_type)                         :: dgvs_inst
-  type(fire_method_type)                  :: cnfire_method
   type(saturated_excess_runoff_type)      :: saturated_excess_runoff_inst
   type(energyflux_type)                   :: energyflux_inst
   type(waterstatebulk_type)               :: waterstatebulk_inst

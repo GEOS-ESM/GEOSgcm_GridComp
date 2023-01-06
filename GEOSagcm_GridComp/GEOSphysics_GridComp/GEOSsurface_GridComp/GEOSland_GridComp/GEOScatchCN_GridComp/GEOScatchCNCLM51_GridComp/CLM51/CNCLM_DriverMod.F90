@@ -4,7 +4,7 @@ module CNCLM_DriverMod
   use nanMod           , only : nan
   use CNVegetationFacade, only : cn_vegetation_type
   use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
-                                var_col, var_pft
+                                var_col, var_pft, nlevgrnd
   use clm_varcon       , only : grav, denh2o
 
   implicit none
@@ -21,7 +21,7 @@ contains
  subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
-                      fsnow,tg10d,t2m5d,sndzn5d, &
+                      fsnow,tg10d,t2m5d,sndzn5d, cnfire_method, &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
@@ -43,6 +43,10 @@ contains
  use CNVegStateType              , only : cnveg_state_type
  use WaterStateBulkType          , only : waterstatebulk_type
  use SoilStateType               , only : soilstate_type
+ use TemperatureType             , only : temperature_type
+ use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_type
+ use CNVegStateType              , only : cnveg_state_type
+ use WaterStateBulkType          , only : waterstatebulk_type
 
  !ARGUMENTS
  implicit none
@@ -82,6 +86,7 @@ contains
  real, dimension(nch), intent(in) :: tg10d     ! 10-day running mean of ground temperature [K]
  real, dimension(nch), intent(in) :: t2m5d     ! 5-day running mean of daily minimum 2m temperature [K]
  real, dimension(nch), intent(in) :: sndzn5d   ! 5-day running mean of total snow depth
+ class(fire_method_type) , intent(in) :: cnfire_method
 
  ! OUTPUT
 
@@ -133,15 +138,19 @@ contains
  ! above are enough
 
  type(bounds_type)                      :: bounds
- type(clumpfilter_type)                 :: filter
+ type(clumpfilter)                      :: filter
  type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
  type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
  type(gridcell_type)                    :: grc
- type(cn_vegetation_type), public       :: bgc_vegetation_inst
- type(fire_method_type)                 :: cnfire_method
+ type(cn_vegetation_type)               :: bgc_vegetation_inst
  type(saturated_excess_runoff_type)     :: saturated_excess_runoff_inst
  type(wateratm2lndbulk_type)            :: wateratm2lndbulk_inst
  type(soilstate_type)                   :: soilstate_inst 
+ type(atm2lnd_type)                     :: atm2lnd_inst
+ type(temperature_type)                 :: temperature_inst
+ type(waterdiagnosticbulk_type)         :: waterdiagnosticbulk_inst
+ type(cnveg_state_type)                 :: cnveg_state_inst
+ type(waterstatebulk_type)                  :: waterstatebulk_inst
 
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.

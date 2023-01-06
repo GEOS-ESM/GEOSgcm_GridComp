@@ -3763,6 +3763,8 @@ end subroutine SetServices
 
 subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
+   use FireMethodType                     , only : fire_method_type
+
 ! !ARGUMENTS:
 
     type(ESMF_GridComp),intent(inout) :: GC     !Gridded component
@@ -3915,6 +3917,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real    :: bare
     logical, save :: first = .true.
     integer*8, save :: istep_cn = 1 ! gkw: legacy variable from offline
+    class(fire_method_type) :: cnfire_method
 
   ! Offline mode
 
@@ -4227,7 +4230,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start=.true.) 
+      call CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cnfire_method,cn5_cold_start=.true.) 
       call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif
@@ -6899,7 +6902,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        call CN_Driver(ntiles,ityp,fveg,ndep,tpm,tairm,psis,bee,dayl,btran_fire,ar1m,&
                       rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,gdp,&
                       abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
-                      asnowm,TG10D,T2MMIN5D,SNDZM5D, &
+                      asnowm,TG10D,T2MMIN5D,SNDZM5D,cnfire_method, &
                       elai,esai,tlai,totcolc,npp,gpp,sr,nee,burn,closs,nfire,&
                       som_closs,frootc,vegc,xsmr,ndeploy,denit,sminn_leached,sminn,&
                       fire_nloss,leafn,leafc,gross_nmin,net_nmin,&
