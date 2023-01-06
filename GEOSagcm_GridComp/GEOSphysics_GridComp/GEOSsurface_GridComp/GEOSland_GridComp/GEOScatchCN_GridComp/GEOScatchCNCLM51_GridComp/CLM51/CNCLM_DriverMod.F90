@@ -53,6 +53,17 @@ contains
  use FrictionVelocityMod         , only : frictionvel_type
  use ActiveLayerMod              , only : active_layer_type
  use SoilBiogeochemStateType     , only : soilbiogeochem_state_type
+ use CanopyStateType             , only : canopystate_type
+ use SoilWaterRetentionCurveMod  , only : soil_water_retention_curve_type
+ use CropType                    , only : crop_type
+ use ch4Mod                      , only : ch4_type
+ use PhotosynthesisMod           , only : photosyns_type
+ use EnergyFluxType              , only : energyflux_type
+ use CNFireEmissionsMod          , only : fireemis_type
+ use CN_initMod                  , only : nutrient_competition_method
+ use CNVegCarbonFluxType         , only : cnveg_carbonflux_type
+ use CNVegCarbonStateType        , only : cnveg_carbonstate_type
+ use CNVegNitrogenFluxType       , only : cnveg_nitrogenflux_type
 
  !ARGUMENTS
  implicit none
@@ -106,6 +117,12 @@ contains
  
   real, dimension(nch),                 intent(out) :: srg  ! (gC/m2/s) total soil respiration (HR + root resp) [column]
   real, dimension(nch),                 intent(out) :: neeg ! (gC/m2/s) net ecosystem exchange of carbon, includes fire, landuse, harvest, and hrv_xsmrpool flux, positive for source [column]
+
+  real, dimension(nch),                 intent(out) :: fuelcg          ! fuel avalability for non-crop areas outside tropical closed broadleaf evergreen closed forests (gC/m2)
+  real, dimension(nch),                 intent(out) :: totlitcg        ! (gC/m2) total litter carbon
+  real, dimension(nch),                 intent(out) :: totlitcg        ! (gC/m2) total litter carbon
+  real, dimension(nch),                 intent(out) :: cwdcg            ! (gC/m2) coarse woody debris C
+  real, dimension(nch),                 intent(out) :: rootcg          ! (gC/m2) total root carbon
  
   real, dimension(nch),                 intent(out) :: burn  ! burn rate / fractional area burned (/sec)
   real, dimension(nch),                 intent(out) :: closs ! (gC/m2/s) total fire C loss
@@ -167,7 +184,16 @@ contains
  type(soilbiogeochem_carbonstate_type)  :: c14_soilbiogeochem_carbonstate_inst
  type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
  type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
-
+ type(canopystate_type)                 :: canopystate_inst
+ type(soil_water_retention_curve_type)  :: soil_water_retention_curve_inst
+ type(crop_type)                        :: crop_inst
+ type(ch4_type)                         :: ch4_inst
+ type(photosyns_type)                   :: photosyns_inst
+ type(energyflux_type)                  :: energyflux_inst
+ type(fireemis_type)                    :: fireemis_inst
+ type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
+ type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
+ type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
 
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.
@@ -222,7 +248,7 @@ contains
            temperature_inst%t_ref2m_patch(p) = tairm(nc)
            temperature_inst%soila10_patch(p) = tg10d(nc)
            temperature_inst%t_a5min_patch(p) = t2m5d(nc)
-           cnfire_method%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
+           cnfire_method%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
            wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
            wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
            wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
@@ -235,7 +261,7 @@ contains
 
   ! call CLM routines that are needed prior to Ecosystem Dynamics call
 
-  call active_layer_inst%alt_calc(num_soilc, filter_soilc, &
+  call active_layer_inst%alt_calc(filter%num_soilc, filter%soilc, &
        temperature_inst)
 
   call bgc_vegetation_inst%InitGridcellBalance(bounds, &

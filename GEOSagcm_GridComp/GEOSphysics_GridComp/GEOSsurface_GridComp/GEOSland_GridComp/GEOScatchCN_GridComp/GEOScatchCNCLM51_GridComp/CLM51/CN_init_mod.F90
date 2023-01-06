@@ -56,7 +56,7 @@ module CN_initMod
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
   use SoilBiogeochemDecompCascadeCNMod   , only : readSoilBiogeochemDecompCnParams       => readParams
-  use NutrientCompetitionFactoryMod      , only : create_nutrient_competition_method
+  use NutrientCompetitionFactoryMod      , only : nutrient_competition_method_type, create_nutrient_competition_method
   use SoilBiogeochemDecompMod            , only : readSoilBiogeochemDecompParams         => readParams
   use CNPhenologyMod                     , only : readCNPhenolParams                     => readParams
   use SoilBiogeochemLittVertTranspMod    , only : readSoilBiogeochemLittVertTranspParams => readParams
@@ -135,7 +135,7 @@ module CN_initMod
   type(waterstatebulk_type)               :: waterstatebulk_inst
   type(waterstate_type)                   :: waterstate_inst
   type(frictionvel_type)                  :: frictionvel_inst
-
+  class(nutrient_competition_method_type), public, allocatable :: nutrient_competition_method
 
   character(300)     :: paramfile
   character(300)     :: NLFilename
