@@ -9,7 +9,7 @@ module CN_initMod
   use clm_varctl        , only : use_century_decomp
   use decompMod
   use CNVegNitrogenStateType
-  use CNCarbonStateType
+  use CNVegCarbonStateType
   use atm2lndType
   use TemperatureType
   use SoilStateType
@@ -52,11 +52,14 @@ module CN_initMod
   use WaterStateBulkType
   use WaterStateType
   use FrictionVelocityMod
+  use PhotosynthesisMod
+  use CNVegetationFacade, only : cn_vegetation_type
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
   use SoilBiogeochemDecompCascadeCNMod   , only : readSoilBiogeochemDecompCnParams       => readParams
-  use NutrientCompetitionFactoryMod      , only : nutrient_competition_method_type, create_nutrient_competition_method
+  use NutrientCompetitionFactoryMod      , only : create_nutrient_competition_method
+  use NutrientCompetitionMethodMod       , only : nutrient_competition_method_type
   use SoilBiogeochemDecompMod            , only : readSoilBiogeochemDecompParams         => readParams
   use CNPhenologyMod                     , only : readCNPhenolParams                     => readParams
   use SoilBiogeochemLittVertTranspMod    , only : readSoilBiogeochemLittVertTranspParams => readParams
@@ -100,7 +103,7 @@ module CN_initMod
   type(patch_type)                        :: patch
   type(column_type)                       :: col
   type(landunit_type)                     :: lun
-  type(clumpfilter_type)                  :: filter
+  type(clumpfilter)                       :: filter
   type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
   type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
   type(atm2lnd_type)                      :: atm2lnd_inst
@@ -112,7 +115,7 @@ module CN_initMod
   type(canopystate_type)                  :: canopystate_inst
   type(solarabs_type)                     :: solarabs_inst
   type(surfalb_type)                      :: surfalb_inst
-  type(ozone_type)                        :: ozone_inst
+  type(ozone_base_type)                        :: ozone_inst
   type(photosyns_type)                    :: photosyns_inst
   type(pftcon_type)                       :: pftcon
   type(waterflux_type)                    :: waterflux_inst
@@ -135,13 +138,15 @@ module CN_initMod
   type(waterstatebulk_type)               :: waterstatebulk_inst
   type(waterstate_type)                   :: waterstate_inst
   type(frictionvel_type)                  :: frictionvel_inst
-  class(nutrient_competition_method_type), public, allocatable :: nutrient_competition_method
+  type(cn_vegetation_type)               :: bgc_vegetation_inst
+  class(nutrient_competition_method_type),  allocatable :: nutrient_competition_method
 
   character(300)     :: paramfile
   character(300)     :: NLFilename
   type(Netcdf4_fileformatter) :: ncid
-  integer            :: rc
+  integer            :: rc, status
 
+  integer, private, parameter :: zeng_2001_root    = 0 !the zeng 2001 root profile function
   !-----------------------------------------
 
 ! initialize CN model
@@ -159,7 +164,7 @@ module CN_initMod
 
     ! initialize subrgid types
 
-    call init_patch_type                (bound, nch, ityp, fveg, patch)
+    call init_patch_type                (bounds, nch, ityp, fveg, patch)
 
     call init_column_type               (bounds, nch, col)
 
@@ -173,7 +178,7 @@ module CN_initMod
 
     ! initialize filters
 
-    call init_filter_type               (bounds, nch, ityp, fveg,  filter)
+    call init_filter_type               (bounds, nch, ityp, fveg,  filter(1))
 
     ! read parameters and configurations from namelist file
 
@@ -197,7 +202,7 @@ module CN_initMod
 
     call init_wateratm2lndbulk_type     (bounds, wateratm2lndbulk_inst)
 
-    call init_wateratm2lnd_type         (bounds, wateratm2lnd_type)
+    call init_wateratm2lnd_type         (bounds, wateratm2lnd_inst)
 
     call init_canopystate_type          (bounds, nch, ityp, fveg, cncol, cnpft, canopystate_inst, cn5_cold_start)
 

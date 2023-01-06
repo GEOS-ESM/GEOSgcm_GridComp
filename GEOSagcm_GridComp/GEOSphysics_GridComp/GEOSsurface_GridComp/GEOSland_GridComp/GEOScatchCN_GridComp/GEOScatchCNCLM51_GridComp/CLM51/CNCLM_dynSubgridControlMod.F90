@@ -19,6 +19,7 @@ module dynSubgridControlMod
   private
   !
   ! !PUBLIC MEMBER FUNCTIONS:
+  public :: dynSubgridControl_init
   public :: get_do_transient_pfts   ! return the value of the do_transient_pfts control flag
   public :: get_do_transient_crops  ! return the value of the do_transient_crops control flag
   public :: get_do_harvest          ! return the value of the do_harvest control flag

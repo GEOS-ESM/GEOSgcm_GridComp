@@ -46,7 +46,7 @@ module SoilBiogeochemStateType
 contains
 
 !---------------------------------------
- subroutine init_soilbiogeochem_state_type(bounds, nch, cncol, cn5_cold_start,  this, rc)
+ subroutine init_soilbiogeochem_state_type(bounds, nch, cncol, this, cn5_cold_start, rc)
 
     !
     ! !ARGUMENTS:

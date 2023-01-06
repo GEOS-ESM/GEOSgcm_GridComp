@@ -42,7 +42,7 @@ contains
     use ncdio_pio   , only : file_desc_t
 
     type(file_desc_t), intent(inout) :: ncid   ! pio netCDF file id
-    character(len=*),  intent(in) :: namelist_file
+    character(len=*), optional,  intent(in) :: namelist_file
 
     call CNParamsReadShared_netcdf(ncid)
   !  call CNParamsReadShared_namelist(namelist_file)
