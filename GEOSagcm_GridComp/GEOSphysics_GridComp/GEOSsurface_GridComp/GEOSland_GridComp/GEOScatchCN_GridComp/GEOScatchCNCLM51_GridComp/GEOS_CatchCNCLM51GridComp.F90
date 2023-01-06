@@ -6898,10 +6898,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        sndzm   = sndzm   / cnsum
        asnowm  = asnowm  / cnsum
        
+       cnfire_method%forc_hdm  = hdm(nc)
+       cnfire_method%forc_lnfm = lnfm(nc)
 
        call CN_Driver(ntiles,ityp,fveg,ndep,tpm,tairm,psis,bee,dayl,btran_fire,ar1m,&
                       rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,gdp,&
-                      abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
+                      abm,peatf,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
                       asnowm,TG10D,T2MMIN5D,SNDZM5D,cnfire_method, &
                       elai,esai,tlai,totcolc,npp,gpp,sr,nee,burn,closs,nfire,&
                       som_closs,frootc,vegc,xsmr,ndeploy,denit,sminn_leached,sminn,&

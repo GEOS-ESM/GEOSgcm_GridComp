@@ -92,7 +92,7 @@ module CN_initMod
   real,    dimension(nch),                         intent(in) :: lats  ! Catchment tile latitudes [rad]
   real,    dimension(nch),                         intent(in) :: lons  ! Catchment tile longitudes [rad]
   logical, optional,                               intent(in) :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
-  class(fire_method_type),                         intent(out) :: cnfire_method
+  class(fire_method_type), allocatable,            intent(out) :: cnfire_method
                                                                                                         
   !LOCAL
 

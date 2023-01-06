@@ -4,7 +4,7 @@ module CNCLM_DriverMod
   use nanMod           , only : nan
   use CNVegetationFacade, only : cn_vegetation_type
   use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
-                                var_col, var_pft, nlevgrnd
+                                var_col, var_pft, nlevgrnd, numpft
   use clm_varcon       , only : grav, denh2o
 
   implicit none
@@ -20,7 +20,7 @@ contains
 !---------------------------------
  subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
-                      abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
+                      abm,peatf,poros,rh30,totwat,bflow,runsrf,sndzn,&
                       fsnow,tg10d,t2m5d,sndzn5d, cnfire_method, &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
@@ -33,6 +33,8 @@ contains
  use filterMod, only : clumpfilter
  use SoilBiogeochemCarbonFluxType  , only : soilbiogeochem_carbonflux_type
  use SoilBiogeochemNitrogenFluxType, only : soilbiogeochem_nitrogenflux_type
+ use SoilBiogeochemCarbonStateType  , only : soilbiogeochem_carbonstate_type
+ use SoilBiogeochemNitrogenStateType, only : soilbiogeochem_nitrogenstate_type
  use ActiveLayerMod                , only : active_layer_type
  use GridcellType                  , only : gridcell_type
  use FireMethodType              , only : fire_method_type
@@ -47,6 +49,10 @@ contains
  use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_type
  use CNVegStateType              , only : cnveg_state_type
  use WaterStateBulkType          , only : waterstatebulk_type
+ use WaterFluxBulkType           , only : waterfluxbulk_type
+ use FrictionVelocityMod         , only : frictionvel_type
+ use ActiveLayerMod              , only : active_layer_type
+ use SoilBiogeochemStateType     , only : soilbiogeochem_state_type
 
  !ARGUMENTS
  implicit none
@@ -74,8 +80,8 @@ contains
  real, dimension(nch), intent(in) :: gdp       ! Real GDP (K 1995US$/capita)
  real, dimension(nch), intent(in) :: abm       ! Peak month for agricultural fire, unitless
  real, dimension(nch), intent(in) :: peatf     ! Fraction of peatland, unitless (0-1)
- real, dimension(nch), intent(in) :: hdm       ! Human population density in 2010 (individual/km2)
- real, dimension(nch), intent(in) :: lnfm      ! Lightning frequency [Flashes/km^2/day]
+! real, dimension(nch), intent(in) :: hdm       ! Human population density in 2010 (individual/km2)
+! real, dimension(nch), intent(in) :: lnfm      ! Lightning frequency [Flashes/km^2/day]
  real, dimension(nch), intent(in) :: poros     ! porosity
  real, dimension(nch), intent(in) :: rh30      ! 30-day running mean of relative humidity
  real, dimension(nch), intent(in) :: totwat    ! soil liquid water content [kg m^-2]
@@ -140,6 +146,8 @@ contains
  type(bounds_type)                      :: bounds
  type(clumpfilter)                      :: filter
  type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
+ type(soilbiogeochem_carbonflux_type)   :: c13_soilbiogeochem_carbonflux_inst
+ type(soilbiogeochem_carbonflux_type)   :: c14_soilbiogeochem_carbonflux_inst
  type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
  type(gridcell_type)                    :: grc
  type(cn_vegetation_type)               :: bgc_vegetation_inst
@@ -150,7 +158,16 @@ contains
  type(temperature_type)                 :: temperature_inst
  type(waterdiagnosticbulk_type)         :: waterdiagnosticbulk_inst
  type(cnveg_state_type)                 :: cnveg_state_inst
- type(waterstatebulk_type)                  :: waterstatebulk_inst
+ type(waterstatebulk_type)              :: waterstatebulk_inst
+ type(waterfluxbulk_type)               :: waterfluxbulk_inst
+ type(frictionvel_type)                 :: frictionvel_inst
+ type(active_layer_type)                :: active_layer_inst
+ type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
+ type(soilbiogeochem_carbonstate_type)  :: c13_soilbiogeochem_carbonstate_inst
+ type(soilbiogeochem_carbonstate_type)  :: c14_soilbiogeochem_carbonstate_inst
+ type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
+ type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
+
 
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.
@@ -167,18 +184,16 @@ contains
      grc%dayl(nc)                          = dayl(nc)
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
-     cnfire_method%forc_hdm(nc)            = hdm(nc)
-     cnfire_method%forc_lnfm(nc)           = lnfm(nc)
 
      do nz = 1,num_zon    ! CN zone loop
         n = n + 1
 
         temperature_inst%t_soisno_col(n,-nlevsno+1:nlevmaxurbgrnd) = tp1(nc) ! jkolassa: only one soil and no snow column at this point (may change in future)
-        temperature_inst%t_grnd_col(n) = temperature_inst%t_soisno_col(n)
+        temperature_inst%t_grnd_col(n) = temperature_inst%t_soisno_col(n,1)
         temperature_inst%t_soi17cm_col(n) = temperature_inst%t_grnd_col(n)
         soilstate_inst%soilpsi_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*rzm(nc,nz)**(-bee(nc)) ! jkolassa: only one soil layer at this point
         soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd)   = poros(nc) 
-        atm2lnd_inst%forc_t_downscaled_col(n)  = tm(nc)
+        atm2lnd_inst%forc_t_downscaled_col(n)  = tairm(nc)
         wateratm2lndbulk_inst%forc_rain_downscaled_col(n) = rainfm(nc)
         wateratm2lndbulk_inst%forc_snow_downscaled_col(n) = snowfm(nc)
         waterdiagnosticbulk_inst%wf_col(n)  = sfm(nc,nz)
@@ -260,9 +275,9 @@ contains
       soilbiogeochem_state_inst,                                               &
       soilbiogeochem_nitrogenflux_inst, soilbiogeochem_nitrogenstate_inst,     &
       active_layer_inst, &
-      atm2lnd_inst, water_inst%waterstatebulk_inst, &
-      water_inst%waterdiagnosticbulk_inst, water_inst%waterfluxbulk_inst,      &
-      water_inst%wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
+      atm2lnd_inst, waterstatebulk_inst, &
+      waterdiagnosticbulk_inst, waterfluxbulk_inst,      &
+      wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
       soil_water_retention_curve, crop_inst, ch4_inst, &
       photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,          &
       nutrient_competition_method, fireemis_inst)
@@ -278,8 +293,8 @@ contains
       filter%num_actfirep, filter%actfirep,                 &
       doalb, crop_inst, &
       soilstate_inst, soilbiogeochem_state_inst, &
-      water_inst%waterstatebulk_inst, water_inst%waterdiagnosticbulk_inst, &
-      water_inst%waterfluxbulk_inst, frictionvel_inst, canopystate_inst, &
+      waterstatebulk_inst, waterdiagnosticbulk_inst, &
+      waterfluxbulk_inst, frictionvel_inst, canopystate_inst, &
       soilbiogeochem_carbonflux_inst, soilbiogeochem_carbonstate_inst, &
       c13_soilbiogeochem_carbonflux_inst, c13_soilbiogeochem_carbonstate_inst, &
       c14_soilbiogeochem_carbonflux_inst, c14_soilbiogeochem_carbonstate_inst, &
