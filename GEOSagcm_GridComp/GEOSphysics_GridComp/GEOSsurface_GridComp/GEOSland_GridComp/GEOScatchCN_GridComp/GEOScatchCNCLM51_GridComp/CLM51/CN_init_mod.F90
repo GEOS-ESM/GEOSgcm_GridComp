@@ -8,6 +8,7 @@ module CN_initMod
   use clm_varpar        , only : VAR_COL, VAR_PFT, clm_varpar_init
   use clm_varctl        , only : use_century_decomp
   use decompMod
+  use filterMod
   use CNVegNitrogenStateType
   use CNVegCarbonStateType
   use atm2lndType
@@ -29,7 +30,6 @@ module CN_initMod
   use CNVegNitrogenFluxType
   use GridcellType
   use WaterFluxBulkType
-  use filterMod
   use SoilBiogeochemCarbonFluxType
   use SoilBiogeochemNitrogenFluxType
   use PatchType
@@ -103,7 +103,6 @@ module CN_initMod
   type(patch_type)                        :: patch
   type(column_type)                       :: col
   type(landunit_type)                     :: lun
-  type(clumpfilter)                       :: filter
   type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
   type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
   type(atm2lnd_type)                      :: atm2lnd_inst
@@ -178,7 +177,7 @@ module CN_initMod
 
     ! initialize filters
 
-    call init_filter_type               (bounds, nch, ityp, fveg,  filter)
+    call allocFilters                  (bounds, nch, ityp, fveg)
 
     ! read parameters and configurations from namelist file
 

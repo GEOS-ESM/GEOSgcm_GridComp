@@ -12,7 +12,9 @@ module filterMod
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_filter_type
+  public allocFilters         ! allocate memory for filters
+  ! PRIVATE
+  private :: init_filter_type
 
 
 
@@ -96,9 +98,33 @@ module filterMod
 
   ! This is the standard set of filters, which should be used in most places in the code.
   ! These filters only include 'active' points.
-  type(clumpfilter), public, target, save :: filter
+    type(clumpfilter), allocatable, public :: filter(:)
 
 contains
+
+  !------------------------------------------------------------------------
+  subroutine allocFilters(bounds, nch, ityp, fveg)
+    !
+    ! !DESCRIPTION:
+    ! Allocate CLM filters.
+    !
+    ! !REVISION HISTORY:
+    ! Created by Bill Sacks
+
+  ! !ARGUMENTS:                                                                                                           
+    implicit none
+    ! INPUT/OUTPUT
+    type(bounds_type),                                intent(in) :: bounds
+    integer,                                          intent(in) :: nch         ! number of Catchment tiles
+    integer, dimension(nch,num_veg,num_zon),          intent(in) :: ityp ! PFT index
+    real, dimension(nch,num_veg,num_zon),             intent(in) :: fveg    ! PFT fraction 
+
+    !------------------------------------------------------------------------
+
+    call init_filter_type(bounds, nch, ityp, fveg,  filter)
+    
+
+  end subroutine allocFilters
 
 !--------------------------------------------------------------
   subroutine init_filter_type(bounds, nch, ityp, fveg,  this_filter)
@@ -115,110 +141,110 @@ contains
     integer,                                          intent(in) :: nch         ! number of Catchment tiles
     integer, dimension(nch,num_veg,num_zon),          intent(in) :: ityp ! PFT index
     real, dimension(nch,num_veg,num_zon),             intent(in) :: fveg    ! PFT fraction 
-    type(clumpfilter),                                intent(inout):: this_filter(:)  ! the filter to allocate
+    type(clumpfilter), intent(inout), allocatable :: this_filter(:)  ! the filter to allocate
  
     ! LOCAL:
     integer :: n, nc ,nz, p, np, nv
 
     !--------------------------------------
 
-!       if( .not. allocated(this_filter)) then
-!          allocate(this_filter(1))
-!       end if
+       if( .not. allocated(this_filter)) then
+          allocate(this_filter(1))
+       end if
 
-       allocate(this_filter%allc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%allc(bounds%endc-bounds%begc+1))
 
-       allocate(this_filter%lakep(bounds%endp-bounds%begp+1))
-       allocate(this_filter%nolakep(bounds%endp-bounds%begp+1))
-       allocate(this_filter%nolakeurbanp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%lakep(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%nolakep(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%nolakeurbanp(bounds%endp-bounds%begp+1))
 
-       allocate(this_filter%lakec(bounds%endc-bounds%begc+1))
-       allocate(this_filter%nolakec(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%lakec(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%nolakec(bounds%endc-bounds%begc+1))
 
-       allocate(this_filter%soilc(bounds%endc-bounds%begc+1))
-       allocate(this_filter%soilp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%soilc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%soilp(bounds%endp-bounds%begp+1))
 
-       allocate(this_filter%snowc(bounds%endc-bounds%begc+1))
-       allocate(this_filter%nosnowc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%snowc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%nosnowc(bounds%endc-bounds%begc+1))
 
-       allocate(this_filter%lakesnowc(bounds%endc-bounds%begc+1))
-       allocate(this_filter%lakenosnowc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%lakesnowc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%lakenosnowc(bounds%endc-bounds%begc+1))
 
-       allocate(this_filter%exposedvegp(bounds%endp-bounds%begp+1))
-       allocate(this_filter%noexposedvegp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%exposedvegp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%noexposedvegp(bounds%endp-bounds%begp+1))
 
-       allocate(this_filter%natvegp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%natvegp(bounds%endp-bounds%begp+1))
 
-       allocate(this_filter%hydrologyc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%hydrologyc(bounds%endc-bounds%begc+1))
 
-       allocate(this_filter%urbanp(bounds%endp-bounds%begp+1))
-       allocate(this_filter%nourbanp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%urbanp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%nourbanp(bounds%endp-bounds%begp+1))
 
-       allocate(this_filter%urbanc(bounds%endc-bounds%begc+1))
-       allocate(this_filter%nourbanc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%urbanc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%nourbanc(bounds%endc-bounds%begc+1))
 
-       allocate(this_filter%urbanl(bounds%endl-bounds%begl+1))
-       allocate(this_filter%nourbanl(bounds%endl-bounds%begl+1))
+       allocate(this_filter(1)%urbanl(bounds%endl-bounds%begl+1))
+       allocate(this_filter(1)%nourbanl(bounds%endl-bounds%begl+1))
 
-       allocate(this_filter%pcropp(bounds%endp-bounds%begp+1))
-       allocate(this_filter%soilnopcropp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%pcropp(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%soilnopcropp(bounds%endp-bounds%begp+1))
 
-       allocate(this_filter%icemecc(bounds%endc-bounds%begc+1))
-       allocate(this_filter%do_smb_c(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%icemecc(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%do_smb_c(bounds%endc-bounds%begc+1))
 
-       allocate(this_filter%actfirec(bounds%endc-bounds%begc+1))
-       allocate(this_filter%actfirep(bounds%endp-bounds%begp+1))
+       allocate(this_filter(1)%actfirec(bounds%endc-bounds%begc+1))
+       allocate(this_filter(1)%actfirep(bounds%endp-bounds%begp+1))
 
-       this_filter%num_actfirep = 1
-       this_filter%num_actfirec = 1
+       this_filter(1)%num_actfirep = 1
+       this_filter(1)%num_actfirec = 1
       
       ! initialize
  
-      this_filter%num_soilc = 0
-      this_filter%num_soilp = 0
-      this_filter%num_pcropp = 0 
-      this_filter%num_exposedvegp = 0
-      this_filter%num_noexposedvegp = 0
-      this_filter%num_nourbanp = 0
-      this_filter%num_allc = 0      
+      this_filter(1)%num_soilc = 0
+      this_filter(1)%num_soilp = 0
+      this_filter(1)%num_pcropp = 0 
+      this_filter(1)%num_exposedvegp = 0
+      this_filter(1)%num_noexposedvegp = 0
+      this_filter(1)%num_nourbanp = 0
+      this_filter(1)%num_allc = 0      
 
       n = 0
       do nc = 1,nch
          do nz = 1,num_zon
             n = n + 1
 
-            this_filter%num_soilc = this_filter%num_soilc + 1
-            this_filter%soilc(this_filter%num_soilc) = n 
-            this_filter%num_allc = this_filter%num_allc + 1
-            this_filter%allc(this_filter%num_allc) = n
+            this_filter(1)%num_soilc = this_filter(1)%num_soilc + 1
+            this_filter(1)%soilc(this_filter(1)%num_soilc) = n 
+            this_filter(1)%num_allc = this_filter(1)%num_allc + 1
+            this_filter(1)%allc(this_filter(1)%num_allc) = n
 
             do p = 0,numpft  ! PFT index loop
                np = np + 1
                do nv = 1,num_veg ! defined veg loop
                   if(ityp(nc,nv,nz)==p) then
                     
-                    this_filter%num_nourbanp = this_filter%num_nourbanp + 1
-                    this_filter%nourbanp(this_filter%num_nourbanp) = np
+                    this_filter(1)%num_nourbanp = this_filter(1)%num_nourbanp + 1
+                    this_filter(1)%nourbanp(this_filter(1)%num_nourbanp) = np
 
-                    this_filter%num_soilp = this_filter%num_soilp + 1
-                    this_filter%soilp(this_filter%num_soilp) = np
+                    this_filter(1)%num_soilp = this_filter(1)%num_soilp + 1
+                    this_filter(1)%soilp(this_filter(1)%num_soilp) = np
 
                     ! jkolassa: not sure this is needed, since we do not use prognostic crop information
                     if(ityp(nc,nv,nz) >= npcropmin) then
-                      this_filter%num_pcropp = this_filter%num_pcropp + 1
-                      this_filter%pcropp(this_filter%num_pcropp) = np
+                      this_filter(1)%num_pcropp = this_filter(1)%num_pcropp + 1
+                      this_filter(1)%pcropp(this_filter(1)%num_pcropp) = np
                     endif
 
 
                     if (fveg(nc,nv,nz)>1.e-4) then
 
-                       this_filter%num_exposedvegp = this_filter%num_exposedvegp + 1
-                       this_filter%exposedvegp(this_filter%num_exposedvegp) = np
+                       this_filter(1)%num_exposedvegp = this_filter(1)%num_exposedvegp + 1
+                       this_filter(1)%exposedvegp(this_filter(1)%num_exposedvegp) = np
 
                     elseif (fveg(nc,nv,nz)<=1.e-4) then
             
-                       this_filter%num_noexposedvegp = this_filter%num_noexposedvegp + 1
-                       this_filter%noexposedvegp(this_filter%num_noexposedvegp) = np
+                       this_filter(1)%num_noexposedvegp = this_filter(1)%num_noexposedvegp + 1
+                       this_filter(1)%noexposedvegp(this_filter(1)%num_noexposedvegp) = np
                        
                     end if
                   end if
