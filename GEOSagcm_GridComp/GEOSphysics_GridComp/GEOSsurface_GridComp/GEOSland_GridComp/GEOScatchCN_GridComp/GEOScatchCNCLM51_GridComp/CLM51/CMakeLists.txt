@@ -76,6 +76,7 @@ set (srcs
   CNFireLi2014Mod.F90
   CNFireLi2016Mod.F90
   CNFireLi2021Mod.F90
+  CNFireNoFireMod.F90
   CNGapMortalityMod.F90
   CNGRespMod.F90
   CN_init_mod.F90
