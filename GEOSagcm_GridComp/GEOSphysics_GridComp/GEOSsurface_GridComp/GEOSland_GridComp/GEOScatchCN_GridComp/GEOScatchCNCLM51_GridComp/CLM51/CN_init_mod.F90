@@ -178,7 +178,7 @@ module CN_initMod
 
     ! initialize filters
 
-    call init_filter_type               (bounds, nch, ityp, fveg,  filter(1))
+    call init_filter_type               (bounds, nch, ityp, fveg,  filter)
 
     ! read parameters and configurations from namelist file
 
@@ -212,7 +212,7 @@ module CN_initMod
 
     call init_ozone_base_type           (bounds, ozone_inst)
 
-    call photosyns_inst%Init            (bounds, nch, ityp, fveg, cncol, cnpft, photosyns_inst, cn5_cold_start)
+    call photosyns_inst%Init            (photosyns_inst, bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
     call init_pftcon_type               (pftcon)
 
