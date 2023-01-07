@@ -242,7 +242,7 @@
     update_ocn_f    = .false.
     l_mpond_fresh   = .false.
     tfrz_option     = 'linear_salt'
-    oceanmixed_ice  = .true.
+    oceanmixed_ice  = .false.
     wave_spec_type  = 'none'
     wave_spec_file  = 'unknown_wave_spec_file'
     nfreq           = 25
