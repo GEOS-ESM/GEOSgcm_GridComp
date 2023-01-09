@@ -43,6 +43,8 @@ module CNCLM_DriverMod
  use CNVegNitrogenFluxType       , only : cnveg_nitrogenflux_type
  use CNVegNitrogenStateType      , only : cnveg_nitrogenstate_type
  use CNProductsMod               , only : cn_products_type
+ use CNFireFactoryMod            , only : CNFireReadNM, create_cnfire_method
+ use FireMethodType              , only : fire_method_type
 
   implicit none
   private
@@ -51,16 +53,17 @@ module CNCLM_DriverMod
   public :: CN_Driver
   public :: CN_exit
   public :: get_CN_LAI
+  public :: FireMethodInit
 
-
+  class(fire_method_type) , allocatable :: cnfire_method
 
 contains
 
 !---------------------------------
  subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
-                      abm,peatf,poros,rh30,totwat,bflow,runsrf,sndzn,&
-                      fsnow,tg10d,t2m5d,sndzn5d, cnfire_method, &
+                      abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
+                      fsnow,tg10d,t2m5d,sndzn5d, &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
@@ -95,8 +98,8 @@ contains
  real, dimension(nch), intent(in) :: gdp       ! Real GDP (K 1995US$/capita)
  real, dimension(nch), intent(in) :: abm       ! Peak month for agricultural fire, unitless
  real, dimension(nch), intent(in) :: peatf     ! Fraction of peatland, unitless (0-1)
-! real, dimension(nch), intent(in) :: hdm       ! Human population density in 2010 (individual/km2)
-! real, dimension(nch), intent(in) :: lnfm      ! Lightning frequency [Flashes/km^2/day]
+ real, dimension(nch), intent(in) :: hdm       ! Human population density in 2010 (individual/km2)
+ real, dimension(nch), intent(in) :: lnfm      ! Lightning frequency [Flashes/km^2/day]
  real, dimension(nch), intent(in) :: poros     ! porosity
  real, dimension(nch), intent(in) :: rh30      ! 30-day running mean of relative humidity
  real, dimension(nch), intent(in) :: totwat    ! soil liquid water content [kg m^-2]
@@ -107,7 +110,6 @@ contains
  real, dimension(nch), intent(in) :: tg10d     ! 10-day running mean of ground temperature [K]
  real, dimension(nch), intent(in) :: t2m5d     ! 5-day running mean of daily minimum 2m temperature [K]
  real, dimension(nch), intent(in) :: sndzn5d   ! 5-day running mean of total snow depth
- class(fire_method_type) , intent(in) :: cnfire_method
 
  ! OUTPUT
 
@@ -188,7 +190,6 @@ contains
  type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
  type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
  type(canopystate_type)                 :: canopystate_inst
- type(soil_water_retention_curve_type)  :: soil_water_retention_curve
  type(crop_type)                        :: crop_inst
  type(ch4_type)                         :: ch4_inst
  type(photosyns_type)                   :: photosyns_inst
@@ -199,7 +200,7 @@ contains
  type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
 
- real, dimension(nch*NUM_ZON*(numpft+1)) ::pwtgcell
+ real ::pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.
  integer  :: n, p, nc, nz, np, nv
@@ -215,6 +216,9 @@ contains
      grc%dayl(nc)                          = dayl(nc)
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
+
+     cnfire_method%forc_hdm(nc)  = hdm(nc)
+     cnfire_method%forc_lnfm(nc) = lnfm(nc) 
 
      do nz = 1,num_zon    ! CN zone loop
         n = n + 1
@@ -677,4 +681,26 @@ contains
 
 
   end subroutine get_CN_LAI
+!---------------------------
+
+ subroutine FireMethodInit(bounds,paramfile)
+
+  use MAPL             , only : NetCDF4_FileFormatter
+
+
+  type(bounds_type), intent(in)    :: bounds
+  character(300), intent(in)     :: paramfile
+
+  type(Netcdf4_fileformatter) :: ncid
+  integer            :: rc, status
+  !--------------------------------
+
+  call create_cnfire_method(cnfire_method)
+  call cnfire_method%FireInit(bounds)
+
+  call ncid%open(trim(paramfile),pFIO_READ, __RC__)
+  call cnfire_method%CNFireReadParams( ncid )
+  call ncid%close(rc=status)
+
+  end subroutine FireMethodInit
 end module CNCLM_DriverMod

@@ -71,6 +71,7 @@ module CN_initMod
   use SoilBiogeochemCompetitionMod       , only : readSoilBiogeochemCompetitionParams    => readParams
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
 
+  use CNCLM_Driver     , only : FireMethodInit
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
 
@@ -85,7 +86,7 @@ module CN_initMod
  contains
 
 !------------------------------------------------------
- subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cnfire_method,cn5_cold_start)
+ subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start)
 
   !ARGUMENTS
   implicit none
@@ -264,9 +265,6 @@ module CN_initMod
 
     call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
 
-    call create_cnfire_method(cnfire_method)
-    call cnfire_method%FireInit(bounds)
-
     ! calls to original CTSM initialization routines
 
     ! initialize rooting profile with default values
@@ -301,13 +299,13 @@ module CN_initMod
    call readCNPhenolParams(ncid)
    call readSoilBiogeochemLittVertTranspParams(ncid)
    call photosyns_inst%ReadParams( ncid )
-   call cnfire_method%CNFireReadParams( ncid )
    call readSoilBiogeochemNLeachingParams(ncid)
    call readSoilBiogeochemCompetitionParams(ncid)
    call readSoilBiogeochemPotentialParams(ncid)
 
    call ncid%close(rc=status)
 
+   call FireMethodInit(bounds,paramfile)
 
    if (use_century_decomp) then
       call init_decompcascade_bgc(bounds, soilbiogeochem_state_inst, &
