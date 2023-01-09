@@ -1,34 +1,11 @@
 module CNCLM_DriverMod
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
-  use nanMod           , only : nan
-  use CNVegetationFacade, only : cn_vegetation_type
-  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
+ use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+ use nanMod           , only : nan
+ use CNVegetationFacade, only : cn_vegetation_type
+ use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
                                 var_col, var_pft, nlevgrnd, numpft
-  use clm_varcon       , only : grav, denh2o
-
-  implicit none
-  private
-
-! !PUBLIC MEMBER FUNCTIONS:
-  public :: CN_Driver
-  public :: CN_exit
-  public :: get_CN_LAI
-
-contains
-
-!---------------------------------
- subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
-                      rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
-                      abm,peatf,poros,rh30,totwat,bflow,runsrf,sndzn,&
-                      fsnow,tg10d,t2m5d,sndzn5d, cnfire_method, &
-                      zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
-                      som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
-                      col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
-                      nfix_to_sminng,actual_immobg,fpgg,fpig,sminn_to_plantg,&
-                      sminn_to_npoolg,ndep_to_sminng,totvegng,totlitng,totsomng,&
-                      retransng,retransn_to_npoolg,fuelcg,totlitcg,cwdcg,rootcg)
-
+ use clm_varcon       , only : grav, denh2o
  use decompMod, only : bounds_type
  use filterMod, only : clumpfilter
  use SoilBiogeochemCarbonFluxType  , only : soilbiogeochem_carbonflux_type
@@ -64,6 +41,33 @@ contains
  use CNVegCarbonFluxType         , only : cnveg_carbonflux_type
  use CNVegCarbonStateType        , only : cnveg_carbonstate_type
  use CNVegNitrogenFluxType       , only : cnveg_nitrogenflux_type
+ use CNVegNitrogenStateType      , only : cnveg_nitrogenstate_type
+ use CNProductsMod               , only : cn_products_type
+
+  implicit none
+  private
+
+! !PUBLIC MEMBER FUNCTIONS:
+  public :: CN_Driver
+  public :: CN_exit
+  public :: get_CN_LAI
+
+
+
+contains
+
+!---------------------------------
+ subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
+                      rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
+                      abm,peatf,poros,rh30,totwat,bflow,runsrf,sndzn,&
+                      fsnow,tg10d,t2m5d,sndzn5d, cnfire_method, &
+                      zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
+                      som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
+                      col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
+                      nfix_to_sminng,actual_immobg,fpgg,fpig,sminn_to_plantg,&
+                      sminn_to_npoolg,ndep_to_sminng,totvegng,totlitng,totsomng,&
+                      retransng,retransn_to_npoolg,fuelcg,totlitcg,cwdcg,rootcg)
+
 
  !ARGUMENTS
  implicit none
@@ -119,7 +123,6 @@ contains
   real, dimension(nch),                 intent(out) :: neeg ! (gC/m2/s) net ecosystem exchange of carbon, includes fire, landuse, harvest, and hrv_xsmrpool flux, positive for source [column]
 
   real, dimension(nch),                 intent(out) :: fuelcg          ! fuel avalability for non-crop areas outside tropical closed broadleaf evergreen closed forests (gC/m2)
-  real, dimension(nch),                 intent(out) :: totlitcg        ! (gC/m2) total litter carbon
   real, dimension(nch),                 intent(out) :: totlitcg        ! (gC/m2) total litter carbon
   real, dimension(nch),                 intent(out) :: cwdcg            ! (gC/m2) coarse woody debris C
   real, dimension(nch),                 intent(out) :: rootcg          ! (gC/m2) total root carbon
@@ -185,7 +188,7 @@ contains
  type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
  type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
  type(canopystate_type)                 :: canopystate_inst
- type(soil_water_retention_curve_type)  :: soil_water_retention_curve_inst
+ type(soil_water_retention_curve_type)  :: soil_water_retention_curve
  type(crop_type)                        :: crop_inst
  type(ch4_type)                         :: ch4_inst
  type(photosyns_type)                   :: photosyns_inst
@@ -194,7 +197,9 @@ contains
  type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
  type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
  type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
+ type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
 
+ real, dimension(nch*NUM_ZON*(numpft+1)) ::pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.
  integer  :: n, p, nc, nz, np, nv
@@ -466,6 +471,24 @@ contains
   real, dimension(nch,num_zon,num_veg,var_pft), intent(out) :: cnpft ! PFT-level restart variables
 
   ! LOCAL
+
+ type(bounds_type)                      :: bounds
+ type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
+ type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
+ type(gridcell_type)                    :: grc
+ type(cn_vegetation_type)               :: bgc_vegetation_inst
+ type(cnveg_state_type)                 :: cnveg_state_inst
+ type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
+ type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
+ type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
+ type(canopystate_type)                 :: canopystate_inst
+ type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
+ type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
+ type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
+ type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
+ type(cn_products_type)                  :: c_products_inst
+ type(cn_products_type)                  :: n_products_inst
+
   integer :: n, p, nv, nc, nz, np, nd
   integer, dimension(8) :: decomp_cpool_cncol_index = (/ 3, 4, 5, 2, 10, 11, 12, 13 /)
   integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17,25, 26, 27, 28 /)
@@ -474,7 +497,7 @@ contains
   n = 0
   np = 0
   do nc = 1,nch        ! catchment tile loop
-    do nz = 1,nzone    ! CN zone loop
+    do nz = 1,num_zon    ! CN zone loop
       n = n + 1
 
       cncol(nc,nz, 1) = soilbiogeochem_carbonstate_inst%ctrunc_vr_col(n,1)

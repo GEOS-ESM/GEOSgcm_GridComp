@@ -80,7 +80,8 @@ module CN_initMod
  private 
 
  type(photosyns_type), public            :: photosyns_inst
- 
+ class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
+
  contains
 
 !------------------------------------------------------
@@ -139,7 +140,6 @@ module CN_initMod
   type(waterstate_type)                   :: waterstate_inst
   type(frictionvel_type)                  :: frictionvel_inst
   type(cn_vegetation_type)               :: bgc_vegetation_inst
-  class(nutrient_competition_method_type),  allocatable :: nutrient_competition_method
 
   character(300)     :: paramfile
   character(300)     :: NLFilename
