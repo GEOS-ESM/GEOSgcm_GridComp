@@ -79,6 +79,8 @@ module CN_initMod
  implicit none 
  private 
 
+ type(photosyns_type), public            :: photosyns_inst
+ 
  contains
 
 !------------------------------------------------------
@@ -115,7 +117,6 @@ module CN_initMod
   type(solarabs_type)                     :: solarabs_inst
   type(surfalb_type)                      :: surfalb_inst
   type(ozone_base_type)                   :: ozone_inst
-  type(photosyns_type), public            :: photosyns_inst
   type(pftcon_type)                       :: pftcon
   type(waterflux_type)                    :: waterflux_inst
   type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
