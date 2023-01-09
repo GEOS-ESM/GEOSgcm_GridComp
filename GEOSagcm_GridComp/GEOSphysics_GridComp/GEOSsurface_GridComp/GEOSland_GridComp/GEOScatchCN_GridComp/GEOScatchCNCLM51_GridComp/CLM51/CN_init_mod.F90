@@ -114,8 +114,8 @@ module CN_initMod
   type(canopystate_type)                  :: canopystate_inst
   type(solarabs_type)                     :: solarabs_inst
   type(surfalb_type)                      :: surfalb_inst
-  type(ozone_base_type)                        :: ozone_inst
-  type(photosyns_type)                    :: photosyns_inst
+  type(ozone_base_type)                   :: ozone_inst
+  type(photosyns_type), public            :: photosyns_inst
   type(pftcon_type)                       :: pftcon
   type(waterflux_type)                    :: waterflux_inst
   type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
@@ -145,7 +145,7 @@ module CN_initMod
   type(Netcdf4_fileformatter) :: ncid
   integer            :: rc, status
 
-  integer, private, parameter :: zeng_2001_root    = 0 !the zeng 2001 root profile function
+  integer, parameter :: zeng_2001_root    = 0 !the zeng 2001 root profile function
   !-----------------------------------------
 
 ! initialize CN model
@@ -211,7 +211,7 @@ module CN_initMod
 
     call init_ozone_base_type           (bounds, ozone_inst)
 
-    call photosyns_inst%Init            (photosyns_inst, bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
+    call photosyns_inst%Init            (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
     call init_pftcon_type               (pftcon)
 
