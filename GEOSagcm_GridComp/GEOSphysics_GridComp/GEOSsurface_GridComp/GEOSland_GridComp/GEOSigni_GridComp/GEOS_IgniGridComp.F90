@@ -34,9 +34,9 @@ module GEOS_IgniGridCompMod
 ! gridded component for these parameters.  (A restart *is* now
 ! required for Vegetation Class 3 \\
 !
-! INTERNALS: ITY, Z2CH, ASCATZ0\\
+! INTERNALS: \\
 !
-! EXPORTS:  LAI, GRN, NDVI\\
+! EXPORTS:  \\
 !
 ! !USES:
 
@@ -422,6 +422,12 @@ contains
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__)
 
+     call MAPL_AddExportSpec(GC,                   & 
+         SHORT_NAME = 'DBG3',                      &
+         LONG_NAME  = 'DEBUG',                     &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
 !EOS
 
@@ -450,7 +456,7 @@ contains
 ! RUN -- Run method for the vegdyn component
 ! -----------------------------------------------------------
 
-  subroutine RUN (GC,IMPORT, EXPORT, CLOCK, RC )
+  subroutine RUN (GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! -----------------------------------------------------------
 ! !ARGUMENTS:
@@ -530,7 +536,7 @@ contains
 
     real, dimension(:), pointer :: VPD
 
-    real, dimension(:), pointer :: DBG1, DBG2
+    real, dimension(:), pointer :: DBG1, DBG2, DBG3
   
 ! Others
     type(ESMF_Time)         :: time
@@ -558,10 +564,12 @@ contains
     logical, allocatable, dimension(:) :: sun_noon
 
 
-    real, parameter :: w_e = 2*MAPL_PI/(24*3600.0)
-    real, parameter :: f_e = 1/w_e
-    real, parameter :: sun_noon_utc = (12 + 0.5)*3600
+    real, parameter :: f_e = (24*3600)/(2*MAPL_PI)
+    real, parameter :: sun_noon_utc = 12*3600.0
 
+
+    real,    allocatable, dimension(:) :: LSHA0, LSHA1
+    logical, allocatable, dimension(:) :: isNoon
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -644,6 +652,8 @@ contains
 
     call MAPL_GetPointer(EXPORT,   DBG1,  'DBG1',  alloc=.true.,   __RC__)
     call MAPL_GetPointer(EXPORT,   DBG2,  'DBG2',  alloc=.true.,   __RC__)
+    call MAPL_GetPointer(EXPORT,   DBG3,  'DBG3',  alloc=.true.,   __RC__)
+
 
 ! Fire weather indexes in the CFFWI
 ! ---------------------------------
@@ -701,40 +711,6 @@ contains
         tmpDC   = DC_
 
 
-        ! TODO: pick a name for this component, e.g., FIRE as in fire
-        !                                             IGNI as in fire
-        !                                             WOLF as in wild|open|land|fires
-        !                                             FURY as in Fire UR-sYstem  (prefix: ur-, primitive; original; earliest)
-        ! TODO: FIRE G.C. does not reproduce,  
-        !       it looks like PRLAND or PCU+PLS+SNO 
-        !       needs to be added to import restart!!!
-        !
-        !       import netCDF4 as nc4
-        !       import numpy as np
-        !       
-        !       f1 = nc4.Dataset('fires_internal_checkpoint.20170108_210000.1')
-        !       f2 = nc4.Dataset('fires_internal_checkpoint.20170108_210000.2') 
-        !
-        !       for v in f1.variables.keys():
-        !           print v, np.any(np.abs(f1.variables[v][...]-f2.variables[v][...]) > 0.0)
-        !
-        !       > time False
-        !       > DC True       
-        !       > DMC True      
-        !       > FFMC True     
-        !       > PR True       ***
-        !       > PRA True      ***
-        !       > RH False      ok
-        !       > T False       ok
-        !       > WIND False    ok
-        !
-        !       ignition   : ???
-        !       emissions  : E = <E> + E' = <E> + M(I, <I>, <E>, slope) := MM(I, <I>, <E>)
-        !       suppression: E = 0, if (Pr > Pr_no_fire), else E = E*exp(-k*dt)
-        !
-        ! 
-        !
-
         call cffwi_driver(tmpFFMC, tmpDMC, tmpDC, tmpISI, tmpBUI, tmpFWI, tmpDSR, &
                           T_, RH_, WIND_, PR_, month, NT)
 
@@ -780,6 +756,24 @@ contains
         DBG2 = solar_time
  
         deallocate(tmpFFMC, tmpDMC, tmpDC, tmpFWI, tmpISI, tmpBUI, tmpDSR, __STAT__)
+
+
+!!! test 
+        call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
+
+        allocate(LSHA0(NT), LSHA1(NT), isNoon(NT), __STAT__)
+
+        call ESMF_ClockGet(CLOCK, CURRTIME=time, __RC__)
+        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA0, TIME=time, __RC__)
+        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA1, TIME=time+ring_interval, __RC__)
+        isNoon = (LSHA0 <= 0.0) .and. (LSHA1 > 0.0)
+
+        DBG3 = MAPL_UNDEF 
+        where (isNoon) DBG3 = 1.0
+
+        deallocate(LSHA0, LSHA1, isNoon, __STAT__)
+!!! test
+
     end if
 
     call MAPL_TimerOff(MAPL, '-CFFWI')
@@ -796,22 +790,12 @@ contains
 
   subroutine cffwi_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
                           T, RH, wind, Pr, month, N)
-
-  
+ 
+    !
     ! Calculates FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes.
     !
-    ! Default values and units:
-    !     T             = temperature, C
-    !     RH            = relative humidity, %
-    !     wind          = wind speed, m/s
-    !     Pr            = 24hr precipitation, mm
-    !
-    ! Note: 
-    !     The temperature, rel. humidity and wind speed are measured at 
-    !     noon local standard time. The rainfall is defined as the 
-    !     precipitation during the last 24 hours.
 
-    implicit None
+    implicit none
 
     real,    dimension(N), intent(in) :: T, RH, wind, Pr
     integer,               intent(in) :: month
