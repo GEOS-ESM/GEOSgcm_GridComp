@@ -624,6 +624,9 @@ contains
 
         !1) Set current date & time
         ! -----------------------
+
+        call ESMF_CalendarSetDefault ( ESMF_CALKIND_GREGORIAN, rc=status )
+
         call ESMF_TimeSet  ( CURRENT_TIME, YY = AGCM_YY,       &
                                             MM = AGCM_MM,       &
                                             DD = AGCM_DD,       &
