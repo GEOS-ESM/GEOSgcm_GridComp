@@ -425,74 +425,10 @@ subroutine cffwi_indexes(prev_day_ffmc, prev_day_dmc, prev_day_dc, &
     ! update fire behavior indexes
     isi = initial_spread_index(ffmc, wind)
     bui = buildup_index(dmc, dc)
+
     fwi = fire_weather_index(isi, bui)
     dsr = daily_severity_rating(fwi)
 
 end subroutine cffwi_indexes
-
-
-#if (0)
-subroutine cffwi_indexes_grid(prev_day_ffmc, prev_day_dmc, prev_day_dc,        &
-                              T, RH, wind, Pr,                                 &
-                              month,                                           &
-                              ffmc, dmc, dc, isi, bui, fwi, dsr,               &
-                              iks, ike, jks, jke)
-
-    ! Calculates FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes on a grid.
-    !
-    ! Default values and units:
-    !     prev_day_ffmc = previous day FFMC (default = 85)
-    !     prev_day_dmc  = previous day DMC  (default =  6)
-    !     prev_day_dc   = previous day DC   (default = 15)
-    !     T             = temperature, C
-    !     RH            = relative humidity, %
-    !     wind          = wind speed, m/s
-    !     Pr            = 24h precipitation, mm
-    !
-    ! Note: 
-    !     The temperature, rel. humidity and wind speed are measured at 
-    !     noon local standard time. The rain fall is defined as the 
-    !     precipitation during the last 24 hours.
-
-    implicit None
-
-    real, dimension(iks:ike, jks:jke), intent(in)    :: &
-        prev_day_ffmc, prev_day_dmc, prev_day_dc
-
-    real, dimension(iks:ike, jks:jke), intent(in)    :: &
-        T, RH, wind, Pr
-
-    real, dimension(iks:ike, jks:jke), intent(inout) :: &
-        ffmc, dmc, dc, isi, bui, fwi, dsr
-
-    integer, intent(in) :: month, iks, ike, jks, jke
-   
-
-    ! local
-    integer :: i, j
-
-
-    do j = jks, jke
-        do i = iks, ike
-            call cffwi_indexes(prev_day_ffmc(i,j), &
-                               prev_day_dmc(i,j),  &
-                               prev_day_dc(i,j),   &
-                               T(i,j),             &
-                               RH(i,j),            &
-                               wind(i,j),          &
-                               Pr(i,j),            &
-                               month,              &
-                               ffmc(i,j),          &
-                               dmc(i,j),           &
-                               dc(i,j),            &
-                               isi(i,j),           &
-                               bui(i,j),           &
-                               fwi(i,j),           &
-                               dsr(i,j))
-        end do
-    end do
-
-end subroutine cffwi_indexes_grid
-#endif
 
 end module cffwi
