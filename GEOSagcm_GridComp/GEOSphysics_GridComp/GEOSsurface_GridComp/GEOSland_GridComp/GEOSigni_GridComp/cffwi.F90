@@ -30,7 +30,7 @@ real, public, parameter :: DC_INIT   = 15.0
 
 contains
 
-function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
+elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
   
     !
     ! Calculates the Fine Fuel Moisture Code (FFMC).
@@ -40,17 +40,13 @@ function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
     !     T    = temperature, C
     !     RH   = relative humidity, %
     !     w    = wind speed, m/s
-    !     Pr   = 24h precipitation, mm
+    !     Pr   = 24-hour precipitation, mm
     !
     ! Note: 
-    !     The temperature, rel. humidity and wind speed are measured at 
-    !     noon local standard time. The rain fall is defined as the 
-    !     precipitation during the last 24 hours.
+    !     Weather data are measured at local noon.
     !
     
-    implicit None
-
-    real :: fine_fuel_moisture_code
+    implicit none
 
     real, intent(in) :: ffmc, T, RH, wind, Pr
 
@@ -69,7 +65,6 @@ function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
 
     ! fuel moisture content from previous day
     m_0 = 147.2*(101 - f_0) / (59.5 + f_0)
-
     
     ! current fuel moisture content
     m_r = m_0
@@ -106,7 +101,7 @@ function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
         E_w = 0.618*(RH**0.753) + 10*E_H_term + E_T_term
 
         if (m_r < E_w) then
-            k_l = 0.424 * (1 - ((1 - h)**1.7)) + 0.0694 * sqrt(w)* (1 - ((1 -h)**8))
+            k_l = 0.424 * (1 - (1 - h)**1.7) + 0.0694 * sqrt(w)* (1 - (1 - h)**8)
             k_w = k_l * 0.581 * exp(0.0365 * T)
 
             m = E_w - (E_w - m_r)*(10.0**(-k_w))
@@ -126,7 +121,7 @@ end function fine_fuel_moisture_code
 
 
 
-function duff_moisture_code(dmc, T, RH, Pr, month)
+elemental real function duff_moisture_code(dmc, T, RH, Pr, month)
 
     !
     ! Calculates the Duff Moisture Code (DMC).
@@ -135,30 +130,24 @@ function duff_moisture_code(dmc, T, RH, Pr, month)
     !     dmc = previous day DMC (default = 6)
     !     T   = temperature, C
     !     RH  = relative humidity, %
-    !     Pr  = 24h precipitation, mm
+    !     Pr  = 24-hour precipitation, mm
     !     month = [1, 12]
     !
     !  Note: 
-    !     The temperature and rel. humidity are measured at noon 
-    !     local standard time. The rain fall is defined as the 
-    !     precipitation during the last 24 hours.
+    !     Weather data are measured at local noon.
     !
 
-
-    implicit None
-
-    real :: duff_moisture_code
-
-    real, dimension (12), parameter ::                               &
-        EFFECTIVE_DAY_LENGTH = (/ 6.5,  7.5,  9.0, 12.8, 13.9, 13.9, &
-                                 12.4, 10.9,  9.4,  8.0,  7.0,  6.0 /)
-
+    implicit none
 
     real,    intent (in) :: dmc, T, RH, Pr
     integer, intent (in) :: month
 
 
     !local
+    real, dimension (12), parameter ::                               &
+        EFFECTIVE_DAY_LENGTH = (/ 6.5,  7.5,  9.0, 12.8, 13.9, 13.9, &
+                                 12.4, 10.9,  9.4,  8.0,  7.0,  6.0 /)
+
     real :: p_0, L_e
     real :: p, M_0, b, M_r, p_r, k, r_e
 
@@ -196,16 +185,14 @@ function duff_moisture_code(dmc, T, RH, Pr, month)
     ! if T < -1.1C then k is set to 0.0
     k = 1.894e-6 * max(0.0, (T + 1.1)) * (100 - RH) * L_e
 
-
     ! current DMC
     duff_moisture_code = p + 100*k
-
 
 end function duff_moisture_code
 
 
 
-function drought_code(dc, T, Pr, month)
+elemental real function drought_code(dc, T, Pr, month)
 
     !
     ! Calculates the Drought Code (DC).
@@ -213,29 +200,24 @@ function drought_code(dc, T, Pr, month)
     ! Default values and units:
     !     dc    = previous day DC (default = 15.0)
     !     T     = temperature, C
-    !     Pr    = 24h precipitation, mm
+    !     Pr    = 24-hour precipitation, mm
     !     month = [1..12]
     !
     ! Note: 
-    !     The temperature is measured at noon local standard time. 
-    !     The rain fall is defined as the precipitation during the 
-    !     last 24 hours.
+    !     Weather data are measured at local noon.
     !
 
-    implicit None
-
-    real :: drought_code
-
-    real, dimension(12), parameter ::                             &
-        DAY_LENGTH_FACTOR = (/ -1.6, -1.6, -1.6, 0.9,  3.8,  5.8, &
-                                6.4,  5.0,  2.4, 0.4, -1.6, -1.6 /)
-
+    implicit none
 
     real,    intent(in) :: dc, T, Pr
     integer, intent(in) :: month
 
    
     ! local
+    real, dimension(12), parameter ::                             &
+        DAY_LENGTH_FACTOR = (/ -1.6, -1.6, -1.6, 0.9,  3.8,  5.8, &
+                                6.4,  5.0,  2.4, 0.4, -1.6, -1.6 /)
+
     real :: d_0, L_f
     real :: d, Q_0, Q_r, r_d, d_r, V, result
 
@@ -269,7 +251,7 @@ function drought_code(dc, T, Pr, month)
     end if
 
 
-    ! current DMC
+    ! current DC
     result = d + 0.5*V
 
     drought_code = max(0.0, result)
@@ -278,7 +260,7 @@ end function drought_code
 
 
 
-function initial_spread_index(ffmc, wind)
+elemental real function initial_spread_index(ffmc, wind)
 
     !
     ! Calculates the Initial Spread Index (ISI).
@@ -287,13 +269,11 @@ function initial_spread_index(ffmc, wind)
     !     ffmc  = initial FFMC (default = 85.0)
     !     wind  = wind speed, m/s
     !
-    ! Note: 
-    !     The wind speed is measured at noon local standard time.
+    ! Note:
+    !     Weather data are measured at local noon.
     !
 
-    implicit None
-
-    real :: initial_spread_index
+    implicit none
 
     real, intent (in) :: ffmc, wind
 
@@ -317,7 +297,7 @@ end function initial_spread_index
 
 
 
-function buildup_index(dmc, dc)
+elemental real function buildup_index(dmc, dc)
 
     !
     ! Calculates the Buildup Index (BUI).
@@ -327,9 +307,7 @@ function buildup_index(dmc, dc)
     !     dc  = Drought Code (default = 15.0)
     !
 
-    implicit None
-
-    real :: buildup_index
+    implicit none
 
     real, intent (in) :: dmc, dc
 
@@ -353,7 +331,7 @@ end function buildup_index
 
 
 
-function fire_weather_index(isi, bui)
+elemental real function fire_weather_index(isi, bui)
 
     !
     ! Calculates the Fire Weather Index (FWI).
@@ -363,9 +341,7 @@ function fire_weather_index(isi, bui)
     !     bui = Buildup Index (default = 0.0)
     !
 
-    implicit None
-
-    real :: fire_weather_index
+    implicit none
 
     real, intent(in) :: isi, bui
 
@@ -394,7 +370,7 @@ end function fire_weather_index
 
 
 
-function daily_severity_rating(fwi)
+elemental real function daily_severity_rating(fwi)
 
     !
     ! Calculates the Daily Severity Rating (DSR).
@@ -403,13 +379,11 @@ function daily_severity_rating(fwi)
     !     fwi = Fire Weather Index
     !
 
-    implicit None
-
-    real :: daily_severity_rating
+    implicit none
 
     real, intent(in) :: fwi
 
-
+    ! current DSR
     daily_severity_rating = 0.0272 * fwi**1.77
 
 end function daily_severity_rating
@@ -429,34 +403,29 @@ subroutine cffwi_indexes(prev_day_ffmc, prev_day_dmc, prev_day_dc, &
     !     T             = temperature, C
     !     RH            = relative humidity, %
     !     wind          = wind speed, m/s
-    !     Pr            = 24h precipitation, mm
+    !     Pr            = 24-hour precipitation, mm
     !
     ! Note: 
-    !     The temperature, rel. humidity and wind speed are measured at 
-    !     noon local standard time. The rain fall is defined as the 
-    !     precipitation during the last 24 hours.
+    !     Weather data are measured at local noon.
+    !
 
-    implicit None
+    implicit none
 
     real, intent(in)    :: prev_day_ffmc, prev_day_dmc, prev_day_dc
     real, intent(in)    :: T, RH, wind, Pr
     integer, intent(in) :: month
-    real, intent(inout) :: ffmc, dmc, dc, isi, bui, fwi, dsr
+    real, intent(out)   :: ffmc, dmc, dc, isi, bui, fwi, dsr
 
 
+    ! update fuel moisture codes 
     ffmc = fine_fuel_moisture_code(prev_day_ffmc, T, RH, wind, Pr)
+    dmc  = duff_moisture_code(prev_day_dmc, T, RH, Pr, month)
+    dc   = drought_code(prev_day_dc, T, Pr, month)
 
-    dmc = duff_moisture_code(prev_day_dmc, T, RH, Pr, month)
-
-    dc = drought_code(prev_day_dc, T, Pr, month)
-
-
+    ! update fire behavior indexes
     isi = initial_spread_index(ffmc, wind)
-
     bui = buildup_index(dmc, dc)
-
     fwi = fire_weather_index(isi, bui)
-
     dsr = daily_severity_rating(fwi)
 
 end subroutine cffwi_indexes
