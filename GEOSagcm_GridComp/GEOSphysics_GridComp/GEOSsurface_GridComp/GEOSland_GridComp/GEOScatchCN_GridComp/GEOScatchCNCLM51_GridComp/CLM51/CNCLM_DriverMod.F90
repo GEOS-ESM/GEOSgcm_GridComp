@@ -4,7 +4,7 @@ module CNCLM_DriverMod
  use nanMod           , only : nan
  use CNVegetationFacade, only : cn_vegetation_type
  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
-                                var_col, var_pft, nlevgrnd, numpft
+                                var_col, var_pft, nlevgrnd, numpft, ndecomp_pools
  use clm_varcon       , only : grav, denh2o
  use decompMod, only : bounds_type
  use filterMod, only : clumpfilter
@@ -43,7 +43,7 @@ module CNCLM_DriverMod
  use CNVegNitrogenFluxType       , only : cnveg_nitrogenflux_type
  use CNVegNitrogenStateType      , only : cnveg_nitrogenstate_type
  use CNProductsMod               , only : cn_products_type
- use CNFireFactoryMod            , only : CNFireReadNM, create_cnfire_method
+ use CNFireFactoryMod            , only : create_cnfire_method
  use FireMethodType              , only : fire_method_type
 
   implicit none
@@ -54,8 +54,6 @@ module CNCLM_DriverMod
   public :: CN_exit
   public :: get_CN_LAI
   public :: FireMethodInit
-
-  class(fire_method_type) , allocatable :: cnfire_method
 
 contains
 
@@ -110,6 +108,7 @@ contains
  real, dimension(nch), intent(in) :: tg10d     ! 10-day running mean of ground temperature [K]
  real, dimension(nch), intent(in) :: t2m5d     ! 5-day running mean of daily minimum 2m temperature [K]
  real, dimension(nch), intent(in) :: sndzn5d   ! 5-day running mean of total snow depth
+
 
  ! OUTPUT
 
@@ -217,8 +216,8 @@ contains
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
 
-     cnfire_method%forc_hdm(nc)  = hdm(nc)
-     cnfire_method%forc_lnfm(nc) = lnfm(nc) 
+     bgc_vegetation_inst%cnfire_method%forc_hdm(nc)  = hdm(nc)
+     bgc_vegetation_inst%cnfire_method%forc_lnfm(nc) = lnfm(nc) 
 
      do nz = 1,num_zon    ! CN zone loop
         n = n + 1
@@ -257,7 +256,7 @@ contains
            temperature_inst%t_ref2m_patch(p) = tairm(nc)
            temperature_inst%soila10_patch(p) = tg10d(nc)
            temperature_inst%t_a5min_patch(p) = t2m5d(nc)
-           cnfire_method%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
+           bgc_vegetation_inst%cnfire_method%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
            wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
            wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
            wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
@@ -389,6 +388,7 @@ contains
      fuelcg(nc) = 0.
      totlitcg(nc) = 0.
      cwdcg(nc) = 0.
+     xsmr(nc) = 0.
 
      neeg(nc) = cnveg_carbonflux_inst%nee_grc(nc)
 
@@ -428,7 +428,7 @@ contains
                   zsai(nc,nv,nz) = canopystate_inst%esai_patch(p)
                   ztai(nc,nv,nz) = canopystate_inst%tlai_patch(p)
 
-                  pwtgcell = fveg(nc,nv,nz)*wtzone(nc,nz) ! PFT weight in catchment tile
+                  pwtgcell = fveg(nc,nv,nz)*CN_zone_weight(nc,nz) ! PFT weight in catchment tile
                   nppg(nc) = nppg(nc) + cnveg_carbonflux_inst%npp_patch(p)*pwtgcell
                   gppg(nc) = gppg(nc) + cnveg_carbonflux_inst%gpp_patch(p)*pwtgcell
                   root(nc) = root(nc) + (cnveg_carbonstate_inst%frootc_patch(p) &
@@ -453,7 +453,8 @@ contains
                                           + cnveg_carbonstate_inst%deadcrootc_storage_patch(p) &
                                           + cnveg_carbonstate_inst%deadcrootc_xfer_patch(p) &
                                           )*pwtgcell
-
+            
+                  xsmr(nc) = xsmr(nc) + cnveg_carbonstate_inst%xsmrpool_patch(p)*pwtgcell
                 end if
              end do ! nv
         end do !np
@@ -537,7 +538,7 @@ contains
 
       do p = 0,numpft  ! PFT index loop
         np = np + 1
-        do nv = 1,nveg ! defined veg loop
+        do nv = 1,num_veg ! defined veg loop
 
           if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
             cnpft(nc,nz,nv,  1) = cnveg_carbonstate_inst%cpool_patch                 (np)
@@ -614,7 +615,7 @@ contains
             cnpft(nc,nz,nv, 72) = canopystate_inst%htop_patch                        (np)
             cnpft(nc,nz,nv, 73) = canopystate_inst%tlai_patch                        (np)
             cnpft(nc,nz,nv, 74) = canopystate_inst%tsai_patch                        (np)
-            cnpft(nc,nz,nv, 75) = cnveg_carbonflux_inst%plant_ndemand_patch          (np)
+            cnpft(nc,nz,nv, 75) = cnveg_nitrogenflux_inst%plant_ndemand_patch        (np)
             cnpft(nc,nz,nv, 76) = canopystate_inst%vegwp_patch                       (np,1)
             cnpft(nc,nz,nv, 77) = canopystate_inst%vegwp_patch                       (np,2)
             cnpft(nc,nz,nv, 78) = canopystate_inst%vegwp_patch                       (np,3)
@@ -659,11 +660,11 @@ contains
   n = 0
   np = 0
   do nc = 1,nch        ! catchment tile loop
-    do nz = 1,nzone    ! CN zone loop
+    do nz = 1,num_zon  ! CN zone loop
       n = n + 1
       do p = 0,numpft  ! PFT index loop
         np = np + 1
-        do nv = 1,nveg ! defined veg loop
+        do nv = 1,num_veg ! defined veg loop
 
 ! extract LAI & SAI from CN clmtype
 ! ---------------------------------

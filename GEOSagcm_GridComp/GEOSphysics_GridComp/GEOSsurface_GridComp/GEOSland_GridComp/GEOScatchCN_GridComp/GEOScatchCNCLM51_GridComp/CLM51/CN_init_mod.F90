@@ -82,6 +82,7 @@ module CN_initMod
 
  type(photosyns_type), public            :: photosyns_inst
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
+ class(fire_method_type), allocatable :: cnfire_method
 
  contains
 
@@ -264,6 +265,8 @@ module CN_initMod
     call CNPhenologyInit                (bounds)
 
     call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
+    call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
+    call bgc_vegetation_inst%cnfire_method%CNFireReadParams( params_ncid )
 
     ! calls to original CTSM initialization routines
 
@@ -302,6 +305,7 @@ module CN_initMod
    call readSoilBiogeochemNLeachingParams(ncid)
    call readSoilBiogeochemCompetitionParams(ncid)
    call readSoilBiogeochemPotentialParams(ncid)
+   call bgc_vegetation_inst%cnfire_method%CNFireReadParams( ncid )
 
    call ncid%close(rc=status)
 

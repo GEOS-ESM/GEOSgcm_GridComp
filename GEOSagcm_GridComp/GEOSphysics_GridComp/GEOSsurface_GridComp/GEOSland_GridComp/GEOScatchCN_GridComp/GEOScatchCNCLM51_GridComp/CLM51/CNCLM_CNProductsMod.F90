@@ -21,7 +21,7 @@ module CNProductsMod
 
   ! !PUBLIC TYPES:
   type, public :: cn_products_type
-     private
+    
      ! ------------------------------------------------------------------------
      ! Public instance variables
      ! ------------------------------------------------------------------------
