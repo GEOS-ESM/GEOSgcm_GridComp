@@ -71,7 +71,7 @@ module CN_initMod
   use SoilBiogeochemCompetitionMod       , only : readSoilBiogeochemCompetitionParams    => readParams
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
 
-  use CNCLM_DriverMod  , only : FireMethodInit
+ 
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
 
@@ -266,7 +266,7 @@ module CN_initMod
 
     call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
     call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
-    call bgc_vegetation_inst%cnfire_method%CNFireReadParams( params_ncid )
+ 
 
     ! calls to original CTSM initialization routines
 
