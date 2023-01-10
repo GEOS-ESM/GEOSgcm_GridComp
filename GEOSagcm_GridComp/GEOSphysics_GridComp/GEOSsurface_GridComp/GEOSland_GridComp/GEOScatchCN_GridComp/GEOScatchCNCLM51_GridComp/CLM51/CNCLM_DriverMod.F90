@@ -200,7 +200,7 @@ contains
  type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
 
- real ::pwtgcell
+ real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.
  integer  :: n, p, nc, nz, np, nv
