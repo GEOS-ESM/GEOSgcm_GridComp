@@ -31,7 +31,6 @@ module CNCLM_DriverMod
  use ActiveLayerMod              , only : active_layer_type
  use SoilBiogeochemStateType     , only : soilbiogeochem_state_type
  use CanopyStateType             , only : canopystate_type
- use SoilWaterRetentionCurveMod  , only : soil_water_retention_curve_type
  use CropType                    , only : crop_type
  use ch4Mod                      , only : ch4_type
  use PhotosynthesisMod           , only : photosyns_type
@@ -45,7 +44,10 @@ module CNCLM_DriverMod
  use CNProductsMod               , only : cn_products_type
  use CNFireFactoryMod            , only : create_cnfire_method
  use FireDataBaseType                   , only : fire_base_type
-
+ use CNFireLi2014Mod             , only : cnfire_li2014_type
+ use CNFireLi2016Mod             , only : cnfire_li2016_type
+ use CNFireLi2021Mod             , only : cnfire_li2021_type
+ 
   implicit none
   private
 
@@ -196,8 +198,10 @@ contains
  type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
  type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
  type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
- type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
- type(fire_base_type)                   :: fire_base_inst
+ type(cnveg_nitrogenstate_type)         :: cnveg_nitrogenstate_inst
+ type(cnfire_li2014_type)               :: cnfire_li2014_inst
+ type(cnfire_li2016_type)               :: cnfire_li2016_inst
+ type(cnfire_li2021_type)               :: cnfire_li2021_inst
 
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
@@ -216,8 +220,13 @@ contains
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
 
-     fire_base_inst%forc_hdm(nc)  = hdm(nc)
-     fire_base_inst%forc_lnfm(nc) = lnfm(nc) 
+     cnfire_li2014_inst%forc_hdm(nc)  = hdm(nc)
+     cnfire_li2014_inst%forc_lnfm(nc) = lnfm(nc) 
+     cnfire_li2016_inst%forc_hdm(nc)  = hdm(nc)
+     cnfire_li2016_inst%forc_lnfm(nc) = lnfm(nc)
+     cnfire_li2021_inst%forc_hdm(nc)  = hdm(nc)
+     cnfire_li2021_inst%forc_lnfm(nc) = lnfm(nc)
+
 
      do nz = 1,num_zon    ! CN zone loop
         n = n + 1
@@ -256,7 +265,7 @@ contains
            temperature_inst%t_ref2m_patch(p) = tairm(nc)
            temperature_inst%soila10_patch(p) = tg10d(nc)
            temperature_inst%t_a5min_patch(p) = t2m5d(nc)
-           bgc_vegetation_inst%cnfire_method%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
+          ! bgc_vegetation_inst%cnfire_method%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
            wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
            wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
            wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
@@ -312,7 +321,7 @@ contains
       atm2lnd_inst, waterstatebulk_inst, &
       waterdiagnosticbulk_inst, waterfluxbulk_inst,      &
       wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
-      soil_water_retention_curve, crop_inst, ch4_inst, &
+      crop_inst, ch4_inst, &
       photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,          &
       nutrient_competition_method, fireemis_inst)
 

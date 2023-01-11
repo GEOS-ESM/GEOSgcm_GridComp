@@ -95,7 +95,6 @@ module CNVegetationFacade
   use CNPrecisionControlMod           , only: CNPrecisionControl
   use SoilBiogeochemPrecisionControlMod , only: SoilBiogeochemPrecisionControl
   use GridcellType                    , only : grc
-  use SoilWaterRetentionCurveMod      , only : soil_water_retention_curve_type
   !
   implicit none
   private
@@ -903,7 +902,7 @@ contains
        active_layer_inst, &
        atm2lnd_inst, waterstatebulk_inst, waterdiagnosticbulk_inst, waterfluxbulk_inst,                           &
        wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
-       soil_water_retention_curve, crop_inst, ch4_inst, &
+       crop_inst, ch4_inst, &
        photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,          &
        nutrient_competition_method, fireemis_inst)
     !
@@ -951,7 +950,6 @@ contains
     type(canopystate_type)                  , intent(inout) :: canopystate_inst
     type(soilstate_type)                    , intent(inout) :: soilstate_inst
     type(temperature_type)                  , intent(inout) :: temperature_inst
-    class(soil_water_retention_curve_type)  , intent(in)    :: soil_water_retention_curve
     type(crop_type)                         , intent(inout) :: crop_inst
     type(ch4_type)                          , intent(in)    :: ch4_inst
     type(photosyns_type)                    , intent(in)    :: photosyns_inst
@@ -991,7 +989,7 @@ contains
          active_layer_inst, &
          atm2lnd_inst, waterstatebulk_inst, waterdiagnosticbulk_inst, waterfluxbulk_inst,                           &
          wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
-         soil_water_retention_curve, crop_inst, ch4_inst, &
+         crop_inst, ch4_inst, &
          this%dgvs_inst, photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,          &
          nutrient_competition_method, this%cnfire_method, this%dribble_crophrv_xsmrpool_2atm)
 

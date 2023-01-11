@@ -41,7 +41,6 @@ module CNDriverMod
   use EnergyFluxType                  , only : energyflux_type
   use SaturatedExcessRunoffMod        , only : saturated_excess_runoff_type
   use ActiveLayerMod                  , only : active_layer_type
-  use SoilWaterRetentionCurveMod      , only : soil_water_retention_curve_type
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -99,7 +98,7 @@ contains
        active_layer_inst,                                                                  &
        atm2lnd_inst, waterstatebulk_inst, waterdiagnosticbulk_inst, waterfluxbulk_inst,    &
        wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst,          &
-       soil_water_retention_curve, crop_inst, ch4_inst,            &
+       crop_inst, ch4_inst,            &
        dgvs_inst, photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,                   &
        nutrient_competition_method, cnfire_method, dribble_crophrv_xsmrpool_2atm)
     !
@@ -191,7 +190,6 @@ contains
     type(canopystate_type)                  , intent(inout)    :: canopystate_inst
     type(soilstate_type)                    , intent(inout) :: soilstate_inst
     type(temperature_type)                  , intent(inout) :: temperature_inst
-    class(soil_water_retention_curve_type)  , intent(in)    :: soil_water_retention_curve
     type(crop_type)                         , intent(inout) :: crop_inst
     type(ch4_type)                          , intent(in)    :: ch4_inst
     type(dgvs_type)                         , intent(inout) :: dgvs_inst
@@ -783,7 +781,7 @@ contains
     call cnfire_method%CNFireArea(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
          num_exposedvegp, filter_exposedvegp, num_noexposedvegp, filter_noexposedvegp, &
          atm2lnd_inst, energyflux_inst, saturated_excess_runoff_inst, waterdiagnosticbulk_inst, wateratm2lndbulk_inst, &
-         waterstatebulk_inst, soilstate_inst, soil_water_retention_curve, &
+         waterstatebulk_inst, soilstate_inst,  &
          cnveg_state_inst, cnveg_carbonstate_inst, &
          totlitc_col=soilbiogeochem_carbonstate_inst%totlitc_col(begc:endc), &
          decomp_cpools_vr_col=soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(begc:endc,1:nlevdecomp_full,1:ndecomp_pools), &

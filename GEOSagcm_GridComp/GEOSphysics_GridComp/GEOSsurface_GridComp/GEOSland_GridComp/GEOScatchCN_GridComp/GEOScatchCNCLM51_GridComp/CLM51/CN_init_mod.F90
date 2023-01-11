@@ -70,7 +70,6 @@ module CN_initMod
   use SoilBiogeochemNLeachingMod         , only : readSoilBiogeochemNLeachingParams      => readParams
   use SoilBiogeochemCompetitionMod       , only : readSoilBiogeochemCompetitionParams    => readParams
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
-
  
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
@@ -82,7 +81,7 @@ module CN_initMod
 
  type(photosyns_type), public            :: photosyns_inst
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
- class(fire_method_type), allocatable :: cnfire_method
+ class(fire_method_type),                          allocatable :: cnfire_method
 
  contains
 
@@ -266,7 +265,6 @@ module CN_initMod
 
     call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
     call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
- 
 
     ! calls to original CTSM initialization routines
 

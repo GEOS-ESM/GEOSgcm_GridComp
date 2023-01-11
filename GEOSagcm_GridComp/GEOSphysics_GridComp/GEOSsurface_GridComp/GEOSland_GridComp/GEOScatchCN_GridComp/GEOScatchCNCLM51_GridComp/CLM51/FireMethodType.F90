@@ -118,7 +118,7 @@ module FireMethodType
        num_exposedvegp, filter_exposedvegp, num_noexposedvegp, filter_noexposedvegp, &
        atm2lnd_inst, energyflux_inst, saturated_excess_runoff_inst, &
        waterdiagnosticbulk_inst, wateratm2lndbulk_inst, &
-       waterstatebulk_inst, soilstate_inst, soil_water_retention_curve, &
+       waterstatebulk_inst, soilstate_inst,  &
        cnveg_state_inst, cnveg_carbonstate_inst, totlitc_col, decomp_cpools_vr_col, t_soi17cm_col)
     !
     ! !DESCRIPTION:
@@ -134,7 +134,7 @@ module FireMethodType
     use Wateratm2lndBulkType               , only : wateratm2lndbulk_type
     use WaterStateBulkType                 , only : waterstatebulk_type
     use SoilStateType                      , only : soilstate_type
-    use SoilWaterRetentionCurveMod         , only : soil_water_retention_curve_type
+   ! use SoilWaterRetentionCurveMod         , only : soil_water_retention_curve_type
     use CNVegStateType                     , only : cnveg_state_type
     use CNVegCarbonStateType               , only : cnveg_carbonstate_type
     import :: fire_method_type
@@ -157,7 +157,7 @@ module FireMethodType
     type(wateratm2lndbulk_type)           , intent(in)    :: wateratm2lndbulk_inst
     type(waterstatebulk_type)             , intent(in)    :: waterstatebulk_inst
     type(soilstate_type)                  , intent(in)    :: soilstate_inst
-    class(soil_water_retention_curve_type), intent(in)    :: soil_water_retention_curve
+    !class(soil_water_retention_curve_type), intent(in)    :: soil_water_retention_curve
     type(cnveg_state_type)                , intent(inout) :: cnveg_state_inst
     type(cnveg_carbonstate_type)          , intent(inout) :: cnveg_carbonstate_inst
     real(r8)                              , intent(in)    :: totlitc_col(bounds%begc:)
