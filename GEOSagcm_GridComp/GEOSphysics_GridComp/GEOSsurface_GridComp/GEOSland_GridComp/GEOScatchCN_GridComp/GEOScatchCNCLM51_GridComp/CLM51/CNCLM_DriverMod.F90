@@ -197,6 +197,7 @@ contains
  type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
  type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
+ type(fire_base_type)                   :: fire_base_inst
 
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
@@ -215,8 +216,8 @@ contains
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
 
-     fire_base_type%forc_hdm(nc)  = hdm(nc)
-     fire_base_type%forc_lnfm(nc) = lnfm(nc) 
+     fire_base_inst%forc_hdm(nc)  = hdm(nc)
+     fire_base_inst%forc_lnfm(nc) = lnfm(nc) 
 
      do nz = 1,num_zon    ! CN zone loop
         n = n + 1
