@@ -22,11 +22,11 @@ cd {BCDIR}
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
-ln -s {input_dir} CATCH
 cd ../
 limit stacksize unlimited
 
 setenv MASKFILE {MASKFILE}
+setenv LAND_INPUT_DIR $input_dir
 setenv OMP_NUM_THREADS 1
 bin/mkEASETilesParam.x -ease_label {BCNAME} 
 setenv OMP_NUM_THREADS 1
@@ -131,7 +131,7 @@ def make_ease_bcs(config):
            OUTDIR = tmp_dir, \
            BCNAME = EASElabel, \
            bin_dir = bin_dir, \
-           input_dir = config['inputdir'], \
+           LAND_INPUT_FILE = config['inputdir'], \
            BCJOB =  bcjob, \
            EASEVERSION = grid_type, \
            HRCODE = resolution, \

@@ -757,6 +757,7 @@ while ("$group" == "")
    
 end
 
+setenv LAND_INPUT_DIR $input_dir
 
 #######################################################################
 #                        LatLon Case
@@ -820,7 +821,6 @@ ln -s $input_dir/ocean/MOM6/72x36 data/MOM6/72x36
 ln -s $input_dir/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $input_dir CATCH
 
 cd ../
 
@@ -998,7 +998,6 @@ ln -s $input_dir/ocean/MOM6/72x36 data/MOM6/72x36
 ln -s $input_dir/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $input_dir CATCH
 cd ../
  
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
@@ -1184,7 +1183,6 @@ ln -s $input_dir/ocean/MOM6/72x36 data/MOM6/72x36
 ln -s $input_dir/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $input_dir CATCH
 
 cd ../
  
@@ -1307,10 +1305,25 @@ cd ../../
 /bin/mv    $BCJOB                $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
-/bin/rm -r $OUTDIR
+#/bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
 #bin/mkIrrigTiles.x -b $BCNAME -t CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RC} -p $IRRIGTHRES
+
+if ( -f $EXPDIR/$OUTDIR/../../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data ) then
+
+  ln -s $EXPDIR/../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data 
+  ln -s $EXPDIR/../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_GWD_var_$RC.data $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data 
+  ln -s $EXPDIR/../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_TRB_var_$RC.data $EXPDIR/$OUTDIR/topo_TRB_var_$RC.data 
+
+  /bin/mv    $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data  $BCNAME/.
+  /bin/mv    $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data  $BCNAME/.
+  /bin/mv    $EXPDIR/$OUTDIR/topo_TRB_var_$RC.data  $BCNAME/.
+else
+  echo "TOPO files are missing. You must bring those to" $BCNAME "before running AGCM"
+endif 
+
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB
@@ -1371,7 +1384,6 @@ cd $BCDIR
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
-ln -s $input_dir CATCH
 cd ../
 limit stacksize unlimited
 

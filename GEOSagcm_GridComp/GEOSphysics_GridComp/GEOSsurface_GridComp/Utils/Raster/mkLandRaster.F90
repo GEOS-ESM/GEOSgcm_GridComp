@@ -70,11 +70,13 @@
     character*128          :: GridName
     character*128          :: InputFile
     character*128          :: MaskFile
+    character*300          :: land_input_dir
     character*128          :: &
+
+
     Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -l LandFile -g GridName"
     include 'netcdf.inc'
-    call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ CATCH')
-    call execute_command_line('cd ..')
+    call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
 
 ! Process Arguments
 !------------------
@@ -88,7 +90,7 @@
     rstdir    = 'rst/'   ! Write in current dir
     maxtiles  = 50000
     InputFile = &
-          "data/CATCH/shared/mask/global.cat_id.catch.DL"
+          ''//trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL'
      
     I = command_argument_count()
 
@@ -182,7 +184,7 @@
        ss(i) = sin(xs)
     enddo
 
-    InputFile = 'data/CATCH/shared/mask/'//trim(MaskFile)
+    InputFile = ''//trim(land_input_dir)//'/shared/mask/'//trim(MaskFile)
   
     if (index(trim(MaskFile),'GEOS5_10arcsec_mask')/=0) then
        ! 10 arcsec new mask
@@ -196,7 +198,7 @@
        allocate(geos_msk    (1:nc_esa,1:dy_esa))
        allocate (raster (1:nx, 1:ny)) 
 
-       InputFile = 'data/CATCH/shared/mask/'//trim(MaskFile)
+       InputFile = ''//trim(land_input_dir)//'/shared/mask/'//trim(MaskFile)
 
        status    = NF_OPEN (InputFile, NF_NOWRITE, ncid)
 
@@ -217,7 +219,7 @@
           print *, 'Using Reynolds SSTs MASKFILE',trim(MaskFile)
           reynolds_sst = .true.
   
-          InputFile = 'data/CATCH/shared/mask/GEOS5_10arcsec_mask.nc'
+          InputFile = ''//trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc'
           status    = NF_OPEN (InputFile, NF_NOWRITE, ncid2)
           allocate(geos_msk2    (1:nc_esa,1:dy_esa))
        endif

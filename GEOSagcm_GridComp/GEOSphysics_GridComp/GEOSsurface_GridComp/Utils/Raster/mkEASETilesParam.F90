@@ -62,7 +62,7 @@ PROGRAM mkEASETilesParam
       integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX
       REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
       character*100 :: veg_class (12)
-      character*100 :: gfile,gtopo30
+      character*200 :: gfile,gtopo30
       integer :: nc_ease,nr_ease, N_args, command_argument_count 
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
       character(40) :: arg, EASElabel_ 
@@ -75,6 +75,9 @@ PROGRAM mkEASETilesParam
       character(len=6)       :: EASE_Version
       character(len=10)      :: nc_string, nr_string
       character(128)         :: usage1, usage2
+
+      character*300          :: land_input_dir
+      call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
 
       ! --------------------------------------------------------------------------------------
 
@@ -120,7 +123,7 @@ PROGRAM mkEASETilesParam
      ! endif      
       
       ! WY noted: should do it in the script that calls this program 
-      !call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ CATCH')  
+      !call execute_command_line('cd data/ ; '//trim(land_input_dir)//'/')
       !call execute_command_line('cd ..')
       
       ! Setting EASE Grid specifications
@@ -197,7 +200,7 @@ PROGRAM mkEASETilesParam
          allocate(geos_msk    (1:nc_esa,1:dy_esa))
          allocate(SRTM_CatchArea (1:SRTM_maxcat))
 
-         OPEN (10, FILE = 'data/CATCH/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat', &
+         OPEN (10, FILE = ''//trim(land_input_dir)//'/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat', &
               FORM = 'FORMATTED',STATUS='OLD',ACTION='READ') 
 
          READ (10,*) I
@@ -217,7 +220,7 @@ PROGRAM mkEASETilesParam
          catid_index  = 0
          veg          = 0
          
-         status    = NF90_OPEN ('data/CATCH/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
+         status    = NF90_OPEN (''//trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
          status    = nf90_inq_varid(ncid, name='PfafID', varid=varid)
          status    = nf90_get_var(ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/))
          if(status /=0) then
@@ -354,7 +357,7 @@ PROGRAM mkEASETilesParam
          ! 2.5'x2.5' vegetation raster file is global 1min IGBP data 
          ! (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
          
-         open (10,file='data/CATCH/land/veg/pft/v1/sib22.5_v2.0.dat', &
+         open (10,file=''//trim(land_input_dir)//'/land/veg/pft/v1/sib22.5_v2.0.dat', &
               form='unformatted', &
               action='read', convert='big_endian',status='old')
          
@@ -378,7 +381,7 @@ PROGRAM mkEASETilesParam
          !    1 global inland water (lakes) catchment : Pfafstetter ID 6190000
          !    1 global ice catchment                  : Pfafstetter ID 6200000
          
-         open (10,file='data/CATCH/shared/mask/global.cat_id.catch.DL', form='formatted', &
+         open (10,file=''//trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
               action='read', status='old')!
          
          do j=1,j_raster
@@ -404,7 +407,7 @@ PROGRAM mkEASETilesParam
          !  1 global ice catchment                  : tile_index 36718
          ! ------------------------------------------------------------
          
-         open (10,file='data/CATCH/land/topo/'  &
+         open (10,file=''//trim(land_input_dir)//'/land/topo/'  &
               //'PfafstatterDL.rst', form='unformatted',        &
               action='read',convert='little_endian', status='old')
          
@@ -469,7 +472,7 @@ PROGRAM mkEASETilesParam
       allocate(raster      (i_raster,j_raster))
       allocate(q0(nc,nr)) 
       
-      gtopo30 = 'data/CATCH/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
+      gtopo30 = ''//trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
      
       open (10,file=trim(gtopo30),form='unformatted',status='old',convert='little_endian')
       read (10) raster

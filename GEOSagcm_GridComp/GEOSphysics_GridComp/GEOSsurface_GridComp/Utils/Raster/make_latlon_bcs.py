@@ -28,11 +28,11 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s {input_dir} CATCH
 cd ../
 
 if( -e DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f DC{IM}xPC{JM}_{DATENAME}{IMO}{POLENAME}{JMO}.stdout
 setenv MASKFILE {MASKFILE}
+setenv LAND_INPUT_DIR $input_dir
 limit stacksize unlimited
 bin/mkLatLonRaster.x -x {NX} -y {NY}  -t -1 {IM} {JM} >/dev/null
 bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
@@ -179,7 +179,7 @@ def make_cube_bcs(config):
            OUTDIR = tmp_dir, \
            BCNAME = bcname, \
            bin_dir = bin_dir, \
-           input_dir = config['inputdir'], \
+           LAND_INPUT_FILE = config['inputdir'], \
            BCJOB =  bcjob, \
            EASEVERSION = grid_type, \
            HRCODE = resolution, \

@@ -60,6 +60,8 @@ PROGRAM mkCatchParam
   logical              :: process_snow_albedo = .false. 
   character(len=10)    :: nc_string, nr_string
   integer              :: nc_ease, nr_ease
+  
+  !character*300          :: land_input_dir
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -99,8 +101,6 @@ integer :: n_threads=1
 !
 !$OMP ENDPARALLEL
 
-!   call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ CATCH')
-!   call execute_command_line('cd ..')
 
     USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV                       "
     USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640              "
