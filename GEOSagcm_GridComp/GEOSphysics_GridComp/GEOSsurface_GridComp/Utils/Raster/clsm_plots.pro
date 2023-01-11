@@ -257,7 +257,7 @@ dy = NR/NR_plot
 catrow = lonarr(nc)
 cat    = lonarr(nc,dy)
 
-rst_file=path + '/rst/' + gfile+'.rst'
+rst_file=path + '/rst/' + gfile+'*.rst'
 openr,1,rst_file,/F77_UNFORMATTED
 
 for j = 0l, NR_plot -1 do begin
@@ -570,7 +570,7 @@ dy  = NR/NR_movie
 cat = lonarr(nc,dy)
 catrow = lonarr(nc)
 
-rst_file=path + '/rst/' + gfile+'.rst'
+rst_file=path + '/rst/' + gfile+'*.rst'
 openr,1,rst_file,/F77_UNFORMATTED
 
 for j = 0l, NR_movie -1 do begin
@@ -1340,7 +1340,7 @@ pfcr=0l
 
 cat =lonarr(nc)
 catp=lonarr(nc)
-rst_file=path + '/rst/' + gfile+'.rst'
+rst_file=path + '/rst/' + gfile+'*.rst'
 idum=0l
 openr,1,rst_file,/F77_UNFORMATTED
 
@@ -1708,7 +1708,7 @@ dy = JM/NR
 
 catrow  = lonarr (nc)
 tile_id = lonarr (NC, nr)
-rst_file= path + '/rst/' + gfile+'.rst'
+rst_file= path + '/rst/' + gfile+'*.rst'
 
 openr,1,rst_file,/F77_UNFORMATTED
 

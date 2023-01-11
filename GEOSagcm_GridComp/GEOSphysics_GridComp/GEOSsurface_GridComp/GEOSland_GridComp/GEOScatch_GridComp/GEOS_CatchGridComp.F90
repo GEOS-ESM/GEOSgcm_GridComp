@@ -136,7 +136,8 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
+integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: FWETC, FWETL
@@ -227,15 +228,21 @@ subroutine SetServices ( GC, RC )
        call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
     endif
 
-    ! GOSWIM ANOW_ALBEDO 
+    ! SNOW ALBEDO 
+    ! 0 : parameterization based on look-up table 
+    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
+    call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
+
+    ! GOSWIM SNOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0  , __RC__ )
+    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
     ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
     ! __________________________________________
-    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION, label='AEROSOL_DEPOSITION:', DEFAULT=0  , __RC__ )
+    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
+
     call ESMF_ConfigDestroy(SCF, __RC__)
 
 ! Set the Run entry points
@@ -1368,6 +1375,19 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  if (SNOW_ALBEDO_INFO == 1) then
+    call MAPL_AddInternalSpec(GC                  ,&
+       LONG_NAME          = 'effective_snow_albedo'               ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SNOWALB'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+     VERIFY_(STATUS)
+  endif
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
@@ -3763,6 +3783,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: psis
         real, dimension(:),   pointer :: bee
         real, dimension(:),   pointer :: poros
+        real, dimension(:),   pointer :: snowalb
         real, dimension(:),   pointer :: wpwet
         real, dimension(:),   pointer :: cond
         real, dimension(:),   pointer :: gnu
@@ -4130,6 +4151,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
+
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4350,8 +4372,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CM         ,'CM'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
         if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
@@ -4849,9 +4871,25 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
-                 ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                 SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
+                 ALBVR, ALBNR, ALBVF, ALBNF, &  ! instantaneous snow-free albedos on tiles
+                 SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow      albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
+
+        if (SNOW_ALBEDO_INFO == 1) then
+           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
+           call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
+           
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+           
+        endif
 
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
@@ -5530,6 +5568,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+
+        if (SNOW_ALBEDO_INFO == 1) then
+           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+
+        endif
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
