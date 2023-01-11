@@ -92,13 +92,13 @@ contains
 ! ErrLog Variables
 
 
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS
-    character(len=ESMF_MAXSTR)              :: COMP_NAME
+    character(len=ESMF_MAXSTR)  :: IAm
+    integer                     :: STATUS
+    character(len=ESMF_MAXSTR)  :: COMP_NAME
 
 ! Local derived type aliases
 
-    type(MAPL_MetaComp),pointer             :: MAPL=>null()
+    type(MAPL_MetaComp),pointer :: MAPL=>null()
 
 !=============================================================================
 
@@ -126,9 +126,9 @@ contains
 ! -----------------------------------------------------------
 ! Get the intervals
 ! -----------------------------------------------------------
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, __RC__)
+    call MAPL_GetResource(MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, __RC__)
 
-    !call MAPL_GetResource ( MAPL,DT, Label="RUN_DT:", RC=STATUS)
+    !call MAPL_GetResource(MAPL, DT, Label="RUN_DT:", RC=STATUS)
     !VERIFY_(STATUS)
 
     !RUN_DT = nint(DT)
@@ -137,7 +137,7 @@ contains
 ! At the moment, this will refresh when the land parent 
 ! needs to refresh.
 !
-!    call ESMF_ConfigGetFloat ( CF, DT, Label=trim(COMP_NAME)//&
+!    call ESMF_ConfigGetFloat(CF, DT, Label=trim(COMP_NAME)//&
 !    "_DT:", default=DT, RC=STATUS)
 !     VERIFY_(STATUS)
 !
@@ -712,7 +712,7 @@ contains
 
 
         call cffwi_driver(tmpFFMC, tmpDMC, tmpDC, tmpISI, tmpBUI, tmpFWI, tmpDSR, &
-                          T_, RH_, WIND_, PR_, month, NT)
+                          T_, RH_, WIND_, PR_, LATS, month, NT)
 
         ! update internal state
         where (sun_noon)
@@ -789,7 +789,7 @@ contains
 
 
   subroutine cffwi_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
-                          T, RH, wind, Pr, month, N)
+                          T, RH, wind, Pr, latitude, month, N)
  
     !
     ! Calculates FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes.
@@ -797,7 +797,8 @@ contains
 
     implicit none
 
-    real,    dimension(N), intent(in) :: T, RH, wind, Pr
+    real,    dimension(N), intent(in) :: T, RH, wind, Pr 
+    real,    dimension(N), intent(in) :: latitude
     integer,               intent(in) :: month
     integer,               intent(in) :: N
 
@@ -806,15 +807,18 @@ contains
     ! local
     integer :: i
     real    :: T_, RH_, Pr_
+    real    :: lat_
 
     do i = 1, N
         T_  = T(i) - 273.15    ! temperature, C
         RH_ = 100 * RH(i)      ! relative humidity, %
         Pr_ = Pr(i)            ! precip, mm
 
+        lat_ = MAPL_RADIANS_TO_DEGREES * latitude(i)     !  
+
         ffmc(i) = fine_fuel_moisture_code(ffmc(i), T_, RH_, wind(i), Pr_)
         dmc(i)  = duff_moisture_code(dmc(i), T_, RH_, Pr_, month)
-        dc(i)   = drought_code(dc(i), T_, Pr_, month)
+        dc(i)   = drought_code(dc(i), T_, Pr_, lat_, month)
 
         isi(i)  = initial_spread_index(ffmc(i), wind(i))
         bui(i)  = buildup_index(dmc(i), dc(i))

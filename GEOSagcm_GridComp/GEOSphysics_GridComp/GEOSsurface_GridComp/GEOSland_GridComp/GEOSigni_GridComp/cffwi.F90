@@ -1,11 +1,17 @@
 !
-! cffwi.f - Implementation of the Canadian Forest Fire Weather 
-!           Index (CFFWI), Van Wagner, C.E. and  T.L. Picket, 1985
+! Implementation of the Canadian Forest Fire 
+! Canadian Forest Fire Weather Index System (CFFWI)
+!
+! References: 
+! 1) Van Wagner, C.E. and  T.L. Picket, 1985
+! 2) Lawson, B.D. and Armitage, O.B, 2008, Weather guide 
+!    for the Canadian Forest Fire Danger Rating System
 !
 !
-! 
-! Anton Darmenov, NASA GSFC, 2021  -- refactor
-! Anton Darmenov, NASA GSFC, 2010  -- initial implementation
+! Milestones:
+! Anton Darmenov, NASA, 2023 -- adjustments for applying the system globally
+! Anton Darmenov, NASA, 2022 -- refactor
+! Anton Darmenov, NASA, 2010 -- initial implementation
 !
 
 module cffwi
@@ -14,19 +20,22 @@ implicit none
 
 private
 
-public:: fine_fuel_moisture_code
-public:: duff_moisture_code
-public:: drought_code
-public:: initial_spread_index
-public:: buildup_index
-public:: fire_weather_index
-public:: daily_severity_rating
+public :: fine_fuel_moisture_code
+public :: duff_moisture_code
+public :: drought_code
+public :: initial_spread_index
+public :: buildup_index
+public :: fire_weather_index
+public :: daily_severity_rating
 
-public:: cffwi_indexes
+public :: drought_code_lf
+public :: cffwi_indexes
 
 real, public, parameter :: FFMC_INIT = 85.0
 real, public, parameter :: DMC_INIT  =  6.0
 real, public, parameter :: DC_INIT   = 15.0
+
+real, public, parameter :: CFFWI_REFERENCE_LATITUDE = 46.0 ! Canada, 46N
 
 contains
 
@@ -192,7 +201,7 @@ end function duff_moisture_code
 
 
 
-elemental real function drought_code(dc, T, Pr, month)
+elemental real function drought_code(dc, T, Pr, latitude, month)
 
     !
     ! Calculates the Drought Code (DC).
@@ -210,22 +219,18 @@ elemental real function drought_code(dc, T, Pr, month)
     implicit none
 
     real,    intent(in) :: dc, T, Pr
+    real,    intent(in) :: latitude
     integer, intent(in) :: month
 
-   
-    ! local
-    real, dimension(12), parameter ::                             &
-        DAY_LENGTH_FACTOR = (/ -1.6, -1.6, -1.6, 0.9,  3.8,  5.8, &
-                                6.4,  5.0,  2.4, 0.4, -1.6, -1.6 /)
 
+    ! local
     real :: d_0, L_f
     real :: d, Q_0, Q_r, r_d, d_r, V, result
-
-
+    
     ! use the same variable names as in the DC equation and 
     ! convert the units if necessary
     d_0 = dc
-    L_f = DAY_LENGTH_FACTOR(month)
+    L_f = drought_code_lf(latitude, month)
 
 
     d = d_0
@@ -243,11 +248,11 @@ elemental real function drought_code(dc, T, Pr, month)
         d = max(0.0, d_r)
     end if
 
-    ! don't allow T < -2.8C
-    if (T < -2.8) then
-        V = 0.0
-    else
+    ! temperature correction
+    if (T > -2.8) then
         V = 0.36*(T + 2.8) + L_f
+    else
+        V = 0.0
     end if
 
 
@@ -258,6 +263,50 @@ elemental real function drought_code(dc, T, Pr, month)
 
 end function drought_code
 
+
+elemental real function drought_code_lf(latitude, month)
+    
+    !
+    ! Calculates monthly day length adjustment factors for 
+    ! Drought Code (Lf). 
+    ! 
+    ! Includes latitude considerations in adapting the system 
+    ! for global use -- can be applied for northern and southern 
+    ! hemispheres. Based on Appendix 3 in Lawson and Armitage (2008)
+    !
+
+    implicit none
+
+    real,    intent(in) :: latitude  ! degrees
+    integer, intent(in) :: month
+
+   
+    ! local
+    real, dimension(12), parameter :: &
+        DAY_LENGTH_FACTOR = (/ -1.6, -1.6, -1.6, 0.9,  3.8,  5.8, &
+                                6.4,  5.0,  2.4, 0.4, -1.6, -1.6 /)
+   
+    real, parameter :: DAY_LENGTH_FACTOR_EQUATOR = 1.4
+
+    real :: L_f
+
+
+    if (latitude > 10.0) then
+        ! use the reference values (Canada) north of 10N 
+        L_f = DAY_LENGTH_FACTOR(month)
+    else if (latitude < -10.0) then
+        ! reverse the standard values used in Canada for seasons
+        ! in the southern hemisphere: NH Jul -> SH Jan, NH Aug -> SH Feb, etc.  
+        L_f = DAY_LENGTH_FACTOR(mod(month+5, 12) + 1) 
+    else
+        ! for locations near the equator, from 10S to 10N, 
+        ! use the mean DC day length adjustment value (Lf = 1.4) year-round
+        L_f = DAY_LENGTH_FACTOR_EQUATOR
+    end if
+
+    drought_code_lf = L_f
+
+end function drought_code_lf
 
 
 elemental real function initial_spread_index(ffmc, wind)
@@ -391,7 +440,7 @@ end function daily_severity_rating
 
 subroutine cffwi_indexes(prev_day_ffmc, prev_day_dmc, prev_day_dc, &
                          T, RH, wind, Pr,                          &
-                         month,                                    &
+                         latitude, month,                          &
                          ffmc, dmc, dc, isi, bui, fwi, dsr)
 
     ! Calculates FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes.
@@ -414,13 +463,14 @@ subroutine cffwi_indexes(prev_day_ffmc, prev_day_dmc, prev_day_dc, &
     real, intent(in)    :: prev_day_ffmc, prev_day_dmc, prev_day_dc
     real, intent(in)    :: T, RH, wind, Pr
     integer, intent(in) :: month
+    real, intent(in)    :: latitude
     real, intent(out)   :: ffmc, dmc, dc, isi, bui, fwi, dsr
 
 
     ! update fuel moisture codes 
     ffmc = fine_fuel_moisture_code(prev_day_ffmc, T, RH, wind, Pr)
     dmc  = duff_moisture_code(prev_day_dmc, T, RH, Pr, month)
-    dc   = drought_code(prev_day_dc, T, Pr, month)
+    dc   = drought_code(prev_day_dc, T, Pr, latitude, month)
 
     ! update fire behavior indexes
     isi = initial_spread_index(ffmc, wind)

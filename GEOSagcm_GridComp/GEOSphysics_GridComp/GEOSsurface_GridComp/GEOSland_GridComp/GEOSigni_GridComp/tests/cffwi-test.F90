@@ -1,16 +1,15 @@
 !
-! cffwi-test.f - Test the mplementation of the Canadian Forest Fire 
-!                Weather Index (CFFWI), Van Wagner, C.E. and  
-!                T.L. Picket, 1985
+! Test the implementation of the Canadian Forest Fire 
+! Weather Index (CFFWI).
 !
 !
-! Anton Darmenov, ERT/NASA GSFC, 2010
+! Anton Darmenov, NASA, 2022
 !
 
 
 !
 ! Buld executable: 
-!    $ gfortran -g -Wall -o cffwi-test cffwi.f90 cffwi-test.f90
+!    $ gfortran -g -Wall -o cffwi-test cffwi.F90 cffwi-test.F90
 !
 
 program cffwi_test
@@ -18,9 +17,12 @@ program cffwi_test
     use cffwi, only: fine_fuel_moisture_code, duff_moisture_code,       &
                      drought_code, initial_spread_index, buildup_index, &
                      fire_weather_index, daily_severity_rating,         &
-                     cffwi_indexes, FFMC_INIT, DMC_INIT, DC_INIT
+                     cffwi_indexes,                                     &
+                     FFMC_INIT, DMC_INIT, DC_INIT,                      &
+                     CFFWI_REFERENCE_LATITUDE
 
-    implicit None
+
+    implicit none
 
     logical, parameter :: INDIVIDUAL_INDEXES = .False.
 
@@ -33,14 +35,15 @@ program cffwi_test
     real    :: ffmc_pd, dmc_pd, dc_pd
     real    :: ffmc, dmc, dc, fwi, bui, dsr, isi
     real    :: T, RH, wind, rain
+    real    :: latitude
     integer :: month
     
+
+    latitude = CFFWI_REFERENCE_LATITUDE
     
     ffmc_pd = FFMC_DEFAULT
     dmc_pd  = DMC_DEFAULT
     dc_pd   = DC_DEFAULT
-
-    
 
 
     !! conditions - heavy rain
@@ -99,7 +102,7 @@ program cffwi_test
         dmc = duff_moisture_code(dmc_pd, T, RH, rain, month)
 
 
-        dc = drought_code(dc_pd, T, rain, month) 
+        dc = drought_code(dc_pd, T, rain, latitude, month) 
 
         isi = initial_spread_index(ffmc, wind)
         bui = buildup_index(dmc, dc)
@@ -110,7 +113,8 @@ program cffwi_test
         write (*, '(A)') "Testing the cffwi_indexes():"
 
         call cffwi_indexes(ffmc_pd, dmc_pd, dc_pd,   &
-                           T, RH, wind, rain, month, &
+                           T, RH, wind, rain,        &
+                           latitude, month,          &
                            ffmc, dmc, dc, isi, bui, fwi, dsr)
     end if
 
