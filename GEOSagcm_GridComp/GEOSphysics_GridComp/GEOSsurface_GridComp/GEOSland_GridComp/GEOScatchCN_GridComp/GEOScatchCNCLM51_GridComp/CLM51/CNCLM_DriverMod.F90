@@ -265,7 +265,9 @@ contains
            temperature_inst%t_ref2m_patch(p) = tairm(nc)
            temperature_inst%soila10_patch(p) = tg10d(nc)
            temperature_inst%t_a5min_patch(p) = t2m5d(nc)
-          ! bgc_vegetation_inst%cnfire_method%btran2_patch(p)     = btran_fire(nc,nz)  ! only needed if fire method is Li 2016
+           cnfire_li2014_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)  
+           cnfire_li2016_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
+           cnfire_li2021_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
            wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
            wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
            wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
