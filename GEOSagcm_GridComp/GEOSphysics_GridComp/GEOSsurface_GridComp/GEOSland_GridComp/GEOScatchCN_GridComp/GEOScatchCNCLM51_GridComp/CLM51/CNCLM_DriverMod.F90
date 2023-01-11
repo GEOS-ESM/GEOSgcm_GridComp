@@ -44,7 +44,7 @@ module CNCLM_DriverMod
  use CNVegNitrogenStateType      , only : cnveg_nitrogenstate_type
  use CNProductsMod               , only : cn_products_type
  use CNFireFactoryMod            , only : create_cnfire_method
- use FireMethodType              , only : fire_method_type
+ use FireDataBaseType                   , only : fire_base_type
 
   implicit none
   private
@@ -53,7 +53,6 @@ module CNCLM_DriverMod
   public :: CN_Driver
   public :: CN_exit
   public :: get_CN_LAI
-  public :: FireMethodInit
 
 contains
 
@@ -216,8 +215,8 @@ contains
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
 
-     bgc_vegetation_inst%cnfire_method%forc_hdm(nc)  = hdm(nc)
-     bgc_vegetation_inst%cnfire_method%forc_lnfm(nc) = lnfm(nc) 
+     fire_base_type%forc_hdm(nc)  = hdm(nc)
+     fire_base_type%forc_lnfm(nc) = lnfm(nc) 
 
      do nz = 1,num_zon    ! CN zone loop
         n = n + 1
@@ -428,7 +427,7 @@ contains
                   zsai(nc,nv,nz) = canopystate_inst%esai_patch(p)
                   ztai(nc,nv,nz) = canopystate_inst%tlai_patch(p)
 
-                  pwtgcell = fveg(nc,nv,nz)*CN_zone_weight(nc,nz) ! PFT weight in catchment tile
+                  pwtgcell = fveg(nc,nv,nz)*CN_zone_weight(nz) ! PFT weight in catchment tile
                   nppg(nc) = nppg(nc) + cnveg_carbonflux_inst%npp_patch(p)*pwtgcell
                   gppg(nc) = gppg(nc) + cnveg_carbonflux_inst%gpp_patch(p)*pwtgcell
                   root(nc) = root(nc) + (cnveg_carbonstate_inst%frootc_patch(p) &
@@ -684,24 +683,24 @@ contains
   end subroutine get_CN_LAI
 !---------------------------
 
- subroutine FireMethodInit(bounds,paramfile)
-
-  use MAPL             , only : NetCDF4_FileFormatter
-
-
-  type(bounds_type), intent(in)    :: bounds
-  character(300), intent(in)     :: paramfile
-
-  type(Netcdf4_fileformatter) :: ncid
-  integer            :: rc, status
-  !--------------------------------
-
-  call create_cnfire_method(cnfire_method)
-  call cnfire_method%FireInit(bounds)
-
-  call ncid%open(trim(paramfile),pFIO_READ, __RC__)
-  call cnfire_method%CNFireReadParams( ncid )
-  call ncid%close(rc=status)
-
-  end subroutine FireMethodInit
+! subroutine FireMethodInit(bounds,paramfile)
+!
+!  use MAPL             , only : NetCDF4_FileFormatter
+!
+!
+!  type(bounds_type), intent(in)    :: bounds
+!  character(300), intent(in)     :: paramfile
+!
+!  type(Netcdf4_fileformatter) :: ncid
+!  integer            :: rc, status
+!  !--------------------------------
+!
+!  call create_cnfire_method(cnfire_method)
+!  call cnfire_method%FireInit(bounds)
+!
+!  call ncid%open(trim(paramfile),pFIO_READ, __RC__)
+!  call cnfire_method%CNFireReadParams( ncid )
+!  call ncid%close(rc=status)
+!
+!  end subroutine FireMethodInit
 end module CNCLM_DriverMod
