@@ -46,7 +46,7 @@ def get_config_from_answers(answers):
    else:
       input_dir = '/nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/' 
 
-   maskfile = '/shared/mask/'
+   maskfile = 'shared/mask/'
 
    if orslvs in['O1','T2','T3','T4','T1MOM6','T2MOM6','T4MOM6']:
       maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
