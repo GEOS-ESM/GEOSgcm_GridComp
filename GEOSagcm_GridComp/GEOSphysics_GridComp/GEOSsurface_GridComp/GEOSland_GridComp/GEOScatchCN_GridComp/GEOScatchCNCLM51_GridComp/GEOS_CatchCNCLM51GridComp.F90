@@ -5078,7 +5078,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:,:) :: sm   ! soil water as frac of WHC for the 3 dydrological zones at root depth
     real, allocatable, dimension(:) :: SWSRF1, SWSRF2, SWSRF4    ! soil water as frac of WHC for the 3 dydrological zones at surface soil
     real, allocatable, dimension(:,:) :: tcx, qax
-    real, allocatable, dimension(:,:) :: tgw, rzm, sfm,rcxdt, rcxdq,rc00, rcdt,rcdq, totcolc, wtzone
+    real, allocatable, dimension(:,:) :: tgw, rzm, sfm,rc00, rcdt,rcdq, totcolc, wtzone
     real, allocatable, dimension(:,:) :: btran_fire, bt
     real, allocatable, dimension(:,:,:) :: btran,elai,esai,fveg,tlai,psnsun,psnsha,laisun,laisha,lmrsun,lmrsha
     integer, allocatable, dimension(:,:,:) :: ityp
@@ -5146,7 +5146,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: Qair_relative          ! relative humidity (%)
 
     integer :: nz, iv
-    real :: cn1, cn2, cn3, cn12, cn23, ar, f1, f2, f3, f4, ax1, ax2, ax4
+    real :: cn1, cn2, cn3, cn12, cn23, ar, ax1, ax2, ax4
+    real, dimension(fsat:fwlt) :: f1, f2, f3, f4
 
     real, allocatable, dimension(:,:,:,:) ::  albdir, albdif
     integer, allocatable, dimension(:) :: ityp_tmp
@@ -6420,9 +6421,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        end do
        
        bt(:,fsat) = 1.0
-       bt(:,ftrns) = sm(:,ftrns)**(-bee)
+       bt(:,ftrn) = sm(:,ftrn)**(-bee)
        wpp = wpwet ** (-bee)
-       bt(:,ftrns) = (bt(:,ftrns)-wpp)/(1.-wpp)
+       bt(:,ftrn) = (bt(:,ftrn)-wpp)/(1.-wpp)
        bt(:,fwlt) = 0.
  
        do n = 1,ntiles
