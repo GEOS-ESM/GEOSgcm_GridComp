@@ -62,7 +62,7 @@ module GEOS_CatchCNCLM51GridCompMod
   USE MAPL
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
-  use pftvarcon,        only: noveg
+  use pftconMod,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
        catch_calc_zbar, catch_calc_peatclsm_waterlevel, irrigation_rate, &
        gndtmp
@@ -3913,6 +3913,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, allocatable :: ityp(:,:,:)
     real,    allocatable :: fveg(:,:,:), elai(:,:,:), esai(:,:,:), tlai(:,:,:), wtzone(:,:), lai1(:), lai2(:), wght(:)
 
+    real,pointer,dimension(:) :: lats
+    real,pointer,dimension(:) :: lons
+
     integer :: nv, nz, ib
     real    :: bare
     logical, save :: first = .true.
@@ -4229,7 +4232,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start=.true.) 
+      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start=.true.) 
       call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif
@@ -4716,6 +4719,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ar1m   
         real, dimension(:),   pointer :: tpm
         real, dimension(:),   pointer :: cnsum
+        real, dimension(:),   pointer :: psnsunm
+        real, dimension(:),   pointer :: psnsham
         real, dimension(:),   pointer :: sndzm
         real, dimension(:),   pointer :: asnowm
         real, dimension(:,:), pointer :: RDU001
@@ -5074,10 +5079,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: SWSRF1, SWSRF2, SWSRF4    ! soil water as frac of WHC for the 3 dydrological zones at surface soil
     real, allocatable, dimension(:,:) :: tcx, qax
     real, allocatable, dimension(:,:) :: tgw, rzm, sfm,rcxdt, rcxdq,rc00, rcdt,rcdq, totcolc, wtzone
+    real, allocatable, dimension(:,:) :: btran_fire, bt
     real, allocatable, dimension(:,:,:) :: btran,elai,esai,fveg,tlai,psnsun,psnsha,laisun,laisha,lmrsun,lmrsha
     integer, allocatable, dimension(:,:,:) :: ityp
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
+    real, allocatable, dimension(:) :: rcxdt, rcxdq
     real, allocatable, dimension(:) :: dayl, dayl_fac
     real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, frootc, vegc, xsmr,burn, closs
     real, allocatable, dimension(:) :: nfire, som_closs, fsnow
@@ -5643,7 +5650,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! obtain LAI from previous time step (from CN model)
     ! --------------------------------------------------
-    call get_CN_LAI(ntiles,nveg,nzone,ityp,fveg,elai,esai=esai,tlai = tlai)
+    call get_CN_LAI(ntiles,ityp,fveg,elai,esai=esai,tlai = tlai)
 
 ! OPTIONAL IMPOSE MONTHLY MEAN DIURNAL CYCLE FROM NOAA CARBON TRACKER
 ! -------------------------------------------------------------------

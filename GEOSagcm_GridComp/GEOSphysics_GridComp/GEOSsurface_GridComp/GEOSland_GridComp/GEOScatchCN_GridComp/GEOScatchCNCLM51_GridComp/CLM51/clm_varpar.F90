@@ -54,6 +54,7 @@ module clm_varpar
   integer, parameter, PUBLIC :: VAR_COL=35  ! number of CN column restart variables
   integer, parameter, PUBLIC :: VAR_PFT=81  ! number of CN PFT restart variables  
   real, parameter, PUBLIC, dimension(NUM_ZON) :: CN_zone_weight = (/0.10,0.45,0.45/) ! gkw: tunable; must sum to 1
+  integer, parameter, PUBLIC :: map_cat(0:numpft) = (/4,3,3,3,1,1,2,2,2,5,5,6,4,4,4,4/)
 
   ! constants for decomposition cascade
 
