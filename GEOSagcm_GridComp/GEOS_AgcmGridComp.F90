@@ -852,6 +852,12 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC, &
+         SHORT_NAME = 'PPBL', &
+         CHILD_ID   = PHYS,  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC, &
          SHORT_NAME = 'O3PPMV', &
          CHILD_ID   = PHYS,  &
          RC=STATUS  )

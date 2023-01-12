@@ -4990,7 +4990,7 @@ contains
 
     ! Get parameters from generic state.
     !-----------------------------------
-    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
@@ -5556,12 +5556,6 @@ contains
           SNOW = MAX(SNOW, 0.0)
        endif
 
-       call MAPL_GetPointer(EXPORT, ICE, 'ICE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(ICE)) ICE = 0.0
-
-       call MAPL_GetPointer(EXPORT, FRZR, 'FRZR', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(FRZR)) FRZR = 0.0
-
        ! all deep convective precip (rain+snow)
        call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
        if (associated(CN_PRCP)) then
@@ -5638,6 +5632,8 @@ contains
        endif
 
      ! Diagnostic precip types: 
+       call MAPL_GetPointer(EXPORT, ICE,   'ICE',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, FRZR,  'FRZR',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (LUPDATE_PRECIP_TYPE .OR. LDIAGNOSE_PRECIP_TYPE) then
           call MAPL_GetPointer(EXPORT, PTYPE, 'PTYPE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, &

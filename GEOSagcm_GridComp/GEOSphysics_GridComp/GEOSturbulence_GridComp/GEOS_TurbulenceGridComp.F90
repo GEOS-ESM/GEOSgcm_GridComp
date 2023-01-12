@@ -191,6 +191,10 @@ module GEOS_TurbulenceGridCompMod
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
     integer                             :: imsize
+! Beljaars parameters
+    real, parameter ::      &
+        dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
+        dxmax_ss = 12000.0           ! maximum grid length for Beljaars
 contains
 
 !=============================================================================
@@ -2991,7 +2995,7 @@ contains
      real                                :: MINTHICK
      real                                :: MINSHEAR
      real                                :: AKHMMAX
-     real                                :: C_B, LAMBDA_B, LOUIS_MEMORY
+     real                                :: C_B, LAMBDA_B, HGT_SURFACE, LOUIS_MEMORY
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
@@ -3140,8 +3144,10 @@ contains
 
      if (LM .eq. 72) then
        call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.TRUE. , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 0.0, RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -4957,7 +4963,7 @@ contains
       if (C_B /= 0.0) then
       call BELJAARS(IM, JM, LM, DT, &
                     LAMBDA_B, C_B,  &
-                    KPBL, &
+                    KPBL, HGT_SURFACE, &
                     U, V, Z, AREA,  &
                     VARFLT, PLE,    &
                     BKV, BKUU, FKV  )
@@ -6417,7 +6423,7 @@ end subroutine RUN1
 
    subroutine BELJAARS(IM, JM, LM, DT, &
                        LAMBDA_B, C_B,  &
-                       KPBL, &
+                       KPBL, HGT_SURFACE, &
                        U, V, Z, AREA,  &
                        VARFLT, PLE,    &
                        BKV, BKVV, FKV  )
@@ -6441,7 +6447,7 @@ end subroutine RUN1
       integer, intent(IN   )                    :: IM,JM,LM
       real,    intent(IN   )                    :: DT
       real,    intent(IN   )                    :: LAMBDA_B
-      real,    intent(IN   )                    :: C_B
+      real,    intent(IN   )                    :: C_B, HGT_SURFACE
 
       real,    intent(IN   ), dimension(:,:,: ) :: U
       real,    intent(IN   ), dimension(:,:,: ) :: V
@@ -6454,8 +6460,9 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: CBl, FKV_temp
+      real    :: CBl, wsp, FKV_temp, Hefold
 
+      if (C_B > 0.0) then
       do I = 1, IM
          do J = 1, JM
             CBl = C_B*1.e-7*VARFLT(I,J)
@@ -6473,6 +6480,31 @@ end subroutine RUN1
             end do
          end do 
       end do 
+      else
+      do L = LM, 1, -1
+        do J = 1, JM
+          do I = 1, IM
+           ! determine the resolution dependent tuning factor
+            CBl = ABS(C_B) * 1.08371722e-7 * VARFLT(i,j) * &
+                  MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
+           ! determine the efolding height
+            Hefold = LAMBDA_B !MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B)
+            FKV(I,J,L) = 0.0
+            if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
+                  wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
+                  wsp = SQRT(MIN(wsp/25.0,1.0))*MAX(25.0,wsp) ! enhance winds below 25 m/s
+                  FKV_temp = Z(I,J,L)/Hefold
+                  FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
+                  FKV_temp = CBl*(FKV_temp/Hefold)*wsp
+
+                  BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
+                  BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
+                  FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
+            end if
+          end do
+        end do
+      end do
+      endif
 
    end subroutine BELJAARS
 

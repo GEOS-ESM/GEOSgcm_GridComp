@@ -917,6 +917,12 @@ contains
 ! The following are exported up for Atmos Ana purposes
 ! ----------------------------------------------------
     call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'PPBL',                                      &
+         CHILD_ID   = TURBL,                                       &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'Q',                                         &
          CHILD_ID = MOIST,                                         &
                                                         RC=STATUS  )

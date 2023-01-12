@@ -525,11 +525,11 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
 
-       call MAPL_AddConnectivity ( GC,                              &
-            SRC_NAME  = (/'Q            ','TROPP_BLENDED'/),        &
-            DST_NAME  = (/'QV           ','TROPP_BLENDED'/),        &
-            DST_ID = AIAU,                                          &
-            SRC_ID = AGCM,                                          &
+       call MAPL_AddConnectivity ( GC,                          &
+            SRC_NAME  = (/'Q ','PPBL','TROPP_BLENDED'/),        &
+            DST_NAME  = (/'QV','PPBL','TROPP_BLENDED'/),        &
+            DST_ID = AIAU,                                      &
+            SRC_ID = AGCM,                                      &
             RC=STATUS  )
        VERIFY_(STATUS)
 

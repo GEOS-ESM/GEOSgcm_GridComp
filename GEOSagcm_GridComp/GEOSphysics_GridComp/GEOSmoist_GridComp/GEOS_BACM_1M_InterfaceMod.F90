@@ -764,6 +764,12 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         end if
 #endif
 
+         ! Fill these with 0.0, diagnose in GridComp if desired
+         call MAPL_GetPointer(EXPORT, PTR2D, 'ICE',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         PTR2D = 0.0
+         call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         PTR2D = 0.0
+
          ! Compute DBZ radar reflectivity
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)

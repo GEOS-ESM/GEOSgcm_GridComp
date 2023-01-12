@@ -937,7 +937,7 @@ contains
          call MAPL_GetResource( MAPL, NCAR_NRDG,           Label="NCAR_NRDG:",           default=16,          _RC)
       self%NCAR_NRDG = NCAR_NRDG
       if (NCAR_NRDG > 0) then
-         call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=25.0, _RC)
+         call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=80.0, _RC)
          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
          do thread = 0, num_threads-1
             call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
@@ -1422,16 +1422,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              a2(i,j)=self%effbeljaars * 1.08371722e-7 * VARFLT(i,j) * &
                      MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! Revise e-folding height based on PBL height and topographic std. dev.
-             Hefold(i,j) = MIN(MAX(2*SQRT(VARFLT(i,j)),ZM(i,j,ikpbl)),1500.)
+             Hefold(i,j) = 1500.0 !MIN(MAX(2*SQRT(VARFLT(i,j)),ZM(i,j,ikpbl)),1500.)
        END DO
     END DO
     DO L=1, LM
        DO J=1,JM
           DO I=1,IM
                var_temp = 0.0
-               if (a2(i,j) > 0.0 .AND. ZM(I,J,L) < 4.0*Hefold(i,j) &
-                                 .AND. ZM(I,J,L) > self%HGT_SURFACE     ) then
+               if (a2(i,j) > 0.0 .AND. ZM(I,J,L) < 4.0*Hefold(i,j)) then
                   wsp      = SQRT(U(i,j,l)**2 + V(i,j,l)**2)
+                  wsp      = SQRT(MIN(wsp/25.0,1.0))*MAX(25.0,wsp) ! enhance winds below 25 m/s
                   var_temp = ZM(I,J,L)/Hefold(i,j)
                   var_temp = exp(-var_temp*sqrt(var_temp))*(var_temp**(-1.2))
                   var_temp = wsp*a2(i,j)*(var_temp/Hefold(i,j))
