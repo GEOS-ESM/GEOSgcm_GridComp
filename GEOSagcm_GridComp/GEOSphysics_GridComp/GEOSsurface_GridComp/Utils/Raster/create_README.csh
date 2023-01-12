@@ -1543,7 +1543,8 @@ cat << _EOF2_ > clsm/README3
    8.1 Data generation and processing chain
 
          A GIS shape file of global administrative areas map was obtained from (https://gadm.org) 
-	 It was rasterized to 30-arcsec and created the data/'//trim(land_input_dir)//'/land/misc/country_codes/v1/GADM_Country_and_USStates_codes_1km.nc4 file.
+	 It was rasterized to 30-arcsec and created at this location 
+         /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/misc/country_codes/v1/GADM_Country_and_USStates_codes_1km.nc4 file.
 	 
    8.2 Data files
        8.2.1 Country Code, US State Code, Country Name, State Name
