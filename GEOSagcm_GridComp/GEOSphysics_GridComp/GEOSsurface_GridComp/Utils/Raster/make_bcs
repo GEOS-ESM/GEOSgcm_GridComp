@@ -1319,6 +1319,8 @@ if ( -f $EXPDIR/$OUTDIR/../../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_DYN_
   /bin/mv    $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data  $BCNAME/.
   /bin/mv    $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data  $BCNAME/.
   /bin/mv    $EXPDIR/$OUTDIR/topo_TRB_var_$RC.data  $BCNAME/.
+
+  echo "TOPO files are successfully linked."
 else
   echo "TOPO files are missing. You must bring those to" $BCNAME "before running AGCM"
 endif 
