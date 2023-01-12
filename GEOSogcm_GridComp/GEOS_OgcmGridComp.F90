@@ -705,6 +705,13 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
   end if
+
+  if (DO_CICE_THERMO > 1) then
+     call MAPL_AddExportSpec ( GC   ,                            &
+            SHORT_NAME = 'SURFSTATE',                            &
+            CHILD_ID   = SEAICE ,                                &
+                                                             _RC )
+  endif
   
 !EOS
 
@@ -784,12 +791,13 @@ contains
   end if
 
   if (DO_CICE_THERMO > 1) then
-     call MAPL_AddExportSpec ( GC   ,                            &
-            SHORT_NAME = 'SURFSTATE',                            &
-            CHILD_ID   = SEAICE ,                                &
-                                                             _RC )
+     call MAPL_AddConnectivity ( GC,                          &
+          SRC_NAME  = (/'TS_FOUND', 'SS_FOUND', 'FRZMLT  '/), & 
+          DST_NAME  = (/'SST     ', 'SSS     ', 'FRZMLT  '/), & 
+          DST_ID    = SEAICE,                                 &
+          SRC_ID    = OCEAN,                                  &
+          _RC )
   endif
- 
 
 ! Children's imports are in the ocean grid and are all satisfied
 ! by OGCM from exchange grid quantities.

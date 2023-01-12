@@ -171,6 +171,35 @@ contains
          RC=status  )
   VERIFY_(status)
 
+
+  call MAPL_AddImportSpec(GC                         ,&
+          SHORT_NAME         = 'FRZMLT'                    ,&
+          LONG_NAME          = 'freeze_melt_potential',     &
+          UNITS              = 'W m-2'                     ,&
+          DIMS               = MAPL_DimsHorzOnly,           &
+          VLOCATION          = MAPL_VLocationNone          ,&
+          DEFAULT            = 0.0,                         &
+          _RC  )
+
+  call MAPL_AddImportSpec(GC                         ,&
+          SHORT_NAME         = 'SST'                       ,&
+          LONG_NAME          = 'sea_surface_temperature'   ,&
+          UNITS              = 'K'                         ,&
+          DIMS               = MAPL_DimsHorzOnly,           &
+          VLOCATION          = MAPL_VLocationNone          ,&
+          !DEFAULT            = MAPL_TICE - 1.8,             &
+          _RC  )
+
+  call MAPL_AddImportSpec(GC                         ,&
+          SHORT_NAME         = 'SSS'                       ,&
+          LONG_NAME          = 'sea_surface_salinity'      ,&
+          UNITS              = 'psu'                       ,&
+          DIMS               = MAPL_DimsHorzOnly,           &
+          VLOCATION          = MAPL_VLocationNone          ,&
+          DEFAULT            = 33.0,                        &
+          _RC  )
+
+
   !call MAPL_AddImportSpec(GC,                               &
   !       SHORT_NAME         = 'FROCEAN',                           &
   !       LONG_NAME          = 'fraction_of_gridbox_covered_by_skin',&
@@ -189,8 +218,7 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
         RESTART            = MAPL_RestartSkip,                    &
         DEFAULT            = 4.,                                  &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
+        _RC  )
 
   call MAPL_AddImportSpec(GC,                            &
     SHORT_NAME         = 'TI',                                &
@@ -201,8 +229,7 @@ contains
     VLOCATION          = MAPL_VLocationNone,                  &
     RESTART            = MAPL_RestartSkip,                    &
     DEFAULT            = MAPL_TICE,                           &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
+    _RC )
 
   ! === Exports
 
@@ -496,6 +523,8 @@ contains
     call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
 
     call LoadSurfaceStates(SURFST, __RC__)
+
+    call LoadOcnVars(SURFST, IMPORT, VARLIST=[character(len=3)::'SST','SSS'], _RC)
     !=====================================================================================
 
 
@@ -610,6 +639,22 @@ contains
     RETURN_(ESMF_SUCCESS)
   
   end subroutine AddSurfField  
+
+  subroutine LoadOcnVars(SURFST, IMPORT, VARLIST, RC)
+     type(ESMF_State), intent(in) :: import
+     type(ESMF_State), intent(inout) :: surfst
+     character(len=*), intent(in) :: varlist(:)
+     integer, optional, intent(out) :: RC
+ 
+     type(ESMF_Field) :: field
+     integer :: n, status
+ 
+     do n=1, size(varlist)
+         call ESMF_StateGet(import, varlist(n), field, _RC)
+         call ESMF_StateAdd(surfst, [field], _RC)
+     enddo
+      _RETURN(ESMF_SUCCESS)
+  end subroutine LoadOcnVars
 
   end subroutine Initialize
 
