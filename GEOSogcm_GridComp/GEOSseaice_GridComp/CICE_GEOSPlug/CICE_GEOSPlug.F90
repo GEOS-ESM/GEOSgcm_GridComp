@@ -507,7 +507,8 @@ contains
 
 ! Init CICE 
 !---------------
-    call cice_init1(Comm, NPES, OGCM_IM/OGCM_NX, OGCM_JM/OGCM_NY, MAPL_TICE)
+    call cice_init1(Comm, NPES, OGCM_IM/OGCM_NX, OGCM_JM/OGCM_NY, &
+           MAPL_TICE, MAPL_ALHL, MAPL_ALHS)
 
     !call ice_import_grid(FROCEAN, __RC__)
      
