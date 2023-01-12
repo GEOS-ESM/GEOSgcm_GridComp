@@ -5182,8 +5182,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, save :: istep                    ! model time step index
     integer :: accper                         ! number of time steps accumulated in a period of XX days, increases from 1 to nXXd in the first XX days,
     ! and remains as nXXd thereafter
-    integer, dimension(:) :: ta_count
-    real, dimension(:)    :: TA_MIN                
+    integer, allocatable, dimension(:) :: ta_count
+    real, allocatable, dimension(:)    :: TA_MIN                
    
     integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, AGCM_S_ofday
     logical, save :: first = .true.
@@ -6593,7 +6593,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
  
          SNDZM5D  = ((n5d-1)*SNDZM5D   + SNDZM)  / n5d
          T2M10D   = ((n10d-1)*T2M10D   + TA)  / n10d
-         TG10D    = ((n10d-1)*TG10D   + TG)  / n10d
+         TG10D    = ((n10d-1)*TG10D   + TG(:,1))  / n10d
          TPREC10D = ((n10d-1)*TPREC10D + PCU + PLS + SNO) / n10d
          RH30D    = ((n30d-1)*RH30D    + Qair_relative)  / n30d
          TPREC60D = ((n60d-1)*TPREC60D + PCU + PLS + SNO) / n60d
@@ -7938,15 +7938,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(               sfm )
         deallocate(            bt )    
         deallocate(     btran_fire )
-        deallocate( laisunx )
-        deallocate( laishax )
-        deallocate(    elaz )
-        deallocate(    esaz )
-        deallocate(    fvez )
-        deallocate(    ityz )
-        deallocate(           lmrsunx )
-        deallocate(           lmrshax )
-        deallocate(              tlaz )
         deallocate(            albdir )
         deallocate(            albdif )
         deallocate(   elai )
@@ -8303,7 +8294,7 @@ subroutine RUN0(gc, import, export, clock, rc)
      wtzone(:,nz) = CN_zone_weight(nz)
    end do
 
-   call get_CN_LAI(ntiles,num_veg,num_zon,ityp,fveg,elai,esai=esai)
+   call get_CN_LAI(ntiles,ityp,fveg,elai,esai=esai)
 
    lai1 = 0.
    wght = 0.
