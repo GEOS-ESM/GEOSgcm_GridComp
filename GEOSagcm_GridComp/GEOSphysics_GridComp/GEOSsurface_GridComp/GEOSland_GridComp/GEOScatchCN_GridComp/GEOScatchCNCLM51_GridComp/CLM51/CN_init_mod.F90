@@ -86,7 +86,6 @@ module CN_initMod
  contains
 
 !------------------------------------------------------
-interface
  subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start)
 
   !ARGUMENTS
@@ -318,7 +317,6 @@ interface
    end if
 
  end  subroutine CN_init
-end interface
 end module CN_initMod
 
 
