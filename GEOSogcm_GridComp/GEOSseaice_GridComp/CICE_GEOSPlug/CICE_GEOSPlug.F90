@@ -524,7 +524,7 @@ contains
 
     call LoadSurfaceStates(SURFST, __RC__)
 
-    call LoadOcnVars(SURFST, IMPORT, VARLIST=[character(len=3)::'SST','SSS'], _RC)
+    call LoadOcnVars(SURFST, IMPORT, VARLIST=[character(len=6)::'SST','SSS','FRZMLT'], _RC)
     !=====================================================================================
 
 
