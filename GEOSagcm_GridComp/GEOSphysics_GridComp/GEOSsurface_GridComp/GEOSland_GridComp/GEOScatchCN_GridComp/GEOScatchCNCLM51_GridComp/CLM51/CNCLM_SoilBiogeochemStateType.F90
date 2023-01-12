@@ -69,12 +69,12 @@ contains
     begc = bounds%begc; endc= bounds%endc
 
     ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start==.true.)) then
+    if (present(cn5_cold_start) .and. (cn5_cold_start.eqv..true.)) then
        cold_start = .true.
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. (size(cncol,3).ne.var_col)) then
+    if ((cold_start.eqv..false.) .and. (size(cncol,3).ne.var_col)) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
 

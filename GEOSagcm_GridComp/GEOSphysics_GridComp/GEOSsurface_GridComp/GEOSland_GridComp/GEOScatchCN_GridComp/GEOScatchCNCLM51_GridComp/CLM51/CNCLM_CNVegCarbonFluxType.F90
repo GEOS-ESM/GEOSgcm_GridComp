@@ -519,12 +519,12 @@ contains
     !--------------------------------------------------------
 
     ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start==.true.)) then
+    if (present(cn5_cold_start) .and. (cn5_cold_start.eqv..true.)) then
        cold_start = .true.
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
+    if ((cold_start.eqv..false.) .and. ((size(cncol,3).ne.var_col) .or. &
        (size(cnpft,3).ne.var_pft))) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
@@ -1099,7 +1099,7 @@ contains
                   
 
                   ! "new" variables: introduced in CNCLM50
-                  if (cold_start==.false.) then
+                  if (cold_start.eqv..false.) then
                       this%annsum_litfall_patch(np)    = cnpft(nc,nz,nv, 80)
                       this%tempsum_litfall_patch(np)   = cnpft(nc,nz,nv, 81)  
                   elseif (cold_start) then

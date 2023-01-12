@@ -55,7 +55,7 @@ module CanopyStateType
      real(r8)           :: leaf_mr_vcm = spval            ! Scalar constant of leaf respiration with Vcmax
 
   end type canopystate_type
-  type(canopystate_type), public, target, save :: canopystate_inst
+  type(canopystate_type), public :: canopystate_inst
 
 contains
 
@@ -93,12 +93,12 @@ contains
     begg = bounds%begg ; endg = bounds%endg
 
     ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start==.true.)) then
+    if (present(cn5_cold_start) .and. (cn5_cold_start.eqv..true.)) then
        cold_start = .true.
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start==.false.) .and. ((size(cncol,3).ne.var_col) .or. &
+    if ((cold_start.eqv..false.) .and. ((size(cncol,3).ne.var_col) .or. &
        (size(cnpft,3).ne.var_pft))) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if 
@@ -157,7 +157,7 @@ contains
                   this%tsai_patch  (np) = cnpft(nc,nz,nv, 74)
 
                   ! "new" variables: introduced in CNCLM50
-                  if (cold_start==.false.) then
+                  if (cold_start.eqv..false.) then
                      do nw = 1,nvegwcs
                         this%vegwp_patch(np,nw)    = cnpft(nc,nz,nv, 76+(nw-1))
                      end do
