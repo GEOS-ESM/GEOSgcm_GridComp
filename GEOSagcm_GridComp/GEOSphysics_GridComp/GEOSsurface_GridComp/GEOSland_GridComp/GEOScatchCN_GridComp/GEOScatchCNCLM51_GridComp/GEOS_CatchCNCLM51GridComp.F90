@@ -4722,6 +4722,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: psnsunm
         real, dimension(:),   pointer :: psnsham
         real, dimension(:),   pointer :: sndzm
+        real, dimension(:),   pointer :: sndzm5d
         real, dimension(:),   pointer :: asnowm
         real, dimension(:,:), pointer :: RDU001
         real, dimension(:,:), pointer :: RDU002
@@ -5181,8 +5182,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, save :: istep                    ! model time step index
     integer :: accper                         ! number of time steps accumulated in a period of XX days, increases from 1 to nXXd in the first XX days,
     ! and remains as nXXd thereafter
-    integer :: ta_count = 0
-    real    :: TA_MIN = 1000.                 
+    integer, dimension(:) :: ta_count
+    real, dimension(:)    :: TA_MIN                
    
     integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, AGCM_S_ofday
     logical, save :: first = .true.
@@ -5411,7 +5412,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM5D'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,SNDZM5D    ,'SNDZM5D'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2M10D'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,T2M10D     ,'TG10D'      ,RC=STATUS); VERIFY_(STATUS)
@@ -5838,6 +5839,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(QA2_0    (NTILES))
         allocate(QA4_0    (NTILES))
         allocate(PLSIN    (NTILES))
+
+        allocate(TA_MIN   (NTILES))
+        allocate(ta_count (NTILES))
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
@@ -6487,7 +6491,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             btran_fire(n,nz) = (f1(nz)*bt(n,fsat)     + f2(nz)*bt(n,ftrn)     + f4(nz)*bt(n,fwlt)    )/wtzone(n,nz)
 	    tgw(n,nz) =  (f1(nz)*tg(n,fsat) + f2(nz)*tg(n,ftrn) + f4(nz)*tg(n,fwlt))/wtzone(n,nz)
 	    tcx(n,nz) =  (f1(nz)*tc(n,fsat) + f2(nz)*tc(n,ftrn) + f4(nz)*tc(n,fwlt))/wtzone(n,nz)
-	    qcx(n,nz) =  (f1(nz)*qc(n,fsat) + f2(nz)*qc(n,ftrn) + f4(nz)*qc(n,fwlt))/wtzone(n,nz)
+	    qax(n,nz) =  (f1(nz)*qc(n,fsat) + f2(nz)*qc(n,ftrn) + f4(nz)*qc(n,fwlt))/wtzone(n,nz)
             rzm(n,nz) =  (f1(nz)*sm(n,fsat) + f2(nz)*sm(n,ftrn) + f4(nz)*sm(n,fwlt))/wtzone(n,nz)
             sfm(n,nz) =  (f1(nz)*SWSRF1(n)  + f2(nz)*SWSRF2(n)  + f4(nz)*SWSRF4(n) )/wtzone(n,nz)
          end do
@@ -6560,7 +6564,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          accper = min(istep,n10d)
          T2M10D   = ((accper-1)*T2M10D + TA) / accper
          TPREC10D = ((accper-1)*TPREC10D + PCU + PLS + SNO) / accper      
-         TG10D    = ((accper-1)*TG10D + TG) / accper         
+         TG10D    = ((accper-1)*TG10D + TG(:,1)) / accper         
 
         ! (2) 30-day running mean of relative humidity [%]     
          accper = min(istep,n30d)
@@ -6574,14 +6578,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day running mean of minimum T2M
 
-         ta_count = ta_count + 1
-         TA_MIN = min(TA_MIN,TA)
+         do n = 1,ntiles
+            ta_count(n) = ta_count(n) + 1
+            TA_MIN(n) = min(TA_MIN(n),TA(n))
 
-         if (ta_count == n1d) then 
-             T2MMIN5D   = ((accper-1)*T2MMIN5D   + TA_MIN)  / accper
-             TA_MIN = 1000.
-             ta_count = 0
-         end if 
+            if (ta_count(n) == n1d) then 
+                T2MMIN5D(n)   = ((accper-1)*T2MMIN5D(n)   + TA_MIN(n))  / accper
+                TA_MIN(n) = 1000.
+                ta_count(n) = 0
+            end if 
+         end do
 
       else
  
@@ -6595,14 +6601,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
          ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day running mean of minimum T2M
 
-         ta_count = ta_count + 1
-         TA_MIN = min(TA_MIN,TA)
+         do n = 1,ntiles
+            ta_count(n) = ta_count(n) + 1
+            TA_MIN(n) = min(TA_MIN(n),TA(n))
 
-         if (ta_count == n1d) then
-             T2MMIN5D   = ((n5d-1)*T2MMIN5D   + TA_MIN)  / n5d
-             TA_MIN = 1000.
-             ta_count = 0
-         end if 
+            if (ta_count(n) == n1d) then
+                T2MMIN5D(n)   = ((accper-1)*T2MMIN5D(n)   + TA_MIN(n))  / accper
+                TA_MIN(n) = 1000.
+                ta_count(n) = 0
+            end if 
+         end do 
 
      endif
 
@@ -6734,7 +6742,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! fsnow: pft-level; asnow: grid-level
 ! -----------------------------------
-        where(tlai(:,nv,z) > 0.)
+        where(tlai(:,nv,nz) > 0.)
           fsnow(:) = 1. - elai(:,nv,nz)/tlai(:,nv,nz)
           fsnow(:) = min(max(fsnow(:),0.),1.)
          elsewhere
@@ -6768,7 +6776,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          end do
       end do
 
-   NTCurrent = CEILING (real (dofyr) / 8.)
+  ! NTCurrent = CEILING (real (dofyr) / 8.)
 
     if(associated(CNCO2)) CNCO2 = CO2V * 1e6
     deallocate (co2v)
@@ -7119,19 +7127,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! catchment: saturated area
 
       if(ax1 .lt. cn1) then
-        f1 = ax1 ; f2 = 0. ; f3 = 0.
+        f1(1) = ax1 ; f2(1) = 0. ; f3(1) = 0.
        else
         if(ax1 .lt. (cn1+cn2)) then
-          f1 = cn1 ; f2 = ax1-cn1 ; f3 = 0.
+          f1(1) = cn1 ; f2(1) = ax1-cn1 ; f3(1) = 0.
          else
-          f1 = cn1 ; f2 = cn2 ; f3 = ax1-cn1-cn2
+          f1(1) = cn1 ; f2(1) = cn2 ; f3(1) = ax1-cn1-cn2
         endif
       endif
 
       if(ax1 .gt. 0.) then
-        rcsat(n) = ax1/(f1/rc00(n,1)+f2/rc00(n,2)+f3/rc00(n,3))
-        rcxdt(n) = ax1/(f1/rcdt(n,1)+f2/rcdt(n,2)+f3/rcdt(n,3))
-        rcxdq(n) = ax1/(f1/rcdq(n,1)+f2/rcdq(n,2)+f3/rcdq(n,3))
+        rcsat(n) = ax1/(f1(1)/rc00(n,1)+f2(1)/rc00(n,2)+f3(1)/rc00(n,3))
+        rcxdt(n) = ax1/(f1(1)/rcdt(n,1)+f2(1)/rcdt(n,2)+f3(1)/rcdt(n,3))
+        rcxdq(n) = ax1/(f1(1)/rcdq(n,1)+f2(1)/rcdq(n,2)+f3(1)/rcdq(n,3))
        else
         rcsat(n) = 1.e3
         rcxdt(n) = 1.e3
@@ -7147,31 +7155,31 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(ax1 .lt. cn1) then
         ar = ax1 + ax2
         if(ar .lt. cn1) then
-          f1 = ax2 ; f2 = 0. ; f3 = 0.
+          f1(2) = ax2 ; f2(2) = 0. ; f3(2) = 0.
          else
           if(ar .lt. (cn1+cn2)) then
-            f1 = cn1-ax1 ; f2 = ar-cn1 ; f3 = 0.
+            f1(2) = cn1-ax1 ; f2(2) = ar-cn1 ; f3(2) = 0.
            else
-            f1 = cn1-ax1 ; f2 = cn2 ; f3 = ar-cn1-cn2
+            f1(2) = cn1-ax1 ; f2(2) = cn2 ; f3(2) = ar-cn1-cn2
           endif
         endif
        else
         ar = ax2 + ax4
         if(ar .lt. cn3) then
-          f1 = 0. ; f2 = 0. ; f3 = ax2
+          f1(2) = 0. ; f2(2) = 0. ; f3(2) = ax2
          else
           if(ax4 .gt. cn3) then
-            f1 = 0. ; f2 = ax2 ; f3 = 0.
+            f1(2) = 0. ; f2(2) = ax2 ; f3(2) = 0.
            else
-            f1 = 0. ; f2 = ar-cn3 ; f3 = cn3-ax4
+            f1(2) = 0. ; f2(2) = ar-cn3 ; f3(2) = cn3-ax4
           endif
         endif
       endif
 
       if(ax2 .gt. 0.) then
-        rcuns(n) = ax2/(f1/rc00(n,1)+f2/rc00(n,2)+f3/rc00(n,3))
-        rcxdt(n) = ax2/(f1/rcdt(n,1)+f2/rcdt(n,2)+f3/rcdt(n,3))
-        rcxdq(n) = ax2/(f1/rcdq(n,1)+f2/rcdq(n,2)+f3/rcdq(n,3))
+        rcuns(n) = ax2/(f1(2)/rc00(n,1)+f2(2)/rc00(n,2)+f3(2)/rc00(n,3))
+        rcxdt(n) = ax2/(f1(2)/rcdt(n,1)+f2(2)/rcdt(n,2)+f3(2)/rcdt(n,3))
+        rcxdq(n) = ax2/(f1(2)/rcdq(n,1)+f2(2)/rcdq(n,2)+f3(2)/rcdq(n,3))
        else
         rcuns(n) = 1.e3
         rcxdt(n) = 1.e3
@@ -7878,7 +7886,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(  SWSRF4 )
         deallocate(     tcx )
         deallocate(     qax )
-        deallocate(     rcx )
         deallocate(   rcxdt )
         deallocate(   rcxdq )
         deallocate(    car1 )
@@ -7931,10 +7938,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(               sfm )
         deallocate(            bt )    
         deallocate(     btran_fire )
-        deallocate( psnsunx )
-        deallocate( psnshax )
-        deallocate( sifsunx )
-        deallocate( sifshax )
         deallocate( laisunx )
         deallocate( laishax )
         deallocate(    elaz )
@@ -7961,6 +7964,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(      tp )
         deallocate( soilice )
         deallocate (PLSIN)
+        deallocate(TA_MIN)
+        deallocate(ta_count)
         call MAPL_TimerOff  ( MAPL, "-CATCHCNCLM51" )
         RETURN_(ESMF_SUCCESS)
 
