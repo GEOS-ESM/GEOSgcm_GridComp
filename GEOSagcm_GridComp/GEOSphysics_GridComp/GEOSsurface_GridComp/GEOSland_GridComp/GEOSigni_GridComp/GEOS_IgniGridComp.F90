@@ -453,10 +453,10 @@ contains
   end subroutine SetServices
 
 ! -----------------------------------------------------------
-! RUN -- Run method for the vegdyn component
+! RUN -- Run method for the IGNI component
 ! -----------------------------------------------------------
 
-  subroutine RUN (GC, IMPORT, EXPORT, CLOCK, RC )
+  subroutine RUN (GC, IMPORT, EXPORT, CLOCK, RC)
 
 ! -----------------------------------------------------------
 ! !ARGUMENTS:
@@ -560,16 +560,11 @@ contains
     real, allocatable, dimension(:) :: tmpBUI
     real, allocatable, dimension(:) :: tmpDSR
 
-    real, allocatable, dimension(:) :: solar_time
-    logical, allocatable, dimension(:) :: sun_noon
-
-
-    real, parameter :: f_e = (24*3600)/(2*MAPL_PI)
-    real, parameter :: sun_noon_utc = 12*3600.0
+    real, allocatable, dimension(:) :: dt_local_noon
+    logical, allocatable, dimension(:) :: isNoon
 
 
     real,    allocatable, dimension(:) :: LSHA0, LSHA1
-    logical, allocatable, dimension(:) :: isNoon
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -594,9 +589,9 @@ contains
 ! Get file names from configuration
 ! -----------------------------------------------------------
 
-    if(NUM_ENSEMBLE > 1) then
-        !comp_name should be vegdynxxxx....
-    endif
+    if (NUM_ENSEMBLE > 1) then
+        !comp_name should be IGNIxxxx...
+    end if
 
 ! get pointers to internal variables
 ! ----------------------------------
@@ -690,15 +685,40 @@ contains
 #endif
 
         call ESMF_ClockGet(CLOCK, currTime=time, __RC__)
+
+
+        ! noon LST
+        ! --------
         call ESMF_TimeGet(time, yy=year, mm=month, dd=day, h=hr, m=mn, s=sc, __RC__)
 
-        allocate(solar_time(NT), sun_noon(NT), __STAT__)
-        solar_time = (hr*3600 + mn*60 + sc) + f_e*LONS
-        where (solar_time > 24*3600) solar_time = solar_time - 24*3600
+        allocate(dt_local_noon(NT), isNoon(NT), __STAT__)
+        dt_local_noon = ((hr-12)*3600 + mn*60 + sc) + ((24*3600)/(2*MAPL_PI))*LONS
 
-        sun_noon = .false.
-        where (((solar_time-sun_noon_utc) > 0) .and. ((solar_time-sun_noon_utc) <= dt))
-            sun_noon = .true.
+        isNoon = (dt_local_noon >= 0) .and. (dt_local_noon < dt)
+
+        DBG1 = MAPL_UNDEF 
+        where (isNoon) DBG1 = 1.0
+
+        DBG2 = dt_local_noon
+
+        ! local solar noon
+        ! ----------------
+        call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
+
+        allocate(LSHA0(NT), LSHA1(NT), __STAT__)
+
+        call ESMF_ClockGet(CLOCK, CURRTIME=time, __RC__)
+        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA0, TIME=time, __RC__)
+        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA1, TIME=time+ring_interval, __RC__)
+        isNoon = (LSHA0 <= 0) .and. (LSHA1 > 0)
+
+        DBG3 = MAPL_UNDEF 
+        where (isNoon) DBG3 = 1.0
+
+        deallocate(LSHA0, LSHA1, __STAT__)
+
+
+        where (isNoon)
             T_       = T2M
             WIND_    = sqrt(U10M*U10M + V10M*V10M)
             RH_      = min(Q2M / GEOS_QSAT(T2M, PS, PASCALS=.true.), 1.0)
@@ -715,7 +735,7 @@ contains
                           T_, RH_, WIND_, PR_, LATS, month, NT)
 
         ! update internal state
-        where (sun_noon)
+        where (isNoon)
             FFMC_ = tmpFFMC
             DMC_  = tmpDMC
             DC_   = tmpDC
@@ -731,7 +751,7 @@ contains
         if (associated(DSR))   DSR = tmpDSR
         if (associated(PR))    PR  = PR_
 
-        where (.not. sun_noon)
+        where (.not. isNoon)
             tmpFFMC = MAPL_UNDEF
             tmpDMC  = MAPL_UNDEF
             tmpDC   = MAPL_UNDEF
@@ -750,29 +770,7 @@ contains
         if (associated(SNDSR))   SNDSR = tmpDSR
 
 
-        DBG1 = MAPL_UNDEF 
-        where (sun_noon) DBG1 = 1.0
-
-        DBG2 = solar_time
- 
         deallocate(tmpFFMC, tmpDMC, tmpDC, tmpFWI, tmpISI, tmpBUI, tmpDSR, __STAT__)
-
-
-!!! test 
-        call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
-
-        allocate(LSHA0(NT), LSHA1(NT), isNoon(NT), __STAT__)
-
-        call ESMF_ClockGet(CLOCK, CURRTIME=time, __RC__)
-        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA0, TIME=time, __RC__)
-        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA1, TIME=time+ring_interval, __RC__)
-        isNoon = (LSHA0 <= 0.0) .and. (LSHA1 > 0.0)
-
-        DBG3 = MAPL_UNDEF 
-        where (isNoon) DBG3 = 1.0
-
-        deallocate(LSHA0, LSHA1, isNoon, __STAT__)
-!!! test
 
     end if
 
