@@ -88,17 +88,28 @@ contains
 !EOP
 
 !=============================================================================
-!
+
 ! ErrLog Variables
 
+    character(len=ESMF_MAXSTR)   :: Iam
+    integer                      :: STATUS
+    character(len=ESMF_MAXSTR)   :: COMP_NAME
 
-    character(len=ESMF_MAXSTR)  :: IAm
-    integer                     :: STATUS
-    character(len=ESMF_MAXSTR)  :: COMP_NAME
 
 ! Local derived type aliases
 
-    type(MAPL_MetaComp),pointer :: MAPL=>null()
+    type(MAPL_MetaComp), pointer :: MAPL=>null()
+
+
+! Local
+    
+    real :: run_dt
+    real :: dt
+    
+    character(len=ESMF_MAXSTR) :: resource_file
+    type(ESMF_Config)          :: config
+    character(len=ESMF_MAXSTR) :: local_noon
+
 
 !=============================================================================
 
@@ -123,27 +134,20 @@ contains
 ! -----------------------------------------------------------
     call MAPL_GetObjectFromGC(GC, MAPL, __RC__)
 
-! -----------------------------------------------------------
-! Get the intervals
-! -----------------------------------------------------------
-    call MAPL_GetResource(MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, __RC__)
+    call MAPL_GetResource(MAPL, NUM_ENSEMBLE, label='NUM_LDAS_ENSEMBLE:', DEFAULT=1, __RC__)
 
-    !call MAPL_GetResource(MAPL, DT, Label="RUN_DT:", RC=STATUS)
-    !VERIFY_(STATUS)
 
-    !RUN_DT = nint(DT)
+    ! at the moment, this G.C. will refresh when the land parent refreshes
+    call MAPL_GetResource(MAPL, run_dt, label='RUN_DT:', __RC__)
+    call MAPL_GetResource(MAPL, dt, label=trim(COMP_NAME)//'_DT:', default=run_dt, __RC__)
 
-! -----------------------------------------------------------
-! At the moment, this will refresh when the land parent 
-! needs to refresh.
-!
-!    call ESMF_ConfigGetFloat(CF, DT, Label=trim(COMP_NAME)//&
-!    "_DT:", default=DT, RC=STATUS)
-!     VERIFY_(STATUS)
-!
-!    MY_STEP = nint(DT)
-!
-! -----------------------------------------------------------
+    ! 'local noon'  
+    call MAPL_GetResource(MAPL, resource_file, label='IGNI_RC:', default='GEOS_IgniGridComp.rc', __RC__)
+    
+    config = ESMF_ConfigCreate(__RC__)
+    call ESMF_ConfigLoadFile(config, resource_file, __RC__)
+    call MAPL_GetResource(config, local_noon, label='FWI_LOCAL_NOON:', default='SOLAR', __RC__)
+    call ESMF_ConfigDestroy(config, __RC__)
 
 
 ! -----------------------------------------------------------
@@ -571,7 +575,7 @@ contains
 
     call ESMF_GridCompGet(GC, name=COMP_NAME, __RC__)
   
-    Iam = trim(COMP_NAME) // "Run"
+    Iam = trim(COMP_NAME) // 'Run'
 
 ! Get my internal MAPL_Generic state
 ! -----------------------------------------------------------
