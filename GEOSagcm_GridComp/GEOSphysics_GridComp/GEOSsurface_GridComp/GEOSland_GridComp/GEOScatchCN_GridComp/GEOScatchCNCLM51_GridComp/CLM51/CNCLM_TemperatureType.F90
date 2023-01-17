@@ -116,7 +116,7 @@ module TemperatureType
      real(r8), pointer    :: c_h2osfc_col          (:)   ! heat capacity of surface water
 
 end type temperature_type
-type(temperature_type), public, target, save :: temperature_inst
+type(temperature_type), public :: temperature_inst
 
  contains
 
