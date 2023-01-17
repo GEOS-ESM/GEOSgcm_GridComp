@@ -74,7 +74,7 @@
      procedure , public  :: SetTotVgCThresh
 
   end type soilbiogeochem_nitrogenstate_type
-  type(soilbiogeochem_nitrogenstate_type), public, target, save :: soilbiogeochem_nitrogenstate_inst
+  type(soilbiogeochem_nitrogenstate_type), public :: soilbiogeochem_nitrogenstate_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

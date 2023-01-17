@@ -40,7 +40,7 @@ module pftconMod
   integer, public :: nc3_nonarctic_grass   = 13   ! Cool c3 grass [moisture + deciduous]
   integer, public :: nc4_grass             = 14   ! Warm c4 grass [moisture + deciduous]
   integer, public :: nc3crop               = 15   ! C3_crop [moisture + deciduous]   
-  integer, public :: npcropmin             = 15   ! value for first crop functional type (not including the more generic C3 crop PFT)
+  integer, public :: npcropmin             = 16   ! value for first crop functional type (not including the more generic C3 crop PFT)
 
   ! variables that do not apply here, but are needed; set to mxpft + 1 in initialization routine
 
@@ -281,7 +281,7 @@ module pftconMod
 
   end type pftcon_type
 
-type(pftcon_type), public, target, save :: pftcon
+type(pftcon_type), public :: pftcon
 
   integer, public, parameter :: pftname_len = 40         ! max length of pftname       
   character(len=pftname_len), public :: pftname(0:mxpft) ! PFT description
@@ -351,7 +351,7 @@ contains
     allocate( this%rootb_par     (0:mxpft) ); this%rootb_par(:) = nan
     allocate( this%crop          (0:mxpft) ); this%crop     (:) = nan  !#
     allocate( this%mergetoclmpft (0:mxpft) ); this%mergetoclmpft (:) = bigint !#
-    allocate( this%is_pft_known_to_model  (0:mxpft) ); this%is_pft_known_to_model(:) = nan !#
+    allocate( this%is_pft_known_to_model  (0:mxpft) ); this%is_pft_known_to_model(:) = .false. !#
     allocate( this%irrigated     (0:mxpft) ); this%irrigated (:) = nan   !#
     allocate( this%smpso         (0:mxpft) ); this%smpso     (:) = nan   !#
     allocate( this%smpsc         (0:mxpft) ); this%smpsc     (:) = nan   !#
