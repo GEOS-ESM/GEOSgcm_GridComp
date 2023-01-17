@@ -646,7 +646,7 @@ contains
         call ESMF_ClockSet ( clock, CurrTime=CURRENT_TIME, rc=status )
 
         !3) create an orbit
-        ORBIT = MAPL_SunOrbitCreateFromConfig(CLOCK, CF, .false., RC=status)
+        ORBIT = MAPL_SunOrbitCreateFromConfig(CF, CLOCK, .false., RC=status)
         VERIFY_(status) 
 
         !4) current daylight duration
