@@ -39,10 +39,91 @@ real, public, parameter :: CFFWI_REFERENCE_LATITUDE = 46.0 ! Canada, 46N
 
 contains
 
+elemental real function fine_fuel_moisture_code_hourly(ffmc, T, RH, wind, Pr)
+  
+    !
+    ! Calculates hourly Fine Fuel Moisture Code (FFMC).
+    !
+    ! Default values and units:
+    !     ffmc = previous day FFMC (default = 85)
+    !     T    = temperature, C
+    !     RH   = relative humidity, %
+    !     w    = wind speed, m/s
+    !     Pr   = 24-hour precipitation, mm
+    !
+    ! Note: 
+    !     Weather data are measured hourly.
+    !
+    
+    implicit none
+
+    real, intent(in) :: ffmc, T, RH, wind, Pr
+
+    ! local
+    real :: f_0, w, m_0, h
+    real :: r_f, m_r, dm, e_d, e_w, m
+    real :: k_0, k_l, k_d, k_w
+    real :: E_H_term, E_T_term, result
+
+
+    ! use the same variable names as in the FFMC equation and 
+    ! convert the units if necessary
+    f_0 = ffmc
+    w   = 3.6 * wind  ! convert from m/s to km/h
+
+
+    ! fuel moisture content from previous day (FF scale)
+    m_0 = 147.2*(101 - f_0) / (59.5 + f_0)
+    
+    ! current fuel moisture content
+    m_r = m_0
+
+ 
+    ! NOTE: canopy effect is not considered in the hourly calculations,
+    ! hence there is no rainfall correction
+ 
+
+    ! equilibrium moisture contents for drying and wetting conditions
+    E_H_term = exp(0.1 * (RH - 100.0))
+    E_T_term = 0.18*(21.1 - T) * (1 - exp(-0.115*RH))
+    E_d = 0.942*(RH**0.679) + 11*E_H_term + E_T_term
+    E_w = 0.618*(RH**0.753) + 10*E_H_term + E_T_term
+
+    ! drying and wetting terms
+    h = RH / 100.0
+
+    if (m_r > E_d) then
+        ! drying is in effect
+        k_0 = 0.424 * (1 - (h**1.7)) + 0.0694 * sqrt(w) * (1 - (h**8))
+        k_d = k_0 * 0.0579 * exp(0.0365 * T)
+
+        m = E_d + (m_r - E_d)*(10.0**(-k_d))
+    else
+        ! wetting is in effect
+        if (m_r < E_w) then
+            k_l = 0.424 * (1 - (1 - h)**1.7) + 0.0694 * sqrt(w)* (1 - (1 - h)**8)
+            k_w = k_l * 0.0579 * exp(0.0365 * T)
+
+            m = E_w - (E_w - m_r)*(10.0**(-k_w))
+        else
+            m = m_r
+        end if
+    end if    
+
+
+    ! current FFMC (FF scale)
+    result = 59.5*(250 - m)/(147.2 + m)
+    
+    ! clamp FFMC within [0, 101]
+    fine_fuel_moisture_code_hourly = max(0.0, min(101.0, result))
+
+end function fine_fuel_moisture_code_hourly
+
+
 elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
   
     !
-    ! Calculates the Fine Fuel Moisture Code (FFMC).
+    ! Calculates daily Fine Fuel Moisture Code (FFMC).
     !
     ! Default values and units:
     !     ffmc = previous day FFMC (default = 85)
@@ -72,7 +153,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
     w   = 3.6 * wind  ! convert from m/s to km/h
 
 
-    ! fuel moisture content from previous day
+    ! fuel moisture content from previous day (FF scale)
     m_0 = 147.2*(101 - f_0) / (59.5 + f_0)
     
     ! current fuel moisture content
@@ -95,20 +176,22 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
         end if
     end if
 
+    ! equilibrium moisture contents for drying (E_d) and wetting (E_w) conditions
     E_H_term = exp(0.1 * (RH - 100.0))
     E_T_term = 0.18*(21.1 - T) * (1 - exp(-0.115*RH))
-    E_d = 0.942* (RH**0.679) + 11*E_H_term + E_T_term
+    E_d = 0.942*(RH**0.679) + 11*E_H_term + E_T_term
+    E_w = 0.618*(RH**0.753) + 10*E_H_term + E_T_term
 
     h = RH / 100.0
 
     if (m_r > E_d) then
+        ! drying is in effect
         k_0 = 0.424 * (1 - (h**1.7)) + 0.0694 * sqrt(w) * (1 - (h**8))
         k_d = k_0 * 0.581 * exp(0.0365 * T)
 
         m = E_d + (m_r - E_d)*(10.0**(-k_d))
     else
-        E_w = 0.618*(RH**0.753) + 10*E_H_term + E_T_term
-
+        ! wetting is in effect
         if (m_r < E_w) then
             k_l = 0.424 * (1 - (1 - h)**1.7) + 0.0694 * sqrt(w)* (1 - (1 - h)**8)
             k_w = k_l * 0.581 * exp(0.0365 * T)
@@ -120,7 +203,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr)
     end if    
 
 
-    ! current FFMC
+    ! current FFMC (FF scale)
     result = 59.5*(250 - m)/(147.2 + m)
     
     ! clamp FFMC within [0, 101]
