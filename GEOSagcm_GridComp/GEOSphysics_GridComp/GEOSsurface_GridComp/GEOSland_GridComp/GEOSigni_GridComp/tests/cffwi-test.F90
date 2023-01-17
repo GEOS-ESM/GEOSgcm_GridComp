@@ -19,6 +19,7 @@ program cffwi_test
                      fire_weather_index, daily_severity_rating,         &
                      cffwi_indexes,                                     &
                      FFMC_INIT, DMC_INIT, DC_INIT,                      &
+                     FFMC_HOURLY_MODEL, FFMC_DAILY_MODEL,               &
                      CFFWI_REFERENCE_LATITUDE
 
 
@@ -97,7 +98,7 @@ program cffwi_test
     if (INDIVIDUAL_INDEXES) then
         write (*, '(A)') "Testing the individual cffwi indexes:"
 
-        ffmc = fine_fuel_moisture_code(ffmc_pd, T, RH, wind, rain)
+        ffmc = fine_fuel_moisture_code(ffmc_pd, T, RH, wind, rain, FFMC_DAILY_MODEL)
 
         dmc = duff_moisture_code(dmc_pd, T, RH, rain, month)
 
@@ -115,6 +116,7 @@ program cffwi_test
         call cffwi_indexes(ffmc_pd, dmc_pd, dc_pd,   &
                            T, RH, wind, rain,        &
                            latitude, month,          &
+                           FFMC_DAILY_MODEL,         &
                            ffmc, dmc, dc, isi, bui, fwi, dsr)
     end if
 

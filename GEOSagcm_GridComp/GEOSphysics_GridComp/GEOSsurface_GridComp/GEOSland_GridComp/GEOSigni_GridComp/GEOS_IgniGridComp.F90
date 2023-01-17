@@ -48,6 +48,7 @@ module GEOS_IgniGridCompMod
   use cffwi, only: fine_fuel_moisture_code, duff_moisture_code,       &
                    drought_code, initial_spread_index, buildup_index, &
                    fire_weather_index, daily_severity_rating,         &
+                   FFMC_HOURLY_MODEL, FFMC_DAILY_MODEL,               &
                    FFMC_INIT, DMC_INIT, DC_INIT
 
   implicit none
@@ -818,7 +819,7 @@ contains
 
         lat_ = MAPL_RADIANS_TO_DEGREES * latitude(i)     !  
 
-        ffmc(i) = fine_fuel_moisture_code(ffmc(i), T_, RH_, wind(i), Pr_)
+        ffmc(i) = fine_fuel_moisture_code(ffmc(i), T_, RH_, wind(i), Pr_, FFMC_DAILY_MODEL)
         dmc(i)  = duff_moisture_code(dmc(i), T_, RH_, Pr_, month)
         dc(i)   = drought_code(dc(i), T_, Pr_, lat_, month)
 
