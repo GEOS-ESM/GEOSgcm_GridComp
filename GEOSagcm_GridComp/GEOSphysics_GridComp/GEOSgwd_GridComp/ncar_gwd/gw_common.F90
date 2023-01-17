@@ -879,11 +879,11 @@ end subroutine energy_fixer
 
 !==========================================================================
 
-subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
+subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
                                effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                               tndmax_in)
+                               kbot_in, tndmax_in)
 
-  integer, intent(in) :: ncol, pver, kbot
+  integer, intent(in) :: ncol, pver
   ! Wavelengths.
   type(GWBand), intent(in) :: band
   ! Pressure interfaces.
@@ -900,6 +900,8 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
   real, intent(in) :: t(ncol,pver), ubm(ncol,pver), ubi(ncol,pver)
   ! projected winds.
   real, intent(in) :: xv(ncol), yv(ncol)
+  ! bottome src index
+  real, intent(in), optional :: kbot_in(ncol)
   ! Tendency limiter
   real, intent(in), optional :: tndmax_in
   ! Tendencies.
@@ -910,9 +912,16 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
   real :: zlb,pm,rhom,cmu,fpmx,fpmy,fe,fpe,fpml,fpel,fpmt,fpet,dusrcl,dvsrcl,dtsrcl
   real :: tndmax,utfac,uhtmax
   integer  :: ktop
+  real :: kbot(ncol)
 
   ! Level index.
   integer :: i,k,l
+
+  if (present(kbot_in)) then
+     kbot(:) = kbot_in
+  else
+     kbot(:) = pver
+  endif
 
 ! Maximum wind tendency from stress divergence (before efficiency applied).
   if (present(tndmax_in)) then
@@ -927,7 +936,7 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
 ! Calculate launch level height
     zlb = 0.
     do k = ktop+1, pver
-       if (k >= kbot+1) then
+       if (k >= kbot(i)+1) then
 ! Define layer pressure and density
           pm   = (pint(i,k-1)+pint(i,k))*0.5
           rhom = pm/(rair*t(i,k))
@@ -939,13 +948,13 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
    !-----------------------------------------------------------------------
     do l = -band%ngwv, band%ngwv
        do k = ktop, pver
-          if ( k <= kbot ) then
+          if ( k <= kbot(i) ) then
              cmu  = c(i,l)-ubi(i,k)
              fpmx =        sign(1.0,cmu)*tau(i,l,k)*xv(i)*effgw(i)
              fpmy =        sign(1.0,cmu)*tau(i,l,k)*yv(i)*effgw(i)
              fe   =    cmu*sign(1.0,cmu)*tau(i,l,k)      *effgw(i)
              fpe  = c(i,l)*sign(1.0,cmu)*tau(i,l,k)      *effgw(i)
-             if (k == kbot) then
+             if (k == kbot(i)) then
                 fpml = fpmx*xv(i)+fpmy*yv(i)
                 fpel = fpe
              end if
@@ -954,7 +963,7 @@ subroutine energy_momentum_adjust(ncol, pver, kbot, band, pint, delp, c, tau, &
                 fpet = fpe
              end if
           end if
-          if (k >= kbot+1) then
+          if (k >= kbot(i)+1) then
 ! Define layer pressure and density
              pm   = (pint(i,k-1)+pint(i,k))*0.5
              rhom = pm/(rair*t(i,k))

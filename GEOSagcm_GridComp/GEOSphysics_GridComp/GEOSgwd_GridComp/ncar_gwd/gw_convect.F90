@@ -27,12 +27,13 @@ type :: BeresSourceDesc
    logical :: active
    ! Whether wind speeds are shifted to be relative to storm cells.
    logical :: storm_shift
-   ! Index for level where wind speed is used as the source speed.
-   integer :: k
    ! Heating depths below this value [m] will be ignored.
    real :: min_hdepth
    ! Source for wave spectrum
-   real :: spectrum_source
+   ! Index for level where wind speed is used as the source speed.
+   real, allocatable :: k(:)
+   ! tendency limiter
+   real :: tndmax
    ! Table bounds, for convenience. (Could be inferred from shape(mfcc).)
    integer :: maxh
    integer :: maxuh
@@ -51,7 +52,7 @@ contains
 
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
-                          spectrum_source, min_hdepth, storm_shift, taubgnd, active, ncol, lats)
+                          min_hdepth, storm_shift, taubgnd, tndmax, active, ncol, lats)
 #include <netcdf.inc>
 
   character(len=*), intent(in) :: file_name
@@ -61,7 +62,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
-  real, intent(in) :: spectrum_source, min_hdepth, taubgnd
+  real, intent(in) :: min_hdepth, taubgnd, tndmax
   logical, intent(in) :: storm_shift, active
   real, intent(in) :: lats(ncol)
 
@@ -141,11 +142,14 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     ! to meters.
     desc%hd = hdcc * 1000.0
 
-    desc%spectrum_source = spectrum_source
+    ! Source level index allocated, filled later
+    allocate(desc%k(ncol))
 
     desc%min_hdepth = min_hdepth
 
-    desc%storm_shift=storm_shift
+    desc%storm_shift = storm_shift
+
+    desc%tndmax = tndmax
 
     ! Intialize forced background wave speeds
     allocate(desc%taubck(ncol,-band%ngwv:band%ngwv))
@@ -252,7 +256,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   integer :: i, k
 
   ! Zonal/meridional wind at roughly the level where the convection occurs.
-  real :: uconv(ncol), vconv(ncol)
+  real :: uconv(ncol), vconv(ncol), ubi1d(ncol)
 
   ! Maximum heating rate.
   real(GW_PRC) :: q0(ncol)
@@ -291,11 +295,17 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   !------------------------------------------------------------------------
 
   ! Source wind speed and direction.
-  uconv = u(:,desc%k)
-  vconv = v(:,desc%k)
+  do i=1,ncol
+   uconv(i) = u(i,desc%k(i))
+   vconv(i) = v(i,desc%k(i))
+  enddo
 
   ! Get the unit vector components and magnitude at the source level.
-  call get_unit_vector(uconv, vconv, xv, yv, ubi(:,desc%k+1))
+  ubi1d = 0.0
+  call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
+  do i=1,ncol
+   ubi(i,desc%k(i)+1) = ubi1d(i)
+  enddo
 
   ! Project the local wind at midpoints onto the source wind.
   do k = 1, pver
@@ -374,7 +384,9 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
      ! Find the cell speed where the storm speed is > 10 m/s.
      ! Storm speed is taken to be the source wind speed.
-     CS = sign(max(abs(ubm(:,desc%k))-10.0, 0.0), ubm(:,desc%k))
+     do i=1,ncol
+       CS(i) = sign(max(abs(ubm(i,desc%k(i)))-10.0, 0.0), ubm(i,desc%k(i)))
+     enddo
 
      ! Average wind in heating region, relative to storm cells.
      uh = 0.0
@@ -390,7 +402,9 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
      ! For shallow convection, wind is relative to ground, and "heating
      ! region" wind is just the source level wind.
-     uh = ubm(:,desc%k)
+     do i=1,ncol
+       uh(i) = ubm(i,desc%k(i))
+     enddo
 
   end if
 
@@ -446,14 +460,14 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
  
         tau(i,:,topi(i)+1) = tau0
 
-     elseif (dqcdt(i,desc%k) > 1.e-8) then ! frontal region (large-scale forcing)
+     elseif (dqcdt(i,desc%k(i)) > 1.e-8) then ! frontal region (large-scale forcing)
 
       ! include forced background stress in extra tropical large-scale systems
        ! Set the phase speeds and wave numbers in the direction of the source wind.
        ! Set the source stress magnitude (positive only, note that the sign of the 
        ! stress is the same as (c-u).
-       tau(i,:,desc%k+1) = desc%taubck(i,:)
-       topi(i) = desc%k
+       tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+       topi(i) = desc%k(i)
 
      endif
 
@@ -479,7 +493,7 @@ end subroutine gw_beres_src
 subroutine gw_beres_ifc( band, &
    ncol, pver, dt, effgw_dp,  &
    u, v, t, pref, pint, delp, rdelp, piln, &
-   zm, zi, nm, ni, rhoi, kvtt,  &
+   zm, zi, ksrc, nm, ni, rhoi, kvtt,  &
    dqcdt, &
    netdt,desc,lats, alpha, &
    utgw,vtgw,ttgw,flx_heat)
@@ -503,6 +517,8 @@ subroutine gw_beres_ifc( band, &
    real,         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
    real,         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
    real,         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
+   real,         intent(in) :: ksrc(ncol)
+
    real, intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
    real, intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
    real, intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
@@ -564,6 +580,8 @@ subroutine gw_beres_ifc( band, &
 
    !----------------------------------------------------------------------------
 
+   ! fill the k-index
+   desc%k = ksrc
 
    ! Allocate wavenumber fields.
    allocate(tau(ncol,-band%ngwv:band%ngwv,pver+1))
@@ -577,11 +595,6 @@ subroutine gw_beres_ifc( band, &
      elsewhere
         effgw = 0.0
      end where
-
-     do k = 0, pver
-        ! spectrum source index
-        if (pref(k+1) < desc%spectrum_source) desc%k = k+1
-     end do
 
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, &
@@ -604,8 +617,9 @@ subroutine gw_beres_ifc( band, &
           c, kvtt, tau, utgw, vtgw, &
           ttgw, gwut, alpha, tau_adjust=pint_adj)
      ! Apply efficiency and limiters
-     call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
-                                 effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
+     call energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
+                                 effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
+                                 kbot_in=desc%k, tndmax_in=desc%tndmax)
  
    deallocate(tau, gwut, c)
 

@@ -339,8 +339,9 @@ subroutine gw_rdg_ifc( band, &
         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
      end do
      ! Apply efficiency and limiters to the totals
-     call energy_momentum_adjust(ncol, pver, pver, band, pint, delp, c, tau, &
-                        effrdg(:,nn), t, ubm, ubi, xv, yv, utrdg, vtrdg, ttrdg, tndmax_in=orotndmax)
+     call energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
+                        effrdg(:,nn), t, ubm, ubi, xv, yv, utrdg, vtrdg, ttrdg, &
+                        tndmax_in=orotndmax)
 
 #ifdef CAM
 ! disable tracer mixing in GW for now.

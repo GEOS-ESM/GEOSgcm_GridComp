@@ -326,7 +326,7 @@ subroutine gw_oro_ifc( band, &
           c,         kvtt,  tau,  utgw,  vtgw, &
           ttgw, gwut, alpha, tau_adjust=pint_adj)
      ! Apply efficiency and limiters
-     call energy_momentum_adjust(ncol, pver, pver, band, pint, delp, c, tau, &
+     call energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
                         effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
 
 end subroutine gw_oro_ifc
