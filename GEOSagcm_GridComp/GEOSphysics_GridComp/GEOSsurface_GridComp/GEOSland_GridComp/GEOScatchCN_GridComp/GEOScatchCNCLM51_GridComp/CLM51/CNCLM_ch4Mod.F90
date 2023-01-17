@@ -107,7 +107,7 @@ module ch4Mod
 
  end type ch4_type
 
-type(ch4_type), public, target, save :: ch4_inst
+type(ch4_type), public :: ch4_inst
 
 contains
 

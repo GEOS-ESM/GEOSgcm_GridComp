@@ -84,7 +84,7 @@ module ColumnType
      integer , pointer :: levgrnd_class        (:,:) ! class in which each layer falls (1:nlevgrnd)
 
   end type column_type
-  type(column_type), public, target, save :: col
+  type(column_type), public :: col
 
  contains
 

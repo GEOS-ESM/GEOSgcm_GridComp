@@ -40,7 +40,7 @@ module ActiveLayerMod
      procedure, public :: alt_calc
   
   end type active_layer_type
-  type(active_layer_type), public, target, save :: active_layer_inst
+  type(active_layer_type), public :: active_layer_inst
 
 !---------------------------------------
 

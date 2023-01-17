@@ -29,7 +29,7 @@ module CropType
      real(r8) :: baset_latvary_slope
 
  end type crop_type
- type(crop_type), public, target, save :: crop_inst
+ type(crop_type), public :: crop_inst
 
 contains
 

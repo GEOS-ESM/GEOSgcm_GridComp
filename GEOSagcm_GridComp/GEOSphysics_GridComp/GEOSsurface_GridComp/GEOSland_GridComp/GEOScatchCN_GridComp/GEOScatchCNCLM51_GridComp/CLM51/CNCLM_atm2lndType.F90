@@ -63,7 +63,7 @@ module atm2lndType
      real(r8) , pointer :: t_mo_min_patch               (:)   => null() ! patch annual min of t_mo (Kelvin) 
 
 end type atm2lnd_type                                                                                       
-type(atm2lnd_type), public, target, save :: atm2lnd_inst 
+type(atm2lnd_type), public :: atm2lnd_inst 
 
 contains
 

@@ -74,7 +74,7 @@ module FrictionVelocityMod
 
 
   end type frictionvel_type
-  type(frictionvel_type), public, target, save :: frictionvel_inst
+  type(frictionvel_type), public :: frictionvel_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

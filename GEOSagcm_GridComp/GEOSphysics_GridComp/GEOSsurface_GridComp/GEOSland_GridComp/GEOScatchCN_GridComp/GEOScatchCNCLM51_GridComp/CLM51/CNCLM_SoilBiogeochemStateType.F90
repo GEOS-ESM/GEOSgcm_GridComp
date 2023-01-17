@@ -41,7 +41,7 @@ module SoilBiogeochemStateType
      real(r8) , pointer :: plant_ndemand_col           (:)     ! column-level plant N demand
 
   end type soilbiogeochem_state_type
-  type(soilbiogeochem_state_type), public, target, save :: soilbiogeochem_state_inst
+  type(soilbiogeochem_state_type), public :: soilbiogeochem_state_inst
 
 contains
 

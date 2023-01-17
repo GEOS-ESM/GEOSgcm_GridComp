@@ -100,7 +100,7 @@ module CNVegStateType
 
    end type cnveg_state_type
 
-   type(cnveg_state_type), public, target, save :: cnveg_state_inst
+   type(cnveg_state_type), public :: cnveg_state_inst
 
 contains
 

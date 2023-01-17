@@ -103,7 +103,7 @@ module WaterFluxType
      type(annual_flux_dribbler_type) :: qflx_ice_dynbal_dribbler
 
   end type waterflux_type
-  type(waterflux_type), public, target, save :: waterflux_inst
+  type(waterflux_type), public :: waterflux_inst
 
 contains
 

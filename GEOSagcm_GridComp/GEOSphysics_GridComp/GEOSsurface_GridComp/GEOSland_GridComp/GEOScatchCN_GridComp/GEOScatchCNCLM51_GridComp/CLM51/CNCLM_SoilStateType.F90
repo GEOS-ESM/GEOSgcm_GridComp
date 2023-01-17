@@ -74,7 +74,7 @@ module SoilStateType
      real(r8), pointer :: soil_conductance_patch(:,:) ! patch soil conductance [mm/s]
 
 end type soilstate_type
-type(soilstate_type), public, target, save :: soilstate_inst
+type(soilstate_type), public :: soilstate_inst
 
 contains 
 

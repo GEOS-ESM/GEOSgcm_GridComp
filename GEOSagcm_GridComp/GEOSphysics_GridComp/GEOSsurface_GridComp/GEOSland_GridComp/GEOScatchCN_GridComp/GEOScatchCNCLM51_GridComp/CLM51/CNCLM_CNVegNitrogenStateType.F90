@@ -210,7 +210,7 @@ module CNVegNitrogenStateType
      procedure , public  :: ZeroDWT
 
 end type cnveg_nitrogenstate_type
-type(cnveg_nitrogenstate_type), public, target, save :: cnveg_nitrogenstate_inst
+type(cnveg_nitrogenstate_type), public :: cnveg_nitrogenstate_inst
 
 contains
 

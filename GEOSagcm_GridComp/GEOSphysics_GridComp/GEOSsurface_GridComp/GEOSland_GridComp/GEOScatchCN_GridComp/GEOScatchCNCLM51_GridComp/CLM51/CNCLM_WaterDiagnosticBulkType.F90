@@ -59,7 +59,7 @@ module WaterDiagnosticBulkType
      real(r8), pointer :: qflx_prec_grnd_col     (:)   ! col water onto ground including canopy runoff (mm H2O/s)
 
 end type waterdiagnosticbulk_type
-type(waterdiagnosticbulk_type), public, target, save :: waterdiagnosticbulk_inst
+type(waterdiagnosticbulk_type), public :: waterdiagnosticbulk_inst
 
 contains
 

@@ -65,7 +65,7 @@ module PatchType
                                        ! including patches which are not currently
                                        ! associated with a FATES linked-list patch
   end type patch_type
-  type(patch_type), public, target, save :: patch
+  type(patch_type), public :: patch
 
  contains
 

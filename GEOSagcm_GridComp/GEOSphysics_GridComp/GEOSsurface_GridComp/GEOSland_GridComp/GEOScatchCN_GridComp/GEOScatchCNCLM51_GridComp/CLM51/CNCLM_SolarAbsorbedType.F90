@@ -68,7 +68,7 @@ module SolarAbsorbedType
      real(r8), pointer :: ssre_fsr_nir_d_ln_patch(:)   ! snow-free patch reflected direct beam nir solar radiation at local noon (W/m**2)
 
  end type solarabs_type
- type(solarabs_type), public, target, save :: solarabs_inst
+ type(solarabs_type), public :: solarabs_inst
 
 contains
 

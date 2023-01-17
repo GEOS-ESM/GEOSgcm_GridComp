@@ -65,7 +65,7 @@ module SurfaceAlbedoType
 
 
 end type surfalb_type
-type(surfalb_type), public, target, save :: surfalb_inst
+type(surfalb_type), public :: surfalb_inst
 
 contains
 

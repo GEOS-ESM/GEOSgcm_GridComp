@@ -34,7 +34,7 @@ module Wateratm2lndType
 
 
   end type wateratm2lnd_type
-  type(wateratm2lnd_type), public, target, save :: wateratm2lnd_inst
+  type(wateratm2lnd_type), public :: wateratm2lnd_inst
 
   contains
 

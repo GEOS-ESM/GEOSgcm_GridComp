@@ -68,7 +68,7 @@ module CNProductsMod
 
  
   end type cn_products_type
-  type(cn_products_type), public, target, save :: cn_products_inst
+  type(cn_products_type), public :: cn_products_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

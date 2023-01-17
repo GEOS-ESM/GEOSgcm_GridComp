@@ -54,7 +54,7 @@ module CNDVType
      real(r8), pointer, public :: heatstress_patch  (:)
 
  end type dgvs_type
- type(dgvs_type), public, target, save :: dgvs_inst
+ type(dgvs_type), public :: dgvs_inst
 
 contains
 

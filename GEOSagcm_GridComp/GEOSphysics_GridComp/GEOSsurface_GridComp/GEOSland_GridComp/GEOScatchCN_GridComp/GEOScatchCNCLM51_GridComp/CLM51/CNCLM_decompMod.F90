@@ -31,7 +31,7 @@ module decompMod
      integer :: level            ! whether defined on the proc or clump level
      integer :: clump_index      ! if defined on the clump level, this gives the clump index
   end type bounds_type
-  type(bounds_type), public, target, save :: bounds
+  type(bounds_type), public :: bounds
 
  contains
 

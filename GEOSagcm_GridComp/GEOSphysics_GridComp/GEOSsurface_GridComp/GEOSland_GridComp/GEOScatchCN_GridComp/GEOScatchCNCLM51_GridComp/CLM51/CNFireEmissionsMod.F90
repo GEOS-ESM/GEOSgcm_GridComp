@@ -35,8 +35,6 @@ module CNFireEmissionsMod
 
   end type fireemis_type
 
-  integer :: shr_fire_emis_mechcomps_n = 0
-
   !------------------------------------------------------------------------
 contains
 

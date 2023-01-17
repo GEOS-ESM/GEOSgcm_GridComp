@@ -121,7 +121,7 @@ module EnergyFluxType
      real(r8), pointer :: errlon_patch            (:)   ! longwave radiation conservation error (W/m**2)
      real(r8), pointer :: errlon_col              (:)   ! longwave radiation conservation error (W/m**2)
   end type energyflux_type
-  type(energyflux_type), public, target, save :: energyflux_inst
+  type(energyflux_type), public :: energyflux_inst
 
 contains
 

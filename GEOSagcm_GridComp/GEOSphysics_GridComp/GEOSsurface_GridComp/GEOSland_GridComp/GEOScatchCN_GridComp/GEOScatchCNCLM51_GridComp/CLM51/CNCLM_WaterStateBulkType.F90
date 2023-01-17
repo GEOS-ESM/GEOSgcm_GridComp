@@ -31,7 +31,7 @@ module WaterStateBulkType
      real(r8), pointer :: int_snow_col           (:)   ! col integrated snowfall (mm H2O)
 
   end type waterstatebulk_type
-  type(waterstatebulk_type), public, target, save :: waterstatebulk_inst
+  type(waterstatebulk_type), public :: waterstatebulk_inst
 
 contains
 

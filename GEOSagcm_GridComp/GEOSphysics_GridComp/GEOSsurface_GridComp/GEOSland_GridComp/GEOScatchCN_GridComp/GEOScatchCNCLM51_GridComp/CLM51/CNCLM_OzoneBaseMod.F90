@@ -22,7 +22,7 @@ module OzoneBaseMod
      real(r8), pointer, public :: o3coefgsun_patch(:)  ! ozone coefficient for conductance, sunlit leaves (0 - 1)
 
   end type ozone_base_type
-  type(ozone_base_type), public, target, save :: ozone_inst
+  type(ozone_base_type), public :: ozone_inst
 
 contains
 

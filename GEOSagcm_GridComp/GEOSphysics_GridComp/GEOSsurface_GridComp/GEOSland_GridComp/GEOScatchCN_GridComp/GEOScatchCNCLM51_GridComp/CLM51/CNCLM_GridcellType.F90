@@ -39,7 +39,7 @@ module GridcellType
      integer , pointer :: landunit_indices (:,:)
 
   end type gridcell_type
-  type(gridcell_type), public, target, save :: grc
+  type(gridcell_type), public :: grc
 
   contains
 

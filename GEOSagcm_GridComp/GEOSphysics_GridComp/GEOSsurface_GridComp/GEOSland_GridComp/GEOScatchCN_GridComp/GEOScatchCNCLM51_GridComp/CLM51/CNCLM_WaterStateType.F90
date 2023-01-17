@@ -49,7 +49,7 @@ module WaterStateType
      real(r8) :: aquifer_water_baseline                ! baseline value for water in the unconfined aquifer (wa_col) for this bulk / tracer (mm)
 
   end type waterstate_type
-  type(waterstate_type), public, target, save :: waterstate_inst
+  type(waterstate_type), public :: waterstate_inst
 
 contains
 
