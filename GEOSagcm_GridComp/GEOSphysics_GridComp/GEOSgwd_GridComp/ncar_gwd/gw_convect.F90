@@ -617,7 +617,7 @@ subroutine gw_beres_ifc( band, &
           c, kvtt, tau, utgw, vtgw, &
           ttgw, gwut, alpha, tau_adjust=pint_adj)
      ! Apply efficiency and limiters
-     call energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
+     call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
                                  kbot_in=desc%k, tndmax_in=desc%tndmax)
  

@@ -814,7 +814,7 @@ end subroutine momentum_fixer
 !==========================================================================
 
 ! Calculate the change in total energy from tendencies up to this point.
-subroutine energy_change(ncol,pver, dt, pdel, u, v, dudt, dvdt, dsdt, de)
+subroutine energy_change(ncol,pver, dt, pdel, u, v, dudt, dvdt, dtdt, de)
 
   integer, intent(in) :: ncol, pver
   ! Time step.
@@ -826,7 +826,7 @@ subroutine energy_change(ncol,pver, dt, pdel, u, v, dudt, dvdt, dsdt, de)
   ! Wind tendencies.
   real, intent(in) :: dudt(ncol,pver), dvdt(ncol,pver)
   ! Heating tendency.
-  real, intent(in) :: dsdt(ncol,pver)
+  real, intent(in) :: dtdt(ncol,pver)
   ! Change in energy.
   real, intent(out) :: de(ncol)
 
@@ -836,7 +836,7 @@ subroutine energy_change(ncol,pver, dt, pdel, u, v, dudt, dvdt, dsdt, de)
   ! Net gain/loss of total energy in the column.
   de = 0.0
   do k = 1, pver
-     de = de + pdel(:,k)/gravit * (dsdt(:,k) + &
+     de = de + pdel(:,k)/gravit * (cpair*dtdt(:,k) + &
           dudt(:,k)*(u(:,k)+dudt(:,k)*0.5*dt) + &
           dvdt(:,k)*(v(:,k)+dvdt(:,k)*0.5*dt) )
   end do
@@ -879,7 +879,7 @@ end subroutine energy_fixer
 
 !==========================================================================
 
-subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
+subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
                                kbot_in, tndmax_in)
 
@@ -890,6 +890,11 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
   real, intent(in) :: pint(ncol,pver+1)
   ! Pressure thickness.
   real, intent(in) :: delp(ncol,pver)
+  ! Winds
+  real, intent(in) :: u(ncol,pver)      ! Midpoint zonal winds. ( m s-1)
+  real, intent(in) :: v(ncol,pver)      ! Midpoint meridional winds. ( m s-1)
+  ! timestep
+  real, intent(in) :: dt
   ! Wave phase speeds for each column.
   real(GW_PRC), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
   ! Wave Reynolds stress.
@@ -909,10 +914,14 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
   real, intent(inout) :: vtgw(ncol,pver)
   real, intent(inout) :: ttgw(ncol,pver)
 
+  real :: taucd(ncol,pver+1,4)
+  real :: um_flux(ncol), vm_flux(ncol)
+  real :: de(ncol)
+
   real :: zlb,pm,rhom,cmu,fpmx,fpmy,fe,fpe,fpml,fpel,fpmt,fpet,dusrcl,dvsrcl,dtsrcl
   real :: tndmax,utfac,uhtmax
-  integer  :: ktop
-  real :: kbot(ncol)
+  integer :: ktop
+  integer :: kbot(ncol)
 
   ! Level index.
   integer :: i,k,l
@@ -933,6 +942,7 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
 ! GEOS efficiency and energy/momentum adjustments
   ktop=1
   do i=1,ncol
+#ifdef DO_SUB_SOURCE_TENDENCIES
 ! Calculate launch level height
     zlb = 0.
     do k = ktop+1, pver
@@ -963,6 +973,8 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
                 fpet = fpe
              end if
           end if
+       enddo
+       do k = ktop+1, pver
           if (k >= kbot(i)+1) then
 ! Define layer pressure and density
              pm   = (pint(i,k-1)+pint(i,k))*0.5
@@ -979,6 +991,7 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
           end if
        end do
     end do
+#endif
    !-----------------------------------------------------------------------
    ! Adjust efficiency factor to prevent unrealistically strong forcing
    !-----------------------------------------------------------------------
@@ -989,12 +1002,22 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
     end do
     if (uhtmax > tndmax) utfac = tndmax/uhtmax
     do k = ktop, pver
-       utgw(i,k) = utgw(i,k)*utfac
-       vtgw(i,k) = vtgw(i,k)*utfac
-       ttgw(i,k) = ttgw(i,k)*utfac
+       utgw(i,k) = utgw(i,k)*effgw(i)*utfac
+       vtgw(i,k) = vtgw(i,k)*effgw(i)*utfac
+       ttgw(i,k) = ttgw(i,k)*effgw(i)*utfac
     end do
 
   end do  ! i=1,ncol
+
+  if (present(kbot_in)) then
+   ! compute sub-source wind and temperature tendencies
+    taucd = calc_taucd(ncol, pver, band%ngwv, kbot, tau, c, xv, yv, ubi)
+    call momentum_flux(kbot, taucd, um_flux, vm_flux)
+    call energy_change(ncol,pver, dt, delp, u, v, utgw, vtgw, ttgw, de)
+   ! add sub-source wind and temperature tendencies
+    call momentum_fixer(ncol, pver, kbot, pint, um_flux, vm_flux, utgw, vtgw)
+    call energy_fixer(ncol, pver, kbot, pint, de, ttgw)
+  endif
 
 end subroutine energy_momentum_adjust 
 
