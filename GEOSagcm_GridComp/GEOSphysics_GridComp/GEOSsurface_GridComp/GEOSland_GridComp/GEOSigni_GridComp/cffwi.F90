@@ -42,40 +42,40 @@ real, public, parameter :: DC_INIT   = 15.0
 
 real, public, parameter :: CFFWI_REFERENCE_LATITUDE = 46.0 ! Canada, 46N
 
-integer, public, parameter :: FFMC_HOURLY_MODEL = 0
-integer, public, parameter :: FFMC_DAILY_MODEL  = 1
 
 contains
 
-elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, model)
+elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
   
     !
     ! Calculates either hourly or daily Fine Fuel Moisture Code (FFMC).
     !
     ! Default values and units:
-    !     ffmc  = initial FFMC (default = 85)
-    !     T     = temperature, C
-    !     RH    = relative humidity, %
-    !     w     = wind speed, m/s
-    !     Pr    = 24-hour precipitation, mm
-    !     model = 0 | 1,  where 0 = hourly FFMC model
-    !                           1 = daily  FFMC model
+    !     ffmc = initial FFMC (default = 85)
+    !     T    = temperature, C
+    !     RH   = relative humidity, %
+    !     w    = wind speed, m/s
+    !     Pr   = precip, mm;     | dt <= 1hr: precip over the time step
+    !                            ! dt  > 1hr: 24-hour precip
+    !     dt   = time step, hr;  | dt <= 1hr: trigers the hourly FFMC model
+    !                            | dt  > 1hr: trigers the daily  FFMC model
+    !
     !
     ! Note:
-    !     Weather data are observed either hourly or  
-    !     at local noon.
+    !     Weather data are observed either hourly or at local noon.
     !
     
     implicit none
 
     real, intent(in) :: ffmc, T, RH, wind, Pr
-    integer, intent(in) :: model
+    real, intent(in) :: dt
 
     ! local
     real :: f_0, w, m_0, h
     real :: r_f, m_r, dm, e_d, e_w, m
-    real :: k_0, k_l, k_d, k_w, f_k
-    real :: E_H_term, E_T_term, result
+    real :: k_0, k_l, k_d, k_w, f_k, f_t
+    real :: E_H_term, E_T_term
+    real :: result
 
     real, parameter :: k_factor_hourly = 0.0579
     real, parameter :: k_factor_daily  = 0.581
@@ -84,7 +84,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, model)
     ! use the same variable names as in the FFMC equation and 
     ! convert the units if necessary
     f_0 = ffmc
-    w   = 3.6 * wind  ! convert from m/s to km/h
+    w = 3.6 * wind  ! convert from m/s to km/h
 
 
     ! initial fuel moisture content (FF scale)
@@ -93,13 +93,15 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, model)
     ! current fuel moisture content
     m_r = m_0
 
-    if (model == FFMC_HOURLY_MODEL) then
+    if (dt <= 1.0) then
         f_k = k_factor_hourly
+        f_t = dt
 
         ! canopy effect is not considered in the hourly calculations
         r_f = Pr
     else
         f_k = k_factor_daily
+        f_t = 1.0
         
         ! rainfall correction due to canopy effect
         r_f = max(0.0, Pr - 0.5)
@@ -133,14 +135,14 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, model)
         k_0 = 0.424 * (1 - (h**1.7)) + 0.0694 * sqrt(w) * (1 - (h**8))
         k_d = k_0 * f_k * exp(0.0365 * T)
 
-        m = E_d + (m_r - E_d)*(10.0**(-k_d))
+        m = E_d + (m_r - E_d)*(10.0**(-k_d*f_t))
     else
         ! wetting is in effect
         if (m_r < E_w) then
             k_l = 0.424 * (1 - (1 - h)**1.7) + 0.0694 * sqrt(w)* (1 - (1 - h)**8)
             k_w = k_l * f_k * exp(0.0365 * T)
 
-            m = E_w - (E_w - m_r)*(10.0**(-k_w))
+            m = E_w - (E_w - m_r)*(10.0**(-k_w*f_t))
         else
             m = m_r
         end if
@@ -291,6 +293,7 @@ elemental real function drought_code(dc, T, Pr, latitude, month)
 end function drought_code
 
 
+
 elemental real function drought_code_lf(latitude, month)
     
     !
@@ -334,6 +337,7 @@ elemental real function drought_code_lf(latitude, month)
     drought_code_lf = L_f
 
 end function drought_code_lf
+
 
 
 elemental real function initial_spread_index(ffmc, wind)
@@ -467,7 +471,7 @@ end function daily_severity_rating
 
 subroutine cffwi_indexes(ffmc_initial, dmc_initial, dc_initial, &
                          T, RH, wind, Pr,                       &
-                         latitude, month, ffmc_model,           &
+                         latitude, month, time_step,            &
                          ffmc, dmc, dc, isi, bui, fwi, dsr)
 
     ! Calculates FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes.
@@ -480,8 +484,8 @@ subroutine cffwi_indexes(ffmc_initial, dmc_initial, dc_initial, &
     !     RH            = relative humidity, %
     !     wind          = wind speed, m/s
     !     Pr            = 24-hour precipitation, mm
-    !     ffmc_model    = 0 | 1, where 0 = hourly FFMC model
-    !                                  1 = daily  FFMC model
+    !     time_step     = time step, hr;  values <= 1, trigger hourly FFMC
+    !                                     values  > 1, trigger daily  FFMC
     !
     ! Note:
     !     Weather data are measured either hourly or at local noon.
@@ -493,12 +497,12 @@ subroutine cffwi_indexes(ffmc_initial, dmc_initial, dc_initial, &
     real, intent(in)    :: T, RH, wind, Pr
     integer, intent(in) :: month
     real, intent(in)    :: latitude
-    integer, intent(in) :: ffmc_model
+    real, intent(in)    :: time_step
     real, intent(out)   :: ffmc, dmc, dc, isi, bui, fwi, dsr
 
 
     ! update fuel moisture codes 
-    ffmc = fine_fuel_moisture_code(ffmc_initial, T, RH, wind, Pr, ffmc_model)
+    ffmc = fine_fuel_moisture_code(ffmc_initial, T, RH, wind, Pr, time_step)
     dmc  = duff_moisture_code(dmc_initial, T, RH, Pr, month)
     dc   = drought_code(dc_initial, T, Pr, latitude, month)
 

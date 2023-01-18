@@ -19,7 +19,6 @@ program cffwi_test
                      fire_weather_index, daily_severity_rating,         &
                      cffwi_indexes,                                     &
                      FFMC_INIT, DMC_INIT, DC_INIT,                      &
-                     FFMC_HOURLY_MODEL, FFMC_DAILY_MODEL,               &
                      CFFWI_REFERENCE_LATITUDE
 
 
@@ -36,11 +35,13 @@ program cffwi_test
     real    :: ffmc_pd, dmc_pd, dc_pd
     real    :: ffmc, dmc, dc, fwi, bui, dsr, isi
     real    :: T, RH, wind, rain
+    real    :: time_step
     real    :: latitude
     integer :: month
     
 
-    latitude = CFFWI_REFERENCE_LATITUDE
+    time_step = 24.0 ! values larger than 1 will triger daily FFMC
+    latitude  = CFFWI_REFERENCE_LATITUDE
     
     ffmc_pd = FFMC_DEFAULT
     dmc_pd  = DMC_DEFAULT
@@ -98,7 +99,7 @@ program cffwi_test
     if (INDIVIDUAL_INDEXES) then
         write (*, '(A)') "Testing the individual cffwi indexes:"
 
-        ffmc = fine_fuel_moisture_code(ffmc_pd, T, RH, wind, rain, FFMC_DAILY_MODEL)
+        ffmc = fine_fuel_moisture_code(ffmc_pd, T, RH, wind, rain, time_step)
 
         dmc = duff_moisture_code(dmc_pd, T, RH, rain, month)
 
@@ -116,7 +117,7 @@ program cffwi_test
         call cffwi_indexes(ffmc_pd, dmc_pd, dc_pd,   &
                            T, RH, wind, rain,        &
                            latitude, month,          &
-                           FFMC_DAILY_MODEL,         &
+                           time_step,                &
                            ffmc, dmc, dc, isi, bui, fwi, dsr)
     end if
 
