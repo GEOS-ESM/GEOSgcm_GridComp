@@ -93,30 +93,30 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, model)
     ! current fuel moisture content
     m_r = m_0
 
-
     if (model == FFMC_HOURLY_MODEL) then
         f_k = k_factor_hourly
 
-        ! canopy effect is not considered in the hourly calculations,
-        ! hence there is no rainfall correction done here
+        ! canopy effect is not considered in the hourly calculations
+        r_f = Pr
     else
         f_k = k_factor_daily
         
         ! rainfall correction due to canopy effect
-        if (Pr > 0.5) then
-            r_f = Pr - 0.5
-            
-            m_r = m_0 + 42.5 * r_f * exp(-100.0/(251.0 - m_0)) * (1 - exp(-6.93/r_f))
+        r_f = max(0.0, Pr - 0.5)
+    end if
 
-            if (m_0 > 150) then
-                dm = m_0 - 150
-                m_r = m_r + 0.0015 * (dm*dm) * sqrt(r_f)
-            end if
+    ! rainfall effect
+    if (r_f > tiny(r_f)) then
+        m_r = m_0 + 42.5 * r_f * exp(-100.0/(251.0 - m_0)) * (1 - exp(-6.93/r_f))
 
-            ! fuel moisture content has upper limit of 250
-            if (m_r > 250) then
-                m_r = 250.0
-            end if
+        if (m_0 > 150) then
+            dm = m_0 - 150
+            m_r = m_r + 0.0015 * (dm*dm) * sqrt(r_f)
+        end if
+
+        ! fuel moisture content has upper limit of 250
+        if (m_r > 250) then
+            m_r = 250.0
         end if
     end if
 
