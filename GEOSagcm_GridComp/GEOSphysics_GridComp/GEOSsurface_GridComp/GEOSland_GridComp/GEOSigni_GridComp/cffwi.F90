@@ -88,7 +88,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, model)
 
 
     ! initial fuel moisture content (FF scale)
-    m_0 = 147.2*(101 - f_0) / (59.5 + f_0)
+    m_0 = 147.27723*(101 - f_0) / (59.5 + f_0)
     
     ! current fuel moisture content
     m_r = m_0
@@ -148,7 +148,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, model)
 
 
     ! current FFMC (FF scale)
-    result = 59.5*(250 - m)/(147.2 + m)
+    result = 59.5*(250 - m)/(147.27723 + m)
     
     ! clamp FFMC within [0, 101]
     fine_fuel_moisture_code = max(0.0, min(101.0, result))
