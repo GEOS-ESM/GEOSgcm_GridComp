@@ -2259,8 +2259,6 @@ contains
    real, pointer, dimension(:)    :: UI => null()
    real, pointer, dimension(:)    :: VI => null()
 
-   real, pointer, dimension(:)    :: TW        => null()
-   real, pointer, dimension(:)    :: SW        => null()
    real, pointer, dimension(:,:)  :: TS        => null()
 
    !*CALLBACK*
@@ -2340,15 +2338,9 @@ contains
    type (ESMF_Alarm)                   :: SOLALARM
    logical                             :: solalarmison
    type(ESMF_VM)                       :: VM
-   type(ESMF_VM)                       :: VMG               ! for CICE
-   integer                             :: MYPE              ! for CICE
    logical                             :: debugzth
 
-
    real                                :: EMSICE
-
-   real, parameter                     :: SALTWATERCAP    = MAPL_CAPWTR
-   real, parameter                     :: SALTWATERICECAP = MAPL_CAPICE
 
 !  Begin...
 !----------
@@ -2392,8 +2384,6 @@ contains
    call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,CMATM  , 'CMATM'  ,    RC=STATUS); VERIFY_(STATUS)
 
-   !call MAPL_GetPointer(IMPORT,TW     , 'TS_FOUND',    RC=STATUS); VERIFY_(STATUS)
-   !call MAPL_GetPointer(IMPORT,SW     , 'SS_FOUND',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,FR     , 'FRACICE' ,    RC=STATUS); VERIFY_(STATUS)
 
 ! Pointers to internals
