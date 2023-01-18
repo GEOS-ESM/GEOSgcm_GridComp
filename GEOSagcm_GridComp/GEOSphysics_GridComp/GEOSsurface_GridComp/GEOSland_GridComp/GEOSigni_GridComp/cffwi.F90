@@ -10,10 +10,12 @@
 !    for the Canadian Forest Fire Danger Rating System, 2008
 ! 4) Kerry Anderson, A comparison of hourly fine fuel moisture 
 !    code calculations within Canada, 2009
-!
+! 5) Wotton, B.M., A grass moisture model for the 
+!    Canadian Forest Fire Danger Rating System, 2009
 !
 ! Milestones:
-! Anton Darmenov, NASA, 2023 -- hourly FFMC
+! Anton Darmenov, NASA, 2023 -- add grass FMC
+! Anton Darmenov, NASA, 2023 -- add hourly FFMC
 ! Anton Darmenov, NASA, 2023 -- adjustments for applying the system globally
 ! Anton Darmenov, NASA, 2022 -- refactor
 ! Anton Darmenov, NASA, 2010 -- initial implementation
@@ -33,6 +35,8 @@ public :: buildup_index
 public :: fire_weather_index
 public :: daily_severity_rating
 
+public :: grass_fuel_moisture_code
+
 public :: drought_code_lf
 public :: cffwi_indexes
 
@@ -42,6 +46,7 @@ real, public, parameter :: DC_INIT   = 15.0
 
 real, public, parameter :: CFFWI_REFERENCE_LATITUDE = 46.0 ! Canada, 46N
 
+real, public, parameter :: NOMINAL_FINE_FUEL_LOAD = 0.3 ! kg m-2
 
 contains
 
@@ -193,6 +198,116 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
     fine_fuel_moisture_code = max(0.0, min(101.0, result))
 
 end function fine_fuel_moisture_code
+
+
+
+elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, isol, ff_load, dt)
+  
+    !
+    ! Calculates hourly Grass Fuel Moisture Code (GFMC).
+    !
+    ! Default values and units:
+    !     gfmc    = initial GFMC (default = 85)
+    !     T       = temperature, C
+    !     RH      = relative humidity, %
+    !     w       = wind speed, m/s
+    !     Pr      = precip, mm;     | dt <= 1hr: precip over the time step
+    !                               ! dt  > 1hr: 24-hour precip
+    !     isol    = solar radiation flux, W m-2
+    !     ff_load = fuel load of the fine fuel layer, kg m-2 (default = 0.3 kg m-2)
+    !     dt      = time step, hr;  | dt <= 1hr: trigers the hourly FFMC model
+    !                               | dt  > 1hr: trigers the daily  FFMC model
+    !
+    !
+    ! Note:
+    !     Weather data are observed hourly.
+    !
+    
+    implicit none
+
+    real, intent(in) :: gfmc, T, RH, wind, Pr, isol, ff_load
+    real, intent(in) :: dt
+
+    ! local
+    real :: f_0, w, m_0, h
+    real :: r_f, m_r, e_d, e_w, m
+    real :: k_0, k_l, k_d, k_w, f_k, f_t
+    real :: E_T_term
+    real :: T_fuel, RH_fuel, svp, svp_fuel
+    real :: result
+
+    real, parameter :: k_factor_hourly = 0.389633
+
+
+    ! use the same variable names as in the FFMC equation and 
+    ! convert the units if necessary
+    f_0 = gfmc
+    w = 3.6 * wind  ! convert from m/s to km/h
+
+
+    ! initial fuel moisture content (FF scale)
+    m_0 = ff_scale_mc(f_0)
+    
+    ! current fuel moisture content
+    m_r = m_0
+
+    f_k = k_factor_hourly
+    f_t = dt
+
+    ! canopy effect is not considered in the hourly calculations
+    r_f = Pr
+
+    ! rainfall effect
+    m_r = m_0 + 100 * (r_f / ff_load)
+    
+    ! fuel moisture content has upper limit of 250
+    m_r = min(m_r, 250.0)
+
+    ! fuel temperature
+    T_fuel = T + 35.07 * (1e-3 * isol) * exp(-0.06215 * w)
+
+    ! saturation vapour pressure
+    svp = 6.108 * 10**(7.5 * T / (237.3 + T)) ! Tetens equation
+
+    ! saturation vapour pressure for fuel temperature
+    svp_fuel = 6.108 * 10**(7.5 * T_fuel / (237.3 + T_fuel))
+
+    ! fuel level relative humidity
+    RH_fuel = RH * (svp / svp_fuel)
+
+    ! equilibrium moisture contents for drying (E_d) and wetting (E_w) conditions
+    E_T_term = 0.27 * (26.7 - T_fuel) * (1 - exp(-0.115 * RH_fuel))
+    E_d = 1.62*RH_fuel**0.532 + 13.7*exp((RH_fuel - 100) / 13.0) + E_T_term
+    E_w = 1.42*RH_fuel**0.512 + 12.0*exp((RH_fuel - 100) / 18.0) + E_T_term
+
+    h = RH_fuel / 100.0
+
+    if (m_r > E_d) then
+        ! drying is in effect
+        k_0 = 0.424 * (1 - (h**1.7)) + 0.0694 * sqrt(w) * (1 - (h**8))
+        k_d = k_0 * f_k * exp(0.0365 * T_fuel)
+
+        m = E_d + (m_r - E_d)*(10.0**(-k_d*f_t))
+    else
+        ! wetting is in effect
+        if (m_r < E_w) then
+            k_l = 0.424 * (1 - (1 - h)**1.7) + 0.0694 * sqrt(w)* (1 - (1 - h)**8)
+            k_w = k_l * f_k * exp(0.0365 * T_fuel)
+
+            m = E_w - (E_w - m_r)*(10.0**(-k_w*f_t))
+        else
+            m = m_r  ! perhaps it should be m0?
+        end if
+    end if
+
+
+    ! current GFMC (FF scale)
+    result = ff_scale_ffmc(m)
+    
+    ! clamp GFMC within [0, 101]
+    grass_fuel_moisture_code = max(0.0, min(101.0, result))
+
+end function grass_fuel_moisture_code
 
 
 
@@ -511,6 +626,7 @@ elemental real function daily_severity_rating(fwi)
     daily_severity_rating = 0.0272 * fwi**1.77
 
 end function daily_severity_rating
+
 
 
 subroutine cffwi_indexes(ffmc_initial, dmc_initial, dc_initial, &
