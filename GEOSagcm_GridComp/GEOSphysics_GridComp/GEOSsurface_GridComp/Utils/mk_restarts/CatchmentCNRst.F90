@@ -646,6 +646,7 @@ contains
         call ESMF_ClockSet ( clock, CurrTime=CURRENT_TIME, rc=status )
 
         !3) create an orbit
+        CF=ESMF_ConfigCreate(RC=STATUS)
         ORBIT = MAPL_SunOrbitCreateFromConfig(CF, CLOCK, .false., RC=status)
         VERIFY_(status) 
 
