@@ -332,16 +332,17 @@ subroutine gw_rdg_ifc( band, &
           ttgw, gwut, alpha, &
           kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
 
+     ! Apply efficiency and limiters to the totals
+     call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
+                        effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
+                        tndmax_in=orotndmax)
+
      ! Add the tendencies from each ridge to the totals.
      do k = 1, pver
         utrdg(:,k) = utrdg(:,k) + utgw(:,k)
         vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
      end do
-     ! Apply efficiency and limiters to the totals
-     call energy_momentum_adjust(ncol, pver, band, pint, delp, c, tau, &
-                        effrdg(:,nn), t, ubm, ubi, xv, yv, utrdg, vtrdg, ttrdg, &
-                        tndmax_in=orotndmax)
 
 #ifdef CAM
 ! disable tracer mixing in GW for now.

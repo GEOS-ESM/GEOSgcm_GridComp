@@ -1179,6 +1179,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
+      real,              dimension(IM,JM     ) :: DC_SRC_L, SC_SRC_L
+
       integer                                  :: J, K, L, nrdg, ikpbl
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
@@ -1358,6 +1360,34 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          TAUYO_TMP_NCAR = 0.0
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
+           !DC_SRC_L = LM
+           !do L=1,LM 
+           !  where (PLE(:,:,L) >= 40000.0) 
+           !     DC_SRC_L = L
+           !  end where
+           !enddo
+           !SC_SRC_L = LM
+           !do L=1,LM
+           !  where (PLE(:,:,L) >= 90000.0)
+           !     SC_SRC_L = L
+           !  end where
+           !enddo
+            DC_SRC_L = LM
+            SC_SRC_L = LM
+            do L=1,LM 
+              do J=1,JM
+                do I=1,IM
+                   if (PLE(I,J,L) >= PLE(I,J,TROPK(I,J))+20000.0) then ! 200 hPa below tropopause
+                      DC_SRC_L(I,J) = L
+                   endif
+                   if (PLE(I,J,L) >= PLE(I,J,KPBL(I,J))-10000.0) then ! 100 hPa above the PBL
+                      SC_SRC_L(I,J) = L
+                   endif
+                enddo
+              enddo
+            enddo
+           !DC_SRC_L = TROPK
+           !SC_SRC_L = KPBL
             thread = MAPL_get_current_thread()
             workspace => self%workspaces(thread)
             call gw_intr_ncar(IM*JM,    LM,         DT,     self%NCAR_NRDG,   &
@@ -1368,7 +1398,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-                 PHIS,      KPBL,       TROPK,                           &
+                 PHIS,      DC_SRC_L,   SC_SRC_L,                        &
                  DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
                  DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
                  TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
