@@ -45,6 +45,43 @@ real, public, parameter :: CFFWI_REFERENCE_LATITUDE = 46.0 ! Canada, 46N
 
 contains
 
+
+elemental real function ff_scale_mc(ffmc)
+
+    !
+    ! Converts Fine Fuel Moisture Code (FFMC) to moisture content (%).
+    !
+    ! Default values and units:
+    !     ffmc = FFMC (default = 85)
+    
+    implicit none
+
+    real, intent(in) :: ffmc
+
+    ff_scale_mc = 147.27723*(101 - ffmc) / (59.5 + ffmc)
+
+end function ff_scale_mc
+
+
+
+elemental real function ff_scale_ffmc(mc)
+
+    !
+    ! Converts moisture content (%) to Fine Fuel Moisture Code (FFMC).
+    !
+    ! Default values and units:
+    !     mc = 16.31 (corresponds to FFMC=85 on the FF scale)
+    
+    implicit none
+
+    real, intent(in) :: mc
+
+    ff_scale_ffmc = 59.5*(250 - mc)/(147.27723 + mc)
+
+end function ff_scale_ffmc
+
+
+
 elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
   
     !
@@ -88,7 +125,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
 
 
     ! initial fuel moisture content (FF scale)
-    m_0 = 147.27723*(101 - f_0) / (59.5 + f_0)
+    m_0 = ff_scale_mc(f_0)
     
     ! current fuel moisture content
     m_r = m_0
@@ -150,7 +187,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
 
 
     ! current FFMC (FF scale)
-    result = 59.5*(250 - m)/(147.27723 + m)
+    result = ff_scale_ffmc(m)
     
     ! clamp FFMC within [0, 101]
     fine_fuel_moisture_code = max(0.0, min(101.0, result))
@@ -364,9 +401,10 @@ elemental real function initial_spread_index(ffmc, wind)
     ! use the same variable names as in the DC equation and 
     ! convert the units if necessary
     w = 3.6 * wind  ! convert from m/s to km/h
-    
-    m = 147.2 * (101.053 - ffmc)/(59.5 + ffmc)
-    
+
+    ! FF scale
+    m = ff_scale_mc(ffmc)
+   
     fun_w = exp(0.05039 * w)
     fun_f = 91.9 * exp(-0.1386 * m) * (1 + (m**5.31)/4.93e7)
 
