@@ -405,7 +405,13 @@ elemental real function initial_spread_index(ffmc, wind)
     ! FF scale
     m = ff_scale_mc(ffmc)
    
-    fun_w = exp(0.05039 * w)
+    if (w < 40) then
+        fun_w = exp(0.05039 * w)
+    else
+        ! modification at the extreme end of winds
+        fun_w = 12 * (1 - exp(-0.0818 * (w - 28)))
+    end if
+
     fun_f = 91.9 * exp(-0.1386 * m) * (1 + (m**5.31)/4.93e7)
 
     ! current ISI
