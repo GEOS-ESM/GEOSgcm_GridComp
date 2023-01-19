@@ -241,7 +241,7 @@ contains
        AGCM = MAPL_AddChild(GC, NAME='AGCM', SS=Agcm_SetServices, RC=STATUS)
        VERIFY_(STATUS)
 #ifdef HAS_GIGATRAJ
-       gigatraj = MAPL_AddChild(GC, NAME='GigaTraj', SS=GigaTraj_SetServices, RC=STATUS)
+       gigatraj = MAPL_AddChild(GC, NAME='GIGATRAJ', SS=GigaTraj_SetServices, RC=STATUS)
        VERIFY_(STATUS)
 #endif
        AIAU = MAPL_AddChild(GC, NAME='AIAU', SS=AIAU_SetServices, RC=STATUS)
