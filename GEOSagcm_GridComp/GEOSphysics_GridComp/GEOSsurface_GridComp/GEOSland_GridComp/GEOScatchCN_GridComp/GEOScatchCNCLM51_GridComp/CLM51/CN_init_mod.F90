@@ -183,6 +183,7 @@ module CN_initMod
 
     ! read parameters and configurations from namelist file
 
+    NLFilename = trim('/discover/nobackup/jkolassa/new/CatchCN5.1.nml')
     call CNPhenologyReadNML       ( NLFilename )
     call dynSubgridControl_init   ( )
     call CNFireReadNML            ( NLFilename )
