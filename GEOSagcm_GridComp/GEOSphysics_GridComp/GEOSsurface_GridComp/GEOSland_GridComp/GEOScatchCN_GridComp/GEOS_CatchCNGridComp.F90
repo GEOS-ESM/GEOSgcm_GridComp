@@ -918,7 +918,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
-    if (LSM_CHOICE == 3) then
+    if (LSM_CHOICE >= 3) then ! jkolassa: needed for CNCLM45 and CNCLM51
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFROOTC' ,  CHILD_ID = CATCHCN, RC=STATUS  )
        VERIFY_(STATUS)
     endif

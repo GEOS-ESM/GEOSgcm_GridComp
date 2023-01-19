@@ -238,7 +238,10 @@ module GEOS_SurfaceGridCompMod
     elseif (LSM_CHOICE.eq.2) then                                                                                             
        call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM40",  __RC__ )           
     elseif (LSM_CHOICE.eq.3) then                                                                                         
-       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )          
+       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )   
+    elseif (LSM_CHOICE.eq.4) then                                                                                  
+       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM51", __RC__ )   
+
     else
        _ASSERT(.FALSE.,'unknown LSM_CHOICE')
     end if
@@ -2804,7 +2807,7 @@ module GEOS_SurfaceGridCompMod
           RC=STATUS  ) 
      VERIFY_(STATUS)
 
-     if (LSM_CHOICE == 3) then
+     if (LSM_CHOICE >= 3) then
         call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_fine_root_carbon'       ,&
           UNITS              = 'kg m-2'                    ,&
@@ -6233,7 +6236,7 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , CNTOTC  , 'CNTOTC' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNVEGC  , 'CNVEGC' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNROOT  , 'CNROOT' ,  RC=STATUS); VERIFY_(STATUS)
-       if (LSM_CHOICE == 3) then
+       if (LSM_CHOICE >= 3) then
            call MAPL_GetPointer(EXPORT  , CNFROOTC, 'CNFROOTC' ,RC=STATUS); VERIFY_(STATUS)
        endif
        call MAPL_GetPointer(EXPORT  , CNNPP   , 'CNNPP'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6808,7 +6811,7 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(CNTOTC  ,CNTOTCTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNVEGC  ,CNVEGCTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNROOT  ,CNROOTTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
-       if (LSM_CHOICE == 3) then
+       if (LSM_CHOICE >= 3) then
           call MKTILE(CNFROOTC,CNFROOTCTILE  ,NT,RC=STATUS);VERIFY_(STATUS)
        endif
        call MKTILE(CNNPP   ,CNNPPTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -8534,7 +8537,7 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'CNROOT'  , ALLOC=associated(CNROOTTILE  ), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
-         if (LSM_CHOICE == 3) then
+         if (LSM_CHOICE >= 3) then
 	    call MAPL_GetPointer(GEX(type), dum, 'CNFROOTC' , ALLOC=associated(CNFROOTCTILE), notFoundOK=.true., RC=STATUS)
          endif
          VERIFY_(STATUS)
