@@ -956,9 +956,9 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
     taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
     call momentum_flux(tend_level, taucd, um_flux, vm_flux)
     call energy_change(ncol,pver, dt, delp, u, v, utgw, vtgw, ttgw, de)
-   ! add sub-source fixers to tendencies
-    call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
-    call energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
+  !! add sub-source fixers to tendencies
+  ! call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
+  ! call energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
   endif
 
 end subroutine energy_momentum_adjust 

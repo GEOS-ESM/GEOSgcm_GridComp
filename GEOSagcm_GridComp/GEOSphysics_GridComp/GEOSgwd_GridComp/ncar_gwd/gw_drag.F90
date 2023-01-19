@@ -213,7 +213,6 @@ contains
        pdel_dev , rpdel_dev, lnpint_dev, &
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
-       dqcdt_dev, &
        ht_dc_dev,beres_dc_desc,rlat_dev, alpha, &
        utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
@@ -229,9 +228,8 @@ contains
        pdel_dev , rpdel_dev, lnpint_dev, &
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
-       dqcdt_dev, &
        ht_sc_dev,beres_sc_desc,rlat_dev, alpha, &
-       utgw, vtgw, ttgw, flx_heat)
+       utgw, vtgw, ttgw, flx_heat, dqcdt=dqcdt_dev)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw

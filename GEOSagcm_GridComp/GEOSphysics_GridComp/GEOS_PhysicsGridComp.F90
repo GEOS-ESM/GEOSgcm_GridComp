@@ -1195,6 +1195,13 @@ contains
          SRC_ID      = MOIST,                                            &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SRC_NAME    = 'KPBL_SC',                                        &
+         DST_NAME    = 'KPBL',                                           &
+         DST_ID      = GWD,                                              &
+         SRC_ID      = TURBL,                                            &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
 
 ! Chemistry Imports
 ! -----------------

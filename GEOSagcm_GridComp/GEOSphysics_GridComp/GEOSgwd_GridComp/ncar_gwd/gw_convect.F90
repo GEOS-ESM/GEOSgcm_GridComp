@@ -197,8 +197,8 @@ end subroutine gw_beres_init
 
 !------------------------------------
 subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
-     dqcdt, netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
-     c, hdepth, maxq0, lats)
+     netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
+     c, hdepth, maxq0, lats, dqcdt)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
 !
@@ -226,8 +226,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
   ! Midpoint zonal/meridional winds.
   real, intent(in) :: u(ncol,pver), v(ncol,pver)
-  ! Condensate tendency due to large-scale (kg kg-1 s-1)
-  real, intent(in) :: dqcdt(ncol,pver)
   ! Heating rate due to convection.
   real, intent(in) :: netdt(:,:)
   ! Midpoint altitudes.
@@ -252,6 +250,9 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
   ! Heating depth [m] and maximum heating in each column.
   real, intent(out) :: hdepth(ncol), maxq0(ncol)
+
+  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+  real, optional, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
 
 !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -462,17 +463,18 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
  
         tau(i,:,topi(i)+1) = tau0
 
-     elseif (dqcdt(i,desc%k(i)) > 1.e-8) then ! frontal region (large-scale forcing)
-
-      ! include forced background stress in extra tropical large-scale systems
-       ! Set the phase speeds and wave numbers in the direction of the source wind.
-       ! Set the source stress magnitude (positive only, note that the sign of the 
-       ! stress is the same as (c-u).
-     ! tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
-     ! topi(i) = desc%k(i)
-
+     else
+      if (present(dqcdt)) then
+        if (dqcdt(i,desc%k(i)) > 1.e-8) then ! frontal region (large-scale forcing)
+        ! include forced background stress in extra tropical large-scale systems
+        ! Set the phase speeds and wave numbers in the direction of the source wind.
+        ! Set the source stress magnitude (positive only, note that the sign of the 
+        ! stress is the same as (c-u).
+         tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+         topi(i) = desc%k(i)
+        endif
+      endif
      endif
-
   enddo
   !-----------------------------------------------------------------------
   ! End loop over all columns.
@@ -496,9 +498,8 @@ subroutine gw_beres_ifc( band, &
    ncol, pver, dt, effgw_dp,  &
    u, v, t, pref, pint, delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
-   dqcdt, &
    netdt,desc,lats, alpha, &
-   utgw,vtgw,ttgw,flx_heat)
+   utgw,vtgw,ttgw,flx_heat,dqcdt)
 
    type(BeresSourceDesc), intent(inout) :: desc
    type(GWBand), intent(in) :: band         ! I hate this variable  ... it just hides information from view
@@ -510,7 +511,6 @@ subroutine gw_beres_ifc( band, &
    real,         intent(in) :: u(ncol,pver)      ! Midpoint zonal winds. ( m s-1)
    real,         intent(in) :: v(ncol,pver)      ! Midpoint meridional winds. ( m s-1)
    real,         intent(in) :: t(ncol,pver)      ! Midpoint temperatures. (K)
-   real,         intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
    real,         intent(in) :: netdt(ncol,pver)  ! Convective heating rate (K s-1)
    real,         intent(in) :: pref(pver+1)      ! Reference pressure at interfaces (Pa !!! )
    real,         intent(in) :: piln(ncol,pver+1) ! Log of interface pressures.
@@ -519,18 +519,20 @@ subroutine gw_beres_ifc( band, &
    real,         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
    real,         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
    real,         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
-   real, intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
-   real, intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
-   real, intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
-   real, intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
+   real,         intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
+   real,         intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
+   real,         intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
+   real,         intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
 
    real,         intent(in) :: lats(ncol)      ! latitudes
    real,         intent(in) :: alpha(:)
 
-   real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
-   real, intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
-   real, intent(out) :: ttgw(ncol,pver)       ! temperature tendency
-   real, intent(inout) :: flx_heat(ncol)        ! Energy change
+   real,         intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
+   real,         intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
+   real,         intent(out) :: ttgw(ncol,pver)       ! temperature tendency
+   real,         intent(inout) :: flx_heat(ncol)        ! Energy change
+
+   real, optional, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
 
    !---------------------------Local storage-------------------------------
 
@@ -601,8 +603,8 @@ subroutine gw_beres_ifc( band, &
 
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, &
-          u, v, dqcdt, netdt, zm, src_level, tend_level, tau, &
-          ubm, ubi, xv, yv, c, hdepth, maxq0, lats)
+          u, v, netdt, zm, src_level, tend_level, tau, &
+          ubm, ubi, xv, yv, c, hdepth, maxq0, lats, dqcdt=dqcdt)
 
 !WMP pressure scaling near model top
 !!!  pint_adj = 1.0

@@ -251,6 +251,22 @@ contains
         RESTART    = MAPL_RestartSkip,                            &
                                                        _RC  )
     
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME = 'KPBL',                                      &
+        LONG_NAME  = 'pbl_index',                                 &
+        UNITS      = 'unitless',                                  &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+                                                       _RC  )
+
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME = 'TROPK',                             &
+        LONG_NAME  = 'blended_tropopause_index',                  &
+        UNITS      = 'unitless',                                  &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+                                                       _RC  )
+ 
 ! from moist
      call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME='DTDT_DC',                               &
@@ -842,7 +858,7 @@ contains
 ! -----------------
 
     if (LM .eq. 72) then
-       GEOS_PGWV = 4
+                                         GEOS_PGWV = 4
        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
@@ -853,10 +869,10 @@ contains
        call MAPL_GetResource( MAPL, self%HGT_SURFACE,   Label="HGT_SURFACE:",   default=0.0, _RC)
        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
     else
-       GEOS_PGWV = NINT(32*LM/181.0)
+                                         GEOS_PGWV = NINT(32*LM/181.0)
        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
-       call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
+       call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
                                          NCAR_EFFGWBKG = min( imsize/720.0 , 1.0 )
        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=NCAR_EFFGWBKG, _RC)
@@ -901,7 +917,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,   _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=50.0,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=80.0, _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=100.0, _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
                  ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
@@ -920,7 +936,7 @@ contains
       end do
       ! Beres ShallowCu
       call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, _RC)
-      call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.TRUE., _RC)
       do thread = 0, num_threads-1
             JM_thread = bounds(thread+1)%max - bounds(thread+1)%min + 1
             call gw_beres_init( BERES_FILE_NAME ,  &
@@ -945,7 +961,7 @@ contains
       end do
       ! Ridge Scheme
       if (self%NCAR_NRDG > 0) then
-          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=80.0, _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=65.0, _RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
           do thread = 0, num_threads-1
              call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
@@ -1087,6 +1103,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:)      :: PREF
       real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT, PHIS
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
+      ! source level indices
+      real, pointer, dimension(:,:)    :: KPBL, TROPK
       !++jtb Array for moist deep & shallow conv heating
       real, pointer, dimension(:,:,:)  :: HT_dc, HT_sc
       ! Arrays for QL and QI condensate tendencies from Moist
@@ -1206,6 +1224,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, HT_sc,    'DTDT_SC', _RC )
       call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT'  , _RC )
       call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT'  , _RC )
+      call MAPL_GetPointer( IMPORT, KPBL,     'KPBL'   , _RC )
+      call MAPL_GetPointer( IMPORT, TROPK,    'TROPK'  , _RC )
  
 ! Allocate/refer to the outputs
 !------------------------------

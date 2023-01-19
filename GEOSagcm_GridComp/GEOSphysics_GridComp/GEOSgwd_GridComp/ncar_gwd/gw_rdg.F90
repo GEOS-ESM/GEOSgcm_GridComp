@@ -271,6 +271,7 @@ subroutine gw_rdg_ifc( band, &
 
    real :: pint_adj(ncol,pver+1)
    real :: zfac_layer
+   real :: utfac,uhtmax
 
    character(len=4) :: type         ! BETA or GAMMA (just BETA for now)
    character(len=1) :: cn
@@ -337,12 +338,26 @@ subroutine gw_rdg_ifc( band, &
                         effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
                         tend_level, tndmax_in=orotndmax)
 
-     ! Add the tendencies from each ridge to the totals.
-     do k = 1, pver
-        utrdg(:,k) = utrdg(:,k) + utgw(:,k)
-        vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
-        ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
-     end do
+     do i=1,ncol
+      !-------------------------------------------------------------------
+      ! Apply tendency limiter to prevent unrealistically strong forcing
+      !-------------------------------------------------------------------
+       uhtmax = 0.0
+       utfac  = 1.0
+       do k = 1, pver
+         ! Add the tendencies from each ridge to the totals.
+          utrdg(i,k) = utrdg(i,k) + utgw(i,k)
+          vtrdg(i,k) = vtrdg(i,k) + vtgw(i,k)
+          ttrdg(i,k) = ttrdg(i,k) + ttgw(i,k)
+          uhtmax = max(sqrt(utrdg(i,k)**2 + vtrdg(i,k)**2), uhtmax)
+       end do
+       if (uhtmax > orotndmax) utfac = orotndmax/uhtmax
+       do k = 1, pver
+          utrdg(i,k) = utrdg(i,k)*utfac
+          vtrdg(i,k) = vtrdg(i,k)*utfac
+          ttrdg(i,k) = ttrdg(i,k)*utfac
+       end do
+     end do  ! i=1,ncol
 
 #ifdef CAM
 ! disable tracer mixing in GW for now.

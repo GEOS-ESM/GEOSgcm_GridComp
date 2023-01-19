@@ -54,8 +54,6 @@ subroutine GF_Setup (GC, CF, RC)
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
-    call ESMF_ConfigGetAttribute( CF ,USE_GF2020       , Label='USE_GF2020:'       , default= 0, RC=STATUS );VERIFY_(STATUS)
-
     call ESMF_ConfigGetAttribute( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:', default= 0, RC=STATUS );VERIFY_(STATUS)
     if (CONVECTION_TRACER == 1) then
        FRIENDLIES%CNV_TR   = trim(COMP_NAME)//"DYNAMICS"
@@ -81,7 +79,14 @@ end subroutine GF_Setup
 subroutine GF_Initialize (MAPL, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
+    integer :: LM
 
+    call MAPL_Get( MAPL, LM=LM, RC=STATUS );VERIFY_(STATUS)
+    if (LM .eq. 72) then
+      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+    else
+      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+    endif
     IF (USE_GF2020==1) THEN
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
