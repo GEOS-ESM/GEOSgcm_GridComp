@@ -335,7 +335,7 @@ subroutine gw_rdg_ifc( band, &
      ! Apply efficiency and limiters to the totals
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                         effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                        tndmax_in=orotndmax)
+                        tend_level, tndmax_in=orotndmax)
 
      ! Add the tendencies from each ridge to the totals.
      do k = 1, pver

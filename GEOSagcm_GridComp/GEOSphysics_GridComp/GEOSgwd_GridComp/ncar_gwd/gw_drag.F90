@@ -62,7 +62,7 @@ contains
           sgh_dev,       mxdis_dev,     hwdth_dev,    clngt_dev,  angll_dev,         &
           anixy_dev,     gbxar_dev,     kwvrdg_dev,   effrdg_dev, pref_dev,          & 
           pmid_dev,      pdel_dev,      rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
-          phis_dev,      kpbl_dev,      tropk_dev,                                   &
+          phis_dev,                                                                  &
           dudt_gwd_dev,  dvdt_gwd_dev,  dtdt_gwd_dev,                                &
           dudt_org_dev,  dvdt_org_dev,  dtdt_org_dev,                                &
           taugwdx_dev,   taugwdy_dev,   &
@@ -113,8 +113,6 @@ contains
     real,    intent(in   ) :: zm_dev(pcols,pver)       ! height above surface at layers
     real,    intent(in   ) :: rlat_dev(pcols)          ! latitude in radian
     real,    intent(in   ) :: phis_dev(pcols)          ! surface geopotential
-    real,    intent(in   ) :: kpbl_dev(pcols)
-    real,    intent(in   ) :: tropk_dev(pcols)
  
     real,    intent(  out) :: dudt_gwd_dev(pcols,pver) ! zonal wind tendency at layer 
     real,    intent(  out) :: dvdt_gwd_dev(pcols,pver) ! meridional wind tendency at layer 
@@ -213,9 +211,9 @@ contains
        u_dev , v_dev, t_dev, &
        pref_dev, pint_dev, & 
        pdel_dev , rpdel_dev, lnpint_dev, &
-       zm_dev, zi, tropk_dev, &
+       zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
-       dqcdt_dev*0.0, &
+       dqcdt_dev, &
        ht_dc_dev,beres_dc_desc,rlat_dev, alpha, &
        utgw, vtgw, ttgw, flx_heat)
        dudt_gwd_dev = dudt_gwd_dev + utgw
@@ -229,7 +227,7 @@ contains
        u_dev , v_dev, t_dev, &
        pref_dev, pint_dev, &
        pdel_dev , rpdel_dev, lnpint_dev, &
-       zm_dev, zi, kpbl_dev, &
+       zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        dqcdt_dev, &
        ht_sc_dev,beres_sc_desc,rlat_dev, alpha, &

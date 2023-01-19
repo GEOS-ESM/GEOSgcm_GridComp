@@ -30,6 +30,7 @@ type :: BeresSourceDesc
    ! Heating depths below this value [m] will be ignored.
    real :: min_hdepth
    ! Source for wave spectrum
+   real :: spectrum_source
    ! Index for level where wind speed is used as the source speed.
    real, allocatable :: k(:)
    ! tendency limiter
@@ -52,7 +53,7 @@ contains
 
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
-                          min_hdepth, storm_shift, taubgnd, tndmax, active, ncol, lats)
+                          spectrum_source, min_hdepth, storm_shift, taubgnd, tndmax, active, ncol, lats)
 #include <netcdf.inc>
 
   character(len=*), intent(in) :: file_name
@@ -62,7 +63,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
-  real, intent(in) :: min_hdepth, taubgnd, tndmax
+  real, intent(in) :: spectrum_source, min_hdepth, taubgnd, tndmax
   logical, intent(in) :: storm_shift, active
   real, intent(in) :: lats(ncol)
 
@@ -143,6 +144,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     desc%hd = hdcc * 1000.0
 
     ! Source level index allocated, filled later
+    desc%spectrum_source = spectrum_source
     allocate(desc%k(ncol))
 
     desc%min_hdepth = min_hdepth
@@ -466,8 +468,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
        ! Set the phase speeds and wave numbers in the direction of the source wind.
        ! Set the source stress magnitude (positive only, note that the sign of the 
        ! stress is the same as (c-u).
-       tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
-       topi(i) = desc%k(i)
+     ! tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+     ! topi(i) = desc%k(i)
 
      endif
 
@@ -493,7 +495,7 @@ end subroutine gw_beres_src
 subroutine gw_beres_ifc( band, &
    ncol, pver, dt, effgw_dp,  &
    u, v, t, pref, pint, delp, rdelp, piln, &
-   zm, zi, ksrc, nm, ni, rhoi, kvtt,  &
+   zm, zi, nm, ni, rhoi, kvtt,  &
    dqcdt, &
    netdt,desc,lats, alpha, &
    utgw,vtgw,ttgw,flx_heat)
@@ -517,8 +519,6 @@ subroutine gw_beres_ifc( band, &
    real,         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
    real,         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
    real,         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
-   real,         intent(in) :: ksrc(ncol)
-
    real, intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
    real, intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
    real, intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
@@ -580,8 +580,6 @@ subroutine gw_beres_ifc( band, &
 
    !----------------------------------------------------------------------------
 
-   ! fill the k-index
-   desc%k = ksrc
 
    ! Allocate wavenumber fields.
    allocate(tau(ncol,-band%ngwv:band%ngwv,pver+1))
@@ -595,6 +593,11 @@ subroutine gw_beres_ifc( band, &
      elsewhere
         effgw = 0.0
      end where
+
+     do k = 0, pver
+        ! spectrum source index
+        if (pref(k+1) < desc%spectrum_source) desc%k(:) = k+1
+     end do
 
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, &
@@ -619,7 +622,7 @@ subroutine gw_beres_ifc( band, &
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                                 kbot_in=desc%k, tndmax_in=desc%tndmax)
+                                 tend_level, tndmax_in=desc%tndmax)
  
    deallocate(tau, gwut, c)
 
