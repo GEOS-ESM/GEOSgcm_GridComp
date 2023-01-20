@@ -284,7 +284,7 @@ program  mk_CatchCNRestarts
   ! availability.  
   !-----------------------------------------------------
 
-  
+  call ESMF_Initialize(LogKindFlag=ESMF_LOGKIND_NONE) 
   
   I = iargc()
   
@@ -582,8 +582,8 @@ program  mk_CatchCNRestarts
      !   call regrid_carbon_vars_omp (NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR, OutFileName, OutTileFile) 
      
   endif
-
 call MPI_BARRIER( MPI_COMM_WORLD, mpierr)
+call ESMF_Finalize(endflag=ESMF_END_KEEPMPI)
 call MPI_FINALIZE(mpierr)
   
 contains
@@ -1099,13 +1099,11 @@ contains
     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:) 
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
     integer :: AGCM_YYY, AGCM_MMM, AGCM_DDD, AGCM_HRR, AGCM_MI, AGCM_S, dofyr
-    real,pointer,dimension(:) :: lats
-    real,pointer,dimension(:) :: lons
-    type(MAPL_MetaComp),pointer :: MAPL_MC
     type(MAPL_SunOrbit)         :: ORBIT
     type(ESMF_Time)             :: CURRENT_TIME
-    type(ESMF_State)            :: INTERNAL
-    type(ESMF_Alarm)            :: ALARM
+    type(ESMF_TimeInterval)     :: timeStep
+    type(ESMF_Clock)            :: CLOCK
+    type(ESMF_Config)           :: CF
 
 
     allocate (tid_offl  (ntiles_cn))
@@ -1169,33 +1167,34 @@ contains
         AGCM_MI = 0
         AGCM_S = 0
 
+
+        call ESMF_CalendarSetDefault ( ESMF_CALKIND_GREGORIAN, rc=status )
+
        ! get current date & time
        ! -----------------------
-        call ESMF_TimeGet  ( CURRENT_TIME, YY = AGCM_YYY,       &
+        call ESMF_TimeSet  ( CURRENT_TIME, YY = AGCM_YYY,       &
                                            MM = AGCM_MMM,       &
                                            DD = AGCM_DDD,       &
                                            H  = AGCM_HRR,       &
                                            M  = AGCM_MI,       &
                                            S  = AGCM_S ,       &
-                                           dayOfYear = dofyr , &
                                            rc=status )
          VERIFY_(STATUS)
 
-        ! Get parameters from generic state.
-        ! -----------------------------------
+         call ESMF_TimeIntervalSet(TimeStep,  S=450, RC=status)
+         clock = ESMF_ClockCreate(TimeStep, startTime = CURRENT_TIME, RC=status)
+         VERIFY_(STATUS)
+         call ESMF_ClockSet ( clock, CurrTime=CURRENT_TIME, rc=status )
 
-        call MAPL_Get ( MAPL_MC               ,&
-             RUNALARM  = ALARM                            ,&
-             ORBIT     = ORBIT                            ,&
-             TILELATS  = LATS                             ,&
-             TILELONS  = LONS                             ,&
-             INTERNAL_ESMF_STATE = INTERNAL               ,&
-             RC=STATUS )
-        VERIFY_(STATUS)
+         CF = ESMF_ConfigCreate(RC=STATUS)
+         VERIFY_(status)
 
-        ! compute current daylight duration
+         ORBIT = MAPL_SunOrbitCreateFromConfig(CF, CLOCK, .false., RC=status)
+         VERIFY_(status)
+   
+     ! compute current daylight duration
         !----------------------------------
-        call MAPL_SunGetDaylightDuration(ORBIT,lats,dayx,currTime=CURRENT_TIME,RC=STATUS)
+        call MAPL_SunGetDaylightDuration(ORBIT,latg,dayx,currTime=CURRENT_TIME,RC=STATUS)
         VERIFY_(STATUS)
 
        ! ---------------------------------------------
