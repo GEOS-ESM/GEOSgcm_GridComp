@@ -5,6 +5,7 @@ PROGRAM mk_catchANDcnRestarts
 
   use mpi
   use MAPL
+  use ESMF
   use CatchmentRstMod
   use CatchmentCNRstMod
 
@@ -22,6 +23,8 @@ PROGRAM mk_catchANDcnRestarts
   call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
   call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
 
+  call ESMF_Initialize(LogKindFlag=ESMF_LOGKIND_NONE)
+
   call process_cmd()
 
   if (index(model, 'catchcn') /=0 ) then
@@ -38,6 +41,7 @@ PROGRAM mk_catchANDcnRestarts
     call catch%write_nc4(out_file, __RC__)
   endif
 
+  call ESMF_Finalize()
   call MPI_FINALIZE(mpierr)
  
   contains
