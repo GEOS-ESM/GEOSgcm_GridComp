@@ -41,7 +41,8 @@ PROGRAM mk_catchANDcnRestarts
     call catch%write_nc4(out_file, __RC__)
   endif
 
-  call ESMF_Finalize()
+  call ESMF_Finalize(endflag=ESMF_END_KEEPMPI)
+
   call MPI_FINALIZE(mpierr)
  
   contains
