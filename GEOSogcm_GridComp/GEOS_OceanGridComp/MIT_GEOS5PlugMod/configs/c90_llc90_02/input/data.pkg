@@ -1,0 +1,9 @@
+# Packages
+ &PACKAGES
+ useGMRedi          = .TRUE.,
+ useGGL90           = .TRUE.,
+ useSALT_PLUME      = .TRUE.,
+ useDiagnostics     = .TRUE.,
+ useCTRL            = .TRUE.,
+ useSEAICE          = .TRUE.,
+ &
