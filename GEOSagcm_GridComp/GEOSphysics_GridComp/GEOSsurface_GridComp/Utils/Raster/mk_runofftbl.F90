@@ -16,8 +16,11 @@ program Runoff
   integer                :: numtrans,  numclosed
   integer                :: status
   character*100          :: file, fileT, fileR, fileO, fileB, fileBB
+
   character*300          :: fileLL
   character*300          :: land_input_dir
+
+
   character*5            :: C_NX, C_NY
 
   logical                :: adjust_oceanLandSea_mask = .false. ! default is .false.
@@ -26,8 +29,10 @@ program Runoff
                             Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter", &
                             mapl_tp_file
 
+
   call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
   fileLL=''//trim(land_input_dir)//'/land/route/Outlet_latlon'
+
 
 ! Read inputs -----------------------------------------------------
   I = command_argument_count()
