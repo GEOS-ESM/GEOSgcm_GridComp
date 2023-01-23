@@ -522,6 +522,7 @@ contains
     !!attach the thermo coupling method
     !
     call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
+    call ESMF_MethodAdd(SURFST, label='prep_albedo', userRoutine=prep_albedo, __RC__)
 
     call LoadSurfaceStates(SURFST, __RC__)
 
@@ -914,6 +915,37 @@ contains
      RETURN_(ESMF_SUCCESS)
 
   end subroutine thermo_coupling
+
+  subroutine prep_albedo(state, rc)
+
+  !! Arguments
+  !! ---------
+     type(ESMF_State)                      :: state
+     integer, intent(out)                  :: rc
+
+!EOP
+
+     integer                               :: status
+
+
+! ErrLog Variables
+
+     character(len=ESMF_MAXSTR), parameter   :: IAm=' prep_albedo'
+
+     ! unpack fields and send them to cice
+     !call ice_import_thermo1(state, rc=STATUS)
+     
+     ! let cice update surface temperature and fluxes 
+     !call ice_fast_physics     
+
+     ! export the relevant fields from cice
+     !call ice_export_thermo1(state, rc=STATUS)
+
+     ! pack them back into state 
+
+     RETURN_(ESMF_SUCCESS)
+
+  end subroutine prep_albedo 
 
   !=====================================================================================
 

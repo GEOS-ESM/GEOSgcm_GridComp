@@ -2726,6 +2726,21 @@ contains
        VERIFY_(STATUS)
 
        ZTH = max(0.0,ZTH)
+
+       call RegridA2O_1d(      ZTH, SURFST,      'COSZ', XFORM_A2O, locstreamO, __RC__)
+
+       call ESMF_MethodExecute(SURFST, label="prep_albedo", userRC=AS_STATUS, RC=STATUS)
+       VERIFY_(AS_STATUS)
+       VERIFY_(STATUS)
+
+       call RegridO2A_1d(ALBVR, SURFST, 'ALBVR', &
+             XFORM_O2A, locstreamO, __RC__)
+       call RegridO2A_1d(ALBVF, SURFST, 'ALBVF', &
+            XFORM_O2A, locstreamO, __RC__)
+       call RegridO2A_1d(ALBNR, SURFST, 'ALBNR', &
+            XFORM_O2A, locstreamO, __RC__)
+       call RegridO2A_1d(ALBNF, SURFST, 'ALBNF', &
+            XFORM_O2A, locstreamO, __RC__)
           
     endif
 
