@@ -186,7 +186,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
 
             m = E_w - (E_w - m_r)*(10.0**(-k_w*f_t))
         else
-            m = m_r
+            m = m_r  ! perhaps m = m0 is a better choice?
         end if
     end if
 
@@ -296,7 +296,7 @@ elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, isol, ff
 
             m = E_w - (E_w - m_r)*(10.0**(-k_w*f_t))
         else
-            m = m_r  ! perhaps it should be m0?
+            m = m_r  ! perhaps m = m0 is a better choice?
         end if
     end if
 
