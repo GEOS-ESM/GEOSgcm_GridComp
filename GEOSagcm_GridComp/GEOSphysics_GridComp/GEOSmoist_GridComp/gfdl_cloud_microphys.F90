@@ -1305,7 +1305,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
                     sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
-                    sink = min(ql0_max/qadum(k), max(0.0,ql(k)-qlcn(k)), max(0.,sink)) ! limit to just LS condensate
+                    sink = min(ql0_max/qadum(k), 0.75 * max(0.0,ql(k)-qlcn(k)), max(0.,sink)) ! limit to just 0.75*LS condensate
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                     qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qcmin) )
@@ -1811,9 +1811,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     psaut = 0.
                 endif
                 ! -----------------------------------------------------------------------
-                ! sink is no greater than 75% of qi
+                ! sink is no greater than 75% of LS qi
                 ! -----------------------------------------------------------------------
-                sink = min (0.75 * qi, psaci + psaut)
+                sink = min (0.75 * max(0.0,qi-qicnk(k)), psaci + psaut)
                 qi = qi - sink
                 qs = qs + sink
                 
