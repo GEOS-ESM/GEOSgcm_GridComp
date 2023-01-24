@@ -57,10 +57,25 @@ module GEOS_IgniGridCompMod
 
   public SetServices
 
-!EOP
+
+! ! Private state
 
   integer :: NUM_ENSEMBLE
-  integer, parameter :: NTYPS = MAPL_NumVegTypes
+
+  integer, parameter :: LOCAL_NOON_SOLAR = 0
+  integer, parameter :: LOCAL_NOON_LST   = 1
+
+  type IGNI_State
+     private
+     integer :: local_noon_method = LOCAL_NOON_SOLAR
+  end type IGNI_State
+
+  type wrap_
+     type (IGNI_State), pointer :: PTR => null()
+  end type wrap_
+
+
+!EOP
 
 contains
 
@@ -100,6 +115,9 @@ contains
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
 
+    type (IGNI_State), pointer   :: self
+    type (wrap_)                 :: wrap
+
 
 ! Local
     
@@ -123,11 +141,24 @@ contains
 
     Iam = trim(COMP_NAME) // 'SetServices'
 
+
+! -----------------------------------------------------------
+! Wrap private internal state for storing in GC
+! -----------------------------------------------------------
+    allocate (self, __STAT__)
+    wrap%ptr => self
+
 ! -----------------------------------------------------------
 ! Set the Run entry point
 ! -----------------------------------------------------------
 
     call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_RUN, Run, __RC__)
+
+! ----------------------------------
+! Store private internal state in GC
+! ----------------------------------
+    call ESMF_UserCompSetInternalState (GC, 'IGNI_State', wrap, STATUS)
+    VERIFY_(STATUS)
 
 ! -----------------------------------------------------------
 ! Get the configuration
@@ -141,14 +172,22 @@ contains
     call MAPL_GetResource(MAPL, run_dt, label='RUN_DT:', __RC__)
     call MAPL_GetResource(MAPL, dt, label=trim(COMP_NAME)//'_DT:', default=run_dt, __RC__)
 
-    ! 'local noon'  
+    ! set the 'local noon' method property
     call MAPL_GetResource(MAPL, resource_file, label='IGNI_RC:', default='GEOS_IgniGridComp.rc', __RC__)
     
     config = ESMF_ConfigCreate(__RC__)
     call ESMF_ConfigLoadFile(config, resource_file, __RC__)
-    call MAPL_GetResource(config, local_noon, label='FWI_LOCAL_NOON:', default='SOLAR', __RC__)
+    call MAPL_GetResource(config, local_noon, label='LOCAL_NOON:', default='SOLAR', __RC__)
     call ESMF_ConfigDestroy(config, __RC__)
 
+    select case (local_noon)
+        case ('SOLAR')
+            self%local_noon_method = LOCAL_NOON_SOLAR
+        case ('LST')
+            self%local_noon_method = LOCAL_NOON_LST
+        case DEFAULT
+            self%local_noon_method = LOCAL_NOON_SOLAR
+    end select
 
 ! -----------------------------------------------------------
 ! Set the state variable specs.
@@ -662,6 +701,11 @@ contains
     integer                      :: STATUS
 
 
+! Private internal state
+    type (IGNI_State), pointer   :: self
+    type (wrap_)                 :: wrap
+
+
 ! IMPORT pointers
 
     real, dimension(:), pointer :: T2M
@@ -772,6 +816,13 @@ contains
     end if NO_LAND_AREAS
 
 
+! Get my private internal state
+! -----------------------------
+    call ESMF_UserCompGetInternalState (GC, 'IGNI_State', wrap, STATUS)
+    VERIFY_(STATUS)
+    self => wrap%ptr
+
+
 ! Get pointers to internal variables
 ! ----------------------------------
 
@@ -853,46 +904,37 @@ contains
 ! -------------------------
 
     call ESMF_ClockGet(CLOCK, currTime=time, __RC__)
-    allocate(isNoon(NT), __STAT__)
-
-    ! noon LST
-    ! --------
     call ESMF_TimeGet(time, yy=year, mm=month, dd=day, h=hr, m=mn, s=sc, __RC__)
 
-    allocate(dt_local_noon(NT), __STAT__)
-    dt_local_noon = ((hr-12)*3600 + mn*60 + sc) + ((24*3600)/(2*MAPL_PI))*LONS
+    allocate(isNoon(NT), __STAT__)
 
-    isNoon = (dt_local_noon >= 0) .and. (dt_local_noon < dt)
+    if (self%local_noon_method == LOCAL_NOON_SOLAR) then
+        allocate(LSHA0(NT), LSHA1(NT), __STAT__)
 
-    deallocate(dt_local_noon, __STAT__)
+        call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
+        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA0, TIME=time, __RC__)
+        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA1, TIME=time+ring_interval, __RC__)
+    
+        isNoon = (LSHA0 <= 0) .and. (LSHA1 > 0)
+    
+        deallocate(LSHA0, LSHA1, __STAT__)
+    else    
+        allocate(dt_local_noon(NT), __STAT__)
+        dt_local_noon = ((hr-12)*3600 + mn*60 + sc) + ((24*3600)/(2*MAPL_PI))*LONS
+
+        isNoon = (dt_local_noon >= 0) .and. (dt_local_noon < dt)
+
+        deallocate(dt_local_noon, __STAT__)
+    end if
+
 
     if (associated(DBG1)) then
         DBG1 = MAPL_UNDEF
         where (isNoon) DBG1 = 1.0
-    end if        
-
-    if (associated(DBG2)) then
-        DBG2 = MAPL_UNDEF
     end if
 
-
-    ! local solar noon
-    ! ----------------
-    call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
-
-    allocate(LSHA0(NT), LSHA1(NT), __STAT__)
-
-    call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA0, TIME=time, __RC__)
-    call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA1, TIME=time+ring_interval, __RC__)
-
-    isNoon = (LSHA0 <= 0) .and. (LSHA1 > 0)
-
-    deallocate(LSHA0, LSHA1, __STAT__)
-
-    if (associated(DBG3)) then
-        DBG3 = MAPL_UNDEF
-        where (isNoon) DBG3 = 1.0
-    end if
+    if (associated(DBG2)) DBG2 = MAPL_UNDEF
+    if (associated(DBG3)) DBG3 = MAPL_UNDEF
 
 
 ! Update local noon patches
@@ -906,12 +948,15 @@ contains
         DPR_noon = 0.0
     end where
 
+
+! Run the daily system
+! --------------------
     allocate(tmpISI(NT), tmpBUI(NT), tmpDSR(NT), tmpFWI(NT), __STAT__)
 
-    tmpISI  = MAPL_UNDEF
-    tmpBUI  = MAPL_UNDEF
-    tmpDSR  = MAPL_UNDEF
-    tmpFWI  = MAPL_UNDEF
+    tmpISI = MAPL_UNDEF
+    tmpBUI = MAPL_UNDEF
+    tmpDSR = MAPL_UNDEF
+    tmpFWI = MAPL_UNDEF
 
 
     call cffwi_daily_driver(FFMC0_daily, DMC0_daily, DC0_daily, &
@@ -991,6 +1036,7 @@ contains
 ! ---------
 
     RETURN_(ESMF_SUCCESS)
+
   end subroutine CFFWI_DAILY
 
 
