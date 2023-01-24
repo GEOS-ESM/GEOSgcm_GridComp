@@ -1315,7 +1315,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_GetPointer( INTERNAL, EFFRDG, 'EFFRDG', RC=STATUS )
          VERIFY_(STATUS)
 
-         GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
+!         GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
+         GBXAR_TMP = AREA * (MAPL_RADIUS/1000.)**2 ! transform to km^2
          WHERE (ANGLL < -180)
            ANGLL = 0.0
          END WHERE
