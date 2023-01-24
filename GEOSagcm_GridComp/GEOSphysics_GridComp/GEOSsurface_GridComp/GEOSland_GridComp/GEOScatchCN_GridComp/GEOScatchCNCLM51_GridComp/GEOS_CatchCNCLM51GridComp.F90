@@ -1737,7 +1737,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for relative humidity',&
-       UNITS              = 'K'                         ,&
+       UNITS              = '%'                         ,&
        SHORT_NAME         = 'RHM'                       ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1747,7 +1747,7 @@ subroutine SetServices ( GC, RC )
      
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for wind speed'     ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'm s-1'                     ,&
        SHORT_NAME         = 'WINDM'                     ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1757,7 +1757,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for rainfall'       ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RAINFM'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1767,7 +1767,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for snow fall'      ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'SNOWFM'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1777,7 +1777,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for surface runoff' ,&
-       UNITS              = 'K'                         ,&
+       UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RUNSRFM'                   ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1787,7 +1787,7 @@ subroutine SetServices ( GC, RC )
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for frac saturated area',&
-       UNITS              = 'K'                         ,&
+       UNITS              = '1'                         ,&
        SHORT_NAME         = 'AR1M'                      ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -3763,8 +3763,6 @@ end subroutine SetServices
 
 subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
-   use FireMethodType                     , only : fire_method_type
-
 ! !ARGUMENTS:
 
     type(ESMF_GridComp),intent(inout) :: GC     !Gridded component
@@ -5415,8 +5413,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,SNDZM5D    ,'SNDZM5D'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2M10D'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,T2M10D     ,'TG10D'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2MMIN5D'   ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TG10D      ,'TG10D'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,T2MMIN5D   ,'T2MMIN5D'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,RH30D      ,'RH30D'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC10D   ,'TPREC10D'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC60D   ,'TPREC60D'   ,RC=STATUS); VERIFY_(STATUS)
@@ -6331,7 +6329,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate( laisha(ntiles,nveg,nzone) )
     allocate( lmrsun(ntiles,nveg,nzone) )
     allocate( lmrsha(ntiles,nveg,nzone) )
-    allocate( parzone(ntiles,nveg,nzone))
     allocate(      ht(N_gt) )
     allocate(      tp(N_gt) )
     allocate( soilice(N_gt) )
@@ -6775,8 +6772,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             end if 
          end do
       end do
-
-  ! NTCurrent = CEILING (real (dofyr) / 8.)
 
     if(associated(CNCO2)) CNCO2 = CO2V * 1e6
     deallocate (co2v)
