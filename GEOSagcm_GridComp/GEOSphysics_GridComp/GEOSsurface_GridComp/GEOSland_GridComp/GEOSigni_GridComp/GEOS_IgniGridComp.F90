@@ -237,40 +237,58 @@ contains
 ! -----------------------------------------------------------
 ! Internal State 
 ! -----------------------------------------------------------
-    
+
+    ! hourly
+
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'FFMC',                      &
          LONG_NAME  = 'fine_fuel_moisture_code',   &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-         ADD2EXPORT = .true.,                      &
          RESTART    = MAPL_RestartOptional,        &
          DEFAULT    = FFMC_INIT, __RC__)
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'DMC',                       &
+         SHORT_NAME = 'GFMC',                      &
+         LONG_NAME  = 'grass_fuel_moisture_code',  &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartOptional,        &
+         DEFAULT    = FFMC_INIT, __RC__)
+
+    ! daily
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'FFMC_DAILY',                &
+         LONG_NAME  = 'fine_fuel_moisture_code',   &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartOptional,        &
+         DEFAULT    = FFMC_INIT, __RC__)
+
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'DMC_DAILY',                 &
          LONG_NAME  = 'duff_moisture_code',        &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-         ADD2EXPORT = .true.,                      &
          RESTART    = MAPL_RestartOptional,        &
          DEFAULT    = DMC_INIT, __RC__)
 
    call MAPL_AddInternalSpec(GC,                   &
-         SHORT_NAME = 'DC',                        &
+         SHORT_NAME = 'DC_DAILY',                  &
          LONG_NAME  = 'drought_code',              &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-         ADD2EXPORT = .true.,                      &
          RESTART    = MAPL_RestartOptional,        &
          DEFAULT    = DC_INIT, __RC__) 
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'PRA',                       &
-         LONG_NAME  = 'precip_since_sun_noon',     &
+         SHORT_NAME = 'DPR_LOCAL_NOON',            &
+         LONG_NAME  = 'precipitation_since_local_noon', &
          UNITS      = 'kg m-2',                    &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -280,8 +298,8 @@ contains
          DEFAULT    = 0.0, __RC__)
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'PR',                        &
-         LONG_NAME  = 'precip_at_sun_noon',        &
+         SHORT_NAME = 'PR_LOCAL_NOON',             &
+         LONG_NAME  = 'precipitation_at_local_noon(24hr)', &
          UNITS      = 'kg m-2',                    &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -291,8 +309,8 @@ contains
 
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'T',                         &
-         LONG_NAME  = 'temperature_at_sun_noon',   &
+         SHORT_NAME = 'T_LOCAL_NOON',              &
+         LONG_NAME  = 'temperature_at_local_noon', &
          UNITS      = 'K',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -301,18 +319,18 @@ contains
          DEFAULT    = 0.0, __RC__)
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'RH',                        &
-         LONG_NAME  = 'humidity_at_sun_noon',      &
+         SHORT_NAME = 'RH_LOCAL_NOON',             &
+         LONG_NAME  = 'humidity_at_local_noon',    &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          ADD2EXPORT = .true.,                      &
          RESTART    = MAPL_RestartOptional,        &
-         DEFAULT    = 0.50, __RC__)
+         DEFAULT    = 0.40, __RC__)
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'WIND',                      &
-         LONG_NAME  = 'wind_at_sun_noon',          &
+         SHORT_NAME = 'WS_LOCAL_NOON',             &
+         LONG_NAME  = 'wind_speed_at_local_noon',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -324,14 +342,45 @@ contains
 ! -----------------------------------------------------------
 ! Export Variables
 ! -----------------------------------------------------------
-    call MAPL_AddExportSpec(GC,                    & 
+
+    ! hourly
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC',                      &
+         LONG_NAME  = 'fine_fuel_moisture_code',   &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'GFMC',                      &
+         LONG_NAME  = 'grass_fuel_moisture_code',  &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC',                       &
+         LONG_NAME  = 'duff_moisture_code',        &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC',                        &
+         LONG_NAME  = 'drought_code',              &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'FWI',                       &
          LONG_NAME  = 'fire_weather_index',        &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__) 
 
-    call MAPL_AddExportSpec(GC,                    & 
+    call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'BUI',                       &
          LONG_NAME  = 'buildup_index',             &
          UNITS      = '1',                         &
@@ -345,7 +394,7 @@ contains
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__) 
 
-   call MAPL_AddExportSpec(GC,                     &
+    call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'DSR',                       &
          LONG_NAME  = 'daily_severity_rating',     &
          UNITS      = '1',                         &
@@ -353,56 +402,111 @@ contains
          VLOCATION  = MAPL_VLocationNone, __RC__)
 
 
+    ! daily
 
-    call MAPL_AddExportSpec(GC,                    & 
-         SHORT_NAME = 'SNFFMC',                    &
-         LONG_NAME  = 'fine_fuel_moisture_code',   &
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC_DAILY',                &
+         LONG_NAME  = 'fine_fuel_moisture_code(daily)', &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
-    call MAPL_AddExportSpec(GC,                    & 
-         SHORT_NAME = 'SNDMC',                     &
-         LONG_NAME  = 'duff_moisture_code',        &
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC_DAILY',                 &
+         LONG_NAME  = 'duff_moisture_code(daily)', &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
-    call MAPL_AddExportSpec(GC,                    & 
-         SHORT_NAME = 'SNDC',                      &
-         LONG_NAME  = 'drought_code',              &
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC_DAILY',                  &
+         LONG_NAME  = 'drought_code(daily)',       &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
-    call MAPL_AddExportSpec(GC,                    & 
-         SHORT_NAME = 'SNFWI',                     &
-         LONG_NAME  = 'fire_weather_index',        &
-         UNITS      = '1',                         &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
-
-    call MAPL_AddExportSpec(GC,                    & 
-         SHORT_NAME = 'SNBUI',                     &
-         LONG_NAME  = 'buildup_index',             &
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI_DAILY',                 &
+         LONG_NAME  = 'fire_weather_index(daily)', &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__) 
 
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'SNISI',                     &
-         LONG_NAME  = 'initial_spread_index',      &
+         SHORT_NAME = 'BUI_DAILY',                 &
+         LONG_NAME  = 'buildup_index(daily)',      &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__) 
 
-   call MAPL_AddExportSpec(GC,                     &
-         SHORT_NAME = 'SNDSR',                     &
-         LONG_NAME  = 'daily_severity_rating',     &
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI_DAILY',                 &
+         LONG_NAME  = 'initial_spread_index(daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR_DAILY',                 &
+         LONG_NAME  = 'daily_severity_rating(daily)', &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__)
 
+
+    ! local noon
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC_DAILY_',               &
+         LONG_NAME  = 'fine_fuel_moisture_code(daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC_DAILY_',                &
+         LONG_NAME  = 'duff_moisture_code(daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC_DAILY_',                 &
+         LONG_NAME  = 'drought_code(daily)',       &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI_DAILY_',                &
+         LONG_NAME  = 'fire_weather_index(daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'BUI_DAILY_',                &
+         LONG_NAME  = 'buildup_index(daily)',      &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI_DAILY_',                &
+         LONG_NAME  = 'initial_spread_index(daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR_DAILY_',                &
+         LONG_NAME  = 'daily_severity_rating(daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+
+    ! misc
 
     call MAPL_AddExportSpec(GC,                    & 
          SHORT_NAME = 'VPD',                       &
@@ -442,6 +546,8 @@ contains
 !   call MAPL_TimerAdd(GC, name='INITIALIZE', __RC__)
     call MAPL_TimerAdd(GC, name='RUN'       , __RC__)
     call MAPL_TimerAdd(GC, name='-CFFWI'    , __RC__)
+    call MAPL_TimerAdd(GC, name='--daily'   , __RC__)
+    call MAPL_TimerAdd(GC, name='--hourly'  , __RC__)
 !   call MAPL_TimerAdd(GC, name='FINALIZE'  , __RC__)
 
 
@@ -482,93 +588,7 @@ contains
 ! Locals
 
     type (MAPL_MetaComp), pointer      :: MAPL => null()
-    type (ESMF_State)                  :: INTERNAL
 
-    type(ESMF_TimeInterval)            :: DELT 
-    type(MAPL_SunOrbit)                :: ORBIT
-    real, allocatable, dimension(:)    :: SLI
-    real, allocatable, dimension(:)    :: ZTH
-    real, allocatable, dimension(:)    :: ZTH_
-
-
-! IMPORT pointers
-    real, dimension(:), pointer :: T2M
-    real, dimension(:), pointer :: Q2M
-
-    real, dimension(:), pointer :: U10M
-    real, dimension(:), pointer :: V10M
-
-    real, dimension(:), pointer :: PS
-#if (1)
-    real, dimension(:), pointer :: PRLAND
-#else
-    real, dimension(:), pointer :: PCU
-    real, dimension(:), pointer :: PLS
-    real, dimension(:), pointer :: SNO
-#endif
-
-! INTERNAL pointers    
-    real, dimension(:), pointer :: FFMC_
-    real, dimension(:), pointer :: DMC_
-    real, dimension(:), pointer :: DC_
-
-    real(kind=MAPL_R4), dimension(:), pointer :: PRA_
-    real, dimension(:), pointer :: PR_
-    real, dimension(:), pointer :: RH_
-    real, dimension(:), pointer :: T_
-    real, dimension(:), pointer :: WIND_
-     
-
-! EXPORT pointers
-    real, dimension(:), pointer :: FFMC
-    real, dimension(:), pointer :: DMC
-    real, dimension(:), pointer :: DC
-    real, dimension(:), pointer :: ISI
-    real, dimension(:), pointer :: FWI
-    real, dimension(:), pointer :: BUI
-    real, dimension(:), pointer :: DSR
-
-    real, dimension(:), pointer :: SNFFMC
-    real, dimension(:), pointer :: SNDMC
-    real, dimension(:), pointer :: SNDC
-    real, dimension(:), pointer :: SNISI
-    real, dimension(:), pointer :: SNFWI
-    real, dimension(:), pointer :: SNBUI
-    real, dimension(:), pointer :: SNDSR
-
-    real, dimension(:), pointer :: PR
-
-    real, dimension(:), pointer :: VPD
-
-    real, dimension(:), pointer :: DBG1, DBG2, DBG3
-  
-! Others
-    type(ESMF_Time)         :: time
-    type(ESMF_Alarm)        :: run_alarm
-    type(ESMF_TimeInterval) :: ring_interval
-    real(ESMF_KIND_R8)      :: time_step
-
-    integer :: NT
-
-    integer :: year, month, day, hr, mn, sc
-    real    :: dt
-
-    real, pointer, dimension(:) :: LATS => null()
-    real, pointer, dimension(:) :: LONS => null()
-
-    real, allocatable, dimension(:) :: tmpFFMC
-    real, allocatable, dimension(:) :: tmpDMC
-    real, allocatable, dimension(:) :: tmpDC
-    real, allocatable, dimension(:) :: tmpFWI
-    real, allocatable, dimension(:) :: tmpISI
-    real, allocatable, dimension(:) :: tmpBUI
-    real, allocatable, dimension(:) :: tmpDSR
-
-    real, allocatable, dimension(:) :: dt_local_noon
-    logical, allocatable, dimension(:) :: isNoon
-
-
-    real,    allocatable, dimension(:) :: LSHA0, LSHA1
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -585,11 +605,7 @@ contains
     call MAPL_TimerOn(MAPL, 'TOTAL')
     call MAPL_TimerOn(MAPL, 'RUN'  )
 
-    call MAPL_Get(MAPL, TILELATS=LATS, &
-                        TILELONS=LONS, &
-                        INTERNAL_ESMF_STATE=INTERNAL, __RC__)
 
-! -----------------------------------------------------------
 ! Get file names from configuration
 ! -----------------------------------------------------------
 
@@ -597,188 +613,21 @@ contains
         !comp_name should be IGNIxxxx...
     end if
 
-! get pointers to internal variables
-! ----------------------------------
-    call MAPL_GetPointer(INTERNAL, FFMC_,  'FFMC',    __RC__)
-    call MAPL_GetPointer(INTERNAL, DMC_,   'DMC',     __RC__)
-    call MAPL_GetPointer(INTERNAL, DC_,    'DC',      __RC__)
-    call MAPL_GetPointer(INTERNAL, PR_,    'PR',      __RC__)
-    call MAPL_GetPointer(INTERNAL, PRA_,   'PRA',     __RC__)
-    call MAPL_GetPointer(INTERNAL, T_,     'T',       __RC__)
-    call MAPL_GetPointer(INTERNAL, RH_,    'RH',      __RC__)
-    call MAPL_GetPointer(INTERNAL, WIND_,  'WIND',    __RC__)
 
-! get pointers to internal variables
-! ----------------------------------
-    call MAPL_GetPointer(IMPORT,   Q2M,    'MOQ2M',   __RC__)
-    call MAPL_GetPointer(IMPORT,   T2M,    'MOT2M',   __RC__)
-
-    call MAPL_GetPointer(IMPORT,   U10M,   'MOU10M',  __RC__)
-    call MAPL_GetPointer(IMPORT,   V10M,   'MOV10M',  __RC__)
-
-    call MAPL_GetPointer(IMPORT,     PS,   'PS',      __RC__)
-#if (1)
-    call MAPL_GetPointer(IMPORT, PRLAND,   'PRLAND',  __RC__)
-#else
-    call MAPL_GetPointer(IMPORT,    PCU,   'PCU',     __RC__)
-    call MAPL_GetPointer(IMPORT,    PLS,   'PLS',     __RC__)
-    call MAPL_GetPointer(IMPORT,    SNO,   'SNO',     __RC__)
-#endif
-    
-
-! get pointers to EXPORTS
-! -----------------------
-    call MAPL_GetPointer(EXPORT,   FFMC,   'FFMC',    __RC__)
-    call MAPL_GetPointer(EXPORT,   DMC,    'DMC',     __RC__)
-    call MAPL_GetPointer(EXPORT,   DC,     'DC',      __RC__)
-    call MAPL_GetPointer(EXPORT,   FWI,    'FWI',     __RC__)
-    call MAPL_GetPointer(EXPORT,   ISI,    'ISI',     __RC__)
-    call MAPL_GetPointer(EXPORT,   BUI,    'BUI',     __RC__)
-    call MAPL_GetPointer(EXPORT,   DSR,    'DSR',     __RC__)
-
-    call MAPL_GetPointer(EXPORT,   SNFFMC, 'SNFFMC',  __RC__)
-    call MAPL_GetPointer(EXPORT,   SNDMC,  'SNDMC',   __RC__)
-    call MAPL_GetPointer(EXPORT,   SNDC,   'SNDC',    __RC__)
-    call MAPL_GetPointer(EXPORT,   SNFWI,  'SNFWI',   __RC__)
-    call MAPL_GetPointer(EXPORT,   SNISI,  'SNISI',   __RC__)
-    call MAPL_GetPointer(EXPORT,   SNBUI,  'SNBUI',   __RC__)
-    call MAPL_GetPointer(EXPORT,   SNDSR,  'SNDSR',   __RC__)
-
-
-    call MAPL_GetPointer(EXPORT,   PR,    'PR',       __RC__)
-
-    call MAPL_GetPointer(EXPORT,   VPD,   'VPD',      __RC__)
-
-    call MAPL_GetPointer(EXPORT,   DBG1,  'DBG1',  alloc=.true.,   __RC__)
-    call MAPL_GetPointer(EXPORT,   DBG2,  'DBG2',  alloc=.true.,   __RC__)
-    call MAPL_GetPointer(EXPORT,   DBG3,  'DBG3',  alloc=.true.,   __RC__)
-
-
-! Fire weather indexes in the CFFWI
-! ---------------------------------
-    NT = SIZE(LONS)
-
+! Fire weather indexes
+! --------------------
     call MAPL_TimerOn(MAPL, '-CFFWI')
 
-    if (NT > 0) then
+    call MAPL_TimerOn(MAPL,  '--daily')
+    call CFFWI_DAILY (GC, IMPORT, EXPORT, CLOCK, __RC__)
+    call MAPL_TimerOff(MAPL, '--daily')
 
-        call MAPL_Get(MAPL, RunAlarm=run_alarm, __RC__)
-        call ESMF_AlarmGet(run_alarm, ringInterval=ring_interval, __RC__)
-
-        call ESMF_TimeIntervalGet(ring_interval, s_r8=time_step, __RC__)
-        dt = real(time_step)
-
-        allocate(tmpFFMC(NT), tmpDMC(NT), tmpDC(NT), tmpFWI(NT), &
-                 tmpISI(NT),  tmpBUI(NT), tmpDSR(NT), __STAT__)
-
-        tmpFFMC = -MAPL_UNDEF
-        tmpDMC  = -MAPL_UNDEF
-        tmpDC   = -MAPL_UNDEF
-
-        tmpFWI  = -MAPL_UNDEF
-        tmpISI  = -MAPL_UNDEF
-        tmpBUI  = -MAPL_UNDEF
-        tmpDSR  = -MAPL_UNDEF
-
-
-        ! accumulate precip
-#if (1)
-        PRA_ = PRA_ + PRLAND*dt
-#else
-        PRA_ = PRA_ + (PCU+PLS+SNO)*dt
-#endif
-
-        call ESMF_ClockGet(CLOCK, currTime=time, __RC__)
-
-
-        ! noon LST
-        ! --------
-        call ESMF_TimeGet(time, yy=year, mm=month, dd=day, h=hr, m=mn, s=sc, __RC__)
-
-        allocate(dt_local_noon(NT), isNoon(NT), __STAT__)
-        dt_local_noon = ((hr-12)*3600 + mn*60 + sc) + ((24*3600)/(2*MAPL_PI))*LONS
-
-        isNoon = (dt_local_noon >= 0) .and. (dt_local_noon < dt)
-
-        DBG1 = MAPL_UNDEF 
-        where (isNoon) DBG1 = 1.0
-
-        DBG2 = dt_local_noon
-
-        ! local solar noon
-        ! ----------------
-        call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
-
-        allocate(LSHA0(NT), LSHA1(NT), __STAT__)
-
-        call ESMF_ClockGet(CLOCK, CURRTIME=time, __RC__)
-        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA0, TIME=time, __RC__)
-        call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA1, TIME=time+ring_interval, __RC__)
-        isNoon = (LSHA0 <= 0) .and. (LSHA1 > 0)
-
-        DBG3 = MAPL_UNDEF 
-        where (isNoon) DBG3 = 1.0
-
-        deallocate(LSHA0, LSHA1, __STAT__)
-
-
-        where (isNoon)
-            T_       = T2M
-            WIND_    = sqrt(U10M*U10M + V10M*V10M)
-            RH_      = min(Q2M / GEOS_QSAT(T2M, PS, PASCALS=.true.), 1.0)
-            PR_      = PRA_
-            PRA_     = dble(0.0)
-        end where
-
-        tmpFFMC = FFMC_
-        tmpDMC  = DMC_
-        tmpDC   = DC_
-
-
-        call cffwi_driver(tmpFFMC, tmpDMC, tmpDC, tmpISI, tmpBUI, tmpFWI, tmpDSR, &
-                          T_, RH_, WIND_, PR_, LATS, month, NT)
-
-        ! update internal state
-        where (isNoon)
-            FFMC_ = tmpFFMC
-            DMC_  = tmpDMC
-            DC_   = tmpDC
-        end where
-
-        ! update exports
-        if (associated(FFMC)) FFMC = tmpFFMC
-        if (associated(DMC))   DMC = tmpDMC
-        if (associated(DC))     DC = tmpDC
-        if (associated(ISI))   ISI = tmpISI
-        if (associated(BUI))   BUI = tmpBUI
-        if (associated(FWI))   FWI = tmpFWI
-        if (associated(DSR))   DSR = tmpDSR
-        if (associated(PR))    PR  = PR_
-
-        where (.not. isNoon)
-            tmpFFMC = MAPL_UNDEF
-            tmpDMC  = MAPL_UNDEF
-            tmpDC   = MAPL_UNDEF
-            tmpISI  = MAPL_UNDEF
-            tmpBUI  = MAPL_UNDEF
-            tmpFWI  = MAPL_UNDEF
-            tmpDSR  = MAPL_UNDEF
-        end where
-
-        if (associated(SNFFMC)) SNFFMC = tmpFFMC
-        if (associated(SNDMC))   SNDMC = tmpDMC
-        if (associated(SNDC))     SNDC = tmpDC
-        if (associated(SNISI))   SNISI = tmpISI
-        if (associated(SNBUI))   SNBUI = tmpBUI
-        if (associated(SNFWI))   SNFWI = tmpFWI
-        if (associated(SNDSR))   SNDSR = tmpDSR
-
-
-        deallocate(tmpFFMC, tmpDMC, tmpDC, tmpFWI, tmpISI, tmpBUI, tmpDSR, __STAT__)
-
-    end if
+    call MAPL_TimerOn(MAPL,  '--hourly')
+    call CFFWI_HOURLY(GC, IMPORT, EXPORT, CLOCK, __RC__)
+    call MAPL_TimerOff(MAPL, '--hourly')
 
     call MAPL_TimerOff(MAPL, '-CFFWI')
+
 
 !  All done
 ! ---------
@@ -789,18 +638,589 @@ contains
   end subroutine RUN
 
 
+! -----------------------------------------------------------
+! CFFWI_DAILY -- Runs the daily CFFWI
+! -----------------------------------------------------------
 
-  subroutine cffwi_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
-                          T, RH, wind, Pr, latitude, month, N)
+  subroutine CFFWI_DAILY (GC, IMPORT, EXPORT, CLOCK, RC)
+
+! -----------------------------------------------------------
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: GC
+    type(ESMF_State),    intent(inout) :: IMPORT
+    type(ESMF_State),    intent(inout) :: EXPORT
+    type(ESMF_Clock),    intent(inout) :: CLOCK
+    integer, optional,   intent(  out) :: RC
+
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)   :: Iam
+    character(len=ESMF_MAXSTR)   :: COMP_NAME
+    integer                      :: STATUS
+
+
+! IMPORT pointers
+
+    real, dimension(:), pointer :: T2M
+    real, dimension(:), pointer :: Q2M
+
+    real, dimension(:), pointer :: U10M
+    real, dimension(:), pointer :: V10M
+
+    real, dimension(:), pointer :: PS
+#if (1)
+    real, dimension(:), pointer :: PRLAND
+#else
+    real, dimension(:), pointer :: PCU
+    real, dimension(:), pointer :: PLS
+    real, dimension(:), pointer :: SNO
+#endif
+
+
+! INTERNAL pointers
+
+    real, dimension(:), pointer :: FFMC0_daily
+    real, dimension(:), pointer :: DMC0_daily
+    real, dimension(:), pointer :: DC0_daily
+
+    real, dimension(:), pointer :: DPR_noon
+    real, dimension(:), pointer :: PR_noon
+    real, dimension(:), pointer :: RH_noon
+    real, dimension(:), pointer :: T_noon
+    real, dimension(:), pointer :: WS_noon
+     
+
+! EXPORT pointers
+
+    ! daily
+    real, dimension(:), pointer :: FFMC_daily
+    real, dimension(:), pointer :: DMC_daily
+    real, dimension(:), pointer :: DC_daily
+    real, dimension(:), pointer :: ISI_daily
+    real, dimension(:), pointer :: FWI_daily
+    real, dimension(:), pointer :: BUI_daily
+    real, dimension(:), pointer :: DSR_daily
+
+    ! local noon
+    real, dimension(:), pointer :: FFMC_daily_
+    real, dimension(:), pointer :: DMC_daily_
+    real, dimension(:), pointer :: DC_daily_
+    real, dimension(:), pointer :: ISI_daily_
+    real, dimension(:), pointer :: FWI_daily_
+    real, dimension(:), pointer :: BUI_daily_
+    real, dimension(:), pointer :: DSR_daily_
+
+    ! debug
+    real, dimension(:), pointer :: DBG1, DBG2, DBG3
+
+
+! Misc
+
+    type(MAPL_MetaComp), pointer :: MAPL => null()
+    type(ESMF_State)             :: INTERNAL
+    type(MAPL_SunOrbit)          :: ORBIT
+
+
+    type(ESMF_Time)         :: time
+    type(ESMF_Alarm)        :: run_alarm
+    type(ESMF_TimeInterval) :: ring_interval
+    real(ESMF_KIND_R8)      :: time_step
+
+    integer :: NT
+
+    integer :: year, month, day, hr, mn, sc
+    real    :: dt
+
+    real, pointer, dimension(:) :: LATS => null()
+    real, pointer, dimension(:) :: LONS => null()
+
+    real, allocatable, dimension(:) :: tmpISI
+    real, allocatable, dimension(:) :: tmpBUI
+    real, allocatable, dimension(:) :: tmpDSR
+    real, allocatable, dimension(:) :: tmpFWI
+
+    real, allocatable, dimension(:) :: dt_local_noon
+    real, allocatable, dimension(:) :: LSHA0, LSHA1
+    logical, allocatable, dimension(:) :: isNoon
+
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    call ESMF_GridCompGet(GC, name=COMP_NAME, __RC__)
+
+    Iam = trim(COMP_NAME) // 'CFFWI_DAILY'
+
+
+! Get my internal MAPL_Generic state
+! -----------------------------------------------------------
+
+    call MAPL_GetObjectFromGC(GC, MAPL, __RC__)
+
+
+    call MAPL_Get(MAPL, TILELATS=LATS, &
+                        TILELONS=LONS, &
+                        INTERNAL_ESMF_STATE=INTERNAL, __RC__)
+
+    NT = SIZE(LONS)
+
+    NO_LAND_AREAS: if (NT == 0) then
+        RETURN_(ESMF_SUCCESS)
+    end if NO_LAND_AREAS
+
+
+! Get pointers to internal variables
+! ----------------------------------
+
+    call MAPL_GetPointer(INTERNAL, FFMC0_daily, 'FFMC_DAILY',     __RC__)
+    call MAPL_GetPointer(INTERNAL, DMC0_daily,  'DMC_DAILY',      __RC__)
+    call MAPL_GetPointer(INTERNAL, DC0_daily,   'DC_DAILY',       __RC__)
+
+    call MAPL_GetPointer(INTERNAL, DPR_noon,    'DPR_LOCAL_NOON', __RC__)
+    call MAPL_GetPointer(INTERNAL, PR_noon,     'PR_LOCAL_NOON',  __RC__) !  TODO: discard
+    call MAPL_GetPointer(INTERNAL, T_noon,      'T_LOCAL_NOON',   __RC__) !  TODO: discard
+    call MAPL_GetPointer(INTERNAL, RH_noon,     'RH_LOCAL_NOON',  __RC__) !  TODO: discard
+    call MAPL_GetPointer(INTERNAL, WS_noon,     'WS_LOCAL_NOON',  __RC__) !  TODO: discard
+
+
+! Get pointers to imports
+! -----------------------
+
+    call MAPL_GetPointer(IMPORT, PS,     'PS',     __RC__)
+    call MAPL_GetPointer(IMPORT, Q2M,    'MOQ2M',  __RC__)
+    call MAPL_GetPointer(IMPORT, T2M,    'MOT2M',  __RC__)
+    call MAPL_GetPointer(IMPORT, U10M,   'MOU10M', __RC__)
+    call MAPL_GetPointer(IMPORT, V10M,   'MOV10M', __RC__)
+#if (1)
+    call MAPL_GetPointer(IMPORT, PRLAND, 'PRLAND', __RC__)
+#else
+    call MAPL_GetPointer(IMPORT, PCU,    'PCU',    __RC__)
+    call MAPL_GetPointer(IMPORT, PLS,    'PLS',    __RC__)
+    call MAPL_GetPointer(IMPORT, SNO,    'SNO',    __RC__)
+#endif
+
+
+! Get pointers to exports
+! -----------------------
+
+    ! global
+    call MAPL_GetPointer(EXPORT, FFMC_daily,  'FFMC_DAILY',  __RC__)
+    call MAPL_GetPointer(EXPORT, DMC_daily,   'DMC_DAILY',   __RC__)
+    call MAPL_GetPointer(EXPORT, DC_daily,    'DC_DAILY',    __RC__)
+    call MAPL_GetPointer(EXPORT, FWI_daily,   'FWI_DAILY',   __RC__)
+    call MAPL_GetPointer(EXPORT, ISI_daily,   'ISI_DAILY',   __RC__)
+    call MAPL_GetPointer(EXPORT, BUI_daily,   'BUI_DAILY',   __RC__)
+    call MAPL_GetPointer(EXPORT, DSR_daily,   'DSR_DAILY',   __RC__)
+ 
+    ! local noon patch
+    call MAPL_GetPointer(EXPORT, FFMC_daily_, 'FFMC_DAILY_', __RC__)
+    call MAPL_GetPointer(EXPORT, DMC_daily_,  'DMC_DAILY_',  __RC__)
+    call MAPL_GetPointer(EXPORT, DC_daily_,   'DC_DAILY_',   __RC__)
+    call MAPL_GetPointer(EXPORT, FWI_daily_,  'FWI_DAILY_',  __RC__)
+    call MAPL_GetPointer(EXPORT, ISI_daily_,  'ISI_DAILY_',  __RC__)
+    call MAPL_GetPointer(EXPORT, BUI_daily_,  'BUI_DAILY_',  __RC__)
+    call MAPL_GetPointer(EXPORT, DSR_daily_,  'DSR_DAILY_',  __RC__)
+
+
+    call MAPL_GetPointer(EXPORT, DBG1, 'DBG1', alloc=.true., __RC__)
+    call MAPL_GetPointer(EXPORT, DBG2, 'DBG2', alloc=.true., __RC__)
+    call MAPL_GetPointer(EXPORT, DBG3, 'DBG3', alloc=.true., __RC__)
+
+
+! Get the time step
+! -----------------
+
+    call MAPL_Get(MAPL, RunAlarm=run_alarm, __RC__)
+    call ESMF_AlarmGet(run_alarm, ringInterval=ring_interval, __RC__)
+
+    call ESMF_TimeIntervalGet(ring_interval, s_r8=time_step, __RC__)
+    dt = real(time_step)
+
+
+! Accumulate precip
+! -----------------
+#if (1)
+    DPR_NOON = DPR_NOON + PRLAND*dt
+#else
+    DPR_NOON = DPR_NOON + (PCU + PLS + SNO)*dt
+#endif
+
+
+! Construct local noon mask
+! -------------------------
+
+    call ESMF_ClockGet(CLOCK, currTime=time, __RC__)
+    allocate(isNoon(NT), __STAT__)
+
+    ! noon LST
+    ! --------
+    call ESMF_TimeGet(time, yy=year, mm=month, dd=day, h=hr, m=mn, s=sc, __RC__)
+
+    allocate(dt_local_noon(NT), __STAT__)
+    dt_local_noon = ((hr-12)*3600 + mn*60 + sc) + ((24*3600)/(2*MAPL_PI))*LONS
+
+    isNoon = (dt_local_noon >= 0) .and. (dt_local_noon < dt)
+
+    deallocate(dt_local_noon, __STAT__)
+
+    if (associated(DBG1)) then
+        DBG1 = MAPL_UNDEF
+        where (isNoon) DBG1 = 1.0
+    end if        
+
+    if (associated(DBG2)) then
+        DBG2 = MAPL_UNDEF
+    end if
+
+
+    ! local solar noon
+    ! ----------------
+    call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
+
+    allocate(LSHA0(NT), LSHA1(NT), __STAT__)
+
+    call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA0, TIME=time, __RC__)
+    call MAPL_SunGetLocalSolarHourAngle(ORBIT, LONS, LSHA1, TIME=time+ring_interval, __RC__)
+
+    isNoon = (LSHA0 <= 0) .and. (LSHA1 > 0)
+
+    deallocate(LSHA0, LSHA1, __STAT__)
+
+    if (associated(DBG3)) then
+        DBG3 = MAPL_UNDEF
+        where (isNoon) DBG3 = 1.0
+    end if
+
+
+! Update local noon patches
+! -------------------------
+
+    where (isNoon)
+        T_noon   = T2M
+        WS_noon  = sqrt(U10M*U10M + V10M*V10M)
+        RH_noon  = min(Q2M / GEOS_QSAT(T2M, PS, PASCALS=.true.), 1.0)
+        PR_noon  = DPR_noon
+        DPR_noon = 0.0
+    end where
+
+    allocate(tmpISI(NT), tmpBUI(NT), tmpDSR(NT), tmpFWI(NT), __STAT__)
+
+    tmpISI  = MAPL_UNDEF
+    tmpBUI  = MAPL_UNDEF
+    tmpDSR  = MAPL_UNDEF
+    tmpFWI  = MAPL_UNDEF
+
+
+    call cffwi_daily_driver(FFMC0_daily, DMC0_daily, DC0_daily, &
+                            tmpISI,  tmpBUI, tmpFWI, tmpDSR, &
+                            T_noon, RH_noon, WS_noon, PR_noon, LATS, isNoon, month, NT)
+
+    ! update exports
+    if (associated(FFMC_daily)) FFMC_daily = FFMC0_daily
+    if (associated(DMC_daily))   DMC_daily = DMC0_daily
+    if (associated(DC_daily))     DC_daily = DC0_daily
+    if (associated(ISI_daily))   ISI_daily = tmpISI
+    if (associated(BUI_daily))   BUI_daily = tmpBUI
+    if (associated(FWI_daily))   FWI_daily = tmpFWI
+    if (associated(DSR_daily))   DSR_daily = tmpDSR
+
+
+    if (associated(FFMC_daily_)) then
+        where (isNoon)
+            FFMC_daily_ = FFMC0_daily
+        elsewhere
+            FFMC_daily_ = MAPL_UNDEF
+        end where
+    end if
+
+    if (associated(DMC_daily_)) then
+        where (isNoon)
+            DMC_daily_ = DMC0_daily
+        elsewhere
+            DMC_daily_ = MAPL_UNDEF
+        end where
+    end if
+
+    if (associated(DC_daily_)) then
+        where (isNoon) 
+            DC_daily_ = DC0_daily
+        elsewhere
+            DC_daily_ = MAPL_UNDEF
+        end where
+    end if 
+
+    if (associated(ISI_daily_)) then
+        where (isNoon)
+            ISI_daily_ = tmpISI
+        elsewhere
+            ISI_daily_ = MAPL_UNDEF
+        end where 
+    end if
+
+    if (associated(BUI_daily_)) then
+        where (isNoon)
+            BUI_daily_ = tmpBUI
+        elsewhere
+            BUI_daily_ = MAPL_UNDEF
+        end where
+    end if
+
+    if (associated(FWI_daily_)) then
+        where (isNoon) 
+            FWI_daily_ = tmpFWI
+        elsewhere
+            FWI_daily_ = MAPL_UNDEF
+        end where
+    end if
+
+    if (associated(DSR_daily_)) then
+        where (isNoon)
+            DSR_daily_ = tmpDSR
+        elsewhere
+            DSR_daily_ = MAPL_UNDEF
+        end where
+    end if
+
+    deallocate(tmpISI, tmpBUI, tmpDSR, tmpFWI, __STAT__)
+
+
+!  All done
+! ---------
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine CFFWI_DAILY
+
+
+! -----------------------------------------------------------
+! CFFWI_HOURLY -- Runs the hourly CFFWI
+! -----------------------------------------------------------
+
+  subroutine CFFWI_HOURLY (GC, IMPORT, EXPORT, CLOCK, RC)
+
+! -----------------------------------------------------------
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: GC
+    type(ESMF_State),    intent(inout) :: IMPORT
+    type(ESMF_State),    intent(inout) :: EXPORT
+    type(ESMF_Clock),    intent(inout) :: CLOCK
+    integer, optional,   intent(  out) :: RC
+
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)   :: Iam
+    character(len=ESMF_MAXSTR)   :: COMP_NAME
+    integer                      :: STATUS
+
+
+! IMPORT pointers
+
+    real, dimension(:), pointer :: T2M
+    real, dimension(:), pointer :: Q2M
+
+    real, dimension(:), pointer :: U10M
+    real, dimension(:), pointer :: V10M
+
+    real, dimension(:), pointer :: PS
+#if (1)
+    real, dimension(:), pointer :: PRLAND
+#else
+    real, dimension(:), pointer :: PCU
+    real, dimension(:), pointer :: PLS
+    real, dimension(:), pointer :: SNO
+#endif
+
+
+! INTERNAL pointers
+
+    real, dimension(:), pointer :: FFMC0
+    real, dimension(:), pointer :: DMC0_daily
+    real, dimension(:), pointer :: DC0_daily
+
+
+! EXPORT pointers
+
+    ! hourly
+    real, dimension(:), pointer :: FFMC
+    real, dimension(:), pointer :: DMC
+    real, dimension(:), pointer :: DC
+    real, dimension(:), pointer :: ISI
+    real, dimension(:), pointer :: FWI
+    real, dimension(:), pointer :: BUI
+    real, dimension(:), pointer :: DSR
+
+
+! Misc
+
+    type(MAPL_MetaComp), pointer :: MAPL => null()
+    type(ESMF_State)             :: INTERNAL
+
+
+    type(ESMF_Time)         :: time
+    type(ESMF_Alarm)        :: run_alarm
+    type(ESMF_TimeInterval) :: ring_interval
+    real(ESMF_KIND_R8)      :: time_step
+
+    integer :: NT
+
+    integer :: year, month, day, hr, mn, sc
+    real    :: dt
+
+    real, pointer, dimension(:) :: LATS => null()
+    real, pointer, dimension(:) :: LONS => null()
+
+    real, allocatable, dimension(:) :: tmpISI
+    real, allocatable, dimension(:) :: tmpBUI
+    real, allocatable, dimension(:) :: tmpDSR
+    real, allocatable, dimension(:) :: tmpFWI
+
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    call ESMF_GridCompGet(GC, name=COMP_NAME, __RC__)
+
+    Iam = trim(COMP_NAME) // 'CFFWI_HOURLY'
+
+
+! Get my internal MAPL_Generic state
+! -----------------------------------------------------------
+
+    call MAPL_GetObjectFromGC(GC, MAPL, __RC__)
+
+
+    call MAPL_Get(MAPL, TILELATS=LATS, &
+                        TILELONS=LONS, &
+                        INTERNAL_ESMF_STATE=INTERNAL, __RC__)
+
+    NT = SIZE(LONS)
+
+    NO_LAND_AREAS: if (NT == 0) then
+        RETURN_(ESMF_SUCCESS)
+    end if NO_LAND_AREAS
+
+
+! Get pointers to internal variables
+! ----------------------------------
+
+    call MAPL_GetPointer(INTERNAL, FFMC0,       'FFMC',           __RC__)
+    call MAPL_GetPointer(INTERNAL, DMC0_daily,  'DMC_DAILY',      __RC__)
+    call MAPL_GetPointer(INTERNAL, DC0_daily,   'DC_DAILY',       __RC__)
+
+
+! Get pointers to imports
+! -----------------------
+
+    call MAPL_GetPointer(IMPORT, PS,     'PS',     __RC__)
+    call MAPL_GetPointer(IMPORT, Q2M,    'MOQ2M',  __RC__)
+    call MAPL_GetPointer(IMPORT, T2M,    'MOT2M',  __RC__)
+    call MAPL_GetPointer(IMPORT, U10M,   'MOU10M', __RC__)
+    call MAPL_GetPointer(IMPORT, V10M,   'MOV10M', __RC__)
+#if (1)
+    call MAPL_GetPointer(IMPORT, PRLAND, 'PRLAND', __RC__)
+#else
+    call MAPL_GetPointer(IMPORT, PCU,    'PCU',    __RC__)
+    call MAPL_GetPointer(IMPORT, PLS,    'PLS',    __RC__)
+    call MAPL_GetPointer(IMPORT, SNO,    'SNO',    __RC__)
+#endif
+
+
+! Get pointers to exports
+! -----------------------
+
+    ! global
+    call MAPL_GetPointer(EXPORT, FFMC,  'FFMC',  __RC__)
+    call MAPL_GetPointer(EXPORT, DMC,   'DMC',   __RC__)
+    call MAPL_GetPointer(EXPORT, DC,    'DC',    __RC__)
+    call MAPL_GetPointer(EXPORT, FWI,   'FWI',   __RC__)
+    call MAPL_GetPointer(EXPORT, ISI,   'ISI',   __RC__)
+    call MAPL_GetPointer(EXPORT, BUI,   'BUI',   __RC__)
+    call MAPL_GetPointer(EXPORT, DSR,   'DSR',   __RC__)
+ 
+
+! Get the time step
+! -----------------
+
+    call MAPL_Get(MAPL, RunAlarm=run_alarm, __RC__)
+    call ESMF_AlarmGet(run_alarm, ringInterval=ring_interval, __RC__)
+
+    call ESMF_TimeIntervalGet(ring_interval, s_r8=time_step, __RC__)
+    dt = real(time_step)
+
+
+! Get date and time
+! -----------------
+
+    call ESMF_ClockGet(CLOCK, currTime=time, __RC__)
+
+    call ESMF_TimeGet(time, yy=year, mm=month, dd=day, h=hr, m=mn, s=sc, __RC__)
+
+
+! Update local noon patches
+! -------------------------
+
+    allocate(tmpISI(NT), tmpBUI(NT), tmpDSR(NT), tmpFWI(NT), __STAT__)
+
+    tmpISI  = MAPL_UNDEF
+    tmpBUI  = MAPL_UNDEF
+    tmpDSR  = MAPL_UNDEF
+    tmpFWI  = MAPL_UNDEF
+
+    call cffwi_hourly_driver(FFMC0, DMC0_daily, DC0_daily, &
+                             tmpISI, tmpBUI, tmpFWI, tmpDSR, &
+                             T2M, &
+                             min(Q2M / GEOS_QSAT(T2M, PS, PASCALS=.true.), 1.0), &
+                             sqrt(U10M*U10M + V10M*V10M), &
+                             PRLAND*dt, &
+                             LATS, &
+                             month, dt/3600.0, NT)
+
+    ! update exports
+    if (associated(FFMC)) FFMC = FFMC0
+    if (associated(DMC))   DMC = DMC0_daily
+    if (associated(DC))     DC = DC0_daily
+    if (associated(ISI))   ISI = tmpISI
+    if (associated(BUI))   BUI = tmpBUI
+    if (associated(FWI))   FWI = tmpFWI
+    if (associated(DSR))   DSR = tmpDSR
+
+
+    deallocate(tmpISI, tmpBUI, tmpDSR, tmpFWI, __STAT__)
+
+
+!  All done
+! ---------
+
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine CFFWI_HOURLY
+
+
+
+
+
+  subroutine cffwi_daily_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
+                                T, RH, wind, Pr, latitude, is_noon, month, N)
  
     !
-    ! Calculates FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes.
+    ! Calculates daily FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes.
+    ! Note that: 
+    !     - FFMC, DMC, and DC are updated only in areas where the local 
+    !       noon mask is true
+    !     - ISI, BUI, FWI and DSR are calculated in all areas using 
+    !       the updated FFMC, DMC and DC.
     !
 
     implicit none
 
     real,    dimension(N), intent(in) :: T, RH, wind, Pr 
     real,    dimension(N), intent(in) :: latitude
+    logical, dimension(N), intent(in) :: is_noon
     integer,               intent(in) :: month
     integer,               intent(in) :: N
 
@@ -814,16 +1234,19 @@ contains
     real, parameter :: DAILY = 24.0
 
     do i = 1, N
-        T_  = T(i) - 273.15    ! temperature, C
-        RH_ = 100 * RH(i)      ! relative humidity, %
-        Pr_ = Pr(i)            ! precip, mm
+        if (is_noon(i)) then
+            T_   = T(i) - 273.15    ! temperature, C
+            RH_  = 100 * RH(i)      ! relative humidity, %
+            Pr_  = 1e3 * Pr(i)      ! precip since local noon, mm
+            lat_ = MAPL_RADIANS_TO_DEGREES * latitude(i) 
 
-        lat_ = MAPL_RADIANS_TO_DEGREES * latitude(i)     !  
+            ! update FFMC, DMC and DC
+            ffmc(i) = fine_fuel_moisture_code(ffmc(i), T_, RH_, wind(i), Pr_, DAILY)
+            dmc(i)  = duff_moisture_code(dmc(i), T_, RH_, Pr_, month)
+            dc(i)   = drought_code(dc(i), T_, Pr_, lat_, month)
+        end if
 
-        ffmc(i) = fine_fuel_moisture_code(ffmc(i), T_, RH_, wind(i), Pr_, DAILY)
-        dmc(i)  = duff_moisture_code(dmc(i), T_, RH_, Pr_, month)
-        dc(i)   = drought_code(dc(i), T_, Pr_, lat_, month)
-
+        ! calculate ISI, BUI, FWI and DSR
         isi(i)  = initial_spread_index(ffmc(i), wind(i))
         bui(i)  = buildup_index(dmc(i), dc(i))
 
@@ -831,7 +1254,54 @@ contains
         dsr(i)  = daily_severity_rating(fwi(i))
     end do
 
-  end subroutine cffwi_driver
+  end subroutine cffwi_daily_driver
+
+
+
+  subroutine cffwi_hourly_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
+                                 T, RH, wind, Pr, latitude, month, time_step, N)
+ 
+    !
+    ! Calculates daily FFMC, ISI, BUI, FWI and DSR indexes.
+    ! Note that DMC and DC are from the daily CFFWI and 
+    ! are not modified here. 
+    !
+
+    implicit none
+
+    real,    dimension(N), intent(in) :: T, RH, wind, Pr 
+    real,    dimension(N), intent(in) :: latitude
+    integer,               intent(in) :: month
+    real,                  intent(in) :: time_step
+    integer,               intent(in) :: N
+
+    real,    dimension(N), intent(in   ) :: dmc, dc
+    real,    dimension(N), intent(inout) :: ffmc, isi, bui, fwi, dsr
+    
+    ! local
+    integer :: i
+    real    :: T_, RH_, Pr_
+    real    :: lat_
+
+
+    do i = 1, N
+        T_   = T(i) - 273.15    ! temperature, C
+        RH_  = 100 * RH(i)      ! relative humidity, %
+        Pr_  = 1e3 * Pr(i)      ! precip since local noon, mm
+        lat_ = MAPL_RADIANS_TO_DEGREES * latitude(i) 
+
+        ! update FFMC
+        ffmc(i) = fine_fuel_moisture_code(ffmc(i), T_, RH_, wind(i), Pr_, time_step)
+        
+        ! calculate ISI, BUI, FWI and DSR
+        isi(i)  = initial_spread_index(ffmc(i), wind(i))
+        bui(i)  = buildup_index(dmc(i), dc(i))
+
+        fwi(i)  = fire_weather_index(isi(i), bui(i))
+        dsr(i)  = daily_severity_rating(fwi(i))
+    end do
+
+  end subroutine cffwi_hourly_driver
 
 
 end module GEOS_IgniGridCompMod
