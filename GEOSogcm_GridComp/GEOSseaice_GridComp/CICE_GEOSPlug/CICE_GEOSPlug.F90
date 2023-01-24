@@ -933,13 +933,13 @@ contains
      character(len=ESMF_MAXSTR), parameter   :: IAm=' prep_albedo'
 
      ! unpack fields and send them to cice
-     !call ice_import_thermo1(state, rc=STATUS)
+     call ice_import_radiation(state, rc=STATUS)
      
      ! let cice update surface temperature and fluxes 
-     !call ice_fast_physics     
+     call ice_radiation     
 
      ! export the relevant fields from cice
-     !call ice_export_thermo1(state, rc=STATUS)
+     call ice_export_radiation(state, rc=STATUS)
 
      ! pack them back into state 
 
