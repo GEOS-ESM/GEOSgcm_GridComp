@@ -332,9 +332,8 @@ contains
        d2 =size(PLE,2)
        km =size(PLE,3)-1
        allocate(PL0(d1,d2,km))
-       PL0 = (PLE(:,:,2:km+1)+PLE(:,:,1:km))*0.5
-       ! WJ notes, Since PLE(:,:, km+1) =0, the above avg should be corrected for the last km
-       PL0(:,:,km) = PLE(:,:,km)
+       ! WJ notes, PLE's lower bound is (1,1,0)
+       PL0 = (PLE(:,:,1:km)+PLE(:,:,0:km-1))*0.5
        P => PL0
        W = 0.0
     endif
