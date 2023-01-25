@@ -1100,8 +1100,8 @@ contains
 
                   ! "new" variables: introduced in CNCLM50
                   if (cold_start.eqv..false.) then
-                      this%annsum_litfall_patch(np)    = cnpft(nc,nz,nv, 80)
-                      this%tempsum_litfall_patch(np)   = cnpft(nc,nz,nv, 81)  
+                      this%annsum_litfall_patch(np)    = cnpft(nc,nz,nv, 82)
+                      this%tempsum_litfall_patch(np)   = cnpft(nc,nz,nv, 83)  
                   elseif (cold_start) then
                       this%annsum_litfall_patch(np)    = spval      
                       this%tempsum_litfall_patch(np)   = spval 

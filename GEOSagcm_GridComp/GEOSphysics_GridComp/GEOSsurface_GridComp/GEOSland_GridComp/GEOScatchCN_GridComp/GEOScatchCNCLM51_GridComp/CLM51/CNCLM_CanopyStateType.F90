@@ -159,7 +159,7 @@ contains
                   ! "new" variables: introduced in CNCLM50
                   if (cold_start.eqv..false.) then
                      do nw = 1,nvegwcs
-                        this%vegwp_patch(np,nw)    = cnpft(nc,nz,nv, 76+(nw-1))
+                        this%vegwp_patch(np,nw)    = cnpft(nc,nz,nv, 78+(nw-1))
                      end do
                   elseif (cold_start) then
                      this%vegwp_patch(np,1:nvegwcs)    = -2.5e4_r8
