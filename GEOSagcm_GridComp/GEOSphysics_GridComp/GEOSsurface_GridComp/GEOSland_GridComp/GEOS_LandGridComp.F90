@@ -4,7 +4,7 @@
 module GEOS_LandGridCompMod
 
 !BOP
-! !MODULE: GEOS_LandGridCompMod -- A Module to combine VegDyn and Catch Gridded Components
+! !MODULE: GEOS_LandGridCompMod -- A Module to combine VegDyn and Catch, and Igni Gridded Components
 
 ! !DESCRIPTION: This gridded component operates on the land tiles as
 ! as child of GEOS\_SurfaceGridComp.  The core functionality is the
