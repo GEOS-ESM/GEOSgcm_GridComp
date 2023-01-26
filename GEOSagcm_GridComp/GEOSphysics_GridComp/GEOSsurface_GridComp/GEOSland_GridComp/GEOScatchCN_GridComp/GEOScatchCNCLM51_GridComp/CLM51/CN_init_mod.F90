@@ -83,6 +83,9 @@ module CN_initMod
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
 
+! !PUBLIC MEMBER FUNCTIONS:
+ public :: CN_init
+
  contains
 
 !------------------------------------------------------
