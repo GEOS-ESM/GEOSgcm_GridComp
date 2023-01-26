@@ -6,37 +6,19 @@ module GEOS_IgniGridCompMod
 
 !BOP
 
-! !MODULE: GEOS_Fires -- child to the "Land" gridded component.  
+! !MODULE: GEOS_Igni -- Implements fire weather and fire danger.  
 
 !DESCRIPTION:
-!   {\tt GEOS\_Vegdyn} is a gridded component that performs the
-!   necessary interpolation to provide refreshed values of the 
-!   dynamic vegetation values prescribed by external data/observations.\\
+!   {\tt GEOS\_Igni} is a gridded component that integrates fire weather 
+!   observations into fuel moisture codes and fire behavior indexes 
+!   based on the Canadian FWI System. \\
 !
-! There are no imports to this routine.
-! Exports from this routine are the instaneous values of the
-! vegetation parameters on tilespace to be used in other components
-! of the land subroutine.  All exports and imports are stored on the
-! tile grid inherited from the parent routine.\\
-! 
-! I. Parameter Class 1: Time AND spatially dependent parameters 
-! from a binary data file\\
-! 
-! Current list: LAI, GRN, NDVI \\
-! 
-! The gridded component stores the surrounding observations of 
-! each parameter in the internal state.  If the run method 
-! discovers that the current internal state does not contain the 
-! observed values required to interpolate the values at the current 
-! time, it performs the required i/o to refresh the values of 
-! the internal state.  The first iteration of the run method 
-! always has to fill the values.  No restart is required by this 
-! gridded component for these parameters.  (A restart *is* now
-! required for Vegetation Class 3 \\
+!   {\tt GEOS\_Igni} includes hourly and daily variants of the FWI system that
+!   predict Fine Fuel Moisture Code (FFMC), Duff Moisture Code (DMC),
+!   Drought Code (DC), Initial Spread Index (ISI), Buildup Index (BUI),
+!   Fire Weather Index (FWI) and Daily Severity Rating (DSR). These are \\
+!   calculated on the land tiles. 
 !
-! INTERNALS: \\
-!
-! EXPORTS:  \\
 !
 ! !USES:
 
