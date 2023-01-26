@@ -212,7 +212,7 @@ contains
         IGNI = MAPL_AddChild(GC, NAME='IGNI'//trim(tmp), SS=IgniSetServices, RC=STATUS)
         VERIFY_(STATUS)
     else
-        IGNI = 0
+        IGNI = -1
     end if
 
 !BOS
@@ -1353,6 +1353,34 @@ contains
 !       VERIFY_(STATUS)       
 !    ENDIF
 
+#if (1)
+    if (DO_FIRE_DANGER /= 0) then
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC',        CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DC',          CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ISI',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BUI',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR',         CHILD_ID = IGNI,  __RC__ )
+
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC_DAILY',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DC_DAILY',    CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ISI_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BUI_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR_DAILY',   CHILD_ID = IGNI,  __RC__ )
+
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC_DAILY_', CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DC_DAILY_',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ISI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BUI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+    end if
+#endif
+
 !EOS
     
 !------------------------------------------------------------
@@ -1381,7 +1409,7 @@ contains
               call MAPL_AddConnectivity (                                    &
                 GC                                                 ,         &
                 SHORT_NAME  = (/'MOT2M ', 'MOQ2M ', 'MOU10M', 'MOV10M',      &
-                                'PRLAND'/),                                  &
+                                'PRLAND', 'ASNOW ', 'SNOWDP'/),              &
                 DST_ID =  IGNI                                     ,         &
                 SRC_ID =  CATCH(I)                                 ,         &
                                                           RC=STATUS )
@@ -1412,7 +1440,7 @@ contains
               call MAPL_AddConnectivity (                                    &
                 GC                                                 ,         &
                 SHORT_NAME  = (/'MOT2M ', 'MOQ2M ', 'MOU10M', 'MOV10M',      &
-                                'PRLAND'/),                                  &
+                                'PRLAND', 'ASNOW ', 'SNOWDP'/),              &
                 DST_ID =  IGNI                                     ,         &
                 SRC_ID =  CATCHCN(I)                               ,         &
                                                           RC=STATUS )

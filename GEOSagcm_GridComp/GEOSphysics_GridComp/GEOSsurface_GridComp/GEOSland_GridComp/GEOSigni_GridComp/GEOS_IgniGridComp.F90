@@ -235,6 +235,14 @@ contains
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartSkip, __RC__)
 
+    call MAPL_AddImportSpec(GC,                    &
+         LONG_NAME  = 'surface pressure',          &
+         UNITS      = 'Pa',                        &
+         SHORT_NAME = 'PS',                        &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartSkip, __RC__)
+
 #if (1)
     call MAPL_AddImportSpec(GC,                    &
          SHORT_NAME = 'PRLAND',                    & 
@@ -242,7 +250,7 @@ contains
          UNITS      = 'kg m-2 s-1',                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-         RESTART    = MAPL_RestartOptional, __RC__)
+         RESTART    = MAPL_RestartSkip, __RC__)
 #else
     call MAPL_AddImportSpec(GC,                    &
          LONG_NAME  = 'liquid water convective precipitation', &
@@ -253,7 +261,7 @@ contains
          RESTART    = MAPL_RestartOptional, __RC__)
 
     call MAPL_AddImportSpec(GC,                    &
-         LONG_NAME  = 'liquid water large scale precipitation',&
+         LONG_NAME  = 'liquid water large scale precipitation', &
          UNITS      = 'kg m-2 s-1',                &
          SHORT_NAME = 'PLS',                       &
          DIMS       = MAPL_DimsTileOnly,           &
@@ -268,14 +276,22 @@ contains
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional, __RC__) 
 #endif
-
     call MAPL_AddImportSpec(GC,                    &
-         LONG_NAME  = 'surface pressure',          &
-         UNITS      = 'Pa',                        &
-         SHORT_NAME = 'PS',                        &
+         SHORT_NAME = 'ASNOW',                     &
+         LONG_NAME  = 'fractional area of land snowcover', &
+         UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartSkip, __RC__)
+
+    call MAPL_AddImportSpec(GC,                    &
+         SHORT_NAME = 'SNOWDP',                    &
+         LONG_NAME  = 'snow depth within snow covered area fraction', &
+         UNITS      = 'm',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartSkip, __RC__)
+
 
 
 ! -----------------------------------------------------------
@@ -783,6 +799,8 @@ contains
     real, dimension(:), pointer :: U10M   => null()
     real, dimension(:), pointer :: V10M   => null()
     real, dimension(:), pointer :: PS     => null()
+    real, dimension(:), pointer :: ASNOW  => null()
+    real, dimension(:), pointer :: SNOWDP => null()
 #if (1)
     real, dimension(:), pointer :: PRLAND => null()
 #else
@@ -902,10 +920,10 @@ contains
     call MAPL_GetPointer(INTERNAL, DC0_daily,   'DC_DAILY',       __RC__)
 
     call MAPL_GetPointer(INTERNAL, DPR_noon,    'DPR_LOCAL_NOON', __RC__)
-    call MAPL_GetPointer(INTERNAL, PR_noon,     'PR_LOCAL_NOON',  __RC__) !  TODO: discard
-    call MAPL_GetPointer(INTERNAL, T_noon,      'T_LOCAL_NOON',   __RC__) !  TODO: discard
-    call MAPL_GetPointer(INTERNAL, RH_noon,     'RH_LOCAL_NOON',  __RC__) !  TODO: discard
-    call MAPL_GetPointer(INTERNAL, WS_noon,     'WS_LOCAL_NOON',  __RC__) !  TODO: discard
+    call MAPL_GetPointer(INTERNAL, PR_noon,     'PR_LOCAL_NOON',  __RC__)
+    call MAPL_GetPointer(INTERNAL, T_noon,      'T_LOCAL_NOON',   __RC__)
+    call MAPL_GetPointer(INTERNAL, RH_noon,     'RH_LOCAL_NOON',  __RC__)
+    call MAPL_GetPointer(INTERNAL, WS_noon,     'WS_LOCAL_NOON',  __RC__)
 
 
 ! Get pointers to imports
@@ -916,6 +934,8 @@ contains
     call MAPL_GetPointer(IMPORT, T2M,    'MOT2M',  __RC__)
     call MAPL_GetPointer(IMPORT, U10M,   'MOU10M', __RC__)
     call MAPL_GetPointer(IMPORT, V10M,   'MOV10M', __RC__)
+    call MAPL_GetPointer(IMPORT, ASNOW,  'ASNOW',  __RC__)
+    call MAPL_GetPointer(IMPORT, SNOWDP, 'SNOWDP', __RC__)
 #if (1)
     call MAPL_GetPointer(IMPORT, PRLAND, 'PRLAND', __RC__)
 #else
@@ -1030,8 +1050,9 @@ contains
     tmpFWI = MAPL_UNDEF
 
     call cffwi_daily_driver(FFMC0_daily, DMC0_daily, DC0_daily, &
-                            tmpISI,  tmpBUI, tmpFWI, tmpDSR, &
-                            T_noon, RH_noon, WS_noon, PR_noon, LATS, isNoon, month, NT)
+                            tmpISI,  tmpBUI, tmpFWI, tmpDSR,    &
+                            T_noon, RH_noon, WS_noon, PR_noon,  &
+                            ASNOW, SNOWDP, LATS, isNoon, month, NT)
 
 ! Update exports
 ! --------------
@@ -1144,6 +1165,8 @@ contains
     real, dimension(:), pointer :: U10M   => null()
     real, dimension(:), pointer :: V10M   => null()
     real, dimension(:), pointer :: PS     => null()
+    real, dimension(:), pointer :: ASNOW  => null()
+    real, dimension(:), pointer :: SNOWDP => null()
 #if (1)
     real, dimension(:), pointer :: PRLAND => null()
 #else
@@ -1238,6 +1261,8 @@ contains
     call MAPL_GetPointer(IMPORT, T2M,    'MOT2M',  __RC__)
     call MAPL_GetPointer(IMPORT, U10M,   'MOU10M', __RC__)
     call MAPL_GetPointer(IMPORT, V10M,   'MOV10M', __RC__)
+    call MAPL_GetPointer(IMPORT, ASNOW,  'ASNOW',  __RC__)
+    call MAPL_GetPointer(IMPORT, SNOWDP, 'SNOWDP', __RC__)
 #if (1)
     call MAPL_GetPointer(IMPORT, PRLAND, 'PRLAND', __RC__)
 #else
@@ -1294,6 +1319,7 @@ contains
                              min(Q2M / GEOS_QSAT(T2M, PS, PASCALS=.true.), 1.0), &
                              sqrt(U10M*U10M + V10M*V10M), &
                              PRLAND*dt, &
+                             ASNOW, SNOWDP, &
                              month, dt/3600.0, NT)
 
     ! update exports
@@ -1321,7 +1347,9 @@ contains
 
 
   subroutine cffwi_daily_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
-                                T, RH, wind, Pr, latitude, is_noon, month, N)
+                                T, RH, wind, Pr, &
+                                f_snow, snow_depth, &
+                                latitude, is_noon, month, N)
  
     !
     ! Calculates daily FFMC, DMC, DC, ISI, BUI, FWI and DSR indexes.
@@ -1334,7 +1362,8 @@ contains
 
     implicit none
 
-    real,    dimension(N), intent(in) :: T, RH, wind, Pr 
+    real,    dimension(N), intent(in) :: T, RH, wind, Pr
+    real,    dimension(N), intent(in) :: f_snow, snow_depth
     real,    dimension(N), intent(in) :: latitude
     logical, dimension(N), intent(in) :: is_noon
     integer,               intent(in) :: month
@@ -1364,6 +1393,11 @@ contains
 
         ! calculate ISI, BUI, FWI and DSR
         isi(i)  = initial_spread_index(ffmc(i), wind(i))
+
+        if (snow_depth(i) > 1e-3) then  
+            isi(i) = max(0.0, (1 - f_snow(i))) * isi(i)
+        end if
+
         bui(i)  = buildup_index(dmc(i), dc(i))
 
         fwi(i)  = fire_weather_index(isi(i), bui(i))
@@ -1375,7 +1409,9 @@ contains
 
 
   subroutine cffwi_hourly_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
-                                 T, RH, wind, Pr, month, time_step, N)
+                                 T, RH, wind, Pr, &
+                                 f_snow, snow_depth, &
+                                 month, time_step, N)
  
     !
     ! Calculates daily FFMC, ISI, BUI, FWI and DSR indexes.
@@ -1385,7 +1421,8 @@ contains
 
     implicit none
 
-    real,    dimension(N), intent(in) :: T, RH, wind, Pr 
+    real,    dimension(N), intent(in) :: T, RH, wind, Pr
+    real,    dimension(N), intent(in) :: f_snow, snow_depth
     integer,               intent(in) :: month
     real,                  intent(in) :: time_step
     integer,               intent(in) :: N
@@ -1408,6 +1445,11 @@ contains
         
         ! calculate ISI, BUI, FWI and DSR
         isi(i)  = initial_spread_index(ffmc(i), wind(i))
+
+        if (snow_depth(1) > 1e-3) then  
+            isi(i) = max(0.0, (1 - f_snow(i))) * isi(i)
+        end if
+
         bui(i)  = buildup_index(dmc(i), dc(i))
 
         fwi(i)  = fire_weather_index(isi(i), bui(i))
