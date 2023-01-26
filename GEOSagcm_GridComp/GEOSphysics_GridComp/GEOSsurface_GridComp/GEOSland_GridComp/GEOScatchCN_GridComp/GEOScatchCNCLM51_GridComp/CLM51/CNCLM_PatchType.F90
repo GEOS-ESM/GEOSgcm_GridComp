@@ -88,7 +88,7 @@ module PatchType
   !-------------------------------
 
     begp = bounds%begp
-    endp = bounds%begp
+    endp = bounds%endp
 
     allocate(this%gridcell      (begp:endp)); this%gridcell   (:) = ispval
     allocate(this%wtgcell       (begp:endp)); this%wtgcell    (:) = nan
