@@ -32,7 +32,7 @@ module CN_initMod
   use WaterFluxBulkType
   use SoilBiogeochemCarbonFluxType
   use SoilBiogeochemNitrogenFluxType
-  use PatchType
+  use PatchType        , only : init_patch_type, patch_type
   use ColumnType
   use ch4Mod
   use SoilBiogeochemDecompCascadeConType
