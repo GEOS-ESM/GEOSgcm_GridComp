@@ -87,6 +87,9 @@ module PatchType
     integer :: np, nc, nz, p, nv, n
   !-------------------------------
 
+    begp = bounds%begp
+    endp = bounds%begp
+
     allocate(this%gridcell      (begp:endp)); this%gridcell   (:) = ispval
     allocate(this%wtgcell       (begp:endp)); this%wtgcell    (:) = nan
 
