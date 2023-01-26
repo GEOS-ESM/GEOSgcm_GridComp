@@ -555,8 +555,7 @@ contains
      integer :: status, in_ntiles, out_ntiles, numprocs
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
-     real,pointer,dimension(:) :: lats
-     real,pointer,dimension(:) :: lons
+     real, allocatable, dimension(:) :: lat_tmp
      type(MAPL_SunOrbit)         :: ORBIT
      type(ESMF_Time)             :: CURRENT_TIME
      type(ESMF_TimeInterval)     :: timeStep
@@ -607,6 +606,8 @@ contains
      allocate (tid_offl(in_ntiles))
      allocate (id_loc_cn (nt_local (myid + 1),nveg))
 
+     allocate (lat_tmp(in_ntiles))
+
      do n = 1, in_ntiles
         tid_offl(n) = n
      enddo
@@ -653,7 +654,8 @@ contains
         VERIFY_(status) 
 
         !4) current daylight duration
-        call MAPL_SunGetDaylightDuration(ORBIT, this%latg, dayx, currTime=CURRENT_TIME,RC=STATUS)
+        lat_tmp = this%latg*MAPL_PI/180.
+        call MAPL_SunGetDaylightDuration(ORBIT, lat_tmp, dayx, currTime=CURRENT_TIME,RC=STATUS)
         VERIFY_(STATUS)
 
         ! save the old vaues dimension (in_ntiles, nv)
@@ -742,6 +744,7 @@ contains
     allocate (id_loc (out_ntiles))
     deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
     deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
+    deallocate (lat_tmp)
 
     do nv = 1, nveg
        call MPI_Barrier(MPI_COMM_WORLD, STATUS)
