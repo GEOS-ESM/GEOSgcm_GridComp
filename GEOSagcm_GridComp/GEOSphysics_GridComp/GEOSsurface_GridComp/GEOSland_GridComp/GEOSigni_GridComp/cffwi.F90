@@ -96,7 +96,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
     !     ffmc = initial FFMC (default = 85)
     !     T    = temperature, C
     !     RH   = relative humidity, %
-    !     w    = wind speed, m/s
+    !     wind = wind speed, m/s
     !     Pr   = precip, mm;     | dt <= 1hr: precip over the time step
     !                            ! dt  > 1hr: 24-hour precip
     !     dt   = time step, hr;  | dt <= 1hr: trigers the hourly FFMC model
@@ -124,7 +124,7 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
 
 
     ! use the same variable names as in the FFMC equation and 
-    ! convert the units if necessary
+    ! convert units if necessary
     f_0 = ffmc
     w = 3.6 * wind  ! convert from m/s to km/h
 
@@ -201,7 +201,7 @@ end function fine_fuel_moisture_code
 
 
 
-elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, isol, ff_load, dt)
+elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, sw_down, ff_load, dt)
   
     !
     ! Calculates hourly Grass Fuel Moisture Code (GFMC).
@@ -210,10 +210,10 @@ elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, isol, ff
     !     gfmc    = initial GFMC (default = 85)
     !     T       = temperature, C
     !     RH      = relative humidity, %
-    !     w       = wind speed, m/s
+    !     wind    = wind speed, m/s
     !     Pr      = precip, mm;     | dt <= 1hr: precip over the time step
     !                               ! dt  > 1hr: 24-hour precip
-    !     isol    = solar radiation flux, W m-2
+    !     SW_down = incident shortwave flux, W m-2
     !     ff_load = fuel load of the fine fuel layer, kg m-2 (default = 0.3 kg m-2)
     !     dt      = time step, hr;  | dt <= 1hr: trigers the hourly FFMC model
     !                               | dt  > 1hr: trigers the daily  FFMC model
@@ -225,11 +225,11 @@ elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, isol, ff
     
     implicit none
 
-    real, intent(in) :: gfmc, T, RH, wind, Pr, isol, ff_load
+    real, intent(in) :: gfmc, T, RH, wind, Pr, sw_down, ff_load
     real, intent(in) :: dt
 
     ! local
-    real :: f_0, w, m_0, h
+    real :: f_0, w, m_0, h, I_sol
     real :: r_f, m_r, e_d, e_w, m
     real :: k_0, k_l, k_d, k_w, f_k, f_t
     real :: E_T_term
@@ -239,11 +239,11 @@ elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, isol, ff
     real, parameter :: k_factor_hourly = 0.389633
 
 
-    ! use the same variable names as in the FFMC equation and 
-    ! convert the units if necessary
+    
+    ! convert units if necessary
     f_0 = gfmc
-    w = 3.6 * wind  ! convert from m/s to km/h
-
+    w = 3.6 * wind         ! convert from m/s to km/h
+    I_sol = 1e-3 * sw_down ! convert from W m-2 to kW m-2
 
     ! initial fuel moisture content (FF scale)
     m_0 = ff_scale_mc(f_0)
@@ -258,18 +258,18 @@ elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, isol, ff
     r_f = Pr
 
     ! rainfall effect
-    m_r = m_0 + 100 * (r_f / ff_load)
+    m_r = m_r + 100 * (r_f / ff_load)
     
     ! fuel moisture content has upper limit of 250
     m_r = min(m_r, 250.0)
 
     ! fuel temperature
-    T_fuel = T + 35.07 * (1e-3 * isol) * exp(-0.06215 * w)
+    T_fuel = T + 35.07 * I_sol * exp(-0.06215 * w)
 
-    ! saturation vapour pressure
+    ! saturation vapor pressure
     svp = 6.108 * 10**(7.5 * T / (237.3 + T)) ! Tetens equation
 
-    ! saturation vapour pressure for fuel temperature
+    ! saturation vapor pressure for fuel temperature
     svp_fuel = 6.108 * 10**(7.5 * T_fuel / (237.3 + T_fuel))
 
     ! fuel level relative humidity

@@ -1353,9 +1353,10 @@ contains
 !       VERIFY_(STATUS)       
 !    ENDIF
 
-#if (1)
+
     if (DO_FIRE_DANGER /= 0) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC',        CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GFMC',        CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC',         CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DC',          CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ISI',         CHILD_ID = IGNI,  __RC__ )
@@ -1379,7 +1380,7 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR_DAILY_',  CHILD_ID = IGNI,  __RC__ )
     end if
-#endif
+
 
 !EOS
     
@@ -1406,13 +1407,15 @@ contains
           VERIFY_(STATUS)
 
           if (DO_FIRE_DANGER /= 0) then
-              call MAPL_AddConnectivity (                                    &
-                GC                                                 ,         &
-                SHORT_NAME  = (/'MOT2M ', 'MOQ2M ', 'MOU10M', 'MOV10M',      &
-                                'PRLAND', 'ASNOW ', 'SNOWDP'/),              &
-                DST_ID =  IGNI                                     ,         &
-                SRC_ID =  CATCH(I)                                 ,         &
-                                                          RC=STATUS )
+              call MAPL_AddConnectivity (                   &
+                GC,                                         &
+                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ', &
+                                'MOU10M    ', 'MOV10M    ', &
+                                'PRLAND    ', 'ASNOW     ', &
+                                'SWDOWNLAND' /),            &
+                DST_ID = IGNI,                              &
+                SRC_ID = CATCH(I),                          &
+                RC = STATUS )
               VERIFY_(STATUS)
           end if
 
@@ -1437,13 +1440,15 @@ contains
                                                       RC=STATUS ) 
 
           if (DO_FIRE_DANGER /= 0) then
-              call MAPL_AddConnectivity (                                    &
-                GC                                                 ,         &
-                SHORT_NAME  = (/'MOT2M ', 'MOQ2M ', 'MOU10M', 'MOV10M',      &
-                                'PRLAND', 'ASNOW ', 'SNOWDP'/),              &
-                DST_ID =  IGNI                                     ,         &
-                SRC_ID =  CATCHCN(I)                               ,         &
-                                                          RC=STATUS )
+              call MAPL_AddConnectivity (                   &
+                GC,                                         &
+                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ', &
+                                'MOU10M    ', 'MOV10M    ', &
+                                'PRLAND    ', 'ASNOW     ', &
+                                'SWDOWNLAND' /),            &
+                DST_ID = IGNI,                              &
+                SRC_ID = CATCHCN(I),                        &
+                RC = STATUS )
               VERIFY_(STATUS)
           end if
 

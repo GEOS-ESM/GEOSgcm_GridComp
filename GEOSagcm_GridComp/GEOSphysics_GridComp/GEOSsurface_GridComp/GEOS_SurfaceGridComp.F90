@@ -2967,6 +2967,13 @@ module GEOS_SurfaceGridCompMod
          VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'GFMC',                      &
+         LONG_NAME  = 'grass fuel moisture code',  &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'DMC',                       &
          LONG_NAME  = 'duff moisture code',        &
          UNITS      = '1',                         &
@@ -5312,6 +5319,7 @@ module GEOS_SurfaceGridCompMod
 
 ! Fire danger
     real, pointer, dimension(:,:) :: FFMC        => NULL()
+    real, pointer, dimension(:,:) :: GFMC        => NULL()
     real, pointer, dimension(:,:) :: DMC         => NULL()
     real, pointer, dimension(:,:) :: DC          => NULL()
     real, pointer, dimension(:,:) :: ISI         => NULL()
@@ -5600,6 +5608,7 @@ module GEOS_SurfaceGridCompMod
 
 ! Fire danger
     real, pointer, dimension(:) :: FFMCTILE       => NULL()
+    real, pointer, dimension(:) :: GFMCTILE       => NULL()
     real, pointer, dimension(:) :: DMCTILE        => NULL()
     real, pointer, dimension(:) :: DCTILE         => NULL()
     real, pointer, dimension(:) :: ISITILE        => NULL()
@@ -6464,6 +6473,7 @@ module GEOS_SurfaceGridCompMod
 
     if (DO_FIRE_DANGER /= 0) then
        call MAPL_GetPointer(EXPORT  , FFMC        , 'FFMC'       ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , GFMC        , 'GFMC'       ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , DMC         , 'DMC'        ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , DC          , 'DC'         ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , FWI         , 'FWI'        ,  RC=STATUS); VERIFY_(STATUS)
@@ -7065,6 +7075,7 @@ module GEOS_SurfaceGridCompMod
 
     if (DO_FIRE_DANGER /= 0) then 
        call MKTILE(FFMC,        FFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(GFMC,        GFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(DMC,         DMCTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(DC,          DCTILE,            NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(FWI,         FWITILE,           NT,  RC=STATUS); VERIFY_(STATUS)
@@ -8001,6 +8012,10 @@ module GEOS_SurfaceGridCompMod
 ! Fire danger
     if (associated(FFMC)) then
        call MAPL_LocStreamTransform(LOCSTREAM, FFMC, FFMCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(GFMC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, GFMC, GFMCTILE, RC=STATUS) 
        VERIFY_(STATUS)
     end if
     if (associated(DMC)) then
@@ -9044,6 +9059,8 @@ module GEOS_SurfaceGridCompMod
       if (DO_FIRE_DANGER /= 0) then
          call MAPL_GetPointer(GEX(type), dum, 'FFMC', ALLOC=associated(FFMCTILE), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'GFMC', ALLOC=associated(GFMCTILE), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'DMC',  ALLOC=associated(DMCTILE),  notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'DC',   ALLOC=associated(DCTILE),   notFoundOK=.true., RC=STATUS)
@@ -9872,6 +9889,10 @@ module GEOS_SurfaceGridCompMod
 ! Fire danger
       if (associated(FFMCTILE)) then
          call FILLOUT_TILE(GEX(type), 'FFMC', FFMCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(GFMCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'GFMC', GFMCTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
       if (associated(DMCTILE)) then

@@ -16,10 +16,10 @@ module GEOS_IgniGridCompMod
 !   {\tt GEOS\_Igni} includes hourly and daily variants of the FWI system that
 !   predict Fine Fuel Moisture Code (FFMC), Duff Moisture Code (DMC),
 !   Drought Code (DC), Initial Spread Index (ISI), Buildup Index (BUI),
-!   Fire Weather Index (FWI) and Daily Severity Rating (DSR). These are \\
-!   calculated on the land tiles. 
+!   Fire Weather Index (FWI) and Daily Severity Rating (DSR). These are 
+!   calculated on the land tiles. \\
 !
-!
+
 ! !USES:
 
   use ESMF
@@ -28,13 +28,15 @@ module GEOS_IgniGridCompMod
   use GEOS_UtilsMod, only: GEOS_QSAT
 
   use cffwi, only: fine_fuel_moisture_code,      &
+                   grass_fuel_moisture_code,     & 
                    duff_moisture_code,           &
                    drought_code,                 &
                    initial_spread_index,         &
                    buildup_index,                &
                    fire_weather_index,           &
                    daily_severity_rating,        &
-                   FFMC_INIT, DMC_INIT, DC_INIT
+                   FFMC_INIT, DMC_INIT, DC_INIT, &
+                   NOMINAL_FINE_FUEL_LOAD
 
   implicit none
   private
@@ -270,6 +272,14 @@ contains
          SHORT_NAME = 'SNOWDP',                    &
          LONG_NAME  = 'snow depth within snow covered area fraction', &
          UNITS      = 'm',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartSkip, __RC__)
+
+    call MAPL_AddImportSpec(GC,                    &
+         SHORT_NAME = 'SWDOWNLAND',                &
+         LONG_NAME  = 'incident shortwave land',   &
+         UNITS      = 'W m-2',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartSkip, __RC__)
@@ -606,7 +616,7 @@ contains
 
 
 ! -----------------------------------------------------------
-! RUN1 -- Run (phase = 1) method for the IGNI component
+! RUN1 -- Run (phase = 1) method of the IGNI component
 ! -----------------------------------------------------------
 
   subroutine RUN1 (GC, IMPORT, EXPORT, CLOCK, RC)
@@ -669,7 +679,7 @@ contains
 
 
 ! -----------------------------------------------------------
-! RUN2 -- Run (phase = 2) method for the IGNI component
+! RUN2 -- Run (phase = 2) method of the IGNI component
 ! -----------------------------------------------------------
 
   subroutine RUN2 (GC, IMPORT, EXPORT, CLOCK, RC)
@@ -783,6 +793,7 @@ contains
     real, dimension(:), pointer :: PS     => null()
     real, dimension(:), pointer :: ASNOW  => null()
     real, dimension(:), pointer :: SNOWDP => null()
+    real, dimension(:), pointer :: SWDOWN => null()
 #if (1)
     real, dimension(:), pointer :: PRLAND => null()
 #else
@@ -1149,6 +1160,7 @@ contains
     real, dimension(:), pointer :: PS     => null()
     real, dimension(:), pointer :: ASNOW  => null()
     real, dimension(:), pointer :: SNOWDP => null()
+    real, dimension(:), pointer :: SWDOWN => null()
 #if (1)
     real, dimension(:), pointer :: PRLAND => null()
 #else
@@ -1161,6 +1173,7 @@ contains
 ! INTERNAL pointers
 
     real, dimension(:), pointer :: FFMC0  => null()
+    real, dimension(:), pointer :: GFMC0  => null()
     real, dimension(:), pointer :: DMC0   => null()
     real, dimension(:), pointer :: DC0    => null()
 
@@ -1169,6 +1182,7 @@ contains
 
     ! hourly
     real, dimension(:), pointer :: FFMC => null()
+    real, dimension(:), pointer :: GFMC => null()
     real, dimension(:), pointer :: DMC  => null()
     real, dimension(:), pointer :: DC   => null()
     real, dimension(:), pointer :: ISI  => null()
@@ -1231,6 +1245,7 @@ contains
 ! ----------------------------------
 
     call MAPL_GetPointer(INTERNAL, FFMC0, 'FFMC',      __RC__)
+    call MAPL_GetPointer(INTERNAL, GFMC0, 'GFMC',      __RC__)
     call MAPL_GetPointer(INTERNAL, DMC0,  'DMC_DAILY', __RC__)  ! requires daily DMC
     call MAPL_GetPointer(INTERNAL, DC0,   'DC_DAILY',  __RC__)  ! requires daily DC 
 
@@ -1238,19 +1253,20 @@ contains
 ! Get pointers to imports
 ! -----------------------
 
-    call MAPL_GetPointer(IMPORT, PS,     'PS',     __RC__)
-    call MAPL_GetPointer(IMPORT, Q2M,    'MOQ2M',  __RC__)
-    call MAPL_GetPointer(IMPORT, T2M,    'MOT2M',  __RC__)
-    call MAPL_GetPointer(IMPORT, U10M,   'MOU10M', __RC__)
-    call MAPL_GetPointer(IMPORT, V10M,   'MOV10M', __RC__)
-    call MAPL_GetPointer(IMPORT, ASNOW,  'ASNOW',  __RC__)
-    call MAPL_GetPointer(IMPORT, SNOWDP, 'SNOWDP', __RC__)
+    call MAPL_GetPointer(IMPORT, PS,     'PS',         __RC__)
+    call MAPL_GetPointer(IMPORT, Q2M,    'MOQ2M',      __RC__)
+    call MAPL_GetPointer(IMPORT, T2M,    'MOT2M',      __RC__)
+    call MAPL_GetPointer(IMPORT, U10M,   'MOU10M',     __RC__)
+    call MAPL_GetPointer(IMPORT, V10M,   'MOV10M',     __RC__)
+    call MAPL_GetPointer(IMPORT, ASNOW,  'ASNOW',      __RC__)
+    call MAPL_GetPointer(IMPORT, SNOWDP, 'SNOWDP',     __RC__)
+    call MAPL_GetPointer(IMPORT, SWDOWN, 'SWDOWNLAND', __RC__)
 #if (1)
-    call MAPL_GetPointer(IMPORT, PRLAND, 'PRLAND', __RC__)
+    call MAPL_GetPointer(IMPORT, PRLAND, 'PRLAND',     __RC__)
 #else
-    call MAPL_GetPointer(IMPORT, PCU,    'PCU',    __RC__)
-    call MAPL_GetPointer(IMPORT, PLS,    'PLS',    __RC__)
-    call MAPL_GetPointer(IMPORT, SNO,    'SNO',    __RC__)
+    call MAPL_GetPointer(IMPORT, PCU,    'PCU',        __RC__)
+    call MAPL_GetPointer(IMPORT, PLS,    'PLS',        __RC__)
+    call MAPL_GetPointer(IMPORT, SNO,    'SNO',        __RC__)
 #endif
 
 
@@ -1259,13 +1275,14 @@ contains
 
     ! global
     call MAPL_GetPointer(EXPORT, FFMC,  'FFMC',  __RC__)
+    call MAPL_GetPointer(EXPORT, GFMC,  'GFMC',  __RC__)
     call MAPL_GetPointer(EXPORT, DMC,   'DMC',   __RC__) ! mostly for symmetry, same as DMC_DAILY
     call MAPL_GetPointer(EXPORT, DC,    'DC',    __RC__) ! mostly for symmetry, same as  DC_DAILY
     call MAPL_GetPointer(EXPORT, FWI,   'FWI',   __RC__)
     call MAPL_GetPointer(EXPORT, ISI,   'ISI',   __RC__)
     call MAPL_GetPointer(EXPORT, BUI,   'BUI',   __RC__)
     call MAPL_GetPointer(EXPORT, DSR,   'DSR',   __RC__)
- 
+
 
 ! Get the time step
 ! -----------------
@@ -1295,17 +1312,19 @@ contains
     tmpDSR  = MAPL_UNDEF
     tmpFWI  = MAPL_UNDEF
 
-    call cffwi_hourly_driver(FFMC0, DMC0, DC0, &
+    call cffwi_hourly_driver(FFMC0, GFMC0, DMC0, DC0, &
                              tmpISI, tmpBUI, tmpFWI, tmpDSR, &
                              T2M, &
                              min(Q2M / GEOS_QSAT(T2M, PS, PASCALS=.true.), 1.0), &
                              sqrt(U10M*U10M + V10M*V10M), &
                              PRLAND*dt, &
                              ASNOW, SNOWDP, &
+                             SWDOWN, &
                              month, dt/3600.0, NT)
 
     ! update exports
     if (associated(FFMC)) FFMC = FFMC0
+    if (associated(GFMC)) GFMC = GFMC0
     if (associated(DMC))   DMC = DMC0
     if (associated(DC))     DC = DC0
     if (associated(ISI))   ISI = tmpISI
@@ -1390,9 +1409,10 @@ contains
 
 
 
-  subroutine cffwi_hourly_driver(ffmc, dmc, dc, isi, bui, fwi, dsr, &
+  subroutine cffwi_hourly_driver(ffmc, gfmc, dmc, dc, isi, bui, fwi, dsr, &
                                  T, RH, wind, Pr, &
                                  f_snow, snow_depth, &
+                                 swdown, &
                                  month, time_step, N)
  
     !
@@ -1405,12 +1425,13 @@ contains
 
     real,    dimension(N), intent(in) :: T, RH, wind, Pr
     real,    dimension(N), intent(in) :: f_snow, snow_depth
+    real,    dimension(N), intent(in) :: swdown
     integer,               intent(in) :: month
     real,                  intent(in) :: time_step
     integer,               intent(in) :: N
 
     real,    dimension(N), intent(in   ) :: dmc, dc
-    real,    dimension(N), intent(inout) :: ffmc, isi, bui, fwi, dsr
+    real,    dimension(N), intent(inout) :: ffmc, gfmc, isi, bui, fwi, dsr
     
     ! local
     integer :: i
@@ -1424,6 +1445,10 @@ contains
 
         ! update FFMC
         ffmc(i) = fine_fuel_moisture_code(ffmc(i), T_, RH_, wind(i), Pr_, time_step)
+
+        ! update GFMC
+        gfmc(i) = grass_fuel_moisture_code(gfmc(i), T_, RH_, wind(i), Pr_, &
+                                           swdown(i), NOMINAL_FINE_FUEL_LOAD, time_step)
         
         ! calculate ISI, BUI, FWI and DSR
         isi(i)  = initial_spread_index(ffmc(i), wind(i))
