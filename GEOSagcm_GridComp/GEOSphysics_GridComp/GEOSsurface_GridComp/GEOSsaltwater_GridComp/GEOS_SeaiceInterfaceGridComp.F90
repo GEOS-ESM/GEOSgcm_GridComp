@@ -2698,6 +2698,24 @@ contains
     call RegridO2A_1d(ALBNF, SURFST, 'ALBNF', &
          XFORM_O2A, locstreamO, __RC__)
 
+    if(associated(PENUVR )) then
+        call RegridO2A_1d(PENUVR, SURFST, 'PENUVR', &
+             XFORM_O2A, locstreamO, __RC__)
+    endif
+    if(associated(PENUVF )) then
+        call RegridO2A_1d(PENUVF, SURFST, 'PENUVF', &
+             XFORM_O2A, locstreamO, __RC__)
+    endif
+    if(associated(PENPAR )) then
+        call RegridO2A_1d(PENPAR, SURFST, 'PENPAR', &
+             XFORM_O2A, locstreamO, __RC__)
+    endif
+    if(associated(PENPAF )) then
+        call RegridO2A_1d(PENPAF, SURFST, 'PENPAF', &
+             XFORM_O2A, locstreamO, __RC__)
+    endif
+
+
     !************************************************************************************************
     !
     !      surface flux and temperature updated by sea ice

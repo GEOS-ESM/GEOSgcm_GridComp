@@ -601,6 +601,10 @@ contains
     call AddSurfField('ALBVF',  SURFST, GRID,  __RC__)
     call AddSurfField('ALBNR',  SURFST, GRID,  __RC__)
     call AddSurfField('ALBNF',  SURFST, GRID,  __RC__)
+    call AddSurfField('PENUVR', SURFST, GRID,  __RC__)
+    call AddSurfField('PENUVF', SURFST, GRID,  __RC__)
+    call AddSurfField('PENPAR', SURFST, GRID,  __RC__)
+    call AddSurfField('PENPAF', SURFST, GRID,  __RC__)
 
     RETURN_(ESMF_SUCCESS)
     
