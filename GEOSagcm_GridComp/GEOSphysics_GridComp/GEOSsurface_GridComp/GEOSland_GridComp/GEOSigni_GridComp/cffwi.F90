@@ -179,14 +179,15 @@ elemental real function fine_fuel_moisture_code(ffmc, T, RH, wind, Pr, dt)
 
         m = E_d + (m_r - E_d)*(10.0**(-k_d*f_t))
     else
-        ! wetting is in effect
         if (m_r < E_w) then
+            ! wetting is in effect
             k_l = 0.424 * (1 - (1 - h)**1.7) + 0.0694 * sqrt(w)* (1 - (1 - h)**8)
             k_w = k_l * f_k * exp(0.0365 * T)
 
             m = E_w - (E_w - m_r)*(10.0**(-k_w*f_t))
         else
-            m = m_r  ! perhaps m = m0 is a better choice?
+            ! maintain moisture
+            m = m_r
         end if
     end if
 
@@ -215,8 +216,7 @@ elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, sw_down,
     !                               ! dt  > 1hr: 24-hour precip
     !     SW_down = incident shortwave flux, W m-2
     !     ff_load = fuel load of the fine fuel layer, kg m-2 (default = 0.3 kg m-2)
-    !     dt      = time step, hr;  | dt <= 1hr: trigers the hourly FFMC model
-    !                               | dt  > 1hr: trigers the daily  FFMC model
+    !     dt      = time step, hr
     !
     !
     ! Note:
@@ -289,14 +289,15 @@ elemental real function grass_fuel_moisture_code(gfmc, T, RH, wind, Pr, sw_down,
 
         m = E_d + (m_r - E_d)*(10.0**(-k_d*f_t))
     else
-        ! wetting is in effect
         if (m_r < E_w) then
+            ! wetting is in effect
             k_l = 0.424 * (1 - (1 - h)**1.7) + 0.0694 * sqrt(w)* (1 - (1 - h)**8)
             k_w = k_l * f_k * exp(0.0365 * T_fuel)
 
             m = E_w - (E_w - m_r)*(10.0**(-k_w*f_t))
         else
-            m = m_r  ! perhaps m = m0 is a better choice?
+            ! maintain moisture
+            m = m_r
         end if
     end if
 
