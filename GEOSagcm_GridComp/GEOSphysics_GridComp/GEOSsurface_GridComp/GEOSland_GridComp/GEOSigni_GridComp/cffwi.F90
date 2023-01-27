@@ -3,15 +3,18 @@
 ! Canadian Forest Fire Weather Index System (CFFWI)
 !
 ! References: 
-! 1) Van Wagner, C.E. and  T.L. Picket, 1985
+! 1) Van Wagner, C.E. and  T.L. Picket, 1985.
 ! 2) Van Wagner, C.E., A method of computing fine fuel 
-!    moisture content throughout the diurnal cycle, 1977
+!    moisture content throughout the diurnal cycle, 1977.
 ! 3) Lawson, B.D. and Armitage, O.B, Weather guide 
-!    for the Canadian Forest Fire Danger Rating System, 2008
+!    for the Canadian Forest Fire Danger Rating System, 2008.
 ! 4) Kerry Anderson, A comparison of hourly fine fuel moisture 
-!    code calculations within Canada, 2009
+!    code calculations within Canada, 2009.
 ! 5) Wotton, B.M., A grass moisture model for the 
-!    Canadian Forest Fire Danger Rating System, 2009
+!    Canadian Forest Fire Danger Rating System, 2009.
+! 6) Wotton, B.M., Alexander, M.E. and Taylor, S.W., Updates and 
+!    Revisions to the 1992 Canadian Forest Fire Behavior 
+!    Prediction System, GLC-X-10, 2009.
 !
 ! Milestones:
 ! Anton Darmenov, NASA, 2023 -- add grass FMC
@@ -46,7 +49,7 @@ real, public, parameter :: DC_INIT   = 15.0
 
 real, public, parameter :: CFFWI_REFERENCE_LATITUDE = 46.0 ! Canada, 46N
 
-real, public, parameter :: NOMINAL_FINE_FUEL_LOAD = 0.3 ! kg m-2
+real, public, parameter :: NOMINAL_FINE_FUEL_LOAD = 0.35 ! kg m-2
 
 contains
 
