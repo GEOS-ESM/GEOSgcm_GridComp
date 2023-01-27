@@ -25,6 +25,10 @@ module LandunitType
   implicit none
   save
   private
+
+  ! PUBLIC MEMBER FUNCTIONS:
+  public :: init_landunit_type
+
   !
   type, public :: landunit_type
      ! g/l/c/p hierarchy, local g/l/c/p cells only
