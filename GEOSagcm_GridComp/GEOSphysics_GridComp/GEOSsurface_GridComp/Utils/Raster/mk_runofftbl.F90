@@ -31,7 +31,7 @@ program Runoff
 
 
   call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-  fileLL=trim(land_input_dir)//'/land/route/Outlet_latlon'
+  fileLL=trim(land_input_dir)//'/land/route/Outlet_latlon.'
 
 
 ! Read inputs -----------------------------------------------------
