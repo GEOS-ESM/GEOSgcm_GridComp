@@ -130,6 +130,7 @@
 
   use ESMF
   use MAPL_Mod
+  use hs_oacc_mod
   use iso_c_binding
 
   implicit none
@@ -1061,9 +1062,13 @@
 !                        SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 0)
     call MPI_GET_PROCESSOR_NAME(nameNode, length, ierr)
     !write(*,*) 'Rank = ', rank, 'on node', nameNode
-    call c_call_hs_oacc(C_LOC(CPHI2), c_null_ptr, C_LOC(DTDT), C_LOC(DUDT), C_LOC(DVDT), &
-                        C_LOC(HFCN), C_LOC(P_I), C_LOC(PLE), C_LOC(SPHI2), c_null_ptr, c_null_ptr, C_LOC(T), &
-                        c_null_ptr, C_LOC(T_EQ), C_LOC(U), C_LOC(V), &
+    DISS_P => null()
+    TAUX_P => null()
+    TAUY_P => null()
+    THEQ_P => null()
+    call held_suarez_oacc(CPHI2, DISS_P, DTDT, DUDT, DVDT, &
+                        HFCN, P_I, PLE, SPHI2, TAUX_P, TAUY_P, T, &
+                        THEQ_P, T_EQ, U, V, &
                         DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
                         FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
                         SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 2, rank)

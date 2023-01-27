@@ -168,12 +168,12 @@ contains
     !write(*,*) 'From HS routine, rank =', rank, ": Number of GPUS = ", ngpus, ': This process is using', acc_get_device_num(acc_device_nvidia)
 
     ! If running with OpenMP, use these pointer assignments for PS and PT
-    ! PS  => PLE(:,:,LM)
-    ! PT  => PLE(:,:, 0)
+    PS  => PLE(:,:,LM)
+    PT  => PLE(:,:, 0)
 
     ! If running with OpenACC, use these pointer assignments for PS and PT
-    PS => PLE(:,:,LM+1)
-    PT => PLE(:,:,1)
+    !PS => PLE(:,:,LM+1)
+    !PT => PLE(:,:,1)
 
     !if(associated(DISS)) DISS = 0.0
     !if(associated(TAUX)) TAUX = 0.0
@@ -204,12 +204,12 @@ contains
        LEVELS: do L = 1,LM
 
           ! If running with OpenMP, use these assignments for DP and PL
-          ! DP  = (PLE(:,:,L)-PLE(:,:,L-1))
-          ! PL  = (PLE(:,:,L)+PLE(:,:,L-1))*0.5
+          DP  = (PLE(:,:,L)-PLE(:,:,L-1))
+          PL  = (PLE(:,:,L)+PLE(:,:,L-1))*0.5
 
           ! If running with OpenACC, use these assignments for DP and PL
-          DP  = (PLE(:,:,L+1)-PLE(:,:,L))
-          PL  = (PLE(:,:,L+1)+PLE(:,:,L))*0.5
+          !DP  = (PLE(:,:,L+1)-PLE(:,:,L))
+          !PL  = (PLE(:,:,L+1)+PLE(:,:,L))*0.5
           DM  = DP / GRAV
           PK  = (PL/P00)**KAPPA 
 
@@ -324,12 +324,12 @@ contains
              do I = 1, IM
 
                 ! If running with OpenMP, use these assignments for DP and PL
-                ! DP(I,J)  = (PLE(I,J,L)-PLE(I,J,L-1))
-                ! PL(I,J)  = (PLE(I,J,L)+PLE(I,J,L-1))*0.5
+                DP(I,J)  = (PLE(I,J,L)-PLE(I,J,L-1))
+                PL(I,J)  = (PLE(I,J,L)+PLE(I,J,L-1))*0.5
 
                 ! If running with OpenACC, use these assignments for DP and PL
-                DP(I,J)  = (PLE(I,J,L+1)-PLE(I,J,L))
-                PL(I,J)  = (PLE(I,J,L+1)+PLE(I,J,L))*0.5
+                !DP(I,J)  = (PLE(I,J,L+1)-PLE(I,J,L))
+                !PL(I,J)  = (PLE(I,J,L+1)+PLE(I,J,L))*0.5
 
                 DM(I,J)  = DP(I,J) / GRAV
                 PK(I,J)  = (PL(I,J)/P00)**KAPPA 
@@ -448,12 +448,12 @@ contains
              do I = 1, IM
 
                 ! If running with OpenMP, use these assignments for DP and PL
-                ! DP_s  = (PLE(I,J,L)-PLE(I,J,L-1))
-                ! PL_s  = (PLE(I,J,L)+PLE(I,J,L-1))*0.5
+                DP_s  = (PLE(I,J,L)-PLE(I,J,L-1))
+                PL_s  = (PLE(I,J,L)+PLE(I,J,L-1))*0.5
 
                 ! If running with OpenACC, use these assignments for DP and PL
-                DP_s  = (PLE(I,J,L+1)-PLE(I,J,L))
-                PL_s  = (PLE(I,J,L+1)+PLE(I,J,L))*0.5
+                !DP_s  = (PLE(I,J,L+1)-PLE(I,J,L))
+                !PL_s  = (PLE(I,J,L+1)+PLE(I,J,L))*0.5
                 DM_s  = DP_s / GRAV
                 PK_s  = (PL_s/P00)**KAPPA 
 
