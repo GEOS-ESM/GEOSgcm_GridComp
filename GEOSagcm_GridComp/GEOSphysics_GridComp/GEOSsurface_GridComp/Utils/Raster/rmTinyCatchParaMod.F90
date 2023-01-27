@@ -300,7 +300,7 @@ implicit none
     integer, pointer :: Raster(:,:)
     character(*) :: vname,gridnamer
     character*100 :: fname
-    character*300          :: land_input_dir
+    character*400          :: land_input_dir
 
     integer, intent(in), optional :: merge
  
@@ -316,7 +316,7 @@ implicit none
      close (10,status='keep')
 
     call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-    open (10,file=''//trim(land_input_dir)//'/shared/mask/mapping_2.5_grid_to_gswp2_tile_index.rst',&
+    open (10,file=trim(land_input_dir)//'/shared/mask/mapping_2.5_grid_to_gswp2_tile_index.rst',&
              form='unformatted',status='old',action='read',convert='little_endian')
 
     do j =1,j_raster
@@ -348,7 +348,7 @@ implicit none
 
     mon_climate(:,:)=0.
 
-    iret = NF_OPEN(''//trim(land_input_dir)//'/land/veg/lai_grn/'//trim(vname)//'_uk.nc',NF_NOWRITE, ncid)
+    iret = NF_OPEN(trim(land_input_dir)//'/land/veg/lai_grn/'//trim(vname)//'_uk.nc',NF_NOWRITE, ncid)
 
     ASSERT_(iret==NF_NOERR)
 
@@ -444,7 +444,7 @@ integer :: nx,ny,status
 logical :: regrid
 real, pointer :: Raster(:,:)	
 
-character*300          :: land_input_dir
+character*400          :: land_input_dir
 
 allocate(tile_id(1:nx,1:ny))
 i_sib = i_raster
@@ -495,7 +495,7 @@ allocate (lai   (1:ncatch))
 allocate (count (1:ncatch))
 
 call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-fname = ''//trim(land_input_dir)//'/MODIS_8-DayClim/' &
+fname = trim(land_input_dir)//'/MODIS_8-DayClim/' &
 //'MOD15A2.YYYY.12.27.global_2.5min.data'
 
 !write (*,'(a120)')trim(fname)
@@ -555,7 +555,7 @@ do while (datetime_le_refdatetime(before_time,end_time))
    dy1= after_time%day
    write (mmdd,'(i2.2,a1,i2.2)'),mn,'.',dy
 
-   fname =''//trim(land_input_dir)//'/MODIS_8-DayClim/' &
+   fname =trim(land_input_dir)//'/MODIS_8-DayClim/' &
 	 //'MOD15A2.YYYY.'//mmdd//'.global_2.5min.data'
 
    open (20,file=trim(fname),form='unformatted',convert='little_endian', &
@@ -601,7 +601,7 @@ END DO
    end do
 end do
 
-fname = ''//trim(land_input_dir)//'/MODIS_8-DayClim/' &
+fname = trim(land_input_dir)//'/MODIS_8-DayClim/' &
 //'MOD15A2.YYYY.01.01.global_2.5min.data'
 
 !write (*,'(a120)')trim(fname)
@@ -663,7 +663,7 @@ END SUBROUTINE modis_lai
       integer :: n,maxcat,count,k1,i1,i,j
       character*100 :: path,fname,fout,metpath
       character(*) :: gfile
-      character*300 :: land_input_dir
+      character*400 :: land_input_dir
       character*10 :: dline
       CHARACTER*20 :: version,resoln,continent
       integer :: iret,ncid,ncid1
@@ -787,7 +787,7 @@ integer :: n_threads=1
 
           if (present(F25Tag)) then 
 
-             iret = NF_OPEN(''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v1/SoilDepth.nc',NF_NOWRITE, ncid1)
+             iret = NF_OPEN(trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v1/SoilDepth.nc',NF_NOWRITE, ncid1)
              ASSERT_(iret==NF_NOERR)
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 
@@ -811,7 +811,7 @@ integer :: n_threads=1
               deallocate (soildepth_gswp2,land_gswp2)
           else
                           
-             open (10,file=''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v1/soil_depth_2.5.rst',&
+             open (10,file=trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v1/soil_depth_2.5.rst',&
                   form='unformatted',status='old',action='read',convert='little_endian')
              
              do j =1,j_raster
@@ -1398,7 +1398,7 @@ integer :: n_threads=1
     integer :: nx,ny,status
     logical :: regrid, ease_grid
     real,pointer :: raster (:,:)
-    character*300 :: land_input_dir
+    character*400 :: land_input_dir
 
     fname=trim(gfilet)//'.til'
 
@@ -1460,7 +1460,7 @@ integer :: n_threads=1
              
              if(ialbs.eq.1)albspec='0.3_0.7/'
              if(ialbs.eq.2)albspec='0.7_5.0/'           
-             ifile=''//trim(land_input_dir)//'/land/albedo/AlbMap.'//bw//'.2x5.'//trim(cyy)//        &
+             ifile=trim(land_input_dir)//'/land/albedo/AlbMap.'//bw//'.2x5.'//trim(cyy)//        &
                   '.monthly.'//albspec(1:index(albspec,'/')-1)//'.dat' 
              ofile='clsm/AlbMap.'//bw//'.2x5.'//trim(cyy)//'.monthly-tile.' &
                   //albspec(1:index(albspec,'/')-1)//'.dat'
@@ -1983,10 +1983,10 @@ END SUBROUTINE modis_scale_para
     character*2 :: dateline
     real*4, allocatable , target :: q0 (:,:)
 
-    character*300          :: land_input_dir
+    character*400          :: land_input_dir
 
     call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-    gtopo30   = ''//trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
+    gtopo30   = trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
     allocate (q0(1:i_raster,1:j_raster))
 
     i_sib = nx
@@ -2224,7 +2224,7 @@ END SUBROUTINE modis_scale_para
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     integer :: nx,ny,status
     logical :: ease_grid 
-    character*300          :: land_input_dir
+    character*400          :: land_input_dir
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -2277,8 +2277,8 @@ integer :: n_threads=1
     call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
 
 
-    ifile=''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v1/'//'dtex_tp1.bin'
-    ifile2=''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v1/'//'dtex_sb1.bin'
+    ifile=trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v1/'//'dtex_tp1.bin'
+    ifile2=trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v1/'//'dtex_sb1.bin'
     ofile1='clsm/soil_text.top'
     ofile2='clsm/soil_text.com'     
 
@@ -2517,7 +2517,7 @@ integer :: n_threads=1
     real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
     logical                            :: file_exists
     integer                            :: ncid
-    character*300          :: land_input_dir
+    character*400          :: land_input_dir
 
 
     fname=trim(gfilet)//'.til'
@@ -2551,7 +2551,7 @@ integer :: n_threads=1
     allocate(sib_veg (1:i_raster,1:j_raster))
 
     call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-    open (10,file=''//trim(land_input_dir)//'/land/veg/pft/v1/sib22.5_v2.0.dat',form='unformatted',      &
+    open (10,file=trim(land_input_dir)//'/land/veg/pft/v1/sib22.5_v2.0.dat',form='unformatted',      &
          status='old',action='read',convert='big_endian')
     READ(10)sib_veg2
     
@@ -2785,7 +2785,7 @@ integer :: n_threads=1
     character*100 :: fname
     character(*) :: gfile
     character(*) :: MaskFile
-    character*300 :: land_input_dir
+    character*400 :: land_input_dir
     !
 
     fname=trim(gfile)//'.til'
@@ -2826,10 +2826,10 @@ integer :: n_threads=1
     colin2cat=0
     call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
     if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
-       open (10,file=''//trim(land_input_dir)//'/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat',   &
+       open (10,file=trim(land_input_dir)//'/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat',   &
             form='formatted', status='old',action='read')       
     else
-       open (10,file=''//trim(land_input_dir)//'/land/misc/old_land/catchment.def',   &
+       open (10,file=trim(land_input_dir)//'/land/misc/old_land/catchment.def',   &
             form='formatted', status='old',action='read')
     endif
 
@@ -2845,10 +2845,10 @@ integer :: n_threads=1
     close (10,status='keep')
 
     if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
-       open (10,file=''//trim(land_input_dir)//'/land/topo/v1/SRTM-TopoData/SRTM_cti_stats.dat',       &
+       open (10,file=trim(land_input_dir)//'/land/topo/v1/SRTM-TopoData/SRTM_cti_stats.dat',       &
             form='formatted', status='old',action='read')
     else
-       open (10,file=''//trim(land_input_dir)//'/land/misc/old_land/cti_stats.dat',       &
+       open (10,file=trim(land_input_dir)//'/land/misc/old_land/cti_stats.dat',       &
             form='formatted', status='old',action='read')
     endif
 
@@ -2939,7 +2939,7 @@ integer :: n_threads=1
       integer :: ncid, status
       logical :: file_exists
       real, allocatable, dimension (:,:) :: parms4file
-      character*300 :: land_input_dir
+      character*400 :: land_input_dir
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -2987,7 +2987,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !c-------------------------------------------------------------------------
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-      losfile =''//trim(land_input_dir)//'/land/soil/soil_water_loss/v1/loss_perday'
+      losfile =trim(land_input_dir)//'/land/soil/soil_water_loss/v1/loss_perday'
 !c     opening files
 
 
@@ -3625,7 +3625,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       logical :: file_exists
       REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
       integer :: ncid, status
-      character*300 :: land_input_dir
+      character*400 :: land_input_dir
  
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -3684,15 +3684,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
 
       if(use_PEATMAP) then 
-         fname = ''//trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap' 
+         fname = trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap' 
       else
-         fname = ''//trim(land_input_dir)//'land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
+         fname = trim(land_input_dir)//'land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
       endif
       open (11, file=trim(fname), form='formatted',status='old', &
               action = 'read')
       read (11,'(a)')fout        ! read header line
           
-      losfile =''//trim(land_input_dir)//'/land/soil/soil_water_loss/v2/loss_pd_top/loss_perday_rz1m_'
+      losfile =trim(land_input_dir)//'/land/soil/soil_water_loss/v2/loss_pd_top/loss_perday_rz1m_'
 
       allocate (a_sand (1:n_SoilClasses))
       allocate (a_silt (1:n_SoilClasses))
@@ -7428,7 +7428,7 @@ END SUBROUTINE compute_stats
       REAL, ALLOCATABLE, dimension (:,:) :: z0_grid, data_grid
       INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
       character*100                      :: fout
-      character*300                      :: land_input_dir
+      character*400                      :: land_input_dir
 
       ! Reading number of tiles
       ! -----------------------
@@ -7443,7 +7443,7 @@ END SUBROUTINE compute_stats
       ! ---------------------------------
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/misc/roughness_length/v1/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/misc/roughness_length/v1/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
             
       allocate (z0_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_ascat, 1 : N_lat_ascat)) 
@@ -7519,7 +7519,7 @@ END SUBROUTINE compute_stats
       INTEGER, ALLOCATABLE, dimension (:,:) :: data_grid, z2_grid
       INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
       character*100                      :: fout
-      character*300                      :: land_input_dir
+      character*400                      :: land_input_dir
 
       ! Reading number of tiles
       ! -----------------------
@@ -7534,7 +7534,7 @@ END SUBROUTINE compute_stats
       ! -------------------------------------
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
             
       allocate (z2_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_jpl, 1 : N_lat_jpl)) 

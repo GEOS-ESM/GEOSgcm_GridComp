@@ -101,7 +101,7 @@ contains
     logical :: file_exists
     REAL, ALLOCATABLE, DIMENSION (:,:) :: NITYP,NFVEG
 
-    character*300          :: land_input_dir
+    character*400          :: land_input_dir
 
     ! Reading CLM pft data file
     !--------------------------
@@ -109,7 +109,7 @@ contains
 
     ALLOCATE (PCTPFT      (1:N_lon_clm, 1:N_lat_clm, 1:lsmpft))
     ALLOCATE (PCT_PFT_DBL (1:N_lon_clm, 1:N_lat_clm, 1:lsmpft))
-    status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/pft/v2/surfdata_0.23x0.31_simyr2000_c100406.nc', NF_NOWRITE, ncid)   
+    status  = NF_OPEN (trim(land_input_dir)//'/land/veg/pft/v2/surfdata_0.23x0.31_simyr2000_c100406.nc', NF_NOWRITE, ncid)   
     status  = NF_GET_VARA_DOUBLE (ncid,1,(/1/),(/1/),EDGEN) ; VERIFY_(STATUS)
     status  = NF_GET_VARA_DOUBLE (ncid,2,(/1/),(/1/),EDGEE) ; VERIFY_(STATUS)
     status  = NF_GET_VARA_DOUBLE (ncid,3,(/1/),(/1/),EDGES) ; VERIFY_(STATUS)
@@ -198,7 +198,7 @@ contains
     allocate (lon_esa (1:nc_esa))
     allocate (lat_esa (1:nr_esa))
 
-    status    = NF_OPEN (''//trim(land_input_dir)//'/land/veg/pft/v2/ESA_GlobalCover.nc', NF_NOWRITE, ncid)   
+    status    = NF_OPEN (trim(land_input_dir)//'/land/veg/pft/v2/ESA_GlobalCover.nc', NF_NOWRITE, ncid)   
 
     if(status /=0) then
        PRINT *, NF_STRERROR(STATUS)
@@ -822,7 +822,7 @@ contains
     real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
     logical :: file_exists
 
-    character*300          :: land_input_dir
+    character*400          :: land_input_dir
 
     ! Reading ESA vegetation types
     !-----------------------------
@@ -830,7 +830,7 @@ contains
     allocate (esa_veg (1:nc_esa, 1: nr_esa))
 
     call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-    status    = NF_OPEN (''//trim(land_input_dir)//'/land/veg/pft/v2/ESA_GlobalCover.nc', NF_NOWRITE, ncid)   
+    status    = NF_OPEN (trim(land_input_dir)//'/land/veg/pft/v2/ESA_GlobalCover.nc', NF_NOWRITE, ncid)   
 
     if(status /=0) then
        PRINT *, NF_STRERROR(STATUS)
@@ -1776,7 +1776,7 @@ END SUBROUTINE modis_scale_para_high
   logical :: regrid
   character *10 :: vname
   REAL :: sf
-  character*300          :: land_input_dir
+  character*400          :: land_input_dir
 
 !
 ! Reading number of cathment-tiles from catchment.def file
@@ -1787,8 +1787,8 @@ END SUBROUTINE modis_scale_para_high
       close (10,status='keep')
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      if(MA=='MODIS1') fname =''//trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H11V13.nc'
-      if(MA=='MODIS2') fname =''//trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H11V13.nc'
+      if(MA=='MODIS1') fname =trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H11V13.nc'
+      if(MA=='MODIS2') fname =trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
@@ -1873,8 +1873,8 @@ END SUBROUTINE modis_scale_para_high
              do ix = 1,36
                 write (vv,'(i2.2)')jx
                 write (hh,'(i2.2)')ix 
-                if(MA=='MODIS1') fname =''//trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H'//hh//'V'//vv//'.nc'
-                if(MA=='MODIS2') fname =''//trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H'//hh//'V'//vv//'.nc'
+                if(MA=='MODIS1') fname =trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H'//hh//'V'//vv//'.nc'
+                if(MA=='MODIS2') fname =trim(land_input_dir)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H'//hh//'V'//vv//'.nc'
                 status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                 if(status == 0) then
                    status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -1965,7 +1965,7 @@ END SUBROUTINE modis_scale_para_high
   logical :: first_entry = .true.
   type (date_time_type) :: bf_gswp2_time,af_gswp2_time,date_time_new,bf_lai_time,   &
        af_lai_time
-  character*300 :: land_input_dir
+  character*400 :: land_input_dir
   integer, intent(in), optional :: merge 
 !
 ! Reading number of cathment-tiles from catchment.def file
@@ -1980,7 +1980,7 @@ END SUBROUTINE modis_scale_para_high
       close (10,status='keep')
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      fname =''//trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
+      fname =trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
@@ -2078,7 +2078,7 @@ END SUBROUTINE modis_scale_para_high
              do ix = 1,36
                 write (vv,'(i2.2)')jx
                 write (hh,'(i2.2)')ix 
-                fname = ''//trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
+                fname = trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
                 status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                 if(status == 0) then
                    status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -2241,7 +2241,7 @@ END SUBROUTINE modis_scale_para_high
   integer, dimension (:,:), allocatable, target :: tile_id
   integer ::  tileid_tile
   real    :: dxm, dym
-  character*300 :: land_input_dir
+  character*400 :: land_input_dir
 ! Reading rst file
 !-----------------
    open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
@@ -2278,7 +2278,7 @@ END SUBROUTINE modis_scale_para_high
       close (10,status='keep')
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      fname =''//trim(land_input_dir)//'/land/veg/lai_grn/v3/'//trim(lai_name)//'lai_clim.H11V13.nc'
+      fname =trim(land_input_dir)//'/land/veg/lai_grn/v3/'//trim(lai_name)//'lai_clim.H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
@@ -2364,7 +2364,7 @@ END SUBROUTINE modis_scale_para_high
             do ix = 1,36
                write (vv,'(i2.2)')jx
                write (hh,'(i2.2)')ix 
-               fname = ''//trim(land_input_dir)//'/land/veg/lai_grn/v3/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
+               fname = trim(land_input_dir)//'/land/veg/lai_grn/v3/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
                status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                if(status == 0) then
                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -2487,7 +2487,7 @@ END SUBROUTINE modis_scale_para_high
   logical :: first_entry = .true.
   type (date_time_type) :: date_time_new,bf_lai_time,   &
        af_lai_time
-  character*300 :: land_input_dir
+  character*400 :: land_input_dir
   integer, intent(in), optional :: merge 
 
 ! Reading rst file
@@ -2519,7 +2519,7 @@ END SUBROUTINE modis_scale_para_high
       close (10,status='keep')
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      fname =''//trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
+      fname =trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
@@ -2612,7 +2612,7 @@ END SUBROUTINE modis_scale_para_high
             do ix = 1,36
                write (vv,'(i2.2)')jx
                write (hh,'(i2.2)')ix 
-               fname = ''//trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
+               fname = trim(land_input_dir)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
                status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                if(status == 0) then
                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -2814,7 +2814,7 @@ END SUBROUTINE modis_scale_para_high
   integer, pointer, dimension (:,:) :: QSub
   INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,tindex1,pfaf1 
   real,    pointer, dimension (:,:)    :: subset
-  character*300 :: land_input_dir
+  character*400 :: land_input_dir
 
   if(trim(lai_name) == 'lai'  ) vid = 4
   if(trim(lai_name) == 'green') vid = 5
@@ -2853,7 +2853,7 @@ END SUBROUTINE modis_scale_para_high
   close (10,status='keep')
   
   call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-  fname =''//trim(land_input_dir)//'/land/veg/lai_grn/v1/GSWP2_VegParam_H11V13.nc'
+  fname =trim(land_input_dir)//'/land/veg/lai_grn/v1/GSWP2_VegParam_H11V13.nc'
   status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
   status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
   status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
@@ -2919,7 +2919,7 @@ END SUBROUTINE modis_scale_para_high
         do ix = 1,36
            write (vv,'(i2.2)')jx
            write (hh,'(i2.2)')ix 
-           fname = ''//trim(land_input_dir)//'/land/veg/lai_grn/v1/GSWP2_VegParam_H'//hh//'V'//vv//'.nc'
+           fname = trim(land_input_dir)//'/land/veg/lai_grn/v1/GSWP2_VegParam_H'//hh//'V'//vv//'.nc'
            status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
            if(status == 0) then
               status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -3038,7 +3038,7 @@ END SUBROUTINE modis_scale_para_high
     integer                         :: tindex1,pfaf1
     integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
     logical                         :: file_exists
-    character*300                   :: land_input_dir
+    character*400                   :: land_input_dir
     
     ! Read number of catchment-tiles (N_tile) from catchment.def file
     fname='clsm/catchment.def'
@@ -3081,7 +3081,7 @@ END SUBROUTINE modis_scale_para_high
           ! MODIS-based climatology albedo raster files, backfilled with global land 
           ! average snow albedo (=0.56; average excludes Antarctica and Greenland ice 
           ! sheets and is weighted by the grid-cell area).
-          fname =''//trim(land_input_dir)//'/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+          fname =trim(land_input_dir)//'/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
           ! Open the file. (NF90_NOWRITE ensures read-only access to the file)
           status=NF_OPEN(trim(fname),NF_NOWRITE, ncid)   ; VERIFY_(STATUS)
           ! Based on vars name, get the varids.
@@ -3233,7 +3233,7 @@ END SUBROUTINE modis_scale_para_high
       REAL, DIMENSION (:), POINTER       :: PMAP
       REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR
 
-      character*300        :: land_input_dir
+      character*400        :: land_input_dir
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -3324,7 +3324,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! get info common to all H[xx]V[yy] rectangles:
       
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      fname =''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v2/GSWP2_soildepth_H11V13.nc'
+      fname =trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v2/GSWP2_soildepth_H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)  ! cannot be needed here
       !status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)  ! cannot be needed here
@@ -3358,7 +3358,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       	 do ix = 1,36
 	    write (vv,'(i2.2)')jx
 	    write (hh,'(i2.2)')ix 
-	    fname = ''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v2/GSWP2_soildepth_H'//hh//'V'//vv//'.nc'
+	    fname = trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_depth/v2/GSWP2_soildepth_H'//hh//'V'//vv//'.nc'
             status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
 	    if(status == 0) then
 		status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -3459,7 +3459,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! get info common to all H[xx]V[yy] rectangles (could in theory differ from that
       !   of soildepth data read above but is the same as of 29 Apr 2022).
 
-      fname =''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H11V13.nc'
+      fname =trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)  ! cannot be needed here
       !status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)  ! cannot be needed here
@@ -3515,7 +3515,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       	 do ix = 1,36
 	    write (vv,'(i2.2)')jx
 	    write (hh,'(i2.2)')ix 
-	    fname = ''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H'//hh//'V'//vv//'.nc'
+	    fname = trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H'//hh//'V'//vv//'.nc'
             status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
 	    if(status == 0) then
 		status = NF_GET_att_INT  (ncid, NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -3567,7 +3567,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       if(use_PEATMAP) then 
          print *, 'PEATMAP_THRESHOLD_1 : ', PEATMAP_THRESHOLD_1
          allocate(pmapr (1:i_highd,1:j_highd))
-         status  = NF_OPEN (''//trim(land_input_dir)//'/land/soil/SOIL-DATA/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+         status  = NF_OPEN (trim(land_input_dir)//'/land/soil/SOIL-DATA/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
          status  = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'PEATMAP'), (/1,1/),(/i_highd, j_highd/), pmapr) ; VERIFY_(STATUS)      
 
          ! move HWSD sub-surface peat to peat-rich mineral Group 3 because merged surface peat defines sub-surface peat
@@ -3834,9 +3834,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! NLv5  3.79e-6   2.80e-5   <== note *typo* in Table 2 of Bechtold et al. 2019, which erroneously lists K_s=2.8e-5
 
       if(use_PEATMAP) then 
-         fname = ''//trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap'
+         fname = trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap'
       else
-         fname = ''//trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
+         fname = trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
       endif
 
       table_map = 0                      ! 100-by-3 look-up table
@@ -4783,7 +4783,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     integer :: i, j, n, im, jm, lwi, idum, ntiles, nland, nv, ix, jx, itype, iband, isum, ntl, np, jalbx, ialbx, ncid, status
     logical :: file_exists
 
-    character*300               :: land_input_dir
+    character*400               :: land_input_dir
 
     ! read nland from catchment.def
     ! -----------------------------
@@ -4893,7 +4893,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
    allocate(ndep_tile(nland))
    
    call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-   open(8,file=''//trim(land_input_dir)//'/land/soil/nitrogen_deposition/v1/ndep_clm_simyr2000_0.23x0.31_c091106.gdat', &
+   open(8,file=trim(land_input_dir)//'/land/soil/nitrogen_deposition/v1/ndep_clm_simyr2000_0.23x0.31_c091106.gdat', &
         form='unformatted',status='old')
    read(8) data_grid
    close(8)
@@ -4953,7 +4953,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
    allocate(data_grid(iprn,jprn))
    allocate(t2mp_tile(nland))
    
-   open(8,file=''//trim(land_input_dir)//'/land/soil/annual_mean_T2m/v1/princeton_annual_mean_T2m_1948-2012.gdat', &
+   open(8,file=trim(land_input_dir)//'/land/soil/annual_mean_T2m/v1/princeton_annual_mean_T2m_1948-2012.gdat', &
         form='unformatted',status='old')
    read(8) data_grid
    close(8)
@@ -5012,7 +5012,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
    allocate(data_grid(imra,jmra))
    allocate(t2mm_tile(nland))
    
-   open(8,file=''//trim(land_input_dir)//'/land/soil/annual_mean_T2m/v1/MERRA2_annual_mean_T2m_1980-2014.gdat', &
+   open(8,file=trim(land_input_dir)//'/land/soil/annual_mean_T2m/v1/MERRA2_annual_mean_T2m_1980-2014.gdat', &
         form='unformatted',status='old')
    read(8) data_grid
    close(8)
@@ -5087,7 +5087,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              fill = 0.07
           endif
           
-          open(8,file=''//trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_albedo/v1/modis_'//ctype//'sa_soil_bb'//cband//'_cmg', &
+          open(8,file=trim(land_input_dir)//'/land/soil/SOIL-DATA/soil_albedo/v1/modis_'//ctype//'sa_soil_bb'//cband//'_cmg', &
                form='unformatted',status='old',access='direct',recl=ialb*jalb)
           read(8,rec=1) (data_grid(:,j), j = jalb,1,-1) ! data is from north to south
           where(data_grid <= 0.) data_grid = fill
@@ -5202,7 +5202,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           integer, dimension(8)   :: date_time_values
           character (22)          :: time_stamp    
 
-          character*300                             :: land_input_dir
+          character*400                             :: land_input_dir
 
           ! Reading raster file
 
@@ -5281,7 +5281,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           ! Now computing SMAP-cells to Pfafcatchment fractional areas 
 
           call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-          status    = NF_OPEN (''//trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF_NOWRITE, ncid_msk)	
+          status    = NF_OPEN (trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF_NOWRITE, ncid_msk)	
           nbins = 1
 
           allocate (pfaf_area (1:max_pfaf_smap))
@@ -5417,7 +5417,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             a_poros,a_wp,a_aksat,atau,btau,a_wpsurf,a_porosurf, &
             atau_2cm,btau_2cm, field_cap (n_SoilClasses) 
 
-      character*300                      :: land_input_dir
+      character*400                      :: land_input_dir
 
       ! Reading number of tiles
       ! -----------------------
@@ -5432,10 +5432,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! ----------------------------------------
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/misc/CLM45/clmforc.Li_2012_hdm_0.5x0.5_AVHRR_simyr1850-2010_c130401.nc', NF_NOWRITE, ncid_hdm  )
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/misc/CLM45/mksrf_abm_0.5x0.5_AVHRR_simyr2000.c130201.nc'               , NF_NOWRITE, ncid_abm  )
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/misc/CLM45/mksrf_gdp_0.5x0.5_AVHRR_simyr2000.c130228.nc'               , NF_NOWRITE, ncid_gdp  )
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/misc/CLM45/mksrf_peatf_0.5x0.5_AVHRR_simyr2000.c130228.nc'             , NF_NOWRITE, ncid_peatf)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/misc/CLM45/clmforc.Li_2012_hdm_0.5x0.5_AVHRR_simyr1850-2010_c130401.nc', NF_NOWRITE, ncid_hdm  )
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/misc/CLM45/mksrf_abm_0.5x0.5_AVHRR_simyr2000.c130201.nc'               , NF_NOWRITE, ncid_abm  )
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/misc/CLM45/mksrf_gdp_0.5x0.5_AVHRR_simyr2000.c130228.nc'               , NF_NOWRITE, ncid_gdp  )
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/misc/CLM45/mksrf_peatf_0.5x0.5_AVHRR_simyr2000.c130228.nc'             , NF_NOWRITE, ncid_peatf)
             
       allocate (hdm_grid   (1:NC,1:NR))
       allocate (abm_grid   (1:NC,1:NR))
@@ -5527,7 +5527,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     ! Field Capacity
     ! --------------
 
-    open (11, file=''//trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat', form='formatted',status='old', &
+    open (11, file=trim(land_input_dir)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat', form='formatted',status='old', &
            action = 'read')
     read (11,'(a)')fout
     do i =1,n_SoilClasses 
@@ -5584,7 +5584,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       INTEGER, ALLOCATABLE, dimension (:,:)  :: tile_id
       integer                                :: yr,mn,yr1,mn1, k,t,i,j
 
-      character*300                          :: land_input_dir
+      character*400                          :: land_input_dir
 
      ! Reading number of tiles
       ! -----------------------
@@ -5615,7 +5615,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! ----------------------------------------
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/misc/CLM45/LISOTD_HRMC_V2.3.2014.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/misc/CLM45/LISOTD_HRMC_V2.3.2014.nc4', NF_NOWRITE, ncid)
       status  = NF_INQ_VARID (ncid,'HRMC_COM_FR',VarID) ; VERIFY_(STATUS)
 
       allocate (hrmc_grid   (1:NC,1:NR))
@@ -5697,7 +5697,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   integer, dimension (:,:), allocatable, target :: tile_id
   integer       ::  tileid_tile
   character*3   :: ddd
-  character*300 :: land_input_dir
+  character*400 :: land_input_dir
 
 ! Reading rst file
 !-----------------
@@ -5728,7 +5728,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       close (10,status='keep')
 
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      fname =''//trim(land_input_dir)//'/land/veg/lai_grn/v2/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
+      fname =trim(land_input_dir)//'/land/veg/lai_grn/v2/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS) 
       allocate (MMDD      (0: n_tslices + 1))
@@ -5804,7 +5804,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          count_lai = 0.
          lai_grid  = -9999
 
-         status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/lai_grn/v4/'//trim(lai_name)//ddd//'.nc4', NF_NOWRITE, ncid) ; VERIFY_(STATUS)
+         status  = NF_OPEN (trim(land_input_dir)//'/land/veg/lai_grn/v4/'//trim(lai_name)//ddd//'.nc4', NF_NOWRITE, ncid) ; VERIFY_(STATUS)
          status  = NF_INQ_VARID (ncid,'LAI',VarID) ; VERIFY_(STATUS)
          status  = NF_GET_VARA_INT(ncid,VarID, (/1,1/),(/N_lon_glass, N_lat_glass/), net_data1) ; VERIFY_(STATUS)
 
@@ -5909,7 +5909,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       integer, parameter :: scale_fac = 10000
       real,    parameter :: val_min = -0.3, val_max = 1.
 
-      character*300                          :: land_input_dir
+      character*400                          :: land_input_dir
 
      ! Reading number of tiles
       ! -----------------------
@@ -5940,8 +5940,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! ----------------------------------------
       
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; VERIFY_(STATUS)
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; VERIFY_(STATUS)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; VERIFY_(STATUS)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; VERIFY_(STATUS)
       status  = NF_INQ_VARID (ncid2,'ndvi',VarID) ; VERIFY_(STATUS)
       
       allocate (ndvi_grid   (1:NC,1:NR))
@@ -6193,7 +6193,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       INTEGER,      dimension (:), pointer :: index_RANGE 
       character*20, dimension (:), pointer :: ST_NAME     
       character*48, dimension (:), pointer :: CNT_NAME  
-      character*300                        :: land_input_dir
+      character*400                        :: land_input_dir
       
       integer :: CNT_CODE, ST_CODE
       integer :: i(GC),j(GR), k,n, status, ncid, varid, maxcat, I0(1), j0(1)
@@ -6218,7 +6218,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! -----------------------------------------
       
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir) 
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/misc/country_codes/v1/GADM_Country_and_USStates_codes_1km.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/misc/country_codes/v1/GADM_Country_and_USStates_codes_1km.nc4', NF_NOWRITE, ncid)
       
       allocate (cnt_grid  (1 : GC, 1 : GR))
       allocate (st_grid   (1 : GC, 1 : GR))

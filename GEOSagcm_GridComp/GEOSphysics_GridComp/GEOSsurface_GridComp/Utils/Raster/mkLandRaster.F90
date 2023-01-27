@@ -70,7 +70,7 @@
     character*128          :: GridName
     character*128          :: InputFile
     character*128          :: MaskFile
-    character*300          :: land_input_dir
+    character*400          :: land_input_dir
     character*128          :: &
 
 
@@ -89,8 +89,7 @@
     tildir    = 'til/'   ! Write in current dir
     rstdir    = 'rst/'   ! Write in current dir
     maxtiles  = 50000
-    InputFile = &
-          ''//trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL'
+    InputFile = trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL'
      
     I = command_argument_count()
 
@@ -184,7 +183,7 @@
        ss(i) = sin(xs)
     enddo
 
-    InputFile = ''//trim(land_input_dir)//'/shared/mask/'//trim(MaskFile)
+    InputFile = trim(land_input_dir)//'/shared/mask/'//trim(MaskFile)
   
     if (index(trim(MaskFile),'GEOS5_10arcsec_mask')/=0) then
        ! 10 arcsec new mask
@@ -198,7 +197,7 @@
        allocate(geos_msk    (1:nc_esa,1:dy_esa))
        allocate (raster (1:nx, 1:ny)) 
 
-       InputFile = ''//trim(land_input_dir)//'/shared/mask/'//trim(MaskFile)
+       InputFile = trim(land_input_dir)//'/shared/mask/'//trim(MaskFile)
 
        status    = NF_OPEN (InputFile, NF_NOWRITE, ncid)
 
@@ -219,7 +218,7 @@
           print *, 'Using Reynolds SSTs MASKFILE',trim(MaskFile)
           reynolds_sst = .true.
   
-          InputFile = ''//trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc'
+          InputFile = trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc'
           status    = NF_OPEN (InputFile, NF_NOWRITE, ncid2)
           allocate(geos_msk2    (1:nc_esa,1:dy_esa))
        endif

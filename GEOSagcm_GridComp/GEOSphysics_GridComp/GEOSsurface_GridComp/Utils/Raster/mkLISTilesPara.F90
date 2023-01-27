@@ -23,7 +23,7 @@ PROGRAM mkLISTilesPara
   real :: dx, dy
   integer :: ncells, dateline, nc_domain,nr_domain,i_offset,j_offset
 
-  character*300          :: land_input_dir
+  character*400          :: land_input_dir
   
   N_args = command_argument_count()
 
@@ -125,7 +125,6 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
   INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
   logical, dimension (:), allocatable :: unq_mask      
   logical :: counted
-  character*300          :: land_input_dir
 
   nc = 8640
   nr = 4320
@@ -136,8 +135,7 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
   i_offset  = 0
   j_offset  = 0
  
-  call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-  open (10,file=''//trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
+  open (10,file=trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
        action='read', status='old')!
   
   do j=1,nr
@@ -261,7 +259,7 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
   close(11,status='keep')
   close(12,status='keep')
 
-  gtopo30 = ''//trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
+  gtopo30 = trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
   open (13,file=trim(gtopo30),form='unformatted',status='old',convert='little_endian')
   read (13) q0
   close(13,status='keep')
@@ -508,8 +506,6 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   real, dimension (:), allocatable     :: tile_ele,tile_area_land
   logical :: regrid, counted
 
-  character*300          :: land_input_dir
-
   include 'netcdf.inc'
 
   nc_domain = 0
@@ -585,8 +581,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   ! opening and writing  .til and .rst and catchment.def files
   ! ----------------------------------------------------------
   
-  call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-  gtopo30 = ''//trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
+  gtopo30 = trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
   open (13,file=trim(gtopo30),form='unformatted',status='old',convert='little_endian')
   read (13) raster
   close(13,status='keep')
@@ -628,7 +623,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   allocate(geos_msk    (1:dx_esa,1:dy_esa))
   allocate(high_msk    (1:msk2rst,1:msk2rst))
    
-  status    = NF_OPEN (''//trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF_NOWRITE, ncid)
+  status    = NF_OPEN (trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF_NOWRITE, ncid)
   status    = NF_GET_VARA_INT64 (ncid,3,(/1/),(/SRTM_maxcat/),SRTM_catid(1:SRTM_maxcat))  ! Read pfafstetter IDs
   if(status /=0) then
      PRINT *, NF_STRERROR(STATUS)

@@ -28,7 +28,7 @@ PROGRAM create_vegdyn_ndvi
   real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
   logical :: file_exists
   real, pointer, dimension (:)  :: z2, z0, ityp
-  character*300          :: land_input_dir
+  character*400          :: land_input_dir
   include 'netcdf.inc'	
 
   I = command_argument_count()
@@ -55,8 +55,7 @@ PROGRAM create_vegdyn_ndvi
   ! -----------------
 
   call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-  call execute_command_line('mkdir -p data ; cd data/'//trim(land_input_dir)//'/')
-  call execute_command_line('mkdir -p '//trim(OUTDIR)) 
+  call execute_command_line("mkdir -p data/"//trim(OUTDIR) //" ; cd data/") 
 
   open (10,file = trim(BCSDIR)//'/clsm/catchment.def', &
        form= 'formatted', action = 'read', status = 'old')
@@ -106,6 +105,8 @@ PROGRAM create_vegdyn_ndvi
   print *,'Z0   : ', minval(z0  ), maxval (z0  )
   
   call  gimms_clim_ndvi (ntiles, nx,ny,trim(BCSDIR)//'/rst/'//trim(GFILE), trim(OUTDIR), trim(IMxJM))
+
+  call execute_command_line('cd ../')
 contains
 
 
@@ -128,13 +129,11 @@ contains
       REAL, ALLOCATABLE, dimension (:,:) :: z0_grid, data_grid
       INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
       character*100                      :: fout
-      character*300                      :: land_input_dir
 
       ! READ CLM4.5 source data files and regrid
       ! ----------------------------------------
 
-      call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/misc/roughness_length/v1/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/misc/roughness_length/v1/arlems-roughness.x3600_y1800_t1.nc4', NF_NOWRITE, ncid)
             
       allocate (z0_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_ascat, 1 : N_lat_ascat)) 
@@ -210,8 +209,6 @@ contains
       integer, parameter :: scale_fac = 10000
       real,    parameter :: val_min = -0.3, val_max = 1.
 
-      character*300          :: land_input_dir
-
       ! Grid to tile
       ! ------------
                 
@@ -231,9 +228,8 @@ contains
       ! READ GIMMS NDVI source data files and regrid
       ! ----------------------------------------
       
-      call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; VERIFY_(STATUS)
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; VERIFY_(STATUS)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; VERIFY_(STATUS)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/ndvi/v1/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; VERIFY_(STATUS)
       status  = NF_INQ_VARID (ncid2,'ndvi',VarID) ; VERIFY_(STATUS)
       
       allocate (ndvi_grid   (1:NC,1:NR))
@@ -351,6 +347,8 @@ contains
          endif
       end do
 
+      status =  NF_close(ncid1)
+      status =  NF_close(ncid2)
       close(31,status='keep')    
 
     END SUBROUTINE gimms_clim_ndvi
@@ -373,13 +371,11 @@ contains
       INTEGER, ALLOCATABLE, dimension (:,:) :: data_grid, z2_grid
       INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
       character*100                      :: fout
-      character*300                      :: land_input_dir
 
       ! READ JPL source data files and regrid
       ! -------------------------------------
 
-      call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-      status  = NF_OPEN (''//trim(land_input_dir)//'/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
+      status  = NF_OPEN (trim(land_input_dir)//'/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', NF_NOWRITE, ncid)
             
       allocate (z2_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_jpl, 1 : N_lat_jpl)) 

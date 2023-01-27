@@ -1679,7 +1679,7 @@ end
 
 PRO canop_Height, nc, nr, tileid_plot, gfile, path
 
-CanopH=read_tiff(path + '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.tif')
+CanopH=read_tiff('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.tif')
 im=n_elements(CanopH(*,0))
 jm=n_elements(CanopH(0,*))
 CanopH = reverse(CanopH,2,/overwrite)

@@ -16,11 +16,11 @@ program Runoff
   integer                :: status
   character*100          :: file, fileT, fileR, fileO, fileB
   character*5            :: C_NX, C_NY
-  character*300          :: land_input_dir
-  character*300          :: fileLL
+  character*400          :: land_input_dir
+  character*400          :: fileLL
   
   call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-  fileLL=''//trim(land_input_dir)//'/land/route/Outlet_latlon'
+  fileLL=trim(land_input_dir)//'/land/route/Outlet_latlon'
 
   call get_command_argument(1,file)
 

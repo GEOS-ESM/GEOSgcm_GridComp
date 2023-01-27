@@ -27,6 +27,7 @@ PROGRAM loss_surf_5cm_gensoil
       logical :: skip = .false.
       logical :: layer_2cm = .false.
 
+      character*400 :: land_input_dir
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
 ! NOTE: "!$" is for conditional compilation
@@ -98,8 +99,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       end do 
      end if
 
-     soilfile='/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' &
-           //'/land/soil/soil_water_loss/v2/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
+     land_input_dir = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/'
+     soilfile= trim(land_input_dir)//'/land/soil/soil_water_loss/v2/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
 
      open (10, file=trim(soilfile),form='formatted',status='old', &
           action='read')
@@ -113,8 +114,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      close (10,status='keep')
 
       
-     path = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' &
-          //'/land/soil/soil_water_loss/v2/loss_ph/'
+     path = trim(land_input_dir)//'/land/soil/soil_water_loss/v2/loss_ph/'
 
 if(.not.skip) then
 !$OMP PARALLELDO DEFAULT(NONE)                                    &
@@ -386,10 +386,8 @@ end do
 !$OMP ENDPARALLELDO
 if(layer_2cm) STOP
 endif
-   opath   = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' & 
-          //'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
-   soilfile='/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/' &
-        //'/land/soil/soil_water_loss/v2/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
+   opath   =  trim(land_input_dir) //'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
+   soilfile=  trim(land_input_dir) //'/land/soil/soil_water_loss/v2/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
 
    open (20, file=trim(soilfile),form='formatted',status='old', &
         action='read')

@@ -76,7 +76,7 @@ PROGRAM mkEASETilesParam
       character(len=10)      :: nc_string, nr_string
       character(128)         :: usage1, usage2
 
-      character*300          :: land_input_dir
+      character*400          :: land_input_dir
       call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
 
       ! --------------------------------------------------------------------------------------
@@ -200,7 +200,7 @@ PROGRAM mkEASETilesParam
          allocate(geos_msk    (1:nc_esa,1:dy_esa))
          allocate(SRTM_CatchArea (1:SRTM_maxcat))
 
-         OPEN (10, FILE = ''//trim(land_input_dir)//'/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat', &
+         OPEN (10, FILE = trim(land_input_dir)//'/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat', &
               FORM = 'FORMATTED',STATUS='OLD',ACTION='READ') 
 
          READ (10,*) I
@@ -220,7 +220,7 @@ PROGRAM mkEASETilesParam
          catid_index  = 0
          veg          = 0
          
-         status    = NF90_OPEN (''//trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
+         status    = NF90_OPEN (trim(land_input_dir)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
          status    = nf90_inq_varid(ncid, name='PfafID', varid=varid)
          status    = nf90_get_var(ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/))
          if(status /=0) then
@@ -357,7 +357,7 @@ PROGRAM mkEASETilesParam
          ! 2.5'x2.5' vegetation raster file is global 1min IGBP data 
          ! (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
          
-         open (10,file=''//trim(land_input_dir)//'/land/veg/pft/v1/sib22.5_v2.0.dat', &
+         open (10,file=trim(land_input_dir)//'/land/veg/pft/v1/sib22.5_v2.0.dat', &
               form='unformatted', &
               action='read', convert='big_endian',status='old')
          
@@ -381,7 +381,7 @@ PROGRAM mkEASETilesParam
          !    1 global inland water (lakes) catchment : Pfafstetter ID 6190000
          !    1 global ice catchment                  : Pfafstetter ID 6200000
          
-         open (10,file=''//trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
+         open (10,file= trim(land_input_dir)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
               action='read', status='old')!
          
          do j=1,j_raster
@@ -407,7 +407,7 @@ PROGRAM mkEASETilesParam
          !  1 global ice catchment                  : tile_index 36718
          ! ------------------------------------------------------------
          
-         open (10,file=''//trim(land_input_dir)//'/land/topo/'  &
+         open (10,file=trim(land_input_dir)//'/land/topo/'  &
               //'PfafstatterDL.rst', form='unformatted',        &
               action='read',convert='little_endian', status='old')
          
@@ -472,7 +472,7 @@ PROGRAM mkEASETilesParam
       allocate(raster      (i_raster,j_raster))
       allocate(q0(nc,nr)) 
       
-      gtopo30 = ''//trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
+      gtopo30 = trim(land_input_dir)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
      
       open (10,file=trim(gtopo30),form='unformatted',status='old',convert='little_endian')
       read (10) raster
