@@ -341,10 +341,7 @@ contains
           SHORT_NAME         = 'SURFSTATE'                  ,&
           LONG_NAME          = 'surface_state_for_seaice_thermo_coupling',  &
           UNITS              = 'W m-2'                      ,&
-          !UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),      &
-          !DIMS               = MAPL_DimsTileOnly,           &
-          !VLOCATION          = MAPL_VLocationNone,          &
-          DATATYPE           = MAPL_StateItem,               &
+          DATATYPE           = MAPL_StateItem               ,&
                                                        __RC__)
 
  !=================================================================================
@@ -474,7 +471,10 @@ contains
     call ESMF_VMGetCurrent(VM, rc=STATUS)
     VERIFY_(STATUS)
 
-! Set the time for MOM
+    call MAPL_GetResource(MAPL,DT_SEAICE,  Label="RUN_DT:",    _RC)             ! Get AGCM Heartbeat
+    call MAPL_GetResource(MAPL,DT_SEAICE,  Label="OCEAN_DT:",  DEFAULT=DT_SEAICE, _RC) ! set Default OCEAN_DT to AGCM Heartbeat
+
+! Set the time for CICE
 !---------------------
 
     call ESMF_ClockGet(CLOCK, currTIME=MyTime, TimeStep=TINT,  RC=STATUS)
@@ -483,11 +483,8 @@ contains
     call ESMF_TimeGet (MyTime,                    &
                        YY=YEAR, MM=MONTH, DD=DAY, &
                        H=HR,    M =MN,    S =SC,  &
-                                        RC=STATUS )
-    VERIFY_(STATUS)
+                                               _RC)
 
-    CALL ESMF_TimeIntervalGet(TINT, S=DT_SEAICE, RC=status)
-    VERIFY_(status)
 
     ! Get the ocean layout from the VM
     !---------------------------------
@@ -508,7 +505,7 @@ contains
 ! Init CICE 
 !---------------
     call cice_init1(Comm, NPES, OGCM_IM/OGCM_NX, OGCM_JM/OGCM_NY, &
-           MAPL_TICE, MAPL_ALHL, MAPL_ALHS)
+                    DT_SEAICE, MAPL_TICE, MAPL_ALHL, MAPL_ALHS)
 
     !call ice_import_grid(FROCEAN, __RC__)
      
@@ -517,15 +514,16 @@ contains
 
     !*CALLBACK*
     !=====================================================================================
-    call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
+    call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, _RC)
 
     !!attach the thermo coupling method
     !
-    call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
-    call ESMF_MethodAdd(SURFST, label='prep_albedo', userRoutine=prep_albedo, __RC__)
+    call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, _RC)
+    call ESMF_MethodAdd(SURFST, label='prep_albedo',     userRoutine=prep_albedo,     _RC)
 
-    call LoadSurfaceStates(SURFST, __RC__)
+    call LoadSurfaceStates(SURFST, _RC)
 
+    ! the value of len below must be the maximum string length in VARLIST
     call LoadOcnVars(SURFST, IMPORT, VARLIST=[character(len=6)::'SST','SSS','FRZMLT'], _RC)
     !=====================================================================================
 
