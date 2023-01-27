@@ -1407,14 +1407,14 @@ contains
           VERIFY_(STATUS)
 
           if (DO_FIRE_DANGER /= 0) then
-              call MAPL_AddConnectivity (                   &
-                GC,                                         &
-                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ', &
-                                'MOU10M    ', 'MOV10M    ', &
-                                'PRLAND    ', 'ASNOW     ', &
-                                'SWDOWNLAND' /),            &
-                DST_ID = IGNI,                              &
-                SRC_ID = CATCH(I),                          &
+              call MAPL_AddConnectivity (                      &
+                GC,                                            &
+                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ',    &
+                                'MOU10M    ', 'MOV10M    ',    &
+                                'PRLAND    ', 'SWDOWNLAND',    &
+                                'ASNOW     ', 'SNOWDP    ' /), &
+                DST_ID = IGNI,                                 &
+                SRC_ID = CATCH(I),                             &
                 RC = STATUS )
               VERIFY_(STATUS)
           end if
@@ -1440,14 +1440,14 @@ contains
                                                       RC=STATUS ) 
 
           if (DO_FIRE_DANGER /= 0) then
-              call MAPL_AddConnectivity (                   &
-                GC,                                         &
-                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ', &
-                                'MOU10M    ', 'MOV10M    ', &
-                                'PRLAND    ', 'ASNOW     ', &
-                                'SWDOWNLAND' /),            &
-                DST_ID = IGNI,                              &
-                SRC_ID = CATCHCN(I),                        &
+              call MAPL_AddConnectivity (                      &
+                GC,                                            &
+                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ',    &
+                                'MOU10M    ', 'MOV10M    ',    &
+                                'PRLAND    ', 'SWDOWNLAND',    &
+                                'ASNOW     ', 'SNOWDP    ' /), &
+                DST_ID = IGNI,                                 &
+                SRC_ID = CATCHCN(I),                           &
                 RC = STATUS )
               VERIFY_(STATUS)
           end if
