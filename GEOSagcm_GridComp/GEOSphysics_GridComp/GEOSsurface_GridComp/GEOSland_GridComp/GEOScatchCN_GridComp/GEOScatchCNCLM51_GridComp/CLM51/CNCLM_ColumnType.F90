@@ -143,13 +143,13 @@ module ColumnType
     this%nbedrock(:) = 1  !jkolassa: set this to 1, since we only have one soil layer
 
      do c = bounds%begc,bounds%endc
-        col%z(c,1:nlevgrnd)  = zsoi(1:nlevgrnd)
-        col%zi(c,0:nlevgrnd) = zisoi(0:nlevgrnd)
-        col%dz(c,1:nlevgrnd) = dzsoi(1:nlevgrnd)
+        this%z(c,1:nlevgrnd)  = zsoi(1:nlevgrnd)
+        this%zi(c,0:nlevgrnd) = zisoi(0:nlevgrnd)
+        this%dz(c,1:nlevgrnd) = dzsoi(1:nlevgrnd)
         if (nlevgrnd < nlevurb) then
-           col%z(c,nlevgrnd+1:nlevurb)  = spval
-           col%zi(c,nlevgrnd+1:nlevurb) = spval
-           col%dz(c,nlevgrnd+1:nlevurb) = spval
+           this%z(c,nlevgrnd+1:nlevurb)  = spval
+           this%zi(c,nlevgrnd+1:nlevurb) = spval
+           this%dz(c,nlevgrnd+1:nlevurb) = spval
         end if
      end do
 
