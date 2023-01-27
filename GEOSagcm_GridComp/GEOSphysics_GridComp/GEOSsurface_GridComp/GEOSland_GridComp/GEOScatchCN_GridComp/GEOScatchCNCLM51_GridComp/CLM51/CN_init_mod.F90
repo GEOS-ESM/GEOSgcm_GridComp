@@ -54,6 +54,7 @@ module CN_initMod
   use FrictionVelocityMod
   use PhotosynthesisMod
   use CNVegetationFacade, only : cn_vegetation_type
+  use initSubgridMod
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
