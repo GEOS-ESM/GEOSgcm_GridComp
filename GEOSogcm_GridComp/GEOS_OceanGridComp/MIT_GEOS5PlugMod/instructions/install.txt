@@ -1,3 +1,10 @@
+# checkout and build the model
+  module use -a /nobackup/gmao_SIteam/modulefiles
+  module load GEOSenv
+  mepo clone -b feature/atrayano/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
+
+#############################################################################
+
 #Discover
 module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
 #NAS
