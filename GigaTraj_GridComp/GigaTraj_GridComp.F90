@@ -832,7 +832,7 @@ contains
     integer, allocatable :: ids0(:)
     type(ESMF_Alarm)  :: GigaTrajOutAlarm
     type(FileMetadata) :: meta
-    real(ESMF_KIND_R8) :: tint_m
+    real(ESMF_KIND_R8) :: tint_d
     type(ESMF_TimeInterval) :: tint
 
     call ESMF_ClockGetAlarm(clock, 'GigatrajOut', GigaTrajOutAlarm, _RC)
@@ -854,17 +854,20 @@ contains
 
     call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
     if (my_rank ==0) then
-       ids0_r = real(ids0)
+       ! reorder 
+       lats0 = lats0(ids0(:)+1) ! id is zero-bases, plus 1 Fortran
+       lons0 = lons0(ids0(:)+1)
+       zs0   = zs0(ids0(:)+1)
        call formatter%open(fname, pFIO_WRITE, _RC)
        meta = formatter%read(_RC)
        last_time = meta%get_dimension('time', _RC)
        tint = CurrentTime - startTime
-       call ESMF_TimeIntervalGet(tint,m_r8=tint_m,rc=status)
-       call formatter%put_var('lats', lats0, start=[1, last_time+1], _RC)
-       call formatter%put_var('lons', lons0, start=[1, last_time+1], _RC)
-       call formatter%put_var('zs',   zs0,   start=[1, last_time+1], _RC)
-       call formatter%put_var('ids',  ids0_r,  start=[1, last_time+1], _RC)
-       call formatter%put_var('time',  [tint_m],  start=[last_time+1], _RC)
+       call ESMF_TimeIntervalGet(tint,d_r8=tint_d,rc=status)
+
+       call formatter%put_var('lat', lats0, start=[1, last_time+1], _RC)
+       call formatter%put_var('lon', lons0, start=[1, last_time+1], _RC)
+       call formatter%put_var('pressure',   zs0,   start=[1, last_time+1], _RC)
+       call formatter%put_var('time',  [tint_d],  start=[last_time+1], _RC)
        call formatter%close(_RC)
      endif
 
@@ -879,7 +882,8 @@ contains
      type(Netcdf4_fileformatter) :: formatter
      type(FileMetadata) :: meta 
      integer :: comm, my_rank, total_num, ierror, last_time, DIMS(3)
-     real, allocatable :: lats(:), lons(:), zs(:), lats0(:), lons0(:), zs0(:), ids0_r(:)
+     real, allocatable :: lats(:), lons(:), zs(:), lats0(:), lons0(:), zs0(:)
+     real(kind=ESMF_KIND_R8), allocatable :: ids0_r(:)
      integer, allocatable :: ids0(:)
      integer :: status
      type (ESMF_VM)   :: vm
@@ -900,7 +904,7 @@ contains
         total_num = meta%get_dimension('id', _RC)
         last_time = meta%get_dimension('time', _RC)
         v => meta%get_variable('time', _RC)
-        attr => v%get_attribute('units')
+        attr => v%get_attribute('long_name')
         units => attr%get_value()
         select type(units)
         type is (character(*))
@@ -913,10 +917,10 @@ contains
       allocate(lats0(total_num), lons0(total_num), zs0(total_num), ids0_r(total_num))
 
       if  (my_rank ==0) then
-        call formatter%get_var('lats', lats0, start = [1,last_time], _RC)
-        call formatter%get_var('lons', lons0, start = [1,last_time], _RC)
-        call formatter%get_var('zs',   zs0,   start = [1,last_time], _RC)
-        call formatter%get_var('ids',  ids0_r,start = [1,last_time], _RC)
+        call formatter%get_var('lat', lats0, start = [1,last_time], _RC)
+        call formatter%get_var('lon', lons0, start = [1,last_time], _RC)
+        call formatter%get_var('pressure',   zs0,   start = [1,last_time], _RC)
+        call formatter%get_var('id',  ids0_r,start = [1,last_time], _RC)
         call formatter%close(_RC)
         ids0 = int(ids0_r)
       endif
