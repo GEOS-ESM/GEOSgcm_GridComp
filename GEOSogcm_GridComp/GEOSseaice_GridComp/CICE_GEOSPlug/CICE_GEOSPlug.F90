@@ -883,7 +883,7 @@ contains
   !! Arguments
   !! ---------
      type(ESMF_State)                      :: state
-     integer, intent(out)                  :: rc
+     integer,          intent(OUT)         :: rc
 
 !EOP
 
@@ -922,8 +922,8 @@ contains
 
   !! Arguments
   !! ---------
-     type(ESMF_State)                      :: state
-     integer, intent(out)                  :: rc
+     type(ESMF_State)                        :: state
+     integer,           intent(OUT)          :: rc
 
 !EOP
 
