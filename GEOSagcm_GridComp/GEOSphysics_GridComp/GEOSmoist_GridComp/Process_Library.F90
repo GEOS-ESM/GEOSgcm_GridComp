@@ -32,13 +32,13 @@ module GEOSmoist_Process_Library
     module procedure ICE_FRACTION_SC
   end interface ICE_FRACTION
   ! In anvil/convective clouds
-  real, parameter :: aT_ICE_ALL = 245.16
-  real, parameter :: aT_ICE_MAX = 261.16
+  real, parameter :: aT_ICE_ALL = 252.16
+  real, parameter :: aT_ICE_MAX = 268.16
   real, parameter :: aICEFRPWR  = 2.0
   ! Over snow/ice SRF_TYPE = 2
-  real, parameter :: iT_ICE_ALL = MAPL_TICE-40.0
-  real, parameter :: iT_ICE_MAX = MAPL_TICE
-  real, parameter :: iICEFRPWR  = 4.0
+  real, parameter :: iT_ICE_ALL = 236.16
+  real, parameter :: iT_ICE_MAX = 261.16
+  real, parameter :: iICEFRPWR  = 6.0
   ! Over Land     SRF_TYPE = 1
   real, parameter :: lT_ICE_ALL = 239.16
   real, parameter :: lT_ICE_MAX = 261.16
@@ -248,7 +248,7 @@ module GEOSmoist_Process_Library
         if ( TEMP <= iT_ICE_ALL ) then
            ICEFRCT_M = 1.000
         else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_M = 1.00 -  ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL )
+           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
         end if
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
@@ -307,7 +307,7 @@ module GEOSmoist_Process_Library
       real, intent(in   ) :: NL,NI
       real, intent(in   ) :: QS
 
-      real :: ES,RADIUS,K1,K2,QCm,EVAP,RHx,QC  !,QS
+      real :: ES,RADIUS,K1,K2,QCm,EVAP,RHx,QC
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!         EVAPORATION OF CLOUD WATER.             !!
@@ -344,7 +344,7 @@ module GEOSmoist_Process_Library
       RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,1)
       
       if ( (RHx < RHCR ) .and. (RADIUS > 0.0) ) then
-         EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+         EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
          EVAP = MIN( EVAP , QL  )
       else
          EVAP = 0.0
@@ -386,7 +386,7 @@ module GEOSmoist_Process_Library
       real, intent(in   ) :: NL,NI
       real, intent(in   ) :: QS
 
-      real :: ES,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC !, QS
+      real :: ES,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!         SUBLORATION OF CLOUD WATER.             !!
@@ -423,7 +423,7 @@ module GEOSmoist_Process_Library
       RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,2)
       
       if ( (RHx < RHCR) .and.(RADIUS > 0.0) ) then
-         SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+         SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
          SUBL = MIN( SUBL , QI  )
       else
          SUBL = 0.0

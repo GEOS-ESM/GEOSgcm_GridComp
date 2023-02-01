@@ -131,7 +131,7 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,  RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 7200., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -454,7 +454,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
        SEEDCNV = SQRT(MAX(MIN(SEEDINI/1000000.0,1.0),0.0))
-       SEEDCNV = (1.1*CNV_FRC - 0.1) * ((1.0-(1.0-SEEDCNV))*(STOCH_TOP-STOCH_BOT)+STOCH_BOT)
+       ! Create stochastic variability to GF sigma
+       SEEDCNV = SQRT(1.0-(1.0-SEEDCNV))*(STOCH_TOP-STOCH_BOT)+STOCH_BOT
     else
        SEEDCNV = 1.0
     endif

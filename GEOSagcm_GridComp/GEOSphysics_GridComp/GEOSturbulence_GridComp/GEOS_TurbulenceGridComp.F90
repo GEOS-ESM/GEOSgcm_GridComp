@@ -3200,14 +3200,14 @@ contains
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,           RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,         RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.20,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.10,         RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.00,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=15.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.00,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=2.0e-3,       RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,           RC=STATUS); VERIFY_(STATUS)
      endif
@@ -3526,10 +3526,6 @@ contains
          allocate(ZPBL10p(IM,JM))
          ALLOC_ZPBL10p = .TRUE.
       endif
-
-      if(.not.associated(KPBL_SC )) then
-         allocate(KPBL_SC(IM,JM))
-      end if
 
       ALLOC_TCZPBL = .FALSE.
       CALC_TCZPBL = .FALSE.
@@ -4512,8 +4508,6 @@ contains
 
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF
-
-       if (LM .eq. 72) then
          thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
          tcrib(:,:,LM) = 0.0
          do I = 1, IM
@@ -4530,23 +4524,6 @@ contains
                end do
             end do
          end do
-       else
-         tcrib(:,:,LM) = 0.0
-         do I = 1, IM
-            do J = 1, JM
-               do L=LM-1,1,-1
-                  uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2,1.0E-8)
-                  tcrib(I,J,L) = MAPL_GRAV*(THV(I,J,L)-THV(I,J,LM))*Z(I,J,L)/(THV(I,J,LM)*uv2h(I,J))
-                  if (tcrib(I,J,L) >= tcri_crit) then
-                     TCZPBL(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
-                     KPBLTC(I,J) = float(L)
-                     exit
-                  end if
-               end do
-            end do
-         end do
-       endif
-
          where (TCZPBL<0.)
             TCZPBL = Z(:,:,LM)
             KPBLTC = float(LM)
@@ -4726,8 +4703,9 @@ contains
       KPBL = MAX(KPBL,float(KPBLMIN))
    
      ! Calc KPBL using surface turbulence, for use in shallow scheme
-      KPBL_SC = MAPL_UNDEF
-      do I = 1, IM
+      if(associated(KPBL_SC)) then
+       KPBL_SC = MAPL_UNDEF
+       do I = 1, IM
          do J = 1, JM
             if (DO_SHOC==0) then
               temparray(1:LM+1) = KHSFC(I,J,0:LM)
@@ -4745,7 +4723,8 @@ contains
                KPBL_SC(I,J) = float(LM)
             endif
          end do
-      end do
+       end do
+      endif
 
       if (associated(PPBL)) then
          do I = 1, IM
