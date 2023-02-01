@@ -2594,6 +2594,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='RHCRIT',                                         &
+         LONG_NAME ='critical_relative_humidity_for_PDF',               &
+         UNITS     ='1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RHX',                                         & 
          LONG_NAME ='relative_humidity_after_PDF',               &
          UNITS     ='1',                                           &

@@ -951,6 +951,7 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
     end do
   end do  ! i=1,ncol
 
+#ifdef ENERGY_ADJUST
   if (band%ngwv /= 0) then
    ! compute momentum and energy flux changes
     taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
@@ -960,6 +961,7 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
     call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
     call energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
   endif
+#endif
 
 end subroutine energy_momentum_adjust 
 
