@@ -1524,7 +1524,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol
     
     real :: rdts, fac_g2v, fac_v2g, fac_i2s, fac_imlt, fac_frz
-    real :: tz, qv, ql, qr, qi, qs, qg, melt, newqi, newql
+    real :: tz, qv, ql, qr, qi, qs, qg, melt, ifrac, newqi, newql
     real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
     real :: pgmlt, psmlt, pgfr, pgaut, psaut, pgsub
     real :: tc, tsq, dqs0, qden, qim, qsm
@@ -1598,8 +1598,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             dtmp = tice - tzk (k)
             newqi = new_ice_condensate(tzk (k), qlk (k), qik (k), cnv_fraction, srf_type)
             sink = max(0.0,min (newqi, fac_frz * dtmp / icpk (k)))
-    ! WRF   qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.15 * dtmp)))
-            qi_crt = qi_gen * min (qi_lim, 0.1 * dtmp) / den (k)
+            ifrac = ice_fraction(tzk(k),cnv_fraction,srf_type) 
+            qi_crt = qi_gen * min (qi_lim, ifrac) / den (k)
             tmp = min (sink, dim (qi_crt, qik (k)))
             qlk (k) = qlk (k) - sink
             qsk (k) = qsk (k) + sink - tmp
@@ -2030,7 +2030,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     real :: dqh, q_plus, q_minus, dt_evap
     real :: evap, sink, tc, pisub, q_adj, dtmp
     real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g
-    real :: newqi, fac_frz
+    real :: ifrac, newqi, fac_frz
     real :: dt5
  
     integer :: k
@@ -2048,8 +2048,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     
     fac_g2v = 1. - exp (- dts / tau_g2v)
     fac_v2g = 1. - exp (- dts / tau_v2g)
-    
-    fac_frz = 1. - exp (- dt5 / tau_frz)
+  
+    fac_frz = 1. - exp (- dts / tau_frz)
  
     ! -----------------------------------------------------------------------
     ! define heat capacity and latend heat coefficient
@@ -2216,7 +2216,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
                 tmp = tice - tz (k)
                 ! 20160912: the following should produce more ice at higher altitude
                 ! qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp))) / den (k)
-                qi_crt = qi_gen * min (qi_lim, 0.1 * tmp) / den (k)
+                ifrac = ice_fraction(tz(k),cnv_fraction,srf_type)
+                qi_crt = qi_gen * min (qi_lim, ifrac) / den (k)
                 sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk (k))
              else ! ice -- > vapor
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
