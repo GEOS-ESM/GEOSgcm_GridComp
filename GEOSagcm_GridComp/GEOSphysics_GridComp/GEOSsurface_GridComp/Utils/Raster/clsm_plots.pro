@@ -2922,175 +2922,178 @@ end
 
 ; ------------------------------------
 
-pro proc_glass
-
-
-;IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/AVHRR/V4/HDF/'
-;ODATA = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/lai_grn/v4/GLASS-LAI/AVHRR.v4/'
-;LABEL = 'GLASS01B02.V04.A'
-;yearb = 1981
+;; This program is being deprecated, we don't have IDATA valid path 
+;pro proc_glass
+;
+;
+;;IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/AVHRR/V4/HDF/'
+;;ODATA = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/lai_grn/v4/GLASS-LAI/AVHRR.v4/'
+;;LABEL = 'GLASS01B02.V04.A'
+;;yearb = 1981
+;;YEARe = 2017
+;
+;IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/'
+;ODATA = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/lai_grn/v4/GLASS-LAI/MODIS.v4/'
+;LABEL = 'GLASS01B01.V04.A'
+;yearb = 2000
 ;YEARe = 2017
+;
+;nc = 7200
+;nr = 3600
+;nyrs = YEARe - yearb + 1
+;
+;lwval = 0.
+;upval = 7.
+;
+;im = nc
+;jm = nr
+;
+;dx = 360. / im
+;dy = 180. / jm
+;
+;x = indgen(im)*dx -180. +  dx/2.
+;y = indgen(jm)*dy -90.  +  dy/2.
+;r_in  = [253,224,255,238,205,193,152,  0,124,  0,  0,  0,  0,  0,  0, 48,110, 85]
+;g_in  = [253,238,255,238,205,255,251,255,252,255,238,205,139,128,100,128,139,107]
+;b_in  = [253,224,  0,  0,  0,193,152,127,  0,  0,  0,  0,  0,  0,  0, 20, 61, 47]
+;
+;n_levels = n_elements (r_in)
+;levels=[0.,0.25,0.5,0.75,1.,1.25,1.5,10. * indgen(11)*0.05+2.]
+;red  = intarr (256)
+;green= intarr (256)
+;blue = intarr (256)
+;
+;red  (255) = 255
+;green(255) = 255
+;blue (255) = 255
+;
+;for k = 0, N_levels -1 do begin 
+;	red  (k+1) = r_in (k)
+;	green(k+1) = g_in (k)
+;	blue (k+1) = b_in (k)
+;endfor
+;thisDevice = !D.Name
+;set_plot,'Z'
+;Device, Set_Resolution=[800,500], Z_Buffer=0
+;TVLCT,red,green,blue
+;colors = indgen (N_levels) + 1
+;
+;limits = [-60,-180,90,180]
+;
+;Erase,255
+;!p.background = 255
+;
+;;file1 = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/2008/GLASS01B01.V04.A2008185.hdf'
+;file1 = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/lai_grn/v4/GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY105.nc4'
+;ncid = ncdf_open (file1)
+;NCDF_VARGET, ncid,'LAI', adum
+;ncdf_close,ncid
+;
+;;FileID=HDF_SD_Start(file1, /read)
+;;sds_id = hdf_sd_select(FileID, 0)
+;;hdf_sd_getdata, sds_id,adum
+;;HDF_SD_END, FileID
+;adum (where (adum eq  2550)) =  !VALUES.F_NAN
+;adum = adum /100.
+;
+;
+;MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
+;MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2,/USA
+;;contour, adum,x,y,levels = levels,c_colors=colors,/cell_fill
+;
+;snapshot = TVRD()
+;TVLCT, r, g, b, /Get
+;Device, Z_Buffer=1
+;Set_Plot, thisDevice
+;image24 = BytArr(3, 800, 500)
+;image24[0,*,*] = r[snapshot]
+;image24[1,*,*] = g[snapshot]
+;image24[2,*,*] = b[snapshot]
+;Write_JPEG, 'global_map.jpg', image24, True=1, Quality=100
+;stop
+;
+;for DOY = 1,361,8 do begin
+;    LAI = intarr (nc,nr,nyrs)
+;    LAI (*,*,*) = 2550
+;    DDD = string (DOY,'(i3.3)')
+;    for year = yearB, yearE do begin
+;	YYYY = string (year, '(i4.4)')
+;	filename = IDATA + YYYY + '/' + LABEL + yyyy + DDD + '.hdf'
+;	FileID=HDF_SD_Start(filename, /read)
+;	sds_id = hdf_sd_select(FileID, 0)
+;	hdf_sd_getdata, sds_id,adum
+;        adum = adum *10
+;	HDF_SD_END, FileID
+;	print, year,min(adum), max(adum)
+;	LAI (*,*,year - yearB) = adum
+;	
+;    endfor
+;
+;indata = intarr (nc,nr)
+;indata (*,*) = 2550
+;
+;for j = 0, nr -1 do begin
+;   for i = 0, nc -1 do begin
+;       if(min (LAI (i,j,*)) lt 2550) then begin
+;	  syears = where (LAI (i,j,*) lt 2550)
+;	  indata (i,j) = mean (LAI (i,j,syears))
+;         ; if(mean (LAI (i,j,syears)) gt 500.) then  stop
+;	 ; print, n_elements (syears), mean (LAI (i,j,syears))
+;       endif
+;   endfor
+;endfor
+;
+;print, min (indata), max(indata)
+;
+;ofile = ODATA + LABEL + 'YYYY' + DDD + '.nc4'
+;write_glass_output, indata, ofile
+;
+;endfor
+;
+;end
+;
+;; ----------------------------------------------------------------
+;
+;
+;; This program is being deprecated, since it needs "pro proc_glass" 
 
-IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/'
-ODATA = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/lai_grn/v4/GLASS-LAI/MODIS.v4/'
-LABEL = 'GLASS01B01.V04.A'
-yearb = 2000
-YEARe = 2017
-
-nc = 7200
-nr = 3600
-nyrs = YEARe - yearb + 1
-
-lwval = 0.
-upval = 7.
-
-im = nc
-jm = nr
-
-dx = 360. / im
-dy = 180. / jm
-
-x = indgen(im)*dx -180. +  dx/2.
-y = indgen(jm)*dy -90.  +  dy/2.
-r_in  = [253,224,255,238,205,193,152,  0,124,  0,  0,  0,  0,  0,  0, 48,110, 85]
-g_in  = [253,238,255,238,205,255,251,255,252,255,238,205,139,128,100,128,139,107]
-b_in  = [253,224,  0,  0,  0,193,152,127,  0,  0,  0,  0,  0,  0,  0, 20, 61, 47]
-
-n_levels = n_elements (r_in)
-levels=[0.,0.25,0.5,0.75,1.,1.25,1.5,10. * indgen(11)*0.05+2.]
-red  = intarr (256)
-green= intarr (256)
-blue = intarr (256)
-
-red  (255) = 255
-green(255) = 255
-blue (255) = 255
-
-for k = 0, N_levels -1 do begin 
-	red  (k+1) = r_in (k)
-	green(k+1) = g_in (k)
-	blue (k+1) = b_in (k)
-endfor
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[800,500], Z_Buffer=0
-TVLCT,red,green,blue
-colors = indgen (N_levels) + 1
-
-limits = [-60,-180,90,180]
-
-Erase,255
-!p.background = 255
-
-;file1 = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/2008/GLASS01B01.V04.A2008185.hdf'
-file1 = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/lai_grn/v4/GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY105.nc4'
-ncid = ncdf_open (file1)
-NCDF_VARGET, ncid,'LAI', adum
-ncdf_close,ncid
-
-;FileID=HDF_SD_Start(file1, /read)
-;sds_id = hdf_sd_select(FileID, 0)
-;hdf_sd_getdata, sds_id,adum
-;HDF_SD_END, FileID
-adum (where (adum eq  2550)) =  !VALUES.F_NAN
-adum = adum /100.
-
-
-MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
-MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2,/USA
-;contour, adum,x,y,levels = levels,c_colors=colors,/cell_fill
-
-snapshot = TVRD()
-TVLCT, r, g, b, /Get
-Device, Z_Buffer=1
-Set_Plot, thisDevice
-image24 = BytArr(3, 800, 500)
-image24[0,*,*] = r[snapshot]
-image24[1,*,*] = g[snapshot]
-image24[2,*,*] = b[snapshot]
-Write_JPEG, 'global_map.jpg', image24, True=1, Quality=100
-stop
-
-for DOY = 1,361,8 do begin
-    LAI = intarr (nc,nr,nyrs)
-    LAI (*,*,*) = 2550
-    DDD = string (DOY,'(i3.3)')
-    for year = yearB, yearE do begin
-	YYYY = string (year, '(i4.4)')
-	filename = IDATA + YYYY + '/' + LABEL + yyyy + DDD + '.hdf'
-	FileID=HDF_SD_Start(filename, /read)
-	sds_id = hdf_sd_select(FileID, 0)
-	hdf_sd_getdata, sds_id,adum
-        adum = adum *10
-	HDF_SD_END, FileID
-	print, year,min(adum), max(adum)
-	LAI (*,*,year - yearB) = adum
-	
-    endfor
-
-indata = intarr (nc,nr)
-indata (*,*) = 2550
-
-for j = 0, nr -1 do begin
-   for i = 0, nc -1 do begin
-       if(min (LAI (i,j,*)) lt 2550) then begin
-	  syears = where (LAI (i,j,*) lt 2550)
-	  indata (i,j) = mean (LAI (i,j,syears))
-         ; if(mean (LAI (i,j,syears)) gt 500.) then  stop
-	 ; print, n_elements (syears), mean (LAI (i,j,syears))
-       endif
-   endfor
-endfor
-
-print, min (indata), max(indata)
-
-ofile = ODATA + LABEL + 'YYYY' + DDD + '.nc4'
-write_glass_output, indata, ofile
-
-endfor
-
-end
-
-; ----------------------------------------------------------------
-
-
-pro write_glass_output,indata,ofile
-
-nc = 7200
-nr = 3600
-
-id   = NCDF_CREATE(ofile, /clobber) ;Create netCDF output file
-xid  = NCDF_DIMDEF(id, 'N_lon', nc)                                              ;Define x-dimension
-yid  = NCDF_DIMDEF(id, 'N_lat', nr)                                              ;Define y-dimension
-NCDF_ATTPUT,id, 'CellSize_arcmin' , 3,/global
-NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama GSFC/NASA',/global
-NCDF_ATTPUT,id, 'Contact', 'Anyone from GMAO Land Group',/global
-str_date=systime()
-NCDF_ATTPUT,id, 'Date', str_date,/global
-vid  = NCDF_VARDEF(id, 'lat',  yid, /DOUBLE)         ;Define latitude variable
-vid  = NCDF_VARDEF(id, 'lon', xid, /DOUBLE)         ;Define longitude variable
-vid  = NCDF_VARDEF(id, 'LAI', [xid, yid], /SHORT)
-NCDF_ATTPUT, id, vid, 'LongName','Leaf Area Index 8-Day 0.05-degrees GEO Grid climatology'
-NCDF_ATTPUT, id, vid, 'units', 'm^2/m^2'
-NCDF_ATTPUT, id, vid, 'scale_factor',0.01
-NCDF_ATTPUT, id, vid, 'valid_range','0 1000'
-NCDF_ATTPUT, id, vid, '_FillValue', 2550
-
-NCDF_CONTROL, id, /ENDEF
-
-dxy = 360.d/7200.d
-
-x = indgen (nc)*dxy -180. + dxy/2.d
-y = indgen (nr)*dxy  -90. + dxy/2.d
-
-NCDF_VARPUT, id,'lat', y
-NCDF_VARPUT, id,'lon', x
-for j =0, nr -1 do begin
-NCDF_VARPUT, id, 'LAI',offset=[0,nr-1 -j],count=[nc,1]   , nint(indata [*,j])
-endfor
-NCDF_CLOSE, id 
-
-end
+;pro write_glass_output,indata,ofile
+;
+;nc = 7200
+;nr = 3600
+;
+;id   = NCDF_CREATE(ofile, /clobber) ;Create netCDF output file
+;xid  = NCDF_DIMDEF(id, 'N_lon', nc)                                              ;Define x-dimension
+;yid  = NCDF_DIMDEF(id, 'N_lat', nr)                                              ;Define y-dimension
+;NCDF_ATTPUT,id, 'CellSize_arcmin' , 3,/global
+;NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama GSFC/NASA',/global
+;NCDF_ATTPUT,id, 'Contact', 'Anyone from GMAO Land Group',/global
+;str_date=systime()
+;NCDF_ATTPUT,id, 'Date', str_date,/global
+;vid  = NCDF_VARDEF(id, 'lat',  yid, /DOUBLE)         ;Define latitude variable
+;vid  = NCDF_VARDEF(id, 'lon', xid, /DOUBLE)         ;Define longitude variable
+;vid  = NCDF_VARDEF(id, 'LAI', [xid, yid], /SHORT)
+;NCDF_ATTPUT, id, vid, 'LongName','Leaf Area Index 8-Day 0.05-degrees GEO Grid climatology'
+;NCDF_ATTPUT, id, vid, 'units', 'm^2/m^2'
+;NCDF_ATTPUT, id, vid, 'scale_factor',0.01
+;NCDF_ATTPUT, id, vid, 'valid_range','0 1000'
+;NCDF_ATTPUT, id, vid, '_FillValue', 2550
+;
+;NCDF_CONTROL, id, /ENDEF
+;
+;dxy = 360.d/7200.d
+;
+;x = indgen (nc)*dxy -180. + dxy/2.d
+;y = indgen (nr)*dxy  -90. + dxy/2.d
+;
+;NCDF_VARPUT, id,'lat', y
+;NCDF_VARPUT, id,'lon', x
+;for j =0, nr -1 do begin
+;NCDF_VARPUT, id, 'LAI',offset=[0,nr-1 -j],count=[nc,1]   , nint(indata [*,j])
+;endfor
+;NCDF_CLOSE, id 
+;
+;end
 
 ; -------------------------------------------------------------------
  pro irrig_method, ncat, tile_id
