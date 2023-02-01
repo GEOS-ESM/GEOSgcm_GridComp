@@ -47,7 +47,8 @@ module GEOS_LandGridCompMod
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
   integer                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
-  integer                                 :: IGNI, DO_FIRE_DANGER
+  integer                                 :: IGNI
+  logical                                 :: DO_FIRE_DANGER
 
 contains
 
@@ -155,7 +156,7 @@ contains
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call MAPL_GetResource (SCF, RUN_ROUTE, label='RUN_ROUTE:',           DEFAULT=0, __RC__ )
     call MAPL_GetResource (SCF, DO_GOSWIM, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
-    call MAPL_GetResource (SCF, DO_FIRE_DANGER, label='FIRE_DANGER:',    DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, DO_FIRE_DANGER, label='FIRE_DANGER:',    DEFAULT=.false., __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
     SELECT CASE (LSM_CHOICE)
@@ -208,7 +209,7 @@ contains
 !       end if
 !    ENDIF
    
-    if (DO_FIRE_DANGER /= 0) then
+    if (DO_FIRE_DANGER) then
         IGNI = MAPL_AddChild(GC, NAME='IGNI'//trim(tmp), SS=IgniSetServices, RC=STATUS)
         VERIFY_(STATUS)
     else
@@ -1354,7 +1355,7 @@ contains
 !    ENDIF
 
 
-    if (DO_FIRE_DANGER /= 0) then
+    if (DO_FIRE_DANGER) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC',        CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GFMC',        CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC',         CHILD_ID = IGNI,  __RC__ )
@@ -1406,7 +1407,7 @@ contains
                                                       RC=STATUS )
           VERIFY_(STATUS)
 
-          if (DO_FIRE_DANGER /= 0) then
+          if (DO_FIRE_DANGER) then
               call MAPL_AddConnectivity (                      &
                 GC,                                            &
                 SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ',    &
@@ -1439,7 +1440,7 @@ contains
             SRC_ID =  VEGDYN                                   ,         &
                                                       RC=STATUS ) 
 
-          if (DO_FIRE_DANGER /= 0) then
+          if (DO_FIRE_DANGER) then
               call MAPL_AddConnectivity (                      &
                 GC,                                            &
                 SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ',    &

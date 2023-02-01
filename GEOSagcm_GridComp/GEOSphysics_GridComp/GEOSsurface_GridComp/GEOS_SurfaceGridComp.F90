@@ -98,7 +98,7 @@ module GEOS_SurfaceGridCompMod
   integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
-  integer :: DO_FIRE_DANGER 
+  logical :: DO_FIRE_DANGER
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
@@ -244,7 +244,7 @@ module GEOS_SurfaceGridCompMod
        _ASSERT(.FALSE.,'unknown LSM_CHOICE')
     end if
     call MAPL_GetResource    (SCF,  CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,          __RC__ )
-    call MAPL_GetResource    (SCF,  DO_FIRE_DANGER,label='FIRE_DANGER:',            DEFAULT=0,          __RC__ )
+    call MAPL_GetResource    (SCF,  DO_FIRE_DANGER,label='FIRE_DANGER:',            DEFAULT=.false.,    __RC__ )
 
     call ESMF_ConfigDestroy(SCF, __RC__ )
     
@@ -2955,7 +2955,7 @@ module GEOS_SurfaceGridCompMod
   END IF
 
 
-  if (DO_FIRE_DANGER /= 0) then
+  if (DO_FIRE_DANGER) then
 
     ! hourly
 
@@ -6471,7 +6471,7 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , CNFSEL  , 'CNFSEL' ,  RC=STATUS); VERIFY_(STATUS)
     END IF
 
-    if (DO_FIRE_DANGER /= 0) then
+    if (DO_FIRE_DANGER) then
        call MAPL_GetPointer(EXPORT  , FFMC        , 'FFMC'       ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , GFMC        , 'GFMC'       ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , DMC         , 'DMC'        ,  RC=STATUS); VERIFY_(STATUS)
@@ -7073,7 +7073,7 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(CNFSEL  ,CNFSELTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     END IF
 
-    if (DO_FIRE_DANGER /= 0) then 
+    if (DO_FIRE_DANGER) then 
        call MKTILE(FFMC,        FFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(GFMC,        GFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(DMC,         DMCTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
@@ -9056,7 +9056,7 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'FHOCN' ,ALLOC=associated(FHOCNTILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
-      if (DO_FIRE_DANGER /= 0) then
+      if (DO_FIRE_DANGER) then
          call MAPL_GetPointer(GEX(type), dum, 'FFMC', ALLOC=associated(FFMCTILE), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'GFMC', ALLOC=associated(GFMCTILE), notFoundOK=.true., RC=STATUS)
