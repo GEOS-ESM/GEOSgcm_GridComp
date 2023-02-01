@@ -559,35 +559,14 @@ contains
 
 
     ! misc
-
+#if (0)
     call MAPL_AddExportSpec(GC,                    & 
          SHORT_NAME = 'VPD',                       &
          LONG_NAME  = 'vapor pressure defficit',   &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__)
-
-
-     call MAPL_AddExportSpec(GC,                   & 
-         SHORT_NAME = 'DBG1',                      &
-         LONG_NAME  = 'DEBUG',                     &
-         UNITS      = '1',                         &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__)
-
-     call MAPL_AddExportSpec(GC,                   & 
-         SHORT_NAME = 'DBG2',                      &
-         LONG_NAME  = 'DEBUG',                     &
-         UNITS      = '1',                         &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__)
-
-     call MAPL_AddExportSpec(GC,                   & 
-         SHORT_NAME = 'DBG3',                      &
-         LONG_NAME  = 'DEBUG',                     &
-         UNITS      = '1',                         &
-         DIMS       = MAPL_DimsTileOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__)
+#endif
 
 !EOS
 
@@ -836,9 +815,6 @@ contains
     real, dimension(:), pointer :: BUI_daily_  => null()
     real, dimension(:), pointer :: DSR_daily_  => null()
 
-    ! debug
-    real, dimension(:), pointer :: DBG1, DBG2, DBG3
-
 
 ! Misc
 
@@ -960,11 +936,6 @@ contains
     call MAPL_GetPointer(EXPORT, DSR_daily_,  'DSR_DAILY_',  __RC__)
 
 
-    call MAPL_GetPointer(EXPORT, DBG1, 'DBG1', alloc=.true., __RC__)
-    call MAPL_GetPointer(EXPORT, DBG2, 'DBG2', alloc=.true., __RC__)
-    call MAPL_GetPointer(EXPORT, DBG3, 'DBG3', alloc=.true., __RC__)
-
-
 ! Get the time step
 ! -----------------
 
@@ -984,6 +955,9 @@ contains
     allocate(isNoon(NT), __STAT__)
 
     if (self%local_noon_method == LOCAL_NOON_SOLAR) then
+#if (1)
+        _ASSERT(.false., 'Precise local solar noon is disabled, please select LST instead.')
+#else
         allocate(LSHA0(NT), LSHA1(NT), __STAT__)
 
         call MAPL_Get(MAPL, ORBIT=ORBIT, __RC__)
@@ -993,6 +967,7 @@ contains
         isNoon = (LSHA0 <= 0) .and. (LSHA1 > 0)
     
         deallocate(LSHA0, LSHA1, __STAT__)
+#endif
     else    
         allocate(dt_local_noon(NT), __STAT__)
         dt_local_noon = ((hr-12)*3600 + mn*60 + sc) + ((24*3600)/(2*MAPL_PI))*LONS
@@ -1001,15 +976,6 @@ contains
 
         deallocate(dt_local_noon, __STAT__)
     end if
-
-
-    if (associated(DBG1)) then
-        DBG1 = MAPL_UNDEF
-        where (isNoon) DBG1 = 1.0
-    end if
-
-    if (associated(DBG2)) DBG2 = MAPL_UNDEF
-    if (associated(DBG3)) DBG3 = MAPL_UNDEF
 
 
 ! Accumulate precip
