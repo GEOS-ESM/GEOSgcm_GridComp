@@ -2120,7 +2120,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
               evap = 0.0
            endif
         endif
-        if (.not. do_qa) evap = min(evap,max(0.0,ql(k)-qlcn(k))) ! restrict evap to just LS QL
+       !if (.not. do_qa) evap = min(evap,max(0.0,ql(k)-qlcn(k))) ! restrict evap to just LS QL
         ! new total condensate / old condensate 
         qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-evap,0.0  ) / &
                                        max(qi(k)+ql(k)     ,qcmin) ) )
