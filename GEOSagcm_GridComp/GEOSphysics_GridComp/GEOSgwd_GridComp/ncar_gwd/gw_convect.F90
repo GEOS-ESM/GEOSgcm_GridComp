@@ -607,7 +607,6 @@ subroutine gw_beres_ifc( band, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats, dqcdt=dqcdt)
 
 !WMP pressure scaling near model top
-!!!  pint_adj = 1.0
      zfac_layer = 300.0 ! 3mb
      do k=1,pver+1
        do i=1,ncol
@@ -620,7 +619,7 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, alpha, tau_adjust=pint_adj)
+          ttgw, gwut, alpha) !, tau_adjust=pint_adj)
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &

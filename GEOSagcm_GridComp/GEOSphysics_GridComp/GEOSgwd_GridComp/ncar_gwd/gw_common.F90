@@ -401,7 +401,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   if (present(satfac_in)) then
      satfac = satfac_in
   else
-     satfac = 2.0
+     satfac = 1.0
   endif
 
 ! Maximum wind tendency from stress divergence (before efficiency applied).
