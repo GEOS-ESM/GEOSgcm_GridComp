@@ -54,62 +54,8 @@
 # Copy restarts-orig  contents for GEOS restarts into main exp directory
   cp -r /nobackupp18/afahad/GEOSMITgcmFiles/restarts-orig/* .	
 
-# Amend AGCM.rc - compare with what is in /nobackupp18/afahad/GEOSMITgcmFiles/AGCM.rc
-# See that steady_ocean needs to be flipped and sea ice internal and iau restarts need to be commented out.
-
-  ##AIAU_IMPORT_RESTART_FILE:               aiau_import_rst
-  ##AIAU_IMPORT_CHECKPOINT_FILE:            aiau_import_checkpoint
-  ##AIAU_IMPORT_CHECKPOINT_TYPE:            default
-
-  ##SEAICE_INTERNAL_RESTART_FILE:           seaice_internal_rst
-  ##SEAICE_INTERNAL_CHECKPOINT_FILE:        seaice_internal_checkpoint
-  ##SEAICE_INTERNAL_CHECKPOINT_TYPE:        default
-
-  steady_state_ocean: 1
-
-# Amend HISTORY.rc - essentially grab the one from /nobackupp18/afahad/GEOSMITgcmFiles/
+# Replace HISTORY.rc - essentially grab the one from /nobackupp18/afahad/GEOSMITgcmFiles/HISTORY.rc
 # Just retain the exp name and description from new exp.
-# Critical bit of this is the removal of the 21z reference time for collections.
-# This exp is 0z start
-
-# Perhaps start new exp with 1 day then switch to more or to more segments.
-# Note that CAP.rc is currently set to 30 day segments, ie.,
-  JOB_SGMT:     00000030 000000, set to 1 segment, ie., NUM_SGMT:     1
-
-# gcm_run.j - comment out the section to move mitgcm output with variable dsets
-# (not set here i think?), ie.,
-  # foreach dset ( $dsets )
-  # set num = `/bin/ls -1 $dset.nc | wc -l`
-  # if($num != 0) then
-  #    if(! -e $EXPDIR/MOM_Output) mkdir -p $EXPDIR/MOM_Output
-  #    /bin/mv $SCRDIR/$dset.nc $EXPDIR/MOM_Output/$dset.${edate}.nc
-  # endif
-  # end
-
-# gcm_run.j - in pbs sequence add:
-  #PBS -W umask=0022
-
-# gcm_run.j - just before setting arch add:
-  setenv FOR_IGNORE_EXCEPTIONS false
-
-# gcm_run.j -- for first test segment of new run, comment out resubmit at end of file (three lines up from bottom)
-
-# gcm_run.j - update new KPAR file, comment old KPAR file path
-  /bin/ln -sf /nobackupp18/afahad/GEOSMITgcmFiles/SEAWIFS_KPAR_mon_clim.data
-
-# gcm_run.j - update GRIDDIR from Udi's old directory to newer
-  setenv GRIDDIR  /nobackupp18/afahad/GEOSMITgcmFiles/GRIDDIR/a${AGCM_IM}x${AGCM_JM}_o${OGCM_IM}x${OGCM_JM}
-
-# gcm_run.j - update new tile file
-  /bin/ln -sf /nobackupp18/afahad/GEOSMITgcmFiles/CF0090x6C_LL5400xLL0015-Pfafstetter.til   tile.data
-
-# gcm_run.j - add the following file in the gcm_run if it doesn't exist 
-  /bin/ln -sf /nobackupp18/afahad/GEOSMITgcmFiles/DC0360xPC0181_LL5400x15-LL.bin DC0360xPC0181_LL5400x15-LL.bin
-
-# gcm_run.j - update new runoff bin file
-  /bin/ln -sf /nobackupp18/afahad/GEOSMITgcmFiles/CF0090x6C_LL5400xLL0015-Pfafstetter.TRN   runoff.bin
-
-# Compare the gcm_run.j file that exists in the /nobackupp18/afahad/GEOSMITgcmFiles/ to see if anything is missing
 
 # Go
   qsub job submit
