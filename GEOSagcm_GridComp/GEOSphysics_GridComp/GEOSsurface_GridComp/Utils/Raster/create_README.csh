@@ -1492,8 +1492,8 @@ cat << _EOF1_ > clsm/README2
 
    7.2 Data files
        7.2.1 Pafafstetter catchment connectivity, channel information
-	 file name : /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/
-		    land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat
+         file path : /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/    [NCCS/Discover]
+	 file name : land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat
 	 read ([UNIT],*) NPfafs
 	 do n = 1, ${NPfafs}
 		read ([UNIT],'(i8,i15,4(1x,f9.4),1x,e10.3,4(1x,e9.3),I8,6(1x,f9.4))')            &     
@@ -1543,8 +1543,9 @@ cat << _EOF2_ > clsm/README3
    8.1 Data generation and processing chain
 
          A GIS shape file of global administrative areas map was obtained from (https://gadm.org) 
-	 It was rasterized to 30-arcsec and stored at this location 
-         /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/misc/country_codes/v1/GADM_Country_and_USStates_codes_1km.nc4 file.
+	 It was rasterized to 30-arcsec and stored as 
+         file path : /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/        [NCCS/Discover]
+         file name : land/misc/country_codes/v1/GADM_Country_and_USStates_codes_1km.nc4
 	 
    8.2 Data files
        8.2.1 Country Code, US State Code, Country Name, State Name

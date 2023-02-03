@@ -9,7 +9,7 @@ PROGRAM mkEASETilesParam
   !  and mkSMAPTilesPara_v2.F90 in September 2022.
   ! Before the merger and cleanup, the EASE grid parameters were hard-coded here.
   !  For EASEv2 M25, the outdated scale value was used here.
-  ! This is program is renamed to mkEASETileParam from mkSMAPTilesPara_v2
+  ! The program was renamed to mkEASETileParam from mkSMAPTilesPara_v2
   !
   ! - wjiang + reichle, 21 Sep 2022
   
@@ -60,7 +60,7 @@ PROGRAM mkEASETilesParam
       real :: clat, clon, r_ease, s_ease, da
       real :: fr_gcm
       integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX
-      REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
+      !REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
       character*100 :: veg_class (12)
       character*200 :: gfile,gtopo30
       integer :: nc_ease,nr_ease, N_args, command_argument_count 
@@ -213,8 +213,8 @@ PROGRAM mkEASETilesParam
 
          dx  = 360._8/nc
          dy  = 180._8/nr
-         d2r = PI/180._8
-         da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
+         d2r = MAPL_PI_R8/180._8
+         !da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
          
          tileid_index = 0        
          catid_index  = 0
@@ -330,8 +330,8 @@ PROGRAM mkEASETilesParam
 
          dx  = 360._8/nc
          dy  = 180._8/nr
-         d2r = PI/180._8
-         da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
+         d2r = MAPL_PI_R8/180._8
+         !da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
          
          tileid_index = 0        
 

@@ -2512,8 +2512,8 @@ for i = 0l,im -1l do xh(i) = i*1./120 -180. + 1./240.
 id   = NCDF_CREATE('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4', /clobber, /NETCDF4_FORMAT) 
 xid  = NCDF_DIMDEF(id, 'N_lon' , im)     ;Define x-dimension
 yid  = NCDF_DIMDEF(id, 'N_lat' , jm)     ;Define y-dimension
-NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama GSFC/NASA',/global
-NCDF_ATTPUT,id, 'Contact', 'Anyone from GMAO Land Group',/global
+NCDF_ATTPUT,id, 'CreatedBy', 'NASA GSFC GMAO Land Group',/global
+NCDF_ATTPUT,id, 'Contact',   'NASA GSFC GMAO Land Group',/global
    
 str_date=systime()
 NCDF_ATTPUT,id, 'Date', str_date,/global 
