@@ -64,6 +64,11 @@ module GEOSmoist_Process_Library
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
+  ! defined to determine CNV_FRACTION
+  real    :: CNV_FRACTION_MIN
+  real    :: CNV_FRACTION_MAX
+  real    :: CNV_FRACTION_EXP
+
  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
@@ -90,6 +95,7 @@ module GEOSmoist_Process_Library
   public :: make_IceNumber, make_DropletNumber
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
+  public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
  
   contains
 

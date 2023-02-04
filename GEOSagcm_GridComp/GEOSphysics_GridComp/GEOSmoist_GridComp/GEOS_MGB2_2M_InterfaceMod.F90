@@ -441,6 +441,10 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL,CBL_METHOD,  'CBL_METHOD:', DEFAULT= 6     , __RC__)
       call MAPL_GetResource(MAPL, KSTRAP,  'STRAPPING:',     DEFAULT=-1, __RC__)
 
+      call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+
       GRIDNAME =  AdjustL(GRIDNAME)
       nn = len_trim(GRIDNAME)
       dateline = GRIDNAME(nn-1:nn)
