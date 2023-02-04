@@ -178,7 +178,7 @@ cd ../
 
 if( -e CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 setenv MASKFILE {MASKFILE}
-setenv LAND_INPUT_DIR {LAND_INPUT_DIR}
+setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 limit stacksize unlimited
 bin/mkCubeFVRaster.x -x {NX} -y {NY} {NC} >/dev/null
 bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
@@ -228,7 +228,7 @@ cd {BCDIR}
 source bin/g5_modules
 
 setenv MASKFILE {MASKFILE}
-setenv LAND_INPUT_DIR $input_dir
+setenv MAKE_BCS_INPUT_DIR $input_dir
 limit stacksize unlimited
 
 if( {LATLON_OCEAN} == TRUE ) then
@@ -375,7 +375,7 @@ def make_cube_bcs(config):
            OUTDIR = tmp_dir, \
            BCNAME = bcname, \
            bin_dir = bin_dir, \
-           LAND_INPUT_DIR = config['inputdir'], \
+           MAKE_BCS_INPUT_DIR = config['inputdir'], \
            BCJOB =  bcjob, \
            EASEVERSION = grid_type, \
            HRCODE = resolution, \

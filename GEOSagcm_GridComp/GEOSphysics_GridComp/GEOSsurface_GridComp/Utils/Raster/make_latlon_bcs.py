@@ -32,7 +32,7 @@ cd ../
 
 if( -e DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f DC{IM}xPC{JM}_{DATENAME}{IMO}{POLENAME}{JMO}.stdout
 setenv MASKFILE {MASKFILE}
-setenv LAND_INPUT_DIR {LAND_INPUT_DIR}
+setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 limit stacksize unlimited
 bin/mkLatLonRaster.x -x {NX} -y {NY}  -t -1 {IM} {JM} >/dev/null
 bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
@@ -179,7 +179,7 @@ def make_cube_bcs(config):
            OUTDIR = tmp_dir, \
            BCNAME = bcname, \
            bin_dir = bin_dir, \
-           LAND_INPUT_DIR = config['inputdir'], \
+           MAKE_BCS_INPUT_DIR = config['inputdir'], \
            BCJOB =  bcjob, \
            EASEVERSION = grid_type, \
            HRCODE = resolution, \

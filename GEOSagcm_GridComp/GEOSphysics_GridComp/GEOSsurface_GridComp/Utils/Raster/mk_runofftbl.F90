@@ -18,7 +18,7 @@ program Runoff
   character*100          :: file, fileT, fileR, fileO, fileB, fileBB
 
   character*400          :: fileLL
-  character*400          :: land_input_dir
+  character*400          :: MAKE_BCS_INPUT_DIR
 
 
   character*5            :: C_NX, C_NY
@@ -30,8 +30,8 @@ program Runoff
                             mapl_tp_file
 
 
-  call get_environment_variable ("LAND_INPUT_DIR",land_input_dir)
-  fileLL=trim(land_input_dir)//'/land/route/Outlet_latlon.'
+  call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
+  fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/Outlet_latlon.'
 
 
 ! Read inputs -----------------------------------------------------

@@ -61,7 +61,7 @@ PROGRAM mkCatchParam
   character(len=10)    :: nc_string, nr_string
   integer              :: nc_ease, nr_ease
   
-  !character*300          :: land_input_dir
+  !character*300          :: MAKE_BCS_INPUT_DIR
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
