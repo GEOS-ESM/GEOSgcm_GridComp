@@ -735,6 +735,11 @@ contains
          CHILD_ID = SDYN, &
          RC = STATUS)
     VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, &
+         SHORT_NAME = 'TH', &
+         CHILD_ID = SDYN, &
+         RC = STATUS)
+    VERIFY_(STATUS)
 #endif
 
     call MAPL_AddExportSpec( GC, &

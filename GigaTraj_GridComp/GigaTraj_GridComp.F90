@@ -356,8 +356,10 @@ contains
     call GigaInternalPtr%cube2latlon%regrid(W, W_latlon, _RC)
     call GigaInternalPtr%cube2latlon%regrid(P, P_latlon, _RC)
 
-    call esmf_halo(GigaInternalPtr%LatLonGrid, U_Latlon, V_latlon, W_latlon, P_latlon, &
-                   haloU, haloV, haloW, haloP, _RC)
+    call esmf_halo(GigaInternalPtr%LatLonGrid, U_Latlon, haloU, _RC)
+    call esmf_halo(GigaInternalPtr%LatLonGrid, V_Latlon, haloV, _RC)
+    call esmf_halo(GigaInternalPtr%LatLonGrid, W_Latlon, haloW, _RC)
+    call esmf_halo(GigaInternalPtr%LatLonGrid, P_Latlon, haloP, _RC)
 
     call updateFields( GigaInternalPtr%metSrc, c_loc(ctime), c_loc(haloU), c_loc(haloV), c_loc(haloW), c_loc(haloP))
 
@@ -465,8 +467,12 @@ contains
 !---------------
 ! Step 2) Get halo
 !---------------
-    call esmf_halo(GigaTrajInternalPtr%LatLonGrid, U_Latlon, V_latlon, W_latlon, P_latlon, &
-                   haloU, haloV, haloW, haloP, _RC)
+
+    call esmf_halo(GigaTrajInternalPtr%LatLonGrid, U_Latlon, haloU, _RC)
+    call esmf_halo(GigaTrajInternalPtr%LatLonGrid, V_Latlon, haloV, _RC)
+    call esmf_halo(GigaTrajInternalPtr%LatLonGrid, W_Latlon, haloW, _RC)
+    call esmf_halo(GigaTrajInternalPtr%LatLonGrid, P_Latlon, haloP, _RC)
+
 
 !---------------
 ! Step 3) Update
@@ -543,10 +549,10 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine
 
-  subroutine esmf_halo(grid, U, V, W, P,  haloU, haloV, haloW, haloP, rc)
+  subroutine esmf_halo(grid, Field,haloField, rc)
     type(ESMF_Grid), intent(in) :: grid
-    real, dimension(:,:,:), intent(in) :: U, V, W, P
-    real, dimension(:,:,:), intent(inout) :: haloU, haloV, haloW, haloP
+    real, dimension(:,:,:), intent(in) :: Field
+    real, dimension(:,:,:), intent(inout) :: haloField
     integer, optional,   intent(  out) :: RC
 
     character(len=ESMF_MAXSTR)              :: IAm
@@ -555,7 +561,7 @@ contains
     type(ESMF_Field)   :: halo_field
     type(ESMF_RouteHandle) :: rh
     real, dimension(:,:,:), pointer  :: with_halo
-    
+
     Iam = "Gigatraj ESMF Halo"
     call MAPL_GridGet(grid, localCellCountPerDim=counts, &
                       globalCellCountPerDim=DIMS, _RC)
@@ -569,30 +575,14 @@ contains
     !
     ! W.Y note, the pointer with_halo's lbound is 0
     !
-    ! get U + halo
-    with_halo(1:counts(1), 1:counts(2), :) = U
+    with_halo(1:counts(1), 1:counts(2), :) = Field
     call ESMF_FieldHalo(halo_field, rh, _RC)
-    haloU = with_halo
-     
-    ! get V + halo
-    with_halo(1:counts(1), 1:counts(2), :) = V
-    call ESMF_FieldHalo(halo_field, rh, _RC)
-    haloV = with_halo
-
-    ! get W + halo
-    with_halo(1:counts(1), 1:counts(2), :) = W
-    call ESMF_FieldHalo(halo_field, rh, _RC)
-    haloW = with_halo
-
-     ! get W + halo
-    with_halo(1:counts(1), 1:counts(2), :) = P
-    call ESMF_FieldHalo(halo_field, rh, _RC)
-    haloP = with_halo
+    haloField = with_halo
 
     call ESMF_FieldDestroy( halo_field)
 
     RETURN_(ESMF_SUCCESS)
-  end subroutine
+  end subroutine esmf_halo
 
   ! move the parcels to the PE where they belong to
   subroutine rebalance_parcels(clock, parcels, CellToRank, comm, DIMS, rc)
