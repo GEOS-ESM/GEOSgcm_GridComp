@@ -10,7 +10,7 @@
 # Checkout the model, method 1 (preferred)
   mepo clone -b feature/atrayano/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
 
-# Checkout the model, method 2 (note that this method checks out older code)
+# Checkout the model, method 2 (note that this method checks out older code, skip this method for now)
   git clone -b feature/udistr/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
   cd GEOSgcm
   mepo init
