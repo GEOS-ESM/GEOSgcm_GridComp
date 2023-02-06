@@ -1,5 +1,5 @@
-# Location of GEOSenv module on Discover
-  module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+# Location of GEOSenv module on Discover (Currently path not found)
+#  module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
 
 # Location of GEOSenv module on NAS
   module use -a /nobackup/gmao_SIteam/modulefiles
