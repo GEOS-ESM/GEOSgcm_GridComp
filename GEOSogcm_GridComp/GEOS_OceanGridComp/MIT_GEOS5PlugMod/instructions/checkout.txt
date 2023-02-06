@@ -1,5 +1,5 @@
 # Location of GEOSenv module on Discover 
-#  module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+# module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
 
 # Location of GEOSenv module on NAS
   module use -a /nobackup/gmao_SIteam/modulefiles
@@ -7,16 +7,6 @@
 # Load GEOSenv module
   module load GEOSenv
 
-# Checkout the model, method 1 (preferred)
+# Checkout the model
   mepo clone -b feature/atrayano/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
-
-# Checkout the model, method 2 (note that this method checks out older code, skip this method for now)
-  git clone -b feature/udistr/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
-  cd GEOSgcm
-  mepo init
-  mepo clone
-
-# The above methods end up "HEAD detached sparse" and "HEAD detached",
-# respectively.  To get back on a modifiable branch:
-  cd GEOSgcm/src/Components/@GEOSgcm_GridComp
-  git checkout feature/atrayano/MITgcm-DYAMOND
+  mepo checkout-if-exists feature/atrayano/MITgcm-DYAMOND
