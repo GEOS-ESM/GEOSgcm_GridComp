@@ -9,6 +9,8 @@ module GEOS_Giga_InterOpMod
    public :: initMetGEOSDistributedData
    public :: updateFields
    public :: rk4a_advance
+   public :: setData
+   public :: getData
  
    public :: test_Field3D
    public :: test_dataflow
@@ -60,6 +62,17 @@ module GEOS_Giga_InterOpMod
        integer(c_int), intent(in), value :: n
        type(c_ptr), intent(in), value :: lons_ptr, lats_ptr, levs_ptr, u_ptr, v_ptr, w_ptr
      end subroutine
+   
+     subroutine setData ( metSrc_ptr, ctime, quantity_ptr, data_ptr) bind(C, name="setData")
+       import :: c_ptr
+       type(c_ptr), intent(in), value :: metSrc_ptr, ctime, quantity_ptr, data_ptr
+     end subroutine setData
+
+     subroutine getData ( metSrc_ptr, ctime, quantity_ptr, n, lons_ptr, lats_ptr, levs_ptr, values_ptr) bind(C, name="getData")
+       import :: c_ptr, c_int
+       integer(c_int), intent(in), value :: n
+       type(c_ptr), intent(in), value :: metSrc_ptr, ctime, quantity_ptr, lons_ptr, lats_ptr, levs_ptr, values_ptr
+     end subroutine getData
 
    end interface
 

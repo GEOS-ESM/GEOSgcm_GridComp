@@ -1014,4 +1014,49 @@ contains
           end function parse_time_string
   end subroutine read_parcels
 
+  subroutine get_metsrc_data (GC, state, ctime, fieldname, values, RC )
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_State),    intent(inout) :: state
+    character(*), target,   intent(in) :: ctime
+    character(*), target,   intent(in) :: fieldname
+    real, target, intent(inout) :: values(:)
+    integer, optional,     intent(out) :: RC     ! Error code
+
+    character(len=ESMF_MAXSTR)    :: IAm
+    integer                       :: STATUS
+
+    type(GigaTrajInternal), pointer :: GigaInternalPtr
+    type (GigatrajInternalWrap)     :: wrap
+    real, dimension(:,:,:), pointer     :: field
+    real, dimension(:,:,:), allocatable :: field_latlon
+    real, dimension(:,:,:), allocatable, target  :: haloField
+    integer :: counts(3), dims(3), d1,d2,km
+
+    Iam = "get_metsrc_data"
+
+    call MAPL_GetPointer(state, field, fieldname, _RC)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    GigaInternalPtr => wrap%ptr
+    call MAPL_GridGet(GigaInternalPtr%LatLonGrid, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
+
+    allocate(field_latlon(counts(1),counts(2),counts(3)))
+    allocate(haloField(counts(1)+2, counts(2)+2,counts(3)), source = 0.0)
+
+    call GigaInternalPtr%cube2latlon%regrid(field, Field_latlon, _RC)
+
+    call esmf_halo(GigaInternalPtr%LatLonGrid, field_Latlon, haloField, _RC)
+
+    call setData( GigaInternalPtr%metSrc, c_loc(ctime), c_loc(fieldname), c_loc(haloField))
+
+    call getData(GigaInternalPtr%metSrc,  c_loc(ctime),  c_loc(fieldname),  &
+                 GigaInternalPtr%parcels%num_parcels,  &
+                 c_loc(GigaInternalPtr%parcels%lons),         &
+                 c_loc(GigaInternalPtr%parcels%lats),         &
+                 c_loc(GigaInternalPtr%parcels%zs),           &
+                 c_loc(values))
+
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine get_metsrc_data
+
 end module GigaTraj_GridCompMod
