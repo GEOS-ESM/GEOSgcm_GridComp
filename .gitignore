@@ -1,3 +1,4 @@
-/@GEOSchem_GridComp
-/GEOSchem_GridComp
-/GEOSchem_GridComp@
+.gitignore
+*_data
+*.o
+*.mod
