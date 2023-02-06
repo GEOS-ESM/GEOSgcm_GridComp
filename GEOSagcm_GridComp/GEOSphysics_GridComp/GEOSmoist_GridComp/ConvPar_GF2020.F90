@@ -14,7 +14,7 @@ MODULE ConvPar_GF2020
 USE module_gate
 USE MAPL
 USE ConvPar_GF_SharedParams
-USE GEOSmoist_Process_Library, only : ICE_FRACTION 
+USE GEOSmoist_Process_Library, only : ICE_FRACTION
 
  IMPLICIT NONE
  PRIVATE
@@ -32,7 +32,7 @@ USE GEOSmoist_Process_Library, only : ICE_FRACTION
         ,cum_fadj_massflx, cum_use_excess, cum_ave_layer, adv_trigger      &
         ,use_smooth_prof, evap_fix,output_sound,use_cloud_dissipation      &
         ,use_smooth_tend,GF_convpar_init,beta_sh,c0_shal                   &
-        ,use_linear_subcl_mf,cap_maxs                        
+        ,use_linear_subcl_mf,cap_maxs
 
 !PUBLIC GF2020_DRV,make_DropletNumber ,make_IceNumber,fract_liq_f &
 !      ,use_gustiness, use_random_num, dcape_threshold
@@ -202,7 +202,7 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO, PLO, PK, MASS, OMEGA, KH,       &
                                                       T1,TH1,Q1,U1,V1,QLCN,QICN,QLLS,QILS, &
                                                       CLLS,CLCN
-                                                       
+
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE_DYN_IN
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   ::  QV_DYN_IN, U_DYN_IN, V_DYN_IN, T_DYN_IN, &
@@ -225,7 +225,7 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: CNV_MFC
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: CNV_MF0 , CNV_PRC3 , CNV_MFD , CNV_DQCDT,  &
-                                                      CNV_UPDF, CNV_CVW  , CNV_QC  , ENTLAM   
+                                                      CNV_UPDF, CNV_CVW  , CNV_QC  , ENTLAM
 
 
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: CNPCPRATE, LIGHTN_DENS
@@ -797,7 +797,7 @@ CONTAINS
               !- update tracer mass mixing ratios
               DO ispc=1,mtp
 
-                 CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j) 
+                 CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j)
 
                  !-- final check for negative tracer mass mixing ratio
                  CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
@@ -898,7 +898,7 @@ ENDIF
       ENDDO
   ENDIF
 
-  
+
   !
   !--- cold pool/"convection tracer"
   IF(CONVECTION_TRACER==1) THEN
@@ -1516,7 +1516,7 @@ ENDIF
 
           enddo
          enddo
-       
+
        ENDIF
        !
        !--- deep convection
@@ -11440,7 +11440,7 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
        !--- source of enviroment moistening/cooling due to the 'remained' cloud dissipation into it.
        outqc_diss = ( qrc_diss * (1.-frh) ) / cloud_lifetime
 
-       if(versionx==1 .or. COUPL_MPHYSICS == .false.) then
+       if(versionx==1 .or. COUPL_MPHYSICS .eqv. .false.) then
 
          outt_diss  = -outqc_diss*(xlv/cp) !--- cooling
 
