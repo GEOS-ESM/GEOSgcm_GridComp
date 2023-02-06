@@ -1307,11 +1307,11 @@ cd ../../
 #mkdir -p IRRIG/$BCNAME/clsm
 #bin/mkIrrigTiles.x -b $BCNAME -t CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RC} -p $IRRIGTHRES
 
-if ( -f $EXPDIR/$OUTDIR/../../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data ) then
+if ( -f $EXPDIR/$OUTDIR/../../TOPO/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data ) then
 
-  ln -s $EXPDIR/../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data 
-  ln -s $EXPDIR/../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_GWD_var_$RC.data $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data 
-  ln -s $EXPDIR/../NCAR_TOPO_GMTED/TOPO_CF${NC}x6C/smoothed/topo_TRB_var_$RC.data $EXPDIR/$OUTDIR/topo_TRB_var_$RC.data 
+  ln -s $EXPDIR/../TOPO/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data 
+  ln -s $EXPDIR/../TOPO/TOPO_CF${NC}x6C/smoothed/topo_GWD_var_$RC.data $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data 
+  ln -s $EXPDIR/../TOPO/TOPO_CF${NC}x6C/smoothed/topo_TRB_var_$RC.data $EXPDIR/$OUTDIR/topo_TRB_var_$RC.data 
 
   /bin/mv    $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data  $BCNAME/.
   /bin/mv    $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data  $BCNAME/.
