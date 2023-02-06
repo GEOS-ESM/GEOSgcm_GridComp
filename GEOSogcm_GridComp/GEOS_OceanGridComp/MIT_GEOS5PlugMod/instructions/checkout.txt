@@ -7,7 +7,7 @@
 # Load GEOSenv module
   module load GEOSenv
 
-# Checkout the model, method 1
+# Checkout the model, method 1 (preferred)
   mepo clone -b feature/atrayano/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
 
 # Checkout the model, method 2 (note that this method checks out older code)
