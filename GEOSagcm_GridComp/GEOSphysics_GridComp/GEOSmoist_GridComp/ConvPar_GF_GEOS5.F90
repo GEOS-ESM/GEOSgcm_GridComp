@@ -58,6 +58,14 @@ USE ConvPar_GF_SharedParams
 
  !
 
+ !- physical constants
+ !- NOTE we need to define a T_ice local to
+ !- this code as it is *different* than the T_ice
+ !- that comes from ConvPar_GF_Shared. Without
+ !- doing this, the code is non-zero-diff
+ REAL, PARAMETER ::  &
+  T_ice_local   = 250.16 ! K
+
  !- proportionality constant to estimate pressure
  !- gradient of updraft (Zhang and Wu, 2003, JAS)
  REAL, PARAMETER ::    pgcd=1., pgcon=0.
@@ -545,7 +553,7 @@ IF(ITEST==0) CNPCPRATE(i,j) =  0.
               !- simple splitting of condensate tendency into liq/ice phases
               !- these are 'anvil' mixing ratio and not 'grid-scale' mix ratio
               !- (the convective source will be applied in progno_cloud, routine "consrc")
-              ! tem1 =  min(1., (max(0.,(T1(i,j,k)-T_ice))/(T_0-T_ice))**2)
+              ! tem1 =  min(1., (max(0.,(T1(i,j,k)-T_ice_local))/(T_0-T_ice_local))**2)
               ! QLCN (i,j,k) = QLCN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * tem1
               ! QICN (i,j,k) = QICN (i,j,k) + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
 IF(ITEST==3) then
@@ -4739,7 +4747,7 @@ ENDIF !- end of section for atmospheric composition
     real, parameter :: bdispm = 0.366       !berry--size dispersion (maritime)
     real, parameter :: bdispc = 0.146       !berry--size dispersion (continental)
     real, parameter :: T_BF  = 268.16   &
-                     , T_ice = 250.16
+                     , T_ice_local = 250.16
 !
 !  on input
 !
@@ -4957,7 +4965,7 @@ ENDIF !- end of section for atmospheric composition
 
                 if(qrc(i,k)>min_liq) then
                   cbf = 1.
-                  if(tempc(i,k) < T_BF) cbf=1.+0.5*sqrt (min(T_BF-tempc(i,k),T_BF-T_ICE))
+                  if(tempc(i,k) < T_BF) cbf=1.+0.5*sqrt (min(T_BF-tempc(i,k),T_BF-T_ice_local))
                   !cx0 = 0.002*cbf
                   cx0 = (c1d(i,k)+c0)*cbf !use this: c1d(i,k)+c0
                   !print*,'cbf=',k,cx0,cbf,dz
@@ -9102,14 +9110,14 @@ ENDIF
         DO k=kts,ktf
           DO i=its,itf
              if(ierr(i) /= 0) cycle
-             if    (tn(i,k) <= T_ice) then
+             if    (tn(i,k) <= T_ice_local) then
                 p_liq_ice(i,k) = 0.
-             elseif(  tn(i,k) > T_ice .and. tn(i,k) < T_0) then
-                p_liq_ice(i,k) =  ((tn(i,k)-T_ice)/(T_0-T_ice))**2
+             elseif(  tn(i,k) > T_ice_local .and. tn(i,k) < T_0) then
+                p_liq_ice(i,k) =  ((tn(i,k)-T_ice_local)/(T_0-T_ice_local))**2
              else
                 p_liq_ice(i,k) = 1.
              endif
-             !p_liq_ice(i,k) =  min(1., (max(0.,(tn(i,k)-T_ice))/(T_0-T_ice))**2)
+             !p_liq_ice(i,k) =  min(1., (max(0.,(tn(i,k)-T_ice_local))/(T_0-T_ice_local))**2)
 
          ENDDO
         ENDDO
@@ -9604,10 +9612,10 @@ end subroutine fct1d3
 
 	   !
 	   !--for future use (rain and snow precipitation fluxes)
-	   !if	 (tempco(i,k) <= T_ice) then
+	   !if	 (tempco(i,k) <= T_ice_local) then
            !   p_liq_ice(k) = 0.      ! only solid
-           !elseif(  tempco(i,k) > T_ice .and. tempco(i,k) < T_0) then
-           !   p_liq_ice(k) =  ((tempco(i,k)-T_ice)/(T_0-T_ice))**2
+           !elseif(  tempco(i,k) > T_ice_local .and. tempco(i,k) < T_0) then
+           !   p_liq_ice(k) =  ((tempco(i,k)-T_ice_local)/(T_0-T_ice_local))**2
            !else
            !   p_liq_ice(k) = 1.      ! only liquid
            !endif
