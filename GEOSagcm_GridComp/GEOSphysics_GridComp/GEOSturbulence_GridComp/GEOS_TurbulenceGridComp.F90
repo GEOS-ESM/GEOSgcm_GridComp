@@ -3147,11 +3147,13 @@ contains
        call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 0.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=0.0,     RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=5000.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,         RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -3187,7 +3189,6 @@ contains
      call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,         RC=STATUS); VERIFY_(STATUS)
      if (JASON_TUNING) then
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
@@ -3199,7 +3200,6 @@ contains
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,           RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.10,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.00,         RC=STATUS); VERIFY_(STATUS)

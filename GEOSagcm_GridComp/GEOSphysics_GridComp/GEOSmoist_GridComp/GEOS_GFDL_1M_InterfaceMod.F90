@@ -263,8 +263,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MINRHCRITOCN    , 'MINRHCRITOCN:'    , DEFAULT=tmprhO , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAXRHCRITLND    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITOCN:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CCW_EVAP_EFF    , 'CCW_EVAP_EFF:'    , DEFAULT= 0.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CCI_EVAP_EFF    , 'CCI_EVAP_EFF:'    , DEFAULT= 0.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 0.75  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 0.75  , RC=STATUS); VERIFY_(STATUS)
@@ -274,6 +272,18 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
+
+                                 CCW_EVAP_EFF = 4.0e-3
+                    if (do_evap) CCW_EVAP_EFF = 0.0
+    call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+
+                                 CCI_EVAP_EFF = 4.0e-3
+                    if (do_subl) CCI_EVAP_EFF = 0.0
+    call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.5, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GFDL_1M_Initialize
 
@@ -303,6 +313,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
     real, pointer, dimension(:,:,:) :: WTHV2
     real, pointer, dimension(:,:,:) :: OMEGA
+    real, pointer, dimension(:,:,:) :: UMST0, VMST0
     ! Local
     real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
@@ -313,6 +324,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
     real, allocatable, dimension(:,:,:) :: TMP3D
+    real, allocatable, dimension(:,:)   :: IKEX, IKEX2
     real, allocatable, dimension(:,:)   :: turnrhcrit2D
     real, allocatable, dimension(:,:)   :: minrhcrit2D
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
@@ -436,6 +448,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
+    ALLOCATE ( IKEX         (IM,JM) )
+    ALLOCATE ( IKEX2        (IM,JM) )
     ALLOCATE ( turnrhcrit2D (IM,JM) )
     ALLOCATE ( minrhcrit2D  (IM,JM) )
     ALLOCATE ( maxrhcrit2D  (IM,JM) )
@@ -551,7 +565,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         do L=1,LM
           do J=1,JM
            do I=1,IM
-             if (.not. do_qa) then ! if not doing the evap/subl/pdf inside of GFDL-MP 
        ! Send the condensates through the pdf after convection
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
              ALPHA = maxrhcrit2D(I,J)
@@ -582,6 +595,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! combine and limit
              ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
        ! Put condensates in touch with the PDF
+             if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP 
              call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
@@ -616,8 +630,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WQL(I,J,L)     , &
                       .false.        , & 
                       USE_BERGERON)
+             RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+             endif
        ! evaporation for CN
-           if (CCW_EVAP_EFF > 0.0) then
+             if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
              RHCRIT = 1.0
              EVAPC(I,J,L) = Q(I,J,L)
              call EVAP3 (         &
@@ -634,9 +650,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
-           endif
+             endif
        ! sublimation for CN
-           if (CCI_EVAP_EFF > 0.0) then
+             if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
              RHCRIT = 1.0
              SUBLC(I,J,L) = Q(I,J,L)
              call SUBL3 (        &
@@ -653,11 +669,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
-           endif
+             endif
        ! cleanup clouds
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
-             RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-             endif
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
@@ -817,11 +831,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
          call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
-         where (QILS+QICN .le. 0.0)
-            CLDREFFI = 36.0e-6
+         where (RAD_QI .le. 0.0)
+            CLDREFFI = MAPL_UNDEF
          end where
-         where (QLLS+QLCN .le. 0.0)
-            CLDREFFL = 14.0e-6
+         where (RAD_QL .le. 0.0)
+            CLDREFFL = MAPL_UNDEF
          end where
 
          ! Update microphysics tendencies
@@ -840,6 +854,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
+#ifdef KEDISS_MICRO
         ! dissipative heating tendency from KE across the macro/micro physics
         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) then
@@ -847,6 +862,26 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                       DUDT_macro+DUDT_micro,&
                                       DVDT_macro+DVDT_micro,PTR3D)
         endif
+#else
+        ! Cumulus Friction
+        call MAPL_GetPointer(EXPORT, UMST0, 'UMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, VMST0, 'VMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        IKEX  = SUM( (0.5/DT_MOIST)*((V**2+U**2)  - (VMST0**2+UMST0**2))*MASS , 3 )
+        IKEX2 = MAX(  SUM( 1.E-04 * MASS , 3 ) ,  1.0e-6 ) ! floor at 1e-6 W m-2
+        !scaled 3D kinetic energy dissipation
+        call MAPL_GetPointer(EXPORT, PTR3D, 'KEDISS', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D))  then
+           do L=1,LM
+              PTR3D(:,:,L) = (IKEX/IKEX2) * 1.E-04
+           enddo
+        end if
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) then
+           do L=1,LM
+              PTR3D(:,:,L) = -(1./MAPL_CP)*(IKEX/IKEX2) * 1.E-04 * (PLE(:,:,L)-PLE(:,:,L-1))
+           end do
+        end if
+#endif
 
         ! Compute DBZ radar reflectivity
         call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)

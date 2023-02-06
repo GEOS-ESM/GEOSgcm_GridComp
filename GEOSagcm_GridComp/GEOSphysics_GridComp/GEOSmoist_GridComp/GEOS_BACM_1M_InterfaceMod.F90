@@ -262,6 +262,10 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MAXRHCRITOCN,             'MAXRHCRITOCN:',   DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, TURNRHCRIT,               'TURNRHCRIT:',     DEFAULT= 750.0  )
 
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+
 end subroutine BACM_1M_Initialize
 
 
