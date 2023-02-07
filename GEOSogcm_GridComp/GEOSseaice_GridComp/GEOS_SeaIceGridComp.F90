@@ -222,6 +222,22 @@ contains
              SHORT_NAME = 'FHOCN',                                &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
+    else
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FRESH',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FSALT',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FHOCN',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
     endif
 
     if(trim(SEAICE_NAME) == 'CICE4') then
@@ -497,6 +513,16 @@ contains
     if (trim(SEAICE_NAME) == 'CICE6') then
        call MAPL_AddExportSpec ( GC   ,                           &
             SHORT_NAME = 'SURFSTATE',                             &
+            CHILD_ID   =  ICE ,                                   &
+                                                              _RC )
+
+       call MAPL_AddExportSpec ( GC   ,                           &
+            SHORT_NAME = 'TI',                                    &
+            CHILD_ID   =  ICE ,                                   &
+                                                              _RC )
+
+       call MAPL_AddExportSpec ( GC   ,                           &
+            SHORT_NAME = 'FRSEAICE',                              &
             CHILD_ID   =  ICE ,                                   &
                                                               _RC )
     endif

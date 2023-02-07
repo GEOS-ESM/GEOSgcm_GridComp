@@ -220,18 +220,26 @@ contains
         DEFAULT            = 4.,                                  &
         _RC  )
 
-  call MAPL_AddImportSpec(GC,                            &
+
+  ! === Exports
+
+  call MAPL_AddExportSpec(GC,                            &
     SHORT_NAME         = 'TI',                                &
     LONG_NAME          = 'seaice_skin_temperature',           &
     UNITS              = 'K',                                 &
     DIMS               = MAPL_DimsHorzOnly,                   &
     UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
     VLOCATION          = MAPL_VLocationNone,                  &
-    RESTART            = MAPL_RestartSkip,                    &
-    DEFAULT            = MAPL_TICE,                           &
     _RC )
 
-  ! === Exports
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'FRSEAICE',                           &
+    LONG_NAME          = 'fractional_cover_of_seaice',        &
+    UNITS              = '1',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+    VLOCATION          = MAPL_VLocationNone,                  &
+    _RC )
 
   call MAPL_AddExportSpec(GC,                            &
     SHORT_NAME         = 'UI',                                &
@@ -707,6 +715,12 @@ contains
 
     REAL_, pointer                     :: MASK  (:,:)        => null()
     REAL_, pointer                     :: AREA  (:,:)        => null()
+    REAL_, pointer                     :: FRI   (:,:)        => null()
+    REAL_, pointer                     :: FRESH (:,:)        => null()
+    REAL_, pointer                     :: FHOCN (:,:)        => null()
+    REAL_, pointer                     :: FSALT (:,:)        => null()
+    REAL_, pointer                     :: TI    (:,:,:)      => null()
+    REAL_, pointer                     :: FI    (:,:,:)      => null()
 
 ! Optional Exports
 ! none
@@ -763,8 +777,15 @@ contains
 ! 
 !---------------------
 
-    call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'  ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'  ,    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'        ,                 _RC)
+    call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'        ,                 _RC)
+
+    call MAPL_GetPointer(EXPORT,   TI,     'TI'          ,  alloc=.true.,  _RC)
+    call MAPL_GetPointer(EXPORT,   FI,     'FRSEAICE'    ,  alloc=.true.,  _RC)
+    call MAPL_GetPointer(EXPORT,   FRI,    'FRACICE'     ,                 _RC)
+    call MAPL_GetPointer(EXPORT,   FHOCN,  'FHOCN'       ,                 _RC)
+    call MAPL_GetPointer(EXPORT,   FRESH,  'FRESH'       ,                 _RC)
+    call MAPL_GetPointer(EXPORT,   FSALT,  'FSALT'       ,                 _RC)
 
 
     !call ice_import_thermo2()
@@ -782,6 +803,29 @@ contains
     !call ice_export_dyna
 
 
+    if(associated(TI)) then
+      call ice_export_field('TI',       TI, _RC)
+    endif 
+
+    if(associated(FI)) then
+      call ice_export_field('FRSEAICE', FI, _RC)
+    endif 
+
+    if(associated(FRI)) then
+      call ice_export_field('FRACICE', FRI, _RC)
+    endif 
+
+    if(associated(FHOCN)) then
+      call ice_export_field('FHOCN', FHOCN, _RC)
+    endif 
+
+    if(associated(FRESH)) then
+      call ice_export_field('FRESH', FRESH, _RC)
+    endif 
+
+    if(associated(FSALT)) then
+      call ice_export_field('FSALT', FSALT, _RC)
+    endif 
 
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )

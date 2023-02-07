@@ -686,7 +686,7 @@ contains
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
      VERIFY_(STATUS)
-  else
+  elseif (DO_CICE_THERMO == 1) then  
      call MAPL_AddExportSpec(GC,                                  &
           SHORT_NAME         = 'TAUXIBOT',                           &
           LONG_NAME          = 'eastward_stress_at_base_of_ice',    &
@@ -704,13 +704,24 @@ contains
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
      VERIFY_(STATUS)
+  else  
+     call MAPL_AddExportSpec(GC,                            &
+          SHORT_NAME         = 'FRACICE',                           &
+          LONG_NAME          = 'fractional_cover_of_seaice',        &
+          UNITS              = '1',                                 &
+          DIMS               = MAPL_DimsTileOnly,                   &
+          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+  
   end if
 
-  if (DO_CICE_THERMO > 1) then
-     call MAPL_AddExportSpec ( GC   ,                            &
-            SHORT_NAME = 'SURFSTATE',                            &
-            CHILD_ID   = SEAICE ,                                &
-                                                             _RC )
+  if (DO_CICE_THERMO == 2) then
+     call MAPL_AddExportSpec ( GC   ,                          &
+          SHORT_NAME = 'SURFSTATE',                            &
+          CHILD_ID   = SEAICE ,                                &
+                                                           _RC )
   endif
   
 !EOS
@@ -1832,8 +1843,11 @@ contains
     if (DO_CICE_THERMO == 0) then  
        call MAPL_GetPointer(GIM(SEAICE), TIO     ,  'TI'    ,  RC=STATUS)
        VERIFY_(STATUS)
-    else
+    elseif(DO_CICE_THERMO == 1) then
        call MAPL_GetPointer(GIM(SEAICE), TIO8    ,  'TI'    ,  RC=STATUS)
+       VERIFY_(STATUS)
+    else
+       call MAPL_GetPointer(GEX(SEAICE), TIO8    ,  'TI'    ,  RC=STATUS)
        VERIFY_(STATUS)
     endif
     if (DO_CICE_THERMO == 1) then  
@@ -2033,10 +2047,13 @@ contains
     if (DO_CICE_THERMO == 0) then  
        call MAPL_GetPointer(EXPORT, FR      ,  'FRACICE', RC=STATUS)
        VERIFY_(STATUS)
-    else
+    elseif (DO_CICE_THERMO == 1) then  
        call MAPL_GetPointer(EXPORT, TAUXIBOT,  'TAUXIBOT', RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, TAUYIBOT,  'TAUYIBOT', RC=STATUS)
+       VERIFY_(STATUS)
+    else  
+       call MAPL_GetPointer(EXPORT, FR8     ,  'FRACICE', RC=STATUS)
        VERIFY_(STATUS)
     end if
 
@@ -2111,7 +2128,7 @@ contains
     if (DO_CICE_THERMO == 0) then  
        call MAPL_GetPointer(GEX(SEAICE), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
-    else
+    elseif (DO_CICE_THERMO == 1) then  
        call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
 
@@ -2124,6 +2141,8 @@ contains
           call MAPL_GetPointer(GEX(SEAICE), TAUYIBOTO , 'TAUYBOT' , alloc=.true., RC=STATUS)
           VERIFY_(STATUS)
        end if
+    else
+       call MAPL_GetPointer(GEX(SEAICE), FRO8  ,  'FRSEAICE', alloc=.true.,    _RC)
     endif
 
     call MAPL_TimerOff(MAPL,"TOTAL"     )
@@ -2213,7 +2232,7 @@ contains
        call MAPL_LocStreamTransform( ExchGrid, FR     ,  FRO   , &
             INTERP=useInterp, RC=STATUS)
        VERIFY_(STATUS)
-    else
+    elseif (DO_CICE_THERMO == 1) then
        do n=1,NUM_ICE_CATEGORIES
            call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
@@ -2246,7 +2265,6 @@ contains
           endif
        enddo
        
-       if (DO_CICE_THERMO == 1) then
        if(associated(TAUXIBOT)) then
           call MAPL_LocStreamTransform( ExchGrid, TAUXIBOT, TAUXIBOTO, RC=STATUS) 
           VERIFY_(STATUS)
@@ -2256,7 +2274,11 @@ contains
           call MAPL_LocStreamTransform( ExchGrid, TAUYIBOT, TAUYIBOTO, RC=STATUS) 
           VERIFY_(STATUS)
        end if
-       endif
+    else
+       do n=1,NUM_ICE_CATEGORIES
+          call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8(:,:,N),   _RC)
+          call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8(:,:,N),   _RC)
+       enddo
     endif
 
     call MAPL_GetResource(MAPL, iUseInterp, 'INTERPOLATE_OCEAN_ICE_CURRENTS:', &

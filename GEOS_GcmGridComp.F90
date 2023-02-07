@@ -2180,17 +2180,19 @@ contains
        if (DO_CICE_THERMO == 0) then
          call DO_O2A(expSKIN, 'TSKINI'   , GIM(OGCM), 'TI'    , RC=STATUS)
          VERIFY_(STATUS)
+       else
+         call DO_O2A_SUBTILES_R4R4(expSKIN  , 'TSKINI'     , SUBINDEXO,  &
+                                   GIM(OGCM), 'TI'         , SUBINDEXO, _RC)
        endif
 
-       call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO <= 1) then
+           call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , RC=STATUS)
+           VERIFY_(STATUS)
+       endif
        call DO_O2A(expSKIN, 'SSKINI'   , GIM(OGCM), 'SI'    , RC=STATUS)
        VERIFY_(STATUS)
 
-       if (DO_CICE_THERMO /= 0) then  
-          call DO_O2A_SUBTILES_R4R4(expSKIN  , 'TSKINI'     , SUBINDEXO,  &
-               GIM(OGCM), 'TI'         , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
+       if (DO_CICE_THERMO == 1) then  
           call DO_O2A_SUBTILES_R8R4(expSKIN  , 'FR'         , SUBINDEXA,  &
                GIM(OGCM), 'FRACICE'    , SUBINDEXO, RC=STATUS)
           VERIFY_(STATUS)
@@ -2226,11 +2228,14 @@ contains
        if (DO_CICE_THERMO == 0) then
           call DO_O2A(impSKIN, 'FRACICE'  , GEX(OGCM), 'FRACICE', RC=STATUS)
           VERIFY_(STATUS)
-       else
+       elseif (DO_CICE_THERMO == 1) then
           call DO_O2A(impSKIN, 'TAUXBOT'  , GEX(OGCM), 'TAUXIBOT', RC=STATUS)
           VERIFY_(STATUS)
           call DO_O2A(impSKIN, 'TAUYBOT'  , GEX(OGCM), 'TAUYIBOT', RC=STATUS)
           VERIFY_(STATUS)
+       else
+          call DO_O2A_SUBTILES_R4R4(impSKIN,   'FRACICE'  ,   SUBINDEXO,    &
+                                    GEX(OGCM), 'FRACICE'  ,   SUBINDEXO,  _RC)
        end if
 
        call DO_O2A(impSKIN, 'UI'       , GEX(OGCM), 'UI'    , RC=STATUS)
