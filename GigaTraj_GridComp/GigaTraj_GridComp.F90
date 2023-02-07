@@ -391,7 +391,6 @@ contains
   
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)   :: wrap
-    type(ESMF_Grid) :: CubedGrid
   
     integer :: num_parcels, my_rank
     real, allocatable, target :: lats(:), lons(:), zs(:)
@@ -414,7 +413,6 @@ contains
     type(MAPL_MetaComp),pointer :: MPL  
     character(len=ESMF_MAXSTR) :: parcels_file
 
-
     call ESMF_VMGetCurrent(vm, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
@@ -432,8 +430,6 @@ contains
     ctime(20:20) = c_null_char
 
     call ESMF_TimeIntervalGet(ModelTimeStep,d_r8=DT, _RC)
-
-    call ESMF_GridCompGet(GC, grid=CubedGrid, _RC)
 
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
@@ -477,6 +473,7 @@ contains
 !---------------
 ! Step 3) Update
 !---------------
+
     call updateFields( GigaTrajInternalPtr%metSrc, c_loc(ctime), c_loc(haloU), c_loc(haloV), c_loc(haloW), c_loc(haloP))
 
 !---------------
@@ -508,10 +505,10 @@ contains
     call rebalance_parcels(clock, GigaTrajInternalPtr%parcels, GigaTrajInternalPtr%CellToRank, comm, DIMS, _RC)
 
 !---------------
-! Step 6) write out parcel positions ( configurable with alarm) 
+! Step 6) write out parcel positions and related fields ( configurable with alarm) 
 !---------------
-    call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC) 
-    call write_parcels(clock, parcels_file, GigaTrajInternalPtr%parcels,currentTime, GigaTrajInternalPtr%startTime, _RC)
+
+    call write_parcels(GC, import, clock, currentTime, _RC)
 
 
     RETURN_(ESMF_SUCCESS)
@@ -806,41 +803,82 @@ contains
 
   end subroutine gather_parcels
 
-  subroutine write_parcels(CLOCK, fname, parcels, currentTime, startTime, rc)
+  subroutine gather_onefield(num_parcels0, field0, comm, field, num_parcels)
+    integer, intent(out) :: num_parcels0
+    real, dimension(:), allocatable, intent(out) :: field0
+    integer, intent(in) :: comm
+    real, dimension(:), intent(in) :: field
+    integer, intent(in) :: num_parcels
+
+    integer :: i, npes, ierror, my_rank
+    integer, allocatable :: nums_all(:), displ(:)
+
+    call MPI_Comm_size(comm, npes, ierror)
+    call MPI_Comm_rank(comm, my_rank, ierror)
+
+    allocate(nums_all(npes), source = 0)
+    call MPI_Gather(num_parcels, 1, MPI_INTEGER, nums_all, 1, MPI_INTEGER, 0, comm, ierror)
+
+    num_parcels0 = sum(nums_all)
+
+    allocate(field0(num_parcels0))
+    allocate(  displ(npes), source =0)
+    do i =2, npes
+       displ(i) = displ(i-1)+nums_all(i-1)
+    enddo
+
+    call MPI_GatherV(field, num_parcels, MPI_REAL, field0,  nums_all, displ, MPI_REAL, 0, comm,ierror)
+
+  end subroutine gather_onefield
+
+  subroutine write_parcels(GC, state, CLOCK, currentTime, rc)
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_State),    intent(inout) :: state  ! Import state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    character(*), intent(in):: fname
-    type(horde), intent(in) :: parcels
     type(ESMF_TIME), intent(in) :: currentTime 
-    type(ESMF_TIME), intent(in) :: startTime 
     integer, optional, intent(out) :: rc
   
     character(len=:), allocatable :: Iam
-    type (ESMF_VM)   :: vm
+    type (ESMF_VM)  :: vm
     type(Netcdf4_fileformatter) :: formatter
-    integer :: comm, my_rank, total_num, status, last_time, ierror
-    real, allocatable :: lats0(:), lons0(:), zs0(:), ids0_r(:)
+    integer :: comm, my_rank, total_num, i, status, last_time, ierror
+    real, allocatable :: lats0(:), lons0(:), zs0(:), ids0_r(:), values(:), values0(:)
     integer, allocatable :: ids0(:)
     type(ESMF_Alarm)  :: GigaTrajOutAlarm
     type(FileMetadata) :: meta
     real(ESMF_KIND_R8) :: tint_d
     type(ESMF_TimeInterval) :: tint
+    type(MAPL_MetaComp),pointer  :: MPL
+    character(len=ESMF_MAXSTR)   :: parcels_file, other_fields
+    character(len=:), allocatable:: fieldname, fields, var_name
+    
+    type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
+    type (GigatrajInternalWrap)      :: wrap
+    character(len=20), target :: ctime
 
+    Iam = "write_parcels"
     call ESMF_ClockGetAlarm(clock, 'GigatrajOut', GigaTrajOutAlarm, _RC)
 
     if ( .not. ESMF_AlarmIsRinging(GigaTrajOutAlarm)) then
        RETURN_(ESMF_SUCCESS)
     endif
 
+    call MAPL_GetObjectFromGC ( GC, MPL, _RC)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    GigaTrajInternalPtr => wrap%ptr
+
+    call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC)
+
     call ESMF_VMGetCurrent(vm, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
 
     call gather_parcels(total_num, lons0, lats0, zs0, IDs0, &
                           comm,                             & 
-                          parcels%lons, &
-                          parcels%lats, &
-                          parcels%zs,   &
-                          parcels%IDS,  &
-                          parcels%num_parcels )
+                          GigaTrajInternalPtr%parcels%lons, &
+                          GigaTrajInternalPtr%parcels%lats, &
+                          GigaTrajInternalPtr%parcels%zs,   &
+                          GigaTrajInternalPtr%parcels%IDS,  &
+                          GigaTrajInternalPtr%parcels%num_parcels )
 
     call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
     if (my_rank ==0) then
@@ -848,20 +886,102 @@ contains
        lats0 = lats0(ids0(:)+1) ! id is zero-bases, plus 1 Fortran
        lons0 = lons0(ids0(:)+1)
        zs0   = zs0(ids0(:)+1)
-       call formatter%open(fname, pFIO_WRITE, _RC)
+       call formatter%open(trim(parcels_file), pFIO_WRITE, _RC)
        meta = formatter%read(_RC)
        last_time = meta%get_dimension('time', _RC)
-       tint = CurrentTime - startTime
+       tint = CurrentTime - GigaTrajInternalPtr%startTime
        call ESMF_TimeIntervalGet(tint,d_r8=tint_d,rc=status)
 
        call formatter%put_var('lat', lats0, start=[1, last_time+1], _RC)
        call formatter%put_var('lon', lons0, start=[1, last_time+1], _RC)
        call formatter%put_var('pressure',   zs0,   start=[1, last_time+1], _RC)
        call formatter%put_var('time',  [tint_d],  start=[last_time+1], _RC)
-       call formatter%close(_RC)
      endif
 
+     ! extra fields
+     call MAPL_GetResource(MPL, other_fields, "GIGATRAJ_EXTRA_FIELDS:", default='NONE', _RC)
+     fields = trim(adjustl(other_fields))
+     if (fields /='NONE') then
+       call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime)
+       ctime(20:20) = c_null_char
+       do while ( .true.)
+         i = index(fields, ';')
+         if (i == 0) then
+           fieldname = trim(adjustl(fields))
+         else
+           fieldname = fields(1:i-1)
+           fields    = trim(adjustl(fields(i+1:)))
+         endif
+         if (fieldname == '') exit
+         select case (fieldname)
+         case('TH')
+            var_name = 'theta'
+         case('T')
+            var_name = 't'
+         case('PALT')
+            var_name = 'palt'
+         case default
+            var_name = fieldname
+         end select
+         
+         allocate(values(GigaTrajInternalPtr%parcels%num_parcels))
+         call get_metsrc_data (GC, state, ctime, fieldname, values, RC )
+         call gather_onefield(total_num, values0, comm, values, GigaTrajInternalPtr%parcels%num_parcels)
+
+         if (my_rank == 0) then
+           values0 = values0(ids0(:)+1)
+           if ( meta%has_variable(var_name)) then
+              call formatter%put_var( var_name,   values0,   start=[1, last_time+1], _RC)
+           else
+              print*, "Please provide "//var_name // " in the file "//trim(parcels_file)
+           endif
+         endif
+
+         deallocate(values)
+         if (i == 0) exit
+       enddo
+     endif
+
+     if (my_rank ==0) then 
+       call formatter%close(_RC)
+     endif
      RETURN_(ESMF_SUCCESS)
+     contains
+        subroutine create_var(fieldname)
+          character(*), intent(in) :: fieldname
+          type(Variable) :: var
+          character(len=:), allocatable :: long_name, units, var_name
+
+          select case (fieldname)
+          case('TH')
+            var_name = 'theta'
+            long_name = "air_potential_temperature"
+            units = "K"
+          case('T')
+            var_name = 't'
+            long_name = "air_temperature"
+            units = "K"
+          case('PALT')
+            var_name = 'palt'
+            long_name = "pressure_altitude"
+            units = "km"
+          case default
+            var_name = fieldname
+            long_name = "unkown"
+            units = "1"
+            print*, "Not yet define attribute of "//var_name         
+          end select
+
+          if( meta%has_variable(var_name)) return 
+          var = variable(type=pFIO_REAL32, dimensions='id,time')
+          call var%add_attribute('long_name', long_name)
+          call var%add_attribute('units', units)
+          call var%add_attribute('positive', "up")
+          call var%add_attribute('_FillValue', -999.99)
+          call var%add_attribute('missing_value', -999.99)
+          call meta%add_variable(var_name, var)
+        end subroutine create_var
+
   end subroutine write_parcels
 
   subroutine read_parcels(fname, internal, rc)
@@ -1018,7 +1138,7 @@ contains
     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
     type(ESMF_State),    intent(inout) :: state
     character(*), target,   intent(in) :: ctime
-    character(*), target,   intent(in) :: fieldname
+    character(*), intent(in) :: fieldname
     real, target, intent(inout) :: values(:)
     integer, optional,     intent(out) :: RC     ! Error code
 
@@ -1031,6 +1151,7 @@ contains
     real, dimension(:,:,:), allocatable :: field_latlon
     real, dimension(:,:,:), allocatable, target  :: haloField
     integer :: counts(3), dims(3), d1,d2,km
+    character(len=:), target, allocatable :: field_
 
     Iam = "get_metsrc_data"
 
@@ -1046,15 +1167,16 @@ contains
 
     call esmf_halo(GigaInternalPtr%LatLonGrid, field_Latlon, haloField, _RC)
 
-    call setData( GigaInternalPtr%metSrc, c_loc(ctime), c_loc(fieldname), c_loc(haloField))
+    field_ = trim(fieldname)//c_null_char
+    call setData( GigaInternalPtr%metSrc, c_loc(ctime), c_loc(field_), c_loc(haloField))
 
-    call getData(GigaInternalPtr%metSrc,  c_loc(ctime),  c_loc(fieldname),  &
+    call getData(GigaInternalPtr%metSrc,  c_loc(ctime),  c_loc(field_),  &
                  GigaInternalPtr%parcels%num_parcels,  &
                  c_loc(GigaInternalPtr%parcels%lons),         &
                  c_loc(GigaInternalPtr%parcels%lats),         &
                  c_loc(GigaInternalPtr%parcels%zs),           &
                  c_loc(values))
-
+    deallocate(field_latlon, haloField)
     RETURN_(ESMF_SUCCESS)
 
   end subroutine get_metsrc_data
