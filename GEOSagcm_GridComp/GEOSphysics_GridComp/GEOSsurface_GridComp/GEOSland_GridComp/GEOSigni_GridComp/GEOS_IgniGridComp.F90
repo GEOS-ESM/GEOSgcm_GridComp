@@ -558,15 +558,15 @@ contains
          VLOCATION  = MAPL_VLocationNone, __RC__)
 
 
-    ! misc
-#if (0)
+    ! flammability and ignition sources
+
     call MAPL_AddExportSpec(GC,                    & 
          SHORT_NAME = 'VPD',                       &
-         LONG_NAME  = 'vapor pressure defficit',   &
-         UNITS      = '1',                         &
+         LONG_NAME  = 'vapor pressure deficit',    &
+         UNITS      = 'Pa',                        &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__)
-#endif
+
 
 !EOS
 
@@ -722,6 +722,12 @@ contains
     call MAPL_TimerOff(MAPL, '--hourly')
 
     call MAPL_TimerOff(MAPL, '-CFFWI')
+
+
+! flammability and ignition sources
+! ---------------------------------
+    call REBURN(GC, IMPORT, EXPORT, CLOCK, __RC__)
+
 
 
 !  All done
@@ -1310,6 +1316,115 @@ contains
   end subroutine CFFWI_HOURLY
 
 
+! -----------------------------------------------------------
+! REBURN -- flammability and ignition sources
+! -----------------------------------------------------------
+
+  subroutine REBURN (GC, IMPORT, EXPORT, CLOCK, RC)
+
+! -----------------------------------------------------------
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: GC
+    type(ESMF_State),    intent(inout) :: IMPORT
+    type(ESMF_State),    intent(inout) :: EXPORT
+    type(ESMF_Clock),    intent(inout) :: CLOCK
+    integer, optional,   intent(  out) :: RC
+
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)   :: Iam
+    character(len=ESMF_MAXSTR)   :: COMP_NAME
+    integer                      :: STATUS
+
+
+! IMPORT pointers
+
+    real, dimension(:), pointer :: T2M    => null()
+    real, dimension(:), pointer :: Q2M    => null()
+    real, dimension(:), pointer :: PS     => null()
+
+
+! INTERNAL pointers
+!   None
+
+
+! EXPORT pointers
+
+    real, dimension(:), pointer :: VPD => null()
+ 
+
+! misc
+
+    type(MAPL_MetaComp), pointer :: MAPL => null()
+    type(ESMF_State)             :: INTERNAL
+
+    integer :: NT
+
+    real, pointer, dimension(:) :: LATS => null()
+    real, pointer, dimension(:) :: LONS => null()
+
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    call ESMF_GridCompGet(GC, name=COMP_NAME, __RC__)
+
+    Iam = trim(COMP_NAME) // 'REBURN'
+
+
+! Get my internal MAPL_Generic state
+! -----------------------------------------------------------
+
+    call MAPL_GetObjectFromGC(GC, MAPL, __RC__)
+
+
+    call MAPL_Get(MAPL, TILELATS=LATS, &
+                        TILELONS=LONS, &
+                        INTERNAL_ESMF_STATE=INTERNAL, __RC__)
+
+    NT = SIZE(LONS)
+
+    NO_LAND_AREAS: if (NT == 0) then
+        RETURN_(ESMF_SUCCESS)
+    end if NO_LAND_AREAS
+
+
+
+! Get pointers to imports
+! -----------------------
+
+    call MAPL_GetPointer(IMPORT, PS,     'PS',         __RC__)
+    call MAPL_GetPointer(IMPORT, Q2M,    'MOQ2M',      __RC__)
+    call MAPL_GetPointer(IMPORT, T2M,    'MOT2M',      __RC__)
+
+
+! Get pointers to exports
+! -----------------------
+
+    call MAPL_GetPointer(EXPORT, VPD, 'VPD', __RC__)
+
+
+! Update diagnostics
+! -------------------------
+    UPDATE_VPD: if (associated(VPD)) then
+        ! VPD = e_s - e = e_s * (1 - RH)
+        !
+        ! e_s = P * Qsat/(MAPL_EPSILON + (1 - MAPL_EPSILON)*Qsat)
+        ! MAPL_EQsat(T) is equivalent to the e_s expression
+
+        VPD = MAPL_EQsat(T2M) * (1 - min(Q2M / GEOS_QSAT(T2M, PS, PASCALS=.true.), 1.0))
+    end if UPDATE_VPD
+
+
+!  All done
+! ---------
+
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine REBURN
 
 
 
