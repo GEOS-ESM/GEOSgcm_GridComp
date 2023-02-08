@@ -72,8 +72,6 @@
     character*128          :: MaskFile
     character*400          :: MAKE_BCS_INPUT_DIR
     character*128          :: &
-
-
     Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -l LandFile -g GridName"
     include 'netcdf.inc'
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
