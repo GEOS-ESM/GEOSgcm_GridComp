@@ -46,20 +46,20 @@ def get_config_from_answers(answers):
    else:
       input_dir = '/nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/' 
 
-   maskfile = 'shared/mask/'
+   maskfile = ''
 
    if orslvs in['O1','T2','T3','T4','T1MOM6','T2MOM6','T4MOM6']:
-      maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
+      maskfile = 'shared/mask/GEOS5_10arcsec_mask_freshwater-lakes.nc'
       if lbcsv in ['F25', 'GM4', 'ICA']:
          maskfile = 'global.cat_id.catch.DL'
 
    if orslvs in['O2','O3','CS']:
-      maskfile = 'GEOS5_10arcsec_mask.nc'
+      maskfile = 'shared/mask/EOS5_10arcsec_mask.nc'
       if lbcsv in ['F25', 'GM4', 'ICA']:
          maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
 
    if grid_type in ['EASEv1', 'EASEv2']:
-      maskfile = 'GEOS5_10arcsec_mask.nc'
+      maskfile = 'shared/mask/EOS5_10arcsec_mask.nc'
 
    imo['O1'] = 360
    jmo['O1'] = 180
