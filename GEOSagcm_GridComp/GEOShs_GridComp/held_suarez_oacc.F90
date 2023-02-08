@@ -1,117 +1,8 @@
 module hs_oacc_mod
 
   use MAPL_ConstantsMod, only: MAPL_CP, MAPL_GRAV, MAPL_KAPPA, MAPL_P00, MAPL_PI, MAPL_RGAS
-  use iso_c_binding, only: c_int, c_float, c_loc, c_f_pointer
 
 contains
-
-  subroutine hs_buffer_layer( &
-       CPHI2, DISS, DTDT, DUDT, DVDT, &
-       HFCN, P_I, PLE, SPHI2, TAUX, TAUY, T, &
-       THEQ, T_EQ, U, V, &
-       DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
-       FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
-       SIG1, TAUA, TAUF, TAUS, TSTRT, T0, compType, rank)
-
-    implicit none
-
-    integer, intent(in) :: FRICQ, IM, JM, LM, compType, rank
-    logical, intent(in) :: FriendlyTemp, FriendlyWind
-
-    real, dimension(IM,JM), target,		   intent(in)    :: CPHI2, HFCN, P_I, SPHI2
-    real, dimension(IM,JM), target,		   intent(inout) :: DISS, TAUX, TAUY
-    real, dimension(IM, JM, 0:LM), target, intent(in)    :: PLE
-    real, dimension(IM, JM, LM),  target,  intent(inout) :: DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V
-
-    real, intent(in) :: DAYLEN, DELH, DELV1, DT, GAM_D, GAM_I, P_D, P_1
-    real, intent(in) :: QMAX, SIG1, T0, TAUA, TAUF, TAUS, TSTRT
-
-    real, pointer, dimension(:,:) :: DISS_P, TAUX_P, TAUY_P
-    real, pointer, dimension(:,:,:) :: T_EQ_P, THEQ_P, DTDT_P, DUDT_P, DVDT_P, PLE_P, T_P, U_P, V_P
-    real, pointer, dimension(:,:) :: CPHI2_P, HFCN_P, P_I_P, SPHI2_P
-
-    CPHI2_P => CPHI2
-    HFCN_P => HFCN
-    P_I_P => P_I
-    SPHI2_P => SPHI2
-    DISS_P => DISS
-    TAUX_P => TAUX
-    TAUY_P => TAUY
-    PLE_P => PLE
-    DTDT_P => DTDT
-    DUDT_P => DUDT
-    DVDT_P => DVDT
-    T_P => T
-    T_EQ_P => T_EQ
-    THEQ_P => THEQ
-    U_P => U
-    V_P => V
-
-    ! write(*,*) 'Going into hs_oacc'
-
-    call held_suarez_oacc( &
-         CPHI2_P, DISS_P, DTDT_P, DUDT_P, DVDT_P, &
-         HFCN_P, P_I_P, PLE_P, SPHI2_P, TAUX_P, TAUY_P, T_P, &
-         THEQ_P, T_EQ_P, U_P, V_P, &
-         DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
-         FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
-         SIG1, TAUA, TAUF, TAUS, TSTRT, T0, compType, rank)
-
-  end subroutine hs_buffer_layer
-
-  subroutine c_held_suarez_oacc( &
-       CPHI2, DISS, DTDT, DUDT, DVDT, &
-       HFCN, P_I, PLE, SPHI2, TAUX, TAUY, T, &
-       THEQ, T_EQ, U, V, &
-       DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
-       FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
-       SIG1, TAUA, TAUF, TAUS, TSTRT, T0, compType, rank) bind(C)
-
-    implicit none
-
-    integer(C_INT), value :: FRICQ, IM, JM, LM, compType, rank
-    logical(C_INT), value :: FriendlyTemp, FriendlyWind
-
-    real(C_FLOAT), dimension(IM*JM), target :: CPHI2, HFCN, P_I, SPHI2
-    real(C_FLOAT), dimension(IM*JM), target :: DISS, TAUX, TAUY
-    real(C_FLOAT), dimension(IM*JM*(LM+1)), target :: PLE
-    real(C_FLOAT), dimension(IM*JM*LM), target :: DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V
-
-    real, dimension(:,:), pointer :: CPHI2_p, HFCN_p, P_I_p, SPHI2_p
-    real, dimension(:,:), pointer :: DISS_p, TAUX_p, TAUY_p
-    real, dimension(:,:,:), pointer :: PLE_p
-    real, dimension(:,:,:), pointer :: DTDT_p, DUDT_p, DVDT_p, T_p, T_EQ_p, THEQ_p, U_p, V_p
-
-    real(C_FLOAT), value :: DAYLEN, DELH, DELV1, DT, GAM_D, GAM_I, P_D, P_1
-    real(C_FLOAT), value :: QMAX, SIG1, T0, TAUA, TAUF, TAUS, TSTRT
-
-    call c_f_pointer(C_LOC(CPHI2), CPHI2_p, [IM, JM])
-    call c_f_pointer(C_LOC(HFCN),  HFCN_p,  [IM, JM])
-    call c_f_pointer(C_LOC(P_I),   P_I_p,   [IM, JM])
-    call c_f_pointer(C_LOC(SPHI2), SPHI2_p, [IM, JM])
-    call c_f_pointer(C_LOC(DISS),  DISS_p,  [IM, JM])
-    call c_f_pointer(C_LOC(TAUX),  TAUX_p,  [IM, JM])
-    call c_f_pointer(C_LOC(TAUY),  TAUY_p,  [IM, JM])
-    ! call c_f_pointer(C_LOC(PLE),   PLE_p,   [IM, JM, 0:LM])
-    call c_f_pointer(C_LOC(PLE),   PLE_p,   [IM, JM, LM+1])
-    call c_f_pointer(C_LOC(DTDT),  DTDT_p,  [IM, JM, LM])
-    call c_f_pointer(C_LOC(DUDT),  DUDT_p,  [IM, JM, LM])
-    call c_f_pointer(C_LOC(DVDT),  DVDT_p,  [IM, JM, LM])
-    call c_f_pointer(C_LOC(T),     T_p,     [IM, JM, LM])
-    call c_f_pointer(C_LOC(T_EQ),  T_EQ_p,  [IM, JM, LM])
-    call c_f_pointer(C_LOC(THEQ),  THEQ_p,  [IM, JM, LM])
-    call c_f_pointer(C_LOC(U),     U_p,     [IM, JM, LM])
-    call c_f_pointer(C_LOC(V),     V_p,     [IM, JM, LM])
-
-    call held_suarez_oacc( &
-         CPHI2_P, DISS_P, DTDT_P, DUDT_P, DVDT_P, &
-         HFCN_P, P_I_P, PLE_P, SPHI2_P, TAUX_P, TAUY_P, T_P, &
-         THEQ_P, T_EQ_P, U_P, V_P, &
-         DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
-         FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
-         SIG1, TAUA, TAUF, TAUS, TSTRT, T0, compType, rank)
-
-  end subroutine c_held_suarez_oacc
 
   subroutine held_suarez_oacc( &
        CPHI2, DISS, DTDT, DUDT, DVDT, &
@@ -159,10 +50,22 @@ contains
     PI = MAPL_PI
     RGAS = MAPL_RGAS
 
+    DP_s = 0.0
+    PL_s = 0.0
+    UU_s = 0.0
+    VV_s = 0.0 
+    VR_s = 0.0 
+    TE_s = 0.0 
+    DS_s = 0.0 
+    PII_s = 0.0 
+    F1_s= 0.0 
+    RR_s = 0.0 
+    DM_s = 0.0 
+    PK_s = 0.0
+
     ngpus = acc_get_num_devices(acc_device_nvidia)
 
     write(*,*) 'HS: rank =', rank, ', comp type: ', compType, ', Number of GPUS:', ngpus
-
     ! call acc_set_device_num(mod(rank,4),acc_device_nvidia)
 
     !write(*,*) 'From HS routine, rank =', rank, ": Number of GPUS = ", ngpus, ': This process is using', acc_get_device_num(acc_device_nvidia)
