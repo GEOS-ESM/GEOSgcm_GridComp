@@ -1307,21 +1307,6 @@ cd ../../
 #mkdir -p IRRIG/$BCNAME/clsm
 #bin/mkIrrigTiles.x -b $BCNAME -t CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RC} -p $IRRIGTHRES
 
-if ( -f $EXPDIR/$OUTDIR/../../TOPO/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data ) then
-
-  ln -s $EXPDIR/../TOPO/TOPO_CF${NC}x6C/smoothed/topo_DYN_ave_$RC.data $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data 
-  ln -s $EXPDIR/../TOPO/TOPO_CF${NC}x6C/smoothed/topo_GWD_var_$RC.data $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data 
-  ln -s $EXPDIR/../TOPO/TOPO_CF${NC}x6C/smoothed/topo_TRB_var_$RC.data $EXPDIR/$OUTDIR/topo_TRB_var_$RC.data 
-
-  /bin/mv    $EXPDIR/$OUTDIR/topo_DYN_ave_$RC.data  $BCNAME/.
-  /bin/mv    $EXPDIR/$OUTDIR/topo_GWD_var_$RC.data  $BCNAME/.
-  /bin/mv    $EXPDIR/$OUTDIR/topo_TRB_var_$RC.data  $BCNAME/.
-
-  echo "TOPO files are successfully linked."
-else
-  echo "TOPO files are missing. You must bring those to" $BCNAME "before running AGCM"
-endif 
-
 /bin/rm -r $OUTDIR
 
 _EOF_
