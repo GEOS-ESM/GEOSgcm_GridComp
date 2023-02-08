@@ -54,12 +54,12 @@ def get_config_from_answers(answers):
          maskfile = 'global.cat_id.catch.DL'
 
    if orslvs in['O2','O3','CS']:
-      maskfile = 'shared/mask/EOS5_10arcsec_mask.nc'
+      maskfile = 'shared/mask/GEOS5_10arcsec_mask.nc'
       if lbcsv in ['F25', 'GM4', 'ICA']:
          maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
 
    if grid_type in ['EASEv1', 'EASEv2']:
-      maskfile = 'shared/mask/EOS5_10arcsec_mask.nc'
+      maskfile = 'shared/mask/GEOS5_10arcsec_mask.nc'
 
    imo['O1'] = 360
    jmo['O1'] = 180
