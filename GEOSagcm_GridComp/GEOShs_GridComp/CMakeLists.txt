@@ -1,7 +1,6 @@
 esma_set_this()
 
 set (srcs
-  hs_c_interface.c
   held_suarez_oacc.F90
   GEOS_HsGridComp.F90
   )
