@@ -222,22 +222,6 @@ contains
              SHORT_NAME = 'FHOCN',                                &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
-    else
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'FRESH',                                &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'FSALT',                                &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'FHOCN',                                &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
     endif
 
     if(trim(SEAICE_NAME) == 'CICE4') then
