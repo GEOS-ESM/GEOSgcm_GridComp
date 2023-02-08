@@ -716,6 +716,7 @@ contains
     REAL_, pointer                     :: MASK  (:,:)        => null()
     REAL_, pointer                     :: AREA  (:,:)        => null()
     REAL_, pointer                     :: FRI   (:,:)        => null()
+    REAL_, pointer                     :: AICE  (:,:)        => null()
     REAL_, pointer                     :: FRESH (:,:)        => null()
     REAL_, pointer                     :: FHOCN (:,:)        => null()
     REAL_, pointer                     :: FSALT (:,:)        => null()
@@ -783,6 +784,7 @@ contains
     call MAPL_GetPointer(EXPORT,   TI,     'TI'          ,  alloc=.true.,  _RC)
     call MAPL_GetPointer(EXPORT,   FI,     'FRSEAICE'    ,  alloc=.true.,  _RC)
     call MAPL_GetPointer(EXPORT,   FRI,    'FRACICE'     ,                 _RC)
+    call MAPL_GetPointer(EXPORT,   AICE,   'AICE'        ,                 _RC)
     call MAPL_GetPointer(EXPORT,   FHOCN,  'FHOCN'       ,                 _RC)
     call MAPL_GetPointer(EXPORT,   FRESH,  'FRESH'       ,                 _RC)
     call MAPL_GetPointer(EXPORT,   FSALT,  'FSALT'       ,                 _RC)
@@ -813,6 +815,10 @@ contains
 
     if(associated(FRI)) then
       call ice_export_field('FRACICE', FRI, _RC)
+    endif 
+
+    if(associated(AICE)) then
+      call ice_export_field('FRACICE', AICE, _RC)
     endif 
 
     if(associated(FHOCN)) then
