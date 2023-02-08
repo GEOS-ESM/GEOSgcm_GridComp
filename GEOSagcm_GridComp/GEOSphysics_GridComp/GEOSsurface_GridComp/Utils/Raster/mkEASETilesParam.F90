@@ -122,10 +122,6 @@ PROGRAM mkEASETilesParam
      !    stop ("EASEv1 only supports M25")
      ! endif      
       
-      ! WY noted: should do it in the script that calls this program 
-      !call execute_command_line('cd data/ ; '//trim(MAKE_BCS_INPUT_DIR)//'/')
-      !call execute_command_line('cd ..')
-      
       ! Setting EASE Grid specifications
       ! --------------------------------
 
