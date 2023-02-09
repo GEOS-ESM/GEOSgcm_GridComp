@@ -332,7 +332,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QLLS',                                      &
+        SHORT_NAME = 'QLTOT',                                     &
         LONG_NAME  = 'liquid_condensate_mixing_ratio',            &
         UNITS      = 'kg kg-1',                                   &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -342,7 +342,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QILS',                                      &
+        SHORT_NAME = 'QITOT',                                     &
         LONG_NAME  = 'frozen_condensate_mixing_ratio',            &
         UNITS      = 'kg kg-1',                                   &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -352,37 +352,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'CLLS',                                      &
-        LONG_NAME  = 'cloud_fraction',                            &
-        UNITS      = '1',                                         &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QLCN',                                      &
-        LONG_NAME  = 'liquid_condensate_mixing_ratio',            &
-        UNITS      = 'kg kg-1',                                   &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QICN',                                      &
-        LONG_NAME  = 'frozen_condensate_mixing_ratio',            &
-        UNITS      = 'kg kg-1',                                   &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'CLCN',                                      &
+        SHORT_NAME = 'QCTOT',                                     &
         LONG_NAME  = 'cloud_fraction',                            &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -2918,7 +2888,7 @@ contains
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
-     real, dimension(:,:,:), pointer     :: KH, KM, QLLS, QILS, CLLS, QLCN, QICN, CLCN
+     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QCTOT
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
 
@@ -3132,12 +3102,9 @@ contains
      call MAPL_GetPointer(IMPORT,  PREF,    'PREF', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, RADLW,   'RADLW', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,RADLWC,  'RADLWC', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,  QLLS,    'QLLS', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,  QILS,    'QILS', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,  QLCN,    'QLCN', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,  QICN,    'QICN', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,  CLLS,    'CLLS', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT,  CLCN,    'CLCN', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, QLTOT,   'QLTOT', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, QITOT,   'QITOT', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, QCTOT,   'QCTOT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
@@ -3149,7 +3116,7 @@ contains
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=0.0,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=5000.0,  RC=STATUS); VERIFY_(STATUS)
@@ -3164,15 +3131,12 @@ contains
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
+     call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
      if (JASON_TUNING) then
-       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
      endif
      call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,        RC=STATUS); VERIFY_(STATUS)
@@ -3560,9 +3524,9 @@ contains
       ! Layer height, pressure, and virtual temperatures
       !-------------------------------------------------
 
-      QL  = QLCN + QLLS
-      QI  = QICN + QILS
-      QA  = CLCN + CLLS ! Currently not used in REFRESHKS
+      QL  = QLTOT
+      QI  = QITOT
+      QA  = QCTOT
       Z   = 0.5*(ZL0(:,:,0:LM-1)+ZL0(:,:,1:LM))
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
 
@@ -3615,14 +3579,14 @@ contains
       RHOE(:,:,0)=PLE(:,:,0)/(MAPL_RGAS*TV(:,:,1))
       RHOE(:,:,LM)=PLE(:,:,LM)/(MAPL_RGAS*TV(:,:,LM))
 
-      rho = plo/( mapl_rgas*tv )
+      rho = plo/( MAPL_RGAS*tv )
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
-    THL=TH-(mapl_alhl*QL+mapl_alhs*QI)/(mapl_cp*EXF)
+    THL=TH-(MAPL_ALHL*QL+MAPL_ALHS*QI)/(MAPL_CP*EXF)
     QT=Q+QL+QI
 
 ! get updraft constants
@@ -3693,7 +3657,7 @@ contains
 
        if ( SCM_SL_FLUX == 1 ) then
           sh_scm(:,:)   = scm_sh
-          evap_scm(:,:) = scm_evap/mapl_alhl
+          evap_scm(:,:) = scm_evap/MAPL_ALHL
        elseif ( SCM_SL_FLUX == 2 ) then
           zeta_scm(:,:) = scm_zeta
        end if
@@ -3877,22 +3841,22 @@ contains
       if (associated(edmf_thl_plume9)) edmf_thl_plume9 = MAPL_UNDEF
       if (associated(edmf_thl_plume10)) edmf_thl_plume10 = MAPL_UNDEF
 #endif
-      if (associated(z_conv_edmf))    z_conv_edmf   = mapl_undef
+      if (associated(z_conv_edmf))    z_conv_edmf   = MAPL_UNDEF
       if (associated(edmf_dry_a))     edmf_dry_a    = 0.0
       if (associated(edmf_moist_a))   edmf_moist_a  = 0.0
-      if (associated(edmf_dry_w))     edmf_dry_w    = mapl_undef
-      if (associated(edmf_moist_w))   edmf_moist_w  = mapl_undef 
-      if (associated(edmf_dry_qt))    edmf_dry_qt   = mapl_undef
-      if (associated(edmf_moist_qt))  edmf_moist_qt = mapl_undef 
-      if (associated(edmf_dry_thl))   edmf_dry_thl  = mapl_undef 
-      if (associated(edmf_moist_thl)) edmf_moist_thl= mapl_undef 
-      if (associated(edmf_dry_u))     edmf_dry_u    = mapl_undef 
-      if (associated(edmf_moist_u))   edmf_moist_u  = mapl_undef 
-      if (associated(edmf_dry_v))     edmf_dry_v    = mapl_undef 
-      if (associated(edmf_moist_v))   edmf_moist_v  = mapl_undef 
-      if (associated(edmf_moist_qc))  edmf_moist_qc = mapl_undef 
+      if (associated(edmf_dry_w))     edmf_dry_w    = MAPL_UNDEF
+      if (associated(edmf_moist_w))   edmf_moist_w  = MAPL_UNDEF 
+      if (associated(edmf_dry_qt))    edmf_dry_qt   = MAPL_UNDEF
+      if (associated(edmf_moist_qt))  edmf_moist_qt = MAPL_UNDEF 
+      if (associated(edmf_dry_thl))   edmf_dry_thl  = MAPL_UNDEF 
+      if (associated(edmf_moist_thl)) edmf_moist_thl= MAPL_UNDEF 
+      if (associated(edmf_dry_u))     edmf_dry_u    = MAPL_UNDEF 
+      if (associated(edmf_moist_u))   edmf_moist_u  = MAPL_UNDEF 
+      if (associated(edmf_dry_v))     edmf_dry_v    = MAPL_UNDEF 
+      if (associated(edmf_moist_v))   edmf_moist_v  = MAPL_UNDEF 
+      if (associated(edmf_moist_qc))  edmf_moist_qc = MAPL_UNDEF 
       if (associated(edmf_buoyf))     edmf_buoyf    = 0.0
-      if (associated(edmf_entx))      edmf_entx     = mapl_undef
+      if (associated(edmf_entx))      edmf_entx     = MAPL_UNDEF
       if (associated(edmf_mfx))       edmf_mfx      = 0.0 
       if (associated(edmf_hl2))       edmf_hl2      = mfhl2 
       if (associated(edmf_qt2))       edmf_qt2      = mfqt2 
@@ -4141,8 +4105,8 @@ contains
                   SH_dev       = SH
                   T_dev        = T
                   QV_dev       = Q
-                  QL_dev       = QLLS
-                  QI_dev       = QILS
+                  QL_dev       = QLTOT
+                  QI_dev       = QITOT
                   U_dev        = U
                   V_dev        = V
                   ZFULL_dev    = Z
@@ -4374,8 +4338,8 @@ contains
                       SH,                       &
                       T,                        &
                       Q,                        &
-                      QLLS,                     &
-                      QILS,                     &
+                      QLTOT,                    &
+                      QITOT,                    &
                       U,                        &
                       V,                        &
                       Z,                        &
@@ -4465,7 +4429,7 @@ contains
 
       ! Update the higher order moments required for the ADG PDF
       if ( (PDFSHAPE.eq.5) .AND. (DO_SHOC /= 0) ) then
-      HL = T + (mapl_grav*Z - mapl_alhl*QLLS)/mapl_cp
+      HL = T + (MAPL_GRAV*Z - MAPL_ALHL*QLTOT - MAPL_ALHS*QITOT)/MAPL_CP
       call update_moments(IM, JM, LM, DT, &
                           SH,             &  ! in
                           EVAP,           &
@@ -5049,8 +5013,6 @@ contains
     real, dimension(:,:,:), pointer     :: DX
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
-    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
-
     integer                             :: KM, K,L
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
@@ -5215,8 +5177,10 @@ contains
 ! Pick the right exchange coefficients
 !-------------------------------------
 
-if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') & 
-     .and. (trim(name) /= 'QILS') .and.  (trim(name) /= 'U') .and. (trim(name) /= 'V')) then
+if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
+     (trim(name) /= 'QLLS') .and. (trim(name) /= 'QILS') .and. &
+     (trim(name) /= 'QLCN') .and. (trim(name) /= 'QICN') .and. &
+     (trim(name) /= 'U'   ) .and. (trim(name) /= 'V'   )) then
     
 
        if     ( TYPE=='U' ) then ! Momentum
@@ -5260,6 +5224,16 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
+ elseif (trim(name)=='QLCN') then
+          CX => CQ
+          DX => DKQQ
+          AK => AKQQ; BK => BKQQ; CK => CKQQ
+          SX=S+YQL
+ elseif (trim(name)=='QICN') then
+          CX => CQ
+          DX => DKQQ
+          AK => AKQQ; BK => BKQQ; CK => CKQQ
+          SX=S+YQI
  elseif (trim(name)=='U') then       
          CX => CU
          DX => DKUU
@@ -5287,7 +5261,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
              if ( trim(name) == 'S' ) then
                 SF(:,:) = scm_sh
              elseif ( trim(name) == 'Q' ) then
-                SF(:,:) = scm_evap/mapl_alhl
+                SF(:,:) = scm_evap/MAPL_ALHL
              end if
           else
              if(size(SG)>0) then
@@ -6083,7 +6057,9 @@ end subroutine RUN1
             end if
          end if
 
-       if( name=='Q' .or. name=='QLLS' .or. name=='QLCN') then
+       if( name=='Q' .or. name=='QLLS'  .or. name=='QLCN'  .or. &
+                          name=='QILS'  .or. name=='QICN'  .or. &
+                          name=='QRAIN' .or. name=='QSNOW' .or. name=='QGRAUPEL') then
           if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
        endif
 
@@ -6093,6 +6069,10 @@ end subroutine RUN1
 
        if( name=='QLLS' .or. name=='QLCN' ) then
           if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHL*SX
+       endif
+
+       if( name=='QILS' .or. name=='QICN' ) then
+          if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHS*SX
        endif
 
        if( name=='U' ) then

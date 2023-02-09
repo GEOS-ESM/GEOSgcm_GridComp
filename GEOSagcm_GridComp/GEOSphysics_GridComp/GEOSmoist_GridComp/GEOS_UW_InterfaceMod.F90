@@ -148,6 +148,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                        QIDET_SC, QLENT_SC, QIENT_SC, &
                                        QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
     real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC
+    real, pointer, dimension(:,:,:) :: QLTOT, QITOT
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:)   :: PTR2D
 
@@ -273,12 +274,18 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    
+  
+    ! combine condensates for input (not updated within UW) 
+    call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    QLTOT = QLLS+QLCN
+    QITOT = QILS+QICN
+ 
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM,       DT_MOIST,  & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
-            U, V, Q, QLLS, QILS, T, TKE, KPBL_SC,        &
+            U, V, Q, QLTOT, QITOT, T, TKE, KPBL_SC,       &
             SH, EVAP, CNPCPRATE, FRLAND,                  &
             CUSH,                                         & ! INOUT
             UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT

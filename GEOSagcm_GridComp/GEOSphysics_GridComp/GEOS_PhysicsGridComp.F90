@@ -1044,8 +1044,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV   ','QLLS ','QILS ','QLCN ',              &
-                         'QICN ','CLLS ','CLCN ','WTHV2'/),           &
+         SHORT_NAME  = (/'QV','QLTOT','QITOT','QCTOT','WTHV2'/),   &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )

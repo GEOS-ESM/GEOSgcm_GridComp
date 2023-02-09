@@ -90,7 +90,7 @@ module GEOSmoist_Process_Library
   public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp
-  public :: find_l, find_eis, FINDLCL
+  public :: find_l, FIND_EIS, FIND_TLCL, FINDLCL
   public :: find_cldtop, find_cldbase, gw_prof
   public :: make_IceNumber, make_DropletNumber
   public :: dissipative_ke_heating
@@ -2402,51 +2402,63 @@ module GEOSmoist_Process_Library
   end subroutine find_l
 
   subroutine FIND_EIS(TH1, QSAT, TEMP, ZET, PLO, KLCL, IM, JM, LM, LTS, EIS)
-    ! !DESCRIPTION:  Returns ESrtimated Inversion Strength (K) according to Wood and Betherton, J.Climate, 2006
+   ! !DESCRIPTION:  Returns Estimated Inversion Strength (K) according to Wood and Betherton, J.Climate, 2006
    ! Written by Donifan Barahona
 
-    integer                    , intent(in) :: IM,JM,LM
-    real, dimension(IM,JM,LM), intent(in) :: TH1, QSAT, TEMP, PLO
-    real, dimension(IM,JM,0:LM), intent(in) :: ZET
+    integer, intent(in) :: IM,JM,LM
+    real   , dimension(IM,JM,LM)  , intent(in)  :: TH1, QSAT, TEMP, PLO
+    real   , dimension(IM,JM,0:LM), intent(in)  :: ZET
+    integer, dimension(IM,JM)     , intent(in)  :: KLCL
+    real   , dimension(IM,JM)     , intent(out) :: EIS, LTS
 
-    integer, dimension(IM,JM), intent(in)     :: KLCL
+    real    ::  Z700, ZLCL, QS700, QSLCL, T700, TLCL, GAMMA700, GAMMALCL
+    integer :: I, J, K
 
-    real, dimension(IM,JM), intent(out)     :: EIS, LTS
-    real, dimension(IM,JM)        ::  Z700, ZLCL, QS700, QSLCL, T700, TLCL, GAMMA700, GAMMALCL
+    do J = 1, JM
+       do I = 1, IM
+          do K = LM-1, 2, -1
+             LTS(I,J) =  TH1(I,J,K+1)
+                 Z700 =  ZET(I,J,K+1)
+                QS700 = QSAT(I,J,K+1)
+                 T700 = TEMP(I,J,K+1)
+             If (PLO(I, J, K) .lt. 700.0) exit
+          end do
+          LTS(I,J) = LTS(I,J)-TH1(I,J,LM)
 
-    integer                                 :: I, J, K
+           ZLCL =  ZET(I,J,KLCL(I,J)-1)
+          QSLCL = QSAT(I,J,KLCL(I,J)-1)
+           TLCL = TEMP(I,J,KLCL(I,J)-1)
 
+          GAMMA700 =  (1.0+(MAPL_ALHL*QS700/(MAPL_RGAS*T700)))/ &
+                      (1.0+(MAPL_ALHL*MAPL_ALHL*QS700/(MAPL_RVAP*T700*T700)))
+          GAMMA700 =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMA700)
+          GAMMALCL =  (1.0+(MAPL_ALHL*QSLCL/(MAPL_RGAS*TLCL)))/ &
+                      (1.0+(MAPL_ALHL*MAPL_ALHL*QSLCL/(MAPL_RVAP*TLCL*TLCL)))
+          GAMMALCL =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMALCL)
 
-    do I = 1, IM
-       do J = 1, JM
+          EIS(I,J) =  LTS(I,J) - GAMMA700*Z700 + GAMMALCL*ZLCL
 
-           LTS(I, J) =  0.0
-               DO K = LM-1, 2, -1
-                  If (PLO(I, J, K) .lt. 700.0) then
-                     LTS(I, J) =  TH1(I, J, K + 1)
-                     Z700(I, J) = ZET(I, J, K + 1)
-                     QS700(I, J) =  QSAT(I, J, K + 1)
-                     T700(I, J) =  TEMP(I, J, K + 1)
-                     exit
-                  end if
-             END DO
-
-              LTS(I, J)  =  LTS(I, J)-TH1(I, J, LM)
-
-              ZLCL(I, J) =  ZET(I, J, KLCL(I, J)-1)
-              QSLCL(I, J) =  QSAT(I, J, KLCL(I, J)-1)
-              TLCL(I, J) =  TEMP(I, J, KLCL(I, J)-1)
        end do
     end do
 
-    GAMMA700 =  (1.0+(MAPL_ALHL*QS700/MAPL_RGAS/T700))/(1.0 + (MAPL_ALHL*MAPL_ALHL*QS700/MAPL_RVAP/T700/T700))
-    GAMMA700 =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMA700)
-    GAMMALCL =  (1.0+(MAPL_ALHL*QSLCL/MAPL_RGAS/TLCL))/(1.0 + (MAPL_ALHL*MAPL_ALHL*QSLCL/MAPL_RVAP/TLCL/TLCL))
-    GAMMALCL =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMALCL)
+  end subroutine FIND_EIS
 
-    EIS =  LTS -  GAMMA700*Z700 + GAMMALCL*ZLCL
-
-    end subroutine find_eis
+  FUNCTION FIND_TLCL ( tk, rh ) result( tlcl )
+  ! Description:                                                            
+  !    This function calculates the temperature of a parcel of air would have
+  !    if lifed dry adiabatically to it's lifting condensation level (lcl).  
+  ! References:                                                              
+  !    Bolton (1980), Monthly Weather Review, pg. 1048, Eq. 22
+    IMPLICIT NONE
+    REAL, INTENT ( IN ) :: tK   !~ Temperature ( K )
+    REAL, INTENT ( IN ) :: rh   !~ Relative Humidity ( % )
+    REAL                :: tlcl
+    REAL :: denom, term1, term2
+    term1 = 1.0 / ( tK - 55.0 )
+    term2 = ( LOG (max(0.1,rh)/100.0)  / 2840.0 )
+    denom = term1 - term2
+    tlcl = ( 1.0 / denom ) + 55.0 
+  END FUNCTION FIND_TLCL
 
   function FINDLCL( THM, QM, PL, PK, IM, JM, LM ) result( KLCL )
     ! !DESCRIPTION:
