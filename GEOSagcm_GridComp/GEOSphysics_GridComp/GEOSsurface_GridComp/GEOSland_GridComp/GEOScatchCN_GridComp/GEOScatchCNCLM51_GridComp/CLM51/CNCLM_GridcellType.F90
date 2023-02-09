@@ -62,7 +62,7 @@ module GridcellType
     real, dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft  ! pft-level (patch-level) restart variable array
     real, dimension(nch),                         intent(in) :: lats   ! Catchment tile latitudes in radians
     real, dimension(nch),                         intent(in) :: lons   ! Catchment tile longitudes in radians
-    class(gridcell_type),                                     :: this
+    class(gridcell_type)                                     :: this
 
     !LOCAL
     integer :: begg, endg
