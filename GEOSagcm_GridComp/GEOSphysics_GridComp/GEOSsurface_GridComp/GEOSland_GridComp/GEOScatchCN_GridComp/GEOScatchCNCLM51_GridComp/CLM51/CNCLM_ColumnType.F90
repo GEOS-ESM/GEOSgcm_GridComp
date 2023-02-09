@@ -164,6 +164,8 @@ module ColumnType
           n = n + 1
           this%gridcell(n) = nc
           this%wtgcell(n)  = CN_zone_weight(nz)
+          this%landunit(n) = nc
+          this%wtlunit(n)  = CN_zone_weight(nz)
           this%patchi(n)   = (numpft+1)*(n-1) + 1
           this%patchf(n)   = (numpft+1)*n
         end do ! nz
