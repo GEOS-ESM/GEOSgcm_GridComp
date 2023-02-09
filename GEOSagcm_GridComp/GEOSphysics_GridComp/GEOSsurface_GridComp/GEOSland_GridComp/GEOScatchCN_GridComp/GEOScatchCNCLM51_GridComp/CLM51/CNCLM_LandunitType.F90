@@ -121,6 +121,7 @@ contains
        this%patchf(nc)   = (numpft+1)*num_zon*nc
        this%coli(nc)     = (num_zon)*(nc-1) + 1
        this%colf(nc)     = num_zon*nc
+       this%itype(nc)    = 1 ! set land unit type so bare or vegetated soil everywhere 
     end do
 
   end subroutine init_landunit_type
