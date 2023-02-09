@@ -20,7 +20,7 @@ module LandunitType
   use nanMod         , only : nan
   use clm_varcon     , only : ispval
   use decompMod      , only : bounds_type
-  use clm_varpar     , only : NUM_ZON
+  use clm_varpar     , only : NUM_ZON, numpft
 
   ! !PUBLIC TYPES:
   implicit none
