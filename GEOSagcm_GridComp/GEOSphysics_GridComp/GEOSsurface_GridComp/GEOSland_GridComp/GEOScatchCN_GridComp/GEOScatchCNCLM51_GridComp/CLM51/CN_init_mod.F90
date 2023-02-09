@@ -173,7 +173,7 @@ module CN_initMod
 
     call col%init_column_type           (bounds, nch)
 
-    call lun%init_landunit_type         (bounds)
+    call lun%init_landunit_type         (bounds, nch)
 
     call grc%init_gridcell_type         (bounds, nch, cnpft, lats, lons)
 

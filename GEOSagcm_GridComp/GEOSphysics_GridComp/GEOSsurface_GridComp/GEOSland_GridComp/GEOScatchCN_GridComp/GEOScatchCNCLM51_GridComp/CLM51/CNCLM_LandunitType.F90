@@ -69,7 +69,7 @@ module LandunitType
 contains
 
  !------------------------------------------------------------------------
-  subroutine init_landunit_type(this, bounds)
+  subroutine init_landunit_type(this, bounds, nch)
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
     ! Allocate memory and initialize to signalling NaN to require
@@ -78,6 +78,7 @@ contains
     ! !ARGUMENTS:
     !INPUT/OUTPUT
     type(bounds_type),   intent(in)    :: bounds
+    integer,             intent(in) :: nch         ! number of Catchment tiles
     class(landunit_type)                :: this
 
     !LOCAL
