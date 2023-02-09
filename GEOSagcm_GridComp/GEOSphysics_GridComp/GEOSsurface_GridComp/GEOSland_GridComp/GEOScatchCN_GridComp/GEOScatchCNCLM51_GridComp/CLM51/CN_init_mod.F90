@@ -28,18 +28,18 @@ module CN_initMod
   use CNVegStateType
   use CNVegCarbonFluxType
   use CNVegNitrogenFluxType
-  use GridcellType
+  use GridcellType     , only : init_gridcell_type, grc
   use WaterFluxBulkType
   use SoilBiogeochemCarbonFluxType
   use SoilBiogeochemNitrogenFluxType
-  use PatchType        , only : init_patch_type, patch_type
-  use ColumnType
+  use PatchType        , only : init_patch_type, patch
+  use ColumnType       , only : init_column_type, col
   use ch4Mod
   use SoilBiogeochemDecompCascadeConType
   use ActiveLayerMod
   use CropType
   use CNDVType
-  use LandunitType
+  use LandunitType     , only : init_landunit_type, lun
   use RootBiophysMod
   use CNMRespMod         , only : readCNMRespParams => readParams
   use CNSharedParamsMod  , only : CNParamsReadShared
@@ -108,9 +108,9 @@ module CN_initMod
   !LOCAL
 
   type(bounds_type)                       :: bounds
-  type(patch_type)                        :: patch
-  type(column_type)                       :: col
-  type(landunit_type)                     :: lun
+  !type(patch_type)                        :: patch
+  !type(column_type)                       :: col
+  !type(landunit_type)                     :: lun
   type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
   type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
   type(atm2lnd_type)                      :: atm2lnd_inst
@@ -133,7 +133,7 @@ module CN_initMod
   type(cnveg_state_type)                  :: cnveg_state_inst
   type(cnveg_carbonflux_type)             :: cnveg_carbonflux_inst
   type(cnveg_nitrogenflux_type)           :: cnveg_nitrogenflux_inst
-  type(gridcell_type)                     :: grc
+  !type(gridcell_type)                     :: grc
   type(soilbiogeochem_carbonflux_type)    :: soilbiogeochem_carbonflux_inst
   type(soilbiogeochem_nitrogenflux_type)  :: soilbiogeochem_nitrogenflux_inst
   type(ch4_type)                          :: ch4_inst
@@ -169,13 +169,13 @@ module CN_initMod
 
     ! initialize subrgid types
 
-    call init_patch_type                (bounds, nch, ityp, fveg, patch)
+    call patch%init_patch_type          (bounds, nch, ityp, fveg)
 
-    call init_column_type               (bounds, nch, col)
+    call col%init_column_type           (bounds, nch)
 
-    call init_landunit_type             (bounds, lun)
+    call lun%init_landunit_type         (bounds)
 
-    call init_gridcell_type             (bounds, nch, cnpft, lats, lons, grc)
+    call grc%init_gridcell_type         (bounds, nch, cnpft, lats, lons)
 
     ! create subgrid structure
 

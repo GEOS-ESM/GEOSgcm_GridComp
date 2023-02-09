@@ -11,7 +11,6 @@ module GridcellType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_gridcell_type
 
   type, public :: gridcell_type
 
@@ -38,13 +37,17 @@ module GridcellType
      ! landunit type in the inner loop)
      integer , pointer :: landunit_indices (:,:)
 
+    contains
+
+     procedure, public :: init_gridcell_type
+
   end type gridcell_type
-  type(gridcell_type), public :: grc
+  type(gridcell_type), public, target :: grc
 
   contains
 
 !-----------------------------------------------
-  subroutine init_gridcell_type(bounds, nch, cnpft, lats, lons, this)
+  subroutine init_gridcell_type(this, bounds, nch, cnpft, lats, lons)
 
   ! !DESCRIPTION:
 ! Initialize CTSM gridcell type needed for calling CTSM routines                                 
@@ -59,7 +62,7 @@ module GridcellType
     real, dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft  ! pft-level (patch-level) restart variable array
     real, dimension(nch),                         intent(in) :: lats   ! Catchment tile latitudes in radians
     real, dimension(nch),                         intent(in) :: lons   ! Catchment tile longitudes in radians
-    type(gridcell_type),                          intent(inout):: this
+    class(gridcell_type),                                     :: this
 
     !LOCAL
     integer :: begg, endg

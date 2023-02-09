@@ -33,7 +33,6 @@ module ColumnType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_column_type
 
   type, public :: column_type
      ! g/l/c/p hierarchy, local g/l/c/p cells only
@@ -83,13 +82,17 @@ module ColumnType
      ! this column (i.e., this column doesn't use the full nlevgrnd layers).
      integer , pointer :: levgrnd_class        (:,:) ! class in which each layer falls (1:nlevgrnd)
 
+   contains
+
+     procedure, public :: init_column_type
+
   end type column_type
-  type(column_type), public :: col
+  type(column_type), public, target :: col
 
  contains
 
 !-----------------------------------------------------
-  subroutine init_column_type(bounds,nch, this)
+  subroutine init_column_type(this, bounds,nch)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
@@ -97,7 +100,7 @@ module ColumnType
   ! INPUT:
     type(bounds_type), intent(in) :: bounds
     integer,           intent(in) :: nch         ! number of Catchment tiles
-    type(column_type), intent(inout) :: this
+    class(column_type)            :: this
 
   ! LOCAL:
 

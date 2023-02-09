@@ -35,7 +35,6 @@ module PatchType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_patch_type
 
   type, public :: patch_type
 
@@ -64,13 +63,18 @@ module PatchType
                                        ! patches within fates jurisdiction
                                        ! including patches which are not currently
                                        ! associated with a FATES linked-list patch
+
+    contains
+
+     procedure, public :: init_patch_type
+
   end type patch_type
   type(patch_type), public, target :: patch
 
  contains
 
 !----------------------------------------------------
-  subroutine init_patch_type(bounds, nch, ityp, fveg, this)
+  subroutine init_patch_type(this, bounds, nch, ityp, fveg)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
@@ -80,7 +84,7 @@ module PatchType
     integer,                                 intent(in) :: nch    ! number of Catchment tiles
     integer, dimension(nch,num_veg,num_zon), intent(in) :: ityp   ! PFT index
     real, dimension(nch,num_veg,num_zon),    intent(in) :: fveg   ! PFT fraction
-    type(patch_type),                        intent(inout) :: this
+    class(patch_type)                                   :: this
 
   ! LOCAL: 
     integer :: begp,endp

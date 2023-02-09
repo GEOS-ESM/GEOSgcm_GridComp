@@ -27,7 +27,6 @@ module LandunitType
   private
 
   ! PUBLIC MEMBER FUNCTIONS:
-  public :: init_landunit_type
 
   !
   type, public :: landunit_type
@@ -57,6 +56,10 @@ module LandunitType
      real(r8), pointer :: z_0_town     (:) ! urban landunit momentum roughness length (m)
      real(r8), pointer :: z_d_town     (:) ! urban landunit displacement height (m)
 
+   contains 
+
+    procedure, public :: init_landunit_type
+
   end type landunit_type
   ! Singleton instance of the landunitType
   type(landunit_type), public, target :: lun  !geomorphological landunits
@@ -65,7 +68,7 @@ module LandunitType
 contains
 
  !------------------------------------------------------------------------
-  subroutine init_landunit_type(bounds, this)
+  subroutine init_landunit_type(this, bounds)
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
     ! Allocate memory and initialize to signalling NaN to require
@@ -74,7 +77,7 @@ contains
     ! !ARGUMENTS:
     !INPUT/OUTPUT
     type(bounds_type),   intent(in)    :: bounds
-    type(landunit_type), intent(inout) :: this
+    class(landunit_type)                :: this
 
     !LOCAL
     integer :: begl,endl
