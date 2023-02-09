@@ -101,8 +101,6 @@ contains
     logical :: file_exists
     REAL, ALLOCATABLE, DIMENSION (:,:) :: NITYP,NFVEG
 
-    character*400          :: MAKE_BCS_INPUT_DIR
-
     ! Reading CLM pft data file
     !--------------------------
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
@@ -821,8 +819,6 @@ contains
     real, pointer, dimension (:)  :: z2, z0
     real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
     logical :: file_exists
-
-    character*400          :: MAKE_BCS_INPUT_DIR
 
     ! Reading ESA vegetation types
     !-----------------------------
@@ -1776,7 +1772,6 @@ END SUBROUTINE modis_scale_para_high
   logical :: regrid
   character *10 :: vname
   REAL :: sf
-  character*400          :: MAKE_BCS_INPUT_DIR
 
 !
 ! Reading number of cathment-tiles from catchment.def file
@@ -1943,6 +1938,7 @@ END SUBROUTINE modis_scale_para_high
   implicit none 
   integer, intent (in) :: nx, ny 
   character(*)  :: gfiler,lai_name
+  integer, intent(in), optional :: merge 
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
@@ -1965,8 +1961,6 @@ END SUBROUTINE modis_scale_para_high
   logical :: first_entry = .true.
   type (date_time_type) :: bf_gswp2_time,af_gswp2_time,date_time_new,bf_lai_time,   &
        af_lai_time
-  character*400 :: MAKE_BCS_INPUT_DIR
-  integer, intent(in), optional :: merge 
 !
 ! Reading number of cathment-tiles from catchment.def file
 !--------------------------------------------------------- 
@@ -2241,7 +2235,6 @@ END SUBROUTINE modis_scale_para_high
   integer, dimension (:,:), allocatable, target :: tile_id
   integer ::  tileid_tile
   real    :: dxm, dym
-  character*400 :: MAKE_BCS_INPUT_DIR
 ! Reading rst file
 !-----------------
    open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
@@ -2467,6 +2460,7 @@ END SUBROUTINE modis_scale_para_high
   integer :: QSize
   type (regrid_map), intent (in) :: rmap
   character(*)  :: gfiler,lai_name
+  integer, intent(in), optional :: merge 
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2,tindex1,pfaf1
@@ -2487,8 +2481,6 @@ END SUBROUTINE modis_scale_para_high
   logical :: first_entry = .true.
   type (date_time_type) :: date_time_new,bf_lai_time,   &
        af_lai_time
-  character*400 :: MAKE_BCS_INPUT_DIR
-  integer, intent(in), optional :: merge 
 
 ! Reading rst file
 !-----------------
@@ -2814,7 +2806,6 @@ END SUBROUTINE modis_scale_para_high
   integer, pointer, dimension (:,:) :: QSub
   INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,tindex1,pfaf1 
   real,    pointer, dimension (:,:)    :: subset
-  character*400 :: MAKE_BCS_INPUT_DIR
 
   if(trim(lai_name) == 'lai'  ) vid = 4
   if(trim(lai_name) == 'green') vid = 5
@@ -3038,7 +3029,6 @@ END SUBROUTINE modis_scale_para_high
     integer                         :: tindex1,pfaf1
     integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
     logical                         :: file_exists
-    character*400                   :: MAKE_BCS_INPUT_DIR
     
     ! Read number of catchment-tiles (N_tile) from catchment.def file
     fname='clsm/catchment.def'
@@ -3233,7 +3223,6 @@ END SUBROUTINE modis_scale_para_high
       REAL, DIMENSION (:), POINTER       :: PMAP
       REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR
 
-      character*400        :: MAKE_BCS_INPUT_DIR
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -4783,7 +4772,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     integer :: i, j, n, im, jm, lwi, idum, ntiles, nland, nv, ix, jx, itype, iband, isum, ntl, np, jalbx, ialbx, ncid, status
     logical :: file_exists
 
-    character*400               :: MAKE_BCS_INPUT_DIR
 
     ! read nland from catchment.def
     ! -----------------------------
@@ -5202,7 +5190,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           integer, dimension(8)   :: date_time_values
           character (22)          :: time_stamp    
 
-          character*400                             :: MAKE_BCS_INPUT_DIR
 
           ! Reading raster file
 
@@ -5417,7 +5404,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             a_poros,a_wp,a_aksat,atau,btau,a_wpsurf,a_porosurf, &
             atau_2cm,btau_2cm, field_cap (n_SoilClasses) 
 
-      character*400                      :: MAKE_BCS_INPUT_DIR
 
       ! Reading number of tiles
       ! -----------------------
@@ -5584,7 +5570,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       INTEGER, ALLOCATABLE, dimension (:,:)  :: tile_id
       integer                                :: yr,mn,yr1,mn1, k,t,i,j
 
-      character*400                          :: MAKE_BCS_INPUT_DIR
 
      ! Reading number of tiles
       ! -----------------------
@@ -5697,7 +5682,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   integer, dimension (:,:), allocatable, target :: tile_id
   integer       ::  tileid_tile
   character*3   :: ddd
-  character*400 :: MAKE_BCS_INPUT_DIR
 
 ! Reading rst file
 !-----------------
@@ -5909,7 +5893,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       integer, parameter :: scale_fac = 10000
       real,    parameter :: val_min = -0.3, val_max = 1.
 
-      character*400                          :: MAKE_BCS_INPUT_DIR
 
      ! Reading number of tiles
       ! -----------------------
@@ -6193,7 +6176,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       INTEGER,      dimension (:), pointer :: index_RANGE 
       character*20, dimension (:), pointer :: ST_NAME     
       character*48, dimension (:), pointer :: CNT_NAME  
-      character*400                        :: MAKE_BCS_INPUT_DIR
       
       integer :: CNT_CODE, ST_CODE
       integer :: i(GC),j(GR), k,n, status, ncid, varid, maxcat, I0(1), j0(1)

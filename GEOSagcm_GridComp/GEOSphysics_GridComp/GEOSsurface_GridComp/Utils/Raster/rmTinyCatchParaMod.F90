@@ -41,6 +41,7 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
+  public :: MAKE_BCS_INPUT_DIR
 
   INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
 
@@ -54,6 +55,7 @@ module rmTinyCatchParaMod
   character*6, public, save :: MODALB      = 'UNDEF'
   character*8, public, save :: SNOWALB     = 'UNDEF'
   REAL,        public, save :: GNU         = MAPL_UNDEF
+  character*400          :: MAKE_BCS_INPUT_DIR
 
   type :: mineral_perc
      real :: clay_perc
@@ -300,7 +302,6 @@ implicit none
     integer, pointer :: Raster(:,:)
     character(*) :: vname,gridnamer
     character*100 :: fname
-    character*400          :: MAKE_BCS_INPUT_DIR
 
     integer, intent(in), optional :: merge
  
@@ -443,8 +444,6 @@ integer :: i_sib,j_sib
 integer :: nx,ny,status
 logical :: regrid
 real, pointer :: Raster(:,:)	
-
-character*400          :: MAKE_BCS_INPUT_DIR
 
 allocate(tile_id(1:nx,1:ny))
 i_sib = i_raster
@@ -663,7 +662,6 @@ END SUBROUTINE modis_lai
       integer :: n,maxcat,count,k1,i1,i,j
       character*100 :: path,fname,fout,metpath
       character(*) :: gfile
-      character*400 :: MAKE_BCS_INPUT_DIR
       character*10 :: dline
       CHARACTER*20 :: version,resoln,continent
       integer :: iret,ncid,ncid1
@@ -1398,7 +1396,6 @@ integer :: n_threads=1
     integer :: nx,ny,status
     logical :: regrid, ease_grid
     real,pointer :: raster (:,:)
-    character*400 :: MAKE_BCS_INPUT_DIR
 
     fname=trim(gfilet)//'.til'
 
@@ -1983,8 +1980,6 @@ END SUBROUTINE modis_scale_para
     character*2 :: dateline
     real*4, allocatable , target :: q0 (:,:)
 
-    character*400          :: MAKE_BCS_INPUT_DIR
-
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
     allocate (q0(1:i_raster,1:j_raster))
@@ -2224,7 +2219,6 @@ END SUBROUTINE modis_scale_para
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     integer :: nx,ny,status
     logical :: ease_grid 
-    character*400          :: MAKE_BCS_INPUT_DIR
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -2517,8 +2511,6 @@ integer :: n_threads=1
     real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
     logical                            :: file_exists
     integer                            :: ncid
-    character*400          :: MAKE_BCS_INPUT_DIR
-
 
     fname=trim(gfilet)//'.til'
     open (10,file=fname,status='old',action='read',form='formatted')
@@ -2785,8 +2777,6 @@ integer :: n_threads=1
     character*100 :: fname
     character(*) :: gfile
     character(*) :: MaskFile
-    character*400 :: MAKE_BCS_INPUT_DIR
-    !
 
     fname=trim(gfile)//'.til'
     open (10,file=fname,status='old',action='read',form='formatted')
@@ -2939,7 +2929,6 @@ integer :: n_threads=1
       integer :: ncid, status
       logical :: file_exists
       real, allocatable, dimension (:,:) :: parms4file
-      character*400 :: MAKE_BCS_INPUT_DIR
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -3625,7 +3614,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       logical :: file_exists
       REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
       integer :: ncid, status
-      character*400 :: MAKE_BCS_INPUT_DIR
  
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -7428,7 +7416,6 @@ END SUBROUTINE compute_stats
       REAL, ALLOCATABLE, dimension (:,:) :: z0_grid, data_grid
       INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
       character*100                      :: fout
-      character*400                      :: MAKE_BCS_INPUT_DIR
 
       ! Reading number of tiles
       ! -----------------------
@@ -7519,7 +7506,6 @@ END SUBROUTINE compute_stats
       INTEGER, ALLOCATABLE, dimension (:,:) :: data_grid, z2_grid
       INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
       character*100                      :: fout
-      character*400                      :: MAKE_BCS_INPUT_DIR
 
       ! Reading number of tiles
       ! -----------------------

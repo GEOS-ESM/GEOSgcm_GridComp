@@ -17,6 +17,7 @@ PROGRAM mkEASETilesParam
       use EASE_conv
       use rmTinyCatchParaMod, only : i_raster, j_raster, SRTM_maxcat 
       use rmTinyCatchParaMod, only : RegridRaster, RegridRaster1, RegridRasterReal
+      use rmTinyCatchParaMod, only : MAKE_BCS_INPUT_DIR 
       use process_hres_data
       use MAPL_SortMod
       use MAPL_ConstantsMod
@@ -76,7 +77,6 @@ PROGRAM mkEASETilesParam
       character(len=10)      :: nc_string, nr_string
       character(128)         :: usage1, usage2
 
-      character*400          :: MAKE_BCS_INPUT_DIR
       call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
       ! --------------------------------------------------------------------------------------

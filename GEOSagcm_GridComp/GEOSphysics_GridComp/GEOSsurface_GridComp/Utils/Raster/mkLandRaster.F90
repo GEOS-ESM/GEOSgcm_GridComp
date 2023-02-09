@@ -7,7 +7,7 @@
     use MAPL_HashMod
     use process_hres_data
     use MAPL_SortMod
-    use rmTinyCatchParaMod, ONLY: SRTM_maxcat
+    use rmTinyCatchParaMod, ONLY: SRTM_maxcat, MAKE_BCS_INPUT_DIR
 
 ! Program to create a surface raster file at 2.5' that has
 ! the ocean divided with a regular lat-lon DE grid. Its inputs
@@ -70,7 +70,6 @@
     character*128          :: GridName
     character*128          :: InputFile
     character*128          :: MaskFile
-    character*400          :: MAKE_BCS_INPUT_DIR
     character*128          :: &
     Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -l LandFile -g GridName"
     include 'netcdf.inc'
