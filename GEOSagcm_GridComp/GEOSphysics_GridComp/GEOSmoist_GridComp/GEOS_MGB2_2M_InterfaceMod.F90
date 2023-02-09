@@ -1219,7 +1219,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       ! Find estimated inversion strength (DONIF)
 
        DQS      = GEOS_DQSAT(TEMP, PLO, qsat=QSS)
-       KLCL     = FINDLCL( TH1, Q1, PLO, PK, IM, JM, LM )
+       KLCL     = FIND_KLCL( TEMP, Q1, PLO, IM, JM, LM )
       !!    KPBL = FINDPBL( KH, IM, JM, LM )
       !! Set subcloud layer height to one level below PBL height level
       !!   make sure subcloud layer is at least 2 levels thick
@@ -1267,7 +1267,7 @@ subroutine MGB2_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          end do
       end do
 
-       call    FIND_EIS(TH1, QSS, TEMP, ZLE, PLO, KLCL, IM, JM, LM, LTS, EIS)
+       call    FIND_EIS(TH1, QSS, TEMP, ZL0, CNV_PLE, KLCL, IM, JM, LM, LTS, EIS)
 
       ! Clean up any negative specific humidity before the microphysics scheme
       !-----------------------------------------

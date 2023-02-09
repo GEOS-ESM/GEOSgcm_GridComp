@@ -180,19 +180,6 @@ contains
     ! !IMPORT STATE:
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PLK',                                 &
-         LONG_NAME  = 'layer_air_pressure_to_kappa',         &
-         UNITS      = 'Pa^kappa',                            &
-         DIMS       = MAPL_DimsHorzVert,                     &
-         VLOCATION  = MAPL_VLocationCenter,                  &
-         AVERAGING_INTERVAL = AVRGNINT,                      &
-         REFRESH_INTERVAL   = RFRSHINT,                      &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    ! !IMPORT STATE:
-
-    call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME = 'PLE',                                         &
          LONG_NAME  = 'air_pressure',                                &
          UNITS      = 'Pa',                                          &

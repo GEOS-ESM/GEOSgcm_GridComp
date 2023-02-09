@@ -90,7 +90,7 @@ module GEOSmoist_Process_Library
   public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp
-  public :: find_l, FIND_EIS, FIND_TLCL, FINDLCL
+  public :: find_l, FIND_EIS, FIND_KLCL
   public :: find_cldtop, find_cldbase, gw_prof
   public :: make_IceNumber, make_DropletNumber
   public :: dissipative_ke_heating
@@ -2373,9 +2373,13 @@ module GEOSmoist_Process_Library
        end do
        pt = 0.5*(ple(:,:,km)+ple(:,:,km-1))
        pb = 0.5*(ple(:,:,km)+ple(:,:,km+1))
-          where( (pp>pb.and.pp<=ple(:,:,km+1)) )
-             v2 = v3(:,:,km)
-          end where
+       where( (pp>pb.and.pp<=ple(:,:,km+1)) )
+          v2 = v3(:,:,km)
+       end where
+      ! final protection to avoid undef
+       where( v2 .eq. MAPL_UNDEF)
+          v2 = v3(:,:,km)
+       end where
     end if
 
     RETURN_(ESMF_SUCCESS)
@@ -2401,42 +2405,38 @@ module GEOSmoist_Process_Library
        end do
   end subroutine find_l
 
-  subroutine FIND_EIS(TH1, QSAT, TEMP, ZET, PLO, KLCL, IM, JM, LM, LTS, EIS)
+  subroutine FIND_EIS(TH, QSAT, T, ZL0, PLE, KLCL, IM, JM, LM, LTS, EIS)
    ! !DESCRIPTION:  Returns Estimated Inversion Strength (K) according to Wood and Betherton, J.Climate, 2006
    ! Written by Donifan Barahona
 
     integer, intent(in) :: IM,JM,LM
-    real   , dimension(IM,JM,LM)  , intent(in)  :: TH1, QSAT, TEMP, PLO
-    real   , dimension(IM,JM,0:LM), intent(in)  :: ZET
+    real   , dimension(IM,JM,LM)  , intent(in)  :: TH, QSAT, T, ZL0
+    real   , dimension(IM,JM,0:LM), intent(in)  :: PLE
     integer, dimension(IM,JM)     , intent(in)  :: KLCL
     real   , dimension(IM,JM)     , intent(out) :: EIS, LTS
 
-    real    ::  Z700, ZLCL, QS700, QSLCL, T700, TLCL, GAMMA700, GAMMALCL
+    real   , dimension(IM,JM) :: TH700, T700, Z700
+    real    ::  ZLCL, QS850, T850, GAMMA850
     integer :: I, J, K
+
+    call VertInterp(TH700, TH,log(100.0*PLE),log(70000.))
+    call VertInterp( T700,  T,log(100.0*PLE),log(70000.))
+    call VertInterp( Z700,ZL0,log(100.0*PLE),log(70000.))
 
     do J = 1, JM
        do I = 1, IM
-          do K = LM-1, 2, -1
-             LTS(I,J) =  TH1(I,J,K+1)
-                 Z700 =  ZET(I,J,K+1)
-                QS700 = QSAT(I,J,K+1)
-                 T700 = TEMP(I,J,K+1)
-             If (PLO(I, J, K) .lt. 700.0) exit
-          end do
-          LTS(I,J) = LTS(I,J)-TH1(I,J,LM)
+          LTS(I,J) = TH700(I,J)-TH(I,J,LM)
+          ZLCL = ZL0(I,J,KLCL(I,J)-1)
 
-           ZLCL =  ZET(I,J,KLCL(I,J)-1)
-          QSLCL = QSAT(I,J,KLCL(I,J)-1)
-           TLCL = TEMP(I,J,KLCL(I,J)-1)
+          ! Simplified single adiabat eq4 of https://doi.org/10.1175/JCLI3988.1
+           T850 = 0.5*(T(I,J,LM)+T700(I,J))
+          QS850 = GEOS_QSAT(T850, 850.0)
 
-          GAMMA700 =  (1.0+(MAPL_ALHL*QS700/(MAPL_RGAS*T700)))/ &
-                      (1.0+(MAPL_ALHL*MAPL_ALHL*QS700/(MAPL_RVAP*T700*T700)))
-          GAMMA700 =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMA700)
-          GAMMALCL =  (1.0+(MAPL_ALHL*QSLCL/(MAPL_RGAS*TLCL)))/ &
-                      (1.0+(MAPL_ALHL*MAPL_ALHL*QSLCL/(MAPL_RVAP*TLCL*TLCL)))
-          GAMMALCL =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMALCL)
+          GAMMA850 =  (1.0+(          MAPL_ALHL*QS850/(        MAPL_RGAS*T850     )))/ &
+                      (1.0+(MAPL_ALHL*MAPL_ALHL*QS850/(MAPL_CP*MAPL_RVAP*T850*T850)))
+          GAMMA850 =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMA850)
 
-          EIS(I,J) =  LTS(I,J) - GAMMA700*Z700 + GAMMALCL*ZLCL
+          EIS(I,J) =  LTS(I,J) - GAMMA850*(Z700(I,J) - ZLCL)
 
        end do
     end do
@@ -2460,45 +2460,30 @@ module GEOSmoist_Process_Library
     tlcl = ( 1.0 / denom ) + 55.0 
   END FUNCTION FIND_TLCL
 
-  function FINDLCL( THM, QM, PL, PK, IM, JM, LM ) result( KLCL )
+  function FIND_KLCL( T, Q, PL, IM, JM, LM ) result( KLCL )
     ! !DESCRIPTION:
     integer,                      intent(in) :: IM, JM, LM
-    real,    dimension(IM,JM,LM), intent(in) :: THM, QM
-    real,    dimension(IM,JM,LM), intent(in) :: PL, PK
-
+    real,    dimension(IM,JM,LM), intent(in) :: T, Q, PL ! T in K, PL in mb
     integer, dimension(IM,JM)             :: KLCL
 
-    real, dimension(LM) :: TPCL, QSPCL
-    integer             :: I, J, L, KOFFSET
+    real    :: RHSFC, TLCL, Rm, Cpm, PLCL
+    integer :: I, J, L, KOFFSET
 
-    do I = 1, IM
-       do J = 1, JM
-
-          TPCL  = THM(I,J,LM) * PK(I,J,:)
-          QSPCL = GEOS_QSAT(TPCL, PL(I,J,:) )
-
-          KLCL(I,J) = 0
-
-          do L = LM,1,-1
-             if( QM(I,J,LM) >= QSPCL(L) ) then
-                KLCL(I,J) = L
-                exit
-             endif
-          enddo
-
-
-          !! ------------------------------------
-          !!   Disabled for Daedalus (e0203) merge
-          !! ------------------------------------
-          !!AMM      KOFFSET   = INT ( (LM - KLCL(I,J))/2 )   !! disable for Gan4_0
-          KOFFSET   = 0
-          KLCL(I,J) = MIN ( LM-1,  KLCL(I,J)+KOFFSET )
-          KLCL(I,J) = MAX (    2,  KLCL(I,J)+KOFFSET )
-
+    do J=1,JM
+       do I=1,IM
+          RHSFC = 100.0*Q(I,J,LM)/GEOS_QSAT( T(I,J,LM), PL(I,J,LM) ) ! surface RH %
+          TLCL  = FIND_TLCL(T(I,J,LM),RHSFC) ! T at LCL
+          Rm    = (1.0-Q(I,J,L))*MAPL_RGAS  + Q(I,J,L)*MAPL_RVAP
+          Cpm   = (1.0-Q(I,J,L))*MAPL_CPDRY + Q(I,J,L)*MAPL_CPVAP
+          PLCL  = PL(I,J,LM) * ( (TLCL/T(I,J,LM))**(Cpm/Rm) ) ! P at LCL
+          do L=LM,1,-1
+             KLCL(I,J) = L
+             if (PL(I,J,L) <= PLCL) exit
+          end do
        end do
     end do
 
-  end function FINDLCL
+  end function FIND_KLCL
 
   !Find cloud top based on cloud fraction
 

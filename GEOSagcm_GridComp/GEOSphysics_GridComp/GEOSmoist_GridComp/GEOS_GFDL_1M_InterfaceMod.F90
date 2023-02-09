@@ -324,7 +324,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
-    real, pointer, dimension(:,:,:) :: ZLE, PLE, PK, T, U, V, W, KH
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
     real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
     real, pointer, dimension(:,:,:) :: WTHV2
@@ -368,7 +368,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Local variables
     real    :: turnrhcrit_up
     real    :: ALPHAl, ALPHAu, ALPHA, RHCRIT, TMP
-    real    :: TLCL, PLCL, RHSFC 
+    real    :: TLCL, PLCL, RHSFC, Rm, Cpm 
     integer :: IM,JM,LM
     integer :: I, J, L
 
@@ -414,7 +414,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, AREA,    'AREA'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, PK,      'PLK'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
@@ -539,18 +538,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Lowe tropospheric stability and estimated inversion strength
     call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    do J=1,JM
-       do I=1,IM
-          RHSFC = 100.0*Q(I,J,LM)/GEOS_QSAT( T(I,J,LM), PLmb(I,J,LM) ) ! surface RH
-          TLCL  = FIND_TLCL(T(I,J,LM),RHSFC) ! T at LCL
-          PLCL  = PLmb(I,J,LM) * ( (TLCL/T(I,J,LM))**(MAPL_CP/MAPL_RGAS) ) ! P at LCL
-          do L=LM-1,1,-1
-             KLCL(I,J) = L+1
-             if (PLmb(I,J,L) <= PLCL) exit
-          end do
-       end do
-    end do
-    call FIND_EIS(T/PK, QST3, T, ZLE, PLmb, KLCL, IM, JM, LM, LTS, EIS)
+    KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM ) 
+    call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PTR2D)) then
+      do J=1,JM
+         do I=1,IM
+           PTR2D(I,J) = ZL0(I,J,KLCL(I,J))
+         end do
+      end do
+    endif
+    TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
+    call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
 
     if (.not. EIS_RHCRIT) then
     do J=1,JM
