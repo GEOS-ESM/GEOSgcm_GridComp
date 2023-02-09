@@ -5,7 +5,7 @@ module PatchType
   use decompMod        , only : bounds_type
   use clm_varcon       , only : ispval
   use clm_varctl       , only : use_fates
-  use clm_varpar       , only : numpft, NUM_ZON, NUM_VEG
+  use clm_varpar       , only : numpft, NUM_ZON, NUM_VEG, CN_zone_weight
 
  !-----------------------------------------------------------------------
   ! !DESCRIPTION:
@@ -134,6 +134,10 @@ module PatchType
                 this%itype(np) = ityp(nc,nv,nz)
                 this%wtcol(np) = fveg(nc,nv,nz)
                 this%column(np) = n 
+                this%gridcell(np) = nc
+                this%wtgcell(np)  = fveg(nc,nv,nz)*CN_zone_weight(nz)
+                this%landunit(np) = nc
+                this%wtlunit(np)  = fveg(nc,nv,nz)*CN_zone_weight(nz)
              end do ! nv
           end do ! p
         end do ! nz
