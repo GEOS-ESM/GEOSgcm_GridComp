@@ -81,6 +81,7 @@ contains
 
     !LOCAL
     integer :: begl,endl
+    integer :: nc
     !------------------------------------------------------------------------
 
     begl = bounds%begl ; endl = bounds%endl
@@ -110,6 +111,15 @@ contains
     allocate(this%wtlunit_roof (begl:endl)); this%wtlunit_roof (:) = nan
     allocate(this%z_0_town     (begl:endl)); this%z_0_town     (:) = nan
     allocate(this%z_d_town     (begl:endl)); this%z_d_town     (:) = nan
+
+    do nc = 1,nch        ! catchment tile loop
+
+       this%gridcell(nc) = nc
+       this%patchi(nc)   = (numpft+1)*num_zon*(nc-1) + 1
+       this%patchf(nc)   = (numpft+1)*num_zon*nc
+       this%coli(nc)     = (num_zon)*(nc-1) + 1
+       this%colf(nc)     = num_zon*nc
+    end do
 
   end subroutine init_landunit_type
 
