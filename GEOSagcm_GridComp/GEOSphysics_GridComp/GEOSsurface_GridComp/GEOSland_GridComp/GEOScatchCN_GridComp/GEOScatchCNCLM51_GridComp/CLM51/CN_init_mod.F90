@@ -28,18 +28,18 @@ module CN_initMod
   use CNVegStateType
   use CNVegCarbonFluxType
   use CNVegNitrogenFluxType
-  use GridcellType     , only : init_gridcell_type, grc
+  use GridcellType     , only :  grc
   use WaterFluxBulkType
   use SoilBiogeochemCarbonFluxType
   use SoilBiogeochemNitrogenFluxType
-  use PatchType        , only : init_patch_type, patch
-  use ColumnType       , only : init_column_type, col
+  use PatchType        , only : patch
+  use ColumnType       , only : col
   use ch4Mod
   use SoilBiogeochemDecompCascadeConType
   use ActiveLayerMod
   use CropType
   use CNDVType
-  use LandunitType     , only : init_landunit_type, lun
+  use LandunitType     , only : lun
   use RootBiophysMod
   use CNMRespMod         , only : readCNMRespParams => readParams
   use CNSharedParamsMod  , only : CNParamsReadShared
