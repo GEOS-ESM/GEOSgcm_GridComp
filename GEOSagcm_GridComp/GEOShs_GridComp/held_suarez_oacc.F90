@@ -42,8 +42,6 @@ contains
     integer :: ngpus
 
     real :: CP, GRAV, KAPPA, P00, PI, RGAS
-    character(len=256) :: bin_file_name
-    integer :: bin_file_handle
 
     CP = MAPL_CP
     GRAV = MAPL_GRAV
@@ -106,284 +104,18 @@ contains
 
     PII =  P_D - (P_D - PT)*0.5*P_I
 
-    print *, 'before data copyin'
+    !$acc data copyin(CPHI2, HFCN, P_I, SPHI2, PLE) &
+    !$acc      copy(DISS, TAUX, TAUY) &
+    !$acc      copy(DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V) &
+    !$acc      copyin(PS, PT)
 
-    ! write(bin_file_name, '(a12, i1, a4)') 'dumped_data.', rank, '.bin'
-    ! print *, 'bin file: ', trim(bin_file_name)
-    ! write(*, '(a15)', advance='no') 'dumping data...'
-    ! open(newunit = bin_file_handle, file = bin_file_name, form = 'unformatted', status = 'new')
-    ! write(bin_file_handle) &
-    !      CPHI2, HFCN, P_I, SPHI2, &
-    !      DISS, TAUX, TAUY, &
-    !      PLE,DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V, &
-    !      DAYLEN, DELH, DELV1, DT, GAM_D, GAM_I, P_D, P_1, &
-    !      QMAX, SIG1, T0, TAUA, TAUF, TAUS, TSTRT, &
-    !      DP, PL, UU, VV, VR, TE, DS, PII, F1, RR, DM, PK, &
-    !      DP_s, PL_s, UU_s, VV_s, VR_s, TE_s, DS_s, PII_s, F1_s, RR_s, DM_s, PK_s, &
-    !      PS, PT, &
-    !      KA, KF, KS, &
-    !      CP, GRAV, KAPPA, P00, PI, RGAS, &
-    !      FRICQ, IM, JM, LM, compType, FriendlyTemp, FriendlyWind
-
-    !$acc data copyin(CPHI2, HFCN, P_I, SPHI2) &
-    !$acc      copyin(DISS, TAUX, TAUY) &
-    !$acc      copyin(PLE,DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V) &
-    !$acc      copyin(DAYLEN, DELH, DELV1, DT, GAM_D, GAM_I, P_D, P_1) &
-    !$acc      copyin(QMAX, SIG1, T0, TAUA, TAUF, TAUS, TSTRT) &
-    !$acc      copyin(DP, PL, UU, VV, VR, TE, DS, PII, F1, RR, DM, PK) &
-    !$acc      copyin(DP_s, PL_s, UU_s, VV_s, VR_s, TE_s, DS_s, PII_s, F1_s, RR_s, DM_s, PK_s) &
-    !$acc      copyin(PS, PT) &
-    !$acc      copyin(KA, KF, KS) &
-    !$acc      copyin(CP, GRAV, KAPPA, P00, PI, RGAS) &
-    !$acc      copyin(FRICQ, IM, JM, LM, compType, FriendlyTemp, FriendlyWind)
-
-    print *, 'after data copyin'
-
-    if (compType == 0) then
-       ! write(*,*) 'Running original HS Code'
-       call cpu_time(t1)
-
-       LEVELS: do L = 1,LM
-
-          ! If running with OpenMP, use these assignments for DP and PL
-          DP  = (PLE(:,:,L)-PLE(:,:,L-1))
-          PL  = (PLE(:,:,L)+PLE(:,:,L-1))*0.5
-
-          ! If running with OpenACC, use these assignments for DP and PL
-          !DP  = (PLE(:,:,L+1)-PLE(:,:,L))
-          !PL  = (PLE(:,:,L+1)+PLE(:,:,L))*0.5
-          DM  = DP / GRAV
-          PK  = (PL/P00)**KAPPA 
-
-          ! H&S equilibrium temperature
-          !----------------------------
-
-          TE  = PK*( T0 - DELH*SPHI2 - DELV1*CPHI2*log( PL/P00 ) )
-          TE  = max( TE, TSTRT )
-
-          ! Williamson Stratospheric modifications to equilibrium temperature
-          ! -----------------------------------------------------------------
-
-          where( PL < P_D )
-             TE  = TSTRT*( min(1.0,PL/P_D)**(RGAS*GAM_D/GRAV)     &
-                  + min(1.0,PL/PII)**(RGAS*GAM_I/GRAV) - 1 )
-          end where
-
-          !  Exports of equilibrium T and Theta
-          !------------------------------------
-
-          if(associated(T_EQ)) T_EQ(:,:,L) = TE
-          ! T_EQ(:,:,L) = TE
-!!!!if(associated(THEQ)) THEQ(:,:,L) = TE/PK
-          ! THEQ(:,:,L) = TE/PK
-
-          ! Vertical structure of timescales in H&S.
-          !---------------------------------------------
-
-          F1  = max(0.0, ( (PL/PS)-SIG1 )/( 1.0-SIG1 ) )
-
-          ! Atmospheric heating from H&S
-          !-----------------------------
-
-          RR = (KA + (KS-KA)*F1*CPHI2**2) * (TE-T(:,:,L))
-
-          if(associated(DTDT)) DTDT(:,:,L) =            DP*RR
-          ! DTDT(:,:,L) = DP*RR
-          if(FriendlyTemp    ) T   (:,:,L) = T(:,:,L) + DT*RR
-
-          ! Wind tendencies
-          !----------------
-
-          UU  = -U(:,:,L)*(F1*KF)
-          VV  = -V(:,:,L)*(F1*KF)
-
-          if(associated(DUDT)) DUDT(:,:,L) = UU
-          ! DUDT(:,:,L) = UU
-          if(associated(DVDT)) DVDT(:,:,L) = VV
-          ! DVDT(:,:,L) = VV
-
-          if(FriendlyWind) then
-             U(:,:,L) = U(:,:,L) + DT*UU
-             V(:,:,L) = V(:,:,L) + DT*VV
-          end if
-
-          !  Frictional heating from H&S drag
-          !----------------------------------
-
-          DS = U(:,:,L)*UU + V(:,:,L)*VV
-
-!!!!if(associated(DISS)) DISS           = DISS        - DS*DM
-          ! DISS = DISS - DS*DM
-          if(FRICQ /= 0) then
-             if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) - DS*(DP/CP  )
-             ! DTDT(:,:,L) = DTDT(:,:,L) - DS*(DP/CP  )
-             if(FriendlYTemp    ) T   (:,:,L) = T   (:,:,L) - DS*(DT/CP  )
-          end if
-
-          !  Surface stresses from vertically integrated H&S surface drag
-          !--------------------------------------------------------------
-
-!!!if(associated(TAUX)) TAUX = TAUX - UU*DM
-          ! TAUX = TAUX - UU*DM
-!!!if(associated(TAUY)) TAUY = TAUY - VV*DM
-          ! TAUY = TAUY - VV*DM
-
-          ! Localized heat source, if any
-          !------------------------------
-
-          if((associated(DTDT).or.FriendlyTemp) .and. QMAX/=0.0) then
-             ! if(FriendlyTemp .and. QMAX/=0.0) then
-             where(PL > P_1)
-                VR = HFCN*(QMAX/DAYLEN)*sin( PI*(PS-PL)/(PS-P_1) )
-             elsewhere
-                VR = 0.
-             end where
-
-             if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) + DP*VR 
-             ! DTDT(:,:,L) = DTDT(:,:,L) + DP*VR 
-             if(FriendlyTemp    ) T   (:,:,L) = T   (:,:,L) + DT*VR
-          end if
-
-       enddo LEVELS
-       call cpu_time(t2)
-
-    else if (compType == 1) then
-       ! write(*,*) 'Running HS Code with inner loop OpenMP/OpenACC Parallelism'
-       call cpu_time(t1)
-
-       do L = 1,LM		
-          !$acc parallel loop collapse(2) present(CPHI2, HFCN, P_I, SPHI2) &
-          !$acc                           present(DISS, TAUX, TAUY) &
-          !$acc                           present(PLE,DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V) &
-          !$acc                           present(DAYLEN, DELH, DELV1, DT, GAM_D, GAM_I, P_D, P_1) &
-          !$acc                           present(QMAX, SIG1, T0, TAUA, TAUF, TAUS, TSTRT) &
-          !$acc                           present(DP, PL, UU, VV, VR, TE, DS, PII, F1, RR, DM, PK) &
-          !$acc                           present(PS, PT, KA, KF, KS) &
-          !$acc                           present(CP, GRAV, KAPPA, P00, PI, RGAS) &
-          !$acc                           present(FRICQ, IM, JM, LM, compType, FriendlyTemp, FriendlyWind)
-          !$omp parallel do collapse(2) default(shared)
-          do J = 1, JM
-             do I = 1, IM
-
-                ! If running with OpenMP, use these assignments for DP and PL
-                DP(I,J)  = (PLE(I,J,L)-PLE(I,J,L-1))
-                PL(I,J)  = (PLE(I,J,L)+PLE(I,J,L-1))*0.5
-
-                ! If running with OpenACC, use these assignments for DP and PL
-                !DP(I,J)  = (PLE(I,J,L+1)-PLE(I,J,L))
-                !PL(I,J)  = (PLE(I,J,L+1)+PLE(I,J,L))*0.5
-
-                DM(I,J)  = DP(I,J) / GRAV
-                PK(I,J)  = (PL(I,J)/P00)**KAPPA 
-
-                ! H&S equilibrium temperature
-                !----------------------------
-
-                TE(I,J)  = PK(I,J)*( T0 - DELH*SPHI2(I,J) - DELV1*CPHI2(I,J)*log( PL(I,J)/P00 ) )
-                TE(I,J)  = max( TE(I,J), TSTRT )
-
-                ! Williamson Stratospheric modifications to equilibrium temperature
-                ! -----------------------------------------------------------------
-
-                if( PL(I,J) < P_D ) then
-                   TE(I,J)  = TSTRT*( min(1.0,PL(I,J)/P_D)**(RGAS*GAM_D/GRAV)     &
-                        + min(1.0,PL(I,J)/PII(I,J))**(RGAS*GAM_I/GRAV) - 1 )
-                endif
-
-                !  Exports of equilibrium T and Theta
-                !------------------------------------
-
-                if(associated(T_EQ)) T_EQ(I,J,L) = TE(I,J)
-                ! T_EQ(I,J,L) = TE(I,J)
-                if(associated(THEQ)) THEQ(I,J,L) = TE(I,J)/PK(I,J)
-                ! THEQ(I,J,L) = TE(I,J)/PK(I,J)
-
-                ! Vertical structure of timescales in H&S.
-                !---------------------------------------------
-
-                F1(I,J)  = max(0.0, ( (PL(I,J)/PS(I,J))-SIG1 )/( 1.0-SIG1 ) )
-
-                ! Atmospheric heating from H&S
-                !-----------------------------
-
-                RR(I,J) = (KA + (KS-KA)*F1(I,J)*CPHI2(I,J)**2) * (TE(I,J)-T(I,J,L))
-
-                if(associated(DTDT)) DTDT(I,J,L) = DP(I,J)*RR(I,J)
-                ! DTDT(I,J,L) = DP(I,J)*RR(I,J)
-                if(FriendlyTemp    ) T   (I,J,L) = T(I,J,L) + DT*RR(I,J)
-
-                ! Wind tendencies
-                !----------------
-
-                UU(I,J)  = -U(I,J,L)*(F1(I,J)*KF)
-                VV(I,J)  = -V(I,J,L)*(F1(I,J)*KF)
-
-                if(associated(DUDT)) DUDT(I,J,L) = UU(I,J)
-                ! DUDT(I,J,L) = UU(I,J)
-                if(associated(DVDT)) DVDT(I,J,L) = VV(I,J)
-                ! DVDT(I,J,L) = VV(I,J)
-
-                if(FriendlyWind) then
-                   U(I,J,L) = U(I,J,L) + DT*UU(I,J)
-                   V(I,J,L) = V(I,J,L) + DT*VV(I,J)
-                end if
-
-                !  Frictional heating from H&S drag
-                !----------------------------------
-
-                DS(I,J) = U(I,J,L)*UU(I,J) + V(I,J,L)*VV(I,J)
-
-                if(associated(DISS)) DISS(I,J) = DISS(I,J) - DS(I,J)*DM(I,J)
-                ! DISS(I,J) = DISS(I,J) - DS(I,J)*DM(I,J)
-                if(FRICQ /= 0) then
-                   if(associated(DTDT)) DTDT(I,J,L) = DTDT(I,J,L) - DS(I,J)*(DP(I,J)/CP  )
-                   ! DTDT(I,J,L) = DTDT(I,J,L) - DS(I,J)*(DP(I,J)/CP  )
-                   if(FriendlYTemp    ) T   (I,J,L) = T   (I,J,L) - DS(I,J)*(DT/CP  )
-                end if
-
-                !  Surface stresses from vertically integrated H&S surface drag
-                !--------------------------------------------------------------
-
-                if(associated(TAUX)) TAUX(I,J) = TAUX(I,J) - UU(I,J)*DM(I,J)
-                ! TAUX(I,J) = TAUX(I,J) - UU(I,J)*DM(I,J)
-                if(associated(TAUY)) TAUY(I,J) = TAUY(I,J) - VV(I,J)*DM(I,J)
-                ! TAUY(I,J) = TAUY(I,J) - VV(I,J)*DM(I,J)
-
-                ! Localized heat source, if any
-                !------------------------------
-
-                if((associated(DTDT).or.FriendlyTemp) .and. QMAX/=0.0) then
-                   ! if(FriendlyTemp .and. QMAX/=0.0) then
-                   if(PL(I,J) > P_1) then
-                      VR(I,J) = HFCN(I,J)*(QMAX/DAYLEN)*sin( PI*(PS(I,J)-PL(I,J))/(PS(I,J)-P_1) )
-                   else
-                      VR(I,J) = 0.
-                   endif
-
-                   if(associated(DTDT)) DTDT(I,J,L) = DTDT(I,J,L) + DP(I,J)*VR(I,J)
-                   ! DTDT(I,J,L) = DTDT(I,J,L) + DP(I,J)*VR(I,J)
-                   if(FriendlyTemp    ) T   (I,J,L) = T   (I,J,L) + DT*VR(I,J)
-                end if
-             enddo
-          enddo
-          !$omp end parallel do
-          !$acc end parallel loop
-       enddo
-       call cpu_time(t2)
-       !$acc update host (DTDT, DUDT, DVDT, T_EQ, T, U, V)
-    else
        ! write(*,*) 'Running HS Code with outer loop OpenMP/OpenACC Parallelism'
        call cpu_time(t1)
 
-       !$omp parallel do collapse(3) default(shared) &
-       !$omp private (DP_s, PL_s, UU_s, VV_s, VR_s, TE_s, DS_s, PII_s, F1_s, RR_s, DM_s, PK_s)
-       !$acc parallel loop collapse(3) present(DP, PLE, PL, DM, GRAV, PK, KAPPA) &
-       !$acc                           present(TE, T0, DELH, SPHI2, DELV1, CPHI2, P00) &
-       !$acc                           present(TSTRT, P_D, RGAS, GAM_D) &
-       !$acc                           present(PII, GAM_I, T_EQ, THEQ, F1, PS, SIG1, RR) &
-       !$acc                           present(FriendlyTemp, T, DT, UU, VV, U, V, DS, DISS) &
-       !$acc                           present(FRICQ, DUDT, DVDT, DTDT, CP, TAUX, TAUY, P_1, VR, HFCN) &
-       !$acc                           present(QMAX, DAYLEN, PI, KF, KA, KS) &
+       !$acc parallel loop collapse(3) present(CPHI2, HFCN, P_I, SPHI2, PLE) &
+       !$acc                           present(DISS, TAUX, TAUY) &
+       !$acc                           present(DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V) &
+       !$acc                           present(PS, PT) &
        !$acc                           private(DP_s, PL_s, UU_s, VV_s, VR_s, TE_s, DS_s, PII_s, F1_s, RR_s, DM_s, PK_s)
        do L = 1,LM
           do J = 1, JM
@@ -493,9 +225,8 @@ contains
        !$omp end parallel do
        !$acc end parallel loop
        call cpu_time(t2)
-       !$acc update host (DTDT, DUDT, DVDT, T_EQ, T, U, V)
+       !!$acc update host (DTDT, DUDT, DVDT, T_EQ, T, U, V)
 
-    endif
     !$acc end data
 
     ! write(*,*) 'sum(T_EQ) = ', sum(T_EQ)
