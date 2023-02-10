@@ -209,6 +209,7 @@ contains
       this_filter(1)%num_allc = 0      
 
       n = 0
+      np = 0
       do nc = 1,nch
          do nz = 1,num_zon
             n = n + 1
