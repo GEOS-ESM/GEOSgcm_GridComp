@@ -42,6 +42,8 @@ contains
     integer :: ngpus
 
     real :: CP, GRAV, KAPPA, P00, PI, RGAS
+    character(len=256) :: bin_file_name
+    integer :: bin_file_handle
 
     CP = MAPL_CP
     GRAV = MAPL_GRAV
@@ -50,6 +52,7 @@ contains
     PI = MAPL_PI
     RGAS = MAPL_RGAS
 
+    ! Initialize
     DP_s = 0.0
     PL_s = 0.0
     UU_s = 0.0
@@ -62,6 +65,21 @@ contains
     RR_s = 0.0 
     DM_s = 0.0 
     PK_s = 0.0
+    t1 = 0.0
+    t2 = 0.0
+
+    DP = 0.0
+    PL = 0.0
+    UU = 0.0
+    VV = 0.0
+    VR = 0.0
+    TE = 0.0
+    DS = 0.0
+    PII = 0.0
+    F1= 0.0
+    RR = 0.0
+    DM = 0.0
+    PK = 0.0
 
     ngpus = acc_get_num_devices(acc_device_nvidia)
 
@@ -88,6 +106,25 @@ contains
 
     PII =  P_D - (P_D - PT)*0.5*P_I
 
+    print *, 'before data copyin'
+
+    ! write(bin_file_name, '(a12, i1, a4)') 'dumped_data.', rank, '.bin'
+    ! print *, 'bin file: ', trim(bin_file_name)
+    ! write(*, '(a15)', advance='no') 'dumping data...'
+    ! open(newunit = bin_file_handle, file = bin_file_name, form = 'unformatted', status = 'new')
+    ! write(bin_file_handle) &
+    !      CPHI2, HFCN, P_I, SPHI2, &
+    !      DISS, TAUX, TAUY, &
+    !      PLE,DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V, &
+    !      DAYLEN, DELH, DELV1, DT, GAM_D, GAM_I, P_D, P_1, &
+    !      QMAX, SIG1, T0, TAUA, TAUF, TAUS, TSTRT, &
+    !      DP, PL, UU, VV, VR, TE, DS, PII, F1, RR, DM, PK, &
+    !      DP_s, PL_s, UU_s, VV_s, VR_s, TE_s, DS_s, PII_s, F1_s, RR_s, DM_s, PK_s, &
+    !      PS, PT, &
+    !      KA, KF, KS, &
+    !      CP, GRAV, KAPPA, P00, PI, RGAS, &
+    !      FRICQ, IM, JM, LM, compType, FriendlyTemp, FriendlyWind
+
     !$acc data copyin(CPHI2, HFCN, P_I, SPHI2) &
     !$acc      copyin(DISS, TAUX, TAUY) &
     !$acc      copyin(PLE,DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V) &
@@ -99,6 +136,8 @@ contains
     !$acc      copyin(KA, KF, KS) &
     !$acc      copyin(CP, GRAV, KAPPA, P00, PI, RGAS) &
     !$acc      copyin(FRICQ, IM, JM, LM, compType, FriendlyTemp, FriendlyWind)
+
+    print *, 'after data copyin'
 
     if (compType == 0) then
        ! write(*,*) 'Running original HS Code'

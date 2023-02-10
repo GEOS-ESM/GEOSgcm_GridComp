@@ -132,6 +132,7 @@
   use MAPL_Mod
   use hs_oacc_mod
   use iso_c_binding
+  use, intrinsic :: ieee_arithmetic
 
   implicit none
   private
@@ -862,6 +863,8 @@
     if(FriendlyTemp .or. FriendlyWind) then
        call MAPL_GetResource(MAPL, DT,  'RUN_DT', RC=STATUS)
        VERIFY_(STATUS)
+    else
+       DT = huge(0.0)
     end if
 
 ! Allocate 10 2D scratch arrays
