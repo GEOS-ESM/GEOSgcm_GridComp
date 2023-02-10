@@ -2684,10 +2684,16 @@ contains
 
           if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
           if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
+          if(associated(TST    )) TST     = TST     + TS(:,N)*FR(:,N)
+          if(associated(QST    )) QST     = QST     + QS(:,N)*FR(:,N)
     end do update_surf
+
+    EMISS = EMSICE
 
     if(associated(DELTS  )) call Normalize(DELTS,  FRCICE) 
     if(associated(DELQS  )) call Normalize(DELQS,  FRCICE) 
+    if(associated(TST    )) call Normalize(TST,    FRCICE) 
+    if(associated(QST    )) call Normalize(QST,    FRCICE) 
 
     call RegridO2A_1d(ALBVR, SURFST, 'ALBVR', &
          XFORM_O2A, locstreamO, __RC__)
