@@ -42,12 +42,6 @@ module GEOS_GFDL_1M_InterfaceMod
   character(len=ESMF_MAXSTR)        :: COMP_NAME
 
   ! Local resource variables
-  integer :: imsize
-  real    :: TURNRHCRIT
-  real    :: MINRHCRITLND
-  real    :: MINRHCRITOCN
-  real    :: MAXRHCRITLND
-  real    :: MAXRHCRITOCN
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
   integer :: PDFSHAPE
@@ -61,18 +55,6 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: MAX_RI
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
-
- ! Parameters
-  logical :: EIS_RHCRIT
-  real    :: RH_AREA_FACTOR
-  ! RHCRIT for EIS > 5 K (stable) 
-  real, parameter :: ctS = 0.90
-  real, parameter :: csS = 0.99
-  integer, parameter :: nxS = 2
-  ! RHCRIT for EIS ≤ 5 K (less stable)
-  real, parameter :: ctU = 0.85
-  real, parameter :: csU = 0.99
-  integer, parameter :: nxU = 4
 
   public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
 
@@ -257,30 +239,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call gfdl_cloud_microphys_init()
     call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
 
-    call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
-    GRIDNAME =  AdjustL(GRIDNAME)
-    nn = len_trim(GRIDNAME)
-    dateline = GRIDNAME(nn-1:nn)
-    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-    read(imchar,*) imsize
-    if(dateline.eq.'CF') imsize = imsize*4
-
-    call MAPL_GetResource( MAPL, EIS_RHCRIT      , 'EIS_RHCRIT:'      , DEFAULT=.TRUE.  , RC=STATUS); VERIFY_(STATUS)
-    if (.not. EIS_RHCRIT) then
-    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= -999.0 , RC=STATUS); VERIFY_(STATUS)
-    tmprhL = CEILING(100.0*(1.0-min(0.20, max(0.01, dw_land  * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0 ! roundup by 0.01s
-    tmprhO = CEILING(100.0*(1.0-min(0.20, max(0.01, dw_ocean * SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0 ! roundup by 0.01s
-    tmprhL = min(0.99,tmprhL)
-    tmprhO = min(0.99,tmprhO)
-    call MAPL_GetResource( MAPL, MINRHCRITLND    , 'MINRHCRITLND:'    , DEFAULT=tmprhL , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MINRHCRITOCN    , 'MINRHCRITOCN:'    , DEFAULT=tmprhO , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAXRHCRITLND    , 'MAXRHCRITLND:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAXRHCRITOCN    , 'MAXRHCRITOCN:'    , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    else
-    tmprhO = SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))
-    call MAPL_GetResource( MAPL, RH_AREA_FACTOR  , 'RH_AREA_FACTOR:'  , DEFAULT=tmprhO , RC=STATUS); VERIFY_(STATUS)
-    endif
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 0.75  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 0.75  , RC=STATUS); VERIFY_(STATUS)
@@ -292,9 +250,11 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
                                  CCW_EVAP_EFF = 4.0e-3
+                    if (do_evap) CCW_EVAP_EFF = 0.0 ! Evap done inside of GFDL
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
                                  CCI_EVAP_EFF = 4.0e-3
+                    if (do_subl) CCI_EVAP_EFF = 0.0 ! Subl done inside of GFDL
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
@@ -341,9 +301,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                             DUDTmic,  DVDTmic,  DTDTmic
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: IKEX, IKEX2
-    real, allocatable, dimension(:,:)   :: turnrhcrit2D
-    real, allocatable, dimension(:,:)   :: minrhcrit2D
-    real, allocatable, dimension(:,:)   :: maxrhcrit2D
     real, allocatable, dimension(:,:)   :: frland2D
     real, allocatable, dimension(:,:)   :: TMP2D
     integer, allocatable, dimension(:,:) :: KLCL
@@ -361,14 +318,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
+    real, pointer, dimension(:,:,:) :: RHCRIT3D
     real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
     ! Local variables
-    real    :: turnrhcrit_up
-    real    :: ALPHAl, ALPHAu, ALPHA, RHCRIT, TMP
-    real    :: TLCL, PLCL, RHSFC, Rm, Cpm 
+    real    :: ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L
 
@@ -468,11 +424,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      ! 2D Variables
     ALLOCATE ( IKEX         (IM,JM) )
     ALLOCATE ( IKEX2        (IM,JM) )
-    if (.not. EIS_RHCRIT) then
-      ALLOCATE ( turnrhcrit2D (IM,JM) )
-      ALLOCATE ( minrhcrit2D  (IM,JM) )
-      ALLOCATE ( maxrhcrit2D  (IM,JM) )
-    endif
     ALLOCATE ( frland2D     (IM,JM) ) 
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
@@ -550,22 +501,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
     call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
 
-    if (.not. EIS_RHCRIT) then
-    do J=1,JM
-       do I=1,IM
-          if ( (TURNRHCRIT .LT. 0) .or. (SRF_TYPE(I,J) .GE. 1.0) ) then
-             turnrhcrit2D(I,J) = PLmb(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
-          else
-             turnrhcrit2D(I,J) = MIN( TURNRHCRIT , TURNRHCRIT-(1020-PLEmb(i,j,LM)) )
-          endif
-                                    frland2D(I,J) = FRLAND(I,J)
-          if (SRF_TYPE(I,J) .EQ. 2) frland2D(I,J) = 1.0 ! include landice/seaice as land for cloud processes
-          minrhcrit2D(I,J) = MINRHCRITOCN*(1.0-frland2D(I,J)) + MINRHCRITLND*frland2D(I,J)
-          maxrhcrit2D(I,J) = MAXRHCRITOCN*(1.0-frland2D(I,J)) + MAXRHCRITLND*frland2D(I,J)
-       end do
-    end do
-    endif
-
     call MAPL_TimerOn(MAPL,"---CLDMACRO")
     call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -598,51 +533,21 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
        ! evap/subl/pdf
-        call MAPL_GetPointer(EXPORT, PTR3D,  'RHCRIT', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', RC=STATUS); VERIFY_(STATUS)
         do L=1,LM
           do J=1,JM
            do I=1,IM
        ! Send the condensates through the pdf after convection
-           if (EIS_RHCRIT) then
              ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
              if (EIS(I,J) > 5.0) then ! Stable
-                ALPHA = 1.0 - (ctS + (csS - ctS)*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**nxS))
+                ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**2))
              else ! Unstable
-                ALPHA = 1.0 - (ctU + (csU - ctU)*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**nxU))
+                ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**4))
              endif
-           ! combine and limit
-             ALPHA = min( 0.30, ALPHA*RH_AREA_FACTOR) ! restrict RHcrit to > 70% 
-           else
-       !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-             ALPHA = maxrhcrit2D(I,J)
-           ! lower turn from maxrhcrit
-             if (PLmb(i,j,l) .le. turnrhcrit2D(I,J)) then
-                ALPHAl = minrhcrit2D(I,J)
-             else
-                if (L.eq.LM) then
-                   ALPHAl = maxrhcrit2D(I,J)
-                else
-                   ALPHAl = minrhcrit2D(I,J) + (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
-                           ((atan( (2.*(PLmb(i,j,l)-turnrhcrit2D(I,J))/min(100., PLEmb(i,j,LM)-turnrhcrit2D(I,J))-1.) * &
-                           tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-                endif
-             endif
-           ! upper turn back to maxrhcrit
-             turnrhcrit_up = TROPP(i,j)/100.0
-             IF (turnrhcrit_up == MAPL_UNDEF) turnrhcrit_up = 100.
-             turnrhcrit_up = min(turnrhcrit_up+300.0,turnrhcrit2D(I,J)-200.0)
-             if (PLmb(i,j,l) .le. turnrhcrit_up) then
-                ALPHAu = maxrhcrit2D(I,J)
-             else
-                ALPHAu = maxrhcrit2D(I,J) - (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
-                        ((atan( (2.*(PLmb(i,j,l)-turnrhcrit_up)/( turnrhcrit2D(I,J)-turnrhcrit_up)-1.) * &
-                        tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-             endif
-           ! combine and limit
-             ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
-           endif
+             ! include area scaling and limit RHcrit to > 70% 
+             ALPHA = min( 0.30, ALPHA*SQRT(SQRT(AREA(I,J)/1.e10)) )
            ! fill RHCRIT export
-           if (associated(PTR3D)) PTR3D(I,J,L) = 1.0-ALPHA
+           if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
        ! Put condensates in touch with the PDF
            if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP 
              call hystpdf( &
@@ -806,7 +711,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
                              ! constant inputs
                                AREA, DT_MOIST, frland2D, CNV_FRC, SRF_TYPE, &
-                               ANV_ICEFALL, LS_ICEFALL, &
+                               RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
                              ! Output rain re-evaporation and sublimation
                                REV_LS, RSU_LS, & 
                              ! Output precipitates
