@@ -420,11 +420,10 @@ foreach orslv ($orslvs)
 set HOSTNAME = `hostname | rev | cut -c3- | rev`
 
 if ( $HOSTNAME == discover ) then
-    set input_dir = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
+    setenv MAKE_BCS_INPUT_DIR /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/
 else
-    set input_dir = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
+    setenv MAKE_BCS_INPUT_DIR /nobackup/gmao_SIteam/ModelData/make_bcs_inputs/               
 endif
-
 
 if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
     $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
@@ -433,9 +432,9 @@ if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
 # -------------------------------------------------------------------------------------------------
 
     if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
-	set GLOBAL_CATCH_DATA = ${input_dir}/global.cat_id.catch.DL
+	set GLOBAL_CATCH_DATA = ${MAKE_BCS_INPUT_DIR}/shared/mask/global.cat_id.catch.DL
     else
-	set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask_freshwater-lakes.nc
+	set GLOBAL_CATCH_DATA = ${MAKE_BCS_INPUT_DIR}/shared/mask/GEOS5_10arcsec_mask_freshwater-lakes.nc
     endif
 
 	 
@@ -445,9 +444,9 @@ else if ( $orslv == O2 | $orslv == O3 | $orslv == CS ) then
 # --------------------------------------------------------------------------------------------------------------
 
     if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
-	set GLOBAL_CATCH_DATA = ${input_dir}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
+	set GLOBAL_CATCH_DATA = ${MAKE_BCS_INPUT_DIR}/shared/mask/global.cat_id.catch.GreatLakesCaspian_Updated.DL
     else
-	set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask.nc
+	set GLOBAL_CATCH_DATA = ${MAKE_BCS_INPUT_DIR}/shared/mask/GEOS5_10arcsec_mask.nc
     endif
     
 else
@@ -458,7 +457,7 @@ else
 endif
 
 if($HRCODE == M01 | $HRCODE == M03 | $HRCODE == M09 | $HRCODE == M25 | $HRCODE == M36) then
-     set GLOBAL_CATCH_DATA = ${input_dir}/GEOS5_10arcsec_mask.nc
+     set GLOBAL_CATCH_DATA = ${MAKE_BCS_INPUT_DIR}/shared/mask/GEOS5_10arcsec_mask.nc
 endif
 
 set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `
@@ -757,7 +756,6 @@ while ("$group" == "")
    
 end
 
-
 #######################################################################
 #                        LatLon Case
 #######################################################################
@@ -813,14 +811,13 @@ cd $BCDIR
 /bin/ln -s $bin_dir
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/72x36 data/MOM6/72x36
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $input_dir CATCH
 
 cd ../
 
@@ -991,14 +988,13 @@ cd $BCDIR
 /bin/ln -s $bin_dir
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/72x36 data/MOM6/72x36
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $input_dir CATCH
 cd ../
  
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
@@ -1177,14 +1173,13 @@ cd $BCDIR
 /bin/ln -s $bin_dir
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/72x36 data/MOM6/72x36
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
-ln -s $input_dir CATCH
 
 cd ../
  
@@ -1307,10 +1302,12 @@ cd ../../
 /bin/mv    $BCJOB                $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
 /bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
-/bin/rm -r $OUTDIR
+#/bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
 #bin/mkIrrigTiles.x -b $BCNAME -t CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RC} -p $IRRIGTHRES
+
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB
@@ -1371,7 +1368,6 @@ cd $BCDIR
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
-ln -s $input_dir CATCH
 cd ../
 limit stacksize unlimited
 
