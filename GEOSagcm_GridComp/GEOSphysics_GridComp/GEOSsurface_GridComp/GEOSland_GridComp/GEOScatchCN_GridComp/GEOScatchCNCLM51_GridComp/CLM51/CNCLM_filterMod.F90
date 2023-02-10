@@ -14,7 +14,7 @@ module filterMod
 ! !PUBLIC MEMBER FUNCTIONS:
   public allocFilters         ! allocate memory for filters
   ! PRIVATE
-  private :: init_filter_type
+  private init_filter_type
 
 
 
