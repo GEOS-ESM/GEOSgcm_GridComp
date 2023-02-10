@@ -8,7 +8,7 @@
     istep0         = 0
     dt             = 450.0
     npt_unit       = '1'
-    npt            = 9999999
+    npt            = 99999
     ndtd           = 1
     runtype        = 'initial'
     ice_ic         = './INPUT/iced.nc'
@@ -292,7 +292,7 @@
     restart_hbrine  = .false.
     tr_zaero        = .false.
     modal_aero      = .false.
-    optics_file     = '/home/bzhao/aogcm/CICE_INPUT/CICE_data/forcing/snicar_optics_5bnd_snow_and_aerosols.nc'
+    optics_file     = 'unknown'
     optics_file_fieldname = 'modalBCabsorptionParameter5band'
     skl_bgc         = .false.
     z_tracers       = .false.
