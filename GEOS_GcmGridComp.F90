@@ -1395,8 +1395,12 @@ contains
    if (DO_CICE_THERMO == 0) then  
       call AllocateExports(GEX(OGCM), (/'FRACICE '/), RC=STATUS)
       VERIFY_(STATUS)
-   else
+   else if(DO_CICE_THERMO == 1) then
       call AllocateExports(GEX(OGCM), (/'TAUXIBOT', 'TAUYIBOT'/), RC=STATUS)
+      VERIFY_(STATUS)
+   else
+      call AllocateExports_UGD(GEX(OGCM), (/'FRACICE '/), RC=STATUS)
+      VERIFY_(STATUS)
    end if
     
    call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
