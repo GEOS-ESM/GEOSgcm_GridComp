@@ -33,6 +33,7 @@ PROGRAM loss_during_day
       character*300 :: soilfile
       logical :: file_exists,mult_jobs
       real, dimension (81,12) :: rzw, sfexc,tscale
+      character*400 :: MAKE_BCS_INPUT_DIR
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -92,6 +93,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     job=1
     I = command_argument_count()
 
+    MAKE_BCS_INPUT_DIR = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/"
+
     if(I < 1 ) then
        print *, "Job Segment is not specified: ", i
        print *, trim(Usage)
@@ -143,8 +146,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         endif
      end if
 
-     soilfile='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/' &
-           //'/Woesten_SoilParam/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
+     soilfile= trim(MAKE_BCS_INPUT_DIR)//'/land/soil/soil_water_loss/v2/Soil_param_100_mineral_3_OC_026_046_112_Woesten_topsoil.txt'
 
      open (10, file=trim(soilfile),form='formatted',status='old', &
           action='read')
@@ -159,8 +161,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
      close (10,status='keep')
 
-     path = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/' &
-          //'/Woesten_SoilParam/loss_pd_top/'
+     path = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/soil_water_loss/v2/loss_pd_top/'
 
 !$OMP PARALLELDO DEFAULT(NONE)                                    &
 !$OMP SHARED(A_BEE, A_PSIS,A_AKSAT,A_POROS,n_threads, low_ind,    &
