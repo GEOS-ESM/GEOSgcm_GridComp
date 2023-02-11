@@ -190,7 +190,6 @@ module GEOS_TurbulenceGridCompMod
 
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
-    integer                             :: imsize
 ! Beljaars parameters
     real, parameter ::      &
         dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
@@ -2617,16 +2616,6 @@ contains
 
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
     VERIFY_(STATUS)
-
-! Get grid name to determine IMSIZE
-    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
-    GRIDNAME =  AdjustL(GRIDNAME)
-    nn = len_trim(GRIDNAME)
-    dateline = GRIDNAME(nn-1:nn)
-    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-    read(imchar,*) imsize
-    if(dateline.eq.'CF') imsize = imsize*4
 
 ! Get all pointers that are needed by both REFRESH and DIFFUSE
 !-------------------------------------------------------------
@@ -5508,17 +5497,12 @@ end subroutine RUN1
       real                                :: SHVC_1500, SHVC_ZDEPTH
       real                                :: lat_in_degrees, lat_effect
       real,  dimension(IM,JM)             :: LATS
-      real                                :: SHVC_ALPHA, SHVC_EFFECT, scaling
+      real                                :: SHVC_ALPHA, SHVC_EFFECT, SHVC_SCALING 
       logical                             :: DO_SHVC
       integer                             :: KS
 
       ! For idealized SCM surface layer
       integer :: SCM_SL
-
-      character(len=ESMF_MAXSTR) :: GRIDNAME
-      character(len=4)           :: imchar
-      character(len=2)           :: dateline
-      integer                    :: imsize,nn
 
 ! Pressure-weighted dissipation heating rates
 !--------------------------------------------
@@ -5569,24 +5553,7 @@ end subroutine RUN1
          VERIFY_(STATUS)
          call MAPL_GetResource( MAPL, SHVC_ZDEPTH, 'SHVC_ZDEPTH:', default=3500., RC=STATUS )
          VERIFY_(STATUS)
-
-         call MAPL_GetResource( MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS )
-         VERIFY_(STATUS)
-         GRIDNAME =  AdjustL(GRIDNAME)
-               nn = len_trim(GRIDNAME)
-         dateline = GRIDNAME(nn-1:nn)
-           imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-           read(imchar,*) imsize
-         if(dateline.eq.'CF') imsize  = imsize*4
-
-         if( imsize.le.200       ) scaling = 1.0  !              Resolution >= 2.000-deg
-         if( imsize.gt.200 .and. &
-             imsize.le.400       ) scaling = 1.0  !  2.000-deg > Resolution >= 1.000-deg
-         if( imsize.gt.400 .and. &
-             imsize.le.800       ) scaling = 7.0  !  1.000-deg > Resolution >= 0.500-deg
-         if( imsize.gt.800 .and. &
-             imsize.le.1600      ) scaling = 7.0  !  0.500-deg > Resolution >= 0.250-deg
-         if( imsize.gt.1600      ) scaling = 7.0  !  0.250-deg > Resolution 
+         call MAPL_GetResource( MAPL, SHVC_SCALING,'SHVC_SCALING:',default=1.0  , RC=STATUS )
       end if
 
 ! Determine whether running idealized SCM surface layer
@@ -5736,7 +5703,7 @@ end subroutine RUN1
          z1500 = 1500.
          z7000 = 7000.
 
-         STDV = sqrt(varflt*scaling)   ! Scaling VARFLT based on resolution
+         STDV = sqrt(varflt*SHVC_SCALING)   ! Scaling VARFLT based on resolution
 
          where (STDV >=700.)
             z1500 = SHVC_1500                   
