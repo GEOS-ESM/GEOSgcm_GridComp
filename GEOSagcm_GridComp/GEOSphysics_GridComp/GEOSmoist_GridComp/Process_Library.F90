@@ -55,6 +55,8 @@ module GEOSmoist_Process_Library
   ! LDRADIUS4
   real, parameter :: RHO_I   =  916.8     ! Density of ice crystal in kg/m^3
   real, parameter :: RHO_W   = 1000.0     ! Density of liquid water in kg/m^3
+! real, parameter :: be      = 1./3. - 0.11
+! real, parameter :: bx      = 0.13*(3.0/(4.0*MAPL_PI*RHO_W))**(1.0/3.0)
   real, parameter :: be      = 1./3. - 0.14
   real, parameter :: bx      = 100.* (3./(4.*MAPL_PI))**(1./3.) * 0.07*6.92
   ! combined constantc
@@ -460,20 +462,24 @@ module GEOSmoist_Process_Library
        IF(ITYPE == LIQUID) THEN
 
        !- liquid cloud effective radius ----- 
-          !- [liu&daum, 2000 and 2005. liu et al 2008]
           !- liquid water content
           WC = RHO*QC*1000. !g/m3
           !- cloud drop number concentration #/m3
           !- from the aerosol model + ....
           NNX = NNL*1.e-6
           !- radius in meters
+          !- [liu&daum, 2000 and 2005. liu et al 2008]
           RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*bx*(WC/NNX)**be))
+          !- include temperature scaling from Kiehl 1994
+          !- increases droplet radii in colder temperatures
+          RADIUS = RADIUS*(8.0+MIN(1.0,MAX(0.0,(MAPL_TICE-TE)/30.0)))/8.0
 
        ELSEIF(ITYPE == ICE) THEN
 
        !- ice cloud effective radius ----- 
         !- ice water content
          WC = RHO*QC*1000.  !g/m3
+#ifdef WYSER
         !------ice cloud effective radius ----- [klaus wyser, 1998]
          if(TE>MAPL_TICE .or. QC <=0.) then
             BB = -2.
@@ -482,7 +488,16 @@ module GEOSmoist_Process_Library
          endif
          BB     = MIN((MAX(BB,-6.)),-2.)
          RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-         RADIUS = RADIUS * 1.e-6 !- convert to meter
+#else
+         if(TE<=MAPL_TICE .and. QC>0.0) then
+           RADIUS = 45.8966*(WC**0.2214) +  0.7957*(WC**0.2535)*(TE-MAPL_TICE+190.0)
+           RADIUS = (1.2351 + 0.0105*(TE-MAPL_TICE))*RADIUS
+         else
+           BB = -2.
+           RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+         endif
+#endif
+         RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
@@ -2473,8 +2488,8 @@ module GEOSmoist_Process_Library
        do I=1,IM
           RHSFC = 100.0*Q(I,J,LM)/GEOS_QSAT( T(I,J,LM), PL(I,J,LM) ) ! surface RH %
           TLCL  = FIND_TLCL(T(I,J,LM),RHSFC) ! T at LCL
-          Rm    = (1.0-Q(I,J,L))*MAPL_RGAS  + Q(I,J,L)*MAPL_RVAP
-          Cpm   = (1.0-Q(I,J,L))*MAPL_CPDRY + Q(I,J,L)*MAPL_CPVAP
+          Rm    = (1.0-Q(I,J,LM))*MAPL_RGAS  + Q(I,J,LM)*MAPL_RVAP
+          Cpm   = (1.0-Q(I,J,LM))*MAPL_CPDRY + Q(I,J,LM)*MAPL_CPVAP
           PLCL  = PL(I,J,LM) * ( (TLCL/T(I,J,LM))**(Cpm/Rm) ) ! P at LCL
           do L=LM,1,-1
              KLCL(I,J) = L

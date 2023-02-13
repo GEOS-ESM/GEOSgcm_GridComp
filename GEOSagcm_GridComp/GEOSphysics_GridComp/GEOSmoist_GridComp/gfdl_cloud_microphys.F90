@@ -216,6 +216,8 @@ module gfdl2_cloud_microphys_mod
     real :: tau_v2l = 150. !< water vapor to cloud water (condensation)
     real :: tau_l2v = 300. !< cloud water to water vapor (evaporation)
     real :: tau_i2v = 300. !< cloud ice to water vapor (sublimation)
+    real :: tau_s2v = 600. !< snow sublimation
+    real :: tau_v2s = 21600. !< snow deposition -- make it a slow process
     real :: tau_g2v = 900. !< graupel sublimation
     real :: tau_v2g = 21600. !< graupel deposition -- make it a slow process
     real :: tau_revp = 600. !< rain re-evaporation
@@ -319,7 +321,7 @@ module gfdl2_cloud_microphys_mod
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
-        tau_g2v, tau_v2g, &
+        tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
@@ -333,7 +335,7 @@ module gfdl2_cloud_microphys_mod
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
-        tau_g2v, tau_v2g, &
+        tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
@@ -1519,7 +1521,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, di, lhl, lhi
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol
     
-    real :: rdts, fac_g2v, fac_v2g, fac_i2s, fac_imlt, fac_frz
+    real :: rdts, fac_g2v, fac_i2s, fac_imlt, fac_frz
     real :: tz, qv, ql, qr, qi, qs, qg, melt, ifrac, newqi, newql
     real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
     real :: pgmlt, psmlt, pgfr, pgaut, psaut, pgsub
@@ -1541,7 +1543,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     
     fac_i2s = 1. - exp (- dts / tau_i2s)
     fac_g2v = 1. - exp (- dts / tau_g2v)
-    fac_v2g = 1. - exp (- dts / tau_v2g)
     
     fac_imlt = 1. - exp (- dt5 / tau_imlt)
     fac_frz  = 1. - exp (- dt5 / tau_frz)
@@ -2047,7 +2048,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
     real :: dqsdt, dwsdt, dq, dq0, factor, tmp, oldqa
     real :: dqh, q_plus, q_minus, dt_evap
     real :: evap, sink, tc, pisub, q_adj, dtmp
-    real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g
+    real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g, fac_s2v, fac_v2s
     real :: ifrac, newqi, fac_frz
     real :: rh_adj, rh_rain
     real :: dt5
@@ -2064,6 +2065,9 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
     fac_l2v = 1. - exp (- dt5 / tau_l2v)
 
     fac_i2v = 1. - exp (- dt5 / tau_i2v)
+
+    fac_s2v = 1. - exp (- dts / tau_s2v)
+    fac_v2s = 1. - exp (- dts / tau_v2s)
     
     fac_g2v = 1. - exp (- dts / tau_g2v)
     fac_v2g = 1. - exp (- dts / tau_v2g)
@@ -2271,7 +2275,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! sublimation / deposition of snow
         ! this process happens for all temp rage
         ! -----------------------------------------------------------------------
-        
+ 
         if (qs (k) > qpmin) then
             qsi = iqs2 (tz (k), den (k), dqsdt)
             qden = qs (k) * den (k)
@@ -2282,12 +2286,13 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
                 sqrt (denfac (k))) / (cssub (4) * tsq + cssub (5) * qsi * den (k))
             pssub = (qsi - qv (k)) * dts * pssub
             if (pssub > 0.) then ! qs -- > qv, sublimation
-                pssub = min (pssub * min (1., dim (tz (k), t_sub) * 0.2), qs (k))
+                pssub = min (fac_s2v * pssub * min (1., dim (tz (k), t_sub) * 0.2), qs (k))
+                subl1(k) = pssub / dts
             else
                 if (tz (k) > tice) then
                     pssub = 0. ! no deposition
                 else
-                    pssub = max (pssub, dq, (tz (k) - tice) / tcpk (k))
+                    pssub = max (fac_v2s * pssub, dq, (tz (k) - tice) / tcpk (k))
                 endif
             endif
             qs (k) = qs (k) - pssub
@@ -2295,7 +2300,6 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             q_sol (k) = q_sol (k) - pssub
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) - pssub * (lhl (k) + lhi (k)) / cvm (k)
-            subl1(k) = pssub / dts
         endif
         
         ! -----------------------------------------------------------------------
@@ -2325,13 +2329,13 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
                 endif
             else ! submilation
                 pgsub = max (fac_g2v * pgsub, dq) * min (1., dim (tz (k), t_sub) * 0.1)
+                subl1(k) = subl1(k) + pgsub / dts
             endif
             qg (k) = qg (k) + pgsub
             qv (k) = qv (k) - pgsub
             q_sol (k) = q_sol (k) + pgsub
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) + pgsub * (lhl (k) + lhi (k)) / cvm (k)
-            subl1(k) = subl1(k) - pgsub / dts
         endif
         
 #ifdef USE_MIN_EVAP
