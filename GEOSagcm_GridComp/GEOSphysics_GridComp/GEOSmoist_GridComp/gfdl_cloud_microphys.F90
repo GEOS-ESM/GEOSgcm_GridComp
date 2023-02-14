@@ -2093,7 +2093,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
     do k = ktop, kbot
  
       rh_adj = 1. - h_var(k) - rh_inc
-      rh_rain = max (0.35, rh_adj - rh_inr) ! rh_inr = 0.25
+      rh_rain = max (0.35, rh_adj - rh_inr)
       
       subl1(k) = 0.0
  

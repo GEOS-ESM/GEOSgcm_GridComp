@@ -52,13 +52,14 @@ module GEOSmoist_Process_Library
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
-  ! LDRADIUS4
-  real, parameter :: RHO_I   =  916.8     ! Density of ice crystal in kg/m^3
-  real, parameter :: RHO_W   = 1000.0     ! Density of liquid water in kg/m^3
-! real, parameter :: be      = 1./3. - 0.11
-! real, parameter :: bx      = 0.13*(3.0/(4.0*MAPL_PI*RHO_W))**(1.0/3.0)
-  real, parameter :: be      = 1./3. - 0.14
-  real, parameter :: bx      = 100.* (3./(4.*MAPL_PI))**(1./3.) * 0.07*6.92
+ ! LDRADIUS4
+  ! Liquid
+  real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
+  real, parameter :: Lbe     = 1./3. - 0.14
+  real, parameter :: Lbx     = 1.e3*(3./(4.*MAPL_PI*RHO_W))**(1./3.)
+  ! Ice
+  real, parameter :: RHO_I   =  916.8  ! Density of ice crystal in kg/m^3
+
   ! combined constantc
   real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
   real, parameter :: gravbcp = MAPL_GRAV/MAPL_CP
@@ -458,18 +459,18 @@ module GEOSmoist_Process_Library
        REAL :: NNX,RHO,BB,WC
 
        !- air density (kg/m^3)
-       RHO = 100.*PL / (MAPL_RGAS*TE )
+       RHO = (100.*PL) / (MAPL_RGAS*TE )
        IF(ITYPE == LIQUID) THEN
 
        !- liquid cloud effective radius ----- 
           !- liquid water content
-          WC = RHO*QC*1000. !g/m3
-          !- cloud drop number concentration #/m3
+          WC = 1.e3*RHO*QC ! air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+          !- cloud drop number concentration
           !- from the aerosol model + ....
-          NNX = NNL*1.e-6
+          NNX = NNL*1.e-6 ! #/cm3
           !- radius in meters
           !- [liu&daum, 2000 and 2005. liu et al 2008]
-          RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*bx*(WC/NNX)**be))
+          RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
           !- include temperature scaling from Kiehl 1994
           !- increases droplet radii in colder temperatures
           RADIUS = RADIUS*(8.0+MIN(1.0,MAX(0.0,(MAPL_TICE-TE)/30.0)))/8.0
@@ -477,27 +478,21 @@ module GEOSmoist_Process_Library
        ELSEIF(ITYPE == ICE) THEN
 
        !- ice cloud effective radius ----- 
-        !- ice water content
-         WC = RHO*QC*1000.  !g/m3
-#ifdef WYSER
-        !------ice cloud effective radius ----- [klaus wyser, 1998]
-         if(TE>MAPL_TICE .or. QC <=0.) then
+          !- ice water content
+          WC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
+          !- cloud ice number concentration #/m3
+          !- from the aerosol model + ....
+          NNX = NNI*1.e-6 ! #/m3
+          !- radius in meters
+          !------ice cloud effective radius ----- [klaus wyser, 1998]
+          if(TE>MAPL_TICE .or. QC <=0.) then
             BB = -2.
-         else
+          else
             BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
-         endif
-         BB     = MIN((MAX(BB,-6.)),-2.)
-         RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-#else
-         if(TE<=MAPL_TICE .and. QC>0.0) then
-           RADIUS = 45.8966*(WC**0.2214) +  0.7957*(WC**0.2535)*(TE-MAPL_TICE+190.0)
-           RADIUS = (1.2351 + 0.0105*(TE-MAPL_TICE))*RADIUS
-         else
-           BB = -2.
-           RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-         endif
-#endif
-         RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
+          endif
+          BB     = MIN((MAX(BB,-6.)),-2.)
+          RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+          RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"

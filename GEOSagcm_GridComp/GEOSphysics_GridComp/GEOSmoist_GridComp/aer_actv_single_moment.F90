@@ -25,13 +25,11 @@ MODULE Aer_Actv_Single_Moment
        real(AER_PR), parameter :: betai     = -2.262D+3
        real(AER_PR), parameter :: gamai     =  5.113D+6
        real(AER_PR), parameter :: deltai    =  2.809D+3
-       real(AER_PR), parameter :: densic    =  500.D0   !Ice crystal density in kgm-3
+       real(AER_PR), parameter :: densic    =  917.D0   !Ice crystal density in kgm-3
 
-    
-      !-- try 50.e6 over ocean, 300e6 over land   
-       real, parameter :: NN_LAND     = 150.0e6
-       real, parameter :: NN_OCEAN    =  30.0e6
-       real, parameter :: NN_MIN      = NN_OCEAN
+       real, parameter :: NN_LAND     = 300.0e6
+       real, parameter :: NN_OCEAN    = 100.0e6
+       real, parameter :: NN_MIN      =  30.0e6
 
        LOGICAL  :: USE_BERGERON, USE_AEROSOL_NN
       CONTAINS          
@@ -274,8 +272,8 @@ MODULE Aer_Actv_Single_Moment
               tk                 = T(i,j,k)                         ! K
               press              = plo(i,j,k)                       ! Pa   
               air_den            = press*28.8e-3/8.31/tk            ! kg/m3
-              qc                 = qicn(i,j,k)+qils(i,j,k)*1.e+3    ! g/kg
-              ql                 = qlcn(i,j,k)+qlls(i,j,k)*1.e+3    ! g/kg
+              qc                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3    ! g/kg
+              ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3    ! g/kg
               
               IF( plo(i,j,k) > 34000.0) THEN 
                 

@@ -464,10 +464,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
     if (GF_MIN_AREA > 0) then
-       where (AREA > GF_MIN_AREA)
-          TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+       where (AREA > (AREA/16.0))
+          TMP2D = (AREA/16.0)*CNV_FRC + AREA*(1.0-CNV_FRC)
        elsewhere
-          TMP2D = GF_MIN_AREA
+          TMP2D =  AREA
        endwhere
     else if (GF_MIN_AREA < 0) then
        TMP2D = ABS(GF_MIN_AREA)
