@@ -833,7 +833,6 @@ contains
       call ice_export_field('FSALT', FSALT, _RC)
     endif 
 
-    call reset_ocn_flux
 
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )
@@ -964,8 +963,6 @@ contains
      ! export the relevant fields from cice
      call ice_export_thermo1(state, rc=STATUS)
 
-     call reset_atm_flux
-
      ! pack them back into state 
 
      RETURN_(ESMF_SUCCESS)
@@ -998,7 +995,6 @@ contains
      call ice_export_radiation(state, rc=STATUS)
 
      ! pack them back into state 
-     call reset_atm_flux
 
      RETURN_(ESMF_SUCCESS)
 
