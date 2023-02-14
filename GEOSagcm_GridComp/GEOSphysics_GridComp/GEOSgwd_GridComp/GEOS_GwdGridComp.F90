@@ -89,6 +89,7 @@ contains
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
+    if (mapl_am_i_root()) write(*,*)"Starting setservice of GWD"
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
@@ -625,6 +626,7 @@ contains
    ! Get my name and set-up traceback handle
    ! ---------------------------------------
 
+    if (mapl_am_i_root()) write(*,*)"Starting initialize of GWD"
       Iam = 'Initialize'
       call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
       VERIFY_(STATUS)
@@ -711,11 +713,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: bgstressmax
   real, pointer, dimension(:,:)       :: LATS
 
-  character(len=ESMF_MAXSTR) :: GRIDNAME
-  character(len=4)           :: imchar
-  character(len=2)           :: dateline
-  integer                    :: imsize,nn
-
 ! Rayleigh friction parameters
 
   REAL                                :: H0, HH, Z1, TAU1
@@ -727,6 +724,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
+    if (mapl_am_i_root()) write(*,*)"Starting run of GWD"
    Iam = "Run"
    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
    VERIFY_(STATUS)
@@ -751,16 +749,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          RUNALARM=ALARM, LATS=LATS,  &
                            RC=STATUS )
     VERIFY_(STATUS)
-
-! Get grid name to determine IMSIZE
-    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
-    GRIDNAME =  AdjustL(GRIDNAME)
-    nn = len_trim(GRIDNAME)
-    dateline = GRIDNAME(nn-1:nn)
-    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-    read(imchar,*) imsize
-    if(dateline.eq.'CF') imsize = imsize*4
 
 ! Gravity wave drag
 ! -----------------
