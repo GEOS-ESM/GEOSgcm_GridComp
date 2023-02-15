@@ -2645,7 +2645,7 @@ contains
 
     call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, __RC__)
 
-    call RegridA2O_2d(       TS, SURFST,  'TSKINICE', XFORM_A2O, locstreamO, __RC__)
+    !call RegridA2O_2d(       TS, SURFST,  'TSKINICE', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(    FSURF, SURFST,     'FSURF', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(DFSURFDTS, SURFST, 'DFSURFDTS', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_2d(  DLHFDTS, SURFST,   'DLHFDTS', XFORM_A2O, locstreamO, __RC__)

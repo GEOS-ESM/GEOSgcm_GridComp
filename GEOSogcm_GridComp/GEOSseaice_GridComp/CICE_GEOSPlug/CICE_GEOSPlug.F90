@@ -575,8 +575,8 @@ contains
 
     ! create and add some fields to the callback state (i.e. SURFSTATE)
     call ESMF_GridCompGet(gc, grid=grid, __RC__)
-    call AddSurfField('TSKINICE', SURFST, GRID,     &    
-                     UGRID=NUM_ICE_CATEGORIES, __RC__)
+    !call AddSurfField('TSKINICE', SURFST, GRID,     &    
+    !                 UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('EVAP', SURFST, GRID,         &
                      UGRID=NUM_ICE_CATEGORIES, __RC__)
     call AddSurfField('LHF', SURFST, GRID,          &
