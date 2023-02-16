@@ -899,21 +899,6 @@ end subroutine GFDL_1M_Run
 
    end subroutine REDISTRIBUTE_CLOUDS
 
-   subroutine FIX_NEGATIVE_PRECIP(QRAIN, QSNOW, QGRAUPEL)
-      real, dimension(:,:,:), intent(inout) :: QRAIN, QSNOW, QGRAUPEL
 
-      WHERE (QRAIN < 1.e-8)
-        QRAIN = 0.0
-      END WHERE
-
-      WHERE (QSNOW < 1.e-8)
-        QSNOW = 0.0
-      END WHERE
-
-      WHERE (QGRAUPEL < 1.e-8)
-        QGRAUPEL = 0.0
-      END WHERE
-
-   end subroutine FIX_NEGATIVE_PRECIP
 
 end module GEOS_GFDL_1M_InterfaceMod

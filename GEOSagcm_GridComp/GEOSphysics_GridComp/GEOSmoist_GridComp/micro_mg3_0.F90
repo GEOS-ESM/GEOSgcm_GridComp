@@ -118,7 +118,7 @@ module micro_mg3_0
 use MAPL_ConstantsMod 
 use MAPL_Mod, r8 => MAPL_R8
 
-use cldmacro, only: update_cld
+use GEOSmoist_Process_Library, only: update_cld
 
 use wv_sat_methods, only: &
      qsat_water => wv_sat_qsat_water, &
@@ -353,7 +353,7 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   cpp = cpair               ! specific heat of dry air
   tmelt = tmelt_in
   rhmini = rhmini_in
-  micro_mg_precip_frac_method = 'in_cloud' !'max_overlap' !'in_cloud'
+  micro_mg_precip_frac_method = 'max_overlap' !'max_overlap' !'in_cloud'
   micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
   allow_sed_supersat          = .true.
   do_sb_physics               = .false.
@@ -909,9 +909,16 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        precir8_accum = precir8_accum  + precir8
 
  
-       effcr8_accum = effcr8_accum  + effcr8
-       effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
-       effir8_accum = effir8_accum + effir8
+!       effcr8_accum = effcr8_accum  + effcr8
+!       effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
+!       effir8_accum = effir8_accum + effir8
+       
+       !use the final size instad of the average
+       effcr8_accum = effcr8
+       effc_fnr8_accum = effc_fnr8
+       effir8_accum = effir8
+       
+       
        sadicer8_accum = sadicer8_accum + sadicer8
        sadsnowr8_accum = sadsnowr8_accum + sadsnowr8
        nevaprr8_accum = nevaprr8_accum + nevaprr8
@@ -931,10 +938,14 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        gflxr8_accum = gflxr8_accum + gflxr8
        
        
+       !reff_rainr8_accum = reff_rainr8_accum  +reff_rainr8
+       !reff_snowr8_accum =  reff_snowr8_accum  +   reff_snowr8
+       !reff_graur8_accum =   reff_graur8_accum +  reff_graur8
        
-       reff_rainr8_accum = reff_rainr8_accum  +reff_rainr8
-       reff_snowr8_accum =  reff_snowr8_accum  +   reff_snowr8
-       reff_graur8_accum =   reff_graur8_accum +  reff_graur8
+        !use the final size instad of the average
+       reff_rainr8_accum = reff_rainr8
+       reff_snowr8_accum = reff_snowr8
+       reff_graur8_accum = reff_graur8
        
        qcsevapr8_accum = qcsevapr8_accum  + qcsevapr8
        qisevapr8_accum = qisevapr8_accum  + qisevapr8
@@ -1034,13 +1045,22 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        nstendr8 = nstendr8_accum/num_steps_micro 
        ngrtendr8 = ngrtendr8_accum/num_steps_micro
        
-       prectr8 = prectr8_accum !precipitation just accumulates, it does not average 
-       precir8 = precir8_accum
+       prectr8 = prectr8_accum/num_steps_micro  
+       precir8 = precir8_accum/num_steps_micro
+       
        
               
-       effcr8 = effcr8_accum/num_steps_micro 
-       effc_fnr8 = effc_fnr8_accum/num_steps_micro 
-       effir8 = effir8_accum/num_steps_micro
+       !effcr8 = effcr8_accum/num_steps_micro 
+       !effc_fnr8 = effc_fnr8_accum/num_steps_micro 
+       !effir8 = effir8_accum/num_steps_micro
+       
+       !use the final size
+       
+       effcr8 = effcr8_accum
+       effc_fnr8 = effc_fnr8_accum 
+       effir8 = effir8_accum
+       
+       
        sadicer8 = sadicer8_accum/num_steps_micro 
        sadsnowr8 = sadsnowr8_accum/num_steps_micro  
        nevaprr8 = nevaprr8_accum/num_steps_micro 
@@ -1062,9 +1082,11 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        
        
 
+       !use the final size
+       reff_rainr8 = reff_rainr8_accum
+       reff_snowr8 =  reff_snowr8_accum
+       reff_graur8 = reff_graur8_accum
        
-       reff_rainr8 = reff_rainr8_accum/num_steps_micro
-       reff_snowr8 =  reff_snowr8_accum/num_steps_micro 
        qcsevapr8 = qcsevapr8_accum/num_steps_micro 
        qisevapr8 = qisevapr8_accum/num_steps_micro 
        qvresr8 = qvresr8_accum/num_steps_micro  

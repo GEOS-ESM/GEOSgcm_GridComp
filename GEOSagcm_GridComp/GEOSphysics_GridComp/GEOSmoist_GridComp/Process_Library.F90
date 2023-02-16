@@ -99,6 +99,9 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
+  public :: update_cld, meltfrz_inst2M
+  public :: FIX_NEGATIVE_PRECIP
+  
  
   contains
 
@@ -467,7 +470,7 @@ module GEOSmoist_Process_Library
           WC = 1.e3*RHO*QC ! air density [g/m3] * liquid cloud mixing ratio [kg/kg]
           !- cloud drop number concentration
           !- from the aerosol model + ....
-          NNX = NNL*1.e-6 ! #/cm3
+          NNX = max(NNL*1.e-6, 10.0)
           !- radius in meters
           !- [liu&daum, 2000 and 2005. liu et al 2008]
           RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
@@ -1681,7 +1684,9 @@ module GEOSmoist_Process_Library
       tmpARR = 0.0
       nmax =  20
       QAx = 0.0
+      QAo =  0.
 
+    
       if ( AF < 1.0 )  tmpARR = 1./(1.-AF)
 
       TEo = TE
@@ -2670,7 +2675,8 @@ module GEOSmoist_Process_Library
       real, parameter:: pi = 3.1415926536
       real, intent(in):: q_ice, temp
       integer idx_rei
-      real corr, reice, deice
+      real corr, reice, deice, mui, k,  TC, lambdai
+
       double precision lambda
 
 !+---+-----------------------------------------------------------------+ 
@@ -2711,7 +2717,7 @@ module GEOSmoist_Process_Library
 
       idx_rei = int(temp-179.)
       idx_rei = min(max(idx_rei,1),94)
-      corr = temp - int(temp)
+      corr = temp - FLOOR(temp)
       reice = retab(idx_rei)*(1.-corr) + retab(idx_rei+1)*corr
       deice = 2.*reice * 1.E-6
 
@@ -2726,7 +2732,26 @@ module GEOSmoist_Process_Library
 !+---+-----------------------------------------------------------------+ 
 
       lambda = 3.0 / deice
-      make_IceNumber = Q_ice * lambda*lambda*lambda / (PI*Ice_density)
+      
+      
+      ! value of the dispersion parameter according to Heymsfield et al 2002, Table3.
+            TC=temp-273.15
+
+            TC=MIN(MAX(TC, -70.0), -15.0)
+
+            if (TC .gt. -27.0) then 
+               lambdai=6.8*exp(-0.096*TC)
+            else
+               lambdai=24.8*exp(-0.049*TC)
+            end if
+
+            mui=(0.13*(lambdai**0.64))-2.
+           
+            
+      
+
+      k =  (mui+3)*(mui*3)/(mui+2)/(mui+1)
+      make_IceNumber = k*Q_ice * lambda*lambda*lambda / (PI*Ice_density)
 
 !+---+-----------------------------------------------------------------+ 
 !..Example1: Common ice size coming from Thompson scheme is about 30 microns.
@@ -2814,5 +2839,220 @@ module GEOSmoist_Process_Library
    enddo
 
   end SUBROUTINE  dissipative_ke_heating
+
+
+
+
+   
+!+---+-----------------------------------------------------------------+ 
+
+subroutine update_cld( &
+         DT          , &
+         ALPHA       , &
+         PDFFLAG     , &
+         CNVFRC      , &
+         SRFTYPE     , &
+         PL          , &
+         QV          , &
+         QCl         , &
+         QAl         , &
+         QCi         , &
+         QAi         , &
+         TE          , &
+         CF          , &
+         AF          , &
+         SCICE       , &
+         NI          , &
+         NL          , &
+         RHcmicro)
+
+      real, intent(in)    :: DT,ALPHA,PL,CNVFRC,SRFTYPE
+      integer, intent(in) :: pdfflag
+      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF, NI, RHCmicro, NL,  SCICE
+
+      ! internal arrays
+      real :: CFO
+      real :: QT
+
+      real :: QSx,DQsx
+
+      real :: QCx, QC, QA
+
+      real :: QX, QSLIQ, QSICE, CFALL, DQx, FQA, DELQ
+
+      real :: SHOM
+      real :: maxalpha =  0.4
+
+
+    !  maxalpha=1.0-minrhcrit
+
+      QC = QCl + QCi
+      QA = QAl + QAi
+      QT  =  QC  + QA + QV  !Total water after microphysics
+      CFALL  = AF+CF
+      FQA = 0.0
+      if (QA+QC .gt. tiny(1.0))  FQA=QA/(QA+QC)
+
+      SHOM=2.349-(TE/259.0) !hom threeshold Si according to Ren & McKenzie, 2005
+
+      !================================================
+      ! First find the cloud fraction that would correspond to the current condensate 
+      QSLIQ  = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQx )
+      QSICE  = GEOS_QsatICE( TE, PL*100.0 , DQ=DQX )
+
+      if ((QC+QA) .gt. 1.0e-13) then 
+         QSx=((QCl+QAl)*QSLIQ + QSICE*(QCi+QAi))/(QC+QA)               
+      else
+		 DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
+      end if
+      
+      if (TE .gt. 240.0)   SCICE = 1.0
+      QCx=QC+QA   
+      QX=QT-QSx*SCICE
+      CFo=0.
+      
+      !====== recalculate QX if too low and SCICE<SHOM
+        if ((QX .gt. QCx) .and. (QCx .gt. 0.0)) then     
+           QX=QT-QSx*SHOM
+       end if 
+      
+      !=======================
+
+     DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)   
+      
+      if  ((QX .le. QCx)  .and. (QCx .gt. tiny(1.0)))  then          
+         CFo =  (1.0+SQRT(1.0-(QX/QCx)))
+         if (CFo .gt. 1.e-6) then
+            CFo = min(1.0/CFo, 1.0)
+            DELQ=  2.0*QCx/(CFo*CFo)
+         else
+            CFo = 0.0
+         end if
+      elseif (QCx .gt. tiny(1.0)) then  
+         !   CFo = 1.0  !Outside of distribution but still with condensate         
+        DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)          
+        CFo = SQRT(2.0*QCx/DELQ)        
+      else
+        CFo = 0.0         
+      end if
+
+      if  (QSx .gt. tiny(1.0)) then 
+         RHCmicro = SCICE - 0.5*DELQ/Qsx
+      else
+         RHCmicro = 0.0
+      end if
+
+      CFALL   = max(CFo, 0.0) 
+      CFALL   = min(CFo, 1.0) 
+
+      CF=CFALL*(1.0-FQA)
+      AF=CFALL*FQA
+
+
+   end subroutine update_cld
+   
+   
+   
+   
+   subroutine meltfrz_inst2M  (     &
+         IM,JM,LM , &
+         TE       , &
+         QCL       , &
+         QAL       , &
+         QCI        , &
+         QAI        , &               
+         NL       , &
+         NI            )
+
+      integer, intent(in)                             :: IM,JM,LM
+      real ,   intent(inout), dimension(:,:,:)   :: TE,QCL,QCI, QAL, QAI, NI, NL
+
+      real ,   dimension(im,jm,lm)              :: dQil, DQmax, QLTOT, QITOT, dNil, FQA
+      real :: T_ICE_ALL =  240.
+      real :: T_ICE_MAX =  273.
+
+      QITOT= QCI+QAI
+      QLTOT=QCL + QAL
+      FQA = 0.0
+
+
+      where (QITOT+QLTOT .gt. 0.0)
+         FQA= (QAI+QAL)/(QITOT+QLTOT)
+      end where
+
+
+      dQil = 0.0
+      dNil =0.0
+      DQmax  = 0.0
+
+      ! freeze liquid instantaneosly below -40 C
+      where( TE <= T_ICE_ALL )
+         DQmax = (T_ICE_ALL - TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)   
+         dQil = min(QLTOT , DQmax)  
+      end where
+
+      where ((dQil .le. DQmax) .and. (dQil .gt. 0.0))
+         dNil = NL
+      end where
+
+      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0)) 
+         dNil  =  NL*DQmax/dQil 
+      end where
+
+      dQil = max(  0., dQil )
+      QITOT = max(QITOT + dQil, 0.0)
+      QLTOT= max(QLTOT -  dQil, 0.0)                  
+      NL  = NL - dNil
+      NI   = NI  + dNil
+      TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+
+      dQil = 0.0
+      dNil =0.0
+      DQmax  = 0.0
+
+      ! melt ice instantly above 0^C
+      where( TE > T_ICE_MAX )
+         DQmax =  (TE-T_ICE_MAX) *MAPL_CP/(MAPL_ALHS-MAPL_ALHL)   
+         dQil = min(QITOT, DQmax)  
+      endwhere
+
+      where ((dQil .le. DQmax) .and. (dQil .gt. 0.0))
+         dNil = NI
+      end where
+      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0)) 
+         dNil  =  NI*DQmax/dQil 
+      end where
+      dQil = max(  0., dQil )
+      QLTOT =  max(QLTOT+ dQil, 0.)
+      QITOT = max(QITOT - dQil, 0.) 
+      NL  = NL + dNil
+      NI   = NI  - dNil
+
+      TE   = TE - (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+
+      QCI   = QITOT*(1.0-FQA)
+      QAI = QITOT*FQA      
+      QCL   = QLTOT*(1.0-FQA)
+      QAL = QLTOT*FQA
+
+   end subroutine meltfrz_inst2M
+   
+      subroutine FIX_NEGATIVE_PRECIP(QRAIN, QSNOW, QGRAUPEL)
+          real, dimension(:,:,:), intent(inout) :: QRAIN, QSNOW, QGRAUPEL
+
+          WHERE (QRAIN < 1.e-8)
+            QRAIN = 0.0
+          END WHERE
+
+          WHERE (QSNOW < 1.e-8)
+            QSNOW = 0.0
+          END WHERE
+
+          WHERE (QGRAUPEL < 1.e-8)
+            QGRAUPEL = 0.0
+          END WHERE
+
+    end subroutine FIX_NEGATIVE_PRECIP
+         
 
 end module GEOSmoist_Process_Library

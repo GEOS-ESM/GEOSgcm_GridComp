@@ -579,10 +579,10 @@ contains
 
     !============================================
 
-   call MAPL_AddImportSpec ( GC,                                          & !USe the nature run to force cirrus
-         SHORT_NAME = 'WSUB_NATURE',                                 &
-         LONG_NAME  =  'variance in wsub from the nature run',     &
-         UNITS      = 'm2 s-2',                                    &
+   call MAPL_AddImportSpec ( GC,                                          & !Read WSUB from a climatology
+         SHORT_NAME = 'WSUB_CLIM',                                 &
+         LONG_NAME  = 'stdev in vertical velocity',     &
+         UNITS      = 'm s-1',                                    &
          RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -4459,7 +4459,7 @@ contains
 
 
     call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME ='DNCCNV',                                                 &
+         SHORT_NAME ='DNICNV',                                                 &
          LONG_NAME  ='Ice crystal number tendency from convective detrainment',  &
          UNITS      ='m-3 s-1',                                            &
          DIMS       = MAPL_DimsHorzVert,                                     &
@@ -5085,9 +5085,6 @@ contains
     real, pointer, dimension(:,:  ) :: PTR2D
     
 
-    
-    real :: CNV_NUMLIQ_SC, CNV_NUMICE_SC
-    
 
     integer :: IM,JM,LM
     integer :: I, J, L
@@ -5212,6 +5209,7 @@ contains
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, INHB,    'INHB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
+       
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          WHERE (CAPE .ne. MAPL_UNDEF)
@@ -5252,6 +5250,8 @@ contains
 
        ! Exports
          ! Cloud fraction exports
+         
+         
          call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', ALLOC=.true., RC=STATUS); VERIFY_(STATUS)
          if (associated(CFICE)) then
            CFICE=0.0
@@ -5291,9 +5291,15 @@ contains
              PTR3D=0.0
            end where
          endif
-     !!! QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
+         
+         !if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
+        if (.FALSE.) then 
+         QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
+         call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)        
+        else
          DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
-         call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
+        end if 
+        
          if (associated(PTR3D)) PTR3D = Q/QST3
          where ( Q > 1.1*QST3 )
             TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
