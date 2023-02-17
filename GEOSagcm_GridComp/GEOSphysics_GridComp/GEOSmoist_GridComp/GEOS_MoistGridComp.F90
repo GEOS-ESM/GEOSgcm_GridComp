@@ -1725,7 +1725,22 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
-    
+   
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='NCCN_LIQ',                                     &
+         LONG_NAME ='number_concentration_of_cloud_liquid_particles',     &
+         UNITS     ='cm-3',                                         &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='NCCN_ICE',                                     &
+         LONG_NAME ='number_concentration_of_ice_cloud_particles',     &
+         UNITS     ='cm-3',                                         &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
     
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='CLDNCCN',                                     & 
@@ -5241,6 +5256,11 @@ contains
            NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
          end do
        endif
+       call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_LIQ', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = NACTL*1.e-6
+       call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_ICE', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = NACTI*1.e-6
+
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
 
        if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
