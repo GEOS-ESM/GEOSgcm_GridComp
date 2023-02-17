@@ -371,8 +371,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, MIN_EXP,        'MIN_EXP:',        DEFAULT= 0.5,    __RC__) !Exponent of the relation CFA=CFV^n
     call MAPL_GetResource(MAPL, MAX_EXP,        'MAX_EXP:',        DEFAULT= 1.0,    __RC__) !Exponent of the relation CFA=CFV^n
     call MAPL_GetResource(MAPL, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    __RC__) !Set to > 0 to use an average velocity for activation
-    call MAPL_GetResource(MAPL, AUTSC,          'AUT_SCALE:',      DEFAULT= 0.5,    __RC__) !scale factor for critical size for drizzle
-    call MAPL_GetResource(MAPL, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 4.0,    __RC__) !Ice autoconversion time scale
+    call MAPL_GetResource(MAPL, AUTSC,          'AUT_SCALE:',      DEFAULT= 1.0,    __RC__) !scale factor for critical size for drizzle
+    call MAPL_GetResource(MAPL, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 1.0,    __RC__) !Ice autoconversion time scale
     call MAPL_GetResource(MAPL, TMAXLL,         'TMAXLL:',         DEFAULT= 250.0,  __RC__) !Liquid clouds min T
     call MAPL_GetResource(MAPL, CCN_PARAM,      'CCNPARAM:',       DEFAULT= 2.0,    __RC__) !CCN activation param
     call MAPL_GetResource(MAPL, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    __RC__) !IN param
@@ -1499,8 +1499,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
           do J=1,JM
            do I=1,IM
 			
-            DLPDF_X=  QLLS(I, J, L) +QLCN(I, J, L)
-            DIPDF_X=  QILS(I, J, L) +QICN(I, J, L)
+            DLPDF_X(I, J, L)=  QLLS(I, J, L) +QLCN(I, J, L)
+            DIPDF_X(I, J, L)=  QILS(I, J, L) +QICN(I, J, L)
     
              call hystpdf( &
                       DT_MOIST       , &
