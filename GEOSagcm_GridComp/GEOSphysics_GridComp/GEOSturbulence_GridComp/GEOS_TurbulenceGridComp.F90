@@ -1806,6 +1806,15 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddInternalSpec(GC,                                &           
+       SHORT_NAME = 'ZPBL_SC',                                       &          
+       LONG_NAME  = 'planetary_boundary_layer_height_for_shallow',            &          
+       UNITS      = 'm',                                          &          
+       FRIENDLYTO = trim(COMP_NAME),                             &           
+       DIMS       = MAPL_DimsHorzOnly,                           &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'zonal_wind_after_diffuse',                       &
        UNITS      = 'm s-1',                                                     &
@@ -2899,6 +2908,7 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
      real, dimension(:,:  ), pointer     :: KPBL_SC => null()
+     real, dimension(:,:  ), pointer     :: ZPBL_SC => null()                
      real, dimension(:,:  ), pointer     :: WEBRV,VSCBRV,DSIEMS,CHIS,ZCLDTOP,DELSINV,SMIXT,ZRADBS,CLDRF,VSCSFC,RADRCODE
 
      real, dimension(:,:,:), pointer     :: AKSODT, CKSODT
@@ -3213,7 +3223,9 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    KPBL,    'KPBL',               RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    KPBL_SC, 'KPBL_SC',            RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    KPBL_SC, 'KPBL_SC', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBL_SC, 'ZPBL_SC',            RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    TCZPBL,  'TCZPBL',             RC=STATUS)
      VERIFY_(STATUS)
@@ -4654,9 +4666,9 @@ contains
 
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
       KPBL = MAX(KPBL,float(KPBLMIN))
-   
+  
      ! Calc KPBL using surface turbulence, for use in shallow scheme
-      if(associated(KPBL_SC)) then
+      if(associated(KPBL_SC) .OR. associated(ZPBL_SC)) then
        KPBL_SC = MAPL_UNDEF
        do I = 1, IM
          do J = 1, JM
@@ -4675,6 +4687,7 @@ contains
             if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
                KPBL_SC(I,J) = float(LM)
             endif
+            if (associated(ZPBL_SC)) ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
          end do
        end do
       endif
