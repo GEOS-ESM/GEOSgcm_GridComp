@@ -91,11 +91,11 @@
     n_fed        = 0
     n_fep        = 0
     tr_iage      = .true.
-    restart_age  = .false.
+    restart_age  = .true.
     tr_FY        = .true.
-    restart_FY   = .false.
+    restart_FY   = .true.
     tr_lvl       = .true.
-    restart_lvl  = .false.
+    restart_lvl  = .true.
     tr_pond_cesm = .false.
     restart_pond_cesm = .false.
     tr_pond_topo = .false.
