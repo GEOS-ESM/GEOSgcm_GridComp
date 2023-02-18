@@ -1,6 +1,3 @@
-C $Header: /u/gcmpack/MITgcm_contrib/gael/verification/ECCO_v4_r2/code/GGL90_OPTIONS.h,v 1.1 2012/10/03 20:27:37 gforget Exp $
-C $Name:  $
-
 C     *=============================================================*
 C     | GGL90_OPTIONS.h
 C     | o CPP options file for GGL90 package.
@@ -23,6 +20,12 @@ C     Enable horizontal diffusion of TKE.
 C     Use horizontal averaging for viscosity and diffusivity as
 C     originally implemented in OPA.
 #define ALLOW_GGL90_SMOOTH
+
+C     allow IDEMIX model
+#undef ALLOW_GGL90_IDEMIX
+
+C     include Langmuir circulation parameterization
+#undef ALLOW_GGL90_LANGMUIR
 
 #endif /* ALLOW_GGL90 */
 #endif /* GGL90_OPTIONS_H */

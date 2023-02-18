@@ -1,6 +1,3 @@
-C $Header: /u/gcmpack/MITgcm_contrib/gael/verification/ECCO_v4_r2/code/MOM_COMMON_OPTIONS.h,v 1.1 2012/10/03 20:27:37 gforget Exp $
-C $Name:  $
-
 C CPP options file for mom_common package
 C Use this file for selecting CPP options within the mom_common package
 
@@ -11,6 +8,12 @@ C Use this file for selecting CPP options within the mom_common package
 
 #ifdef ALLOW_MOM_COMMON
 C     Package-specific options go here
+
+C allow LeithQG coefficient to be calculated
+#undef ALLOW_LEITH_QG
+
+C allow isotropic 3-D Smagorinsky viscosity
+#undef ALLOW_SMAG_3D
 
 C allow full 3D specification of horizontal Laplacian Viscosity
 #define ALLOW_3D_VISCAH

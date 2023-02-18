@@ -62,9 +62,6 @@ C--   Control use of "double" precision constants.
 C     Use D0 where it means REAL*8 but not where it means REAL*16
 #define D0 d0
 
-C--   Enable some old macro conventions for backward compatibility
-#undef USE_OLD_MACROS_R4R8toRSRL
-
 C=== IO related options ===
 C--   Flag used to indicate whether Fortran formatted write
 C     and read are threadsafe. On SGI the routines can be thread
@@ -151,9 +148,10 @@ C--   Control use of communication with other component:
 C     allow to import and export from/to Coupler interface.
 #undef COMPONENT_MODULE
 
+C--   Activate some pieces of code for coupling to GEOS AGCM
+#define HACK_FOR_GMAO_CPL
+
 #endif /* _CPP_EEOPTIONS_H_ */
 
 #include "CPP_EEMACROS.h"
 
-C--   Activate some pieces of code for coupling to GEOS AGCM
-#define HACK_FOR_GMAO_CPL

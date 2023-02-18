@@ -28,9 +28,6 @@
  SEAICElinearIterMax=  500,
 #LSR_mixIniGuess    = 1,
  SEAICEadvScheme    = 77,
- AreaFile  = 'const100.bin',
- HeffFile  = 'const+20.bin',
- HsnowFile = 'const_00.bin',
  SEAICEwriteState   = .TRUE.,
 #SEAICE_monFreq = 1800.,
  &
