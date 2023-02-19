@@ -127,13 +127,15 @@ module gfdl2_cloud_microphys_mod
     
     real, parameter :: sfcrho = 1.2 !< surface air density
     real, parameter :: rhor = 1.e3 !< density of rain water, lin83
-    
+   
+    real, parameter :: rc = (4. / 3.) * pi * rhor
+ 
     real :: cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw !< constants for accretions
     real :: acco (3, 4) !< constants for accretions
     real :: cssub (5), cgsub (5), crevp (5), cgfr (2), csmlt (5), cgmlt (5)
     
     real :: es0, ces0
-    real :: pie, rgrav, fac_rc
+    real :: pie, rgrav
     real :: c_air, c_vap
     
     real :: lati, latv, lats, lat2, lcp, icp, tcp !< used in bigg mechanism and wet bulk
@@ -232,8 +234,9 @@ module gfdl2_cloud_microphys_mod
     real :: ccn_o = 90. !< ccn over ocean (cm^ - 3)
     real :: ccn_l = 270. !< ccn over land (cm^ - 3)
     
-    real :: rthresh = 10.0e-6 !< critical cloud drop radius (micro m)
-    
+    real :: rthreshu =  7.0e-6 !< critical cloud drop radius (micro m)
+    real :: rthreshs = 13.0e-6 !< critical cloud drop radius (micro m)
+
     ! -----------------------------------------------------------------------
     ! wrf / wsm6 scheme: qi_gen = 4.92e-11 * (1.e3 * exp (0.1 * tmp)) ** 1.33
     ! optimized: qi_gen = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp)))
@@ -304,7 +307,7 @@ module gfdl2_cloud_microphys_mod
     logical :: fast_sat_adj = .false. !< has fast saturation adjustments
     logical :: z_slope_liq = .true. !< use linear mono slope for autocconversions
     logical :: z_slope_ice = .false. !< use linear mono slope for autocconversions
-    logical :: use_ccn = .false. !< must be true when prog_ccn is false
+    logical :: use_ccn = .false. !< no longer needed.... WMP Feb-2023
     logical :: use_ppm = .false. !< use ppm fall scheme
     logical :: mono_prof = .true. !< perform terminal fall with mono ppm scheme
     logical :: mp_print = .false. !< cloud microphysics debugging printout
@@ -320,7 +323,7 @@ module gfdl2_cloud_microphys_mod
         vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, do_qa, fix_negative, vi_max,  &
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
-        const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
+        const_vs, const_vg, const_vr, use_ccn, rthreshu, rthreshs, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
@@ -334,7 +337,7 @@ module gfdl2_cloud_microphys_mod
         vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, do_qa, fix_negative, vi_max,  &
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
-        const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
+        const_vs, const_vg, const_vr, use_ccn, rthreshu, rthreshs, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
@@ -355,7 +358,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
         qicn, qlcn, clcn,                                                 &
         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, pt, w,    &
         uin, vin, udt, vdt, dz, delp, area, dt_in,                        &
-        land, cnv_fraction, srf_type,                                     &
+        land, cnv_fraction, srf_type, eis,                                &
         rhcrit, anv_icefall, lsc_icefall,                                 &
         revap, isubl,                                                     &
         rain, snow, ice,                                                  &
@@ -375,6 +378,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     real, intent (in), dimension (:, :) :: land !< land fraction
     real, intent (in), dimension (:, :) :: cnv_fraction !< diagnosed convective fraction
     real, intent (in), dimension (:, :) :: srf_type
+    real, intent (in), dimension (:, :) :: eis  !< estimated inversion strength
     real, intent (in), dimension (:, :, :) :: rhcrit
 
     real, intent (in) :: anv_icefall, lsc_icefall
@@ -486,7 +490,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
             qa, qn, qicn, qlcn, clcn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes,  &
             rain (:, j), snow (:, j), graupel (:, j), ice (:, j), m2_rain,     &
             m2_sol, cond (:, j), area (:, j),                                  &
-            land (:, j), cnv_fraction(:, j), srf_type(:, j),                   &
+            land (:, j), cnv_fraction(:, j), srf_type(:, j), eis(:,j),         &
             rhcrit, anv_icefall, lsc_icefall,                                  &
             revap, isubl,                                                      &
             udt, vdt, pt_dt,                                                   &
@@ -636,7 +640,7 @@ end subroutine gfdl_cloud_microphys_driver
 subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         qg, qa, qn, qicn, qlcn, clcn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
         rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land, &
-        cnv_fraction, srf_type, rhcrit, anv_icefall, lsc_icefall, revap, isubl,                 &
+        cnv_fraction, srf_type, eis, rhcrit, anv_icefall, lsc_icefall, revap, isubl,                 &
         u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt,   &
         w_var, vt_r, vt_s, vt_g, vt_i, qn2)
     
@@ -652,6 +656,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     real, intent (in), dimension (is:) :: area1, land
     real, intent (in), dimension (is:) :: cnv_fraction
     real, intent (in), dimension (is:) :: srf_type
+    real, intent (in), dimension (is:) :: eis
 
     real, intent (in), dimension (is:, js:, ks:) :: rhcrit
  
@@ -813,22 +818,20 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         
         cpaut = c_paut * 0.104 * grav / 1.717e-5
-        
+       
+        ! ccn needs units #/m^3 
         if (prog_ccn) then
             do k = ktop, kbot
-                ! convert # / cc to # / m^3
-                ccn (k) = qn (i, j, k) * 1.e6
+                ! qn has units # / m^3
+                ccn (k) = min(qn (i, j, k), 500.e6)
                 c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
             enddo
-            use_ccn = .false.
         else
             ccn0 = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-            if (use_ccn) then
-                ! -----------------------------------------------------------------------
-                ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
-                ! -----------------------------------------------------------------------
-                ccn0 = ccn0 * rdgas * tz (kbot) / p1 (kbot)
-            endif
+            ! -----------------------------------------------------------------------
+            ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
+            ! -----------------------------------------------------------------------
+            ccn0 = ccn0 * rdgas * tz (kbot) / p1 (kbot)
             tmp = cpaut * (ccn0 * rhor) ** (- 1. / 3.)
             do k = ktop, kbot
                 c_praut (k) = tmp
@@ -873,7 +876,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             
             call warm_rain (dt_rain, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
-                qgz, qaz, qlcnz, qicnz, clcnz, den, denfac, ccn, c_praut, vtrz,   &
+                qgz, qaz, qlcnz, qicnz, clcnz, eis(i), den, denfac, ccn, c_praut, vtrz,   &
                 r1, evap1, m1_rain, w1, h_var1d)
 
             rain (i) = rain (i) + r1
@@ -912,7 +915,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             
             call warm_rain (dt_rain, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
-                qgz, qaz, qlcnz, qicnz, clcnz, den, denfac, ccn, c_praut, vtrz,   &
+                qgz, qaz, qlcnz, qicnz, clcnz, eis(i), den, denfac, ccn, c_praut, vtrz,   &
                 r1, evap1, m1_rain, w1, h_var1d)
 
             rain (i) = rain (i) + r1
@@ -1088,7 +1091,7 @@ end subroutine sedi_heat
 ! -----------------------------------------------------------------------
 
 subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
-        qlcn, qicn, clcn, &
+        qlcn, qicn, clcn, eis, &
         den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
     
     implicit none
@@ -1102,6 +1105,8 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     real, intent (in), dimension (ktop:kbot) :: dp, dz, den
     real, intent (in), dimension (ktop:kbot) :: denfac, ccn, c_praut
     real, intent (in), dimension (ktop:kbot) :: qlcn, qicn, clcn   
+
+    real, intent (in) :: eis !< estimated inversion strength
  
     real, intent (inout), dimension (ktop:kbot) :: tz, vtr
     real, intent (inout), dimension (ktop:kbot) :: qv, ql, qr, qi, qs, qg, qa
@@ -1115,7 +1120,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     real, dimension (ktop:kbot + 1) :: ze, zt
     
     real :: sink, dq, qc0, qc
-    real :: qden
+    real :: fac_rc, qden
     real :: zs = 0.
     real :: dt5
     
@@ -1239,6 +1244,9 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     qadum = max(qa,qcmin)
     ql = ql/qadum
     qi = qi/qadum
+
+    fac_rc = max(0.0,min(1.0,eis-4.0)) ! Estimated inversion strength >5 stable range [4:5]
+    fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
  
     if (irain_f /= 0) then
         
@@ -1249,13 +1257,13 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         do k = ktop, kbot
             qc0 = fac_rc * ccn (k)
             if (tz (k) > t_wfr) then
-                if (use_ccn) then
+                if (prog_ccn) then
+                    qc = qc0 / den (k)
+                else
                     ! -----------------------------------------------------------------------
                     ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
                     ! -----------------------------------------------------------------------
                     qc = qc0
-                else
-                    qc = qc0 / den (k)
                 endif
                 dq = ql (k) - qc
                 if (dq > 0.) then
@@ -1283,13 +1291,13 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                 ! --------------------------------------------------------------------
                 ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
                 ! --------------------------------------------------------------------
-                if (use_ccn) then
+                if (prog_ccn) then
+                    qc = qc0 / den (k)
+                else
                     ! --------------------------------------------------------------------
                     ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
                     ! --------------------------------------------------------------------
                     qc = qc0
-                else
-                    qc = qc0 / den (k)
                 endif
                 dq = 0.5 * (ql (k) + dl (k) - qc)
                 ! --------------------------------------------------------------------
@@ -3450,24 +3458,9 @@ subroutine setupm
     real, parameter :: rhog = 0.4e3 !< rh84 (graupel density)
     real, parameter :: acc (3) = (/ 5.0, 2.0, 0.5 /)
     
-    real den_rc
-    
     integer :: i, k
     
     pie = 4. * atan (1.0)
-    
-    ! s. klein's formular (eq 16) from am2
-    
-    fac_rc = (4. / 3.) * pie * rhor * rthresh ** 3
-    
-    if (prog_ccn) then
-        ! if (root_proc) write (*, *) 'prog_ccn option is .t.'
-    else
-        den_rc = fac_rc * ccn_o * 1.e6
-        ! if (root_proc) write (*, *) 'mp: for ccn_o = ', ccn_o, 'ql_rc = ', den_rc
-        den_rc = fac_rc * ccn_l * 1.e6
-        ! if (root_proc) write (*, *) 'mp: for ccn_l = ', ccn_l, 'ql_rc = ', den_rc
-    endif
     
     vdifu = 2.11e-5
     tcond = 2.36e-2

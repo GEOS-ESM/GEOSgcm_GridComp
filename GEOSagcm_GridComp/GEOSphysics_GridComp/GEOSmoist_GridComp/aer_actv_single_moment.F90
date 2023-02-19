@@ -259,11 +259,11 @@ MODULE Aer_Actv_Single_Moment
              air_den      = press*28.8e-3/8.31/tk ! kg/m3
              DO n=1,n_modes
                 if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) &
-                naer_cb(i,j)= naer_cb(i,j) + AeroProps(i,j,k)%num(n) * air_den         
-                naer_cb(i,j)= naer_cb(i,j)* 1.e+6  ! #/cm3
-                naer_cb(i,j)= max(real(1.0e-1,AER_PR),min(naer_cb(i,j),100.0))
+                naer_cb(i,j)= naer_cb(i,j) + AeroProps(i,j,k)%num(n)         
              ENDDO
-      ENDDO;ENDDO!;ENDDO
+             naer_cb(i,j)= naer_cb(i,j) * air_den * 1.e+6  ! #/cm3
+             naer_cb(i,j)= max(0.1,min(naer_cb(i,j),100.0))
+      ENDDO;ENDDO
      
       DO k=LM,1,-1
        DO j=1,JM
@@ -272,8 +272,8 @@ MODULE Aer_Actv_Single_Moment
               tk                 = T(i,j,k)                         ! K
               press              = plo(i,j,k)                       ! Pa   
               air_den            = press*28.8e-3/8.31/tk            ! kg/m3
-              qc                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3    ! g/kg
-              ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3    ! g/kg
+              qc                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3  ! g/kg
+              ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3  ! g/kg
               
               IF( plo(i,j,k) > 34000.0) THEN 
                 
@@ -307,9 +307,7 @@ MODULE Aer_Actv_Single_Moment
                       numbinit     = numbinit    + AeroProps(i,j,k)%num(n)*air_den
                       NACTL(i,j,k) = NACTL(i,j,k)+ nact(n)
                      ENDDO
-                 
                      NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
- 
                 ENDIF ! tk>245
                ENDIF   ! updraft > 0.1
                ENDIF   ! plo > 34000.0
@@ -319,28 +317,28 @@ MODULE Aer_Actv_Single_Moment
                 IF( (QC >= 0.5) .and. (QL >= 0.5)) then
                       ! Number of activated IN following deMott (2010) [#/m3]  
                          NACTI(i,j,k) = (1.e+3*ai*((273.16-tk)**bi) *  (naer_cb(i,j))**(ci*(273.16-tk)+di))  !#/m3
-                  ELSE   !tk<243
+                ELSE
                       ! Number of activated IN following Wyser  
               
                  WC    = air_den*QC  !kg/m3
                  if (WC >= tiny(1.0)) then
-                    BB     =  -2. + log10(1000.*WC/50.)*(1.e-3*(273.15-tk)**1.5)
+                    BB = -2. + log10(1000.*WC/50.)*(1.e-3*(273.15-tk)**1.5)
                  else
                     BB = -6.
                  end if
-                 BB     = MIN((MAX(BB,-6.)),-2.)  
+                 BB    = MIN((MAX(BB,-6.)),-2.)  
 
-                 RAUX   = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-                 RAUX   = (betai + (gamai + deltai * RAUX**3)**0.5)**0.33333
+                 RAUX  = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+                 RAUX  = (betai + (gamai + deltai * RAUX**3)**0.5)**0.33333
                  NACTI(i,j,k) = (3.* WC)/(4.*MAPL_PI*densic*(1.D-6*RAUX)**3)  !#/m3
                
                 ENDIF  !Mixed phase
-
                ENDIF ! tk<=268
                !
                !
                !-- fix limit for NACTL/NACTI
-               IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = FRLAND(i,j)*NN_LAND + (1.0-FRLAND(i,j))*NN_OCEAN
+               IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = NN_MIN
+               IF(NACTI(i,j,k) < NN_MIN) NACTI(i,j,k) = NN_MIN
 
         ENDDO;ENDDO;ENDDO
 

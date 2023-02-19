@@ -462,19 +462,20 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR2D)) PTR2D = SEEDCNV
 
+    ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
+    if (GF_MIN_AREA > 0) then
+       where (AREA > GF_MIN_AREA)
+          TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+       elsewhere
+          TMP2D =  AREA
+       endwhere
+    else if (GF_MIN_AREA < 0) then
+       TMP2D = ABS(GF_MIN_AREA)
+    else
+       TMP2D = AREA
+    endif
+
     IF (USE_GF2020==1) THEN
-       ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
-         if (GF_MIN_AREA > 0) then
-            where (AREA > (AREA/16.0))
-               TMP2D = (AREA/16.0)*CNV_FRC + AREA*(1.0-CNV_FRC)
-            elsewhere
-               TMP2D =  AREA
-            endwhere
-         else if (GF_MIN_AREA < 0) then
-            TMP2D = ABS(GF_MIN_AREA)
-         else
-            TMP2D = AREA
-         endif
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pq
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,DT_MOIST                       &
@@ -497,18 +498,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
     ELSE
-       ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
-         if (GF_MIN_AREA > 0) then
-            where (AREA > GF_MIN_AREA)
-               TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
-            elsewhere
-               TMP2D =  AREA
-            endwhere
-         else if (GF_MIN_AREA < 0) then
-            TMP2D = ABS(GF_MIN_AREA)
-         else
-            TMP2D = AREA
-         endif
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pq
          call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,DT_MOIST                       &

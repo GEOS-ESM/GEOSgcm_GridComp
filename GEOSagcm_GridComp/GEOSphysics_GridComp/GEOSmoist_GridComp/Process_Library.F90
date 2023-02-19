@@ -472,9 +472,6 @@ module GEOSmoist_Process_Library
           !- radius in meters
           !- [liu&daum, 2000 and 2005. liu et al 2008]
           RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
-          !- include temperature scaling from Kiehl 1994
-          !- increases droplet radii in colder temperatures
-          RADIUS = RADIUS*(8.0+MIN(1.0,MAX(0.0,(MAPL_TICE-TE)/30.0)))/8.0
 
        ELSEIF(ITYPE == ICE) THEN
 
