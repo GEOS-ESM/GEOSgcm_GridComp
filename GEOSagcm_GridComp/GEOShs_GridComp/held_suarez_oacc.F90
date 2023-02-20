@@ -104,6 +104,21 @@ contains
 
     PII =  P_D - (P_D - PT)*0.5*P_I
 
+   print*,"Before OpenACC Copy Region"
+
+   !$acc data copy(CPHI2)
+   print*,"Inside OpenACC Copy Region" 
+   !$acc parallel loop collapse(2)
+   do J = 1, JM
+      do I = 1, IM
+         CPHI2(I,J) = CPHI2(I,J) + 0.00001
+      enddo
+   enddo 
+   !$acc end parallel loop
+   print*,"After OpenACC parallel region" 
+   !$acc end data
+   print*,"Exited OpenACC data region"
+
     !$acc data copyin(CPHI2, HFCN, P_I, SPHI2, PLE) &
     !$acc      copy(DISS, TAUX, TAUY) &
     !$acc      copy(DTDT, DUDT, DVDT, T, T_EQ, THEQ, U, V) &
@@ -141,6 +156,7 @@ contains
              ! -----------------------------------------------------------------
 
              if( PL_s < P_D ) then
+                PII_s = P_D - (P_D - PT(I,J)) * 0.5 * P_I(I,J)
                 TE_s  = TSTRT*( min(1.0,PL_s/P_D)**(RGAS*GAM_D/GRAV)     &
                      + min(1.0,PL_s/PII_s)**(RGAS*GAM_I/GRAV) - 1 )
              endif
