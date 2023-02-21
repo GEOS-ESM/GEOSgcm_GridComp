@@ -1,1 +1,1 @@
-esma_add_subdirectories (makebcs )
+esma_add_subdirectories (makebcs preprocessing)
