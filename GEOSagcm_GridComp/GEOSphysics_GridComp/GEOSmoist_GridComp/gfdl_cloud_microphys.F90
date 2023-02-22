@@ -307,7 +307,7 @@ module gfdl2_cloud_microphys_mod
     logical :: fast_sat_adj = .false. !< has fast saturation adjustments
     logical :: z_slope_liq = .true. !< use linear mono slope for autocconversions
     logical :: z_slope_ice = .false. !< use linear mono slope for autocconversions
-    logical :: use_ccn = .false. !< no longer needed.... WMP Feb-2023
+    logical :: use_ccn = .false. !< use input ccn when .T. else use ccn_o/ccn_l
     logical :: use_ppm = .false. !< use ppm fall scheme
     logical :: mono_prof = .true. !< perform terminal fall with mono ppm scheme
     logical :: mp_print = .false. !< cloud microphysics debugging printout
@@ -828,7 +828,12 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                 c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
             enddo
         else
-            ccn0 = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+           !ccn0 = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+            if (use_ccn) then
+               ccn0 = qn (i, j, kbot) ! ccn_surface
+            else
+               ccn0 = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+            endif
             ! -----------------------------------------------------------------------
             ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
             ! -----------------------------------------------------------------------
