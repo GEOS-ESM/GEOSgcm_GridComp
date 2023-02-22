@@ -581,16 +581,15 @@ contains
                          'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
                          'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
                          'DRNIR'  , 'DFNIR',                        &
-                         'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
-                         'FHOCN', 'PEN_OCN'],                       &
+                         'SNOW', 'RAIN', 'PEN_OCN'],                &
           CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
 
      if (DO_CICE_THERMO <= 1) then  
           call MAPL_TerminateImport    ( GC,   &
-               SHORT_NAME = [character(len=7) :: &
-                         'HI     '],                                &
+               SHORT_NAME = [character(len=5) :: &
+                         'HI', 'FRESH', 'FSALT', 'FHOCN'],          &
                CHILD      = OGCM,                                   &
                RC=STATUS  )
           VERIFY_(STATUS)
@@ -2149,12 +2148,11 @@ contains
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'DFNIR',expSKIN,'AO_DFNIR', RC=STATUS)
        VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FRESH'  ,expSKIN,'FRESH'  , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO <= 1) then  
+           call DO_A2O(GIM(OGCM),'FRESH'  ,expSKIN,'FRESH'  , _RC)
+           call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , _RC)
+           call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , _RC)
+       endif
        call DO_A2O(GIM(OGCM),'PEN_OCN',expSKIN,'PEN_OCN', RC=STATUS)
        VERIFY_(STATUS)
 

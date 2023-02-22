@@ -548,6 +548,7 @@ contains
         RC=STATUS  ) 
      VERIFY_(STATUS)
 
+  if (DO_CICE_THERMO <= 1) then  
     call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'FRESH',                           &
          LONG_NAME          = 'fresh_water_flux_due_to_thermodynamics', &
@@ -574,6 +575,7 @@ contains
          VLOCATION          = MAPL_VLocationNone,                &
          RC=STATUS  )
     VERIFY_(STATUS)
+  endif
 
     call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'PEN_OCN',                         &
@@ -1716,12 +1718,11 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, RAIN,  'RAIN' , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FRESH, 'FRESH', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FSALT, 'FSALT', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN', RC=STATUS)
-    VERIFY_(STATUS)
+    if (DO_CICE_THERMO <= 1) then  
+       call MAPL_GetPointer(IMPORT, FRESH, 'FRESH', _RC)
+       call MAPL_GetPointer(IMPORT, FSALT, 'FSALT', _RC)
+       call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN', _RC)
+    endif 
     call MAPL_GetPointer(IMPORT, PEN_OCN,'PEN_OCN',RC=STATUS)
     VERIFY_(STATUS)
 
