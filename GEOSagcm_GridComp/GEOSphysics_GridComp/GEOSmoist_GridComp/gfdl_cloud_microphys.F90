@@ -816,14 +816,15 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! calculate cloud condensation nuclei (ccn)
         ! the following is based on klein eq. 15
         ! -----------------------------------------------------------------------
-        
-        cpaut = c_paut * 0.104 * grav / 1.717e-5
        
+        cpaut = c_paut * 0.104 * grav / 1.717e-5
+        if (eis(i) > 5.0) cpaut=cpaut*0.5 ! slow autoconversion in stable regimes
+
         ! ccn needs units #/m^3 
         if (prog_ccn) then
             do k = ktop, kbot
                 ! qn has units # / m^3
-                ccn (k) = min(qn (i, j, k), 500.e6)
+                ccn (k) = qn (i, j, k)
                 c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
             enddo
         else
