@@ -58,6 +58,16 @@ module Wateratm2lndType
     begc = bounds%begc; endc= bounds%endc
     begg = bounds%begg; endg= bounds%endg
 
+    allocate(this%forc_q_not_downscaled_grc      (begg:endg))
+    allocate(this%forc_rain_not_downscaled_grc   (begg:endg))
+    allocate(this%forc_snow_not_downscaled_grc   (begg:endg))
+    allocate(this%forc_q_downscaled_col          (begc:endc))
+    allocate(this%forc_flood_grc                 (begg:endg))
+    allocate(this%forc_rain_downscaled_col       (begc:endc))
+    allocate(this%forc_snow_downscaled_col       (begc:endc))
+    allocate(this%rain_to_snow_conversion_col    (begc:endc))
+    allocate(this%snow_to_rain_conversion_col    (begc:endc))
+
     this%forc_rain_not_downscaled_grc(begg:endg) = spval
     this%forc_snow_not_downscaled_grc(begg:endg) = spval
     this%forc_q_downscaled_col(begc:endc) = spval

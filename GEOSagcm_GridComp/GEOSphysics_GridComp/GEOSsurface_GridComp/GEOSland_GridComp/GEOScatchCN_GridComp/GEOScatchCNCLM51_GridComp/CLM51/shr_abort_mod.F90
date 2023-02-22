@@ -47,7 +47,7 @@ contains
     integer(shr_kind_in), intent(out), optional :: rc      ! error code
     
     !----- local -----
-    logical :: flag
+    !logical :: flag
 
     ! Local version of the string.
     ! (Gets a default value if string is not present.)
