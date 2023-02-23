@@ -1,1 +1,1 @@
-esma_add_subdirectories  (albedo soil)
+esma_add_subdirectories  (soil)
