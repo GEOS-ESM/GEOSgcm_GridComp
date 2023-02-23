@@ -27,9 +27,10 @@ MODULE Aer_Actv_Single_Moment
        real(AER_PR), parameter :: deltai    =  2.809D+3
        real(AER_PR), parameter :: densic    =  917.D0   !Ice crystal density in kgm-3
 
-       real, parameter :: NN_LAND     = 300.0e6
-       real, parameter :: NN_OCEAN    = 100.0e6
-       real, parameter :: NN_MIN      =  30.0e6
+       real, parameter :: NN_LAND     =  300.0e6
+       real, parameter :: NN_OCEAN    =  100.0e6
+       real, parameter :: NN_MIN      =  100.0e6
+       real, parameter :: NN_MAX      = 1000.0e6
 
        LOGICAL  :: USE_BERGERON, USE_AEROSOL_NN
       CONTAINS          
@@ -38,7 +39,7 @@ MODULE Aer_Actv_Single_Moment
 !>----------------------------------------------------------------------------------------------------------------------
 
       SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
-                                       sh, evap, kpbl, omega, FRLAND, USE_AERO_BUFFER, &
+                                       sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
                                        AeroProps, aero_aci, NACTL, NACTI, NWFA)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM
@@ -46,7 +47,7 @@ MODULE Aer_Actv_Single_Moment
       type(ESMF_State)            ,intent(inout) :: aero_aci
       real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
       real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
-      real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,omega,zlo, qlcn, qicn, qlls, qils
+      real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,tke,vvel,zlo, qlcn, qicn, qlls, qils
       real, dimension (IM,JM,0:LM),intent(in ) :: zle
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
       real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl     
@@ -92,8 +93,8 @@ MODULE Aer_Actv_Single_Moment
               end do
           end do
       end do    
-      NACTL    = 0.
-      NACTI    = 0.
+      NACTL    = NN_MIN
+      NACTI    = NN_MIN
 
       kpbli = MAX(MIN(NINT(kpbl),LM-1),1)
       
@@ -230,19 +231,6 @@ MODULE Aer_Actv_Single_Moment
 
               deallocate(aero_aci_modes, __STAT__)
 
-!----- aerosol activation (single-moment uphysics)      
-      do j = 1, JM
-         do i = 1, IM
-            aux1=  PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)
-            hfs = -SH  (i,j) ! W m^-2
-            hfl = -EVAP(i,j) ! kg m^-2 s^-1
-            aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
-            aux3=  ZLE(i,j,kpbli(i,j))           ! pbl height (m)
-            !-convective velocity scale W* (m/s)
-            ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
-            ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s           
-      enddo; enddo
-
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
       numbinit = 0.
       WC       = 0.
@@ -275,13 +263,9 @@ MODULE Aer_Actv_Single_Moment
               qc                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3  ! g/kg
               ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3  ! g/kg
               
-              IF( plo(i,j,k) > 34000.0) THEN 
-                
-                wupdraft           = -9.81*air_den*omega(i,j,k)     ! m/s - grid-scale only              
-                
-                !--in the boundary layer, add Wstar
-                if(k >= kpbli(i,j) .and. k < LM)  wupdraft = wupdraft+zws(i,j) 
-
+              IF( plo(i,j,k) > 10000.0) THEN 
+               
+                   wupdraft      = vvel(i,j,k) + SQRT(tke(i,j,k))
                 IF(wupdraft > 0.1 .AND. wupdraft < 100.) THEN 
 
                 ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
@@ -336,9 +320,11 @@ MODULE Aer_Actv_Single_Moment
                ENDIF ! tk<=268
                !
                !
-               !-- fix limit for NACTL/NACTI
+               !-- apply limits for NACTL/NACTI
                IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = NN_MIN
+               IF(NACTL(i,j,k) > NN_MAX) NACTL(i,j,k) = NN_MAX
                IF(NACTI(i,j,k) < NN_MIN) NACTI(i,j,k) = NN_MIN
+               IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
 
         ENDDO;ENDDO;ENDDO
 
