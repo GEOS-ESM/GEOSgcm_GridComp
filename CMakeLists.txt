@@ -58,7 +58,8 @@ ExternalProject_Add(modelE
          COMMAND find ../model/ -type f -name "*.mod" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/include/modelE $<SEMICOLON>
    BUILD_IN_SOURCE 1
    INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
-   INSTALL_COMMAND find <SOURCE_DIR>/../model/ -type f -name "*.a" -exec /bin/cp {} <INSTALL_DIR>/lib  $<SEMICOLON>
+   INSTALL_COMMAND  cmake -E make_directory <INSTALL_DIR>/lib
+           COMMAND find <SOURCE_DIR>/../model/ -type f -name "*.a" -exec /bin/cp {} <INSTALL_DIR>/lib  $<SEMICOLON>
            COMMAND find <SOURCE_DIR>/../model/ -type f -name "*.mod" -exec /bin/cp {} <INSTALL_DIR>/include/modelE  $<SEMICOLON>
    DEPENDS MAPL
 )
