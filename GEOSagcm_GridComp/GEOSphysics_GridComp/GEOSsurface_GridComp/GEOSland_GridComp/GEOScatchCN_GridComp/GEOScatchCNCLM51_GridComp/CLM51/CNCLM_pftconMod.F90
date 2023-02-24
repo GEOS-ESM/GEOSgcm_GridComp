@@ -19,7 +19,7 @@ module pftconMod
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_pftcon_type
+ 
 
 !
 ! Vegetation type constants
