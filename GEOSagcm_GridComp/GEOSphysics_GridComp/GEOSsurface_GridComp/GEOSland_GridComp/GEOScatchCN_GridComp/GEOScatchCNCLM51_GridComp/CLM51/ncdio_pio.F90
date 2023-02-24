@@ -38,7 +38,7 @@ module ncdio_pio
 
     module procedure ncd_io_char_0d
     module procedure ncd_io_char_1d
-    module procedure ncd_io_log_1d
+   ! module procedure ncd_io_log_1d
     module procedure ncd_io_r4_0d
     module procedure ncd_io_r4_1d
     module procedure ncd_io_r4_2d
@@ -115,33 +115,33 @@ module ncdio_pio
 
  end subroutine ncd_io_char_1d
 
- subroutine ncd_io_log_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
-
- ! ARGUMENTS:
- !-------------
-  type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
-  logical,           intent(inout) :: data(:)
-  character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
-  character(len=*),  intent(in)    :: varname      ! variable name
-  logical,           intent(out)   :: readvar
-  integer,optional,  intent(out)   :: rc
-  integer, optional  , intent(in)    :: nt        ! time sample index
-  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
-
-  ! LOCAL:
-
-  integer :: status
-
-  !-------------------------------------
-
-   if (flag == 'read') then
-      readvar = .false.
-      call ncid%get_var(varname, data, rc=status)
-     ! call MAPL_VarRead(ncid,varname,data,status)
-      if (status ==0) readvar = .true.
-   endif
-
- end subroutine ncd_io_log_1d
+! subroutine ncd_io_log_1d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
+!
+! ! ARGUMENTS:
+! !-------------
+!  type(file_desc_t), intent(inout) :: ncid         ! netcdf file id
+!  logical,           intent(inout) :: data(:)
+!  character(len=*),  intent(in)    :: flag         ! 'read' or 'write'
+!  character(len=*),  intent(in)    :: varname      ! variable name
+!  logical,           intent(out)   :: readvar
+!  integer,optional,  intent(out)   :: rc
+!  integer, optional  , intent(in)    :: nt        ! time sample index
+!  logical            , optional, intent(in) :: posNOTonfile ! position is NOT on this file
+!
+!  ! LOCAL:
+!
+!  integer :: status
+!
+!  !-------------------------------------
+!
+!   if (flag == 'read') then
+!      readvar = .false.
+!     ! call ncid%get_var(varname, data, rc=status)
+!     ! call MAPL_VarRead(ncid,varname,data,status)
+!      if (status ==0) readvar = .true.
+!   endif
+!
+! end subroutine ncd_io_log_1d
 
 !----------------------------------------------------
  subroutine ncd_io_r4_0d ( varname, data, flag, ncid, readvar, rc, nt, posNOTonfile)
