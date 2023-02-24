@@ -396,6 +396,9 @@ contains
     integer  :: np, nc, nz, p, nv, n
     !--------------------------------
 
+    allocate(this%matrix_nphtransfer_doner_patch(1:37)) 
+    allocate(this%matrix_nphtransfer_receiver_patch(1:37))   
+
     this%ileaf_to_iretransn_ph           = 1
     this%matrix_nphtransfer_doner_patch(this%ileaf_to_iretransn_ph)              = ileaf
     this%matrix_nphtransfer_receiver_patch(this%ileaf_to_iretransn_ph)           = iretransn
@@ -561,6 +564,9 @@ contains
        this%matrix_nphtransfer_receiver_patch(this%iretransn_to_iout_ph)         = ioutn
     end if
 
+    allocate(this%matrix_ngmtransfer_doner_patch(1:19))
+    allocate(this%matrix_ngmtransfer_receiver_patch(1:19))
+
     this%ileaf_to_iout_gm                = 1
     this%matrix_ngmtransfer_doner_patch(this%ileaf_to_iout_gm)                   = ileaf
     this%matrix_ngmtransfer_receiver_patch(this%ileaf_to_iout_gm)                = ioutn
@@ -637,6 +643,9 @@ contains
     this%iretransn_to_iout_gm            = 19
     this%matrix_ngmtransfer_doner_patch(this%iretransn_to_iout_gm)               = iretransn
     this%matrix_ngmtransfer_receiver_patch(this%iretransn_to_iout_gm)            = ioutn
+
+    allocate(this%matrix_nfitransfer_doner_patch(1:21))
+    allocate(this%matrix_nfitransfer_receiver_patch(1:21))
 
     this%ilivestem_to_ideadstem_fi       = 1
     this%matrix_nfitransfer_doner_patch(this%ilivestem_to_ideadstem_fi)          = ilivestem

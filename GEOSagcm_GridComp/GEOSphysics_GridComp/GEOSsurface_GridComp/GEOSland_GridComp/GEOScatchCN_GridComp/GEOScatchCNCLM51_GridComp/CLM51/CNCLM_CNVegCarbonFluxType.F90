@@ -529,6 +529,9 @@ contains
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
 
+    allocate(this%matrix_phtransfer_doner_patch(1:18))
+    allocate(this%matrix_phtransfer_receiver_patch(1:18))
+
     this%ileafst_to_ileafxf_ph           = 1
     this%matrix_phtransfer_doner_patch(this%ileafst_to_ileafxf_ph)              = ileaf_st
     this%matrix_phtransfer_receiver_patch(this%ileafst_to_ileafxf_ph)           = ileaf_xf
@@ -603,6 +606,9 @@ contains
        this%matrix_phtransfer_receiver_patch(this%igrain_to_iout_ph)            = ioutc
     end if
 
+    allocate(this%matrix_gmtransfer_doner_patch(1:18))
+    allocate(this%matrix_gmtransfer_receiver_patch(1:18))
+
     this%ileaf_to_iout_gm                = 1
     this%matrix_gmtransfer_doner_patch(this%ileaf_to_iout_gm)                   = ileaf
     this%matrix_gmtransfer_receiver_patch(this%ileaf_to_iout_gm)                = ioutc
@@ -674,6 +680,9 @@ contains
     this%ideadcrootxf_to_iout_gm         = 18
     this%matrix_gmtransfer_doner_patch(this%ideadcrootxf_to_iout_gm)            = ideadcroot_xf
     this%matrix_gmtransfer_receiver_patch(this%ideadcrootxf_to_iout_gm)         = ioutc
+
+    allocate(this%matrix_fitransfer_doner_patch(1:20))
+    allocate(this%matrix_fitransfer_receiver_patch(1:20))
 
     this%ilivestem_to_ideadstem_fi       = 1
     this%matrix_fitransfer_doner_patch(this%ilivestem_to_ideadstem_fi)          = ilivestem
