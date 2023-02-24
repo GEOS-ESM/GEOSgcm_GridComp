@@ -80,8 +80,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -108,8 +108,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -136,8 +136,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -165,8 +165,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -194,8 +194,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -223,8 +223,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -253,8 +253,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -283,8 +283,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -313,8 +313,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -343,8 +343,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -373,8 +373,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-     ! call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+     ! call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -404,8 +404,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -435,8 +435,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -464,8 +464,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -494,8 +494,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -524,8 +524,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -553,8 +553,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
@@ -582,8 +582,8 @@ module ncdio_pio
 
    if (flag == 'read') then
       readvar = .false.
-      !call ncid%get_var(varname, data, rc=status)
-      call MAPL_VarRead(ncid,varname,data,status)
+      call ncid%get_var(varname, data, rc=status)
+      !call MAPL_VarRead(ncid,varname,data,status)
       if (status ==0) readvar = .true.
    endif
 
