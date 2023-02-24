@@ -279,6 +279,10 @@ module pftconMod
      ! pft parameters for dynamic root code
      real(r8), allocatable :: root_dmx(:)     !maximum root depth
 
+  contains
+
+     procedure, public ::  init_pftcon_type
+
   end type pftcon_type
 
 type(pftcon_type), public :: pftcon
@@ -313,10 +317,9 @@ contains
 ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
-    type(pftcon_type), intent(inout):: this
+    class(pftcon_type) :: this
 
-    !LOCAL
-    character(300)     :: paramfile
+
     integer            :: ierr, clm_varid,  status, m
     logical            :: readv ! has variable been read in or not
     type(Netcdf4_fileformatter) :: ncid

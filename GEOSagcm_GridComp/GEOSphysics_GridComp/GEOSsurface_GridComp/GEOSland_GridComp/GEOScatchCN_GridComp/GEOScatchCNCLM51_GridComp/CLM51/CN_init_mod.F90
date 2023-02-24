@@ -19,7 +19,7 @@ module CN_initMod
   use SolarAbsorbedType
   use SurfaceAlbedoType
   use OzoneBaseMod
-  use pftconMod
+  use pftconMod       , only : pftcon
   use WaterFluxType
   use SoilBiogeochemCarbonStateType
   use SoilBiogeochemNitrogenStateType
@@ -123,7 +123,7 @@ module CN_initMod
   type(solarabs_type)                     :: solarabs_inst
   type(surfalb_type)                      :: surfalb_inst
   type(ozone_base_type)                   :: ozone_inst
-  type(pftcon_type)                       :: pftcon
+!  type(pftcon_type)                       :: pftcon
   type(waterflux_type)                    :: waterflux_inst
   type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
   type(soilbiogeochem_nitrogenstate_type) :: soilbiogeochem_nitrogenstate_inst
@@ -220,7 +220,7 @@ module CN_initMod
 
     call photosyns_inst%Init            (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
-    call init_pftcon_type               (pftcon)
+    call pftcon%init_pftcon_type        ()
 
     call init_waterflux_type            (bounds, waterflux_inst)
 
