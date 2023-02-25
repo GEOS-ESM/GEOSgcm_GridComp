@@ -613,6 +613,7 @@ contains
     call AddSurfField('PENUVF', SURFST, GRID,  __RC__)
     call AddSurfField('PENPAR', SURFST, GRID,  __RC__)
     call AddSurfField('PENPAF', SURFST, GRID,  __RC__)
+    call AddSurfField('GHTSKIN', SURFST, GRID,  __RC__)
 
     RETURN_(ESMF_SUCCESS)
     

@@ -2211,6 +2211,7 @@ contains
    real, pointer, dimension(:  )  :: PENPAF => null()
    real, pointer, dimension(:  )  :: FRACI  => null()
    real, pointer, dimension(:  )  :: FRACIN => null()
+   real, pointer, dimension(:  )  :: GHTSKIN => null()
 
 
 ! pointers to internal
@@ -2411,10 +2412,10 @@ contains
    call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TAUXI  , 'TAUXI'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TAUYI  , 'TAUYI'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENUVR , 'PENUVR'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENUVF , 'PENUVF'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENPAR , 'PENPAR'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENPAF , 'PENPAF'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PENUVR , 'PENUVR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PENUVF , 'PENUVF'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PENPAR , 'PENPAR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PENPAF , 'PENPAF'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EVAPOUT, 'EVAPOUT' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SUBLIM,  'SUBLIM'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SHOUT  , 'SHOUT'   ,    RC=STATUS); VERIFY_(STATUS)
@@ -2434,6 +2435,7 @@ contains
    call MAPL_GetPointer(EXPORT,LWDNSRFe,'LWDNSRF' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWDNSRFe,'SWDNSRF' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TSKINICE,'TSKINICE',    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,GHTSKIN, 'GHTSKIN' ,    RC=STATUS); VERIFY_(STATUS)
 
 
 ! Get the time step
@@ -2718,6 +2720,11 @@ contains
     endif
     if(associated(PENPAF )) then
         call RegridO2A_1d(PENPAF, SURFST, 'PENPAF', &
+             XFORM_O2A, locstreamO, __RC__)
+    endif
+    !!!*** need to check the sign of GHTSKIN
+    if(associated(GHTSKIN )) then
+        call RegridO2A_1d(GHTSKIN, SURFST, 'GHTSKIN', &
              XFORM_O2A, locstreamO, __RC__)
     endif
 
