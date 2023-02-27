@@ -1,8 +1,7 @@
 esma_set_this(OVERRIDE raster)
 
 set (srcs
-date_time_util.F90
-leap_year.F90
+LDAS_DateTimeMod.F90
 EASE_conv.F90
 mod_process_hres_data.F90
 rasterize.F90
