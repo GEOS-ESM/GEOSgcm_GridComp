@@ -323,7 +323,8 @@ module CN_initMod
    call bgc_vegetation_inst%cnfire_method%CNFireReadParams( ncid )
    call ncid%close(rc=status)
 
-   call FireMethodInit(bounds,paramfile)
+  call bgc_vegetation_inst%cnfire_method%FireInit(bounds)
+  ! call FireMethodInit(bounds,paramfile)
 
    if (use_century_decomp) then
       call init_decompcascade_bgc(bounds, soilbiogeochem_state_inst, &
