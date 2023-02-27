@@ -309,7 +309,6 @@ module CN_initMod
    call readSoilBiogeochemNLeachingParams(ncid)
    call readSoilBiogeochemCompetitionParams(ncid)
    call readSoilBiogeochemPotentialParams(ncid)
-   call bgc_vegetation_inst%cnfire_method%CNFireReadParams( ncid )
 
    call ncid%close(rc=status)
 
@@ -319,6 +318,10 @@ module CN_initMod
 
    call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
    call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
+
+   call ncid%open(trim(paramfile),pFIO_READ, __RC__)
+   call bgc_vegetation_inst%cnfire_method%CNFireReadParams( ncid )
+   call ncid%close(rc=status)
 
    call FireMethodInit(bounds,paramfile)
 
