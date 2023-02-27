@@ -41,7 +41,6 @@ ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL
 ecbuild_add_executable (TARGET mkCubeFVRaster.x SOURCES mkCubeFVRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkLandRaster.x SOURCES mkLandRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkLatLonRaster.x SOURCES mkLatLonRaster.F90 LIBS MAPL ${this})
-ecbuild_add_executable (TARGET mkLISTilesPara.x SOURCES mkLISTilesPara.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkMITAquaRaster.x SOURCES mkMITAquaRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkMOMAquaRaster.x SOURCES mkMOMAquaRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET FillMomGrid.x SOURCES FillMomGrid.F90 LIBS MAPL ${this})
