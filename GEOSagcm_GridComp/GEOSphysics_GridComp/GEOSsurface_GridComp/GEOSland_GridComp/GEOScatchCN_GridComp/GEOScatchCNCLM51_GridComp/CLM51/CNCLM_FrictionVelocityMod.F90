@@ -29,6 +29,9 @@ module FrictionVelocityMod
   private
   save
 
+! !PUBLIC MEMBER FUNCTIONS:
+  public :: init_frictionvel_type
+
   type, public :: frictionvel_type
      private
 
