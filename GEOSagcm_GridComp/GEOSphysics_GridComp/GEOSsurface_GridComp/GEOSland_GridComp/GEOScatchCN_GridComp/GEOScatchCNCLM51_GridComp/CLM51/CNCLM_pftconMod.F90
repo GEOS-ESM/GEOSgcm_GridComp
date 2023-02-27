@@ -329,6 +329,7 @@ contains
     integer , allocatable, dimension(:)   :: read_tmp_3
 
     character(len=512) :: msg
+    character(len=300) :: paramfile
 
 !---------------------------------------------------------
 
