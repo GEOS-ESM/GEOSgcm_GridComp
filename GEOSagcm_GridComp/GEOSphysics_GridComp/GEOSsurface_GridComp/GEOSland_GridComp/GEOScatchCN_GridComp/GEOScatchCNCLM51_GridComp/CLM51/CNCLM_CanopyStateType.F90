@@ -55,7 +55,7 @@ module CanopyStateType
      real(r8)           :: leaf_mr_vcm = spval            ! Scalar constant of leaf respiration with Vcmax
 
   end type canopystate_type
-  type(canopystate_type), public :: canopystate_inst
+  type(canopystate_type), public, target :: canopystate_inst
 
 contains
 
