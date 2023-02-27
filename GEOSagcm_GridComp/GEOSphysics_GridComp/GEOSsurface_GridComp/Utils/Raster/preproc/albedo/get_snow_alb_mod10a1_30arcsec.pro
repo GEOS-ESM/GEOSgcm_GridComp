@@ -1,25 +1,50 @@
 pro get_snow_alb_mod10a1_30arcsec, year=year, h_s=h_s, h_e=h_e
 
 ; Code to stich MODIS files, such as: MOD10A1.A2022002.h35v08.006.2022004050029.hdf
-; into a daily global 1km grid and produce GEOS BCS friendly output, such as:
+; into a daily global 30arcsec grid and produce GEOS_BCS-friendly output, such as:
 ; snow_alb_MOD10A1.061_30arcsec_H36V05.nc
 
-; It first reads the MODIS tile files to generate snow cover PDFs over a period of time.
-; These PDFs are made based on tiles that exceed snow cover value (e.g. 60%). This is done
-; so a decent amount of snow over a grid box ensures a better estimate if albedo. 
-; Those PDFs are then used to locate a user-defined cutoff for a %ile of snow covarage
-; (e.g. top 10 %tile) and filter snow albedo valus. 
+; It first reads the MODIS-tile files to generate snow cover PDFs over a period of time.
+; These PDFs are made based on tiles that exceed a snow cover value (e.g. 60%). This is done
+; so a decent amount of snow over a grid box ensures a better estimate of albedo. 
+; The PDFs are then used to locate a user-defined cutoff for a %ile of snow covarage
+; (e.g. top 10 %tile) and filter snow albedo values. 
 
-; Input argument 'year' in the call specifies for what year(s) to run the code (allows parallel
-; runs on multi CPUs). Only the PDF building can be run in parallel, the remainign of the code
-; has to execture on a single CPU. If no year(s) is provided on input, the defailt year is used.
-; Input argument can be an integer or array of integers indicating year(s) to process 
-; (e.g. year=[2019,2020,2021])
+; Input argument 'year' in the call specifies for what year(s) to run the code (to allow multiple
+; serial runs). Only the PDF building can be processed using miltiple serial runs, the remaining 
+; of the code has to execute on a single CPU. If no year(s) is provided on the input, the default 
+; year is used. Input argument can be an integer or an array of integers indicating year(s) to 
+; process (e.g. year=[2019,2020,2021])
+
+; Input arguments 'h_s' and 'h_e' are stating and ending horizontal tiles. These are optional
+; and if provided define the range of horizontal MODIS tiles to be processed (it saves time is
+; certain tiles need re-processing; otherwise should be ignored)
+
+; dependecies:
+; grid.pro (performes gridding)
+; read_hdf_sd.pro (reads hdf files)
+; read_mod10a1_hdf.pro (reads MODIS files)
+; get_lat_lon4tils.pro  (perform conversion of original MODIS sinusoidal projection into lat/lon space)
+; 
+; [sub]directories to be created prior executing this code:
+; data/           - output directory (user needs to create)
+; MODIS_lat_lon/  - holds previousely created lat/lon info (user needs to create this with get_lat_lon4tils.pro listed in dependances)
+; MOD10A1_data/   - holds MODIS input data (user has to bring it in; follow the dir structure)
+
+; There are six steps (runs) to process. Steps have to be processed in order. The current step must
+; complete before the next is initiated. Use the 'goto' commands to controle which step is exectued.
+; When the current step is completed, uncomment the next-step goto command on lines 83-90
+
+; To execture the code in terminal window type (without cotations):
+; 'idl', then '.r get_snow_alb_mod10a1_30arcsec', then 'get_snow_alb_mod10a1_30arcsec'
 
 ; Created April 2022 Biljana Orescanin SSIA@NASA
 
 ; path to MODIS data (file name example: MOD10A1.A2022001.h24v06.061.2022003035827.hdf)
-path_in='/discover/nobackup/borescan/tools/idl/01_snow_fraction/06_modis_nsidc/data/data_raw/'
+
+path_in='./MOD10A1_data/' ; here is only one file to provide an example
+
+print, "You must make sure the 'path_in' is of the expected structure"
 
 ; set parameters to loop over
 if keyword_set(year) then begin
@@ -28,7 +53,7 @@ if keyword_set(year) then begin
   print, ' Processing year(s): ', years
 endif else begin
   print,'No year to run specified on the input. Processing for default year - 2020!'
-  years        =['2000','2022']
+  years        =['2020']
 endelse
 
 snow_cvr_min =   0. ; minimum snow cover to consider [%]
@@ -37,8 +62,8 @@ top_alb_limit=  99  ; the top %ile for snow albedo (I choose this value) to be c
 top_limit    =  10  ; the top %ile for snow cover (I choose this value)  to be considered (e.g. top 10% of the PDF)
 mis_val      =-999. ; has to be in range [0,255] b/c snow_alb_til is byte array
 snow_min_str=strtrim(snow_cvr_min,2)
-year_start  ='2000' ;years(0)
-year_end    ='2022' ;years(-1)
+year_start   =years(0)
+year_end     =years(-1)
 print, 'Start/End Years:',year_start,'/',year_end
 
 if keyword_set(h_s) and keyword_set(h_e) then begin
@@ -56,13 +81,14 @@ v_end  =17
 dim_1d=2400l*2400l
 dim_2d=[2400l,2400l]
 
-;goto, skip_extracting_snow_cvr
-;goto, skip_calculating_snow_cvr
-;goto, skip_reading_snow_alb
-;goto, skip2stitching
-goto, skip2ncoutput
-;goto, skip_stitching 
-;goto, skip_calc_mean
+; ********* STEPS ***********
+; [un]comment out the following goto's depending on what part of the code is to be executed
+;goto, skip_extracting_snow_cvr   ; *** STEP 2
+;goto, skip_calculating_snow_cvr  ; *** STEP 3
+;goto, skip_reading_snow_alb      ; *** STEP 4
+;goto, skip2stitching             ; *** STEP 5
+;goto, skip2ncoutput              ; *** STEP 6
+; ********* STEPS ***********
 
 ; loop over years
 for iyear=0,n_elements(years)-1 do begin
@@ -109,7 +135,7 @@ for iyear=0,n_elements(years)-1 do begin
         ind_val=where(snow_cvr_til gt snow_cvr_min and snow_cvr_til le 100. and $
                       snow_cvr_qc  eq 0,c_val)
   
-        ; If no valida data of abledo and snow cover in this tile, skip. 
+        ; If no valida data of albedo and snow cover in this tile, skip. 
         if c_val eq 0 then begin
           continue
         endif
@@ -121,7 +147,7 @@ for iyear=0,n_elements(years)-1 do begin
   
       endfor ; ifile
   
-      openw, lun, '../data/data_out/snow_cov_pdfs_titch08_OD10A1.A.'+years(iyear)+    $
+      openw, lun, 'data/data_out/snow_cov_pdfs_titch08_OD10A1.A.'+years(iyear)+    $
                   '.h'+ih_str+'v'+iv_str+'.bin.gz', /get_lun,/compress
       writeu,lun, snow_cvr_pdf 
       free_lun,lun
@@ -158,7 +184,7 @@ for ih=h_start,h_end do begin
     ; First read PDFs of all the years for each tile. Then, find the top %ile and write out the cutoffs
 
     ; get all files for the current h/v tile (all available years)
-    filename_cvr=file_search('../data/data_out/snow_cov_pdfs_titch08_OD10A1.A.*.h'+ih_str+'v'+iv_str+'.bin.gz',count=nfiles2)
+    filename_cvr=file_search('data/data_out/snow_cov_pdfs_titch08_OD10A1.A.*.h'+ih_str+'v'+iv_str+'.bin.gz',count=nfiles2)
 
     ; if no files available for this tile, skip to the next one (note: ~ 1/3 of tiles will be empty)
     if nfiles2 eq 0 then begin
@@ -168,7 +194,7 @@ for ih=h_start,h_end do begin
     
     for ifile=0,nfiles2-1 do begin
       openr,   lun, filename_cvr(ifile), /get_lun,/compress
-      readu,   lun, snow_cvr_pdf_tmp ;,snow_alb_pdf_tmp
+      readu,   lun, snow_cvr_pdf_tmp 
       free_lun,lun
 
       snow_cvr_pdf_all=snow_cvr_pdf_all+snow_cvr_pdf_tmp
@@ -186,7 +212,7 @@ for ih=h_start,h_end do begin
       tot_sf_pix=0l
       for ibin=100,30,-1 do begin ; accumulate from the top bin down till you get enoguh data.
                                   ; Yet, don't go below 30th bin (i.e. snow fraction lt 30%)
-                                  ; b/c there is not ehouhg snow to make it a "reliable albedo estimate"
+                                  ; b/c there is not enough snow to make it a "reliable albedo estimate"
         tot_sf_pix=tot_sf_pix+snow_cvr_pdf_all(ipix,ibin)*ibin
         if total(snow_cvr_pdf_all(ipix,ibin:100))/tot_pix*100. gt top_limit then begin
           sf_lim_tail_mean(ipix)=tot_sf_pix/total(snow_cvr_pdf_all(ipix,ibin:100))
@@ -197,7 +223,7 @@ for ih=h_start,h_end do begin
     endfor ; ipix
 
     ; write out the snow cover cutoff %ile for this MODIS tile
-    openw, lun, '../data/data_out/snow_cov_cutoff_titch08_MOD10A1.A.h'+ih_str+'v'+iv_str+'_'+year_start+'_'+year_end+'.bin.gz', /get_lun,/compress
+    openw, lun, 'data/data_out/snow_cov_cutoff_titch08_MOD10A1.A.h'+ih_str+'v'+iv_str+'_'+year_start+'_'+year_end+'.bin.gz', /get_lun,/compress
     writeu,lun, sf_lim_tail_mean ;,sf_max ; both are [dim_1d] float arrays
     free_lun,lun
 
@@ -233,7 +259,7 @@ for iyear=0,n_elements(years)-1 do begin
   
       ; read in the snow cover cutoff %ile for this MODIS tile
       sf_lim_tail_mean=make_array(dim_1d,/float,value=mis_val) ; to store the top snow fraction %ile cutoff for each pixel
-      openr, lun, '../data/data_out/snow_cov_cutoff_titch08_MOD10A1.A.h'+ih_str+'v'+iv_str+'_'+year_start+'_'+year_end+'.bin.gz', /get_lun,/compress
+      openr, lun, 'data/data_out/snow_cov_cutoff_titch08_MOD10A1.A.h'+ih_str+'v'+iv_str+'_'+year_start+'_'+year_end+'.bin.gz', /get_lun,/compress
       readu,lun, sf_lim_tail_mean 
       free_lun,lun
   
@@ -279,7 +305,7 @@ for iyear=0,n_elements(years)-1 do begin
 
       ; write out the counts, cummulative and mean values of albedo and PDFs of albedo
       ; for this tile (these will be stiched once all completed)
-      openw, lun, '../data/data_out/snow_alb_pdfs_08_MOD10A1.A.'+years(iyear)+           $
+      openw, lun, 'data/data_out/snow_alb_pdfs_08_MOD10A1.A.'+years(iyear)+           $
                   '.h'+ih_str+'v'+iv_str+'_'+strtrim(100-top_limit,2)+'%ile_cover2_gt_'+ $
                   strtrim(cvr_cutoff,2)+'.bin.gz', /get_lun,/compress
       writeu,lun, accu_alb,accu_cnt
@@ -308,7 +334,7 @@ for ih=h_start,h_end do begin
     iv_str=strmid('0'+strtrim(iv,2),1,2,/reverse)
 
     ; get all files for the current h/v tile (all available years)
-    filename_alb=file_search('../data/data_out/snow_alb_pdfs_08_MOD10A1.A.*.h'+ $
+    filename_alb=file_search('data/data_out/snow_alb_pdfs_08_MOD10A1.A.*.h'+ $
                              ih_str+'v'+iv_str+'_'+strtrim(100-top_limit,2)   + $
                              '%ile_cover2_gt_'+strtrim(cvr_cutoff,2)+'.bin.gz',count=nfiles4)
 
@@ -338,10 +364,8 @@ for ih=h_start,h_end do begin
     mean_alb=snow_alb_accu_all/snow_alb_cnt_all
     mean_alb[where(snow_alb_cnt_all lt 10,/null)]=mis_val
 
-    print, n_elements(where(mean_alb gt 0))-1, ' pixels w/ valid alb and cover gt 90% in tile h'+ih_str+'v'+iv_str
-
     ; write out the snow albedo max and cutoff %ile for this MODIS tile
-    openw, lun, '../data/data_out/snow_alb_08_'+strtrim(top_alb_limit,2)+'_cutoff_MOD10A1.A.h'+ $
+    openw, lun, 'data/data_out/snow_alb_08_'+strtrim(top_alb_limit,2)+'_cutoff_MOD10A1.A.h'+ $
                 ih_str+'v'+iv_str+'_'+year_start+'_'+year_end+'.bin.gz', /get_lun,/compress
     writeu,lun, mean_alb
     free_lun,lun
@@ -357,8 +381,8 @@ print, 'Done with snow albedo cutoff %ile calculations'
 stop
 
 skip2ncoutput:
-; -- Now all the albedo vaules are in. Output them on GEOS-friendly 10x10 deg tiles
-;    using nc format and doing 1km resoltution
+; -- Now all the albedo vaules are in. Output them on 
+;    GEOS-friendly 10x10 deg tiles using nc format
 
 ; set new missing value
 mis_val= 1.e15
@@ -380,7 +404,7 @@ for ih=h_start,h_end do begin
     ; declare array to store the output for this tile; fill with missing 
     alb_30sec_grid=make_array(1200l, 1200l, value=mis_val,/float)
 
-    print, '*************** Creating tile: h'+ih_str+'v'+iv_str
+    print, 'Creating tile: h'+ih_str+'v'+iv_str
 
     ; get min/max and all lat/lon values for this tile
     minlat       = iv   *10.-90.   
@@ -406,7 +430,7 @@ for ih=h_start,h_end do begin
         iih_str=strmid('0'+strtrim(iih,2),1,2,/reverse)
 
         ; read in the cummulative and mean values for this tile (these will be stiched once all completed)
-        filename_alb=file_search('../data/data_out/snow_alb_08_'+strtrim(top_alb_limit,2)+  $
+        filename_alb=file_search('data/data_out/snow_alb_08_'+strtrim(top_alb_limit,2)+  $
                                  '_cutoff_MOD10A1.A.h'+iih_str+'v'+iiv_str+'_'+year_start+  $
                                  '_'+year_end+'.bin.gz',count=n_files5)
 
@@ -462,7 +486,7 @@ for ih=h_start,h_end do begin
     ;   *** Create a NCDF file 
 
     ; Set up the file & handler
-    nc_file='../data/data_out/snow_alb_all_08_Top'+strtrim(top_alb_limit,2)+ $
+    nc_file='data/data_out/snow_alb_all_08_Top'+strtrim(top_alb_limit,2)+ $
             'th_percentile_MOD10A1.A_30arcsec_'+year_start+'_'+year_end+     $
             '_H'+ih_str+'V'+iv_str+'.nc' 
 
