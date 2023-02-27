@@ -90,7 +90,7 @@ module CN_initMod
  contains
 
 !------------------------------------------------------
- subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,cn5_cold_start)
+ subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,cn5_cold_start)
 
   !ARGUMENTS
   implicit none
@@ -102,6 +102,7 @@ module CN_initMod
   real,    dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft ! patch/pft-level CN restart variables
   real,    dimension(nch),                         intent(in) :: lats  ! Catchment tile latitudes [rad]
   real,    dimension(nch),                         intent(in) :: lons  ! Catchment tile longitudes [rad]
+  real,                                            intent(in) :: dtcn  ! Catchment-CN step size
   logical, optional,                               intent(in) :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
 
                                                                                                         
@@ -149,10 +150,14 @@ module CN_initMod
   character(300)     :: paramfile
   character(300)     :: NLFilename
   type(Netcdf4_fileformatter) :: ncid
-  integer            :: rc, status
+  integer            :: rc, status, ndt
 
   integer, parameter :: zeng_2001_root    = 0 !the zeng 2001 root profile function
   !-----------------------------------------
+
+! initialize CN step size
+
+  ndt = get_step_size( nint(dtcn) )
 
 ! initialize CN model
 ! -------------------
