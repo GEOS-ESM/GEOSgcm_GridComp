@@ -16,7 +16,6 @@ module CanopyStateType
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_canopystate_type
 
   type, public :: canopystate_type
 
@@ -54,13 +53,17 @@ module CanopyStateType
 
      real(r8)           :: leaf_mr_vcm = spval            ! Scalar constant of leaf respiration with Vcmax
 
+   contains 
+
+    procedure, public :: init_canopystate_type
+  
   end type canopystate_type
   type(canopystate_type), public, target :: canopystate_inst
 
 contains
 
 !--------------------------------------------------------------
-  subroutine init_canopystate_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start, rc)
+  subroutine init_canopystate_type(this, bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start, rc)
 
   ! !DESCRIPTION:
   ! Initialize CTSM canopy state type  needed for calling CTSM routines                                 
@@ -77,7 +80,7 @@ contains
     real, dimension(nch,num_zon,var_col),             intent(in) :: cncol         ! column-level restart variable array 
     real, dimension(nch,num_zon,num_veg,var_pft),     intent(in) :: cnpft ! pft-level (patch-level) restart variable array
     logical, optional,                                intent(in) :: cn5_cold_start
-    type(canopystate_type),                           intent(inout):: this
+    class(canopystate_type)                                      :: this
     integer, optional,                                intent(out) :: rc
 
     ! LOCAL

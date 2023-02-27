@@ -121,7 +121,7 @@ module CN_initMod
   type(waterdiagnosticbulk_type)          :: waterdiagnosticbulk_inst
   type(wateratm2lndbulk_type)             :: wateratm2lndbulk_inst
   type(wateratm2lnd_type)                 :: wateratm2lnd_inst
-  type(canopystate_type)                  :: canopystate_inst
+  !type(canopystate_type)                  :: canopystate_inst
   type(solarabs_type)                     :: solarabs_inst
   type(surfalb_type)                      :: surfalb_inst
   type(ozone_base_type)                   :: ozone_inst
@@ -216,7 +216,7 @@ module CN_initMod
 
     call init_wateratm2lnd_type         (bounds, wateratm2lnd_inst)
 
-    call init_canopystate_type          (bounds, nch, ityp, fveg, cncol, cnpft, canopystate_inst, cn5_cold_start)
+    call canopystate_inst%init_canopystate_type (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
     call init_solarabs_type             (bounds, solarabs_inst)
 
