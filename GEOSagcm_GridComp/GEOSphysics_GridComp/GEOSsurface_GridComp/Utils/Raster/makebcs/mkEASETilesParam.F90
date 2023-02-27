@@ -1,4 +1,5 @@
-#include "Raster.h"
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
 
 PROGRAM mkEASETilesParam 
   
@@ -21,6 +22,7 @@ PROGRAM mkEASETilesParam
       use process_hres_data
       use MAPL_SortMod
       use MAPL_ConstantsMod
+      use MAPL_ExceptionHandling
       use LogRectRasterizeMod
       use netcdf
       
@@ -75,7 +77,8 @@ PROGRAM mkEASETilesParam
       character*1            :: PF
       character(len=6)       :: EASE_Version
       character(len=10)      :: nc_string, nr_string
-      character(128)         :: usage1, usage2
+      character(len=128)     :: usage1, usage2
+      character(len=128)     :: Iam = "mkEASETilesParam"
 
       call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
