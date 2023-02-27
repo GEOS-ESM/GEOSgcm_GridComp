@@ -272,11 +272,6 @@ module CN_initMod
 
     call init_frictionvel_type          (bounds, frictionvel_inst)
 
-    call CNPhenologyInit                (bounds)
-
-    call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
-    call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
-
     ! calls to original CTSM initialization routines
 
     ! initialize rooting profile with default values
@@ -317,6 +312,13 @@ module CN_initMod
    call bgc_vegetation_inst%cnfire_method%CNFireReadParams( ncid )
 
    call ncid%close(rc=status)
+
+   ! initialize types that depend on parameters
+
+   call CNPhenologyInit                (bounds)
+
+   call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
+   call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
 
    call FireMethodInit(bounds,paramfile)
 
