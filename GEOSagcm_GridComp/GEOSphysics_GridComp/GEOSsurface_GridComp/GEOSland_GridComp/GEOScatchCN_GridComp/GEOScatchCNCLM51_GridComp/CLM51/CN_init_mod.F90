@@ -64,7 +64,7 @@ module CN_initMod
   use SoilBiogeochemDecompMod            , only : readSoilBiogeochemDecompParams         => readParams
   use CNPhenologyMod                     , only : readCNPhenolParams                     => readParams
   use SoilBiogeochemLittVertTranspMod    , only : readSoilBiogeochemLittVertTranspParams => readParams
-  use CNPhenologyMod                     , only : CNPhenologyReadNML
+  use CNPhenologyMod                     , only : CNPhenologyReadNML, CNPhenologyInit
   use dynSubgridControlMod               , only : dynSubgridControl_init
   use CNFireFactoryMod                   , only : CNFireReadNML, create_cnfire_method
   use FireMethodType                     , only : fire_method_type
