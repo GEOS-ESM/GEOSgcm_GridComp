@@ -150,8 +150,6 @@ module CN_initMod
 !  type(frictionvel_type)                  :: frictionvel_inst
    type(cn_vegetation_type)               :: bgc_vegetation_inst
 
-  type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
-
   character(300)     :: paramfile
   character(300)     :: NLFilename
   type(Netcdf4_fileformatter) :: ncid
