@@ -84,6 +84,8 @@ module CN_initMod
  type(photosyns_type), public            :: photosyns_inst
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
+ type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
+ type(wateratm2lndbulk_type), public             :: wateratm2lndbulk_inst
 
 ! !PUBLIC MEMBER FUNCTIONS:
  public :: CN_init
@@ -124,7 +126,7 @@ module CN_initMod
 !  !type(canopystate_type)                  :: canopystate_inst
 !  type(solarabs_type)                     :: solarabs_inst
 !  type(surfalb_type)                      :: surfalb_inst
-  type(ozone_base_type)                   :: ozone_inst
+ ! type(ozone_base_type)                   :: ozone_inst
 !!  type(pftcon_type)                       :: pftcon
 !  type(waterflux_type)                    :: waterflux_inst
 !  type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
@@ -224,7 +226,7 @@ module CN_initMod
 
     call surfalb_inst%Init              (bounds, nch, cncol, cnpft)
 
-    call ozone_base_inst%Init           (bounds)
+    call ozone_inst%Init           (bounds)
 
     call photosyns_inst%Init            (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
