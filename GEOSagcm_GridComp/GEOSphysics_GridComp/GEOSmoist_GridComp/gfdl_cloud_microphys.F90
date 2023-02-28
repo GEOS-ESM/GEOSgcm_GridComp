@@ -153,7 +153,7 @@ module gfdl2_cloud_microphys_mod
     logical :: do_sedi_w = .false. !< transport of vertical motion in sedimentation
     logical :: do_sedi_heat = .true. !< transport of heat in sedimentation
     logical :: prog_ccn = .false. !< do prognostic ccn (yi ming's method)
-    logical :: do_bigg = .false. !< do bigg
+    logical :: do_bigg = .true. !< do bigg mechanism freezing of supercooled liquid on aerosol nuclei
     logical :: do_evap = .false. !< do evaporation
     logical :: do_subl = .false. !< do sublimation
     logical :: do_qa = .false. !< do inline cloud fraction (WMP: in FV3 dynamics)
@@ -939,7 +939,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             
             call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
                 denfac, vtsz, vtgz, vtrz, qaz, qlcnz, qicnz, clcnz, dts, subl1, h_var1d, &
-                cnv_fraction(i), srf_type(i))
+                ccn, cnv_fraction(i), srf_type(i))
 
             do k = ktop, kbot
                 isubl (i,j,k) = isubl (i,j,k) + subl1(k)
@@ -1315,7 +1315,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
                     sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
-                    sink = min(ql0_max/qadum(k), 0.75*ql(k), max(0.,sink)) ! limit to just 0.75 liquid condensate
+                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                     qa (k) = qa (k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qcmin) )
@@ -1515,7 +1515,7 @@ end subroutine linear_prof
 ! =======================================================================
 
 subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
-        den, denfac, vts, vtg, vtr, qak, qlcnk, qicnk, clcnk, dts, subl1, h_var, cnv_fraction, srf_type)
+        den, denfac, vts, vtg, vtr, qak, qlcnk, qicnk, clcnk, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
     
     implicit none
     
@@ -1531,7 +1531,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
     real, intent (in) :: dts, cnv_fraction, srf_type
   
-    real, dimension (ktop:kbot) :: h_var 
+    real, intent (in), dimension (ktop:kbot) :: h_var, ccn
+ 
     real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, di, lhl, lhi
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol
     
@@ -1613,7 +1614,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
             dtmp = tice - tzk (k)
             newqi = new_ice_condensate(tzk (k), qlk (k), qik (k), cnv_fraction, srf_type)
-            sink = fac_frz * max(0.0,min (newqi, dtmp / icpk (k)))
+            sink = max(0.0,min (newqi, fac_frz * dtmp / icpk (k)))
             ifrac = ice_fraction(tzk(k),cnv_fraction,srf_type) 
             qi_crt = qi_gen * min (qi_lim, ifrac) / den (k)
             tmp = min (sink, dim (qi_crt, qik (k)))
@@ -2020,7 +2021,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! -----------------------------------------------------------------------
     
     call subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tzk, qvk, &
-        qlk, qrk, qik, qsk, qgk, qak, qlcnk, qicnk, clcnk, subl1, h_var, cnv_fraction, srf_type)
+        qlk, qrk, qik, qsk, qgk, qak, qlcnk, qicnk, clcnk, subl1, h_var, ccn, cnv_fraction, srf_type)
 
 end subroutine icloud
 
@@ -2029,7 +2030,7 @@ end subroutine icloud
 ! =======================================================================
 
 subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
-    ql, qr, qi, qs, qg, qa, qlcn, qicn, clcn, subl1, h_var, cnv_fraction, srf_type)
+    ql, qr, qi, qs, qg, qa, qlcn, qicn, clcn, subl1, h_var, ccn, cnv_fraction, srf_type)
     
     implicit none
     
@@ -2039,7 +2040,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
     
     real, intent (in) :: dts, cnv_fraction, srf_type
 
-    real, intent (in), dimension (ktop:kbot) :: h_var
+    real, intent (in), dimension (ktop:kbot) :: h_var, ccn
     real, intent (in), dimension (ktop:kbot) :: qlcn, qicn, clcn
 
     real, intent (inout), dimension (ktop:kbot) :: tz, qv, ql, qr, qi, qs, qg, qa
@@ -2200,13 +2201,12 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         icpk (k) = lhi (k) / cvm (k)
         
         ! -----------------------------------------------------------------------
-        ! bigg mechanism
+        ! bigg mechanism heterogeneous freezing on existing cloud nuclei
         ! -----------------------------------------------------------------------
         tc = tice - tz (k)
         if (do_bigg .and. ql (k) > qcmin .and. tc > 0.) then
-            sink = fac_frz * 3.3333e-10 * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
-            newqi = new_ice_condensate(tz (k), ql (k), qi (k), cnv_fraction, srf_type)
-            sink = min ( ql(k), fac_frz*newqi, sink)
+            sink = fac_frz * (100.0/rhor/ccn(k)) * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
+            sink = min (ql (k), tc / icpk (k), sink)
             ql (k) = ql (k) - sink
             qi (k) = qi (k) + sink
             q_liq (k) = q_liq (k) - sink

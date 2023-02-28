@@ -55,9 +55,11 @@ module GEOSmoist_Process_Library
  ! LDRADIUS4
   ! Liquid  based on DOI 10.1088/1748-9326/3/4/045021
   real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
+  real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
+  real, parameter :: Lk      = 0.75    ! tunable shape effect (0.5:1)
   real, parameter :: Lbe     = 1./3. - 0.14
-  real, parameter :: Lbx     = 0.07*1.e3*(3./(4.*MAPL_PI*RHO_W*1.e-3))**(1./3.)
-                             ! 0.07 is a dispersion effect and eqs are in cgs units
+  real, parameter :: Lbx     = Ldiss*1.e3*(3./(4.*MAPL_PI*Lk*RHO_W*1.e-3))**(1./3.)
+                             ! LDRADIUS eqs are in cgs units
   ! Ice
   real, parameter :: RHO_I   =  916.8  ! Density of ice crystal in kg/m^3
 

@@ -540,9 +540,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ! Send the condensates through the pdf after convection
              ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
              if (EIS(I,J) > 5.0) then ! Stable
-                ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**2))
+                ALPHA = 1.0 - ((1.0-dw_land ) + (1.0 - (1.0-dw_land ))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**2))
              else ! Unstable
-                ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**4))
+                ALPHA = 1.0 - ((1.0-dw_ocean) + (1.0 - (1.0-dw_ocean))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**4))
              endif
              ! include area scaling and limit RHcrit to > 70% 
              ALPHA = min( 0.30, ALPHA*SQRT(SQRT(AREA(I,J)/1.e10)) )
