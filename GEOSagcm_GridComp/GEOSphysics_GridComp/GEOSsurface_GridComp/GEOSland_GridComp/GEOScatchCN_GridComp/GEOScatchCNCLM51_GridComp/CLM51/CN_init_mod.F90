@@ -146,7 +146,7 @@ module CN_initMod
 !  type(waterstatebulk_type)               :: waterstatebulk_inst
 !  type(waterstate_type)                   :: waterstate_inst
 !  type(frictionvel_type)                  :: frictionvel_inst
-!  type(cn_vegetation_type)               :: bgc_vegetation_inst
+   type(cn_vegetation_type)               :: bgc_vegetation_inst
 
   type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
 
