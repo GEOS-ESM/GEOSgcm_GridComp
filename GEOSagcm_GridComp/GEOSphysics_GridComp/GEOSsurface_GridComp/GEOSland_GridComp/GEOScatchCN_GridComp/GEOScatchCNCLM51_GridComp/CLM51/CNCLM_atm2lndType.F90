@@ -11,7 +11,6 @@ module atm2lndType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_atm2lnd_type
 
      !
   type, public :: atm2lnd_type
@@ -62,13 +61,17 @@ module atm2lndType
      real(r8) , pointer :: t_mo_patch                   (:)   => null() ! patch 30-day average temperature (Kelvin)     
      real(r8) , pointer :: t_mo_min_patch               (:)   => null() ! patch annual min of t_mo (Kelvin) 
 
+   contains
+
+     procedure, public :: Init
+
 end type atm2lnd_type                                                                                       
-type(atm2lnd_type), public :: atm2lnd_inst 
+type(atm2lnd_type), public, target :: atm2lnd_inst 
 
 contains
 
 !---------------------------------------------------------------------
-  subroutine init_atm2lnd_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
 ! Initialize CTSM atmosphere2land (forcing type) needed for calling CTSM routines                                 
@@ -78,7 +81,7 @@ contains
 ! !ARGUMENTS:                                                                                                           
     implicit none                                                                                                       
     type(bounds_type), intent(in) :: bounds
-    type(atm2lnd_type), intent(inout):: this     
+    class(atm2lnd_type)           :: this     
 
     ! LOCAL:
     real(r8) :: ival  = 0.0_r8  ! initial value
@@ -140,6 +143,6 @@ contains
     allocate(this%t_mo_patch                    (begp:endp))        ; this%t_mo_patch               (:)   = nan         
     allocate(this%t_mo_min_patch                (begp:endp))        ; this%t_mo_min_patch           (:)   = nan !
 
-  end subroutine init_atm2lnd_type  
+  end subroutine Init 
 
 end module atm2lndType

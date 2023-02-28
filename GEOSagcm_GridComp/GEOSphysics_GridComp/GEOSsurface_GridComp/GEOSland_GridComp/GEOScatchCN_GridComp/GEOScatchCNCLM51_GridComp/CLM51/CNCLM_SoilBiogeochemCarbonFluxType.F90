@@ -15,7 +15,6 @@ module SoilBiogeochemCarbonFluxType
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_soilbiogeochem_carbonflux_type
 
   type, public :: soilbiogeochem_carbonflux_type
 
@@ -77,17 +76,18 @@ module SoilBiogeochemCarbonFluxType
 
      procedure , public  :: SetValues
      procedure , public  :: Summary
+     procedure , public  :: Init
 
   end type soilbiogeochem_carbonflux_type
-  type(soilbiogeochem_carbonflux_type), public :: soilbiogeochem_carbonflux_inst
+  type(soilbiogeochem_carbonflux_type), public, target :: soilbiogeochem_carbonflux_inst
 
 contains
 
 !--------------------------------------------------------------
- subroutine init_soilbiogeochem_carbonflux_type(bounds,this)
+ subroutine Init(this, bounds)
 
      type(bounds_type),                    intent(in)    :: bounds
-     type(soilbiogeochem_carbonflux_type), intent(inout) :: this
+     class(soilbiogeochem_carbonflux_type)               :: this
      !
      ! !LOCAL VARIABLES:
      integer           :: begp,endp
@@ -172,7 +172,7 @@ contains
 
      endif
 
- end subroutine init_soilbiogeochem_carbonflux_type
+ end subroutine Init
 
   !-----------------------------------------------------------------------
   subroutine SetValues ( this, num_column, filter_column, value_column)

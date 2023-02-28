@@ -22,7 +22,6 @@ module EnergyFluxType
   private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_energyflux_type
 
   !
   type, public :: energyflux_type
@@ -120,19 +119,25 @@ module EnergyFluxType
      real(r8), pointer :: errsol_col              (:)   ! solar radiation conservation error    (W/m**2)
      real(r8), pointer :: errlon_patch            (:)   ! longwave radiation conservation error (W/m**2)
      real(r8), pointer :: errlon_col              (:)   ! longwave radiation conservation error (W/m**2)
+
+
+   contains
+
+    procedure , public :: Init
+
   end type energyflux_type
-  type(energyflux_type), public :: energyflux_inst
+  type(energyflux_type), public, target :: energyflux_inst
 
 contains
 
 !---------------------------------------------
-  subroutine init_energyflux_type(bounds, this)
+  subroutine Init(this, bounds)
     
   ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(energyflux_type), intent(inout):: this
+    class(energyflux_type)        :: this
 
     !LOCAL
     integer :: begp, endp
@@ -228,7 +233,7 @@ contains
     allocate( this%errlon_col              (begc:endc))             ; this%errlon_col              (:)   = nan
 
 
-  end subroutine init_energyflux_type
+  end subroutine Init
 
 end module EnergyFluxType
 

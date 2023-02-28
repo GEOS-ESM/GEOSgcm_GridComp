@@ -18,7 +18,6 @@ module SoilBiogeochemCarbonStateType
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_soilbiogeochem_carbonstate_type
 
   type, public :: soilbiogeochem_carbonstate_type
 
@@ -59,10 +58,11 @@ module SoilBiogeochemCarbonStateType
 
      procedure , public  :: Summary
      procedure , public  :: SetTotVgCThresh
+     procedure , public  :: Init
   
 
   end type soilbiogeochem_carbonstate_type
-  type(soilbiogeochem_carbonstate_type), public :: soilbiogeochem_carbonstate_inst
+  type(soilbiogeochem_carbonstate_type), public, target :: soilbiogeochem_carbonstate_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -71,7 +71,7 @@ module SoilBiogeochemCarbonStateType
 contains
 
 !-------------------------------------------
- subroutine init_soilbiogeochem_carbonstate_type(bounds, nch, cncol,  this)
+ subroutine Init(this, bounds, nch, cncol)
 
     !
     ! !ARGUMENTS:
@@ -79,7 +79,7 @@ contains
     type(bounds_type),                     intent(in) :: bounds
     integer,                               intent(in) :: nch ! number of tiles
     real, dimension(nch,NUM_ZON,VAR_COL),  intent(in) :: cncol ! gkw: column CN restart
-    type(soilbiogeochem_carbonstate_type), intent(inout) :: this
+    class(soilbiogeochem_carbonstate_type)            :: this
     !
     ! !LOCAL VARIABLES:
     integer               :: begc,endc
@@ -165,7 +165,7 @@ contains
       end do !nz
    end do ! nc
 
- end subroutine init_soilbiogeochem_carbonstate_type
+ end subroutine Init
 
   !-----------------------------------------------------------------------
   subroutine Summary(this, bounds, num_allc, filter_allc)

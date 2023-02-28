@@ -20,8 +20,6 @@ module ActiveLayerMod
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_active_layer_type
-  public:: alt_calc
 
   ! !PUBLIC TYPES:
   type, public :: active_layer_type
@@ -37,21 +35,22 @@ module ActiveLayerMod
      integer  , pointer :: alt_indx_col             (:)   ! col current depth of thaw
 
      contains 
-     procedure, public :: alt_calc
-  
+     procedure , public :: alt_calc
+     procedure , public :: Init  
+
   end type active_layer_type
-  type(active_layer_type), public :: active_layer_inst
+  type(active_layer_type), public, target :: active_layer_inst
 
 !---------------------------------------
 
 contains
 
 !---------------------------------------
-  subroutine init_active_layer_type(bounds, this)
+  subroutine Init(this, bounds)
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds
-    type(active_layer_type), intent(inout) :: this
+    class(active_layer_type)      :: this
     !
     !-----------------------------------------------------------------------
 
@@ -69,7 +68,7 @@ contains
 
     end associate
 
-  end subroutine init_active_layer_type
+  end subroutine Init
 
 !-----------------------------------------
   subroutine alt_calc(this, num_soilc, filter_soilc, &

@@ -23,7 +23,6 @@ module Wateratm2lndBulkType
   private
 
   ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_wateratm2lndbulk_type
   !
   ! !PUBLIC TYPES:
   type, extends(wateratm2lnd_type), public :: wateratm2lndbulk_type
@@ -38,12 +37,16 @@ module Wateratm2lndBulkType
      real(r8) , pointer :: prec24_patch                 (:)   ! patch 24-hour running mean of tot. precipitation (mm/s)
      real(r8) , pointer :: rh24_patch                   (:)   ! patch 24-hour running mean of relative humidity
 
+    contains
+
+     procedure, public :: Init
+
   end type wateratm2lndbulk_type
 
   contains
 
   !------------------------------------------------------------------------
-  subroutine init_wateratm2lndbulk_type(bounds, this)
+  subroutine Init(this, bounds)
     !
     ! !DESCRIPTION:
     ! Initialize module data structure
@@ -53,7 +56,7 @@ module Wateratm2lndBulkType
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds
-    type(wateratm2lndbulk_type), intent(inout) :: this
+    class(wateratm2lndbulk_type)  :: this
 
     !
     ! !LOCAL VARIABLES:
@@ -80,5 +83,5 @@ module Wateratm2lndBulkType
     end if
 
 
-  end subroutine init_wateratm2lndbulk_type
+  end subroutine Init
 end module Wateratm2lndBulkType

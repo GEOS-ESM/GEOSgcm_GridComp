@@ -19,7 +19,7 @@ module SoilBiogeochemStateType
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_soilbiogeochem_state_type
+
   public :: get_spinup_latitude_term
 
   ! !PUBLIC TYPES:
@@ -40,13 +40,17 @@ module SoilBiogeochemStateType
      real(r8) , pointer :: som_diffus_coef_col         (:,:)   ! (m2/s) SOM diffusivity due to bio/cryo-turbation 
      real(r8) , pointer :: plant_ndemand_col           (:)     ! column-level plant N demand
 
+   contains
+
+     procedure, public :: Init
+
   end type soilbiogeochem_state_type
-  type(soilbiogeochem_state_type), public :: soilbiogeochem_state_inst
+  type(soilbiogeochem_state_type), public, target :: soilbiogeochem_state_inst
 
 contains
 
 !---------------------------------------
- subroutine init_soilbiogeochem_state_type(bounds, nch, cncol, this, cn5_cold_start, rc)
+ subroutine Init(this, bounds, nch, cncol, cn5_cold_start, rc)
 
     !
     ! !ARGUMENTS:
@@ -55,7 +59,7 @@ contains
     integer,                               intent(in) :: nch ! number of tiles
     real, dimension(nch,NUM_ZON,VAR_COL),  intent(in) :: cncol ! gkw: column CN restart
     logical, optional,                     intent(in) :: cn5_cold_start
-    type(soilbiogeochem_state_type),       intent(inout) :: this
+    class(soilbiogeochem_state_type)                  :: this
     integer, optional,                     intent(out) :: rc
     !
     ! !LOCAL VARIABLES:
@@ -112,7 +116,7 @@ contains
       end do !nz
    end do ! nc
 
- end  subroutine init_soilbiogeochem_state_type
+ end  subroutine Init
 
 !-----------------------------------------------
   function get_spinup_latitude_term(latitude) result(ans)

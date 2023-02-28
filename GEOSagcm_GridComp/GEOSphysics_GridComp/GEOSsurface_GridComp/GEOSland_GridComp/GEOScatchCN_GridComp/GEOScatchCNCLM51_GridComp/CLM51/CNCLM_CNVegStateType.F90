@@ -14,7 +14,6 @@ module CNVegStateType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_cnveg_state_type
 
   type, public :: cnveg_state_type
 
@@ -98,15 +97,19 @@ module CNVegStateType
      real(r8), pointer :: leafcn_offset_patch          (:)     ! patch leaf C:N used by FUN
      real(r8), pointer :: plantCN_patch                (:)     ! patch plant C:N used by FUN
 
+    contains
+
+     procedure, public :: Init
+
    end type cnveg_state_type
 
-   type(cnveg_state_type), public :: cnveg_state_inst
+   type(cnveg_state_type), public, target :: cnveg_state_inst
 
 contains
 
 !-----------------------------------------------------
 !----------------------------------------------
-  subroutine init_cnveg_state_type(bounds, nch, ityp, fveg, cncol, cnpft, this)
+  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)
 
 ! !DESCRIPTION:
 ! Initialize CTSM vegetation states
@@ -123,7 +126,7 @@ contains
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
-    type(cnveg_state_type),               intent(inout):: this
+    class(cnveg_state_type)                                  :: this
 
     ! LOCAL
     integer  :: begp, endp
@@ -247,7 +250,7 @@ contains
      end do ! nz
   end do ! nc   
 
-  end subroutine init_cnveg_state_type
+  end subroutine Init
 
 
 end module CNVegStateType

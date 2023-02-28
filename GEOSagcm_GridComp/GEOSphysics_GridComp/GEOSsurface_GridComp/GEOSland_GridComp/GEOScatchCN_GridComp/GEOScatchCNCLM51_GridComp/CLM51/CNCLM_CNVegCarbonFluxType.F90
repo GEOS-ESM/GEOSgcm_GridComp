@@ -32,7 +32,6 @@ module CNVegCarbonFluxType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_cnveg_carbonflux_type
 
   type, public :: cnveg_carbonflux_type
 
@@ -478,10 +477,11 @@ module CNVegCarbonFluxType
      procedure , public  :: SetValues
      procedure , public  :: Summary => Summary_carbonflux
      procedure , public  :: ZeroDWT
+     procedure , public  :: Init
 
  end type cnveg_carbonflux_type
 
-type(cnveg_carbonflux_type), public :: cnveg_carbonflux_inst
+type(cnveg_carbonflux_type), public, target :: cnveg_carbonflux_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -489,7 +489,7 @@ type(cnveg_carbonflux_type), public :: cnveg_carbonflux_inst
 contains
 
 !---------------------------------------
- subroutine init_cnveg_carbonflux_type(bounds, nch, ityp, fveg, cncol, cnpft, this, cn5_cold_start, rc)
+ subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start, rc)
 
 ! !DESCRIPTION:
 ! Initialize CTSM carbon fluxes
@@ -507,7 +507,7 @@ contains
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
     logical, optional,                            intent(in) :: cn5_cold_start
-    type(cnveg_carbonflux_type),                  intent(inout):: this
+    class(cnveg_carbonflux_type)                              :: this
     integer, optional,                            intent(out) :: rc
 
     ! LOCAL
@@ -1124,7 +1124,7 @@ contains
      end do ! nz
   end do ! nc     
 
-  end subroutine init_cnveg_carbonflux_type
+  end subroutine Init
 
 !-----------------------------------------
 

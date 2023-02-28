@@ -12,7 +12,6 @@ module SoilStateType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_soilstate_type
 
   !
   type, public :: soilstate_type
@@ -73,13 +72,17 @@ module SoilStateType
      real(r8), pointer :: root_conductance_patch(:,:) ! patch root conductance [mm/s]
      real(r8), pointer :: soil_conductance_patch(:,:) ! patch soil conductance [mm/s]
 
+   contains 
+
+     procedure, public :: Init
+
 end type soilstate_type
-type(soilstate_type), public :: soilstate_inst
+type(soilstate_type), public, target :: soilstate_inst
 
 contains 
 
 !-----------------------------------------------------------
-  subroutine init_soilstate_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM soil state type  needed for calling CTSM routines                                 
@@ -90,7 +93,7 @@ contains
     implicit none
     !INPUT
     type(bounds_type), intent(in) :: bounds
-    type(soilstate_type), intent(inout):: this
+    class(soilstate_type)         :: this
 
     !LOCAL
     integer :: begp, endp
@@ -153,6 +156,6 @@ contains
     allocate(this%alphasw_col          (begc:endc,1:nlevgrnd))          ; this%alphasw_col          (:,:) = nan
     allocate(this%watres_col           (begc:endc,1:nlevgrnd))          ; this%watres_col           (:,:) = nan
 
-  end subroutine init_soilstate_type
+  end subroutine Init
 
 end module SoilStateType

@@ -16,7 +16,6 @@ module Wateratm2lndType
   private
 
   ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_wateratm2lnd_type
   !
   ! !PUBLIC TYPES:
   type, public :: wateratm2lnd_type
@@ -32,14 +31,17 @@ module Wateratm2lndType
      real(r8), pointer :: rain_to_snow_conversion_col   (:)   ! amount of rain converted to snow via precipitation repartitioning (mm/s)
      real(r8), pointer :: snow_to_rain_conversion_col   (:)   ! amount of snow converted to rain via precipitation repartitioning (mm/s)
 
+   contains
+
+     procedure, public :: Init
 
   end type wateratm2lnd_type
-  type(wateratm2lnd_type), public :: wateratm2lnd_inst
+  type(wateratm2lnd_type), public, target :: wateratm2lnd_inst
 
   contains
 
   !------------------------------------------------------------------------
-  subroutine init_wateratm2lnd_type(bounds,this)
+  subroutine Init(this, bounds)
     !
     ! !DESCRIPTION:
     !
@@ -48,7 +50,7 @@ module Wateratm2lndType
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds
-    type(wateratm2lnd_type), intent(inout) :: this
+    class(wateratm2lnd_type)      :: this
     !
     ! !LOCAL VARIABLES:
     integer           :: begc, endc
@@ -75,5 +77,5 @@ module Wateratm2lndType
     this%forc_rain_downscaled_col(begc:endc) = spval
     this%forc_snow_downscaled_col(begc:endc) = spval
 
-  end subroutine init_wateratm2lnd_type
+  end subroutine Init
 end module Wateratm2lndType

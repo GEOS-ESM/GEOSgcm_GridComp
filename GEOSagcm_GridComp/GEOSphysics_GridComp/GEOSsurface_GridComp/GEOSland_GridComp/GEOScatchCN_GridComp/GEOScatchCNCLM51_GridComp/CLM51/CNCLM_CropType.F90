@@ -9,7 +9,6 @@ module CropType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_crop_type
 
   type, public :: crop_type
 
@@ -28,13 +27,17 @@ module CropType
      real(r8) :: baset_latvary_intercept
      real(r8) :: baset_latvary_slope
 
+   contains
+   
+     procedure , public :: Init
+
  end type crop_type
- type(crop_type), public :: crop_inst
+ type(crop_type), public, target :: crop_inst
 
 contains
 
 !------------------------------------------------------
-  subroutine init_crop_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM crop type  needed for calling CTSM routines                                 
@@ -45,7 +48,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(crop_type), intent(inout):: this
+    class(crop_type)              :: this
 
     !LOCAL
     integer :: begp, endp
@@ -65,6 +68,6 @@ contains
     allocate(this%cphase_patch   (begp:endp)) ; this%cphase_patch   (:) = 0.0_r8
     allocate(this%latbaset_patch (begp:endp)) ; this%latbaset_patch (:) = spval
 
-   end subroutine init_crop_type
+   end subroutine Init
 
 end module CropType

@@ -14,7 +14,6 @@ module WaterFluxType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_waterflux_type
 
  !
   type, public :: waterflux_type
@@ -102,13 +101,17 @@ module WaterFluxType
      type(annual_flux_dribbler_type) :: qflx_liq_dynbal_dribbler
      type(annual_flux_dribbler_type) :: qflx_ice_dynbal_dribbler
 
+   contains
+
+     procedure, public :: Init
+
   end type waterflux_type
-  type(waterflux_type), public :: waterflux_inst
+  type(waterflux_type), public, target :: waterflux_inst
 
 contains
 
 !---------------------------------------------
-  subroutine init_waterflux_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM type for water flux variables that just apply to bulk water and are needed for calling CTSM routines                 
@@ -119,7 +122,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(waterflux_type), intent(inout):: this
+    class(waterflux_type)         :: this
 
     !LOCAL
     integer :: begp, endp
@@ -220,6 +223,6 @@ contains
     this%qflx_irrig_drip_patch(begp:endp) = spval
     this%qflx_irrig_sprinkler_patch(begp:endp) = spval
 
-  end subroutine init_waterflux_type
+  end subroutine Init
 
 end module WaterFluxType

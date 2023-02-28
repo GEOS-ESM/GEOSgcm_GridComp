@@ -11,7 +11,6 @@ module ch4Mod
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_ch4_type
 
   type, public :: ch4_type
      real(r8), pointer, private :: ch4_prod_depth_sat_col     (:,:) ! col CH4 production rate from methanotrophs (mol/m3/s) (nlevsoi)
@@ -105,14 +104,18 @@ module ch4Mod
      real(r8), pointer, public :: grnd_ch4_cond_col          (:)   ! col tracer conductance for boundary layer [m/s]
 !     type(ch4finundatedstream_type), private :: ch4findstream      ! ch4 finundated stream data
 
+   contains
+ 
+     procedure , public :: Init
+
  end type ch4_type
 
-type(ch4_type), public :: ch4_inst
+type(ch4_type), public, target :: ch4_inst
 
 contains
 
 !-----------------------------------------------------
- subroutine init_ch4_type(bounds, this)
+ subroutine Init(this, bounds)
 
 ! !DESCRIPTION:
 ! Initialize CTSM CH4 type; dummy for now, since we have use_lch4 set to .false.
@@ -122,7 +125,7 @@ contains
 
   ! INPUT
     type(bounds_type), intent(in) :: bounds
-    type(ch4_type),    intent(inout):: this
+    class(ch4_type)               :: this
 
     ! LOCAL
     integer  :: begp, endp
@@ -217,6 +220,6 @@ contains
     allocate(this%grnd_ch4_cond_col          (begc:endc))            ;  this%grnd_ch4_cond_col          (:)   = nan
 
 
- end subroutine init_ch4_type
+ end subroutine Init
 
 end module ch4Mod

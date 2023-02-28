@@ -12,7 +12,6 @@ module SurfaceAlbedoType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_surfalb_type
 
  !
   type, public :: surfalb_type
@@ -63,14 +62,17 @@ module SurfaceAlbedoType
      real(r8) , pointer :: vcmaxcintsun_patch  (:)   ! patch leaf to canopy scaling coefficient, sunlit leaf vcmax   
      real(r8) , pointer :: vcmaxcintsha_patch  (:)   ! patch leaf to canopy scaling coefficient, shaded leaf vcmax   
 
+   contains 
+
+     procedure, public :: Init
 
 end type surfalb_type
-type(surfalb_type), public :: surfalb_inst
+type(surfalb_type), public, target :: surfalb_inst
 
 contains
 
 !---------------------------------------------------
-  subroutine init_surfalb_type(bounds, nch, cncol, cnpft, this)
+  subroutine Init(this, bounds, nch, cncol, cnpft)
 
   ! !DESCRIPTION:
 ! Initialize CTSM surface albedo needed for calling CTSM routines                                 
@@ -84,7 +86,7 @@ contains
     integer,                                      intent(in) :: nch    ! number of Catchment tiles
     real, dimension(nch,num_zon,var_col),         intent(in) :: cncol  ! column-level restart variable array 
     real, dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft  ! pft-level (patch-level) restart variable array
-    type(surfalb_type),                           intent(inout):: this
+    class(surfalb_type)                                      :: this
 
     ! LOCAL
     integer :: begp, endp
@@ -160,6 +162,6 @@ contains
        end do ! nz
     end do ! nc
 
-  end subroutine init_surfalb_type
+  end subroutine Init
 
 end module SurfaceAlbedoType

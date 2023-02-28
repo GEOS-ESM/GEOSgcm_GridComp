@@ -19,8 +19,6 @@ module SaturatedExcessRunoffMod
   save
   private
 
-  public :: init_saturated_excess_runoff_type
-
   ! !PUBLIC TYPES:
 
   type, public :: saturated_excess_runoff_type
@@ -32,6 +30,11 @@ module SaturatedExcessRunoffMod
      ! Private data members
      integer :: fsat_method
      real(r8), pointer :: fcov_col(:) ! fractional impermeable area
+
+    contains 
+
+     procedure, public :: Init
+
   end type saturated_excess_runoff_type
 
   type, private :: params_type
@@ -42,7 +45,7 @@ module SaturatedExcessRunoffMod
 contains
 
 !--------------------------------------------------------------
-  subroutine init_saturated_excess_runoff_type(bounds, this)
+  subroutine Init(this, bounds)
 
     ! !USES:
   !                                                                                                    
@@ -50,7 +53,7 @@ contains
     implicit none
     ! INPUT/OUTPUT
     type(bounds_type),                  intent(in) :: bounds
-    type(saturated_excess_runoff_type), intent(inout):: this
+    class(saturated_excess_runoff_type)            :: this
 
     ! LOCAL
     integer :: begc, endc
@@ -61,6 +64,6 @@ contains
     allocate(this%fsat_col(begc:endc))                 ; this%fsat_col(:)                 = nan
     allocate(this%fcov_col(begc:endc))                 ; this%fcov_col(:)                 = nan
 
- end subroutine init_saturated_excess_runoff_type
+ end subroutine Init
 
 end module SaturatedExcessRunoffMod

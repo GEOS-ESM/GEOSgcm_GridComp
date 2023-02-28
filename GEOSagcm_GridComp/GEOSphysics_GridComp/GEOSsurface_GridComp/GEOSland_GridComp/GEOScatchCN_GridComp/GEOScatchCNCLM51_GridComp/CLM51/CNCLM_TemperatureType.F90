@@ -12,7 +12,6 @@ module TemperatureType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_temperature_type
 
   !
   type, public :: temperature_type
@@ -115,13 +114,17 @@ module TemperatureType
      real(r8), pointer    :: fact_col              (:,:) ! used in computing tridiagonal matrix                                   
      real(r8), pointer    :: c_h2osfc_col          (:)   ! heat capacity of surface water
 
+  contains
+
+     procedure, public :: Init
+
 end type temperature_type
-type(temperature_type), public :: temperature_inst
+type(temperature_type), public, target :: temperature_inst
 
  contains
 
 !-------------------------------------------------------------------
-  subroutine init_temperature_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
 ! Initialize CTSM temperature (forcing type) needed for calling CTSM routines                                 
@@ -235,6 +238,6 @@ type(temperature_type), public :: temperature_inst
     allocate(this%fact_col                 (begc:endc, -nlevsno+1:nlevmaxurbgrnd)) ; this%fact_col                 (:,:) = nan
     allocate(this%c_h2osfc_col             (begc:endc))                      ; this%c_h2osfc_col             (:)   = nan
 
-  end subroutine init_temperature_type
+  end subroutine Init
 
 end module TemperatureType

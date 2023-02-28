@@ -60,10 +60,13 @@ module SoilBiogeochemDecompCascadeConType
   end type decomp_cascade_type
 
   integer, public, parameter :: i_atm = 0                              ! for terminal pools (i.e. 100% respiration) (only used for CN not for BGC)
-  type(decomp_cascade_type), public :: decomp_cascade_con
+
+  type(decomp_cascade_type), public, target :: decomp_cascade_con
   !------------------------------------------------------------------------
 
 contains
+
+   
 
   !------------------------------------------------------------------------
   subroutine init_decomp_cascade_constants( use_century_decomp )

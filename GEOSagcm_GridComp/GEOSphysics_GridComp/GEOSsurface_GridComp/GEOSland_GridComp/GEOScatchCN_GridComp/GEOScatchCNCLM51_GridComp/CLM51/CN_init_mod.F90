@@ -109,44 +109,46 @@ module CN_initMod
                                                                                                         
   !LOCAL
 
-  type(bounds_type)                       :: bounds
-  !type(patch_type)                        :: patch
-  !type(column_type)                       :: col
-  !type(landunit_type)                     :: lun
-  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
-  type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
-  type(atm2lnd_type)                      :: atm2lnd_inst
-  type(temperature_type)                  :: temperature_inst
-  type(soilstate_type)                    :: soilstate_inst
-  type(waterdiagnosticbulk_type)          :: waterdiagnosticbulk_inst
-  type(wateratm2lndbulk_type)             :: wateratm2lndbulk_inst
-  type(wateratm2lnd_type)                 :: wateratm2lnd_inst
-  !type(canopystate_type)                  :: canopystate_inst
-  type(solarabs_type)                     :: solarabs_inst
-  type(surfalb_type)                      :: surfalb_inst
-  type(ozone_base_type)                   :: ozone_inst
-!  type(pftcon_type)                       :: pftcon
-  type(waterflux_type)                    :: waterflux_inst
-  type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
-  type(soilbiogeochem_nitrogenstate_type) :: soilbiogeochem_nitrogenstate_inst
-  type(cn_products_type)                  :: c_products_inst
-  type(cn_products_type)                  :: n_products_inst
-  type(soilbiogeochem_state_type)         :: soilbiogeochem_state_inst
-  type(cnveg_state_type)                  :: cnveg_state_inst
-  type(cnveg_carbonflux_type)             :: cnveg_carbonflux_inst
-  type(cnveg_nitrogenflux_type)           :: cnveg_nitrogenflux_inst
-  !type(gridcell_type)                     :: grc
-  type(soilbiogeochem_carbonflux_type)    :: soilbiogeochem_carbonflux_inst
-  type(soilbiogeochem_nitrogenflux_type)  :: soilbiogeochem_nitrogenflux_inst
-  type(ch4_type)                          :: ch4_inst
-  type(crop_type)                         :: crop_inst
-  type(dgvs_type)                         :: dgvs_inst
-  type(saturated_excess_runoff_type)      :: saturated_excess_runoff_inst
-  type(energyflux_type)                   :: energyflux_inst
-  type(waterstatebulk_type)               :: waterstatebulk_inst
-  type(waterstate_type)                   :: waterstate_inst
-  type(frictionvel_type)                  :: frictionvel_inst
-  type(cn_vegetation_type)               :: bgc_vegetation_inst
+!  type(bounds_type)                       :: bounds
+!  !type(patch_type)                        :: patch
+!  !type(column_type)                       :: col
+!  !type(landunit_type)                     :: lun
+!  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
+!  type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
+!  type(atm2lnd_type)                      :: atm2lnd_inst
+!  type(temperature_type)                  :: temperature_inst
+!  type(soilstate_type)                    :: soilstate_inst
+!  type(waterdiagnosticbulk_type)          :: waterdiagnosticbulk_inst
+!  type(wateratm2lndbulk_type)             :: wateratm2lndbulk_inst
+!  type(wateratm2lnd_type)                 :: wateratm2lnd_inst
+!  !type(canopystate_type)                  :: canopystate_inst
+!  type(solarabs_type)                     :: solarabs_inst
+!  type(surfalb_type)                      :: surfalb_inst
+!  type(ozone_base_type)                   :: ozone_inst
+!!  type(pftcon_type)                       :: pftcon
+!  type(waterflux_type)                    :: waterflux_inst
+!  type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
+!  type(soilbiogeochem_nitrogenstate_type) :: soilbiogeochem_nitrogenstate_inst
+!  type(cn_products_type)                  :: c_products_inst
+!  type(cn_products_type)                  :: n_products_inst
+!  type(soilbiogeochem_state_type)         :: soilbiogeochem_state_inst
+!  type(cnveg_state_type)                  :: cnveg_state_inst
+!  type(cnveg_carbonflux_type)             :: cnveg_carbonflux_inst
+!  type(cnveg_nitrogenflux_type)           :: cnveg_nitrogenflux_inst
+!  !type(gridcell_type)                     :: grc
+!  type(soilbiogeochem_carbonflux_type)    :: soilbiogeochem_carbonflux_inst
+!  type(soilbiogeochem_nitrogenflux_type)  :: soilbiogeochem_nitrogenflux_inst
+!  type(ch4_type)                          :: ch4_inst
+!  type(crop_type)                         :: crop_inst
+!  type(dgvs_type)                         :: dgvs_inst
+!  type(saturated_excess_runoff_type)      :: saturated_excess_runoff_inst
+!  type(energyflux_type)                   :: energyflux_inst
+!  type(waterstatebulk_type)               :: waterstatebulk_inst
+!  type(waterstate_type)                   :: waterstate_inst
+!  type(frictionvel_type)                  :: frictionvel_inst
+!  type(cn_vegetation_type)               :: bgc_vegetation_inst
+
+  type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
 
   character(300)     :: paramfile
   character(300)     :: NLFilename
@@ -200,77 +202,73 @@ module CN_initMod
 
     ! initialize states and fluxes
 
-    call init_cnveg_nitrogenstate_type  (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_nitrogenstate_inst) 
+    call cnveg_nitrogenstate_inst%Init  (bounds, nch, ityp, fveg, cncol, cnpft) 
 
-    call init_cnveg_carbonstate_type    (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_carbonstate_inst)
+    call cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
 
-    call init_atm2lnd_type              (bounds, atm2lnd_inst)
+    call atm2lnd_inst%Init              (bounds)
 
-    call init_temperature_type          (bounds, temperature_inst)
+    call temperature_inst%Init          (bounds)
 
-    call init_soilstate_type            (bounds, soilstate_inst)
+    call soilstate_inst%Init            (bounds)
 
-    call init_waterdiagnosticbulk_type  (bounds, waterdiagnosticbulk_inst)
+    call waterdiagnosticbulk_inst%Init  (bounds)
 
-    call init_wateratm2lndbulk_type     (bounds, wateratm2lndbulk_inst)
+    call wateratm2lndbulk_inst%Init     (bounds)
 
-    call init_wateratm2lnd_type         (bounds, wateratm2lnd_inst)
+    call wateratm2lnd_inst%Init         (bounds)
 
     call canopystate_inst%init_canopystate_type (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
-    call init_solarabs_type             (bounds, solarabs_inst)
+    call solarabs_inst%Init             (bounds)
 
-    call init_surfalb_type              (bounds, nch, cncol, cnpft, surfalb_inst)
+    call surfalb_inst%Init              (bounds, nch, cncol, cnpft)
 
-    call init_ozone_base_type           (bounds, ozone_inst)
+    call ozone_base_inst%Init           (bounds)
 
     call photosyns_inst%Init            (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
     call pftcon%init_pftcon_type        ()
 
-    call init_waterflux_type            (bounds, waterflux_inst)
+    call waterflux_inst%Init            (bounds)
 
-    call init_soilbiogeochem_carbonstate_type(bounds, nch, cncol,  soilbiogeochem_carbonstate_inst)
+    call soilbiogeochem_carbonstate_inst%Init(bounds, nch, cncol)
 
-    call init_soilbiogeochem_nitrogenstate_type(bounds, nch, cncol,  soilbiogeochem_nitrogenstate_inst)
+    call soilbiogeochem_nitrogenstate_inst%Init(bounds, nch, cncol)
 
-    call init_cn_products_type          (bounds, nch, cncol, 'C',  c_products_inst)
+    call soilbiogeochem_state_inst%Init (bounds, nch, cncol)
 
-    call init_cn_products_type          (bounds, nch, cncol, 'N',  n_products_inst)
+    call cnveg_state_inst%Init          (bounds, nch, ityp, fveg, cncol, cnpft)
 
-    call init_soilbiogeochem_state_type (bounds, nch, cncol,  soilbiogeochem_state_inst)
-
-    call init_cnveg_state_type          (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_state_inst)
-
-    call init_cnveg_carbonflux_type     (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_carbonflux_inst, cn5_cold_start)
+    call cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
  
-    call init_cnveg_nitrogenflux_type   (bounds, nch, ityp, fveg, cncol, cnpft, cnveg_nitrogenflux_inst)
+    call cnveg_nitrogenflux_inst%Init   (bounds, nch, ityp, fveg, cncol, cnpft)
 
-    call init_waterfluxbulk_type        (bounds, waterfluxbulk_inst)
+    call waterfluxbulk_inst%Init        (bounds)
 
-    call init_soilbiogeochem_carbonflux_type(bounds,soilbiogeochem_carbonflux_inst)
+    call soilbiogeochem_carbonflux_inst%Init (bounds)
 
-    call init_soilbiogeochem_nitrogenflux_type(bounds,soilbiogeochem_nitrogenflux_inst)
+    call soilbiogeochem_nitrogenflux_inst%Init(bounds)
 
-    call init_ch4_type                  (bounds, ch4_inst)
+    call ch4_inst%Init                  (bounds)
 
     call init_decomp_cascade_constants  (use_century_decomp)
   
-    call init_active_layer_type         (bounds, active_layer_inst)
+    call active_layer_inst%Init         (bounds)
 
-    call init_crop_type                 (bounds, crop_inst)
+    call crop_inst%Init                 (bounds)
 
-    call init_dgvs_type                 (bounds, dgvs_inst)
+    call dgvs_inst%Init                 (bounds)
 
-    call init_saturated_excess_runoff_type(bounds, saturated_excess_runoff_inst)
+    call saturated_excess_runoff_inst%Init(bounds)
 
-    call init_energyflux_type           (bounds, energyflux_inst)  
+    call energyflux_inst%Init           (bounds)  
 
-    call init_waterstatebulk_type       (bounds, waterstatebulk_inst)
+    call waterstatebulk_inst%Init       (bounds)
 
-    call init_waterstate_type           (bounds, waterstate_inst)
+    call waterstate_inst%Init           (bounds)
 
-    call init_frictionvel_type          (bounds, frictionvel_inst)
+    call frictionvel_inst%Init          (bounds)
 
     ! calls to original CTSM initialization routines
 
@@ -324,6 +322,11 @@ module CN_initMod
    call ncid%close(rc=status)
 
   call bgc_vegetation_inst%cnfire_method%FireInit(bounds)
+
+  call bgc_vegetation_inst%c_products_inst%Init  (bounds, nch, cncol, 'C')
+
+  call bgc_vegetation_inst%n_products_inst%Init  (bounds, nch, cncol, 'N')
+
   ! call FireMethodInit(bounds,paramfile)
 
    if (use_century_decomp) then

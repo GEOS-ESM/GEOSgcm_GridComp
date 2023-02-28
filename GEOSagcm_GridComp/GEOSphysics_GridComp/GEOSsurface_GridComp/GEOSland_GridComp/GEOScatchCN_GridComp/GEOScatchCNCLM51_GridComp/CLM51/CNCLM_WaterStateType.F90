@@ -23,7 +23,6 @@ module WaterStateType
   private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_waterstate_type
 
   !
   ! !PUBLIC TYPES:
@@ -48,19 +47,23 @@ module WaterStateType
 
      real(r8) :: aquifer_water_baseline                ! baseline value for water in the unconfined aquifer (wa_col) for this bulk / tracer (mm)
 
+   contains
+
+    procedure , public :: Init
+
   end type waterstate_type
-  type(waterstate_type), public :: waterstate_inst
+  type(waterstate_type), public, target :: waterstate_inst
 
 contains
 
 !---------------------------------------------
-  subroutine init_waterstate_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(waterstate_type), intent(inout):: this
+    class(waterstate_type)        :: this
 
     !LOCAL
     integer :: begp, endp
@@ -88,5 +91,5 @@ contains
     allocate( this%dynbal_baseline_liq_col (begc:endc)); this%dynbal_baseline_liq_col(begc:endc) = nan
     allocate( this%dynbal_baseline_ice_col (begc:endc)); this%dynbal_baseline_ice_col(begc:endc) = nan
 
-  end subroutine init_waterstate_type
+  end subroutine Init
 end module WaterStateType

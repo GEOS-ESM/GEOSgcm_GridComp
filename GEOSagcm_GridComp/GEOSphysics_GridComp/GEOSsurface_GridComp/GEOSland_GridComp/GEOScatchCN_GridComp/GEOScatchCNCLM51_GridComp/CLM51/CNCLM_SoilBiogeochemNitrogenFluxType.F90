@@ -15,7 +15,6 @@ module SoilBiogeochemNitrogenFluxType
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_soilbiogeochem_nitrogenflux_type
 
   type, public :: SoilBiogeochem_nitrogenflux_type
 
@@ -142,20 +141,21 @@ module SoilBiogeochemNitrogenFluxType
 
      procedure , public  :: SetValues
      procedure , public  :: Summary
+     procedure , public  :: Init
 
   end type soilbiogeochem_nitrogenflux_type
-  type(soilbiogeochem_nitrogenflux_type), public :: soilbiogeochem_nitrogenflux_inst
+  type(soilbiogeochem_nitrogenflux_type), public, target :: soilbiogeochem_nitrogenflux_inst
 
 contains
 
 !--------------------------------------------------------------
- subroutine init_soilbiogeochem_nitrogenflux_type(bounds,this)
+ subroutine Init(this, bounds)
 
      !ARGUMENTS
      implicit none
      !INPUT/OUTPUT
      type(bounds_type),                      intent(in)    :: bounds
-     type(soilbiogeochem_nitrogenflux_type), intent(inout) :: this
+     class(soilbiogeochem_nitrogenflux_type)               :: this
     !
     ! !LOCAL VARIABLES:
     integer           :: begc,endc,Ntrans,Ntrans_diag
@@ -277,7 +277,7 @@ contains
  !      call this%matrix_Ninput%InitV (ndecomp_pools*nlevdecomp,begc,endc)
     end if
 
- end subroutine init_soilbiogeochem_nitrogenflux_type
+ end subroutine Init
 
   !-----------------------------------------------------------------------
   subroutine SetValues ( this, &

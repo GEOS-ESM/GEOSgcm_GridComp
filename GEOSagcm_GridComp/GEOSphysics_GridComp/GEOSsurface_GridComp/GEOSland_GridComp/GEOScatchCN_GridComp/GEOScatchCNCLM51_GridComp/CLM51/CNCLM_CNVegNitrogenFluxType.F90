@@ -25,7 +25,6 @@ module CNVegNitrogenFluxType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_cnveg_nitrogenflux_type
 
   type, public :: cnveg_nitrogenflux_type
 
@@ -362,15 +361,16 @@ module CNVegNitrogenFluxType
      procedure , public  :: SetValues
      procedure , public  :: Summary => Summary_nitrogenflux
      procedure , public  :: ZeroDWT
+     procedure , public  :: Init
 
  end type cnveg_nitrogenflux_type
 
-type(cnveg_nitrogenflux_type), public :: cnveg_nitrogenflux_inst
+type(cnveg_nitrogenflux_type), public, target :: cnveg_nitrogenflux_inst
 
 contains
 
 !---------------------------------------
- subroutine init_cnveg_nitrogenflux_type(bounds, nch, ityp, fveg, cncol, cnpft, this)
+ subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)
 
 ! !DESCRIPTION:
 ! Initialize CTSM nitrogen fluxes
@@ -387,7 +387,7 @@ contains
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
-    type(cnveg_nitrogenflux_type),               intent(inout):: this
+    class(cnveg_nitrogenflux_type)                           :: this
 
     ! LOCAL
     integer  :: begp, endp
@@ -992,7 +992,7 @@ contains
      end do ! nz
   end do ! nc     
 
-  end subroutine init_cnveg_nitrogenflux_type
+  end subroutine Init
 
 !------------------------------------------
   subroutine SetValues ( this,nvegnpool, &

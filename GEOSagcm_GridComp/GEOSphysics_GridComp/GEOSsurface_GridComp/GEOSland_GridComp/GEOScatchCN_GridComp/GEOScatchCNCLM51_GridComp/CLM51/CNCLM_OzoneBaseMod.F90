@@ -9,7 +9,6 @@ module OzoneBaseMod
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_ozone_base_type
 
   type, public :: ozone_base_type
 
@@ -21,13 +20,17 @@ module OzoneBaseMod
      real(r8), pointer, public :: o3coefgsha_patch(:)  ! ozone coefficient for conductance, shaded leaves (0 - 1)
      real(r8), pointer, public :: o3coefgsun_patch(:)  ! ozone coefficient for conductance, sunlit leaves (0 - 1)
 
+   contains
+
+    procedure, public :: Init
+
   end type ozone_base_type
-  type(ozone_base_type), public :: ozone_inst
+  type(ozone_base_type), public, target :: ozone_inst
 
 contains
 
 !------------------------------------------------
-  subroutine init_ozone_base_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM ozone base type  needed for calling CTSM routines                                 
@@ -38,7 +41,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(ozone_base_type), intent(inout) :: this
+    class(ozone_base_type)        :: this
 
     ! LOCAL
     integer :: begp, endp
@@ -56,6 +59,6 @@ contains
     this%o3coefgsha_patch = 1.
     this%o3coefgsun_patch = 1.
 
-  end subroutine init_ozone_base_type
+  end subroutine Init
 
 end module OzoneBaseMod

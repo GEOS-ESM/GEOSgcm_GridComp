@@ -17,7 +17,6 @@ module CNDVType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_dgvs_type
 
   ! !PUBLIC DATA TYPES:
   !
@@ -53,13 +52,17 @@ module CNDVType
      real(r8), pointer, public :: greffic_patch     (:)
      real(r8), pointer, public :: heatstress_patch  (:)
 
+   contains
+  
+     procedure , public :: Init
+
  end type dgvs_type
- type(dgvs_type), public :: dgvs_inst
+ type(dgvs_type), public, target :: dgvs_inst
 
 contains
 
 !------------------------------------------------------
-  subroutine init_dgvs_type(bounds, this)
+  subroutine Init(this, bounds)
 
       use nanMod      , only : nan
     use clm_varpar     , only : maxveg
@@ -71,7 +74,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(dgvs_type), intent(inout):: this
+    class(dgvs_type)              :: this
 
     !LOCAL
     integer :: begp, endp
@@ -123,6 +126,6 @@ contains
           dgv_ecophyscon%allom2(m) = allom2s
        end if
     end do
-  end subroutine init_dgvs_type
+  end subroutine Init
 
 end module CNDVType

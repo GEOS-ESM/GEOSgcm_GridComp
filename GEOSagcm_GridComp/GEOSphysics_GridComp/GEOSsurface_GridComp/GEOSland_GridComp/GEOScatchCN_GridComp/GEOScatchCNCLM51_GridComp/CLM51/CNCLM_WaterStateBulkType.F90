@@ -22,7 +22,6 @@ module WaterStateBulkType
   private
 
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_waterstatebulk_type
   !
   ! !PUBLIC TYPES:
   type, extends(waterstate_type), public :: waterstatebulk_type
@@ -30,19 +29,23 @@ module WaterStateBulkType
      real(r8), pointer :: snow_persistence_col   (:)   ! col length of time that ground has had non-zero snow thickness (sec)
      real(r8), pointer :: int_snow_col           (:)   ! col integrated snowfall (mm H2O)
 
+   contains
+
+     procedure , public :: Init
+
   end type waterstatebulk_type
-  type(waterstatebulk_type), public :: waterstatebulk_inst
+  type(waterstatebulk_type), public, target :: waterstatebulk_inst
 
 contains
 
 !---------------------------------------------
-  subroutine init_waterstatebulk_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(waterstatebulk_type), intent(inout):: this
+    class(waterstatebulk_type)    :: this
 
     !LOCAL
     integer :: begp, endp
@@ -59,6 +62,6 @@ contains
     allocate(this%snow_persistence_col   (begc:endc))                     ; this%snow_persistence_col   (:)   = nan
     allocate(this%int_snow_col           (begc:endc))                     ; this%int_snow_col           (:)   = nan
 
-  end subroutine init_waterstatebulk_type
+  end subroutine Init
 
 end module WaterStateBulkType

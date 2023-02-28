@@ -30,7 +30,6 @@ module FrictionVelocityMod
   save
 
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_frictionvel_type
 
   type, public :: frictionvel_type
      private
@@ -75,9 +74,12 @@ module FrictionVelocityMod
      real(r8), pointer, public :: num_iter_patch   (:)   ! patch number of iterations
      real(r8), pointer, public :: z0m_actual_patch (:)   ! patch roughness length actually used in flux calculations, momentum [m]
 
+   contains
+
+     procedure , public :: Init
 
   end type frictionvel_type
-  type(frictionvel_type), public :: frictionvel_inst
+  type(frictionvel_type), public, target :: frictionvel_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -86,12 +88,12 @@ module FrictionVelocityMod
 contains
 
   !------------------------------------------------------------------------
-  subroutine init_frictionvel_type( bounds, this)
+  subroutine Init( this, bounds)
 
   !  use shr_infnan_mod , only : nan => shr_infnan_nan
     
     type(bounds_type), intent(in) :: bounds
-    type(frictionvel_type), intent(inout) :: this
+    class(frictionvel_type)       :: this
     !
     ! !LOCAL VARIABLES:
     integer :: begp, endp
@@ -133,7 +135,7 @@ contains
     allocate(this%num_iter_patch   (begp:endp)) ; this%num_iter_patch   (:)   = nan
     allocate(this%z0m_actual_patch (begp:endp)) ; this%z0m_actual_patch (:)   = nan
 
-  end subroutine init_frictionvel_type
+  end subroutine Init
 
 
 end module FrictionVelocityMod

@@ -12,7 +12,6 @@ module SolarAbsorbedType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_solarabs_type
 
   type, public :: solarabs_type
 
@@ -67,13 +66,17 @@ module SolarAbsorbedType
      real(r8), pointer :: ssre_fsr_nir_i_patch   (:)   ! snow-free patch reflected diffuse nir solar radiation (W/m**2)
      real(r8), pointer :: ssre_fsr_nir_d_ln_patch(:)   ! snow-free patch reflected direct beam nir solar radiation at local noon (W/m**2)
 
+   contains 
+
+    procedure, public :: Init
+
  end type solarabs_type
- type(solarabs_type), public :: solarabs_inst
+ type(solarabs_type), public, target :: solarabs_inst
 
 contains
 
 !------------------------------------------------------
-  subroutine init_solarabs_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM solar absorbed type  needed for calling CTSM routines                                 
@@ -84,7 +87,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(solarabs_type), intent(inout):: this
+    class(solarabs_type)          :: this
 
     !LOCAL
     integer :: begp, endp
@@ -141,6 +144,6 @@ contains
     allocate(this%fsds_nir_i_patch       (begp:endp))              ; this%fsds_nir_i_patch       (:)   = nan
     allocate(this%fsds_nir_d_ln_patch    (begp:endp))              ; this%fsds_nir_d_ln_patch    (:)   = nan
 
-  end subroutine init_solarabs_type
+  end subroutine Init
 
 end module SolarAbsorbedType

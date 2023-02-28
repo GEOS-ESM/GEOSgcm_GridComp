@@ -11,7 +11,6 @@ module WaterDiagnosticBulkType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_waterdiagnosticbulk_type
 
   !
   type, public :: waterdiagnosticbulk_type
@@ -58,13 +57,17 @@ module WaterDiagnosticBulkType
      real(r8), pointer :: qflx_prec_intr_patch   (:)   ! patch interception of precipitation (mm H2O/s)
      real(r8), pointer :: qflx_prec_grnd_col     (:)   ! col water onto ground including canopy runoff (mm H2O/s)
 
+   contains
+
+     procedure, public :: Init
+
 end type waterdiagnosticbulk_type
-type(waterdiagnosticbulk_type), public :: waterdiagnosticbulk_inst
+type(waterdiagnosticbulk_type), public, target :: waterdiagnosticbulk_inst
 
 contains
 
 !-----------------------------------------------
-  subroutine init_waterdiagnosticbulk_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM type for water diagnostic variables that just apply to bulk water and are needed for calling CTSM routines                 
@@ -75,7 +78,7 @@ contains
     implicit none
     !INPUT
     type(bounds_type), intent(in) :: bounds
-    type(waterdiagnosticbulk_type), intent(inout):: this
+    class(waterdiagnosticbulk_type) :: this
    
     !LOCAL
     integer :: begp, endp
@@ -129,6 +132,6 @@ contains
     allocate(this%qflx_prec_intr_patch   (begp:endp))                     ; this%qflx_prec_intr_patch   (:)   = nan
     allocate(this%qflx_prec_grnd_col     (begc:endc))                     ; this%qflx_prec_grnd_col     (:)   = nan
 
- end subroutine init_waterdiagnosticbulk_type
+ end subroutine Init
 
 end module WaterDiagnosticBulkType

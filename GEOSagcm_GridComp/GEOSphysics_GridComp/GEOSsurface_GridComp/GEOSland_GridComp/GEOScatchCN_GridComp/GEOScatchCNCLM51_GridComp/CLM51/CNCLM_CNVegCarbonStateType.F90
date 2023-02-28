@@ -16,7 +16,6 @@ module CNVegCarbonStateType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_cnveg_carbonstate_type
 
   type, public :: cnveg_carbonstate_type
 
@@ -200,10 +199,11 @@ module CNVegCarbonStateType
 
      procedure , public  :: Summary => Summary_carbonstate
      procedure , public  :: ZeroDWT
+     procedure , public  :: Init
 
  end type cnveg_carbonstate_type
 
-type(cnveg_carbonstate_type), public :: cnveg_carbonstate_inst
+type(cnveg_carbonstate_type), public, target :: cnveg_carbonstate_inst
 
   real(r8), public  :: spinup_factor_deadwood = 1.0_r8        ! Spinup factor used for this simulation
   real(r8), public  :: spinup_factor_AD       = 10.0_r8       ! Spinup factor used when in Accelerated Decomposition mode
@@ -222,7 +222,7 @@ type(cnveg_carbonstate_type), public :: cnveg_carbonstate_inst
 contains
 
 !----------------------------------------------
-  subroutine init_cnveg_carbonstate_type(bounds, nch, ityp, fveg, cncol, cnpft, this)
+  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)
 
 ! !DESCRIPTION:
 ! Initialize CTSM carbon states
@@ -239,7 +239,7 @@ contains
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
-    type(cnveg_carbonstate_type),               intent(inout):: this
+    class(cnveg_carbonstate_type)                             :: this
 
     ! LOCAL
     integer  :: begp, endp
@@ -526,7 +526,7 @@ contains
      end do ! nz
   end do ! nc                                                                                                         
 
-  end subroutine init_cnveg_carbonstate_type
+  end subroutine Init
 
   !-----------------------------------------------------------------------
   subroutine Summary_carbonstate(this, bounds, num_allc, filter_allc, &

@@ -17,7 +17,6 @@ module CNProductsMod
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_cn_products_type
 
   ! !PUBLIC TYPES:
   type, public :: cn_products_type
@@ -65,10 +64,10 @@ module CNProductsMod
      procedure, private :: PartitionWoodFluxes
      procedure, private :: PartitionGrainFluxes
      procedure, private :: ComputeSummaryVars
-
+     procedure, public  :: Init
  
   end type cn_products_type
-  type(cn_products_type), public :: cn_products_inst
+  type(cn_products_type), public, target :: cn_products_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -76,7 +75,7 @@ module CNProductsMod
 contains
 
 !--------------------------------------------------------------
-  subroutine init_cn_products_type(bounds, nch, cncol, species,  this, rc)
+  subroutine Init(this, bounds, nch, cncol, species, rc)
 
   ! !DESCRIPTION:
   ! Initialize CTSM wood products type  needed for calling CTSM routines                                 
@@ -90,7 +89,7 @@ contains
     integer,                              intent(in) :: nch       ! number of Catchment tiles
     real, dimension(nch,num_zon,var_col), intent(in) :: cncol     ! column-level restart variable array 
     character(*),                         intent(in) :: species   ! C or N
-    type(cn_products_type),               intent(inout):: this
+    class(cn_products_type)                          :: this
     integer, optional,                    intent(out) :: rc
 
     ! LOCAL
@@ -150,7 +149,7 @@ contains
 
        end do ! nz
     end do ! nc
-  end subroutine init_cn_products_type
+  end subroutine Init
 
   !-----------------------------------------------------------------------
   subroutine UpdateProducts(this, bounds, &

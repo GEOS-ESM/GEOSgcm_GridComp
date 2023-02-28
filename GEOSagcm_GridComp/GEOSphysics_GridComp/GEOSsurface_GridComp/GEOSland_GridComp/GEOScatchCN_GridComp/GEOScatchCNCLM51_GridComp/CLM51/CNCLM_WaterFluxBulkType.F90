@@ -45,13 +45,17 @@ module WaterFluxBulkType
      ! ET accumulation
      real(r8), pointer :: AnnEt                    (:)   ! Annual average ET flux mmH20/s      
 
+   contains
+
+     procedure , public :: Init
+
   end type waterfluxbulk_type
   type(waterfluxbulk_type), public, target, save :: waterfluxbulk_inst
 
 contains
 
 !---------------------------------------------
-  subroutine init_waterfluxbulk_type(bounds, this)
+  subroutine Init(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM type for water flux bulk variables that just apply to bulk water and are needed for calling CTSM routines                 
@@ -62,7 +66,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    type(waterfluxbulk_type), intent(inout):: this
+    class(waterfluxbulk_type)     :: this
 
     !LOCAL
     integer :: begp, endp
@@ -103,5 +107,5 @@ contains
     allocate(this%qflx_deficit_col         (begc:endc))              ; this%qflx_deficit_col         (:)   = nan
     allocate(this%AnnET                    (begc:endc))              ; this%AnnET                    (:)   = nan
 
-  end subroutine init_waterfluxbulk_type
+  end subroutine Init
 end module WaterFluxBulkType

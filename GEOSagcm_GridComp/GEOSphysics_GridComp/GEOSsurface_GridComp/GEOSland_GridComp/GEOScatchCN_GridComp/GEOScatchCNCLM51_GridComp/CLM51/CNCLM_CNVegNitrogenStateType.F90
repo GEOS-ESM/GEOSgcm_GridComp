@@ -19,7 +19,6 @@ module CNVegNitrogenStateType
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: init_cnveg_nitrogenstate_type
 
  !
   type, public :: cnveg_nitrogenstate_type
@@ -208,14 +207,15 @@ module CNVegNitrogenStateType
 
      procedure , public  :: Summary => Summary_nitrogenstate
      procedure , public  :: ZeroDWT
+     procedure , public  :: Init
 
 end type cnveg_nitrogenstate_type
-type(cnveg_nitrogenstate_type), public :: cnveg_nitrogenstate_inst
+type(cnveg_nitrogenstate_type), public, target :: cnveg_nitrogenstate_inst
 
 contains
 
 !-------------------------------------------------------------
-  subroutine init_cnveg_nitrogenstate_type(bounds, nch, ityp, fveg, cncol, cnpft, this)
+  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)
 
 ! !DESCRIPTION:
 ! Initialize CTSM nitrogen states
@@ -232,7 +232,7 @@ contains
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
-    type(cnveg_nitrogenstate_type),               intent(inout):: this
+    class(cnveg_nitrogenstate_type)                           :: this
 
 
   ! LOCAL:
@@ -481,7 +481,7 @@ contains
        end do !nz                                                                                               
     end do ! nc  
 
-  end subroutine init_cnveg_nitrogenstate_type
+  end subroutine Init
 
   !-----------------------------------------------------------------------
   subroutine Summary_nitrogenstate(this, bounds, num_allc, filter_allc, &
