@@ -1474,16 +1474,16 @@ contains
         end if
 
         ! calculate ISI, BUI, FWI and DSR
-        isi(i)  = initial_spread_index(ffmc(i), wind(i))
+        isi(i) = initial_spread_index(ffmc(i), wind(i))
 
-        if (snow_depth(i) > 1e-3) then  
-            isi(i) = max(0.0, (1 - f_snow(i))) * isi(i)
+        if (snow_depth(i) > 1e-3) then
+            isi(i) = (1 - f_snow(i)) * isi(i)
         end if
 
-        bui(i)  = buildup_index(dmc(i), dc(i))
+        bui(i) = buildup_index(dmc(i), dc(i))
 
-        fwi(i)  = fire_weather_index(isi(i), bui(i))
-        dsr(i)  = daily_severity_rating(fwi(i))
+        fwi(i) = fire_weather_index(isi(i), bui(i))
+        dsr(i) = daily_severity_rating(fwi(i))
     end do
 
   end subroutine cffwi_daily_driver
@@ -1532,16 +1532,16 @@ contains
                                            swdown(i), NOMINAL_FINE_FUEL_LOAD, time_step)
         
         ! calculate ISI, BUI, FWI and DSR
-        isi(i)  = initial_spread_index(ffmc(i), wind(i))
+        isi(i) = initial_spread_index(ffmc(i), wind(i))
 
-        if (snow_depth(1) > 1e-3) then  
-            isi(i) = max(0.0, (1 - f_snow(i))) * isi(i)
+        if (snow_depth(1) > 1e-3) then
+            isi(i) = (1 - f_snow(i)) * isi(i)
         end if
 
-        bui(i)  = buildup_index(dmc(i), dc(i))
+        bui(i) = buildup_index(dmc(i), dc(i))
 
-        fwi(i)  = fire_weather_index(isi(i), bui(i))
-        dsr(i)  = daily_severity_rating(fwi(i))
+        fwi(i) = fire_weather_index(isi(i), bui(i))
+        dsr(i) = daily_severity_rating(fwi(i))
     end do
 
   end subroutine cffwi_hourly_driver
