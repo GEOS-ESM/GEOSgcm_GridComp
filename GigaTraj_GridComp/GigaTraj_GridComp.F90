@@ -27,6 +27,7 @@ module GigaTraj_GridCompMod
     type(horde) :: parcels
     type(c_ptr) :: metSrc
     type(ESMF_Time) :: startTime
+    character(len=ESMF_MAXSTR), allocatable :: ExtraFieldNames(:)
   end type
 
   type GigatrajInternalWrap
@@ -258,16 +259,26 @@ contains
    type(ESMF_Clock),    intent(inout) :: CLOCK  
    integer, optional,   intent(  out) :: RC     
 
-   integer :: status
+   integer :: i, status, k, FC
    character(len=ESMF_MAXSTR) :: IAm 
-   type (ESMF_State)          :: INTERNAL
+   type (ESMF_State)          :: INTERNAL, leaf_export
    type (GigaTrajInternal), pointer :: GigaTrajInternalPtr 
    type (GigatrajInternalWrap)   :: wrap
    character(len=ESMF_MAXSTR)    :: GigaRstFile
+   character(len=ESMF_MAXSTR)    :: other_fields
+   character(len=ESMF_MAXSTR)          :: NAME
+   type(ESMF_Field) :: tmp_field
    type (ESMF_TIME) :: CurrentTime
    character(len=20), target :: ctime 
-   type (MAPL_MetaComp),  pointer  :: MAPL
+   type (MAPL_MetaComp),  pointer  :: MPL
    logical, save :: init = .false.
+   real, dimension(:,:,:) , pointer :: ptr3d
+   type(Netcdf4_fileformatter) :: formatter
+   type(FileMetadata) :: meta
+   character(len=ESMF_MAXSTR) :: parcels_file
+   character(len=:), allocatable :: fieldname
+   character(len=20) :: diffusions(4)
+   type (ESMF_FieldBundle)             :: TRI
 
    Iam = "getInitVars"
 
@@ -275,18 +286,18 @@ contains
      RETURN_(ESMF_SUCCESS)
    endif
 
-   call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+   call MAPL_GetObjectFromGC ( GC, MPL, _RC)
 
    call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
    call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime) 
    ctime(20:20) = c_null_char
 
-   call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+   call MAPL_Get(MPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
 
    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
    GigaTrajInternalPtr => wrap%ptr
 
-   call MAPL_GetResource(MAPL, GigaRstFile, 'GIGATRAJ_INTERNAL_RESTART_FILE:', default="NONE", RC=STATUS )
+   call MAPL_GetResource(MPL, GigaRstFile, 'GIGATRAJ_INTERNAL_RESTART_FILE:', default="NONE", RC=STATUS )
 
    if (trim(GigaRstFile) == 'NONE') then
       ! without restart file, get value from import
@@ -295,9 +306,177 @@ contains
       call init_metsrc_field0(GC, INTERNAL, ctime, 'PL',  _RC)
    endif
 
+   call MAPL_GetResource(MPL, other_fields, "GIGATRAJ_EXTRA_FIELDS:", default='NONE', _RC)
+   if (other_fields /= 'NONE') then
+
+      call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC)
+      if (MAPL_AM_I_ROOT()) then
+        call formatter%open(trim(parcels_file), pFIO_WRITE, _RC)
+        meta = formatter%read(_RC)
+      endif
+
+      call getExtraFieldNames(other_fields,GigaTrajInternalPtr%ExtraFieldNames)
+
+      do i = 1, size(GigaTrajInternalPtr%ExtraFieldNames)
+        
+         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bc') /=0 ) then
+           call MAPL_ExportStateGet([import], 'CA.bc', leaf_export, _RC)
+           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
+           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
+           if( .not. associated(ptr3d)) then
+              call MAPL_AllocateCoupling(tmp_field, _RC)
+           endif
+           call ESMF_StateAddReplace(import, [tmp_field], _RC)
+
+           if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'phobic') /=0 .or.  &
+               index(GigaTrajInternalPtr%ExtraFieldNames(i), 'philic') /=0 ) then
+              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))
+              call create_extra_var(fieldname)
+              cycle
+           endif
+           do k = 1, size(ptr3d, 3)
+              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))//'00'//i_to_string(k)
+              call create_extra_var(fieldname)
+           enddo
+           cycle
+         endif
+         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.oc') /=0) then
+           call MAPL_ExportStateGet([import], 'CA.oc', leaf_export, _RC)
+           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
+           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
+           if( .not. associated(ptr3d)) then
+              call MAPL_AllocateCoupling(tmp_field, _RC)
+           endif
+           call ESMF_StateAddReplace(import, [tmp_field], _RC)
+           if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'phobic') /=0 .or.  &
+               index(GigaTrajInternalPtr%ExtraFieldNames(i), 'philic') /=0 ) then
+              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))
+              call create_extra_var(fieldname)
+              cycle
+           endif
+           do k = 1, size(ptr3d, 3)
+              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))//'00'//i_to_string(k)
+              call create_extra_var(fieldname)
+           enddo
+           cycle
+         endif
+      enddo
+   endif
+
+   if (MAPL_AM_I_Root()) then
+      call formatter%close()
+   endif
+
    init = .true.
 
    RETURN_(ESMF_SUCCESS)
+   contains
+     subroutine getExtraFieldNames(other_fields, Fieldnames)
+       character(*), intent(in) :: other_fields
+       character(len=ESMF_MAXSTR), allocatable, intent(out) :: Fieldnames(:)
+       integer :: num_field, i, k, endl, num_
+       num_field = 1
+       k = 1
+       do
+         i = index(other_fields(k:),';')
+         if (i == 0) exit
+         k = k+i
+         num_field = num_field+1
+       enddo
+
+       allocate(Fieldnames(num_field))
+       k    = 1
+       num_ = 1
+       do
+         i = index(other_fields(k:),';')
+         if (i == 0) then
+            endl = len(other_fields)
+         else
+            endl = (k-1)+i-1
+         endif
+         FieldNames(num_) = trim(adjustl(other_fields(k:endl)))
+         num_ = num_ + 1
+         k = endl + 2
+         if (num_ > num_field) exit
+       enddo
+     end subroutine getExtraFieldNames
+
+     ! if the field name is not in original file
+     subroutine create_extra_var(fieldname)
+       character(*), intent(in) :: fieldname
+       type(Variable) :: var
+       character(len=:), allocatable :: long_name, units, var_name
+       real, allocatable :: tmp(:)
+       select case (fieldname)
+       case('TH')
+         var_name = 'theta'
+         long_name = "air_potential_temperature"
+         units = "K"
+       case('T')         
+         var_name = 't' 
+         long_name = "air_temperature"
+         units = "K"
+       case('PALT')            
+         var_name = 'palt'
+         long_name = "pressure_altitude"
+         units = "km"
+       case default
+         var_name = trim(fieldname)
+         long_name = "unkown"
+         units = "1"
+         !print*, "Not yet define attribute of "//var_name
+       end select
+
+       if (index(var_name, 'CA.bcSD') /=0) then
+          long_name = "Carbonaceous_Aerosol_Sedimentation_bin" 
+          units =  "kg m-2 s-1"
+       endif
+       if (index(var_name, 'CA.bcSV') /=0) then
+          long_name = "Carbonaceous_Aerosol_Convective_Scavenging_bin" 
+          units =  "kg m-2 s-1"
+       endif
+       if (index(var_name, 'CA.bcDP') /=0) then
+          long_name = "Carbonaceous_Aerosol_Dry_Deposition_bin" 
+          units =  "kg m-2 s-1"
+       endif
+       if (index(var_name, 'CA.bcWT') /=0) then
+          long_name = "Carbonaceous_Aerosol_Wet_Deposition_bin" 
+          units =  "kg m-2 s-1"
+       endif
+
+       if (index(var_name, 'CA.ocSD') /=0) then
+          long_name = "Carbonaceous_Aerosol_Sedimentation_bin" 
+          units =  "kg m-2 s-1"
+       endif
+       if (index(var_name, 'CA.ocSV') /=0) then
+          long_name = "Carbonaceous_Aerosol_Convective_Scavenging_bin" 
+          units =  "kg m-2 s-1"
+       endif
+       if (index(var_name, 'CA.ocDP') /=0) then
+          long_name = "Carbonaceous_Aerosol_Dry_Deposition_bin" 
+          units =  "kg m-2 s-1"
+       endif
+       if (index(var_name, 'CA.ocWT') /=0) then
+          long_name = "Carbonaceous_Aerosol_Wet_Deposition_bin" 
+          units =  "kg m-2 s-1"
+       endif
+       if (index(var_name, 'phobic') /=0 .or. index(var_name, 'philic')/=0) then
+          long_name = "Carbonaceous_Aerosol_Mixing_Ratio" 
+          units =  "kg kg-1"
+       endif
+
+       if( meta%has_variable(var_name)) return
+       if (MAPL_AM_I_Root()) then
+         var = variable(type=pFIO_REAL32, dimensions='id,time')
+         call var%add_attribute('long_name', long_name)
+         call var%add_attribute('units', units)
+         call var%add_attribute('positive', "up")
+         call var%add_attribute('_FillValue', -999.99)
+         call var%add_attribute('missing_value', -999.99)
+         call meta%add_variable(var_name, var)
+         call formatter%add_variable(meta, var_name)
+       endif
+     end subroutine create_extra_var
  end subroutine GetInitVars
 
  subroutine Init_metsrc_field0 (GC, state, ctime, PL, RC )
@@ -413,6 +592,7 @@ contains
     type(MAPL_MetaComp),pointer :: MPL  
     character(len=ESMF_MAXSTR) :: parcels_file
 
+    !RETURN_(ESMF_SUCCESS)
     call ESMF_VMGetCurrent(vm, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
@@ -510,7 +690,6 @@ contains
 
     call write_parcels(GC, import, clock, currentTime, _RC)
 
-
     RETURN_(ESMF_SUCCESS)
 
   end subroutine Run
@@ -553,18 +732,19 @@ contains
     integer, optional,   intent(  out) :: RC
 
     character(len=ESMF_MAXSTR)              :: IAm
-    integer :: counts(3), dims(3), k
+    integer :: counts(3), k, count3
     integer :: status
     type(ESMF_Field)   :: halo_field
     type(ESMF_RouteHandle) :: rh
     real, dimension(:,:,:), pointer  :: with_halo
 
     Iam = "Gigatraj ESMF Halo"
-    call MAPL_GridGet(grid, localCellCountPerDim=counts, &
-                      globalCellCountPerDim=DIMS, _RC)
+    call MAPL_GridGet(grid, localCellCountPerDim=counts, _RC)
+
+    count3 = size(field,3) ! may be nbins
 
     halo_field = ESMF_FieldCreate(grid, ESMF_TYPEKIND_R4, name='halo_field',  &
-                                ungriddedLBound=[1],ungriddedUBound=[counts(3)], &
+                                ungriddedLBound=[1],ungriddedUBound=[count3], &
                                 totalLWidth=[1,1],totalUWidth=[1,1])
     call ESMF_FieldHaloStore(halo_field, rh, _RC)
 
@@ -841,8 +1021,10 @@ contains
     character(len=:), allocatable :: Iam
     type (ESMF_VM)  :: vm
     type(Netcdf4_fileformatter) :: formatter
-    integer :: comm, my_rank, total_num, i, status, last_time, ierror
+    integer :: comm, my_rank, total_num, i, k,status, last_time, ierror, count3
     real, allocatable :: lats0(:), lons0(:), zs0(:), ids0_r(:), values(:), values0(:)
+    real,target, allocatable ::  values_2d(:,:)
+    real,pointer ::  field(:,:,:)
     integer, allocatable :: ids0(:)
     type(ESMF_Alarm)  :: GigaTrajOutAlarm
     type(FileMetadata) :: meta
@@ -850,7 +1032,8 @@ contains
     type(ESMF_TimeInterval) :: tint
     type(MAPL_MetaComp),pointer  :: MPL
     character(len=ESMF_MAXSTR)   :: parcels_file, other_fields
-    character(len=:), allocatable:: fieldname, fields, var_name
+    character(len=ESMF_MAXSTR), allocatable   :: names(:)
+    character(len=:), allocatable:: var_name, var_
     
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)      :: wrap
@@ -899,21 +1082,11 @@ contains
      endif
 
      ! extra fields
-     call MAPL_GetResource(MPL, other_fields, "GIGATRAJ_EXTRA_FIELDS:", default='NONE', _RC)
-     fields = trim(adjustl(other_fields))
-     if (fields /='NONE') then
+     if (allocated(GigaTrajInternalPtr%ExtraFieldNames)) then
        call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime)
        ctime(20:20) = c_null_char
-       do while ( .true.)
-         i = index(fields, ';')
-         if (i == 0) then
-           fieldname = trim(adjustl(fields))
-         else
-           fieldname = fields(1:i-1)
-           fields    = trim(adjustl(fields(i+1:)))
-         endif
-         if (fieldname == '') exit
-         select case (fieldname)
+       do k = 1, size(GigaTrajInternalPtr%ExtraFieldNames)
+         select case (trim(GigaTrajInternalPtr%ExtraFieldNames(k)))
          case('TH')
             var_name = 'theta'
          case('T')
@@ -921,24 +1094,51 @@ contains
          case('PALT')
             var_name = 'palt'
          case default
-            var_name = fieldname
+            var_name = trim(GigaTrajInternalPtr%ExtraFieldNames(k))
          end select
          
-         allocate(values(GigaTrajInternalPtr%parcels%num_parcels))
-         call get_metsrc_data (GC, state, ctime, fieldname, values, RC )
-         call gather_onefield(total_num, values0, comm, values, GigaTrajInternalPtr%parcels%num_parcels)
+         if ( index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcDP') /= 0 .or.   &
+              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocDP') /= 0 .or.   &
+              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcWT') /= 0 .or.   &
+              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocWT') /= 0 .or.   &
+              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcSD') /= 0 .or.   &
+              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocSD') /= 0 .or.   &
+              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcSV') /= 0 .or.   &
+              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocSV') /= 0 ) then
 
-         if (my_rank == 0) then
-           values0 = values0(ids0(:)+1)
-           if ( meta%has_variable(var_name)) then
-              call formatter%put_var( var_name,   values0,   start=[1, last_time+1], _RC)
-           else
-              print*, "Please provide "//var_name // " in the file "//trim(parcels_file)
-           endif
+            call MAPL_GetPointer(state, field,  GigaTrajInternalPtr%ExtraFieldNames(k) , _RC)
+            count3 = size(field,3)
+            allocate(values_2d(GigaTrajInternalPtr%parcels%num_parcels, count3))
+            call get_metsrc_data2d (GC, state, ctime, GigaTrajInternalPtr%ExtraFieldNames(k), values_2d, RC )
+            do i = 1, size(values_2d,2)
+               call gather_onefield(total_num, values0, comm, values_2d(:,i), GigaTrajInternalPtr%parcels%num_parcels)
+
+               if (my_rank == 0) then
+                 values0 = values0(ids0(:)+1)
+                 var_ = var_name //'00'//i_to_string(i)
+                 if ( meta%has_variable(var_)) then
+                    call formatter%put_var( var_,   values0,   start=[1, last_time+1], _RC)
+                 else
+                    print*, "Please provide "//var_ // " in the file "//trim(parcels_file)
+                 endif
+               endif
+            enddo
+            deallocate(values_2d)
+         else
+            allocate(values(GigaTrajInternalPtr%parcels%num_parcels))
+            call get_metsrc_data (GC, state, ctime, trim(GigaTrajInternalPtr%ExtraFieldNames(k)), values, RC )
+            call gather_onefield(total_num, values0, comm, values, GigaTrajInternalPtr%parcels%num_parcels)
+
+            if (my_rank == 0) then
+              values0 = values0(ids0(:)+1)
+              if ( meta%has_variable(var_name)) then
+                call formatter%put_var( var_name,   values0,   start=[1, last_time+1], _RC)
+              else
+                print*, "Please provide "//var_name // " in the file "//trim(parcels_file)
+              endif
+            endif
+            deallocate(values)
          endif
-
-         deallocate(values)
-         if (i == 0) exit
        enddo
      endif
 
@@ -947,40 +1147,6 @@ contains
      endif
      RETURN_(ESMF_SUCCESS)
      contains
-        subroutine create_var(fieldname)
-          character(*), intent(in) :: fieldname
-          type(Variable) :: var
-          character(len=:), allocatable :: long_name, units, var_name
-
-          select case (fieldname)
-          case('TH')
-            var_name = 'theta'
-            long_name = "air_potential_temperature"
-            units = "K"
-          case('T')
-            var_name = 't'
-            long_name = "air_temperature"
-            units = "K"
-          case('PALT')
-            var_name = 'palt'
-            long_name = "pressure_altitude"
-            units = "km"
-          case default
-            var_name = fieldname
-            long_name = "unkown"
-            units = "1"
-            print*, "Not yet define attribute of "//var_name         
-          end select
-
-          if( meta%has_variable(var_name)) return 
-          var = variable(type=pFIO_REAL32, dimensions='id,time')
-          call var%add_attribute('long_name', long_name)
-          call var%add_attribute('units', units)
-          call var%add_attribute('positive', "up")
-          call var%add_attribute('_FillValue', -999.99)
-          call var%add_attribute('missing_value', -999.99)
-          call meta%add_variable(var_name, var)
-        end subroutine create_var
 
   end subroutine write_parcels
 
@@ -1150,18 +1316,20 @@ contains
     real, dimension(:,:,:), pointer     :: field
     real, dimension(:,:,:), allocatable :: field_latlon
     real, dimension(:,:,:), allocatable, target  :: haloField
-    integer :: counts(3), dims(3), d1,d2,km
+    integer :: counts(3), dims(3), d1,d2,km, count3
     character(len=:), target, allocatable :: field_
 
     Iam = "get_metsrc_data"
 
     call MAPL_GetPointer(state, field, fieldname, _RC)
+    count3 = size(field,3)
+
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaInternalPtr => wrap%ptr
     call MAPL_GridGet(GigaInternalPtr%LatLonGrid, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
 
-    allocate(field_latlon(counts(1),counts(2),counts(3)))
-    allocate(haloField(counts(1)+2, counts(2)+2,counts(3)), source = 0.0)
+    allocate(field_latlon(counts(1),counts(2),count3))
+    allocate(haloField(counts(1)+2, counts(2)+2,count3), source = 0.0)
 
     call GigaInternalPtr%cube2latlon%regrid(field, Field_latlon, _RC)
 
@@ -1169,16 +1337,68 @@ contains
 
     field_ = trim(fieldname)//c_null_char
     call setData( GigaInternalPtr%metSrc, c_loc(ctime), c_loc(field_), c_loc(haloField))
-
     call getData(GigaInternalPtr%metSrc,  c_loc(ctime),  c_loc(field_),  &
-                 GigaInternalPtr%parcels%num_parcels,  &
-                 c_loc(GigaInternalPtr%parcels%lons),         &
-                 c_loc(GigaInternalPtr%parcels%lats),         &
-                 c_loc(GigaInternalPtr%parcels%zs),           &
-                 c_loc(values))
+              GigaInternalPtr%parcels%num_parcels,  &
+              c_loc(GigaInternalPtr%parcels%lons),         &
+              c_loc(GigaInternalPtr%parcels%lats),         &
+              c_loc(GigaInternalPtr%parcels%zs),           &
+              c_loc(values))
+
     deallocate(field_latlon, haloField)
     RETURN_(ESMF_SUCCESS)
 
   end subroutine get_metsrc_data
 
+  subroutine get_metsrc_data2d (GC, state, ctime, fieldname, values, RC )
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_State),    intent(inout) :: state
+    character(*), target,   intent(in) :: ctime
+    character(*), intent(in) :: fieldname
+    real, target, intent(inout) :: values(:,:)
+    integer, optional,     intent(out) :: RC     ! Error code
+
+    character(len=ESMF_MAXSTR)    :: IAm
+    integer                       :: STATUS
+
+    type(GigaTrajInternal), pointer :: GigaInternalPtr
+    type (GigatrajInternalWrap)     :: wrap
+    real, dimension(:,:,:), pointer     :: field
+    real, dimension(:,:,:), allocatable :: field_latlon
+    real, dimension(:,:,:), allocatable, target  :: haloField
+    integer :: counts(3), i, count3
+    character(len=:), target, allocatable :: field_
+
+    Iam = "get_metsrc_data"
+
+    call MAPL_GetPointer(state, field, fieldname, _RC)
+    count3 = size(field,3)
+
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    GigaInternalPtr => wrap%ptr
+    call MAPL_GridGet(GigaInternalPtr%LatLonGrid, localCellCountPerDim=counts, _RC)
+
+    allocate(field_latlon(counts(1),counts(2),count3))
+    allocate(haloField(counts(1)+2, counts(2)+2,count3), source = 0.0)
+
+    call GigaInternalPtr%cube2latlon%regrid(field, Field_latlon, _RC)
+
+    call esmf_halo(GigaInternalPtr%LatLonGrid, field_Latlon, haloField, _RC)
+
+    field_ = trim(fieldname)//'_2D'//c_null_char
+
+    do i = 1,count3
+
+      call setData( GigaInternalPtr%metSrc, c_loc(ctime), c_loc(field_), c_loc(haloField(1,1,i)))
+      call getData2d(GigaInternalPtr%metSrc,  c_loc(ctime),  c_loc(field_),  &
+                 GigaInternalPtr%parcels%num_parcels,  &
+                 c_loc(GigaInternalPtr%parcels%lons),         &
+                 c_loc(GigaInternalPtr%parcels%lats),         &
+                 c_loc(values(1,i)))
+
+    enddo
+    deallocate(field_latlon, haloField)
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine get_metsrc_data2d
+ 
 end module GigaTraj_GridCompMod

@@ -11,6 +11,7 @@ module GEOS_Giga_InterOpMod
    public :: rk4a_advance
    public :: setData
    public :: getData
+   public :: getData2d
  
    public :: test_Field3D
    public :: test_dataflow
@@ -74,6 +75,11 @@ module GEOS_Giga_InterOpMod
        type(c_ptr), intent(in), value :: metSrc_ptr, ctime, quantity_ptr, lons_ptr, lats_ptr, levs_ptr, values_ptr
      end subroutine getData
 
+     subroutine getData2d ( metSrc_ptr, ctime, quantity_ptr, n, lons_ptr, lats_ptr, values_ptr) bind(C, name="getData2d")
+       import :: c_ptr, c_int
+       integer(c_int), intent(in), value :: n
+       type(c_ptr), intent(in), value :: metSrc_ptr, ctime, quantity_ptr, lons_ptr, lats_ptr, values_ptr
+     end subroutine getData2d
    end interface
 
 contains
