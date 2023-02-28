@@ -134,7 +134,7 @@ type(temperature_type), public, target :: temperature_inst
 ! !ARGUMENTS:                                                                                                           
     implicit none
     type(bounds_type),      intent(in) :: bounds
-    type(temperature_type), intent(inout):: this
+    class(temperature_type)            :: this
 
     ! LOCAL
     integer :: begp, endp
