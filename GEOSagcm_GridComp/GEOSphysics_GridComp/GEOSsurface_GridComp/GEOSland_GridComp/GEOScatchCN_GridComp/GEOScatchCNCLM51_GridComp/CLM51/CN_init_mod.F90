@@ -115,7 +115,7 @@ module CN_initMod
 !  !type(patch_type)                        :: patch
 !  !type(column_type)                       :: col
 !  !type(landunit_type)                     :: lun
-!  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
+  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
 !  type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
 !  type(atm2lnd_type)                      :: atm2lnd_inst
 !  type(temperature_type)                  :: temperature_inst
@@ -202,7 +202,7 @@ module CN_initMod
 
     ! initialize states and fluxes
 
-    call cnveg_nitrogenstate_inst%Init  (bounds, nch, ityp, fveg, cncol, cnpft) 
+    call cnveg_nitrogenstate_inst%Init  (bounds, nch, ityp, fveg, cncol, cnpft)
 
     call cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
 
