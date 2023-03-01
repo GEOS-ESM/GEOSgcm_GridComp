@@ -112,9 +112,9 @@ module CN_initMod
   !LOCAL
 
   type(bounds_type)                       :: bounds
-  type(patch_type)                        :: patch
-  type(column_type)                       :: col
-  type(landunit_type)                     :: lun
+!  type(patch_type)                        :: patch
+!  type(column_type)                       :: col
+!  type(landunit_type)                     :: lun
   type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
   type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
   type(atm2lnd_type)                      :: atm2lnd_inst
@@ -127,7 +127,7 @@ module CN_initMod
   type(solarabs_type)                     :: solarabs_inst
   type(surfalb_type)                      :: surfalb_inst
   type(ozone_base_type)                   :: ozone_inst
-  type(pftcon_type)                       :: pftcon
+!  type(pftcon_type)                       :: pftcon
   type(waterflux_type)                    :: waterflux_inst
   type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
   type(soilbiogeochem_nitrogenstate_type) :: soilbiogeochem_nitrogenstate_inst
@@ -149,6 +149,7 @@ module CN_initMod
   type(waterstate_type)                   :: waterstate_inst
   type(frictionvel_type)                  :: frictionvel_inst
    type(cn_vegetation_type)               :: bgc_vegetation_inst
+  type(waterfluxbulk_type)                :: waterfluxbulk_inst
 
   character(300)     :: paramfile
   character(300)     :: NLFilename
