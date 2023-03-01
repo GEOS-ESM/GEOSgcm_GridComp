@@ -1,4 +1,4 @@
-esma_set_this(OVERRIDE raster)
+esma_set_this()
 
 set (srcs
 LDAS_DateTimeMod.F90
