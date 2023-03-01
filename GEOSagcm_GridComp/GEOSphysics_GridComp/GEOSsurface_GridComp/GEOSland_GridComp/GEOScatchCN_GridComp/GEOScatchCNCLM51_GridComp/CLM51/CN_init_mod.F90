@@ -96,7 +96,6 @@ module CN_initMod
   type(temperature_type), public                  :: temperature_inst
   type(soilstate_type), public                    :: soilstate_inst
   type(waterdiagnosticbulk_type), public          :: waterdiagnosticbulk_inst
-  type(wateratm2lndbulk_type), public              :: wateratm2lndbulk_inst
   type(wateratm2lnd_type), public                  :: wateratm2lnd_inst
   type(canopystate_type), public                   :: canopystate_inst
   type(solarabs_type), public                      :: solarabs_inst
@@ -118,7 +117,6 @@ module CN_initMod
   type(ch4_type), public                           :: ch4_inst
   type(crop_type), public                          :: crop_inst
   type(dgvs_type), public                          :: dgvs_inst
-  type(saturated_excess_runoff_type), public       :: saturated_excess_runoff_inst
   type(energyflux_type), public                    :: energyflux_inst
   type(waterstatebulk_type), public                :: waterstatebulk_inst
   type(waterstate_type), public                    :: waterstate_inst
