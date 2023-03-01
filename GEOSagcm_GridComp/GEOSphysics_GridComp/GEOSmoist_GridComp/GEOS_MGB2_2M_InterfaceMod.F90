@@ -372,19 +372,19 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, MAX_EXP,        'MAX_EXP:',        DEFAULT= 1.0,    __RC__) !Exponent of the relation CFA=CFV^n
     call MAPL_GetResource(MAPL, USE_AV_V,       'USE_AV_V:',       DEFAULT= 1.0,    __RC__) !Set to > 0 to use an average velocity for activation
     call MAPL_GetResource(MAPL, AUTSC,          'AUT_SCALE:',      DEFAULT= 1.0,    __RC__) !scale factor for critical size for drizzle
-    call MAPL_GetResource(MAPL, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 1.0,    __RC__) !Ice autoconversion time scale
+    call MAPL_GetResource(MAPL, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 360.,    __RC__) !Ice autoconversion time scale
     call MAPL_GetResource(MAPL, TMAXLL,         'TMAXLL:',         DEFAULT= 250.0,  __RC__) !Liquid clouds min T
     call MAPL_GetResource(MAPL, CCN_PARAM,      'CCNPARAM:',       DEFAULT= 2.0,    __RC__) !CCN activation param
     call MAPL_GetResource(MAPL, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    __RC__) !IN param
     call MAPL_GetResource(MAPL, Immersion_param,'ImmersionPARAM:', DEFAULT= 6.0,    __RC__) !Immersion param
     call MAPL_GetResource(MAPL, ACC_ENH,        'ACC_ENH:',        DEFAULT= 1.0,    __RC__) !accretion rain-liquid scaling for MG2
-    call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 1.0,    __RC__) !accretion snow-ice scaling for MG2
+    call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 0.05,    __RC__) !accretion snow-ice scaling for MG2
     call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    __RC__) !Fraction of dust within droplets for immersion freezing
     call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.05,   __RC__) !Fraction of soot within droplets for immersion freezing        
     call MAPL_GetResource(MAPL, SIGMA_NUC,      'SIGMA_NUC:',      DEFAULT= 1.0,    __RC__) !Widht of the in-cloud distribution of relative humidity in cirrus
     call MAPL_GetResource(MAPL, MIN_ALH,        'MIN_ALH:',        DEFAULT= 5.0,    __RC__) !scale factor for vertical velocity in sttratocumulus
     call MAPL_GetResource(MAPL, SCWST,          'SCWST:',          DEFAULT= 3.0,    __RC__) !scale factor for vertical velocity in sttratocumulus
-    call MAPL_GetResource(MAPL, MINCDNC,        'MINCDNC:',        DEFAULT= 0.0,    __RC__) !min nucleated droplet conc. cm-3
+    call MAPL_GetResource(MAPL, MINCDNC,        'MINCDNC:',        DEFAULT= 25.0,    __RC__) !min nucleated droplet conc. cm-3
     call MAPL_GetResource(MAPL, TMAXCFCORR,     'TMAXCFCORR:',     DEFAULT= 285.0,  __RC__) !Minimum T for CF correction
     call MAPL_GetResource(MAPL, MTIME,          'MTIME:',          DEFAULT= -1.0,   __RC__) !Mixing time scale for aerosol within the cloud. Default is time step
     call MAPL_GetResource(MAPL, SWCIRRUS,       'SWCIRRUS:',       DEFAULT= 3.0,    __RC__) !Tunes vertical velocity in cirrus
@@ -397,14 +397,14 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, USE_WSUB_CLIM,  'USE_WSUB_CLIM:',   DEFAULT= 1.0,    __RC__) !Use Wsub climatology                    
     call MAPL_GetResource( MAPL, RRTMG_IRRAD ,  'USE_RRTMG_IRRAD:',DEFAULT=1.0,     __RC__)
     call MAPL_GetResource( MAPL, RRTMG_SORAD ,  'USE_RRTMG_SORAD:',DEFAULT=1.0,     __RC__)      
-    call MAPL_GetResource(MAPL, CNV_NUMLIQ_SC,   'CNV_NUMLIQ_SC:', DEFAULT= 1.0 ,RC=STATUS) !scaling for conv number
+    call MAPL_GetResource(MAPL, CNV_NUMLIQ_SC,   'CNV_NUMLIQ_SC:', DEFAULT= 0.02 ,RC=STATUS) !scaling for conv number
     call MAPL_GetResource(MAPL, CNV_NUMICE_SC,   'CNV_NUMICE_SC:', DEFAULT= 1.0 ,RC=STATUS)     
-    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=350.0e-6, __RC__ )    
+    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=250.0e-6, __RC__ )    
     Dcsr8 = DCS
     call MAPL_GetResource(MAPL, QCVAR_,   'QCVAR:'  , DEFAULT= 2.0 ,__RC__) !variance of the QL distribution     
     
     qcvarr8=QCVAR_
-    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 1.0 ,__RC__) !variance of the QL distribution     
+    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.05 ,__RC__) !variance of the QL distribution     
     
     micro_mg_berg_eff_factor_in = WBFFACTOR
     call MAPL_GetResource(MAPL, NC_CST ,  'NC_CST:' , DEFAULT=  0.0 ,__RC__) !constant nd (set if greather than zero)     
@@ -1113,7 +1113,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
        ! CNV_MFD includes Deep+Shallow mass flux
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) then
-       dNl =  CFX*PTR3D/MASS
+       dNl =  CNV_NUMLIQ_SC*CFX*PTR3D/MASS
        NCPL = NCPL + dNL*DT_MOIST
       endif
       
@@ -1202,7 +1202,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          do J=1,JM
             do I=1,IM
 
-                     ccn_diag  = 0.0
                      smaxliq   = 0.0
                      smaxicer8 = 0.0
                      nheticer8 = 0.0
@@ -1269,15 +1268,15 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                   		 where (h_gw .gt. 0.0) 
                      		h_gw=sqrt(2.0*tausurf_gw/h_gw)
                   		 end where
-                        Wbreak = 0.133*(2d0*MAPL_PI/LCCIRRUS)*uwind_gw/nm_gw !Vertical velocity variance at saturation
+                         Wbreak = 0.133*(2d0*MAPL_PI/LCCIRRUS)*uwind_gw/nm_gw !Vertical velocity variance at saturation
 		
-	        		    wparc_gw=(2d0*MAPL_PI/LCCIRRUS)*uwind_gw*h_gw*0.133  	        !account for gravity wave breaking     
+	        		     wparc_gw=(2d0*MAPL_PI/LCCIRRUS)*uwind_gw*h_gw*0.133  	        !account for gravity wave breaking     
 
-               	        wparc_gw = min(wparc_gw, Wbreak)
-                        wparc_gw=wparc_gw*wparc_gw 
+               	         wparc_gw = min(wparc_gw, Wbreak)
+                         wparc_gw=wparc_gw*wparc_gw 
                         
-                        wparc_turb(1,1:LM)  =TKE(I, J, 1:LM)
-                        do K = KMIN_TROP(I, J), LM-1                        
+                         wparc_turb(1,1:LM)  =TKE(I, J, 1:LM)
+                         do K = KMIN_TROP(I, J), LM-1                        
                              if (FRLAND(I, J) .lt. 0.1) then 
                        	        if (LTS(I, J) .gt. LTS_LOW) then                     
                                  if (K .ge. kbmin-2) wparc_ls(1, K) = max(wparc_ls(1,K)+ zws(i, j), 0.00)*SCWST ! add convective velocity within the PBL
@@ -1290,8 +1289,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                     	 end do 
                       
                       else
-                     	swparc(1,1:LM)  = WSUB_CLIM(I, j, 1:LM)
-                        
+                     	swparc(1,1:LM)  = WSUB_CLIM(I, j, 1:LM)                        
                       end if     	                    
 
 
@@ -1807,7 +1805,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     disp_liu = LIU_MU
     ui_scale = UISCALE
     urscale  = URSCALE
-    ts_autice = DT_R8*TS_AUTO_ICE
+    ts_autice = TS_AUTO_ICE
     if (MTIME .le. 0.0) then 
     	mtimesc  = DT_MOIST
     else               
