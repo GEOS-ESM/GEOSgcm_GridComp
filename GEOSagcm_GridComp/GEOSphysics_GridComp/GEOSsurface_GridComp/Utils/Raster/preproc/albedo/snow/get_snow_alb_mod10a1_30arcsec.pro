@@ -1,26 +1,26 @@
 pro get_snow_alb_mod10a1_30arcsec, year=year, h_s=h_s, h_e=h_e
 
-; Code to stich MODIS files, such as: MOD10A1.A2022002.h35v08.006.2022004050029.hdf
-; into a daily global 30arcsec grid and produce GEOS_BCS-friendly output, such as:
+; Code to stitch MODIS files, such as: MOD10A1.A2022002.h35v08.006.2022004050029.hdf
+; into a daily global 30arcsec grid and produce inputs for GEOS make_bcs package, such as:
 ; snow_alb_MOD10A1.061_30arcsec_H36V05.nc
 
 ; It first reads the MODIS-tile files to generate snow cover PDFs over a period of time.
-; These PDFs are made based on tiles that exceed a snow cover value (e.g. 60%). This is done
+; These PDFs are made based on grid cells that exceed a snow cover value (e.g. 60%). This is done
 ; so a decent amount of snow over a grid box ensures a better estimate of albedo. 
-; The PDFs are then used to locate a user-defined cutoff for a %ile of snow covarage
+; The PDFs are then used to locate a user-defined cutoff for a %ile of snow coverage
 ; (e.g. top 10 %tile) and filter snow albedo values. 
 
 ; Input argument 'year' in the call specifies for what year(s) to run the code (to allow multiple
-; serial runs). Only the PDF building can be processed using miltiple serial runs, the remaining 
+; serial runs). Only the PDF building can be processed using multiple serial runs, the remainder 
 ; of the code has to execute on a single CPU. If no year(s) is provided on the input, the default 
 ; year is used. Input argument can be an integer or an array of integers indicating year(s) to 
 ; process (e.g. year=[2019,2020,2021])
 
-; Input arguments 'h_s' and 'h_e' are stating and ending horizontal tiles. These are optional
-; and if provided define the range of horizontal MODIS tiles to be processed (it saves time is
+; Input arguments 'h_s' and 'h_e' are starting and ending horizontal tiles. These are optional
+; and if provided define the range of horizontal MODIS tiles to be processed (it saves time if
 ; certain tiles need re-processing; otherwise should be ignored)
 
-; dependecies:
+; dependencies:
 ; grid.pro (performes gridding)
 ; read_hdf_sd.pro (reads hdf files)
 ; read_mod10a1_hdf.pro (reads MODIS files)
@@ -28,14 +28,14 @@ pro get_snow_alb_mod10a1_30arcsec, year=year, h_s=h_s, h_e=h_e
 ; 
 ; [sub]directories to be created prior executing this code:
 ; data/           - output directory (user needs to create)
-; MODIS_lat_lon/  - holds previousely created lat/lon info (user needs to create this with get_lat_lon4tils.pro listed in dependances)
+; MODIS_lat_lon/  - holds previousely created lat/lon info (user needs to create this with get_lat_lon4tils.pro listed in dependencies)
 ; MOD10A1_data/   - holds MODIS input data (user has to bring it in; follow the dir structure)
 
 ; There are six steps (runs) to process. Steps have to be processed in order. The current step must
-; complete before the next is initiated. Use the 'goto' commands to controle which step is exectued.
+; complete before the next is initiated. Use the 'goto' commands to control which step is exectued.
 ; When the current step is completed, uncomment the next-step goto command on lines 83-90
 
-; To execture the code in terminal window type (without cotations):
+; To execture the code in terminal window type (without quotations):
 ; 'idl', then '.r get_snow_alb_mod10a1_30arcsec', then 'get_snow_alb_mod10a1_30arcsec'
 
 ; Created April 2022 Biljana Orescanin SSIA@NASA
@@ -116,7 +116,7 @@ for iyear=0,n_elements(years)-1 do begin
       ; declare arrays to hold all days info
       snow_cvr_pdf=make_array(dim_1d,101,/long,value=0l) ; to hold pdf of snow cover values
   
-      ; loop over files (i.e. days) for this tile to stich
+      ; loop over files (i.e. days) for this tile to stitch
       for ifile=0,nfiles-1 do begin
       
         ; read file
@@ -210,7 +210,7 @@ for ih=h_start,h_end do begin
       if tot_pix lt 10 then continue ; if lt 10 valid elements leave as missing (no enough data)
 
       tot_sf_pix=0l
-      for ibin=100,30,-1 do begin ; accumulate from the top bin down till you get enoguh data.
+      for ibin=100,30,-1 do begin ; accumulate from the top bin down till you get enough data.
                                   ; Yet, don't go below 30th bin (i.e. snow fraction lt 30%)
                                   ; b/c there is not enough snow to make it a "reliable albedo estimate"
         tot_sf_pix=tot_sf_pix+snow_cvr_pdf_all(ipix,ibin)*ibin
@@ -267,13 +267,13 @@ for iyear=0,n_elements(years)-1 do begin
       accu_alb=make_array(dim_1d,/float,value=0l) ; to hold accumulated snow albedo values
       accu_cnt=make_array(dim_1d,/float,value=0l) ; to hold couhnts of accumulated values
   
-      ; loop over files (i.e. days) for this tile to stich
+      ; loop over files (i.e. days) for this tile to stitch
       for ifile=0,nfiles3-1 do begin
       
         ; read file
         data=read_mod10a1_hdf(filename(ifile))
       
-        ; keep only what you neen                  ; see bottom of the code for details
+        ; keep only what you need                  ; see bottom of the code for details
         snow_alb_til=data.SNOW_ALBEDO_DAILY_TILE   ; values [0,100] 
         snow_cvr_til=data.NDSI_Snow_Cover          ; values [0,100] 
         snow_cvr_qc =data.NDSI_Snow_Cover_Basic_QA ; values [0,255] 0=best, 1=good, 2=ok, 3=poor-not used
@@ -283,7 +283,7 @@ for iyear=0,n_elements(years)-1 do begin
         snow_cvr_til=reform(snow_cvr_til,dim_2d[0]*dim_2d[1],/overwrite)
         snow_cvr_qc =reform(snow_cvr_qc ,dim_2d[0]*dim_2d[1],/overwrite)
   
-        ; if no valida data of abledo and snow cover in this tile, skip. 
+        ; if no valid data of abledo and snow cover in this tile, skip. 
         ; If data present then accumulate non-missing values and their counts
         ind_val=where(snow_alb_til     gt 0 and snow_alb_til le 100 and $
                       snow_cvr_til     gt 0 and snow_cvr_til le 100 and $
@@ -303,8 +303,8 @@ for iyear=0,n_elements(years)-1 do begin
           
       endfor ; ifile
 
-      ; write out the counts, cummulative and mean values of albedo and PDFs of albedo
-      ; for this tile (these will be stiched once all completed)
+      ; write out the counts, cumulative and mean values of albedo and PDFs of albedo
+      ; for this tile (these will be stitched once all completed)
       openw, lun, 'data/data_out/snow_alb_pdfs_08_MOD10A1.A.'+years(iyear)+           $
                   '.h'+ih_str+'v'+iv_str+'_'+strtrim(100-top_limit,2)+'%ile_cover2_gt_'+ $
                   strtrim(cvr_cutoff,2)+'.bin.gz', /get_lun,/compress
@@ -320,12 +320,12 @@ stop
 skip_reading_snow_alb:
 
 ; -- All snow albedo PDFs are in, only in yearly files. Read them all 
-;    and make the cummulative stats for mean albedo at a chosen %ile
+;    and make the cumulative stats for mean albedo at a chosen %ile
 ;    This is to be done on a single CPU as a single sbatch job
 print, 'Reading in all Snow Albedo accum and counts to form the overall mean albedo values'
 
 ; need to read in all the years for each tile, find top %ile and write out the mean albedo
-; loop over horiontal tiles
+; loop over horizontal tiles
 for ih=h_start,h_end do begin
   ih_str=strmid('0'+strtrim(ih,2),1,2,/reverse)
 
@@ -348,7 +348,7 @@ for ih=h_start,h_end do begin
     
     ; declare arrays to hold all days info
     accu_alb_tmp=make_array(dim_1d,/float,value=0l) ; to hold accumulated snow albedo values
-    accu_cnt_tmp=make_array(dim_1d,/float,value=0l) ; to hold couhnts of accumulated values
+    accu_cnt_tmp=make_array(dim_1d,/float,value=0l) ; to hold counts of accumulated values
     snow_alb_accu_all=0.
     snow_alb_cnt_all =0.
 
@@ -429,7 +429,7 @@ for ih=h_start,h_end do begin
       for iih=0,35 do begin
         iih_str=strmid('0'+strtrim(iih,2),1,2,/reverse)
 
-        ; read in the cummulative and mean values for this tile (these will be stiched once all completed)
+        ; read in the cumulative and mean values for this tile (these will be stitched once all completed)
         filename_alb=file_search('data/data_out/snow_alb_08_'+strtrim(top_alb_limit,2)+  $
                                  '_cutoff_MOD10A1.A.h'+iih_str+'v'+iiv_str+'_'+year_start+  $
                                  '_'+year_end+'.bin.gz',count=n_files5)
@@ -440,7 +440,7 @@ for ih=h_start,h_end do begin
         readu,lun, alb_lim_tail_mean 
         free_lun,lun
 
-        ; Reform the arrays back to 2 dimentions
+        ; Reform the arrays back to 2 dimensions
         alb_lim_tail_mean=reform(alb_lim_tail_mean,dim_2d,/overwrite)
 
         ; read lat and lon for this tile
@@ -539,7 +539,7 @@ for ih=h_start,h_end do begin
 endfor ;ih
 
 ; values in the SNOW_ALBEDO_DAILY_TILE are as following: 
- ; 1–100: snow albedo 
+ ; 1-100: snow albedo 
  ; 101: no decision
  ; 111: night
  ; 125: land

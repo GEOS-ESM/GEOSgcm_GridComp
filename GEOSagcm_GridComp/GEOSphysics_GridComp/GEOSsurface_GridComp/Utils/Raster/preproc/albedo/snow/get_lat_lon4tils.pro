@@ -4,7 +4,7 @@ pro get_lat_lon4tils
 ; loops over MODIS files (hereinafter refered to as tiles), its 
 ; grid boxes and calculates lat/lon values using the same approach
 ; as given in C function provided by MODIS team (publically available). 
-; The lat/lon values for each gridbox are written out in 10x10 files
+; The lat/lon values for each gridbox are written out in 10-degx10-deg files
 ; (to match MODIS files; each 2400x2400 elements), as well as in two 
 ; global files holding lat and lon each. The code will print 
 ; out even the tiles (and gridboxes) with no valid data (miss val:-999.)

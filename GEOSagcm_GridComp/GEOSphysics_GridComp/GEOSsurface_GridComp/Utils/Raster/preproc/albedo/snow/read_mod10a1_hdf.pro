@@ -5,7 +5,7 @@ function read_mod10a1_hdf, filename
 ; or
 ; MOD10A1.A2022002.h12v11.006.2022004045329.hdf
 
-; to be used in the stiching process
+; to be used in the stitching process
 
 ; Created March 2022 Biljana Orescanin NASA@SSAI
 

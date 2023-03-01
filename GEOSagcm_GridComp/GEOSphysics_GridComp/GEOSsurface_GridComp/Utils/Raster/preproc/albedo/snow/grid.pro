@@ -29,7 +29,7 @@ if (cnt GT 0) then begin
   data2=data[m]
 endif
 
-; Determine if data is inside specifed grid region
+; Determine if data is inside specified grid region
 
 xind=long((lon2 - minlon)/double(xinc))
 yind=long((lat2 - minlat)/double(yinc))
