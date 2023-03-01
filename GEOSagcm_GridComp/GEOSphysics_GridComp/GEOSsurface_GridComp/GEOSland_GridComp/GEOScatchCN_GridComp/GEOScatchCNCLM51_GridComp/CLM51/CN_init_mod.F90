@@ -10,7 +10,7 @@ module CN_initMod
   use clm_time_manager  , only: get_step_size
   use decompMod
   use filterMod
-  use CNVegNitrogenStateType
+  use CNVegNitrogenStateType, only : cnveg_nitrogenstate_type
   use CNVegCarbonStateType
   use atm2lndType
   use TemperatureType
@@ -336,7 +336,7 @@ module CN_initMod
       call init_decompcascade_cn(bounds, soilbiogeochem_state_inst)
    end if
 
- end  subroutine CN_init
+ end subroutine CN_init
 end module CN_initMod
 
 
