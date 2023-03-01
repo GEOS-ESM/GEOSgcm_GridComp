@@ -137,7 +137,7 @@ module CN_initMod
   type(cnveg_state_type)                  :: cnveg_state_inst
   type(cnveg_carbonflux_type)             :: cnveg_carbonflux_inst
   type(cnveg_nitrogenflux_type)           :: cnveg_nitrogenflux_inst
-  type(gridcell_type)                     :: grc
+  !type(gridcell_type)                     :: grc
   type(soilbiogeochem_carbonflux_type)    :: soilbiogeochem_carbonflux_inst
   type(soilbiogeochem_nitrogenflux_type)  :: soilbiogeochem_nitrogenflux_inst
   type(ch4_type)                          :: ch4_inst
@@ -150,6 +150,7 @@ module CN_initMod
   type(frictionvel_type)                  :: frictionvel_inst
    type(cn_vegetation_type)               :: bgc_vegetation_inst
   type(waterfluxbulk_type)                :: waterfluxbulk_inst
+  type(active_layer_type)                 :: active_layer_inst
 
   character(300)     :: paramfile
   character(300)     :: NLFilename
@@ -295,7 +296,7 @@ module CN_initMod
 
    paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
 
-   call ncid%open(trim(paramfile),pFIO_READ, __RC__)
+   call ncid%open(trim(paramfile),pFIO_READ, RC=status)
 
    call readCNMRespParams(ncid)
    call CNParamsReadShared(ncid)  ! this is called CN params but really is for the soil biogeochem parameters
@@ -318,7 +319,7 @@ module CN_initMod
    call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
    call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
 
-   call ncid%open(trim(paramfile),pFIO_READ, __RC__)
+   call ncid%open(trim(paramfile),pFIO_READ, RC=status)
    call bgc_vegetation_inst%cnfire_method%CNFireReadParams( ncid )
    call ncid%close(rc=status)
 
