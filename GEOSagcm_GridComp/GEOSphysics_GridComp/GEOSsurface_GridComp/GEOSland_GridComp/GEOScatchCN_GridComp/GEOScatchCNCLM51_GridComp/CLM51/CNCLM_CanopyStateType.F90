@@ -55,7 +55,7 @@ module CanopyStateType
 
    contains 
 
-    procedure, public :: init_canopystate_type
+    procedure, public :: Init
   
   end type canopystate_type
   type(canopystate_type), public, target :: canopystate_inst
@@ -63,7 +63,7 @@ module CanopyStateType
 contains
 
 !--------------------------------------------------------------
-  subroutine init_canopystate_type(this, bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start, rc)
+  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start, rc)
 
   ! !DESCRIPTION:
   ! Initialize CTSM canopy state type  needed for calling CTSM routines                                 
@@ -185,6 +185,6 @@ contains
      end do ! nz
   end do ! nc
 
-  end subroutine init_canopystate_type
+  end subroutine Init
 
 end module CanopyStateType

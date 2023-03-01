@@ -220,7 +220,7 @@ module CN_initMod
 
     call wateratm2lnd_inst%Init         (bounds)
 
-    call canopystate_inst%init_canopystate_type (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
+    call canopystate_inst%Init          (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
     call solarabs_inst%Init             (bounds)
 
