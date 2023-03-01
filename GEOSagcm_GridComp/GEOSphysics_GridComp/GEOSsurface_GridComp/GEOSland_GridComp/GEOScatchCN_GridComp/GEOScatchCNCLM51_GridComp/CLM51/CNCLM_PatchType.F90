@@ -66,7 +66,7 @@ module PatchType
 
     contains
 
-     procedure, public :: init_patch_type
+     procedure, public :: Init
 
   end type patch_type
   type(patch_type), public, target :: patch
@@ -74,7 +74,7 @@ module PatchType
  contains
 
 !----------------------------------------------------
-  subroutine init_patch_type(this, bounds, nch, ityp, fveg)
+  subroutine Init(this, bounds, nch, ityp, fveg)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
@@ -142,5 +142,5 @@ module PatchType
           end do ! p
         end do ! nz
      end do ! nc
-  end subroutine init_patch_type
+  end subroutine Init
 end module PatchType

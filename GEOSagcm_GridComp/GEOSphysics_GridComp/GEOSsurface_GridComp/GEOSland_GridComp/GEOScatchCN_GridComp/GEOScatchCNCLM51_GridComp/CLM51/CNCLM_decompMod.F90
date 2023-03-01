@@ -19,7 +19,6 @@ module decompMod
 
   public get_beg            ! get beg bound for a given subgrid level
   public get_end            ! get end bound for a given subgrid level
-  public :: init_bounds
 
   type bounds_type
      integer :: begg, endg       ! beginning and ending gridcell index
@@ -30,20 +29,25 @@ module decompMod
 
      integer :: level            ! whether defined on the proc or clump level
      integer :: clump_index      ! if defined on the clump level, this gives the clump index
+
+   contains
+
+     procedure, public :: Init
+
   end type bounds_type
   type(bounds_type), public :: bounds
 
  contains
 
 !----------------------------------------------------
-  subroutine init_bounds(nch, this)
+  subroutine Init(this, nch)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
 
   ! INPUT:
     integer, intent(in) :: nch         ! number of Catchment tiles
-    type(bounds_type), intent(inout) :: this
+    class(bounds_type)  :: this
   !----------------------------------
 
   this%begg = 1 ; this%endg = nch
@@ -51,7 +55,7 @@ module decompMod
   this%begc = 1 ; this%endc = nch*NUM_ZON
   this%begp = 1 ; this%endp = nch*NUM_ZON*(numpft+1)
 
-  end subroutine init_bounds
+  end subroutine Init
 
 
   !-----------------------------------------------------------------------

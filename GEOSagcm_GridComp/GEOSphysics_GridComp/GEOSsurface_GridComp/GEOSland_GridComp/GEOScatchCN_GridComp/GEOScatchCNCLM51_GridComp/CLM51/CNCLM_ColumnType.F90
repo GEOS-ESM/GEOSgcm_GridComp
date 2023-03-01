@@ -84,7 +84,7 @@ module ColumnType
 
    contains
 
-     procedure, public :: init_column_type
+     procedure, public :: Init
 
   end type column_type
   type(column_type), public, target :: col
@@ -92,7 +92,7 @@ module ColumnType
  contains
 
 !-----------------------------------------------------
-  subroutine init_column_type(this, bounds,nch)
+  subroutine Init(this, bounds,nch)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
@@ -171,5 +171,5 @@ module ColumnType
         end do ! nz
      end do ! nc
 
- end subroutine init_column_type
+ end subroutine Init
 end module ColumnType

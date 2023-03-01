@@ -59,7 +59,7 @@ module LandunitType
 
    contains 
 
-    procedure, public :: init_landunit_type
+    procedure, public :: Init
 
   end type landunit_type
   ! Singleton instance of the landunitType
@@ -69,7 +69,7 @@ module LandunitType
 contains
 
  !------------------------------------------------------------------------
-  subroutine init_landunit_type(this, bounds, nch)
+  subroutine Init(this, bounds, nch)
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
     ! Allocate memory and initialize to signalling NaN to require
@@ -124,6 +124,6 @@ contains
        this%itype(nc)    = 1 ! set land unit type so bare or vegetated soil everywhere 
     end do
 
-  end subroutine init_landunit_type
+  end subroutine Init
 
 end module LandunitType

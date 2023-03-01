@@ -39,7 +39,7 @@ module GridcellType
 
     contains
 
-     procedure, public :: init_gridcell_type
+     procedure, public :: Init
 
   end type gridcell_type
   type(gridcell_type), public, target :: grc
@@ -47,7 +47,7 @@ module GridcellType
   contains
 
 !-----------------------------------------------
-  subroutine init_gridcell_type(this, bounds, nch, cnpft, lats, lons)
+  subroutine Init(this, bounds, nch, cnpft, lats, lons)
 
   ! !DESCRIPTION:
 ! Initialize CTSM gridcell type needed for calling CTSM routines                                 
@@ -102,5 +102,5 @@ module GridcellType
        this%prev_dayl(nc) = this%dayl(nc) ! following previous Catchment-CN versions, daylength of previous day is initialized as daylength of current day; changed for subsequent time steps in CN_DriverMod
 
     end do ! nc
-  end subroutine init_gridcell_type
+  end subroutine Init
 end module GridcellType
