@@ -135,33 +135,33 @@ module GEOS_SimpleSeaiceGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                             &
+     call MAPL_AddExportSpec(GC,                                  &
         SHORT_NAME         = 'ALBVR',                             &
-        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
+        LONG_NAME          = 'surface_reflectivity_for_visible_beam', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                             &
+     call MAPL_AddExportSpec(GC,                                  &
         SHORT_NAME         = 'ALBVF',                             &
-        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
+        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                             &
+     call MAPL_AddExportSpec(GC,                                  &
         SHORT_NAME         = 'ALBNR',                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                             &
+     call MAPL_AddExportSpec(GC,                                  &
         SHORT_NAME         = 'ALBNF',                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &

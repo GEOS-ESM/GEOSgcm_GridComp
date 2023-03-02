@@ -325,7 +325,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'greeness_fraction'           ,&
+         LONG_NAME          = 'vegetation_greenness_fraction',&
          UNITS              = '1'                           ,&
          SHORT_NAME         = 'GRN'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&

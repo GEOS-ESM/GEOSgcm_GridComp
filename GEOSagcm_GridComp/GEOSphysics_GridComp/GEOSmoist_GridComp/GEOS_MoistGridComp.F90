@@ -2010,6 +2010,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CLDBASEHGT',                                &
+         LONG_NAME = 'Height_of_cloud_base',                       &
+         UNITS     = 'm',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='RL',                                          & 
          LONG_NAME ='liquid_cloud_particle_effective_radius',      &
          UNITS     ='m',                                           &
@@ -2708,6 +2717,30 @@ contains
          SHORT_NAME='Q_moist',                                     & 
          LONG_NAME ='specific_humidity_before_moist',              &
          UNITS     ='kg kg-1',                                     &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='SL',                                          & 
+         LONG_NAME ='liquid_water_static_energy',                  &
+         UNITS     ='J kg-1',                                      &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='QT',                                          & 
+         LONG_NAME ='total_water_specific_humidity',               &
+         UNITS     ='kg kg-1',                                     &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='T',                                           & 
+         LONG_NAME ='temperature',                                 &
+         UNITS     ='K',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
@@ -3568,6 +3601,14 @@ contains
     call MAPL_AddExportSpec(GC,                           &
          SHORT_NAME ='QX0',                                          &
          LONG_NAME  ='specific_humidity',                          &
+         UNITS      ='kg kg-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
+    VERIFY_(STATUS)                                                                          
+
+    call MAPL_AddExportSpec(GC,                           &
+         SHORT_NAME ='QX1',                                        &
+         LONG_NAME  ='specific_humidity_after_moist_physics',      &
          UNITS      ='kg kg-1',                                    &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
@@ -5648,7 +5689,7 @@ contains
       !Record vars at top pf moist
       real, pointer, dimension(:,:,:) :: Ux0, Vx0, THx0, KHx0
       real, pointer, dimension(:,:)   :: TSx0, FRLANDx0
-      real, pointer, dimension(:,:,:) :: Qx0, QLLSx0, QLCNx0, CLLSx0, CLCNx0, QILSx0, QICNx0, QCLSX0, QCCNX0
+      real, pointer, dimension(:,:,:) :: Qx0, Qx1, QLLSx0, QLCNx0, CLLSx0, CLCNx0, QILSx0, QICNx0, QCLSX0, QCCNX0
 
       ! MATMAT Exports for pre-ras inputs for RAStest
       real, pointer, dimension(:,:,:) :: THOI,QHOI,QSSI,DQSI
@@ -5663,6 +5704,7 @@ contains
       real, pointer, dimension(:,:,:) :: RSU_CN, RSU_AN, RSU_LS,    ALPHT, ALPH1, ALPH2
       real, pointer, dimension(:,:,:) :: ENTLAM
       real, pointer, dimension(:,:,:) :: KHX
+      real, pointer, dimension(:,:,:) :: SLX, TX, QTX
       real, pointer, dimension(:,:  ) :: DTSX
 
       real, pointer, dimension(:,:,:) :: REVSU_CN, REVSU_LSAN
@@ -6719,6 +6761,9 @@ contains
       call MAPL_GetPointer(EXPORT, ZCBL,     'ZCBL'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, TT_PRCP,  'TPREC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, HOURNORAIN,  'HOURNORAIN'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, TX    ,   'T'       , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLX   ,   'SL'      , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTX   ,   'QT'      , RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, PRCP_RAIN,    'PRCP_RAIN' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PRCP_SNOW,    'PRCP_SNOW'    , RC=STATUS); VERIFY_(STATUS)
@@ -6736,6 +6781,7 @@ contains
       call MAPL_GetPointer(EXPORT, XQICN,    'QICNX1'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, XCLCN,    'CLCN'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, XCLLS,    'CLLS'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QX1,      'QX1'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QCTOT,    'QCTOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QITOT,    'QITOT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QRTOT,    'QRTOT'   , RC=STATUS); VERIFY_(STATUS)
@@ -12401,6 +12447,22 @@ do K= 1, LM
          END WHERE
       endif
 
+      if (associated(CLDBASEHGT)) then
+         CLDBASEx = MAPL_UNDEF
+         do i = 1,IM
+           do j = 1,JM
+             do k =  LM-1, 1, -1
+               if (ZLE(i,j,k).gt.20000.) exit
+               if ( ( RAD_CF(i,j,k) .ge. 1e-2 ) .and. ( QTOT(i,j,k) .ge. 1e-6 ) ) then
+                 CLDBASEx(i,j)  = ZLE(i,j,k)
+                 exit
+               end if
+             end do
+           end do
+         end do
+         CLDBASEHGT = CLDBASEx
+      end if
+
 
       ! Compute DBZ radar reflectivity
       if (associated(DBZ) .OR. associated(DBZ_MAX)) then
@@ -12709,6 +12771,7 @@ do K= 1, LM
       if (associated(AN_ARF ))   AN_ARF  = AN_ARFX
       if (associated(CN_ARF ))   CN_ARF  = CN_ARFX
       if (associated(SC_ARF ))   SC_ARF  = SC_ARFX
+      if (associated(QX1    ))   QX1     = Q1
       if (associated(XQLLS  ))   XQLLS   = QLLS
       if (associated(XQILS  ))   XQILS   = QILS
       if (associated(XCLLS  ))   XCLLS   = CLLS
@@ -12731,8 +12794,9 @@ do K= 1, LM
       if (associated(CCWP   ))   CCWP    = SUM(   CNV_QC *MASS , 3 )
       if (associated(TPW    ))   TPW     = SUM(   Q1         *MASS , 3 )
       if (associated(RH2    ))   RH2     = max(MIN( Q1/GEOS_QSAT (TH1*PK, PLO) , 1.02 ),0.0)
-
-    
+      if (associated(SLX    ))   SLX     = GZLO + MAPL_CP*TEMP - MAPL_ALHL*(QLLS+QLCN) - MAPL_ALHS*(QILS+QICN)
+      if (associated(QTX    ))   QTX     = Q1 + QLCN + QLLS + QICN + QILS
+      if (associated(TX     ))   TX      = TEMP
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
          if (associated(CCNCOLUMN    ))   CCNCOLUMN      = SUM(CCN1*MASS/(100.*PLO*r_air/TEMP) , 3)

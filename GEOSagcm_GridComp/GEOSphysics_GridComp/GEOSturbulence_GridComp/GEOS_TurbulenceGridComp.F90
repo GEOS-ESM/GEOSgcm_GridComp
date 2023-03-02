@@ -1416,14 +1416,14 @@ contains
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'SL',                                       &
          LONG_NAME  = 'liquid_water_static_energy_after_turbulence', &
-         UNITS      = 'J',                                        &
+         UNITS      = 'J kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'QTFLXTRB',                                 &
-         LONG_NAME  = 'total_water_flux_from_turbulence',         &
+         LONG_NAME  = 'kinematic_total_water_flux_from_turbulence',         &
          UNITS      = 'kg kg-1 m-1 s-1',                          &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
@@ -1431,15 +1431,15 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'SLFLXTRB',                                 &
-         LONG_NAME  = 'liquid_water_static_energy_flux_from_turbulence', &
-         UNITS      = 'J m-1 s-1',                          &
+         LONG_NAME  = 'kinematic_liquid_water_static_energy_flux_from_turbulence', &
+         UNITS      = 'J kg-1 m-1 s-1',                           &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'UFLXTRB',                                  &
-         LONG_NAME  = 'turbulent_flux_of_zonal_wind_component',   &
+         LONG_NAME  = 'kinematic_turbulent_flux_of_zonal_wind_component',   &
          UNITS      = 'm2 s-2',                                   &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
@@ -1447,7 +1447,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'VFLXTRB',                                  &
-         LONG_NAME  = 'turbulent_flux_of_meridional_wind_component', &
+         LONG_NAME  = 'kinematic_turbulent_flux_of_meridional_wind_component', &
          UNITS      = 'm2 s-2',                                   &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
@@ -1792,6 +1792,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'boundary_layer_height_from_refractivity_gradient',      &
+       SHORT_NAME = 'ZPBLRFRCT',                                             &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'pbltop_level',                                          &
        SHORT_NAME = 'KPBL',                                                  &
        UNITS      = '1',                                                     &
@@ -1827,12 +1836,13 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'TKEDISS',                                   &
-       LONG_NAME  = 'tke_dissipation_from_SHOC',        &
-       UNITS      = 'm+2 s-3',                                   &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'geopotential_height_above_surface',                     &
+       SHORT_NAME = 'ZLES',                                                  &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
@@ -2371,10 +2381,20 @@ contains
 
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'TKH',                                       &
-       LONG_NAME  = 'turbulent_diffusivity_from_SHOC',        &
+       LONG_NAME  = 'turbulent_diffusivity_from_SHOC',           &
        UNITS      = 'm+2 s-1',                                   &
-       DEFAULT    = 0.0,                                           &
-       FRIENDLYTO = 'TURBULENCE',                             &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'TKM',                                       &
+       LONG_NAME  = 'turbulent_momentum_diffusivity_from_SHOC',  &
+       UNITS      = 'm+2 s-1',                                   &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = trim(COMP_NAME),                             &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -2534,14 +2554,12 @@ contains
     real, dimension(:,:,:), pointer    :: DKSS, DKQQ, DKUU
 
 ! SHOC-related variables
-    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2
-
-    real, dimension(:,:), pointer   :: EVAP, SH
-
-! Idealized SCM surface layer variables
-#ifdef USE_SCM_SURF
-    real, dimension(:,:), pointer :: cu_scm, ct_scm, ssurf_scm, qsurf_scm
-#endif
+    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,TKM,LSHOC,BRUNTSHOC, & 
+                                           SHEARSHOC,CLD, WTHV2,        &
+                                           TKEBUOY,TKESHEAR,TKEDISS,TKETRANS,&
+                                           DTDT_SHC,DQDT_SHC,DQLDT_SHC, &
+                                           DQIDT_SHC
+    real, dimension(:,:), pointer       :: EVAP, SH
 
 ! Begin... 
 !---------
@@ -2673,7 +2691,9 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, DKQQ,   'DKQQ',     RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DKUU,   'DKUU',     RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, TKM,   'TKM',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, LSHOC,   'LSHOC',    RC=STATUS)
     VERIFY_(STATUS)
 ! a,b,c and rhs for s
     call MAPL_GetPointer(INTERNAL, AKSS,   'AKSS',     RC=STATUS)
@@ -2829,7 +2849,7 @@ contains
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: VARFLT
      real, dimension(:,:,:), pointer     :: KH, KM, QLLS, QILS, CLLS, QLCN, QICN, CLCN
-     real, dimension(:,:,:), pointer     :: ALH
+     real, dimension(:,:,:), pointer     :: ALH,ZLES
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
@@ -2847,6 +2867,7 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBLRI => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
+     real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
      real, dimension(:,:  ), pointer     :: KPBL_SC => null()
      real, dimension(:,:  ), pointer     :: WEBRV,VSCBRV,DSIEMS,CHIS,ZCLDTOP,DELSINV,SMIXT,ZRADBS,CLDRF,VSCSFC,RADRCODE
@@ -2909,71 +2930,11 @@ contains
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
-     integer                             :: I,J,L,LOCK_ON,ITER
+     integer                             :: I,J,K,L,LOCK_ON
      integer                             :: KPBLMIN,PBLHT_OPTION
 
-#ifdef USE_SCM_SURF
-     ! SCM idealized surface-layer parameters
-     integer :: SCM_SL          ! 0:    use exchange coefficients from surface grid comp
-                                ! else: idealized surface layer specified in AGCM.rc
-     integer :: SCM_SL_FLUX     ! 0: prescribed roughness length and surface relative humidity,
-                                !    all fluxes from surface layer theory
-                                ! 1: prescribed thermodynamic fluxes,
-                                !    along with roughness length roughness length and surface relative humidity
-                                !    momentum fluxes from surface layer theory
-                                ! 2: prescribed Monin-Obhkov length,
-                                !    along with roughness length and surface relative humidity,
-                                !    all fluxes from surface layer theory
-                                ! else: use prescribed surface exchange coefficients
-     real    :: SCM_SH          ! prescribed surface sensible heat flux (Wm-1) (for SCM_SL_FLUX == 1)
-     real    :: SCM_EVAP        ! prescribed surface latent heat flux (Wm-1) (for SCM_SL_FLUX == 1)
-     real    :: SCM_Z0          ! surface roughness length (m)
-     real    :: SCM_ZETA        ! Monin-Obkhov length scale (m) (for SCM_SL_FLUX == 2)
-     real    :: SCM_RH_SURF     ! Surface relative humidity
-     real    :: SCM_TSURF       ! Sea surface temperature (K)
-     
-     ! SCM idealized surface parameters
-     integer :: SCM_SURF      ! 0:    native surface from GEOS
-                              ! else: idealized surface with prescribed cooling
-     real    :: SCM_DTDT_SURF ! Surface heating rate (Ks-1)
-#endif
-
-     ! mass-flux constants/parameters
-     integer :: DOMF, NumUp, DOCLASP
-     real    :: L0,L0fac
-
-     real, dimension(IM,JM)    :: L02
-     real, dimension(IM,JM,LM) :: QT,THL,HL,EXF
-
-     ! Variables for idealized surface layer     
-     real, dimension(IM,JM), target :: ustar_scm, sh_scm, evap_scm, zeta_scm
-
-     real, dimension(im,jm,0:lm) :: edmfdrya, edmfmoista,     &
-                                    edmfdryw, edmfmoistw,     &
-                                    edmfdryqt, edmfmoistqt,   &
-                                    edmfdrythl, edmfmoistthl, &
-                                    edmfdryu, edmfmoistu,     &
-                                    edmfdryv, edmfmoistv,     &
-                                    edmfmoistqc
-     real, dimension(im,jm,lm)   :: zlo, pk, rho
-     real, dimension(im,jm)      :: edmfZCLD
-     real, dimension(im,jm,0:lm) :: RHOE, RHOAW3, edmf_mf
-     real, dimension(im,jm,lm)   :: buoyf, mfw2, mfw3, mfqt3,     &
-                                    mfhl3, mfwqt, mfqt2, mfhl2,   &
-                                    mfhlqt, mfwhl, edmf_ent
-
-#ifdef EDMF_DIAG
-     real,dimension(im,jm,0:lm) :: w_plume1,w_plume2,w_plume3,w_plume4,         &
-                                   w_plume5,w_plume6,w_plume7,                  &
-                                   w_plume8,w_plume9,w_plume10
-     real,dimension(im,jm,0:lm) :: qt_plume1,qt_plume2,qt_plume3,qt_plume4,     &
-                                   qt_plume5,qt_plume6,qt_plume7,               &
-                                   qt_plume8,qt_plume9,qt_plume10
-     real,dimension(im,jm,0:lm) :: thl_plume1,thl_plume2,thl_plume3,thl_plume4, &
-                                   thl_plume5,thl_plume6,thl_plume7,            &
-                                   thl_plume8,thl_plume9,thl_plume10
-#endif
-
+     real                                :: a1,a2
+     real,               dimension(IM,JM,LM) :: dum3d,tmp3d,WVP
      real,               dimension(LM+1) :: temparray, htke
      real,               dimension(IM,JM,LM  ) :: tcrib !TransCom bulk Ri
      real,               dimension(LM+1) :: thetav
@@ -3149,6 +3110,8 @@ contains
      call MAPL_GetPointer(EXPORT,    ZPBLRI2,  'ZPBLRI2',           RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT,  'ZPBLRFRCT',       RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   LWCRT,   'LWCRT', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -3367,8 +3330,6 @@ contains
      call MAPL_GetPointer(EXPORT, SHEARSHOC,'SHEARSHOC', RC=STATUS)
      VERIFY_(STATUS)
 
-
-
 ! Initialize some arrays
 
       LWCRT = RADLW - RADLWC
@@ -3423,6 +3384,7 @@ contains
       do L = LM, 1, -1
          ZLE(:,:,L-1) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*TH(:,:,L)*(PKE(:,:,L)-PKE(:,:,L-1))
       end do
+      if (associated(ZLES)) ZLES = ZLE
 
       ! Layer height, pressure, and virtual temperatures
       !-------------------------------------------------
@@ -4540,6 +4502,49 @@ contains
          end do 
       end if ! ZPBLTHV
 
+!=========================================================================
+!  ZPBL defined by minimum in vertical gradient of refractivity.
+!  As shown in Ao, et al, 2012: "Planetary boundary layer heights from
+!  GPS radio occultation refractivity and humidity profiles", Climate and
+!  Dynamics.  https://doi.org/10.1029/2012JD017598
+!=========================================================================                                                                                                     
+
+    if (associated(ZPBLRFRCT)) then
+
+      a1 = 0.776    ! K/Pa
+      a2 = 3.73e3   ! K2/Pa
+
+      WVP = Q * PLO / (Q*(1.-0.622)+0.622)  ! water vapor partial pressure
+  
+      ! Pressure gradient term
+      dum3d(:,:,2:LM-1) = (PLO(:,:,1:LM-2)-PLO(:,:,3:LM)) / (Z(:,:,1:LM-2)-Z(:,:,3:LM))
+      dum3d(:,:,1) = (PLO(:,:,1)-PLO(:,:,2)) / (Z(:,:,1)-Z(:,:,2))
+      dum3d(:,:,LM) = (PLO(:,:,LM-1)-PLO(:,:,LM)) / (Z(:,:,LM-1)-Z(:,:,LM))
+      tmp3d = a1 * dum3d / T
+
+      ! Add Temperature gradient term
+      dum3d(:,:,2:LM-1) = (T(:,:,1:LM-2)-T(:,:,3:LM)) / (Z(:,:,1:LM-2)-Z(:,:,3:LM))
+      dum3d(:,:,1) = (T(:,:,1)-T(:,:,2)) / (Z(:,:,1)-Z(:,:,2))
+      dum3d(:,:,LM) = (T(:,:,LM-1)-T(:,:,LM)) / (Z(:,:,LM-1)-Z(:,:,LM))
+      tmp3d = tmp3d - (a1*plo/T**2 + 2.*a2*WVP/T**3)*dum3d
+
+      ! Add vapor pressure gradient term
+      dum3d(:,:,2:LM-1) = (WVP(:,:,1:LM-2)-WVP(:,:,3:LM)) / (Z(:,:,1:LM-2)-Z(:,:,3:LM))
+      dum3d(:,:,1) = (WVP(:,:,1)-WVP(:,:,2)) / (Z(:,:,1)-Z(:,:,2))
+      dum3d(:,:,LM) = (WVP(:,:,LM-1)-WVP(:,:,LM)) / (Z(:,:,LM-1)-Z(:,:,LM))
+      tmp3d = tmp3d + (a2/T**2)*dum3d
+
+      ! ZPBL is height of minimum in refractivity (tmp3d)
+      do I = 1,IM
+        do J = 1,JM
+          K = MINLOC(tmp3d(I,J,:),DIM=1,BACK=.TRUE.)   ! return last index, if multiple
+          ZPBLRFRCT(I,J) = Z(I,J,K)
+        end do
+      end do
+
+    end if  ! ZPBLRFRCT 
+
+
       SELECT CASE(PBLHT_OPTION)
 
       CASE( 1 )
@@ -4592,7 +4597,7 @@ contains
       ! ---------------------------------------------------------
 
       KH(:,:,LM) = CT * (PLE(:,:,LM)/(MAPL_RGAS * TV(:,:,LM))) / Z(:,:,LM)
-      TKH(:,:,LM) = KH(:,:,LM)
+      TKH = KH
 
       ! Water vapor can differ at the surface
       !--------------------------------------
@@ -4618,6 +4623,7 @@ contains
       ! -------------------------------------------------------
 
       KM(:,:,LM) = CU * (PLE(:,:,LM)/(MAPL_RGAS * TV(:,:,LM))) / Z(:,:,LM)
+      TKM = KM
 
       ! Setup the tridiagonal matrix
       ! ----------------------------
@@ -5336,7 +5342,7 @@ end subroutine RUN1
       real, dimension(:,:  ), pointer     :: KETRB, KESRF, KETOP, KEINT
       real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKX, EKV, FKV
       real, dimension(:,:,:), pointer     :: DPDTTRB
-      real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, KHFLX, UFLXTRB, VFLXTRB, QTX, SLX
+      real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, UFLXTRB, VFLXTRB, TKH, TKM, QTX, SLX
 
       integer                             :: KM, K, L, I, J
       logical                             :: FRIENDLY
@@ -5371,6 +5377,20 @@ end subroutine RUN1
       character(len=4)           :: imchar
       character(len=2)           :: dateline
       integer                    :: imsize,nn
+
+
+! Post-DIFFUSE conserved variables and flux diagnostics
+!-------------------------------------------------------
+
+      call MAPL_GetPointer(INTERNAL, TKH , 'TKH' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, TKM , 'TKM' , RC=STATUS); VERIFY_(STATUS)
+
+      call MAPL_GetPointer(EXPORT, QTX      , 'QT'       , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLX      , 'SL'       , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTFLXTRB , 'QTFLXTRB' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLFLXTRB , 'SLFLXTRB' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, UFLXTRB  , 'UFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, VFLXTRB  , 'VFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
 
 ! Pressure-weighted dissipation heating rates
 !--------------------------------------------
@@ -5900,25 +5920,29 @@ end subroutine RUN1
             end if
          end if
 
-       if( name=='Q' .or. name=='QLLS' .or. name=='QLCN') then
-          if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
-       endif
+         if( name=='Q' .or. name=='QLLS' .or. name=='QLCN') then
+           if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
+         endif
 
-       if( name=='S' ) then
+         if( name=='S' ) then
            if(associated(SLFLXTRB).or.associated(SLX)) SL = SL + SX
-       end if
+         end if
 
-       if( name=='QLLS' .or. name=='QLCN' ) then
+         if( name=='QLLS' .or. name=='QLCN' ) then
           if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHL*SX
-       endif
+         endif
 
-       if( name=='U' ) then
+         if( name=='QILS' .or. name=='QICN' ) then
+          if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHS*SX
+         endif
+
+         if( name=='U' ) then
            if(associated(UFLXTRB)) U = U + SX
-       end if
+         end if
 
-       if( name=='V' ) then
+         if( name=='V' ) then
            if(associated(VFLXTRB)) V = V + SX
-       end if
+         end if
 
       enddo TRACERS
 
@@ -5930,27 +5954,31 @@ end subroutine RUN1
       if (associated(QTX)) QTX = QT
       if (associated(SLX)) SLX = SL
 
+      if (associated(QTFLXTRB).or.associated(SLFLXTRB).or.associated(UFLXTRB).or.associated(VFLXTRB)) then
+        ZLO = 0.5*(ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM))
+      end if
+
       if (associated(QTFLXTRB)) then
          QTFLXTRB(:,:,1:LM-1) = (QT(:,:,1:LM-1)-QT(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         QTFLXTRB(:,:,1:LM-1) = -1.*KHFLX(:,:,1:LM-1)*QTFLXTRB(:,:,1:LM-1)
+         QTFLXTRB(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*QTFLXTRB(:,:,1:LM-1)
          QTFLXTRB(:,:,LM) = QTFLXTRB(:,:,LM-1)
          QTFLXTRB(:,:,0) = 0.0
       end if
       if (associated(SLFLXTRB)) then
          SLFLXTRB(:,:,1:LM-1) = (SL(:,:,1:LM-1)-SL(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         SLFLXTRB(:,:,1:LM-1) = -1.*KHFLX(:,:,1:LM-1)*SLFLXTRB(:,:,1:LM-1)
+         SLFLXTRB(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*SLFLXTRB(:,:,1:LM-1)
          SLFLXTRB(:,:,LM) = SLFLXTRB(:,:,LM-1)
          SLFLXTRB(:,:,0) = 0.0
       end if
       if (associated(UFLXTRB)) then
          UFLXTRB(:,:,1:LM-1) = (U(:,:,1:LM-1)-U(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         UFLXTRB(:,:,1:LM-1) = -1.*KHFLX(:,:,1:LM-1)*UFLXTRB(:,:,1:LM-1)
+         UFLXTRB(:,:,1:LM-1) = -1.*TKM(:,:,1:LM-1)*UFLXTRB(:,:,1:LM-1)
          UFLXTRB(:,:,LM) = UFLXTRB(:,:,LM-1)
          UFLXTRB(:,:,0) = 0.0
       end if
       if (associated(VFLXTRB)) then
          VFLXTRB(:,:,1:LM-1) = (V(:,:,1:LM-1)-V(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         VFLXTRB(:,:,1:LM-1) = -1.*KHFLX(:,:,1:LM-1)*VFLXTRB(:,:,1:LM-1)
+         VFLXTRB(:,:,1:LM-1) = -1.*TKM(:,:,1:LM-1)*VFLXTRB(:,:,1:LM-1)
          VFLXTRB(:,:,LM) = VFLXTRB(:,:,LM-1)
          VFLXTRB(:,:,0) = 0.0
       end if
