@@ -309,7 +309,8 @@ else
    echo "   ${C2}T3     --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:    720x410 )"
    echo "   ${C2}T4     --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean:   1440x1080)"
    echo "   ${C2}T1MOM6 --  Low-Resolution  Tripolar 5   deg${CR} (MOM6-Tripolar-Ocean:    72x36  )"
-#  echo "   ${C2}T2MOM6 --  Med-Resolution  Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:   360x210 )"
+   echo "   ${C2}T2MOM6 --  Med-Resolution  Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:   360x210 )"
+   echo "   ${C2}T3MOM6 --  High-Resolution Tripolar 1/2 deg${CR} (MOM6-Tripolar-Ocean:   580x458 )"
    echo "   ${C2}T4MOM6 --  High-Resolution Tripolar 1/4 deg${CR} (MOM6-Tripolar-Ocean:  1440x1080)"
    echo "   ${C2}CS     --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean        )"
    echo " "
@@ -337,6 +338,7 @@ ORSLV:
           $orslv != 'T4'     & \
           $orslv != 'T1MOM6' & \
           $orslv != 'T2MOM6' & \
+	  $orslv != 'T3MOM6' & \
           $orslv != 'T4MOM6' & \
           $orslv != 'CS')    then
           echo " ${C1} Invalid choice.  Note that entries are case-sensitive.  Try again:${CR}"
@@ -427,7 +429,7 @@ endif
 
 
 if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
-    $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
+    $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T3MOM6 | $orslv == T4MOM6 ) then
 
 # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
 # -------------------------------------------------------------------------------------------------
@@ -509,6 +511,10 @@ if( $orslv == T2MOM6 ) then
     @ imo = 360  # MOM6 Tripolar-Ocean
     @ jmo = 210  # MOM6 Tripolar-Ocean
 endif
+if( $orslv == T3MOM6 ) then
+    @ imo = 540  # MOM6 Tripolar-Ocean
+    @ jmo = 458  # MOM6 Tripolar-Ocean
+endif
 if( $orslv == T4MOM6 ) then
     @ imo = 1440   # MOM6 Tripolar-Ocean
     @ jmo = 1080   # MOM6 Tripolar-Ocean
@@ -525,7 +531,7 @@ if( $orslv == T2 | $orslv == T3 | $orslv == T4 ) then
     set  MOM_VERSION = MOM5
     set     DATENAME = TM
     set     POLENAME = TM
-else if ( $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
+else if ( $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T3MOM6 | $orslv == T4MOM6 ) then
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM6
     set     DATENAME = TM
@@ -817,6 +823,8 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/360x210 data/MOM6/360x210
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/540x458 data/MOM6/540x458
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
@@ -995,6 +1003,8 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/360x210 data/MOM6/360x210
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/540x458 data/MOM6/540x458
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
@@ -1181,6 +1191,8 @@ ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/360x210 data/MOM6/360x210
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/540x458 data/MOM6/540x458
 ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
