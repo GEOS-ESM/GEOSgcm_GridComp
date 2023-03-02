@@ -1,6 +1,16 @@
 function grid,data,lat,lon,region=rgn,nlat=nlat,nlon=nlon, $
                    npts=npts,mis_val=mval
 
+; function to [re]grid data given lat and lon position of the elements. 
+; Output is a 2D array on a lat/lon grid, holding means of the elements that fell 
+; into each gridbox. Default regridded data resolution is 1deg (both lat/lon)
+
+; Optional arguments include: 
+; - number of points along lat-direction (nlat) and lon-direction (nlon) - controles the resolution of the output
+; - a user-defined missing value (mval) - defines missing value
+; - a user-defined region to [re]grid over. [min_lat,mat_lat, min_lon, max_lon]
+; - flag '/npts'. Will add the number of elements per grid box to the output 
+
 if (n_elements(rgn)  EQ 0) then rgn=[-90.0,90.0,-180.0,180.0]
 if (n_elements(nlat) EQ 0) then nlat=180
 if (n_elements(nlon) EQ 0) then nlon=360
@@ -34,7 +44,6 @@ endif
 xind=long((lon2 - minlon)/double(xinc))
 yind=long((lat2 - minlat)/double(yinc))
 m=where(xind GE 0 AND xind LT NLON AND yind GE 0 AND yind LT NLAT,cnt)
-print, 'm is: ', cnt
 
 lat2=lat2[m]
 lon2=lon2[m]

@@ -1,8 +1,10 @@
 pro get_snow_alb_mod10a1_30arcsec, year=year, h_s=h_s, h_e=h_e
 
 ; Code to stitch MODIS files, such as: MOD10A1.A2022002.h35v08.006.2022004050029.hdf
-; into a daily global 30arcsec grid and produce inputs for GEOS make_bcs package, such as:
+; into a static global 30arcsec grid and produce inputs for GEOS make_bcs package, such as:
 ; snow_alb_MOD10A1.061_30arcsec_H36V05.nc
+; The original MODIS input files are on a sinusoidal (~500-m) grid. The final snow albedo
+; product is on a 30arcsec regular lat/lon grid (date-line-edge and pole-edge)
 
 ; It first reads the MODIS-tile files to generate snow cover PDFs over a period of time.
 ; These PDFs are made based on grid cells that exceed a snow cover value (e.g. 60%). This is done
@@ -31,9 +33,9 @@ pro get_snow_alb_mod10a1_30arcsec, year=year, h_s=h_s, h_e=h_e
 ; MODIS_lat_lon/  - holds previousely created lat/lon info (user needs to create this with get_lat_lon4tils.pro listed in dependencies)
 ; MOD10A1_data/   - holds MODIS input data (user has to bring it in; follow the dir structure)
 
-; There are six steps (runs) to process. Steps have to be processed in order. The current step must
+; There are five steps (runs) to process. Steps have to be processed in order. The current step must
 ; complete before the next is initiated. Use the 'goto' commands to control which step is exectued.
-; When the current step is completed, uncomment the next-step goto command on lines 83-90
+; When the current step is completed, uncomment the next-step goto command on lines 86-92
 
 ; To execture the code in terminal window type (without quotations):
 ; 'idl', then '.r get_snow_alb_mod10a1_30arcsec', then 'get_snow_alb_mod10a1_30arcsec'
@@ -86,8 +88,7 @@ dim_2d=[2400l,2400l]
 ;goto, skip_extracting_snow_cvr   ; *** STEP 2
 ;goto, skip_calculating_snow_cvr  ; *** STEP 3
 ;goto, skip_reading_snow_alb      ; *** STEP 4
-;goto, skip2stitching             ; *** STEP 5
-;goto, skip2ncoutput              ; *** STEP 6
+;goto, skip2ncoutput              ; *** STEP 5
 ; ********* STEPS ***********
 
 ; loop over years
