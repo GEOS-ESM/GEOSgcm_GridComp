@@ -473,7 +473,7 @@ for ih=h_start,h_end do begin
 
       print, 'Start gridding'
 
-      ; grid to 1200x1200 (30 arc sec) 
+      ; regrid from 2400x2400 sinusoidal grid to 1200x1200 (30 arc sec) regular lat/lon grid (dateline-on-edge, pole-on-edge)
       alb_30sec_grid=grid(alb_lim_tail_mean_all,lat_all,lon_all,nlat=1200,nlon=1200,  $
                           region=[minlat,maxlat,minlon,maxlon],mis_val=mis_val)
 
