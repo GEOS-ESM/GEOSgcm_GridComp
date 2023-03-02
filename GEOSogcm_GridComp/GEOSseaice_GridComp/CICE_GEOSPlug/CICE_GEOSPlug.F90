@@ -417,6 +417,7 @@ contains
     integer                                :: NPES
     integer                                :: OGCM_IM, OGCM_JM
     integer                                :: OGCM_NX, OGCM_NY
+    integer                                :: BLK_NX,  BLK_NY
 
 ! Locals with ESMF and MAPL types
 
@@ -502,9 +503,18 @@ contains
     call MAPL_GetResource( MAPL, OGCM_NX, Label="OGCM.NX:",       __RC__)
     call MAPL_GetResource( MAPL, OGCM_NY, Label="OGCM.NY:",       __RC__)
 
-    ASSERT_(mod(OGCM_IM,OGCM_NX)==0)
-    ASSERT_(mod(OGCM_JM,OGCM_NY)==0)
-
+    !ASSERT_(mod(OGCM_IM,OGCM_NX)==0)
+    !ASSERT_(mod(OGCM_JM,OGCM_NY)==0)
+    if (mod(OGCM_IM,OGCM_NX) == 0) then
+        BLK_NX = OGCM_IM/OGCM_NX
+    else
+        BLK_NX = OGCM_IM/OGCM_NX + 1
+    endif 
+    if (mod(OGCM_JM,OGCM_NY) == 0) then
+        BLK_NY = OGCM_JM/OGCM_NY
+    else
+        BLK_NY = OGCM_JM/OGCM_NY + 1
+    endif 
 
     call ESMF_VMGet(VM, mpiCommunicator=Comm,  petCount=NPES, rc=STATUS)
     VERIFY_(STATUS)
@@ -512,7 +522,7 @@ contains
 
 ! Init CICE 
 !---------------
-    call cice_init1(Comm, NPES, OGCM_IM/OGCM_NX, OGCM_JM/OGCM_NY, &
+    call cice_init1(Comm, NPES, BLK_NX, BLK_NY, &
                     DT_SEAICE, MAPL_TICE, MAPL_ALHL, MAPL_ALHS)
 
     !call ice_import_grid(FROCEAN, __RC__)
