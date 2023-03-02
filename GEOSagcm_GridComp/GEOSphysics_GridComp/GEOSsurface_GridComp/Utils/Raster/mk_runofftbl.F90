@@ -16,7 +16,11 @@ program Runoff
   integer                :: numtrans,  numclosed
   integer                :: status
   character*100          :: file, fileT, fileR, fileO, fileB, fileBB
-  character*100          :: fileLL="data/CATCH/Outlet_latlon."
+
+  character*400          :: fileLL
+  character*400          :: MAKE_BCS_INPUT_DIR
+
+
   character*5            :: C_NX, C_NY
 
   logical                :: adjust_oceanLandSea_mask = .false. ! default is .false.
@@ -24,6 +28,11 @@ program Runoff
   character*(128)        :: arg, &
                             Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter", &
                             mapl_tp_file
+
+
+  call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
+  fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/Outlet_latlon.'
+
 
 ! Read inputs -----------------------------------------------------
   I = command_argument_count()

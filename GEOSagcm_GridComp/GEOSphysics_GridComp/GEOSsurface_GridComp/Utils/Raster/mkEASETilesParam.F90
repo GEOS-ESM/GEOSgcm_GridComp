@@ -9,7 +9,7 @@ PROGRAM mkEASETilesParam
   !  and mkSMAPTilesPara_v2.F90 in September 2022.
   ! Before the merger and cleanup, the EASE grid parameters were hard-coded here.
   !  For EASEv2 M25, the outdated scale value was used here.
-  ! This is program is renamed to mkEASETileParam from mkSMAPTilesPara_v2
+  ! The program was renamed to mkEASETileParam from mkSMAPTilesPara_v2
   !
   ! - wjiang + reichle, 21 Sep 2022
   
@@ -17,6 +17,7 @@ PROGRAM mkEASETilesParam
       use EASE_conv
       use rmTinyCatchParaMod, only : i_raster, j_raster, SRTM_maxcat 
       use rmTinyCatchParaMod, only : RegridRaster, RegridRaster1, RegridRasterReal
+      use rmTinyCatchParaMod, only : MAKE_BCS_INPUT_DIR 
       use process_hres_data
       use MAPL_SortMod
       use MAPL_ConstantsMod
@@ -60,9 +61,9 @@ PROGRAM mkEASETilesParam
       real :: clat, clon, r_ease, s_ease, da
       real :: fr_gcm
       integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX
-      REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
+      !REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
       character*100 :: veg_class (12)
-      character*100 :: gfile,gtopo30
+      character*200 :: gfile,gtopo30
       integer :: nc_ease,nr_ease, N_args, command_argument_count 
       REAL :: dx,dy,d2r,lats,mnx,mxx,mny,mxy,sum1,sum2,jgv, VDUM,pix_area
       character(40) :: arg, EASElabel_ 
@@ -75,6 +76,8 @@ PROGRAM mkEASETilesParam
       character(len=6)       :: EASE_Version
       character(len=10)      :: nc_string, nr_string
       character(128)         :: usage1, usage2
+
+      call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
       ! --------------------------------------------------------------------------------------
 
@@ -118,10 +121,6 @@ PROGRAM mkEASETilesParam
      ! if (MGRID /= 'M25' .and. EASE_version == 'EASEv1') then
      !    stop ("EASEv1 only supports M25")
      ! endif      
-      
-      ! WY noted: should do it in the script that calls this program 
-      !call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')  
-      !call execute_command_line('cd ..')
       
       ! Setting EASE Grid specifications
       ! --------------------------------
@@ -197,7 +196,7 @@ PROGRAM mkEASETilesParam
          allocate(geos_msk    (1:nc_esa,1:dy_esa))
          allocate(SRTM_CatchArea (1:SRTM_maxcat))
 
-         OPEN (10, FILE = 'data/CATCH/SRTM-TopoData/Pfafcatch-routing.dat', &
+         OPEN (10, FILE = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat', &
               FORM = 'FORMATTED',STATUS='OLD',ACTION='READ') 
 
          READ (10,*) I
@@ -210,14 +209,14 @@ PROGRAM mkEASETilesParam
 
          dx  = 360._8/nc
          dy  = 180._8/nr
-         d2r = PI/180._8
-         da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
+         d2r = MAPL_PI_R8/180._8
+         !da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
          
          tileid_index = 0        
          catid_index  = 0
          veg          = 0
          
-         status    = NF90_OPEN ('data/CATCH/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
+         status    = NF90_OPEN (trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
          status    = nf90_inq_varid(ncid, name='PfafID', varid=varid)
          status    = nf90_get_var(ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/))
          if(status /=0) then
@@ -327,8 +326,8 @@ PROGRAM mkEASETilesParam
 
          dx  = 360._8/nc
          dy  = 180._8/nr
-         d2r = PI/180._8
-         da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
+         d2r = MAPL_PI_R8/180._8
+         !da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
          
          tileid_index = 0        
 
@@ -354,7 +353,7 @@ PROGRAM mkEASETilesParam
          ! 2.5'x2.5' vegetation raster file is global 1min IGBP data 
          ! (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
          
-         open (10,file='data/CATCH/sib22.5_v2.0.dat', &
+         open (10,file=trim(MAKE_BCS_INPUT_DIR)//'/land/veg/pft/v1/sib22.5_v2.0.dat', &
               form='unformatted', &
               action='read', convert='big_endian',status='old')
          
@@ -378,7 +377,7 @@ PROGRAM mkEASETilesParam
          !    1 global inland water (lakes) catchment : Pfafstetter ID 6190000
          !    1 global ice catchment                  : Pfafstetter ID 6200000
          
-         open (10,file='data/CATCH/global.cat_id.catch.DL', form='formatted', &
+         open (10,file= trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
               action='read', status='old')!
          
          do j=1,j_raster
@@ -404,7 +403,7 @@ PROGRAM mkEASETilesParam
          !  1 global ice catchment                  : tile_index 36718
          ! ------------------------------------------------------------
          
-         open (10,file='data/CATCH/'  &
+         open (10,file=trim(MAKE_BCS_INPUT_DIR)//'/land/topo/'  &
               //'PfafstatterDL.rst', form='unformatted',        &
               action='read',convert='little_endian', status='old')
          
@@ -469,7 +468,7 @@ PROGRAM mkEASETilesParam
       allocate(raster      (i_raster,j_raster))
       allocate(q0(nc,nr)) 
       
-      gtopo30 = 'data/CATCH/srtm30_withKMS_2.5x2.5min.data'
+      gtopo30 = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
      
       open (10,file=trim(gtopo30),form='unformatted',status='old',convert='little_endian')
       read (10) raster

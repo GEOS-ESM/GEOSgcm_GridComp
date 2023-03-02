@@ -7,7 +7,7 @@
     use MAPL_HashMod
     use process_hres_data
     use MAPL_SortMod
-    use rmTinyCatchParaMod, ONLY: SRTM_maxcat
+    use rmTinyCatchParaMod, ONLY: SRTM_maxcat, MAKE_BCS_INPUT_DIR
 
 ! Program to create a surface raster file at 2.5' that has
 ! the ocean divided with a regular lat-lon DE grid. Its inputs
@@ -73,8 +73,7 @@
     character*128          :: &
     Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -l LandFile -g GridName"
     include 'netcdf.inc'
-    call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
-    call execute_command_line('cd ..')
+    call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
 ! Process Arguments
 !------------------
@@ -87,8 +86,7 @@
     tildir    = 'til/'   ! Write in current dir
     rstdir    = 'rst/'   ! Write in current dir
     maxtiles  = 50000
-    InputFile = &
-          "data/CATCH/global.cat_id.catch.DL"
+    InputFile = trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/global.cat_id.catch.DL'
      
     I = command_argument_count()
 
@@ -182,7 +180,7 @@
        ss(i) = sin(xs)
     enddo
 
-    InputFile = 'data/CATCH/'//trim(MaskFile)
+    InputFile = trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/'//trim(MaskFile)
   
     if (index(trim(MaskFile),'GEOS5_10arcsec_mask')/=0) then
        ! 10 arcsec new mask
@@ -196,7 +194,7 @@
        allocate(geos_msk    (1:nc_esa,1:dy_esa))
        allocate (raster (1:nx, 1:ny)) 
 
-       InputFile = 'data/CATCH/'//trim(MaskFile)
+       InputFile = trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/'//trim(MaskFile)
 
        status    = NF_OPEN (InputFile, NF_NOWRITE, ncid)
 
@@ -217,7 +215,7 @@
           print *, 'Using Reynolds SSTs MASKFILE',trim(MaskFile)
           reynolds_sst = .true.
   
-          InputFile = 'data/CATCH/GEOS5_10arcsec_mask.nc'
+          InputFile = trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/GEOS5_10arcsec_mask.nc'
           status    = NF_OPEN (InputFile, NF_NOWRITE, ncid2)
           allocate(geos_msk2    (1:nc_esa,1:dy_esa))
        endif
