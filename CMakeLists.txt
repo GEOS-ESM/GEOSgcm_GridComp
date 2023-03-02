@@ -53,14 +53,18 @@ ExternalProject_Add(modelE
    BUILD_ALWAYS 1
    #BUILD_COMMAND make clean OVERWRITE=YES && make rundeck RUN=${ModelE_Run} RUNSRC=${ModelE_Template} OVERWRITE=YES && $(MAKE) setup RUN=${ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=${MODELERC} MPI=YES
    BUILD_COMMAND make rundeck RUN=${ModelE_Run} RUNSRC=${ModelE_Template} OVERWRITE=YES 
-         COMMAND $(MAKE) setup RUN=${ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=${MODELERC} MPI=YES
+   #BUILD_COMMAND make clean OVERWRITE=YES
+         COMMAND make rundeck RUN=${ModelE_Run} RUNSRC=${ModelE_Template} OVERWRITE=YES 
+         COMMAND $(MAKE) setup RUN=${ModelE_Run} MAPL=YES OVERWRITE=YES GEOS_BINARY_DIR=${CMAKE_BINARY_DIR}  VERBOSE_OUTPUT=YES MODELERC=${MODELERC} MPI=YES COMPILE_WITH_TRAPS=YES
          COMMAND find ../model/ -type f -name "*.a" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/lib $<SEMICOLON>
          COMMAND find ../model/ -type f -name "*.mod" -exec /bin/cp {} ${CMAKE_BINARY_DIR}/include/modelE $<SEMICOLON>
    BUILD_IN_SOURCE 1
    INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
-   INSTALL_COMMAND  cmake -E make_directory <INSTALL_DIR>/lib
+   INSTALL_COMMAND cmake -E make_directory <INSTALL_DIR>/lib
+           COMMAND cmake -E make_directory <INSTALL_DIR>/bin
            COMMAND find <SOURCE_DIR>/../model/ -type f -name "*.a" -exec /bin/cp {} <INSTALL_DIR>/lib  $<SEMICOLON>
            COMMAND find <SOURCE_DIR>/../model/ -type f -name "*.mod" -exec /bin/cp {} <INSTALL_DIR>/include/modelE  $<SEMICOLON>
+           COMMAND find <SOURCE_DIR>/../decks/ -type f -name "geos_run.exe" -exec /bin/cp {} <INSTALL_DIR>/bin  $<SEMICOLON>
    DEPENDS MAPL
 )
 set(modele_lib_dir ${CMAKE_BINARY_DIR}/lib CACHE PATH "ModelE library dir" FORCE)

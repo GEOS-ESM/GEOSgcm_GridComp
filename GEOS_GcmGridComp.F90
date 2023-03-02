@@ -15,6 +15,7 @@ module GEOS_GcmGridCompMod
 
    use ESMF
    use MAPL
+   use dist_grid_mod
 
    use ModelE_MAPL,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
@@ -664,6 +665,9 @@ contains
 
 ! Create Atmospheric grid
 !------------------------
+!   this is very klugy, but if we are running modele it has its way of making grid distro
+!   and we have ours and ours is easier to make match modele's than the other way around
+    call write_modele_distribution_to_file(cf,_RC)
     call MAPL_GridCreate(GCS(AGCM), rc=status)
     VERIFY_(STATUS)
 
@@ -1481,6 +1485,57 @@ contains
  
      end subroutine run_history
  end subroutine Run
+
+ subroutine write_modele_distribution_to_file(cf,rc)
+    type(ESMF_Config), intent(inout) :: cf
+    integer, optional, intent(out) :: rc
+
+    integer :: status,npet,mypet,jm_world
+    integer, allocatable :: jms(:)
+    type(ESMF_VM) :: vm
+    character(len=ESMF_MAXSTR) :: grid_type
+    integer :: localAdjustment, excess, p
+
+    call ESMF_VMGetCurrent(vm,_RC)
+    call ESMF_VMGet(vm,localPet=mypet,peCount=npet,_RC)
+
+    call ESMF_ConfigGetAttribute(cf,value=jm_world,label='AGCM.JM_WORLD:',_RC)
+    call ESMF_ConfigGetAttribute(cf,value=grid_type,label='AGCM.GRID_TYPE:',_RC)
+    _ASSERT(trim(grid_type) == 'LatLon',"model and GEOS Grid defs do not match, must be LatLon")
+    allocate(jms(0:npet-1))
+    select case (npet)
+    case (1)
+       jms(1) = JM_WORLD
+       return
+    case (2)
+       jms(0) = JM_WORLD/2
+       jms(1) = JM_WORLD - (JM_WORLD/2)
+       return
+    case (3:)
+       ! 1st cut - round down
+       jms(0:npet-1) = JM_WORLD/npet
+
+       ! Fix at poles
+       ! redistrute excess
+       excess = JM_WORLD - sum(jms(0:npet-1))
+       if (excess > 0) then
+         jms(0) = max(2, jms(0))
+       end if
+       if (excess > 1) then
+         jms(npet-1) = max(2, jms(npet-1))
+       end if
+       ! re-calculate excess again, since jms may have changed
+       excess = JM_WORLD - sum(jms(0:npet-1))
+       ! redistribute any remaining excess among interior processors
+       do p = 1, npet - 2
+          localAdjustment = (p+1)*excess/(npet-2) - (p*excess)/(npet-2)
+          jms(p) = jms(p) + localAdjustment
+       end do
+    end select
+
+    call MAPL_ConfigSetAttribute(cf,value=jms,label='AGCM.JMS:',_RC)
+
+ end subroutine
 
 end module GEOS_GcmGridCompMod
 
