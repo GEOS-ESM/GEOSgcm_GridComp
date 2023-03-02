@@ -2590,6 +2590,7 @@ contains
     if(associated(FSURFe )) FSURFe  = 0.0
     if(associated(FSURFICE)) FSURFICE = 0.0
     if(associated(SHICE  )) SHICE   = 0.0
+    if(associated(LWNDICE)) LWNDICE = 0.0 
 
 
     FRCICE = sum(FR(:,ICE:), dim=2) 
@@ -2678,16 +2679,27 @@ contains
     update_surf: do N=ICE, NUM_SUBTILES   ! Loop over ice catgories. 
           CFT     = (CH(:,N)/CTATM)
           CFQ     = (CQ(:,N)/CQATM)
+          EVP     = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
+          SHF     = CFT*(SH   + DSH*(TS(:,N)-THATM))
+          SHD     = CFT*DSH
+          EVD     = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
+          LHF     = EVP * MAPL_ALHS
 !         Aggregate ts and qs change over ice categories
-          TS(:,N) = TS(:,N) + AS_PTR_2D(:,N)
           DTS     = AS_PTR_2D(:,N)           
+          TS(:,N) = TS(:,N) + DTS
           DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
           QS(:,N) = QS(:,N) + DQS
+
+          LHF     = LHF + EVD * MAPL_ALHS * DTS
+          SHF     = SHF + SHD * DTS
 
           if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
           if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
           if(associated(TST    )) TST     = TST     + TS(:,N)*FR(:,N)
           if(associated(QST    )) QST     = QST     + QS(:,N)*FR(:,N)
+          if(associated(HLATICE)) HLATICE = HLATICE + LHF    *FR(:,N)
+          if(associated(SHICE  )) SHICE   = SHICE   + SHF    *FR(:,N)
+          if(associated(LWNDICE)) LWNDICE = LWNDICE + (LWDNSRF - ALW - BLW*TS(:,N))*FR(:,N)
     end do update_surf
 
     EMISS = EMSICE
@@ -2696,6 +2708,11 @@ contains
     if(associated(DELQS  )) call Normalize(DELQS,  FRCICE) 
     if(associated(TST    )) call Normalize(TST,    FRCICE) 
     if(associated(QST    )) call Normalize(QST,    FRCICE) 
+    if(associated(HLATICE)) call Normalize(HLATICE,FRCICE)
+    if(associated(SHICE  )) call Normalize(SHICE,  FRCICE)
+
+    if(associated(LWNDICE)) call Normalize(LWNDICE,  FRCICE, set_undef=.True.)
+          
 
     call RegridO2A_1d(ALBVR, SURFST, 'ALBVR', &
          XFORM_O2A, locstreamO, __RC__)
@@ -2995,14 +3012,32 @@ end subroutine RUN2
     RETURN_(ESMF_SUCCESS)
   end subroutine Finalize
 
-  subroutine Normalize(ptr, frac)
+  subroutine Normalize(ptr, frac, set_undef)
 
      real,              dimension(:),  intent(inout)  :: ptr 
      real,              dimension(:),     intent(in)  :: frac 
- 
-     where(frac > puny)  
-         ptr = ptr / frac
-     endwhere  
+     logical,             intent(in),      optional   :: set_undef 
+
+
+     logical ::  l_set 
+
+     if (present(set_undef)) then
+        l_set = set_undef
+     else
+        l_set = .false.
+     endif  
+  
+     if(l_set) then 
+        where(frac > puny)  
+           ptr = ptr / frac
+        elsewhere
+           ptr = MAPL_UNDEF
+        endwhere  
+     else
+        where(frac > puny)  
+           ptr = ptr / frac
+        endwhere  
+     endif 
 
      return  
   end subroutine Normalize 
