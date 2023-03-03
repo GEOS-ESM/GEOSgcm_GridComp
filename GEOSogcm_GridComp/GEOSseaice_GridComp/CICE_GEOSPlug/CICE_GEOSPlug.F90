@@ -803,7 +803,7 @@ contains
 
     !call ice_import_thermo2()
 
-    !call ice_import_dyna(TAUX, TAUY)
+    call ice_import_dyna(TAUX, TAUY, _RC)
 
 
     call CICE_Run
