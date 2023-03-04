@@ -92,9 +92,9 @@ MODULE Aer_Actv_Single_Moment
                   AeroProps(i,j,k)%num = 0.0
               end do
           end do
-      end do    
-      NACTL    = NN_MIN
-      NACTI    = NN_MIN
+          NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+          NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+      end do
 
       kpbli = MAX(MIN(NINT(kpbl),LM-1),1)
       
