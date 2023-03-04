@@ -1814,7 +1814,7 @@ module GEOSmoist_Process_Library
          QCn  = QCn * (1.-CLCN)
          QAo  = QAo *     CLCN  
       else
-         ! Special case AF=1, i.e., box filled with anvil. 
+         ! Special case CLCN=1, i.e., box filled with anvil. 
          !   - Note: no guarantee QV_box > QS_box
          CLLS = 0.              ! Remove any LS cloud
          QAo  = QLCN+QICN + QCn ! Add any remaining LS condensate to anvil type
