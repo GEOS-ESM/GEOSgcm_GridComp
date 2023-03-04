@@ -818,7 +818,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
        
         cpaut = c_paut * 0.104 * grav / 1.717e-5
-        if (eis(i) > 5.0) cpaut=cpaut*0.5 ! slow autoconversion in stable regimes
+        ! slow autoconversion in stable regimes
+        cpaut = cpaut * (0.5 + 0.5*(1.0-min(1.0,eis(i)/5.0)**2))
 
         ! ccn needs units #/m^3 
         if (prog_ccn) then
@@ -1251,7 +1252,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ql = ql/qadum
     qi = qi/qadum
 
-    fac_rc = max(0.0,min(1.0,eis-4.0)) ! Estimated inversion strength >5 stable range [4:5]
+    fac_rc = min(1.0,eis/5.0)**2 ! Estimated inversion strength determine stable regime
     fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
  
     if (irain_f /= 0) then
