@@ -324,7 +324,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: PTR2D
 
     ! Local variables
-    real    :: ALPHA, RHCRIT
+    real    :: ALPHAs, ALPHAu, facEIS
+    real    :: turnalpha, ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L
 
@@ -538,14 +539,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           do J=1,JM
            do I=1,IM
        ! Send the condensates through the pdf after convection
-             ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
-             if (EIS(I,J) > 5.0) then ! Stable
-                ALPHA = 1.0 - ((1.0-dw_land ) + (1.0 - (1.0-dw_land ))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**2))
-             else ! Unstable
-                ALPHA = 1.0 - ((1.0-dw_ocean) + (1.0 - (1.0-dw_ocean))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**4))
-             endif
-             ! include area scaling and limit RHcrit to > 70% 
-             ALPHA = min( 0.30, ALPHA*SQRT(SQRT(AREA(I,J)/1.e10)) )
+       ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
+           ALPHAs = dw_land  - dw_land *exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**2)
+           ALPHAu = dw_ocean - dw_ocean*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**6)
+           facEIS = MIN(1.0,EIS(I,J)/5.0)**2
+           ALPHA = ALPHAu*(1.0-facEIS) + ALPHAs*facEIS
+           ! include area scaling and limit RHcrit to > 70% 
+           ALPHA = min( 0.30, ALPHA*SQRT(SQRT(AREA(I,J)/1.e10)) )
            ! fill RHCRIT export
            if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
        ! Put condensates in touch with the PDF
