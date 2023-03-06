@@ -1,12 +1,13 @@
-!   $Id: 
-
-#include "Raster.h"
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
 
 program mkOverlaySimple
 
   use LogRectRasterizeMod
   use MAPL_SortMod
   use MAPL_HashMod
+  use MAPL_ExceptionHandling
+  use MAPL_Constants
 
 ! Overlay atmosphere, land, and ocean rasters, creating a .idx file.
 ! The ocean raster should be defined everywhere, or at least, everywhere
@@ -27,7 +28,7 @@ program mkOverlaySimple
   integer, parameter     :: TILUNIT1  = 22
   integer, parameter     :: TILUNIT2  = 23
 
-  REAL_,   parameter     :: PI        = RASTER_PI
+  real(kind=8),   parameter     :: PI        = MAPL_PI_R8
 
   integer                :: command_argument_count
   integer                :: nxt, argl, fill
@@ -42,12 +43,12 @@ program mkOverlaySimple
   integer,   allocatable :: RST2(:  )
   integer,   allocatable :: iTable(:,:)
 
-  REAL_ ,    allocatable :: Table1(:,:) 
-  REAL_ ,    allocatable :: Table2(:,:) 
-  REAL_ ,    allocatable :: rTable(:,:)
-  REAL_ ,    allocatable :: cc(:), ss(:)
-  REAL_                  :: dx, dy, area, xc, yc, d2r, vv(4)
-  REAL_                  :: lats, lons, da
+  real(kind=8) ,    allocatable :: Table1(:,:) 
+  real(kind=8) ,    allocatable :: Table2(:,:) 
+  real(kind=8) ,    allocatable :: rTable(:,:)
+  real(kind=8) ,    allocatable :: cc(:), ss(:)
+  real(kind=8)                  :: dx, dy, area, xc, yc, d2r, vv(4)
+  real(kind=8)                  :: lats, lons, da
 
   logical                :: DoZip
   logical                :: Verb
@@ -64,6 +65,7 @@ program mkOverlaySimple
   character*128          :: &
       Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE BOTTOMRASTER TOPRASTER"
 
+  character*128          :: Iam = "CombineRasters"
   integer :: Pix1, Pix2
 
 ! Argument defaults

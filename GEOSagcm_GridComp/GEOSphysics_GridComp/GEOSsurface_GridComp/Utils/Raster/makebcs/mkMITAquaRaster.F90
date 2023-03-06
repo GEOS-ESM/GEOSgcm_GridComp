@@ -1,10 +1,10 @@
-
-#include "Raster.h"
-!#define VERIFY_(A) if (A/=0) stop 'verify error'
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
 
       program MAIN
 
       use LogRectRasterizeMod
+      use MAPL_ExceptionHandling
 
       implicit none
 
@@ -101,6 +101,7 @@
       integer, dimension(MAXBLNKSZ) :: blankList
 
       real(kind=RKIND) :: areamin, xc, yc
+      character(len=128)      :: Iam = "mkMITAquaRaster"
 
       NAMELIST /W2_EXCH2_PARM01/   sNx, SNy,  blankList
 

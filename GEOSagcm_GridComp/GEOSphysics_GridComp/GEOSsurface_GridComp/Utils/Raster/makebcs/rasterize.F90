@@ -1,11 +1,11 @@
-
-#include "Raster.h"
+#include "MAPL_ErrLog.h"
 
 module LogRectRasterizeMod
 
   use MAPL_SORTMOD
   use rmTinyCatchParaMod, ONLY: SRTM_maxcat
-  
+  use MAPL_ExceptionHandling  
+  use MAPL_Constants, only: PI=>MAPL_PI_R8
   implicit none
   private
 
@@ -29,14 +29,13 @@ module LogRectRasterizeMod
   public WriteLine
 
   integer, parameter :: PUSHLEFT     = 10000
-  REAL_  , parameter :: Zero         = 0.0
-  REAL_  , parameter :: PI           = RASTER_PI
+  real(kind=8)  , parameter :: Zero         = 0.0
 
   integer, parameter :: NX           = 8640
   integer, parameter :: NY           = 4320
 
 
-  REAL_   :: garea_
+  real(kind=8)   :: garea_
   integer :: ctg_
   
   interface LRRasterize
@@ -113,7 +112,7 @@ end subroutine ReadRaster
 
 subroutine SortTiling(Raster,rTable,iTable)
   integer, intent(INOUT) :: Raster(:,:), iTable(0:,:)
-  REAL_,   intent(INOUT) :: rTable(:,:)
+  real(kind=8),   intent(INOUT) :: rTable(:,:)
 
   integer,   dimension(size(iTable,2)) :: old, new
   integer*8, dimension(size(iTable,2)) :: key, key0
@@ -163,15 +162,16 @@ subroutine SortTiling(Raster,rTable,iTable)
   return
 end subroutine SortTiling
 
-subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zip, Verb)
+subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zip, Verb, rc)
   character*(*),     intent(IN) :: File
   character*(*),     intent(IN) :: GridName(:)
   integer,           intent(IN) :: nx,ny
   integer,           intent(IN) :: iTable(0:,:)
-  REAL_,             intent(IN) :: rTable(:,:)
+  real(kind=8),             intent(IN) :: rTable(:,:)
   integer,           intent(IN) :: IM(:), JM(:), ipx(:)
   logical, optional, intent(IN) :: Zip
   logical, optional, intent(IN) :: Verb
+  integer, optional, intent(out) :: rc
 
 ! Table variables
 !
@@ -192,10 +192,11 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   integer :: j, unit, ng, ip, l, i, k, ix
   character*1000 :: Line
   integer :: ii(size(GridName)), jj(size(GridName)), kk(size(GridName))
-  REAL_   :: fr(size(GridName))
-  REAL_   :: xc, yc, area
-  REAL_   :: garea, ctg(size(Gridname))
-  REAL_   :: sphere, error
+  real(kind=8)   :: fr(size(GridName))
+  real(kind=8)   :: xc, yc, area
+  real(kind=8)   :: garea, ctg(size(Gridname))
+  real(kind=8)   :: sphere, error
+  integer :: status
 
   ip = size(iTable,2)
   ng = size(GridName)
@@ -388,7 +389,7 @@ subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   character*(*),     intent(IN) :: File
   integer,           intent(IN) :: Unit, k
   integer,           intent(IN) :: iTable(0:)
-  REAL_,             intent(IN) :: rTable(:)
+  real(kind=8),             intent(IN) :: rTable(:)
   logical, optional, intent(IN) :: Zip
   logical, optional, intent(IN) :: Verb
 
@@ -410,8 +411,8 @@ subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   logical :: DoZip
   character*1000 :: Line
   integer :: ii, jj
-  REAL_   :: fr
-  REAL_   :: xc, yc, area
+  real(kind=8)   :: fr
+  real(kind=8)   :: xc, yc, area
 
   if(present(Zip)) then
      DoZip = Zip
@@ -477,7 +478,7 @@ subroutine CloseTiling(FIle, Unit, ip,  Zip, Verb)
 !  rTable(5)    :: of 2nd   grid box area
 
   logical :: DoZip
-  REAL_   :: sphere, error
+  real(kind=8)   :: sphere, error
   character*1000 :: Line
 
   Line=""
