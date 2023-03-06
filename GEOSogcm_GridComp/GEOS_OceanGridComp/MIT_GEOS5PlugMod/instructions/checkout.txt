@@ -9,4 +9,5 @@
 
 # Checkout the model
   mepo clone -b feature/atrayano/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
+  cd GEOSgcm
   mepo checkout-if-exists feature/atrayano/MITgcm-DYAMOND
