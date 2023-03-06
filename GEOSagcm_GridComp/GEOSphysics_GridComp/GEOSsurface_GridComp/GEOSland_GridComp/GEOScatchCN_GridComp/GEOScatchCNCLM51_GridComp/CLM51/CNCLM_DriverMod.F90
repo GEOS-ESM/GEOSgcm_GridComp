@@ -663,7 +663,7 @@ contains
   ! LOCAL
   integer :: n, p, nv, nc, nz, np
 
-  real, pointer :: elai_clm(:)
+  real(r8), pointer :: elai_clm(:)
   !------------------------------
 
   elai_clm => canopystate_inst%elai_patch
