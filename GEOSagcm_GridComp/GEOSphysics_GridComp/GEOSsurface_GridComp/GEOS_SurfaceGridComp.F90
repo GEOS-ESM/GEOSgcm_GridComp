@@ -3114,6 +3114,15 @@ module GEOS_SurfaceGridCompMod
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
          VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    ! flammability and ignition sources
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'VPD',                       &
+         LONG_NAME  = 'vapor pressure deficit',    &
+         UNITS      = 'Pa',                        &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
   end if
 
 
@@ -5343,6 +5352,8 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: FWI_DAILY_  => NULL()
     real, pointer, dimension(:,:) :: DSR_DAILY_  => NULL()
 
+    real, pointer, dimension(:,:) :: VPD         => NULL()
+
 !   These are the tile versions of the imports
 
     real, pointer, dimension(:) :: PSTILE          => NULL()
@@ -5631,6 +5642,8 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: BUIDAILYTILE_  => NULL()
     real, pointer, dimension(:) :: FWIDAILYTILE_  => NULL()
     real, pointer, dimension(:) :: DSRDAILYTILE_  => NULL()
+
+    real, pointer, dimension(:) :: VPDTILE        => NULL()
 
 
     real, pointer, dimension(:,:) :: TMP => NULL()
@@ -6496,6 +6509,8 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , BUI_DAILY_  , 'BUI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , ISI_DAILY_  , 'ISI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , DSR_DAILY_  , 'DSR_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_GetPointer(EXPORT  , VPD         , 'VPD'        ,  RC=STATUS); VERIFY_(STATUS)
     end if
 
 ! Force allocation for ice fraction for lwi mask
@@ -7098,6 +7113,8 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(BUI_DAILY_,  BUIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(ISI_DAILY_,  ISIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(DSR_DAILY_,  DSRDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+
+       call MKTILE(VPD,         VPDTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
     end if   
 
 
@@ -8098,6 +8115,10 @@ module GEOS_SurfaceGridCompMod
     end if
     if (associated(DSR_DAILY_)) then
        call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY_, DSRDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(VPD)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, VPD, VPDTILE, RC=STATUS) 
        VERIFY_(STATUS)
     end if
 
@@ -9103,6 +9124,9 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'DSR_DAILY_',  ALLOC=associated(DSRDAILYTILE_),  notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
+
+         call MAPL_GetPointer(GEX(type), dum, 'VPD',         ALLOC=associated(VPDTILE),        notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
       end if   
 
 
@@ -9975,6 +9999,10 @@ module GEOS_SurfaceGridCompMod
       end if
       if (associated(DSRDAILYTILE_)) then
          call FILLOUT_TILE(GEX(type), 'DSR_DAILY_', DSRDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if   
+      if (associated(VPDTILE)) then
+         call FILLOUT_TILE(GEX(type), 'VPD', VPDTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
 
