@@ -7,6 +7,7 @@
     use MAPL_HashMod
     use process_hres_data
     use MAPL_SortMod
+    use rmTinyCatchParaMod, ONLY: SRTM_maxcat
 
 ! Program to create a surface raster file at 2.5' that has
 ! the ocean divided with a regular lat-lon DE grid. Its inputs
@@ -21,7 +22,7 @@
     integer, parameter     :: nx0 = 8640
     integer, parameter     :: ny0 = 4320
 
-    integer                :: IARGC
+    integer                :: command_argument_count
     integer                :: i,j,k,n, status,ncid, ncid2
     integer                :: ip, nxt
     integer                :: type, maxtiles, nx, ny
@@ -50,7 +51,7 @@
     ! ESA/SRTM ocean/land/ice/lake mask parameters
     ! --------------------------------------------
 
-    integer, parameter :: SRTM_maxcat = 291284, nc_esa = 129600, nr_esa = 64800
+    integer, parameter :: nc_esa = 129600, nr_esa = 64800
     integer, allocatable, target, dimension (:,:) :: geos_msk, geos_msk2 
     REAL,    allocatable, DIMENSION (:) :: loc_val
     INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
@@ -72,8 +73,8 @@
     character*128          :: &
     Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -l LandFile -g GridName"
     include 'netcdf.inc'
-    call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
-    call system('cd ..')
+    call execute_command_line('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
+    call execute_command_line('cd ..')
 
 ! Process Arguments
 !------------------
@@ -89,7 +90,7 @@
     InputFile = &
           "data/CATCH/global.cat_id.catch.DL"
      
-    I = iargc()
+    I = command_argument_count()
 
     if(I > 13) then
        print *, "Wrong Number of arguments: ", i
@@ -100,7 +101,7 @@
     nxt = 1
 
     do while(nxt<=I)
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
        if(arg(1:1)/='-') then
           print *, trim(Usage)
           call exit(1)
@@ -109,7 +110,7 @@
        if(len(trim(arg))==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           end if
        else
           arg = arg(3:)
@@ -142,7 +143,7 @@
     
 !   Check for the 10 arc-sec MaskFile (SM)
 
-    call getenv ("MASKFILE"        ,MaskFile        )
+    call get_environment_variable ("MASKFILE"        ,MaskFile        )
 
     print *,'Using Mask file : ',trim(MaskFile)
 
@@ -471,7 +472,7 @@
   end if
 
   do k=1,ip
-     iTable( 3,k) = k
+     iTable( 3,k) = 1
   end do
 
   if(Verb) print *, 'Writing til file...'

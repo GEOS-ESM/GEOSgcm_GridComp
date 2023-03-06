@@ -2,10 +2,11 @@ program Runoff
 
   use mapl_hashmod
   use mapl_sortmod
+  use netcdf
 
   implicit none
 
-  integer                :: nx, ny
+  integer                :: nx, ny, pf
   integer, allocatable   :: lats(:,:), lons(:,:)
   integer, pointer       :: rst(:,:), SortArr(:,:), key(:)
   integer, pointer       :: srctile(:),  srcweight(:), dstweight(:), dsttile(:)
@@ -14,16 +15,51 @@ program Runoff
   integer                :: type, np,lnd, is,ie,ww
   integer                :: numtrans,  numclosed
   integer                :: status
-  character*100          :: file, fileT, fileR, fileO, fileB
+  character*100          :: file, fileT, fileR, fileO, fileB, fileBB
   character*100          :: fileLL="data/CATCH/Outlet_latlon."
   character*5            :: C_NX, C_NY
 
-  call getarg(1,file)
+  logical                :: adjust_oceanLandSea_mask = .false. ! default is .false.
+  integer                :: nxt, command_argument_count
+  character*(128)        :: arg, &
+                            Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter", &
+                            mapl_tp_file
 
-  fileT = "til/"//trim(file)//".til"
-  fileR = "rst/"//trim(file)//".rst"
-  fileO = "til/"//trim(file)//".trn"
-  fileB = "til/"//trim(file)//".TRN"
+! Read inputs -----------------------------------------------------
+  I = command_argument_count()
+  if (I < 1 .or. I > 3) then
+    print *, " "
+    print *, "Wrong number of input arguments, got: ", I
+    print *, "Example usage with defaults: "
+    print *, " "
+    print *, trim(Usage)
+    print *, " "
+    call exit(1)
+  end if
+
+  nxt = 1
+  call get_command_argument(nxt, file)
+  print *, " "
+  print*, "Working with input BCs string: ", file
+  print *, " "
+  if (I > 1) then
+    nxt = nxt + 1
+    call get_command_argument(nxt, arg)
+    if ( trim(arg) .ne. 'yes') then
+      print *, "Incorrect optional second argument, should be: yes"
+      call exit(2)
+    else
+      adjust_oceanLandSea_mask = .true.
+      nxt = nxt + 1
+      call get_command_argument(nxt, mapl_tp_file)
+    endif
+  endif
+! ------------------------------------------------------------------
+
+  fileT = "til/"//trim(file)//".til" ! input
+  fileR = "rst/"//trim(file)//".rst" ! input
+  fileO = "til/"//trim(file)//".trn" ! output
+  fileB = "til/"//trim(file)//".TRN" ! output
 
 ! Read I and J indeces of river outlets.
 ! These should all be ocean pixels
@@ -33,7 +69,7 @@ program Runoff
 
   open(10,file=fileT, form="formatted", status="old")
 
-  read(10,*) np, nx, ny
+  read(10,*) np, pf, nx, ny
   close(10)
 !  print *, nx, ny
 
@@ -78,6 +114,23 @@ program Runoff
 ! Count the number of Ocean and land tiles in the tile file
 !  All land tiles preceed the ocean tiles.
 !----------------------------------------------------------
+
+! If asked for, adjust tiles to be 
+! comptabile with ocean model land-sea mask and write ANOTHER output file
+!-------------------------------------------------------------------------
+
+  if (adjust_oceanLandSea_mask) then
+    fileBB = "til/"//trim(file)//"_oceanMask_adj.TRN" ! output
+
+    print *, " "
+    print *, "Accounting for any mismatch between land-sea masks:"
+    print *, "- Of GEOS land and external ocean model."
+    print *, "- Output file: ", fileB
+    print *, " "
+    call read_oceanModel_mask( mapl_tp_file)
+!   ... some adjustment of following variable: `type` 
+!   ... using ocean model land-sea mask should be done here
+  endif
 
 !  print *, "Reading til file "//trim(fileT) 
 
@@ -245,38 +298,93 @@ program Runoff
 
   print *, '>>>', sum(SrcFraction*area(DstTile))
 
-! Write output file
-!------------------
+! Write output files
+!-------------------
 
   print *, "Writing output file..."
 
   open(10,file=fileO, form="formatted", status="unknown")
-
   write(10,*) NumTrans
-
   do k=1,NumTrans
      write(10,"(2I10,f16.8)") SrcTile(k),DstTile(k),SrcFraction(k)
   end do
-
   close(10)
 
-
-  open(10,file=fileB, form="unformatted", status="unknown")
-
-  write(10) NumTrans
-  write(10) SrcTile
-  write(10) DstTile
-  write(10) SrcFraction
-
-  close(10)
+  call write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
+  if (adjust_oceanLandSea_mask) &
+     call write_route_file( fileBB, NumTrans, SrcTile, DstTile, SrcFraction)
 
   do j=1,NumTrans
      Out(DstTile(j)) = Out(DstTile(j)) + In(SrcTile(J))*SrcFraction(J)
   enddo
-
   print *, "area of land   = ",    sum(real(area*out,kind=8))
+
 
   print *, "Completed successfully"
 
+  deallocate( SrcFraction)
+  deallocate( SortArr)
+  deallocate( rst)
+  deallocate( area)
+  deallocate( lats, lons)
+
   call exit(0)
+
+! -----------------------------------------------------------------
+contains
+
+  subroutine read_oceanModel_mask( mask_file)
+  implicit none
+  character*128,    intent(in)  :: mask_file
+  integer                       :: nx, ny
+  real, allocatable             :: wetMask(:,:)
+
+  integer :: ncid, varid
+
+  print *, "Reading ocean model mask from : ", mask_file
+  call check( nf90_open(mask_file, nf90_nowrite, ncid)) ! open nc file
+
+  call check( nf90_inq_dimid(ncid, "n_center_x", varid)) ! read dimenstion (x)
+  call check( nf90_inquire_dimension(ncid, varid, len=nx))
+
+  call check( nf90_inq_dimid(ncid, "n_center_y", varid)) ! read dimenstion (y)
+  call check( nf90_inquire_dimension(ncid, varid, len=ny))
+
+  allocate( wetMask(nx, ny))
+  call check( nf90_inq_varid(ncid, "mask", varid))  ! read mask
+  call check( nf90_get_var(ncid, varid,  wetMask))
+
+  call check( nf90_close(ncid)) ! close nc file
+
+  deallocate( wetMask)
+  end subroutine read_oceanModel_mask 
+! ----------------------
+
+  subroutine write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
+  implicit none
+  character*100,    intent(in) :: fileB
+  integer,          intent(in) :: NumTrans
+  integer, pointer, intent(in) :: srctile(:), dsttile(:)
+  real,             intent(in) :: SrcFraction(:)
+
+  open(10,file=fileB, form="unformatted", status="unknown")
+  write(10) NumTrans
+  write(10) SrcTile
+  write(10) DstTile
+  write(10) SrcFraction
+  close(10)
+  end subroutine write_route_file
+! ----------------------
+
+  subroutine check(status)
+  implicit none
+  integer, intent (in) :: status
+  if (status /= nf90_noerr) then
+  print *, trim(nf90_strerror(status))
+  print *, "Error in reading ocean mask file."
+  stop
+  end if
+  end subroutine check
+! -----------------------------------------------------------------
+
 end program Runoff

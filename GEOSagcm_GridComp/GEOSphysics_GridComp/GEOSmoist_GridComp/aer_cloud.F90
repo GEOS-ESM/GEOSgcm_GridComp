@@ -29,7 +29,7 @@
     
     type :: AerProps            
 	sequence 
-          real,  dimension(nsmx_par)  :: num !Num conc m-3
+          real, dimension(nsmx_par)  :: num !Num conc m-3
           real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
     	  real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
 	  real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
@@ -39,7 +39,7 @@
 	  real, dimension(nsmx_par)  :: forg ! mass fraction of organics
 	  integer   :: nmods  ! total number of modes (nmods<nmodmax)
       end type AerProps     
-    
+   
       interface assignment (=)
          module procedure copy_aer
       end interface 
@@ -197,6 +197,7 @@
   
         real*8 :: daux, sigaux, ahet_bc
         integer ::ix
+
        call AerConversion_base
 
        !heterogeneous freezing!!!!!!!!!!!!
@@ -229,9 +230,6 @@
 	 sigaux =  AerPr_base_polluted%sig(13) 		 
          frac_org=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
 			       /sigaux/sq2_par))		       
-
-
-
 
       end subroutine aer_cloud_init
   

@@ -1096,7 +1096,7 @@ contains
             cldm(i,k)=max(cldn(i,k),mincld)
             if (qc(i,k).ge.qsmall) then                
               ! npccn(k)=(cldm(i,k)*npccnin(i,k)-nc(i,k))/max(deltat, 150.0)   !use cldm to avoid cleaning up clouds at low T      
-               npccn(k) = max(0._r8,npccnin(i,k))         
+               npccn(k) = max(0._r8,npccnin(i, k))         
                ! hm update with activation tendency, keep old nc for later
                ncold(i,k)=nc(i,k)              
                nc(i,k)=nc(i,k)+npccn(k)*deltat                        ! *****************DONIF19*******************
@@ -2251,7 +2251,7 @@ contains
                   taux=max(taux-273.15, -40.0)
 
                   nsdust=max(exp(-0.517*taux + 8.934) -3.76e6, 0.0) !From Niemand 2012 (restricts nuc to T<-12 C)
-                  nssoot=7.463*max(exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012, updated to Ullrich2017)
+                  nssoot=max(1.0e4*exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012)
 
                   do ind_aux  = 1,  nbincontactdust
                      nslip(ind_aux) = 1.0_r8+(mfp/rndst(i,k,ind_aux))*(1.257_r8+(0.4_r8*Exp(-(1.1_r8*rndst(i,k,ind_aux)/mfp))))

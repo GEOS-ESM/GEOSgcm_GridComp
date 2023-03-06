@@ -414,8 +414,8 @@ end subroutine micro_mg_init
 
 
 subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_tmp,  &
-                             CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, & 
                              ncol,             LM,               dt_moist,       & 
+                             cnvfrc, srftype, &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -431,8 +431,9 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              tlatr8,                         qvlatr8,                        &
                              qctendr8,                       qitendr8,                       &
                              nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   qgrtendr8,                     &
-                             nrtendr8,                       nstendr8,   ngrtendr8,                   &
+                             qrtendr8,                       qstendr8,                       &
+                             nrtendr8,                       nstendr8,                       &
+                             qgrtendr8,                      ngrtendr8,                      &
                              effcr8,               effc_fnr8,            effir8,               &
                              sadicer8,                       sadsnowr8,                      &
                              prectr8,                        precir8,                        &
@@ -488,11 +489,12 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
 ! definitions
 
 
-   REAL, intent(in)     :: DT_MICRO,  CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND  
+   REAL, intent(in)     :: DT_MICRO
    real(r8), intent(in) :: DT_MOIST
    REAL, dimension(1,1:LM) :: SCICE_tmp, FQA_tmp, ALPH_tmp
    INTEGER, intent(in) :: LM, shape, ncol
-   
+  
+   real                         :: cnvfrc, srftype
    real(r8), dimension(1,1:LM)  ::                                                     &  
                              ter8,                          qvr8,                              &
                              qcr8,                          qir8,                          &
@@ -655,9 +657,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                   ncr8   = NCPL_tmp  
                   nir8   = NCPI_tmp                      
                   
-              
-   
-       
+        
                         call micro_mg_tend ( &
                              ncol,             LM,               dt_r8,       & 
                              ter8,                            qvr8,                              &
@@ -666,7 +666,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                         ngrr8,                         &
-                             relvarr8,                     accre_enhanr8, accre_enhan_icer8,                  &
+                             relvarr8,                     accre_enhanr8, accre_enhan_icer8,      &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -675,9 +675,10 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              tlatr8,                         qvlatr8,                        &
                              qctendr8,                       qitendr8,                       &
                              nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   qgrtendr8,                     &
-                             nrtendr8,                       nstendr8,   ngrtendr8,                   &
-                             effcr8,               effc_fnr8,            effir8,               &
+                             qrtendr8,                       qstendr8,   			 	     &		
+                             nrtendr8,                       nstendr8,                       &
+                             qgrtendr8,                      ngrtendr8,                      &
+                             effcr8,               effc_fnr8,            effir8,             &
                              sadicer8,                       sadsnowr8,                      &
                              prectr8,                        precir8,                        &
                              nevaprr8,                       evapsnowr8,                     &
@@ -687,7 +688,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              pgamradr8,                      lamcradr8,                      &
                              qsoutr8,                        dsoutr8,                        &
                              qgoutr8,     ngoutr8,           dgoutr8,                        &
-                             lflxr8,               iflxr8,   gflxr8,                           &
+                             lflxr8,               iflxr8,   &
+                             gflxr8,                           &
                              rflxr8,               sflxr8,    qroutr8,          &
                              reff_rainr8,                    reff_snowr8, reff_graur8,        &
                              qcsevapr8,            qisevapr8,            qvresr8,              &
@@ -746,60 +748,9 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                           NCPL_tmp(1, 1:LM)= MAX(NCPL_tmp(1, 1:LM)  + REAL(nctendr8(1,1:LM)) * DT_R8, 0.0) 
                           NCPI_tmp(1, 1:LM)= MAX(NCPI_tmp(1, 1:LM)  + REAL(nitendr8(1,1:LM)) * DT_R8, 0.0)  
                
-            
-
-
-           
-                           CLCN_tmp =     CF_tmp*FQA_tmp
-                           CLLS_tmp =     CF_tmp*(1.0-FQA_tmp)
-                           QLCN_tmp =  QLTOT_tmp*FQA_tmp
-                           QLLS_tmp =  QLTOT_tmp*(1.0-FQA_tmp)
-                           QICN_tmp =  QITOT_tmp*FQA_tmp
-                           QILS_tmp =  QITOT_tmp*(1.0-FQA_tmp)         
-     if (.false.) then 
-       if (N_MICRO .lt. num_steps_micro) then
-                           ! Update diagnostic cloud fraction (maybe condense more water)
-                           DO K = 1, LM 
-                           
-                                call update_cld( &
-        		                 REAL(DT_MOIST)                , &
-        		                 ALPH_tmp(1, K)        , &
-        		                 shape , &
-        		                 PL_tmp (1, K)          , &
-        		                 Q1_tmp ( 1, K)            , &
-        		                 QLLS_tmp(1,K)           , &
-        		                 QLCN_tmp(1,K)           , &
-        		                 QILS_tmp( 1,K)           , &
-        		                 QICN_tmp( 1,K)           , &
-        		                 TEMP_tmp(1,K)           , &
-        		                 CLLS_tmp(1, K)           , &
-        		                 CLCN_tmp(1,K)           , &
-			                     SCICE_tmp(1,K)         , &
-			                     NCPI_tmp(1,K)           , &
-			                     NCPL_tmp (1,K)           , &
-                                 NCNUC_tmp(1,K), &     
-			                     RHC_tmp(1,K), &
-                                 CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, .FALSE.)                   
-                             
-
-                             CF_tmp  =  CLLS_tmp + CLCN_tmp
-                             QITOT_tmp =  QILS_tmp  + QICN_tmp
-                             QLTOT_tmp =  QLLS_tmp +  QLCN_tmp
-                             cldfr8  =  CF_tmp 
-                  where ((QLTOT_tmp + QITOT_tmp) .gt.  0.0) 
-                       liqcldfr8  = CF_tmp* QLTOT_tmp/(QLTOT_tmp + QITOT_tmp) 
-                       icecldfr8  = CF_tmp* QITOT_tmp/(QLTOT_tmp + QITOT_tmp) 
-                   elsewhere                        
-                       liqcldfr8 = cldfr8  
-                       icecldfr8  = cldfr8  
-                  end where 
-                  
-                   
-                end do 
-           end if 
-        end if
-                             !Accumulate tendencies              
-                             call accum_mg_tend(1)
+   
+                     !Accumulate tendencies              
+                     call accum_mg_tend(1)
              
        end do ! MG2 iteration 
                
@@ -1077,7 +1028,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        nctendr8 = nctendr8_accum/num_steps_micro 
        nitendr8 =  nitendr8_accum/num_steps_micro
        qrtendr8 = qrtendr8_accum/num_steps_micro 
-       qstendr8 = qstendr8_accum/num_steps_micro 
+       qstendr8 = qstendr8_accum/num_steps_micro
+       qgrtendr8 = qgrtendr8_accum/num_steps_micro
        nrtendr8 = nrtendr8_accum/num_steps_micro 
        nstendr8 = nstendr8_accum/num_steps_micro 
        ngrtendr8 = ngrtendr8_accum/num_steps_micro
@@ -3228,6 +3180,7 @@ subroutine micro_mg_tend ( &
         if (do_hail.or.do_graupel) then
            qgtend(i,k) = qgtend(i,k) + (pracg(i,k)+pgracs(i,k)+prdg(i,k)+psacr(i,k)+mnuccr(i,k))*precip_frac(i,k) &
                 + (psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)
+                 
 
            qstend(i,k) = qstend(i,k)+ &
                 (prai(i,k)+prci(i,k))*icldm(i,k)+(psacws(i,k)+bergs(i,k))*lcldm(i,k)+(prds(i,k)+ &
@@ -3440,7 +3393,9 @@ subroutine micro_mg_tend ( &
   dum_2D = qg
   qg = qgr
   qgtend = qgtend + (dum_2D-qg)/deltat
-
+  
+  
+  
   dum_2D = ng
   ng = ngr
   ngtend = ngtend + (dum_2D-ng)/deltat

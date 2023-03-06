@@ -42,11 +42,11 @@ logical :: read_file
 character*300 :: input_data
 
 read_file = .true.
-call system ('mkdir -p idl_out')
-call system ('cd bin/ ; /bin/cp ../src/plot_curves.csh . ; cd .. ; /bin/cp bin/plot_curves.csh idl_out/. ; chmod 755 idl_out/plot_curves.csh')
+call execute_command_line ('mkdir -p idl_out')
+call execute_command_line ('cd bin/ ; /bin/cp ../src/plot_curves.csh . ; cd .. ; /bin/cp bin/plot_curves.csh idl_out/. ; chmod 755 idl_out/plot_curves.csh')
 
 
-n = iargc()
+n = command_argument_count()
 
 if(n < 3) then
        print *, "Usage : chk_clsm_params -s Y(N) -m MaskFile"
@@ -56,13 +56,13 @@ if(n < 3) then
 end if
 
 n = 1
-    call getarg(n,arg)
+    call get_command_argument(n,arg)
     do while(arg(1:1)=='-')
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'zvh')==0) then
              n = n + 1
-             call getarg(n,arg)
+             call get_command_argument(n,arg)
           endif
        else
           arg = arg(3:)
@@ -74,7 +74,7 @@ n = 1
          MaskFile  = trim(arg)
        end select
        n = n + 1
-       call getarg(n,arg)
+       call get_command_argument(n,arg)
     end do
 
 if((single_tile == 'Y').or.(single_tile == 'y')) read_file = .false.
@@ -195,6 +195,6 @@ enddo
 close (10,status = 'keep')
 close (11,status = 'keep')
 
-call system ('cd idl_out/ ; ./plot_curves.csh ; cd ..')
+call execute_command_line ('cd idl_out/ ; ./plot_curves.csh ; cd ..')
 
 END PROGRAM chk_clsm_params

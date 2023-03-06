@@ -1,4 +1,5 @@
 #include "MAPL_Generic.h"
+#define DEALLOC_(A) if(associated(A))then;A=0;if(MAPL_ShmInitialized)then; call MAPL_DeAllocNodeArray(A,rc=STATUS);else; deallocate(A,stat=STATUS);endif;_VERIFY(STATUS);NULLIFY(A);endif
 
 !=============================================================================
 module GEOS_CatchGridCompMod
@@ -42,12 +43,11 @@ module GEOS_CatchGridCompMod
        RHOFS          => CATCH_SNWALB_RHOFS,  &
        SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE
+       SLOPE          => CATCH_SNWALB_SLOPE,  &
+       PEATCLSM_POROS_THRESHOLD
 
-  USE SURFPARAMS,     ONLY:                   &
-       LAND_FIX
 
-  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
+  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel
 
 !#for_ldas_coupling 
   use catch_incr
@@ -136,7 +136,8 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
+integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: FWETC, FWETL
@@ -227,15 +228,21 @@ subroutine SetServices ( GC, RC )
        call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
     endif
 
-    ! GOSWIM ANOW_ALBEDO 
+    ! SNOW ALBEDO 
+    ! 0 : parameterization based on look-up table 
+    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
+    call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
+
+    ! GOSWIM SNOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0  , __RC__ )
+    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
     ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
     ! __________________________________________
-    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION, label='AEROSOL_DEPOSITION:', DEFAULT=0  , __RC__ )
+    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
+
     call ESMF_ConfigDestroy(SCF, __RC__)
 
 ! Set the Run entry points
@@ -1368,6 +1375,19 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  if (SNOW_ALBEDO_INFO == 1) then
+    call MAPL_AddInternalSpec(GC                  ,&
+       LONG_NAME          = 'effective_snow_albedo'               ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SNOWALB'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+     VERIFY_(STATUS)
+  endif
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
@@ -2680,6 +2700,24 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  ) 
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'depth_to_water_table_from_surface_in_peat',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'PEATCLSM_WATERLEVEL'       ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'PEATCLSM_FSWCHANGE'        ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
@@ -3745,6 +3783,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: psis
         real, dimension(:),   pointer :: bee
         real, dimension(:),   pointer :: poros
+        real, dimension(:),   pointer :: snowalb
         real, dimension(:),   pointer :: wpwet
         real, dimension(:),   pointer :: cond
         real, dimension(:),   pointer :: gnu
@@ -3911,6 +3950,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTBC002
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
+        real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
+        real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -3939,7 +3980,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: ghflxsno, ghflxtskin
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
-        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1
+        real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
 	real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
 	real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
 	real,pointer,dimension(:) :: VSUVR, VSUVF
@@ -4049,8 +4090,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
 
-        integer                     :: ens_id_width
-
 !#for_ldas_coupling
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
         type (CATCH_WRAP)                       :: wrap2
@@ -4112,6 +4151,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
+
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4191,10 +4231,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ldas_ens_id = ldas_first_ens_id
         
         if(NUM_LDAS_ENSEMBLE > 1) then
-           call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
-           VERIFY_(STATUS)           
-           !for GEOSldas comp_name should be catchxxxx
-           read(comp_name(6:6+ens_id_width-1), *) ldas_ens_id
+           !for GEOSldas comp_name should be catch_exxxx, digit starting from 8th character
+           read(comp_name(8:), *) ldas_ens_id
         endif
 
         call MAPL_GetResource(MAPL      ,&
@@ -4334,8 +4372,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CM         ,'CM'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
         if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
@@ -4450,6 +4488,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE, 'PEATCLSM_FSWCHANGE', RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
 
@@ -4518,6 +4558,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(SUMEV     (NTILES))
         allocate(FICE1     (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
+        allocate(FSW_CHANGE(NTILES))
         
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -4830,9 +4871,25 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
-                 ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                 SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow albedos on tiles
+                 ALBVR, ALBNR, ALBVF, ALBNF, &  ! instantaneous snow-free albedos on tiles
+                 SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow      albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
+
+        if (SNOW_ALBEDO_INFO == 1) then
+           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
+           call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
+           
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+           
+        endif
 
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
@@ -4911,6 +4968,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            end do
         end if
 
+        ! Compute DQS; make sure QC is between QA and QSAT; compute RA.
+        !
+        !   For energy conservation reasons, this code was moved from catchment.F90
+        !   to here by Andrea Molod ca. 2016.
+        !   Some 40 lines below, duplicate code was present within #ifdef LAND_UPD block
+        !   (later changed to "if (LAND_FIX)") and was removed in Jan 2022. 
+        !   - reichle, 14 Jan 2022.
+
         do N=1,NUM_SUBTILES
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
@@ -4919,7 +4984,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         end do
 
         QC(:,FSNW) = QSAT(:,FSNW)
-
         
 	! --------------------------------------------------------------------------
         ! get total solid precip
@@ -4949,22 +5013,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         TILEZERO = 0.0
 
         call MAPL_TimerOn  ( MAPL, "-CATCH" )
-!#ifdef LAND_UPD
-        if (LAND_FIX) then
-! Andrea Molod (Oct 21, 2016):
- 
-	   do N=1,NUM_SUBTILES
-              DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N),PASCALS=.true., RAMP=0.0 )
-              QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
-              QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
-              RA (:,N) = RHO/CH(:,N)
-           end do
-	end if 
-!#endif
+
 #ifdef DBG_CATCH_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+        call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
         VERIFY_(STATUS)
 
         call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
@@ -5053,8 +5106,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            unit = GETFILE( "catch_params.data", form="unformatted", RC=STATUS )
            VERIFY_(STATUS)
 
-           NT_GLOBAL = size(mask)
-
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
            call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
@@ -5131,7 +5182,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            VERIFY_(STATUS)
 
         end if
-
+        DEALLOC_(mask)
 #endif
 
 ! Sanity Check to ensure IMPORT ITY from VEGDYN is consistent with INTERNAL ITY from CATCH
@@ -5268,7 +5319,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  if (fexist) then
                     call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
                     VERIFY_(STATUS)
-                    call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+                    call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
                     VERIFY_(STATUS)
                     call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
                     VERIFY_(STATUS)
@@ -5280,7 +5331,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     variables => InCfg%get_variables()
                     var_iter = variables%begin()
                     
-                    NT_GLOBAL = size(mask)
                     allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
                     allocate(local_tmp_incr(NTILES), source = 0.0)
                     
@@ -5323,7 +5373,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     
                     call inFmt%close()
                     deallocate(local_tmp_incr, global_tmp_incr)
-                    deallocate(mask)
+                    DEALLOC_(mask)
 
                     ! consolidate increment arrays  
                     allocate(ghtcnt_incr(6,NTILES))
@@ -5351,8 +5401,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     SNDZN_INCR (3,:) = SNDZN3_INCR
 
                     call apply_catch_incr(NTILES,                                                        &
-                         VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                       &
-                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,               &
+                         DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                            &
+                         ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4, bf1, bf2,     &
                          TCFSAT_INCR, TCFTRN_INCR, TCFWLT_INCR, QCFSAT_INCR, QCFTRN_INCR, QCFWLT_INCR,   &
                          CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                               &
                          GHTCNT_INCR, WESNN_INCR, HTSNNN_INCR, SNDZN_INCR,                               &
@@ -5445,7 +5495,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, SHACC   ,&
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-             TCSORIG1, TPSN1IN1, TPSN1OUT1                        ,&
+             TCSORIG1, TPSN1IN1, TPSN1OUT1,FSW_CHANGE             ,&
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
@@ -5518,6 +5568,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+
+        if (SNOW_ALBEDO_INFO == 1) then
+           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           ! 
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+
+        endif
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
@@ -5630,6 +5694,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if(associated(PEATCLSM_FSWCHANGE  )) then
+           where (POROS >= PEATCLSM_POROS_THRESHOLD)
+              PEATCLSM_FSWCHANGE = FSW_CHANGE
+           elsewhere
+              PEATCLSM_FSWCHANGE = MAPL_UNDEF
+           end where
+        end if
+
+        if(associated(PEATCLSM_WATERLEVEL )) then
+           PEATCLSM_WATERLEVEL = catch_calc_peatclsm_waterlevel( BF1, BF2, CDCR2, POROS, WPWET, CATDEF )
+        endif
 
         if(associated(TPSN1)) then
            where(WESNN(1,:)>0.)
@@ -5793,6 +5868,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(RMELT )
         deallocate(FICE1 )
         deallocate(SLDTOT )
+        deallocate(FSW_CHANGE)
 
         RETURN_(ESMF_SUCCESS)
 
@@ -5870,6 +5946,8 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw2(:)=>null()
   real, pointer :: arw3(:)=>null()
   real, pointer :: arw4(:)=>null()
+  real, pointer :: bf1(:)=>null()
+  real, pointer :: bf2(:)=>null()
 
   !! Miscellaneous
   integer :: ntiles
@@ -5963,6 +6041,10 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, arw4, 'ARW4', rc=status)
   VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf1, 'BF1', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf2, 'BF2', rc=status)
+  VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, srfexc, 'SRFEXC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, rzexc, 'RZEXC', rc=status)
@@ -6016,11 +6098,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
        ! intent(in)
-       ntiles, nint(ity), dzsf, vgwmax, cdcr1, cdcr2,                           &
+       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4,                                                  &
+       arw1, arw2, arw3, arw4,bf1, bf2,                                         &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &

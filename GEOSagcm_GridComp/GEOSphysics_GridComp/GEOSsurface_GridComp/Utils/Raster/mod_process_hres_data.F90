@@ -6,6 +6,18 @@
 ! NGDC-HWSD-STATSGO merged soil data on their native grids 3-23-2012
 !   Contact: Sarith Mahanama  sarith.p.mahanama@nasa.gov
 !   Email  : sarith.p.mahanama@nasa.gov
+!
+! CHANGE LOG:
+!
+! jkolassa, reichle, May 2022: 
+! The bcs file "CLM4.5_veg_typs_fracs" was not used in CatchmentCNCLM45 and is no longer
+! produced by make_bcs.
+! Separate mappings from ESA GlobCover to CatchmentCNCLM40 and CatchmentCNCLM45 PFTs
+! were initially implemented because the underlying CLM4.0 and CLM4.5 models have different
+! plant functional types and distributions. Ultimately, the decision was made to use the same 
+! (CLM4.0-based) PFT distribution for both CatchmentCNCLM40 and CatchmentCNCLM45, and the 
+! obsolete mapping of ESA GlobCover data to CLM4.5 PFTs (subroutine ESA2CLM_45) was removed.
+
 
 MODULE process_hres_data
 use rmTinyCatchParaMod
@@ -13,6 +25,8 @@ use MAPL_SortMod
 use date_time_util  
 use leap_year
 use MAPL_ConstantsMod
+use lsm_routines, ONLY: sibalb
+use MAPL_Base,    ONLY: MAPL_UNDEF
 
 #if defined USE_EXTERNAL_FINDLOC
 use findloc_mod, only: findloc
@@ -25,767 +39,36 @@ include 'netcdf.inc'
 private
 
 public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
+public :: MODIS_snow_alb 
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
-public :: histogram, regrid_map, create_mapping, esa2mosaic , esa2clm, ESA2CLM_45
-public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, country_codes
+public :: histogram, create_mapping, esa2mosaic , esa2clm
+public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
 public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
 
 ! Below structure is used to regrid high resolution data to high resolution tile raster
 
-integer, parameter   :: N_tiles_per_cell = 8
-integer  , parameter :: nc_esa = 129600, nr_esa = 64800, SRTM_maxcat = 291284
+integer, parameter   :: N_tiles_per_cell = 9
+integer  , parameter :: nc_esa = 129600, nr_esa = 64800
 real, parameter      :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
+integer, parameter   :: N_GADM = 256 + 1, N_STATES = 50
 
-type :: regrid_map
+real, parameter      :: SOILDEPTH_MIN_HWSD = 1334.   ! minimum soil depth for HWSD soil parameters
 
+type :: do_regrid
    integer                               :: NT
    integer, dimension (N_tiles_per_cell) :: TID
    integer, dimension (N_tiles_per_cell) :: count
-
+end type do_regrid
+type, public :: regrid_map
+   integer :: nc_data = 1
+   integer :: nr_data = 1
+   integer, allocatable, dimension (:,:)   :: ij_index
+   type(do_regrid), pointer, dimension (:) :: map
 end type regrid_map
 
 contains
 !
 ! ---------------------------------------------------------------------
-!
-
-  SUBROUTINE ESA2CLM_45 (nc, nr, gfile)
-
-    implicit none
-
-    integer  , intent (in) :: nc, nr
-    character (*)          :: gfile
-    
-    integer  , parameter   :: N_lon_clm = 7200, N_lat_clm = 3600, lsmpft = 25
-    integer*2, allocatable, target, dimension (:,:) :: esa_veg
-    integer*2, pointer    , dimension (:,:) :: subset
-    integer  , allocatable, dimension (:)   :: tile_id, i_esa2clm, j_esa2clm
-    integer :: i,j, k,n, status, ncid, varid, maxcat, dx,dy, esa_type, tid, cid, ii, jj   
-    real    :: dx_clm, dy_clm, x_min_clm (N_lon_clm), y_min_clm (N_lat_clm), clm_fracs(lsmpft)
-    real    :: minlon,maxlon,minlat,maxlat,tile_lat, scale, ftot
-    integer :: cpt1, cpt2, cst1, cst2  ! CLM-carbon types
-    real    :: cpf1, cpf2, csf1, csf2  ! CLM-carbon fractions
-    DOUBLE PRECISION,  allocatable, dimension (:) :: lon_esa, lat_esa
-    DOUBLE PRECISION       :: EDGEN, EDGEE, EDGES, EDGEW 
-    
-    REAL, ALLOCATABLE, DIMENSION (:,:,:) :: PCTPFT 
-    integer, allocatable, dimension (:) :: density, loc_int
-    real   , allocatable, dimension (:) :: loc_val
-    logical, allocatable, dimension (:) :: unq_mask
-    integer :: NBINS, NPLUS
-    integer, allocatable, dimension (:,:) :: clm_veg
-    integer :: esa_clm_veg (2)
-    real    :: esa_clm_frac(2)
-
-    ! These 2 values are assumed as same as they are in surfdata_0.23x0.31_simyr2000_c100406.nc
-
-    EDGEW = -180.
-    EDGES = -90. 
-
-    ! Reading CLM pft data file
-    !--------------------------
-
-    ALLOCATE (PCTPFT      (1:N_lon_clm, 1:N_lat_clm, 1:lsmpft))
-     
-    status  = NF_OPEN ('data/CATCH/CLM45/mksrf_24pftNT_landuse_rc2000_c121207.nc', NF_NOWRITE, ncid)   
-    status  = NF_INQ_VARID (ncid,'PCT_PFT',VarID) ; VERIFY_(STATUS)
-
-    do k = 1, 25 ! Natural vegetation
-       status  = NF_GET_VARA_REAL (ncid,VarID,(/1,1,k/),(/N_lon_clm, N_lat_clm, 1/),PCTPFT(:,:,k)) ; VERIFY_(STATUS)
-    end do
-
-    status = NF_CLOSE(ncid)
-
-    ! CLM 4_5 description (25)                                CLM45-carbon description (27)                                    
-    ! ------------------------                                ----------------------------- 
-
-    ! 'BARE'   1  	bare                                     (does not have bare soil)
-    ! 'NLEt'   2 	needleleaf evergreen temperate tree    1
-    ! 'NLEB'   3 	needleleaf evergreen boreal tree       2
-    ! 'NLDB'   4  	needleleaf deciduous boreal tree       3
-    ! 'BLET'   5 	broadleaf evergreen tropical tree      4
-    ! 'BLEt'   6 	broadleaf evergreen temperate tree     5
-    ! 'BLDT'   7 	broadleaf deciduous tropical tree      6
-    ! 'BLDt'   8 	broadleaf deciduous temperate tree     7
-    ! 'BLDB'   9 	broadleaf deciduous boreal tree        8
-    ! 'BLEtS' 10 	broadleaf evergreen temperate shrub    9
-    ! 'BLDtS' 11 	broadleaf deciduous temperate shrub   10  broadleaf deciduous temperate shrub [moisture +  deciduous]
-    ! 'BLDtSm'  	broadleaf deciduous temperate shrub   11  broadleaf deciduous temperate shrub [moisture stress only]
-    ! 'BLDBS' 12 	broadleaf deciduous boreal shrub      12
-    ! 'AC3G'  13 	arctic c3 grass                       13
-    ! 'CC3G'  14 	cool c3 grass                         14  cool c3 grass [moisture +  deciduous]
-    ! 'CC3Gm'           cool c3 grass                         15  cool c3 grass [moisture stress only]
-    ! 'WC4G'  15 	warm c4 grass                         16  warm c4 grass [moisture +  deciduous]
-    ! 'WC4Gm'   	warm c4 grass                         17  warm c4 grass [moisture stress only]
-    ! 'C3CROP' 16       c3_crop                               18
-    ! 'C3IRR'  17       c3_irrigated                          19
-    ! 'CORN'   18       corn                                  20
-    ! 'ICORN'  19       irrigated corn                        21
-    ! 'STCER'  20       spring temperate cereal               22
-    ! 'ISTCER' 21       irrigated spring temperate cereal     23
-    ! 'WTCER'  22       winter temperate cereal               24
-    ! 'IWTCER' 23       irrigated winter temperate cereal     25
-    ! 'SOYB'   24       soybean                               26
-    ! 'ISOYB'  25       irrigated soybean                     27
-    
-!**    ! 'CROP'  16 	crop                                  18  crop [moisture +  deciduous]
-!**    ! 'CROPm'   	crop                                  19  crop [moisture stress only]
-!**    !         17        water
-
-    dx_clm = 360./N_lon_clm
-    dy_clm = 180./N_lat_clm
-
-    do i = 1, N_lon_clm 
-       x_min_clm (i) = (i-1)*dx_clm + EDGEW  
-    end do
-
-    do i = 1,  N_lat_clm
-       y_min_clm (i) = (i-1)*dy_clm  + EDGES
-    end do
-
-    ! This data set is DE
-    !PCTPFT (1:N_lon_clm/2             ,:,:) =  REAL (PCT_PFT_DBL(N_lon_clm/2 + 1: N_lon_clm,:,:))
-    !PCTPFT (N_lon_clm/2 + 1: N_lon_clm,:,:) =  REAL (PCT_PFT_DBL(1:N_lon_clm/2             ,:,:))
-
-    !DEALLOCATE (PCT_PFT_DBL)
-
-    ! Find primary and secondary types in the CLM data file
-    ! -----------------------------------------------------
-
-    ! allocate (clm_veg (1:N_lon_clm,1:N_lat_clm,1:2))
-    !
-    ! do j = 1, N_lat_clm 
-    !    do i = 1, N_lon_clm  
-    !       if(maxval(PCT_PFT(i,j,:)) > 0.) then
-    !          clm_fracs = PCT_PFT(i,j,:)
-    !          if (maxval (clm_fracs) == 100.) then 
-    !             clm_veg(i,j,:) = maxloc (clm_fracs)
-    !          else 
-    !             clm_veg(i,j,0)             = maxloc (clm_fracs)		
-    !             clm_fracs (clm_veg(i,j,0)) = 0.
-    !             clm_veg(i,j,1)             = maxloc (clm_fracs)	 
-    !          endif
-    !       else 
-    !          clm_veg(i,j,:) = 17
-    !       endif
-    !    end do
-    ! end do
-    
-    ! Reading ESA vegetation types
-    !-----------------------------
-
-    allocate (esa_veg (1:nc_esa, 1: nr_esa))
-    allocate (lon_esa (1:nc_esa))
-    allocate (lat_esa (1:nr_esa))
-
-    status    = NF_OPEN ('data/CATCH/ESA_GlobalCover.nc', NF_NOWRITE, ncid)   
-
-    if(status /=0) then
-       PRINT *, NF_STRERROR(STATUS)
-       print *, 'Problem with NF_OPEN','ESA_GlobalCover.nc'
-       stop
-    endif
-
-       status  = NF_GET_VARA_DOUBLE (ncid,1,(/1/),(/nr_esa/),lat_esa)
-       status  = NF_GET_VARA_DOUBLE (ncid,2,(/1/),(/nc_esa/),lon_esa)
-
-    do j = 1,nr_esa
-       status  = NF_GET_VARA_INT2 (ncid,3,(/1,j/),(/nc_esa,1/),esa_veg(:,j))
-       if(status /=0) then
-          PRINT *, NF_STRERROR(STATUS)
-          print *, 'Problem with NF_GET ESA_GlobalCover.nc : ', STATUS
-          stop
-       endif
-    end do
-
-    status = NF_CLOSE(ncid)
-
-    ! Find I,J of overlying CLM grid cells for each ESA pixel 
-    !--------------------------------------------------------
-    allocate (i_esa2clm (1:nc_esa))
-    allocate (j_esa2clm (1:nr_esa))
-
-    do i = 1, N_lon_clm 
-       where ((real(lon_esa) >=  x_min_clm(i)).and.(real(lon_esa) <  (x_min_clm(i) + dx_clm))) i_esa2clm= i
-    end do
-
-    i_esa2clm(129545:nc_esa) = 1
-
-    do j = 1, N_lat_clm 
-       where ((real(lat_esa) >=  y_min_clm(j)).and.(real(lat_esa) <  (y_min_clm(j) + dy_clm))) j_esa2clm= j
-    end do
-
-    !
-    ! Reading number of tiles
-    ! -----------------------
-
-    open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-         action =  'read')
-    
-    read (10, *) maxcat
-
-    close (10, status = 'keep')
-    
-    !
-    ! Loop through tile_id raster
-    ! ___________________________
-
-
-    allocate (tile_id (1:nc             ))   
-    allocate (clm_veg (1:maxcat,1:lsmpft))
-    clm_veg = 0.
-
-    dx = nc_esa / nc
-    dy = nr_esa / nr
-
-    open (10,file=trim(gfile)//'.rst',status='old',action='read',  &
-          form='unformatted',convert='little_endian')
-
-    do j=1,nr
-       
-       ! read a row
-       
-       read(10)tile_id(:)
-       
-       do i = 1,nc
-
-          ii = i_esa2clm ((i-1)*dx + dx/2)
-          jj = j_esa2clm ((j-1)*dy + dy/2)
-
-          if((tile_id (i) >= 1).and.(tile_id(i)  <= maxcat)) then
-
-             if (associated (subset)) NULLIFY (subset)
-             subset => esa_veg((i-1)*dx +1 :i*dx, (j-1)*dy +1:j*dy)
-             NPLUS = count(subset >= 1 .and. subset <= 230)
-
-             if(NPLUS > 0)  then
-                allocate (loc_int (1:NPLUS))
-                allocate (unq_mask(1:NPLUS))
-                loc_int = pack(subset,mask = (subset >= 1 .and. subset <= 230))
-                call MAPL_Sort (loc_int)
-                unq_mask = .true.
-                do n = 2,NPLUS 
-                   unq_mask(n) = .not.(loc_int(n) == loc_int(n-1))
-                end do
-                NBINS = count(unq_mask)
-                
-                allocate(loc_val (1:NBINS))
-                allocate(density (1:NBINS))
-                loc_val = 1.*pack(loc_int,mask =unq_mask)
-                call histogram (size(subset,1)*size(subset,2), NBINS, density, loc_val, real(subset))   
-                
-                do k = 1, nbins
-                   
-                   if (density (k) > 0) then
-                      
-                      esa_type = int (loc_val(k))
-                      
-                      ! if (esa_type ==  10)  clm_veg (tile_id(i), 17) = 1.* density(k)   ! lakes inland water
-                      
-                      if ((esa_type ==  11).or. (esa_type ==  14).or.(esa_type ==  20).or. (esa_type == 190)) then
-
-                         ! ESA type  11: Post-flooding or irrigated croplands 
-                         ! ESA type  14: Rainfed croplands 
-                         ! ESA type  20: Mosaic Cropland (50-70%) / Vegetation (grassland, shrubland, forest) (20-50%) 
-                         ! ESA type 190:	Artificial surfaces and associated areas (urban areas >50%) 
-
-                         if(sum(PCTPFT(ii,jj,16:25)) > 0.) then
-                            do n = 16,25                                
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,16:25))
-                            end do
-                         else
-                            clm_veg (tile_id(i), 16) = clm_veg (tile_id(i), 16) + 1.* density(k)   
-                         endif
-                      endif
-                      
-                      ! if (esa_type == 200)  clm_veg (tile_id(i), 11) = clm_veg (tile_id(i), 11) + 1.* density(k)   ! ESA type 200:	Bare areas
-                      ! if (esa_type == 210)  clm_veg (tile_id(i), 17) = clm_veg (tile_id(i), 17) + 1.* density(k)   ! ocean
-                      ! if (esa_type == 220)  clm_veg (tile_id(i), 17) = clm_veg (tile_id(i), 17) + 1.* density(k)   ! ice  
-                      ! gkw: bare soil excluded! only considering vegetated land                   
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type ==  30) then 
-                         ! ESA type  30: Mosaic Vegetation (grassland, shrubland, forest) (50-70%) / Cropland (20-50%) 
-
-                         if(sum(PCTPFT(ii,jj,16:25)) > 0.) then
-                            do n = 16,25                                
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 0.5*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,16:25))
-                            end do
-                         elseif(sum(PCTPFT(ii,jj,2:15)) > 0.) then
-                            do n = 2,  15 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 0.5* density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,2:15))
-                            enddo
-                         else
-                            clm_veg (tile_id(i),  16) = clm_veg (tile_id(i),  16) + 1.0* density(k)
-                         endif
-
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type ==  40) then
-                         ! ESA type  40:	Closed to open (>15%) broadleaved evergreen and/or semi-deciduous forest (>5m) 
-                         
-                         if(sum(PCTPFT(ii,jj,5:6)) > 0.) then
-                            do n = 5, 6 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 1.*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,5:6))
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 23.5) then
-                               clm_veg (tile_id(i),  5) = clm_veg (tile_id(i),  5) + 1.0* density(k)
-                            else
-                               clm_veg (tile_id(i),  6) = clm_veg (tile_id(i),  6) + 1.0* density(k)
-                            endif
-                         endif
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if ((esa_type ==  50) .or. (esa_type ==  60)) then    
-                         ! ESA type  50:	Closed (>40%) broadleaved deciduous forest (>5m) 
-                         ! ESA type  60:	Open (15-40%) broadleaved deciduous forest (>5m) 
-                         
-                         if(sum(PCTPFT(ii,jj,7:9)) > 0.) then
-                            do n = 7, 9 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,7:9))
-                            enddo
-                         else
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 23.5) then
-                               clm_veg (tile_id(i),  7) = clm_veg (tile_id(i),  7) + 1.0* density(k)
-                            else
-                               if(abs(y_min_clm(jj) + 0.5*dy_clm) <  60.) clm_veg (tile_id(i),  8) = clm_veg (tile_id(i),  8) + 1.0* density(k)
-                               if(abs(y_min_clm(jj) + 0.5*dy_clm) >= 60.) clm_veg (tile_id(i),  9) = clm_veg (tile_id(i),  9) + 1.0* density(k)
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type ==  70) then    
-                         ! ESA type  70:	Closed (>40%) needleleaved evergreen forest (>5m)
-                         
-                         if(sum(PCTPFT(ii,jj,2:3)) > 0.) then
-                            do n = 2, 3 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,2:3))	
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 60.) then
-                               clm_veg (tile_id(i),  2) = clm_veg (tile_id(i),  2) + 1.0* density(k)
-                            else 	
-                               clm_veg (tile_id(i),  3) = clm_veg (tile_id(i),  3) + 1.0* density(k)	
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type ==  90) then 
-                         !ESA type  90:	Open (15-40%) needleleaved deciduous or evergreen forest (>5m) 
-                         
-                         if(sum(PCTPFT(ii,jj,2:4)) > 0.) then
-                            do n = 2, 4 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n)   + 1.*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,2:4))
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 60.) then
-                               clm_veg (tile_id(i),  2) = clm_veg (tile_id(i),  2) + 1.0* density(k)
-                            else 	
-                               clm_veg (tile_id(i),  3) = clm_veg (tile_id(i),  3) + 1.0* density(k)	
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type == 100) then 
-                         !  ESA type 100:	Closed to open (>15%) mixed broadleaved and needleleaved forest (>5m) 
-                         
-                         if((sum(PCTPFT(ii,jj,2:4)) + sum(PCTPFT(ii,jj,7:9))) > 0.) then
-                            do n = 2, 9 
-                               if((n /= 5) .and. (n /= 6)) clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + density(k)*(PCTPFT(ii,jj,n))/(sum(PCTPFT(ii,jj,2:4)) + sum(PCTPFT(ii,jj,7:9)))	
-                            enddo
-                         else
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 23.5) then
-                               clm_veg (tile_id(i),  7) = clm_veg (tile_id(i),  7) + 0.5* density(k)
-                               clm_veg (tile_id(i),  2) = clm_veg (tile_id(i),  2) + 0.5* density(k)			
-                            elseif (abs(y_min_clm(jj) + 0.5*dy_clm) < 60.) then
-                               clm_veg (tile_id(i),  8) = clm_veg (tile_id(i),  8) + 0.5* density(k)
-                               clm_veg (tile_id(i),  2) = clm_veg (tile_id(i),  2) + 0.5* density(k)
-                            else 
-                               clm_veg (tile_id(i),  9) = clm_veg (tile_id(i),  9) + 0.5* density(k)
-                               clm_veg (tile_id(i),  3) = clm_veg (tile_id(i),  3) + 0.5* density(k)			
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type == 110) then   
-                         ! ESA type 110:	Mosaic Forest/Shrubland (50-70%) / Grassland (20-50%) 
-                         
-                         if(sum(PCTPFT(ii,jj,7:12))  > 0.) then
-                            do n = 7, 12 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) +  0.6*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,7:12)) 
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 23.5) then
-                               clm_veg (tile_id(i),  7) = clm_veg (tile_id(i),  7) + 0.3* density(k)
-                               clm_veg (tile_id(i), 11) = clm_veg (tile_id(i), 11) + 0.3* density(k)			
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 60.) then
-                               clm_veg (tile_id(i),  8) = clm_veg (tile_id(i),  8) + 0.3* density(k)
-                               clm_veg (tile_id(i), 11) = clm_veg (tile_id(i), 11) + 0.3* density(k)
-                            else
-                               clm_veg (tile_id(i),  9) = clm_veg (tile_id(i),  9) + 0.3* density(k)
-                               clm_veg (tile_id(i), 12) = clm_veg (tile_id(i), 12) + 0.3* density(k)			
-                            end if
-                         end if
-                         
-                         if(sum(PCTPFT(ii,jj,13:15))  > 0.) then
-                            do n =13, 15 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 0.4*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,13:15)) 
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 30.) then
-                               clm_veg (tile_id(i), 15) = clm_veg (tile_id(i), 15) + 0.4* density(k)
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 55.) then
-                               clm_veg (tile_id(i), 14) = clm_veg (tile_id(i), 14) + 0.4* density(k)
-                            else 
-                               clm_veg (tile_id(i), 13) = clm_veg (tile_id(i), 13) + 0.4* density(k)
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-
-                      if (esa_type == 120) then   
-                         ! ESA type 120:	Mosaic Grassland (50-70%) / Forest/Shrubland (20-50%) 
-                         
-                         if(sum(PCTPFT(ii,jj,7:12)) > 0.) then
-                            do n = 7, 12 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) +  0.4*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,7:12)) 
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 23.5) then
-                               clm_veg (tile_id(i),  7) = clm_veg (tile_id(i),  7) + 0.2* density(k)
-                               clm_veg (tile_id(i), 11) = clm_veg (tile_id(i), 11) + 0.2* density(k)			
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 60.) then
-                               clm_veg (tile_id(i),  8) = clm_veg (tile_id(i),  8) + 0.2* density(k)
-                               clm_veg (tile_id(i), 11) = clm_veg (tile_id(i), 11) + 0.2* density(k)
-                            else 
-                               clm_veg (tile_id(i),  9) = clm_veg (tile_id(i),  9) + 0.2* density(k)
-                               clm_veg (tile_id(i), 12) = clm_veg (tile_id(i), 12) + 0.2* density(k)			
-                            end if
-                         end if
-                         
-                         if(sum(PCTPFT(ii,jj,13:15)) > 0.) then
-                            do n =13, 15 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 0.6*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,13:15)) 
-                            enddo
-                         else
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 30.) then
-                               clm_veg (tile_id(i), 15) = clm_veg (tile_id(i), 15) + 0.6* density(k)
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 55.) then
-                               clm_veg (tile_id(i), 14) = clm_veg (tile_id(i), 14) + 0.6* density(k)
-                            else 
-                               clm_veg (tile_id(i), 13) = clm_veg (tile_id(i), 13) + 0.6* density(k)
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type == 130) then
-                         ! 	Closed to open (>15%) shrubland (<5m) 
-                         
-                         if(sum(PCTPFT(ii,jj,10:12)) > 0.) then
-                            do n = 10,12 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 1.*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,10:12))
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 60.) then
-                               clm_veg (tile_id(i),  11) = clm_veg (tile_id(i),  11) + 1.0* density(k)
-                            else 	
-                               clm_veg (tile_id(i),  12) = clm_veg (tile_id(i),  12) + 1.0* density(k)	
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type == 140) then
-                         ! ESA type 140:	Closed to open (>15%) grassland 
-                         
-                         if(sum(PCTPFT(ii,jj,13:15)) > 0.) then
-                            do n = 13,15 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 1.*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,13:15))
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 30.) then
-                               clm_veg (tile_id(i),  15) = clm_veg (tile_id(i),  15) + 1.0* density(k)
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 55.) then	
-                               clm_veg (tile_id(i),  14) = clm_veg (tile_id(i),  14) + 1.0* density(k)	
-                            else 	
-                               clm_veg (tile_id(i),  13) = clm_veg (tile_id(i),  13) + 1.0* density(k)	
-                            end if
-                         end if
-                      end if
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type == 150) then
-                         ! ESA type 150:	Sparse (<15%) vegetation (woody vegetation, shrubs, grassland) 
-                         
-                         if(sum(PCTPFT(ii,jj,10:15)) > 0.) then
-                            do n = 10, 15 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 1.0*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,10:15)) 
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 30.) then
-                               clm_veg (tile_id(i), 14) = clm_veg (tile_id(i), 14) + 0.5* density(k)
-                               clm_veg (tile_id(i), 11) = clm_veg (tile_id(i), 11) + 0.5* density(k)			
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 55.) then
-                               clm_veg (tile_id(i), 14) = clm_veg (tile_id(i), 14) + 0.5* density(k)
-                               clm_veg (tile_id(i), 11) = clm_veg (tile_id(i), 11) + 0.5* density(k)
-                            else 
-                               clm_veg (tile_id(i), 13) = clm_veg (tile_id(i), 13) + 0.5* density(k)
-                               clm_veg (tile_id(i), 12) = clm_veg (tile_id(i), 12) + 0.5* density(k)			
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if((esa_type == 160) .or. (esa_type == 170)) then  
-                         ! ESA type 160:	Closed (>40%) broadleaved forest regularly flooded - Fresh water      ! ESA type 170:	Closed (>40%) broadleaved semi-deciduous and/or evergreen forest regularly flooded
-                         
-                         if(sum(PCTPFT(ii,jj,5:9)) > 0.) then
-                            do n = 5,9 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 1.*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,5:9)) 
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 23.5) then
-                               clm_veg (tile_id(i),  5) = clm_veg (tile_id(i),  5) + 1.0* density(k)
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 60.) then
-                               clm_veg (tile_id(i),  8) = clm_veg (tile_id(i),  8) + 1.0* density(k)	
-                            else 	
-                               clm_veg (tile_id(i),  9) = clm_veg (tile_id(i),  9) + 1.0* density(k)	
-                            end if
-                         end if
-                      endif
-                      
-                      ! -----------------------------------------------------------------------------------------------------------------------------------------
-                      
-                      if (esa_type == 180) then
-                         ! ESA type 180:	Closed to open (>15%) vegetation (grassland, shrubland, woody vegetation) on regularly flooded or waterlogged soil - Fresh, brackish or saline water 
-                         
-                         if(sum(PCTPFT(ii,jj,10:15)) > 0.) then
-                            do n = 10,15 
-                               clm_veg (tile_id(i), n) = clm_veg (tile_id(i), n) + 1.*density(k)*(PCTPFT(ii,jj,n))/sum(PCTPFT(ii,jj,10:15))	
-                            enddo
-                         else 
-                            if(abs(y_min_clm(jj) + 0.5*dy_clm) < 30.) then
-                               clm_veg (tile_id(i), 15) = clm_veg (tile_id(i), 15) + 1.0* density(k)
-                            else if (abs(y_min_clm(jj) + 0.5*dy_clm) < 55.) then
-                               clm_veg (tile_id(i), 14) = clm_veg (tile_id(i), 14) + 1.0* density(k)	
-                            else 	
-                               clm_veg (tile_id(i), 13) = clm_veg (tile_id(i), 13) + 1.0* density(k)	
-                            end if
-                         end if
-                      endif
-                   endif
-                enddo
-                deallocate (loc_int,unq_mask,loc_val,density)
-             endif
-          end if
-       enddo
-    end do
-    
-    
-    deallocate (tile_id, PCTPFT,esa_veg,lon_esa,lat_esa,i_esa2clm,j_esa2clm)  
-    close (10,status='keep')    
-
-    !
-    ! Now create CLM-carbon_veg_fracs file
-    ! ------------------------------------
-
-    open (10,file='clsm/CLM4.5_veg_typs_fracs',  &
-         form='formatted',status='unknown')
-    open (11, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-         action =  'read')
-    
-    read (11, *) maxcat   
- 
-    do k = 1, maxcat
-
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
-       tile_lat = (minlat + maxlat)/2.
-       scale = (ABS (tile_lat) - 32.)/10.
-       scale = min (max(scale,0.),1.)
-
-       esa_clm_veg = 0
-       esa_clm_frac= 0.
-
-       clm_fracs = clm_veg (k,:)
-             
-       if (sum (clm_fracs) == 0.) then ! gkw: no vegetated land found; set to BLDtS
-          esa_clm_veg (1) = 11              ! broadleaf deciduous shrub 
-          esa_clm_frac(1) = 100.
-       else
-          esa_clm_veg (1) = maxloc(clm_fracs,1)
-          esa_clm_frac(1) = maxval(clm_fracs) 
-       endif
-
-       clm_fracs (esa_clm_veg (1)) = 0.
-
-       if (sum (clm_fracs) == 0.) then ! gkw: no vegetated secondary type found, set to primary with zero fraction
-          esa_clm_veg (2) = esa_clm_veg (1)
-          esa_clm_frac(1) = 100.
-          esa_clm_frac(2) = 0.
-       else
-          esa_clm_veg (2) = maxloc(clm_fracs,1)
-          esa_clm_frac(1) = 100.*clm_veg (k,esa_clm_veg (1))/(clm_veg (k,esa_clm_veg (1)) + clm_veg (k,esa_clm_veg (2)))
-          esa_clm_frac(2) = 100. - esa_clm_frac(1)
-       end if
-
-! Now splitting CLM types for CLM-carbon model
-! --------------------------------------------
- 
-! CLM types 2- 10,12,13 are not being splitted.
-! .............................................
-     
-       if ((esa_clm_veg (1) >= 2).and.(esa_clm_veg (1) <= 10)) then
-          CPT1 = esa_clm_veg (1) - 1
-          CPT2 = esa_clm_veg (1) - 1
-          CPF1 = esa_clm_frac(1) 
-          CPF2 = 0.
-       endif
-
-       if ((esa_clm_veg (2) >= 2).and.(esa_clm_veg (2) <= 10)) then
-          CST1 = esa_clm_veg (2) - 1
-          CST2 = esa_clm_veg (2) - 1
-          CSF1 = esa_clm_frac(2) 
-          CSF2 = 0.
-       endif
-
-! .............................................
-
-       if ((esa_clm_veg (1) >= 12).and.(esa_clm_veg (1) <= 13)) then
-          CPT1 = esa_clm_veg (1)
-          CPT2 = esa_clm_veg (1)
-          CPF1 = esa_clm_frac(1) 
-          CPF2 = 0.
-       endif
-
-       if ((esa_clm_veg (2) >= 12).and.(esa_clm_veg (2) <= 13)) then
-          CST1 = esa_clm_veg (2)
-          CST2 = esa_clm_veg (2)
-          CSF1 = esa_clm_frac(2) 
-          CSF2 = 0.
-       endif
-
-! CLM4_5 crop types - we don't split
-
-       if ((esa_clm_veg (1) >= 16).and.(esa_clm_veg (1) <= 25)) then
-          CPT1 = esa_clm_veg (1) + 2
-          CPT2 = esa_clm_veg (1) + 2
-          CPF1 = esa_clm_frac(1) 
-          CPF2 = 0.
-       endif
-
-       if ((esa_clm_veg (2) >= 16).and.(esa_clm_veg (2) <= 25)) then
-          CST1 = esa_clm_veg (2) + 2
-          CST2 = esa_clm_veg (2) + 2
-          CSF1 = esa_clm_frac(2) 
-          CSF2 = 0.
-       endif
-
-! Now splitting (broadleaf deciduous temperate shrub )
-! .............
-
-       if (esa_clm_veg (1) == 11) then
-          CPT1 = 10
-          CPT2 = 11
-          CPF1 = esa_clm_frac(1) * scale
-          CPF2 = esa_clm_frac(1) * (1. - scale)
-       endif
-
-       if (esa_clm_veg (2) == 11) then
-          CST1 = 10
-          CST2 = 11
-          CSF1 = esa_clm_frac(2) * scale       
-          CSF2 = esa_clm_frac(2) * (1. - scale) 
-       endif
-
-! ............. (cool c3 grass)
-
-       if (esa_clm_veg (1) == 14) then
-          CPT1 = 14
-          CPT2 = 15
-          CPF1 = esa_clm_frac(1) * scale        
-          CPF2 = esa_clm_frac(1) * (1. - scale) 
-       endif
-
-       if (esa_clm_veg (2) == 14) then
-          CST1 = 14
-          CST2 = 15
-          CSF1 = esa_clm_frac(2) * scale        
-          CSF2 = esa_clm_frac(2) * (1. - scale) 
-       endif
-
-! ............. warm c4 grass
-
-       if (esa_clm_veg (1) == 15) then
-          CPT1 = 16
-          CPT2 = 17
-          CPF1 = esa_clm_frac(1) * scale        
-          CPF2 = esa_clm_frac(1) * (1. - scale) 
-       endif
-
-       if (esa_clm_veg (2) == 15) then
-          CST1 = 16
-          CST2 = 17
-          CSF1 = esa_clm_frac(2) * scale        
-          CSF2 = esa_clm_frac(2) * (1. - scale)
-       endif
-! .............
-! CLM_4.5 : we don't splot crop type anymore 16 has become 16-25 and they are now 18-27 in catchment-CN
-!       if (esa_clm_veg (1) == 16) then
-!          CPT1 = 18
-!          CPT2 = 19
-!          CPF1 = esa_clm_frac(1) * scale        
-!          CPF2 = esa_clm_frac(1) * (1. - scale) 
-!       endif
-!
-!       if (esa_clm_veg (2) == 16) then
-!          CST1 = 18
-!          CST2 = 19
-!          CSF1 = esa_clm_frac(2) * scale        
-!          CSF2 = esa_clm_frac(2) * (1. - scale) 
-!       endif
-
-       ! fractions must sum to 1
-       ! -----------------------
-       ftot = cpf1 + cpf2 + csf1 + csf2
-
-       if(ftot /= 100.) then
-          cpf1 = 100. * cpf1 / ftot  
-          cpf2 = 100. * cpf2 / ftot 
-          csf1 = 100. * csf1 / ftot 
-          csf2 = 100. * csf2 / ftot 
-       endif
-    
-       write (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')     &
-            tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
-            esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
-    end do
-
-    close (10, status = 'keep')
-    close (11, status = 'keep')    
-
-  END SUBROUTINE ESA2CLM_45
-
-!
-! ------------------------------------------------------------------------------------------------
 !
 
   SUBROUTINE ESA2CLM (nc, nr, gfile)
@@ -842,8 +125,8 @@ contains
     PCT_PFT_DBL(360:494,215:341,11) = PCT_PFT_DBL(360:494,215:341,11) + PCT_PFT_DBL(360:494,215:341, 7)
     PCT_PFT_DBL(360:494,215:341, 7) = 0.
 
-    ! CLM description (17)                                       CLM-carbon description (19)                                    
-    ! --------------------                                        -------------------------- 
+    ! CLM description (17)                                    CatchmentCNCLM description (19)        
+    ! --------------------                                    ------------------------------ 
 
     ! 'BARE'   1  	bare                                     (does not have bare soil)
     ! 'NLEt'   2 	needleleaf evergreen temperate tree    1
@@ -1342,7 +625,7 @@ contains
 
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
        tile_lat = (minlat + maxlat)/2.
        scale = (ABS (tile_lat) - 32.)/10.
        scale = min (max(scale,0.),1.)
@@ -1372,10 +655,10 @@ contains
           esa_clm_frac(2) = 100. - esa_clm_frac(1)
        end if
 
-! Now splitting CLM types for CLM-carbon model
+! Now splitting CLM types for CNCLM  model
 ! --------------------------------------------
  
-! CLM types 2- 10,12,13 are not being splitted.
+! CLM types 2- 10,12,13 are not being split.
 ! .............................................
      
        if ((esa_clm_veg (1) >= 2).and.(esa_clm_veg (1) <= 10)) then
@@ -1483,7 +766,7 @@ contains
           csf2 = 100. * csf2 / ftot 
        endif
     
-       write (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')     &
+       write (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')     &
             tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
             esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
 
@@ -1698,7 +981,7 @@ contains
  
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid
        tem = 0.
        tem(1:6)=veg (k,1:6)
 
@@ -1739,7 +1022,7 @@ contains
           if (sfrac == 0.) mos2 = mos1 ! No secondary type
           if(.not.jpl_height) z2(k) = VGZ2(mos1)
           ityp (k) = mos1
-          write (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
+          write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
             tid,cid,mos1,mos2,100.*mfrac,100.*sfrac, z2(k), z0 (k)
           
        endif
@@ -1819,8 +1102,8 @@ END SUBROUTINE HISTOGRAM
    implicit none
 
    integer, intent (in) :: nc,nr,nc_data,nr_data
-   type (regrid_map), intent (inout), dimension (nc_data,nr_data) :: rmap
-   integer :: i,j,n, i1,i2,j1,j2,ncatch, nbins, status, NPLUS
+   type (regrid_map), intent (inout) :: rmap
+   integer :: i,j,n, i1,i2,j1,j2,ncatch, nbins, status, NPLUS,pix_count
    REAL,    allocatable, DIMENSION (:) :: loc_val
    INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
    logical, dimension (:), allocatable :: unq_mask    
@@ -1852,26 +1135,35 @@ END SUBROUTINE HISTOGRAM
    dy_data = 180./real(nr_data)
    dx_geos = 360./real(nc)
    dy_geos = 180./real(nr)
-   rmap%NT    = 0
 
    if((nc_data  >= nc).and.(nr_data >= nr)) then
 
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
       call RegridRaster(tile_id,iraster)
-  
+      NPLUS = count(iraster >= 1 .and. iraster <= ncatch)
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
+      allocate (rmap%map (1:NPLUS))     
+      rmap%map%NT = 0
+      pix_count = 1
       do j = 1,nr_data
          do i =  1,nc_data
             if((iraster (i,j) >=1).and.(iraster (i,j) <=ncatch)) then
-               rmap(i,j)%NT = 1
-               rmap(i,j)%TID  (rmap(i,j)%NT) = iraster (i,j)
-               rmap(i,j)%count(rmap(i,j)%NT) = 1
+               rmap%map(pix_count)%NT = 1
+               rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = iraster (i,j)
+               rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = 1
+               rmap%ij_index(i,j) = pix_count
+               pix_count = pix_count + 1
             endif
          end do
       end do
       deallocate (iraster) ; VERIFY_(STATUS)
 
    else
-      
+      NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
+      allocate (rmap%map (1:NPLUS))     
+      rmap%map%NT = 0
+      pix_count   = 1
       do j = 1,nr_data
          
          lat1 = -90. + (j-1)*dy_data
@@ -1907,28 +1199,33 @@ END SUBROUTINE HISTOGRAM
                   
                   DO N =1,NBINS
                      if(density(n) > 0) then 
-                        rmap(i,j)%NT = rmap(i,j)%NT + 1
-                        if(rmap(i,j)%NT > N_tiles_per_cell) then
-                           print *,'N_tiles_per_cell exceeded :', rmap(i,j)%NT
+                        rmap%map(pix_count)%NT = rmap%map(pix_count)%NT + 1
+                        if(rmap%map(pix_count)%NT > N_tiles_per_cell) then
+                           print *,'N_tiles_per_cell exceeded :', rmap%map(pix_count)%NT
                            print *,i,j,i1,i2,j1,j2
-                           print *,'NT',rmap(i,j)%NT 
-                           print *,rmap(i,j)%TID
-                           print *,rmap(i,j)%count
+                           print *,'NT',rmap%map(pix_count)%NT 
+                           print *,rmap%map(pix_count)%TID
+                           print *,rmap%map(pix_count)%count
                            stop
                         endif
-                        rmap(i,j)%TID  (rmap(i,j)%NT) = NINT(loc_val(n))
-                        rmap(i,j)%count(rmap(i,j)%NT) = density(n)
+                        rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = NINT(loc_val(n))
+                        rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = density(n)
+                        
                      endif
                   END DO
+                  rmap%ij_index(i,j) = pix_count
+                  pix_count = pix_count + 1
                   deallocate (loc_val, density)
                   deallocate (loc_int, unq_mask)
                endif
                NULLIFY (subset)
             else
                if((tile_id (i1,j1) > 0).and.(tile_id(i1,j1).le.ncatch)) then
-                  rmap(i,j)%NT       = 1
-                  rmap(i,j)%TID(1)   = tile_id (i1,j1)
-                  rmap(i,j)%COUNT(1) = 1
+                  rmap%map(pix_count)%NT       = 1
+                  rmap%map(pix_count)%TID(1)   = tile_id (i1,j1)
+                  rmap%map(pix_count)%COUNT(1) = 1
+                  rmap%ij_index(i,j) = pix_count
+                  pix_count = pix_count + 1
                endif
             endif
          end do
@@ -1954,7 +1251,7 @@ END SUBROUTINE HISTOGRAM
     integer, parameter :: i5_hydr = 5000142, i6_hydr =  5999900  ! Australia
     integer, parameter :: i1_srtm = 229075 , i2_srtm =  267083   ! South America
     integer, parameter :: i3_srtm = 75369  , i4_srtm =  140751   ! Africa 
-    integer, parameter :: i5_srtm = 267084 , i6_srtm =  291284   ! Australia
+    integer, parameter :: i5_srtm = 267084 , i6_srtm =  SRTM_maxcat  ! Australia
 
     REAL, ALLOCATABLE, dimension (:) :: geol2_lai_bf,geol2_lai_af,geol2_lai, lai    
     real :: dum, gyr,gmn,gdy,gyr1,gmn1,gdy1, slice1,slice2
@@ -2098,18 +1395,18 @@ END SUBROUTINE HISTOGRAM
     character*6 :: MA
     CHARACTER*20 :: version,resoln,continent
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
-    REAL :: latt,lont,fr_gcm,fr_cat,tsteps,zth, slr,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    REAL :: tsteps,zth, slr,tarea
+    INTEGER :: typ,j_dum,ierr,indr1,ip2
     character*100 :: path,fname,fout,metpath
     character (*) :: gfile
     integer :: n,maxcat,ip
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisvf, modisnf,albvr,albnr,albvf,albnf,lat,lon, &
-         green,lai,snw,lai_before,lai_after,grn_before,grn_after
+         modisvf, modisnf,albvf,albnf, &
+         green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvr,calbnr,calbvf,calbnf
+         calbvf,calbnf, zero_array, one_array, albvr,albnr
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -2120,10 +1417,7 @@ END SUBROUTINE HISTOGRAM
     fname='clsm/catchment.def'
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
-
-    allocate (albvr    (1:maxcat))
     allocate (albvf    (1:maxcat))
-    allocate (albnr    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
     allocate (calbnf   (1:maxcat))
@@ -2136,50 +1430,56 @@ END SUBROUTINE HISTOGRAM
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
     allocate (vegcls     (1:maxcat))
-    allocate (snw      (1:maxcat))
+    allocate (zero_array (1:maxcat))
+    allocate (one_array  (1:maxcat))
+    allocate (albvr      (1:maxcat))
+    allocate (albnr      (1:maxcat))
     close (10,status='keep')
 
     fname=trim(gfile)//'.til'
-
     open (10,file=fname,status='old',action='read',form='formatted')
+
     fname='clsm/mosaic_veg_typs_fracs'
     open (20,file=fname,status='old',action='read',form='formatted')
 
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
 
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do    
+    
     do n = 1,ip
       if (ease_grid) then     
-	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
+         read(10,*,IOSTAT=ierr) typ !,pfs,lont,latt,ig,jg,fr_gcm
       else
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+         !read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+         !   typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+         read(10,*,IOSTAT=ierr) typ
       endif
        if (typ == 100) then
           ip2 = n 
-          read (20,'(i8,i8,2(2x,i3),2(2x,f6.4))')     &
-            indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
+          !read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
+          !  indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
+          read (20,*,IOSTAT=ierr) indr1,indr1,vegcls(ip2)
        endif
        if(ierr /= 0)write (*,*)'Problem reading', n, ease_grid
     end do
     close (10,status='keep')
     close (20,status='keep')
 
-    albvr    =0.
     albvf    =0.
-    albnr    =0.
     albnf    =0.
     calbvf   =0.
     calbnf   =0.
     modisvf  =0.
     modisnf  =0.
-    snw      =0.
+    zero_array = 0.
+    one_array  = 1.
+    albvr      = 0.
+    albnr      = 0.
 
 ! MODIS Albedo files
     if(MA == 'MODIS1') then 
@@ -2275,8 +1575,6 @@ END SUBROUTINE HISTOGRAM
 
     calbvf   =0.
     calbnf   =0.
-    albvr    =0.
-    albnr    =0.
     albvf    =0.
     albnf    =0.
     tsteps   =0.    
@@ -2364,10 +1662,11 @@ END SUBROUTINE HISTOGRAM
          call Time_Interp_Fac (date_time_new, gf_green_time, af_green_time, slice1, slice2)
          green  = (slice1*grn_before + slice2*grn_after)
           
-          call sibalb(                                    &
-               albvr,albnr,albvf,albnf,                   &
-               lai, green, 0.0, snw, vegcls, maxcat)  
-          
+         call sibalb (                                 &
+              MAXCAT,vegcls,lai,green, zero_array,     &
+              one_array,one_array,one_array,one_array, &
+              ALBVR, ALBNR, albvf, albnf)
+         
           calbvf = calbvf + albvf
           calbnf = calbnf + albnf         
           tsteps = tsteps + 1.  
@@ -2380,9 +1679,9 @@ END SUBROUTINE HISTOGRAM
              calbvf = calbvf/tsteps
              calbnf = calbnf/tsteps
 
-             modisvf = modisvf/calbvf
-             modisnf = modisnf/calbnf
-           
+             modisvf = modisvf/(calbvf + 1.e-20)
+             modisnf = modisnf/(calbnf + 1.e-20)
+
              do n =1, maxcat
 !                if(modisvf(n).le.0)print *,'Negative MODISVF scale param at cell',n, modisvf(n)
 !                if(modisnf(n).le.0)print *,'Negative MODISNF scale param at cell',n, modisnf(n)
@@ -2421,8 +1720,6 @@ END SUBROUTINE HISTOGRAM
                call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_modis_time)
                calbvf   =0.
                calbnf   =0.
-               albvr    =0.
-               albnr    =0.
                albvf    =0.
                albnf    =0.
                tsteps   =0.   
@@ -2430,11 +1727,12 @@ END SUBROUTINE HISTOGRAM
          endif
       end do
   
-      deallocate (modisvf,modisnf,albvr,albvf,albnf,albnr)
+      deallocate (modisvf,modisnf,albvf,albnf)
       deallocate (green,lai)
       deallocate (vegcls)
       deallocate (calbvf,calbnf)
-      deallocate (lai_before,grn_before, lai_after,grn_after,snw)
+      deallocate (lai_before,grn_before, lai_after,grn_after)
+      deallocate (zero_array, one_array, albvr, albnr)
 
       close (10, status='keep')
       close (11, status='keep')        
@@ -2456,10 +1754,10 @@ END SUBROUTINE modis_scale_para_high
 !
   implicit none 
   integer, intent (in) :: nc_data,nr_data
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   character*6 :: MA
   character(*)  :: gfiler
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj
+  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj, pix_count
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
   character*100 :: fname,fout
@@ -2579,24 +1877,27 @@ END SUBROUTINE modis_scale_para_high
                    status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); VERIFY_(STATUS)
 
                    do j = jLL,jLL + nr_10 -1 
-                      do i = iLL, iLL + nc_10 -1 
+                      do i = iLL, iLL + nc_10 -1
+                         pix_count = rmap%ij_index(i,j)
+                         if (pix_count ==0) cycle
                          if(net_data1(i-iLL +1 ,j - jLL +1) > 0) then
-                            if(rmap(i,j)%nt > 0) then
-                               do n = 1, rmap(i,j)%nt
-                                  vec_AlbVis(rmap(i,j)%tid(n))  = vec_AlbVis(rmap(i,j)%tid(n)) +  &
-                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n) 
-                                  count_AlbVis(rmap(i,j)%tid(n))= count_AlbVis(rmap(i,j)%tid(n)) + &
-                                        1.*rmap(i,j)%count(n)
+                            
+                            if(rmap%map(pix_count)%nt > 0) then
+                               do n = 1, rmap%map(pix_count)%nt
+                                  vec_AlbVis(rmap%map(pix_count)%tid(n))  = vec_AlbVis(rmap%map(pix_count)%tid(n)) +  &
+                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
+                                  count_AlbVis(rmap%map(pix_count)%tid(n))= count_AlbVis(rmap%map(pix_count)%tid(n)) + &
+                                        1.*rmap%map(pix_count)%count(n)
                                end do
                             endif
                          endif
                          if(net_data2(i-iLL +1 ,j - jLL +1) > 0) then
-                            if(rmap(i,j)%nt > 0) then
-                               do n = 1, rmap(i,j)%nt
-                                  vec_AlbNir(rmap(i,j)%tid(n))  = vec_AlbNir(rmap(i,j)%tid(n)) +  &
-                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n) 
-                                  count_AlbNir(rmap(i,j)%tid(n))= count_AlbNir(rmap(i,j)%tid(n)) + &
-                                        1.*rmap(i,j)%count(n)
+                            if(rmap%map(pix_count)%nt > 0) then
+                               do n = 1, rmap%map(pix_count)%nt
+                                  vec_AlbNir(rmap%map(pix_count)%tid(n))  = vec_AlbNir(rmap%map(pix_count)%tid(n)) +  &
+                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
+                                  count_AlbNir(rmap%map(pix_count)%tid(n))= count_AlbNir(rmap%map(pix_count)%tid(n)) + &
+                                        1.*rmap%map(pix_count)%count(n)
                                end do
                             endif
                           endif
@@ -3150,7 +2451,7 @@ END SUBROUTINE modis_scale_para_high
   integer, intent (in) :: nc_data,nr_data
   real, parameter :: dxy = 1.
   integer :: QSize
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   character(*)  :: gfiler,lai_name
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
@@ -3164,7 +2465,7 @@ END SUBROUTINE modis_scale_para_high
   REAL, ALLOCATABLE, dimension (:)      :: vec_lai, count_lai,tile_lon, tile_lat &
        , x, y !, distance
   real, allocatable, target, dimension (:,:) :: lai_grid
-  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l
+  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,pix_count
   character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
   logical :: regrid
   REAL :: sf, dum,dist_save,tile_distance,minlat,maxlat,minlon,maxlon
@@ -3306,13 +2607,15 @@ END SUBROUTINE modis_scale_para_high
                   do j = jLL,jLL + nr_10 -1 
                      do i = iLL, iLL + nc_10 -1 
                         if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
-                           if(rmap(i,j)%nt > 0) then
-                              do n = 1, rmap(i,j)%nt
-                                 if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
-                                 vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
-                                      sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
-                                 count_lai(rmap(i,j)%tid(n)) = &
-                                      count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
+                           pix_count = rmap%ij_index(i,j)
+                           if (pix_count ==0) cycle
+                           if(rmap%map(pix_count)%nt > 0) then
+                              do n = 1, rmap%map(pix_count)%nt
+                                 if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
+                                 vec_lai(rmap%map(pix_count)%tid(n))   = vec_lai(rmap%map(pix_count)%tid(n)) + &
+                                      sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n)
+                                 count_lai(rmap%map(pix_count)%tid(n)) = &
+                                      count_lai(rmap%map(pix_count)%tid(n)) + 1.*rmap%map(pix_count)%count(n)                                     
                               end do
                            endif
                         endif
@@ -3471,7 +2774,7 @@ END SUBROUTINE modis_scale_para_high
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   real :: dum, gyr,gmn,gdy,gyr1,gmn1,gdy1, slice1,slice2
   character*100 :: fname,fout
   character*10 :: string
@@ -3487,7 +2790,7 @@ END SUBROUTINE modis_scale_para_high
        af_lai_time
   integer, intent(in), optional :: merge
   real, parameter :: dxy = 1.
-  integer         :: nx, ny, QSize
+  integer         :: nx, ny, QSize, pix_count
   REAL, ALLOCATABLE, dimension (:) :: x,y,tile_lon, tile_lat
   real, allocatable, target, dimension (:,:) :: data_grid
   integer, pointer, dimension (:,:) :: QSub
@@ -3608,13 +2911,15 @@ END SUBROUTINE modis_scale_para_high
               do j = jLL,jLL + nr_10 -1 
                  do i = iLL, iLL + nc_10 -1 
                     if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
-                       if(rmap(i,j)%nt > 0) then
-                          do n = 1, rmap(i,j)%nt
-                             if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
-                             vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
-                                  sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
-                             count_lai(rmap(i,j)%tid(n)) = &
-                                  count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
+                       pix_count = rmap%ij_index(i,j)
+                       if (pix_count == 0) cycle
+                       if(rmap%map(pix_count)%nt > 0) then
+                          do n = 1, rmap%map(pix_count)%nt
+                             if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
+                             vec_lai(rmap%map(pix_count)%tid(n))   = vec_lai(rmap%map(pix_count)%tid(n)) + &
+                                  sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n)
+                             count_lai(rmap%map(pix_count)%tid(n)) = &
+                                  count_lai(rmap%map(pix_count)%tid(n)) + 1.*rmap%map(pix_count)%count(n)                                     
                           end do
                        endif
                     endif
@@ -3688,6 +2993,167 @@ END SUBROUTINE modis_scale_para_high
 
 !----------------------------------------------------------------------  
 
+  SUBROUTINE MODIS_snow_alb ( )  
+
+    ! Map static, MODIS climatology-based snow albedo from 30-arcsec raster 
+    !   grid to tile space and write into clsm/catch_params.nc4.
+    !
+    ! Assumes that input snow albedo on raster grid is backfilled
+    !   (i.e., does not contain no-data values).
+    !
+    ! Biljana Orescanin July 2022, SSAI@NASA
+    
+    implicit none	    
+    
+    character*200                   :: fname
+    character*2                     :: vv,hh
+    integer                         :: n,N_tile,ncid,status
+    real,allocatable,dimension(:)   :: min_lon,max_lon,min_lat,max_lat,snw_alb
+    integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
+    real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
+    real,dimension(36,18,xdim,ydim) :: stch_snw_alb
+    real                            :: minlon,maxlon,minlat,maxlat                   
+    real                            :: sno_alb_cnt,sno_alb_sum                            
+    integer                         :: vvtil_min,hhtil_min,vvtil_max,hhtil_max,hhtil,vvtil
+    integer                         :: tindex1,pfaf1
+    integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
+    logical                         :: file_exists
+    
+    ! Read number of catchment-tiles (N_tile) from catchment.def file
+    fname='clsm/catchment.def'
+    open (10,file=fname,status='old',action='read',form='formatted')
+    read(10,*) N_tile
+    
+    ! Read min/max lat/lons to use when locating snow albedo grids in 
+    ! the stitched MODIS albedo file
+    allocate (min_lon(1:N_tile))
+    allocate (min_lat(1:N_tile))
+    allocate (max_lon(1:N_tile))
+    allocate (max_lat(1:N_tile))
+    allocate (snw_alb(1:N_tile))
+    
+    ! Start by setting all snow albedo values to missing
+    snw_alb(:)=MAPL_UNDEF 
+    
+    do n = 1, N_tile
+       read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
+       min_lon(n) = minlon
+       max_lon(n) = maxlon
+       min_lat(n) = minlat
+       max_lat(n) = maxlat
+    end do
+    
+    close (10,status='keep')
+    
+    ! ----------- Get the information on snow albedo -----
+    ! ----------- The information on snow albedo is stored in 10x10deg 30-arcsec resolution files.
+    ! ----------- Read in this information, then loop over the tiles to find a corresponding snow albedo.
+    
+    ! Read in all 10x10deg snow albedo files into a single [36,18,1200,1200] array
+    do hhtil=1,36  ! loop over input files - horizontal direction
+       do vvtil=1,18 ! loop over input files - vertical direction
+          
+          write(vv,'(i2.2)') vvtil
+          write(hh,'(i2.2)') hhtil
+          
+          ! MODIS-based climatology albedo raster files, backfilled with global land 
+          ! average snow albedo (=0.56; average excludes Antarctica and Greenland ice 
+          ! sheets and is weighted by the grid-cell area).
+          fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+          
+          ! Open the file. (NF90_NOWRITE ensures read-only access to the file)
+          status=NF_OPEN(trim(fname),NF_NOWRITE, ncid)   ; VERIFY_(STATUS)
+          ! Based on vars name, get the varids.
+          status=NF_INQ_VARID(ncid,'Snow_Albedo',VarID1) ; VERIFY_(STATUS)
+          ! Read the data.
+          status=NF_GET_VARA_REAL(ncid,VarID1,(/1,1/),(/xdim,ydim/),stch_snw_alb_tmp) ; VERIFY_(STATUS)
+          ! Close the file, freeing all resources.
+          status=NF_CLOSE(ncid); VERIFY_(STATUS)
+          
+          ! Store snow albedo values into a single 4D aray
+          stch_snw_alb(hhtil,vvtil,:,:)=stch_snw_alb_tmp
+          
+       enddo
+    enddo
+
+    if (minval(stch_snw_alb) .le. 0.0 .or. maxval(stch_snw_alb) .gt. 1.0) then
+      print*, 'There is a problem with snow albedo raster file. Non-physical values present. STOP!'
+      stop
+    endif
+    
+    ! loop over tiles
+    print*, 'Starting tile loop for snow albedo.'
+    
+    do n = 1, N_tile ! loop over tiles
+      
+      ! Set sums and counts to zero
+      sno_alb_sum=0.
+      sno_alb_cnt=0.
+      
+      ! Use tile's min/max lat/lon info to identify the 10x10deg input file(s)
+      ! indexes
+      vvtil_min=floor((min_lat(n)+ 90.0)/10.)+1 
+      hhtil_min=floor((min_lon(n)+180.0)/10.)+1   
+      
+      ! if tile crosses the edge of the snow albedo 10x10deg box, expand the 
+      ! search area into the neighbouring 10x10deg box
+      hhtil_max=hhtil_min
+      vvtil_max=vvtil_min
+      if (floor(min_lon(n)/10) .ne. floor(max_lon(n)/10)) hhtil_max=hhtil_min+1
+      if (floor(min_lat(n)/10) .ne. floor(max_lat(n)/10)) vvtil_max=vvtil_min+1
+      
+      ! Safety check; keep within the range
+      vvtil_min=max(vvtil_min,1)
+      vvtil_max=min(vvtil_max,18)
+      hhtil_min=max(hhtil_min,1)
+      hhtil_max=min(hhtil_max,36)
+      
+      do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
+        do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
+          
+          ! Find indices ranges corresponding to the current tile area.
+          imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1 
+          imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1  
+          jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
+          jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
+
+          ! if no matching grids, go to the next vv/hh box
+          if (imin .gt. xdim .or. jmin .gt. ydim .or. imax .lt. 1 .or. jmax .lt. 1) cycle
+
+          ! Keep within the range, to include only the portion of the tile within this vv/hh box
+          imin=max(imin,1)
+          imax=min(imax,xdim)
+          jmin=max(jmin,1)
+          jmax=min(jmax,ydim)
+          
+          ! Generate sums and counts using current tile corresponding indices
+          sno_alb_sum = sno_alb_sum + sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax))
+          sno_alb_cnt = sno_alb_cnt + (imax-imin+1)*(jmax-jmin+1)
+          
+        end do ! vvtil
+      end do ! hhtil
+      
+      ! If matching grids found, calculate snow albedo for the current tile;
+      !   ensure that resulting value is within physical range [0,1].
+      if (sno_alb_cnt .ne. 0) snw_alb(n)=min(1.0,max(0.0,sno_alb_sum/sno_alb_cnt))
+      
+    end do ! n-loop over tiles
+    
+    ! write snow albedo into clsm/catch_params.nc4
+    inquire(file='clsm/catch_params.nc4', exist=file_exists)
+    
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                             ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/N_tile/),real(snw_alb)) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    endif
+    
+    print*, 'Ended tile loop for snow albedo. '
+    
+  END SUBROUTINE MODIS_snow_alb
+  
+  !--------------------------------------------------------------------------------------
+  
   SUBROUTINE soil_para_hwsd (nx,ny,gfiler)
 
 ! Processing NGDC-HWSD-STATSGO merged soil properties with Woesten Soil
@@ -3721,33 +3187,29 @@ END SUBROUTINE modis_scale_para_high
       integer (kind=4), allocatable, dimension (:) :: tileid_vec,arrayA,arrayB          
       integer (kind=2), allocatable, dimension (:) ::  &
          data_vec1, data_vec2,data_vec3, data_vec4,data_vec5, data_vec6
-      REAL, ALLOCATABLE, dimension (:) :: soildepth, grav_vec,soc_vec,poc_vec,&
-             ncells_top,ncells_top_pro,ncells_sub_pro 
+      REAL, ALLOCATABLE, dimension (:) :: soildepth, grav_vec,soc_vec,poc_vec  
+!             ncells_top,ncells_top_pro,ncells_sub_pro                          ! ncells_* not used
       integer(kind=2) , allocatable, dimension (:) :: ss_clay,    &
              ss_sand,ss_clay_all,ss_sand_all,ss_oc_all
       REAL, ALLOCATABLE :: count_soil(:)
       integer, allocatable, target, dimension (:,:) :: tile_id
       integer, pointer :: iRaster(:,:)
-      integer :: tindex, pfafindex,fac,o_cl,o_clp,fac_surf,vtype
+      integer :: tindex, pfafindex,fac,o_cl,o_clp,fac_surf   !,vtype
       real,dimension(4) :: cFamily
       real   ,dimension(5) :: cF_lim
       logical :: first_entry = .true.
-      logical :: regrid,write_file
+      logical :: regrid,write_debug
       INTEGER, allocatable, dimension (:) :: soil_class_top,soil_class_com
-      REAL :: sf,factor,wp_wetness,fac_count
-      logical                            :: file_exists
+      REAL :: sf,factor,wp_wetness,fac_count,this_cond
+      logical                            :: CatchParamsNC_file_exists
       REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
-      ! PEAT-clsm modification
-      ! Below parameters are from Table 2 of:
-      ! Bechtold, M., G. J. M. De Lannoy, R. D. Koster, R. H. Reichle, S. Mahanama, W. Bleuten, M.A. Bourgault, C. Brümmer,
-      ! I. Burdun, A. R. Desai, K. Devito, T. Grünwald, M. Grygoruk, E. R. Humphreys, J. Klatt, J. Kurbatova, A. Lohila, 
-      ! T. M. Munir, M.B. Nilsson, J. S. Price, M. Röhl, A. Schneider, and B. Tiemeyer, 2019. PEAT-CLSM:
-      ! A specific treatment of peatland hydrology in the NASA Catchment Land Surface Model. J. Adv. Model. Earth Sys., 11,
-      ! 2130-2162. doi: 10.1029/2018MS001574. 
 
-      REAL, PARAMETER  :: p_poros = 0.93, p_bee = 3.5, p_psis = -0.03, p_ks = 2.8e-5, pmap_thresh = 0.3, p_wp = 0.3672
-      REAL, DIMENSION (:), POINTER      :: PMAP
-      REAL :: d_poros, d_bee, d_psis, d_ks
+      ! PEATCLSM:
+      REAL, PARAMETER :: PEATMAP_THRESHOLD_1 = 0.5  ! for converting PEATMAP area fraction into peat/non-peat (on raster grid)
+      REAL, PARAMETER :: PEATMAP_THRESHOLD_2 = 0.5  ! for aggregation from raster grid cells to tiles
+
+      REAL, DIMENSION (:), POINTER       :: PMAP
+      REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -3794,56 +3256,78 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
    if (first_entry) then
       nullify(iraster) ; first_entry = .false.
    endif
+
+   ! define orgC content thresholds for orgC classes 1-4 (low, medium, high, peat)
+
       cF_lim(1) =  0.
-      cF_lim(2) =  0.4      ! 0.365    ! 0.3
-      cF_lim(3) =  0.64     ! 0.585    ! 4.0	   
-      cF_lim(4) =  15./1.72 ! 9.885    ! 8.5
+      cF_lim(2) =  0.4                             ! 0.365    ! 0.3
+      cF_lim(3) =  0.64                            ! 0.585    ! 4.0	   
+      cF_lim(4) =  15./1.72   ! 15./1.72=8.72      ! 9.885    ! 8.5
       cF_lim(5) =  100.0
+
+      ! define number of mineral classes in each orgC class
 
       nsoil_pcarbon(1) = 84 ! 84
       nsoil_pcarbon(2) = nsoil_pcarbon(1) + 84 ! 84
       nsoil_pcarbon(3) = nsoil_pcarbon(2) + 84 ! 57
 
+      ! Read number of catchment-tiles (maxcat) from catchment.def file
+      
       fname='clsm/catchment.def'
-!
-! Reading number of cathment-tiles from catchment.def file
-! 
+      
       open (10,file=fname,status='old',action='read',form='formatted')
       read(10,*) maxcat
       
       close (10,status='keep')
+          
+      ! Read tile-id raster file
 
-      fname =trim(c_data)//'SOIL-DATA/GSWP2_soildepth_H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
-
-      allocate(soildepth(1:maxcat))
-      allocate(soil_high(1:i_highd,1:j_highd))  
-      allocate(count_soil(1:maxcat))  
       allocate(tile_id(1:nx,1:ny))
-      allocate(net_data1 (1:nc_10,1:nr_10))
-
+      
       fname=trim(gfiler)//'.rst'
-!          
-! Reading tile-id raster file
-!
+      
       open (10,file=fname,status='old',action='read',  &
            form='unformatted',convert='little_endian')
       
       do j=1,ny
          read(10)tile_id(:,j)
-      end do       
-
+      end do
+      
       close (10,status='keep')
-!
-! reading soil depth data
-!
+
+      ! read soil depth data from GSWP2_soildepth_H[xx]V[yy].nc
+      !
+      ! get info common to all H[xx]V[yy] rectangles:
+      
+      fname =trim(c_data)//'SOIL-DATA/GSWP2_soildepth_H11V13.nc'
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
+      !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)  ! cannot be needed here
+      !status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)  ! cannot be needed here
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
+      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
+      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+      
+      ! GSWP2_soildepth_H[xx]V[yy].nc as of 29 Apr 2022:
+      !
+      ! Associated 43200-by-21600 global grid (1/120=0.083333 deg lat/lon):
+      !
+      ! N_lon_global = i_highd = 43200
+      ! N_lat_global = j_highd = 21600
+      !
+      ! i_ind_offset_LL = iLL = 42001 
+      ! j_ind_offset_LL = jLL = 19201 
+      ! 
+      ! Each file contains data for one rectangle of size 1200-by-1200, which is
+      ! assumed to be the same for each H[xx]V[yy] rectangle
+      !
+      ! N_lon = nc_10 = 1200 
+      ! N_lat = nr_10 = 1200
+
+      allocate(soil_high(1:i_highd,1:j_highd))  
+      allocate(net_data1 (1:nc_10,1:nr_10))
+
       soil_high = -9999
       do jx = 1,18
       	 do ix = 1,36
@@ -3871,7 +3355,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       deallocate (net_data1)
 
-! Regridding 
+      ! Regridding 
+      
+      ! *EASE* grid bcs use mask file GEOS5_10arcsec_mask.nc or GEOS5_10arcsec_mask_freshwater-lakes.nc,
+      ! and the make_bcs script assigns NX=43200, NY=21600, which are passed into the present subroutine
+      ! via command-line arguments of mkCatchParam.x.  That is, should have regrid=.false. for *EASE*
+      ! grid tile space.
 
       nx_adj = nx
       ny_adj = ny
@@ -3906,17 +3395,20 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	  iRaster => tile_id
       end if
       
-! Interpolation or aggregation on to catchment-tiles
-
-      soildepth =0.
-      count_soil = 0.
+      ! Interpolate/aggregate soil depth from raster grid to catchment-tiles
+      
+      allocate(soildepth(1:maxcat))
+      allocate(count_soil(1:maxcat))  
+      
+      soildepth  = 0.      ! 1-d tile space
+      count_soil = 0.      ! 1-d tile space
  
       do j=1,ny_adj
          do i=1,nx_adj
             if((iRaster(i,j).gt.0).and.(iRaster(i,j).le.maxcat)) then
                if ((raster(i,j).gt.0)) then
                   soildepth(iRaster(i,j)) = &
-                       soildepth(iRaster(i,j)) + sf*raster(i,j)
+                       soildepth(iRaster(i,j)) + sf*raster(i,j)  ! integer "raster" --> real "soildepth"
                   count_soil(iRaster(i,j)) = &
                        count_soil(iRaster(i,j)) + 1. 
                endif
@@ -3926,28 +3418,50 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       DO n =1,maxcat
 	 	if(count_soil(n)/=0.) soildepth(n)=soildepth(n)/count_soil(n)	
-	          soildepth(n) = max(soildepth(n),1334.)
+	          soildepth(n) = max(soildepth(n),SOILDEPTH_MIN_HWSD)
 !                  soildepth(n) = soildepth(n) + 2000.
 !                  soildepth(n) = min(soildepth(n),8000.) 
        END DO
 
       deallocate (SOIL_HIGH)
-      deallocate (count_soil)
+      !deallocate (count_soil)                 ! do not deallocate, needed again shortly
       NULLIFY(Raster)
-!
-! Reading NGDC-HWSD-STATSGO merged Soil Properties
-!
+      
+      ! ---------------------------------------------------------------------------------
+      !
+      ! Read NGDC-HWSD-STATSGO merged soil texture from SoilProperties_H[xx]V[yy].nc'
+      !
+      ! get info common to all H[xx]V[yy] rectangles (could in theory differ from that
+      !   of soildepth data read above but is the same as of 29 Apr 2022).
+
       fname =trim(c_data)//'SOIL-DATA/SoilProperties_H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
+      !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)  ! cannot be needed here
+      !status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)  ! cannot be needed here
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS) 
+      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS) 
+      status = NF_CLOSE(ncid)      
+      
+      ! SoilProperties_H[xx]V[yy].nc as of 29 Apr 2022:
+      !
+      ! Associated 43200-by-21600 global grid (1/120=0.083333 deg lat/lon):
+      !
+      ! N_lon_global = i_highd = 43200
+      ! N_lat_global = j_highd = 21600
+      !
+      ! i_ind_offset_LL = iLL = 42001 
+      ! j_ind_offset_LL = jLL = 19201 
+      ! 
+      ! Each file contains soil texture data for one rectangle of size 1200-by-1200, which is
+      ! assumed to be the same for each H[xx]V[yy] rectangle
+      !
+      ! N_lon = nc_10 = 1200 
+      ! N_lat = nr_10 = 1200
 
-      regrid = nx/=i_highd .or. ny/=j_highd
+      !regrid = nx/=i_highd .or. ny/=j_highd       ! not needed here, done below
+      
       allocate(net_data1 (1:nc_10,1:nr_10))
       allocate(net_data2 (1:nc_10,1:nr_10))
       allocate(net_data3 (1:nc_10,1:nr_10))
@@ -3964,13 +3478,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       allocate(oc_sub   (1:i_highd,1:j_highd))  
       allocate(grav_grid(1:i_highd,1:j_highd))   
 
-      sand_top = -9999.
-      clay_top = -9999.
-      oc_top   = -9999.
-      sand_sub = -9999.
-      clay_sub = -9999.
-      oc_sub   = -9999.
-      grav_grid= -9999.
+      sand_top = -9999   ! integer*2
+      clay_top = -9999   ! integer*2
+      oc_top   = -9999   ! integer*2
+      sand_sub = -9999   ! integer*2
+      clay_sub = -9999   ! integer*2
+      oc_sub   = -9999   ! integer*2
+      grav_grid= -9999   ! integer*2
 
       do jx = 1,18
       	 do ix = 1,36
@@ -3981,7 +3495,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	    if(status == 0) then
 		status = NF_GET_att_INT  (ncid, NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
                 status = NF_GET_att_INT  (ncid, NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-		status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef); VERIFY_(STATUS)
+                ! assume UNDEF and ScaleFactor (sf) are the same for *all* variables read below
+                ! (ok for SoilProperties_H[xx]V[yy].nc as of 29 Apr 2022).
+		status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef); VERIFY_(STATUS) 
 		status = NF_GET_att_REAL (ncid, 4,'ScaleFactor',sf); VERIFY_(STATUS)
 		status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); VERIFY_(STATUS)
 		status = NF_GET_VARA_INT (ncid, 5,(/1,1/),(/nc_10,nr_10/),net_data2); VERIFY_(STATUS)
@@ -4011,7 +3527,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	    status = NF_CLOSE(ncid)
 	    endif
 	 end do 
-      end do
+       end do
 
       deallocate (net_data1)
       deallocate (net_data2)
@@ -4020,13 +3536,44 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       deallocate (net_data5)
       deallocate (net_data6)
       deallocate (net_data7)
+      
+       ! ----------------------------------------------------------------------------
 
-! now regridding
+      if(use_PEATMAP) then 
+         print *, 'PEATMAP_THRESHOLD_1 : ', PEATMAP_THRESHOLD_1
+         allocate(pmapr (1:i_highd,1:j_highd))
+         status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+         status  = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'PEATMAP'), (/1,1/),(/i_highd, j_highd/), pmapr) ; VERIFY_(STATUS)      
+
+         ! move HWSD sub-surface peat to peat-rich mineral Group 3 because merged surface peat defines sub-surface peat
+
+         where (oc_sub*sf >= cF_lim(4))
+            oc_sub = NINT(8./sf)
+         endwhere
+
+         ! Hybridize: add OC 1km PEATMAP pixels to HWSD oc_top
+
+         where (pmapr >= PEATMAP_THRESHOLD_1)
+           oc_top = NINT(33.0/sf)
+         endwhere  
+
+         deallocate (pmapr)
+         status = NF_CLOSE(ncid)
+      endif
+      
+      ! ----------------------------------------------------------------------------
+
+      ! Regridding 
+      
+      ! *EASE* grid bcs use mask file GEOS5_10arcsec_mask.nc or GEOS5_10arcsec_mask_freshwater-lakes.nc,
+      ! and the make_bcs script assigns NX=43200, NY=21600, which are passed into the present subroutine
+      ! via command-line arguments of mkCatchParam.x.  That is, should have regrid=.false. for *EASE*
+      ! grid tile space.
 
       nx_adj = nx
       ny_adj = ny
 
-      regrid = nx/=i_highd .or. ny/=j_highd
+      regrid = nx/=i_highd .or. ny/=j_highd       
 
       if(regrid) then
           if(nx > i_highd) then 
@@ -4088,13 +3635,42 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           raster6 => oc_sub
           raster  => grav_grid
       end if
+      
+      ! ----------------------------------------------------------------------------
 
-! Deallocate large arrays
+      ! compute peat fraction on tile for CLM45+ (for fires?)
+      
+      allocate(pmap  (1:maxcat))
+      !allocate(count_soil(1:maxcat))            ! already allocated above
+
+      pmap       = 0.    ! 1-d tile space; peat fraction in tile based on oc_top
+      count_soil = 0.    ! 1-d tile space 
+      
+      do j=1,ny_adj
+         do i=1,nx_adj
+            if((iRaster(i,j).gt.0).and.(iRaster(i,j).le.maxcat)) then
+               count_soil(iRaster(i,j)) = count_soil(iRaster(i,j)) + 1. 
+               if (raster3(i,j)*sf >= cF_lim(4)) then
+                  pmap (iRaster(i,j)) = pmap(iRaster(i,j)) + 1                  
+               endif
+            endif
+         end do
+      end do
+
+      where (count_soil > 0) pmap = pmap /count_soil
+      
+      !deallocate (count_soil)                 ! do not deallocate, needed again shortly
+
+      ! ----------------------------------------------------------------------------
+      
+      ! get number of "land" pixels (i1) on raster grid
 
       allocate(land_pixels(1:size(iRaster,1),1:size(iRaster,2)))
       land_pixels = (iRaster >=1).and.(iRaster<=maxcat)
       i1 = count(land_pixels)   
       deallocate (land_pixels) 
+
+      ! allocate 1-d arrays for all "land" pixels on raster grid
 
       allocate (tileid_vec(1:i1))
       allocate (data_vec1 (1:i1))
@@ -4103,37 +3679,49 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       allocate (data_vec4 (1:i1))
       allocate (data_vec5 (1:i1))
       allocate (data_vec6 (1:i1))
+
+      ! allocate 1-d arrays for all "land" tiles
+
       allocate (grav_vec  (1:maxcat))
       allocate (soc_vec   (1:maxcat))
       allocate (poc_vec   (1:maxcat))
-      allocate (ncells_top  (1:maxcat))
-      allocate (ncells_top_pro  (1:maxcat))
-      allocate (ncells_sub_pro  (1:maxcat))
-      allocate(count_soil(1:maxcat))  
+      !allocate (ncells_top  (1:maxcat))            ! ncells_* not used
+      !allocate (ncells_top_pro  (1:maxcat))        ! ncells_* not used
+      !allocate (ncells_sub_pro  (1:maxcat))        ! ncells_* not used
+      !allocate(count_soil(1:maxcat))               
+  
       count_soil = 0.
       grav_vec   = 0.
-      soc_vec    = 0.
-      poc_vec    = 0.
-      ncells_top = 0.
-      ncells_top_pro = 0.
-      ncells_sub_pro = 0.
+      soc_vec    = 0.            ! soil orgC (top layer 0-30)
+      poc_vec    = 0.            ! soil orgC (profile layer 0-100)
+
+      !ncells_top = 0.           ! ncells_* not used
+      !ncells_top_pro = 0.       ! ncells_* not used
+      !ncells_sub_pro = 0.       ! ncells_* not used
 
       n =1
       do j=1,ny_adj
          do i=1,nx_adj
             if((iRaster(i,j).ge.1).and.(iRaster(i,j).le.maxcat)) then
 
-	       tileid_vec (n) =  iRaster(i,j)
-	       data_vec1  (n) =  Raster1(i,j)
-	       data_vec2  (n) =  Raster2(i,j)
-	       data_vec3  (n) =  Raster3(i,j)
-	       data_vec4  (n) =  Raster4(i,j)
-	       data_vec5  (n) =  Raster5(i,j)
-	       data_vec6  (n) =  Raster6(i,j)
+               ! map from 2-d raster array to 1-d raster vec
+
+	       tileid_vec (n) =  iRaster(i,j)         ! iRaster => tile_id       int*4
+	       data_vec1  (n) =  Raster1(i,j)         ! raster1 => clay_top      int*2
+	       data_vec2  (n) =  Raster2(i,j)         ! raster2 => sand_top      int*2
+	       data_vec3  (n) =  Raster3(i,j)         ! raster3 => oc_top        int*2
+	       data_vec4  (n) =  Raster4(i,j)         ! raster4 => clay_sub      int*2
+	       data_vec5  (n) =  Raster5(i,j)         ! raster5 => sand_sub      int*2
+	       data_vec6  (n) =  Raster6(i,j)         ! raster6 => oc_sub        int*2
+
+               ! BUG???  It is unclear why here grav_vec is filled in the order of "tile_id"
+               ! while data_vec[x] is filled in the order of the long/lat grid.
+               ! Not sure if grav_vec is processed correctly below!
+               ! -reichle, 29 Apr 2022
 
                if ((raster(i,j).gt.0)) then 
                   grav_vec(iRaster(i,j)) = &
-                       grav_vec(iRaster(i,j)) + sf*raster(i,j)
+                       grav_vec(iRaster(i,j)) + sf*raster(i,j)  ! raster  => grav_grid    int*2
                   count_soil(iRaster(i,j)) = &
                        count_soil(iRaster(i,j)) + 1. 
                endif
@@ -4146,16 +3734,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	 	if(count_soil(n)/=0.) grav_vec(n)=grav_vec(n)/count_soil(n)	
       END DO
 
-      deallocate (grav_grid)
       deallocate (count_soil)
-      NULLIFY(Raster)
-
-      NULLIFY(Raster1,Raster2,Raster3,Raster4,Raster5,Raster6)
-      deallocate (clay_top,sand_top,oc_top,clay_sub,sand_sub,oc_sub) 
+      NULLIFY(Raster,Raster1,Raster2,Raster3,Raster4,Raster5,Raster6)
+      deallocate (clay_top,sand_top,oc_top,clay_sub,sand_sub,oc_sub,grav_grid) 
       deallocate (tile_id)
 
-      allocate (arrayA    (1:i1))
-      allocate (arrayB    (1:i1))
+      ! sort 1-d land pixels vectors according to tile_id
+
+      allocate (arrayA    (1:i1))             ! 1-d land pixels on raster grid
+      allocate (arrayB    (1:i1))             ! 1-d land pixels on raster grid
 
       arrayA = tileid_vec
       arrayB = data_vec1
@@ -4186,11 +3773,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       arrayB = data_vec6
       call MAPL_Sort (arrayA, arrayB)
       data_vec6 = arrayB
+
       tileid_vec= arrayA
+
       deallocate (arrayA, arrayB)
-!
-! Reading Woesten Soil Parameters and CLSM tau parameters
-!
+
+      ! -------------------------------------------------------------------- 
+      !
+      ! Read Woesten soil parameters and CLSM tau parameters for soil classes (1:253)
+
 	allocate(a_sand  (1:n_SoilClasses))
 	allocate(a_clay  (1:n_SoilClasses))
 	allocate(a_silt  (1:n_SoilClasses))
@@ -4206,33 +3797,61 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	allocate(btau_2cm(1:n_SoilClasses))
         allocate(a_wpsurf(1:n_SoilClasses))
         allocate(a_porosurf(1:n_SoilClasses))
-      if(process_peat) then 
+
+      ! SoilClasses-SoilHyd-TauParam.dat and SoilClasses-SoilHyd-TauParam.peatmap differ
+      ! only in the parameters for the peat class #253.  The file *.peatmap contains
+      ! the PEATCLSM parameters from Table 2 of Bechtold et al. 2019 (doi:10.1029/2018MS001574).
+      !
+      ! Note: K_s = COND*exp(-zks*gnu)   ==> with zks=2 and gnu=1, K_s = 0.135335*COND
+      !
+      !         K_s      COND     [m/s]
+      ! NLv4  7.86e-7   5.81e-6
+      ! NLv5  3.79e-6   2.80e-5   <== note *typo* in Table 2 of Bechtold et al. 2019, which erroneously lists K_s=2.8e-5
+
+      if(use_PEATMAP) then 
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap'
       else
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
       endif
-      table_map = 0
+
+      table_map = 0                      ! 100-by-3 look-up table
+
       open (11, file=trim(fname), form='formatted',status='old', &
            action = 'read')
-      read (11,'(a)')fout
-      do n =1,n_SoilClasses 
+      read (11,'(a)')fout        ! read header line
+
+      do n =1,n_SoilClasses
+
       	 read (11,'(4f7.3,4f8.4,e13.5,2f12.7,2f8.4,4f12.7)')a_sand(n),a_clay(n),a_silt(n),a_oc(n),a_bee(n),a_psis(n), &
               a_poros(n),a_wp(n),a_aksat(n),atau(n),btau(n),a_wpsurf(n),a_porosurf(n),atau_2cm(n),btau_2cm(n)
+
+         ! assemble scalar structure that holds mineral percentages of soil class n
 
 	 min_percs%clay_perc = a_clay(n)
 	 min_percs%silt_perc = a_silt(n)
 	 min_percs%sand_perc = a_sand(n)
-	 if(n <= nsoil_pcarbon(1))                              table_map(soil_class (min_percs),1) = n  
-	 if((n > nsoil_pcarbon(1)).and.(n <= nsoil_pcarbon(2))) table_map(soil_class (min_percs),2) = n  
-         if((n > nsoil_pcarbon(2)).and.(n <= nsoil_pcarbon(3))) table_map(soil_class (min_percs),3) = n 
+  
+         ! "soil_class" is an integer function (see rmTinyCatchParam.F90) that assigns 
+         !    an integer (mineral) soil class [1-100] for a given mineral percentage triplet
 
-      end do
+         ! "table_map"  is a 2-d array (100-by-3) that maps between overall soil class (1:252) and 
+         !   (mineral_class 1:84, orgC_class).   "table_map" has no entry for the peat class #253.
+
+	 if( n <= nsoil_pcarbon(1))                              table_map(soil_class (min_percs),1) = n  
+	 if((n >  nsoil_pcarbon(1)).and.(n <= nsoil_pcarbon(2))) table_map(soil_class (min_percs),2) = n  
+         if((n >  nsoil_pcarbon(2)).and.(n <= nsoil_pcarbon(3))) table_map(soil_class (min_percs),3) = n 
+
+      end do   ! n=1,n_SoilClasses
+
       close (11,status='keep') 
-!
-!  When Woesten Soil Parameters are not available for a particular Soil Class
-!  ,as assumed by tiny triangles in HWSD soil triangle, Woesten Soil
-!  parameters from the nearest available tiny triangle will be substituted.
-!	     	  
+
+      ! ------------------------------------------------------------
+      !
+      !  When Woesten soil parameters are not available for a particular soil class,
+      !  as defined by "tiny" triangles in HWSD soil triangle, Woesten soil
+      !  parameters from the nearest available "tiny" triangle will be substituted.
+      !  For "tiny" triangles, see Fig 1b of De Lannoy et al. 2014 (doi:10.1002/2014MS000330).      
+
       do n =1,10
 	  do k=1,n*2 -1
 
@@ -4306,30 +3925,47 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !$OMP         sf,data_vec1,data_vec2,data_vec3,         &
 !$OMP         data_vec4,data_vec5,data_vec6,cF_lim,     &
 !$OMP         table_map,soil_class_top,soil_class_com,  &
-!$OMP         soc_vec,poc_vec,ncells_top,ncells_top_pro,&
-!$OMP         ncells_sub_pro)    &
+!$OMP         soc_vec,poc_vec,use_PEATMAP)              &
+!ncells_* not used !$OMP         soc_vec,poc_vec,ncells_top,ncells_top_pro,&
+!ncells_* not used !$OMP         ncells_sub_pro,use_PEATMAP)               &
 !$OMP PRIVATE(n,i,j,k,icount,t_count,i1,i2,ss_clay,     &
 !$OMP         ss_sand,ss_clay_all,ss_sand_all,          &
 !$OMP         ss_oc_all,cFamily,factor,o_cl,o_clp,ktop, &
-!$OMP         min_percs, fac_count, write_file)
+!$OMP         min_percs, fac_count, write_debug)
+
+    ! loop through tiles (split into two loops for OpenMP)
 
     DO t_count = 1,n_threads
       DO n = low_ind(t_count),upp_ind(t_count)
 
-	write_file = .false.
+	write_debug = .false.
 
-!	if (n==171010)  write_file = .true.
+!	if (n==171010)  write_debug = .true.
+
+        ! initialize "icount" when starting loop through n at low_ind(t_count)
+        ! recall: tileid_vec is a 1-d vector that covers all land pixels on the raster grid that
+        !         contains the (sorted) tile IDs, with matching parameter vectors data_vec[x]
 
         if(n==low_ind(t_count)) then
              icount = 1
+             ! Not sure what the following loops do.  Why not check backwards from low_ind(t_count)??
              do k=1,low_ind(t_count) - 1
-                do while (tileid_vec(icount)== k)
+                do while (tileid_vec(icount)== k)   
                    icount = icount + 1
                 end do
              end do
         endif
+
+        ! ------------------------------------------------------------------
+        !
+        ! determine the land raster grid cells i1:i2 that make up tile n
+        
+        ! NOTE change in meaning of "i1":
+        !
+        ! before: i1 = total no. of land pixels on the raster grid
+        ! now:    i1 = starting index of land raster grid cells (within 1-d vector) that make up tile n (?)
              
-        i1 = icount 
+        i1 = icount  
         
 	loop: do while (tileid_vec(icount)== n)
 	   if(icount <= size(tileid_vec,1)) icount = icount + 1
@@ -4337,40 +3973,79 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	end do loop 
 
 	i2 = icount -1
- 	i = i2 - i1 + 1
+ 	i = i2 - i1 + 1                ! number of land raster grid cells that make up tile n (?)
 
-        allocate(ss_clay    (1:2*i))
-        allocate(ss_sand    (1:2*i))
-        allocate(ss_clay_all(1:2*i))
-        allocate(ss_sand_all(1:2*i))
-        allocate(ss_oc_all  (1:2*i))
+
+        ! -------------------------------------------------------------------
+        ! 
+        ! prep data
+  
+        allocate(ss_clay    (1:2*i))   ! for top layer (0-30)   -- why allocate 1:2*i and not 1:i??
+        allocate(ss_sand    (1:2*i))   ! for top layer (0-30)   -- why allocate 1:2*i and not 1:i??
+
+        allocate(ss_clay_all(1:2*i))   ! for top (0-30) and sub (30-100) layers
+        allocate(ss_sand_all(1:2*i))   ! for top (0-30) and sub (30-100) layers
+        allocate(ss_oc_all  (1:2*i))   ! for top (0-30) and sub (30-100) layers
 	  
-        ss_clay    = 0    
-        ss_sand    = 0	
-        ss_clay_all= 0
-        ss_sand_all= 0
-        ss_oc_all  = 0
+        ss_clay    = 0    ! int*2  -- why only clay and sand for top layer and not orgC ??  
+        ss_sand    = 0	  ! int*2
+        
+        ss_clay_all= 0    ! int*2
+        ss_sand_all= 0    ! int*2
+        ss_oc_all  = 0    ! int*2
 
-	ss_clay_all (1:i)     = data_vec1(i1:i2)
+	ss_clay_all (1:i)     = data_vec1(i1:i2)  ! put top layer info into first i elements (1:i)
 	ss_sand_all (1:i)     = data_vec2(i1:i2)
 	ss_oc_all   (1:i)     = data_vec3(i1:i2)	
-	ss_clay_all (1+i:2*i) = data_vec4(i1:i2) 
+
+	ss_clay_all (1+i:2*i) = data_vec4(i1:i2)  ! put sub layer info into next i elements (i+1:2*i)
 	ss_sand_all (1+i:2*i) = data_vec5(i1:i2)
-	ss_oc_all   (1+i:2*i) = data_vec6(i1:i2)	
+	ss_oc_all   (1+i:2*i) = data_vec6(i1:i2)  ! <-- oc_sub	
+
+
+        ! -----------------------------------------------------------------------
+        !
+        ! determine aggregate/dominant orgC *top* layer soil class ("o_cl") of tile n
 
 	cFamily = 0.
+!!        factor  = 1.
 
 	do j=1,i
-	   if(j <= i) factor = 1.
+           if(j <= i) factor = 1.
 	   if((ss_oc_all(j)*sf >=  cF_lim(1)).and. (ss_oc_all(j)*sf < cF_lim(2))) cFamily(1) = cFamily(1) + factor
 	   if((ss_oc_all(j)*sf >=  cF_lim(2)).and. (ss_oc_all(j)*sf < cF_lim(3))) cFamily(2) = cFamily(2) + factor
 	   if((ss_oc_all(j)*sf >=  cF_lim(3)).and. (ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + factor
 	   if((ss_oc_all(j)*sf >=  cF_lim(4) ))                                   cFamily(4) = cFamily(4) + factor
 	end do
 
-	if (sum(cFamily) == 0.) o_cl  = 1
-	if (sum(cFamily)  > 0.) o_cl  = maxloc(cFamily, dim = 1)
+	if (sum(cFamily) == 0.) o_cl  = 1    ! default is o_cl=1 (if somehow no grid cell has top-layer orgC >=0.)
 
+!!        if (.not. use_PEATMAP) then
+           
+           ! assign dominant *top* layer org soil class (even if only a minority of the contributing 
+           !   raster grid cells is peat)
+
+           if (sum(cFamily)  > 0.) o_cl  = maxloc(cFamily, dim = 1)
+
+!!        else
+
+        if (use_PEATMAP) then
+           
+           ! PEATMAP: tile has *top* layer peat class only if more than 50% of the contributing 
+           !   raster grid cells are peat (may loose some peat tiles w.r.t. non-PEATMAP bcs version)
+           
+           if (cFamily(4)/real(i) > PEATMAP_THRESHOLD_2) then 
+              o_cl  = 4
+           else
+              if (sum(cFamily(1:3)) > 0.) o_cl  = maxloc(cFamily(1:3), dim = 1)  ! o_cl = 1, 2, or 3
+           endif
+
+        endif           
+        
+
+        ! determine aggregate/dominant orgC *profile* (0-100) soil class ("o_clp") of tile n,
+        ! weight factor=1. for top (0-30) layer and weight factor=2.33 for sub (30-100) layer
+        
 	cFamily = 0.
 
 	do j=1,2*i
@@ -4381,55 +4056,98 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	   if((ss_oc_all(j)*sf >=  cF_lim(3)).and. (ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + factor
 	   if((ss_oc_all(j)*sf >=  cF_lim(4) ))                                   cFamily(4) = cFamily(4) + factor
 	end do
+ 
+        ! NOTE: For PEATMAP, oc_sub was cut back to 8./sf above:
+        !       "! move HWSD sub-surface peat to peat-rich mineral Group 3 because merged surface peat defines sub-surface peat"
+        !       "where (oc_sub*sf >= cF_lim(4))                                                                                "
+        !       "    oc_sub = NINT(8./sf)                                                                                      "
+        !       "endwhere                                                                                                      "
+        !       For PEATMAP, the sub-layer weight of 2.33 should only count towards cFamily(1:3), and in most cases the 
+        !       maxloc statement below should therefore result in o_clp = 1, 2, or 3 only.  However, if the top-layer orgC
+        !       is peat for most contributing raster grid cells and the sub-layer orgC values are relatively evenly spread 
+        !       over orgC classes 1, 2, and 3, then maxloc(cFamily) can result in o_clp=4.
 
 	if (sum(cFamily) == 0.) o_clp = 1
-	if (sum(cFamily)  > 0.) o_clp = maxloc(cFamily, dim = 1)
+	if (sum(cFamily)  > 0.) o_clp = maxloc(cFamily, dim = 1)        
+
+        ! ----------------------------------------------------------------------------------------
+        ! 
+        ! Determine *top* layer mineral/organic soil class of tile n 
 
         if(o_cl == 4) then 
+
+           ! Top-layer soil class of tile n is peat. 
+           ! Compute average top-layer orgC (only across raster grid cells whose top layer is peat).
+
            soil_class_top(n) = n_SoilClasses
 	   ktop = 0
 	   do j=1,i
-	     if(ss_oc_all(j)*sf >= cF_lim(4)) then
+             ! avg only across contributing raster grid cells that are peat
+	     if(ss_oc_all(j)*sf >= cF_lim(4)) then           
 	        soc_vec (n) = soc_vec(n) + ss_oc_all(j)*sf
 		ktop = ktop + 1
              endif
 	   end do
 	   if(ktop.ne.0) soc_vec (n)   = soc_vec(n)/ktop
-	   ncells_top(n) = 100.*float(ktop)/float(i)
-        else 
-            k = 1
-	    ktop = 1
+	   !ncells_top(n) = 100.*float(ktop)/float(i)            ! ncells_* not used
 
-	    do j=1,i
+        else 
+                      
+           ! Top-layer soil class of tile n is mineral.
+           ! Compute average top-layer orgC (only across raster grid cells within same orgC class)
+           ! and collect all clay/sand pairs of raster grid cells within same orgC class. 
+
+            !k = 1        !cleanup k counter
+	    !ktop = 1     !cleanup k counter
+	    ktop = 0      !cleanup k counter
+
+	    do j=1,i      ! loop only through top-layer elements of ss_*_all
+
+                ! avg only across contributing raster grid cells with orgC class as that assigned to tile n 
 	        if((ss_oc_all(j)*sf >= cF_lim(o_cl)).and.(ss_oc_all(j)*sf < cF_lim(o_cl + 1))) then 
-                   if((ss_clay_all(j)*sf >= 0.).and.(ss_sand_all(j)*sf >= 0.)) then   
-    			   ss_clay (k) = ss_clay_all(j)
-			   ss_sand (k) = ss_sand_all(j)
-                           if((ss_clay (k) + ss_sand (k)) > 9999) then
-                              if(ss_clay (k) >= ss_sand (k)) then
-                                 ss_sand (k) = 10000 - ss_clay (k)
+
+                   if((ss_clay_all(j)*sf >= 0.).and.(ss_sand_all(j)*sf >= 0.)) then    ! avoiding no-data-values
+
+                           ktop = ktop + 1      !cleanup k counter
+    			   ss_clay (ktop) = ss_clay_all(j)                    
+			   ss_sand (ktop) = ss_sand_all(j)                    
+
+                           ! adjust clay and sand content if outside joint physical bounds
+                           if((ss_clay (ktop) + ss_sand (ktop)) > 9999) then  ! note: 9999 = 99.99%  (scale factor = 0.01)
+                              if(ss_clay (ktop) >= ss_sand (ktop)) then
+                                 ss_sand (ktop) = 10000 - ss_clay (ktop)
                                else
-                                 ss_clay (k) = 10000 - ss_sand (k)
+                                 ss_clay (ktop) = 10000 - ss_sand (ktop)
                                endif
                             endif
-			   soc_vec (n) = soc_vec(n) + ss_oc_all(j)*sf
-                           k = k + 1
-                           ktop = ktop + 1
+			   soc_vec (n) = soc_vec(n) + ss_oc_all(j)*sf    ! sum up top-layer orgC
+                           !k = k + 1            !cleanup k counter
+                           !ktop = ktop + 1      !cleanup k counter
 		   endif
                 endif	
 	    end do
 	    
-	    k = k - 1
-	    ktop = ktop -1
-	    if(ktop.ne.0) soc_vec (n) = soc_vec(n)/ktop
-	    ncells_top(n) = 100.*float(ktop)/float(i)
-            if (write_file) write(80+n,*)ktop,o_cl
+	    !k = k - 1           !cleanup k counter
+	    !ktop = ktop -1      !cleanup k counter
+
+	    if(ktop.ne.0) soc_vec (n) = soc_vec(n)/ktop     ! normalize top-layer orgC
+
+	    !ncells_top(n) = 100.*float(ktop)/float(i)            ! ncells_* not used
+
+            ! debugging output
+            if (write_debug) write(80+n,*)ktop,o_cl
             if(ktop > 0) then 
-               if (write_file) write (80+n,*)ss_clay(1:ktop)
-               if (write_file) write (80+n,*)ss_sand(1:ktop)
+               if (write_debug) write (80+n,*)ss_clay(1:ktop)
+               if (write_debug) write (80+n,*)ss_sand(1:ktop)
             endif
+
+            ! Determine the raster grid cell j that has (top-layer) clay/sand content closest
+            ! to the average (top-layer) clay/sand across all raster grid cells within the 
+            ! dominant orgC class.
+
   	    j = center_pix_int0(sf, ktop,ktop, ss_clay(1:ktop),ss_sand(1:ktop))
-            if (write_file) write(80+n,*)j
+
+            ! Assign soil class of raster grid cell j to tile n
 
             if(j >=1) then 
                min_percs%clay_perc = ss_clay(j)*sf
@@ -4437,142 +4155,225 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                min_percs%silt_perc = 100. - ss_clay(j)*sf - ss_sand(j)*sf
                soil_class_top (n) = table_map(soil_class (min_percs),o_cl)   
             endif
+            
+            ! debugging output
+            if (write_debug) write(80+n,*)j
+
         endif
-            if (write_file) write(80+n,*)soil_class_top (n) 
+
+        ! debugging output
+        if (write_debug) write(80+n,*)soil_class_top (n) 
+
+        ! -------------------------------------------------------------------------------
+        ! 
+        ! determine aggregate sand/clay/orgC for *profile* layer of tile n 
+
         if(o_clp == 4) then 
+
+           ! Profile-layer soil class of tile n is peat. 
+           ! Compute average profile-layer orgC (only across raster grid cells and layers that are peat)
+           
            soil_class_com(n) = n_SoilClasses
 	   fac_count = 0.
 	   k =0
 	   ktop =0
 	   do j=1,2*i
 	     if(ss_oc_all(j)*sf >= cF_lim(4)) then
-                 if(j <= i) factor = 1.
-	         if(j  > i) factor = 2.33
-		 if(j  > i) k = k + 1
-		 if(j <= i) ktop = ktop + 1
-	         poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor
-		 fac_count = fac_count + factor
+                 if(j <= i) factor = 1.                ! top layer contribution  1   <= j <=i
+	         if(j  > i) factor = 2.33              ! sub layer contribution  i+1 <= j <=2*i
+		 if(j  > i) k = k + 1                  ! sub layer counter
+		 if(j <= i) ktop = ktop + 1            ! top layer counter
+	         poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor     ! weighted sum of orgC
+		 fac_count = fac_count + factor                        ! sum of weights
              endif
 	   end do
-	   if(fac_count.ne.0) poc_vec (n) = poc_vec (n)/fac_count
-           ncells_sub_pro(n) = 100.*float(k)/float(i)
-           ncells_top_pro(n) = 100.*float(ktop)/float(i)
+	   if(fac_count.ne.0) poc_vec (n) = poc_vec (n)/fac_count   ! normalize
+           !ncells_sub_pro(n) = 100.*float(k)/float(i)              ! ncells_* not used
+           !ncells_top_pro(n) = 100.*float(ktop)/float(i)           ! ncells_* not used
         else
-            k = 1
-	    ktop = 1
+
+           ! Profile-layer soil class of tile n is mineral.
+           ! Compute average profile-layer orgC (only across raster grid cells within same orgC class)
+           ! and collect all clay/sand pairs of raster grid cells within same orgC class. 
+
+            !k = 1        !cleanup k counter
+	    !ktop = 1     !cleanup k counter
+            k = 0         !cleanup k counter
+	    ktop = 0      !cleanup k counter
 
             ss_clay=0
             ss_sand=0
 	    fac_count = 0.
 
-	    do j=1,2*i
+	    do j=1,2*i    ! loop through both top (1<=j<=i) layer and sub (i+1<=j<=2*i) layer elements
+        
+                ! avg only across contributing raster grid cells and layers with orgC class as that assigned to tile n 
 	        if((ss_oc_all(j)*sf >=  cF_lim(o_clp)).and.(ss_oc_all(j)*sf < cF_lim(o_clp + 1))) then 
-                   if((ss_clay_all(j)*sf >= 0.).and.(ss_sand_all(j)*sf >= 0.)) then 
-  	              if(j <= i) factor = 1.
-	              if(j  > i) factor = 2.33
-	              poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor
+
+                   if((ss_clay_all(j)*sf >= 0.).and.(ss_sand_all(j)*sf >= 0.)) then    ! avoiding no-data-values 
+
+  	              if(j <= i) factor = 1.        ! top layer contribution
+	              if(j  > i) factor = 2.33      ! sub layer contribution
+
+	              poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor   ! weighted sum of orgC
 		      fac_count = fac_count + factor
-		      if(j <= i) then
-    			   ss_clay (k) = ss_clay_all(j)
-			   ss_sand (k) = ss_sand_all(j)
-                           if((ss_clay (k) + ss_sand (k)) > 9999) then
-                              if(ss_clay (k) >= ss_sand (k)) then
-                                 ss_sand (k) = 10000 - ss_clay (k)
-                               else
-                                 ss_clay (k) = 10000 - ss_sand (k)
-                               endif
-                            endif
-                           k = k + 1
-			   ktop = ktop + 1
-		       else
-    			   ss_clay (k) = ss_clay_all(j)
-			   ss_sand (k) = ss_sand_all(j)
-                           if((ss_clay (k) + ss_sand (k)) > 9999) then
-                              if(ss_clay (k) >= ss_sand (k)) then
-                                 ss_sand (k) = 10000 - ss_clay (k)
-                               else
-                                 ss_clay (k) = 10000 - ss_sand (k)
-                               endif
-                            endif
-                           k = k + 1                         
-		       endif   
-		   endif
+
+                      k = k + 1                  ! counter for top and sub contributions        !cleanup k counter  
+                      
+                      if (j<=i) ktop = ktop + 1  ! counter for top contributions only           !cleanup k counter
+
+
+!obsolete20220502  The code within the if-then and if-else statements below was nearly identical,
+!obsolete20220502  except for the omission of the ktop counter from the else block.
+!obsolete20220502
+!obsolete20220502		      if(j <= i) then
+
+                      ss_clay (k) = ss_clay_all(j)
+                      ss_sand (k) = ss_sand_all(j)
+
+                      ! adjust clay and sand content if outside joint physical bounds
+                      if((ss_clay (k) + ss_sand (k)) > 9999) then  ! note: 9999 = 99.99%  (scale factor = 0.01)
+                         if(ss_clay (k) >= ss_sand (k)) then
+                            ss_sand (k) = 10000 - ss_clay (k)
+                         else
+                            ss_clay (k) = 10000 - ss_sand (k)
+                         endif
+                      endif
+                      !k = k + 1           !cleanup k counter
+                      !ktop = ktop + 1     !cleanup k counter
+
+!obsolete20220502		       else
+!obsolete20220502    			   ss_clay (k) = ss_clay_all(j)
+!obsolete20220502			   ss_sand (k) = ss_sand_all(j)
+!obsolete20220502                           if((ss_clay (k) + ss_sand (k)) > 9999) then
+!obsolete20220502                              if(ss_clay (k) >= ss_sand (k)) then
+!obsolete20220502                                ss_sand (k) = 10000 - ss_clay (k)
+!obsolete20220502                              else
+!obsolete20220502                                ss_clay (k) = 10000 - ss_sand (k)
+!obsolete20220502                              endif
+!obsolete20220502                           endif
+!obsolete20220502                           !k = k + 1          !cleanup k counter                         
+!obsolete20220502		       endif   
+                   endif
                 endif	
 	    end do
 	    
-	    k = k - 1
-	    ktop = ktop -1
-	    if(fac_count.ne.0) poc_vec (n) = poc_vec(n)/fac_count
-	    ncells_top_pro(n) = 100.*float(ktop)/float(i)
-	    ncells_sub_pro(n) = 100.*float(k-ktop)/float(i)
+            !k = k - 1            !cleanup k counter
+	    !ktop = ktop -1       !cleanup k counter
 
-            if (write_file) write (80+n,*)ktop,k,o_cl
-            if (write_file) write (80+n,*)ss_clay(1:k)
-            if (write_file) write (80+n,*)ss_sand(1:k)
+	    if(fac_count.ne.0) poc_vec (n) = poc_vec(n)/fac_count     ! normalize profile-layer orgC
+
+	    !ncells_top_pro(n) = 100.*float(ktop)/float(i)              ! ncells_* not used
+	    !ncells_sub_pro(n) = 100.*float(k-ktop)/float(i)            ! ncells_* not used
+
+            ! debugging output
+            if (write_debug) write (80+n,*)ktop,k,o_cl
+            if (write_debug) write (80+n,*)ss_clay(1:k)
+            if (write_debug) write (80+n,*)ss_sand(1:k)
+
+            ! Determine the raster grid cell and layer j that has clay/sand content closest
+            ! to the average (profile) clay/sand across all raster grid cells within the 
+            ! dominant orgC class.
+
 	    j = center_pix_int0 (sf, ktop,k, ss_clay(1:k),ss_sand(1:k))
-            if (write_file) write(80+n,*) j
+
+            ! Assign soil class of raster grid cell and layer j to tile n
+     
             if(j >=1) then 
                min_percs%clay_perc = ss_clay(j)*sf
                min_percs%sand_perc = ss_sand(j)*sf
                min_percs%silt_perc = 100. - ss_clay(j)*sf - ss_sand(j)*sf
                soil_class_com (n) = table_map(soil_class (min_percs),o_clp)  
             endif
-            if (write_file) write(80+n,*) soil_class_com (n) 
-            if (write_file) close(80+n)          
+
+            ! debugging output
+            if (write_debug) write(80+n,*) j
+            if (write_debug) write(80+n,*) soil_class_com (n) 
+            if (write_debug) close(80+n)          
+
         endif
+
 	deallocate (ss_clay,ss_sand,ss_clay_all,ss_sand_all,ss_oc_all)
+
       END DO
-      END DO
+      END DO              ! loop through tiles
 !$OMP ENDPARALLELDO
 
-      call process_peatmap (nx, ny, gfiler, pmap)
+!      call process_peatmap (nx, ny, gfiler, pmap)
 
-      inquire(file='clsm/catch_params.nc4', exist=file_exists)
+      ! -----------------------------------------------------------------------------
+      !
+      ! apply final touches and write output files: 
+      ! - soil_param.first
+      ! - tau_param.dat
+      ! - catch_params.nc4 [soil hydraulic and srfexc-rzexc time scale parameters ONLY;
+      !                     parameters from ar.new, bf.dat, and ts.dat parameters will be 
+      !                     added to catch_params.nc4 by subroutine create_model_para_woesten()]
+      
+      inquire(file='clsm/catch_params.nc4', exist=CatchParamsNC_file_exists)
 
-      if(file_exists) then
+      if(CatchParamsNC_file_exists) then
          status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
          allocate (parms4file (1:maxcat, 1:10))
       endif
-    
-      fname='clsm/catchment.def'
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
+
       fname ='clsm/soil_param.first'
       open (11,file=trim(fname),form='formatted',status='unknown',action = 'write')
 
       fname ='clsm/tau_param.dat'
       open (12,file=trim(fname),form='formatted',status='unknown',action = 'write')
 
-      fname ='clsm/mosaic_veg_typs_fracs'
-      open (13,file=trim(fname),form='formatted',status='old',action = 'read')
+      ! open catchment.def for reading tile index and Pfafstetter index
+    
+      fname='clsm/catchment.def'
+      open (10,file=fname,status='old',action='read',form='formatted')
+      read(10,*) maxcat     ! re-read header line
+
+!obsolete20220502      fname ='clsm/mosaic_veg_typs_fracs'
+!obsolete20220502      open (13,file=trim(fname),form='formatted',status='old',action = 'read')
 
       do n = 1, maxcat
 
-      	 read (10,*) tindex,pfafindex
-         read (13,*) tindex,pfafindex,vtype
+!obsolete20220502         read (13,*) tindex,pfafindex,vtype
 
-         ! fill gaps from neighbor for rare missing values came from inconsistent masks
+         ! fill gaps from neighbor for rare missing values caused by inconsistent masks
+
          if ((soil_class_top (n) == -9999).or.(soil_class_com (n) == -9999)) then
 
-            ! if com-layer has data the issues is only with top-layer
-            ! -------------------------------------------------------
+            ! if com-layer has data, the issue is only with top-layer
 
             if(soil_class_com (n) >= 1) soil_class_top (n) = soil_class_com (n)
 
-            ! if there is nothing look for the neighbor
-            ! -----------------------------------------
-            
+            ! if there is nothing, look for the neighbor 
+            ! 
+            !  ^
+            !  |
+            !  | The comment above seems wrong; could have soil_class_top(n)>=1, unless
+            !      earlier soil_class_com was set equal to soil_class_top whenever
+            !      soil_class_top was available and soil_class_com was not. 
+
             if (soil_class_com (n) == -9999) then
+
+               ! Look for neighbor j (regardless of soil_class_top) and set both
+               ! soil_class_com(n) and soil_class_top(n) equal to the neighbor's 
+               ! soil_class_com(j).
+
                do k = 1, maxcat
                   j  = 0
                   i1 = n - k
                   i2 = n + k
-                  if((i1 >=     1).and.(soil_class_com (i1) >=1)) j = i1
-                  if((i2 <=maxcat).and.(soil_class_com (i2) >=1)) j = i2
+                  if(i1 >=     1) then
+                     if (soil_class_com (i1) >=1) j = i1  ! tentatively use "lower" neighbor unless out of range
+                  endif
+
+                  if(1 <= i2 .and. i2 <=maxcat) then
+                     if (soil_class_com (i2) >=1) j = i2  ! "upper" neighbor prevails unless out of range
+                  endif
 
                   if (j > 0) then
                      soil_class_com (n) = soil_class_com (j)
-                     soil_class_top (n) = soil_class_com (n)
+                     !soil_class_top (n) = soil_class_com (n)    
+                     soil_class_top (n) = soil_class_com (j)   ! should be faster/safer than usin gsoil_class_com(n)
                      grav_vec(n)        = grav_vec(j)
                      soc_vec(n)         = soc_vec (j)
                      poc_vec(n)         = poc_vec (j)
@@ -4587,29 +4388,41 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          fac_surf = soil_class_top(n)
 	 fac      = soil_class_com(n)
 
-         if(process_peat) then 
-            if(pmap (n) > pmap_thresh) then
-               fac_surf = 253
-               fac      = 253
-            endif
+         if(use_PEATMAP) then
+            ! the maximum peat soil depth is set to the value Michel used to derive parameters (5000.) 
+            if (fac_surf == 253)  soildepth(n) = 5000. ! max(soildepth(n),5000.)
+            ! reset subsurface to peat if surface soil type is peat
+            if (fac_surf == 253)  fac      = 253
          endif
 
          wp_wetness = a_wp(fac) /a_poros(fac)
+         
+         this_cond  = a_aksat(fac)/exp(-1.0*zks*gnu)
+         
+         ! read tile index and Pfafstetter index from catchment.def
+         
+         read (10,*) tindex,pfafindex     
 
-         write (11,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')tindex,pfafindex,      &
+         ! write soil_param.first
+
+         write (11,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')tindex,pfafindex,      &
                fac_surf, fac, a_bee(fac),a_psis(fac),a_poros(fac),&
-               a_aksat(fac)/exp(-1.0*zks*gnu),wp_wetness,soildepth(n),                 &
+               this_cond,wp_wetness,soildepth(n),                 &
                grav_vec(n),soc_vec(n),poc_vec(n), &
                a_sand(fac_surf),a_clay(fac_surf),a_sand(fac),a_clay(fac), &
 	       a_wpsurf(fac_surf)/a_porosurf(fac_surf),a_porosurf(fac_surf), pmap(n)
+
+         ! write tau_param.dat
 	       	    
-         write (12,'(i8,i8,4f10.7)')tindex,pfafindex, &
+         write (12,'(i10,i8,4f10.7)')tindex,pfafindex, &
 	       atau_2cm(fac_surf),btau_2cm(fac_surf),atau(fac_surf),btau(fac_surf)  
+
+         ! write catch_params.nc [soil hydraulic and srfexc-rzexc time scale parameters]
 
          if (allocated (parms4file)) then
 
             parms4file (n, 1) = a_bee(fac)
-            parms4file (n, 2) = a_aksat(fac)/exp(-1.0*zks*gnu)
+            parms4file (n, 2) = this_cond                  ! a_aksat(fac)/exp(-1.0*zks*gnu)
             parms4file (n, 3) = a_poros(fac)
             parms4file (n, 4) = a_psis(fac)
             parms4file (n, 5) = wp_wetness
@@ -4621,22 +4434,30 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   
   	 endif
       end do
+
+      ! add "header" line to the bottom of soil_param.first
+      
       write (11,'(a)')'                    '
-      write (11,'(a)')'FMT=i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4'
-      write (11,'(a)')'TileIndex PfafID SoilClassTop SoilClassProfile BEE PSIS POROS Ks_at_SURF WPWET SoilDepth %Grav %OCTop %OCProf %Sand_top %Clay_top %Sand_prof %Clay_prof WPWET_SURF POROS_SURF'
+      write (11,'(a)')'FMT=i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4,f8.4'
+      write (11,'(a)')'TileIndex PfafID SoilClassTop SoilClassProfile BEE PSIS POROS Ks_at_SURF WPWET SoilDepth %Grav %OCTop %OCProf %Sand_top %Clay_top %Sand_prof %Clay_prof WPWET_SURF POROS_SURF PMAP'
+
       close (10, status = 'keep')	            
       close (11, status = 'keep')	            
       close (12, status = 'keep')	            
-      close (13, status = 'keep')
+
+!obsolete20220502      close (13, status = 'keep')
 
       deallocate (data_vec1, data_vec2,data_vec3, data_vec4,data_vec5, data_vec6)
       deallocate (tileid_vec)
       deallocate (a_sand,a_clay,a_silt,a_oc,a_bee,a_psis,       &
             a_poros,a_wp,a_aksat,atau,btau,a_wpsurf,a_porosurf, &
             atau_2cm,btau_2cm)
-      deallocate (soildepth, grav_vec,soc_vec,poc_vec,&
-             ncells_top,ncells_top_pro,ncells_sub_pro,soil_class_top,soil_class_com)
-      if(file_exists) then
+      deallocate (soildepth, grav_vec,soc_vec,poc_vec,soil_class_top,soil_class_com)        
+             !ncells_top,ncells_top_pro,ncells_sub_pro,soil_class_top,soil_class_com)            ! ncells_* not used
+
+      ! write catch_params.nc4 [soil hydraulic and srfexc-rzexc time scale parameters]
+      
+      if(CatchParamsNC_file_exists) then
          status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; VERIFY_(STATUS) 
          status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; VERIFY_(STATUS) 
          status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; VERIFY_(STATUS) 
@@ -4655,86 +4476,104 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
     ! --------------------------------------------------------------------------------------------------------
 
-    INTEGER FUNCTION center_pix_int (sf,ktop, ktot, x,y,x0,y0,z0,ext_point)
-      
-      implicit none
-      
-      integer (kind =2), dimension (:), intent (in) :: x,y
-      integer, intent (in) :: ktop,ktot
-      real, intent (in) :: sf
-      real :: xi,xj,yi,yj,xx0,yy0,zz0
-      real, allocatable, dimension (:,:) :: length_m
-      real, allocatable, dimension (:) :: length
-      real, intent (inout) :: x0,y0,z0
-      integer :: i,j,npix
-      logical, intent(in) :: ext_point
-      real :: zi, zj
-      
-      allocate (length_m (1:ktot,1:ktot))
-      allocate (length   (1:ktot))
-      length_m =0.
-      length   =0.
-      
-      center_pix_int = -9999
-      if(ktot /= 0) then
-         do i = 1,ktot
-            xi = sf*x(i)
-            yi = sf*y(i)
-            zi = 100. - xi - yi
-            if (.not. ext_point) then
-               x0 = xi
-               y0 = yi
-               z0 = zi
-            endif
-            
-            do j = 1,ktot
-               xj = sf*x(j)
-               yj = sf*y(j)
-               zj = 100. - xj - yj
-               xx0= xj - x0
-               yy0= yj - y0
-               zz0= zj - z0
-               
-               if(ktot > ktop) then 
-                  if(j <= ktop) then
-                     length_m (i,j) = (xx0*xx0 +  yy0*yy0 + zz0*zz0)**0.5
-                  else
-                     length_m (i,j) = 2.33*((xx0*xx0 +  yy0*yy0 + zz0*zz0)**0.5)
-                  endif
-               else
-                  length_m (i,j) = (xx0*xx0 +  yy0*yy0 + zz0*zz0)**0.5
-               endif
-            end do
-            length (i) = sum(length_m (i,:))
-         end do
-         
-         center_pix_int = minloc(length,dim=1)
-      endif
-      
-    END FUNCTION center_pix_int
-      
-    !
+!obsolete20220502    INTEGER FUNCTION center_pix_int (sf,ktop, ktot, x,y,x0,y0,z0,ext_point)
+!obsolete20220502      
+!obsolete20220502      implicit none
+!obsolete20220502      
+!obsolete20220502      integer (kind =2), dimension (:), intent (in) :: x,y
+!obsolete20220502      integer, intent (in) :: ktop,ktot
+!obsolete20220502      real, intent (in) :: sf
+!obsolete20220502      real :: xi,xj,yi,yj,xx0,yy0,zz0
+!obsolete20220502      real, allocatable, dimension (:,:) :: length_m
+!obsolete20220502      real, allocatable, dimension (:) :: length
+!obsolete20220502      real, intent (inout) :: x0,y0,z0
+!obsolete20220502      integer :: i,j,npix
+!obsolete20220502      logical, intent(in) :: ext_point
+!obsolete20220502      real :: zi, zj
+!obsolete20220502      
+!obsolete20220502      allocate (length_m (1:ktot,1:ktot))
+!obsolete20220502      allocate (length   (1:ktot))
+!obsolete20220502      length_m =0.
+!obsolete20220502      length   =0.
+!obsolete20220502      
+!obsolete20220502      center_pix_int = -9999
+!obsolete20220502      if(ktot /= 0) then
+!obsolete20220502         do i = 1,ktot
+!obsolete20220502            xi = sf*x(i)
+!obsolete20220502            yi = sf*y(i)
+!obsolete20220502            zi = 100. - xi - yi
+!obsolete20220502            if (.not. ext_point) then
+!obsolete20220502               x0 = xi
+!obsolete20220502               y0 = yi
+!obsolete20220502               z0 = zi
+!obsolete20220502            endif
+!obsolete20220502            
+!obsolete20220502            do j = 1,ktot
+!obsolete20220502               xj = sf*x(j)
+!obsolete20220502               yj = sf*y(j)
+!obsolete20220502               zj = 100. - xj - yj
+!obsolete20220502               xx0= xj - x0
+!obsolete20220502               yy0= yj - y0
+!obsolete20220502               zz0= zj - z0
+!obsolete20220502               
+!obsolete20220502               if(ktot > ktop) then 
+!obsolete20220502                  if(j <= ktop) then
+!obsolete20220502                     length_m (i,j) = (xx0*xx0 +  yy0*yy0 + zz0*zz0)**0.5
+!obsolete20220502                  else
+!obsolete20220502                     length_m (i,j) = 2.33*((xx0*xx0 +  yy0*yy0 + zz0*zz0)**0.5)
+!obsolete20220502                  endif
+!obsolete20220502               else
+!obsolete20220502                  length_m (i,j) = (xx0*xx0 +  yy0*yy0 + zz0*zz0)**0.5
+!obsolete20220502               endif
+!obsolete20220502            end do
+!obsolete20220502            length (i) = sum(length_m (i,:))
+!obsolete20220502         end do
+!obsolete20220502         
+!obsolete20220502         center_pix_int = minloc(length,dim=1)
+!obsolete20220502      endif
+!obsolete20220502      
+!obsolete20220502    END FUNCTION center_pix_int
+!obsolete20220502      
+!obsolete20220502    !
+!obsolete20220502
+
     ! ====================================================================
     !
     
     INTEGER FUNCTION center_pix_int0 (sf,ktop, ktot, x,y)
       
       implicit none
-      ! sf = 0.01 (integer to real scale factor), ktop = # of pixels in top layer
+
+      ! In a nutshell, given a list of clay/sand pairs, this function determines 
+      ! the element (pair) in this list that is closest to the average clay/sand 
+      ! across all pairs.  
+      !
+      ! The input list of clay/sand can consist of only top (0-30) layer clay/sand
+      ! pairs, or of pairs of clay/sand pairs for the top (0-30) and sub (30-70) 
+      ! layers.  In the latter case, a weighted average is computed.
+      !
+      ! This is to ensure that ultimately the clay/sand values assigned to a tile
+      ! represent an actual soil class.
+      !
+      ! sf = 0.01 (integer to real scale factor)
+      ! ktop = # of pixels in top layer
       ! ktot = total # of pixels, top + subsurface combined
-      ! x (clay), y (sand_
+      ! x (clay), y (sand)
       integer (kind =2), dimension (:), intent (in) :: x,y
-      integer, intent (in) :: ktop,ktot
-      real, intent (in) :: sf
+      integer,                          intent (in) :: ktop,ktot
+      real,                             intent (in) :: sf
+
       real :: xi,xj,yi,yj
       real :: length
       
       integer :: i,j,npix
       real :: zi, zj, mindist,xc,yc,zc
       
-      length   =0.
+      length          = 0.
       
       center_pix_int0 = -9999
+      
+      ! compute average clay/sand
       
       if(ktot /= 0) then
          ! There should be some data pixels
@@ -4742,8 +4581,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             ! Have both layers
             if(ktop > 0) then
                ! There are data in top layer
-               xc = sf*0.3*sum(real(x(1:ktop)))/real(ktop) + sf*0.7*sum(real(x(ktop + 1 : ktot)))/real(ktot - ktop)  
-               yc = sf*0.3*sum(real(y(1:ktop)))/real(ktop) + sf*0.7*sum(real(y(ktop + 1 : ktot)))/real(ktot - ktop)
+               xc = sf*0.3*sum(real(x(1:ktop)))/real(ktop) + sf*0.7*sum(real(x(ktop+1 : ktot)))/real(ktot - ktop)  
+               yc = sf*0.3*sum(real(y(1:ktop)))/real(ktop) + sf*0.7*sum(real(y(ktop+1 : ktot)))/real(ktot - ktop)
             else
                ! There are no data in top layer
                xc = sf*sum(real(x(1:ktot)))/real(ktot)  
@@ -4754,7 +4593,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             xc = sf*sum(real(x(1:ktot)))/real(ktot)  
             yc = sf*sum(real(y(1:ktot)))/real(ktot)
          endif
-         zc = 100. - xc - yc
+         zc = 100. - xc - yc              ! silt [percent]
       endif
       
       mindist=100000.*100000.
@@ -4775,82 +4614,84 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     
     ! --------------------------------------------------------------------------------------
 
-    SUBROUTINE process_peatmap (nc, nr, gfiler, pmap)
-      
-      implicit none
-      integer  , parameter                         :: N_lon_pm = 43200, N_lat_pm = 21600
-      integer, intent (in)                         :: nc, nr
-      real, pointer, dimension (:), intent (inout) :: pmap
-      character(*), intent (in)                    :: gfiler
-      integer                                      :: i,j, status, varid, ncid
-      integer                                      :: NTILES        
-      REAL, ALLOCATABLE, dimension (:)             :: count_pix
-      REAL, ALLOCATABLE, dimension (:,:)           :: data_grid, pm_grid
-      INTEGER, ALLOCATABLE, dimension (:,:)        :: tile_id
-      character*100                                :: fout    
-      
-      ! Reading number of tiles
-      ! -----------------------
-      
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
-      
-      read (20, *) NTILES
-      
-      close (20, status = 'keep')
-      
-      ! READ PEATMAP source data files and regrid
-      ! -----------------------------------------
-      
-      status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
-      
-      allocate (pm_grid   (1 : NC      , 1 : NR))
-      allocate (data_grid (1 : N_lon_pm, 1 : N_lat_pm)) 
-      
-      status  = NF_INQ_VARID (ncid,'PEATMAP',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1/),(/N_lon_pm, N_lat_pm/), data_grid) ; VERIFY_(STATUS)
-      
-      call RegridRasterReal(data_grid, pm_grid)
-      
-      status = NF_CLOSE(ncid)
-      
-      ! Grid to tile
-      ! ------------
-      
-      ! Reading tile-id raster file
-      
-      allocate(tile_id(1:nc,1:nr))
-      
-      open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
-           form='unformatted',convert='little_endian')
-      
-      do j=1,nr
-         read(10)tile_id(:,j)
-      end do
-      
-      close (10,status='keep')     
-      
-      allocate (pmap      (1:NTILES))
-      allocate (count_pix (1:NTILES))
-      
-      pmap      = 0.
-      count_pix = 0.
-      
-      do j = 1,nr
-         do i = 1, nc
-            if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.NTILES)) then                
-               if(pm_grid(i,j) > 0.)  pmap (tile_id(i,j)) = pmap (tile_id(i,j)) + pm_grid(i,j)
-               count_pix (tile_id(i,j)) = count_pix (tile_id(i,j)) + 1. 
-            endif
-         end do
-      end do
-      
-      where (count_pix >   0.) pmap = pmap/count_pix
-      
-      deallocate (count_pix)
-      deallocate (pm_grid)
-      deallocate (tile_id)
-      
-    END SUBROUTINE process_peatmap
+! this subroutine seems obsolete, commented out for now - reichle, 9 Feb 2022
+
+!   SUBROUTINE process_peatmap (nc, nr, gfiler, pmap)
+!     
+!     implicit none
+!     integer  , parameter                         :: N_lon_pm = 43200, N_lat_pm = 21600
+!     integer, intent (in)                         :: nc, nr
+!     real, pointer, dimension (:), intent (inout) :: pmap
+!     character(*), intent (in)                    :: gfiler
+!     integer                                      :: i,j, status, varid, ncid
+!     integer                                      :: NTILES        
+!     REAL, ALLOCATABLE, dimension (:)             :: count_pix
+!     REAL, ALLOCATABLE, dimension (:,:)           :: data_grid, pm_grid
+!     INTEGER, ALLOCATABLE, dimension (:,:)        :: tile_id
+!     character*100                                :: fout    
+!     
+!     ! Reading number of tiles
+!     ! -----------------------
+!     
+!     open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
+!     
+!     read (20, *) NTILES
+!     
+!     close (20, status = 'keep')
+!     
+!     ! READ PEATMAP source data files and regrid
+!     ! -----------------------------------------
+!     
+!     status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+!     
+!     allocate (pm_grid   (1 : NC      , 1 : NR))
+!     allocate (data_grid (1 : N_lon_pm, 1 : N_lat_pm)) 
+!     
+!     status  = NF_INQ_VARID (ncid,'PEATMAP',VarID) ; VERIFY_(STATUS)
+!     status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1/),(/N_lon_pm, N_lat_pm/), data_grid) ; VERIFY_(STATUS)
+!     
+!     call RegridRasterReal(data_grid, pm_grid)
+!     
+!     status = NF_CLOSE(ncid)
+!     
+!     ! Grid to tile
+!     ! ------------
+!     
+!     ! Reading tile-id raster file
+!     
+!     allocate(tile_id(1:nc,1:nr))
+!     
+!     open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+!          form='unformatted',convert='little_endian')
+!     
+!     do j=1,nr
+!        read(10)tile_id(:,j)
+!     end do
+!     
+!     close (10,status='keep')     
+!     
+!     allocate (pmap      (1:NTILES))
+!     allocate (count_pix (1:NTILES))
+!     
+!     pmap      = 0.
+!     count_pix = 0.
+!     
+!     do j = 1,nr
+!        do i = 1, nc
+!           if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.NTILES)) then                
+!              if(pm_grid(i,j) > 0.)  pmap (tile_id(i,j)) = pmap (tile_id(i,j)) + pm_grid(i,j)
+!              count_pix (tile_id(i,j)) = count_pix (tile_id(i,j)) + 1. 
+!           endif
+!        end do
+!     end do
+!     
+!     where (count_pix >   0.) pmap = pmap/count_pix
+!     
+!     deallocate (count_pix)
+!     deallocate (pm_grid)
+!     deallocate (tile_id)
+!     
+!   END SUBROUTINE process_peatmap
     
 ! ====================================================================
 
@@ -5420,7 +5261,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              pfaf_index = 0
              pfaf_area  = 0.
 
-             READ (10,'(i8,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
+             READ (10,'(i10,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
 
              IL1 = FLOOR  ((180. + mnx)/DXY30 + 1.)
              IL2 = CEILING((180. + mxx)/DXY30 + 1.)
@@ -5677,7 +5518,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
        if(count_pix(i,3) > 0.) abm_int = NINT(abm  (i) / count_pix(i,3))
        if(count_pix(i,4) > 0.) hdm_r   = hdm   (i) / count_pix(i,4)
              
-       write (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
+       write (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
 
     end do
 
@@ -6178,11 +6019,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
     ! --------------------------------------------------------------------------
 
-    SUBROUTINE open_landparam_nc4_files 
+    SUBROUTINE open_landparam_nc4_files(N_tile,process_snow_albedo) 
 
       implicit none
       integer                 :: NCCatOUTID,  NCCatCNOUTID,  NCVegOUTID  
       integer                 :: STATUS, CellID1, CellID2, CellID3, SubID
+      integer, intent (in)    :: N_tile
+      logical, intent (in)    :: process_snow_albedo
       integer, dimension(8)   :: date_time_values
       character (22)          :: time_stamp
       character (100)         :: MYNAME
@@ -6191,9 +6034,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       status = NF_CREATE ('clsm/catchcn_params.nc4', NF_NETCDF4, NCCatCNOUTID) ; VERIFY_(STATUS)
       status = NF_CREATE ('clsm/vegdyn.data'       , NF_NETCDF4, NCVegOUTID  ) ; VERIFY_(STATUS)
 
-      status = NF_DEF_DIM(NCCatOUTID  , 'tile' , NF_UNLIMITED, CellID1)
-      status = NF_DEF_DIM(NCCatCNOUTID, 'tile' , NF_UNLIMITED, CellID2)
-      status = NF_DEF_DIM(NCVegOUTID  , 'tile' , NF_UNLIMITED, CellID3)
+      status = NF_DEF_DIM(NCCatOUTID  , 'tile' , N_tile, CellID1)
+      status = NF_DEF_DIM(NCCatCNOUTID, 'tile' , N_tile, CellID2)
+      status = NF_DEF_DIM(NCVegOUTID  , 'tile' , N_tile, CellID3)
       status = NF_DEF_DIM(NCCatCNOUTID, 'unknown_dim2' , 4, SubID)
 
       call DEF_VAR ( NCCatOUTID, CellID1,'OLD_ITY'   ,'vegetation_type.'            , '1'       )
@@ -6226,6 +6069,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       call DEF_VAR ( NCCatOUTID, CellID1,'TSB2'      ,'water_transfer_param_4'      ,'1'        )
       call DEF_VAR ( NCCatOUTID, CellID1,'WPWET'     ,'wetness_at_wilting_point'    ,'1'        )
       call DEF_VAR ( NCCatOUTID, CellID1,'DP2BR'     ,'depth_to_bedrock'            ,'mm'       )
+      if (process_snow_albedo) &
+      call DEF_VAR ( NCCatOUTID, CellID1,'SNOWALB'   ,'snow_albedo'                 ,'1'        )  
 
       call DEF_VAR (  NCVegOUTID, CellID3,'ITY'      ,'vegetation_type'             ,'1'        )
       call DEF_VAR (  NCVegOUTID, CellID3,'Z2CH'     ,'vegetation_height'           ,'m'        )
@@ -6246,9 +6091,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       write (time_stamp,'(i4.4,a1,i2.2,a1,i2.2,1x,a2,1x,i2.2,a1,i2.2,a1,i2.2)')      &
            date_time_values(1),'-',date_time_values(2),'-',date_time_values(3),'at', &
            date_time_values(5),':',date_time_values(6),':',date_time_values(7)
-!      call system('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
+!      call execute_command_line('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
 !      call sleep (5)
-      call getenv ("USER"        ,MYNAME        )
+      call get_environment_variable ("USER"        ,MYNAME        )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
       status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'Date'     , LEN_TRIM(time_stamp),trim(time_stamp))
       status = NF_PUT_ATT_TEXT(NCVegOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
@@ -6291,336 +6136,419 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     ! ----------------------------------------------------------------------------------------------
 
 
-    SUBROUTINE country_codes (NC, NR,  gfiler)
+    SUBROUTINE map_country_codes (NC, NR,  gfiler)
 
       implicit none
       integer  , intent (in) :: nc, nr
       character (*)          :: gfiler
-      integer, parameter :: N_GADM = 256 + 1, N_STATES = 50
+
       integer, parameter :: GC = 43200
       integer, parameter :: GR = 21600
-
-      character*20, dimension (N_STATES)  :: ST_NAME
-      character*48, dimension (N_GADM  )  :: CNT_NAME
-      INTEGER, dimension (N_GADM  )       :: index_RANGE
+      INTEGER,      dimension (:), pointer :: index_RANGE 
+      character*20, dimension (:), pointer :: ST_NAME     
+      character*48, dimension (:), pointer :: CNT_NAME  
+      
       integer :: CNT_CODE, ST_CODE
       integer :: i(GC),j(GR), k,n, status, ncid, varid, maxcat, I0(1), j0(1)
       INTEGER, TARGET, ALLOCATABLE, dimension (:,:):: ST_grid, cnt_grid
       real    :: lat_mn, lat_mx, lon_mn, lon_mx
       real (kind =8) :: XG(GC),YG(GR), y0, x0, dxy
-                  
-      DATA ST_NAME  /             &
-           'AK  1 Alaska          ' ,&
-           'AL  2 Alabama         ' ,&
-           'AZ  3 Arizona         ' ,&
-           'AR  4 Arkansas        ' ,&
-           'CA  5 California      ' ,&
-           'CO  6 Colorado        ' ,&
-           'CT  7 Connecticut     ' ,&
-           'DE  8 Delaware        ' ,&
-           'FL  9 Florida         ' ,&
-           'GA 10 Georgia         ' ,&
-           'HI 11 Hawaii          ' ,&
-           'IA 12 Iowa            ' ,&
-           'ID 13 Idaho           ' ,&
-           'IL 14 Illinois        ' ,&
-           'IN 15 Indiana         ' ,&
-           'KS 16 Kansas          ' ,&
-           'KY 17 Kentucky        ' ,&
-           'LA 18 Louisiana       ' ,&
-           'MA 19 Massachusetts   ' ,&
-           'MD 20 Maryland        ' ,&
-           'ME 21 Maine           ' ,&
-           'MI 22 Michigan        ' ,&
-           'MN 23 Minnesota       ' ,&
-           'MO 24 Missouri        ' ,&
-           'MS 25 Mississippi     ' ,&
-           'MT 26 Montana         ' ,&
-           'NC 27 NorthCarolina   ' ,&
-           'ND 28 NorthDakota     ' ,&
-           'NE 29 Nebraska        ' ,&
-           'NH 30 NewHampshire    ' ,&
-           'NJ 31 NewJersey       ' ,&
-           'NM 32 NewMexico       ' ,&
-           'NV 33 Nevada          ' ,&
-           'NY 34 NewYork         ' ,&
-           'OH 35 Ohio            ' ,&
-           'OK 36 Oklahoma        ' ,&
-           'OR 37 Oregon          ' ,&
-           'PA 38 Pennsylvania    ' ,&
-           'RI 39 RhodeIsland     ' ,&
-           'SC 40 SouthCarolina   ' ,&
-           'SD 41 SouthDakota     ' ,&
-           'TN 42 Tennessee       ' ,&
-           'TX 43 Texas           ' ,&
-           'UT 44 Utah            ' ,&
-           'VA 45 Virginia        ' ,&
-           'VT 46 Vermont         ' ,&
-           'WA 47 Washington      ' ,&
-           'WI 48 Wisconsin       ' ,&
-           'WV 49 WestVirginia    ' ,&
-           'WY 50 Wyoming         ' /
+
+      call get_country_codes (index_RANGE = index_RANGE, ST_NAME = ST_NAME, &
+           CNT_NAME = CNT_NAME)
       
-      DATA CNT_NAME  /                       & 
-           'ABW  14 Aruba                                   '  ,&
-           'AFG   1 Afghanistan                             '  ,&
-           'AGO   8 Angola                                  '  ,&
-           'AIA   9 Anguilla                                '  ,&
-           'ALA   3 Aland                                   '  ,&
-           'ALB   4 Albania                                 '  ,&
-           'AND   7 Andorra                                 '  ,&
-           'ARE 241 United Arab Emirates                    '  ,&
-           'ARG  12 Argentina                               '  ,&
-           'ARM  13 Armenia                                 '  ,&
-           'ASM   6 American Samoa                          '  ,&
-           'ATA  10 Antarctica                              '  ,&
-           'ATF  82 French Southern Territories             '  ,&
-           'ATG  11 Antigua and Barbuda                     '  ,&
-           'AUS  15 Australia                               '  ,&
-           'AUT  16 Austria                                 '  ,&
-           'AZE  17 Azerbaijan                              '  ,&
-           'BDI  39 Burundi                                 '  ,&
-           'BEL  23 Belgium                                 '  ,&
-           'BEN  25 Benin                                   '  ,&
-           'BES  29 Bonaire, Sint Eustatius and Saba        '  ,&
-           'BFA  38 Burkina Faso                            '  ,&
-           'BGD  20 Bangladesh                              '  ,&
-           'BGR  37 Bulgaria                                '  ,&
-           'BHR  19 Bahrain                                 '  ,&
-           'BHS  18 Bahamas                                 '  ,&
-           'BIH  30 Bosnia and Herzegovina                  '  ,&
-           'BLM 190 Saint-Barthelemy                        '  ,&
-           'BLR  22 Belarus                                 '  ,&
-           'BLZ  24 Belize                                  '  ,&
-           'BMU  26 Bermuda                                 '  ,&
-           'BOL  28 Bolivia                                 '  ,&
-           'BRA  33 Brazil                                  '  ,&
-           'BRB  21 Barbados                                '  ,&
-           'BRN  36 Brunei                                  '  ,&
-           'BTN  27 Bhutan                                  '  ,&
-           'BVT  32 Bouvet Island                           '  ,&
-           'BWA  31 Botswana                                '  ,&
-           'CAF  46 Central African Republic                '  ,&
-           'CAN  42 Canada                                  '  ,&
-           'CCK  52 Cocos Islands                           '  ,&
-           'CHE 223 Switzerland                             '  ,&
-           'CHL  48 Chile                                   '  ,&
-           'CHN  49 China                                   '  ,&
-           'CIV  57 Cote dIvoire                            '  ,&
-           'CMR  41 Cameroon                                '  ,&
-           'COD   0 Democratic Republic of the Congo        '  ,&
-           'COG 185 Republic of Congo                       '  ,&
-           'COK  55 Cook Islands                            '  ,&
-           'COL  53 Colombia                                '  ,&
-           'COM  54 Comoros                                 '  ,&
-           'CPV  43 Cape Verde                              '  ,&
-           'CRI  56 Costa Rica                              '  ,&
-           'CUB  59 Cuba                                    '  ,&
-           'CUW  60 Curacao                                 '  ,&
-           'CXR  50 Christmas Island                        '  ,&
-           'CYM  45 Cayman Islands                          '  ,&
-           'CYP  61 Cyprus                                  '  ,&
-           'CZE  62 Czech Republic                          '  ,&
-           'DEU  86 Germany                                 '  ,&
-           'DJI  65 Djibouti                                '  ,&
-           'DMA  66 Dominica                                '  ,&
-           'DNK  64 Denmark                                 '  ,&
-           'DOM  67 Dominican Republic                      '  ,&
-           'DZA   5 Algeria                                 '  ,&
-           'ECU  68 Ecuador                                 '  ,&
-           'EGY  69 Egypt                                   '  ,&
-           'ERI  72 Eritrea                                 '  ,&
-           'ESH 253 Western Sahara                          '  ,&
-           'ESP 215 Spain                                   '  ,&
-           'EST  73 Estonia                                 '  ,&
-           'ETH  74 Ethiopia                                '  ,&
-           'FIN  78 Finland                                 '  ,&
-           'FJI  77 Fiji                                    '  ,&
-           'FLK  75 Falkland Islands                        '  ,&
-           'FRA  79 France                                  '  ,&
-           'FRO  76 Faroe Islands                           '  ,&
-           'FSM 146 Micronesia                              '  ,&
-           'GAB  83 Gabon                                   '  ,&
-           'GBR 242 United Kingdom                          '  ,&
-           'GEO  85 Georgia                                 '  ,&
-           'GGY  95 Guernsey                                '  ,&
-           'GHA  87 Ghana                                   '  ,&
-           'GIB  88 Gibraltar                               '  ,&
-           'GIN  96 Guinea                                  '  ,&
-           'GLP  92 Guadeloupe                              '  ,&
-           'GMB  84 Gambia                                  '  ,&
-           'GNB  97 Guinea-Bissau                           '  ,&
-           'GNQ  71 Equatorial Guinea                       '  ,&
-           'GRC  89 Greece                                  '  ,&
-           'GRD  91 Grenada                                 '  ,&
-           'GRL  90 Greenland                               '  ,&
-           'GTM  94 Guatemala                               '  ,&
-           'GUF  80 French Guiana                           '  ,&
-           'GUM  93 Guam                                    '  ,&
-           'GUY  98 Guyana                                  '  ,&
-           'HKG 102 Hong Kong                               '  ,&
-           'HMD 100 Heard Island and McDonald Islands       '  ,&
-           'HND 101 Honduras                                '  ,&
-           'HRV  58 Croatia                                 '  ,&
-           'HTI  99 Haiti                                   '  ,&
-           'HUN 103 Hungary                                 '  ,&
-           'IDN 106 Indonesia                               '  ,&
-           'IMN 110 Isle of Man                             '  ,&
-           'IND 105 India                                   '  ,&
-           'IOT  34 British Indian Ocean Territory          '  ,&
-           'IRL 109 Ireland                                 '  ,&
-           'IRN 107 Iran                                    '  ,&
-           'IRQ 108 Iraq                                    '  ,&
-           'ISL 104 Iceland                                 '  ,&
-           'ISR 111 Israel                                  '  ,&
-           'ITA 112 Italy                                   '  ,&
-           'JAM 113 Jamaica                                 '  ,&
-           'JEY 115 Jersey                                  '  ,&
-           'JOR 116 Jordan                                  '  ,&
-           'JPN 114 Japan                                   '  ,&
-           'KAZ 117 Kazakhstan                              '  ,&
-           'KEN 118 Kenya                                   '  ,&
-           'KGZ 122 Kyrgyzstan                              '  ,&
-           'KHM  40 Cambodia                                '  ,&
-           'KIR 119 Kiribati                                '  ,&
-           'KNA 193 Saint Kitts and Nevis                   '  ,&
-           'KOR 213 South Korea                             '  ,&
-           'KWT 121 Kuwait                                  '  ,&
-           'LAO 123 Laos                                    '  ,&
-           'LBN 125 Lebanon                                 '  ,&
-           'LBR 127 Liberia                                 '  ,&
-           'LBY 128 Libya                                   '  ,&
-           'LCA 194 Saint Lucia                             '  ,&
-           'LIE 129 Liechtenstein                           '  ,&
-           'LKA 217 Sri Lanka                               '  ,&
-           'LSO 126 Lesotho                                 '  ,&
-           'LTU 130 Lithuania                               '  ,&
-           'LUX 131 Luxembourg                              '  ,&
-           'LVA 124 Latvia                                  '  ,&
-           'MAC 132 Macao                                   '  ,&
-           'MAF 191 Saint-Martin                            '  ,&
-           'MAR 152 Morocco                                 '  ,&
-           'MCO 148 Monaco                                  '  ,&
-           'MDA 147 Moldova                                 '  ,&
-           'MDG 134 Madagascar                              '  ,&
-           'MDV 137 Maldives                                '  ,&
-           'MEX 145 Mexico                                  '  ,&
-           'MHL 140 Marshall Islands                        '  ,&
-           'MKD 133 Macedonia                               '  ,&
-           'MLI 138 Mali                                    '  ,&
-           'MLT 139 Malta                                   '  ,&
-           'MMR 154 Myanmar                                 '  ,&
-           'MNE 150 Montenegro                              '  ,&
-           'MNG 149 Mongolia                                '  ,&
-           'MNP 168 Northern Mariana Islands                '  ,&
-           'MOZ 153 Mozambique                              '  ,&
-           'MRT 142 Mauritania                              '  ,&
-           'MSR 151 Montserrat                              '  ,&
-           'MTQ 141 Martinique                              '  ,&
-           'MUS 143 Mauritius                               '  ,&
-           'MWI 135 Malawi                                  '  ,&
-           'MYS 136 Malaysia                                '  ,&
-           'MYT 144 Mayotte                                 '  ,&
-           'NAM 155 Namibia                                 '  ,&
-           'NCL 159 New Caledonia                           '  ,&
-           'NER 162 Niger                                   '  ,&
-           'NFK 165 Norfolk Island                          '  ,&
-           'NGA 163 Nigeria                                 '  ,&
-           'NIC 161 Nicaragua                               '  ,&
-           'NIU 164 Niue                                    '  ,&
-           'NLD 158 Netherlands                             '  ,&
-           'NOR 169 Norway                                  '  ,&
-           'NPL 157 Nepal                                   '  ,&
-           'NRU 156 Nauru                                   '  ,&
-           'NZL 160 New Zealand                             '  ,&
-           'OMN 170 Oman                                    '  ,&
-           'PAK 171 Pakistan                                '  ,&
-           'PAN 174 Panama                                  '  ,&
-           'PCN 180 Pitcairn Islands                        '  ,&
-           'PER 178 Peru                                    '  ,&
-           'PHL 179 Philippines                             '  ,&
-           'PLW 172 Palau                                   '  ,&
-           'PNG 175 Papua New Guinea                        '  ,&
-           'POL 181 Poland                                  '  ,&
-           'PRI 183 Puerto Rico                             '  ,&
-           'PRK 166 North Korea                             '  ,&
-           'PRT 182 Portugal                                '  ,&
-           'PRY 177 Paraguay                                '  ,&
-           'PSE 173 Palestina                               '  ,&
-           'PYF  81 French Polynesia                        '  ,&
-           'QAT 184 Qatar                                   '  ,&
-           'REU 186 Reunion                                 '  ,&
-           'ROU 187 Romania                                 '  ,&
-           'RUS 188 Russia                                  '  ,&
-           'RWA 189 Rwanda                                  '  ,&
-           'SAU 200 Saudi Arabia                            '  ,&
-           'SDN 218 Sudan                                   '  ,&
-           'SEN 201 Senegal                                 '  ,&
-           'SGP 205 Singapore                               '  ,&
-           'SGS 212 South Georgia and the South Sandwich Is '  ,&
-           'SHN 192 Saint Helena                            '  ,&
-           'SJM 220 Svalbard and Jan Mayen                  '  ,&
-           'SLB 209 Solomon Islands                         '  ,&
-           'SLE 204 Sierra Leone                            '  ,&
-           'SLV  70 El Salvador                             '  ,&
-           'SMR 198 San Marino                              '  ,&
-           'SOM 210 Somalia                                 '  ,&
-           'SPM 195 Saint Pierre and Miquelon               '  ,&
-           'SRB 202 Serbia                                  '  ,&
-           'SSD 214 South Sudan                             '  ,&
-           'STP 199 Sao Tome and Principe                   '  ,&
-           'SUR 219 Suriname                                '  ,&
-           'SVK 207 Slovakia                                '  ,&
-           'SVN 208 Slovenia                                '  ,&
-           'SWE 222 Sweden                                  '  ,&
-           'SWZ 221 Swaziland                               '  ,&
-           'SXM 206 Sint Maarten                            '  ,&
-           'SYC 203 Seychelles                              '  ,&
-           'SYR 224 Syria                                   '  ,&
-           'TCA 237 Turks and Caicos Islands                '  ,&
-           'TCD  47 Chad                                    '  ,&
-           'TGO 230 Togo                                    '  ,&
-           'THA 228 Thailand                                '  ,&
-           'TJK 226 Tajikistan                              '  ,&
-           'TKL 231 Tokelau                                 '  ,&
-           'TKM 236 Turkmenistan                            '  ,&
-           'TLS 229 Timor-Leste                             '  ,&
-           'TON 232 Tonga                                   '  ,&
-           'TTO 233 Trinidad and Tobago                     '  ,&
-           'TUN 234 Tunisia                                 '  ,&
-           'TUR 235 Turkey                                  '  ,&
-           'TUV 238 Tuvalu                                  '  ,&
-           'TWN 225 Taiwan                                  '  ,&
-           'TZA 227 Tanzania                                '  ,&
-           'UGA 239 Uganda                                  '  ,&
-           'UKR 240 Ukraine                                 '  ,&
-           'UMI 244 United States Minor Outlying Islands    '  ,&
-           'URY 245 Uruguay                                 '  ,&
-           'USA 243 United States                           '  ,&
-           'UZB 246 Uzbekistan                              '  ,&
-           'VAT 248 Vatican City                            '  ,&
-           'VCT 196 Saint Vincent and the Grenadines        '  ,&
-           'VEN 249 Venezuela                               '  ,&
-           'VGB  35 British Virgin Islands                  '  ,&
-           'VIR 251 Virgin Islands, U.S.                    '  ,&
-           'VNM 250 Vietnam                                 '  ,&
-           'VUT 247 Vanuatu                                 '  ,&
-           'WLF 252 Wallis and Futuna                       '  ,&
-           'WSM 197 Samoa                                   '  ,&
-           'XAD   2 Akrotiri and Dhekelia                   '  ,&
-           'XCA  44 Caspian Sea                             '  ,&
-           'XCL  51 Clipperton Island                       '  ,&
-           'XKO 120 Kosovo                                  '  ,&
-           'XNC 167 Northern Cyprus                         '  ,&
-           'XPI 176 Paracel Islands                         '  ,&
-           'XSP 216 Spratly Islands                         '  ,&
-           'YEM 254 Yemen                                   '  ,&
-           'ZAF 211 South Africa                            '  ,&
-           'ZMB 255 Zambia                                  '  ,&
-           'ZWE 256 Zimbabwe                                '  ,&
-           'UNK 257 Unknown                                 '/
+      ! Reading number of tiles
+      ! -----------------------
+
+      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
+           action =  'read')
       
-     DATA INDEX_RANGE / &
+      read (20, *) maxcat
+      
+
+      ! READ country code source data files and regrid
+      ! -----------------------------------------
+      
+      status  = NF_OPEN ('data/CATCH/GADM_Country_and_USStates_codes_1km.nc4', NF_NOWRITE, ncid)
+      
+      allocate (cnt_grid  (1 : GC, 1 : GR))
+      allocate (st_grid   (1 : GC, 1 : GR))
+      
+      status  = NF_INQ_VARID (ncid,'UNIT_CODE',VarID) ; VERIFY_(STATUS)
+      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,1/),(/GC, GR,1/), cnt_grid) ; VERIFY_(STATUS)
+      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,2/),(/GC, GR,1/), st_grid) ; VERIFY_(STATUS)
+      where (st_grid == 0) st_grid = 999
+      status = NF_CLOSE(ncid)
+
+      open (10,file='clsm/country_and_state_code.data',  &
+         form='formatted',status='unknown')
+
+      dxy = 360./GC
+      do k = 1, GC 
+         xg(k) = (k-1)*dxy -180. + dxy/2.
+      end do
+      do k = 1, GR 
+         yg(k) = (k-1)*dxy -90. + dxy/2.
+      end do      
+
+      DO n = 1, MAXCAT
+         read (20,*) i0,j0, lon_mn, lon_mx, lat_mn, lat_mx
+         x0 = (lon_mn + lon_mx)/2.
+         y0 = (lat_mn + lat_mx)/2.
+         I = 0
+         J = 0
+         WHERE ((xg >= x0).and.(xg < x0 + dxy)) I = 1
+         WHERE ((yg >= y0).and.(yg < y0 + dxy)) J = 1
+         
+         I0 =FINDLOC(I,1)
+         J0 =FINDLOC(J,1)
+
+         cnt_code = cnt_grid(I0(1), J0(1))
+         st_code  = st_grid (I0(1), J0(1))
+
+         if(cnt_code > 300) then
+            CNT_CODE = 257
+         endif
+
+         if(st_code <= 50) then
+            write (10, '(i10, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), ST_NAME (ST_CODE)
+         else
+            write (10, '(i10, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), 'OUTSIDE USA'
+         endif
+      
+     END DO
+
+     close (10, status = 'keep')
+     close (20, status = 'keep')
+   END SUBROUTINE map_country_codes
+
+   ! -------------------------------------------------------------------------------------------
+   
+   SUBROUTINE get_country_codes (index_RANGE, ST_NAME, CNT_NAME, ST_NAME_ABR, CNT_NAME_ABR)
+
+     implicit none
+     
+     INTEGER,      dimension (N_GADM  ), TARGET :: index_RANGE_DATA
+     character*20, dimension (N_STATES), TARGET :: ST_NAME_DATA
+     character*48, dimension (N_GADM  ), TARGET :: CNT_NAME_DATA
+     INTEGER,      dimension (:), pointer, intent (inout), optional :: index_RANGE 
+     character*20, dimension (:), pointer, intent (inout), optional :: ST_NAME     
+     character*48, dimension (:), pointer, intent (inout), optional :: CNT_NAME    
+     character*2,  dimension (:), pointer, intent (inout), optional :: ST_NAME_ABR 
+     character*3,  dimension (:), pointer, intent (inout), optional :: CNT_NAME_ABR
+
+     DATA ST_NAME_DATA /            &
+          'AK  1 Alaska          ' ,&
+          'AL  2 Alabama         ' ,&
+          'AZ  3 Arizona         ' ,&
+          'AR  4 Arkansas        ' ,&
+          'CA  5 California      ' ,&
+          'CO  6 Colorado        ' ,&
+          'CT  7 Connecticut     ' ,&
+          'DE  8 Delaware        ' ,&
+          'FL  9 Florida         ' ,&
+          'GA 10 Georgia         ' ,&
+          'HI 11 Hawaii          ' ,&
+          'IA 12 Iowa            ' ,&
+          'ID 13 Idaho           ' ,&
+          'IL 14 Illinois        ' ,&
+          'IN 15 Indiana         ' ,&
+          'KS 16 Kansas          ' ,&
+          'KY 17 Kentucky        ' ,&
+          'LA 18 Louisiana       ' ,&
+          'MA 19 Massachusetts   ' ,&
+          'MD 20 Maryland        ' ,&
+          'ME 21 Maine           ' ,&
+          'MI 22 Michigan        ' ,&
+          'MN 23 Minnesota       ' ,&
+          'MO 24 Missouri        ' ,&
+          'MS 25 Mississippi     ' ,&
+          'MT 26 Montana         ' ,&
+          'NC 27 NorthCarolina   ' ,&
+          'ND 28 NorthDakota     ' ,&
+          'NE 29 Nebraska        ' ,&
+          'NH 30 NewHampshire    ' ,&
+          'NJ 31 NewJersey       ' ,&
+          'NM 32 NewMexico       ' ,&
+          'NV 33 Nevada          ' ,&
+          'NY 34 NewYork         ' ,&
+          'OH 35 Ohio            ' ,&
+          'OK 36 Oklahoma        ' ,&
+          'OR 37 Oregon          ' ,&
+          'PA 38 Pennsylvania    ' ,&
+          'RI 39 RhodeIsland     ' ,&
+          'SC 40 SouthCarolina   ' ,&
+          'SD 41 SouthDakota     ' ,&
+          'TN 42 Tennessee       ' ,&
+          'TX 43 Texas           ' ,&
+          'UT 44 Utah            ' ,&
+          'VA 45 Virginia        ' ,&
+          'VT 46 Vermont         ' ,&
+          'WA 47 Washington      ' ,&
+          'WI 48 Wisconsin       ' ,&
+          'WV 49 WestVirginia    ' ,&
+          'WY 50 Wyoming         ' /
+     
+     DATA CNT_NAME_DATA  /                                     & 
+          'ABW  14 Aruba                                   '  ,&
+          'AFG   1 Afghanistan                             '  ,&
+          'AGO   8 Angola                                  '  ,&
+          'AIA   9 Anguilla                                '  ,&
+          'ALA   3 Aland                                   '  ,&
+          'ALB   4 Albania                                 '  ,&
+          'AND   7 Andorra                                 '  ,&
+          'ARE 241 United Arab Emirates                    '  ,&
+          'ARG  12 Argentina                               '  ,&
+          'ARM  13 Armenia                                 '  ,&
+          'ASM   6 American Samoa                          '  ,&
+          'ATA  10 Antarctica                              '  ,&
+          'ATF  82 French Southern Territories             '  ,&
+          'ATG  11 Antigua and Barbuda                     '  ,&
+          'AUS  15 Australia                               '  ,&
+          'AUT  16 Austria                                 '  ,&
+          'AZE  17 Azerbaijan                              '  ,&
+          'BDI  39 Burundi                                 '  ,&
+          'BEL  23 Belgium                                 '  ,&
+          'BEN  25 Benin                                   '  ,&
+          'BES  29 Bonaire, Sint Eustatius and Saba        '  ,&
+          'BFA  38 Burkina Faso                            '  ,&
+          'BGD  20 Bangladesh                              '  ,&
+          'BGR  37 Bulgaria                                '  ,&
+          'BHR  19 Bahrain                                 '  ,&
+          'BHS  18 Bahamas                                 '  ,&
+          'BIH  30 Bosnia and Herzegovina                  '  ,&
+          'BLM 190 Saint-Barthelemy                        '  ,&
+          'BLR  22 Belarus                                 '  ,&
+          'BLZ  24 Belize                                  '  ,&
+          'BMU  26 Bermuda                                 '  ,&
+          'BOL  28 Bolivia                                 '  ,&
+          'BRA  33 Brazil                                  '  ,&
+          'BRB  21 Barbados                                '  ,&
+          'BRN  36 Brunei                                  '  ,&
+          'BTN  27 Bhutan                                  '  ,&
+          'BVT  32 Bouvet Island                           '  ,&
+          'BWA  31 Botswana                                '  ,&
+          'CAF  46 Central African Republic                '  ,&
+          'CAN  42 Canada                                  '  ,&
+          'CCK  52 Cocos Islands                           '  ,&
+          'CHE 223 Switzerland                             '  ,&
+          'CHL  48 Chile                                   '  ,&
+          'CHN  49 China                                   '  ,&
+          'CIV  57 Cote dIvoire                            '  ,&
+          'CMR  41 Cameroon                                '  ,&
+          'COD   0 Democratic Republic of the Congo        '  ,&
+          'COG 185 Republic of Congo                       '  ,&
+          'COK  55 Cook Islands                            '  ,&
+          'COL  53 Colombia                                '  ,&
+          'COM  54 Comoros                                 '  ,&
+          'CPV  43 Cape Verde                              '  ,&
+          'CRI  56 Costa Rica                              '  ,&
+          'CUB  59 Cuba                                    '  ,&
+          'CUW  60 Curacao                                 '  ,&
+          'CXR  50 Christmas Island                        '  ,&
+          'CYM  45 Cayman Islands                          '  ,&
+          'CYP  61 Cyprus                                  '  ,&
+          'CZE  62 Czech Republic                          '  ,&
+          'DEU  86 Germany                                 '  ,&
+          'DJI  65 Djibouti                                '  ,&
+          'DMA  66 Dominica                                '  ,&
+          'DNK  64 Denmark                                 '  ,&
+          'DOM  67 Dominican Republic                      '  ,&
+          'DZA   5 Algeria                                 '  ,&
+          'ECU  68 Ecuador                                 '  ,&
+          'EGY  69 Egypt                                   '  ,&
+          'ERI  72 Eritrea                                 '  ,&
+          'ESH 253 Western Sahara                          '  ,&
+          'ESP 215 Spain                                   '  ,&
+          'EST  73 Estonia                                 '  ,&
+          'ETH  74 Ethiopia                                '  ,&
+          'FIN  78 Finland                                 '  ,&
+          'FJI  77 Fiji                                    '  ,&
+          'FLK  75 Falkland Islands                        '  ,&
+          'FRA  79 France                                  '  ,&
+          'FRO  76 Faroe Islands                           '  ,&
+          'FSM 146 Micronesia                              '  ,&
+          'GAB  83 Gabon                                   '  ,&
+          'GBR 242 United Kingdom                          '  ,&
+          'GEO  85 Georgia                                 '  ,&
+          'GGY  95 Guernsey                                '  ,&
+          'GHA  87 Ghana                                   '  ,&
+          'GIB  88 Gibraltar                               '  ,&
+          'GIN  96 Guinea                                  '  ,&
+          'GLP  92 Guadeloupe                              '  ,&
+          'GMB  84 Gambia                                  '  ,&
+          'GNB  97 Guinea-Bissau                           '  ,&
+          'GNQ  71 Equatorial Guinea                       '  ,&
+          'GRC  89 Greece                                  '  ,&
+          'GRD  91 Grenada                                 '  ,&
+          'GRL  90 Greenland                               '  ,&
+          'GTM  94 Guatemala                               '  ,&
+          'GUF  80 French Guiana                           '  ,&
+          'GUM  93 Guam                                    '  ,&
+          'GUY  98 Guyana                                  '  ,&
+          'HKG 102 Hong Kong                               '  ,&
+          'HMD 100 Heard Island and McDonald Islands       '  ,&
+          'HND 101 Honduras                                '  ,&
+          'HRV  58 Croatia                                 '  ,&
+          'HTI  99 Haiti                                   '  ,&
+          'HUN 103 Hungary                                 '  ,&
+          'IDN 106 Indonesia                               '  ,&
+          'IMN 110 Isle of Man                             '  ,&
+          'IND 105 India                                   '  ,&
+          'IOT  34 British Indian Ocean Territory          '  ,&
+          'IRL 109 Ireland                                 '  ,&
+          'IRN 107 Iran                                    '  ,&
+          'IRQ 108 Iraq                                    '  ,&
+          'ISL 104 Iceland                                 '  ,&
+          'ISR 111 Israel                                  '  ,&
+          'ITA 112 Italy                                   '  ,&
+          'JAM 113 Jamaica                                 '  ,&
+          'JEY 115 Jersey                                  '  ,&
+          'JOR 116 Jordan                                  '  ,&
+          'JPN 114 Japan                                   '  ,&
+          'KAZ 117 Kazakhstan                              '  ,&
+          'KEN 118 Kenya                                   '  ,&
+          'KGZ 122 Kyrgyzstan                              '  ,&
+          'KHM  40 Cambodia                                '  ,&
+          'KIR 119 Kiribati                                '  ,&
+          'KNA 193 Saint Kitts and Nevis                   '  ,&
+          'KOR 213 South Korea                             '  ,&
+          'KWT 121 Kuwait                                  '  ,&
+          'LAO 123 Laos                                    '  ,&
+          'LBN 125 Lebanon                                 '  ,&
+          'LBR 127 Liberia                                 '  ,&
+          'LBY 128 Libya                                   '  ,&
+          'LCA 194 Saint Lucia                             '  ,&
+          'LIE 129 Liechtenstein                           '  ,&
+          'LKA 217 Sri Lanka                               '  ,&
+          'LSO 126 Lesotho                                 '  ,&
+          'LTU 130 Lithuania                               '  ,&
+          'LUX 131 Luxembourg                              '  ,&
+          'LVA 124 Latvia                                  '  ,&
+          'MAC 132 Macao                                   '  ,&
+          'MAF 191 Saint-Martin                            '  ,&
+          'MAR 152 Morocco                                 '  ,&
+          'MCO 148 Monaco                                  '  ,&
+          'MDA 147 Moldova                                 '  ,&
+          'MDG 134 Madagascar                              '  ,&
+          'MDV 137 Maldives                                '  ,&
+          'MEX 145 Mexico                                  '  ,&
+          'MHL 140 Marshall Islands                        '  ,&
+          'MKD 133 Macedonia                               '  ,&
+          'MLI 138 Mali                                    '  ,&
+          'MLT 139 Malta                                   '  ,&
+          'MMR 154 Myanmar                                 '  ,&
+          'MNE 150 Montenegro                              '  ,&
+          'MNG 149 Mongolia                                '  ,&
+          'MNP 168 Northern Mariana Islands                '  ,&
+          'MOZ 153 Mozambique                              '  ,&
+          'MRT 142 Mauritania                              '  ,&
+          'MSR 151 Montserrat                              '  ,&
+          'MTQ 141 Martinique                              '  ,&
+          'MUS 143 Mauritius                               '  ,&
+          'MWI 135 Malawi                                  '  ,&
+          'MYS 136 Malaysia                                '  ,&
+          'MYT 144 Mayotte                                 '  ,&
+          'NAM 155 Namibia                                 '  ,&
+          'NCL 159 New Caledonia                           '  ,&
+          'NER 162 Niger                                   '  ,&
+          'NFK 165 Norfolk Island                          '  ,&
+          'NGA 163 Nigeria                                 '  ,&
+          'NIC 161 Nicaragua                               '  ,&
+          'NIU 164 Niue                                    '  ,&
+          'NLD 158 Netherlands                             '  ,&
+          'NOR 169 Norway                                  '  ,&
+          'NPL 157 Nepal                                   '  ,&
+          'NRU 156 Nauru                                   '  ,&
+          'NZL 160 New Zealand                             '  ,&
+          'OMN 170 Oman                                    '  ,&
+          'PAK 171 Pakistan                                '  ,&
+          'PAN 174 Panama                                  '  ,&
+          'PCN 180 Pitcairn Islands                        '  ,&
+          'PER 178 Peru                                    '  ,&
+          'PHL 179 Philippines                             '  ,&
+          'PLW 172 Palau                                   '  ,&
+          'PNG 175 Papua New Guinea                        '  ,&
+          'POL 181 Poland                                  '  ,&
+          'PRI 183 Puerto Rico                             '  ,&
+          'PRK 166 North Korea                             '  ,&
+          'PRT 182 Portugal                                '  ,&
+          'PRY 177 Paraguay                                '  ,&
+          'PSE 173 Palestina                               '  ,&
+          'PYF  81 French Polynesia                        '  ,&
+          'QAT 184 Qatar                                   '  ,&
+          'REU 186 Reunion                                 '  ,&
+          'ROU 187 Romania                                 '  ,&
+          'RUS 188 Russia                                  '  ,&
+          'RWA 189 Rwanda                                  '  ,&
+          'SAU 200 Saudi Arabia                            '  ,&
+          'SDN 218 Sudan                                   '  ,&
+          'SEN 201 Senegal                                 '  ,&
+          'SGP 205 Singapore                               '  ,&
+          'SGS 212 South Georgia and the South Sandwich Is '  ,&
+          'SHN 192 Saint Helena                            '  ,&
+          'SJM 220 Svalbard and Jan Mayen                  '  ,&
+          'SLB 209 Solomon Islands                         '  ,&
+          'SLE 204 Sierra Leone                            '  ,&
+          'SLV  70 El Salvador                             '  ,&
+          'SMR 198 San Marino                              '  ,&
+          'SOM 210 Somalia                                 '  ,&
+          'SPM 195 Saint Pierre and Miquelon               '  ,&
+          'SRB 202 Serbia                                  '  ,&
+          'SSD 214 South Sudan                             '  ,&
+          'STP 199 Sao Tome and Principe                   '  ,&
+          'SUR 219 Suriname                                '  ,&
+          'SVK 207 Slovakia                                '  ,&
+          'SVN 208 Slovenia                                '  ,&
+          'SWE 222 Sweden                                  '  ,&
+          'SWZ 221 Swaziland                               '  ,&
+          'SXM 206 Sint Maarten                            '  ,&
+          'SYC 203 Seychelles                              '  ,&
+          'SYR 224 Syria                                   '  ,&
+          'TCA 237 Turks and Caicos Islands                '  ,&
+          'TCD  47 Chad                                    '  ,&
+          'TGO 230 Togo                                    '  ,&
+          'THA 228 Thailand                                '  ,&
+          'TJK 226 Tajikistan                              '  ,&
+          'TKL 231 Tokelau                                 '  ,&
+          'TKM 236 Turkmenistan                            '  ,&
+          'TLS 229 Timor-Leste                             '  ,&
+          'TON 232 Tonga                                   '  ,&
+          'TTO 233 Trinidad and Tobago                     '  ,&
+          'TUN 234 Tunisia                                 '  ,&
+          'TUR 235 Turkey                                  '  ,&
+          'TUV 238 Tuvalu                                  '  ,&
+          'TWN 225 Taiwan                                  '  ,&
+          'TZA 227 Tanzania                                '  ,&
+          'UGA 239 Uganda                                  '  ,&
+          'UKR 240 Ukraine                                 '  ,&
+          'UMI 244 United States Minor Outlying Islands    '  ,&
+          'URY 245 Uruguay                                 '  ,&
+          'USA 243 United States                           '  ,&
+          'UZB 246 Uzbekistan                              '  ,&
+          'VAT 248 Vatican City                            '  ,&
+          'VCT 196 Saint Vincent and the Grenadines        '  ,&
+          'VEN 249 Venezuela                               '  ,&
+          'VGB  35 British Virgin Islands                  '  ,&
+          'VIR 251 Virgin Islands, U.S.                    '  ,&
+          'VNM 250 Vietnam                                 '  ,&
+          'VUT 247 Vanuatu                                 '  ,&
+          'WLF 252 Wallis and Futuna                       '  ,&
+          'WSM 197 Samoa                                   '  ,&
+          'XAD   2 Akrotiri and Dhekelia                   '  ,&
+          'XCA  44 Caspian Sea                             '  ,&
+          'XCL  51 Clipperton Island                       '  ,&
+          'XKO 120 Kosovo                                  '  ,&
+          'XNC 167 Northern Cyprus                         '  ,&
+          'XPI 176 Paracel Islands                         '  ,&
+          'XSP 216 Spratly Islands                         '  ,&
+          'YEM 254 Yemen                                   '  ,&
+          'ZAF 211 South Africa                            '  ,&
+          'ZMB 255 Zambia                                  '  ,&
+          'ZWE 256 Zimbabwe                                '  ,&
+          'UNK 257 Unknown                                 '/
+      
+     DATA INDEX_RANGE_DATA / &
          14 ,&
           1 ,&
           8 ,&
@@ -6879,139 +6807,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         256 ,&
         257 /
 
+     if(present(index_RANGE )) index_RANGE => index_RANGE_DATA 
+     if(present(ST_NAME     )) ST_NAME     => ST_NAME_DATA     
+     if(present(CNT_NAME    )) CNT_NAME    => CNT_NAME_DATA    
+     if(present(ST_NAME_ABR )) ST_NAME_ABR => ST_NAME_DATA (:)(1:2) 
+     if(present(CNT_NAME_ABR)) CNT_NAME_ABR=> CNT_NAME_DATA(:)(1:3) 
      
-      ! Reading number of tiles
-      ! -----------------------
-
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-           action =  'read')
-      
-      read (20, *) maxcat
-      
-
-      ! READ PEATMAP source data files and regrid
-      ! -----------------------------------------
-      
-      status  = NF_OPEN ('data/CATCH/GADM_Country_and_USStates_codes_1km.nc4', NF_NOWRITE, ncid)
-      
-      allocate (cnt_grid  (1 : GC, 1 : GR))
-      allocate (st_grid   (1 : GC, 1 : GR))
-      
-      status  = NF_INQ_VARID (ncid,'UNIT_CODE',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,1/),(/GC, GR,1/), cnt_grid) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,2/),(/GC, GR,1/), st_grid) ; VERIFY_(STATUS)
-      where (st_grid == 0) st_grid = 999
-      status = NF_CLOSE(ncid)
-
-      open (10,file='clsm/country_and_state_code.data',  &
-         form='formatted',status='unknown')
-
-      dxy = 360./GC
-      do k = 1, GC 
-         xg(k) = (k-1)*dxy -180. + dxy/2.
-      end do
-      do k = 1, GR 
-         yg(k) = (k-1)*dxy -90. + dxy/2.
-      end do      
-
-      DO n = 1, MAXCAT
-         read (20,*) i0,j0, lon_mn, lon_mx, lat_mn, lat_mx
-         x0 = (lon_mn + lon_mx)/2.
-         y0 = (lat_mn + lat_mx)/2.
-         I = 0
-         J = 0
-         WHERE ((xg >= x0).and.(xg < x0 + dxy)) I = 1
-         WHERE ((yg >= y0).and.(yg < y0 + dxy)) J = 1
-         
-         I0 =FINDLOC(I,1)
-         J0 =FINDLOC(J,1)
-
-         cnt_code = cnt_grid(I0(1), J0(1))
-         st_code  = st_grid (I0(1), J0(1))
-
-         if(cnt_code > 300) then
-            CNT_CODE = 257
-         endif
-
-         if(st_code <= 50) then
-            write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), ST_NAME (ST_CODE)
-         else
-            write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), 'OUTSIDE USA'
-         endif
-      
-     END DO
-
-     close (10, status = 'keep')
-     close (20, status = 'keep')
-    END SUBROUTINE country_codes
+   END SUBROUTINE get_country_codes
 
   END MODULE  process_hres_data
 
-! -------------------------------------------------------------------------------------------------------------------------------
+! ----------------------------------------------------------------------------------------------
 
-#ifdef DO_CLM45
-!gmake FOPT='-DDO_CLM45'
-!mpiifort -o ../bin/mk_clm45 -DsysLinux -DESMA64 -DHAS_NETCDF4 -DHAS_NETCDF3 -DH5_HAVE_PARALLEL -DNETCDF_NEED_NF_MPIIO  -DHAVE_SHMEM  -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf   -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf  -DDO_CLM45     -fPIC -fpe0 -fp-model source -heap-arrays 32 -assume noold_maxminloc  -align dcommons  -DEIGHT_BYTE -I../mod/ -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/netcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L../lib/ -I../include/ -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/netcdf -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/hdf5 mod_clm45_routines.F90 ../lib/libraster.a -lz -L../lib -lraster -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdff -lnetcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdf -ljpeg -lmfhdf -ldf -lhdf5_hl -lhdf5 -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lmfhdf -ldf -lsz -ljpeg -lgpfs -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lirc -ldl -lc -lpthread -lrt
 
-    PROGRAM mk_clm45
-  
-      use mod_clm45_routines
-      implicit none
-      character*400        :: arg(3), gfiler
-      integer              :: n , iargc, nc, nr
-
-      if(iargc() /= 3) then
-         print *, "Wrong Number of arguments: ", iargc()
-         print *, "Usage : ./mkclm45 NC NR rst/gfile"
-         stop
-      endif
-
-      do n=1,3
-         call getarg(n,arg(n))
-      enddo
-
-      read(arg(1),*) NC
-      read(arg(2),*) NR
-      read(arg(3),'(a)') gfiler
-
-      call CLM45_fixed_parameters (nc, nr, gfiler)
-      call CLM45_clim_parameters  (nc, nr, gfiler)
-
-    END PROGRAM mk_clm45
-
-#endif
-
-! ------------------------------------------------------------------------------------------------------
-
-#ifdef DO_GIMMS
-!gmake FOPT='-DDO_GIMMS'
-!mpiifort -o ../bin/mk_gimms -DsysLinux -DESMA64 -DHAS_NETCDF4 -DHAS_NETCDF3 -DH5_HAVE_PARALLEL -DNETCDF_NEED_NF_MPIIO  -DHAVE_SHMEM  -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf   -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/esmf -DDO_GIMMS  -O3 -qopt-report0 -ftz -align all -fno-alias -qno-offload -traceback     -fPIC -fpe0 -fp-model source -heap-arrays 32 -assume noold_maxminloc  -align dcommons  -DEIGHT_BYTE -I../mod/ -I/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/include/netcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L../lib/ -I../include/ gimms_ndvi.F90 ../lib/libraster.a -lz -L../lib -lraster -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdff -lnetcdf -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lnetcdf -ljpeg -lmfhdf -ldf -lhdf5_hl -lhdf5 -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lmfhdf -ldf -lsz -ljpeg -lgpfs -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lm -L/discover/nobackup/projects/gmao/share/gmao_ops/Baselibs/v4.0.6_build1/x86_64-unknown-linux-gnu/ifort_15.0.2.164-intelmpi_5.0.3.048/Linux/lib -lcurl -lssl -lcrypto -lssl -lcrypto -ldl -lz -lz -lrt -lm -lirc -ldl -lc -lpthread -lrt  -L/gpfsm/dnb32/mbhat/GCC/install/gcc-4.6.3/lib/gcc/x86_64-unknown-linux-gnu/4.6.3 -lstdc++
-
-    PROGRAM mk_gimms
-  
-      use gimms_ndvi
-      implicit none
-      character*400        :: arg(4), gfiler, vegfile
-      integer              :: n , iargc, nc, nr
-
-      if(iargc() /= 4) then
-         print *, "Wrong Number of arguments: ", iargc()
-         print *, "Usage : ./mkclm45 NC NR rst/gfile vegfile"
-         stop
-      endif
-
-      do n=1,4
-         call getarg(n,arg(n))
-      enddo
-
-      read(arg(1),*) NC
-      read(arg(2),*) NR
-      read(arg(3),'(a)') gfiler
-      read(arg(4),'(a)') vegfile
-
-      call ascat_r0        (nc, nr, gfiler, vegfile)
-      call gimms_clim_ndvi (nc, nr, gfiler)
-
-    END PROGRAM mk_gimms
-
-#endif

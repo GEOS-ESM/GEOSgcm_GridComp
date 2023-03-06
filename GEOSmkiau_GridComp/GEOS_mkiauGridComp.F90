@@ -31,7 +31,7 @@ module GEOS_mkiauGridCompMod
      private
      class (AbstractRegridder), pointer :: ANA2BKG_regridder => null()
      class (AbstractRegridder), pointer :: BKG2ANA_regridder => null()
-     type(ESMF_Grid)            :: GRIDana    ! Analysis    Data using Horizontal:ANA  Vertical:BKG 
+     type(ESMF_Grid)            :: GRIDana    ! Analysis    Data using Horizontal:ANA  Vertical:BKG
      type(ESMF_Grid)            :: GRIDrep    ! Replay File Data using Horizontal:ANA  Vertical:ANA
      integer                    :: IM
      integer                    :: JM
@@ -48,7 +48,7 @@ module GEOS_mkiauGridCompMod
 !=============================================================================
 
 ! !DESCRIPTION:
-! 
+!
 !
 
 !EOP
@@ -70,7 +70,7 @@ contains
 
 ! ! DESCRIPTION: This version uses the MAPL_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -86,11 +86,11 @@ contains
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
     type (MAPL_MetaComp),         pointer   :: MAPL
-    type (T_MKIAU_STATE),         pointer   :: mkiau_internal_state 
+    type (T_MKIAU_STATE),         pointer   :: mkiau_internal_state
     type (MKIAU_wrap)                       :: wrap
     type (ESMF_Config)                      :: CF
 
-    logical                                 :: BLEND_QV_AT_TP
+    logical                                 :: BLEND_AT_PBL
 
 !=============================================================================
 
@@ -110,7 +110,7 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    call MAPL_GetResource(MAPL, BLEND_AT_PBL,    LABEL="REPLAY_BLEND_AT_PBL:",   default=.FALSE., RC=status)
     VERIFY_(STATUS)
 
 ! Set the Run entry points (phase 1 for regular IAU and phase 2 for clearing
@@ -164,7 +164,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'DELP',                                      &
          LONG_NAME  = 'air_pressure_thickness',                    &
@@ -173,7 +173,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'TV',                                        &
          LONG_NAME  = 'virtual_air_temperature',                   &
@@ -182,7 +182,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'U',                                         &
          LONG_NAME  = 'eastward_wind',                             &
@@ -191,7 +191,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'V',                                         &
          LONG_NAME  = 'northward_wind',                            &
@@ -228,10 +228,10 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    if( BLEND_QV_AT_TP ) then
+    if( BLEND_AT_PBL ) then
     call MAPL_AddImportSpec(GC,                                        &
-         SHORT_NAME = 'TROPP_BLENDED',                                 &
-         LONG_NAME  = 'tropopause_pressure_based_on_blended_estimate', &
+         SHORT_NAME = 'PPBL',                                          &
+         LONG_NAME  = 'pbl_top_pressure',                              &
          UNITS      = 'Pa',                                            &
          DIMS       = MAPL_DimsHorzOnly,                               &
          VLOCATION  = MAPL_VLocationNone,                              &
@@ -326,7 +326,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'DELPBKG',                                   &
          LONG_NAME  = 'air_pressure_thickness_of_background',      &
@@ -335,7 +335,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'TVBKG',                                     &
          LONG_NAME  = 'virtual_air_temperature_of_background',     &
@@ -344,7 +344,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'UBKG',                                      &
          LONG_NAME  = 'eastward_wind_of_background',               &
@@ -354,7 +354,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'VBKG',                                      &
          LONG_NAME  = 'northward_wind_of_background',              &
@@ -373,7 +373,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
- 
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'O3PPMVBKG',                                 &
          LONG_NAME  = 'ozone_volume_mixing_ratio_of_background',   &
@@ -419,7 +419,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    
+
 ! Internal State (None)
 ! ---------------------
 
@@ -446,7 +446,7 @@ contains
     allocate( mkiau_internal_state, stat=status )
     VERIFY_(STATUS)
     wrap%ptr => mkiau_internal_state
- 
+
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
@@ -460,7 +460,7 @@ contains
     VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 
@@ -476,7 +476,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -565,7 +565,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   real,     pointer, dimension(:,:,:) :: pdum1 => null()
   real,     pointer, dimension(:,:,:) :: pdum2 => null()
-  real,     pointer, dimension(:,:)   :: tropp => null()
+  real,     pointer, dimension(:,:)   :: blnpp => null()
 
   real, allocatable, dimension(:,:,:) ::  du_fix
   real, allocatable, dimension(:,:,:) ::  dv_fix
@@ -630,7 +630,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   real                                :: FACP1, FACP0, FACM1, FACM2
   real                                :: DAMPBEG, DAMPEND
-  logical                             :: BLEND_QV_AT_TP
+  logical                             :: BLEND_AT_PBL
   integer                             :: i,j,L,n
   integer                             :: nt,nvars,natts
   integer                             :: nymd, nhms
@@ -642,7 +642,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: nymdm2,nhmsm2
   integer                             :: NX,NY,IMG,JMG
   integer                             :: method
-  integer                             :: DIMS(ESMF_MAXGRIDDIM) 
+  integer                             :: DIMS(ESMF_MAXGRIDDIM)
   integer                             :: JCAP,LMP1
   logical                             :: dowindfix
   logical                             :: doremap
@@ -673,13 +673,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: vm_comm
   integer                             :: IHAVEAINC
 
-  type (T_MKIAU_STATE), pointer       :: mkiau_internal_state 
+  type (T_MKIAU_STATE), pointer       :: mkiau_internal_state
   type (MKIAU_wrap)                   :: wrap
   logical                             :: refresh_internal_state
   logical                             :: bkg2anaConsrv
   logical                             :: ana2bkgConsrv
   character(len=ESMF_MAXSTR)          :: imstr, jmstr, gridAnaName
- 
+
   logical                             :: first
   data                                   first /.true./
   logical                             :: NEED_BUNDLE1
@@ -695,12 +695,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: NEED_BUNDLEM2
   data                                   NEED_BUNDLEM2 /.true./
 
-  integer nsecf 
+  integer nsecf
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -856,7 +856,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     _ASSERT(DAMPBEG.le.DAMPEND   ,'needs informative message')
 
-    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    call MAPL_GetResource(MAPL, BLEND_AT_PBL,  LABEL="REPLAY_BLEND_AT_PBL:", default=.FALSE., RC=status)
     VERIFY_(STATUS)
 
        CREMAP = ESMF_UtilStringUpperCase(CREMAP)
@@ -1071,7 +1071,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
          VERIFY_(STATUS)
        end block
-         
+
        mkiau_internal_state%im      =   IMana_World
        mkiau_internal_state%jm      =   JMana_World
        mkiau_internal_state%lm      =   LMana
@@ -1114,7 +1114,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call ESMF_VmGet(VM, mpicommunicator=vm_comm, rc=status)
     VERIFY_(STATUS)
-   
+
     ANA2BKG => mkiau_internal_state%ANA2BKG_regridder
     BKG2ANA => mkiau_internal_state%BKG2ANA_regridder
 
@@ -1294,7 +1294,7 @@ CONTAINS
         du=uptr
         dv=vptr
     endif
- 
+
 !   Calculate 3d-pressure change
 !   -----------------------------
     dple(:,:,0) = 0.0
@@ -1330,17 +1330,17 @@ CONTAINS
 
 ! *****************************************************************************
 
-    allocate( phis_bkg(IM,JM)      )
-    allocate(   ts_bkg(IM,JM)      )
-    allocate(   ps_bkg(IM,JM)      )
-    allocate(    u_bkg(IM,JM,1:LM) )
-    allocate(    v_bkg(IM,JM,1:LM) )
-    allocate(    t_bkg(IM,JM,1:LM) )
-    allocate(   tv_bkg(IM,JM,1:LM) )
-    allocate(    q_bkg(IM,JM,1:LM) )
-    allocate(   o3_bkg(IM,JM,1:LM) )
-    allocate (  dp_bkg(IM,JM,1:LM) )
-    allocate(  ple_bkg(IM,JM,0:LM) )
+    allocate( phis_bkg(IM,JM)     , source = 0.0 )
+    allocate(   ts_bkg(IM,JM)     , source = 0.0 )
+    allocate(   ps_bkg(IM,JM)     , source = 0.0 )
+    allocate(    u_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(    v_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(    t_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(   tv_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(    q_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(   o3_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(   dp_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(  ple_bkg(IM,JM,0:LM), source = 0.0 )
 
 ! **********************************************************************
 ! ****      Transform Import Data (ie. BKG.ETA) to ANA Grid         ****
@@ -1495,8 +1495,8 @@ CONTAINS
         FILE_TIMEP0 = REPLAY_TIMEP0
     endif
 
-    if( currTime /= REPLAY_TIMEP0 ) then 
-        if( NEED_BUNDLEM1 ) then 
+    if( currTime /= REPLAY_TIMEP0 ) then
+        if( NEED_BUNDLEM1 ) then
             RBUNDLEM1 = ESMF_FieldBundleCreate( RC=STATUS)
             VERIFY_(STATUS)
             if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
@@ -1515,7 +1515,7 @@ CONTAINS
         endif
 
         if( REPLAY_TIME_INTERP == "CUBIC" ) then
-            if( NEED_BUNDLEP1 ) then 
+            if( NEED_BUNDLEP1 ) then
                 RBUNDLEP1 = ESMF_FieldBundleCreate( RC=STATUS)
                 VERIFY_(STATUS)
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
@@ -1533,7 +1533,7 @@ CONTAINS
                 FILE_TIMEP1 = REPLAY_TIMEP1
             endif
 
-            if( NEED_BUNDLEM2 ) then 
+            if( NEED_BUNDLEM2 ) then
                 RBUNDLEM2 = ESMF_FieldBundleCreate( RC=STATUS)
                 VERIFY_(STATUS)
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
@@ -1590,34 +1590,34 @@ CONTAINS
 ! ****     Get Pointers to Internal STATE (ANA.ETA) from BUNDLE     ****
 ! **********************************************************************
 
-    allocate ( phis_ana(IM,JM)      )
-    allocate (   ts_ana(IM,JM)      )
-    allocate (   ps_ana(IM,JM)      )
-    allocate (   du_fix(IM,JM,  LM) )
-    allocate (   dv_fix(IM,JM,  LM) )
-    allocate (    u_ana(IM,JM,  LM) )
-    allocate (    v_ana(IM,JM,  LM) )
-    allocate (    t_ana(IM,JM,  LM) )
-    allocate (  thv_ana(IM,JM,  LM) )
-    allocate (    q_ana(IM,JM,  LM) )
-    allocate (   o3_ana(IM,JM,  LM) )
-    allocate (   pk_ana(IM,JM,  LM) )
-    allocate (  ple_ana(IM,JM,0:LM) )
-    allocate (  pke_ana(IM,JM,0:LM) )
+    allocate ( phis_ana(IM,JM)     , source = 0.0 )
+    allocate (   ts_ana(IM,JM)     , source = 0.0 )
+    allocate (   ps_ana(IM,JM)     , source = 0.0 )
+    allocate (   du_fix(IM,JM,  LM), source = 0.0 )
+    allocate (   dv_fix(IM,JM,  LM), source = 0.0 )
+    allocate (    u_ana(IM,JM,  LM), source = 0.0 )
+    allocate (    v_ana(IM,JM,  LM), source = 0.0 )
+    allocate (    t_ana(IM,JM,  LM), source = 0.0 )
+    allocate (  thv_ana(IM,JM,  LM), source = 0.0 )
+    allocate (    q_ana(IM,JM,  LM), source = 0.0 )
+    allocate (   o3_ana(IM,JM,  LM), source = 0.0 )
+    allocate (   pk_ana(IM,JM,  LM), source = 0.0 )
+    allocate (  ple_ana(IM,JM,0:LM), source = 0.0 )
+    allocate (  pke_ana(IM,JM,0:LM), source = 0.0 )
 
-    allocate (   dp_rep(IM,JM,  LMana) )
-    allocate (    u_rep(IM,JM,  LMana) )
-    allocate (    v_rep(IM,JM,  LMana) )
-    allocate (    t_rep(IM,JM,  LMana) )
-    allocate (  thv_rep(IM,JM,  LMana) )
-    allocate (    q_rep(IM,JM,  LMana) )
-    allocate (   o3_rep(IM,JM,  LMana) )
-    allocate (   pk_rep(IM,JM,  LMana) )
-    allocate (  ple_rep(IM,JM,0:LMana) )
-    allocate (  pke_rep(IM,JM,0:LMana) )
+    allocate (   dp_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    u_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    v_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    t_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (  thv_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (    q_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (   o3_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (   pk_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (  ple_rep(IM,JM,0:LMana), source = 0.0 )
+    allocate (  pke_rep(IM,JM,0:LMana), source = 0.0 )
 
-    allocate ( ak_rep(0:LMana) )
-    allocate ( bk_rep(0:LMana) )
+    allocate ( ak_rep(0:LMana), source = 0.0 )
+    allocate ( bk_rep(0:LMana), source = 0.0 )
 
     doremap = (trim(cremap).eq.'YES') .or. (LMana.ne.LMbkg)
 
@@ -2103,7 +2103,7 @@ CONTAINS
 ! ****   with option to blend QV specially, starting at tropopause. ****
 ! **********************************************************************
 
-      if( DAMPBEG.ne.DAMPEND .or. BLEND_QV_AT_TP ) then
+      if( DAMPBEG.ne.DAMPEND .or. BLEND_AT_PBL ) then
 
           if(first .and. MAPL_AM_I_ROOT()) then
              if(DAMPBEG.ne.DAMPEND) then
@@ -2111,20 +2111,20 @@ CONTAINS
              else
                 print *, 'No Upper-Air ANA Blending to BKG will be done'
              endif
-             if(BLEND_QV_AT_TP) then
-                print *, 'Blending ANA and BKG QV based on TROPP'
+             if(BLEND_AT_PBL) then
+                print *, 'Blending ANA and BKG based on PBL'
              else
-                print *, 'No blending of QV based on TROPP'
+                print *, 'No blending based on PBL'
              endif
              print *
           endif
 
-          if( BLEND_QV_AT_TP ) then
+          if( BLEND_AT_PBL ) then
              allocate ( pdum1(IMbkg,JMbkg,1) )
              allocate ( pdum2(IM,   JM,   1) )
              pdum1=0.0
 
-             call MAPL_GetPointer(import, ptr2d, 'TROPP_BLENDED', RC=STATUS)
+             call MAPL_GetPointer(import, ptr2d, 'PPBL', RC=STATUS)
              VERIFY_(STATUS)
              pdum1(:,:,1) = ptr2d
 
@@ -2134,15 +2134,15 @@ CONTAINS
              else
                 pdum2=pdum1
              endif
-             tropp => pdum2(:,:,1)
+             blnpp => pdum2(:,:,1)
           endif
 
           call blend ( ple_ana,u_ana,v_ana,t_ana,q_ana,o3_ana,     &
                        ple_bkg,u_bkg,v_bkg,t_bkg,q_bkg,o3_bkg,     &
-                       im,jm,LMbkg, DAMPBEG,DAMPEND, BLEND_QV_AT_TP,  &
-                       tropp=tropp )
+                       im,jm,LMbkg, DAMPBEG,DAMPEND, BLEND_AT_PBL,  &
+                       blnpp=blnpp )
 
-          if( BLEND_QV_AT_TP ) then
+          if( BLEND_AT_PBL ) then
              deallocate ( pdum1 )
              deallocate ( pdum2 )
           endif
@@ -2171,7 +2171,7 @@ CONTAINS
          call MAPL_TimerON(MAPL,"--WINDFIX")
          call windfix ( u_ana,v_ana,ple_ana,                            &
                         u_bkg,v_bkg,ple_bkg,im,jm,LMbkg,VM,GRIDana,method, &
-                        vintdiva,vintdivb,vintdivc                      )           
+                        vintdiva,vintdivb,vintdivc                      )
          call MAPL_TimerOFF(MAPL,"--WINDFIX")
     endif
 
@@ -2198,7 +2198,7 @@ CONTAINS
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,  dts, 'DTSDT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    
+
     call MAPL_GetPointer(export,duwindfix, 'DUWINDFIX', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,dvwindfix, 'DVWINDFIX', alloc=.TRUE., RC=STATUS)
@@ -2488,7 +2488,7 @@ CONTAINS
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -2514,14 +2514,14 @@ CONTAINS
 
     real, pointer, dimension(:,:)       :: ptr2d
     real, pointer, dimension(:,:,:)     :: ptr3d
- 
+
     integer                             :: I, N, fieldRank
     type(ESMF_FieldStatus_Flag)         :: fieldStatus
     character (len=ESMF_MAXSTR), allocatable  :: itemNameList(:)
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -2586,16 +2586,16 @@ CONTAINS
   subroutine blend ( plea,ua,va,ta,qa,oa,     &
                      pleb,ub,vb,tb,qb,ob,     &
                      im,jm,lm, pabove,pbelow, &
-                     blend_qv_at_tp, tropp    )
+                     BLEND_AT_PBL, blnpp    )
 
 ! Blends Anaylsis and Background values.
-! This routine is called if pabove /= pbelow or blend_qv_at_tp
+! This routine is called if pabove /= pbelow or BLEND_AT_PBL
 ! ***************************************************************************
 
       implicit none
       integer, intent(IN)    :: im,jm,lm
       real,    intent(IN)    :: pabove,pbelow
-      logical, intent(IN)    :: blend_qv_at_tp
+      logical, intent(IN)    :: BLEND_AT_PBL
 
       real,    intent(IN)    :: pleb(im,jm,lm+1)
       real,    intent(IN)    ::   ub(im,jm,lm)
@@ -2604,14 +2604,14 @@ CONTAINS
       real,    intent(IN)    ::   qb(im,jm,lm)
       real,    intent(IN)    ::   ob(im,jm,lm)
 
-      real,    intent(IN)    :: plea(im,jm,lm+1)
+      real,    intent(INOUT) :: plea(im,jm,lm+1)
       real,    intent(INOUT) ::   ua(im,jm,lm)
       real,    intent(INOUT) ::   va(im,jm,lm)
       real,    intent(INOUT) ::   ta(im,jm,lm)
       real,    intent(INOUT) ::   qa(im,jm,lm)
       real,    intent(INOUT) ::   oa(im,jm,lm)
 
-      real,    intent(IN), optional, pointer :: tropp(:,:)   ! Tropopause Pressure used when blend_qv_at_tp is TRUE
+      real,    intent(IN), optional, pointer :: blnpp(:,:)   ! blending pressure when BLEND_AT_PBL is TRUE
 
 ! Locals
 ! ------
@@ -2625,8 +2625,8 @@ CONTAINS
       real   pka(im,jm,lm)
       real   pkb(im,jm,lm)
 
-      real pabove_QV,pbelow_QV  ! compute from tropp
-      real tp_press
+      real pabove_BL,pbelow_BL
+      real bl_press
 
       real alf,eps,p
       integer i,j,L
@@ -2667,7 +2667,7 @@ CONTAINS
                                    ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-  ub(i,j,L) )
                                    va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-  vb(i,j,L) )
                                    oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-  ob(i,j,L) )
-         IF (.NOT. blend_qv_at_tp) qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+                                   qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
       enddo
       enddo
       enddo
@@ -2698,35 +2698,40 @@ CONTAINS
       enddo
       endif
 
-! Blend mid-level q near the tropopause
+! Blend from surface to blnpp
 ! -------------------------------------
-      if ( blend_qv_at_tp ) then
+      if ( BLEND_AT_PBL ) then
            do j=1,jm
            do i=1,im
 
-           IF ( tropp(i,j) == MAPL_UNDEF ) THEN
-                tp_press = 100.0 * 100.0   ! 100 hPa
+           IF ( blnpp(i,j) == MAPL_UNDEF ) THEN
+                pbelow_BL = 500.0 * 100.0   ! 500 hPa
            ELSE
-                tp_press = tropp(i,j)
+                pbelow_BL = blnpp(i,j)
            ENDIF
-
-           pabove_QV = tp_press * 0.5
-           pbelow_QV = tp_press * 1.0
+           ! blend in the 200hPa above the PBL
+           pabove_BL = pbelow_BL - 20000.0
 
            do L=1,lm
-             p = 0.5*( plea(i,j,L)+plea(i,j,L+1) )
-             if( p.le.pabove_QV ) then
-                 alf = 0.0   !  use the background value
-             else if( p.gt.pabove_QV .and. p.le.pbelow_QV ) then
-                 alf = (LOG(p)        -LOG(pabove_QV))/ &
-                       (LOG(pbelow_QV)-LOG(pabove_QV))
+             p = 0.5*( pleb(i,j,L)+pleb(i,j,L+1) )
+             if( p.le.pabove_BL ) then
+                 alf = 0.0   !  use the analysis value
+             else if( p.gt.pabove_BL .and. p.le.pbelow_BL ) then
+                 alf = ((LOG(p)        -LOG(pabove_BL))/ &
+                        (LOG(pbelow_BL)-LOG(pabove_BL)))**3
              else
-                 alf = 1.0   !  use the analysis value
+                 alf = 1.0   !  use the background value
              endif
 
-             qa(i,j,L) = qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+           plea(i,j,L) = plea(i,j,L) + alf*( pleb(i,j,L)- plea(i,j,L) )
+             ua(i,j,L) =   ua(i,j,L) + alf*(   ub(i,j,L)-   ua(i,j,L) )
+             va(i,j,L) =   va(i,j,L) + alf*(   vb(i,j,L)-   va(i,j,L) )
+             ta(i,j,L) =   ta(i,j,L) + alf*(   tb(i,j,L)-   ta(i,j,L) )
+             qa(i,j,L) =   qa(i,j,L) + alf*(   qb(i,j,L)-   qa(i,j,L) )
+             oa(i,j,L) =   oa(i,j,L) + alf*(   ob(i,j,L)-   oa(i,j,L) )
 
            enddo
+           plea(i,j,LM+1) = pleb(i,j,LM+1)
 
            enddo
            enddo
@@ -2742,7 +2747,7 @@ CONTAINS
      real             :: va(:,:,:)
      type (ESMF_VM)   :: VM
      type (ESMF_Grid) :: GRID
-     integer          :: DIMS(ESMF_MAXGRIDDIM) 
+     integer          :: DIMS(ESMF_MAXGRIDDIM)
      integer          :: IM,JM,LM,IMG,JMG
      integer          :: vm_comm
 
@@ -2756,7 +2761,7 @@ CONTAINS
      integer                        :: RC,STATUS
 
      IAM = "POLEFIX"
-    
+
      call ESMF_VMGet  (VM, localpet=myid, RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
@@ -2765,7 +2770,7 @@ CONTAINS
      JMG = DIMS(2)
      LM  = DIMS(3)
      DL  = 2*MAPL_PI/IMG
-     
+
      allocate( uglo(IMG,JMG) )
      allocate( vglo(IMG,JMG) )
      allocate( sinl(IMG)     )
@@ -3060,7 +3065,7 @@ CONTAINS
   end subroutine spectrans_vectorglob
 
   subroutine spectrans_scalar(im,jm,lm,var,jcap,GRID,RC)
-  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized 
+  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized
   integer, intent(in)                      :: im,jm,lm
   integer, intent(in)                      :: jcap
   real, intent(inout), dimension(im,jm,lm) :: var
@@ -3126,7 +3131,7 @@ CONTAINS
   end function check_list_
 
   subroutine spectrans_scalarpar(im,jm,lm,var,jcap,GRID,RC)
-  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized 
+  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized
   integer, intent(in)                      :: im,jm,lm
   integer, intent(in)                      :: jcap
   real, intent(inout), dimension(im,jm,lm) :: var
@@ -3171,7 +3176,7 @@ CONTAINS
   ! perform scalar spectral transform on global data
   ! assuming calling routine already intitalized the spectral filter
   subroutine spectrans_scalarglob(InGlob,OutGLob,jcap,RC)
-  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized 
+  use mkiau_specmod, only: sptezv_s, sptez_s, init_spec_vars,destroy_spec_vars,isinitialized
   integer, intent(in)                      :: jcap
   real, intent(inout), dimension(:,:,:   ) :: InGlob
   real, intent(inout), dimension(:,:,:   ) :: OutGlob
@@ -3252,7 +3257,7 @@ CONTAINS
 !*                  GODDARD LABORATORY FOR ATMOSPHERES                 *
 !***********************************************************************
 
-      use GEOS_GmapMod, only: gmap     
+      use GEOS_GmapMod, only: gmap
       implicit none
       integer  im,jm,LM_in,LM_out
 
@@ -3311,13 +3316,13 @@ CONTAINS
 
 ! Construct Input Heights
 ! -----------------------
-      pke_in(:,:,:) = ple_in(:,:,:)**kappa 
+      pke_in(:,:,:) = ple_in(:,:,:)**kappa
 
       phi_in(:,:,LM_in+1) = phis_in(:,:)
       do L=LM_in,1,-1
       phi_in(:,:,L) = phi_in(:,:,L+1) + cp*thv_in(:,:,L)*( pke_in(:,:,L+1)-pke_in(:,:,L) )
       enddo
-      
+
 ! Compute new surface pressure consistent with output topography
 ! --------------------------------------------------------------
       do j=1,jm
@@ -3350,7 +3355,7 @@ CONTAINS
           enddo
       endif
 
-      pke_out(:,:,:) = ple_out(:,:,:)**kappa 
+      pke_out(:,:,:) = ple_out(:,:,:)**kappa
 
 ! Map original fv state onto new eta grid
 ! ---------------------------------------

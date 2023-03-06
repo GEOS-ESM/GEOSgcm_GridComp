@@ -1,3 +1,5 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
 program SaltIntSplitter
 
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
@@ -5,6 +7,7 @@ program SaltIntSplitter
   use MAPL
   use mk_restarts_getidsMod, only: ReadTileFile_IntLatLon
   use gFTL_StringVector
+  use gFTL_StringIntegerMap 
 
   implicit none
 
@@ -43,6 +46,12 @@ program SaltIntSplitter
   character*256        :: IceFileName
   integer              :: dimSizes(3)
   integer              :: filetype,nVars
+  character*256        :: Iam = "SaltIntSplitter"
+  integer :: status
+  type (Variable), pointer :: global
+  type (StringIntegerMap), pointer :: dimensions
+  type (StringIntegerMap) :: water_dimensions
+  type (StringIntegerMapIterator) :: d_iter
 
 !---------------------------------------------------------------------------
 
@@ -68,10 +77,10 @@ program SaltIntSplitter
 
   itiles = size(loni)  ! Input  Tile Size
 
-  allocate( varIn(itiles) )
-  allocate( varOut(itiles) )
-  allocate( varInR8(itiles) )
-  allocate( varOutR8(itiles) )
+  allocate( varIn(itiles),   source = 0. )
+  allocate( varOut(itiles),  source = 0. )
+  allocate( varInR8(itiles), source = 0.d0 )
+  allocate( varOutR8(itiles),source = 0.d0 )
 
   call MAPL_NCIOGetFileType(InRestart, filetype,rc=rc)
 
@@ -92,20 +101,86 @@ program SaltIntSplitter
         ungridSize = 0
      end if
      
-     if ( (subtileSize==0) .and. (ungridSize==0)) then
-        call MAPL_IOChangeRes(InCfg,WaterCfg,['tile'],[itiles],rc=rc)
-        call MAPL_IOChangeRes(InCfg,IceCfg,['tile'],[itiles],rc=rc)
-     else if ((subtileSize/=0) .and. (ungridSize==0)) then
-        call MAPL_IOChangeRes(InCfg,WaterCfg,['tile   ','subtile'],[itiles,1],rc=rc)
-        call MAPL_IOChangeRes(InCfg,IceCfg,['tile   ','subtile'],[itiles,subtileSize-1],rc=rc)
-     else if ((subtileSize==0) .and. (ungridSize/=0)) then
-        call MAPL_IOChangeRes(InCfg,WaterCfg,['tile        ','unknown_dim4'],[itiles,ungridSize-1],rc=rc)
-        call MAPL_IOChangeRes(InCfg,IceCfg,['tile        ','unknown_dim4'],[itiles,ungridSize-1],rc=rc)
-     else if ((subtileSize/=0) .and. (ungridSize/=0)) then
-        call MAPL_IOChangeRes(InCfg,WaterCfg,['tile        ','subtile     ','unknown_dim4'],[itiles,1,ungridSize-1],rc=rc)
-        call MAPL_IOChangeRes(InCfg,IceCfg,['tile        ','subtile     ','unknown_dim4'],[itiles,subtileSize-1,ungridSize-1],rc=rc)
+     dimensions => InCfg%get_dimensions()
+     global     => Incfg%get_global_var()
+     IceCfg   = FileMetaData(dimensions= dimensions, global=global)
+
+     water_dimensions = dimensions
+     d_iter = water_dimensions%find('unknown_dim1')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     d_iter = water_dimensions%find('unknown_dim2')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     d_iter = water_dimensions%find('unknown_dim3')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     d_iter = water_dimensions%find('unknown_dim4')
+     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+
+     WaterCfg = FileMetaData(dimensions= water_dimensions, global=global)
+
+     call WaterCfg%modify_dimension('tile', itiles)
+     call IceCfg%modify_dimension('tile', itiles)
+
+     if ((subtileSize/=0) .and. (ungridSize==0)) then
+        call WaterCfg%modify_dimension('subtile', 1)
+        call IceCfg%modify_dimension('subtile', subtileSize-1)
+     endif
+
+     if((subtileSize==0) .and. (ungridSize/=0)) then
+        call IceCfg%modify_dimension('unknown_dim4', ungridSize-1)
+     endif
+     
+     if ((subtileSize/=0) .and. (ungridSize/=0)) then
+        call IceCfg%modify_dimension('unknown_dim4', ungridSize-1)
+        call WaterCfg%modify_dimension('subtile', 1)
+        call IceCfg%modify_dimension('subtile', subtileSize-1)
      end if
+
+ !########################################
+
+     variables => InCfg%get_variables()
+     var_iter = variables%begin()
+     do while (var_iter /= variables%end())
  
+        var_name => var_iter%key()
+        myVariable => var_iter%value()
+        var_dimensions => myVariable%get_dimensions()
+        ndims = var_dimensions%size()
+        dataType = myVariable%get_type()
+        if (.not.InCfg%is_coordinate_variable(var_name)) then
+           if (ndims == 1) then
+              select case (var_name)
+              case ('HSKINI','SSKINI','TSKINI', 'SLMASK') ! sea ice vars
+                 call IceCfg%add_variable(var_name, myVariable)
+              case default
+                 call WaterCfg%add_variable(var_name, myVariable)
+              end select
+           else if (ndims == 2) then
+              dname => myVariable%get_ith_dimension(2)
+              dimSizes(2)=InCfg%get_dimension(dname)
+              call iceCfg%add_variable(var_name, myVariable)
+              if (dataType /= pFIO_REAL64) then ! R8 vars only from coupled 
+                 if (dimSizes(2) == 2) then ! AMIP
+                   call waterCfg%add_variable(var_name, myVariable)
+                 else
+                   if (var_name /= 'TSKINI' .and. var_name /= 'TAUAGE') then 
+                     call waterCfg%add_variable(var_name, myVariable)
+                   endif 
+                endif
+              endif
+              ! for coupled rst, water=1, ice=2,num_subtiles 
+           else if (ndims == 3) then
+              call iceCfg%add_variable(var_name, myVariable)
+           end if
+        end if
+
+        if (var_name == 'time') then
+           call iceCfg%add_variable(var_name, myVariable)
+           call waterCfg%add_variable(var_name, myVariable)
+        endif
+        call var_iter%next()   
+     enddo
+
+!####################
 
      i = index(InRestart,'/',back=.true.)
      WaterFileName = "OutData/openwater_internal_rst"
@@ -114,7 +189,6 @@ program SaltIntSplitter
      call WaterFmt%write(WaterCfg,rc=rc)
      call IceFmt%create(IceFileName,rc=rc)
      call IceFmt%write(IceCfg,rc=rc)
-
 
      variables => InCfg%get_variables()
      var_iter = variables%begin()
@@ -130,7 +204,7 @@ program SaltIntSplitter
            write(*,*)"Writing ",trim(var_name),ndims
            
            if (ndims == 1) then
-              call MAPL_VarRead(InFmt,var_name,varIn)
+              call MAPL_VarRead(InFmt,var_name,varIn, __RC__)
               varOut(:) = varIn(:)
               select case (var_name)
               case ('HSKINI','SSKINI','TSKINI') ! sea ice vars
@@ -152,31 +226,31 @@ program SaltIntSplitter
               if (dataType == pFIO_REAL64) then ! R8 vars only from coupled 
                  if (var_name(1:2) == 'FR') then ! FR dim changes from 6 to 5
                     do j=2,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j-1)
                     enddo 
                  else
                     do j=1,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j)
                     enddo 
                  endif
               else if (dimSizes(2) == 2) then ! AMIP
-                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=1)
+                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=1, __RC__)
                  call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=1)
-                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=2)
+                 call MAPL_VarRead(InFmt,var_name,varIn,offset1=2, __RC__)
                  call MAPL_VarWrite(WaterFmt,var_name,varIn,offset1=1)
               else
-                 if (var_name == 'TSKINI') then 
+                 if (var_name == 'TSKINI' .or. var_name == 'TAUAGE') then 
                     do j=1,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j)
                     enddo 
                  else
-                    call MAPL_VarRead(InFmt,var_name,varIn,offset1=1)
+                    call MAPL_VarRead(InFmt,var_name,varIn,offset1=1, __RC__)
                     call MAPL_VarWrite(WaterFmt,var_name,varIn,offset1=1)
                     do j=2,dimSizes(2)
-                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j)
+                      call MAPL_VarRead(InFmt,var_name,varIn,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j-1)
                     enddo 
                  endif 
@@ -191,16 +265,21 @@ program SaltIntSplitter
               do k=1,dimSizes(3)
                  do j=1,dimSizes(2)
                     if (dataType == pFIO_REAL64) then 
-                       call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j,offset2=k)
+                       call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j,offset2=k, __RC__)
                        call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j,offset2=k)
                     else
-                       call MAPL_VarRead(InFmt,var_name,varIn,offset1=j,offset2=k)
+                       call MAPL_VarRead(InFmt,var_name,varIn,offset1=j,offset2=k, __RC__)
                        call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j,offset2=k)
                     endif
                  enddo
               enddo
            end if
         end if
+
+        if (var_name == 'time') then
+          call MAPL_VarWrite(IceFmt, 'time',[0.0d0])
+          call MAPL_VarWrite(waterFmt,'time',[0.0d0])
+        endif
      
         call var_iter%next()   
      enddo
@@ -257,7 +336,7 @@ program SaltIntSplitter
      ! ----------------------------------------------
      do n=1,ntot
         nsubtiles = nrecs(n)/itiles
-        allocate(  var2(itiles,nsubtiles) )
+        allocate(  var2(itiles,nsubtiles), source = 0. )
         read (50)  var2
         if( nsubtiles.eq.1 ) then
               print *, 'Writing Tile_Only Data ...'

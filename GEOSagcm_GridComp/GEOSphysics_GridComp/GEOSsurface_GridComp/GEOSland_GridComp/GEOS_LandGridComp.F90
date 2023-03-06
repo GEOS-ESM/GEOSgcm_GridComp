@@ -116,7 +116,7 @@ contains
 
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
-        !landxxxx
+        ! land_exxxx
         tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
     endif
 
@@ -173,7 +173,7 @@ contains
           end do
        end if
        
-    CASE (2) 
+    CASE (2,3) 
        
        allocate (CATCHCN(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
@@ -920,6 +920,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)  
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
 
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
@@ -933,7 +935,7 @@ contains
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        end if
 
-    CASE (2) 
+    CASE (2,3) 
        
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1200,6 +1202,10 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+       if (LSM_CHOICE == 3) then
+         call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFROOTC' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+         VERIFY_(STATUS)
+       endif
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNNPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNGPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
@@ -1286,6 +1292,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)  
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
 
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
@@ -1370,7 +1378,7 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
 
-       CASE (2)
+       CASE (2,3)
           call MAPL_AddConnectivity (                                    & 
             GC                                                 ,         &
             SHORT_NAME  = (/'LAI    ', 'GRN    ', 'ROOTL  ', 'Z2CH   ',  &
