@@ -305,9 +305,9 @@ else
    echo "   ${C2}O1     --  Reynolds ${CR} (Lon/Lat Data-Ocean:    360x180 )"
    echo "   ${C2}O2     --  Reynolds ${CR} (Lon/Lat Data-Ocean:   1440x720 )"
    echo "   ${C2}O3     --  OSTIA    ${CR} (Lon/Lat Data-Ocean:   2880x1440)"
-   echo "   ${C2}T2     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:    360x200 )"
-   echo "   ${C2}T3     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:    720x410 )"
-   echo "   ${C2}T4     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:   1440x1080)"
+   echo "   ${C2}T2     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:   360x200 )"
+   echo "   ${C2}T3     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:   720x410 )"
+   echo "   ${C2}T4     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:  1440x1080)"
    echo "   ${C2}T1MOM6 --  Tripolar ${CR} (MOM6-Tripolar-Ocean:    72x36  )"
    echo "   ${C2}T3MOM6 --  Tripolar ${CR} (MOM6-Tripolar-Ocean:   580x458 )"
    echo "   ${C2}T4MOM6 --  Tripolar ${CR} (MOM6-Tripolar-Ocean:  1440x1080)"
@@ -489,28 +489,28 @@ if( $orslv == O3 ) then
     @ jmo = 1440  # Lat/Lon Data-Ocean (OSTIA 1/8-deg)
 endif
 if( $orslv == T2 ) then
-    @ imo = 360  # MOM Tripolar-Ocean
-    @ jmo = 200  # MOM Tripolar-Ocean
+    @ imo = 360   # MOM5 Tripolar-Ocean
+    @ jmo = 200   # MOM5 Tripolar-Ocean
 endif
 if( $orslv == T3 ) then
-    @ imo = 720   # MOM Tripolar-Ocean
-    @ jmo = 410   # MOM Tripolar-Ocean
+    @ imo = 720   # MOM5 Tripolar-Ocean
+    @ jmo = 410   # MOM5 Tripolar-Ocean
 endif
 if( $orslv == T4 ) then
-    @ imo = 1440   # MOM Tripolar-Ocean
-    @ jmo = 1080   # MOM Tripolar-Ocean
+    @ imo = 1440  # MOM5 Tripolar-Ocean
+    @ jmo = 1080  # MOM5 Tripolar-Ocean
 endif
 if( $orslv == T1MOM6 ) then
-    @ imo = 72  # MOM6 Tripolar-Ocean
-    @ jmo = 36  # MOM6 Tripolar-Ocean
+    @ imo = 72    # MOM6 Tripolar-Ocean
+    @ jmo = 36    # MOM6 Tripolar-Ocean
 endif
 if( $orslv == T3MOM6 ) then
-    @ imo = 540  # MOM6 Tripolar-Ocean
-    @ jmo = 458  # MOM6 Tripolar-Ocean
+    @ imo = 540   # MOM6 Tripolar-Ocean
+    @ jmo = 458   # MOM6 Tripolar-Ocean
 endif
 if( $orslv == T4MOM6 ) then
-    @ imo = 1440   # MOM6 Tripolar-Ocean
-    @ jmo = 1080   # MOM6 Tripolar-Ocean
+    @ imo = 1440  # MOM6 Tripolar-Ocean
+    @ jmo = 1080  # MOM6 Tripolar-Ocean
 endif
 
 if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
@@ -518,7 +518,7 @@ if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
     set     DATENAME = DE
     set     POLENAME = PE
 endif
-set  MOM_VERSION = MOM5
+set  MOM_VERSION = UNDEF
 if( $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM5
