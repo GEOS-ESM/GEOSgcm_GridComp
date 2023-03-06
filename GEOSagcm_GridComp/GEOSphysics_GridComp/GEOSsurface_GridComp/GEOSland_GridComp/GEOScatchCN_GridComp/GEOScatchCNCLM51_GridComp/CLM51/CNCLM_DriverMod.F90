@@ -30,7 +30,7 @@ module CNCLM_DriverMod
  use FrictionVelocityMod         , only : frictionvel_type
  use ActiveLayerMod              , only : active_layer_type
  use SoilBiogeochemStateType     , only : soilbiogeochem_state_type
- use CanopyStateType             , only : canopystate_type
+ !use CanopyStateType             , only : canopystate_type
  use CropType                    , only : crop_type
  use ch4Mod                      , only : ch4_type
  use PhotosynthesisMod           , only : photosyns_type
@@ -189,7 +189,7 @@ contains
  type(soilbiogeochem_carbonstate_type)  :: c14_soilbiogeochem_carbonstate_inst
  type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
  type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
- type(canopystate_type)                 :: canopystate_inst
+! type(canopystate_type)                 :: canopystate_inst
  type(crop_type)                        :: crop_inst
  type(ch4_type)                         :: ch4_inst
  type(photosyns_type)                   :: photosyns_inst
@@ -497,7 +497,7 @@ contains
  type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
  type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
  type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
- type(canopystate_type)                 :: canopystate_inst
+ !type(canopystate_type)                 :: canopystate_inst
  type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
  type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
  type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
@@ -649,7 +649,7 @@ contains
 
  ! ARGUMENTS
 
-  use CanopyStateType , only : canopystate_inst
+  use CanopyStateType
 
   ! INPUT/OUTPUT
   integer, intent(in) :: nch ! number of tiles
@@ -662,7 +662,12 @@ contains
 
   ! LOCAL
   integer :: n, p, nv, nc, nz, np
+
+  real, pointer :: elai_clm(:)
   !------------------------------
+
+  elai_clm => canopystate_inst%elai_patch
+  
                     elai = 0.
   if(present(esai)) esai = 0.
   if(present(tlai)) tlai = 0.
@@ -680,7 +685,7 @@ contains
 ! extract LAI & SAI from CN clmtype
 ! ---------------------------------
           if(ityp(nc,nv,nz)==p .and. ityp(nc,nv,nz)>0 .and. fveg(nc,nv,nz)>1.e-4) then
-                              elai(nc,nv,nz) = canopystate_inst%elai_patch(np)
+                              elai(nc,nv,nz) = elai_clm(np)
             if(present(esai)) esai(nc,nv,nz) = canopystate_inst%esai_patch(np)
             if(present(tlai)) tlai(nc,nv,nz) = canopystate_inst%tlai_patch(np)
             if(present(tsai)) tsai(nc,nv,nz) = canopystate_inst%tsai_patch(np)
