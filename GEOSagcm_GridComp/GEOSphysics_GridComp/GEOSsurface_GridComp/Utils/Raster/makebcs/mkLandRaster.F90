@@ -1,14 +1,14 @@
-
-#include "Raster.h"
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
 
   Program MakeLandRaster
-
+    use MAPL_ExceptionHandling
     use LogRectRasterizeMod
     use MAPL_HashMod
     use process_hres_data
     use MAPL_SortMod
     use rmTinyCatchParaMod, ONLY: SRTM_maxcat, MAKE_BCS_INPUT_DIR
-
+    use MAPL_Constants, only: PI=>MAPL_PI_R8
 ! Program to create a surface raster file at 2.5' that has
 ! the ocean divided with a regular lat-lon DE grid. Its inputs
 ! are Sarith's formatted 2.5' raster of the Pfafstetter catchments with 
@@ -28,11 +28,11 @@
     integer                :: type, maxtiles, nx, ny
     integer                :: count0,count1,count_rate
 
-    REAL_                  :: dx, dy, d2r   ! Grid spacing of raster grid
-    REAL_                  :: xmin, ymin, xmax, ymax, xs, ys, da
+    real(kind=8)                  :: dx, dy, d2r   ! Grid spacing of raster grid
+    real(kind=8)                  :: xmin, ymin, xmax, ymax, xs, ys, da
 
-    REAL_,     allocatable :: cc(:), ss(:)
-    REAL_ ,    allocatable :: rTable(:,:)
+    real(kind=8),     allocatable :: cc(:), ss(:)
+    real(kind=8) ,    allocatable :: rTable(:,:)
 
     integer,       pointer :: Raster(:,:)
     integer,   allocatable, target :: Raster0(:,:)
@@ -45,8 +45,7 @@
     logical                :: Verb
     logical                :: regrid, reynolds_sst = .false.
 
-    REAL_                  :: VV(4)
-    REAL_                  :: PI=RASTER_PI
+    real(kind=8)                  :: VV(4)
     
     ! ESA/SRTM ocean/land/ice/lake mask parameters
     ! --------------------------------------------
@@ -72,6 +71,7 @@
     character*128          :: MaskFile
     character*128          :: &
     Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -l LandFile -g GridName"
+    character*128          :: Iam = "MakeLandRaster"
     include 'netcdf.inc'
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
@@ -498,7 +498,7 @@ subroutine RegridRaster(Rin,Rout)
   integer, intent(IN)  :: Rin(:,:)
   integer, intent(OUT) :: Rout(:,:)
 
-  REAL_  :: xx, yy
+  real(kind=8)  :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))

@@ -1,7 +1,5 @@
 
-module date_time_util
-  
-  use leap_year
+module LDAS_DateTimeMod 
   
   implicit none
   
@@ -10,6 +8,9 @@ module date_time_util
   private
   
   public :: date_time_type
+  public :: date_time_print
+  public :: is_leap_year
+  public :: days_in_month
   public :: get_dofyr_pentad
   public :: augment_date_time
   public :: datetime2_minus_datetime1
@@ -17,6 +18,8 @@ module date_time_util
   public :: datetime_le_refdatetime
   public :: datetime_lt_refdatetime
   public :: date_time2string
+  public :: datetime_to_J2000seconds
+  public :: J2000seconds_to_datetime
   
   ! ---------------------------------------------------------------------
   
@@ -39,10 +42,106 @@ module date_time_util
      integer :: pentad             ! pentad of year
      integer :: dofyr              ! day of year
   end type date_time_type
-  
+
 contains  
-  
   ! **********************************************************
+
+  function date_time_print(dt) result (dtstr)
+
+    implicit none
+
+    type(date_time_type), intent(in) :: dt
+    character(len=19) :: dtstr ! output
+
+    write(dtstr,298) dt%year, dt%month, dt%day, dt%hour, dt%min, dt%sec
+298 format(i4.4,'-',i2.2,'-',i2.2,'T',i2.2,':',i2.2,':',i2.2)
+
+  end function date_time_print 
+  ! **********************************************************
+  
+  integer function days_in_month(year, month)
+    
+    ! return the number of days in a given month
+    
+    implicit none
+    
+    integer :: year, month
+    
+    integer, dimension(12), parameter :: days_in_month_leap = &
+         (/ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
+    
+    integer, dimension(12), parameter :: days_in_month_nonleap = &
+         (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
+    
+    if (is_leap_year(year)) then
+       days_in_month = days_in_month_leap(month) 
+    else
+       days_in_month = days_in_month_nonleap(month) 
+    end if
+    
+  end function days_in_month
+    
+  ! ------------------------------------------------------------------
+  
+  integer function days_in_year(year)
+    
+    ! return the number of days in a given year
+    
+    implicit none
+    
+    integer :: year
+    
+    if (is_leap_year(year)) then
+       days_in_year = 366
+    else
+       days_in_year = 365
+    end if
+    
+  end function days_in_year
+  
+  ! ------------------------------------------------------------------
+  
+  logical function is_leap_year(year)
+    
+    implicit none
+
+    integer :: year
+    
+    if (mod(year,4) /= 0) then 
+       is_leap_year = .false.
+    else if (mod(year,400) == 0) then
+       is_leap_year = .true.
+    else if (mod(year,100) == 0) then 
+       is_leap_year = .false.
+    else
+       is_leap_year = .true.
+    end if
+    
+  end function is_leap_year
+
+  ! ------------------------------------------------------------------
+  
+  integer function pentad_of_year(day_of_year, year)
+    
+    implicit none
+    
+    integer :: day_of_year, year
+    
+    ! determine pentad
+    
+    if ((is_leap_year(year)) .and. day_of_year>=59) then
+       
+       pentad_of_year = (day_of_year-2)/5+1
+       
+    else
+       
+       pentad_of_year = (day_of_year-1)/5+1
+       
+    end if
+    
+  end function pentad_of_year
+  
+  ! ------------------------------------------------------------------
     
   subroutine get_dofyr_pentad( date_time ) 
     
@@ -254,12 +353,14 @@ contains
     
     type(date_time_type) :: de, dl
     
-    integer :: fac, secs, tmpint, y, secs_in_year_de, secs_in_year_dl
+    integer :: fac, secs, y, secs_in_year_de, secs_in_year_dl
     
     ! -------------------------------------------------------------------
     !
     ! make sure type integer is not out of range
-    
+    !
+    ! [integer*4 only allows for differences of up to ~68 years]
+
     if ( (abs(d2%year-d1%year)+1) > ((huge(secs)/86400)/366) ) then
        
        write (*,*) 'datetime2_minus_datetime1(): integer out of range.'
@@ -485,10 +586,8 @@ contains
   
   character(16) function date_time2string( date_time )
     
-    ! Generates a string from date_time structure (ignore seconds)
-    
-    !!use driver_types
-    
+    ! Generate "YYYYMMDD_HHMMSSz" string from date_time structure 
+        
     implicit none
     
     type(date_time_type) :: date_time
@@ -498,22 +597,169 @@ contains
     character(2) :: char_day
     character(2) :: char_hour
     character(2) :: char_min
+    character(2) :: char_sec
     
     write(char_year,  '(i4.4)') date_time%year
     write(char_month, '(i2.2)') date_time%month
     write(char_day,   '(i2.2)') date_time%day
     write(char_hour,  '(i2.2)') date_time%hour
     write(char_min,   '(i2.2)') date_time%min
+    write(char_sec,   '(i2.2)') date_time%sec
     
-    date_time2string = char_year // '.' // char_month // '.' &
-         // char_day // '.' // char_hour // '.' // char_min 
+    date_time2string = char_year // char_month // char_day // '_' &
+         // char_hour // char_min // char_sec // 'z'
     
   end function date_time2string
   
   ! ********************************************************************
   
-end module date_time_util
+  real*8 function datetime_to_J2000seconds( date_time, epoch_id )
 
+    ! reichle, 14 Jan 2014
+    
+    implicit none
+
+    type(date_time_type) :: date_time
+
+    character(4)         :: epoch_id
+
+    integer              :: tmp_secs
+
+    ! --------------------------------------------
+        
+    ! get integer seconds 
+    
+    tmp_secs = datetime2_minus_datetime1( J2000_epoch(epoch_id), date_time )
+    
+    ! convert to double precision floating point value 
+    
+    datetime_to_J2000seconds = real(tmp_secs,kind(0.0D0)) 
+
+    ! correct for 0.816 milliseconds (if using "UT12" definition of J2000 Epoch)
+
+    if (epoch_id=='UT12')  datetime_to_J2000seconds = datetime_to_J2000seconds - 0.816D0
+    
+  end function datetime_to_J2000seconds
+
+  ! ********************************************************************
+  
+  type(date_time_type) function J2000seconds_to_datetime( J2000_seconds, epoch_id )
+    
+    ! reichle, 14 Jan 2014
+    
+    implicit none
+    
+    real*8               :: J2000_seconds
+
+    type(date_time_type) :: date_time
+    
+    character(4)         :: epoch_id
+
+    integer              :: tmp_secs
+
+    ! --------------------------------------------
+
+    date_time = J2000_epoch( epoch_id )
+    
+    tmp_secs = nint(J2000_seconds)
+    
+    if ( J2000_seconds > real(huge(tmp_secs),kind(0.0D0)) ) then
+       
+       write (*,*) 'J2000seconds_to_datetime(): J2000_seconds out of range.'
+       write (*,*) 'STOPPING.'
+       stop
+       
+    end if
+    
+    call augment_date_time( tmp_secs, date_time )
+    
+    J2000seconds_to_datetime = date_time
+    
+  end function J2000seconds_to_datetime
+
+  ! ********************************************************************
+
+  type(date_time_type) function J2000_epoch( epoch_id )
+    
+    ! reichle, 30 Jun 2015
+    
+    implicit none
+    
+    character(4) :: epoch_id
+
+    character(len=*), parameter :: Iam = 'J2000_epoch'
+ 
+    ! -------------------------------------
+    !
+    ! definition of J2000 epochs
+    !
+    ! "J2000 seconds" are elapsed seconds since J2000 Epoch, which is either
+    !
+    !   - "UT12":  11:58:55.816 on 1 Jan 2000 in Coordinated Universal Time (UTC), or
+    !   - "TT12":  12:00:00.000 on 1 Jan 2000 in Terrestrial Time (TT), or
+    !   - "UT00":  00:00:00.000 on 1 Jan 2000 in Coordinated Universal Time (UTC)
+    !
+    ! NOTE: Per SMAP L1C_TB data products specs document, SMAP time stamps use "UT12"
+    !        but sample granules appear to be using "TT12".
+    ! NOTE: Per Clara Draper (30 Jun 2015), the nc4 ASCAT soil moisture retrieval 
+    !        product uses "UT00".
+    
+    type(date_time_type), parameter :: J2000_UT12 = date_time_type( &
+         year    = 2000,                                            &
+         month   =    1,                                            &
+         day     =    1,                                            &
+         hour    =   11,                                            &
+         min     =   58,                                            &
+         sec     =   55,                                            &  ! rounded down
+         pentad  =    1,                                            &
+         dofyr   =    1 )
+
+    type(date_time_type), parameter :: J2000_TT12 = date_time_type( &
+         year    = 2000,                                            &
+         month   =    1,                                            &
+         day     =    1,                                            &
+         hour    =   12,                                            &
+         min     =    0,                                            &
+         sec     =    0,                                            & 
+         pentad  =    1,                                            &
+         dofyr   =    1 )
+
+    type(date_time_type), parameter :: J2000_UT00 = date_time_type( &
+         year    = 2000,                                            &
+         month   =    1,                                            &
+         day     =    1,                                            &
+         hour    =    0,                                            &
+         min     =    0,                                            &
+         sec     =    0,                                            & 
+         pentad  =    1,                                            &
+         dofyr   =    1 )
+    
+    ! ----------------------------
+    
+    select case (epoch_id)
+       
+    case ('UT12')
+       J2000_epoch = J2000_UT12
+       
+    case ('TT12')
+       J2000_epoch = J2000_TT12
+       
+    case ('UT00')
+       J2000_epoch = J2000_UT00
+
+    case default
+       
+       write (*,*)  Iam // ' unknown J2000 epoch_id'
+       write (*,*) 'STOPPING.'
+       stop
+       
+    end select
+    
+  end function J2000_epoch
+  
+  ! ********************************************************************
+
+end module LDAS_DateTimeMod 
 
 ! ******************************************************************
 
@@ -523,13 +769,18 @@ end module date_time_util
 
 program test
   
-  use date_time_util
+  use LDAS_DateTimeMod 
   
   implicit none
   
-  type(date_time_type) :: start_time, end_time
+  type(date_time_type) :: start_time, end_time, date_time, date_time_tmp
   
   integer :: diff
+
+  real*8  :: J2000_seconds = -987303600.0D0
+
+  character(4) :: J2000_epoch_id
+
 
   start_time%year    =  1992        ! 4-digit year
   start_time%month   =    11        ! month in year
@@ -540,21 +791,31 @@ program test
   start_time%pentad  = -9999        ! pentad of year
   start_time%dofyr   = -9999        ! day of year
   
-  
-  end_time%year      =  1998        ! 4-digit year
-  end_time%month     =    11        ! month in year
-  end_time%day       =     3        ! day in month
-  end_time%hour      =     0        ! hour of day
-  end_time%min       =     0        ! minute of hour
-  end_time%sec       =     0        ! seconds of minute
+  end_time%year      =  2000        ! 4-digit year
+  end_time%month     =     1        ! month in year
+  end_time%day       =     1        ! day in month
+  end_time%hour      =    11        ! hour of day
+  end_time%min       =    58        ! minute of hour
+  end_time%sec       =    55        ! seconds of minute
   end_time%pentad    = -9999        ! pentad of year
   end_time%dofyr     = -9999        ! day of year
+
+  date_time%year     =  2014        ! 4-digit year
+  date_time%month    =     1        ! month in year
+  date_time%day      =    14        ! day in month
+  date_time%hour     =    12        ! hour of day
+  date_time%min      =    34        ! minute of hour
+  date_time%sec      =    56        ! seconds of minute
+  date_time%pentad   = -9999        ! pentad of year
+  date_time%dofyr    = -9999        ! day of year
+
 
   write (*,*) huge(diff)
 
   
   call get_dofyr_pentad( start_time ) 
   call get_dofyr_pentad( end_time ) 
+  call get_dofyr_pentad( date_time ) 
   
   write (*,*) start_time
   write (*,*) end_time
@@ -605,7 +866,51 @@ program test
   
   write (*,*) start_time
   
+  ! ------------------------------
+
+  J2000_epoch_id = 'UT12'
+
+  write (*,*) '-------------------------------'
+
+  write (*,*) 'J2000_epoch_id = ', J2000_epoch_id
+
+  write (*,*) '-------------------------------'
+  write (*,*) start_time
+  write (*,*) datetime_to_J2000seconds( start_time, J2000_epoch_id )
+  write (*,*) '-------------------------------'
+  write (*,*) end_time
+  write (*,*) datetime_to_J2000seconds( end_time,   J2000_epoch_id )
+  write (*,*) '-------------------------------'
+  write (*,*) date_time
+  write (*,*) datetime_to_J2000seconds( date_time,  J2000_epoch_id )
+  write (*,*) '-------------------------------'
+
+  ! ------------------------------
+
+  date_time_tmp = end_time
+
+  write (*,*) end_time
+  write (*,*) date_time_tmp
+  write (*,*) date_time
+
+  diff = datetime2_minus_datetime1( end_time, date_time )
+
+  write (*,*) diff
+  write (*,*) datetime_to_J2000seconds( date_time,  J2000_epoch_id )
   
+  call augment_date_time( diff, date_time_tmp )
+  
+  write (*,*) date_time_tmp
+  
+  ! ----------------------------------
+
+  write (*,*) '-------------------------------'
+  write (*,*) J2000_seconds
+  
+  write (*,*) J2000seconds_to_datetime( J2000_seconds, J2000_epoch_id )
+  write (*,*) '-------------------------------'
+  
+
 end program test
 
 #endif

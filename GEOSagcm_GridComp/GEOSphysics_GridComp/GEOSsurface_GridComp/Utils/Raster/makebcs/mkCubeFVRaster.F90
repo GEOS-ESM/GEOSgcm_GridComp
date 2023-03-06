@@ -1,6 +1,5 @@
-!   $Id: 
-
-#include "Raster.h"
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
 
   program mkCubeFVRaster
 
@@ -18,7 +17,7 @@
 !
     use CubedSphere_GridMod
     use LogRectRasterizeMod
-
+    use MAPL_ExceptionHandling
 !EOP
 
     implicit none
@@ -36,6 +35,7 @@
     logical              :: Here=.false.
     logical              :: Verb=.false.
     character*128        :: Usage="mkCubeFVraster -x RX -y RY -z -h -v -g GN ncells" 
+    character*128        :: Iam ="mkCubeFVraster"
 
 ! Process Arguments
 !------------------
