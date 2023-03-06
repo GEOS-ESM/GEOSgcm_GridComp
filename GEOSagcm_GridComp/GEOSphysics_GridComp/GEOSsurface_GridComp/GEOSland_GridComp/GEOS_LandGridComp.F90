@@ -1380,6 +1380,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BUI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'VPD',         CHILD_ID = IGNI,  __RC__ )
     end if
 
 
