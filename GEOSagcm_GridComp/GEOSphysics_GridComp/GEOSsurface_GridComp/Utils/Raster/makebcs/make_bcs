@@ -302,15 +302,15 @@ if ($isEASE > 0) then
 else
    echo "Options for ocean horizontal resolution:"
    echo " "
-   echo "   ${C2}O1     --  Low-Resolution  Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:    360x180 )"
-   echo "   ${C2}O2     --  Med-Resolution  Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean:   1440x720 )"
-   echo "   ${C2}O3     --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean:   2880x1440)"
-   echo "   ${C2}T2     --  Med-Resolution  Tripolar 1   deg${CR} (MOM-Tripolar-Ocean:    360x200 )"
-   echo "   ${C2}T3     --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:    720x410 )"
-   echo "   ${C2}T4     --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean:   1440x1080)"
-   echo "   ${C2}T1MOM6 --  Low-Resolution  Tripolar 5   deg${CR} (MOM6-Tripolar-Ocean:    72x36  )"
-#  echo "   ${C2}T2MOM6 --  Med-Resolution  Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:   360x210 )"
-   echo "   ${C2}T4MOM6 --  High-Resolution Tripolar 1/4 deg${CR} (MOM6-Tripolar-Ocean:  1440x1080)"
+   echo "   ${C2}O1     --  Reynolds ${CR} (Lon/Lat Data-Ocean:    360x180 )"
+   echo "   ${C2}O2     --  Reynolds ${CR} (Lon/Lat Data-Ocean:   1440x720 )"
+   echo "   ${C2}O3     --  OSTIA    ${CR} (Lon/Lat Data-Ocean:   2880x1440)"
+   echo "   ${C2}T2     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:   360x200 )"
+   echo "   ${C2}T3     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:   720x410 )"
+   echo "   ${C2}T4     --  Tripolar ${CR} (MOM5-Tripolar-Ocean:  1440x1080)"
+   echo "   ${C2}T1MOM6 --  Tripolar ${CR} (MOM6-Tripolar-Ocean:    72x36  )"
+   echo "   ${C2}T3MOM6 --  Tripolar ${CR} (MOM6-Tripolar-Ocean:   580x458 )"
+   echo "   ${C2}T4MOM6 --  Tripolar ${CR} (MOM6-Tripolar-Ocean:  1440x1080)"
    echo "   ${C2}CS     --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean        )"
    echo " "
 
@@ -336,7 +336,7 @@ ORSLV:
           $orslv != 'T3'     & \
           $orslv != 'T4'     & \
           $orslv != 'T1MOM6' & \
-          $orslv != 'T2MOM6' & \
+	  $orslv != 'T3MOM6' & \
           $orslv != 'T4MOM6' & \
           $orslv != 'CS')    then
           echo " ${C1} Invalid choice.  Note that entries are case-sensitive.  Try again:${CR}"
@@ -426,7 +426,7 @@ else
 endif
 
 if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
-    $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
+    $orslv == T1MOM6 | $orslv == T3MOM6 | $orslv == T4MOM6 ) then
 
 # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
 # -------------------------------------------------------------------------------------------------
@@ -489,28 +489,28 @@ if( $orslv == O3 ) then
     @ jmo = 1440  # Lat/Lon Data-Ocean (OSTIA 1/8-deg)
 endif
 if( $orslv == T2 ) then
-    @ imo = 360  # MOM Tripolar-Ocean
-    @ jmo = 200  # MOM Tripolar-Ocean
+    @ imo = 360   # MOM5 Tripolar-Ocean
+    @ jmo = 200   # MOM5 Tripolar-Ocean
 endif
 if( $orslv == T3 ) then
-    @ imo = 720   # MOM Tripolar-Ocean
-    @ jmo = 410   # MOM Tripolar-Ocean
+    @ imo = 720   # MOM5 Tripolar-Ocean
+    @ jmo = 410   # MOM5 Tripolar-Ocean
 endif
 if( $orslv == T4 ) then
-    @ imo = 1440   # MOM Tripolar-Ocean
-    @ jmo = 1080   # MOM Tripolar-Ocean
+    @ imo = 1440  # MOM5 Tripolar-Ocean
+    @ jmo = 1080  # MOM5 Tripolar-Ocean
 endif
 if( $orslv == T1MOM6 ) then
-    @ imo = 72  # MOM6 Tripolar-Ocean
-    @ jmo = 36  # MOM6 Tripolar-Ocean
+    @ imo = 72    # MOM6 Tripolar-Ocean
+    @ jmo = 36    # MOM6 Tripolar-Ocean
 endif
-if( $orslv == T2MOM6 ) then
-    @ imo = 360  # MOM6 Tripolar-Ocean
-    @ jmo = 210  # MOM6 Tripolar-Ocean
+if( $orslv == T3MOM6 ) then
+    @ imo = 540   # MOM6 Tripolar-Ocean
+    @ jmo = 458   # MOM6 Tripolar-Ocean
 endif
 if( $orslv == T4MOM6 ) then
-    @ imo = 1440   # MOM6 Tripolar-Ocean
-    @ jmo = 1080   # MOM6 Tripolar-Ocean
+    @ imo = 1440  # MOM6 Tripolar-Ocean
+    @ jmo = 1080  # MOM6 Tripolar-Ocean
 endif
 
 if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
@@ -518,13 +518,13 @@ if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
     set     DATENAME = DE
     set     POLENAME = PE
 endif
-set  MOM_VERSION = MOM5
+set  MOM_VERSION = UNDEF
 if( $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM5
     set     DATENAME = TM
     set     POLENAME = TM
-else if ( $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
+else if ( $orslv == T1MOM6 | $orslv == T3MOM6 | $orslv == T4MOM6 ) then
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM6
     set     DATENAME = TM
@@ -811,10 +811,12 @@ cd $BCDIR
 /bin/ln -s $bin_dir
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/1440x1080 data/MOM5/1440x1080
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/72x36 data/MOM6/72x36
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/540x458 data/MOM6/540x458
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
@@ -988,11 +990,14 @@ cd $BCDIR
 /bin/ln -s $bin_dir
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/1440x1080 data/MOM5/1440x1080
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/72x36 data/MOM6/72x36
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/540x458 data/MOM6/540x458
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/1440x1080 data/MOM6/1440x1080
+
 
 cd data 
 cd ../
@@ -1173,10 +1178,12 @@ cd $BCDIR
 /bin/ln -s $bin_dir
 source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/1440x1080 data/MOM5/1440x1080
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/72x36 data/MOM6/72x36
+ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/540x458 data/MOM6/540x458
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
