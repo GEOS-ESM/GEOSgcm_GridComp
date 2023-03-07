@@ -305,7 +305,7 @@
       open (IUNIT, FILE=trim(GridDir)//trim(FACEFILE), &
             ACCESS='DIRECT', RECL=LENGTH, STATUS='OLD',convert='big_endian')
 
-      read (IUNIT,REC=5) rA 
+!      read (IUNIT,REC=5) rA 
       read (IUNIT,REC=6) XG
       read (IUNIT,REC=7) YG
 

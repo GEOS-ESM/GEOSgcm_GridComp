@@ -491,6 +491,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      else
         call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
         VERIFY_(STATUS)
+     end if
    else
      call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
      KPAR = data_kpar
