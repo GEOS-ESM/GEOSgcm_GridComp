@@ -58,7 +58,7 @@ module CanopyStateType
     procedure, public :: Init
   
   end type canopystate_type
-  type(canopystate_type), public, target :: canopystate_inst
+  type(canopystate_type), public, target, save :: canopystate_inst
 
 contains
 

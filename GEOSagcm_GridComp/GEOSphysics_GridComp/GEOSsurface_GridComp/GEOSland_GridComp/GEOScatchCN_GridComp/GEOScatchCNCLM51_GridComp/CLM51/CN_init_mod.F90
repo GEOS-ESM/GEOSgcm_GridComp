@@ -16,7 +16,7 @@ module CN_initMod
   use TemperatureType,        only : temperature_type
   use SoilStateType,          only : soilstate_type
   use WaterDiagnosticBulkType, only : waterdiagnosticbulk_type
-  use CanopyStateType,        only : canopystate_type
+  use CanopyStateType
   use SolarAbsorbedType,      only : solarabs_type
   use SurfaceAlbedoType,      only : surfalb_type
   use OzoneBaseMod,           only : ozone_base_type
@@ -97,7 +97,7 @@ module CN_initMod
   type(soilstate_type), public                    :: soilstate_inst
   type(waterdiagnosticbulk_type), public          :: waterdiagnosticbulk_inst
   type(wateratm2lnd_type), public                  :: wateratm2lnd_inst
-  type(canopystate_type), public                   :: canopystate_inst
+ ! type(canopystate_type), public                   :: canopystate_inst
   type(solarabs_type), public                      :: solarabs_inst
   type(surfalb_type), public                       :: surfalb_inst
   type(ozone_base_type), public                    :: ozone_inst
