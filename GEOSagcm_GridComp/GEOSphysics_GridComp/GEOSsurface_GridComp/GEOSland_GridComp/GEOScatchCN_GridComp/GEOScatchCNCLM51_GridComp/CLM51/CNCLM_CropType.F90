@@ -32,7 +32,7 @@ module CropType
      procedure , public :: Init
 
  end type crop_type
- type(crop_type), public, target :: crop_inst
+ type(crop_type), public, target, save :: crop_inst
 
 contains
 

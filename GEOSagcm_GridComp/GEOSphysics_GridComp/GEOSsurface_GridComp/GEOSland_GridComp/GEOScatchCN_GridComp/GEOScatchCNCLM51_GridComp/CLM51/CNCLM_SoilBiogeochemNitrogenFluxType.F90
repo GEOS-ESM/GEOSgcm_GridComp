@@ -144,7 +144,7 @@ module SoilBiogeochemNitrogenFluxType
      procedure , public  :: Init
 
   end type soilbiogeochem_nitrogenflux_type
-  type(soilbiogeochem_nitrogenflux_type), public, target :: soilbiogeochem_nitrogenflux_inst
+  type(soilbiogeochem_nitrogenflux_type), public, target, save :: soilbiogeochem_nitrogenflux_inst
 
 contains
 

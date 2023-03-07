@@ -57,7 +57,7 @@ module CNDVType
      procedure , public :: Init
 
  end type dgvs_type
- type(dgvs_type), public, target :: dgvs_inst
+ type(dgvs_type), public, target, save :: dgvs_inst
 
 contains
 

@@ -481,7 +481,7 @@ module CNVegCarbonFluxType
 
  end type cnveg_carbonflux_type
 
-type(cnveg_carbonflux_type), public, target :: cnveg_carbonflux_inst
+type(cnveg_carbonflux_type), public, target, save :: cnveg_carbonflux_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

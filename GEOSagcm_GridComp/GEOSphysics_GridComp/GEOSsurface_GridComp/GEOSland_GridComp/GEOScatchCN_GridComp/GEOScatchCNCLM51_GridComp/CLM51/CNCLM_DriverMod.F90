@@ -165,42 +165,42 @@ contains
  ! jkolassa: not sure the below type declarations are necessary or whether use statements 
  ! above are enough
 
- type(bounds_type)                      :: bounds
- type(clumpfilter)                      :: filter
- type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
- type(soilbiogeochem_carbonflux_type)   :: c13_soilbiogeochem_carbonflux_inst
- type(soilbiogeochem_carbonflux_type)   :: c14_soilbiogeochem_carbonflux_inst
- type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
- type(gridcell_type)                    :: grc
- type(cn_vegetation_type)               :: bgc_vegetation_inst
- type(saturated_excess_runoff_type)     :: saturated_excess_runoff_inst
- type(wateratm2lndbulk_type)            :: wateratm2lndbulk_inst
- type(soilstate_type)                   :: soilstate_inst 
- type(atm2lnd_type)                     :: atm2lnd_inst
- type(temperature_type)                 :: temperature_inst
- type(waterdiagnosticbulk_type)         :: waterdiagnosticbulk_inst
- type(cnveg_state_type)                 :: cnveg_state_inst
- type(waterstatebulk_type)              :: waterstatebulk_inst
- type(waterfluxbulk_type)               :: waterfluxbulk_inst
- type(frictionvel_type)                 :: frictionvel_inst
- type(active_layer_type)                :: active_layer_inst
- type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
- type(soilbiogeochem_carbonstate_type)  :: c13_soilbiogeochem_carbonstate_inst
- type(soilbiogeochem_carbonstate_type)  :: c14_soilbiogeochem_carbonstate_inst
- type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
- type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
- type(crop_type)                        :: crop_inst
- type(ch4_type)                         :: ch4_inst
- type(photosyns_type)                   :: photosyns_inst
- type(energyflux_type)                  :: energyflux_inst
- type(fireemis_type)                    :: fireemis_inst
- type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
- type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
- type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
- type(cnveg_nitrogenstate_type)         :: cnveg_nitrogenstate_inst
- type(cnfire_li2014_type)               :: cnfire_li2014_inst
- type(cnfire_li2016_type)               :: cnfire_li2016_inst
- type(cnfire_li2021_type)               :: cnfire_li2021_inst
+! type(bounds_type)                      :: bounds
+! type(clumpfilter)                      :: filter
+! type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
+! type(soilbiogeochem_carbonflux_type)   :: c13_soilbiogeochem_carbonflux_inst
+! type(soilbiogeochem_carbonflux_type)   :: c14_soilbiogeochem_carbonflux_inst
+! type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
+! type(gridcell_type)                    :: grc
+! type(cn_vegetation_type)               :: bgc_vegetation_inst
+! type(saturated_excess_runoff_type)     :: saturated_excess_runoff_inst
+! type(wateratm2lndbulk_type)            :: wateratm2lndbulk_inst
+! type(soilstate_type)                   :: soilstate_inst 
+! type(atm2lnd_type)                     :: atm2lnd_inst
+! type(temperature_type)                 :: temperature_inst
+! type(waterdiagnosticbulk_type)         :: waterdiagnosticbulk_inst
+! type(cnveg_state_type)                 :: cnveg_state_inst
+! type(waterstatebulk_type)              :: waterstatebulk_inst
+! type(waterfluxbulk_type)               :: waterfluxbulk_inst
+! type(frictionvel_type)                 :: frictionvel_inst
+! type(active_layer_type)                :: active_layer_inst
+! type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
+! type(soilbiogeochem_carbonstate_type)  :: c13_soilbiogeochem_carbonstate_inst
+! type(soilbiogeochem_carbonstate_type)  :: c14_soilbiogeochem_carbonstate_inst
+! type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
+! type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
+! type(crop_type)                        :: crop_inst
+! type(ch4_type)                         :: ch4_inst
+! type(photosyns_type)                   :: photosyns_inst
+! type(energyflux_type)                  :: energyflux_inst
+! type(fireemis_type)                    :: fireemis_inst
+! type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
+! type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
+! type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
+! type(cnveg_nitrogenstate_type)         :: cnveg_nitrogenstate_inst
+! type(cnfire_li2014_type)               :: cnfire_li2014_inst
+! type(cnfire_li2016_type)               :: cnfire_li2016_inst
+! type(cnfire_li2021_type)               :: cnfire_li2021_inst
 
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
@@ -660,10 +660,17 @@ contains
   integer :: n, p, nv, nc, nz, np
 
   real(r8), pointer :: elai_clm(:)
+  real(r8), pointer :: esai_clm(:)
+  real(r8), pointer :: tlai_clm(:)
+  real(r8), pointer :: tsai_clm(:)
+
   !------------------------------
 
   elai_clm => canopystate_inst%elai_patch
-  
+  esai_clm => canopystate_inst%esai_patch
+  tlai_clm => canopystate_inst%tlai_patch  
+  tsai_clm => canopystate_inst%tsai_patch
+
                     elai = 0.
   if(present(esai)) esai = 0.
   if(present(tlai)) tlai = 0.
@@ -682,9 +689,9 @@ contains
 ! ---------------------------------
           if(ityp(nc,nv,nz)==p .and. ityp(nc,nv,nz)>0 .and. fveg(nc,nv,nz)>1.e-4) then
                               elai(nc,nv,nz) = elai_clm(np)
-            if(present(esai)) esai(nc,nv,nz) = canopystate_inst%esai_patch(np)
-            if(present(tlai)) tlai(nc,nv,nz) = canopystate_inst%tlai_patch(np)
-            if(present(tsai)) tsai(nc,nv,nz) = canopystate_inst%tsai_patch(np)
+            if(present(esai)) esai(nc,nv,nz) = esai_clm(np)
+            if(present(tlai)) tlai(nc,nv,nz) = tlai_clm(np)
+            if(present(tsai)) tsai(nc,nv,nz) = tsai_clm(np)
           endif
 
         end do ! defined veg loop

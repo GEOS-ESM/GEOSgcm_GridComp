@@ -365,7 +365,7 @@ module CNVegNitrogenFluxType
 
  end type cnveg_nitrogenflux_type
 
-type(cnveg_nitrogenflux_type), public, target :: cnveg_nitrogenflux_inst
+type(cnveg_nitrogenflux_type), public, target, save :: cnveg_nitrogenflux_inst
 
 contains
 

@@ -8,53 +8,53 @@ module CN_initMod
   use clm_varpar        , only : VAR_COL, VAR_PFT, clm_varpar_init
   use clm_varctl        , only : use_century_decomp, init_clm_varctl
   use clm_time_manager  , only : get_step_size
-  use decompMod         , only : bounds_type
+  use decompMod      
   use filterMod
-  use CNVegNitrogenStateType, only : cnveg_nitrogenstate_type
-  use CNVegCarbonStateType,   only : cnveg_carbonstate_type
-  use atm2lndType,            only : atm2lnd_type
-  use TemperatureType,        only : temperature_type
-  use SoilStateType,          only : soilstate_type
-  use WaterDiagnosticBulkType, only : waterdiagnosticbulk_type
+  use CNVegNitrogenStateType
+  use CNVegCarbonStateType
+  use atm2lndType
+  use TemperatureType
+  use SoilStateType
+  use WaterDiagnosticBulkType
   use CanopyStateType
-  use SolarAbsorbedType,      only : solarabs_type
-  use SurfaceAlbedoType,      only : surfalb_type
-  use OzoneBaseMod,           only : ozone_base_type
-  use pftconMod             , only : pftcon
-  use WaterFluxType,          only : waterflux_type
-  use SoilBiogeochemCarbonStateType, only : soilbiogeochem_carbonstate_type
-  use SoilBiogeochemNitrogenStateType, only : soilbiogeochem_nitrogenstate_type
-  use CNProductsMod,          only : cn_products_type
-  use SoilBiogeochemStateType, only : soilbiogeochem_state_type
-  use CNVegStateType,         only : cnveg_state_type
-  use CNVegCarbonFluxType,    only : cnveg_carbonflux_type
-  use CNVegNitrogenFluxType,  only : cnveg_nitrogenflux_type
-  use GridcellType     ,      only :  grc
-  use WaterFluxBulkType,      only : waterfluxbulk_type
-  use SoilBiogeochemCarbonFluxType, only : soilbiogeochem_carbonflux_type
-  use SoilBiogeochemNitrogenFluxType, only : soilbiogeochem_nitrogenflux_type
-  use PatchType        ,      only : patch
-  use ColumnType       ,      only : col
-  use ch4Mod,                 only : ch4_type
-  use SoilBiogeochemDecompCascadeConType, only : decomp_cascade_type, init_decomp_cascade_constants
-  use ActiveLayerMod,         only : active_layer_type
-  use CropType,               only : crop_type
-  use CNDVType,               only : dgvs_type
+  use SolarAbsorbedType
+  use SurfaceAlbedoType
+  use OzoneBaseMod
+  use pftconMod 
+  use WaterFluxType
+  use SoilBiogeochemCarbonStateType
+  use SoilBiogeochemNitrogenStateType
+  use CNProductsMod
+  use SoilBiogeochemStateType
+  use CNVegStateType
+  use CNVegCarbonFluxType
+  use CNVegNitrogenFluxType
+  use GridcellType  
+  use WaterFluxBulkType
+  use SoilBiogeochemCarbonFluxType
+  use SoilBiogeochemNitrogenFluxType
+  use PatchType      
+  use ColumnType  
+  use ch4Mod
+  use SoilBiogeochemDecompCascadeConType, only : init_decomp_cascade_constants
+  use ActiveLayerMod
+  use CropType
+  use CNDVType
   use LandunitType          , only : lun
   use RootBiophysMod
   use CNMRespMod         , only : readCNMRespParams => readParams
   use CNSharedParamsMod  , only : CNParamsReadShared
   use spmdMod
-  use Wateratm2lndBulkType,   only : wateratm2lndbulk_type
-  use WaterDiagnosticBulkType, only : waterdiagnosticbulk_type
-  use Wateratm2lndType,       only : wateratm2lnd_type
-  use EnergyFluxType,         only : energyflux_type
-  use SaturatedExcessRunoffMod, only : saturated_excess_runoff_type
-  use WaterStateBulkType,     only : waterstatebulk_type
-  use WaterStateType,         only : waterstate_type
-  use FrictionVelocityMod,    only : frictionvel_type
+  use Wateratm2lndBulkType
+  use WaterDiagnosticBulkType
+  use Wateratm2lndType
+  use EnergyFluxType
+  use SaturatedExcessRunoffMod
+  use WaterStateBulkType
+  use WaterStateType
+  use FrictionVelocityMod
   use PhotosynthesisMod
-  use CNVegetationFacade, only : cn_vegetation_type
+  use CNVegetationFacade
   use initSubgridMod
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
@@ -84,46 +84,46 @@ module CN_initMod
  type(photosyns_type), public            :: photosyns_inst
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
- type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
- type(wateratm2lndbulk_type), public             :: wateratm2lndbulk_inst
- type(bounds_type), public                       :: bounds
+! type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
+! type(wateratm2lndbulk_type), public             :: wateratm2lndbulk_inst
+! type(bounds_type), public                       :: bounds
 !  type(patch_type)                        :: patch
 !  type(column_type)                       :: col
 !  type(landunit_type)                     :: lun
-  type(cnveg_nitrogenstate_type), public          :: cnveg_nitrogenstate_inst
-  type(cnveg_carbonstate_type), public            :: cnveg_carbonstate_inst
-  type(atm2lnd_type), public                      :: atm2lnd_inst
-  type(temperature_type), public                  :: temperature_inst
-  type(soilstate_type), public                    :: soilstate_inst
-  type(waterdiagnosticbulk_type), public          :: waterdiagnosticbulk_inst
-  type(wateratm2lnd_type), public                  :: wateratm2lnd_inst
+!  type(cnveg_nitrogenstate_type), public          :: cnveg_nitrogenstate_inst
+!  type(cnveg_carbonstate_type), public            :: cnveg_carbonstate_inst
+!  type(atm2lnd_type), public                      :: atm2lnd_inst
+!  type(temperature_type), public                  :: temperature_inst
+!  type(soilstate_type), public                    :: soilstate_inst
+!  type(waterdiagnosticbulk_type), public          :: waterdiagnosticbulk_inst
+!  type(wateratm2lnd_type), public                  :: wateratm2lnd_inst
  ! type(canopystate_type), public                   :: canopystate_inst
-  type(solarabs_type), public                      :: solarabs_inst
-  type(surfalb_type), public                       :: surfalb_inst
-  type(ozone_base_type), public                    :: ozone_inst
+ ! type(solarabs_type), public                      :: solarabs_inst
+!  type(surfalb_type), public                       :: surfalb_inst
+!  type(ozone_base_type), public                    :: ozone_inst
 !  type(pftcon_type)                       :: pftcon
-  type(waterflux_type), public                     :: waterflux_inst
-  type(soilbiogeochem_carbonstate_type), public    :: soilbiogeochem_carbonstate_inst
-  type(soilbiogeochem_nitrogenstate_type), public  :: soilbiogeochem_nitrogenstate_inst
-  type(cn_products_type), public                   :: c_products_inst
-  type(cn_products_type), public                   :: n_products_inst
-  type(soilbiogeochem_state_type), public          :: soilbiogeochem_state_inst
-  type(cnveg_state_type), public                   :: cnveg_state_inst
-  type(cnveg_carbonflux_type), public              :: cnveg_carbonflux_inst
-  type(cnveg_nitrogenflux_type), public            :: cnveg_nitrogenflux_inst
+!  type(waterflux_type), public                     :: waterflux_inst
+!  type(soilbiogeochem_carbonstate_type), public    :: soilbiogeochem_carbonstate_inst
+!  type(soilbiogeochem_nitrogenstate_type), public  :: soilbiogeochem_nitrogenstate_inst
+!  type(cn_products_type), public                   :: c_products_inst
+!  type(cn_products_type), public                   :: n_products_inst
+!  type(soilbiogeochem_state_type), public          :: soilbiogeochem_state_inst
+!  type(cnveg_state_type), public                   :: cnveg_state_inst
+!  type(cnveg_carbonflux_type), public              :: cnveg_carbonflux_inst
+!  type(cnveg_nitrogenflux_type), public            :: cnveg_nitrogenflux_inst
   !type(gridcell_type)                     :: grc
-  type(soilbiogeochem_carbonflux_type), public     :: soilbiogeochem_carbonflux_inst
-  type(soilbiogeochem_nitrogenflux_type), public   :: soilbiogeochem_nitrogenflux_inst
-  type(ch4_type), public                           :: ch4_inst
-  type(crop_type), public                          :: crop_inst
-  type(dgvs_type), public                          :: dgvs_inst
-  type(energyflux_type), public                    :: energyflux_inst
-  type(waterstatebulk_type), public                :: waterstatebulk_inst
-  type(waterstate_type), public                    :: waterstate_inst
-  type(frictionvel_type), public                   :: frictionvel_inst
+!  type(soilbiogeochem_carbonflux_type), public     :: soilbiogeochem_carbonflux_inst
+!  type(soilbiogeochem_nitrogenflux_type), public   :: soilbiogeochem_nitrogenflux_inst
+!  type(ch4_type), public                           :: ch4_inst
+!  type(crop_type), public                          :: crop_inst
+!  type(dgvs_type), public                          :: dgvs_inst
+!  type(energyflux_type), public                    :: energyflux_inst
+!  type(waterstatebulk_type), public                :: waterstatebulk_inst
+!  type(waterstate_type), public                    :: waterstate_inst
+!  type(frictionvel_type), public                   :: frictionvel_inst
    type(cn_vegetation_type), public                :: bgc_vegetation_inst
-  type(waterfluxbulk_type), public                 :: waterfluxbulk_inst
-  type(active_layer_type), public                  :: active_layer_inst
+!  type(waterfluxbulk_type), public                 :: waterfluxbulk_inst
+ ! type(active_layer_type), public                  :: active_layer_inst
 
 
 

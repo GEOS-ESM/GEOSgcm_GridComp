@@ -62,7 +62,7 @@ module SoilBiogeochemCarbonStateType
   
 
   end type soilbiogeochem_carbonstate_type
-  type(soilbiogeochem_carbonstate_type), public, target :: soilbiogeochem_carbonstate_inst
+  type(soilbiogeochem_carbonstate_type), public, target, save :: soilbiogeochem_carbonstate_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

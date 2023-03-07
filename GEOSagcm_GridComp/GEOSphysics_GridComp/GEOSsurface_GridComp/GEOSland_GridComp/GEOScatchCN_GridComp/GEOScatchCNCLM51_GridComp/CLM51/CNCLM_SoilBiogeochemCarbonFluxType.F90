@@ -79,7 +79,7 @@ module SoilBiogeochemCarbonFluxType
      procedure , public  :: Init
 
   end type soilbiogeochem_carbonflux_type
-  type(soilbiogeochem_carbonflux_type), public, target :: soilbiogeochem_carbonflux_inst
+  type(soilbiogeochem_carbonflux_type), public, target, save :: soilbiogeochem_carbonflux_inst
 
 contains
 

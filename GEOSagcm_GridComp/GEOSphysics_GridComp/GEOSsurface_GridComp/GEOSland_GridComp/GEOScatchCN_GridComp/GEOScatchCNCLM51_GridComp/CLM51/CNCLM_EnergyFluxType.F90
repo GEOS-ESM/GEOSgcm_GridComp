@@ -126,7 +126,7 @@ module EnergyFluxType
     procedure , public :: Init
 
   end type energyflux_type
-  type(energyflux_type), public, target :: energyflux_inst
+  type(energyflux_type), public, target, save :: energyflux_inst
 
 contains
 

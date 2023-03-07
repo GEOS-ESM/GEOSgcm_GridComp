@@ -71,7 +71,7 @@ module SolarAbsorbedType
     procedure, public :: Init
 
  end type solarabs_type
- type(solarabs_type), public, target :: solarabs_inst
+ type(solarabs_type), public, target, save :: solarabs_inst
 
 contains
 

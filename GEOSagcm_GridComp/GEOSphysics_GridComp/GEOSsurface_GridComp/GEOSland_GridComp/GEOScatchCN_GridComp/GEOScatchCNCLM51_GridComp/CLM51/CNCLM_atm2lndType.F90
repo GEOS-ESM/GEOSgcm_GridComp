@@ -66,7 +66,7 @@ module atm2lndType
      procedure, public :: Init
 
 end type atm2lnd_type                                                                                       
-type(atm2lnd_type), public, target :: atm2lnd_inst 
+type(atm2lnd_type), public, target, save :: atm2lnd_inst 
 
 contains
 

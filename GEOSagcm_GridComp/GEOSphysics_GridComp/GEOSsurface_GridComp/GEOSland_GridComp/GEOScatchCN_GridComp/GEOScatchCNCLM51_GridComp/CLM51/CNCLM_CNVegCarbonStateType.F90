@@ -203,7 +203,7 @@ module CNVegCarbonStateType
 
  end type cnveg_carbonstate_type
 
-type(cnveg_carbonstate_type), public, target :: cnveg_carbonstate_inst
+type(cnveg_carbonstate_type), public, target, save :: cnveg_carbonstate_inst
 
   real(r8), public  :: spinup_factor_deadwood = 1.0_r8        ! Spinup factor used for this simulation
   real(r8), public  :: spinup_factor_AD       = 10.0_r8       ! Spinup factor used when in Accelerated Decomposition mode

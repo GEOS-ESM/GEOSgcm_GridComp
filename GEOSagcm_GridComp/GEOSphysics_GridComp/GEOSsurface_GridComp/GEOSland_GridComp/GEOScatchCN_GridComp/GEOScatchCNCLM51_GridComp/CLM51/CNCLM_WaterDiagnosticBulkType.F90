@@ -62,7 +62,7 @@ module WaterDiagnosticBulkType
      procedure, public :: Init
 
 end type waterdiagnosticbulk_type
-type(waterdiagnosticbulk_type), public, target :: waterdiagnosticbulk_inst
+type(waterdiagnosticbulk_type), public, target, save :: waterdiagnosticbulk_inst
 
 contains
 

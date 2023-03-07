@@ -285,7 +285,7 @@ module pftconMod
 
   end type pftcon_type
 
-type(pftcon_type), public :: pftcon
+type(pftcon_type), public, target, save :: pftcon
 
   integer, public, parameter :: pftname_len = 40         ! max length of pftname       
   character(len=pftname_len), public :: pftname(0:mxpft) ! PFT description

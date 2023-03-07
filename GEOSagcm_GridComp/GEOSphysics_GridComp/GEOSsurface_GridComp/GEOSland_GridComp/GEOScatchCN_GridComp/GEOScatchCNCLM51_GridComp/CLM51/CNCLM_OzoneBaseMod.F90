@@ -25,7 +25,7 @@ module OzoneBaseMod
     procedure, public :: Init
 
   end type ozone_base_type
-  type(ozone_base_type), public, target :: ozone_inst
+  type(ozone_base_type), public, target, save :: ozone_inst
 
 contains
 

@@ -52,7 +52,7 @@ module WaterStateType
     procedure , public :: Init
 
   end type waterstate_type
-  type(waterstate_type), public, target :: waterstate_inst
+  type(waterstate_type), public, target, save :: waterstate_inst
 
 contains
 

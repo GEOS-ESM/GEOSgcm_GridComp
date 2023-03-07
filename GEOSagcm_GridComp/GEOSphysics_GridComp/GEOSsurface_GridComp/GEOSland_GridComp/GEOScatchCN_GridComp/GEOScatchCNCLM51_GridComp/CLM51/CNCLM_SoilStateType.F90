@@ -77,7 +77,7 @@ module SoilStateType
      procedure, public :: Init
 
 end type soilstate_type
-type(soilstate_type), public, target :: soilstate_inst
+type(soilstate_type), public, target, save :: soilstate_inst
 
 contains 
 

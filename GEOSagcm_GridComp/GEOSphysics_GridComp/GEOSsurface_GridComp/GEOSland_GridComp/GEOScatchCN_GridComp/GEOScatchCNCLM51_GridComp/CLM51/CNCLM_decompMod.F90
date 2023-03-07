@@ -35,7 +35,7 @@ module decompMod
      procedure, public :: Init
 
   end type bounds_type
-  type(bounds_type), public :: bounds
+  type(bounds_type), public, target, save :: bounds
 
  contains
 

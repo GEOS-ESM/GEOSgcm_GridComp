@@ -45,7 +45,7 @@ module SoilBiogeochemStateType
      procedure, public :: Init
 
   end type soilbiogeochem_state_type
-  type(soilbiogeochem_state_type), public, target :: soilbiogeochem_state_inst
+  type(soilbiogeochem_state_type), public, target, save :: soilbiogeochem_state_inst
 
 contains
 

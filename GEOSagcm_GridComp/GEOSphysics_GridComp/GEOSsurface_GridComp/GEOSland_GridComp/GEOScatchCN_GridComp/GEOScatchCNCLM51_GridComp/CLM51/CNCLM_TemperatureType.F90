@@ -119,7 +119,7 @@ module TemperatureType
      procedure, public :: Init
 
 end type temperature_type
-type(temperature_type), public, target :: temperature_inst
+type(temperature_type), public, target, save :: temperature_inst
 
  contains
 

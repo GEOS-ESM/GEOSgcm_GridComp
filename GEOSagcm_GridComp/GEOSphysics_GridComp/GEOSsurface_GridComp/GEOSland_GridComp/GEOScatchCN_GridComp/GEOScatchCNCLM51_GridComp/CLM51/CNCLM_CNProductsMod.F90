@@ -67,7 +67,7 @@ module CNProductsMod
      procedure, public  :: Init
  
   end type cn_products_type
-  type(cn_products_type), public, target :: cn_products_inst
+  type(cn_products_type), public, target, save :: cn_products_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

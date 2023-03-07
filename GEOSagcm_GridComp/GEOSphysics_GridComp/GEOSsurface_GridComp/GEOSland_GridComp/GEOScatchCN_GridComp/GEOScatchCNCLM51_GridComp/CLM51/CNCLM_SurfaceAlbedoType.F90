@@ -67,7 +67,7 @@ module SurfaceAlbedoType
      procedure, public :: Init
 
 end type surfalb_type
-type(surfalb_type), public, target :: surfalb_inst
+type(surfalb_type), public, target, save :: surfalb_inst
 
 contains
 
