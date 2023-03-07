@@ -1,6 +1,4 @@
 
-
-
 #ifdef MESH
 #define LRRasterize2Mem  LRRasterize2Mem0
 #define LRRasterize2File  LRRasterize2File0
@@ -8,12 +6,13 @@
 #else
 #define POLYSIZE size(xv,3)
 #endif
+#define RASTERUNDEF  -999
 
 !BOP
 ! !IROUTINE: LRRasterize -- Rasterizes a 2-D array of polygons.
 
   subroutine LRRasterize2File(GridName, xv,yv,nc,nr,xmn,xmx,ymn,ymx,     &
-                              SurfaceType, Verb, Here,jseg, tol      )
+                              SurfaceType, Verb, Here,jseg, tol, rc   )
 
 ! This routine rasterizes a grid defined by a 2-D array of polygons.
 ! The raster value assigned each pixel is either sign((I*pushleft + J),sgn),
@@ -55,22 +54,23 @@
 
     character*(*),   intent(INOUT)  :: GridName  ! Raster file name
 #ifdef MESH
-    REAL_,  intent(INOUT)  :: xv(:,:) ! X coordinates of vertices
-    REAL_,  intent(INOUT)  :: yv(:,:) ! Y coordinates of vertices
+    real(kind=8),  intent(INOUT)  :: xv(:,:) ! X coordinates of vertices
+    real(kind=8),  intent(INOUT)  :: yv(:,:) ! Y coordinates of vertices
 #else
-    REAL_,  intent(INOUT)  :: xv(:,:,:) ! X coordinates of vertices
-    REAL_,  intent(INOUT)  :: yv(:,:,:) ! Y coordinates of vertices 
+    real(kind=8),  intent(INOUT)  :: xv(:,:,:) ! X coordinates of vertices
+    real(kind=8),  intent(INOUT)  :: yv(:,:,:) ! Y coordinates of vertices 
 #endif
     integer, optional, intent(IN) :: nc,nr ! Raster field sizes
-    REAL_,   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
-    REAL_,   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
-    REAL_,   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
-    REAL_,   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
+    real(kind=8),   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
+    real(kind=8),   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
+    real(kind=8),   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
+    real(kind=8),   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
     logical, optional, intent(IN) :: verb  ! Verbose
     logical, optional, intent(IN) :: here  ! write here
     integer, optional, intent(IN) :: SurfaceType
     integer, optional, intent(IN) :: jseg
-    REAL_, optional   :: tol
+    real(kind=8), optional   :: tol
+    integer, optional, intent(out)   :: rc
 
     character*(128)       :: TileFile
     character*(128)       :: TilDir='', RstDir=''
@@ -172,7 +172,7 @@
 
   subroutine LRRasterize2Mem(Raster,xv,yv,Tilefile,    &
                              xmn,xmx,ymn,ymx,          &
-                             SurfaceType,verb,jseg, tol     )
+                             SurfaceType,verb,jseg, tol, rc )
 
 ! This routine rasterizes a grid defined by a 2-D array of polygons.
 ! The raster value assigned is an index to the table.
@@ -191,41 +191,42 @@
 
     integer,       intent(INOUT) :: Raster(:,:)  ! Raster field to be filled
 #ifdef MESH
-    REAL_,         intent(INOUT) :: xv(:,:  )    ! X coordinates of vertices
-    REAL_,         intent(INOUT) :: yv(:,:  )    ! Y coordinates of vertices 
+    real(kind=8),         intent(INOUT) :: xv(:,:  )    ! X coordinates of vertices
+    real(kind=8),         intent(INOUT) :: yv(:,:  )    ! Y coordinates of vertices 
 #else
-    REAL_,         intent(INOUT) :: xv(:,:,:)    ! X coordinates of vertices
-    REAL_,         intent(INOUT) :: yv(:,:,:)    ! Y coordinates of vertices 
+    real(kind=8),         intent(INOUT) :: xv(:,:,:)    ! X coordinates of vertices
+    real(kind=8),         intent(INOUT) :: yv(:,:,:)    ! Y coordinates of vertices 
 #endif
     character*(*), intent(IN   ) :: TileFile
 
-    REAL_,   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
-    REAL_,   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
-    REAL_,   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
-    REAL_,   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
+    real(kind=8),   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
+    real(kind=8),   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
+    real(kind=8),   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
+    real(kind=8),   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
     logical, optional, intent(IN) :: verb  ! Verbose
     integer, optional, intent(IN) :: SurfaceType
     integer, optional, intent(IN) :: jseg
-    REAL_, optional   :: tol
+    real(kind=8), optional   :: tol
+    integer, optional, intent(out) :: rc
 
     !  X abd Y bounds of each polygon
 
-    REAL_ ::  xmin, xmax
-    REAL_ ::  ymin, ymax
-    REAL_ ::  minx, miny
-    REAL_ ::  maxx, maxy
+    real(kind=8) ::  xmin, xmax
+    real(kind=8) ::  ymin, ymax
+    real(kind=8) ::  minx, miny
+    real(kind=8) ::  maxx, maxy
 
     !  x and y coordinates of the Raster grid
 
-    REAL_, dimension(size(Raster,1))        :: xs, xcs, xss
-    REAL_, dimension(size(Raster,2))        :: ys, ycs, yss, da
+    real(kind=8), dimension(size(Raster,1))        :: xs, xcs, xss
+    real(kind=8), dimension(size(Raster,2))        :: ys, ycs, yss, da
 
     integer :: IM, JM, NV                   ! Shape of input grid
-    REAL_   :: dx, dy, dxi, dyi             ! Grid spacing of raster grid
+    real(kind=8)   :: dx, dy, dxi, dyi             ! Grid spacing of raster grid
     integer :: xsize, ysize                 ! Dimensions of Raster grid
 
     integer :: i, j, jn, n, ib, jb, fill, uType, js, k
-    REAL_   :: range, d2r, r2d, ddx, grid_ymin, grid_ymax, xc, yc, Area, xx
+    real(kind=8)   :: range, d2r, r2d, ddx, grid_ymin, grid_ymax, xc, yc, Area, xx
     logical :: DoZip, uVerb
     integer :: idx, ct
     integer :: count0,count1,count_rate
@@ -234,18 +235,18 @@
     character*(128)  :: GridName, TilFile
 
     integer, allocatable :: iTable(:,:)
-    REAL_,   allocatable :: rTable(:,:)
+    real(kind=8),   allocatable :: rTable(:,:)
 
     integer :: useg, unit, fq
 
 
     integer, dimension(POLYSIZE) &
             :: nxt
-    REAL_,   dimension(POLYSIZE) &
+    real(kind=8),   dimension(POLYSIZE) &
             :: xvc, yvc, xvs, yvs, xrd, yrd, x3, y3, z3, &
                dx3, dy3, dz3, x31, x32, y31, y32, z31, z32, &
                dx4, dy4, x4, y4,   xu,  yu
-    REAL_   :: tol_
+    real(kind=8)   :: tol_
 
 ! Process optionals
 
@@ -343,8 +344,8 @@
     dxi   = 1.0/dx
     dyi   = 1.0/dy
 
-    d2r    = (2._8*RASTER_PI)/range
-    r2d    = range/(2._8*RASTER_PI)
+    d2r    = (2._8*PI)/range
+    r2d    = range/(2._8*PI)
 
     !  Report
 
@@ -557,14 +558,14 @@
 
   subroutine FillPoly(sh)
 
-    REAL_, intent(IN) :: sh
+    real(kind=8), intent(IN) :: sh
 
     logical :: IsIn
     integer :: i1, i2, jj1
     integer :: ii, jj, n1, n2, jx
     integer, save :: j1, j2
     integer :: HALO=10
-    REAL_   :: x0, y0
+    real(kind=8)   :: x0, y0
 
 
     if    (abs(miny+90._8) < 1.e-10_8) then
