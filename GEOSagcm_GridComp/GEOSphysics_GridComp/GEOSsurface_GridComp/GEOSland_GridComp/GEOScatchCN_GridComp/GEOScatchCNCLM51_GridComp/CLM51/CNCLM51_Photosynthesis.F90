@@ -19,7 +19,7 @@
  use OzoneBaseMod
  use PhotosynthesisMod
  use WaterFluxBulkType
- use WaterStateType, only : waterstate_type
+ use WaterStateType
 
  implicit none
 
@@ -80,21 +80,21 @@
 ! LOCAL
 
  ! CLM variables
- type(bounds_type)              :: bounds
- type(atm2lnd_type)             :: atm2lnd_inst
- type(temperature_type)         :: temperature_inst
- type(soilstate_type)           :: soilstate_inst
- type(waterdiagnosticbulk_type) :: waterdiagnosticbulk_inst
- type(surfalb_type)             :: surfalb_inst
- type(solarabs_type)            :: solarabs_inst
- type(canopystate_type)         :: canopystate_inst
- type(ozone_base_type)          :: ozone_inst
- type(photosyns_type)           :: photosyns_inst
- type(waterfluxbulk_type)       :: waterfluxbulk_inst
- type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
- type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
- type(waterstate_type)          :: waterstate_inst
- type(clumpfilter)              :: filter
+! type(bounds_type)              :: bounds
+! type(atm2lnd_type)             :: atm2lnd_inst
+! type(temperature_type)         :: temperature_inst
+! type(soilstate_type)           :: soilstate_inst
+! type(waterdiagnosticbulk_type) :: waterdiagnosticbulk_inst
+! type(surfalb_type)             :: surfalb_inst
+! type(solarabs_type)            :: solarabs_inst
+! type(canopystate_type)         :: canopystate_inst
+! type(ozone_base_type)          :: ozone_inst
+! type(photosyns_type)           :: photosyns_inst
+! type(waterfluxbulk_type)       :: waterfluxbulk_inst
+! type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
+! type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
+! type(waterstate_type)          :: waterstate_inst
+! type(clumpfilter)              :: filter
 
  ! temporary and loop variables                                                                                        
  integer :: n, p, pft_num, nv, nc, nz, np, ib, nl
