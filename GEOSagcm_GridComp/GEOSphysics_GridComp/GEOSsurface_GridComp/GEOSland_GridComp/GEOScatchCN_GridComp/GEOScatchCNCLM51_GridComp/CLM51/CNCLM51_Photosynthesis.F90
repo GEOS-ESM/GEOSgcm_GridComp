@@ -180,7 +180,7 @@
        filter_nourbanp         => filter(1)%nourbanp               , &
        filter_num_nourbanp     => filter(1)%num_nourbanp           , &
        filter_exposedvegp      => filter(1)%exposedvegp            , &
-       filter_num_exposedvegp  => filter(1)%num_exposedvegp        , &
+       filter_num_exposedvegp  => filter(1)%num_exposedvegp          &
         )
 
 ! allocate filters
