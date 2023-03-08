@@ -19,12 +19,11 @@ module CNCLM_DriverMod
  use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_type
  use atm2lndType                 , only : atm2lnd_type
  use Wateratm2lndBulkType        , only : wateratm2lndbulk_type
- use CNVegStateType              , only : cnveg_state_type
+ use CNVegStateType             
  use WaterStateBulkType          , only : waterstatebulk_type
  use SoilStateType               , only : soilstate_type
  use TemperatureType             , only : temperature_type
  use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_type
- use CNVegStateType              , only : cnveg_state_type
  use WaterStateBulkType          , only : waterstatebulk_type
  use WaterFluxBulkType           , only : waterfluxbulk_type
  use FrictionVelocityMod         , only : frictionvel_type
@@ -492,7 +491,7 @@ contains
  type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
  type(gridcell_type)                    :: grc
  type(cn_vegetation_type)               :: bgc_vegetation_inst
- type(cnveg_state_type)                 :: cnveg_state_inst
+! type(cnveg_state_type)                 :: cnveg_state_inst
  type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
  type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
  type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
