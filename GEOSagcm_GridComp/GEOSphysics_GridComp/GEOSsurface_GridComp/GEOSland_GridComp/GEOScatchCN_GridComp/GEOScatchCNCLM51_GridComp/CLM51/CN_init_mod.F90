@@ -84,8 +84,8 @@ module CN_initMod
  type(photosyns_type), public            :: photosyns_inst
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
-! type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
-! type(wateratm2lndbulk_type), public             :: wateratm2lndbulk_inst
+ type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
+ type(wateratm2lndbulk_type), public             :: wateratm2lndbulk_inst
 ! type(bounds_type), public                       :: bounds
 !  type(patch_type)                        :: patch
 !  type(column_type)                       :: col
