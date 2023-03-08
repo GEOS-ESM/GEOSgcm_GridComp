@@ -222,6 +222,7 @@ module  PhotosynthesisMod
      procedure, public  :: ReadParams
 
   end type photosyns_type
+  type(photosyns_type), public, target, save :: photosyns_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

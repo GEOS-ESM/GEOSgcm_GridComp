@@ -151,6 +151,10 @@
  real, pointer :: leafn(:)    ! leaf N (gN/m2)   
  real, pointer :: froot_carbon(:) ! fine root carbon (gC/m2) [pft]
  real, pointer :: croot_carbon(:) ! live coarse root carbon (gC/m2) [pft] 
+ integer, pointer :: filter_nourbanp
+ integer, pointer :: filter_num_nourbanp
+ integer, pointer :: filter_exposedvegp
+ integer, pointer :: filter_num_exposedvegp
 
  ! local outputs from Photosynthesis routine
   real(r8)  , allocatable, dimension(:)   :: bsun        ! sunlit canopy transpiration wetness factor (0 to 1)
@@ -172,7 +176,11 @@
        froot_carbon            => cnveg_carbonstate_inst%frootc_patch  , &
        croot_carbon            => cnveg_carbonstate_inst%livecrootc_patch, &
        elai                    => canopystate_inst%elai_patch      , &
-       esai                    => canopystate_inst%esai_patch        &
+       esai                    => canopystate_inst%esai_patch      ,  &
+       filter_nourbanp         => filter(1)%nourbanp               , &
+       filter_num_nourbanp     => filter(1)%num_nourbanp           , &
+       filter_exposedvegp      => filter(1)%exposedvegp            , &
+       filter_num_exposedvegp  => filter(1)%num_exposedvegp        , &
         )
 
 ! allocate filters
@@ -345,7 +353,7 @@
         canopystate_inst, temperature_inst, waterdiagnosticbulk_inst, surfalb_inst)
 
  ! compute canopy shaded and sunlit variables (jk: needed to fill solarabs_inst before PHS call)
- call CanopySunShadeFracs(filter%nourbanp, filter%num_nourbanp,  &
+ call CanopySunShadeFracs(filter_nourbanp, filter_num_nourbanp,  &
                           atm2lnd_inst, surfalb_inst,     &
                           canopystate_inst, solarabs_inst)
 
@@ -358,7 +366,7 @@
 
  eair_pert(:) = eair_clm(:) + dea
 
- call PhotosynthesisHydraulicStress ( bounds, filter%num_exposedvegp, filter%exposedvegp, &
+ call PhotosynthesisHydraulicStress ( bounds, filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        esat_tv_clm, eair_pert, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
@@ -376,7 +384,7 @@
    temperature_inst%t_veg_patch = temperature_inst%t_veg_patch + dtc
    esat_tv_pert(:) = esat_tv_clm(:) + deldT_clm(:)*dtc 
 
- call PhotosynthesisHydraulicStress ( bounds, filter%num_exposedvegp, filter%exposedvegp, &
+ call PhotosynthesisHydraulicStress ( bounds, filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        esat_tv_pert, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
@@ -392,7 +400,7 @@
 
    temperature_inst%t_veg_patch = temp_unpert ! reset canopy temperature to unperturbed value
 
- call PhotosynthesisHydraulicStress ( bounds, filter%num_exposedvegp, filter%exposedvegp, &
+ call PhotosynthesisHydraulicStress ( bounds, filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        esat_tv_clm, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
@@ -404,7 +412,7 @@
   rssun  = photosyns_inst%rssun_patch
   rssha  = photosyns_inst%rssha_patch   
 
- call PhotosynthesisTotal (filter%num_exposedvegp, filter%exposedvegp, &
+ call PhotosynthesisTotal (filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        atm2lnd_inst, canopystate_inst, photosyns_inst)
 
    np = 0

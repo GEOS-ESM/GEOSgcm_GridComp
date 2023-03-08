@@ -81,7 +81,7 @@ module CN_initMod
  implicit none 
  private 
 
- type(photosyns_type), public            :: photosyns_inst
+ !type(photosyns_type), public            :: photosyns_inst
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
  type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
