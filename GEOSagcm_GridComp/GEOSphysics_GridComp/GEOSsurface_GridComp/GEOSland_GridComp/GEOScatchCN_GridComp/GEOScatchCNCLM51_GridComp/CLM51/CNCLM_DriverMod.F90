@@ -658,17 +658,18 @@ contains
   ! LOCAL
   integer :: n, p, nv, nc, nz, np
 
-  real(r8), pointer :: elai_clm(:)
-  real(r8), pointer :: esai_clm(:)
-  real(r8), pointer :: tlai_clm(:)
-  real(r8), pointer :: tsai_clm(:)
+!  real(r8), pointer :: elai_clm(:)
+!  real(r8), pointer :: esai_clm(:)
+!  real(r8), pointer :: tlai_clm(:)
+!  real(r8), pointer :: tsai_clm(:)
 
   !------------------------------
-
-  elai_clm => canopystate_inst%elai_patch
-  esai_clm => canopystate_inst%esai_patch
-  tlai_clm => canopystate_inst%tlai_patch  
-  tsai_clm => canopystate_inst%tsai_patch
+ associate(&
+  elai_clm => canopystate_inst%elai_patch , &
+  esai_clm => canopystate_inst%esai_patch , &
+  tlai_clm => canopystate_inst%tlai_patch , & 
+  tsai_clm => canopystate_inst%tsai_patch   &
+ )
 
                     elai = 0.
   if(present(esai)) esai = 0.
@@ -698,6 +699,7 @@ contains
     end do     ! CN zone loop
   end do       ! catchment tile loop
 
+  end associate
 
   end subroutine get_CN_LAI
 !---------------------------
