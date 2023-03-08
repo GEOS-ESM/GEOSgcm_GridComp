@@ -2,9 +2,9 @@
 
  use MAPL_ConstantsMod
  use clm_varpar,         only : numpft, numrad, num_veg, num_zon
- use decompMod,          only : bounds_type
- use PatchType,          only : patch
- use filterMod,          only : clumpfilter
+ use decompMod
+ use PatchType
+ use filterMod
  
  use CNVegNitrogenstateType
  use CNVegCarbonstateType
