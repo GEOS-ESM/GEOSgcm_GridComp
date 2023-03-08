@@ -278,22 +278,22 @@ contains
 
   ! call CLM routines that are needed prior to Ecosystem Dynamics call
 
-  call active_layer_inst%alt_calc(filter%num_soilc, filter%soilc, &
+  call active_layer_inst%alt_calc(filter(1)%num_soilc, filter(1)%soilc, &
        temperature_inst)
 
   call bgc_vegetation_inst%InitGridcellBalance(bounds, &
-       filter%num_allc, filter%allc, &
-       filter%num_soilc, filter%soilc, &
-       filter%num_soilp, filter%soilp, &
+       filter(1)%num_allc, filter(1)%allc, &
+       filter(1)%num_soilc, filter(1)%soilc, &
+       filter(1)%num_soilp, filter(1)%soilp, &
        soilbiogeochem_carbonstate_inst, &
        c13_soilbiogeochem_carbonstate_inst, &
        c14_soilbiogeochem_carbonstate_inst, &
        soilbiogeochem_nitrogenstate_inst)
 
   call bgc_vegetation_inst%InitColumnBalance(bounds, &
-       filter%num_allc, filter%allc, &
-       filter%num_soilc, filter%soilc, &
-       filter%num_soilp, filter%soilp, &
+       filter(1)%num_allc, filter(1)%allc, &
+       filter(1)%num_soilc, filter(1)%soilc, &
+       filter(1)%num_soilp, filter(1)%soilp, &
        soilbiogeochem_carbonstate_inst, &
        c13_soilbiogeochem_carbonstate_inst, &
        c14_soilbiogeochem_carbonstate_inst, &
@@ -304,13 +304,13 @@ contains
   ! calculations, including soil biogeochemistry, carbon/nitrogen state and 
   ! flux updates, fire, etc.
  call bgc_vegetation_inst%EcosystemDynamicsPreDrainage(bounds,            &
-      filter%num_soilc, filter%soilc,                       &
-      filter%num_soilp, filter%soilp,                       &
-      filter%num_actfirec, filter%actfirec,                 &
-      filter%num_actfirep, filter%actfirep,                 &
-      filter%num_pcropp, filter%pcropp, &
-      filter%num_exposedvegp, filter%exposedvegp, &
-      filter%num_noexposedvegp, filter%noexposedvegp, &
+      filter(1)%num_soilc, filter(1)%soilc,                       &
+      filter(1)%num_soilp, filter(1)%soilp,                       &
+      filter(1)%num_actfirec, filter(1)%actfirec,                 &
+      filter(1)%num_actfirep, filter(1)%actfirep,                 &
+      filter(1)%num_pcropp, filter(1)%pcropp, &
+      filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
+      filter(1)%num_noexposedvegp, filter(1)%noexposedvegp, &
       doalb,              &
       soilbiogeochem_carbonflux_inst, soilbiogeochem_carbonstate_inst,         &
       c13_soilbiogeochem_carbonflux_inst, c13_soilbiogeochem_carbonstate_inst, &
@@ -329,11 +329,11 @@ contains
  ! jkolassa: This call is mostly to compute the nitrogen leaching, summary states and fluxes
  ! and the vegetation structural updates
  call bgc_vegetation_inst%EcosystemDynamicsPostDrainage(bounds, &
-      filter%num_allc, filter%allc, &
-      filter%num_soilc, filter%soilc, &
-      filter%num_soilp, filter%soilp, &
-      filter%num_actfirec, filter%actfirec,                 &
-      filter%num_actfirep, filter%actfirep,                 &
+      filter(1)%num_allc, filter(1)%allc, &
+      filter(1)%num_soilc, filter(1)%soilc, &
+      filter(1)%num_soilp, filter(1)%soilp, &
+      filter(1)%num_actfirec, filter(1)%actfirec,                 &
+      filter(1)%num_actfirep, filter(1)%actfirep,                 &
       doalb, crop_inst, &
       soilstate_inst, soilbiogeochem_state_inst, &
       waterstatebulk_inst, waterdiagnosticbulk_inst, &
@@ -347,7 +347,7 @@ contains
 ! check carbon and nitrogen balances except on first time step
   if(.not.first) then
     call bgc_vegetation_inst%BalanceCheck( &
-         bounds, filter%num_soilc, filter%soilc, &
+         bounds, filter(1)%num_soilc, filter(1)%soilc, &
          soilbiogeochem_carbonflux_inst, &
          soilbiogeochem_nitrogenflux_inst, atm2lnd_inst )
   else
