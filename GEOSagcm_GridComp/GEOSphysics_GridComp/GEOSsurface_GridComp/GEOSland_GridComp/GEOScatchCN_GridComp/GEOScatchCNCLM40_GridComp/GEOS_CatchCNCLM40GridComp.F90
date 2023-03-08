@@ -5167,12 +5167,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Variables for FPAR
         ! --------------------------
     real   , allocatable, dimension (:,:)      :: parzone
+    character(len=ESMF_MAXSTR) :: Co2_CycleFile
 
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
-
-        ! Begin
-
-        IAm=trim(COMP_NAME)//"Driver"
 
         ! --------------------------------------------------------------------------
         ! Get time step from configuration
@@ -5656,7 +5653,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           call MPI_Info_create(info, STATUS); VERIFY_(status)
           call MPI_Info_set(info, "romio_cb_read", "automatic", STATUS); VERIFY_(status)
 
-          STATUS = NF_OPEN ('CO2_MonthlyMean_DiurnalCycle.nc4', NF_NOWRITE, CTfile); VERIFY_(status) 
+          call MAPL_GetResource (MAPL, CO2_CycleFile, label = 'CO2_MonthlyMean_DiurnalCycle_FILE:',  &
+                                default = 'CO2_MonthlyMean_DiurnalCycle.nc4', RC=STATUS )
+          VERIFY_(STATUS) 
+
+          STATUS = NF_OPEN (trim(CO2_CycleFile), NF_NOWRITE, CTfile); VERIFY_(status) 
 
           allocate (CT_CO2V (1: NUNQ, 1:12, 1:8))
           allocate (CTCO2_TMP (1:CT_grid_N_lon, 1:CT_grid_N_lat, 1:12, 1:8))
