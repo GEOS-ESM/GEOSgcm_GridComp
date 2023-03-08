@@ -418,6 +418,7 @@ contains
     integer                                :: OGCM_IM, OGCM_JM
     integer                                :: OGCM_NX, OGCM_NY
     integer                                :: BLK_NX,  BLK_NY
+    integer                                :: counts(7)
 
 ! Locals with ESMF and MAPL types
 
@@ -519,6 +520,9 @@ contains
     call ESMF_VMGet(VM, mpiCommunicator=Comm,  petCount=NPES, rc=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
+    VERIFY_(STATUS)
+
 
 ! Init CICE 
 !---------------
@@ -526,6 +530,14 @@ contains
                     DT_SEAICE, MAPL_TICE, MAPL_ALHL, MAPL_ALHS)
 
     !call ice_import_grid(FROCEAN, __RC__)
+    !if (counts(2) /= BLK_NY) &
+    !     print*,counts(2),BLK_NY
+    ! there should be an ASSERT here to make sure the block size from CICE and MAPL agree
+    ! block sizes from MAPL are contained in counts
+    ! there should be a call to CICE which returns the block size for current PE
+    ! the two should match
+    !ASSERT_(counts(1) == BLK_NX)  
+    !ASSERT_(counts(2) == BLK_NY)  
      
     !call cice_init2(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
     call cice_cal_init(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
