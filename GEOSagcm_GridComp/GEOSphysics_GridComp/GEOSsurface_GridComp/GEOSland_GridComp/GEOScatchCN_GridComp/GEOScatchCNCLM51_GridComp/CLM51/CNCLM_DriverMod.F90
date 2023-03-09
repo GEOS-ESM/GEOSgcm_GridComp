@@ -45,7 +45,8 @@ module CNCLM_DriverMod
  use CNFireLi2014Mod           
  use CNFireLi2016Mod             
  use CNFireLi2021Mod            
- 
+ use CNFireBaseMod 
+
   implicit none
   private
 
@@ -217,8 +218,8 @@ contains
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
 
-     bgc_vegetation_inst%cnfire_method%forc_hdm(nc)  = hdm(nc)
-     bgc_vegetation_inst%cnfire_method%forc_lnfm(nc) = lnfm(nc) 
+     fire_base_inst%forc_hdm(nc)  = hdm(nc)
+     fire_base_inst%cnfire_method%forc_lnfm(nc) = lnfm(nc) 
    !  cnfire_li2016_inst%forc_hdm(nc)  = hdm(nc)
    !  cnfire_li2016_inst%forc_lnfm(nc) = lnfm(nc)
    !  cnfire_li2021_inst%forc_hdm(nc)  = hdm(nc)
@@ -262,9 +263,9 @@ contains
            temperature_inst%t_ref2m_patch(p) = tairm(nc)
            temperature_inst%soila10_patch(p) = tg10d(nc)
            temperature_inst%t_a5min_patch(p) = t2m5d(nc)
-           cnfire_li2014_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)  
-           cnfire_li2016_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
-           cnfire_li2021_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
+           cnfire_base_inst%btran2_patch(p)     = btran_fire(nc,nz)  
+        !   cnfire_li2016_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
+        !   cnfire_li2021_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
            wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
            wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
            wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)

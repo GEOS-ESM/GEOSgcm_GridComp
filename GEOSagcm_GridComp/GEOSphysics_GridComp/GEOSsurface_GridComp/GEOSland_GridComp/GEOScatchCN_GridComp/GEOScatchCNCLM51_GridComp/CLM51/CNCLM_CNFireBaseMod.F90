@@ -97,6 +97,7 @@ module CNFireBaseMod
      ! procedure, private :: InitHistory                  ! History file assignment of fire
       !
   end type cnfire_base_type
+  type(cnfire_base_type), public, target, save :: cnfire_base_inst
   !-----------------------------------------------------------------------
 
   abstract interface

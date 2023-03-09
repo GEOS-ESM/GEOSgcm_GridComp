@@ -39,6 +39,8 @@ module FireDataBaseType
            need_lightning_and_popdens ! Returns true if need lightning & popdens
       !
   end type fire_base_type
+
+  type(fire_base_type), public, target, save :: fire_base_inst
   !-----------------------------------------------------------------------
 
   abstract interface
