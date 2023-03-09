@@ -61,7 +61,7 @@ module CNFireLi2021Mod
      procedure, public :: need_lightning_and_popdens
      procedure, public :: CNFireArea    ! Calculate fire area
   end type cnfire_li2021_type
-  type(cnfire_li2021_type), public, target, save :: cnfire_li2021_inst
+
   !
   ! !PRIVATE MEMBER DATA:
   !-----------------------------------------------------------------------

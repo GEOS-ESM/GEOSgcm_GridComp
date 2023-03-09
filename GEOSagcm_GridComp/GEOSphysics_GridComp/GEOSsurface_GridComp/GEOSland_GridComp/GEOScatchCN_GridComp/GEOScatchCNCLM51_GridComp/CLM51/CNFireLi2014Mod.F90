@@ -63,7 +63,6 @@ module CNFireLi2014Mod
     procedure, public :: CNFireArea    ! Calculate fire area
     procedure, public :: CNFireFluxes
   end type cnfire_li2014_type
-  type(cnfire_li2014_type), public, target, save :: cnfire_li2014_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
