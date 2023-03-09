@@ -1,6 +1,5 @@
 module CNCLM_DriverMod
 
- use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
  use nanMod           , only : nan
  use CNVegetationFacade, only : cn_vegetation_type
  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
@@ -197,7 +196,7 @@ contains
 ! type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
 ! type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
 ! type(cnveg_nitrogenstate_type)         :: cnveg_nitrogenstate_inst
-! type(cnfire_li2014_type)               :: cnfire_li2014_inst
+ !type(cnfire_li2014_type)               :: cnfire_li2014_inst
 ! type(cnfire_li2016_type)               :: cnfire_li2016_inst
 ! type(cnfire_li2021_type)               :: cnfire_li2021_inst
 
@@ -218,12 +217,12 @@ contains
      wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
 
-     cnfire_li2014_inst%forc_hdm(nc)  = hdm(nc)
-     cnfire_li2014_inst%forc_lnfm(nc) = lnfm(nc) 
-     cnfire_li2016_inst%forc_hdm(nc)  = hdm(nc)
-     cnfire_li2016_inst%forc_lnfm(nc) = lnfm(nc)
-     cnfire_li2021_inst%forc_hdm(nc)  = hdm(nc)
-     cnfire_li2021_inst%forc_lnfm(nc) = lnfm(nc)
+     bgc_vegetation_inst%cnfire_method%forc_hdm(nc)  = hdm(nc)
+     bgc_vegetation_inst%cnfire_method%forc_lnfm(nc) = lnfm(nc) 
+   !  cnfire_li2016_inst%forc_hdm(nc)  = hdm(nc)
+   !  cnfire_li2016_inst%forc_lnfm(nc) = lnfm(nc)
+   !  cnfire_li2021_inst%forc_hdm(nc)  = hdm(nc)
+   !  cnfire_li2021_inst%forc_lnfm(nc) = lnfm(nc)
 
 
      do nz = 1,num_zon    ! CN zone loop
