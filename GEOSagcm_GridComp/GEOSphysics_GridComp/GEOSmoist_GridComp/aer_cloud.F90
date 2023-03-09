@@ -29,7 +29,7 @@
     
     type :: AerProps            
 	sequence 
-          real,  dimension(nsmx_par)  :: num !Num conc m-3
+          real, dimension(nsmx_par)  :: num !Num conc m-3
           real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
     	  real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
 	  real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
@@ -39,7 +39,7 @@
 	  real, dimension(nsmx_par)  :: forg ! mass fraction of organics
 	  integer   :: nmods  ! total number of modes (nmods<nmodmax)
       end type AerProps     
-    
+   
       interface assignment (=)
          module procedure copy_aer
       end interface 
@@ -197,6 +197,7 @@
   
         real*8 :: daux, sigaux, ahet_bc
         integer ::ix
+
        call AerConversion_base
 
        !heterogeneous freezing!!!!!!!!!!!!
@@ -229,9 +230,6 @@
 	 sigaux =  AerPr_base_polluted%sig(13) 		 
          frac_org=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
 			       /sigaux/sq2_par))		       
-
-
-
 
       end subroutine aer_cloud_init
   
@@ -606,7 +604,7 @@
        ! 3- Barahona (2009) Asumme a maximum freezing fraction then scales it according to CNT
        ! 4- PDA08, using fixed size distributions.
        ! 5- Phillips 2013. Assumes monodisperse for bc and organics 
-       ! 6 - Ulrich 2017 (default) 
+       ! 6 - Ullrich 2017 (default) 
        purehet_ice= .FALSE.  !True supresses homogeneous nucleation      
        purehom_ice= .FALSE.   ! True supresses heterogeneous nucleation   
 
@@ -639,8 +637,8 @@
 			       nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
                   
 
-   	        	  !call IceParam (sigwparc,  &
-                	!	     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+   	        	  call IceParam (sigwparc,  &
+                		     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
 		  end if 
 		   
 		  sc_ice = 1.0
@@ -3452,7 +3450,7 @@ if (.false.) then
                        nsdust= max(exp(-0.517*T_ice + 150.577)-min_ns_dust, 0.0)
                        dnsd  = max(0.517*nsdust, 0.0)
 
-                       nssoot= 7.463*max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) 
+                       nssoot= 7.463*max(exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !bug 2021 
                        dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
                        
 
