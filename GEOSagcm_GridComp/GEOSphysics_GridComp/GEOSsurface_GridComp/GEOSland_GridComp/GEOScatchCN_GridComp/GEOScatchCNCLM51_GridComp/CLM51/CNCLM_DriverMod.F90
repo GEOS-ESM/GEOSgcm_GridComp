@@ -193,7 +193,7 @@ contains
 ! type(ch4_type)                         :: ch4_inst
 ! type(photosyns_type)                   :: photosyns_inst
 ! type(energyflux_type)                  :: energyflux_inst
-! type(fireemis_type)                    :: fireemis_inst
+ type(fireemis_type)                    :: fireemis_inst
 ! type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
 ! type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
 ! type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
