@@ -45,6 +45,7 @@ module CNFireLi2014Mod
   use PatchType                          , only : patch                
   use FireMethodType                     , only : fire_method_type
   use CNFireBaseMod                      , only : cnfire_base_type, cnfire_const, cnfire_params
+  use CN2CLMType
  ! use CNVegMatrixMod                     , only : matrix_update_fic, matrix_update_fin
   !
   implicit none
@@ -231,7 +232,12 @@ contains
          fuelc              => cnveg_carbonstate_inst%fuelc_col                , & ! Output: [real(r8) (:)     ]  fuel avalability factor for Reg.C                 
          fuelc_crop         => cnveg_carbonstate_inst%fuelc_crop_col             & ! Output: [real(r8) (:)     ]  fuel avalability factor for Reg.A                 
          )
+
+       ! jkolassa Mar 2023: insert Catch values in CLM types
  
+      this%forc_hdm = cn2clm_inst%forc_hdm_cn2clm
+      this%forc_lnfm = cn2clm_inst%forc_lnfm_cn2clm
+       
       transient_landcover = run_has_transient_landcover()
 
       !pft to column average 
@@ -333,6 +339,11 @@ contains
     ! call this%CNFire_calc_fire_root_wetness_Li2014(bounds, &
     !      num_exposedvegp, filter_exposedvegp, num_noexposedvegp, filter_noexposedvegp, &
     !      waterstatebulk_inst, soilstate_inst, soil_water_retention_curve)
+
+     ! jkolassa Mar 2023: insert Catchment btran2
+
+     btran2 = cn2clm_inst%btran2_patch_cn2clm
+     
      do fp = 1, num_exposedvegp
         p = filter_exposedvegp(fp)
         c = patch%column(p)
@@ -561,6 +572,7 @@ contains
         c = filter_soilc(fc)
         g = col%gridcell(c)
         hdmlf=this%forc_hdm(g)
+
         nfire(c) = 0._r8
         if( cropf_col(c)  <  1.0 )then
            if (trotr1_col(c)+trotr2_col(c)>0.6_r8) then

@@ -18,6 +18,7 @@ set (srcs
   clm_varcon.F90
   clm_varctl.F90
   clm_varpar.F90
+  CN2CLMType.F90
   CNAnnualUpdateMod.F90
   CNBalanceCheckMod.F90
   CNCLM51_Photosynthesis.F90

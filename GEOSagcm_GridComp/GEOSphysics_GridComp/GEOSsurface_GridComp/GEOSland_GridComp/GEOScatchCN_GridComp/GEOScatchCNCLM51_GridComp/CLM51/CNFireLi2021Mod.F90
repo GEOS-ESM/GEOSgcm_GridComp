@@ -45,6 +45,7 @@ module CNFireLi2021Mod
   use SoilBiogeochemStateType            , only : get_spinup_latitude_term
   use FireMethodType                     , only : fire_method_type
   use CNFireBaseMod                      , only : cnfire_base_type, cnfire_const, cnfire_params
+  use CN2CLMType
   !
   implicit none
   private
@@ -239,6 +240,10 @@ contains
          fuelc              => cnveg_carbonstate_inst%fuelc_col                , & ! Output: [real(r8) (:)     ]  fuel load coutside cropland                 
          fuelc_crop         => cnveg_carbonstate_inst%fuelc_crop_col             & ! Output: [real(r8) (:)     ]  fuel load for cropland                 
          )
+
+       ! jkolassa Mar 2023: insert Catch values in CLM types
+      this%forc_hdm = cn2clm_inst%forc_hdm_cn2clm
+      this%forc_lnfm = cn2clm_inst%forc_lnfm_cn2clm
  
       transient_landcover = run_has_transient_landcover()
 
@@ -350,6 +355,10 @@ contains
    !  call this%CNFire_calc_fire_root_wetness_Li2021(bounds, &
    !       num_exposedvegp, filter_exposedvegp, num_noexposedvegp, filter_noexposedvegp, &
    !       waterstatebulk_inst, soilstate_inst, soil_water_retention_curve)
+
+     ! jkolassa Mar 2023: insert Catchment btran2
+     btran2 = cn2clm_inst%btran2_patch_cn2clm
+
      do fp = 1, num_exposedvegp
         p = filter_exposedvegp(fp)
         c = patch%column(p)

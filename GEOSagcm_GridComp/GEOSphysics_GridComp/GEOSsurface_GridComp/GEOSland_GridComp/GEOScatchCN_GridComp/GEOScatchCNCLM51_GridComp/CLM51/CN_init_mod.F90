@@ -56,6 +56,7 @@ module CN_initMod
   use PhotosynthesisMod
   use CNVegetationFacade
   use initSubgridMod
+  use CN2CLMType
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
@@ -377,6 +378,10 @@ module CN_initMod
    else
       call init_decompcascade_cn(bounds, soilbiogeochem_state_inst)
    end if
+
+  ! initialize custom type used to pass Catchment information to nested CLM fire types
+
+  call cn2clm_inst%Init         (bounds)
 
  end subroutine CN_init
 end module CN_initMod
