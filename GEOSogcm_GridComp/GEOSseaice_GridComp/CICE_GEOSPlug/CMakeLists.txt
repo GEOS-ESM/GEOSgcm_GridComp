@@ -15,8 +15,8 @@ esma_add_library (${this}
   )
 
 
-#install(
-#   DIRECTORY mom6_app
-#   DESTINATION etc/MOM6
-#   USE_SOURCE_PERMISSIONS
-#   )
+install(
+   DIRECTORY cice6_app
+   DESTINATION etc/CICE6
+   USE_SOURCE_PERMISSIONS
+   )
