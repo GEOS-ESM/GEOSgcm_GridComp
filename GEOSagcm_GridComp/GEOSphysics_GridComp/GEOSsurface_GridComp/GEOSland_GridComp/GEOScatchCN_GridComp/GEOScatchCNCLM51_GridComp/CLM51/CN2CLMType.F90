@@ -2,7 +2,7 @@
 
 module CN2CLMType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod                       , only : r8 => shr_kind_r8
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
   use MAPL_ExceptionHandling
