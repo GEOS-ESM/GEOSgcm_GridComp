@@ -168,8 +168,8 @@ contains
 ! type(bounds_type)                      :: bounds
 ! type(clumpfilter)                      :: filter
 ! type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
-! type(soilbiogeochem_carbonflux_type)   :: c13_soilbiogeochem_carbonflux_inst
-! type(soilbiogeochem_carbonflux_type)   :: c14_soilbiogeochem_carbonflux_inst
+ type(soilbiogeochem_carbonflux_type)   :: c13_soilbiogeochem_carbonflux_inst
+ type(soilbiogeochem_carbonflux_type)   :: c14_soilbiogeochem_carbonflux_inst
 ! type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
 ! type(gridcell_type)                    :: grc
 ! type(cn_vegetation_type)               :: bgc_vegetation_inst
@@ -185,8 +185,8 @@ contains
 ! type(frictionvel_type)                 :: frictionvel_inst
 ! type(active_layer_type)                :: active_layer_inst
 ! type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
-! type(soilbiogeochem_carbonstate_type)  :: c13_soilbiogeochem_carbonstate_inst
-! type(soilbiogeochem_carbonstate_type)  :: c14_soilbiogeochem_carbonstate_inst
+ type(soilbiogeochem_carbonstate_type)  :: c13_soilbiogeochem_carbonstate_inst
+ type(soilbiogeochem_carbonstate_type)  :: c14_soilbiogeochem_carbonstate_inst
 ! type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
 ! type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
 ! type(crop_type)                        :: crop_inst
