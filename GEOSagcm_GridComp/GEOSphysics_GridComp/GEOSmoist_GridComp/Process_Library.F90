@@ -1667,11 +1667,13 @@ module GEOSmoist_Process_Library
       real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv 
 
       real :: tmpARR
-      real :: ALHX, DQCALL
+      real :: alhxbcp, DQCALL
       ! internal scalars
       integer :: N, nmax
 
-      QT = QLCN + QICN + QLLS + QILS + QV  !Total water after microphysics
+      character*(10) :: Iam='Process_Library:hystpdf'
+
+      QT = QLLS + QILS + QV  !Total LS water after microphysics
 
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
@@ -1714,9 +1716,9 @@ module GEOSmoist_Process_Library
          elseif (PDFSHAPE.eq.5) then
 
            ! Update the liquid water static energy
-           fQi = ice_fraction( TEp, CNVFRC,SRF_TYPE )
-           ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-           HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+           fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
+           alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+           HL = TEn + gravbcp*ZL - alhxbcp*QCn
 
            call partition_dblgss(DT/nmax,      &
                                  TEn,          &
@@ -1762,13 +1764,13 @@ module GEOSmoist_Process_Library
 
          IF(USE_BERGERON) THEN
            DQCALL = QCn - QCp
-           Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
+           Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
            call Bergeron_Partition( &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
-                 TEp              , &
+                 TEn              , &
                  QT               , &
                  QILS             , &
                  QICN             , &
@@ -1783,16 +1785,16 @@ module GEOSmoist_Process_Library
                  CNVFRC,SRF_TYPE  , &
                  needs_preexisting)
          ELSE
-           fQi = ice_fraction( TEp, CNVFRC,SRF_TYPE )
+           fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
          ENDIF
-         ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
 
+         alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
          if(PDFSHAPE.eq.1) then 
-            QCn = QCp + ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX/MAPL_CP)             
+            QCn = QCp +       ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*alhxbcp)             
          elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
             ! for now, just use relaxation of 1/2.
-            if (n.ne.nmax) QCn = QCp + ( QCn - QCp ) *0.5
+            QCn = QCp + 0.5 * ( QCn - QCp )
          endif
 
          if ( CLCN > 0. ) then
@@ -1800,6 +1802,7 @@ module GEOSmoist_Process_Library
          else
             QAo = 0.
          end if
+
          QVn = QVp - (QCn - QCp)
          TEn = TEp + (1.0-fQi)*(alhlbcp)*( (QCn - QCp)*(1.-CLCN) + (QAo-QAx)*CLCN ) &
                    +      fQi *(alhsbcp)*( (QCn - QCp)*(1.-CLCN) + (QAo-QAx)*CLCN )
@@ -1817,8 +1820,8 @@ module GEOSmoist_Process_Library
          ! Special case CLCN=1, i.e., box filled with anvil. 
          !   - Note: no guarantee QV_box > QS_box
          CLLS = 0.              ! Remove any LS cloud
-         QAo  = QLCN+QICN + QCn ! Add any remaining LS condensate to anvil type
-         QCn  = 0.              ! Remove same from LS   
+         QAo  = QLCN+QICN+QLLS+QILS  ! Add all LS condensate to anvil type
+         QCn  = 0.              ! Remove same from new LS   
          QT   = QAo + QV        ! Update total water
          ! Now set anvil condensate to any excess of total water 
          ! over QSx (saturation value at top)
@@ -2373,7 +2376,7 @@ module GEOSmoist_Process_Library
 
           GAMMA850 =  (1.0+(          MAPL_ALHL*QS850/(        MAPL_RGAS*T850     )))/ &
                       (1.0+(MAPL_ALHL*MAPL_ALHL*QS850/(MAPL_CP*MAPL_RVAP*T850*T850)))
-          GAMMA850 =  (MAPL_GRAV/MAPL_CP)*(1.0-GAMMA850)
+          GAMMA850 =  gravbcp*(1.0-GAMMA850)
 
           EIS(I,J) =  LTS(I,J) - GAMMA850*(Z700(I,J) - ZLCL)
 

@@ -244,7 +244,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_ICE,      'FR_AN_ICE:',      DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CFPBL_EXP,                'CFPBL_EXP:',      DEFAULT= 1       )
 
-    call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM_GRIDNAME:', RC=STATUS)
+    call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM.GRIDNAME:', RC=STATUS)
     VERIFY_(STATUS)
     GRIDNAME =  AdjustL(GRIDNAME)
     nn = len_trim(GRIDNAME)
