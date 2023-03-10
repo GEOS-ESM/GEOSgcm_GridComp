@@ -752,6 +752,9 @@ contains
 ! Imports
     REAL_, pointer                     :: TAUX(:,:)          => null()
     REAL_, pointer                     :: TAUY(:,:)          => null()
+    REAL_, pointer                     :: UWB(:,:)           => null()
+    REAL_, pointer                     :: VWB(:,:)           => null()
+    REAL_, pointer                     :: SLV(:,:)           => null()
 
 ! Temporaries
 
@@ -803,6 +806,7 @@ contains
 
     call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'        ,                 _RC)
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'        ,                 _RC)
+    call MAPL_GetPointer(IMPORT, SLV,      'SLV'         ,                 _RC)
 
     call MAPL_GetPointer(EXPORT,   TI,     'TI'          ,  alloc=.true.,  _RC)
     call MAPL_GetPointer(EXPORT,   FI,     'FRSEAICE'    ,  alloc=.true.,  _RC)
@@ -815,7 +819,7 @@ contains
 
     !call ice_import_thermo2()
 
-    call ice_import_dyna(TAUX, TAUY, _RC)
+    call ice_import_dyna(TAUX, TAUY, SLV, _RC)
 
 
     call CICE_Run
