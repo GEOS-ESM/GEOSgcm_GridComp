@@ -4717,8 +4717,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ar1m   
         real, dimension(:),   pointer :: tpm
         real, dimension(:),   pointer :: cnsum
-        real, dimension(:),   pointer :: psnsunm
-        real, dimension(:),   pointer :: psnsham
+        real, dimension(:,:,:),   pointer :: psnsunm
+        real, dimension(:,:,:),   pointer :: psnsham
         real, dimension(:),   pointer :: sndzm
         real, dimension(:),   pointer :: sndzm5d
         real, dimension(:),   pointer :: asnowm
