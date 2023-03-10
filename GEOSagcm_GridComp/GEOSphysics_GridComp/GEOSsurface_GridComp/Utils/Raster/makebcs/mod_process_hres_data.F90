@@ -22,8 +22,7 @@
 MODULE process_hres_data
 use rmTinyCatchParaMod
 use MAPL_SortMod
-use date_time_util  
-use leap_year
+use LDAS_DateTimeMod  
 use MAPL_ConstantsMod
 use lsm_routines, ONLY: sibalb
 use MAPL_Base,    ONLY: MAPL_UNDEF
