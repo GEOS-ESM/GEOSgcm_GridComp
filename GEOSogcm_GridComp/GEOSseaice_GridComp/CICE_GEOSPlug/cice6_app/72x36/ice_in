@@ -8,7 +8,7 @@
     istep0         = 0
     dt             = 450.0
     npt_unit       = '1'
-    npt            = 9999999
+    npt            = 99999
     ndtd           = 1
     runtype        = 'initial'
     ice_ic         = './INPUT/iced.nc'
@@ -91,11 +91,11 @@
     n_fed        = 0
     n_fep        = 0
     tr_iage      = .true.
-    restart_age  = .false.
+    restart_age  = .true.
     tr_FY        = .true.
-    restart_FY   = .false.
+    restart_FY   = .true.
     tr_lvl       = .true.
-    restart_lvl  = .false.
+    restart_lvl  = .true.
     tr_pond_cesm = .false.
     restart_pond_cesm = .false.
     tr_pond_topo = .false.
@@ -154,7 +154,7 @@
     coriolis        = 'latitude'
     kridge          = 1
     ktransport      = 1
-    ssh_stress      = 'geostrophic'
+    ssh_stress      = 'coupled'
     maxits_nonlin   = 4
     precond         = 'pgmres'
     dim_fgmres       = 50
@@ -292,7 +292,7 @@
     restart_hbrine  = .false.
     tr_zaero        = .false.
     modal_aero      = .false.
-    optics_file     = '/home/bzhao/aogcm/CICE_INPUT/CICE_data/forcing/snicar_optics_5bnd_snow_and_aerosols.nc'
+    optics_file     = 'unknown'
     optics_file_fieldname = 'modalBCabsorptionParameter5band'
     skl_bgc         = .false.
     z_tracers       = .false.

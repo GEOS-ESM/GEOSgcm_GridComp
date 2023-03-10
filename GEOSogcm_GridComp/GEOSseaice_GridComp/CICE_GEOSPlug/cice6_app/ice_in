@@ -154,7 +154,7 @@
     coriolis        = 'latitude'
     kridge          = 1
     ktransport      = 1
-    ssh_stress      = 'geostrophic'
+    ssh_stress      = 'coupled'
     maxits_nonlin   = 4
     precond         = 'pgmres'
     dim_fgmres       = 50
