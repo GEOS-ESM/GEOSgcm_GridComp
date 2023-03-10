@@ -129,9 +129,9 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 7200.,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.00,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -462,19 +462,20 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR2D)) PTR2D = SEEDCNV
 
+    ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
+    if (GF_MIN_AREA > 0) then
+       where (AREA > GF_MIN_AREA)
+          TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+       elsewhere
+          TMP2D =  AREA
+       endwhere
+    else if (GF_MIN_AREA < 0) then
+       TMP2D = ABS(GF_MIN_AREA)
+    else
+       TMP2D = AREA
+    endif
+
     IF (USE_GF2020==1) THEN
-       ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
-         if (GF_MIN_AREA > 0) then
-            where (AREA > (AREA/16.0))
-               TMP2D = (AREA/16.0)*CNV_FRC + AREA*(1.0-CNV_FRC)
-            elsewhere
-               TMP2D =  AREA
-            endwhere
-         else if (GF_MIN_AREA < 0) then
-            TMP2D = ABS(GF_MIN_AREA)
-         else
-            TMP2D = AREA
-         endif
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pq
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,DT_MOIST                       &
@@ -497,18 +498,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
     ELSE
-       ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
-         if (GF_MIN_AREA > 0) then
-            where (AREA > GF_MIN_AREA)
-               TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
-            elsewhere
-               TMP2D =  AREA
-            endwhere
-         else if (GF_MIN_AREA < 0) then
-            TMP2D = ABS(GF_MIN_AREA)
-         else
-            TMP2D = AREA
-         endif
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pq
          call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,DT_MOIST                       &

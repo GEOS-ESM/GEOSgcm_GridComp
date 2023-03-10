@@ -44,6 +44,7 @@ module GEOS_MoistGridCompMod
   logical :: DEBUG = .false.
   logical :: LDIAGNOSE_PRECIP_TYPE
   logical :: LUPDATE_PRECIP_TYPE
+  logical :: LHYDROSTATIC
   logical :: USE_AERO_BUFFER
   real    :: CCN_OCN
   real    :: CCN_LND
@@ -1725,7 +1726,22 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
-    
+   
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='NCCN_LIQ',                                     &
+         LONG_NAME ='number_concentration_of_cloud_liquid_particles',     &
+         UNITS     ='cm-3',                                         &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='NCCN_ICE',                                     &
+         LONG_NAME ='number_concentration_of_ice_cloud_particles',     &
+         UNITS     ='cm-3',                                         &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
     
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='CLDNCCN',                                     & 
@@ -4982,8 +4998,9 @@ contains
 
     ! Get parameters from generic state.
     !-----------------------------------
-    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LHYDROSTATIC,          Label="HYDROSTATIC:",           default=.TRUE. , RC=STATUS)
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
@@ -4992,8 +5009,8 @@ contains
       call aer_cloud_init()
       call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
     else
-      call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
-      call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
+      call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
+      call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
     endif
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
@@ -5066,7 +5083,7 @@ contains
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
     real, pointer, dimension(:,:)   :: SH, EVAP, KPBL
-    real, pointer, dimension(:,:,:) :: OMEGA
+    real, pointer, dimension(:,:,:) :: TKE, OMEGA
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
     ! Exports
@@ -5147,6 +5164,7 @@ contains
        call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     ,RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'AERO',    AERO     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'MTR',     TR       , RC=STATUS); VERIFY_(STATUS)
 
@@ -5229,9 +5247,15 @@ contains
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
          allocate ( AeroProps(IM,JM,LM) )
+         ! get veritical velocity
+         if (LHYDROSTATIC) then
+           TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
+         else
+           TMP3D = W
+         endif
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                             SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
+                             SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
                              AeroProps, AERO, NACTL, NACTI, NWFA)
        else
          do L=1,LM
@@ -5239,6 +5263,11 @@ contains
            NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
          end do
        endif
+       call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_LIQ', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = NACTL*1.e-6
+       call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_ICE', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = NACTI*1.e-6
+
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
 
        if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)

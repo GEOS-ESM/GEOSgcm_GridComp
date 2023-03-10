@@ -5115,7 +5115,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:,:,:) :: pft
     
     real, allocatable, dimension(:) :: lnfm
-    character(len=ESMF_MAXSTR)      :: LNFMFile
+    character(len=ESMF_MAXSTR)      :: LNFMFile, CO2_CycleFile
 
     integer :: ntile, nv, dpy, ierr, iok, ndt
     integer, save :: year_prev = -9999
@@ -5653,7 +5653,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           call MPI_Info_create(info, STATUS); VERIFY_(status)
           call MPI_Info_set(info, "romio_cb_read", "automatic", STATUS); VERIFY_(status)
 
-          STATUS = NF_OPEN ('CO2_MonthlyMean_DiurnalCycle.nc4', NF_NOWRITE, CTfile); VERIFY_(status) 
+          call MAPL_GetResource (MAPL, CO2_CycleFile, label = 'CO2_MonthlyMean_DiurnalCycle_FILE:', default = 'CO2_MonthlyMean_DiurnalCycle.nc4', RC=STATUS )
+       VERIFY_(STATUS) 
+          STATUS = NF_OPEN (trim(CO2_CycleFile), NF_NOWRITE, CTfile); VERIFY_(status) 
 
           allocate (CT_CO2V (1: NUNQ, 1:12, 1:8))
           allocate (CTCO2_TMP (1:CT_grid_N_lon, 1:CT_grid_N_lat, 1:12, 1:8))
