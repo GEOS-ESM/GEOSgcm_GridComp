@@ -769,6 +769,8 @@ contains
     character(len=2)           :: dateline
     integer                    :: imsize,nn
     integer                    :: LM
+    real                       :: STRETCH_FACTOR
+
     real, pointer, dimension(:)      :: PREF
 
 ! NCAR GWD variables
@@ -830,13 +832,15 @@ contains
       call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, LATS=LATS, _RC)
       
      ! Get grid name to determine IMSIZE
-      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', _RC)
+      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM.GRIDNAME:', _RC)
             GRIDNAME =  AdjustL(GRIDNAME)
       nn = len_trim(GRIDNAME)
       dateline = GRIDNAME(nn-1:nn)
       imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
       read(imchar,*) imsize
       if(dateline.eq.'CF') imsize = imsize*4
+      call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', _RC)
+      imsize = imsize*CEILING(STRETCH_FACTOR)
 
 ! Gravity wave drag
 ! -----------------
@@ -881,9 +885,9 @@ contains
 ! -----------------
       call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
-                                   NCAR_QBO_HDEPTH_SCALING = min( imsize/1440.0 , 1.0 )
+                                   NCAR_QBO_HDEPTH_SCALING = min( imsize/2880.0 , 1.0 )
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
-                                   NCAR_HR_CF = max( 20.0*720.0/imsize , 1.0 )
+                                   NCAR_HR_CF = max( 10.0*720.0/imsize , 1.0 )
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
          
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
