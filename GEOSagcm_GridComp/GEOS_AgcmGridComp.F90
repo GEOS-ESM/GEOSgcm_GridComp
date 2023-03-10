@@ -52,7 +52,7 @@ module GEOS_AgcmGridCompMod
 
 !=============================================================================
 
-! !DESCRIPTION: This gridded component (GC) combines the Superdynamics GC, 
+! !DESCRIPTION: This gridded component (GC) combines the Superdynamics GC,
 !   and Physics GC into a new composite Agcm GC.
 
 !\begin{verbatim}
@@ -64,9 +64,9 @@ module GEOS_AgcmGridCompMod
 !     If Non-Hydrostatic Dynamics
 !       DWDT .... Mass-Weighted W-Wind      Tendency (Pa m /s)
 !\end{verbatim}
- 
+
 !EOP
-  
+
   integer :: SDYN
   integer :: PHYS
   integer :: ORB
@@ -119,8 +119,8 @@ contains
     integer, optional                  :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
-!   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
-!   state specs and couplings among its children.  In addition, it creates the   
+!   Initialize and Run.  It uses the MAPL\_Generic construct for defining
+!   state specs and couplings among its children.  In addition, it creates the
 !   children GCs (SURF, CHEM, RADIATION, MOIST, TURBULENCE) and runs their
 !   respective SetServices.
 
@@ -195,7 +195,7 @@ contains
                       adjustl(ReplayMode) /= "Regular" ) ) then
              _ASSERT( adjustl(ReplayMode) == "NoReplay"  ,'needs informative message')
     endif
- 
+
 !BOS
 
 ! !IMPORT STATE:
@@ -249,7 +249,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT',                                     &
          LONG_NAME  = 'skin_temperature_increment',                &
@@ -316,7 +316,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'DTSDT',                                     &
          LONG_NAME  = 'skin_temperature_tendency',                 &
@@ -328,6 +328,43 @@ contains
     VERIFY_(STATUS)
 
 ! !EXPORT STATE:
+
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QVBKG',                                     &
+         LONG_NAME  = 'specific_humidity_background',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QVANA',                                     &
+         LONG_NAME  = 'specific_humidity_after_analysis',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QVCON',                                     &
+         LONG_NAME  = 'specific_humidity_after_constraint',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'DPBKG',                                     &
+         LONG_NAME  = 'delta_pressure_background',      &
+         UNITS      = 'Pa',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'DPANA',                                     &
+         LONG_NAME  = 'delta_pressure_after_analysis',      &
+         UNITS      = 'Pa',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DPSDT_CON',                                     &
@@ -398,6 +435,30 @@ contains
     call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME = 'DQIDT_ANA',                                        &
          LONG_NAME  = 'total_specific_humidity_ice_analysis_tendency',    &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQRDT_ANA',                                        &
+         LONG_NAME  = 'total_suspended_rain_analysis_tendency',    &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQSDT_ANA',                                        &
+         LONG_NAME  = 'total_suspended_snow_analysis_tendency',    &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQGDT_ANA',                                        &
+         LONG_NAME  = 'total_suspended_graupe_analysis_tendency',    &
          UNITS      = 'kg kg-1 s-1',                                      &
          DIMS       = MAPL_DimsHorzVert,                                  &
          VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
@@ -791,6 +852,12 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC, &
+         SHORT_NAME = 'PPBL', &
+         CHILD_ID   = PHYS,  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC, &
          SHORT_NAME = 'O3PPMV', &
          CHILD_ID   = PHYS,  &
          RC=STATUS  )
@@ -908,13 +975,13 @@ contains
                        'US           ','VS           ',                                    &
                        'SPEED        ','DZ           ','PLE          ','W            ',    &
                        'PREF         ','TROPP_BLENDED','S            ','PLK          ',    &
-                       'PV           ','OMEGA        ','PKE          '/),                  &
+                       'PV           ','TROPK_BLENDED','OMEGA        ','PKE          '/),  &
          DST_NAME  = (/'U     ','V     ','TH    ','T     ',                                &
                        'ZLE   ','PS    ','TA    ','QA    ',                                &
                        'UA    ','VA    ',                                                  &
                        'SPEED ','DZ    ','PLE   ','W     ',                                &
                        'PREF  ','TROPP ','S     ','PLK   ',                                &
-                       'PV    ','OMEGA ','PKE   '/),                                       &
+                       'PV    ','TROPK ','OMEGA ','PKE   '/),                              &
          DST_ID = PHYS,                                                                    &
          SRC_ID = SDYN,                                                                    &
          RC=STATUS  )
@@ -973,7 +1040,7 @@ contains
          SRC_ID = ORB,                                             &
          DST_ID = PHYS,                                            &
                                                         RC=STATUS  )
-     VERIFY_(STATUS) 
+     VERIFY_(STATUS)
 
 #ifdef SCMSURF
     call MAPL_AddConnectivity ( GC,    &
@@ -997,7 +1064,7 @@ contains
 
      call MAPL_TerminateImport    ( GC,                                                     &
           SHORT_NAME = (/'DUDT  ','DVDT  ','DWDT  ','DTDT  ','DPEDT ','DQVANA','DQLANA',    &
-                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS  '/),  &
+                         'DQIANA','DQRANA','DQSANA','DQGANA','DOXANA','PHIS  ','VARFLT'/),  &
           CHILD      = SDYN,                                                                &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -1035,13 +1102,11 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="AGCM_BARRIER"           ,RC=STATUS)
-    VERIFY_(STATUS)
 
 ! All done
 !---------
 
-    RETURN_(ESMF_SUCCESS)  
+    RETURN_(ESMF_SUCCESS)
   end subroutine SetServices
 
 
@@ -1049,7 +1114,7 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !BOP
- 
+
 ! !IROUTINE: Initialize -- Initialize method for the composite Agcm Gridded Component
 
 ! !INTERFACE:
@@ -1058,20 +1123,20 @@ contains
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code
 
-! !DESCRIPTION: 
- 
+! !DESCRIPTION:
+
 
 !EOP
 
 ! ErrLog Variables
 
-  character(len=ESMF_MAXSTR)           :: IAm 
+  character(len=ESMF_MAXSTR)           :: IAm
   integer                              :: STATUS
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
@@ -1087,7 +1152,7 @@ contains
    type (ESMF_Alarm)                   :: ALARM4D
    type (ESMF_Config)                  :: cf
    integer                             :: I, NQ
-   real                                :: POFFSET, DT             
+   real                                :: POFFSET, DT
    real, pointer, dimension(:,:)       :: PHIS,SGH,VARFLT,PTR
    real, pointer, dimension(:,:,:)     :: TEND!
    character(len=ESMF_MAXSTR)          :: replayMode
@@ -1105,7 +1170,7 @@ contains
 
 ! =============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1137,7 +1202,7 @@ contains
     VERIFY_(STATUS)
 
 ! Initialize the advection increments bundle (TRADVI)
-! with tracer increment names 
+! with tracer increment names
 !-----------------------------------------------------
 
     call Initialize_IncBundle_init(GC, GEX(PHYS), EXPORT, DYNinc, __RC__)
@@ -1165,21 +1230,24 @@ contains
     call MAPL_GetPointer(EXPORT, VARFLT, 'VARFLT', ALLOC=.true., rc=STATUS)
     VERIFY_(STATUS)
 
-! PHIS ...
+! PHIS (topography)...
 !---------
     call ESMF_StateGet( GIM(SDYN), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
+    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
+    PHIS = PTR
 
+! Pass PHIS into PHYS
+!---------
     call ESMF_StateGet( GIM(PHYS), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
-    PHIS = PTR
 
-! GWDVAR ...
+! GWDVAR (standard deviation)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'SGH', FIELD, rc=STATUS )
     VERIFY_(STATUS)
@@ -1188,14 +1256,22 @@ contains
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     SGH = PTR
 
-! TRBVAR ...
+! TRBVAR (variance)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'VARFLT', FIELD, rc=STATUS )
     VERIFY_(STATUS)
     Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
     VERIFY_(STATUS)
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
+    VERIFY_(STATUS)
     VARFLT = PTR
+
+! Pass variance into SDYN
+!-----------
+    call ESMF_StateGet( GIM(SDYN), 'VARFLT', FIELD, rc=STATUS )
+    VERIFY_(STATUS)
+    Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
+    VERIFY_(STATUS)
 
 ! ======================================================================
 !ALT: the next section addresses the problem when export variables have been
@@ -1210,7 +1286,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_AttributeSet(field, NAME="MAPL_InitStatus", &
                               VALUE=MAPL_InitialRestart, RC=STATUS)
-       VERIFY_(STATUS)      
+       VERIFY_(STATUS)
     END DO
 
 ! Initialize Predictor Alarm
@@ -1234,7 +1310,7 @@ contains
 
    ALARM = ESMF_AlarmCreate( name='PredictorAlarm',    &
                              CLOCK = CLOCK,            &
-                             RingTime     = ringTime,  & 
+                             RingTime     = ringTime,  &
                              RingInterval = TIMEINT,   &
                              RC           = STATUS     )
    VERIFY_(STATUS)
@@ -1353,20 +1429,20 @@ contains
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code
 
-! !DESCRIPTION: 
- 
+! !DESCRIPTION:
+
 
 !EOP
 
 ! ErrLog Variables
 
-  character(len=ESMF_MAXSTR)           :: IAm 
+  character(len=ESMF_MAXSTR)           :: IAm
   integer                              :: STATUS
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
@@ -1390,7 +1466,6 @@ contains
    real, pointer, dimension(:,:,:)     :: V      => null()
    real, pointer, dimension(:,:,:)     :: W      => null()
    real, pointer, dimension(:,:,:)     :: T      => null()
-   real, pointer, dimension(:,:  )     :: TS     => null()
    real, pointer, dimension(:,:,:)     :: Q      => null()
    real, pointer, dimension(:,:,:)     :: QLLS   => null()
    real, pointer, dimension(:,:,:)     :: QLCN   => null()
@@ -1407,14 +1482,14 @@ contains
    real, pointer, dimension(:,:,:)     :: DTDT   => null()
    real, pointer, dimension(:,:,:)     :: TENDAN => null()
 
-   real,   allocatable, dimension(:,:)   :: ALPHA2D
+!! real,   allocatable, dimension(:,:)   :: ALPHA2D
    real,   allocatable, dimension(:,:)   :: QFILL
-   real,   allocatable, dimension(:,:)   :: QINT 
+   real,   allocatable, dimension(:,:)   :: QINT
    real,   allocatable, dimension(:,:)   :: ALF_BKS_INT
    real,   allocatable, dimension(:,:)   :: DRY_BKG_INT
    real,   allocatable, dimension(:,:)   :: DRY_ANA_INT
-   real,   allocatable, dimension(:,:)   :: QDP_BKG_INT 
-   real,   allocatable, dimension(:,:)   :: QDP_ANA_INT 
+   real,   allocatable, dimension(:,:)   :: QDP_BKG_INT
+   real,   allocatable, dimension(:,:)   :: QDP_ANA_INT
    real*8, allocatable, dimension(:,:)   :: SUMKE
    real*8, allocatable, dimension(:,:)   :: SUMCPT1, SUMCPT2
    real*8, allocatable, dimension(:,:)   :: SUMTHV1, SUMTHV2
@@ -1444,7 +1519,7 @@ contains
    real, pointer, dimension(:,:)       :: PERES        => null()
    real, pointer, dimension(:,:)       :: PEFILL       => null()
    real, pointer, dimension(:,:)       :: PEPHY_SDYN   => null()  ! D(CpT)DT from ADD_INCS (SuperDYNamics)
-   real, pointer, dimension(:,:)       :: PEPHY_PHYS   => null()  ! D(CpT)DT from PHYSics 
+   real, pointer, dimension(:,:)       :: PEPHY_PHYS   => null()  ! D(CpT)DT from PHYSics
 
    real, pointer, dimension(:,:)       :: DTHVDTFILINT => null()
    real, pointer, dimension(:,:)       :: DTHVDTPHYINT => null()
@@ -1482,8 +1557,8 @@ contains
    real,   allocatable, dimension(:,:,:) ::     qdp_ana
    real,   allocatable, dimension(:,:,:) ::     dry_ana
    real,   allocatable, dimension(:,:,:) ::     dry_bkg
-   real*8, allocatable, dimension(:,:,:) ::  ple_ana
-   real*8, allocatable, dimension(:,:,:) ::   dp_ana
+   real,   allocatable, dimension(:,:,:) ::  ple_ana
+   real,   allocatable, dimension(:,:,:) ::   dp_ana
    real,   allocatable, dimension(:,:,:) :: tdpold
    real,   allocatable, dimension(:,:,:) :: tdpnew
    real,   allocatable, dimension(:,:,:) :: DQVCON
@@ -1560,7 +1635,7 @@ contains
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1584,7 +1659,7 @@ contains
 
     call MAPL_Get ( STATE, GCS=GCS, GIM=GIM, GEX=GEX,  &
                     INTERNAL_ESMF_STATE=INTERNAL,      &
-                    IM=IM, JM=JM, LM=LM,               & 
+                    IM=IM, JM=JM, LM=LM,               &
                     RC=STATUS )
     VERIFY_(STATUS)
 
@@ -1668,7 +1743,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
                VERIFY_(STATUS)
 
-           else if(  (rplMode=="Exact")   .or.  & 
+           else if(  (rplMode=="Exact")   .or.  &
                    ( (rplMode=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) )  ) then
 
                ! Set Active PREDICTOR_STEP Alarm to OFF
@@ -1706,7 +1781,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                is_shutoff = ESMF_AlarmIsRinging( Alarm,rc=Status)
                VERIFY_(status)
 
-               if (is_shutoff) then ! once this alarm rings, is_shutoff will remain true for the rest of the run 
+               if (is_shutoff) then ! once this alarm rings, is_shutoff will remain true for the rest of the run
                !  if ( MAPL_am_I_root() ) print *, 'Zeroing AGCM_IMPORT'
                   call MAPL_GetPointer(IMPORT,ptr3d,'DUDT' ,RC=STATUS) ; ptr3d=0.0
                   call MAPL_GetPointer(IMPORT,ptr3d,'DVDT' ,RC=STATUS) ; ptr3d=0.0
@@ -1717,7 +1792,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                   call MAPL_GetPointer(IMPORT,ptr2d,'DTSDT',RC=STATUS) ; if(associated(ptr2d)) ptr2d=0.0
                else
                   call ESMF_ClockGetAlarm(Clock,'ReplayShutOff',Alarm,rc=Status)
-                  VERIFY_(status) 
+                  VERIFY_(status)
                   is_shutoff = ESMF_AlarmWillRingNext( Alarm,rc=status )
                   VERIFY_(status)
                endif
@@ -1725,28 +1800,28 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
              ! Check for Beginning of REPLAY cycle
              ! -----------------------------------
                call ESMF_ClockGetAlarm(Clock,'replayCycle',Alarm,rc=Status)
-               VERIFY_(status) 
+               VERIFY_(status)
                Begin_REPLAY_Cycle = ESMF_AlarmIsRinging( Alarm,rc=status )
-               VERIFY_(status) 
+               VERIFY_(status)
 
              ! Check Alarm for Beginning of EXACT_REPLAY09 cycle
              ! -------------------------------------------------
                call ESMF_ClockGetAlarm(Clock,'ExactReplay09',Alarm,rc=Status)
-               VERIFY_(status) 
+               VERIFY_(status)
                is_ExactReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
-               VERIFY_(status) 
+               VERIFY_(status)
 
              ! Check Alarm for REGULAR_REPLAY09 cycle
              ! --------------------------------------
                call ESMF_ClockGetAlarm(Clock,'RegularReplay09',Alarm,rc=Status)
-               VERIFY_(status) 
+               VERIFY_(status)
                is_RegularReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
-               VERIFY_(status) 
+               VERIFY_(status)
 
              ! Check for Last Corrector
              ! -------------------------------------
                call ESMF_ClockGetAlarm(Clock,'ExactReplay',Alarm,rc=Status)
-               VERIFY_(status) 
+               VERIFY_(status)
                LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
                VERIFY_(STATUS)
 
@@ -1754,7 +1829,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 ! ---------------------------------------
                if( first ) then
                    call ESMF_ClockGet(Clock, CurrTime=currTime, rc=Status)
-                   VERIFY_(status) 
+                   VERIFY_(status)
 
                    call ESMF_TimeIntervalSet( TINT, S=INT(DT), rc=STATUS )
                    VERIFY_(STATUS)
@@ -1778,14 +1853,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                        if( is_ExactReplay09_ringing ) then
                            if( filetmpl09.ne.'NULL' ) then
                                call MAPL_GetCurrentFile(FILETMPL=filetmpl09, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                               VERIFY_(status) 
+                               VERIFY_(status)
                            else
                                call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                               VERIFY_(status) 
+                               VERIFY_(status)
                            endif
                        else
                                call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                               VERIFY_(status) 
+                               VERIFY_(status)
                        endif
                    endif
 
@@ -1793,14 +1868,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                        if( is_RegularReplay09_ringing ) then
                            if( filetmpl09.ne.'NULL' ) then
                                call MAPL_GetCurrentFile(FILETMPL=filetmpl09, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                               VERIFY_(status) 
+                               VERIFY_(status)
                            else
                                call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                               VERIFY_(status) 
+                               VERIFY_(status)
                            endif
                        else
                                call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                               VERIFY_(status) 
+                               VERIFY_(status)
                        endif
                    endif
 
@@ -1853,14 +1928,6 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call MAPL_GetPointer( GEX(SDYN), BK,  'BK',  rc=STATUS )
     VERIFY_(STATUS)
 
-!-srf-gf-scheme
-    call MAPL_GetPointer( GEX(PHYS), Q,  'Q',  rc=STATUS )
-    VERIFY_(STATUS)
-!-srf-gf-scheme
-
-    call MAPL_GetPointer( GEX(PHYS), TS,  'TS',  rc=STATUS )
-    VERIFY_(STATUS)
-
     call MAPL_GetPointer( GEX(SDYN), PEPHY_SDYN, 'PEPHY', alloc=.true., rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer( GEX(PHYS), PEPHY_PHYS, 'PEPHY', alloc=.true., rc=STATUS )
@@ -1885,10 +1952,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     VERIFY_(STATUS)
 
     PL  = 0.5*(PLE(:,:,1:LM)+PLE(:,:,0:LM-1))
-    DP  = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
+    DP  =      PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
 
 ! --------------------------------------------------------
-! ALPHA and BETA BIAS Correction Coefficients 
+! ALPHA and BETA BIAS Correction Coefficients
 ! --------------------------------------------------------
 ! AGCM_IMPORT   =>  IAU(n)     ALPHA = 0 (Default)
 ! AGCM_INTERNAL => BIAS(n)     BETA  = 1 (Default)
@@ -1914,7 +1981,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
         if(DO_4DIAU .and. (TYPE == CORRECTOR) ) then
            call ESMF_AlarmRingerOff(ALARM4D, RC=STATUS)
            VERIFY_(STATUS)
-           call update_ainc_(RC=STATUS) 
+           call update_ainc_(RC=STATUS)
            VERIFY_(STATUS)
         endif
 
@@ -1944,7 +2011,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
         allocate(  tdpnew( IM,JM,  LM),STAT=STATUS ) ; VERIFY_(STATUS)
         allocate(  dp_ana( IM,JM,  LM),STAT=STATUS ) ; VERIFY_(STATUS)
         allocate( ple_ana( IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
-                
+
         ! Create Proxies for Updated Pressure and Temperature due to Analysis
         !--------------------------------------------------------------------
         ple_ana = ple + dt*dpedt
@@ -1959,7 +2026,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
         deallocate(  dp_ana )
         deallocate( ple_ana )
     endif
-       
+
 ! Add Analysis Increment Directly to Friendlies
 !----------------------------------------------
 
@@ -2064,6 +2131,13 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                    QGRAUPEL => zero
                 end if
 
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QVBKG', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = Q
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'DPBKG', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = DP
+
                 DQVANA = Q
                 DQLANA = QLLS + QLCN
                 DQIANA = QILS + QICN
@@ -2073,19 +2147,20 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                 if(TYPE  == CORRECTOR) then
 
-                    IF( CONSTRAIN_DAS == 1 .or. CONSTRAIN_DAS == 2 ) then
                     ! ---------------------------------------------------
-
                     ! Create BKG Water Variables
                     ! --------------------------
-                       allocate( dry_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                    IF( CONSTRAIN_DAS == 1 ) then
                        allocate( qdp_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
-                       do L=1,lm
-                          dry_bkg(:,:,L) = ( 1.0 - (     q(:,:,L)+ qlls(:,:,L)+qlcn(:,:,L) + qils(:,:,L)+qicn(:,:,L)  &
-                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L)) )*dp(:,:,L)
-                          qdp_bkg(:,:,L) = (             q(:,:,L)+ qlls(:,:,L)+qlcn(:,:,L) + qils(:,:,L)+qicn(:,:,L)  &
-                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L)  )*dp(:,:,L)
-                       enddo
+                       qdp_bkg = (         q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel   ) * dp
+#if debug
+                       allocate( dry_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                       dry_bkg = ( 1.0 - ( q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel ) ) * dp
+#endif
+                    ENDIF
+                    IF( CONSTRAIN_DAS == 2 ) then
+                       allocate( dry_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                       dry_bkg = ( 1.0 - ( q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel ) ) * dp
                     ENDIF
 
                 ENDIF ! End CORRECTOR Test
@@ -2106,23 +2181,28 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 allocate( DQVCON(IM,JM,LM),STAT=STATUS ) ; VERIFY_(STATUS)
                 DQVCON = Q                               ! Initialize Constraint Tendency
 
+                ! Proxies for Pressure Changes due to Analysis
+                ! --------------------------------------------
+                ple_ana = ple + dt*dpedt
+                 dp_ana  = ple_ana(:,:,1:LM) - ple_ana(:,:,0:LM-1)
+
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QVANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = Q
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'DPANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = DP_ANA
+
                 if(TYPE  == CORRECTOR) then
 
                     IF( CONSTRAIN_DAS == 1 ) then
                     ! ---------------------------
 
-                    ! Proxies for Pressure Changes due to Analysis
-                    ! --------------------------------------------
-                       ple_ana = ple + dt*dpedt
-                       dp_ana  = real(ple_ana(:,:,1:LM),kind=4) - real(ple_ana(:,:,0:LM-1),kind=4)  ! Kind=4 for consistency with old tag
-
                     ! Create ANA Water Mass
                     ! ---------------------
                        allocate(  qdp_ana(IM,JM,LM),STAT=STATUS ); VERIFY_(STATUS)
-                       do L=1,lm
-                          qdp_ana(:,:,L) = ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)+qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) )*dp_ana(:,:,L)
-                       enddo
-   
+                       qdp_ana = (         q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel   ) * dp_ana
+
                     ! Vertically Integrate ANA & BKG Water Mass where they Differ
                     ! -----------------------------------------------------------
                        allocate( sum_qdp_bkg( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
@@ -2130,7 +2210,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                        sum_qdp_bkg = 0.0_8
                        sum_qdp_ana = 0.0_8
                        do L=1,lm
-                       where( qdp_ana(:,:,L).ne.qdp_bkg(:,:,L) )
+                       where( ABS(qdp_ana(:,:,L)-qdp_bkg(:,:,L)) > tiny(1.0_4) )
                               sum_qdp_bkg = sum_qdp_bkg + qdp_bkg(:,:,L)
                               sum_qdp_ana = sum_qdp_ana + qdp_ana(:,:,L)
                        end where
@@ -2139,7 +2219,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     ! Compute Area-Mean Vertically Integrated BKG Water Mass
                     ! ------------------------------------------------------
                        allocate( qdp_bkg_int( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
-                       where( sum_qdp_bkg.ne.0.0_8 ) 
+                       where( sum_qdp_bkg.ne.0.0_8 )
                            qdp_bkg_int = sum_qdp_bkg
                        elsewhere
                            qdp_bkg_int = MAPL_UNDEF
@@ -2150,7 +2230,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     ! Compute Area-Mean Vertically Integrated ANA Water Mass
                     ! ------------------------------------------------------
                        allocate( qdp_ana_int( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
-                       where( sum_qdp_ana.ne.0.0_8 ) 
+                       where( sum_qdp_ana.ne.0.0_8 )
                            qdp_ana_int = sum_qdp_ana
                        elsewhere
                            qdp_ana_int = MAPL_UNDEF
@@ -2160,10 +2240,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                     ! Compute Dry-Mass Scaling Parameter
                     ! ----------------------------------
-                       if( real(qdp_bkg_ave,kind=4).ne.MAPL_UNDEF .and. &
-                           real(qdp_ana_ave,kind=4).ne.MAPL_UNDEF       ) then
-                         ! gamma = qdp_bkg_ave / qdp_ana_ave                  ! Prefered Method
-                           gamma = real( qdp_bkg_ave / qdp_ana_ave, kind=4 )  ! Method for Zero-diff Backward Compatibility
+                       if( qdp_bkg_ave.ne.MAPL_UNDEF .and. &
+                           qdp_ana_ave.ne.MAPL_UNDEF       ) then
+                           gamma = qdp_bkg_ave / qdp_ana_ave                  ! Prefered Method
+                         ! gamma = real( qdp_bkg_ave / qdp_ana_ave, kind=4 )  ! Method for Zero-diff Backward Compatibility
                        else
                            gamma = 1.0_8
                        endif
@@ -2171,7 +2251,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     ! Scale ANA Water Variables for Dry-Mass Conservation
                     ! ---------------------------------------------------
                        do L=1,lm
-                       where( qdp_ana(:,:,L).ne.qdp_bkg(:,:,L) )
+                       where( ABS(qdp_ana(:,:,L)-qdp_bkg(:,:,L)) > tiny(1.0_4) )
                                  q   (:,:,L) =     q   (:,:,L) * gamma
                                  qlls(:,:,L) =     qlls(:,:,L) * gamma
                                  qlcn(:,:,L) =     qlcn(:,:,L) * gamma
@@ -2185,8 +2265,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 #if debug
                        i=1
                        call Dry_Mass_Check (im,jm,lm,i)
-#endif
                        deallocate( dry_bkg )
+#endif
                        deallocate( qdp_bkg )
                        deallocate( qdp_ana )
                        deallocate( qdp_bkg_int )
@@ -2199,24 +2279,16 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     IF( CONSTRAIN_DAS == 2 ) then  ! Constrain Dry_Mass Conservation using Least-Squares of P
                     ! ---------------------------------------------------------------------------------------
 
-                    ! Proxies for Pressure Changes due to Analysis
-                    ! --------------------------------------------
-                       ple_ana = real(ple,kind=8) + real(dt,kind=8)*real(dpedt,kind=8)
-                       dp_ana  = ple_ana(:,:,1:LM)-ple_ana(:,:,0:LM-1)
-
                        call MAPL_GetPointer ( EXPORT, ptr2d, 'DPSDT_CON', rc=STATUS )
                        VERIFY_(STATUS)
-                       if(associated(ptr2d)) ptr2d = real( ple_ana(:,:,LM),kind=4 )   ! Initialize Constraint Tendency
+                       if(associated(ptr2d)) ptr2d = ple_ana(:,:,LM)   ! Initialize Constraint Tendency
 
                        do i=1,10
 
                     ! Create ANA Dry Mass
                     ! -------------------
                        allocate( dry_ana(IM,JM,LM),STAT=STATUS ); VERIFY_(STATUS)
-                       do L=1,lm
-                          dry_ana(:,:,L) = ( 1.0 - ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)  &
-                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) ) )*dp_ana(:,:,L)
-                       enddo
+                       dry_ana = ( 1.0 - ( q+qlls+qlcn+qils+qicn+qrain+qsnow+qgraupel ) ) * dp_ana
 
                     ! allocate(  ALPHA2D(IM,JM),STAT=STATUS ) ; VERIFY_(STATUS)
                     !            ALPHA2D = 1.0
@@ -2241,7 +2313,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                             dry_bkg_int =   sum_dry_bkg
                             dry_ana_int =   sum_dry_ana
-                            alf_bks_int = ( sum_dry_ana/ple_ana(:,:,LM) )**2 ! * alpha2d    Multiply for generic alpha2d NE 1.0
+                            alf_bks_int = ( sum_dry_ana/ple_ana(:,:,LM) )**2 ! * ALPHA2D    Multiply for generic ALPHA2D NE 1.0
 
                        call MAPL_AreaMean( alf_bks_ave, alf_bks_int, area, grid, rc=STATUS )
                        VERIFY_(STATUS)
@@ -2253,16 +2325,18 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     ! Compute Dry-Mass Constraint Parameter
                     ! -------------------------------------
                                    gamma = ( dry_ana_ave - dry_bkg_ave ) / alf_bks_ave
-                         ple_ana(:,:,LM) = ple_ana(:,:,LM) - gamma * sum_dry_ana/ple_ana(:,:,LM) ! * alpha2d    Multiply for generic alpha2d NE 1.0
+                         ple_ana(:,:,LM) = ple_ana(:,:,LM) - gamma * sum_dry_ana/ple_ana(:,:,LM) ! * ALPHA2D    Multiply for generic ALPHA2D NE 1.0
 
                          do L=0,LM-1
                          ple_ana(:,:,L) = AK(L) + BK(L)*ple_ana(:,:,LM)
                          enddo
                          dpedt = ( ple_ana-ple )/dt
 
+#if debug
                        call Dry_Mass_Check (im,jm,lm,i)
+#endif
 
-                    !  deallocate( alpha2d )
+                    !  deallocate( ALPHA2D )
                        deallocate( dry_ana )
                        deallocate( alf_bks_int )
                        deallocate( dry_bkg_int )
@@ -2274,19 +2348,25 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                        call MAPL_GetPointer ( EXPORT, ptr2d, 'DPSDT_CON', rc=STATUS )
                        VERIFY_(STATUS)
-                       if(associated(ptr2d)) ptr2d = ( real( ple_ana(:,:,LM),kind=4 ) - ptr2d )/DT
+                       if(associated(ptr2d)) ptr2d = ( ple_ana(:,:,LM) - ptr2d )/DT
 
                        deallocate( dry_bkg )
-                       deallocate( qdp_bkg )
 
                     ENDIF  ! End CONSTRAIN_DAS == 2 Test
 
                 ENDIF  ! End CORRECTOR Test
 
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QVCON', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = Q
+
                 DQVCON = Q           - DQVCON
                 DQVANA = Q           - DQVANA
                 DQLANA = QLLS + QLCN - DQLANA
                 DQIANA = QILS + QICN - DQIANA
+                DQRANA = QRAIN       - DQRANA
+                DQSANA = QSNOW       - DQSANA
+                DQGANA = QGRAUPEL    - DQGANA
 
                 ! Update Tendency Diagnostic due to CONSTRAINTS
                 ! ---------------------------------------------
@@ -2306,6 +2386,19 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call MAPL_GetPointer ( EXPORT, TENDAN, 'DQIDT_ANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(TENDAN)) TENDAN = DQIANA/DT
+
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQRDT_ANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQRANA/DT
+
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQSDT_ANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQSANA/DT
+
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQGDT_ANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQGANA/DT
+
 
                 deallocate(  dp_ana )
                 deallocate( ple_ana )
@@ -2395,7 +2488,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call MAPL_TimerOff(STATE,"PHYSICS"  )
 !   call SYSTEM_CLOCK(END_TIME)
 !   PHY_TIME = END_TIME-START_TIME
-!   if(PHY_TIME<0) then 
+!   if(PHY_TIME<0) then
 !      PHY_TIME = PHY_TIME + COUNT_MAX
 !   endif
 
@@ -2818,7 +2911,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
       call MAPL_GetPointer(GIM(COMP), TENDSD, trim(NAME)        , rc=STATUS)
       VERIFY_(STATUS)
-      
+
       select case (TYPE)
          case (FREERUN)
 
@@ -2880,18 +2973,15 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                      if(      qave1        .ne.MAPL_UNDEF  .and. &
                               qave2        .ne.MAPL_UNDEF ) then
-                   ! if( real(qave1,kind=4).ne.MAPL_UNDEF  .and. &
-                   !     real(qave2,kind=4).ne.MAPL_UNDEF ) then
                          qave3 = qave2 + qave1*dt*IAUcoeff ! qave3 = AreaMean( P_n+1 = P_n + ANAINC*dt/tau )
                      else
                          qave3 = MAPL_UNDEF
                      endif
 
                      if(      qave3        .ne.MAPL_UNDEF ) then
-                   ! if( real(qave3,kind=4).ne.MAPL_UNDEF ) then
                          where( ANAINC(:,:,LU).ne.0.0 )
-                              ! dummy = ANAINC(:,:,LU)*(qave2/qave3) - dummy*(qave1/qave3)   ! Preferred Method
-                                dummy = ANAINC(:,:,LU)*real(qave2/qave3,kind=4) - dummy * real(qave1/qave3,kind=4)
+                                dummy = ANAINC(:,:,LU)*(qave2/qave3) - dummy*(qave1/qave3)   ! Preferred Method
+                              ! dummy = ANAINC(:,:,LU)*real(qave2/qave3,kind=4) - dummy * real(qave1/qave3,kind=4)
                          elsewhere
                                 dummy = ANAINC(:,:,LU)
                          endwhere
@@ -2977,7 +3067,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
       call MAPL_GetPointer(GIM(COMP), TENDSD, trim(NAME)        , rc=STATUS)
       VERIFY_(STATUS)
-      
+
       select case (TYPE)
          case (FREERUN)
 
@@ -3045,7 +3135,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(PHYS), TENDPH, trim(NAME)        , rc=STATUS)
       VERIFY_(STATUS)
-      
+
       TENDSD = TENDPH
 
     end subroutine DO_UPDATE_PHY
@@ -3067,20 +3157,20 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
       VERIFY_(STATUS)
 
       QOLD = Q   ! Initialize Old Value for Total Tendency Diagnostic
-      
+
       select case (TYPE)
       case (PREDICTOR)
 
          call MAPL_GetPointer(INTERNAL , TENDBS, trim(NAME), rc=STATUS)
          VERIFY_(STATUS)
-         
+
          Q = Q + max( DTX*TENDBS*FC, -Q )  ! Prevent Negative Q
 
       case (FORECAST)
 
          call MAPL_GetPointer(INTERNAL , TENDBS, trim(NAME), rc=STATUS)
          VERIFY_(STATUS)
-         
+
          TENDBS = BET * TENDBS
 
          Q = Q + max( DTX*TENDBS*FC, -Q )  ! Prevent Negative Q
@@ -3161,14 +3251,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
       QTEMP1 = 0.0
       do L=1,LM
       QTEMP1(:,:) = QTEMP1(:,:) + Q(:,:,L)*DP(:,:,L)
-      enddo 
+      enddo
 
       where( Q < 0.0 ) Q = 0.0
 
       QTEMP2 = 0.0
       do L=1,LM
       QTEMP2(:,:) = QTEMP2(:,:) + Q(:,:,L)*DP(:,:,L)
-      enddo 
+      enddo
 
       where( qtemp2.ne.0.0_8 )
              qtemp2 = max( qtemp1/qtemp2, 0.0_8 )
@@ -3176,14 +3266,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
       do L=1,LM
       Q(:,:,L) = Q(:,:,L)*qtemp2(:,:)
-      enddo 
+      enddo
 
       QTEMP2 = 0.0
       do L=1,LM
       QTEMP2(:,:) = QTEMP2(:,:) + Q(:,:,L)*DP(:,:,L)
-      enddo 
+      enddo
 
-      WHERE( QTEMP1 >= 0.0 ) 
+      WHERE( QTEMP1 >= 0.0 )
               QFILL  = 0.0
       ELSEWHERE
               QFILL = -QTEMP1 / (DT*MAPL_GRAV)
@@ -3211,8 +3301,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     integer :: kstep, kshift
     integer :: MKIAU_RingDate
     integer :: MKIAU_RingTime
-    integer :: rep_YY, rep_MM, rep_DD 
-    integer :: rep_H,  rep_M,  rep_S 
+    integer :: rep_YY, rep_MM, rep_DD
+    integer :: rep_H,  rep_M,  rep_S
     integer :: MKIAU_FREQUENCY
     logical :: IAU_DIGITAL_FILTER
 
@@ -3228,7 +3318,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
     call MAPL_GetResource(STATE, REPLAY_MODE, Label='REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
- 
+
     call MAPL_GetResource(STATE, STRING, LABEL="IAU_DIGITAL_FILTER:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
     STRING = ESMF_UtilStringUpperCase(STRING)
@@ -3258,7 +3348,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
             allocate(myCoeffs%dfi(nsteps))
             myCoeffs%istep=0
 
-            call dfi_coeffs (DT,MKIAU_FREQUENCY,TAUANL,nsteps,myCoeffs%dfi) 
+            call dfi_coeffs (DT,MKIAU_FREQUENCY,TAUANL,nsteps,myCoeffs%dfi)
 
         ! Shift DFI Coefficients if Necessary
         ! -----------------------------------
@@ -3302,7 +3392,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
            shifted_dfi(nsteps) = shifted_dfi(1)
            myCoeffs%dfi        = shifted_dfi
            deallocate( shifted_dfi )
-       
+
            if (MAPL_am_I_root()) then
               print*, 'DFI initialized for',nsteps,' steps'
               do i=1,nsteps-1
@@ -3320,7 +3410,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     endif
 
     end subroutine get_iau_coeff
-    
+
     subroutine update_ainc_(RC)
 
     use ESMF_CFIOFileMod
@@ -3341,7 +3431,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 ! In case of handling analysis increment:
 !    - if needed, interpolate analysis increment to model grid
 !    - convert analysis increment to IAU increment (e.g., tv to td)
- 
+
 
 ! The following name declarations will be easily unwired ...
     character(len=*), parameter :: incnames(7) = (/ 'sphu ', &
@@ -3528,7 +3618,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
       endif
 
     else                              ! typicall, will expect tendency at initial time
-                                      ! to be meaningful so, use what is in agcm_import 
+                                      ! to be meaningful so, use what is in agcm_import
                                       ! in the first pass, from then on analysis should
                                       ! be read in at desired frequency
       if(ifirst<1)then
@@ -3694,7 +3784,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
              myANA%phis_bkg=phis_bkg
          endif
       endif
-      
+
       myAna%Initialized=.true.
     endif
 
@@ -3853,7 +3943,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
            else
                gptr3d=aptr3d
            endif
-           if (fromANA2BKG) then 
+           if (fromANA2BKG) then
               if(trim(NAME)=='ozone') do3_inc=gptr3d
               if(trim(NAME)=='sphu' ) dq_inc =gptr3d
               if(trim(NAME)=='tv'   ) dt_inc =gptr3d
@@ -3865,7 +3955,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
               if(trim(NAME)=='delp'.and.l_use_ana_delp ) dp_aux =gptr3d
            endif
            if(.not.l_use_ana_delp) then
-              if(trim(NAME)=='delp') then 
+              if(trim(NAME)=='delp') then
                  dp_inc =gptr3d
               endif
            endif
@@ -3893,7 +3983,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
         du_aux=uptr
         dv_aux=vptr
     endif
- 
+
 !   Calculate 3d-pressure change
 !   -----------------------------
     if (l_use_ana_delp) then
@@ -3917,7 +4007,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 !   -------------------------------------------------------------------
     EPS = MAPL_RVAP/MAPL_RGAS-1.0
     if (.not.l_nudge) then ! in this case, using the background fields is not
-                           ! quite legitimate since these refer to the really 
+                           ! quite legitimate since these refer to the really
                            ! current trajectory and not quite the original
                            ! background used by the analysis
        dt_inc = dt_inc /(1.0+eps*q_bkg) - eps*dq_inc*tv_bkg/((1.0+eps*q_bkg)*(1.0+eps*q_bkg)) ! now dt is inc in dry temperature
@@ -4012,7 +4102,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                    print *, 'Remapping ANA to Internal State Topography'
                    print *
                  endif
-   
+
                  allocate(pk_ana (IMana,JMana,  LMana),stat=STATUS);VERIFY_(STATUS)
                  allocate(pke_ana(IMana,JMana,0:LMana),stat=STATUS);VERIFY_(STATUS)
                  pke_ana(:,:,:)  = ple_ana(:,:,:)**MAPL_KAPPA
@@ -4020,10 +4110,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     pk_ana(:,:,L)  = ( pke_ana(:,:,L)-pke_ana(:,:,L-1) ) &
                                    / ( MAPL_KAPPA*log(ple_ana(:,:,L)/ple_ana(:,:,L-1)) )
                  enddo
-   
+
                  allocate(thv_ana(IMana,JMana,LMana),stat=STATUS);VERIFY_(STATUS)
                  thv_ana = tv_ana/pk_ana
-    
+
                  call myremap ( ple_ana, &
                                   u_ana, &
                                   v_ana, &
@@ -4031,7 +4121,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                                   q_ana, &
                                  o3_ana, &
                                phis_ana,myANA%phis_bkg,ak,bk,IMana,JMana,LMana )
-    
+
                  ! Re-create ANA Dry Temperature
                  ! -----------------------------
                  pke_ana(:,:,:) = ple_ana(:,:,:)**MAPL_KAPPA
@@ -4040,7 +4130,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                                   / ( MAPL_KAPPA*log(ple_ana(:,:,L)/ple_ana(:,:,L-1)) )
                  enddo
                  tv_ana= thv_ana*pk_ana
-   
+
                  deallocate(thv_ana,stat=STATUS);VERIFY_(STATUS)
                  deallocate(pke_ana,stat=STATUS);VERIFY_(STATUS)
                  deallocate(pk_ana ,stat=STATUS);VERIFY_(STATUS)
@@ -4168,7 +4258,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
              print *
           endif
 
-!         Calcuate T-skin increment 
+!         Calcuate T-skin increment
           if (IuseTS) then
              allocate(qdum2(IMana,JMana,1))
              allocate(qdum1(IMbkg,JMbkg,1))
@@ -4278,7 +4368,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     if(allocated(uptr))  deallocate(uptr)
     if(allocated(vptr))  deallocate(vptr)
 
-  
+
     if ( (.not.l_store_transforms) ) then
       if (associated(myANA%phis_bkg)) then
           deallocate(myANA%phis_bkg,stat=STATUS);VERIFY_(STATUS)
@@ -4312,7 +4402,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
       myANA%do_transforms=.false.
       myANA%initialized=.false.
     endif
-    
+
     RETURN_(ESMF_SUCCESS)
     end subroutine update_ainc_
 
@@ -4325,11 +4415,11 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
        integer, intent(in) :: NY
        integer, intent(in) :: LM
        integer, optional, intent(out) :: rc
-       
+
        type (ESMF_Config) :: tmp_config
        integer :: status
        character(len=ESMF_MAXSTR) :: imstr, jmstr
-       
+
        write(imstr,*) IM_World
        write(jmstr,*) JM_World
        if(JM_World==6*IM_World) then
@@ -4387,7 +4477,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     nhlf = (nsteps+1)/2
     do k = 1, nhlf-1
        n   = k-nhlf
-       arg = n*pi/nhlf            
+       arg = n*pi/nhlf
        wc  = sin(arg)/arg ! Lanczos window
        dfi(k) = wc*sin(n*2.0*pi*DT/FILE_FREQUENCY)/(n*pi)
     end do
@@ -4395,7 +4485,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     do i = nhlf+1, nsteps
        dfi(i) = dfi(nsteps-i+1)
     end do
- 
+
 !   Normalize coefficients
 !   ----------------------
     dfi = dfi/sum(dfi)
@@ -4594,8 +4684,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
  !   write(6,'(1x,a,i8.8,a,i6.6,a,f5.3,a,a,i8.8,a,i6.6,a,i8.8,a,i6.6,a,i8.8,a,i6.6,a,f5.3,a,l)') &
  !                                            ' Current_Time: ',nymd,' ',nhms,' (',facm1,') ', &
- !                                            ' -Replay_Time: ',Mymd,' ',Mhms, & 
- !                                            '  Replay_Time: ',rymd,' ',rhms, & 
+ !                                            ' -Replay_Time: ',Mymd,' ',Mhms, &
+ !                                            '  Replay_Time: ',rymd,' ',rhms, &
  !                                            ' +Replay_Time: ',Pymd,' ',Phms,' (',facp0,') Begin_REPLAY_Cycle: ',Begin_REPLAY_Cycle
  ! endif
 
