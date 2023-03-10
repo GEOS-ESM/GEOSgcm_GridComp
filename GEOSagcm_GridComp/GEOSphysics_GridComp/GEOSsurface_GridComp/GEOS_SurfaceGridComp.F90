@@ -4657,9 +4657,6 @@ module GEOS_SurfaceGridCompMod
 !  All done
 !-----------
 
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
-
     call MAPL_TimerOff(MAPL,"-RUN1" )
     call MAPL_TimerOff(MAPL,"TOTAL")
 
@@ -8615,9 +8612,6 @@ module GEOS_SurfaceGridCompMod
 
     if(associated( UUATILE  )) deallocate( UUATILE   )
     if(associated( VVATILE  )) deallocate( VVATILE   )
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
 
     call MAPL_TimerOff(MAPL,"-RUN2" )
     call MAPL_TimerOff(MAPL,"TOTAL")
