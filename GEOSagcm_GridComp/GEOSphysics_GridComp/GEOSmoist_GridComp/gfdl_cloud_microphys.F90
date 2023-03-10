@@ -688,10 +688,10 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
     real, dimension (ktop:kbot) :: u0, v0, u1, v1, w1
     
-    real :: cpaut
+    real :: cpaut, rh_adj, rh_rain
     real :: r1, s1, i1, g1, rdt, ccn0
     real :: dt_rain, dts
-    real :: s_leng, t_land, t_ocean
+    real :: s_leng, t_land, t_ocean, h_var
     real :: cvm, tmp, omq
     real :: dqi, qio, qin
     
@@ -819,7 +819,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
        
         cpaut = c_paut * 0.104 * grav / 1.717e-5
         ! slow autoconversion in stable regimes
-        cpaut = cpaut * (0.5 + 0.5*(1.0-min(1.0,eis(i)/5.0)**2))
+        cpaut = cpaut * (0.5 + 0.5*(1.0-min(1.0,eis(i)/10.0)**2))
 
         ! ccn needs units #/m^3 
         if (prog_ccn) then
@@ -1252,7 +1252,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ql = ql/qadum
     qi = qi/qadum
 
-    fac_rc = min(1.0,eis/5.0)**2 ! Estimated inversion strength determine stable regime
+    fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
     fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
  
     if (irain_f /= 0) then
@@ -2402,7 +2402,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         q_cond (k) = q_liq (k) + q_sol (k)
         
         qpz = qv (k) + q_cond (k) ! qpz is conserved
-        
+       
         ! -----------------------------------------------------------------------
         ! use the "liquid - frozen water temperature" (tin) to compute saturated specific humidity
         ! -----------------------------------------------------------------------
@@ -2442,7 +2442,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
              if (icloud_f == 3) then
              ! triangular
                if(q_plus.le.qstar) then
-                  qa (k) = qcmin
+                  qa (k) = qcmin ! little/no cloud cover 
                elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
                   qa (k) = max(qcmin, min(1., (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) )))
                elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
@@ -2453,11 +2453,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
              else
              ! top-hat
                if(q_plus.le.qstar) then
-                 qa (k) = qcmin  ! little/no cloud cover 
+                  qa (k) = qcmin ! little/no cloud cover 
                elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
-                 qa (k) = max(qcmin, min(1., (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
+                  qa (k) = max(qcmin, min(1., (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
                elseif (qstar .le. q_minus) then
-                 qa (k) = 1.0 ! air fully saturated; 100 % cloud cover
+                  qa (k) = 1.0 ! air fully saturated; 100 % cloud cover
                endif
              endif
          endif
@@ -3377,20 +3377,20 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                ! Update units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
-             ! ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-             ! !------ice cloud effective radius ----- [klaus wyser, 1998]
-             !  if(tk(k)>t_ice) then
-             !     rBB  = -2.
-             !  else
-             !     rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
-             !  endif
-             !  rBB   = MIN((MAX(rBB,-6.)),-2.)
-             !  DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-             !  lnP   = log(pl(k)/100.0)
-             !  C0    = -1.04 + 0.298*lnP
-             !  C1    =  0.67 - 0.097*lnP
-             ! ! apply pressure scaling
-             !  vti (k) = vti (k) * (C0 + C1*log(DIAM))
+               ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+               !------ice cloud effective radius ----- [klaus wyser, 1998]
+               !if(tk(k)>t_ice) then
+               !   rBB  = -2.
+               !else
+               !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
+               !endif
+               !rBB   = MIN((MAX(rBB,-6.)),-2.)
+               !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
+               !lnP   = log(pl(k)/100.0)
+               !C0    = -1.04 + 0.298*lnP
+               !C1    =  0.67 - 0.097*lnP
+               ! apply pressure scaling
+               !vti (k) = vti (k) * (C0 + C1*log(DIAM))
                ! Limits
                 vti (k) = min (vi_max, max (vf_min, vti (k)))
             endif
