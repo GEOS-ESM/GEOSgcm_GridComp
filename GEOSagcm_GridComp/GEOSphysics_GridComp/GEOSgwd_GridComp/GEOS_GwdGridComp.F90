@@ -839,7 +839,7 @@ contains
       imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
       read(imchar,*) imsize
       if(dateline.eq.'CF') imsize = imsize*4
-      call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', _RC)
+      call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', default=1.0, _RC)
       imsize = imsize*CEILING(STRETCH_FACTOR)
 
 ! Gravity wave drag
