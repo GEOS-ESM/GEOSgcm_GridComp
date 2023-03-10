@@ -5,7 +5,7 @@ set (srcs
   GEOS_RAS_InterfaceMod.F90 RASPARAMS.F90 ras.F90 ddf.F90 rascnvv2_v.F90
   GEOS_BACM_1M_InterfaceMod.F90 cloudnew.F90
   GEOS_MGB2_2M_InterfaceMod.F90 micro_mg3_0.F90 micro_mg_utils.F90
-  cldmacro.F90 cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90
+  cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90
   wv_sat_methods.F90
   GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90
   GEOS_GF_InterfaceMod.F90 ConvPar_GF_GEOS5.F90 ConvPar_GF2020.F90 ConvPar_GF_Shared.F90 module_gate.F90
