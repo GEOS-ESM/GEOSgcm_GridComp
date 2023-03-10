@@ -829,7 +829,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                 c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
             enddo
         else
-           !ccn0 = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
             if (use_ccn) then
                ccn0 = qn (i, j, kbot) ! ccn_surface
             else
@@ -1368,11 +1367,11 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
         if (tz (k) > t_wfr .and. qr (k) > qpmin) then
 
-            ! area and timescale efficiency on revap
-                                   AREA_LS_PRC_K = 0.0
-            if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
-            fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
-           !fac_revp = 1. - exp (- dt / tau_revp)
+           !! area and timescale efficiency on revap
+           !                       AREA_LS_PRC_K = 0.0
+           !if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
+           !fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
+            fac_revp = 1. - exp (- dt / tau_revp)
  
             ! -----------------------------------------------------------------------
             ! define heat capacity and latent heat coefficient
@@ -1590,8 +1589,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! pimlt: instant melting of cloud ice
             ! -----------------------------------------------------------------------
            
-            newql = new_liq_condensate(tzk (k), qlk (k), qik (k), cnv_fraction, srf_type)
-            melt = min (newql, fac_imlt * (tzk (k) - tice) / icpk (k))
+            melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk (k))
             tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
 
             ! new total condensate / old condensate 
@@ -1815,8 +1813,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! threshold from wsm6 scheme, hong et al 2004, eq (13) : qi0_crt ~0.8e-4
                 ! -----------------------------------------------------------------------
                
-! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi0_crt  
-                qim = ice_fraction(tz,cnv_fraction,srf_type) * qi0_crt / den (k)
+                qim = qi0_crt / den (k)
  
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice
