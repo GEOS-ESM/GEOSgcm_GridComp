@@ -1056,7 +1056,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          IM=IM, JM=JM, LM=LM,        &
          RUNALARM=ALARM, LATS=LATS,  &
                            _RC )
-    
+
 ! If its time, recalculate the GWD tendency
 ! -----------------------------------------
 
