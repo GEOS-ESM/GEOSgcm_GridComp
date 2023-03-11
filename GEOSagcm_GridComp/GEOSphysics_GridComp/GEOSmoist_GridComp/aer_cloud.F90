@@ -2289,8 +2289,8 @@ END
 	  DSH =0.d0
 	  FDS=1.d0
       ! here we need to decide what the supersaturation level inside an ice cloud  must be to nucleate ice.      
-        sc_ice = 1.d0
-        	 ! sc_ice = shom_ice + 1.d0
+        !sc_ice = 1.d0
+        	  sc_ice = shom_ice + 1.d0
        
       !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
       
