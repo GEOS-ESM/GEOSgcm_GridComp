@@ -6400,7 +6400,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! "btran" in the catchment zones; map into CN zones
 ! -------------------------------------------------
-       sm(n,fsat) = 1.0
+       sm(:,fsat) = 1.0
        
 ! gkw: bt2 is unstressed region only (subtract saturated and wilting areas)
        do n = 1,ntiles
