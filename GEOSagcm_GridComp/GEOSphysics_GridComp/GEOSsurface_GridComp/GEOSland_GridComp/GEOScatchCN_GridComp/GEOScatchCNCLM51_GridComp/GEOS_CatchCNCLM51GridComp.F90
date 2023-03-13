@@ -35,6 +35,7 @@ module GEOS_CatchCNCLM51GridCompMod
   use DragCoefficientsMod
   use CATCHMENT_CN_MODEL
   use CNCLM_DriverMod
+  use CNCLM_Photosynthesis
   use CN_initMod
   USE STIEGLITZSNOW,   ONLY :                 &
        snow_albedo, StieglitzSnow_calc_tpsnow, N_CONSTIT,   &
@@ -6544,6 +6545,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! --------------------------------------------------------------------
 
     istep = istep + 1
+    TA_MIN(:) = 1000.
 
     ! running mean - reset accumulation period until greater than nstep
     ! fzeng & gkw: may not be exactly 2m, but it is consistent with t_ref2m in CN model
