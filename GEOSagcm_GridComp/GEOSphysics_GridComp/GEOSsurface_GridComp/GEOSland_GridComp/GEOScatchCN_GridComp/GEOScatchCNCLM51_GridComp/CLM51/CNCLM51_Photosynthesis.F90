@@ -36,7 +36,7 @@
             lmrsha_out,parabs,btran_out)
 
  use MAPL_SatVaporMod
-
+ use QSatMod              , only: QSat
  ! INPUTS
  integer, intent(in) :: nch               ! vector length
 

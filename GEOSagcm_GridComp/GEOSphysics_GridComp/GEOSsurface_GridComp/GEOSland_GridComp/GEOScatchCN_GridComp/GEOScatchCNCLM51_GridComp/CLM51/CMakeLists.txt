@@ -106,6 +106,7 @@ set (srcs
   paramUtilMod.F90
   perf_mod.F90
   PhotosynthesisMod.F90
+  QSatMod.F90
   quadraticMod.F90
   RootBiophysMod.F90
   shr_abort_mod.F90
