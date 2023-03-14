@@ -1408,4 +1408,4 @@ contains
 
   end subroutine get_metsrc_data2d
  
-end module GEOS_GigatrajGridComp.F90 
+end module GEOS_GigatrajGridCompMod 
