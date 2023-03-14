@@ -77,8 +77,7 @@ module clm_varcon
   
   real(r8), public :: betads  = 0.5_r8            ! two-stream parameter betad for snow
   real(r8), public :: betais  = 0.5_r8            ! two-stream parameter betai for snow
-  real(r8), public :: omegas(numrad)           ! two-stream parameter omega for snow by band
-  data (omegas(i),i=1,numrad) /0.8_r8, 0.4_r8/
+  real(r8), public :: omegas(numrad) = /0.8_r8, 0.4_r8/  ! two-stream parameter omega for snow by band
 
   integer, parameter, public :: max_lunit  = 9  !maximum value that lun%itype can have
 
