@@ -24,165 +24,114 @@ def get_account():
    accounts = accounts.decode().split()
    return accounts[0]
 
-def get_config_from_answers(answers):
+def get_user():
+   cmd = 'whoami'
+   p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+   (user, err) = p.communicate()
+   p_status = p.wait()
+   user = user.decode().split()
+   return user[0]
 
-   grid_type  = answers['grid_type']
-   lbcsv      = answers['bcs_version']
-   resolution = answers['resolution']
-   orslvs     = answers['orslvs']
+def get_configs_from_answers(answers):
 
-   im = {}
-   imo = {}
-   jm = {}
-   jmo = {}
-   NX = 8640 
-   NY = 4320
-   NT = 232000000
+   lbcsv       = answers['bcs_version']
 
    hostname = socket.gethostname()
-   input_dir = ''
+   make_bcs_input_dir = ''
    if 'discover' in hostname:
-      input_dir = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/'
+      make_bcs_input_dir = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/'
    else:
-      input_dir = '/nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/' 
+      make_bcs_input_dir = '/nobackup/gmao_SIteam/ModelData/make_bcs_inputs/' 
 
-   maskfile = ''
+   configs = []
+   print(answers['grid_type'])
+   for grid_type in answers['grid_type']:
+     print('Grid_type: ' + grid_type)
+     for orslv in  answers.get('Ocean'):
+       print('orslv: ' + orslv)
+       for resolution in answers.get(grid_type,[]):
+          print('resolution: ' +  resolution)
+          
+          NX = 8640 
+          NY = 4320
+          NT = 232000000
+       
+          maskfile = ''
+       
+          if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6']:
+             maskfile = make_bcs_input_dir+'shared/mask/GEOS5_10arcsec_mask_freshwater-lakes.nc'
+             if lbcsv in ['F25', 'GM4', 'ICA']:
+                maskfile = make_bcs_input_dir+'shared/mask/global.cat_id.catch.DL'
+       
+          if orslv in['O2','O3','CS']:
+             maskfile = make_bcs_input_dir+'shared/mask/GEOS5_10arcsec_mask.nc'
+             if lbcsv in ['F25', 'GM4', 'ICA']:
+                maskfile = make_bcs_input_dir + 'shared/mask/global.cat_id.catch.GreatLakesCaspian_Updated.DL'
+          if (maskfile == ''):
+             print(" \!\!\!\! Invalid Ocean Resolution, stopping ")
+             exit()
+ 
+          if 'EASEv1' == grid_type or 'EASEv2' == grid_type:
+             maskfile = 'shared/mask/GEOS5_10arcsec_mask.nc'
+       
+          if resolution in ['c768','c1440'] : 
+             NX = 17280
+             NY = 8640
+          if resolution == 'c2800': 
+             NX = 21600
+             NY = 10800
+          if resolution in ['c1536', 'c3072','c5760'] : 
+             NX = 43200
+             NY = 21600
+       
+          if 'GEOS5_10arcsec_mask' in maskfile:
+             NX = 43200
+             NY = 21600
+       
+          config = {}
+          config['grid_type'] = grid_type
+          config['lbcsv']     = lbcsv
+          config['resolution']= resolution
+          config['orslvs']    = orslv
+          config ['im']  = im[resolution]
+          config ['jm']  = jm[resolution]
+          config ['imo'] = im[orslv]
+          config ['jmo'] = jm[orslv]
+          config ['NX']  = NX
+          config ['NY']  = NY
+          config ['NT']  = NT
+          config ['MASKFILE']  = maskfile
+          user = os.getlogin()
+          config ['expdir'] = '/discover/nobackup/'+user+'/BCS_PACKAGE/'+lbcsv+'/'
+          now   = datetime.now()
+          config ['outdir'] =now.strftime("%Y%m%d%H%M%S")
+          config ['inputdir'] = make_bcs_input_dir
+          config ['NCPUS'] = 20
 
-   if orslvs in['O1','T2','T3','T4','T1MOM6','T2MOM6','T4MOM6']:
-      maskfile = 'shared/mask/GEOS5_10arcsec_mask_freshwater-lakes.nc'
-      if lbcsv in ['F25', 'GM4', 'ICA']:
-         maskfile = 'global.cat_id.catch.DL'
-
-   if orslvs in['O2','O3','CS']:
-      maskfile = 'shared/mask/GEOS5_10arcsec_mask.nc'
-      if lbcsv in ['F25', 'GM4', 'ICA']:
-         maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
-
-   if grid_type in ['EASEv1', 'EASEv2']:
-      maskfile = 'shared/mask/GEOS5_10arcsec_mask.nc'
-
-   imo['O1'] = 360
-   jmo['O1'] = 180
-
-   imo['O2'] = 1440
-   jmo['O2'] = 720
-
-   imo['O3'] = 2880
-   jmo['O3'] = 1440
-   
-   imo['T2'] = 360
-   jmo['T2'] = 200
-   
-   imo['T3'] = 720
-   jmo['T3'] = 410
-   
-   imo['T4'] = 1440
-   jmo['T4'] = 1080
-   
-   imo['T1MOM6'] = 72
-   jmo['T1MOM6'] = 36
-   
-   imo['T2MOM6'] = 360
-   jmo['T2MOM6'] = 210
-   
-   imo['T4MOM6'] = 1440
-   jmo['T4MOM6'] = 1080
-   
-   im['b'] = 144
-   jm['b'] = 91
-   
-   im['c'] = 288
-   jm['c'] = 181
-   
-   im['d'] = 576
-   jm['d'] = 361
-   
-   im['e'] = 1152
-   jm['e'] = 721
-   
-   cubed = [12,24,48, 90, 180,360,720, 768,1000,1152, 1440,1536,2880,3072,5760]
-   for i in cubed:
-      key = 'c'+str(i)
-      im[key] = i
-      jm[key] = i*6
-   
-   if grid_type == 'EASEv2' :
-      im['M01'] = 34704 
-      jm['M01'] = 14616
-   
-      im['M03'] = 11568
-      jm['M03'] = 4872
-      
-      im['M09'] = 3856
-      jm['M09'] = 1624
-
-      im['M25'] = 1388  
-      jm['M25'] = 584
-      
-      im['M36'] = 964
-      jm['M36'] = 406
-      
-   if grid_type == 'EASEv1' :
-      im['M01'] = 34668 
-      jm['M01'] = 14688
-   
-      im['M03'] = 11556
-      jm['M03'] = 4896
-      
-      im['M09'] = 3852
-      jm['M09'] = 1632
-
-      im['M25'] = 1383  
-      jm['M25'] = 586
-
-      im['M36'] = 963  
-      jm['M36'] = 408
-
-   if resolution in ['c768','c1440'] : 
-     NX = 17280
-     NY = 8640
-   if resolution == 'c2800': 
-     NX = 21600
-     NY = 10800
-   if resolution in ['c1536', 'c3072','c5760'] : 
-     NX = 43200
-     NY = 21600
-
-   if 'GEOS5_10arcsec_mask' in maskfile:
-      NX = 43200
-      NY = 21600
-
-   config = {}
-   config['grid_type'] = grid_type
-   config['lbcsv']     = lbcsv
-   config['resolution']= resolution
-   config['orslvs']    = orslvs
-   config ['im']  = im[resolution]
-   config ['jm']  = jm[resolution]
-   config ['imo'] = imo[orslvs]
-   config ['jmo'] = jmo[orslvs]
-   config ['NX']  = NX
-   config ['NY']  = NY
-   config ['NT']  = NT
-   config ['MASKFILE']  = maskfile
-   user = os.getlogin()
-   config ['expdir'] = '/discover/nobackup/'+user+'/BCS_PACKAGE/'+lbcsv+'/'
-   now   = datetime.now()
-   config ['outdir'] =now.strftime("%Y%m%d%H%M%S")
-   config ['inputdir'] = input_dir
-   config ['NCPUS'] = 20
-
-   return config
+          configs = configs + [config]
+   return configs
 
 def ask_questions():
-
+   
+   user_name = get_user()
    questions = [
+       {
+            "type": "select",
+            "name": "withland",
+            "message": "Generate land parameter files ?: \n \
+   This option saves time when additional bcs are created that have \n \
+   the exact same land parameters as an existing set of bcs because \n \
+   the only difference between the two sets of bcs is the [non-tripolar] \n \
+   ocean resolution. ",
+            "choices": ["Yes", "No"],
+            "default": "Yes",
+        },
 
         {
             "type": "select",
             "name": "bcs_version",
             "message": "Select land BCS version: \n \
-    *BCs produced by this code will differ from BCs in archived directories!!! \n \
+    BCs with 'archived*' produced by this code will differ from BCs in archived directories!!! \n \
     These differences are caused by compiler changes, code improvements and bug \n \
     fixes that were implemented since the archived BCs in the above-mentioned \n \
     directories were originally created.  The impact of these differences on \n \
@@ -193,32 +142,36 @@ def ask_questions():
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)", \
    "ICA : Icarus        (archived*: /discover/nobackup/ltakacs/bcs/Icarus/)", \
    "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)", \
-   "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)", \
-   "NL5 : NLv5 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)", \
-   "DEV : Development version"],
+   "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/) \n\
+          = NL3 + JPL veg height", \
+   "NL5 : NLv5 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)\n \
+         = NL3 + JPL veg height + PEATMAP", \
+   "v06 : NL3 + JPL veg height + PEATMAP + MODIS snow alb", \
+   "v07 : NL3 + PEATMAP", \
+   "v08 : NL3 + MODIS snow alb", \
+   "v09 : NL3 + PEATMAP + MODIS snow alb"],
             "default": "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)",
         },
 
        {
-            "type": "select",
+            "type": "checkbox",
             "name": "grid_type",
-            "message": "Select grid type: \n ",
+            "message": "Select grid types( select one or none of EASEv1 and EASEv2): \n ",
             "choices": ["Lat-Lon", "Cubed-Sphere", "EASEv2", "EASEv1"],
             "default": "Cubed-Sphere",
         },
 
        {
-            "type": "select",
-            "name": "resolution",
-            "message": "Select lat-lon resolution: \n ",
-            "choices": ["b -- 2   deg", "c -- 1  deg", "d -- 1/2 deg","e --  1/4 deg"],
-            "default": "d -- 1/2 deg",
-            "when": lambda x: x['grid_type'] == "Lat-Lon",
+            "type": "checkbox",
+            "name": "Lat-Lon",
+            "message": "Select lat-lon resolution (multiple choices): \n ",
+            "choices": ["b -- 2   deg $144x91$", "c -- 1   deg $288x181$", "d -- 1/2 deg $576x361$","e -- 1/4 deg $1152x721$"],
+            "when": lambda x: "Lat-Lon" in x['grid_type'],
         },
 
        {
-            "type": "select",
-            "name": "resolution",
+            "type": "checkbox",
+            "name": "Cubed-Sphere",
             "message": "Select cubed-sphere resolution: \n ",
             "choices": [ \
                  "c12   -- 8    deg", \
@@ -236,53 +189,100 @@ def ask_questions():
                  "c2880 -- 1/32 deg (  3   km)", \
                  "c3072 -- 1/32 deg (  3   km)", \
                  "c5760 -- 1/64 deg (  1.5 km)"],
-            "default": "c360  -- 1/4  deg ( 28   km)",
-            "when": lambda x: x['grid_type'] == "Cubed-Sphere",
+            "when": lambda x:  "Cubed-Sphere" in x['grid_type'],
         },
 
        {
-            "type": "select",
-            "name": "resolution",
-            "message": "Select EASE grid resolution: \n ",
+            "type": "checkbox",
+            "name": "EASEv1",
+            "message": "Select EASEv1 grid resolution: \n ",
             "choices": [ \
-                 "M01  --  1km", \
-                 "M03  --  3km", \
-                 "M09  --  9km", \
-                 "M25  -- 25km", \
-                 "M36  -- 36km"],
-            "default": "M09  --  9km",
-            "when": lambda x: x['grid_type'] == "EASEv2" or x['grid_type'] == "EASEv1",
+                 "M01  --  1km $34668x14688$", \
+                 "M03  --  3km $11556x4896$", \
+                 "M09  --  9km $3852x1632$", \
+                 "M25  -- 25km $1383x586$", \
+                 "M36  -- 36km $963x408$"],
+            "when": lambda x: "EASEv1" in  x['grid_type'] ,
+        },
+       {
+            "type": "checkbox",
+            "name": "EASEv2",
+            "message": "Select EASEv2 grid resolution: \n ",
+            "choices": [ \
+                 "M01  --  1km $34704x14616$", \
+                 "M03  --  3km $11568x4872$", \
+                 "M09  --  9km $3856x1624$", \
+                 "M25  -- 25km $1388x584$", \
+                 "M36  -- 36km $964x406$"],
+            "when": lambda x: "EASEv2" in x['grid_type'],
         },
 
        {
-            "type": "select",
-            "name": "orslvs",
+            "type": "checkbox",
+            "name": "Ocean",
             "message": "Select ocean resolution: \n ",
             "choices": [ \
-                 "O1     --  Low-Resolution  Reynolds 1   deg (Lon/Lat Data-Ocean:    360x180 )", \
-                 "O2     --  Med-Resolution  Reynolds 1/4 deg (Lon/Lat Data-Ocean:   1440x720 )", \
-                 "O3     --  High-Resolution    OSTIA 1/8 deg (Lon/Lat Data-Ocean:   2880x1440)", \
-                 "T2     --  Med-Resolution  Tripolar 1   deg (MOM-Tripolar-Ocean:    360x200 )", \
-                 "T3     --  High-Resolution Tripolar 1/2 deg (MOM-Tripolar-Ocean:    720x410 )", \
-                 "T4     --  High-Resolution Tripolar 1/4 deg (MOM-Tripolar-Ocean:   1440x1080)", \
-                 "T1MOM6 --  Low-Resolution  Tripolar 5   deg (MOM6-Tripolar-Ocean:    72x36  )", \
-                 "T2MOM6 --  Med-Resolution  Tripolar 1   deg (MOM6-Tripolar-Ocean:   360x210 )", \
-                 "T4MOM6 --  High-Resolution Tripolar 1/4 deg (MOM6-Tripolar-Ocean:  1440x1080)", \
-                 "CS     --  Cubed-Sphere Ocean               (Cubed-Sphere Data-Ocean        )"],
-            "when": lambda x: x['grid_type'] == "Lat-Lon" or x['grid_type'] == "Cubed-Sphere",
+                 "O1     --  Reynolds (Lon/Lat Data-Ocean:    $360x180$ )", \
+                 "O2     --  Reynolds (Lon/Lat Data-Ocean:   $1440x720$ )", \
+                 "O3     --  OSTIA    (Lon/Lat Data-Ocean:   $2880x1440$)", \
+                 "T2     --  Tripolar (MOM5-Tripolar-Ocean:   $360x200$ )", \
+                 "T3     --  Tripolar (MOM5-Tripolar-Ocean:   $720x410$ )", \
+                 "T4     --  Tripolar (MOM5-Tripolar-Ocean:  $1440x1080$)", \
+                 "T1MOM6 --  Tripolar (MOM6-Tripolar-Ocean:    $72x36$  )", \
+                 "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $580x458$ )", \
+                 "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
+                 "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
+            "when": lambda x:  "EASEv1" not in x['grid_type'] and "EASEv2" not in x['grid_type'],
         },
-       
-
    ]
-   answers_ = questionary.prompt(questions)
-   answers  = {}
-   for key, value in answers_.items():
-      answers[key] = value.split()[0]
-   if 'EASE' in answers['grid_type'] : answers['orslvs'] = 'O1'
+   answers = questionary.prompt(questions)
+   if 'EASEv1' in answers['grid_type'] or 'EASEv2' in answers['grid_type'] : answers['Ocean'] = ['O1  $360x180$']
+   answers['bcs_version'] = answers['bcs_version'].split()[0]
 
-   return answers
+   path_q  = [
+           {
+            "type": "path",
+            "name": "out_path",
+            "message": "Enter desired BCS output directory (incl. full path) or press ENTER to use the default:",
+            "default": "/discover/nobackup/"+user_name+"/BCS_PACKAGE/"+answers['bcs_version']+'/'
+          },
+   ]
+   path_ = questionary.prompt(path_q)
+
+   answers["out_path"] = path_["out_path"] 
+
+   im = {}
+   jm = {}
+
+   for name_  in ['Lat-Lon', 'EASEv1', 'EASEv2', 'Ocean']: 
+      long_res = answers.get(name_,[])
+      res = []
+      for x in long_res:
+         short_res = x.split()[0]
+         res = res + [short_res]
+         imxjm = x.split('$')
+         if len(imxjm) == 1 :
+            im[short_res] = "CS"
+            jm[short_res] = "CS"
+         else:
+            strings = imxjm[1].split('x')
+            im[short_res] = int(strings[0])
+            jm[short_res] = int(strings[1])
+      answers[name_] = res
+ 
+   res = []
+   for x in answers.get('Cubed-Sphere',[]):
+      short_res = x.split()[0]
+      res = res + [short_res]
+      i = int(short_res[1:])
+      im[short_res] = i
+      jm[short_res] = 6*i
+   answers['Cubed-Sphere'] = res 
+
+   return answers, im, jm
 
 def print_config( config, indent = 0 ):
+   print('\n')
    for k, v in config.items():
      if isinstance(v, dict):
         print("   " * indent, f"{k}:")
@@ -292,10 +292,15 @@ def print_config( config, indent = 0 ):
 
 if __name__ == "__main__":
 
-   answers = ask_questions()
+   answers, im, jm = ask_questions()
    for key, value in answers.items():
       print(key, value)
+   for key, value in im.items():
+      print(key, value)
+   for key, value in jm.items():
+      print(key, value)
 
-   config = get_config_from_answers(answers)
+   configs = get_configs_from_answers(answers)
    print('\n print config file:\n')
-   print_config(config)   
+   for config in configs:
+      print_config(config)   
