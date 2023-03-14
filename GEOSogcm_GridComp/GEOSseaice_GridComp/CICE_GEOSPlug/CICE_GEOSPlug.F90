@@ -745,6 +745,10 @@ contains
     REAL_, pointer                     :: FSALT (:,:)        => null()
     REAL_, pointer                     :: TI    (:,:,:)      => null()
     REAL_, pointer                     :: FI    (:,:,:)      => null()
+    REAL_, pointer                     :: TAUXBOT(:,:)       => null()
+    REAL_, pointer                     :: TAUYBOT(:,:)       => null()
+    REAL_, pointer                     :: UI    (:,:)        => null()
+    REAL_, pointer                     :: VI    (:,:)        => null()
 
 ! Optional Exports
 ! none
@@ -806,10 +810,17 @@ contains
 
     call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'        ,                 _RC)
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'        ,                 _RC)
-    call MAPL_GetPointer(IMPORT, SLV,      'SLV'         ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  SLV,     'SLV'         ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  UWB,     'UWB'         ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  VWB,     'VWB'         ,                 _RC)
 
     call MAPL_GetPointer(EXPORT,   TI,     'TI'          ,  alloc=.true.,  _RC)
     call MAPL_GetPointer(EXPORT,   FI,     'FRSEAICE'    ,  alloc=.true.,  _RC)
+    call MAPL_GetPointer(EXPORT,   UI,     'UI'          ,  alloc=.true.,  _RC)
+    call MAPL_GetPointer(EXPORT,   VI,     'VI'          ,  alloc=.true.,  _RC)
+    call MAPL_GetPointer(EXPORT,   TAUXBOT,'TAUXBOT'     ,  alloc=.true.,  _RC)
+    call MAPL_GetPointer(EXPORT,   TAUYBOT,'TAUYBOT'     ,  alloc=.true.,  _RC)
+
     call MAPL_GetPointer(EXPORT,   FRI,    'FRACICE'     ,                 _RC)
     call MAPL_GetPointer(EXPORT,   AICE,   'AICE'        ,                 _RC)
     call MAPL_GetPointer(EXPORT,   FHOCN,  'FHOCN'       ,                 _RC)
@@ -819,7 +830,7 @@ contains
 
     !call ice_import_thermo2()
 
-    call ice_import_dyna(TAUX, TAUY, SLV, _RC)
+    call ice_import_dyna(TAUX, TAUY, SLV, UWB, VWB, _RC)
 
 
     call CICE_Run
@@ -829,7 +840,7 @@ contains
 
     !call ice_export_thermo2
 
-    !call ice_export_dyna
+    call ice_export_dyna(TAUXBOT, TAUYBOT, UI, VI, _RC)
 
 
     if(associated(TI)) then
