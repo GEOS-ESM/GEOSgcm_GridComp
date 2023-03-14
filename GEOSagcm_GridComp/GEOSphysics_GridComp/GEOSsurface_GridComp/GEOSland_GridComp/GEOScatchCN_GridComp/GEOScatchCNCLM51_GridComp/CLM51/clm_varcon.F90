@@ -17,7 +17,7 @@ module clm_varcon
                            SHR_CONST_RGAS,  &
                            SHR_CONST_PI,    &
                            SHR_CONST_PDB
-  use clm_varpar   , only: nlevgrnd, nlevdecomp_full
+  use clm_varpar   , only: nlevgrnd, nlevdecomp_full, numrad
 
 ! !PUBLIC TYPES:
   implicit none
@@ -70,6 +70,15 @@ module clm_varcon
   character(len=16), public, parameter :: namec  = 'column'       ! name of columns
   character(len=16), public, parameter :: namep  = 'pft'          ! name of patches
   character(len=16), public, parameter :: nameCohort = 'cohort'   ! name of cohorts (ED specific)
+
+  !------------------------------------------------------------------
+  ! Initialize miscellaneous radiation constants
+  !------------------------------------------------------------------
+  
+  real(r8), public :: betads  = 0.5_r8            ! two-stream parameter betad for snow
+  real(r8), public :: betais  = 0.5_r8            ! two-stream parameter betai for snow
+  real(r8), public :: omegas(numrad)           ! two-stream parameter omega for snow by band
+  data (omegas(i),i=1,numrad) /0.8_r8, 0.4_r8/
 
   integer, parameter, public :: max_lunit  = 9  !maximum value that lun%itype can have
 
