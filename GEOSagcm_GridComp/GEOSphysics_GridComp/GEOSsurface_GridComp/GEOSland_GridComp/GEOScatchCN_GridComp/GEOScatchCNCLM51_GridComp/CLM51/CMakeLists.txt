@@ -131,6 +131,7 @@ set (srcs
   SoilWaterRetentionCurveMod.F90
   spmdMod.F90
   subgridAveMod.F90
+  SurfaceAlbedoMod.F90
   SurfaceRadiationMod.F90
   TridiagonalMod.F90
   update_model_para4cn.F90
