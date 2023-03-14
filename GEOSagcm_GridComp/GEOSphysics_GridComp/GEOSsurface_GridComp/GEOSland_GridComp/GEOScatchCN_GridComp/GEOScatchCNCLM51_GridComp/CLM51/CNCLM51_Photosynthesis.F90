@@ -125,11 +125,13 @@
  real, dimension (nch)          :: oair        ! Atmospheric O2 partial pressure (Pa)
  real, dimension (nch)          :: deldT       ! d(es)/d(T)
  real, dimension (nch)          :: cair        ! compute CO2 partial pressure
- real, dimension (nch)          :: rb          ! boundary layer resistance (s/m)
- real, dimension (nch)          :: el          ! vapor pressure on leaf surface [pa]
- real, dimension (nch, NUM_ZON) :: qsatl       ! leaf specific humidity [kg/kg]
- real, dimension (nch, NUM_ZON) :: qsatldT     ! derivative of "qsatl" on "t_veg"
+ real(r8), dimension (nch)          :: rb          ! boundary layer resistance (s/m)
+ real(r8), dimension (nch)          :: el          ! vapor pressure on leaf surface [pa]
+ real(r8), dimension (nch, NUM_ZON) :: qsatl       ! leaf specific humidity [kg/kg]
+ real(r8), dimension (nch, NUM_ZON) :: qsatldT     ! derivative of "qsatl" on "t_veg"
  real, dimension (nch, NUM_ZON) :: qaf         ! canopy air humidity [kg/kg]
+ real(r8), dimension(nch,num_zon)   :: tc_in
+ real(r8), dimension(nch)           :: pbot_in
 
  ! local inputs to Photosynthesis in CLM space
  real(r8), dimension(nch*NUM_ZON*(numpft+1)) :: coszen_clm ! cosine solar zenith angle for next time step in CLM dimensions
@@ -233,9 +235,13 @@
 
  ! leaf specific humidity
  !------------------------
+
+  tc_in      =  tc
+  pbot_in    =  pbot
+
  do n = 1,nch
     do nz = 1,NUM_ZON
-       call QSat(tc(n,nz), pbot(n), qsatl(n,nz), &
+       call QSat(tc_in(n,nz), pbot_in(n), qsatl(n,nz), &
                  el(n), &
                  qsatldT(n,nz))
     end do
