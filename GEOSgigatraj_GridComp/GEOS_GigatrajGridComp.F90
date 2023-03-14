@@ -1,6 +1,6 @@
 #include "MAPL_Generic.h"
 
-module GigaTraj_GridCompMod
+module GEOS_GigatrajGridCompMod
   use, intrinsic :: iso_c_binding, only : c_int, c_ptr, c_null_ptr, c_associated
   use, intrinsic :: iso_c_binding, only : c_loc
   use ESMF
@@ -1408,4 +1408,4 @@ contains
 
   end subroutine get_metsrc_data2d
  
-end module GigaTraj_GridCompMod
+end module GEOS_GigatrajGridComp.F90 

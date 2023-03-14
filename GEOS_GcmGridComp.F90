@@ -21,7 +21,7 @@ module GEOS_GcmGridCompMod
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
 #ifdef HAS_GIGATRAJ
-   use GigaTraj_GridCompMod,     only:  GigaTraj_SetServices => SetServices
+   use GEOS_GigatrajGridCompMod, only:  GigaTraj_SetServices => SetServices
 #endif
 
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices

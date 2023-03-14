@@ -11,7 +11,7 @@ option(BUILD_WITH_GIGATRAJ "Build GEOSgcm with Gigatraj" ON)
 
 if (BUILD_WITH_GIGATRAJ)
   add_definitions (-DHAS_GIGATRAJ)
-  set (alldirs ${alldirs} GigaTraj_GridComp) 
+  set (alldirs ${alldirs} GEOSgigatraj_GridComp) 
 endif()
 
 
