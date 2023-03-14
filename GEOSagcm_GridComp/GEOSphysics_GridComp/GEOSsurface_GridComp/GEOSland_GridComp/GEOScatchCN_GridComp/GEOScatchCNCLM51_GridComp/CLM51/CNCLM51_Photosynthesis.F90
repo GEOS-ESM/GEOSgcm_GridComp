@@ -274,7 +274,7 @@
                                                                                ! and converted to [mm/s]
        soilstate_inst%hk_l_col   (n,1:nlevgrnd) = 1000.*COND(nc)*(wet3(nc)**(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
-       soilstate_inst%smp_l_col  (n,1:nlevgrnd) = 1000.*PSIS(nc)*(wet3(nc)**(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
+       soilstate_inst%smp_l_col  (n,1:nlevgrnd) = 1000.*PSIS(nc)*(max(1.e-06_r8,wet3(nc))**(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
                                                                                ! and converted to [mm]
        soilstate_inst%bsw_col    (n,1:nlevgrnd) = bee(nc)                                 ! Clapp-Hornberger 'b'
        soilstate_inst%sucsat_col (n,1:nlevgrnd) = 1000.*psis(nc)*(-1)                     ! minimum soil suction [mm]
