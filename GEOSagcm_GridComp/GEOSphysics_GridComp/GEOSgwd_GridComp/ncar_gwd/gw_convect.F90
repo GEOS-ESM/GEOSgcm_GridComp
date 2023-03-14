@@ -587,9 +587,9 @@ subroutine gw_beres_ifc( band, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats)
 
 !WMP pressure scaling near model top
-     zfac_layer = 15.0 ! 0.15mb
-     pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
-!    pint_adj = 1.0
+!    zfac_layer = 15.0 ! 0.15mb
+!    pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
+     pint_adj = 1.0
 
       ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
@@ -613,8 +613,8 @@ subroutine gw_beres_ifc( band, &
    ! call energy_fixer(ncol, pver, tend_level, pint, de-flx_heat, ttgw)
    ! flx_heat=de
 #else
-     call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
-                                 effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
+   ! call energy_momentum_adjust(ncol, pver, desc%k, band, pint, delp, c, tau, &
+   !                             effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw)
 #endif
  
    deallocate(tau, gwut, c)

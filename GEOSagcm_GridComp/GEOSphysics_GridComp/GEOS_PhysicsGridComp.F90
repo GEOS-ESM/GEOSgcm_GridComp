@@ -1115,26 +1115,24 @@ contains
 !----------------
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'SNO','ICE','FRZR'/),     &
+         SHORT_NAME  = (/'SNO','ICE','FRZR'/),                     &
          DST_ID      = SURF,                                       &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
      VERIFY_(STATUS)
-
      call MAPL_AddConnectivity ( GC,                               &
-        SRC_NAME    = 'RAIN_CONV',                                 &
-        DST_NAME    = 'PCU',                                       &
-        DST_ID      = SURF,                                        &
-        SRC_ID      = MOIST,                                       &
-                                                       RC=STATUS  )
+         SRC_NAME    = 'RAIN_CONV',                                &
+         DST_NAME    = 'PCU',                                      &
+         SRC_ID      = MOIST,                                      &
+         DST_ID      = SURF,                                       &
+                                                        RC=STATUS  )
      VERIFY_(STATUS)
-
      call MAPL_AddConnectivity ( GC,                               &
-        SRC_NAME    = 'RAIN_STRAT',                                &
-        DST_NAME    = 'PLS',                                       &
-        DST_ID      = SURF,                                        &
-        SRC_ID      = MOIST,                                       &
-                                                       RC=STATUS  )
+         SRC_NAME    = 'RAIN_STRAT',                               &
+         DST_NAME    = 'PLS',                                      &
+         SRC_ID      = MOIST,                                      &
+         DST_ID      = SURF,                                       &
+                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1181,11 +1179,24 @@ contains
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'Q', 'DTDT_DC',     'DTDT_SC',            &
-                              'DQLDT_micro', 'DQIDT_micro'/),      &
+         SHORT_NAME  = (/'Q', 'DTDT_DC', 'DTDT_SC'/),              &
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SRC_NAME    = 'DQIDT_micro',                                      &
+         DST_NAME    = 'DQIDT',                                            &
+         DST_ID      = GWD,                                               &
+         SRC_ID      = MOIST,                                              &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SRC_NAME    = 'DQLDT_micro',                                      &
+         DST_NAME    = 'DQLDT',                                            &
+         DST_ID      = GWD,                                               &
+         SRC_ID      = MOIST,                                              &
+                                                       RC=STATUS  )
     VERIFY_(STATUS)
 
 ! Chemistry Imports
@@ -1207,7 +1218,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                                      &
-        SRC_NAME    = 'PCU',                                              &
+        SRC_NAME    = 'RAIN_CONV',                                        &
         DST_NAME    = 'CN_PRCP',                                          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
@@ -1233,7 +1244,7 @@ contains
                          'CN       ', 'RHOS     ', 'WET2     ',   &
                          'SNOMAS   ', 'SNOWDP   ', 'ITY      ',   &
                          'LHFX     ', 'Q2M      ', 'Q10M     ',   &
-                         'T10M     ', 'WCSF     '             /), &
+                         'T10M     ', 'WCSF     ', 'PRECTOT  '/), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
                                                        RC=STATUS  )

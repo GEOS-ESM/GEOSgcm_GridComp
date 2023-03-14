@@ -69,6 +69,10 @@ real, protected :: orostratmin
 ! min stratification allowing wave behavior
 real, protected :: orom2min
 
+real, parameter :: PINTADJ_0 = 0.9/19.0
+real, parameter :: PINTADJ_1 = TAN(20.*pi/21.-0.5*pi)
+real, parameter :: PINTADJ_2 = 0.5*pi
+real, parameter :: PINTADJ_3 = 21./pi
 
 ! Some description of GW spectrum
 type(GWBand)   :: band         ! I hate this variable  ... it just hides information from view
@@ -125,7 +129,7 @@ end subroutine gw_rdg_init
 subroutine gw_rdg_ifc( &
    ncol, pver, pverp, pcnst, n_rdg, dt, &
    u, v, t, pint, pmid, delp, rdelp, &
-   piln, zm, zi, &
+   piln, zm, zi, z, &
    ni, nm, rhoi, &
    kvtt,         &
    kwvrdg, effrdg, &
@@ -153,6 +157,7 @@ subroutine gw_rdg_ifc( &
    real,         intent(in) :: piln(ncol,pverp)  ! Log of interface pressures.
    real,         intent(in) :: zm(ncol,pver)   ! Midpoint altitudes above ground (m).
    real,         intent(in) :: zi(ncol,pverp) ! Interface altitudes above ground (m).
+   real,         intent(in) :: z(ncol)          ! Surface elevation (m).
    real, intent(in) :: kvtt(ncol,pverp) ! Molecular thermal diffusivity.
    !!real,         intent(in) :: q(ncol,pver,pcnst) ! Constituent array.
    !!real,         intent(in) :: dse(ncol,pver)  ! Dry static energy.
@@ -280,9 +285,17 @@ subroutine gw_rdg_ifc( &
    vtrdg = 0.
    ttrdg = 0.
   
-!WMP pressure scaling near model top
-   zfac_layer = 100.0 ! 1mb
-   pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
+!GEOS pressure scaling near model top
+!  zfac_layer = 1000.0 ! 10mb
+!  pint_adj = (pint/zfac_layer)**3 
+!  pint_adj = 0.5*(1+TANH(((2.0*pint/zfac_layer)-1)/0.25))
+   pint_adj = 1.0
+!  pint_adj = 0.1 + (0.9/19.0) * &
+!                   ((ATAN((2.*(pint-10000.0)/(75000.0-10000.0)-1.) * TAN(20.*pi/21.-0.5*pi)) + 0.5*pi) * 21./pi - 1.)
+!  adjust strength from surface (1.0) to 10,000m (0.1)
+!  do k=1,pver+1 
+!    pint_adj(:,k)= 0.1 + PINTADJ_0 * ((ATAN((2.*(z+zi(:,k)-2500.0)/(-2500.0)-1.) * PINTADJ_1) + PINTADJ_2) * PINTADJ_3 - 1.)
+!  enddo
 
    isoflag = 0
  
@@ -311,7 +324,8 @@ subroutine gw_rdg_ifc( &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           effrdg(:,nn), c, kvtt, tau, utgw, vtgw, &
           ttgw, gwut, &
-          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
+          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj, &
+          tndmax_in=40.0/86400.0)
 
 #ifdef NCAR_ADJUST
    ! ! Project stress into directional components.

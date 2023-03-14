@@ -1057,6 +1057,8 @@ contains
     slflx_out(:idim,0:k0)        = 0.0
     uflx_out(:idim,0:k0)         = 0.0
     vflx_out(:idim,0:k0)         = 0.0
+    tpert_out(:idim)             = 0.0
+    qpert_out(:idim)             = 0.0
 
 #ifdef UWDIAG
     cbmf_out(:idim)              = 0.0
@@ -1095,9 +1097,6 @@ contains
     rlwp_out(:idim)              = 0.0
     riwp_out(:idim)              = 0.0
   
-    tpert_out(:idim)            = 0.0
-    qpert_out(:idim)            = 0.0
-
     wu_out(:idim,0:k0)          = MAPL_UNDEF
     qtu_out(:idim,0:k0)         = MAPL_UNDEF
     thlu_out(:idim,0:k0)        = MAPL_UNDEF
@@ -1424,11 +1423,11 @@ contains
 
 15         continue    
 
-           if( zifc0(kinv) .le. 400. ) then        
+           if( kinv .le. 1 ) then        
               exit_kinv1(i) = 1.
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: Exit, zinv<=400m')
+                call write_parallel('------- UW ShCu: Exit, kinv<=1')
               end if
               go to 333
            endif
@@ -1440,6 +1439,8 @@ contains
               go to 333
            endif
 
+!           kinv = min(kinv,7)
+           ! From here, it must be '7 >= kinv >= 2'.        
  
        ! -------------------------------------------------------------------------- !
        ! Find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin') in the PBL !
@@ -1500,40 +1501,35 @@ contains
        ! as the values just below the PBL top interface.                    !
        ! ------------------------------------------------------------------ !
 
-         zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
-
-         buoyflx = (-shfx(i)/cp-0.608*t0(1)*evap(i))/zrho ! K m s-1
- 
-!         delzg = (zifc0(1)-zifc0(0))*g
-         delzg = (50.0)*g   ! assume 50m surface scale
-
-         wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
-
-         qpert_out(i) = 0.0
-         tpert_out(i) = 0.0
-         if (wstar > 0.001) then
-           wstar = 1.0*wstar**.3333
-           tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
-           qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
-         end if
-         qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
-         tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
-
-         qtsrc   = qtavg + qpert_out(i)
-!         qtsrc   = qt0(1) + qpert_out(i)
-
-!         thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
-         thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
-
-         thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )  
-
          if (windsrcavg) then
+            zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
+            buoyflx = (-shfx(i)/cp-0.608*t0(1)*evap(i))/zrho ! K m s-1
+!            delzg = (zifc0(1)-zifc0(0))*g
+            delzg = (50.0)*g   ! assume 50m surface scale
+            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
+            qpert_out(i) = 0.0
+            tpert_out(i) = 0.0
+            if (wstar > 0.001) then
+              wstar = 1.0*wstar**.3333
+              tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
+              qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
+            end if
+            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
+            tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
+            qtsrc   = qtavg + qpert_out(i)
+!           qtsrc   = qt0(1) + qpert_out(i)
+!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
+            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
+            thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc  = uavg
             vsrc  = vavg
          else
-            usrc  = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
-            vsrc  = v0(kinv-1) + ssv0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
-         end if
+            qtsrc   = qt0(1)
+            thvlsrc = thvlmin
+            thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
+            usrc    = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
+            vsrc    = v0(kinv-1) + ssv0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
+         endif
 
          if (dotransport.eq.1) then
          do m = 1, ncnst
@@ -3972,8 +3968,8 @@ contains
 !               limit_negcon(i) = 1.
 !           end if
            slten(k) = sten(k) - xlv*qlten(k) - xls*qiten(k)
-!           slten(k) = slten(k) + xlv * qrten(k) + xls * qsten(k)         
-!           sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
+           slten(k) = slten(k) + xlv * qrten(k) + xls * qsten(k)         
+           sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
 
          end do
 

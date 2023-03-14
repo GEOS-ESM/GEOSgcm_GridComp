@@ -50,7 +50,6 @@ module GEOS_MoistGridCompMod
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
-  real    :: HGT_SURFACE
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -5113,12 +5112,11 @@ contains
 
     ! Get parameters from generic state.
     !-----------------------------------
-    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 0.125 , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, HGT_SURFACE,      'HGT_SURFACE:'     , DEFAULT= 50.0  , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
@@ -5294,7 +5292,7 @@ contains
 
        ! Derived States
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
-       call FILLQ2ZERO(Q       , MASS, TMP2D)
+       call FILLQ2ZERO(Q, MASS, TMP2D)
        call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV_IN', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = TMP2D
        PLEmb    =  PLE*.01
@@ -5307,7 +5305,6 @@ contains
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
-       MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
 
        ! These may be used by children
        call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5321,12 +5318,8 @@ contains
             CNV_FRC =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
          END WHERE
        endif
-       if (CNV_FRACTION_EXP >= 1.0) then
+       if (CNV_FRACTION_EXP /= 1.0) then
           CNV_FRC = CNV_FRC**CNV_FRACTION_EXP
-       elseif (CNV_FRACTION_EXP > 0.0) then
-          CNV_FRC = 1.0-(1.0-CNV_FRC)**(1.0/CNV_FRACTION_EXP)
-       else
-          CNV_FRC = 1
        endif
 
        ! Extract convective tracers from the TR bundle
@@ -5343,8 +5336,8 @@ contains
                              AeroProps, AERO, NACTL, NACTI)
        else
          do L=1,LM
-           NACTL(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
-           NACTI(:,:,L) = CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND)
+           NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6
+           NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6
          end do
        endif
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
@@ -5556,13 +5549,9 @@ contains
           PCU = 0.0
           call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
-          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR'    , RC=STATUS); VERIFY_(STATUS)
-          if (associated(PTR2D)) PCU = PCU + PTR2D
-          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PCU = PCU + PTR2D
@@ -5576,8 +5565,12 @@ contains
           PLS = 0.0
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PLS = PLS + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PCU = PCU + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) PLS = PLS + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) PCU = PCU + PTR2D
           PLS = MAX(PLS, 0.0)
        endif
 
@@ -5599,23 +5592,23 @@ contains
 
        call MAPL_GetPointer(EXPORT, RAIN_STRAT, 'RAIN_STRAT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(RAIN_STRAT)) then
-          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-             RAIN_STRAT = (1.0-CNV_FRC)*RAIN
-          else
+         !if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
+         !   RAIN_STRAT = (1.0-CNV_FRC)*RAIN
+         !else
              RAIN_STRAT = 0.0
              call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
              if (associated(PTR2D)) RAIN_STRAT = RAIN_STRAT + PTR2D
              call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
              if (associated(PTR2D)) RAIN_STRAT = RAIN_STRAT + PTR2D
              RAIN_STRAT = MAX(RAIN_STRAT, 0.0)
-          endif
+         !endif
        endif
 
        call MAPL_GetPointer(EXPORT, RAIN_CONV, 'RAIN_CONV', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(RAIN_CONV)) then
-          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-             RAIN_CONV = CNV_FRC*RAIN
-          else
+         !if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
+         !   RAIN_CONV = CNV_FRC*RAIN
+         !else
              RAIN_CONV = 0.0
              call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
              if (associated(PTR2D)) RAIN_CONV = RAIN_CONV + PTR2D
@@ -5624,7 +5617,7 @@ contains
              call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
              if (associated(PTR2D)) RAIN_CONV = RAIN_CONV + PTR2D
              RAIN_CONV = MAX(RAIN_CONV, 0.0)
-          endif
+         !endif
        endif
 
        call MAPL_GetPointer(EXPORT, SNOW, 'SNO', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5682,7 +5675,7 @@ contains
        if (associated(PTR3D)) PTR3D = QLLS+QLCN
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QITOT', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = QLLS+QLCN
+       if (associated(PTR3D)) PTR3D = QILS+QICN
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = CLLS+CLCN

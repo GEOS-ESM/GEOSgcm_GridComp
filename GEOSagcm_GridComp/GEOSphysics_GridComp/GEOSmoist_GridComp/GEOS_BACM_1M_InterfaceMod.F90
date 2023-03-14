@@ -14,8 +14,6 @@ module GEOS_BACM_1M_InterfaceMod
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
-  use aer_cloud
-  use Aer_Actv_Single_Moment, only: USE_AEROSOL_NN, R_AIR
   use CLOUDNEW, only: CLDPARAMS, PROGNO_CLOUD
 
   implicit none
@@ -198,15 +196,15 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     QW = Q+QLLS+QLCN+QILS+QICN
 
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 1.0e-3  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 2.0     )
+    call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
+    call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_BETA,       'ANV_BETA:',       DEFAULT= 4.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_BETA,        'LS_BETA:',        DEFAULT= 4.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%RH_CRIT,        'RH_CRIT:',        DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%QC_CRIT_LS,     'QC_CRIT_LS:',     DEFAULT= 8.0e-4  )
     call MAPL_GetResource( MAPL, CLDPARAMS%ACCRETION,      'ACCRETION:',      DEFAULT= 2.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%RAIN_REVAP_FAC, 'RAIN_REVAP_FAC:', DEFAULT= 1.00    )
+    call MAPL_GetResource( MAPL, CLDPARAMS%RAIN_REVAP_FAC, 'RAIN_REVAP_FAC:', DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%AUTOC_LS,       'AUTOC_LS:',       DEFAULT= 1.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%AUTOC_ANV,      'AUTOC_ANV:',      DEFAULT= 1.0e-3  )
@@ -217,8 +215,6 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_SUND_COLD,  'ANV_SUND_COLD:',  DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_SUND_TEMP1, 'ANV_SUND_TEMP1:', DEFAULT= 230.    )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_TO_LS_TIME, 'ANV_TO_LS_TIME:', DEFAULT= 14400.  )
-    call MAPL_GetResource( MAPL, CLDPARAMS%CCN_OCEAN,      'NCCN_OCEAN:',     DEFAULT= 300.    )
-    call MAPL_GetResource( MAPL, CLDPARAMS%CCN_LAND,       'NCCN_LAND:',      DEFAULT= 100.    )
     call MAPL_GetResource( MAPL, CLDPARAMS%DISABLE_RAD,    'DISABLE_RAD:',    DEFAULT= 0.      )
     call MAPL_GetResource( MAPL, CLDPARAMS%REVAP_OFF_P,    'REVAP_OFF_P:',    DEFAULT= 2000.   )
     call MAPL_GetResource( MAPL, CLDPARAMS%ICE_RAMP,       'ICE_RAMP:',       DEFAULT= -27.0   )
@@ -240,11 +236,11 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=   5.e-6 )
-    call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 140.e-6 )
+    call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  15.e-6 )
+    call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT=  2.5e-6 )
-    call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 60.0e-6 )
+    call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT=  5.e-6  )
+    call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 21.e-6  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CNV_ENVF,       'CNV_ENVF:',       DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ENVF,       'ANV_ENVF:',       DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%SC_ENVF,        'SC_ENVF:',        DEFAULT= 1.0     )
@@ -264,13 +260,14 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     read(imchar,*) imsize
     if(dateline.eq.'CF') imsize = imsize*4
 
-    tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
-    tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
+    tmprhL = CEILING(100.0*(1.0-min(0.20, max(0.01, 0.1*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0 ! roundup by 0.01s
+    tmprhL = min(0.99,tmprhL)
+    tmprhO = min(0.99,tmprhL)
     call MAPL_GetResource( MAPL, MINRHCRITLND,             'MINRHCRITLND:',   DEFAULT=tmprhL   )
     call MAPL_GetResource( MAPL, MINRHCRITOCN,             'MINRHCRITOCN:',   DEFAULT=tmprhO   )
     call MAPL_GetResource( MAPL, MAXRHCRITLND,             'MAXRHCRITOCN:',   DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, MAXRHCRITOCN,             'MAXRHCRITLND:',   DEFAULT= 1.0     )
-    call MAPL_GetResource( MAPL, TURNRHCRIT,               'TURNRHCRIT:',     DEFAULT= -999.0  )
+    call MAPL_GetResource( MAPL, TURNRHCRIT,               'TURNRHCRIT:',     DEFAULT= 750.0  )
 
 end subroutine BACM_1M_Initialize
 
@@ -468,7 +465,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           if (TURNRHCRIT .LT. 0) then
              turnrhcrit2D(I,J) = PLmb(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
           else
-             turnrhcrit2D(I,J) = MIN( TURNRHCRIT , TURNRHCRIT-(1020-PLEmb(i,j,LM)) )
+             turnrhcrit2D(I,J) = TURNRHCRIT
           endif
           minrhcrit2D(I,J) = MINRHCRITOCN*(1.0-FRLAND(I,J)) + MINRHCRITLND*FRLAND(I,J)     
           maxrhcrit2D(I,J) = MAXRHCRITOCN*(1.0-FRLAND(I,J)) + MAXRHCRITLND*FRLAND(I,J)
@@ -734,7 +731,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            CFICE=MAX(MIN(CFICE, 1.0), 0.0)
          endif
          call MAPL_GetPointer(EXPORT, CFLIQ, 'CFLIQ', RC=STATUS); VERIFY_(STATUS)
-         if (associated(CFICE)) then
+         if (associated(CFLIQ)) then
            CFLIQ=0.0
            WHERE (RAD_QL .gt. 1.0e-12)
               CFLIQ=RAD_CF*RAD_QL/(RAD_QL+RAD_QI)
@@ -763,6 +760,12 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call FILLQ2ZERO(QICN    , MASS, TMP2D)
          call FILLQ2ZERO(CLLS    , MASS, TMP2D)
          call FILLQ2ZERO(CLCN    , MASS, TMP2D)
+         where (QILS+QICN .le. 0.0)
+            CLDREFFI = 36.0e-6
+         end where
+         where (QLLS+QLCN .le. 0.0)
+            CLDREFFL = 14.0e-6
+         end where
 
          if (associated(DQVDT_micro)) DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
          if (associated(DQLDT_micro)) DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
