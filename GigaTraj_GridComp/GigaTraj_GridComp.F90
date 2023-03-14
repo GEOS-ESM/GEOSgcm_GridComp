@@ -193,8 +193,8 @@ contains
     call MAPL_Grid_interior(GigaTrajInternalPtr%LatLonGrid ,i1,i2,j1,j2)
     call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
 
+    dlon = 360.0/dims(1)
     ! lat and lon centers need to hold the halo
-    dlon = 360.0/dims(1) 
     lons_center = [(-dlon/2+ dlon*i, i= i1-1, i2+1)]
     where(lons_center < 0. ) lons_center  = 0.
     where(lons_center >360.) lons_center = 360.
@@ -239,9 +239,7 @@ contains
 
     deallocate(lons_center, lats_center,levs_center)
 
-    call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC) 
-
-    call read_parcels(parcels_file, GigaTrajInternalPtr, _RC) 
+    call read_parcels(GC, GigaTrajInternalPtr, _RC) 
 
     call MAPL_TimerOff(MPL,"INITIALIZE")
     call MAPL_TimerOff(MPL,"TOTAL")
@@ -1037,6 +1035,7 @@ contains
     
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)      :: wrap
+    real :: lon_start
     character(len=20), target :: ctime
 
     Iam = "write_parcels"
@@ -1051,6 +1050,7 @@ contains
     GigaTrajInternalPtr => wrap%ptr
 
     call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC)
+    call MAPL_GetResource(MPL, lon_start   , "GIGATRAJ_LON_START:",    default= 0. , _RC)
 
     call ESMF_VMGetCurrent(vm, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
@@ -1068,6 +1068,7 @@ contains
        ! reorder 
        lats0 = lats0(ids0(:)+1) ! id is zero-bases, plus 1 Fortran
        lons0 = lons0(ids0(:)+1)
+       if (lon_start < 0 ) lons0 = lons0 - 180.0 ! temperary fix 
        zs0   = zs0(ids0(:)+1)
        call formatter%open(trim(parcels_file), pFIO_WRITE, _RC)
        meta = formatter%read(_RC)
@@ -1077,7 +1078,7 @@ contains
 
        call formatter%put_var('lat', lats0, start=[1, last_time+1], _RC)
        call formatter%put_var('lon', lons0, start=[1, last_time+1], _RC)
-       call formatter%put_var('pressure',   zs0,   start=[1, last_time+1], _RC)
+       call formatter%put_var('p',   zs0,   start=[1, last_time+1], _RC)
        call formatter%put_var('time',  [tint_d],  start=[last_time+1], _RC)
      endif
 
@@ -1150,8 +1151,8 @@ contains
 
   end subroutine write_parcels
 
-  subroutine read_parcels(fname, internal, rc)
-     character(*), intent(in) :: fname
+  subroutine read_parcels(GC,internal, rc)
+     type(ESMF_GridComp), intent(inout) :: GC      
      type(GigaTrajInternal), intent(inout) :: internal
      integer, optional, intent(out) :: rc
 
@@ -1162,9 +1163,12 @@ contains
      real(kind=ESMF_KIND_R8), allocatable :: ids0_r(:)
      integer, allocatable :: ids0(:)
      integer :: status
+     character(len=ESMF_MAXSTR) :: parcels_file
+     type(MAPL_MetaComp),pointer  :: MPL
      type (ESMF_VM)   :: vm
      class(Variable), pointer :: v
      type(Attribute), pointer :: attr
+     real :: lon_start
      class(*), pointer :: units
      character(len=ESMF_MAXSTR) :: Iam ="read_parcels"
 
@@ -1172,10 +1176,12 @@ contains
      call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
      
      call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
-
-      total_num = 0
-      if (my_rank ==0) then
-        call formatter%open(fname, pFIO_READ, _RC)
+     call MAPL_GetObjectFromGC ( GC, MPL, _RC)
+     call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC)
+     call MAPL_GetResource(MPL, lon_start   , "GIGATRAJ_LON_START:",  default= 0. , _RC)
+     total_num = 0
+     if (my_rank ==0) then
+        call formatter%open(parcels_file, pFIO_READ, _RC)
         meta = formatter%read(_RC)
         total_num = meta%get_dimension('id', _RC)
         last_time = meta%get_dimension('time', _RC)
@@ -1187,30 +1193,31 @@ contains
            internal%startTime = parse_time_string(units, _RC)
         class default
            _FAIL('unsupported subclass for units')
-         end select
-      endif
+        end select
+     endif
 
-      allocate(lats0(total_num), lons0(total_num), zs0(total_num), ids0_r(total_num))
+     allocate(lats0(total_num), lons0(total_num), zs0(total_num), ids0_r(total_num))
 
-      if  (my_rank ==0) then
+     if (my_rank ==0) then
         call formatter%get_var('lat', lats0, start = [1,last_time], _RC)
         call formatter%get_var('lon', lons0, start = [1,last_time], _RC)
-        call formatter%get_var('pressure',   zs0,   start = [1,last_time], _RC)
+        call formatter%get_var('p',   zs0,   start = [1,last_time], _RC)
         call formatter%get_var('id',  ids0_r,start = [1,last_time], _RC)
         call formatter%close(_RC)
         ids0 = int(ids0_r)
-      endif
-      call MAPL_GridGet(internal%LatLonGrid, globalCellCountPerDim=DIMS, _RC)
-      call scatter_parcels(total_num, lons0, lats0, zs0, IDs0, internal%CellToRank, DIMS, comm, &
+        if (lon_start < 0) lons0 = lons0+180.
+     endif
+     call MAPL_GridGet(internal%LatLonGrid, globalCellCountPerDim=DIMS, _RC)
+     call scatter_parcels(total_num, lons0, lats0, zs0, IDs0, internal%CellToRank, DIMS, comm, &
                               Internal%parcels%lons, &
                               Internal%parcels%lats, &
                               Internal%parcels%zs,   &
                               Internal%parcels%IDS,  & 
                               Internal%parcels%num_parcels) 
 
-     deallocate(lats0, lons0, zs0, ids0_r)
-     RETURN_(ESMF_SUCCESS)
-     contains
+    deallocate(lats0, lons0, zs0, ids0_r)
+    RETURN_(ESMF_SUCCESS)
+    contains
           ! a copy from MAPL_TimeMod
           function parse_time_string(timeUnits,rc) result(time)
              character(len=*), intent(inout) :: timeUnits
