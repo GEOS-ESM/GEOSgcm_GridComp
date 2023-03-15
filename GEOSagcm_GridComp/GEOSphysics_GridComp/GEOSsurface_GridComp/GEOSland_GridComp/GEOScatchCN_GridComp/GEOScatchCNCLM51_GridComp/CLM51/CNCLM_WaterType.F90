@@ -145,7 +145,7 @@ module WaterType
     ! type(waterlnd2atmbulk_type), pointer, public    :: waterlnd2atmbulk_inst
      type(wateratm2lndbulk_type), pointer, public    :: wateratm2lndbulk_inst
 
-     type(bulk_or_tracer_type), allocatable, public  :: bulk_and_tracers(:)
+     type(bulk_or_tracer_type),  public  :: bulk_and_tracers(1)
 
      ! ------------------------------------------------------------------------
      ! Private data members
@@ -181,18 +181,41 @@ contains
     character(len=*), parameter :: subname = 'Init'
     !-----------------------------------------------------------------------
 
-    call waterflux_inst%Init            (bounds)
-    call waterfluxbulk_inst%Init        (bounds)
-    call waterdiagnosticbulk_inst%Init  (bounds)
-    call wateratm2lndbulk_inst%Init     (bounds)
-    call wateratm2lnd_inst%Init         (bounds)
-    call waterstatebulk_inst%Init       (bounds)
-    call waterstate_inst%Init           (bounds)
+    allocate(this%waterfluxbulk_inst)
+    this%bulk_and_tracers(1)%waterflux_inst => this%waterfluxbulk_inst
+
+    allocate(this%waterstatebulk_inst)
+    this%bulk_and_tracers(1)%waterstate_inst => this%waterstatebulk_inst
+
+    allocate(this%waterdiagnosticbulk_inst)
+    this%bulk_and_tracers(1)%waterdiagnostic_inst => this%waterdiagnosticbulk_inst
+
+    allocate(this%waterbalancebulk_inst)
+    this%bulk_and_tracers(1)%waterbalance_inst => this%waterbalancebulk_inst
+
+    allocate(this%waterlnd2atmbulk_inst)
+    this%bulk_and_tracers(1)%waterlnd2atm_inst => this%waterlnd2atmbulk_inst
+
+    allocate(this%wateratm2lndbulk_inst)
+    this%bulk_and_tracers(1)%wateratm2lnd_inst => this%wateratm2lndbulk_inst
+
+    allocate(waterflux_type :: this%bulk_and_tracers(1)%waterflux_inst)
+    allocate(waterstate_type :: this%bulk_and_tracers(1)%waterstate_inst)
+    allocate(waterdiagnostic_type :: this%bulk_and_tracers(1)%waterdiagnostic_inst)
+    allocate(waterbalance_type :: this%bulk_and_tracers(1)%waterbalance_inst)
+    allocate(waterlnd2atm_type :: this%bulk_and_tracers(1)%waterlnd2atm_inst)
+    allocate(wateratm2lnd_type :: this%bulk_and_tracers(1)%wateratm2lnd_inst)
+
+    call this%bulk_and_tracers(1)%waterflux_inst%Init            (bounds)
+    call this%waterfluxbulk_inst%Init                            (bounds)
+    call this%waterdiagnosticbulk_inst%Init                      (bounds)
+    call this%wateratm2lndbulk_inst%Init                         (bounds)
+    call this%bulk_and_tracers(1)%wateratm2lnd_inst%Init         (bounds)
+    call this%waterstatebulk_inst%Init                           (bounds)
+    call this%bulk_and_tracers(1)%waterstate_inst%Init           (bounds)
 
 
   end subroutine Init
-
-  !-----------------------------------------------------------------------
 
 
 end module WaterType
