@@ -63,6 +63,7 @@ set (srcs
   CNCLM_TemperatureType.F90
   CNCLM_Wateratm2lndBulkType.F90
   CNCLM_Wateratm2lndType.F90
+  CNCLM_WaterDiagnosticType.F90
   CNCLM_WaterDiagnosticBulkType.F90
   CNCLM_WaterFluxBulkType.F90
   CNCLM_WaterFluxType.F90
