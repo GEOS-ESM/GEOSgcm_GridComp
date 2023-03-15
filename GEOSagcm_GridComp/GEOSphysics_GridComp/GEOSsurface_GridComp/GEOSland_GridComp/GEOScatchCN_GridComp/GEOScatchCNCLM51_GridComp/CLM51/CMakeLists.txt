@@ -68,6 +68,7 @@ set (srcs
   CNCLM_WaterFluxType.F90
   CNCLM_WaterStateBulkType.F90
   CNCLM_WaterStateType.F90
+  CNCLM_WaterType.F90
   CNCStateUpdate1Mod.F90
   CNCStateUpdate2Mod.F90
   CNCStateUpdate3Mod.F90

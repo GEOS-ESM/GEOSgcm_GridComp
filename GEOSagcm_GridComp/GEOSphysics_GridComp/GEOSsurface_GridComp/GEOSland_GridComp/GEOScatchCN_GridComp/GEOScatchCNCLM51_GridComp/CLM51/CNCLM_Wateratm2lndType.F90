@@ -36,7 +36,7 @@ module Wateratm2lndType
      procedure, public :: Init
 
   end type wateratm2lnd_type
-  type(wateratm2lnd_type), public, target, save :: wateratm2lnd_inst
+!  type(wateratm2lnd_type), public, target, save :: wateratm2lnd_inst
 
   contains
 

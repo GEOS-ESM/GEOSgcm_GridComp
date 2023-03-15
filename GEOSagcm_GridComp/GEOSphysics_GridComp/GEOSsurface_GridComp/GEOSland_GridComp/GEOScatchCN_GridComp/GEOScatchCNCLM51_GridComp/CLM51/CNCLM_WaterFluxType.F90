@@ -106,7 +106,7 @@ module WaterFluxType
      procedure, public :: Init
 
   end type waterflux_type
-  type(waterflux_type), public, target, save :: waterflux_inst
+  !type(waterflux_type), public, target, save :: waterflux_inst
 
 contains
 

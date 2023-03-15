@@ -57,6 +57,7 @@ module CN_initMod
   use CNVegetationFacade
   use initSubgridMod
   use CN2CLMType
+  use WaterType         , only : water_type
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
@@ -86,7 +87,7 @@ module CN_initMod
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
  type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
- type(wateratm2lndbulk_type), public             :: wateratm2lndbulk_inst
+ type(water_type),                   public :: water_inst
 ! type(bounds_type), public                       :: bounds
 !  type(patch_type)                        :: patch
 !  type(column_type)                       :: col
@@ -103,7 +104,7 @@ module CN_initMod
 !  type(surfalb_type), public                       :: surfalb_inst
 !  type(ozone_base_type), public                    :: ozone_inst
 !  type(pftcon_type)                       :: pftcon
-!  type(waterflux_type), public                     :: waterflux_inst
+  type(waterflux_type), public                     :: waterflux_inst
 !  type(soilbiogeochem_carbonstate_type), public    :: soilbiogeochem_carbonstate_inst
 !  type(soilbiogeochem_nitrogenstate_type), public  :: soilbiogeochem_nitrogenstate_inst
 !  type(cn_products_type), public                   :: c_products_inst
@@ -255,11 +256,7 @@ module CN_initMod
 
     call soilstate_inst%Init            (bounds)
 
-    call waterdiagnosticbulk_inst%Init  (bounds)
-
-    call wateratm2lndbulk_inst%Init     (bounds)
-
-    call wateratm2lnd_inst%Init         (bounds)
+    call water_inst%Init                (bounds)
 
     call canopystate_inst%Init          (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
@@ -273,8 +270,6 @@ module CN_initMod
 
     call pftcon%init_pftcon_type        ()
 
-    call waterflux_inst%Init            (bounds)
-
     call soilbiogeochem_carbonstate_inst%Init(bounds, nch, cncol)
 
     call soilbiogeochem_nitrogenstate_inst%Init(bounds, nch, cncol)
@@ -286,8 +281,6 @@ module CN_initMod
     call cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
  
     call cnveg_nitrogenflux_inst%Init   (bounds, nch, ityp, fveg, cncol, cnpft)
-
-    call waterfluxbulk_inst%Init        (bounds)
 
     call soilbiogeochem_carbonflux_inst%Init (bounds)
 
@@ -306,10 +299,6 @@ module CN_initMod
     call saturated_excess_runoff_inst%Init(bounds)
 
     call energyflux_inst%Init           (bounds)  
-
-    call waterstatebulk_inst%Init       (bounds)
-
-    call waterstate_inst%Init           (bounds)
 
     call frictionvel_inst%Init          (bounds)
 

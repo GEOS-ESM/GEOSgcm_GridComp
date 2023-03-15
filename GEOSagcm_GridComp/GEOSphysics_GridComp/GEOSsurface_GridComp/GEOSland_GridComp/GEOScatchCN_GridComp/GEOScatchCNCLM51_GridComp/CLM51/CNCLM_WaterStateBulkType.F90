@@ -34,7 +34,7 @@ module WaterStateBulkType
      procedure , public :: Init
 
   end type waterstatebulk_type
-  type(waterstatebulk_type), public, target, save :: waterstatebulk_inst
+!  type(waterstatebulk_type), public, target, save :: waterstatebulk_inst
 
 contains
 
