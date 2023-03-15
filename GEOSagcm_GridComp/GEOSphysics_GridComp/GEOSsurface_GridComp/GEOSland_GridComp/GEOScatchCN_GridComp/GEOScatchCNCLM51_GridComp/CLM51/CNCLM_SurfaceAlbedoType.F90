@@ -155,7 +155,13 @@ contains
              do nv = 1,num_veg ! defined veg loop
                 do n = 1,nlevcan
                    this%tlai_z_patch(np,n) = cnpft(nc,nz,nv, 73)
+                   if (isnan(this%tlai_z_patch(np,n))) then
+                      this%tlai_z_patch(np,n) = 0.
+                   end if
                    this%tsai_z_patch(np,n) = cnpft(nc,nz,nv, 74)
+                   if (isnan(this%tsai_z_patch(np,n))) then
+                      this%tsai_z_patch(np,n) = 0.
+                   end if
                 end do
              end do !nv
           end do ! p
