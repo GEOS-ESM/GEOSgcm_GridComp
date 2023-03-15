@@ -121,7 +121,7 @@
 
  ! local variables to compute Photosynthesis inputs
  real                           :: ws, wl
- real, allocatable, dimension(:,:) :: rho, tau
+ real(r8), allocatable, dimension(:,:) :: rho, tau
  real, dimension (nch, NUM_ZON) :: esat_tv     ! vapor pressure inside leaf (sat vapor press at tc) (Pa)
  real, dimension (nch, NUM_ZON) :: eair        ! vapor pressure of canopy air
  real, dimension (nch)          :: oair        ! Atmospheric O2 partial pressure (Pa)
