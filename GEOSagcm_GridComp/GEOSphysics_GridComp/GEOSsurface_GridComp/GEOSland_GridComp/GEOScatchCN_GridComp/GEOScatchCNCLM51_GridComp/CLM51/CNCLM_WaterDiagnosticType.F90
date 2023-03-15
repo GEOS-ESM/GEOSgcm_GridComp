@@ -87,10 +87,10 @@ contains
 
     ! Snow properties - these will be vertically averaged over the snow profile
 
-    allocate(this%snowliq_col(     (begc:endc))
+    allocate(this%snowliq_col     (begc:endc))
     this%snowliq_col(begc:endc) = spval
 
-    allocate(this%snowice_col(     (begc:endc))
+    allocate(this%snowice_col     (begc:endc))
     this%snowice_col(begc:endc) = spval
 
   end subroutine Init
