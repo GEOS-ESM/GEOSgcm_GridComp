@@ -123,7 +123,7 @@ module CN_initMod
 !  type(waterstate_type), public                    :: waterstate_inst
 !  type(frictionvel_type), public                   :: frictionvel_inst
    type(cn_vegetation_type), public                :: bgc_vegetation_inst
-!  type(waterfluxbulk_type), public                 :: waterfluxbulk_inst
+   type(waterfluxbulk_type), public                 :: waterfluxbulk_inst
  ! type(active_layer_type), public                  :: active_layer_inst
 
 

@@ -50,7 +50,7 @@ module WaterFluxBulkType
      procedure , public :: Init
 
   end type waterfluxbulk_type
-  type(waterfluxbulk_type), public, target, save :: waterfluxbulk_inst
+!  type(waterfluxbulk_type), public, target, save :: waterfluxbulk_inst
 
 contains
 
