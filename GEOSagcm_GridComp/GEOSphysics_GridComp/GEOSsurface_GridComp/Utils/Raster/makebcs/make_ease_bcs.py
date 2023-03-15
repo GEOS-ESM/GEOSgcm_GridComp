@@ -37,7 +37,7 @@ chmod 755 bin/create_README.csh
 bin/create_README.csh
 
 /bin/mv clsm  clsm.{IM}x{JM}
-/bin/cp til/SMAP_{EASEVERSION}_{HRCODE}_{RS}.til clsm.{IM}x{JM}
+/bin/cp til/{EASEVERSION}_{HRCODE}_{RS}.til clsm.{IM}x{JM}
 
 cd clsm.{IM}x{JM}
    /bin/mv irrig.dat irrigation_{RS}_DE.dat
@@ -51,9 +51,9 @@ cd clsm.{IM}x{JM}
 
 
 cd ../
-/bin/rm -rf              SMAP_{EASEVERSION}_{HRCODE}
-/bin/mv clsm.{IM}x{JM} SMAP_{EASEVERSION}_{HRCODE}
-                     cd  SMAP_{EASEVERSION}_{HRCODE} 
+/bin/rm -rf              {EASEVERSION}_{HRCODE}
+/bin/mv clsm.{IM}x{JM} {EASEVERSION}_{HRCODE}
+                     cd  {EASEVERSION}_{HRCODE} 
                    mkdir clsm
                  /bin/mv ar.new \
                          bf.dat \
@@ -82,8 +82,8 @@ cd ../
           country_and_state_code.data \
                          clsm
                      cd  ../ 
-/bin/mv rst  SMAP_{EASEVERSION}_{HRCODE}
-/bin/mv til  SMAP_{EASEVERSION}_{HRCODE}
+/bin/mv rst  {EASEVERSION}_{HRCODE}
+/bin/mv til  {EASEVERSION}_{HRCODE}
 
 cd ../../
 /bin/mv    {BCDIR}/{BCNAME} .
@@ -107,7 +107,7 @@ def make_ease_bcs(config):
 
   resolution = config['resolution']
 
-  EASElabel  = 'SMAP_'+grid_type+'_'+ resolution
+  EASElabel  = grid_type+'_'+ resolution
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
   expdir = config['expdir']
