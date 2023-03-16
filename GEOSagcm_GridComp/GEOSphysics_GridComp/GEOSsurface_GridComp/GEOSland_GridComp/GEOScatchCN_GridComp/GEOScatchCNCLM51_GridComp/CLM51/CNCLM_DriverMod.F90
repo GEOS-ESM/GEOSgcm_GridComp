@@ -174,7 +174,7 @@ contains
 ! type(gridcell_type)                    :: grc
 ! type(cn_vegetation_type)               :: bgc_vegetation_inst
 ! type(saturated_excess_runoff_type)     :: saturated_excess_runoff_inst
-! type(wateratm2lndbulk_type)            :: wateratm2lndbulk_inst
+  type(wateratm2lndbulk_type)            :: wateratm2lndbulk_inst
 ! type(soilstate_type)                   :: soilstate_inst 
 ! type(atm2lnd_type)                     :: atm2lnd_inst
 ! type(temperature_type)                 :: temperature_inst
