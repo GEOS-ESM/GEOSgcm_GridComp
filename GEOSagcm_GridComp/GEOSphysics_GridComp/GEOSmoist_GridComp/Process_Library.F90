@@ -52,6 +52,7 @@ module GEOSmoist_Process_Library
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
+  real, parameter :: taufrz  =  450.0
  ! LDRADIUS4
   ! Liquid  based on DOI 10.1088/1748-9326/3/4/045021
   real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
@@ -2026,12 +2027,10 @@ module GEOSmoist_Process_Library
       real, intent(in   ) :: DT, CNVFRC, SRFTYPE
       real, intent(inout) :: TE,QL,QI
       real  :: fQi,dQil
-      real  ::  taufrz
       integer :: K
       ! freeze liquid first
       if ( TE <= MAPL_TICE ) then
          fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
-         taufrz = 450.
          dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
          dQil = max(  0., dQil )
          Qi   = Qi + dQil
