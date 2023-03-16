@@ -190,9 +190,6 @@ contains
     allocate(this%waterdiagnosticbulk_inst)
     this%bulk_and_tracers(1)%waterdiagnostic_inst => this%waterdiagnosticbulk_inst
 
-    allocate(this%waterlnd2atmbulk_inst)
-    this%bulk_and_tracers(1)%waterlnd2atm_inst => this%waterlnd2atmbulk_inst
-
     allocate(this%wateratm2lndbulk_inst)
     this%bulk_and_tracers(1)%wateratm2lnd_inst => this%wateratm2lndbulk_inst
 

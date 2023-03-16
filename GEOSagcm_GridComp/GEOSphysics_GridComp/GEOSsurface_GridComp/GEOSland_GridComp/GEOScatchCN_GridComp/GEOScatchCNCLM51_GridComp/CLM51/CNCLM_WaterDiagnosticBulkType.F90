@@ -5,6 +5,7 @@ module WaterDiagnosticBulkType
   use clm_varcon       , only : spval
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
+  use WaterDiagnosticType, only : waterdiagnostic_type
 
   ! !PUBLIC TYPES:
   implicit none
@@ -13,7 +14,8 @@ module WaterDiagnosticBulkType
 ! !PUBLIC MEMBER FUNCTIONS:
 
   !
-  type, public :: waterdiagnosticbulk_type
+  type, extends(waterdiagnostic_type), public :: waterdiagnosticbulk_type
+
      real(r8), pointer :: h2osno_total_col       (:)   ! col total snow water (mm H2O)
      real(r8), pointer :: snow_depth_col         (:)   ! col snow height of snow covered area (m)
      real(r8), pointer :: snow_5day_col          (:)   ! col snow height 5 day avg
