@@ -60,7 +60,7 @@ contains
   subroutine Init(this, bounds)
 
     ! !ARGUMENTS:
-    class(waterdiagnostic_type), intent(in) :: this
+    class(waterdiagnostic_type), intent(inout) :: this
     type(bounds_type), intent(in) :: bounds  
     !
     ! !LOCAL VARIABLES:

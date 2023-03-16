@@ -122,7 +122,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    class(waterflux_type)         :: this
+    class(waterflux_type), intent(inout)         :: this
 
     !LOCAL
     integer :: begp, endp

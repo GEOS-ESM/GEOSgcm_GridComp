@@ -63,7 +63,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    class(waterstate_type)        :: this
+    class(waterstate_type), intent(inout)        :: this
 
     !LOCAL
     integer :: begp, endp

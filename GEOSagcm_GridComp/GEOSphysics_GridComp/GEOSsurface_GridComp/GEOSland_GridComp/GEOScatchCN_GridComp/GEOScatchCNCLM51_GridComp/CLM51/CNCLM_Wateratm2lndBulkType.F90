@@ -39,14 +39,14 @@ module Wateratm2lndBulkType
 
     contains
 
-     procedure, public :: Init
+     procedure, public :: InitBulk
 
   end type wateratm2lndbulk_type
 
   contains
 
   !------------------------------------------------------------------------
-  subroutine Init(this, bounds)
+  subroutine InitBulk(this, bounds)
     !
     ! !DESCRIPTION:
     ! Initialize module data structure
@@ -56,7 +56,7 @@ module Wateratm2lndBulkType
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds
-    class(wateratm2lndbulk_type)  :: this
+    class(wateratm2lndbulk_type), intent(inout)  :: this
 
     !
     ! !LOCAL VARIABLES:
@@ -69,6 +69,8 @@ module Wateratm2lndBulkType
     begp = bounds%begp; endp= bounds%endp
     begc = bounds%begc; endc= bounds%endc
     begg = bounds%begg; endg= bounds%endg
+
+    call this%Init(bounds)
 
     allocate(this%volr_grc                      (begg:endg))        ; this%volr_grc    (:)   = ival
     allocate(this%volrmch_grc                   (begg:endg))        ; this%volrmch_grc (:)   = ival
@@ -83,5 +85,5 @@ module Wateratm2lndBulkType
     end if
 
 
-  end subroutine Init
+  end subroutine InitBulk
 end module Wateratm2lndBulkType

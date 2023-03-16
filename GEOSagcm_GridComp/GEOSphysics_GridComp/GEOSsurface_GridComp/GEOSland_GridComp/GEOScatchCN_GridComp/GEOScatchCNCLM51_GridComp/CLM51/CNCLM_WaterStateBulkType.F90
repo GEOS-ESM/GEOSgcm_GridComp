@@ -31,7 +31,7 @@ module WaterStateBulkType
 
    contains
 
-     procedure , public :: Init
+     procedure , public :: InitBulk
 
   end type waterstatebulk_type
 !  type(waterstatebulk_type), public, target, save :: waterstatebulk_inst
@@ -39,13 +39,13 @@ module WaterStateBulkType
 contains
 
 !---------------------------------------------
-  subroutine Init(this, bounds)
+  subroutine InitBulk(this, bounds)
 
   ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    class(waterstatebulk_type)    :: this
+    class(waterstatebulk_type), intent(inout)    :: this
 
     !LOCAL
     integer :: begp, endp
@@ -59,9 +59,11 @@ contains
     begl = bounds%begl ; endl= bounds%endl
     begg = bounds%begg ; endg = bounds%endg
 
+    call this%Init(bounds)
+
     allocate(this%snow_persistence_col   (begc:endc))                     ; this%snow_persistence_col   (:)   = nan
     allocate(this%int_snow_col           (begc:endc))                     ; this%int_snow_col           (:)   = nan
 
-  end subroutine Init
+  end subroutine InitBulk
 
 end module WaterStateBulkType

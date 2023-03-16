@@ -61,7 +61,7 @@ module WaterDiagnosticBulkType
 
    contains
 
-     procedure, public :: Init
+     procedure, public :: InitBulk
 
 end type waterdiagnosticbulk_type
 !type(waterdiagnosticbulk_type), public, target, save :: waterdiagnosticbulk_inst
@@ -69,7 +69,7 @@ end type waterdiagnosticbulk_type
 contains
 
 !-----------------------------------------------
-  subroutine Init(this, bounds)
+  subroutine InitBulk(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM type for water diagnostic variables that just apply to bulk water and are needed for calling CTSM routines                 
@@ -80,7 +80,7 @@ contains
     implicit none
     !INPUT
     type(bounds_type), intent(in) :: bounds
-    class(waterdiagnosticbulk_type) :: this
+    class(waterdiagnosticbulk_type), intent(inout) :: this
    
     !LOCAL
     integer :: begp, endp
@@ -93,7 +93,8 @@ contains
     begc = bounds%begc ; endc = bounds%endc
     begl = bounds%begl ; endl = bounds%endl
     begg = bounds%begg ; endg = bounds%endg
-    
+
+    call this%Init(bounds)    
 
     allocate(this%h2osno_total_col       (begc:endc))                     ; this%h2osno_total_col       (:)   = nan
     allocate(this%snow_depth_col         (begc:endc))                     ; this%snow_depth_col         (:)   = nan
@@ -134,6 +135,6 @@ contains
     allocate(this%qflx_prec_intr_patch   (begp:endp))                     ; this%qflx_prec_intr_patch   (:)   = nan
     allocate(this%qflx_prec_grnd_col     (begc:endc))                     ; this%qflx_prec_grnd_col     (:)   = nan
 
- end subroutine Init
+ end subroutine InitBulk
 
 end module WaterDiagnosticBulkType

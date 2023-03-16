@@ -47,7 +47,7 @@ module WaterFluxBulkType
 
    contains
 
-     procedure , public :: Init
+     procedure , public :: InitBulk
 
   end type waterfluxbulk_type
 !  type(waterfluxbulk_type), public, target, save :: waterfluxbulk_inst
@@ -55,7 +55,7 @@ module WaterFluxBulkType
 contains
 
 !---------------------------------------------
-  subroutine Init(this, bounds)
+  subroutine InitBulk(this, bounds)
 
   ! !DESCRIPTION:
   ! Initialize CTSM type for water flux bulk variables that just apply to bulk water and are needed for calling CTSM routines                 
@@ -66,7 +66,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     type(bounds_type), intent(in) :: bounds
-    class(waterfluxbulk_type)     :: this
+    class(waterfluxbulk_type), intent(inout)     :: this
 
     !LOCAL
     integer :: begp, endp
@@ -78,6 +78,7 @@ contains
     begc = bounds%begc; endc= bounds%endc
     begg = bounds%begg; endg= bounds%endg
 
+    call this%Init(bounds)
 
     allocate(this%qflx_snowindunload_patch (begp:endp))              ; this%qflx_snowindunload_patch (:)   = nan
     allocate(this%qflx_snotempunload_patch (begp:endp))              ; this%qflx_snotempunload_patch (:)   = nan
@@ -107,5 +108,5 @@ contains
     allocate(this%qflx_deficit_col         (begc:endc))              ; this%qflx_deficit_col         (:)   = nan
     allocate(this%AnnET                    (begc:endc))              ; this%AnnET                    (:)   = nan
 
-  end subroutine Init
+  end subroutine InitBulk
 end module WaterFluxBulkType

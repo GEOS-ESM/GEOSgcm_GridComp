@@ -50,7 +50,7 @@ module Wateratm2lndType
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds
-    class(wateratm2lnd_type)      :: this
+    class(wateratm2lnd_type), intent(inout)      :: this
     !
     ! !LOCAL VARIABLES:
     integer           :: begc, endc
