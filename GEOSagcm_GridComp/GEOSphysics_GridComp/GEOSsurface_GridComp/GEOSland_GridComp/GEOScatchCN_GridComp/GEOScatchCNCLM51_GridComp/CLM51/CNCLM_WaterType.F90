@@ -198,13 +198,13 @@ contains
     allocate(waterstate_type :: this%bulk_and_tracers(1)%waterstate_inst)
     allocate(wateratm2lnd_type :: this%bulk_and_tracers(1)%wateratm2lnd_inst)
 
-    call this%bulk_and_tracers(1)%waterflux_inst%InitBulk            (bounds)
-    call this%waterfluxbulk_inst%InitBulk                            (bounds)
-    call this%waterdiagnosticbulk_inst%InitBulk                      (bounds)
-    call this%wateratm2lndbulk_inst%InitBulk                         (bounds)
-    call this%bulk_and_tracers(1)%wateratm2lnd_inst%InitBulk         (bounds)
+    call this%bulk_and_tracers(1)%waterflux_inst%Init            (bounds)
+    call this%bulk_and_tracers(1)%wateratm2lnd_inst%Init         (bounds)
+    call this%bulk_and_tracers(1)%waterstate_inst%Init           (bounds)
+    call this%waterfluxbulk_inst%InitBulk                        (bounds)
+    call this%waterdiagnosticbulk_inst%InitBulk                  (bounds)
+    call this%wateratm2lndbulk_inst%InitBulk                     (bounds)
     call this%waterstatebulk_inst%InitBulk                           (bounds)
-    call this%bulk_and_tracers(1)%waterstate_inst%InitBulk           (bounds)
 
 
   end subroutine Init
