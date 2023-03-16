@@ -178,9 +178,9 @@ contains
 ! type(soilstate_type)                   :: soilstate_inst 
 ! type(atm2lnd_type)                     :: atm2lnd_inst
 ! type(temperature_type)                 :: temperature_inst
-! type(waterdiagnosticbulk_type)         :: waterdiagnosticbulk_inst
+ type(waterdiagnosticbulk_type)         :: waterdiagnosticbulk_inst
 ! type(cnveg_state_type)                 :: cnveg_state_inst
-! type(waterstatebulk_type)              :: waterstatebulk_inst
+ type(waterstatebulk_type)              :: waterstatebulk_inst
 ! type(waterfluxbulk_type)               :: waterfluxbulk_inst
 ! type(frictionvel_type)                 :: frictionvel_inst
 ! type(active_layer_type)                :: active_layer_inst
