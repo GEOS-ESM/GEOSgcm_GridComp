@@ -45,7 +45,7 @@ module WaterDiagnosticType
 
    contains
 
-     procedure          :: Init
+     procedure, public          :: Init
 
   end type waterdiagnostic_type
 
