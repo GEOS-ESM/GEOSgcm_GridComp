@@ -184,7 +184,10 @@
        filter_nourbanp         => filter(1)%nourbanp               , &
        filter_num_nourbanp     => filter(1)%num_nourbanp           , &
        filter_exposedvegp      => filter(1)%exposedvegp            , &
-       filter_num_exposedvegp  => filter(1)%num_exposedvegp          &
+       filter_num_exposedvegp  => filter(1)%num_exposedvegp        ,  &
+       fdry_patch              => waterdiagnosticbulk_inst%fdry_patch , &
+       fwet_patch              => waterdiagnosticbulk_inst%fwet_patch , &
+       fcansno_patch           => waterdiagnosticbulk_inst%fcansno_patch  &
         )
 
 ! allocate filters
@@ -342,9 +345,9 @@
               filter_novegsol(num_novegsol) = p
           end if
 
-          waterdiagnosticbulk_inst%fdry_patch(p)    = (1-fwet(nc))*elai(p)/max( elai(p)+esai(p), 1.e-06_r8 )
-          waterdiagnosticbulk_inst%fwet_patch(p)    = fwet(nc)
-          waterdiagnosticbulk_inst%fcansno_patch(p) = fwet(nc)   !jk: This is not a mistake, see notes on why we set fcansno = fwet
+          fdry_patch(p)    = (1-fwet(nc))*elai(p)/max( elai(p)+esai(p), 1.e-06_r8 )
+          fwet_patch(p)    = fwet(nc)
+          fcansno_patch(p) = fwet(nc)   !jk: This is not a mistake, see notes on why we set fcansno = fwet
        end do 
     end do
  end do
