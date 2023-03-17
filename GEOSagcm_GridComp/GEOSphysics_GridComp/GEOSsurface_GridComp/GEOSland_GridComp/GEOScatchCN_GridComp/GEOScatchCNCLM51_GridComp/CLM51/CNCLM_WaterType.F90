@@ -159,6 +159,7 @@ module WaterType
      procedure, public :: Init
 
   end type water_type
+  type(water_type), public, target, save :: water_inst
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
