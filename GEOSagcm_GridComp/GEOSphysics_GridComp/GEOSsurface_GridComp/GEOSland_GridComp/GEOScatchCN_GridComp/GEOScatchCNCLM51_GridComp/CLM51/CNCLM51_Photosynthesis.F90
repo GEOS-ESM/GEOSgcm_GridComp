@@ -20,6 +20,7 @@
  use PhotosynthesisMod
  use WaterFluxBulkType
  use WaterStateType
+ use WaterType
 
  implicit none
 
@@ -86,13 +87,13 @@
 ! type(atm2lnd_type)             :: atm2lnd_inst
 ! type(temperature_type)         :: temperature_inst
 ! type(soilstate_type)           :: soilstate_inst
- type(waterdiagnosticbulk_type) :: waterdiagnosticbulk_inst
+! type(waterdiagnosticbulk_type) :: waterdiagnosticbulk_inst
 ! type(surfalb_type)             :: surfalb_inst
 ! type(solarabs_type)            :: solarabs_inst
 ! type(canopystate_type)         :: canopystate_inst
 ! type(ozone_base_type)          :: ozone_inst
 ! type(photosyns_type)           :: photosyns_inst
-  type(waterfluxbulk_type)       :: waterfluxbulk_inst
+!  type(waterfluxbulk_type)       :: waterfluxbulk_inst
 ! type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
 ! type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
 ! type(waterstate_type)          :: waterstate_inst
@@ -184,10 +185,7 @@
        filter_nourbanp         => filter(1)%nourbanp               , &
        filter_num_nourbanp     => filter(1)%num_nourbanp           , &
        filter_exposedvegp      => filter(1)%exposedvegp            , &
-       filter_num_exposedvegp  => filter(1)%num_exposedvegp        ,  &
-       fdry_patch              => waterdiagnosticbulk_inst%fdry_patch , &
-       fwet_patch              => waterdiagnosticbulk_inst%fwet_patch , &
-       fcansno_patch           => waterdiagnosticbulk_inst%fcansno_patch  &
+       filter_num_exposedvegp  => filter(1)%num_exposedvegp          &
         )
 
 ! allocate filters
@@ -345,9 +343,9 @@
               filter_novegsol(num_novegsol) = p
           end if
 
-          fdry_patch(p)    = (1-fwet(nc))*elai(p)/max( elai(p)+esai(p), 1.e-06_r8 )
-          fwet_patch(p)    = fwet(nc)
-          fcansno_patch(p) = fwet(nc)   !jk: This is not a mistake, see notes on why we set fcansno = fwet
+          water_inst%waterdiagnosticbulk_inst%fdry_patch(p)    = (1-fwet(nc))*elai(p)/max( elai(p)+esai(p), 1.e-06_r8 )
+          water_inst%waterdiagnosticbulk_inst%fwet_patch(p)    = fwet(nc)
+          water_inst%waterdiagnosticbulk_inst%fcansno_patch(p) = fwet(nc)   !jk: This is not a mistake, see notes on why we set fcansno = fwet
        end do 
     end do
  end do
@@ -361,7 +359,7 @@
  call TwoStream(bounds, &
         filter_vegsol, num_vegsol, &
         coszen_clm, rho, tau, &
-        canopystate_inst, temperature_inst, waterdiagnosticbulk_inst, surfalb_inst)
+        canopystate_inst, temperature_inst, water_inst%waterdiagnosticbulk_inst, surfalb_inst)
 
  ! compute canopy shaded and sunlit variables (jk: needed to fill solarabs_inst before PHS call)
  call CanopySunShadeFracs(filter_nourbanp, filter_num_nourbanp,  &
@@ -380,9 +378,9 @@
  call PhotosynthesisHydraulicStress ( bounds, filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        esat_tv_clm, eair_pert, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
-       atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
+       atm2lnd_inst, temperature_inst, soilstate_inst, water_inst%waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
+       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon)
  
   laisun_dea = canopystate_inst%laisun_patch
   laisha_dea = canopystate_inst%laisha_patch
@@ -398,9 +396,9 @@
  call PhotosynthesisHydraulicStress ( bounds, filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        esat_tv_pert, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
-       atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
+       atm2lnd_inst, temperature_inst, soilstate_inst, water_inst%waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
+       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon)
 
   laisun_dt = canopystate_inst%laisun_patch
   laisha_dt = canopystate_inst%laisha_patch
@@ -414,9 +412,9 @@
  call PhotosynthesisHydraulicStress ( bounds, filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        esat_tv_clm, eair_clm, oair_clm, cair_clm, rb_clm, bsun, bsha, btran, dayl_factor_clm, leafn, &
        qsatl_clm, qaf_clm, &
-       atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
+       atm2lnd_inst, temperature_inst, soilstate_inst, water_inst%waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
+       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon)
  
   laisun = canopystate_inst%laisun_patch
   laisha = canopystate_inst%laisha_patch
