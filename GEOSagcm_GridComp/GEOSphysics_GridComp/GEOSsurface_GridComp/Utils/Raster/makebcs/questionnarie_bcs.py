@@ -41,13 +41,18 @@ def get_configs_from_answers(answers):
    if 'discover' in hostname:
       make_bcs_input_dir = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/'
    else:
-      make_bcs_input_dir = '/nobackup/gmao_SIteam/ModelData/make_bcs_inputs/' 
+      make_bcs_input_dir = '/nobackup/gmao_SIteam/ModelData/make_bcs_inputs/'
+
+   user   = os.getlogin()
+   expdir = '/discover/nobackup/'+user+'/BCS_PACKAGE/'+lbcsv+'/'
+   now    = datetime.now()
+   outdir = now.strftime("%Y%m%d%H%M%S")
 
    configs = []
-   print(answers['grid_type'])
+
    for grid_type in answers['grid_type']:
      print('Grid_type: ' + grid_type)
-     for orslv in  answers.get('Ocean'):
+     for orslv in  answers['Ocean']:
        print('orslv: ' + orslv)
        for resolution in answers.get(grid_type,[]):
           print('resolution: ' +  resolution)
@@ -101,14 +106,13 @@ def get_configs_from_answers(answers):
           config ['NY']  = NY
           config ['NT']  = NT
           config ['MASKFILE']  = maskfile
-          user = os.getlogin()
-          config ['expdir'] = '/discover/nobackup/'+user+'/BCS_PACKAGE/'+lbcsv+'/'
-          now   = datetime.now()
-          config ['outdir'] =now.strftime("%Y%m%d%H%M%S")
-          config ['inputdir'] = make_bcs_input_dir
+          config ['expdir']    = expdir
+          config ['outdir']    = outdir
+          config ['inputdir']  = make_bcs_input_dir
           config ['NCPUS'] = 20
 
           configs = configs + [config]
+
    return configs
 
 def ask_questions():

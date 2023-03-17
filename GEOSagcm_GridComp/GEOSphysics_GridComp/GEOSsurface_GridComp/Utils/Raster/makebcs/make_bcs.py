@@ -7,7 +7,7 @@ import sys
 import argparse
 import textwrap
 import ruamel.yaml
-from bcs_utils import *
+from questionnarie_bcs import *
 from make_ease_bcs import *
 
 # Define the argument parser
