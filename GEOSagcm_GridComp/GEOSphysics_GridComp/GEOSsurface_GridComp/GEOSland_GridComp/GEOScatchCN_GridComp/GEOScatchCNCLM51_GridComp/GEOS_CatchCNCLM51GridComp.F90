@@ -69,6 +69,7 @@ module GEOS_CatchCNCLM51GridCompMod
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
+  use WaterType
 
 implicit none
 private
@@ -4231,7 +4232,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,DTCN,.true.) 
+      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,DTCN,water_inst,.true.) 
       call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif
@@ -6761,7 +6762,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       call catchcn_calc_rc(ntiles,fveg,TCx,QAx,PS,co2v,dayl_fac, &
             T2M10D,TA,cond,psis,wet3,bee,capac,fwet,ZTH,ityp,&
-            DRPAR,DFPAR,albdir,albdif,dtc,dea,rc00,rcdq,rcdt,&
+            DRPAR,DFPAR,albdir,albdif,dtc,dea,water_inst,rc00,rcdq,rcdt,&
             laisun,laisha,psnsun,psnsha,lmrsun,lmrsha,parzone,&
             btran)
   
@@ -6913,7 +6914,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        call CN_Driver(ntiles,ityp,fveg,ndep,tpm,tairm,psis,bee,dayl,btran_fire,ar1m,&
                       rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,gdp,&
                       abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
-                      asnowm,TG10D,T2MMIN5D,SNDZM5D, &
+                      asnowm,TG10D,T2MMIN5D,SNDZM5D,water_inst, &
                       elai,esai,tlai,totcolc,npp,gpp,sr,nee,burn,closs,nfire,&
                       som_closs,frootc,vegc,xsmr,ndeploy,denit,sminn_leached,sminn,&
                       fire_nloss,leafn,leafc,gross_nmin,net_nmin,&

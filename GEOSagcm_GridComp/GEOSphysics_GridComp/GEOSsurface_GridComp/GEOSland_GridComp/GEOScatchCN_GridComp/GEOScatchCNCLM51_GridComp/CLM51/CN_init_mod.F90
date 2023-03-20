@@ -87,7 +87,7 @@ module CN_initMod
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
  type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
- type(water_type),                   public :: water_inst
+! type(water_type),                   public :: water_inst
 ! type(bounds_type), public                       :: bounds
 !  type(patch_type)                        :: patch
 !  type(column_type)                       :: col
@@ -135,7 +135,7 @@ module CN_initMod
  contains
 
 !------------------------------------------------------
- subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,cn5_cold_start)
+ subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,water_inst,cn5_cold_start)
 
   !ARGUMENTS
   implicit none
@@ -149,7 +149,7 @@ module CN_initMod
   real,    dimension(nch),                         intent(in) :: lons  ! Catchment tile longitudes [rad]
   real,                                            intent(in) :: dtcn  ! Catchment-CN step size
   logical, optional,                               intent(in) :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
-
+  type(water_type), intent(out)                       :: water_inst
                                                                                                         
   !LOCAL
 

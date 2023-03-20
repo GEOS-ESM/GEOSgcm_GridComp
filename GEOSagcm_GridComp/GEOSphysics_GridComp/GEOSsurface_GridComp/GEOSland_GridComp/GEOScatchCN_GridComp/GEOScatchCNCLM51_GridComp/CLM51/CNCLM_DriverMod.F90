@@ -47,6 +47,7 @@ module CNCLM_DriverMod
  use CNFireLi2021Mod            
  use CNFireBaseMod 
  use CN2CLMType
+ use WaterType
 
   implicit none
   private
@@ -62,7 +63,7 @@ contains
  subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
-                      fsnow,tg10d,t2m5d,sndzn5d, &
+                      fsnow,tg10d,t2m5d,sndzn5d,water_inst, &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
@@ -109,7 +110,7 @@ contains
  real, dimension(nch), intent(in) :: tg10d     ! 10-day running mean of ground temperature [K]
  real, dimension(nch), intent(in) :: t2m5d     ! 5-day running mean of daily minimum 2m temperature [K]
  real, dimension(nch), intent(in) :: sndzn5d   ! 5-day running mean of total snow depth
-
+ type(water_type),     intent(in) :: water_inst
 
  ! OUTPUT
 
@@ -216,7 +217,7 @@ contains
   do nc = 1,nch        ! catchment tile loop
 
      grc%dayl(nc)                          = dayl(nc)
-     wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
+     water_inst%wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
 
      cn2clm_inst%forc_hdm_cn2clm(nc)  = hdm(nc)
@@ -236,19 +237,19 @@ contains
         soilstate_inst%soilpsi_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*rzm(nc,nz)**(-bee(nc)) ! jkolassa: only one soil layer at this point
         soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd)   = poros(nc) 
         atm2lnd_inst%forc_t_downscaled_col(n)  = tairm(nc)
-        wateratm2lndbulk_inst%forc_rain_downscaled_col(n) = rainfm(nc)
-        wateratm2lndbulk_inst%forc_snow_downscaled_col(n) = snowfm(nc)
-        waterdiagnosticbulk_inst%wf_col(n)  = sfm(nc,nz)
-        waterdiagnosticbulk_inst%wf2_col(n) = rzm(nc,nz)
-        waterdiagnosticbulk_inst%frac_sno_col(n) = fsnow(nc)
-        waterdiagnosticbulk_inst%snow_depth_col(n) = sndzn(nc)
-        waterdiagnosticbulk_inst%snow_5day_col(n) = sndzn5d(nc)  
+        water_inst%wateratm2lndbulk_inst%forc_rain_downscaled_col(n) = rainfm(nc)
+        water_inst%wateratm2lndbulk_inst%forc_snow_downscaled_col(n) = snowfm(nc)
+        water_inst%waterdiagnosticbulk_inst%wf_col(n)  = sfm(nc,nz)
+        water_inst%waterdiagnosticbulk_inst%wf2_col(n) = rzm(nc,nz)
+        water_inst%waterdiagnosticbulk_inst%frac_sno_col(n) = fsnow(nc)
+        water_inst%waterdiagnosticbulk_inst%snow_depth_col(n) = sndzn(nc)
+        water_inst%waterdiagnosticbulk_inst%snow_5day_col(n) = sndzn5d(nc)  
         cnveg_state_inst%gdp_lf_col(n) = gdp(nc)
         cnveg_state_inst%abm_lf_col(n) = abm(nc)
         cnveg_state_inst%peatf_lf_col(n) = peatf(nc)
-        waterstatebulk_inst%h2osoi_liq_col(n,-nlevsno+1:nlevgrnd) = totwat(nc)
-        waterfluxbulk_inst%qflx_drain_col(n) = bflow(nc)
-        waterfluxbulk_inst%qflx_surf_col(n) = runsrf(nc)
+        water_inst%waterstatebulk_inst%h2osoi_liq_col(n,-nlevsno+1:nlevgrnd) = totwat(nc)
+        water_inst%waterfluxbulk_inst%qflx_drain_col(n) = bflow(nc)
+        water_inst%waterfluxbulk_inst%qflx_surf_col(n) = runsrf(nc)
 
         ! compute column-level saturated area fraction (water table at surface)
         if(nz==1) then
@@ -267,9 +268,9 @@ contains
            cn2clm_inst%btran2_patch_cn2clm(p)     = btran_fire(nc,nz)  
           ! cnfire_li2016_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
           ! cnfire_li2021_inst%cnfire_base_type%btran2_patch(p)     = btran_fire(nc,nz)
-           wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
-           wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
-           wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
+           water_inst%wateratm2lndbulk_inst%prec60_patch(p) = prec60d(nc)
+           water_inst%wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
+           water_inst%wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
            frictionvel_inst%forc_hgt_u_patch(p) = 30. ! following CNCLM45 implementation, but this should be available from the GridComp
         end do ! np
      end do ! nz
@@ -319,9 +320,9 @@ contains
       soilbiogeochem_state_inst,                                               &
       soilbiogeochem_nitrogenflux_inst, soilbiogeochem_nitrogenstate_inst,     &
       active_layer_inst, &
-      atm2lnd_inst, waterstatebulk_inst, &
-      waterdiagnosticbulk_inst, waterfluxbulk_inst,      &
-      wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
+      atm2lnd_inst, water_inst%waterstatebulk_inst, &
+      water_inst%waterdiagnosticbulk_inst, water_inst%waterfluxbulk_inst,      &
+      water_inst%wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, &
       crop_inst, ch4_inst, &
       photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,          &
       nutrient_competition_method, fireemis_inst)
@@ -337,8 +338,8 @@ contains
       filter(1)%num_actfirep, filter(1)%actfirep,                 &
       doalb, crop_inst, &
       soilstate_inst, soilbiogeochem_state_inst, &
-      waterstatebulk_inst, waterdiagnosticbulk_inst, &
-      waterfluxbulk_inst, frictionvel_inst, canopystate_inst, &
+      water_inst%waterstatebulk_inst, water_inst%waterdiagnosticbulk_inst, &
+      water_inst%waterfluxbulk_inst, frictionvel_inst, canopystate_inst, &
       soilbiogeochem_carbonflux_inst, soilbiogeochem_carbonstate_inst, &
       c13_soilbiogeochem_carbonflux_inst, c13_soilbiogeochem_carbonstate_inst, &
       c14_soilbiogeochem_carbonflux_inst, c14_soilbiogeochem_carbonstate_inst, &
