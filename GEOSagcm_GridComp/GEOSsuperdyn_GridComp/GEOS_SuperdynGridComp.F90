@@ -342,6 +342,12 @@ integer ::          ADV = -1
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'TROPK_BLENDED',                             &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PV',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
