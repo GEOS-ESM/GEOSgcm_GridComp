@@ -1154,6 +1154,16 @@ module GEOS_SeaiceInterfaceGridComp
         RESTART            = MAPL_RestartSkip,                    &
                                                            __RC__ )
 
+   call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'SS_FOUND',                          &
+        LONG_NAME          = 'foundation_salinity_for_interface_layer',               &
+        UNITS              = 'psu',                               &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        DEFAULT            = 33.3333,                             &  !corresponding to -1.8 deg c
+
+                                                       _RC  )
+
 
    !*CALLBACK*
    ! an ESMF state to pass information b.w. GCs using callback
@@ -1665,6 +1675,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,FR   , 'FRACICE'  ,    RC=STATUS)
    VERIFY_(STATUS) 
+   call MAPL_GetPointer(IMPORT,SW   , 'SS_FOUND' ,    RC=STATUS)
+   VERIFY_(STATUS) 
 
 
 ! Pointers to internals
@@ -1746,6 +1758,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! export to openwater
    call MAPL_GetPointer(EXPORT,FRACI , 'FRACI'   ,    RC=STATUS)
    VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TF    , 'TFREEZE' ,    _RC)
 
    NT = size(TA)
   ! if(NT == 0) then
@@ -1989,6 +2002,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(CMT   )) CMT = CMB
 
    if(associated(FRACI )) FRACI = min(FRI, 1.0)
+   if(associated(TF )) TF = -0.054*SW+MAPL_TICE
 
 
    deallocate(UUU)
