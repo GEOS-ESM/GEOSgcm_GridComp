@@ -107,7 +107,6 @@ echo "   ${C2}GM4 = Ganymed-4_0   (archived${CR}${C1}*${CR}${C2}: /discover/noba
 echo "   ${C2}ICA = Icarus        (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)${CR}"
 echo "   ${C2}NL3 = Icarus-NLv3   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)${CR}"
 echo "   ${C2}NL4 = NLv4 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv4/)${CR}"
-
 echo "   ${C2}      = NL3 + JPL veg height{CR}"
 echo "   ${C2}NL5 = NLv5 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv5/Icarus-NLv5_EASE/)${CR}"
 echo "   ${C2}      = NL3 + JPL veg height + PEATMAP${CR}"
