@@ -2181,7 +2181,7 @@ CONTAINS
          if ((n05 .gt.1.0) .and. (TEMP .lt. 272.0)) then
 
             nsdust=  max(exp(-0.517*Tx + 8.934)-min_ns_dust, 0.0) !From Niemand 2012
-            nssoot= max(7.463*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !Ullrich2017
+            nssoot= max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !Murray (review_ 2012)
             dnsd  = 0.517*nsdust
             dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
 
