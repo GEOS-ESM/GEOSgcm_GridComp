@@ -438,13 +438,13 @@
                 if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
 
                  ! stomatal resistances
-                 rs = laisun(np)/rssun(np) + laisha(np)/rssha(np)
+                 rs = laisun(np)/max(rssun(np), 1.e-06_r8 ) + laisha(np)/max(rssha(np), 1.e-06_r8 )
                  rcs = rcs + fveg(nc,nv,nz)*rs 
 
-                 rs_dea = laisun_dea(np)/rssun_dea(np) + laisha_dea(np)/rssha_dea(np)
+                 rs_dea = laisun_dea(np)/max(rssun_dea(np), 1.e-06_r8 ) + laisha_dea(np)/max(rssha_dea(np), 1.e-06_r8 )
                  rcs_dea = rcs_dea + fveg(nc,nv,nz)*rs_dea
 
-                 rs_dt = laisun_dt(np)/rssun_dt(np) + laisha_dt(np)/rssha_dt(np)
+                 rs_dt = laisun_dt(np)/max(rssun_dt(np), 1.e-06_r8 ) + laisha_dt(np)/max(rssha_dt(np), 1.e-06_r8 )
                  rcs_dt = rcs_dt + fveg(nc,nv,nz)*rs_dt
 
                  ! LAI
