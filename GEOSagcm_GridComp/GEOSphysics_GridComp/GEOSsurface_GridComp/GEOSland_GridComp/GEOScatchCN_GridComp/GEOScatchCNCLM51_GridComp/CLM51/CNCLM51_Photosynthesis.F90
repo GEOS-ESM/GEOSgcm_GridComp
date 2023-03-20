@@ -476,9 +476,9 @@
                 end if ! ityp = p
           end do !nv
        end do ! p
-       rc(n,nz)     = 1./max(rcs,5.e-5) + rb(n)       ! rc: unperturbed stomatal resistance (rs is stomatal conductance)
-       rc_dea(n,nz) = 1./max(rcs_dea,5.e-5) + rb(n)   ! rc_dea: stomatal resistance with vapor pressure perturbation
-       rc_dt(n,nz)  = 1./max(rcs_dt,5.e-5) + rb(n)    ! rc_dt: stomatal resistance with canopy temperature perturbation
+       rc(nc,nz)     = 1./max(rcs,5.e-5) + rb(nc)       ! rc: unperturbed stomatal resistance (rs is stomatal conductance)
+       rc_dea(nc,nz) = 1./max(rcs_dea,5.e-5) + rb(nc)   ! rc_dea: stomatal resistance with vapor pressure perturbation
+       rc_dt(nc,nz)  = 1./max(rcs_dt,5.e-5) + rb(nc)    ! rc_dt: stomatal resistance with canopy temperature perturbation
      end do ! nz
   end do ! nc
 
