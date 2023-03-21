@@ -202,9 +202,9 @@ def make_latlon_bcs(config):
            NCPUS = config['NCPUS'])
 
 
-  ease_job = open(bcjob,'wt')
-  ease_job.write(job_script)
-  ease_job.close()
+  latlon_job = open(bcjob,'wt')
+  latlon_job.write(job_script)
+  latlon_job.close()
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
   if ( interactive ) :

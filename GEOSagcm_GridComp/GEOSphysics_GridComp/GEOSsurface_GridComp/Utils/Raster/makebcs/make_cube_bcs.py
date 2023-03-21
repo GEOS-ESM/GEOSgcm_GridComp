@@ -8,78 +8,99 @@ from questionnarie_bcs import *
 cube_template = """
 #!/bin/csh -x
 
-#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}.log
-#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}.err
+#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME2}.log
+#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME2}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
-#SBATCH --job-name={BCNAME}.j
+#SBATCH --job-name={BCNAME2}.j
 #SBATCH --constraint=sky
 
 cd {BCDIR}
 
-/bin/ln -s {bin_dir}
+if ( {STEP1} == True ) then
+  /bin/ln -s {bin_dir}
+
+  mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+
+  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
+  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
+  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
+  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/72x36 data/MOM6/72x36
+  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/540x458 data/MOM6/540x458
+  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/1440x1080 data/MOM6/1440x1080
+
+  if( -e CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
+
+endif 
+
 source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
-
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/72x36 data/MOM6/72x36
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/540x458 data/MOM6/540x458
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/1440x1080 data/MOM6/1440x1080
-
-cd data 
-
-cd ../
- 
-if( -e CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 setenv MASKFILE {MASKFILE}
 limit stacksize unlimited
-bin/mkCubeFVRaster.x -x {NX} -y {NY} {NC} >/dev/null 
-bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
+
+if ( {STEP1} == True ) then
+  bin/mkCubeFVRaster.x -x {NX} -y {NY} {NC} >/dev/null 
+  bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
+endif
 
 if( {LATLON_OCEAN} == True ) then
-    bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
-    bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
-    bin/CombineRasters.x -t {NT} CF{NC}x6C DE{IMO}xPE{JMO}-Pfafstetter
-    setenv OMP_NUM_THREADS 1
-    if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
-    setenv OMP_NUM_THREADS {NCPUS}
-    if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
-    chmod 755 bin/create_README.csh
-    bin/create_README.csh
+
+   if ( {STEP1} == True ) then 
+      bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
+      bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
+      bin/CombineRasters.x -t {NT} CF{NC}x6C DE{IMO}xPE{JMO}-Pfafstetter
+      setenv OMP_NUM_THREADS 1
+      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+   endif
+
+   if ( {STEP2} == True ) then 
+      setenv OMP_NUM_THREADS {NCPUS}
+      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+      chmod 755 bin/create_README.csh
+      bin/create_README.csh
+   endif
 endif
 
 if( {TRIPOL_OCEAN} == True ) then
-   bin/mkMOMAquaRaster.x -x {NX} -y {NY}  data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
-    /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
-    /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
-    bin/FillMomGrid.x -f 0 -g Pfafstetter-M {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
-    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
-    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
-    bin/CombineRasters.x -f 0 -t {NT} {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
-    bin/CombineRasters.x -t {NT} CF{NC}x6C {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-    bin/mk_runofftbl.x CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-    setenv OMP_NUM_THREADS 1
-    if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
-    setenv OMP_NUM_THREADS {NCPUS}
-    if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
-    chmod 755 bin/create_README.csh
-    bin/create_README.csh
+   if ( {STEP1} == True ) then 
+      bin/mkMOMAquaRaster.x -x {NX} -y {NY}  data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
+      /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
+      /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
+      bin/FillMomGrid.x -f 0 -g Pfafstetter-M {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
+      /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
+      /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
+      bin/CombineRasters.x -f 0 -t {NT} {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
+      bin/CombineRasters.x -t {NT} CF{NC}x6C {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      bin/mk_runofftbl.x CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      setenv OMP_NUM_THREADS 1
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+   endif
+
+   if ( {STEP2} == True ) then 
+      setenv OMP_NUM_THREADS {NCPUS}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+      chmod 755 bin/create_README.csh
+      bin/create_README.csh
+   endif
 endif
 
 if( {CUBED_SPHERE_OCEAN} == True ) then
-    bin/CombineRasters.x -f 0 -t {NT} CF{NC}x6C Pfafstetter >/dev/null
-    bin/CombineRasters.x -t {NT} CF{NC}x6C CF{NC}x6C-Pfafstetter
-    setenv OMP_NUM_THREADS 1
-    if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv}
-    setenv OMP_NUM_THREADS {NCPUS}
-    if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv} 
-    chmod 755 bin/create_README.csh
-    bin/create_README.csh
+   if ( {STEP1} == True ) then 
+      bin/CombineRasters.x -f 0 -t {NT} CF{NC}x6C Pfafstetter >/dev/null
+      bin/CombineRasters.x -t {NT} CF{NC}x6C CF{NC}x6C-Pfafstetter
+      setenv OMP_NUM_THREADS 1
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv}
+   endif
+
+   if ( {STEP2} == True ) then 
+      setenv OMP_NUM_THREADS {NCPUS}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv} 
+      chmod 755 bin/create_README.csh
+      bin/create_README.csh
+   endif
 endif
 
+if ( {STEP2} == True ) then 
 /bin/mv clsm  clsm.C{NC}
 /bin/cp til/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til clsm.C{NC}
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.TRN clsm.C{NC}
@@ -153,6 +174,8 @@ cd ../../
 /bin/mv    {EXPDIR}/{OUTDIR}/logs {BCNAME}/.
 /bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
 /bin/rm -r {OUTDIR}
+
+endif  # STEP2
 """
 
 def make_cube_bcs(config):
@@ -206,11 +229,20 @@ def make_cube_bcs(config):
   if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
+  STEP1 = True
+  STEP2 = True
+  BCNAME2 = bcname
+  if resolution in ['c2880', 'c3072', 'c5760'] :
+     STEP1 = True
+     STEP2 = False
   job_script = cube_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            OUTDIR = tmp_dir, \
-           BCNAME = bcname, \
+           BCNAME  = bcname, \
+           BCNAME2 = BCNAME2, \
+           STEP1   = STEP1, \
+           STEP2   = STEP2, \
            BCDIR = scratch_dir, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
@@ -238,9 +270,53 @@ def make_cube_bcs(config):
            RC = RC,\
            NCPUS = config['NCPUS'])
 
-  ease_job = open(bcjob,'wt')
-  ease_job.write(job_script)
-  ease_job.close()
+  cube_job = open(bcjob,'wt')
+  cube_job.write(job_script)
+  cube_job.close()
+
+  if resolution in ['c2880', 'c3072', 'c5760'] :
+     STEP1 = False
+     STEP2 = True
+     BCNAME2 = bcname+'-2'
+     bcjob   = bcjob +'-2'
+     job_script = cube_template.format(\
+           account = account, \
+           EXPDIR = config['expdir'], \
+           OUTDIR = tmp_dir, \
+           BCNAME  = bcname, \
+           BCNAME2 = BCNAME2, \
+           STEP1   = STEP1, \
+           STEP2   = STEP2, \
+           BCDIR = scratch_dir, \
+           bin_dir = bin_dir, \
+           MAKE_BCS_INPUT_DIR = config['inputdir'], \
+           BCJOB =  bcjob, \
+           DATENAME = DATENAME, \
+           POLENAME = POLENAME, \
+           SKIPLAND = SKIPLAND, \
+           MOM_VERSION = config['MOM_VERSION'], \
+           LATLON_OCEAN= config['LATLON_OCEAN'], \
+           TRIPOL_OCEAN= config['TRIPOL_OCEAN'], \
+           CUBED_SPHERE_OCEAN = config['CUBED_SPHERE_OCEAN'], \
+           nc  = nc, \
+           nc6 = nc6, \
+           imo = config['imo'], \
+           jmo = config['jmo'], \
+           IRRIGTHRES = 2, \
+           IMO = IMO, \
+           JMO = JMO, \
+           NC  = NC, \
+           MASKFILE = config['MASKFILE'], \
+           lbcsv    = config['lbcsv'], \
+           NX = config['NX'], \
+           NY = config['NY'], \
+           NT = config['NT'], \
+           RC = RC,\
+           NCPUS = config['NCPUS'])
+
+     cube_job = open(bcjob,'wt')
+     cube_job.write(job_script)
+     cube_job.close()
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
   if ( interactive ) :

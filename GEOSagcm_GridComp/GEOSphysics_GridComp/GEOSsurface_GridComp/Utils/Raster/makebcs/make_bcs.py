@@ -9,6 +9,8 @@ import textwrap
 import ruamel.yaml
 from questionnarie_bcs import *
 from make_ease_bcs import *
+from make_latlon_bcs import *
+from make_cube_bcs import *
 
 # Define the argument parser
 def parse_args():
@@ -77,6 +79,6 @@ def main():
          make_cube_bcs(config)    
   
 if __name__ == '__main__' :
-  exit("The python version of make_bcs is not yet ready for general use.  Until further notice, please use csh script make_bcs")
+  #exit("The python version of make_bcs is not yet ready for general use.  Until further notice, please use csh script make_bcs")
   main()
 
