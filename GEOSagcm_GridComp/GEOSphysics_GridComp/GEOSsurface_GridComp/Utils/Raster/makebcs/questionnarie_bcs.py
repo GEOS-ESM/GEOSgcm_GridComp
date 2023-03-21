@@ -34,8 +34,8 @@ def get_user():
 
 def get_configs_from_answers(answers):
 
-   lbcsv       = answers['bcs_version']
-
+   lbcsv    = answers['bcs_version']
+   skipland = answers['skipland'] == 'Yes' 
    hostname = socket.gethostname()
    make_bcs_input_dir = ''
    if 'discover' in hostname:
@@ -92,16 +92,48 @@ def get_configs_from_answers(answers):
           if 'GEOS5_10arcsec_mask' in maskfile:
              NX = 43200
              NY = 21600
+
+          LATLON_OCEAN = False
+          TRIPOL_OCEAN = False
+          CUBED_SPHERE_OCEAN = False
+          DATENAME = 'DE'
+          POLENAME = 'PE'
+          MOM_VERSION = 'UNDEF'
+          if orslv in['O2','O3','O1']:
+             LATLON_OCEAN = True
+             DATENAME = 'DE'
+             POLENAME = 'PE'
+          if orslv in['T2','T3','T4']:
+             TRIPOL_OCEAN = True
+             MOM_VERSION = 'MOM5'
+             DATENAME = 'TM'
+             POLENAME = 'TM'
+          if 'MOM6' in orslv:
+             TRIPOL_OCEAN = True
+             MOM_VERSION = 'MOM6'
+             DATENAME = 'TM'
+             POLENAME = 'TM'
+          if  orslv == 'CS' :
+             CUBED_SPHERE_OCEAN = True
        
           config = {}
+
+          config['LATLON_OCEAN'] = LATLON_OCEAN
+          config['TRIPOL_OCEAN'] = TRIPOL_OCEAN
+          config['CUBED_SPHERE_OCEAN'] = CUBED_SPHERE_OCEAN
+          config['DATENAME'] = DATENAME
+          config['POLENAME'] = POLENAME
+          config['MOM_VERSION'] =  MOM_VERSION
+
+          config['skipland']  = skipland
           config['grid_type'] = grid_type
           config['lbcsv']     = lbcsv
           config['resolution']= resolution
           config['orslvs']    = orslv
-          config ['im']  = im[resolution]
-          config ['jm']  = jm[resolution]
-          config ['imo'] = im[orslv]
-          config ['jmo'] = jm[orslv]
+          config ['im']  = answers['im'][resolution]
+          config ['jm']  = answers['jm'][resolution]
+          config ['imo'] = answers['im'][orslv]
+          config ['jmo'] = answers['jm'][orslv]
           config ['NX']  = NX
           config ['NY']  = NY
           config ['NT']  = NT
@@ -110,6 +142,7 @@ def get_configs_from_answers(answers):
           config ['outdir']    = outdir
           config ['inputdir']  = make_bcs_input_dir
           config ['NCPUS'] = 20
+
 
           configs = configs + [config]
 
@@ -121,8 +154,8 @@ def ask_questions():
    questions = [
        {
             "type": "select",
-            "name": "withland",
-            "message": "Generate land parameter files ?: \n \
+            "name": "skipland",
+            "message": "Skip land parameter files ?: \n \
    This option saves time when additional bcs are created that have \n \
    the exact same land parameters as an existing set of bcs because \n \
    the only difference between the two sets of bcs is the [non-tripolar] \n \
@@ -266,8 +299,9 @@ def ask_questions():
          res = res + [short_res]
          imxjm = x.split('$')
          if len(imxjm) == 1 :
-            im[short_res] = "CS"
-            jm[short_res] = "CS"
+            #'CS' will be filled later on
+            im[short_res] = 0
+            jm[short_res] = 0
          else:
             strings = imxjm[1].split('x')
             im[short_res] = int(strings[0])
@@ -283,7 +317,10 @@ def ask_questions():
       jm[short_res] = 6*i
    answers['Cubed-Sphere'] = res 
 
-   return answers, im, jm
+   answers['im'] = im
+   answers['jm'] = jm
+
+   return answers
 
 def print_config( config, indent = 0 ):
    print('\n')
@@ -296,13 +333,11 @@ def print_config( config, indent = 0 ):
 
 if __name__ == "__main__":
 
-   answers, im, jm = ask_questions()
+   answers = ask_questions()
    for key, value in answers.items():
-      print(key, value)
-   for key, value in im.items():
-      print(key, value)
-   for key, value in jm.items():
-      print(key, value)
+     if (key == 'im' or key) =='jm' :
+        for key1, value1 in answers[key].items():
+           print(key1, value1)
 
    configs = get_configs_from_answers(answers)
    print('\n print config file:\n')

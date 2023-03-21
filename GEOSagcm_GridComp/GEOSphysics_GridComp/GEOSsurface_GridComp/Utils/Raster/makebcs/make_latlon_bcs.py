@@ -6,7 +6,7 @@ import os
 from questionnarie_bcs import *
 
 
-ease_template = """#!/bin/csh -x
+latlon_template = """#!/bin/csh -x
 
 #SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}.log
 #SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}.err
@@ -17,15 +17,15 @@ ease_template = """#!/bin/csh -x
 #SBATCH --constraint=sky
 
 cd {BCDIR}
-
-source bin/g5_modules
 /bin/ln -s {bin_dir}
+source bin/g5_modules
 mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/72x36 data/MOM6/72x36
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/540x458 data/MOM6/540x458
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
 cd ../
@@ -37,18 +37,18 @@ limit stacksize unlimited
 bin/mkLatLonRaster.x -x {NX} -y {NY}  -t -1 {IM} {JM} >/dev/null
 bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
 
-if( {LATLON_OCEAN} == TRUE ) then
+if( {LATLON_OCEAN} == True ) then
     bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
     bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} DC{IM}xPC{JM} DE{IMO}xPE{JMO}-Pfafstetter
     setenv OMP_NUM_THREADS 1
-    if ({SKIPLAND} != YES) bin/mkCatchParam.x -x {NX} -y {NY} -g DC{IM}xPC{JM}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+    if ( {SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g DC{IM}xPC{JM}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
     setenv OMP_NUM_THREADS {NCPUS}
-    if ({SKIPLAND} != YES) bin/mkCatchParam.x -x {NX} -y {NY} -g DC{IM}xPC{JM}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+    if ( {SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g DC{IM}xPC{JM}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
-if( {TRIPOL_OCEAN} == TRUE ) then
+if( {TRIPOL_OCEAN} == True ) then
    bin/mkMOMAquaRaster.x -x {NX} -y {NY}  data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
@@ -59,16 +59,16 @@ if( {TRIPOL_OCEAN} == TRUE ) then
     bin/CombineRasters.x -t {NT} DC{IM}xPC{JM} {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
     bin/mk_runofftbl.x DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
     setenv OMP_NUM_THREADS 1
-    if ({SKIPLAND} != YES) bin/mkCatchParam.x -x {NX} -y {NY} -g DE{IMO}xPE{JMO}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+    if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g DE{IMO}xPE{JMO}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
     setenv OMP_NUM_THREADS {NCPUS}
-    if ({SKIPLAND} != YES) bin/mkCatchParam.x -x {NX} -y {NY} -g DE{IMO}xPE{JMO}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+    if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g DE{IMO}xPE{JMO}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
     chmod 755 bin/create_README.csh
     bin/create_README.csh    
 endif
 
 /bin/mv clsm  clsm.{IM}x{JM}
 /bin/cp til/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til clsm.{IM}x{JM}
-if( {TRIPOL_OCEAN} == TRUE ) /bin/cp til/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.TRN clsm.{IM}x{JM}
+if( {TRIPOL_OCEAN} == True ) /bin/cp til/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.TRN clsm.{IM}x{JM}
 /bin/rm clsm.{IM}x{JM}/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.file
 
 cd clsm.{IM}x{JM}
@@ -131,33 +131,28 @@ cd ../../
 
 """
 
-def make_cube_bcs(config):
+def make_latlon_bcs(config):
   bin_dir = os.getcwd()
   if 'install/bin' not in bin_dir:
     print(" please run this program in installed bin directory")
     return
 
-  grid_type  = config['grid_type']
-  if 'Cubed' not in grid_type :
-     print('This is not a Cubed-Sphere grid')
-     return
-
   resolution = config['resolution']
 
   account = get_account()
-  imo = '%04d'%config['imo']
-  jmo = '%04d'%config['jmo']
-  NC  = '%04d'%config['im']
+  IMO = '%04d'%config['imo']
+  JMO = '%04d'%config['jmo']
+  IM  = '%04d'%config['im']
+  JM  = '%04d'%config['jm']
 
-  bcname = 'CF'+NC+'x6C_'+DATENAME+imo+'x'+POLENAME+jmo
-  if config['CUBED_SPHERE_OCEAN'] :
-    bcname =  'CF'+NC'x6_CF'+NC+'6C'
-    DATENAME = 'CF'
-    POLENAME = ''
-    imo = NC
-    jmo = '6C'
-  
-  
+  RS = str(config['im']) +'_' +str(config['jm'])
+
+  DATENAME = config['DATENAME']
+  POLENAME = config['POLENAME']
+
+  bcname = 'DC'+IM+'xPC'+JM+'_'+ DATENAME+IMO+'x'+POLENAME+JMO 
+
+  SKIPLAND = config['skipland'] 
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
@@ -167,30 +162,43 @@ def make_cube_bcs(config):
   bcjob       = scratch_dir+'/'+bcname+'.j'
 
   if os.path.exists(bcjob):
-    print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
+    print('please remove the run temprory directory: ' +  scratch_dir) 
     return
 
   os.makedirs(scratch_dir)
-  os.makedirs(log_dir)
+  if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
 
-  job_script = ease_template.format(\
+  job_script = latlon_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            OUTDIR = tmp_dir, \
            BCNAME = bcname, \
+           BCDIR = scratch_dir, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
            BCJOB =  bcjob, \
-           EASEVERSION = grid_type, \
-           HRCODE = resolution, \
-           IM = config['im'], \
-           JM = config['jm'], \
+           DATENAME = DATENAME, \
+           POLENAME = POLENAME, \
+           SKIPLAND = SKIPLAND, \
+           MOM_VERSION = config['MOM_VERSION'], \
+           LATLON_OCEAN= config['LATLON_OCEAN'], \
+           TRIPOL_OCEAN= config['TRIPOL_OCEAN'], \
+           im = config['im'], \
+           jm = config['jm'], \
+           imo = config['imo'], \
+           jmo = config['jmo'], \
+           IRRIGTHRES = 2, \
+           IM = IM, \
+           JM = JM, \
+           IMO = IMO, \
+           JMO = JMO, \
            MASKFILE = config['MASKFILE'], \
            lbcsv    = config['lbcsv'], \
            NX = config['NX'], \
            NY = config['NY'], \
+           NT = config['NT'], \
            RS = RS,\
-           BCDIR = scratch_dir, \
            NCPUS = config['NCPUS'])
 
 
@@ -210,7 +218,7 @@ def make_cube_bcs(config):
         os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
   else:
     print("sbatch " + bcjob +"\n")
-    subprocess.call(['sbatch', bcjob])
+    #subprocess.call(['sbatch', bcjob])
 
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
@@ -220,7 +228,10 @@ def make_cube_bcs(config):
 if __name__ == "__main__":
 
    answers = ask_questions()
-   config = get_config_from_answers(answers)
-   print("make_ease_bcs")
-   make_ease_bcs(config)
+   configs = get_configs_from_answers(answers)
+   print("make_latlon_bcs")
+   for config in configs:
+      if 'Lat-Lon' in config['grid_type']:
+         print_config(config)
+         make_latlon_bcs(config)
 

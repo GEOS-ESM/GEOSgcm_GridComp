@@ -55,22 +55,27 @@ def parse_args():
 def main():
 
   question_flag = False
-  config        = ''
 
   # Parse the command line arguments from parse_args() capturing the arguments and the rest
   command_line_args, extra_args = parse_args()
   print(f'command_line_args: {command_line_args}')
   config_yaml = command_line_args.config_file
 
+  configs = []
   if config_yaml:
       config = yaml_to_config(config_yaml)
+      configs = [config]
   else:
       answers = ask_questions()
-      config = get_config_from_answers(answers)
-   
-  make_ease_bcs(config)
- 
-
+      configs = get_configs_from_answers(answers)
+  for config in configs :
+      if 'EASE' in config['grid_type']:
+         make_ease_bcs(config)    
+      if 'Lat-Lon' in config['grid_type']:
+         make_latlon_bcs(config)    
+      if 'Cubed-Sphere' in config['grid_type']:
+         make_cube_bcs(config)    
+  
 if __name__ == '__main__' :
   exit("The python version of make_bcs is not yet ready for general use.  Until further notice, please use csh script make_bcs")
   main()
