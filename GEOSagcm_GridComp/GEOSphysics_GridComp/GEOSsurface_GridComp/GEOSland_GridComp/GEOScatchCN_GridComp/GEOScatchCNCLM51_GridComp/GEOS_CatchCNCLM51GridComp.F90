@@ -6769,10 +6769,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       para(:) = 0. ! zero out absorbed PAR summing array
       do nz = 1,nzone
          do nv = 1,nveg
-            para(:)     = para(:) + parzone(:,nv,nz)*wtzone(:,nz)*fveg(:,nv,nz)
-            if(associated(BTRANT)) then
-              btrant(:) = btrant(:) + btran(:,nv,nz)*fveg(:,nv,nz)*wtzone(:,nz)
-            end if 
+            do n = 1,ntiles
+               if (fveg(nc,nv,nz)>1.e-4) then ! account for fact that parzone is undefined if fveg = 0
+                 para(n)     = para(n) + parzone(n,nv,nz)*wtzone(n,nz)*fveg(n,nv,nz)
+                 if(associated(BTRANT)) then
+                    btrant(n) = btrant(n) + btran(n,nv,nz)*fveg(n,nv,nz)*wtzone(n,nz)
+                 end if 
+               end if
+            end do
          end do
       end do
 
