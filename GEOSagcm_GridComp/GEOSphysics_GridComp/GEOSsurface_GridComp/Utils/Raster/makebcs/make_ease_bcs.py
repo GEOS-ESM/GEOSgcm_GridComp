@@ -162,7 +162,7 @@ def make_ease_bcs(config):
         os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
   else:
     print("sbatch " + bcjob +"\n")
- #   subprocess.call(['sbatch', bcjob])
+    subprocess.call(['sbatch', bcjob])
 
   print( "cd " + bin_dir)
   os.chdir(bin_dir)

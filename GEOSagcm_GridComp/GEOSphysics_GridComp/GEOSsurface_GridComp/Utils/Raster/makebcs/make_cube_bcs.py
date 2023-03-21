@@ -5,8 +5,7 @@
 import os
 from questionnarie_bcs import *
 
-cube_template = """
-#!/bin/csh -x
+cube_template = """#!/bin/csh -x
 
 #SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME2}.log
 #SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME2}.err
@@ -278,7 +277,6 @@ def make_cube_bcs(config):
      STEP1 = False
      STEP2 = True
      BCNAME2 = bcname+'-2'
-     bcjob   = bcjob +'-2'
      job_script = cube_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
@@ -290,7 +288,7 @@ def make_cube_bcs(config):
            BCDIR = scratch_dir, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
-           BCJOB =  bcjob, \
+           BCJOB =  bcjob+'-2', \
            DATENAME = DATENAME, \
            POLENAME = POLENAME, \
            SKIPLAND = SKIPLAND, \
@@ -314,7 +312,7 @@ def make_cube_bcs(config):
            RC = RC,\
            NCPUS = config['NCPUS'])
 
-     cube_job = open(bcjob,'wt')
+     cube_job = open(bcjob+'2','wt')
      cube_job.write(job_script)
      cube_job.close()
 
@@ -330,8 +328,11 @@ def make_cube_bcs(config):
         os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
   else:
     print("sbatch " + bcjob +"\n")
-    #subprocess.call(['sbatch', bcjob])
-
+    out = subprocess.check_output(['sbatch', bcjob])
+    jobid = int(out.split()[3])
+    if resolution in ['c2880', 'c3072', 'c5760']:
+      subprocess.call(['sbatch', '--dependency=afterok:'+str(jobid), bcjob+'-2'])
+       
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
