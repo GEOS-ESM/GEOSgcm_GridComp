@@ -177,9 +177,9 @@
        vcmaxcintsha            => surfalb_inst%vcmaxcintsha_patch , &
        f_sun_z                 => surfalb_inst%fsun_z_patch       , &
        xl                      => pftcon%xl                       , & 
-       leafn                   => cnveg_nitrogenstate_inst%leafn_patch , &
-       froot_carbon            => cnveg_carbonstate_inst%frootc_patch  , &
-       croot_carbon            => cnveg_carbonstate_inst%livecrootc_patch, &
+       leafn                   => bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_patch , &
+       froot_carbon            => bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_patch  , &
+       croot_carbon            => bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_patch, &
        elai                    => canopystate_inst%elai_patch      , &
        esai                    => canopystate_inst%esai_patch      ,  &
        filter_nourbanp         => filter(1)%nourbanp               , &
