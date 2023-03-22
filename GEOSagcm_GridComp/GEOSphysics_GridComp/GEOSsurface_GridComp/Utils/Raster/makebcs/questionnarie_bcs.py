@@ -176,9 +176,9 @@ def ask_questions():
     code are scientifically equivalent to the corresponding archived BCs. \n",
             "choices": [ \
                   "F25 : Fortuna-2_5   (archived*: n/a)", \
-   "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)", \
-   "ICA : Icarus        (archived*: /discover/nobackup/ltakacs/bcs/Icarus/)", \
-   "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)", \
+   "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
+   "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
+   "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)", \
    "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/) \n\
           = NL3 + JPL veg height", \
    "NL5 : NLv5 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)\n \
@@ -187,7 +187,7 @@ def ask_questions():
    "v07 : NL3 + PEATMAP", \
    "v08 : NL3 + MODIS snow alb", \
    "v09 : NL3 + PEATMAP + MODIS snow alb"],
-            "default": "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)",
+            "default": "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)",
         },
 
        {
