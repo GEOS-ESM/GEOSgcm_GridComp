@@ -1,7 +1,7 @@
 module CNCLM_DriverMod
 
  use nanMod           , only : nan
- use CNVegetationFacade, only : cn_vegetation_type
+ use CNVegetationFacade
  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
                                 var_col, var_pft, nlevgrnd, numpft, ndecomp_pools
  use clm_varcon       , only : grav, denh2o
@@ -244,9 +244,9 @@ contains
         water_inst%waterdiagnosticbulk_inst%frac_sno_col(n) = fsnow(nc)
         water_inst%waterdiagnosticbulk_inst%snow_depth_col(n) = sndzn(nc)
         water_inst%waterdiagnosticbulk_inst%snow_5day_col(n) = sndzn5d(nc)  
-        cnveg_state_inst%gdp_lf_col(n) = gdp(nc)
-        cnveg_state_inst%abm_lf_col(n) = abm(nc)
-        cnveg_state_inst%peatf_lf_col(n) = peatf(nc)
+        bgc_vegetation_inst%cnveg_state_inst%gdp_lf_col(n) = gdp(nc)
+        bgc_vegetation_inst%cnveg_state_inst%abm_lf_col(n) = abm(nc)
+        bgc_vegetation_inst%cnveg_state_inst%peatf_lf_col(n) = peatf(nc)
         water_inst%waterstatebulk_inst%h2osoi_liq_col(n,-nlevsno+1:nlevgrnd) = totwat(nc)
         water_inst%waterfluxbulk_inst%qflx_drain_col(n) = bflow(nc)
         water_inst%waterfluxbulk_inst%qflx_surf_col(n) = runsrf(nc)

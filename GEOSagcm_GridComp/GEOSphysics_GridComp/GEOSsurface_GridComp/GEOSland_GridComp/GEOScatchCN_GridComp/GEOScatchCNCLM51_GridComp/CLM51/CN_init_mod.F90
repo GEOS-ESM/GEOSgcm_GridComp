@@ -202,6 +202,8 @@ module CN_initMod
   integer, parameter :: zeng_2001_root    = 0 !the zeng 2001 root profile function
   !-----------------------------------------
 
+   paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
+
 ! initialize CN step size
 
   ndt = get_step_size( nint(dtcn) )
@@ -246,9 +248,9 @@ module CN_initMod
 
     ! initialize states and fluxes
 
-    call cnveg_nitrogenstate_inst%Init  (bounds, nch, ityp, fveg, cncol, cnpft)
+    call pftcon%init_pftcon_type        ()
 
-    call cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
+    call bgc_vegetation_inst%Init(bounds, nch, ityp, fveg, cncol, cnpft, paramfile, cn5_cold_start)
 
     call atm2lnd_inst%Init              (bounds)
 
@@ -268,19 +270,11 @@ module CN_initMod
 
     call photosyns_inst%Init            (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
 
-    call pftcon%init_pftcon_type        ()
-
     call soilbiogeochem_carbonstate_inst%Init(bounds, nch, cncol)
 
     call soilbiogeochem_nitrogenstate_inst%Init(bounds, nch, cncol)
 
     call soilbiogeochem_state_inst%Init (bounds, nch, cncol)
-
-    call cnveg_state_inst%Init          (bounds, nch, ityp, fveg, cncol, cnpft)
-
-    call cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
- 
-    call cnveg_nitrogenflux_inst%Init   (bounds, nch, ityp, fveg, cncol, cnpft)
 
     call soilbiogeochem_carbonflux_inst%Init (bounds)
 
@@ -324,8 +318,6 @@ module CN_initMod
 
    ! initialize CLM parameters from parameter file
 
-   paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
-
    call ncid%open(trim(paramfile),pFIO_READ, RC=status)
 
    call readCNMRespParams(ncid)
@@ -345,19 +337,6 @@ module CN_initMod
    ! initialize types that depend on parameters
 
    call CNPhenologyInit                (bounds)
-
-   call bgc_vegetation_inst%cn_balance_inst%Init      (bounds)
-   call create_cnfire_method( bgc_vegetation_inst%cnfire_method)
-
-   call ncid%open(trim(paramfile),pFIO_READ, RC=status)
-   call bgc_vegetation_inst%cnfire_method%CNFireReadParams( ncid )
-   call ncid%close(rc=status)
-
-  call bgc_vegetation_inst%cnfire_method%FireInit(bounds)
-
-  call bgc_vegetation_inst%c_products_inst%Init  (bounds, nch, cncol, 'C')
-
-  call bgc_vegetation_inst%n_products_inst%Init  (bounds, nch, cncol, 'N')
 
   ! call FireMethodInit(bounds,paramfile)
 

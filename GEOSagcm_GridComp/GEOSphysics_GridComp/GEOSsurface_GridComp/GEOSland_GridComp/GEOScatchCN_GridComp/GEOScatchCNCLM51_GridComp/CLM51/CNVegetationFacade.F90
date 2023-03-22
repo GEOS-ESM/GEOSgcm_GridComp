@@ -152,7 +152,7 @@ module CNVegetationFacade
      ! - drydepvel_inst
      
    contains
-    ! procedure, public :: Init
+     procedure, public :: Init
 !     procedure, public :: InitAccBuffer
 !     procedure, public :: InitAccVars
 !     procedure, public :: UpdateAccVars
@@ -192,6 +192,97 @@ module CNVegetationFacade
        __FILE__
 
 contains
+
+  !-----------------------------------------------------------------------
+  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft, paramfile, cn5_cold_start)
+ 
+   !
+    ! !DESCRIPTION:
+    ! Initialize a CNVeg object.
+    !    
+    ! Should be called regardless of whether use_cn is true
+    !    
+    ! !USES:
+    use CNFireFactoryMod , only : create_cnfire_method
+    use clm_varcon       , only : c13ratio, c14ratio
+    use MAPL             , only : NetCDF4_FileFormatter, pFIO_READ
+    use clm_varpar       , only : num_zon, num_veg, &
+                                var_col, var_pft
+
+    !    
+    ! !ARGUMENTS:
+    class(cn_vegetation_type), intent(inout) :: this 
+    type(bounds_type), intent(in)    :: bounds
+    integer,                                      intent(in) :: nch ! number of tiles
+    integer, dimension(nch,NUM_VEG,NUM_ZON),      intent(in) :: ityp ! PFT index
+    real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
+    real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
+    real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
+    character(300),                               intent(in) :: paramfile
+    logical, optional,                            intent(in) :: cn5_cold_start
+    !    
+    ! !LOCAL VARIABLES:
+    integer :: begp, endp 
+    integer :: rc, status
+    type(Netcdf4_fileformatter) :: ncid 
+
+    character(len=*), parameter :: subname = 'Init'
+    !-----------------------------------------------------------------------
+
+    begp = bounds%begp
+    endp = bounds%endp
+
+    ! Note - always initialize the memory for cnveg_state_inst (used in biogeophys/)
+    call this%cnveg_state_inst%Init(bounds, nch, ityp, fveg, cncol, cnpft)
+
+
+    if (use_cn) then
+
+       ! Read in the general CN namelist
+    !   call this%CNReadNML( NLFilename )    ! MUST be called first as passes down control information to others
+
+       call this%cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
+
+       if (use_c13) then
+          call this%c13_cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
+       end if
+       if (use_c14) then
+          call this%c14_cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
+       end if
+       call this%cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
+       if (use_c13) then
+          call this%c13_cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
+       end if
+       if (use_c14) then
+          call this%c14_cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
+       end if
+       call this%cnveg_nitrogenstate_inst%Init  (bounds, nch, ityp, fveg, cncol, cnpft)
+       call this%cnveg_nitrogenflux_inst%Init   (bounds, nch, ityp, fveg, cncol, cnpft)
+
+       call this%c_products_inst%Init  (bounds, nch, cncol, 'C')
+       if (use_c13) then
+          call this%c13_products_inst%Init  (bounds, nch, cncol, 'C')
+       end if
+       if (use_c14) then
+          call this%c14_products_inst%Init  (bounds, nch, cncol, 'C')
+       end if
+       call this%n_products_inst%Init  (bounds, nch, cncol, 'N')
+
+       call this%cn_balance_inst%Init(bounds)
+
+       ! Initialize the memory for the dgvs_inst data structure regardless of whether
+       ! use_cndv is true so that it can be used in associate statements (nag compiler
+       ! complains otherwise)
+       call this%dgvs_inst%Init(bounds)
+    end if
+
+    call create_cnfire_method(this%cnfire_method)
+
+    call ncid%open(trim(paramfile),pFIO_READ, RC=status)
+    call this%cnfire_method%CNFireReadParams( ncid )
+    call ncid%close(rc=status)
+
+  end subroutine Init
 
   !-----------------------------------------------------------------------
 !  subroutine Init(this, bounds, NLFilename, nskip_steps, params_ncid)
