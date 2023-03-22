@@ -184,6 +184,7 @@ module CNVegetationFacade
 
      procedure, private :: CNReadNML                    ! Read in the CN general namelist
   end type cn_vegetation_type
+  type(cn_vegetation_type), public, target, save :: bgc_vegetation_type
 
   ! !PRIVATE DATA MEMBERS:
 

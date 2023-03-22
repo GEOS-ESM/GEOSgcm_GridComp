@@ -123,7 +123,7 @@ module CN_initMod
 !  type(waterstatebulk_type), public                :: waterstatebulk_inst
 !  type(waterstate_type), public                    :: waterstate_inst
 !  type(frictionvel_type), public                   :: frictionvel_inst
-   type(cn_vegetation_type), public                :: bgc_vegetation_inst
+!   type(cn_vegetation_type), public                :: bgc_vegetation_inst
    type(waterfluxbulk_type), public                 :: waterfluxbulk_inst
  ! type(active_layer_type), public                  :: active_layer_inst
 
@@ -135,7 +135,7 @@ module CN_initMod
  contains
 
 !------------------------------------------------------
- subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,water_inst,cn5_cold_start)
+ subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,water_inst,bgc_vegetation_inst,cn5_cold_start)
 
   !ARGUMENTS
   implicit none
@@ -150,7 +150,7 @@ module CN_initMod
   real,                                            intent(in) :: dtcn  ! Catchment-CN step size
   logical, optional,                               intent(in) :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
   type(water_type), intent(out)                       :: water_inst
-                                                                                                        
+  type(cn_vegetation_type), intent(out)               :: bgc_vegetation_inst                                                                                                        
   !LOCAL
 
 !  type(bounds_type)                       :: bounds

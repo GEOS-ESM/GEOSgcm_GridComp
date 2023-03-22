@@ -70,6 +70,7 @@ module GEOS_CatchCNCLM51GridCompMod
 
   use update_model_para4cn, only : upd_curr_date_time
   use WaterType
+  use CNVegetationFacade
 
 implicit none
 private
@@ -4232,7 +4233,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,DTCN,water_inst,.true.) 
+      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,DTCN,water_inst,bgc_vegetation_inst,.true.) 
       call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif
@@ -6762,7 +6763,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       call catchcn_calc_rc(ntiles,fveg,TCx,QAx,PS,co2v,dayl_fac, &
             T2M10D,TA,cond,psis,wet3,bee,capac,fwet,ZTH,ityp,&
-            DRPAR,DFPAR,albdir,albdif,dtc,dea,water_inst,rc00,rcdq,rcdt,&
+            DRPAR,DFPAR,albdir,albdif,dtc,dea,water_inst,bgc_vegetation_inst,rc00,rcdq,rcdt,&
             laisun,laisha,psnsun,psnsha,lmrsun,lmrsha,parzone,&
             btran)
   

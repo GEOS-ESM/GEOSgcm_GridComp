@@ -32,7 +32,7 @@
 !---------------------------------------------------
  subroutine catchcn_calc_rc(nch,fveg,tc,qa,pbot,co2v,dayl_factor, &
             t10,tm,cond,psis,wet3,bee,capac,fwet,coszen,ityp,&
-            pardir,pardif,albdir,albdif,dtc,dea,water_inst,rc,rc_dea,rc_dt,&
+            pardir,pardif,albdir,albdif,dtc,dea,water_inst,bgc_vegetation_inst,rc,rc_dea,rc_dt,&
             laisun_out,laisha_out,psnsun_out,psnsha_out,lmrsun_out,&
             lmrsha_out,parabs,btran_out)
 
@@ -66,6 +66,7 @@
  real, intent(in) :: dtc ! canopy temperature perturbation (K) [approx 1:10000]
  real, intent(in) :: dea ! vapor pressure perturbation (Pa) [approx 1:10000]
  type(water_type),intent(in) :: water_inst
+ type(cn_vegetation_type), intent(in) :: bgc_vegetation_inst
 
  ! OUTPUTS
  real, dimension(nch,num_zon), intent(out) :: rc       ! unperturbed canopy stomatal resistance [s/m]
