@@ -2282,6 +2282,39 @@ contains
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='MLCAPE',                                      & 
+         LONG_NAME ='cape_for_mixed_layer_parcel',                 &
+         UNITS     ='J kg-1',                                      &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='MLCIN',                                       & 
+         LONG_NAME ='inhibition_for_mixed_layer_parcel',           &
+         UNITS     ='J kg-1',                                      &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='MUCAPE',                                      & 
+         LONG_NAME ='cape_for_most_unstable_parcel',               &
+         UNITS     ='J kg-1',                                      &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='MUCIN',                                       & 
+         LONG_NAME ='inhibition_for_most_unstable_parcel',         &
+         UNITS     ='J kg-1',                                      &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TVQ0',                                        & 
          LONG_NAME ='Total_Water_Substance_Before',                &
@@ -2349,6 +2382,14 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='ZLFC',                                        & 
          LONG_NAME ='level_of_free_convection',                    &
+         UNITS     ='m'  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='ZLNB',                                        & 
+         LONG_NAME ='level_of_neutral_buoyancy',                    &
          UNITS     ='m'  ,                                         &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
@@ -5094,7 +5135,7 @@ contains
     real, pointer, dimension(:,:  ) :: PTYPE, TPREC, CN_PRCP, LS_PRCP, AN_PRCP, SC_PRCP, PLS, PCU
     real, pointer, dimension(:,:  ) :: RAIN, SNOW, ICE, FRZR, PREC_STRAT, PREC_CONV
     real, pointer, dimension(:,:,:) :: BYNCY
-    real, pointer, dimension(:,:  ) :: CAPE, INHB
+    real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, MLCIN, MUCAPE, MUCIN, LFC, LNB
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
     real, pointer, dimension(:,:,:  ) :: NWFA
@@ -5226,8 +5267,14 @@ contains
        call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, INHB,    'INHB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
-       
+       call MAPL_GetPointer(EXPORT, MLCAPE,  'MLCAPE' ,               RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, MLCIN,   'MLCIN'  ,               RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, MUCAPE,  'MUCAPE' ,               RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, MUCIN,   'MUCIN'  ,               RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, LFC,     'ZLFC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, LNB,     'ZLNB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+!       call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
+       call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), CAPE, MLCAPE, MUCAPE, INHB, MLCIN, MUCIN, BYNCY, LFC, LNB )
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          WHERE (CAPE .ne. MAPL_UNDEF)
