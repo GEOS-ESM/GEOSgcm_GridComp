@@ -21,6 +21,7 @@
  use WaterFluxBulkType
  use WaterStateType
  use WaterType
+ use CNVegetationFacade
 
  implicit none
 
