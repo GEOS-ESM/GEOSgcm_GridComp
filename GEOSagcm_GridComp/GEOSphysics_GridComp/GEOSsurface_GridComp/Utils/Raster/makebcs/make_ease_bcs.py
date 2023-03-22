@@ -3,7 +3,7 @@
 # source install/bin/g5_modules
 
 import os
-from bcs_utils import *
+from questionnarie_bcs import *
 
 
 ease_template = """#!/bin/csh -x
@@ -90,7 +90,6 @@ cd ../../
 /bin/mv    {BCJOB}                {BCNAME}
 /bin/mv    {EXPDIR}/{OUTDIR}/logs   {BCNAME}/.
 /bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
-/bin/rm -r {OUTDIR}
 
 """
 
@@ -119,7 +118,8 @@ def make_ease_bcs(config):
     return
 
   os.makedirs(scratch_dir)
-  os.makedirs(log_dir)
+  if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
 
   account = get_account()
   ims = '%04d'%config['im']
@@ -172,7 +172,9 @@ def make_ease_bcs(config):
 if __name__ == "__main__":
 
    answers = ask_questions()
-   config = get_config_from_answers(answers)
+   configs = get_configs_from_answers(answers)
    print("make_ease_bcs")
-   make_ease_bcs(config)
+   for config in configs:
+      if 'EASE' in config['grid_type']:
+         make_ease_bcs(config)
 
