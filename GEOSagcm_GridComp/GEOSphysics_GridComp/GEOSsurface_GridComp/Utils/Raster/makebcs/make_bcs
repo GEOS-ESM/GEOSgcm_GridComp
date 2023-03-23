@@ -801,10 +801,10 @@ cat << _EOF_ > $BCJOB
 #SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
-#SBATCH --time=03:00:00
-#SBATCH --ntasks=28
+#SBATCH --time=12:00:00
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
@@ -1003,9 +1003,9 @@ cat << _EOF_ > $BCJOB
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=1
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
@@ -1070,9 +1070,9 @@ cat << _EOF_ > $BCJOB-2
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME-2.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME-2.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
@@ -1215,9 +1215,9 @@ cat << _EOF_ > $BCJOB
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
@@ -1430,9 +1430,9 @@ cat << _EOF_ > $BCJOB
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
