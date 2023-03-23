@@ -520,6 +520,7 @@ module GEOSmoist_Process_Library
 
     real, dimension(IM,JM,LM)             :: Tve
     real, dimension(IM,JM)                :: MSEp, Qp, tmp1, tmp2
+    integer, dimension(IM,JM)           :: Lev0
 
     integer :: I, J, L
 
@@ -529,6 +530,7 @@ module GEOSmoist_Process_Library
     if ( associated(MLCAPE) .and. associated(MLCIN) ) then
        tmp1 = 0
        MSEp = 0.
+       Lev0 = LM
        do L = LM,1,-1
          where (PS-PLO(:,:,L).lt.100.) 
             MSEp = MSEp + T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L) 
@@ -541,7 +543,13 @@ module GEOSmoist_Process_Library
           MSEp = MSEp / tmp1
           Qp = Qp / tmp1
        end where
-       call RETURN_CAPE_CIN( IM, JM, LM, ZLO, DZ, MSEp, Qp, Tve, QS, MLCAPE, MLCIN, BYNCY, LFC, LNB )
+       do I = 1,IM
+          do J = 1,JM
+             call RETURN_CAPE_CIN( LM, Lev0(I,J), ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:), MSEp(I,J), & 
+                                   Qp(I,J), Tve(I,J,:), QS(I,J,:), MLCAPE(I,J), MLCIN(I,J),     &
+                                   BYNCY(I,J,:), LFC(I,J), LNB(I,J) )
+          end do
+       end do
        where (MLCAPE.le.0.)
           MLCAPE = MAPL_UNDEF
           MLCIN  = MAPL_UNDEF
@@ -549,22 +557,32 @@ module GEOSmoist_Process_Library
 
     end if
 
-    ! Most unstable calculation. Repeat calculation over lowest 300 hPa
+    ! Most unstable calculation. Parcel with maximum MSE in lowest 300 hPa
     if ( associated(MUCAPE) .and. associated(MUCIN) ) then
        MUCAPE = 0.
        MUCIN  = 0.
        BYNCY  = MAPL_UNDEF
-       do L = LM,1,-1
-          MSEp = T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L)
-          Qp   = Q(:,:,L)
-          call RETURN_CAPE_CIN( IM, JM, LM, ZLO(:,:,1:L), DZ(:,:,1:L), MSEp, Qp, Tve(:,:,1:L), QS(:,:,1:L), tmp1, tmp2, BYNCY(:,:,1:L), LFC, LNB )
-          where (tmp1 .gt. MUCAPE .and. PS-PLO(:,:,L).lt.300.)
-             MUCAPE = tmp1
-             MUCIN  = tmp2
+       MSEp = 0.
+       Qp = 0.
+       
+       do L = LM,1,-1     ! Identify largest MSE within 300 hPa of surface
+          tmp1 = T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L)
+          where ( tmp1 .ge. MSEp .and. PS-PLO(:,:,L).le.300. ) 
+             MSEp = tmp1
+             Qp   = Q(:,:,L)
+             Lev0 = L
           end where
-         
           if (all(PS-PLO(:,:,L).gt.300.)) exit
        end do
+
+       do I = 1,IM
+          do J = 1,JM
+             call RETURN_CAPE_CIN( LM, Lev0(I,J), ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:), MSEp(I,J), & 
+                                   Qp(I,J), Tve(I,J,:), QS(I,J,:), MUCAPE(I,J), MUCIN(I,J),     &
+                                   BYNCY(I,J,:), LFC(I,J), LNB(I,J) )
+          end do
+       end do        
+
        where (MUCAPE.le.0.)
           MUCAPE = MAPL_UNDEF
           MUCIN  = MAPL_UNDEF
@@ -575,7 +593,14 @@ module GEOSmoist_Process_Library
     ! Surface-based calculation
     MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
     Qp   = Q(:,:,LM)                                            ! parcel specific humidity
-    call RETURN_CAPE_CIN( IM, JM, LM, ZLO, DZ, MSEp, Qp, Tve, QS, SBCAPE, SBCIN, BYNCY, LFC, LNB )
+    Lev0 = LM
+    do I = 1,IM
+       do J = 1,JM
+          call RETURN_CAPE_CIN( LM, Lev0(I,J), ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:), MSEp(I,J), & 
+                                Qp(I,J), Tve(I,J,:), QS(I,J,:), SBCAPE(I,J), SBCIN(I,J),     &
+                                BYNCY(I,J,:), LFC(I,J), LNB(I,J) )
+       end do
+    end do
     where (SBCAPE.le.0.)
        SBCAPE = MAPL_UNDEF
        SBCIN  = MAPL_UNDEF
@@ -584,17 +609,17 @@ module GEOSmoist_Process_Library
   end subroutine BUOYANCY2
 
 
-  subroutine RETURN_CAPE_CIN( IM, JM, LM, ZLO, DZ, MSEp, Qp, Tve, Qsate, CAPE, CIN, BYNCY, LFC, LNB )
+  subroutine RETURN_CAPE_CIN( LM, OrigLev, ZLO, PLO, DZ, MSEp, Qp, Tve, Qsate, CAPE, CIN, BYNCY, LFC, LNB )
 
-    integer,                   intent(in)  :: IM, JM, LM
-    real, dimension(IM,JM),    intent(in)  :: MSEp, Qp
-    real, dimension(IM,JM,LM), intent(in)  :: ZLO, DZ, Tve, Qsate
-    real, dimension(IM,JM),    intent(out) :: CAPE, CIN, LFC, LNB
-    real, dimension(IM,JM,LM), intent(out) :: BYNCY
+    integer,             intent(in)  :: LM, OrigLev
+    real,                intent(in)  :: MSEp, Qp
+    real, dimension(LM), intent(in)  :: ZLO, PLO, DZ, Tve, Qsate
+    real,                intent(out) :: CAPE, CIN, LFC, LNB
+    real, dimension(LM), intent(out) :: BYNCY
 
-    integer                   :: L
-    real,    dimension(IM,JM) :: Qpnew, Tp, Tvp, Buoy
-    logical, dimension(IM,JM) :: aboveLNB, aboveLFC
+    integer :: L
+    real    :: Qpnew, Tp, Tvp, Buoy
+    logical :: aboveLNB, aboveLFC
 
     aboveLNB = .false.
     aboveLFC = .false.
@@ -609,37 +634,43 @@ module GEOSmoist_Process_Library
 
     do L = LM-1,1,-1
 
-      Qpnew = MIN( Qpnew, Qsate(:,:,L) ) ! condensation
-    !  Qc = qp - qpnew.   ! not used for pseudoadiabatic ascent
+      Qpnew = MIN( Qpnew, Qsate(L) )               ! use QSATE
+!     Qpnew = MIN( Qpnew, GEOS_QSAT( Tp, PLO(:,:,L) )  ! calc parcel QSAT
+      !  Qc = qp - qpnew.   ! condensate (not used for pseudoadiabatic ascent)
 
-      Tp = MSEp - gravbcp*ZLO(:,:,L) - alhlbcp*Qpnew
+      Tp = MSEp - gravbcp*ZLO(L) - alhlbcp*Qpnew   ! parcel temperature
   
-      Tvp = Tp*(1.+MAPL_VIREPS*Qpnew)
+      Tvp = Tp*(1.+MAPL_VIREPS*Qpnew)                  ! parcel virtual temp
     !  Tvp = Tp*(1.+0.61*Qpnew - Qc) ! condensate loading
 
-      Buoy = MAPL_GRAV*(Tvp-Tve(:,:,L))/Tve(:,:,L)
-      BYNCY(:,:,L) = Buoy
+      Buoy = MAPL_GRAV*(Tvp-Tve(L))/Tve(L)     ! parcel buoyancy
+      BYNCY(L) = Buoy
 
-      where (Buoy.gt.0. .and. .not.aboveLFC)
-        aboveLFC = .true.
-        LFC = ZLO(:,:,L)
-      end where
-      where (Buoy.lt.0 .and. aboveLFC .and. .not.aboveLNB)
-        aboveLNB = .true.
-        LNB = ZLO(:,:,L)
-      end where
-
-      if ( all(aboveLNB) ) then
-        exit
+      if ( Buoy.gt.0.            &                  ! identify when above LFC
+          .and. .not. aboveLFC ) then
+         aboveLFC = .true.
+         LFC = ZLO(L)
       end if
 
-      where (.not. aboveLFC .and. Buoy.lt.0.)
-        CIN = CIN+Buoy*DZ(:,:,L)
-      end where
+      if ( Buoy.lt.0            &                   ! identify when above LNB
+          .and. aboveLFC         &
+          .and. .not. aboveLNB) then
+         aboveLNB = .true.
+         LNB = ZLO(L)
+         exit
+      end if
 
-      where (aboveLFC .and. .not. aboveLNB .and. Buoy.gt.0.)
-        CAPE = CAPE + Buoy*DZ(:,:,L)
-      end where
+      if (.not. aboveLFC     &                      ! sum negative Buoy below LFC 
+          .and. Buoy.lt.0.   &
+          .and. L.ge.OrigLev ) then
+         CIN = CIN + Buoy*DZ(L)
+      end if
+
+      if ( aboveLFC             &                   ! sum positive Buoy between LFC and LNB 
+          .and. Buoy.gt.0.      &
+          .and. L.ge.OrigLev ) then
+         CAPE = CAPE + Buoy*DZ(L)
+      end if
     end do
 
   end subroutine RETURN_CAPE_CIN
