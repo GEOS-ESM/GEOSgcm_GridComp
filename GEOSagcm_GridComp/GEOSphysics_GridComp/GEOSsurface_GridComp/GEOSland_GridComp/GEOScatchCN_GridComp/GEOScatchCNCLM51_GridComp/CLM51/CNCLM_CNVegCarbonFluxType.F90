@@ -18,7 +18,7 @@ module CNVegCarbonFluxType
                                 igrain,igrain_st,igrain_xf,ioutc
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
-  use clm_varctl       , only : use_crop, use_matrixcn, use_cndv, use_grainproduct
+  use clm_varctl       , only : use_crop, use_matrixcn, use_cndv, use_grainproduct, iulog
   use clm_varcon       , only : dzsoi_decomp
   use pftconMod        , only : npcropmin
   use clm_varcon       , only : spval
@@ -26,6 +26,8 @@ module CNVegCarbonFluxType
   use PatchType        , only : patch
   use AnnualFluxDribbler  , only : annual_flux_dribbler_type, annual_flux_dribbler_gridcell
   use MAPL_ExceptionHandling
+  use abortutils       , only : endrun
+  use shr_log_mod                        , only : errMsg => shr_log_errMsg
 
   ! !PUBLIC TYPES:
   implicit none
@@ -489,7 +491,7 @@ type(cnveg_carbonflux_type), public, target, save :: cnveg_carbonflux_inst
 contains
 
 !---------------------------------------
- subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start, rc)
+ subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft, carbon_type, cn5_cold_start, rc)
 
 ! !DESCRIPTION:
 ! Initialize CTSM carbon fluxes
