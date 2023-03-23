@@ -61,8 +61,8 @@ module subgridAveMod
 !  end interface
   !
   ! !PRIVATE MEMBER FUNCTIONS:
-!  private :: build_scale_l2g
-!  private :: create_scale_l2g_lookup
+  private :: build_scale_l2g
+  private :: create_scale_l2g_lookup
 
   ! Note about the urban scaling types used for c2l_scale_type (urbanf / urbans), from
   ! Bill Sacks and Keith Oleson: These names originally meant to distinguish between
@@ -1260,104 +1260,104 @@ contains
 !  end subroutine l2g_2d
 !
 !  !-----------------------------------------------------------------------
-!  subroutine build_scale_l2g(bounds, l2g_scale_type, scale_l2g)
-!    !
-!    ! !DESCRIPTION:
-!    ! Fill the scale_l2g(bounds%begl:bounds%endl) array with appropriate values for the given l2g_scale_type.
-!    ! This array can later be used to scale each landunit in forming grid cell averages.
-!    !
-!    ! !USES:
-!    use landunit_varcon, only : max_lunit
-!    !
-!    ! !ARGUMENTS:
-!    type(bounds_type), intent(in) :: bounds                    
-!    character(len=*), intent(in)  :: l2g_scale_type            ! scale factor type for averaging
-!    real(r8)        , intent(out) :: scale_l2g( bounds%begl: ) ! scale factor 
-!    !
-!    ! !LOCAL VARIABLES:
-!    real(r8) :: scale_lookup(max_lunit) ! scale factor for each landunit type
-!    integer  :: l                       ! index
-!    !-----------------------------------------------------------------------
-!     
-!    SHR_ASSERT_ALL_FL((ubound(scale_l2g) == (/bounds%endl/)), sourcefile, __LINE__)
-!
-!    ! TODO(wjs, 2017-03-09) If this routine is a performance problem (which it may be,
-!    ! because I think it's called a lot), then a simple optimization would be to treat
-!    ! l2g_scale_type = 'unity' specially, rather than using the more general-purpose code
-!    ! for this special case.
-!
-!     call create_scale_l2g_lookup(l2g_scale_type, scale_lookup)
-!
-!     do l = bounds%begl,bounds%endl
-!        scale_l2g(l) = scale_lookup(lun%itype(l))
-!     end do
-!
-!  end subroutine build_scale_l2g
+  subroutine build_scale_l2g(bounds, l2g_scale_type, scale_l2g)
+    !
+    ! !DESCRIPTION:
+    ! Fill the scale_l2g(bounds%begl:bounds%endl) array with appropriate values for the given l2g_scale_type.
+    ! This array can later be used to scale each landunit in forming grid cell averages.
+    !
+    ! !USES:
+    use landunit_varcon, only : max_lunit
+    !
+    ! !ARGUMENTS:
+    type(bounds_type), intent(in) :: bounds                    
+    character(len=*), intent(in)  :: l2g_scale_type            ! scale factor type for averaging
+    real(r8)        , intent(out) :: scale_l2g( bounds%begl: ) ! scale factor 
+    !
+    ! !LOCAL VARIABLES:
+    real(r8) :: scale_lookup(max_lunit) ! scale factor for each landunit type
+    integer  :: l                       ! index
+    !-----------------------------------------------------------------------
+     
+    SHR_ASSERT_ALL_FL((ubound(scale_l2g) == (/bounds%endl/)), sourcefile, __LINE__)
+
+    ! TODO(wjs, 2017-03-09) If this routine is a performance problem (which it may be,
+    ! because I think it's called a lot), then a simple optimization would be to treat
+    ! l2g_scale_type = 'unity' specially, rather than using the more general-purpose code
+    ! for this special case.
+
+     call create_scale_l2g_lookup(l2g_scale_type, scale_lookup)
+
+     do l = bounds%begl,bounds%endl
+        scale_l2g(l) = scale_lookup(lun%itype(l))
+     end do
+
+  end subroutine build_scale_l2g
 !
 !  !-----------------------------------------------------------------------
-!  subroutine create_scale_l2g_lookup(l2g_scale_type, scale_lookup)
-!    ! 
-!    ! DESCRIPTION:
-!    ! Create a lookup array, scale_lookup(1..max_lunit), which gives the scale factor for
-!    ! each landunit type depending on l2g_scale_type
-!    !
-!    ! !USES:
-!    use landunit_varcon, only : istsoil, istcrop, istice_mec, istdlak
-!    use landunit_varcon, only : isturb_MIN, isturb_MAX, max_lunit
-!    !
-!    ! !ARGUMENTS:
-!    character(len=*), intent(in)  :: l2g_scale_type           ! scale factor type for averaging
-!    real(r8)        , intent(out) :: scale_lookup(max_lunit)  ! scale factor for each landunit type
-!    !-----------------------------------------------------------------------
-!
-!     ! ------------ WJS (10-14-11): IMPORTANT GENERAL NOTES ------------
-!     !
-!     ! Since scale_l2g is not currently included in the sumwt accumulations, you need to
-!     ! be careful about the scale values you use. Values of 1 and spval are safe
-!     ! (including having multiple landunits with value 1), but only use other values if
-!     ! you know what you are doing! For example, using a value of 0 is NOT the correct way
-!     ! to exclude a landunit from the average, because the normalization will be done
-!     ! incorrectly in this case: instead, use spval to exclude a landunit from the
-!     ! average. Similarly, using a value of 2 is NOT the correct way to give a landunit
-!     ! double relative weight in general, because the normalization won't be done
-!     ! correctly in this case, either.
-!     !
-!     ! In the longer-term, I believe that the correct solution to this problem is to
-!     ! include scale_l2g (and the other scale factors) in the sumwt accumulations
-!     ! (e.g., sumwt = sumwt + wtgcell * scale_p2c * scale_c2l * scale_l2g), but that
-!     ! requires some more thought to (1) make sure that is correct, and (2) make sure it
-!     ! doesn't break the urban scaling.
-!     !
-!     ! -----------------------------------------------------------------
-!
-!
-!     ! Initialize scale_lookup to spval for all landunits. Thus, any landunit that keeps
-!     ! the default value will be excluded from grid cell averages.
-!     scale_lookup(:) = spval
-!
-!     if (l2g_scale_type == 'unity') then
-!        scale_lookup(:) = 1.0_r8
-!     else if (l2g_scale_type == 'natveg') then
-!        scale_lookup(istsoil) = 1.0_r8
-!     else if (l2g_scale_type == 'veg') then
-!        scale_lookup(istsoil) = 1.0_r8
-!        scale_lookup(istcrop) = 1.0_r8
-!     else if (l2g_scale_type == 'ice') then
-!        scale_lookup(istice_mec) = 1.0_r8
-!     else if (l2g_scale_type == 'nonurb') then
-!        scale_lookup(:) = 1.0_r8
-!        scale_lookup(isturb_MIN:isturb_MAX) = spval
-!     else if (l2g_scale_type == 'lake') then
-!        scale_lookup(istdlak) = 1.0_r8
-!     else if (l2g_scale_type == 'veg_plus_lake') then
-!        scale_lookup(istsoil) = 1.0_r8
-!        scale_lookup(istcrop) = 1.0_r8
-!        scale_lookup(istdlak) = 1.0_r8
-!     else
-!        write(iulog,*)'scale_l2g_lookup_array error: scale type ',l2g_scale_type,' not supported'
-!        call endrun(msg=errMsg(sourcefile, __LINE__))
-!     end if
-!
-!  end subroutine create_scale_l2g_lookup
+  subroutine create_scale_l2g_lookup(l2g_scale_type, scale_lookup)
+    ! 
+    ! DESCRIPTION:
+    ! Create a lookup array, scale_lookup(1..max_lunit), which gives the scale factor for
+    ! each landunit type depending on l2g_scale_type
+    !
+    ! !USES:
+    use landunit_varcon, only : istsoil, istcrop, istice_mec, istdlak
+    use landunit_varcon, only : isturb_MIN, isturb_MAX, max_lunit
+    !
+    ! !ARGUMENTS:
+    character(len=*), intent(in)  :: l2g_scale_type           ! scale factor type for averaging
+    real(r8)        , intent(out) :: scale_lookup(max_lunit)  ! scale factor for each landunit type
+    !-----------------------------------------------------------------------
+
+     ! ------------ WJS (10-14-11): IMPORTANT GENERAL NOTES ------------
+     !
+     ! Since scale_l2g is not currently included in the sumwt accumulations, you need to
+     ! be careful about the scale values you use. Values of 1 and spval are safe
+     ! (including having multiple landunits with value 1), but only use other values if
+     ! you know what you are doing! For example, using a value of 0 is NOT the correct way
+     ! to exclude a landunit from the average, because the normalization will be done
+     ! incorrectly in this case: instead, use spval to exclude a landunit from the
+     ! average. Similarly, using a value of 2 is NOT the correct way to give a landunit
+     ! double relative weight in general, because the normalization won't be done
+     ! correctly in this case, either.
+     !
+     ! In the longer-term, I believe that the correct solution to this problem is to
+     ! include scale_l2g (and the other scale factors) in the sumwt accumulations
+     ! (e.g., sumwt = sumwt + wtgcell * scale_p2c * scale_c2l * scale_l2g), but that
+     ! requires some more thought to (1) make sure that is correct, and (2) make sure it
+     ! doesn't break the urban scaling.
+     !
+     ! -----------------------------------------------------------------
+
+
+     ! Initialize scale_lookup to spval for all landunits. Thus, any landunit that keeps
+     ! the default value will be excluded from grid cell averages.
+     scale_lookup(:) = spval
+
+     if (l2g_scale_type == 'unity') then
+        scale_lookup(:) = 1.0_r8
+     else if (l2g_scale_type == 'natveg') then
+        scale_lookup(istsoil) = 1.0_r8
+     else if (l2g_scale_type == 'veg') then
+        scale_lookup(istsoil) = 1.0_r8
+        scale_lookup(istcrop) = 1.0_r8
+     else if (l2g_scale_type == 'ice') then
+        scale_lookup(istice_mec) = 1.0_r8
+     else if (l2g_scale_type == 'nonurb') then
+        scale_lookup(:) = 1.0_r8
+        scale_lookup(isturb_MIN:isturb_MAX) = spval
+     else if (l2g_scale_type == 'lake') then
+        scale_lookup(istdlak) = 1.0_r8
+     else if (l2g_scale_type == 'veg_plus_lake') then
+        scale_lookup(istsoil) = 1.0_r8
+        scale_lookup(istcrop) = 1.0_r8
+        scale_lookup(istdlak) = 1.0_r8
+     else
+        write(iulog,*)'scale_l2g_lookup_array error: scale type ',l2g_scale_type,' not supported'
+        call endrun(msg=errMsg(sourcefile, __LINE__))
+     end if
+
+  end subroutine create_scale_l2g_lookup
 
 end module subgridAveMod
