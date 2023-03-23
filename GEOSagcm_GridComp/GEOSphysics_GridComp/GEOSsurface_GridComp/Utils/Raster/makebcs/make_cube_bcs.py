@@ -11,16 +11,16 @@ cube_template = """#!/bin/csh -x
 #SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME2}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name={BCNAME2}.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd {BCDIR}
 
 if ( {STEP1} == True ) then
   /bin/ln -s {bin_dir}
 
-  mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+  mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
 
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
@@ -167,11 +167,35 @@ cd ../
 /bin/mv rst CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 /bin/mv til CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 /bin/mv {BCJOB} CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+
 cd ../../
+
 /bin/mv    {BCDIR}/{BCNAME} .
 /bin/mv    {BCJOB}                {BCNAME}
 /bin/mv    {EXPDIR}/{OUTDIR}/logs {BCNAME}/.
 /bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
+
+mkdir -p {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
+mkdir -p {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
+
+/bin/mv  {BCNAME}/logs  {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/logs
+/bin/mv  {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til  {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+
+
+/bin/mv  {BCNAME}/clsm               {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+/bin/mv  {BCNAME}/irrigation_{RC}.dat  \
+         {BCNAME}/vegdyn_{RC}.dat      \
+         {BCNAME}/nirdf_{RC}.dat       \
+         {BCNAME}/visdf_{RC}.dat       \
+         {BCNAME}/lai_clim_{RC}.data   \
+         {BCNAME}/green_clim_{RC}.data \
+         {BCNAME}/lnfm_clim_{RC}.data  \
+         {BCNAME}/ndvi_clim_{RC}.data  \
+         {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+
+/bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+/bin/mv  {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.j {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+
 /bin/rm -r {OUTDIR}
 
 endif  # STEP2

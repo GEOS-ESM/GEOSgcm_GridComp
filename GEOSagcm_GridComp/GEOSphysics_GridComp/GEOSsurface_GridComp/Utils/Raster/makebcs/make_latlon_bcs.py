@@ -12,14 +12,14 @@ latlon_template = """#!/bin/csh -x
 #SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name={BCNAME}.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd {BCDIR}
 /bin/ln -s {bin_dir}
 source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+mkdir -p  geometry land til rst data/MOM5 data/MOM6 clsm/plots
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
@@ -127,6 +127,28 @@ cd ../../
 /bin/mv    {BCJOB}                {BCNAME}
 /bin/mv    {EXPDIR}/{OUTDIR}/logs  {BCNAME}/.
 /bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
+
+mkdir -p {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
+mkdir -p {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
+
+/bin/mv  {BCNAME}/logs  {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/logs
+/bin/mv  {BCNAME}/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til  {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+
+
+/bin/mv  {BCNAME}/clsm               {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+/bin/mv  {BCNAME}/irrigation_{RS}_DC.dat \
+         {BCNAME}/vegdyn_{RS}_DC.dat \
+         {BCNAME}/nirdf_{RS}_DC.dat \
+         {BCNAME}/visdf_{RS}_DC.dat \
+         {BCNAME}/lai_clim_{RS}_DC.data \
+         {BCNAME}/green_clim_{RS}_DC.data \
+         {BCNAME}/lnfm_clim_{RS}_DC.data \
+         {BCNAME}/ndvi_clim_{RS}_DC.data \
+         {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+
+/bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+/bin/mv   {BCNAME}/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}.j {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+
 /bin/rm -r {OUTDIR}
 
 """

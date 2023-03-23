@@ -12,17 +12,15 @@ ease_template = """#!/bin/csh -x
 #SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --node=1
 #SBATCH --job-name={BCNAME}.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd {BCDIR}
 
 /bin/ln -s {bin_dir}
 source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
-cd data 
-cd ../
+mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
 limit stacksize unlimited
 
 setenv MASKFILE {MASKFILE}
@@ -90,6 +88,27 @@ cd ../../
 /bin/mv    {BCJOB}                {BCNAME}
 /bin/mv    {EXPDIR}/{OUTDIR}/logs   {BCNAME}/.
 /bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
+
+mkdir -p {BCNAME}/geometry/{EASEVERSION}_{HRCODE}
+mkdir -p {BCNAME}/land/{EASEVERSION}_{HRCODE}
+
+/bin/mv  {BCNAME}/logs  {BCNAME}/land/{EASEVERSION}_{HRCODE}/logs
+/bin/mv  {BCNAME}/{EASEVERSION}_{HRCODE}_{RS}.til  {BCNAME}/geometry/{EASEVERSION}_{HRCODE}/.
+
+
+/bin/mv  {BCNAME}/clsm               {BCNAME}/land/{EASEVERSION}_{HRCODE}/.
+/bin/mv  {BCNAME}/irrigation_{RS}_DE.dat  \
+         {BCNAME}/vegdyn_{RS}_DE.dat      \
+         {BCNAME}/nirdf_{RS}_DE.dat       \
+         {BCNAME}/visdf_{RS}_DE.dat       \
+         {BCNAME}/lai_clim_{RS}_DE.data   \
+         {BCNAME}/green_clim_{RS}_DE.data \
+         {BCNAME}/lnfm_clim_{RS}_DE.data  \
+         {BCNAME}/ndvi_clim_{RS}_DE.data  \
+         {BCNAME}/land/{EASEVERSION}_{HRCODE}/.
+
+/bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/{EASEVERSION}_{HRCODE}/.
+/bin/mv {BCNAME}/{BCNAME}.j {BCNAME}/geometry/{EASEVERSION}_{HRCODE}/.
 
 """
 
