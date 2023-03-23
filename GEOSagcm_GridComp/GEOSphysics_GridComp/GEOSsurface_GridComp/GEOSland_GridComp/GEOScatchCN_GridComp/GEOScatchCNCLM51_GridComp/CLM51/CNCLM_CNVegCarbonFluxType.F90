@@ -506,6 +506,7 @@ contains
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
+    character(len=*) , intent(in) :: carbon_type ! one of ['c12', c13','c14']
     logical, optional,                            intent(in) :: cn5_cold_start
     class(cnveg_carbonflux_type)                              :: this
     integer, optional,                            intent(out) :: rc
@@ -516,6 +517,8 @@ contains
     integer  :: begg, endg
     integer  :: np, nc, nz, p, nv, n
     logical  :: cold_start = .false.
+    logical           :: allows_non_annual_delta
+    character(len=:), allocatable :: carbon_type_suffix
     !--------------------------------------------------------
 
     ! check whether a cn5_cold_start option was set and change cold_start accordingly
@@ -1123,6 +1126,36 @@ contains
        end do ! p
      end do ! nz
   end do ! nc     
+
+    ! Construct restart field names consistently to what is done in SpeciesNonIsotope &
+    ! SpeciesIsotope, to aid future migration to that infrastructure
+    if (carbon_type == 'c12') then
+       carbon_type_suffix = 'c'
+    else if (carbon_type == 'c13') then
+       carbon_type_suffix = 'c_13'
+    else if (carbon_type == 'c14') then
+       carbon_type_suffix = 'c_14'
+    else
+       write(iulog,*) 'CNVegCarbonFluxType InitAllocate: Unknown carbon_type: ', trim(carbon_type)
+       call endrun(msg='CNVegCarbonFluxType InitAllocate: Unknown carbon_type: ' // &
+            errMsg(sourcefile, __LINE__))
+    end if
+
+    if (use_cndv) then
+       allows_non_annual_delta = .true.  
+    else                                          
+       allows_non_annual_delta = .false.          
+    end if
+    this%dwt_conv_cflux_dribbler = annual_flux_dribbler_gridcell( &
+         bounds = bounds, &                       
+         name = 'dwt_conv_flux_' // carbon_type_suffix, &
+         units = 'gC/m^2', &                      
+         allows_non_annual_delta = allows_non_annual_delta)
+    this%hrv_xsmrpool_to_atm_dribbler = annual_flux_dribbler_gridcell( &
+         bounds = bounds, &              
+         name = 'hrv_xsmrpool_to_atm_' // carbon_type_suffix, &
+         units = 'gC/m^2', &
+         allows_non_annual_delta = .false.)
 
   end subroutine Init
 
