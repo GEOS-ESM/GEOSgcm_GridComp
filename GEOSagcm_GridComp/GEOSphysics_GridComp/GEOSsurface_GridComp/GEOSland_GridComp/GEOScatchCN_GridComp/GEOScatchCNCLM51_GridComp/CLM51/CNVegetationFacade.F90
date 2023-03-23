@@ -250,12 +250,12 @@ contains
        if (use_c14) then
           call this%c14_cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
        end if
-       call this%cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, carbon_type='c12', cn5_cold_start)
+       call this%cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, 'c12', cn5_cold_start)
        if (use_c13) then
-          call this%c13_cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, carbon_type='c13', cn5_cold_start)
+          call this%c13_cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, 'c13', cn5_cold_start)
        end if
        if (use_c14) then
-          call this%c14_cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, carbon_type='c14', cn5_cold_start)
+          call this%c14_cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, 'c14', cn5_cold_start)
        end if
        call this%cnveg_nitrogenstate_inst%Init  (bounds, nch, ityp, fveg, cncol, cnpft)
        call this%cnveg_nitrogenflux_inst%Init   (bounds, nch, ityp, fveg, cncol, cnpft)
