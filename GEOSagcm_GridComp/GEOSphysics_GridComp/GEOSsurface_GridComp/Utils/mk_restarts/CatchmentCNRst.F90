@@ -19,7 +19,7 @@ module CatchmentCNRstMod
   integer :: iclass_40(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
   integer :: iclass_45(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
   integer :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,9,10,11,11,11/)
-  integer, allocatable :: iclass
+  integer, dimension(:), allocatable :: iclass
 
   type, extends(CatchmentRst) :: CatchmentCNRst
      logical :: isCLM45
@@ -962,13 +962,13 @@ contains
         print *, 'calculating regridded carbn'
 
         if (this%isCLM40) then
-           allocate(iclass(npft))
+           allocate(iclass(1:npft))
            iclass = iclass_40
         elseif (this%isCLM45) then 
-           allocate(iclass(npft))
+           allocate(iclass(1:npft))
            iclass = iclass_45
         elseif (this%isCLM51) then 
-           allocate(iclass(npft_51))
+           allocate(iclass(1:npft_51))
            iclass = iclass_51
         end if
         
