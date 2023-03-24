@@ -5537,7 +5537,11 @@ end subroutine RUN1
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, ZLE,   'ZLE',   RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, SINC,  'SINC',    RC=STATUS)
+      call MAPL_GetPointer(INTERNAL, SINC,  'SINC',  RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, TKH,   'TKH',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, TKM,   'TKM',   RC=STATUS)
       VERIFY_(STATUS)
 
 ! Get the bundles containing the quantities to be diffused, 
