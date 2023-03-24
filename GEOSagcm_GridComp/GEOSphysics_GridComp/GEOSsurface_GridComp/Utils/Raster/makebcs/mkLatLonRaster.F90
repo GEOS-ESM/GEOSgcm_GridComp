@@ -1,6 +1,5 @@
-!   $Id: 
-
-#include "Raster.h"
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
 
   program mkLatLonRaster
 
@@ -46,6 +45,7 @@
 ! in each box.
 
     use LogRectRasterizeMod
+    use MAPL_ExceptionHandling
 
     implicit none
 
@@ -64,6 +64,7 @@
     real*8,  allocatable :: xs(:), ys(:), xv(:,:,:), yv(:,:,:)
     character*128        :: &
       Usage = "mkLatLonRaster -x nx -y ny -v -h -z -g Gridname -b lon0 -p pos -t type  im jm"
+    character*128        :: Iam = "mkLatLonRaster"
 
 ! Process Arguments
 !------------------

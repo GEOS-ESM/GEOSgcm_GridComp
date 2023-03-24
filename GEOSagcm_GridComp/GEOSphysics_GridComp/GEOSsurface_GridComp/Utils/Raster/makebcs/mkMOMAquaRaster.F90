@@ -1,11 +1,9 @@
-!   $Id: 
-
-#include "Raster.h"
-
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
 program MOMraster
 
   use LogRectRasterizeMod
-
+  use MAPL_ExceptionHandling
   implicit none
 
 ! this program builds a rasterized grid whose cells are 2.5 by 2.5 minutes
@@ -15,9 +13,9 @@ program MOMraster
 ! via namelist hence can be changed at runtime
 
   integer                :: im, jm                ! dimensions of MOM grid
-  REAL_,     pointer     :: xvert(:,:,:)          ! Lons of MOM's vertices
-  REAL_,     pointer     :: yvert(:,:,:)          ! Lats of MOM's vertices
-  REAL_                  :: xmin, xmax
+  real(kind=8),     pointer     :: xvert(:,:,:)          ! Lons of MOM's vertices
+  real(kind=8),     pointer     :: yvert(:,:,:)          ! Lats of MOM's vertices
+  real(kind=8)                  :: xmin, xmax
   integer                :: i, j, nxt,k
   integer                :: status, command_argument_count
   character*(128)        :: GridFile
@@ -26,6 +24,7 @@ program MOMraster
   character*(2)          :: opt
   character*(128)        :: &
       Usage = "mkMOMAquaRaster -x rx -y ry -z -v -g GridName -h GridSpecFile"
+  character*(128)        :: Iam = "mkMOMAquaRaster"
 
 ! argument defaults
 
@@ -35,7 +34,7 @@ program MOMraster
   integer                :: Nc    = 8640
   integer                :: NR    = 4320
 
-  REAL_                  :: tol
+  real(kind=8)                  :: tol
 INCLUDE "netcdf.inc"
 
 ! Process Arguments
@@ -145,13 +144,13 @@ contains
   subroutine ReadGridFile(FILE,XVERT,YVERT)
     
     character*(*),      intent(IN ) :: FILE
-    REAL_, pointer                  :: XVERT(:,:,:)
-    REAL_, pointer                  :: YVERT(:,:,:)
+    real(kind=8), pointer                  :: XVERT(:,:,:)
+    real(kind=8), pointer                  :: YVERT(:,:,:)
 
     integer :: STATUS, NCID, VARID
     integer :: SIZ_XVERT_X, SIZ_XVERT_Y
     integer :: SIZ_YVERT_X, SIZ_YVERT_Y 
-    REAL_, pointer :: VERTX(:,:),VERTY(:,:)
+    real(kind=8), pointer :: VERTX(:,:),VERTY(:,:)
 
     Status=NF_OPEN(FILE,NF_NOWRITE,NCID)
     _ASSERT(STATUS==NF_NOERR,'needs informative message')

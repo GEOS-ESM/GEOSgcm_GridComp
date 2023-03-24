@@ -10,6 +10,10 @@ module clm_varpar
 !
 ! !USES:
 !
+ use clm_varpar_shared, only : VAR_COL =>VAR_COL_51, VAR_PFT => VAR_PFT_51, &
+                               numpft => numpft_CN51, NUM_ZON => NUM_ZON_CN, &
+                               NUM_VEG => NUM_VEG_CN
+
 ! !PUBLIC TYPES:
   implicit none
   save
@@ -35,7 +39,6 @@ module clm_varpar
   ! for soil matrix 
   integer, public  :: ndecomp_pools_vr   !total number of pools ndecomp_pools*vertical levels
 
-  integer, parameter :: numpft         = 15!19   ! actual # of pfts (without bare), 16 here, since we are removing the split types
   integer, parameter :: mxpft          = 15      !
   integer, public    :: maxveg                   ! # of pfts + cfts
   integer, public    :: maxsoil_patches = numpft + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
@@ -49,10 +52,6 @@ module clm_varpar
   integer, public, parameter :: nlevcan     =   1     ! number of leaf layers in canopy layer
   integer, public, parameter :: nvegwcs     =   4     ! number of vegetation water conductance segments
 
-  integer, parameter, PUBLIC :: NUM_ZON=3   ! number of CN hydrology zones per tile
-  integer, parameter, PUBLIC :: NUM_VEG=4   ! number of CN PFTs per zone
-  integer, parameter, PUBLIC :: VAR_COL=35  ! number of CN column restart variables
-  integer, parameter, PUBLIC :: VAR_PFT=83  ! number of CN PFT restart variables  
   real, parameter, PUBLIC, dimension(NUM_ZON) :: CN_zone_weight = (/0.10,0.45,0.45/) ! gkw: tunable; must sum to 1
   integer, parameter, PUBLIC :: map_cat(0:numpft) = (/4,3,3,3,1,1,2,2,2,5,5,6,4,4,4,4/)
 

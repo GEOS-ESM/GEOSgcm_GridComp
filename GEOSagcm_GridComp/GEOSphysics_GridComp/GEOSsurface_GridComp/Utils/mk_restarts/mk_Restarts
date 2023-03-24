@@ -13,7 +13,7 @@ use Cwd qw(getcwd);
 #-----------------
 my ($saltwater, $openwater, $seaice, $lake, $landice, $route);
 my ($catchFLG, $catchcn, $catchcnFLG, @cnlist, @cnlen);
-my ($surflay, $rsttime, $grpID, $numtasks, $walltime, $rescale, $qos, $partition, $yyyymm);
+my ($surflay, $rsttime, $grpID, $numtasks, $walltime, $rescale, $qos, $partition, $constraint, $yyyymm);
 my ($mk_catch_j, $mk_catch_log, $weminIN, $weminOUT, $weminDFLT);
 my ($zoom);
 
@@ -132,6 +132,8 @@ sub init {
                 "rsttime=i" => \$rsttime,
                 "grpID=s"   => \$grpID,
 
+                "constraint=s"   => \$constraint,
+
                 "ntasks=i"  => \$numtasks,
                 "walltime=s"=> \$walltime,
                 "rescale"   => \$rescale,
@@ -180,6 +182,7 @@ sub init {
         unless ($numtasks) { $numtasks = 84 }
         $qos = "" unless $qos;
         $partition = "" unless $partition;
+        $constraint = "" unless $constraint;
     }
 
     # rsttime value is needed for route
@@ -197,7 +200,7 @@ sub init {
 # purpose - write job file to make catch and/or catchcn restart
 #=======================================================================
 sub write_mk_catch_j {
-    my ($grouplist, $cwd, $QOSline, $PARTline, $FH);
+    my ($grouplist, $cwd, $QOSline, $PARTline, $CONSline, $FH);
 
     $grouplist = "";
     $grouplist = "SBATCH --account=$grpID" if $grpID;
@@ -215,6 +218,10 @@ sub write_mk_catch_j {
     if ($partition) {
         $PARTline = "SBATCH --partition=$partition";
     }
+    $CONSline = "";
+    if ($constraint) {
+        $CONSline = "SBATCH --constraint=$constraint";
+    }
     print("\nWriting jobscript: $mk_catch_j\n");
     open CNj, ">> $mk_catch_j" or die "Error opening $mk_catch_j: $!";
 
@@ -227,10 +234,10 @@ sub write_mk_catch_j {
 #SBATCH --ntasks=$numtasks
 #SBATCH --time=$walltime
 #SBATCH --job-name=catchcnj
-###SBATCH --constraint=hasw
 #SBATCH --output=$cwd/$mk_catch_log
 #$QOSline
 #$PARTline
+#$CONSline
 
 source $Bin/g5_modules
 set echo
