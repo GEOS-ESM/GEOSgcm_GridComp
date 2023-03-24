@@ -149,8 +149,6 @@ mkdir -p {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 /bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 /bin/mv   {BCNAME}/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}.j {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 
-/bin/rm -r {OUTDIR}
-
 """
 
 def make_latlon_bcs(config):

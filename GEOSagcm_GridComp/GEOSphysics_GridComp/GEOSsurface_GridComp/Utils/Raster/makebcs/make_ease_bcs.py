@@ -8,12 +8,12 @@ from questionnarie_bcs import *
 
 ease_template = """#!/bin/csh -x
 
-#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}.log
-#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}.err
+#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{GRIDNAME}.log
+#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{GRIDNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --node=1
-#SBATCH --job-name={BCNAME}.j
+#SBATCH --job-name={GRIDNAME}.j
 #SBATCH --constraint=sky|cas
 
 cd {BCDIR}
@@ -26,16 +26,16 @@ limit stacksize unlimited
 setenv MASKFILE {MASKFILE}
 setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 setenv OMP_NUM_THREADS 1
-bin/mkEASETilesParam.x -ease_label {BCNAME} 
+bin/mkEASETilesParam.x -ease_label {GRIDNAME} 
 setenv OMP_NUM_THREADS 1
-bin/mkCatchParam.x -g {BCNAME} -v {lbcsv} -x {NX} -y {NY}
+bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
 setenv OMP_NUM_THREADS {NCPUS}
-bin/mkCatchParam.x -g {BCNAME} -v {lbcsv} -x {NX} -y {NY}
+bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
 chmod 755 bin/create_README.csh
 bin/create_README.csh
 
 /bin/mv clsm  clsm.{IM}x{JM}
-/bin/cp til/{EASEVERSION}_{HRCODE}_{RS}.til clsm.{IM}x{JM}
+/bin/cp til/{EASEVERSION}_{RES}_{RS}.til clsm.{IM}x{JM}
 
 cd clsm.{IM}x{JM}
    /bin/mv irrig.dat irrigation_{RS}_DE.dat
@@ -49,9 +49,9 @@ cd clsm.{IM}x{JM}
 
 
 cd ../
-/bin/rm -rf              {EASEVERSION}_{HRCODE}
-/bin/mv clsm.{IM}x{JM} {EASEVERSION}_{HRCODE}
-                     cd  {EASEVERSION}_{HRCODE} 
+/bin/rm -rf              {EASEVERSION}_{RES}
+/bin/mv clsm.{IM}x{JM} {EASEVERSION}_{RES}
+                     cd  {EASEVERSION}_{RES} 
                    mkdir clsm
                  /bin/mv ar.new \
                          bf.dat \
@@ -80,35 +80,35 @@ cd ../
           country_and_state_code.data \
                          clsm
                      cd  ../ 
-/bin/mv rst  {EASEVERSION}_{HRCODE}
-/bin/mv til  {EASEVERSION}_{HRCODE}
+/bin/mv rst  {EASEVERSION}_{RES}
+/bin/mv til  {EASEVERSION}_{RES}
 
 cd ../../
-/bin/mv    {BCDIR}/{BCNAME} .
-/bin/mv    {BCJOB}                {BCNAME}
-/bin/mv    {EXPDIR}/{OUTDIR}/logs   {BCNAME}/.
-/bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
+/bin/mv    {BCDIR}/{GRIDNAME} .
+/bin/mv    {BCJOB}                {GRIDNAME}
+/bin/mv    {EXPDIR}/{OUTDIR}/logs   {GRIDNAME}/.
+/bin/mv    {GRIDNAME}/clsm/mkCatchParam.log {GRIDNAME}/logs/mkCatchParam.log
 
-mkdir -p {BCNAME}/geometry/{EASEVERSION}_{HRCODE}
-mkdir -p {BCNAME}/land/{EASEVERSION}_{HRCODE}
+mkdir -p {GRIDNAME}/geometry/{EASEVERSION}_{RES}
+mkdir -p {GRIDNAME}/land/{EASEVERSION}_{RES}
 
-/bin/mv  {BCNAME}/logs  {BCNAME}/land/{EASEVERSION}_{HRCODE}/logs
-/bin/mv  {BCNAME}/{EASEVERSION}_{HRCODE}_{RS}.til  {BCNAME}/geometry/{EASEVERSION}_{HRCODE}/.
+/bin/mv  {GRIDNAME}/logs  {GRIDNAME}/land/{EASEVERSION}_{RES}/logs
+/bin/mv  {GRIDNAME}/{EASEVERSION}_{RES}_{RS}.til  {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
 
 
-/bin/mv  {BCNAME}/clsm               {BCNAME}/land/{EASEVERSION}_{HRCODE}/.
-/bin/mv  {BCNAME}/irrigation_{RS}_DE.dat  \
-         {BCNAME}/vegdyn_{RS}_DE.dat      \
-         {BCNAME}/nirdf_{RS}_DE.dat       \
-         {BCNAME}/visdf_{RS}_DE.dat       \
-         {BCNAME}/lai_clim_{RS}_DE.data   \
-         {BCNAME}/green_clim_{RS}_DE.data \
-         {BCNAME}/lnfm_clim_{RS}_DE.data  \
-         {BCNAME}/ndvi_clim_{RS}_DE.data  \
-         {BCNAME}/land/{EASEVERSION}_{HRCODE}/.
+/bin/mv  {GRIDNAME}/clsm               {GRIDNAME}/land/{EASEVERSION}_{RES}/.
+/bin/mv  {GRIDNAME}/irrigation_{RS}_DE.dat  \
+         {GRIDNAME}/vegdyn_{RS}_DE.dat      \
+         {GRIDNAME}/nirdf_{RS}_DE.dat       \
+         {GRIDNAME}/visdf_{RS}_DE.dat       \
+         {GRIDNAME}/lai_clim_{RS}_DE.data   \
+         {GRIDNAME}/green_clim_{RS}_DE.data \
+         {GRIDNAME}/lnfm_clim_{RS}_DE.data  \
+         {GRIDNAME}/ndvi_clim_{RS}_DE.data  \
+         {GRIDNAME}/land/{EASEVERSION}_{RES}/.
 
-/bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/{EASEVERSION}_{HRCODE}/.
-/bin/mv {BCNAME}/{BCNAME}.j {BCNAME}/geometry/{EASEVERSION}_{HRCODE}/.
+/bin/mv {GRIDNAME}/rst {GRIDNAME}/til {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
+/bin/mv {GRIDNAME}/{GRIDNAME}.j {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
 
 """
 
@@ -125,14 +125,14 @@ def make_ease_bcs(config):
 
   resolution = config['resolution']
 
-  EASElabel  = grid_type+'_'+ resolution
+  gridname  = grid_type+'_'+ resolution
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
   expdir = config['expdir']
-  scratch_dir = expdir+ tmp_dir+'/'+EASElabel+'.scratch/'
+  scratch_dir = expdir+ tmp_dir+'/'+gridname+'.scratch/'
   log_dir     = expdir+'/'+tmp_dir+'/logs/'
-  bcjob       = scratch_dir+'/'+EASElabel+'.j'
-  if os.path.exists(bcjob):
+  job_script       = scratch_dir+'/'+gridname+'.j'
+  if os.path.exists(job_script):
     print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
     return
 
@@ -144,16 +144,17 @@ def make_ease_bcs(config):
   ims = '%04d'%config['im']
   jms = '%04d'%config['jm']
   RS = ims+'x'+jms
-  job_script = ease_template.format(\
+
+  script_string = ease_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            OUTDIR = tmp_dir, \
-           BCNAME = EASElabel, \
+           GRIDNAME = gridname, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
-           BCJOB =  bcjob, \
+           BCJOB =  job_script, \
            EASEVERSION = grid_type, \
-           HRCODE = resolution, \
+           RES = resolution, \
            IM = config['im'], \
            JM = config['jm'], \
            MASKFILE = config['MASKFILE'], \
@@ -165,8 +166,8 @@ def make_ease_bcs(config):
            NCPUS = config['NCPUS'])
 
 
-  ease_job = open(bcjob,'wt')
-  ease_job.write(job_script)
+  ease_job = open(job_script,'wt')
+  ease_job.write(script_string)
   ease_job.close()
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
@@ -176,17 +177,17 @@ def make_ease_bcs(config):
      if ( not ntasks):
         nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
         ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
-        subprocess.call(['chmod', '755', bcjob])
-        print(bcjob+  '  1>' + log_name  + '  2>&1')
-        os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
+        subprocess.call(['chmod', '755', job_script])
+        print(job_script+  '  1>' + log_name  + '  2>&1')
+        os.system(job_script + ' 1>' + log_name+ ' 2>&1')
   else:
-    print("sbatch " + bcjob +"\n")
-    subprocess.call(['sbatch', bcjob])
+    print("sbatch " + job_script +"\n")
+    subprocess.call(['sbatch', job_script])
 
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
-  print(job_script)
+  print(script_string)
 
 if __name__ == "__main__":
 
