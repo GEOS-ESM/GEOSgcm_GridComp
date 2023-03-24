@@ -180,6 +180,7 @@ if ( $HELPMODE != YES ) then
 
    echo " "
    echo "Enter alphanumeric code(s) for atmospheric horizontal resolution from the above list"
+   echo "Do NOT specify a mix EASE grid and cs/LatLon grid resolutions."
    echo "(separate multiple entries by spaces):"
 
    HRCODE:
