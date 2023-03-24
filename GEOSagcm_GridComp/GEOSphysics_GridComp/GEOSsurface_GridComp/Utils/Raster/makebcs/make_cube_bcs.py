@@ -256,7 +256,7 @@ def make_cube_bcs(config):
   if resolution in ['c2880', 'c3072', 'c5760'] :
      STEP1 = True
      STEP2 = False
-  job_script = cube_template.format(\
+  script_string = cube_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            OUTDIR = tmp_dir, \
@@ -292,14 +292,14 @@ def make_cube_bcs(config):
            NCPUS = config['NCPUS'])
 
   cube_job = open(bcjob,'wt')
-  cube_job.write(job_script)
+  cube_job.write(script_string)
   cube_job.close()
 
   if resolution in ['c2880', 'c3072', 'c5760'] :
      STEP1 = False
      STEP2 = True
      BCNAME2 = bcname+'-2'
-     job_script = cube_template.format(\
+     script_string = cube_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            OUTDIR = tmp_dir, \
@@ -334,8 +334,8 @@ def make_cube_bcs(config):
            RC = RC,\
            NCPUS = config['NCPUS'])
 
-     cube_job = open(bcjob+'2','wt')
-     cube_job.write(job_script)
+     cube_job = open(bcjob+'-2','wt')
+     cube_job.write(script_string)
      cube_job.close()
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
@@ -358,7 +358,7 @@ def make_cube_bcs(config):
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
-  print(job_script)
+  print(script_string)
 
 if __name__ == "__main__":
 
