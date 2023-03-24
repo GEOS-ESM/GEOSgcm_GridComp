@@ -297,11 +297,11 @@ module gfdl2_cloud_microphys_mod
     
     ! upper bounds of fall speed (with variable speed option)
     
-    real :: vi_max = 0.5 !< max fall speed for ice
-    real :: vs_max = 5.0 !< max fall speed for snow
-    real :: vg_max = 8.0 !< max fall speed for graupel
+    real :: vi_max = 1.0 !< max fall speed for ice
+    real :: vs_max = 2.0 !< max fall speed for snow
+    real :: vg_max = 12. !< max fall speed for graupel
     real :: vr_max = 12. !< max fall speed for rain
-    
+
     ! cloud microphysics switchers
     
     logical :: fast_sat_adj = .false. !< has fast saturation adjustments
