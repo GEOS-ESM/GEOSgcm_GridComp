@@ -129,8 +129,8 @@ contains
         catch%VAR_PFT = VAR_PFT_45
      endif
      if (index(cnclm, '51') /=0) then
-        catch%VAR_COL = VAR_COL_CLM51
-        catch%VAR_PFT = VAR_PFT_CLM51
+        catch%VAR_COL = VAR_COL_51
+        catch%VAR_PFT = VAR_PFT_51
         catch%isCLM51 = .true.
      endif
 
@@ -252,8 +252,8 @@ contains
         catch%VAR_PFT = VAR_PFT_45
      endif
      if (index(cnclm, '51') /=0) then
-        catch%VAR_COL = VAR_COL_CLM51
-        catch%VAR_PFT = VAR_PFT_CLM51
+        catch%VAR_COL = VAR_COL_51
+        catch%VAR_PFT = VAR_PFT_51
         catch%isCLM51 = .true.
      endif
 
@@ -760,14 +760,14 @@ contains
         fveg_offl = this%fvg
 
         if ((this%isCLM40) .or. (this%isCLM45)) then
-            npft_in = npft
+            npft_int = npft
         elseif (this%isCLM51) then
-            npft_in = npft_51
+            npft_int = npft_51
         end if
 
         do n = 1, in_ntiles
            do nv = 1,nveg
-              if(ityp_offl(n,nv)<0 .or. ityp_offl(n,nv)>npft_in)    stop 'ityp'
+              if(ityp_offl(n,nv)<0 .or. ityp_offl(n,nv)>npft_int)    stop 'ityp'
               if(fveg_offl(n,nv)<0..or. fveg_offl(n,nv)>1.00001) stop 'fveg'
            end do
 
