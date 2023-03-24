@@ -9,13 +9,17 @@ module CatchmentCNRstMod
   use CatchmentRstMod, only : CatchmentRst
   use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg => NUM_VEG_CN, &
                                  VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
-                                 npft => numpft_CN
+                                 VAR_COL_51, VAR_PFT_51, &
+                                 npft => numpft_CN, npft_51 => numpft_CN51
   use nanMod         , only : nan
   
   implicit none
 
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
-  integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+  integer :: iclass_40(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+  integer :: iclass_45(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+  integer :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,9,10,11,11,11/)
+  integer, allocatable :: iclass
 
   type, extends(CatchmentRst) :: CatchmentCNRst
      logical :: isCLM45
@@ -645,7 +649,7 @@ contains
                                AGCM_MI, AGCM_S,  dofyr
      real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:)
-     integer :: status, in_ntiles, out_ntiles, numprocs
+     integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
      real, allocatable, dimension(:) :: lat_tmp
@@ -653,7 +657,7 @@ contains
      type(ESMF_Time)             :: CURRENT_TIME
      type(ESMF_TimeInterval)     :: timeStep
      type(ESMF_Clock)            :: CLOCK  
-     type(ESMF_Config)           :: CF
+     type(ESMF_Config)           :: CFgg
 
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
@@ -755,9 +759,15 @@ contains
         ityp_offl = this%cnity
         fveg_offl = this%fvg
 
+        if ((this%isCLM40) .or. (this%isCLM45)) then
+            npft_in = npft
+        elseif (this%isCLM51) then
+            npft_in = npft_51
+        end if
+
         do n = 1, in_ntiles
            do nv = 1,nveg
-              if(ityp_offl(n,nv)<0 .or. ityp_offl(n,nv)>npft)    stop 'ityp'
+              if(ityp_offl(n,nv)<0 .or. ityp_offl(n,nv)>npft_in)    stop 'ityp'
               if(fveg_offl(n,nv)<0..or. fveg_offl(n,nv)>1.00001) stop 'fveg'
            end do
 
@@ -951,8 +961,21 @@ contains
 
         print *, 'calculating regridded carbn'
 
+        if (this%isCLM40) then
+           allocate(iclass(npft))
+           iclass = iclass_40
+        elseif (this%isCLM45) then 
+           allocate(iclass(npft))
+           iclass = iclass_45
+        elseif (this%isCLM51) then 
+           allocate(iclass(npft_51))
+           iclass = iclass_51
+        end if
+        
+       
+
         call regrid_carbon (out_NTILES, in_ntiles,id_glb_cn, &
-                DAYX, var_off_col,var_off_pft, ityp_offl, fveg_offl)
+                DAYX, var_off_col,var_off_pft, ityp_offl, fveg_offl, iclass)
         deallocate (var_off_col,var_off_pft)
      endif
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
@@ -961,13 +984,14 @@ contains
 
   contains
      SUBROUTINE regrid_carbon (NTILES, in_ntiles, id_glb, &
-        DAYX, var_off_col, var_off_pft, ityp_offl, fveg_offl)
+        DAYX, var_off_col, var_off_pft, ityp_offl, fveg_offl,iclass_in)
 
      ! write out regridded carbon variables
      implicit none
      integer, intent (in) :: NTILES, in_ntiles,id_glb (ntiles,nveg)
      real, intent (in)    :: DAYX (NTILES), var_off_col(in_ntiles,NZONE,var_col), var_off_pft(in_ntiles,NZONE, NVEG, var_pft)
      real, intent (in),  dimension(in_ntiles,nveg) :: fveg_offl,  ityp_offl
+     integer, intent(in), dimension(:) :: iclass_in
      real, allocatable, dimension (:)    :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
           CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum
      real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:)
@@ -1029,7 +1053,7 @@ contains
                  iv = nv                                     ! same type fraction (primary of secondary)                          
               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! not same fraction
-              else if(iclass(ityp_new)==iclass(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
+              else if(iclass_in(ityp_new)==iclass_in(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
                  iv = nv                                     ! primary, other type (same class)
               else if(fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! secondary, other type (same class)
