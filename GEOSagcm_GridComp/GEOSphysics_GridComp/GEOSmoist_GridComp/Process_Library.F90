@@ -53,7 +53,8 @@ module GEOSmoist_Process_Library
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
   real, parameter :: taufrz  =  450.0
- ! LDRADIUS4
+  real, parameter :: dQCmax  =  1.e-4
+  ! LDRADIUS4
   ! Liquid  based on DOI 10.1088/1748-9326/3/4/045021
   real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
   real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
@@ -96,7 +97,7 @@ module GEOSmoist_Process_Library
   public :: FILLQ2ZERO, FILLQ2ZERO1
   public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
-  public :: VertInterp
+  public :: VertInterp, cs_interpolator
   public :: find_l, FIND_EIS, FIND_KLCL
   public :: find_cldtop, find_cldbase, gw_prof
   public :: make_IceNumber, make_DropletNumber
@@ -1794,11 +1795,11 @@ module GEOSmoist_Process_Library
 
          alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
          if(PDFSHAPE.eq.1) then 
-            QCn = QCp +       ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*alhxbcp)             
+            QCn = QCp +     (QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
          elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
-            ! for now, just use relaxation of 1/2.
-            QCn = QCp + 0.5 * ( QCn - QCp )
+            ! for now, just use relaxation of 1/2 of top-hat.
+            QCn = QCp + 0.5*(QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
          endif
 
          if ( CLCN > 0. ) then
@@ -2983,5 +2984,135 @@ subroutine update_cld( &
 
     end subroutine FIX_NEGATIVE_PRECIP
          
+ subroutine cs_interpolator(is, ie, js, je, km, qin, zout, wz, qout, qmin)
+ integer,  intent(in):: is, ie, js, je, km
+ real, intent(in):: zout, qmin
+ real, intent(in):: qin(is:ie,js:je,km)
+ real, intent(in):: wz(is:ie,js:je,km+1)
+ real, intent(out):: qout(is:ie,js:je)
+! local:
+ real:: qe(is:ie,km+1)
+ real, dimension(is:ie,km):: q2, dz
+ real:: s0, a6
+ integer:: i,j,k
+
+!$OMP parallel do default(none) shared(qmin,is,ie,js,je,km,zout,qin,qout,wz) &
+!$OMP             private(s0,a6,q2,dz,qe)
+ do j=js,je
+
+   do i=is,ie
+      do k=1,km
+         dz(i,k) = wz(i,j,k) - wz(i,j,k+1)
+         q2(i,k) = qin(i,j,k)
+      enddo
+   enddo
+
+   call cs_prof(q2, dz, qe, km, is, ie, 1)
+
+   do i=is,ie
+      if( zout >= wz(i,j,1) ) then
+! Higher than the top:
+          qout(i,j) = qe(i,1)
+      elseif ( zout <= wz(i,j,km+1) ) then
+          qout(i,j) = qe(i,km+1)
+      else
+          do k=1,km
+             if ( zout<=wz(i,j,k) .and. zout >= wz(i,j,k+1) ) then
+! PPM distribution: f(s) = AL + s*[(AR-AL) + A6*(1-s)]         ( 0 <= s <= 1 )
+                  a6 = 3.*(2.*q2(i,k) - (qe(i,k)+qe(i,k+1)))
+                  s0 = (wz(i,j,k)-zout) / dz(i,k)
+                  qout(i,j) = qe(i,k) + s0*(qe(i,k+1)-qe(i,k)+a6*(1.-s0))
+                  go to 500
+             endif
+          enddo
+      endif
+500   qout(i,j) = max(qmin, qout(i,j))
+   enddo
+ enddo
+
+! Send_data here
+
+ end subroutine cs_interpolator
+
+ subroutine cs_prof(q2, delp, q, km, i1, i2, iv)
+! Latest: Dec 2015 S.-J. Lin, NOAA/GFDL
+ integer, intent(in):: i1, i2, km
+ integer, intent(in):: iv
+ real, intent(in)   :: q2(i1:i2,km)
+ real, intent(in)   :: delp(i1:i2,km)     ! layer pressure thickness
+ real, intent(out):: q(i1:i2,km+1)
+!-----------------------------------------------------------------------
+ real  gam(i1:i2,km)
+ real   d4(i1:i2)
+ real   bet, a_bot, grat
+ integer i, k
+
+  do i=i1,i2
+         grat = delp(i,2) / delp(i,1)   ! grid ratio
+          bet = grat*(grat+0.5)
+       q(i,1) = ( (grat+grat)*(grat+1.)*q2(i,1) + q2(i,2) ) / bet
+     gam(i,1) = ( 1. + grat*(grat+1.5) ) / bet
+  enddo
+
+  do k=2,km
+     do i=i1,i2
+           d4(i) = delp(i,k-1) / delp(i,k)
+             bet =  2. + d4(i) + d4(i) - gam(i,k-1)
+          q(i,k) = ( 3.*(q2(i,k-1)+d4(i)*q2(i,k)) - q(i,k-1) )/bet
+        gam(i,k) = d4(i) / bet
+     enddo
+  enddo
+
+  do i=i1,i2
+         a_bot = 1. + d4(i)*(d4(i)+1.5)
+     q(i,km+1) = (2.*d4(i)*(d4(i)+1.)*q2(i,km)+q2(i,km-1)-a_bot*q(i,km))  &
+               / ( d4(i)*(d4(i)+0.5) - a_bot*gam(i,km) )
+  enddo
+
+  do k=km,1,-1
+     do i=i1,i2
+        q(i,k) = q(i,k) - gam(i,k)*q(i,k+1)
+     enddo
+  enddo
+
+! Apply *large-scale* constraints
+  do i=i1,i2
+     q(i,2) = min( q(i,2), max(q2(i,1), q2(i,2)) )
+     q(i,2) = max( q(i,2), min(q2(i,1), q2(i,2)) )
+  enddo
+
+  do k=2,km
+     do i=i1,i2
+        gam(i,k) = q2(i,k) - q2(i,k-1)
+     enddo
+  enddo
+
+! Interior:
+  do k=3,km-1
+     do i=i1,i2
+        if ( gam(i,k-1)*gam(i,k+1)>0. ) then
+! Apply large-scale constraint to ALL fields if not local max/min
+             q(i,k) = min( q(i,k), max(q2(i,k-1),q2(i,k)) )
+             q(i,k) = max( q(i,k), min(q2(i,k-1),q2(i,k)) )
+        else
+          if ( gam(i,k-1) > 0. ) then
+! There exists a local max
+               q(i,k) = max(q(i,k), min(q2(i,k-1),q2(i,k)))
+          else
+! There exists a local min
+               q(i,k) = min(q(i,k), max(q2(i,k-1),q2(i,k)))
+               if ( iv==0 ) q(i,k) = max(0., q(i,k))
+          endif
+        endif
+     enddo
+  enddo
+
+! Bottom:
+  do i=i1,i2
+     q(i,km) = min( q(i,km), max(q2(i,km-1), q2(i,km)) )
+     q(i,km) = max( q(i,km), min(q2(i,km-1), q2(i,km)) )
+  enddo
+
+ end subroutine cs_prof
 
 end module GEOSmoist_Process_Library
