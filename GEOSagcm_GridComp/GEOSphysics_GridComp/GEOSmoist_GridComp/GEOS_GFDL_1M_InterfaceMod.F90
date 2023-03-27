@@ -631,6 +631,19 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
+           ! meltfrz new condensates
+             call MELTFRZ ( DT_MOIST     , &
+                            CNV_FRC(I,J) , &
+                            SRF_TYPE(I,J), &
+                            T(I,J,L)     , &
+                            QLCN(I,J,L)  , &
+                            QICN(I,J,L) )
+             call MELTFRZ ( DT_MOIST     , &
+                            CNV_FRC(I,J) , &
+                            SRF_TYPE(I,J), &
+                            T(I,J,L)     , &
+                            QLLS(I,J,L)  , &
+                            QILS(I,J,L) )
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
