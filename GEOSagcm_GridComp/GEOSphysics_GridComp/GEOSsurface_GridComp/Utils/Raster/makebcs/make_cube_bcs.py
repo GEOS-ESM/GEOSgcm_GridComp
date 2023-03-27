@@ -346,6 +346,7 @@ def make_cube_bcs(config):
         nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
         ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
         subprocess.call(['chmod', '755', bcjob])
+        log_name = bcjob+'.log'
         print(bcjob+  '  1>' + log_name  + '  2>&1')
         os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
   else:
@@ -358,15 +359,13 @@ def make_cube_bcs(config):
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
-  print(script_string)
+  #print(script_string)
 
 if __name__ == "__main__":
 
    answers = ask_questions()
    configs = get_configs_from_answers(answers)
-   print("make_latlon_bcs")
    for config in configs:
       if 'Cubed-Sphere' in config['grid_type']:
-         print_config(config)
          make_cube_bcs(config)
 

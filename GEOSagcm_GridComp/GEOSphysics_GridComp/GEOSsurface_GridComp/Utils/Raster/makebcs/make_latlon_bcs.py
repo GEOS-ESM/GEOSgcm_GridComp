@@ -234,6 +234,7 @@ def make_latlon_bcs(config):
         nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
         ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
         subprocess.call(['chmod', '755', bcjob])
+        log_name = bcjob+'.log'
         print(bcjob+  '  1>' + log_name  + '  2>&1')
         os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
   else:
@@ -243,15 +244,13 @@ def make_latlon_bcs(config):
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
-  print(job_script)
+  #print(job_script)
 
 if __name__ == "__main__":
 
-   answers = ask_questions()
+   answers = ask_questions(default_grid="Lat-Lon")
    configs = get_configs_from_answers(answers)
-   print("make_latlon_bcs")
    for config in configs:
       if 'Lat-Lon' in config['grid_type']:
-         print_config(config)
          make_latlon_bcs(config)
 

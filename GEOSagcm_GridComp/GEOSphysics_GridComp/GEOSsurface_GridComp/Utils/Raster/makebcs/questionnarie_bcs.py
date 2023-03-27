@@ -14,6 +14,7 @@ import ruamel.yaml
 import shutil
 import questionary
 import glob
+import get_pass
 from datetime import datetime
 
 def get_account():
@@ -38,12 +39,12 @@ def get_configs_from_answers(answers):
    skipland = answers['skipland'] == 'Yes' 
    hostname = socket.gethostname()
    make_bcs_input_dir = ''
-   if 'discover' in hostname:
+   if 'discover' in hostname or 'borgi' in hostname:
       make_bcs_input_dir = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/'
    else:
       make_bcs_input_dir = '/nobackup/gmao_SIteam/ModelData/make_bcs_inputs/'
 
-   user   = os.getlogin()
+   user   = get_user()
    expdir = '/discover/nobackup/'+user+'/BCS_PACKAGE/'+lbcsv+'/'
    now    = datetime.now()
    outdir = now.strftime("%Y%m%d%H%M%S")
@@ -148,7 +149,7 @@ def get_configs_from_answers(answers):
 
    return configs
 
-def ask_questions():
+def ask_questions(default_grid="Cubed-Sphere"):
    
    user_name = get_user()
    questions = [
@@ -194,8 +195,8 @@ def ask_questions():
             "type": "checkbox",
             "name": "grid_type",
             "message": "Select grid types( select one or none of EASEv1 and EASEv2): \n ",
-            "choices": ["Lat-Lon", "Cubed-Sphere", "EASEv2", "EASEv1"],
-            "default": "Cubed-Sphere",
+            "choices": ["Cubed-Sphere", "Lat-Lon", "EASEv2", "EASEv1"],
+            "default": default_grid,
         },
 
        {

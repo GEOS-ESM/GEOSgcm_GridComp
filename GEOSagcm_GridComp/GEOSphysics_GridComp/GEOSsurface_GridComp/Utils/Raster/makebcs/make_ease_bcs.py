@@ -12,7 +12,7 @@ ease_template = """#!/bin/csh -x
 #SBATCH --error={EXPDIR}/{OUTDIR}/logs/{GRIDNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
-#SBATCH --node=1
+#SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME}.j
 #SBATCH --constraint=sky|cas
 
@@ -178,6 +178,7 @@ def make_ease_bcs(config):
         nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
         ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
         subprocess.call(['chmod', '755', job_script])
+        log_name = bcjob+'.log'
         print(job_script+  '  1>' + log_name  + '  2>&1')
         os.system(job_script + ' 1>' + log_name+ ' 2>&1')
   else:
@@ -187,14 +188,13 @@ def make_ease_bcs(config):
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
-  print(script_string)
+  #print(script_string)
 
 if __name__ == "__main__":
 
-   answers = ask_questions()
+   answers = ask_questions(default_grid="EASEv2")
    configs = get_configs_from_answers(answers)
-   print("make_ease_bcs")
    for config in configs:
-      if 'EASE' in config['grid_type']:
+      if 'EASEv2' in config['grid_type'] or 'EASEv1' in config['grid_type']:
          make_ease_bcs(config)
 
