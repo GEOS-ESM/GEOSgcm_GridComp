@@ -1881,7 +1881,31 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX',                                          &
-         LONG_NAME = 'Maximum_simulated_radar_reflectivity',                  &
+         LONG_NAME = 'Maximum_composite_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_1KM',                                          &
+         LONG_NAME = 'Base_1KM_AGL_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_TOP',                                          &
+         LONG_NAME = 'Echo_top_radar_reflectivity',                  &
+         UNITS     = 'm',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_M10C',                                          &
+         LONG_NAME = 'Minus_10C_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
@@ -5013,12 +5037,12 @@ contains
       call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
     endif
 
-    if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
 
     ! All done
     !---------
@@ -5256,7 +5280,7 @@ contains
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI, NWFA)
+                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
@@ -5297,13 +5321,27 @@ contains
            END WHERE
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
+
          ! Rain-out and Relative Humidity where RH > 110%
          call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           DTDT_ER = T
          DQVDT_ER = Q
+
          ! some diagnostics to export
-         QST3=GEOS_QsatICE (T, PLmb*100.0)
+         if (.FALSE.) then
+          QST3  = GEOS_QsatICE (T, PLmb*100.0, DQ=DQST3)
+         else
+          DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
+         end if
+         call MAPL_GetPointer(EXPORT, PTR3D, 'RHICE', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) then
+           PTR3D = Q/QST3
+           where (T>MAPL_TICE)
+             PTR3D=0.0
+           end where
+         endif
+
          call MAPL_GetPointer(EXPORT, PTR3D, 'SAT_RAT', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            where (CFICE .lt. 0.99 .and. QST3 .gt. 1.0e-20)
@@ -5313,36 +5351,30 @@ contains
             PTR3D = 1.0
            end where
          endif
-         call MAPL_GetPointer(EXPORT, PTR3D, 'RHICE', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR3D)) then
-           PTR3D = Q/QST3
-           where (T>MAPL_TICE)
-             PTR3D=0.0
-           end where
-         endif
          
-         !if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
-        if (.FALSE.) then 
-         QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
-         call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)        
-        else
-         DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
-        end if 
-        
+         if (.FALSE.) then 
+          QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
+         else
+          DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
+         end if 
+         call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = Q/QST3
+
+         ! rainout excesive RH
+         call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, PTR2D,   'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          where ( Q > 1.1*QST3 )
             TMP3D = (Q - 1.1*QST3)/( 1.0 + 1.1*DQST3*MAPL_ALHL/MAPL_CP )
          elsewhere
             TMP3D = 0.0
          endwhere
-         call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-         call MAPL_GetPointer(EXPORT, PTR2D,   'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          PTR2D = SUM(TMP3D*MASS,3)/DT_MOIST
          LS_PRCP = LS_PRCP + PTR2D
          Q = Q - TMP3D
          T = T + (MAPL_ALHL/MAPL_CP)*TMP3D
           DTDT_ER = (T -  DTDT_ER)/DT_MOIST
          DQVDT_ER = (Q - DQVDT_ER)/DT_MOIST
+
          ! cleanup any negative QV/QC/CF
          call FILLQ2ZERO(Q, MASS, TMP2D)
          call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
