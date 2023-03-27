@@ -178,7 +178,7 @@ def make_ease_bcs(config):
         nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
         ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
         subprocess.call(['chmod', '755', job_script])
-        log_name = bcjob+'.log'
+        log_name = job_script +'.log'
         print(job_script+  '  1>' + log_name  + '  2>&1')
         os.system(job_script + ' 1>' + log_name+ ' 2>&1')
   else:

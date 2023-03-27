@@ -14,7 +14,6 @@ import ruamel.yaml
 import shutil
 import questionary
 import glob
-import get_pass
 from datetime import datetime
 
 def get_account():
@@ -161,8 +160,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
    the exact same land parameters as an existing set of bcs because \n \
    the only difference between the two sets of bcs is the [non-tripolar] \n \
    ocean resolution. ",
-            "choices": ["Yes", "No"],
-            "default": "Yes",
+            "choices": ["No", "Yes"],
+            "default": "No",
         },
 
         {
