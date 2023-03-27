@@ -657,7 +657,7 @@ contains
      type(ESMF_Time)             :: CURRENT_TIME
      type(ESMF_TimeInterval)     :: timeStep
      type(ESMF_Clock)            :: CLOCK  
-     type(ESMF_Config)           :: CFgg
+     type(ESMF_Config)           :: CF
 
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
