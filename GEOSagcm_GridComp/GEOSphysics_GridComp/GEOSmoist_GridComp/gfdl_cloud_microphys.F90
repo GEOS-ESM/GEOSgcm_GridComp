@@ -790,19 +790,11 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                 c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
             enddo
         else
-            if (use_ccn) then
-               ccn0 = qn (i, j, kbot) ! ccn_surface
-            else
-               ccn0 = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-            endif
-            ! -----------------------------------------------------------------------
-            ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
-            ! -----------------------------------------------------------------------
-            ccn0 = ccn0 * rdgas * tz (kbot) / p1 (kbot)
-            tmp = cpaut * (ccn0 * rhor) ** (- 1. / 3.)
             do k = ktop, kbot
-                c_praut (k) = tmp
-                ccn (k) = ccn0
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+!!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+                c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
             enddo
         endif
         
@@ -1200,14 +1192,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         do k = ktop, kbot
             qc0 = fac_rc * ccn (k)
             if (tz (k) > t_wfr) then
-                if (prog_ccn) then
-                    qc = qc0 / den (k)
-                else
-                    ! -----------------------------------------------------------------------
-                    ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
-                    ! -----------------------------------------------------------------------
-                    qc = qc0
-                endif
+                qc = qc0 / den (k)
                 dq = ql (k) - qc
                 if (dq > 0.) then
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
@@ -1234,14 +1219,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                 ! --------------------------------------------------------------------
                 ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
                 ! --------------------------------------------------------------------
-                if (prog_ccn) then
-                    qc = qc0 / den (k)
-                else
-                    ! --------------------------------------------------------------------
-                    ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
-                    ! --------------------------------------------------------------------
-                    qc = qc0
-                endif
+                qc = qc0 / den (k)
                 dq = 0.5 * (ql (k) + dl (k) - qc)
                 ! --------------------------------------------------------------------
                 ! dq = dl if qc == q_minus = ql - dl
