@@ -2308,8 +2308,24 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='SBCAPE',                                      & 
+         LONG_NAME ='cape_for_surface_parcel',               &
+         UNITS     ='J kg-1',                                      &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME='MUCIN',                                       & 
          LONG_NAME ='inhibition_for_most_unstable_parcel',         &
+         UNITS     ='J kg-1',                                      &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='SBCIN',                                       & 
+         LONG_NAME ='inhibition_for_surface_parcel',         &
          UNITS     ='J kg-1',                                      &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
@@ -5135,7 +5151,7 @@ contains
     real, pointer, dimension(:,:  ) :: PTYPE, TPREC, CN_PRCP, LS_PRCP, AN_PRCP, SC_PRCP, PLS, PCU
     real, pointer, dimension(:,:  ) :: RAIN, SNOW, ICE, FRZR, PREC_STRAT, PREC_CONV
     real, pointer, dimension(:,:,:) :: BYNCY
-    real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, MLCIN, MUCAPE, MUCIN, LFC, LNB
+    real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
     real, pointer, dimension(:,:,:  ) :: NWFA
@@ -5267,14 +5283,16 @@ contains
        call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, INHB,    'INHB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SBCAPE,  'SBCAPE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SBCIN,   'SBCIN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, MLCAPE,  'MLCAPE' ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, MLCIN,   'MLCIN'  ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, MUCAPE,  'MUCAPE' ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, MUCIN,   'MUCIN'  ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LFC,     'ZLFC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LNB,     'ZLNB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-!       call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
-       call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), CAPE, MLCAPE, MUCAPE, INHB, MLCIN, MUCIN, BYNCY, LFC, LNB )
+       call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
+       call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          WHERE (CAPE .ne. MAPL_UNDEF)
