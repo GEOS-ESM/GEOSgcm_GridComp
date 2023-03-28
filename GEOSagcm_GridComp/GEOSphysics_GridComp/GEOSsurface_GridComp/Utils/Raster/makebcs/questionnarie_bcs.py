@@ -64,20 +64,20 @@ def get_configs_from_answers(answers):
           maskfile = ''
        
           if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6']:
-             maskfile = make_bcs_input_dir+'shared/mask/GEOS5_10arcsec_mask_freshwater-lakes.nc'
+             maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
              if lbcsv in ['F25', 'GM4', 'ICA']:
-                maskfile = make_bcs_input_dir+'shared/mask/global.cat_id.catch.DL'
+                maskfile = 'global.cat_id.catch.DL'
        
           if orslv in['O2','O3','CS']:
-             maskfile = make_bcs_input_dir+'shared/mask/GEOS5_10arcsec_mask.nc'
+             maskfile = 'GEOS5_10arcsec_mask.nc'
              if lbcsv in ['F25', 'GM4', 'ICA']:
-                maskfile = make_bcs_input_dir + 'shared/mask/global.cat_id.catch.GreatLakesCaspian_Updated.DL'
+                maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
           if (maskfile == ''):
              print(" \!\!\!\! Invalid Ocean Resolution, stopping ")
              exit()
  
           if 'EASEv1' == grid_type or 'EASEv2' == grid_type:
-             maskfile = 'shared/mask/GEOS5_10arcsec_mask.nc'
+             maskfile = 'GEOS5_10arcsec_mask.nc'
        
           if resolution in ['c768','c1440'] : 
              NX = 17280
