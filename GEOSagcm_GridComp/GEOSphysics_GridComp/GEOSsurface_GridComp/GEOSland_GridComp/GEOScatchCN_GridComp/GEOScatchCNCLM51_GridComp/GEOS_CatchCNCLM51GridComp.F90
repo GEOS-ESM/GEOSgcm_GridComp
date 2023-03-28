@@ -5076,7 +5076,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, parameter :: nveg  = num_veg ! number of vegetation types
     integer, parameter :: nzone = num_zon ! number of stress zones
 
-    real, allocatable, dimension(:) ::  wgt, wpp, fwet
+    real, allocatable, dimension(:) ::  wgt, wpp, fwet, wet_in 
     real, allocatable, dimension(:,:) :: sm   ! soil water as frac of WHC for the 3 dydrological zones at root depth
     real, allocatable, dimension(:) :: SWSRF1, SWSRF2, SWSRF4    ! soil water as frac of WHC for the 3 dydrological zones at surface soil
     real, allocatable, dimension(:,:) :: tcx, qax
@@ -6257,6 +6257,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(     wgt(ntiles) )
     allocate(     wpp(ntiles) )
     allocate(    fwet(ntiles) )
+    allocate(  wet_in(ntiles) )
     allocate(     bt(ntiles,fsat:fwlt))
     allocate(     sm(ntiles,fsat:fwlt))
     allocate(  SWSRF1(ntiles) )
@@ -6764,8 +6765,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       end do ! nv
     end do ! nz
 
+      wet_in = max(min(PRMC / POROS,1.0),0.0)  
+ 
       call catchcn_calc_rc(ntiles,fveg,TCx,QAx,PS,co2v,dayl_fac, &
-            T2M10D,TA,cond,psis,wet3,bee,capac,fwet,ZTH,ityp,&
+            T2M10D,TA,cond,psis,wet_in,bee,capac,fwet,ZTH,ityp,&
             DRPAR,DFPAR,albdir,albdif,dtc,dea,water_inst,bgc_vegetation_inst,rc00,rcdq,rcdt,&
             laisun,laisha,psnsun,psnsha,lmrsun,lmrsha,parzone,&
             btran)
@@ -7886,6 +7889,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(     wgt )
         deallocate(     wpp )
         deallocate(    fwet )
+        deallocate(  wet_in )
         deallocate(     sm  )
         deallocate(  SWSRF1 )
         deallocate(  SWSRF2 )
