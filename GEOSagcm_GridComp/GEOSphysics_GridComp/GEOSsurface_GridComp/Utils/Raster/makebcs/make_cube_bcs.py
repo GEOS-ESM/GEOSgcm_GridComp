@@ -35,6 +35,7 @@ endif
 
 source bin/g5_modules
 setenv MASKFILE {MASKFILE}
+setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 limit stacksize unlimited
 
 if ( {STEP1} == True ) then
