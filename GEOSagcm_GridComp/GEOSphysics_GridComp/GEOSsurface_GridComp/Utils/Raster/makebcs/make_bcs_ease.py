@@ -51,35 +51,35 @@ cd clsm.{IM}x{JM}
 cd ../
 /bin/rm -rf              {EASEVERSION}_{RES}
 /bin/mv clsm.{IM}x{JM} {EASEVERSION}_{RES}
-                     cd  {EASEVERSION}_{RES} 
-                   mkdir clsm
-                 /bin/mv ar.new \
-                         bf.dat \
-                         ts.dat \
-                         catchment.def \
-                         cti_stats.dat \
-                         tau_param.dat \
-                         soil_param.dat \
-                         mosaic_veg_typs_fracs \
-               soil_param.first \
-               bad_sat_param.tiles \
-          README \
-          lai.* \
-                         AlbMap* \
-          g5fmt \
-          vegetation.hst2 \
-          pfaf_fractions.dat \
-          plots \
-                         CLM_veg_typs_fracs \
-                         mkCatchParam.log \
-                         Grid2Catch_TransferData.nc \
-                         CLM_NDep_SoilAlb_T2m \
-                         CLM4.5_abm_peatf_gdp_hdm_fc \
-               catch_params.nc4 \
-               catchcn_params.nc4 \
-          country_and_state_code.data \
-                         clsm
-                     cd  ../ 
+cd  {EASEVERSION}_{RES} 
+mkdir clsm
+/bin/mv ar.new \\
+        bf.dat \\
+        ts.dat \\
+        catchment.def \\
+        cti_stats.dat \\
+        tau_param.dat \\
+        soil_param.dat \\
+        mosaic_veg_typs_fracs \\
+        soil_param.first \\
+        bad_sat_param.tiles \\
+        README \\
+        lai.* \\
+        AlbMap* \\
+        g5fmt \\
+        vegetation.hst2 \\
+        pfaf_fractions.dat \\
+        plots \\
+        CLM_veg_typs_fracs \\
+        mkCatchParam.log \\
+        Grid2Catch_TransferData.nc \\
+        CLM_NDep_SoilAlb_T2m \\
+        CLM4.5_abm_peatf_gdp_hdm_fc \\
+        catch_params.nc4 \\
+        catchcn_params.nc4 \\
+        country_and_state_code.data \\
+        clsm
+cd  ../ 
 /bin/mv rst  {EASEVERSION}_{RES}
 /bin/mv til  {EASEVERSION}_{RES}
 
