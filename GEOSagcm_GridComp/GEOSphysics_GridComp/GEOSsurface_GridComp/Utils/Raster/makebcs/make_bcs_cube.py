@@ -200,7 +200,7 @@ mkdir -p {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 endif  # STEP2
 """
 
-def make_cube_bcs(config):
+def make_bcs_cube(config):
 
   bin_dir = os.getcwd()
   if 'install/bin' not in bin_dir:
@@ -368,5 +368,5 @@ if __name__ == "__main__":
    configs = get_configs_from_answers(answers)
    for config in configs:
       if 'Cubed-Sphere' in config['grid_type']:
-         make_cube_bcs(config)
+         make_bcs_cube(config)
 

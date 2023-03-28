@@ -151,7 +151,7 @@ mkdir -p {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 
 """
 
-def make_latlon_bcs(config):
+def make_bcs_latlon(config):
   bin_dir = os.getcwd()
   if 'install/bin' not in bin_dir:
     print(" please run this program in installed bin directory")
@@ -252,5 +252,5 @@ if __name__ == "__main__":
    configs = get_configs_from_answers(answers)
    for config in configs:
       if 'Lat-Lon' in config['grid_type']:
-         make_latlon_bcs(config)
+         make_bcs_latlon(config)
 
