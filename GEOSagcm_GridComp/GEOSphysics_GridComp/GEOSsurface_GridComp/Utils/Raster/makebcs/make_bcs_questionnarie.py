@@ -44,7 +44,7 @@ def get_configs_from_answers(answers):
       make_bcs_input_dir = '/nobackup/gmao_SIteam/ModelData/make_bcs_inputs/'
 
    user   = get_user()
-   expdir = '/discover/nobackup/'+user+'/BCS_PACKAGE/'+lbcsv+'/'
+   expdir = answers["out_path"]
    now    = datetime.now()
    outdir = now.strftime("%Y%m%d%H%M%S")
 
@@ -281,7 +281,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "type": "path",
             "name": "out_path",
             "message": "Enter desired BCS output directory (incl. full path) or press ENTER to use the default:",
-            "default": "/discover/nobackup/"+user_name+"/BCS_PACKAGE/"+answers['bcs_version']+'/'
+            "default": "/discover/nobackup/"+user_name+"/BCS_PACKAGE/"+answers['bcs_version']+'_2/'
           },
    ]
    path_ = questionary.prompt(path_q)
