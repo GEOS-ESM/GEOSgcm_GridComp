@@ -3,7 +3,7 @@
 # source install/bin/g5_modules
 
 import os
-from questionnarie_bcs import *
+from make_bcs_questionnarie import *
 
 
 latlon_template = """#!/bin/csh -x

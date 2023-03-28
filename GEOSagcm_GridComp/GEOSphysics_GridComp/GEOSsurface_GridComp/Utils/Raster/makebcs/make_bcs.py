@@ -7,10 +7,10 @@ import sys
 import argparse
 import textwrap
 import ruamel.yaml
-from questionnarie_bcs import *
-from make_ease_bcs import *
-from make_latlon_bcs import *
-from make_cube_bcs import *
+from make_bcs_questionnarie import *
+from make_bcs_ease import *
+from make_bcs_latlon import *
+from make_bcs_cube import *
 
 # Define the argument parser
 def parse_args():
