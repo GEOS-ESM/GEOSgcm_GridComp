@@ -93,31 +93,31 @@ cd ../
 
 /bin/rm -rf              DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 /bin/mv clsm.{IM}x{JM} DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
-                     cd  DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
-              mkdir clsm
-            /bin/mv ar.new \
-                    bf.dat \
-                    ts.dat \
-                    catchment.def \
-                    cti_stats.dat \
-                    tau_param.dat \
-                    soil_param.dat \
-                    mosaic_veg_typs_fracs \
-          soil_param.first \
-          README \
-          bad_sat_param.tiles \
-          lai.* \
-                    AlbMap* \
-          plots \
-                    CLM_veg_typs_fracs \
-                    mkCatchParam.log \
-                    CLM_NDep_SoilAlb_T2m \
-                    CLM4.5_abm_peatf_gdp_hdm_fc \
-          catch_params.nc4 \
-          catchcn_params.nc4 \
-          country_and_state_code.data \
-                    clsm
-                cd  ../ 
+cd  DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
+mkdir clsm
+/bin/mv ar.new \\
+        bf.dat \\
+        ts.dat \\
+        catchment.def \\
+        cti_stats.dat \\
+        tau_param.dat \\
+        soil_param.dat \\
+        mosaic_veg_typs_fracs \\
+        soil_param.first \\
+        README \\
+        bad_sat_param.tiles \\
+        lai.* \\
+        AlbMap* \\
+        plots \\
+        CLM_veg_typs_fracs \\
+        mkCatchParam.log \\
+        CLM_NDep_SoilAlb_T2m \\
+        CLM4.5_abm_peatf_gdp_hdm_fc \\
+        catch_params.nc4 \\
+        catchcn_params.nc4 \\
+        country_and_state_code.data \\
+        clsm
+cd  ../ 
 
 /bin/mv rst DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 /bin/mv til DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
@@ -136,14 +136,14 @@ mkdir -p {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 
 
 /bin/mv  {BCNAME}/clsm               {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-/bin/mv  {BCNAME}/irrigation_{RS}_DC.dat \
-         {BCNAME}/vegdyn_{RS}_DC.dat \
-         {BCNAME}/nirdf_{RS}_DC.dat \
-         {BCNAME}/visdf_{RS}_DC.dat \
-         {BCNAME}/lai_clim_{RS}_DC.data \
-         {BCNAME}/green_clim_{RS}_DC.data \
-         {BCNAME}/lnfm_clim_{RS}_DC.data \
-         {BCNAME}/ndvi_clim_{RS}_DC.data \
+/bin/mv  {BCNAME}/irrigation_{RS}_DC.dat \\
+         {BCNAME}/vegdyn_{RS}_DC.dat \\
+         {BCNAME}/nirdf_{RS}_DC.dat \\
+         {BCNAME}/visdf_{RS}_DC.dat \\
+         {BCNAME}/lai_clim_{RS}_DC.data \\
+         {BCNAME}/green_clim_{RS}_DC.data \\
+         {BCNAME}/lnfm_clim_{RS}_DC.data \\
+         {BCNAME}/ndvi_clim_{RS}_DC.data \\
          {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 
 /bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.

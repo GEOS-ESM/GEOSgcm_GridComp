@@ -97,14 +97,14 @@ mkdir -p {GRIDNAME}/land/{EASEVERSION}_{RES}
 
 
 /bin/mv  {GRIDNAME}/clsm               {GRIDNAME}/land/{EASEVERSION}_{RES}/.
-/bin/mv  {GRIDNAME}/irrigation_{RS}_DE.dat  \
-         {GRIDNAME}/vegdyn_{RS}_DE.dat      \
-         {GRIDNAME}/nirdf_{RS}_DE.dat       \
-         {GRIDNAME}/visdf_{RS}_DE.dat       \
-         {GRIDNAME}/lai_clim_{RS}_DE.data   \
-         {GRIDNAME}/green_clim_{RS}_DE.data \
-         {GRIDNAME}/lnfm_clim_{RS}_DE.data  \
-         {GRIDNAME}/ndvi_clim_{RS}_DE.data  \
+/bin/mv  {GRIDNAME}/irrigation_{RS}_DE.dat  \\
+         {GRIDNAME}/vegdyn_{RS}_DE.dat      \\
+         {GRIDNAME}/nirdf_{RS}_DE.dat       \\
+         {GRIDNAME}/visdf_{RS}_DE.dat       \\
+         {GRIDNAME}/lai_clim_{RS}_DE.data   \\
+         {GRIDNAME}/green_clim_{RS}_DE.data \\
+         {GRIDNAME}/lnfm_clim_{RS}_DE.data  \\
+         {GRIDNAME}/ndvi_clim_{RS}_DE.data  \\
          {GRIDNAME}/land/{EASEVERSION}_{RES}/.
 
 /bin/mv {GRIDNAME}/rst {GRIDNAME}/til {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
@@ -143,7 +143,7 @@ def make_ease_bcs(config):
   account = get_account()
   ims = '%04d'%config['im']
   jms = '%04d'%config['jm']
-  RS = ims+'x'+jms
+  RS = str(config['im'])+'x'+ str(config['jm'])
 
   script_string = ease_template.format(\
            account = account, \
@@ -155,8 +155,8 @@ def make_ease_bcs(config):
            BCJOB =  job_script, \
            EASEVERSION = grid_type, \
            RES = resolution, \
-           IM = config['im'], \
-           JM = config['jm'], \
+           IM = ims, \
+           JM = jms, \
            MASKFILE = config['MASKFILE'], \
            lbcsv    = config['lbcsv'], \
            NX = config['NX'], \
