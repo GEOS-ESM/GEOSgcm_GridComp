@@ -92,7 +92,7 @@ module GEOSmoist_Process_Library
 
   public :: AeroProps
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
-  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, RADCOUPLE, FIX_UP_CLOUDS
+  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO, FILLQ2ZERO1
   public :: MELTFRZ
@@ -504,6 +504,206 @@ module GEOSmoist_Process_Library
       ENDIF
 
    end function LDRADIUS4
+
+
+  subroutine BUOYANCY2( IM, JM, LM, T, Q, QS, DQS, DZ, ZLO, PLO, PS, SBCAPE, MLCAPE, MUCAPE, &
+                        SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
+
+    ! Computes surface-based (SB), mixed-layer (ML) and most unstable (MU) versions 
+    ! of CAPE and CIN. 
+
+    integer,                intent(in)  :: IM, JM, LM
+    real, dimension(:,:,:), intent(in)  :: T, Q, QS, DQS, DZ, ZLO, PLO
+    real, dimension(:,:,:), intent(out) :: BYNCY
+    real, pointer, dimension(:,:)       :: MLCAPE, MUCAPE, MLCIN, MUCIN
+    real, dimension(:,:)                :: SBCAPE, SBCIN, LFC, LNB
+    real, dimension(:,:),   intent(in)  :: PS
+
+    real, dimension(IM,JM,LM)           :: Tve
+    real, dimension(IM,JM)              :: MSEp, Qp, tmp1, tmp2
+    integer, dimension(IM,JM)           :: Lev0
+
+    integer :: I, J, L
+
+    Tve   = T*(1.+MAPL_VIREPS*Q)
+    BYNCY = MAPL_UNDEF
+    MSEp  = 0.
+    Qp    = 0.
+
+    ! Mixed-layer calculation. Parcel properties averaged over lowest 50 hPa
+    if ( associated(MLCAPE) .and. associated(MLCIN) ) then
+       BYNCY = MAPL_UNDEF
+       tmp1 = 0.
+       Lev0 = LM
+       do L = LM,1,-1
+         where (PS-PLO(:,:,L).lt.50.) 
+            MSEp = MSEp + (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L))*DZ(:,:,L) 
+            Qp   = Qp   + Q(:,:,L)*DZ(:,:,L)
+            tmp1 = tmp1 + DZ(:,:,L)
+            Lev0 = L
+         end where
+         if (all(PS-PLO(:,:,L).gt.50.)) exit
+       end do
+       where (tmp1.gt.0.)   ! average
+          MSEp = MSEp / tmp1
+          Qp = Qp / tmp1
+       end where
+       do I = 1,IM
+          do J = 1,JM
+             call RETURN_CAPE_CIN( ZLO(I,J,1:Lev0(I,J)), PLO(I,J,1:Lev0(I,J)), DZ(I,J,1:Lev0(I,J)),      & 
+                                   MSEp(I,J), Qp(I,J), Tve(I,J,1:Lev0(I,J)), QS(I,J,1:Lev0(I,J)), DQS(I,J,1:Lev0(I,J)),       &
+                                   MLCAPE(I,J), MLCIN(I,J), BYNCY(I,J,1:Lev0(I,J)), LFC(I,J), LNB(I,J) )
+          end do
+       end do
+       where (MLCAPE.le.0.)
+          MLCAPE = MAPL_UNDEF
+          MLCIN  = MAPL_UNDEF
+       end where
+    end if
+
+    ! Most unstable calculation. Parcel in lowest 300 hPa with largest CAPE
+    if ( associated(MUCAPE) .and. associated(MUCIN) ) then
+       MUCAPE = 0.
+       MUCIN  = 0.
+       BYNCY = MAPL_UNDEF
+       LFC = MAPL_UNDEF
+       LNB = MAPL_UNDEF
+       do I = 1,IM
+          do J = 1,JM
+             do L = LM,1,-1
+                if (PS(I,J)-PLO(I,J,L).gt.300.) exit
+                MSEp(I,J) = T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L)
+                Qp(I,J)   = Q(I,J,L)
+                call RETURN_CAPE_CIN( ZLO(I,J,1:L), PLO(I,J,1:L), DZ(I,J,1:L),      & 
+                                      MSEp(I,J), Qp(I,J), Tve(I,J,1:L), QS(I,J,1:L), DQS(I,J,1:L),       &
+                                      tmp1(I,J), tmp2(I,J), BYNCY(I,J,1:L), LFC(I,J), LNB(I,J) )
+                if (tmp1(I,J) .gt. MUCAPE(I,J)) then
+                   MUCAPE(I,J) = tmp1(I,J)
+                   MUCIN(I,J)  = tmp2(I,J)
+                end if
+             end do
+          end do
+       end do        
+
+       where (MUCAPE.le.0.)
+          MUCAPE = MAPL_UNDEF
+          MUCIN  = MAPL_UNDEF
+       end where
+    end if
+
+    ! Surface-based calculation
+    MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
+    Qp   = Q(:,:,LM)                                            ! parcel specific humidity
+    do I = 1,IM
+       do J = 1,JM
+          call RETURN_CAPE_CIN( ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:),      & 
+                                MSEp(I,J), Qp(I,J), Tve(I,J,:), QS(I,J,:), DQS(I,J,:),       &
+                                SBCAPE(I,J), SBCIN(I,J), BYNCY(I,J,:), LFC(I,J), LNB(I,J) )
+       end do
+    end do
+    where (SBCAPE.le.0.)
+       SBCAPE = MAPL_UNDEF
+       SBCIN  = MAPL_UNDEF
+    end where
+
+  end subroutine BUOYANCY2
+
+
+  subroutine RETURN_CAPE_CIN( ZLO, PLO, DZ, MSEp, Qp, Tve, Qsate, DQS, CAPE, CIN, BYNCY, LFC, LNB )
+
+    real,               intent(in)  :: MSEp, Qp
+    real, dimension(:), intent(in)  :: ZLO, PLO, DZ, Tve, Qsate, DQS
+    real,               intent(out) :: CAPE, CIN, LFC, LNB
+    real, dimension(:), intent(out) :: BYNCY
+
+    integer :: I, L, LM, KLNB, KLFC
+    real    :: Qpnew, Tp, Tvp, Tlcl, Buoy, dq
+    logical :: aboveLNB, aboveLFC, aboveLCL
+
+    LM = size(ZLO,1)
+
+    aboveLNB = .false.
+    aboveLFC = .false.
+
+    Qpnew = Qp
+
+    CAPE = 0.
+    CIN  = 0.
+    BYNCY = 0.
+    LFC = MAPL_UNDEF
+    LNB = MAPL_UNDEF
+
+    Tp = MSEp - gravbcp*ZLO(LM) - alhlbcp*Qp  ! initial parcel temp at source level LM
+    Tlcl = find_tlcl( Tp, 100.*Qp/QSATE(LM) )
+    aboveLCL = (Tp.lt.Tlcl)
+  
+    do L = LM-1,1,-1   ! start at level above source air
+
+      ! determine parcel Qp, Tp      
+      if ( .not. aboveLCL ) then
+         Tp = Tp - gravbcp*(ZLO(L)-ZLO(L+1))                ! new parcel temperature w/o condensation 
+         if (Tp.lt.Tlcl) then
+            Tp = Tp + gravbcp*(ZLO(L)-ZLO(L+1))             ! if cross LCL, revert Tp and go to aboveLCL below
+            aboveLCL = .true.
+         end if
+      end if
+      if ( aboveLCL .and. Qpnew*alhlbcp.gt.0.01 ) then
+         Tp = Tp - gravbcp*( ZLO(L)-ZLO(L+1) ) / ( 1.+alhlbcp*DQS(L) )     ! initial guess including condensation
+         DO I = 1,10                                                       ! iterate until Qp=qsat(Tp)
+            dq = Qpnew - GEOS_QSAT( Tp, PLO(L) )
+            if (abs(dq*alhlbcp)<0.01) then
+               exit
+            end if
+            Tp = Tp + dq*alhlbcp/(1.+alhlbcp*DQS(L))
+            Qpnew = Qpnew - dq/(1.+alhlbcp*DQS(L))
+         END DO
+      end if
+      Tp = MSEp - gravbcp*ZLO(L) - alhlbcp*Qpnew
+      !  Qc = qp - qpnew.   ! condensate (not used for pseudoadiabatic ascent)
+
+      Tvp = Tp*(1.+MAPL_VIREPS*Qpnew)              ! parcel virtual temp
+    !  Tvp = Tp*(1.+0.61*Qpnew - Qc) ! condensate loading
+
+      BYNCY(L) = MAPL_GRAV*(Tvp-Tve(L))/Tve(L)         ! parcel buoyancy
+
+    end do
+
+    ! if surface parcel immediately buoyant, scan upward to find first elevated
+    ! B>0 level above a B<0 level, label it LFC.  If no such level, set LFC at surface.
+    KLFC = LM
+    KLNB = LM
+    aboveLFC = .false.
+    if (BYNCY(LM-1).gt.0.) then
+       do L = LM-2,1,-1   ! scan up to find elevated LFC
+          if (BYNCY(L).gt.0. .and. BYNCY(L+1).le.0.) then
+             KLFC = L
+             aboveLFC = .true.
+          end if
+          if (aboveLFC .and. BYNCY(L).lt.0. ) then 
+             KLNB = L
+             exit
+          end if
+       end do
+    else   ! if surface parcel not immediately buoyant, LFC is first B>0 level
+       do L = LM-1,1,-1
+          if (BYNCY(L).gt.0. .and. .not.aboveLFC) then
+             KLFC = L
+             aboveLFC = .true.
+          end if
+          if (aboveLFC .and. BYNCY(L).lt.0.) then
+             KLNB = L
+             exit
+          end if
+       end do
+    end if
+    LFC = ZLO(KLFC)
+    LNB = ZLO(KLNB)
+
+    CIN = -1.*SUM( min(0.,BYNCY(KLFC:)*DZ(KLFC:)) )        ! define CIN as positive
+    CAPE = SUM( max(0.,BYNCY(KLNB:KLFC)*DZ(KLNB:KLFC)) )
+
+  end subroutine RETURN_CAPE_CIN
+
 
   subroutine BUOYANCY( T, Q, QS, DQS, DZ, ZLO, BUOY, CAPE, INHB)
 
