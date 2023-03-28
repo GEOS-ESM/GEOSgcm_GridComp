@@ -5291,8 +5291,8 @@ contains
        call MAPL_GetPointer(EXPORT, MUCIN,   'MUCIN'  ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LFC,     'ZLFC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LNB,     'ZLNB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
        call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
+       call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          WHERE (CAPE .ne. MAPL_UNDEF)
