@@ -6,6 +6,7 @@ module CNSharedParamsMod
   use shr_kind_mod , only: r8 => shr_kind_r8
   use ncdio_pio    , only : file_desc_t
   use ncdio_pio    , only : ncd_io
+  use clm_varpar   , only : nlevgrnd
 
   implicit none
 
@@ -28,7 +29,7 @@ module CNSharedParamsMod
   type(CNParamsShareType), protected :: CNParamsShareInst
 
   logical, public :: use_fun      = .false.             ! Use the FUN2.0 model
-  integer, public :: nlev_soildecomp_standard = 5
+  integer, public :: nlev_soildecomp_standard = nlevgrnd
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
