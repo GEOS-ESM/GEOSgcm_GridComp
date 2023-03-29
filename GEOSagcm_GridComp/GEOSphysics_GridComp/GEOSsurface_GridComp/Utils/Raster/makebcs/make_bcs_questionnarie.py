@@ -161,7 +161,6 @@ def ask_questions(default_grid="Cubed-Sphere"):
    the only difference between the two sets of bcs is the [non-tripolar] \n \
    ocean resolution. ",
             "choices": ["No", "Yes"],
-            "default": "No",
         },
 
         {
@@ -175,9 +174,6 @@ def ask_questions(default_grid="Cubed-Sphere"):
     science is insignificant, and the parameter files produced by current \n \
     code are scientifically equivalent to the corresponding archived BCs. \n",
             "choices": [ \
-                  "F25 : Fortuna-2_5   (archived*: n/a)", \
-   "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
-   "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)", \
    "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/) \n\
           = NL3 + JPL veg height", \
@@ -186,8 +182,10 @@ def ask_questions(default_grid="Cubed-Sphere"):
    "v06 : NL3 + JPL veg height + PEATMAP + MODIS snow alb", \
    "v07 : NL3 + PEATMAP", \
    "v08 : NL3 + MODIS snow alb", \
-   "v09 : NL3 + PEATMAP + MODIS snow alb"],
-            "default": "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)",
+   "v09 : NL3 + PEATMAP + MODIS snow alb", \
+   "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
+   "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
+   "F25 : Fortuna-2_5   (archived*: n/a)"], 
         },
 
        {
@@ -195,7 +193,6 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "name": "grid_type",
             "message": "Select grid types: \n ",
             "choices": ["Cubed-Sphere", "Lat-Lon", "EASEv2", "EASEv1"],
-            "default": default_grid,
         },
 
        {
