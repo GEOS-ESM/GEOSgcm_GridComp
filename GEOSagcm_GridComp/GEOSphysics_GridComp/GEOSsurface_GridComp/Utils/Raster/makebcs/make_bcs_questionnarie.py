@@ -50,101 +50,101 @@ def get_configs_from_answers(answers):
 
    configs = []
 
-   for grid_type in answers['grid_type']:
-     print('Grid_type: ' + grid_type)
-     for orslv in  answers['Ocean']:
-       print('orslv: ' + orslv)
-       for resolution in answers.get(grid_type,[]):
-          print('resolution: ' +  resolution)
-          
-          NX = 8640 
-          NY = 4320
-          NT = 232000000
-       
-          maskfile = ''
-       
-          if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6']:
-             maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
-             if lbcsv in ['F25', 'GM4', 'ICA']:
-                maskfile = 'global.cat_id.catch.DL'
-       
-          if orslv in['O2','O3','CS']:
-             maskfile = 'GEOS5_10arcsec_mask.nc'
-             if lbcsv in ['F25', 'GM4', 'ICA']:
-                maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
-          if (maskfile == ''):
-             print(" \!\!\!\! Invalid Ocean Resolution, stopping ")
-             exit()
+   grid_type = answers['grid_type']
+   print('Grid_type: ' + grid_type)
+   for orslv in  answers['Ocean']:
+     print('orslv: ' + orslv)
+     for resolution in answers.get(grid_type,[]):
+        print('resolution: ' +  resolution)
+        
+        NX = 8640 
+        NY = 4320
+        NT = 232000000
+     
+        maskfile = ''
+     
+        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6']:
+           maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
+           if lbcsv in ['F25', 'GM4', 'ICA']:
+              maskfile = 'global.cat_id.catch.DL'
+     
+        if orslv in['O2','O3','CS']:
+           maskfile = 'GEOS5_10arcsec_mask.nc'
+           if lbcsv in ['F25', 'GM4', 'ICA']:
+              maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
+        if (maskfile == ''):
+           print(" \!\!\!\! Invalid Ocean Resolution, stopping ")
+           exit()
  
-          if 'EASEv1' == grid_type or 'EASEv2' == grid_type:
-             maskfile = 'GEOS5_10arcsec_mask.nc'
-       
-          if resolution in ['c768','c1440'] : 
-             NX = 17280
-             NY = 8640
-          if resolution == 'c2800': 
-             NX = 21600
-             NY = 10800
-          if resolution in ['c1536', 'c3072','c5760'] : 
-             NX = 43200
-             NY = 21600
-       
-          if 'GEOS5_10arcsec_mask' in maskfile:
-             NX = 43200
-             NY = 21600
+        if 'EASEv1' == grid_type or 'EASEv2' == grid_type:
+           maskfile = 'GEOS5_10arcsec_mask.nc'
+     
+        if resolution in ['c768','c1440'] : 
+           NX = 17280
+           NY = 8640
+        if resolution == 'c2800': 
+           NX = 21600
+           NY = 10800
+        if resolution in ['c1536', 'c3072','c5760'] : 
+           NX = 43200
+           NY = 21600
+     
+        if 'GEOS5_10arcsec_mask' in maskfile:
+           NX = 43200
+           NY = 21600
 
-          LATLON_OCEAN = False
-          TRIPOL_OCEAN = False
-          CUBED_SPHERE_OCEAN = False
-          DATENAME = 'DE'
-          POLENAME = 'PE'
-          MOM_VERSION = 'UNDEF'
-          if orslv in['O2','O3','O1']:
-             LATLON_OCEAN = True
-             DATENAME = 'DE'
-             POLENAME = 'PE'
-          if orslv in['T2','T3','T4']:
-             TRIPOL_OCEAN = True
-             MOM_VERSION = 'MOM5'
-             DATENAME = 'TM'
-             POLENAME = 'TM'
-          if 'MOM6' in orslv:
-             TRIPOL_OCEAN = True
-             MOM_VERSION = 'MOM6'
-             DATENAME = 'TM'
-             POLENAME = 'TM'
-          if  orslv == 'CS' :
-             CUBED_SPHERE_OCEAN = True
-       
-          config = {}
+        LATLON_OCEAN = False
+        TRIPOL_OCEAN = False
+        CUBED_SPHERE_OCEAN = False
+        DATENAME = 'DE'
+        POLENAME = 'PE'
+        MOM_VERSION = 'UNDEF'
+        if orslv in['O2','O3','O1']:
+           LATLON_OCEAN = True
+           DATENAME = 'DE'
+           POLENAME = 'PE'
+        if orslv in['T2','T3','T4']:
+           TRIPOL_OCEAN = True
+           MOM_VERSION = 'MOM5'
+           DATENAME = 'TM'
+           POLENAME = 'TM'
+        if 'MOM6' in orslv:
+           TRIPOL_OCEAN = True
+           MOM_VERSION = 'MOM6'
+           DATENAME = 'TM'
+           POLENAME = 'TM'
+        if  orslv == 'CS' :
+           CUBED_SPHERE_OCEAN = True
+     
+        config = {}
 
-          config['LATLON_OCEAN'] = LATLON_OCEAN
-          config['TRIPOL_OCEAN'] = TRIPOL_OCEAN
-          config['CUBED_SPHERE_OCEAN'] = CUBED_SPHERE_OCEAN
-          config['DATENAME'] = DATENAME
-          config['POLENAME'] = POLENAME
-          config['MOM_VERSION'] =  MOM_VERSION
+        config['LATLON_OCEAN'] = LATLON_OCEAN
+        config['TRIPOL_OCEAN'] = TRIPOL_OCEAN
+        config['CUBED_SPHERE_OCEAN'] = CUBED_SPHERE_OCEAN
+        config['DATENAME'] = DATENAME
+        config['POLENAME'] = POLENAME
+        config['MOM_VERSION'] =  MOM_VERSION
 
-          config['skipland']  = skipland
-          config['grid_type'] = grid_type
-          config['lbcsv']     = lbcsv
-          config['resolution']= resolution
-          config['orslvs']    = orslv
-          config ['im']  = answers['im'][resolution]
-          config ['jm']  = answers['jm'][resolution]
-          config ['imo'] = answers['im'][orslv]
-          config ['jmo'] = answers['jm'][orslv]
-          config ['NX']  = NX
-          config ['NY']  = NY
-          config ['NT']  = NT
-          config ['MASKFILE']  = maskfile
-          config ['expdir']    = expdir
-          config ['outdir']    = outdir
-          config ['inputdir']  = make_bcs_input_dir
-          config ['NCPUS'] = 20
+        config['skipland']  = skipland
+        config['grid_type'] = grid_type
+        config['lbcsv']     = lbcsv
+        config['resolution']= resolution
+        config['orslvs']    = orslv
+        config ['im']  = answers['im'][resolution]
+        config ['jm']  = answers['jm'][resolution]
+        config ['imo'] = answers['im'][orslv]
+        config ['jmo'] = answers['jm'][orslv]
+        config ['NX']  = NX
+        config ['NY']  = NY
+        config ['NT']  = NT
+        config ['MASKFILE']  = maskfile
+        config ['expdir']    = expdir
+        config ['outdir']    = outdir
+        config ['inputdir']  = make_bcs_input_dir
+        config ['NCPUS'] = 20
 
 
-          configs = configs + [config]
+        configs = configs + [config]
 
    return configs
 
@@ -191,7 +191,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
         },
 
        {
-            "type": "checkbox",
+            "type": "select",
             "name": "grid_type",
             "message": "Select grid types( select one or none of EASEv1 and EASEv2): \n ",
             "choices": ["Cubed-Sphere", "Lat-Lon", "EASEv2", "EASEv1"],
@@ -203,7 +203,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "name": "Lat-Lon",
             "message": "Select lat-lon resolution (multiple choices): \n ",
             "choices": ["b -- 2   deg $144x91$", "c -- 1   deg $288x181$", "d -- 1/2 deg $576x361$","e -- 1/4 deg $1152x721$"],
-            "when": lambda x: "Lat-Lon" in x['grid_type'],
+            "when": lambda x: "Lat-Lon" == x['grid_type'],
         },
 
        {
@@ -226,7 +226,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "c2880 -- 1/32 deg (  3   km)", \
                  "c3072 -- 1/32 deg (  3   km)", \
                  "c5760 -- 1/64 deg (  1.5 km)"],
-            "when": lambda x:  "Cubed-Sphere" in x['grid_type'],
+            "when": lambda x:  "Cubed-Sphere" == x['grid_type'],
         },
 
        {
@@ -239,7 +239,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "M09  --  9km $3852x1632$", \
                  "M25  -- 25km $1383x586$", \
                  "M36  -- 36km $963x408$"],
-            "when": lambda x: "EASEv1" in  x['grid_type'] ,
+            "when": lambda x: "EASEv1" ==  x['grid_type'] ,
         },
        {
             "type": "checkbox",
@@ -251,7 +251,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "M09  --  9km $3856x1624$", \
                  "M25  -- 25km $1388x584$", \
                  "M36  -- 36km $964x406$"],
-            "when": lambda x: "EASEv2" in x['grid_type'],
+            "when": lambda x: "EASEv2" == x['grid_type'],
         },
 
        {
@@ -269,11 +269,11 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $580x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
-            "when": lambda x:  "EASEv1" not in x['grid_type'] and "EASEv2" not in x['grid_type'],
+            "when": lambda x:  "Cubed-Sphere" == x['grid_type'],
         },
    ]
    answers = questionary.prompt(questions)
-   if 'EASEv1' in answers['grid_type'] or 'EASEv2' in answers['grid_type'] : answers['Ocean'] = ['O1  $360x180$']
+   if "Cubed-Sphere" != answers['grid_type'] : answers['Ocean'] = ['O1  $360x180$']
    answers['bcs_version'] = answers['bcs_version'].split()[0]
 
    path_q  = [

@@ -195,6 +195,6 @@ if __name__ == "__main__":
    answers = ask_questions(default_grid="EASEv2")
    configs = get_configs_from_answers(answers)
    for config in configs:
-      if 'EASEv2' in config['grid_type'] or 'EASEv1' in config['grid_type']:
+      if 'EASEv' in config['grid_type']:
          make_bcs_ease(config)
 
