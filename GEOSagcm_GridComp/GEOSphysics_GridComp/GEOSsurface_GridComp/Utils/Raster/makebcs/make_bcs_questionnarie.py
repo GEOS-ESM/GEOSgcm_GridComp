@@ -193,7 +193,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
        {
             "type": "select",
             "name": "grid_type",
-            "message": "Select grid types( select one or none of EASEv1 and EASEv2): \n ",
+            "message": "Select grid types: \n ",
             "choices": ["Cubed-Sphere", "Lat-Lon", "EASEv2", "EASEv1"],
             "default": default_grid,
         },
