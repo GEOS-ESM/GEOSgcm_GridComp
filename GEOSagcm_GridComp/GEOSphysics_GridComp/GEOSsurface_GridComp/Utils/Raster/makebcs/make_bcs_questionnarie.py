@@ -286,7 +286,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
    ]
    path_ = questionary.prompt(path_q)
 
-   answers["out_path"] = path_["out_path"] 
+   answers["out_path"] = path_["out_path"]+'/' 
 
    im = {}
    jm = {}

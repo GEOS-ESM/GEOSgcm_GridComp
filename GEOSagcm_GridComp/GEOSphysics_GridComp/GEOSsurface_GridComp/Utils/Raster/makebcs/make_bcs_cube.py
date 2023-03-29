@@ -353,9 +353,10 @@ def make_bcs_cube(config):
   else:
     print("sbatch " + bcjob +"\n")
     out = subprocess.check_output(['sbatch', bcjob])
-    jobid = int(out.split()[3])
+    jobid = str(int(out.split()[3]))
+    print( "Submitted batch job " + jobid)
     if resolution in ['c2880', 'c3072', 'c5760']:
-      subprocess.call(['sbatch', '--dependency=afterok:'+str(jobid), bcjob+'-2'])
+      subprocess.call(['sbatch', '--dependency=afterok:'+jobid, bcjob+'-2'])
        
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
