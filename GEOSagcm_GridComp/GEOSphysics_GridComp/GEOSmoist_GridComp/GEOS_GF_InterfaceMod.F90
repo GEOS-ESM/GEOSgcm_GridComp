@@ -76,12 +76,42 @@ subroutine GF_Setup (GC, CF, RC)
 
 end subroutine GF_Setup
 
-subroutine GF_Initialize (MAPL, RC)
+subroutine GF_Initialize (MAPL, CLOCK, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
+    type (ESMF_Alarm   )            :: ALARM
+    type (ESMF_TimeInterval)        :: TINT
+    real(ESMF_KIND_R8)              :: DT_R8
+    real                            :: MOIST_DT
+    real                            :: GF_DT
 
-    call MAPL_Get( MAPL, LM=LM, RC=STATUS );VERIFY_(STATUS)
+    type(ESMF_Calendar)     :: calendar
+    type(ESMF_Time)         :: currentTime
+    type(ESMF_Alarm)        :: GF_RunAlarm
+    type(ESMF_Time)         :: ringTime
+    type(ESMF_TimeInterval) :: ringInterval
+    integer                 :: year, month, day, hh, mm, ss
+
+    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)           
+    MOIST_DT = DT_R8
+    call MAPL_GetResource(MAPL, GF_DT, 'GF_DT:', default=MOIST_DT, RC=STATUS); VERIFY_(STATUS)
+
+    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalSet(ringInterval, S=nint(GF_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    
+    GF_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
+                                   Name         = 'GF_RunAlarm',&
+                                   RingInterval = ringInterval, &
+                                   RingTime     = currentTime,  &
+                                   Enabled      = .true.   ,    &
+                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
+
     if (LM .eq. 72) then
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     else
@@ -217,7 +247,7 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ENDIF
-    
+ 
 end subroutine GF_Initialize
 
 
@@ -233,10 +263,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type (MAPL_MetaComp), pointer   :: MAPL
     type (ESMF_Config  )            :: CF
     type (ESMF_State   )            :: INTERNAL
-    type (ESMF_Alarm   )            :: ALARM
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
-    real                            :: DT_MOIST
+    real                            :: GF_DT
+    type(ESMF_Alarm)                :: alarm
+    logical                         :: alarm_is_ringing
 
     ! Local variables
     integer                         :: I, J, L
@@ -292,14 +323,23 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
-    call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
-    VERIFY_(STATUS)
+    call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+
+    if (alarm_is_ringing) then
+
+!!! call WRITE_PARALLEL('GF is Running')
+    call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    GF_DT = DT_R8
+
+    call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_TimerOn (MAPL,"--GF")
 
@@ -307,17 +347,12 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !-----------------------------------
 
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         RUNALARM = ALARM,             &
          CF       = CF,                &
          LONS     = LONS,              &
          LATS     = LATS,              &
          INTERNAL_ESMF_STATE=INTERNAL, &
          RC=STATUS )
     VERIFY_(STATUS)
-
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
-    DT_MOIST = DT_R8
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -478,7 +513,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     IF (USE_GF2020==1) THEN
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pq
-         call GF2020_Interface(   IM,JM,LM,LONS,LATS,DT_MOIST                       &
+         call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, OMEGA, KH           &
                                  ,T, TH, Q, U, V, QLCN, QICN, QLLS, QILS, CNPCPRATE &
                                  ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT, ENTLAM     &
@@ -500,7 +535,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pq
-         call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,DT_MOIST                       &
+         call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, OMEGA               &
                                  ,T, TH, Q, U, V, QLCN, QICN, QLLS, QILS, CNPCPRATE &
                                  ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT,ENTLAM      &
@@ -520,10 +555,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ENDIF
 
     ! add tendencies to the moist import state
-      U  = U  +  DUDT_DC*DT_MOIST
-      V  = V  +  DVDT_DC*DT_MOIST
-      Q  = Q  + DQVDT_DC*DT_MOIST
-      T  = T  +  DTDT_DC*DT_MOIST
+      U  = U  +  DUDT_DC*GF_DT
+      V  = V  +  DVDT_DC*GF_DT
+      Q  = Q  + DQVDT_DC*GF_DT
+      T  = T  +  DTDT_DC*GF_DT
       TH = T/PK
     ! update DeepCu QL/QI/CF tendencies
       fQi = ice_fraction( T, CNV_FRC, SRF_TYPE )
@@ -541,9 +576,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
       enddo
     ! add QI/QL/CL tendencies
-      QLCN =         QLCN + DQLDT_DC*DT_MOIST
-      QICN =         QICN + DQIDT_DC*DT_MOIST
-      CLCN = MAX(MIN(CLCN + DQADT_DC*DT_MOIST, 1.0), 0.0)
+      QLCN =         QLCN + DQLDT_DC*GF_DT
+      QICN =         QICN + DQIDT_DC*GF_DT
+      CLCN = MAX(MIN(CLCN + DQADT_DC*GF_DT, 1.0), 0.0)
     ! Export
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi
@@ -562,12 +597,12 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       ! If still cant make suitable env RH then destroy anvil
       WHERE ( CLCN < 0.0 )
          CLCN = 0.
-         DQLDT_DC = DQLDT_DC - (QLCN       )/DT_MOIST
-         DQIDT_DC = DQIDT_DC - (       QICN)/DT_MOIST
-         DQVDT_DC = DQVDT_DC + (QLCN + QICN)/DT_MOIST
+         DQLDT_DC = DQLDT_DC - (QLCN       )/GF_DT
+         DQIDT_DC = DQIDT_DC - (       QICN)/GF_DT
+         DQVDT_DC = DQVDT_DC + (QLCN + QICN)/GF_DT
           Q       =  Q       + (QLCN + QICN)
          TMP3D    = (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
-         DTDT_DC  = DTDT_DC  - TMP3D/DT_MOIST
+         DTDT_DC  = DTDT_DC  - TMP3D/GF_DT
           T       =  T       - TMP3D
           TH      =  T/PK
          QLCN = 0.
@@ -576,9 +611,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       endif
 
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
-      if(associated(PTR3D)) PTR3D = CNV_PRC3 / DT_MOIST
+      if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
     call MAPL_TimerOff (MAPL,"--GF")
+
+    endif
 
 end subroutine GF_Run
 
