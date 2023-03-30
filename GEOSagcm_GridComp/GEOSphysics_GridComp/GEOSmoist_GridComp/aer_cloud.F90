@@ -29,7 +29,7 @@
     
     type :: AerProps            
 	sequence 
-          real,  dimension(nsmx_par)  :: num !Num conc m-3
+          real, dimension(nsmx_par)  :: num !Num conc m-3
           real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
     	  real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
 	  real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
@@ -39,7 +39,7 @@
 	  real, dimension(nsmx_par)  :: forg ! mass fraction of organics
 	  integer   :: nmods  ! total number of modes (nmods<nmodmax)
       end type AerProps     
-    
+   
       interface assignment (=)
          module procedure copy_aer
       end interface 
@@ -197,6 +197,7 @@
   
         real*8 :: daux, sigaux, ahet_bc
         integer ::ix
+
        call AerConversion_base
 
        !heterogeneous freezing!!!!!!!!!!!!
@@ -229,9 +230,6 @@
 	 sigaux =  AerPr_base_polluted%sig(13) 		 
          frac_org=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
 			       /sigaux/sq2_par))		       
-
-
-
 
       end subroutine aer_cloud_init
   
@@ -312,7 +310,6 @@
      
       !Variables for liquid       
        real*8 ::   nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
-       real*8, allocatable, dimension(:) :: smax_diag
       !variables for ice
         
        real*8          :: nhet, nice, smaxice, nlim, air_den, &
@@ -384,11 +381,10 @@
       allocate (amfs_par(nmodes)) !! molar mass of insoluble fraction    
       allocate (deni_par(nmodes))  ! density of insoluble fraction
       allocate (sg_par(nmodes))  ! modal supersaturation 
-      allocate (smax_diag(size(ccn_diagr8)))  !diagnostic supersat
       allocate (kappa_par(nmodes)) !Hygroscopicity parameter
 
       
-      smax_diag= 0.01
+     
       dpg_par  = zero_par
       vhf_par  = zero_par
       ams_par  = zero_par
@@ -435,7 +431,7 @@
           ams_par  = 18.0e-3*1.7*3.0/kappa_par
       elsewhere 
           ams_par =900.0e-3
-	  tp_par = 0.0
+	  	  tp_par = 0.0
       end where
       
       amfs_par= 1.0
@@ -457,9 +453,9 @@
   if  (tparc .gt. 235.0) then  ! lower T for liquid water activation 
       if (antot .gt. 1.0) then !only if aerosol is present
        ! Get CCN spectra   		    	
-       call ccnspec (tparc,pparc,nmodes)	            
+        call ccnspec (tparc,pparc,nmodes)	            
                   
-	   if (wparc .ge. 0.005) then
+	    if (wparc .ge. 0.005) then
            if (act_param .gt. 1) then !ARG(2000) activation              		       
                 
 		        call arg_activ (wparc,0.d0,nact,smax) !      
@@ -467,20 +463,20 @@
 	      else !Nenes activation	      
       
     	          call pdfactiv (wparc,0.d0,nact,smax) !      
-              endif 
-       	   endif
+          endif 
+        endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
          smaxliqr8=max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
-        smax_diag=ccn_diagr8 
+         
 	  				   
-         do k =1,  size (smax_diag)	 
-	     call ccn_at_super (smax_diag(k), ccn_at_s)
-             ccn_diagr8 (k) = ccn_at_s!m-3
-	 end do
+         do k =1, 3!  size (ccn_diagr8)	
+	     	call ccn_at_super (ccn_diagr8(k), ccn_at_s)
+            ccn_diagr8 (k) = ccn_at_s!m-3
+	 	 end do
 	
       end if 
   end if 
@@ -606,7 +602,7 @@
        ! 3- Barahona (2009) Asumme a maximum freezing fraction then scales it according to CNT
        ! 4- PDA08, using fixed size distributions.
        ! 5- Phillips 2013. Assumes monodisperse for bc and organics 
-       ! 6 - Ulrich 2017 (default) 
+       ! 6 - Ullrich 2017 (default) 
        purehet_ice= .FALSE.  !True supresses homogeneous nucleation      
        purehom_ice= .FALSE.   ! True supresses heterogeneous nucleation   
 
@@ -639,8 +635,8 @@
 			       nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
                   
 
-   	        	  !call IceParam (sigwparc,  &
-                	!	     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+   	        	  call IceParam (sigwparc,  &
+                		     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
 		  end if 
 		   
 		  sc_ice = 1.0
@@ -694,7 +690,6 @@
     deallocate (amfs_par)
     deallocate (deni_par)
     deallocate (sg_par)
-    deallocate (smax_diag)
     
     deallocate (kappa_par)
 
@@ -3452,7 +3447,7 @@ if (.false.) then
                        nsdust= max(exp(-0.517*T_ice + 150.577)-min_ns_dust, 0.0)
                        dnsd  = max(0.517*nsdust, 0.0)
 
-                       nssoot= 7.463*max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) 
+                       nssoot= 7.463*max(exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !bug 2021 
                        dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
                        
 
