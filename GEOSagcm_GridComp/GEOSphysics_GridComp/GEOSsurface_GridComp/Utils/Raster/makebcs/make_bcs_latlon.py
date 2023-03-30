@@ -8,8 +8,8 @@ from make_bcs_questionnarie import *
 
 latlon_template = """#!/bin/csh -x
 
-#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}.log
-#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}.err
+#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}/{BCNAME}.log
+#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}/{BCNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -126,12 +126,11 @@ cd ../../
 /bin/mv    {BCDIR}/{BCNAME} .
 /bin/mv    {BCJOB}                {BCNAME}
 /bin/mv    {EXPDIR}/{OUTDIR}/logs  {BCNAME}/.
-/bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
+/bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/{BCNAME}/mkCatchParam.log
 
 mkdir -p {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 mkdir -p {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 
-/bin/mv  {BCNAME}/logs  {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/logs
 /bin/mv  {BCNAME}/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til  {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 
 
@@ -178,7 +177,7 @@ def make_bcs_latlon(config):
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
   expdir = config['expdir']
   scratch_dir = expdir+ tmp_dir+'/'+bcname+'.scratch/'
-  log_dir     = expdir+'/'+tmp_dir+'/logs/'
+  log_dir     = expdir+'/'+tmp_dir+'/logs/' + bcname
   bcjob       = scratch_dir+'/'+bcname+'.j'
 
   if os.path.exists(bcjob):

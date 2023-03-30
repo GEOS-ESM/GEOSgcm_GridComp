@@ -7,8 +7,8 @@ from make_bcs_questionnarie import *
 
 cube_template = """#!/bin/csh -x
 
-#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME2}.log
-#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME2}.err
+#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}/{BCNAME2}.log
+#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}/{BCNAME2}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -174,12 +174,11 @@ cd ../../
 /bin/mv    {BCDIR}/{BCNAME} .
 /bin/mv    {BCJOB}                {BCNAME}
 /bin/mv    {EXPDIR}/{OUTDIR}/logs {BCNAME}/.
-/bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/mkCatchParam.log
+/bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/{BCNAME}/mkCatchParam.log
 
 mkdir -p {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 mkdir -p {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 
-/bin/mv  {BCNAME}/logs  {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/logs
 /bin/mv  {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til  {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 
 
@@ -241,7 +240,7 @@ def make_bcs_cube(config):
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
   expdir = config['expdir']
   scratch_dir = expdir+ tmp_dir+'/'+bcname+'.scratch/'
-  log_dir     = expdir+'/'+tmp_dir+'/logs/'
+  log_dir     = expdir+'/'+tmp_dir+'/logs/'+ bcname
   bcjob       = scratch_dir+'/'+bcname+'.j'
 
   if os.path.exists(bcjob):

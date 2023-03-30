@@ -8,8 +8,8 @@ from make_bcs_questionnarie import *
 
 ease_template = """#!/bin/csh -x
 
-#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{GRIDNAME}.log
-#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{GRIDNAME}.err
+#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{GRIDNAME}/{GRIDNAME}.log
+#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{GRIDNAME}/{GRIDNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -87,12 +87,11 @@ cd ../../
 /bin/mv    {BCDIR}/{GRIDNAME} .
 /bin/mv    {BCJOB}                {GRIDNAME}
 /bin/mv    {EXPDIR}/{OUTDIR}/logs   {GRIDNAME}/.
-/bin/mv    {GRIDNAME}/clsm/mkCatchParam.log {GRIDNAME}/logs/mkCatchParam.log
+/bin/mv    {GRIDNAME}/clsm/mkCatchParam.log {GRIDNAME}/logs/{GRIDNAME}/mkCatchParam.log
 
 mkdir -p {GRIDNAME}/geometry/{EASEVERSION}_{RES}
 mkdir -p {GRIDNAME}/land/{EASEVERSION}_{RES}
 
-/bin/mv  {GRIDNAME}/logs  {GRIDNAME}/land/{EASEVERSION}_{RES}/logs
 /bin/mv  {GRIDNAME}/{EASEVERSION}_{RES}_{RS}.til  {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
 
 
@@ -130,7 +129,7 @@ def make_bcs_ease(config):
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
   expdir = config['expdir']
   scratch_dir = expdir+ tmp_dir+'/'+gridname+'.scratch/'
-  log_dir     = expdir+'/'+tmp_dir+'/logs/'
+  log_dir     = expdir+'/'+tmp_dir+'/logs/' + gridname
   job_script       = scratch_dir+'/'+gridname+'.j'
   if os.path.exists(job_script):
     print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
