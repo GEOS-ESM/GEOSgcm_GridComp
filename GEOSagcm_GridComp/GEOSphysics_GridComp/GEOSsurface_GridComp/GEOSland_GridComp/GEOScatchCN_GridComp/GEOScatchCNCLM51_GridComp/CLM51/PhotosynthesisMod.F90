@@ -3727,7 +3727,7 @@ contains
     select case (plc_method)
        !possible to add other methods later
     case (vegetation_weibull)
-       plc=2._r8**(-(x/params_inst%psi50(ivt(p),level))**params_inst%ck(ivt(p),level))
+       plc=2._r8**(-((x/params_inst%psi50(ivt(p),level))**params_inst%ck(ivt(p),level)))
        if ( plc < 0.005_r8) plc = 0._r8
     case default
        print *,'must choose plc method'
