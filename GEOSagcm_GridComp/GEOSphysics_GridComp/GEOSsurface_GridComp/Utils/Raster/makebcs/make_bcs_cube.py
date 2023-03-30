@@ -141,27 +141,27 @@ cd ../
 /bin/mv clsm.C{NC} CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 cd  CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 mkdir clsm
-/bin/mv ar.new \\ 
-        bf.dat \\ 
-        ts.dat \\ 
-        catchment.def \\ 
-        cti_stats.dat \\ 
-        tau_param.dat \\ 
-        soil_param.dat \\ 
-        mosaic_veg_typs_fracs \\ 
-        soil_param.first \\ 
-        README \\ 
-        bad_sat_param.tiles \\ 
-        lai.* \\ 
-        AlbMap* \\ 
-        plots \\ 
-        CLM_veg_typs_fracs \\ 
-        mkCatchParam.log \\ 
-        CLM_NDep_SoilAlb_T2m \\ 
-        CLM4.5_abm_peatf_gdp_hdm_fc \\ 
-        catch_params.nc4 \\ 
-        catchcn_params.nc4 \\ 
-        country_and_state_code.data \\ 
+/bin/mv ar.new \
+        bf.dat \
+        ts.dat \
+        catchment.def \
+        cti_stats.dat \
+        tau_param.dat \
+        soil_param.dat \
+        mosaic_veg_typs_fracs \
+        soil_param.first \
+        README \
+        bad_sat_param.tiles \
+        lai.* \
+        AlbMap* \
+        plots \
+        CLM_veg_typs_fracs \
+        mkCatchParam.log \
+        CLM_NDep_SoilAlb_T2m \
+        CLM4.5_abm_peatf_gdp_hdm_fc \
+        catch_params.nc4 \
+        catchcn_params.nc4 \
+        country_and_state_code.data \
         clsm
 cd  ../ 
 
@@ -184,20 +184,21 @@ mkdir -p {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 
 
 /bin/mv  {BCNAME}/clsm               {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-/bin/mv  {BCNAME}/irrigation_{RC}.dat  \\ 
-         {BCNAME}/vegdyn_{RC}.dat      \\ 
-         {BCNAME}/nirdf_{RC}.dat       \\ 
-         {BCNAME}/visdf_{RC}.dat       \\ 
-         {BCNAME}/lai_clim_{RC}.data   \\ 
-         {BCNAME}/green_clim_{RC}.data \\ 
-         {BCNAME}/lnfm_clim_{RC}.data  \\ 
-         {BCNAME}/ndvi_clim_{RC}.data  \\ 
+/bin/mv  {BCNAME}/irrigation_{RC}.dat  \
+         {BCNAME}/vegdyn_{RC}.dat      \
+         {BCNAME}/nirdf_{RC}.dat       \
+         {BCNAME}/visdf_{RC}.dat       \
+         {BCNAME}/lai_clim_{RC}.data   \
+         {BCNAME}/green_clim_{RC}.data \
+         {BCNAME}/lnfm_clim_{RC}.data  \
+         {BCNAME}/ndvi_clim_{RC}.data  \
          {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 
 /bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 /bin/mv  {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.j {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 
 endif  # STEP2
+
 """
 
 def make_bcs_cube(config):

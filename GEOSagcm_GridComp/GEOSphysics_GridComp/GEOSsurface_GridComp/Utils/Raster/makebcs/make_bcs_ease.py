@@ -53,31 +53,31 @@ cd ../
 /bin/mv clsm.{IM}x{JM} {EASEVERSION}_{RES}
 cd  {EASEVERSION}_{RES} 
 mkdir clsm
-/bin/mv ar.new \\
-        bf.dat \\
-        ts.dat \\
-        catchment.def \\
-        cti_stats.dat \\
-        tau_param.dat \\
-        soil_param.dat \\
-        mosaic_veg_typs_fracs \\
-        soil_param.first \\
-        bad_sat_param.tiles \\
-        README \\
-        lai.* \\
-        AlbMap* \\
-        g5fmt \\
-        vegetation.hst2 \\
-        pfaf_fractions.dat \\
-        plots \\
-        CLM_veg_typs_fracs \\
-        mkCatchParam.log \\
-        Grid2Catch_TransferData.nc \\
-        CLM_NDep_SoilAlb_T2m \\
-        CLM4.5_abm_peatf_gdp_hdm_fc \\
-        catch_params.nc4 \\
-        catchcn_params.nc4 \\
-        country_and_state_code.data \\
+/bin/mv ar.new \
+        bf.dat \
+        ts.dat \
+        catchment.def \
+        cti_stats.dat \
+        tau_param.dat \
+        soil_param.dat \
+        mosaic_veg_typs_fracs \
+        soil_param.first \
+        bad_sat_param.tiles \
+        README \
+        lai.* \
+        AlbMap* \
+        g5fmt \
+        vegetation.hst2 \
+        pfaf_fractions.dat \
+        plots \
+        CLM_veg_typs_fracs \
+        mkCatchParam.log \
+        Grid2Catch_TransferData.nc \
+        CLM_NDep_SoilAlb_T2m \
+        CLM4.5_abm_peatf_gdp_hdm_fc \
+        catch_params.nc4 \
+        catchcn_params.nc4 \
+        country_and_state_code.data \
         clsm
 cd  ../ 
 /bin/mv rst  {EASEVERSION}_{RES}
@@ -97,14 +97,14 @@ mkdir -p {GRIDNAME}/land/{EASEVERSION}_{RES}
 
 
 /bin/mv  {GRIDNAME}/clsm               {GRIDNAME}/land/{EASEVERSION}_{RES}/.
-/bin/mv  {GRIDNAME}/irrigation_{RS}_DE.dat  \\
-         {GRIDNAME}/vegdyn_{RS}_DE.dat      \\
-         {GRIDNAME}/nirdf_{RS}_DE.dat       \\
-         {GRIDNAME}/visdf_{RS}_DE.dat       \\
-         {GRIDNAME}/lai_clim_{RS}_DE.data   \\
-         {GRIDNAME}/green_clim_{RS}_DE.data \\
-         {GRIDNAME}/lnfm_clim_{RS}_DE.data  \\
-         {GRIDNAME}/ndvi_clim_{RS}_DE.data  \\
+/bin/mv  {GRIDNAME}/irrigation_{RS}_DE.dat  \
+         {GRIDNAME}/vegdyn_{RS}_DE.dat      \
+         {GRIDNAME}/nirdf_{RS}_DE.dat       \
+         {GRIDNAME}/visdf_{RS}_DE.dat       \
+         {GRIDNAME}/lai_clim_{RS}_DE.data   \
+         {GRIDNAME}/green_clim_{RS}_DE.data \
+         {GRIDNAME}/lnfm_clim_{RS}_DE.data  \
+         {GRIDNAME}/ndvi_clim_{RS}_DE.data  \
          {GRIDNAME}/land/{EASEVERSION}_{RES}/.
 
 /bin/mv {GRIDNAME}/rst {GRIDNAME}/til {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
