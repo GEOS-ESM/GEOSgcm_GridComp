@@ -792,15 +792,15 @@ if( $nfiles >= 1 ) then
 endif
 
 mkdir -p $BCDIR 
-mkdir -p $EXPDIR/$OUTDIR/logs
+mkdir -p $EXPDIR/$OUTDIR/logs/$BCNAME
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -920,12 +920,11 @@ cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
 
 mkdir -p $BCNAME/geometry/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
 mkdir -p $BCNAME/land/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
 
-/bin/mv  $BCNAME/logs  $BCNAME/land/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/logs
 /bin/mv  $BCNAME/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til  $BCNAME/geometry/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/.
 
 
@@ -992,7 +991,7 @@ if( $nfiles >= 1 ) then
 endif
 
 mkdir -p $BCDIR
-mkdir -p $EXPDIR/$OUTDIR/logs
+mkdir -p $EXPDIR/$OUTDIR/logs/$BCNAME
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -1000,8 +999,8 @@ if ($HRCODE == c2880 | $HRCODE == c3072 | $HRCODE == c5760) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -1067,8 +1066,8 @@ set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
 cat << _EOF_ > $BCJOB-2
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME-2.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME-2.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME-2.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME-2.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -1177,12 +1176,11 @@ cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB-2              $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
 
 mkdir -p $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 mkdir -p $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 
-/bin/mv  $BCNAME/logs  $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/logs
 /bin/mv  $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til  $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
 
 
@@ -1212,8 +1210,8 @@ else
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -1355,12 +1353,11 @@ cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB              $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
 
 mkdir -p $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 mkdir -p $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 
-/bin/mv  $BCNAME/logs  $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/logs
 /bin/mv  $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til  $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
 
 
@@ -1419,7 +1416,7 @@ if( $grid == ease ) then
   endif
 
   mkdir -p $BCDIR 
-  mkdir -p $EXPDIR/$OUTDIR/logs
+  mkdir -p $EXPDIR/$OUTDIR/logs/$BCNAME
 
   echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
   /bin/rm -f     $BCJOB
@@ -1427,8 +1424,8 @@ if( $grid == ease ) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -1522,12 +1519,11 @@ cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs   $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
 
 mkdir -p $BCNAME/geometry/${EASEVERSION}_${HRCODE}
 mkdir -p $BCNAME/land/${EASEVERSION}_${HRCODE}
 
-/bin/mv  $BCNAME/logs  $BCNAME/land/${EASEVERSION}_${HRCODE}/logs
 /bin/mv  $BCNAME/${EASEVERSION}_${HRCODE}_${RS}.til  $BCNAME/geometry/${EASEVERSION}_${HRCODE}/.
 
 
