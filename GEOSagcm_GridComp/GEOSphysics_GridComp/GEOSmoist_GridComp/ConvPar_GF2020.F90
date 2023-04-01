@@ -177,7 +177,7 @@ CONTAINS
                                ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN,CLLS     &
                                ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                ,RADSW   ,RADLW ,DQDT_BL  ,DTDT_BL                 &
-                               ,FRLAND  ,AREA  ,USTAR ,TSTAR ,QSTAR ,T2M ,Q2M     &
+                               ,FRLAND  ,AREA  ,T2M ,Q2M     &
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
                                ,KPBLIN  ,CNVFRC,SRFTYPE                           &
                                ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
@@ -210,7 +210,7 @@ CONTAINS
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: RADSW, RADLW, DQDT_BL, DTDT_BL
 
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: FRLAND, AREA, USTAR, TSTAR, QSTAR, &
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: FRLAND, AREA, &
                                                       T2M, Q2M, TA, QA, SH, EVAP, PHIS,  &
                                                       LONS, LATS, &
                                                       STOCHASTIC_SIG
@@ -548,8 +548,8 @@ CONTAINS
        DO k=1,mzp
          gsf_t (k,i,j) = 0.
          gsf_q (k,i,j) = 0.
-        sgsf_t (k,i,j) = 0. !DTDT_BL(i,j,flip(k)) + RADSW(i,j,flip(k)) + RADLW(i,j,flip(k))
-        sgsf_q (k,i,j) = 0. !DQDT_BL(i,j,flip(k))
+        sgsf_t (k,i,j) = 0.
+        sgsf_q (k,i,j) = 0.
         advf_t (k,i,j) = 0.
        ENDDO
       ENDDO

@@ -314,7 +314,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CNV_MF0, ENTLAM
     real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD
     real, pointer, dimension(:,:,:) :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d
-    real, pointer, dimension(:,:  ) :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
+    real, pointer, dimension(:,:  ) :: T2M,Q2M,TA,QA,SH,EVAP,PHIS
     real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
     real, pointer, dimension(:,:  ) :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
     real, pointer, dimension(:,:  ) :: TPWI,TPWI_star,LFR_GF,CNPCPRATE
@@ -377,9 +377,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, KH        ,'KH'        ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, USTAR     ,'USTAR'     ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TSTAR     ,'TSTAR'     ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, QSTAR     ,'QSTAR'     ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, T2M       ,'T2M'       ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, Q2M       ,'Q2M'       ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TA        ,'TA'        ,RC=STATUS); VERIFY_(STATUS)
@@ -520,7 +517,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN, CLLS    &
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, TMP2D, USTAR, TSTAR, QSTAR, T2M           &
+                                 ,FRLAND, TMP2D, T2M           &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
                                  ,KPBL ,CNV_FRC, SRF_TYPE                           &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
@@ -542,7 +539,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN         &
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, TMP2D, USTAR, TSTAR, QSTAR, T2M, Q2M      &
+                                 ,FRLAND, TMP2D, T2M, Q2M      &
                                  ,TA ,QA ,SH ,EVAP ,PHIS                            &  
                                  ,KPBL ,CNV_FRC, SRF_TYPE                           &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
