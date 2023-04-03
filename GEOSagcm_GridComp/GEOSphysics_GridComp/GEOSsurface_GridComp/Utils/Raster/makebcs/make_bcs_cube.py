@@ -195,6 +195,7 @@ mkdir -p {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
 
 /bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 /bin/mv  {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.j {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+/bin/rm -r {OUTDIR}
 
 endif  # STEP2
 

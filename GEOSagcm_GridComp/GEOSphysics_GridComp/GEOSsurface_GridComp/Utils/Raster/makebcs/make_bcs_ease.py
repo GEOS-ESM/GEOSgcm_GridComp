@@ -108,6 +108,7 @@ mkdir -p {GRIDNAME}/land/{EASEVERSION}_{RES}
 
 /bin/mv {GRIDNAME}/rst {GRIDNAME}/til {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
 /bin/mv {GRIDNAME}/{GRIDNAME}.j {GRIDNAME}/geometry/{EASEVERSION}_{RES}/.
+/bin/rm -r {OUTDIR}
 
 """
 
