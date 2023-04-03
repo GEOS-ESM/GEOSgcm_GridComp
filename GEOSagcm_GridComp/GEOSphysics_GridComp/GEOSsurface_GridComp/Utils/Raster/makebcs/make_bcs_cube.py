@@ -214,6 +214,7 @@ def make_bcs_cube(config):
      return
 
   resolution = config['resolution']
+  orslv      = config['orslvs']
 
   account = get_account()
   IMO = '%04d'%config['imo']
@@ -239,6 +240,7 @@ def make_bcs_cube(config):
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
+  tmp_dir=f"{resolution}_{orslv}_{tmp_dir}"
   expdir = config['expdir']
   scratch_dir = expdir+ tmp_dir+'/'+bcname+'.scratch/'
   log_dir     = expdir+'/'+tmp_dir+'/logs/'+ bcname

@@ -128,6 +128,7 @@ def make_bcs_ease(config):
   gridname  = grid_type+'_'+ resolution
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
+  tmp_dir=f"{resolution}_{tmp_dir}"
   expdir = config['expdir']
   scratch_dir = expdir+ tmp_dir+'/'+gridname+'.scratch/'
   log_dir     = expdir+'/'+tmp_dir+'/logs/' + gridname
