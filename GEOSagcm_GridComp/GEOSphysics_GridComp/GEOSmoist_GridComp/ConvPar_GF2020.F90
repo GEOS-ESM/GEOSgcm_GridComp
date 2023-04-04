@@ -548,8 +548,8 @@ CONTAINS
        DO k=1,mzp
          gsf_t (k,i,j) = 0.
          gsf_q (k,i,j) = 0.
-        sgsf_t (k,i,j) = DTDT_BL(i,j,flip(k)) + RADSW(i,j,flip(k)) + RADLW(i,j,flip(k))
-        sgsf_q (k,i,j) = DQDT_BL(i,j,flip(k))
+        sgsf_t (k,i,j) = 0. !DTDT_BL(i,j,flip(k)) + RADSW(i,j,flip(k)) + RADLW(i,j,flip(k))
+        sgsf_q (k,i,j) = 0. !DQDT_BL(i,j,flip(k))
         advf_t (k,i,j) = 0.
        ENDDO
       ENDDO
@@ -9230,8 +9230,8 @@ loop0:  do k= kbcon(i),ktop(i)
              outtem (i,k) = tend2d(k,1)
              outq   (i,k) = tend2d(k,2)
              outqc  (i,k) = tend2d(k,3)
-                  outu   (i,k) = tend2d(k,4)
-                   outv   (i,k) = tend2d(k,5)
+             outu   (i,k) = tend2d(k,4)
+             outv   (i,k) = tend2d(k,5)
            ENDDO
 cycle
 
