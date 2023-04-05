@@ -98,6 +98,7 @@ module GEOS_SurfaceGridCompMod
   integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
+  logical :: DO_FIRE_DANGER
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
@@ -243,6 +244,7 @@ module GEOS_SurfaceGridCompMod
        _ASSERT(.FALSE.,'unknown LSM_CHOICE')
     end if
     call MAPL_GetResource    (SCF,  CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,          __RC__ )
+    call MAPL_GetResource    (SCF,  DO_FIRE_DANGER,label='FIRE_DANGER:',            DEFAULT=.false.,    __RC__ )
 
     call ESMF_ConfigDestroy(SCF, __RC__ )
     
@@ -2961,6 +2963,178 @@ module GEOS_SurfaceGridCompMod
 
   END IF
 
+
+  if (DO_FIRE_DANGER) then
+
+    ! hourly
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC',                      &
+         LONG_NAME  = 'fine fuel moisture code',   &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'GFMC',                      &
+         LONG_NAME  = 'grass fuel moisture code',  &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC',                       &
+         LONG_NAME  = 'duff moisture code',        &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC',                        &
+         LONG_NAME  = 'drought code',              &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI',                       &
+         LONG_NAME  = 'fire weather index',        &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'BUI',                       &
+         LONG_NAME  = 'buildup index',             &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI',                       &
+         LONG_NAME  = 'initial spread index',      &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR',                       &
+         LONG_NAME  = 'daily severity rating',     &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    ! daily
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC_DAILY',                &
+         LONG_NAME  = 'fine fuel moisture code (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC_DAILY',                 &
+         LONG_NAME  = 'duff moisture code (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC_DAILY',                  &
+         LONG_NAME  = 'drought code (daily)',      &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI_DAILY',                 &
+         LONG_NAME  = 'fire weather index (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'BUI_DAILY',                 &
+         LONG_NAME  = 'buildup index (daily)',     &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI_DAILY',                 &
+         LONG_NAME  = 'initial spread index (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR_DAILY',                 &
+         LONG_NAME  = 'daily severity rating (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC_DAILY_',               &
+         LONG_NAME  = 'fine fuel moisture code (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC_DAILY_',                &
+         LONG_NAME  = 'duff moisture code (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC_DAILY_',                 &
+         LONG_NAME  = 'drought code (daily)',      &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI_DAILY_',                &
+         LONG_NAME  = 'fire weather index (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'BUI_DAILY_',                &
+         LONG_NAME  = 'buildup index (daily)',     &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI_DAILY_',                &
+         LONG_NAME  = 'initial spread index (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR_DAILY_',                &
+         LONG_NAME  = 'daily severity rating (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    ! flammability and ignition sources
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'VPD',                       &
+         LONG_NAME  = 'vapor pressure deficit',    &
+         UNITS      = 'Pa',                        &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+  end if
+
+
 ! !INTERNAL STATE:
 
 !  These are here only because they are passed between run1 and run2.
@@ -5162,6 +5336,34 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SIF         => NULL()
     real, pointer, dimension(:,:) :: CNFSEL      => NULL()
 
+! Fire danger
+    real, pointer, dimension(:,:) :: FFMC        => NULL()
+    real, pointer, dimension(:,:) :: GFMC        => NULL()
+    real, pointer, dimension(:,:) :: DMC         => NULL()
+    real, pointer, dimension(:,:) :: DC          => NULL()
+    real, pointer, dimension(:,:) :: ISI         => NULL()
+    real, pointer, dimension(:,:) :: BUI         => NULL()
+    real, pointer, dimension(:,:) :: FWI         => NULL()
+    real, pointer, dimension(:,:) :: DSR         => NULL()
+
+    real, pointer, dimension(:,:) :: FFMC_DAILY  => NULL()
+    real, pointer, dimension(:,:) :: DMC_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: DC_DAILY    => NULL()
+    real, pointer, dimension(:,:) :: ISI_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: BUI_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: FWI_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: DSR_DAILY   => NULL()
+
+    real, pointer, dimension(:,:) :: FFMC_DAILY_ => NULL()
+    real, pointer, dimension(:,:) :: DMC_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: DC_DAILY_   => NULL()
+    real, pointer, dimension(:,:) :: ISI_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: BUI_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: FWI_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: DSR_DAILY_  => NULL()
+
+    real, pointer, dimension(:,:) :: VPD         => NULL()
+
 !   These are the tile versions of the imports
 
     real, pointer, dimension(:) :: PSTILE          => NULL()
@@ -5425,6 +5627,35 @@ module GEOS_SurfaceGridCompMod
 
     real, pointer, dimension(:) :: SLITILE      => NULL()
     real, pointer, dimension(:) :: ZTHTILE      => NULL()
+
+! Fire danger
+    real, pointer, dimension(:) :: FFMCTILE       => NULL()
+    real, pointer, dimension(:) :: GFMCTILE       => NULL()
+    real, pointer, dimension(:) :: DMCTILE        => NULL()
+    real, pointer, dimension(:) :: DCTILE         => NULL()
+    real, pointer, dimension(:) :: ISITILE        => NULL()
+    real, pointer, dimension(:) :: BUITILE        => NULL()
+    real, pointer, dimension(:) :: FWITILE        => NULL()
+    real, pointer, dimension(:) :: DSRTILE        => NULL()
+
+    real, pointer, dimension(:) :: FFMCDAILYTILE  => NULL()
+    real, pointer, dimension(:) :: DMCDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: DCDAILYTILE    => NULL()
+    real, pointer, dimension(:) :: ISIDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: BUIDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: FWIDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: DSRDAILYTILE   => NULL()
+
+    real, pointer, dimension(:) :: FFMCDAILYTILE_ => NULL()
+    real, pointer, dimension(:) :: DMCDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: DCDAILYTILE_   => NULL()
+    real, pointer, dimension(:) :: ISIDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: BUIDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: FWIDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: DSRDAILYTILE_  => NULL()
+
+    real, pointer, dimension(:) :: VPDTILE        => NULL()
+
 
     real, pointer, dimension(:,:) :: TMP => NULL()
     real, pointer, dimension(:,:) :: TTM => NULL()
@@ -6261,6 +6492,35 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , CNFSEL  , 'CNFSEL' ,  RC=STATUS); VERIFY_(STATUS)
     END IF
 
+    if (DO_FIRE_DANGER) then
+       call MAPL_GetPointer(EXPORT  , FFMC        , 'FFMC'       ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , GFMC        , 'GFMC'       ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DMC         , 'DMC'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DC          , 'DC'         ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , FWI         , 'FWI'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , BUI         , 'BUI'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , ISI         , 'ISI'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DSR         , 'DSR'        ,  RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_GetPointer(EXPORT  , FFMC_DAILY  , 'FFMC_DAILY' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DMC_DAILY   , 'DMC_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DC_DAILY    , 'DC_DAILY'   ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , FWI_DAILY   , 'FWI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , BUI_DAILY   , 'BUI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , ISI_DAILY   , 'ISI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DSR_DAILY   , 'DSR_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+ 
+       call MAPL_GetPointer(EXPORT  , FFMC_DAILY_ , 'FFMC_DAILY_',  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DMC_DAILY_  , 'DMC_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DC_DAILY_   , 'DC_DAILY_'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , FWI_DAILY_  , 'FWI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , BUI_DAILY_  , 'BUI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , ISI_DAILY_  , 'ISI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DSR_DAILY_  , 'DSR_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_GetPointer(EXPORT  , VPD         , 'VPD'        ,  RC=STATUS); VERIFY_(STATUS)
+    end if
+
 ! Force allocation for ice fraction for lwi mask
 
     call MAPL_GetPointer(EXPORT  , FRI     , 'FRACI'  ,  alloc=associated(LWI) , rC=STATUS)
@@ -6386,7 +6646,7 @@ module GEOS_SurfaceGridCompMod
 
     ZTHTILE = max(0.0,ZTHTILE)
 
-! We need atmsopheric version of the run1 outputs put back on tiles
+! We need atmospheric version of the run1 outputs put back on tiles
 !------------------------------------------------------------------
 
     allocate(   TSTILE(NT), STAT=STATUS)
@@ -6840,6 +7100,36 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(SIF     ,SIFTILE     ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNFSEL  ,CNFSELTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     END IF
+
+    if (DO_FIRE_DANGER) then 
+       call MKTILE(FFMC,        FFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(GFMC,        GFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DMC,         DMCTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DC,          DCTILE,            NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(FWI,         FWITILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(BUI,         BUITILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(ISI,         ISITILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DSR,         DSRTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+
+       call MKTILE(FFMC_DAILY,  FFMCDAILYTILE,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DMC_DAILY,   DMCDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DC_DAILY,    DCDAILYTILE,       NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(FWI_DAILY,   FWIDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(BUI_DAILY,   BUIDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(ISI_DAILY,   ISIDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DSR_DAILY,   DSRDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+
+       call MKTILE(FFMC_DAILY_, FFMCDAILYTILE_,    NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DMC_DAILY_,  DMCDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DC_DAILY_,   DCDAILYTILE_,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(FWI_DAILY_,  FWIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(BUI_DAILY_,  BUIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(ISI_DAILY_,  ISIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DSR_DAILY_,  DSRDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+
+       call MKTILE(VPD,         VPDTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+    end if   
+
 
     FRTILE = 0.0
     OFRTILE = MAPL_UNDEF
@@ -7753,6 +8043,103 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM,CNFSEL,CNFSELTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
+
+! Fire danger
+    if (associated(FFMC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC, FFMCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(GFMC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, GFMC, GFMCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DMC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC, DMCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DC, DCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(ISI)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI, ISITILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(BUI)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI, BUITILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(FWI)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI, FWITILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DSR)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR, DSRTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+
+    if (associated(FFMC_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY, FFMCDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DMC_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY, DMCDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DC_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY, DCDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(ISI_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY, ISIDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(BUI_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY, BUIDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(FWI_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY, FWIDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DSR_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY, DSRDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+
+    if (associated(FFMC_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY_, FFMCDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DMC_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY_, DMCDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DC_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY_, DCDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(ISI_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY_, ISIDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(BUI_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY_, BUIDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(FWI_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY_, FWIDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DSR_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY_, DSRDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(VPD)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, VPD, VPDTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+
 
 ! Fill exports computed on agcm grid
 !-----------------------------------
@@ -8712,6 +9099,59 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'FHOCN' ,ALLOC=associated(FHOCNTILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
+      if (DO_FIRE_DANGER) then
+         call MAPL_GetPointer(GEX(type), dum, 'FFMC', ALLOC=associated(FFMCTILE), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'GFMC', ALLOC=associated(GFMCTILE), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DMC',  ALLOC=associated(DMCTILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DC',   ALLOC=associated(DCTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'ISI',  ALLOC=associated(ISITILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'BUI',  ALLOC=associated(BUITILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'FWI',  ALLOC=associated(FWITILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DSR',  ALLOC=associated(DSRTILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+
+         call MAPL_GetPointer(GEX(type), dum, 'FFMC_DAILY',  ALLOC=associated(FFMCDAILYTILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DMC_DAILY',   ALLOC=associated(DMCDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DC_DAILY',    ALLOC=associated(DCDAILYTILE),    notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'ISI_DAILY',   ALLOC=associated(ISIDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'BUI_DAILY',   ALLOC=associated(BUIDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'FWI_DAILY',   ALLOC=associated(FWIDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DSR_DAILY',   ALLOC=associated(DSRDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+
+         call MAPL_GetPointer(GEX(type), dum, 'FFMC_DAILY_', ALLOC=associated(FFMCDAILYTILE_), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DMC_DAILY_',  ALLOC=associated(DMCDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DC_DAILY_',   ALLOC=associated(DCDAILYTILE_),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'ISI_DAILY_',  ALLOC=associated(ISIDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'BUI_DAILY_',  ALLOC=associated(BUIDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'FWI_DAILY_',  ALLOC=associated(FWIDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DSR_DAILY_',  ALLOC=associated(DSRDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+
+         call MAPL_GetPointer(GEX(type), dum, 'VPD',         ALLOC=associated(VPDTILE),        notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+      end if   
+
+
 ! All children can produce these                       
                                                                                        
       call MAPL_GetPointer(GEX(type), dum, 'DELTS'  , ALLOC=associated(DTSTILE)    , RC=STATUS)
@@ -9495,6 +9935,103 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'DISCHARGE'  ,DISCHARGETILE,   XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
+
+! Fire danger
+      if (associated(FFMCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'FFMC', FFMCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(GFMCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'GFMC', GFMCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DMCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DMC', DMCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DC', DCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(ISITILE)) then
+         call FILLOUT_TILE(GEX(type), 'ISI', ISITILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(BUITILE)) then
+         call FILLOUT_TILE(GEX(type), 'BUI', BUITILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(FWITILE)) then
+         call FILLOUT_TILE(GEX(type), 'FWI', FWITILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DSRTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DSR', DSRTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+
+      if (associated(FFMCDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'FFMC_DAILY', FFMCDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DMCDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DMC_DAILY', DMCDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DCDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DC_DAILY', DCDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(ISIDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'ISI_DAILY', ISIDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(BUIDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'BUI_DAILY', BUIDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(FWIDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'FWI_DAILY', FWIDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DSRDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DSR_DAILY', DSRDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+
+      if (associated(FFMCDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'FFMC_DAILY_', FFMCDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DMCDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'DMC_DAILY_', DMCDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DCDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'DC_DAILY_', DCDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(ISIDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'ISI_DAILY_', ISIDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(BUIDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'BUI_DAILY_', BUIDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(FWIDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'FWI_DAILY_', FWIDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DSRDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'DSR_DAILY_', DSRDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if   
+      if (associated(VPDTILE)) then
+         call FILLOUT_TILE(GEX(type), 'VPD', VPDTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+
 
       call MAPL_TimerOff(MAPL,"--RUN2_"//trim(GCNames(type)))
       call MAPL_TimerOff(MAPL,           trim(GCNames(type)))

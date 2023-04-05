@@ -711,11 +711,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: bgstressmax
   real, pointer, dimension(:,:)       :: LATS
 
-  character(len=ESMF_MAXSTR) :: GRIDNAME
-  character(len=4)           :: imchar
-  character(len=2)           :: dateline
-  integer                    :: imsize,nn
-
 ! Rayleigh friction parameters
 
   REAL                                :: H0, HH, Z1, TAU1
@@ -751,16 +746,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          RUNALARM=ALARM, LATS=LATS,  &
                            RC=STATUS )
     VERIFY_(STATUS)
-
-! Get grid name to determine IMSIZE
-    call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', RC=STATUS)
-    VERIFY_(STATUS)
-    GRIDNAME =  AdjustL(GRIDNAME)
-    nn = len_trim(GRIDNAME)
-    dateline = GRIDNAME(nn-1:nn)
-    imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
-    read(imchar,*) imsize
-    if(dateline.eq.'CF') imsize = imsize*4
 
 ! Gravity wave drag
 ! -----------------
