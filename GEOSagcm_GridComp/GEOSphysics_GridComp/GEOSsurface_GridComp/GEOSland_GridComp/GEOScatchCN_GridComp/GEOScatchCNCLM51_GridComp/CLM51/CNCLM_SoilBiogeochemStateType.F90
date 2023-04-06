@@ -50,7 +50,7 @@ module SoilBiogeochemStateType
 contains
 
 !---------------------------------------
- subroutine Init(this, bounds, nch, cncol, cn5_cold_start, rc)
+ subroutine Init(this, bounds, nch, cncol, rc)
 
     !
     ! !ARGUMENTS:
@@ -58,7 +58,6 @@ contains
     type(bounds_type),                     intent(in) :: bounds
     integer,                               intent(in) :: nch ! number of tiles
     real, dimension(nch,NUM_ZON,VAR_COL),  intent(in) :: cncol ! gkw: column CN restart
-    logical, optional,                     intent(in) :: cn5_cold_start
     class(soilbiogeochem_state_type)                  :: this
     integer, optional,                     intent(out) :: rc
     !
@@ -66,21 +65,11 @@ contains
     integer :: begp, endp
     integer :: begc,endc
     integer :: n, nc, nz, np
-    logical :: cold_start = .false.
     !-----------------------------------
 
     begp = bounds%begp; endp= bounds%endp
     begc = bounds%begc; endc= bounds%endc
 
-    ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start.eqv..true.)) then
-       cold_start = .true.
-    end if
-
-    ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
-    if ((cold_start.eqv..false.) .and. (size(cncol,3).ne.var_col)) then
-       _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
-    end if
 
     allocate(this%leaf_prof_patch     (begp:endp,1:nlevdecomp_full)) ; this%leaf_prof_patch     (:,:) = spval
     allocate(this%froot_prof_patch    (begp:endp,1:nlevdecomp_full)) ; this%froot_prof_patch    (:,:) = spval
