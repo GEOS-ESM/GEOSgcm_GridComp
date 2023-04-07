@@ -1692,7 +1692,7 @@ module GEOSmoist_Process_Library
       QVx = ( QV - QSx*AF )*tmpARR
 
       if ( AF >= 1.0 )  QVx = QSx*1.e-4 
-      if ( AF >  0.0 )  QAx = QA/AF
+      if ( AF >  tiny(1.0) )  QAx = QA/AF
 
       QT  = QCx + QVx
 
