@@ -323,8 +323,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           MFD_SC = 0.0
         end where
        ! Tiedtke-style cloud fraction !!
-        DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
-       !DQADT_SC= DCM_SC*SCLM_SHALLOW/MASS ! Generally reduces low cloud QA
+       !if (JASON_UW) then
+           DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
+       !else
+       !   DQADT_SC= DCM_SC*SCLM_SHALLOW/MASS ! Generally reduces low cloud QA
+       !endif
         CLCN = CLCN + DQADT_SC*DT_MOIST
         CLCN = MIN( CLCN , 1.0 )
       !  Convert detrained water units before passing to cloud
