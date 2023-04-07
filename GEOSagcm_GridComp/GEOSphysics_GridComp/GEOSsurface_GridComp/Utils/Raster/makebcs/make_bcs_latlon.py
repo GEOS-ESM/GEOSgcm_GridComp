@@ -132,6 +132,7 @@ mkdir -p {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 mkdir -p {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}
 
 /bin/mv  {BCNAME}/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til  {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
+if( {TRIPOL_OCEAN} == True ) /bin/mv {BCNAME}/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.TRN {BCNAME}/geometry/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
 
 
 /bin/mv  {BCNAME}/clsm               {BCNAME}/land/DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}/.
