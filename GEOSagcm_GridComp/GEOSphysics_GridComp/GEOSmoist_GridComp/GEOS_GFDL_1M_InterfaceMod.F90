@@ -891,7 +891,13 @@ end subroutine GFDL_1M_Run
 
    subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
       real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
+     ! local storage for cnv fraction of condensate/cloud
+      real :: FCN(size(CF,1),size(CF,2),size(CF,3))
 
+      FCN = 0.0
+      WHERE (QLCN+QLLS > 0.0)
+         FCN = min(max(QLCN/(QLCN+QLLS), 0.0), 1.0)
+      END WHERE
       WHERE (QL < 1.e-8)
         QV   = QV + QL
         TE   = TE - (MAPL_ALHL/MAPL_CP)*QL
@@ -899,10 +905,14 @@ end subroutine GFDL_1M_Run
         QLLS = 0.0
         QLCN = 0.0
       ELSE WHERE
-        QLCN = MAX(0.0,MIN(QL,QLCN))
+        QLCN = FCN*QL
         QLLS = MAX(0.0,QL-QLCN)
       END WHERE
 
+      FCN = 0.0
+      WHERE (QICN+QILS > 0.0)
+         FCN = min(max(QICN/(QICN+QILS), 0.0), 1.0)
+      END WHERE
       WHERE (QI < 1.e-8)
         QV   = QV + QI
         TE   = TE - (MAPL_ALHS/MAPL_CP)*QI
@@ -910,10 +920,14 @@ end subroutine GFDL_1M_Run
         QILS = 0.0
         QICN = 0.0
       ELSE WHERE
-        QICN = MAX(0.0,MIN(QI,QICN))
+        QICN = FCN*QI
         QILS = MAX(0.0,QI-QICN)
       END WHERE
 
+      FCN = 0.0
+      WHERE (CLCN+CLLS > 0.0)
+         FCN = min(max(CLCN/(CLCN+CLLS), 0.0), 1.0)
+      END WHERE
       WHERE ( (CF < 1.e-5) .or. (QL+QI < 1.e-8) )
         CF   = 0.0
         CLLS = 0.0
@@ -927,7 +941,7 @@ end subroutine GFDL_1M_Run
         QILS = 0.0
         QICN = 0.0
       ELSE WHERE
-        CLCN = MAX(0.0,MIN(CF,CLCN,1.0))
+        CLCN = FCN*CF
         CLLS = MAX(0.0,MIN(CF-CLCN,1.0))
       END WHERE
 

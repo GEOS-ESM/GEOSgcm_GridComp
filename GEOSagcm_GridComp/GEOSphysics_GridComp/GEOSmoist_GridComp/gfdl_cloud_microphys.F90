@@ -2070,23 +2070,24 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! -----------------------------------------------------------------------
         ! cloud water < -- > vapor adjustment: LS evaporation
         ! -----------------------------------------------------------------------
-          qsw = wqs2 (tz (k), den (k), dwsdt)
-          dq0 = qsw - qv (k)
+        if (do_evap) then
+        qsw = wqs2 (tz (k), den (k), dwsdt)
+        dq0 = qsw - qv (k)
         if (dq0 > qvmin) then
-              factor = min (1., fac_l2v * (10. * dq0 / qsw))
-              evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
-          else
-              evap = 0.0
-          endif
-        if (.not. do_evap) evap = min(evap,max(0.0,ql(k)-qlcn(k))) ! restrict evap to just LS QL
+            factor = min (1., fac_l2v * (10. * dq0 / qsw))
+            evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
+        else
+            evap = 0.0
+        endif
         ! new total condensate / old condensate 
         qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-evap,0.0  ) / &
                                        max(qi(k)+ql(k)     ,qcmin) ) )
-          qv (k) = qv (k) + evap
-          ql (k) = ql (k) - evap
-          q_liq (k) = q_liq (k) - evap
-          cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-          tz (k) = tz (k) - evap * lhl (k) / cvm (k)
+        qv (k) = qv (k) + evap
+        ql (k) = ql (k) - evap
+        q_liq (k) = q_liq (k) - evap
+        cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
+        tz (k) = tz (k) - evap * lhl (k) / cvm (k)
+        endif
 
         ! -----------------------------------------------------------------------
         ! update heat capacity and latend heat coefficient
@@ -2146,16 +2147,16 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! sublimation / deposition of LS ice
         ! -----------------------------------------------------------------------
         
-        if (tz (k) < tice) then
-           ! partial subl of LS ice
+        if (do_subl .and. (tz (k) < tice)) then
+            ! partial subl of LS ice
             qsi = iqs2 (tz (k), den (k), dqsdt)
-           dq = (qv (k) - qsi)
-           sink = min(qi(k), dq / (1. + tcpk (k) * dqsdt))
-           if (qi (k) > qcmin) then
+            dq = (qv (k) - qsi)
+            sink = min(qi(k), dq / (1. + tcpk (k) * dqsdt))
+            if (qi (k) > qcmin) then
                 ! eq 9, hong et al. 2004, mwr
                 ! for a and b, see dudhia 1989: page 3103 eq (b7) and (b8)
-              pidep = dts * dq * 349138.78 * exp (0.875 * log (qi (k) * den (k))) &
-                     / (qsi * den (k) * lat2 / (0.0243 * rvgas * tz (k) ** 2) + 4.42478e4)
+                pidep = dts * dq * 349138.78 * exp (0.875 * log (qi (k) * den (k))) &
+                      / (qsi * den (k) * lat2 / (0.0243 * rvgas * tz (k) ** 2) + 4.42478e4)
             else
                 pidep = 0.
             endif
@@ -2167,13 +2168,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
                 sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk (k))
             else ! ice -- > vapor
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
-                sink = max (pidep, sink, - qi (k))
-              if (.not. do_subl) sink = max(sink,min(0.0,-1.0*(qi(k)-qicn(k)))) ! restrict subl to just LS QI
+                sink = fac_i2v * max (pidep, sink, - qi (k))
             endif
-
-           ! new total condensate / old condensate
-           qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)+sink,0.0  ) / &
-                                          max(qi(k)+ql(k)     ,qcmin) ) )
+            ! new total condensate / old condensate
+            qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)+sink,0.0  ) / &
+                                           max(qi(k)+ql(k)     ,qcmin) ) )
             qv (k) = qv (k) - sink
             qi (k) = qi (k) + sink
             q_sol (k) = q_sol (k) + sink
