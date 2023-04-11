@@ -2147,8 +2147,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! sublimation / deposition of LS ice
         ! -----------------------------------------------------------------------
         
-        if (do_subl .and. (tz (k) < tice)) then
-            ! partial subl of LS ice
+        if (tz (k) < tice) then
             qsi = iqs2 (tz (k), den (k), dqsdt)
             dq = (qv (k) - qsi)
             sink = min(qi(k), dq / (1. + tcpk (k) * dqsdt))
@@ -2161,14 +2160,20 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
                 pidep = 0.
             endif
             if (dq > 0.) then ! vapor - > ice
+              ! deposition
                 tmp = tice - tz (k)
               ifrac = ice_fraction(tz(k),cnv_fraction,srf_type)
               qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp)))
               qi_crt = max (qi_crt, 1.82e-6) * min (qi_lim, ifrac) / den (k)
                 sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk (k))
             else ! ice -- > vapor
+              ! sublimation
+              if (do_subl) then
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
                 sink = fac_i2v * max (pidep, sink, - qi (k))
+              else
+                sink = 0.
+              endif
             endif
             ! new total condensate / old condensate
             qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)+sink,0.0  ) / &
