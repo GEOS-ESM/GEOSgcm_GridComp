@@ -1,166 +1,328 @@
 MODULE Aer_Actv_Single_Moment
 !
+#include "MAPL_Generic.h"
+
+      USE ESMF
+      USE MAPL
       USE aer_cloud, only: AerProps
-      USE MAPL_ConstantsMod, only: MAPL_PI  
 !-------------------------------------------------------------------------------------------------------------------------
       IMPLICIT NONE
-      PUBLIC ::  Aer_Actv_1M_interface,  INT_USE_AEROSOL_NN, USE_AEROSOL_NN
+      PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR
       PRIVATE
-       real*8, parameter :: zero_par  =  1.0D-20
-       real*8, parameter :: ai        =  0.0000594D0
-       real*8, parameter :: bi        =  3.33D0
-       real*8, parameter :: ci        =  0.0264D0
-       real*8, parameter :: di        =  0.0033D0
 
-       real*8, parameter :: betai     = -2.262D+3
-       real*8, parameter :: gamai     =  5.113D+6
-       real*8, parameter :: deltai    =  2.809D+3
-       real*8, parameter :: densic    =  500.D0   !Ice crystal density in kgm-3
+       ! Real kind for activation.
+       integer,public,parameter :: AER_R4 = SELECTED_REAL_KIND(6,37)
+       integer,public,parameter :: AER_R8 = SELECTED_REAL_KIND(15,307)
+       integer,public,parameter :: AER_PR = AER_R8
 
-    
-      !-- try 50.e6 over ocean, 300e6 over land   
-       real, parameter :: NN_LAND     = 150.0e6
-       real, parameter :: NN_OCEAN    =  30.0e6
-       real, parameter :: NN_MIN      = NN_OCEAN
+       real        , parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
+       real(AER_PR), parameter :: zero_par  =  1.e-6   ! small non-zero value
+       real(AER_PR), parameter :: ai        =  0.0000594
+       real(AER_PR), parameter :: bi        =  3.33
+       real(AER_PR), parameter :: ci        =  0.0264
+       real(AER_PR), parameter :: di        =  0.0033
 
-       INTEGER  :: INT_USE_AEROSOL_NN
-       LOGICAL  :: USE_AEROSOL_NN
+       real(AER_PR), parameter :: betai     = -2.262e+3
+       real(AER_PR), parameter :: gamai     =  5.113e+6
+       real(AER_PR), parameter :: deltai    =  2.809e+3
+       real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
+
+       real, parameter :: NN_MIN      =  100.0e6
+       real, parameter :: NN_MAX      = 1000.0e6
+
+       LOGICAL  :: USE_BERGERON, USE_AEROSOL_NN
       CONTAINS          
 
 !>----------------------------------------------------------------------------------------------------------------------
 !>----------------------------------------------------------------------------------------------------------------------
 
-      SUBROUTINE Aer_Actv_1M_interface(IM,JM,LM,nmodes, t,plo,zlo,zle, qlcn, qicn, qlls, qils &
-                                      , kpblin,zws, omega,FRLAND ,AeroProps, NACTL,NACTI)
+      SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
+                                       sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
+                                       AeroProps, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN)
       IMPLICIT NONE
-      integer, intent(in)::IM,JM,LM,nmodes
-      TYPE(AerProps), dimension (IM,JM,LM),intent(in )  :: AeroProps
-      real, dimension (IM,JM,LM)  ,intent(in ) :: t,plo,omega,zlo, qlcn, qicn, qlls, qils
+      integer, intent(in)::IM,JM,LM
+      TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
+      type(ESMF_State)            ,intent(inout) :: aero_aci
+      real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
+      real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
+      real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,tke,vvel,zlo, qlcn, qicn, qlls, qils
       real, dimension (IM,JM,0:LM),intent(in ) :: zle
-      real, dimension (IM,JM)     ,intent(in ) :: zws,kpblin,FRLAND
+      real, dimension (IM,JM)     ,intent(in ) :: FRLAND
+      real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl
+      real                        ,intent(in ) :: NN_LAND, NN_OCEAN     
+      logical                     ,intent(in ) :: USE_AERO_BUFFER
       
-      real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI
+ 
+      real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI, NWFA
       
-      real(8), dimension (IM,JM,LM,nmodes) ::nact 
-      real(8), dimension (nmodes) :: sig0,rg,ni,bibar 
-      real(8), dimension (IM,JM)  :: naer_cb
-      real(8)                     :: wupdraft,tk,press,air_den,QC,QL,WC,BB,RAUX
+      real(AER_PR), allocatable, dimension (:) :: sig0,rg,ni,bibar,nact 
+      real(AER_PR), dimension (IM,JM,LM) :: zws
+      real(AER_PR)                       :: wupdraft,tk,press,air_den,QI,QL,WC,BB,RAUX
 
+      integer, dimension (IM,JM) :: kpbli
+
+      real, dimension(:,:,:,:,:), allocatable :: buffer
+
+      character(len=ESMF_MAXSTR)      :: aci_field_name
+      real, pointer, dimension(:,:)   :: aci_ptr_2d
+      real, pointer, dimension(:,:,:) :: aci_ptr_3d
+      real, pointer, dimension(:,:,:) :: aci_num
+      real, pointer, dimension(:,:,:) :: aci_dgn
+      real, pointer, dimension(:,:,:) :: aci_sigma
+      real, pointer, dimension(:,:,:) :: aci_density
+      real, pointer, dimension(:,:,:) :: aci_hygroscopicity
+      real, pointer, dimension(:,:,:) :: aci_f_dust
+      real, pointer, dimension(:,:,:) :: aci_f_soot
+      real, pointer, dimension(:,:,:) :: aci_f_organic
+      character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
+      integer                         :: ACI_STATUS
+      REAL                            :: aux1,aux2,aux3,hfs,hfl, nfaux
+
+      integer :: n_modes
       REAL :: numbinit
-      integer :: i,j,k,n,kcb
+      integer :: i,j,k,n,rc
+
+      character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
+      integer                                 :: STATUS
+
+      do k = 1, LM
+          do j = 1, JM
+              do i = 1, IM
+                  AeroProps(i,j,k)%num = 0.0
+              end do
+          end do
+      end do
+
+      kpbli = MAX(MIN(NINT(kpbl),LM-1),1)
+      
+      if (USE_AEROSOL_NN) then
+
+          call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
+
+          if (n_modes > 0) then
+
+              allocate( sig0(n_modes), __STAT__)
+              allocate(   rg(n_modes), __STAT__)
+              allocate(   ni(n_modes), __STAT__)
+              allocate(bibar(n_modes), __STAT__)
+              allocate( nact(n_modes), __STAT__)
+
+              allocate(aero_aci_modes(n_modes), __STAT__)
+              call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
+
+              call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
+              if (aci_field_name /= '') then
+                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                  aci_ptr_3d = PLE
+              end if
+
+              call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
+              if (aci_field_name /= '') then
+                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                  aci_ptr_3d = T
+              end if
+
+              call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
+              if (aci_field_name /= '') then
+                  call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
+                  aci_ptr_2d = FRLAND
+              end if
+     
+              if (USE_AERO_BUFFER) then
+                 allocate(buffer(im,jm,lm,n_modes,8), __STAT__)
+              end if
+
+              ACTIVATION_PROPERTIES: do n = 1, n_modes
+                 call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
+                 
+                 ! execute the aerosol activation properties method 
+                 call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
+                 VERIFY_(ACI_STATUS)
+                 VERIFY_(STATUS)
+
+                 ! copy out aerosol activation properties
+                 call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_num, trim(aci_field_name), __RC__)
+
+                 call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_dgn, trim(aci_field_name), __RC__)
+
+                 call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_sigma, trim(aci_field_name), __RC__)
+
+                 call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_density, trim(aci_field_name), __RC__)
+
+                 call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_hygroscopicity, trim(aci_field_name), __RC__)
+
+                 call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_f_dust, trim(aci_field_name), __RC__)
+
+                 call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_f_soot, trim(aci_field_name), __RC__)
+
+                 call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
+
+                 if (USE_AERO_BUFFER) then
+                    buffer(:,:,:,n,1) = aci_num
+                    buffer(:,:,:,n,2) = aci_dgn
+                    buffer(:,:,:,n,3) = aci_sigma
+                    buffer(:,:,:,n,4) = aci_hygroscopicity
+                    buffer(:,:,:,n,5) = aci_density
+                    buffer(:,:,:,n,6) = aci_f_dust
+                    buffer(:,:,:,n,7) = aci_f_soot
+                    buffer(:,:,:,n,8) = aci_f_organic
+                 else
+                    AeroProps(:,:,:)%num(n)   = aci_num
+                    AeroProps(:,:,:)%dpg(n)   = aci_dgn
+                    AeroProps(:,:,:)%sig(n)   = aci_sigma
+                    AeroProps(:,:,:)%kap(n)   = aci_hygroscopicity
+                    AeroProps(:,:,:)%den(n)   = aci_density
+                    AeroProps(:,:,:)%fdust(n) = aci_f_dust
+                    AeroProps(:,:,:)%fsoot(n) = aci_f_soot
+                    AeroProps(:,:,:)%forg(n)  = aci_f_organic
+                    AeroProps(:,:,:)%nmods    = n_modes                 ! no need of a 3D field: aero provider specific
+                 end if
+
+              end do ACTIVATION_PROPERTIES
+
+              if (USE_AERO_BUFFER) then
+                 do k = 1, LM
+                    do j = 1, JM
+                       do i = 1, IM
+                          do n = 1, n_modes
+                             AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1)
+                             AeroProps(i,j,k)%dpg(n)   = buffer(i,j,k,n,2)
+                             AeroProps(i,j,k)%sig(n)   = buffer(i,j,k,n,3)
+                             AeroProps(i,j,k)%kap(n)   = buffer(i,j,k,n,4)
+                             AeroProps(i,j,k)%den(n)   = buffer(i,j,k,n,5)
+                             AeroProps(i,j,k)%fdust(n) = buffer(i,j,k,n,6)
+                             AeroProps(i,j,k)%fsoot(n) = buffer(i,j,k,n,7)
+                             AeroProps(i,j,k)%forg(n)  = buffer(i,j,k,n,8)
+                          end do
+                          AeroProps(i,j,k)%nmods       = n_modes                 ! no need of a 3D field: aero provider specific
+                       end do
+                    end do
+                 end do
+
+                 deallocate(buffer, __STAT__)
+              end if
+              
+             
+              do k = 1, LM
+               do j = 1, JM
+                do i = 1, IM
+                nfaux =  0.0
+                 do n = 1, n_modes
+                   if (AeroProps(i,j,k)%kap(n) .gt. 0.4) then 
+                            nfaux =  nfaux + AeroProps(i,j,k)%num(n)
+                   end if                           
+                 end do !modes
+                 NWFA(I, J, K)  =  nfaux
+                end do
+               end do 
+              end do 
+             
+
+              deallocate(aero_aci_modes, __STAT__)
 
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
       numbinit = 0.
-      NACTL    = 0.
-      NACTI    = 0.
       WC       = 0.
       BB       = 0.
       RAUX     = 0.
-            
+           
       !--- determing aerosol number concentration at cloud base
       DO j=1,JM
         Do i=1,IM 
-        !------check this
-             kcb = nint(kpblin(i, j))
-        !------check this
-             
-             naer_cb(i,j) = zero_par
-	     !DO K=LM,kcb,-1
-	     k=min(kcb-1,LM-1); IF(K==0) stop "K==0- aer-act"
-             tk           = DBLE(T(i,j,k))           ! K
-             press        = DBLE(plo(i,j,k))*100.D0  ! Pa     
-             air_den      = press*28.8d-3/8.31d0/tk  ! kg/m3
-             DO n=1,nmodes
-                if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) &
-                naer_cb(i,j)= naer_cb(i,j) + DBLE(AeroProps(i,j,k)%num(n)) * air_den         
-                naer_cb(i,j)= naer_cb(i,j)* 1.d+6  ! #/cm3
-                naer_cb(i,j)= max(1.0d-1,min(naer_cb(i,j),100.0))
-				
-	     ENDDO
-      ENDDO;ENDDO!;ENDDO
-     
+             k            = kpbli(i,j)
+             tk           = T(i,j,k)              ! K
+             press        = plo(i,j,k)            ! Pa     
+             air_den      = press*28.8e-3/8.31/tk ! kg/m3
+      ENDDO;ENDDO
+    
       DO k=LM,1,-1
+       NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+       NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
        DO j=1,JM
-        Do i=1,IM
+        DO i=1,IM
               
-	      tk		 = DBLE(T(i,j,k))	                  ! K
-              press		 = DBLE(plo(i,j,k))*100.D0		  ! Pa   
-              air_den		 = press*28.8d-3/8.31d0/tk		  ! kg/m3
-              qc                 = DBLE(qicn(i,j,k)+qils(i,j,k))*1.D+3    ! g/kg
-              ql                 = DBLE(qlcn(i,j,k)+qlls(i,j,k))*1.D+3    ! g/kg
-              
-              IF( plo(i,j,k)*100.0 > 34000.0) THEN 
-                
-                wupdraft           = -9.81*air_den*DBLE(omega(i,j,k))          ! m/s - grid-scale only              
-                
-                !--in the boundary layer, add Wstar
-                if(k >= nint(kpblin(i, j)) .and. k < LM)  wupdraft = wupdraft+DBLE(zws(i,j)) 
-
-                IF(wupdraft > 0.1 .AND. wupdraft < 100.) THEN 
-
-                ni   (1:nmodes)    =   max(DBLE(AeroProps(i,j,k)%num(1:nmodes))*air_den,1.D-20)        ! unit: [m-3]
-                rg   (1:nmodes)    =   1.D+6*max(1.0D-10,DBLE(AeroProps(i,j,k)%dpg(1:nmodes))*0.5d+00) ! unit: [um]
-                sig0 (1:nmodes)    =   DBLE(AeroProps(i,j,k)%sig(1:nmodes))                            ! unit: [um]
-                bibar(1:nmodes)    =   MAX(0.00001D0,DBLE(AeroProps(i,j,k)%kap(1:nmodes)))                 
-              
-                IF( tk >= 245.0D0) then   
-                     call GetActFrac(nmodes                                   &
-                                     ,ni              (1:nmodes)              &  
-                                     ,rg              (1:nmodes)              & 
-                                     ,sig0            (1:nmodes)              &  
-                                     ,tk                                      &
-                                     ,press                                   & 
-                                     ,wupdraft                                & 
-                                     ,nact            (i,j,k,1:nmodes)        &
-                                     ,bibar           (1:nmodes)              &
-                                     )
-                     
-                     numbinit     = 0.
-                     NACTL(i,j,k) = 0.
-                     DO n=1,nmodes
-                      numbinit     = numbinit    + AeroProps(i,j,k)%num(n)*air_den
-                      NACTL(i,j,k) = NACTL(i,j,k)+ real(nact(i,j,k,n),4) 
-                     ENDDO
-                
-                 
-                     NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
-                
+            tk                 = T(i,j,k)                         ! K
+            press              = plo(i,j,k)                       ! Pa   
+            air_den            = press*28.8e-3/8.31/tk            ! kg/m3
+            qi                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3  ! g/kg
+            ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3  ! g/kg
+            wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
  
-		ENDIF ! tk>245
-               ENDIF   ! updraft > 0.1
-               ENDIF   ! 100*plo > 34000.0
-              
+            ! Liquid Clouds
+            IF( (tk >= MAPL_TICE-40.0) .and. (plo(i,j,k) > 10000.0) .and. &
+                (wupdraft > 0.1 .and. wupdraft < 100.) ) then
 
-               IF( tk <= 268.0D0) then
-	        IF( (QC >= 0.5) .and. (QL >= 0.5)) then
-                      ! Number of activated IN following deMott (2010) [#/m3]  
-                         NACTI(i,j,k) = real((1.e+3*ai*((273.16-tk)**bi) *  (naer_cb(i,j))**(ci*(273.16-tk)+di)),4)  !#/m3
-  		ELSE   !tk<243
-                      ! Number of activated IN following Wyser  
-	      
-                 WC    = air_den*QC  !kg/m3
-                 if (WC >= tiny(1.0d0)) then
-                    BB     =  -2. + log10(1000.*WC/50.)*(1.e-3*(273.15-tk)**1.5)
-                 else
-                    BB = -6.
-                 end if
-                 BB     = MIN((MAX(BB,-6.)),-2.)  
+                ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
+                rg   (1:n_modes)    =   max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5*1.e6, zero_par)  ! unit: [um]
+                sig0 (1:n_modes)    =       AeroProps(i,j,k)%sig(1:n_modes)                      ! unit: [um]
+                bibar(1:n_modes)    =   max(AeroProps(i,j,k)%kap(1:n_modes),          zero_par)                 
 
-		 RAUX   = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-                 RAUX   = (betai + (gamai + deltai * RAUX**3)**0.5)**0.33333
-                 NACTI(i,j,k) = real((3.* WC)/(4.*MAPL_PI*densic*(1.D-6*RAUX)**3),4)  !#/m3
-	       
-		ENDIF  !Mixed phase
+                call GetActFrac(           n_modes    &
+                               ,      ni(1:n_modes)   &
+                               ,      rg(1:n_modes)   &
+                               ,    sig0(1:n_modes)   &
+                               ,      tk              &
+                               ,   press              &
+                               ,wupdraft              &
+                               ,    nact(1:n_modes)   &
+                               ,   bibar(1:n_modes)   &
+                               )
 
-	       ENDIF ! tk<=268
-               !
-               !
-               !-- fix limit for NACTL/NACTI
-               IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = FRLAND(i,j)*NN_LAND + (1.0-FRLAND(i,j))*NN_OCEAN
+                numbinit = 0.
+                NACTL(i,j,k) = 0.
+                DO n=1,n_modes
+                   numbinit = numbinit + AeroProps(i,j,k)%num(n)*air_den
+                   NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
+                ENDDO
+                NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
+
+            ENDIF ! Liquid Clouds
+
+            ! Ice Clouds
+            IF( (tk <= MAPL_TICE) .and. ((QI > tiny(1.)) .or. (QL > tiny(1.))) ) then
+                numbinit = 0.
+                DO n=1,n_modes
+                   if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) & ! diameters > 0.5 microns
+                   numbinit = numbinit + AeroProps(i,j,k)%num(n)
+                ENDDO
+                numbinit = numbinit * air_den ! #/m3
+                ! Number of activated IN following deMott (2010) [#/m3]
+                NACTI(i,j,k) = ai*((MAPL_TICE-tk)**bi) * numbinit**(ci*(MAPL_TICE-tk)+di) !#/m3
+            ENDIF
+
+            !-- apply limits for NACTL/NACTI
+            IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = NN_MIN
+            IF(NACTL(i,j,k) > NN_MAX) NACTL(i,j,k) = NN_MAX
+            IF(NACTI(i,j,k) < NN_MIN) NACTI(i,j,k) = NN_MIN
+            IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
 
         ENDDO;ENDDO;ENDDO
 
-      END SUBROUTINE Aer_Actv_1M_interface
+        deallocate(   rg, __STAT__)
+        deallocate(   ni, __STAT__)
+        deallocate(bibar, __STAT__)
+        deallocate( nact, __STAT__)
+
+       end if ! n_modes > 0
+      
+      else ! USE_AEROSOL_NN
+
+        do k = 1, LM
+          NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+          NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+        end do
+
+      end if
+
+      END SUBROUTINE Aer_Activation
       
 !>----------------------------------------------------------------------------------------------------------------------
 !!    12-12-06, DLW: Routine to set up the call to subr. ACTFRAC_MAT to calculate the 
@@ -203,16 +365,16 @@ MODULE Aer_Actv_Single_Moment
       ! arguments.
       
       integer :: nmodes               !< number of modes [1]      
-      real(8) :: xnap(nmodes)         !< number concentration for each mode [#/m^3]
-      real(8) :: rg(nmodes)           !< geometric mean dry radius for each mode [um]
-      real(8) :: sigmag(nmodes)       !< geometric standard deviation for each mode [um]
-      real(8) :: tkelvin              !< absolute temperature [k]
-      real(8) :: ptot                 !< ambient pressure [pa]
-      real(8) :: wupdraft             !< updraft velocity [m/s]
-!     real(8) :: ac(nmodes)           !< minimum dry radius for activation for each mode [um]
-!     real(8) :: fracactn(nmodes)     !< activating fraction of number conc. for each mode [1]
-      real(8) :: nact(nmodes)         !< activating number concentration for each mode [#/m^3]
-      real(8) :: bibar(nmodes)        ! hygroscopicity parameter for each mode [1]
+      real(AER_PR) :: xnap(nmodes)         !< number concentration for each mode [#/m^3]
+      real(AER_PR) :: rg(nmodes)           !< geometric mean dry radius for each mode [um]
+      real(AER_PR) :: sigmag(nmodes)       !< geometric standard deviation for each mode [um]
+      real(AER_PR) :: tkelvin              !< absolute temperature [k]
+      real(AER_PR) :: ptot                 !< ambient pressure [pa]
+      real(AER_PR) :: wupdraft             !< updraft velocity [m/s]
+!     real(AER_PR) :: ac(nmodes)           !< minimum dry radius for activation for each mode [um]
+!     real(AER_PR) :: fracactn(nmodes)     !< activating fraction of number conc. for each mode [1]
+      real(AER_PR) :: nact(nmodes)         !< activating number concentration for each mode [#/m^3]
+      real(AER_PR) :: bibar(nmodes)        ! hygroscopicity parameter for each mode [1]
 
       ! local variables. 
 
@@ -246,77 +408,77 @@ MODULE Aer_Actv_Single_Moment
       ! Arguments.
       
       integer :: nmodes            !< number of modes [1]      
-      real(8) :: xnap(nmodes)      !< number concentration for each mode [#/m^3]
-!     real(8) :: xmap(nmodes)      !< mass   concentration for each mode [ug/m^3]
-      real(8) :: rg(nmodes)        !< geometric mean radius for each mode [um]
-      real(8) :: sigmag(nmodes)    !< geometric standard deviation for each mode [um]
-      real(8) :: bibar(nmodes)     !< hygroscopicity parameter for each mode [1]
-      real(8) :: tkelvin           !< absolute temperature [k]
-      real(8) :: ptot              !< ambient pressure [pa]
-      real(8) :: wupdraft          !< updraft velocity [m/s]
-      real(8) :: ac(nmodes)        !< minimum dry radius for activation for each mode [um]
-      real(8) :: fracactn(nmodes)  !< activating fraction of number conc. for each mode [1]
-      real(8) :: nact(nmodes)      !< activating number concentration for each mode [#/m^3]
+      real(AER_PR) :: xnap(nmodes)      !< number concentration for each mode [#/m^3]
+!     real(AER_PR) :: xmap(nmodes)      !< mass   concentration for each mode [ug/m^3]
+      real(AER_PR) :: rg(nmodes)        !< geometric mean radius for each mode [um]
+      real(AER_PR) :: sigmag(nmodes)    !< geometric standard deviation for each mode [um]
+      real(AER_PR) :: bibar(nmodes)     !< hygroscopicity parameter for each mode [1]
+      real(AER_PR) :: tkelvin           !< absolute temperature [k]
+      real(AER_PR) :: ptot              !< ambient pressure [pa]
+      real(AER_PR) :: wupdraft          !< updraft velocity [m/s]
+      real(AER_PR) :: ac(nmodes)        !< minimum dry radius for activation for each mode [um]
+      real(AER_PR) :: fracactn(nmodes)  !< activating fraction of number conc. for each mode [1]
+      real(AER_PR) :: nact(nmodes)      !< activating number concentration for each mode [#/m^3]
 
       ! parameters.
       
-      real(8), parameter :: pi            = 3.141592653589793d+00
-      real(8), parameter :: twopi         = 2.0d+00 * pi
-      real(8), parameter :: sqrt2         = 1.414213562d+00
-      real(8), parameter :: threesqrt2by2 = 1.5d+00 * sqrt2
+      real(AER_PR), parameter :: pi            = 3.141592653589793d+00
+      real(AER_PR), parameter :: twopi         = 2.0d+00 * pi
+      real(AER_PR), parameter :: sqrt2         = 1.414213562d+00
+      real(AER_PR), parameter :: threesqrt2by2 = 1.5d+00 * sqrt2
 
-      real(8), parameter :: avgnum   = 6.0221367d+23       ! [1/mol]
-      real(8), parameter :: rgasjmol = 8.31451d+00         ! [j/mol/k]
-      real(8), parameter :: wmolmass = 18.01528d-03        ! molar mass of h2o     [kg/mol]
-      real(8), parameter :: amolmass = 28.966d-03          ! molar mass of air     [kg/mol]
-      real(8), parameter :: asmolmss = 132.1406d-03        ! molar mass of nh42so4 [kg/mol]
-      real(8), parameter :: denh2o   = 1.00d+03            ! density of water [kg/m^3]
-      real(8), parameter :: denamsul = 1.77d+03            ! density of pure ammonium sulfate [kg/m^3]
-      real(8), parameter :: xnuamsul = 3.00d+00            ! # of ions formed when the salt is dissolved in water [1]
-      real(8), parameter :: phiamsul = 1.000d+00           ! osmotic coefficient value in a-r 1998. [1] 
-      real(8), parameter :: gravity  = 9.81d+00            ! grav. accel. at the earth's surface [m/s/s] 
-      real(8), parameter :: heatvap  = 40.66d+03/wmolmass  ! latent heat of vap. for water and tnbp [j/kg] 
-      real(8), parameter :: cpair    = 1006.0d+00          ! heat capacity of air [j/kg/k] 
-      real(8), parameter :: t0dij    = 273.15d+00          ! reference temp. for dv [k] 
-      real(8), parameter :: p0dij    = 101325.0d+00        ! reference pressure for dv [pa] 
-      real(8), parameter :: dijh2o0  = 0.211d-04           ! reference value of dv [m^2/s] (p&k,2nd ed., p.503)
+      real(AER_PR), parameter :: avgnum   = 6.0221367d+23       ! [1/mol]
+      real(AER_PR), parameter :: rgasjmol = 8.31451d+00         ! [j/mol/k]
+      real(AER_PR), parameter :: wmolmass = 18.01528d-03        ! molar mass of h2o     [kg/mol]
+      real(AER_PR), parameter :: amolmass = 28.966d-03          ! molar mass of air     [kg/mol]
+      real(AER_PR), parameter :: asmolmss = 132.1406d-03        ! molar mass of nh42so4 [kg/mol]
+      real(AER_PR), parameter :: denh2o   = 1.00d+03            ! density of water [kg/m^3]
+      real(AER_PR), parameter :: denamsul = 1.77d+03            ! density of pure ammonium sulfate [kg/m^3]
+      real(AER_PR), parameter :: xnuamsul = 3.00d+00            ! # of ions formed when the salt is dissolved in water [1]
+      real(AER_PR), parameter :: phiamsul = 1.000d+00           ! osmotic coefficient value in a-r 1998. [1] 
+      real(AER_PR), parameter :: gravity  = 9.81d+00            ! grav. accel. at the earth's surface [m/s/s] 
+      real(AER_PR), parameter :: heatvap  = 40.66d+03/wmolmass  ! latent heat of vap. for water and tnbp [j/kg] 
+      real(AER_PR), parameter :: cpair    = 1006.0d+00          ! heat capacity of air [j/kg/k] 
+      real(AER_PR), parameter :: t0dij    = 273.15d+00          ! reference temp. for dv [k] 
+      real(AER_PR), parameter :: p0dij    = 101325.0d+00        ! reference pressure for dv [pa] 
+      real(AER_PR), parameter :: dijh2o0  = 0.211d-04           ! reference value of dv [m^2/s] (p&k,2nd ed., p.503)
       !----------------------------------------------------------------------------------------------------------------    
-      ! real(8), parameter :: t0dij    = 283.15d+00          ! reference temp. for dv [k] 
-      ! real(8), parameter :: p0dij    = 80000.0d+00         ! reference pressure for dv [pa] 
-      ! real(8), parameter :: dijh2o0  = 0.300d-04           ! reference value of dv [m^2/s] (p&k,2nd ed., p.503)
+      ! real(AER_PR), parameter :: t0dij    = 283.15d+00          ! reference temp. for dv [k] 
+      ! real(AER_PR), parameter :: p0dij    = 80000.0d+00         ! reference pressure for dv [pa] 
+      ! real(AER_PR), parameter :: dijh2o0  = 0.300d-04           ! reference value of dv [m^2/s] (p&k,2nd ed., p.503)
       !----------------------------------------------------------------------------------------------------------------
-      real(8), parameter :: deltav   = 1.096d-07           ! vapor jump length [m]  
-      real(8), parameter :: deltat   = 2.160d-07           ! thermal jump length [m]  
-      real(8), parameter :: alphac   = 1.000d+00           ! condensation mass accommodation coefficient [1]  
-      real(8), parameter :: alphat   = 0.960d+00           ! thermal accommodation coefficient [1]  
+      real(AER_PR), parameter :: deltav   = 1.096d-07           ! vapor jump length [m]  
+      real(AER_PR), parameter :: deltat   = 2.160d-07           ! thermal jump length [m]  
+      real(AER_PR), parameter :: alphac   = 1.000d+00           ! condensation mass accommodation coefficient [1]  
+      real(AER_PR), parameter :: alphat   = 0.960d+00           ! thermal accommodation coefficient [1]  
 
       ! local variables. 
 
       integer            :: i                              ! loop counter 
-      real(8)            :: dv                             ! diffusion coefficient for water [m^2/s] 
-      real(8)            :: dvprime                        ! modified diffusion coefficient for water [m^2/s] 
-      real(8)            :: dumw, duma                     ! scratch variables [s/m] 
-      real(8)            :: wpe                            ! saturation vapor pressure of water [pa]  
-      real(8)            :: surten                         ! surface tension of air-water interface [j/m^2] 
-      real(8)            :: xka                            ! thermal conductivity of air [j/m/s/k]  
-      real(8)            :: xkaprime                       ! modified thermal conductivity of air [j/m/s/k]  
-      real(8)            :: eta(nmodes)                    ! model parameter [1]  
-      real(8)            :: zeta                           ! model parameter [1]  
-      real(8)            :: xlogsigm(nmodes)               ! ln(sigmag) [1]   
-      real(8)            :: a                              ! [m]
-      real(8)            :: g                              ! [m^2/s]   
-      real(8)            :: rdrp                           ! [m]   
-      real(8)            :: f1                             ! [1]   
-      real(8)            :: f2                             ! [1]
-      real(8)            :: alpha                          ! [1/m]
-      real(8)            :: gamma                          ! [m^3/kg]   
-      real(8)            :: sm(nmodes)                     ! [1]   
-      real(8)            :: dum                            ! [1/m]    
-      real(8)            :: u                              ! argument to error function [1]
-      real(8)            :: erf                            ! error function [1], but not declared in an f90 module 
-      real(8)            :: smax                           ! maximum supersaturation [1]
+      real(AER_PR)            :: dv                             ! diffusion coefficient for water [m^2/s] 
+      real(AER_PR)            :: dvprime                        ! modified diffusion coefficient for water [m^2/s] 
+      real(AER_PR)            :: dumw, duma                     ! scratch variables [s/m] 
+      real(AER_PR)            :: wpe                            ! saturation vapor pressure of water [pa]  
+      real(AER_PR)            :: surten                         ! surface tension of air-water interface [j/m^2] 
+      real(AER_PR)            :: xka                            ! thermal conductivity of air [j/m/s/k]  
+      real(AER_PR)            :: xkaprime                       ! modified thermal conductivity of air [j/m/s/k]  
+      real(AER_PR)            :: eta(nmodes)                    ! model parameter [1]  
+      real(AER_PR)            :: zeta                           ! model parameter [1]  
+      real(AER_PR)            :: xlogsigm(nmodes)               ! ln(sigmag) [1]   
+      real(AER_PR)            :: a                              ! [m]
+      real(AER_PR)            :: g                              ! [m^2/s]   
+      real(AER_PR)            :: rdrp                           ! [m]   
+      real(AER_PR)            :: f1                             ! [1]   
+      real(AER_PR)            :: f2                             ! [1]
+      real(AER_PR)            :: alpha                          ! [1/m]
+      real(AER_PR)            :: gamma                          ! [m^3/kg]   
+      real(AER_PR)            :: sm(nmodes)                     ! [1]   
+      real(AER_PR)            :: dum                            ! [1/m]    
+      real(AER_PR)            :: u                              ! argument to error function [1]
+      real(AER_PR)            :: erf                            ! error function [1], but not declared in an f90 module 
+      real(AER_PR)            :: smax                           ! maximum supersaturation [1]
 
-      real(8)            :: aux1,aux2                           ! aux
+      real(AER_PR)            :: aux1,aux2                           ! aux
 !----------------------------------------------------------------------------------------------------------------------
 !     rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
 !     values close to those given in a-z et al. 1998 figure 5. 
@@ -398,12 +560,12 @@ MODULE Aer_Actv_Single_Moment
 
       implicit none
       integer, parameter :: itmax=10000
-      real(8), parameter :: eps=3.0d-07
-      real(8), parameter :: fpmin=1.0d-30
-      real(8) :: a,gammcf,gln,x
+      real(AER_PR), parameter :: eps=3.0d-07
+      real(AER_PR), parameter :: fpmin=1.0d-30
+      real(AER_PR) :: a,gammcf,gln,x
       integer :: i
-      real(8) :: an,b,c,d,del,h
-      !real(8) :: gammln   ! function names not declared in an f90 module 
+      real(AER_PR) :: an,b,c,d,del,h
+      !real(AER_PR) :: gammln   ! function names not declared in an f90 module 
       gln=gammln(a)
       b=x+1.0d+00-a
       c=1.0d+00/fpmin
@@ -434,11 +596,11 @@ MODULE Aer_Actv_Single_Moment
 
       implicit none
       integer, parameter :: itmax=10000  ! was itmax=100   in press et al. 
-      real(8), parameter :: eps=3.0d-09  ! was eps=3.0d-07 in press et al.
-      real(8) :: a,gamser,gln,x
+      real(AER_PR), parameter :: eps=3.0d-09  ! was eps=3.0d-07 in press et al.
+      real(AER_PR) :: a,gamser,gln,x
       integer :: n
-      real(8) :: ap,del,sum
-      !real(8) :: gammln   ! function names not declared in an f90 module 
+      real(AER_PR) :: ap,del,sum
+      !real(AER_PR) :: gammln   ! function names not declared in an f90 module 
       gln=gammln(a)
       if(x.le.0.d+00)then
         if(x.lt.0.)stop 'aero_actv: subroutine gser: x < 0 in gser'
@@ -466,7 +628,7 @@ MODULE Aer_Actv_Single_Moment
       double precision function GammLn(xx)
 
       implicit none
-      real(8) :: xx
+      real(AER_PR) :: xx
       integer j
       double precision ser,stp,tmp,x,y,cof(6)
       save cof,stp
@@ -492,9 +654,9 @@ MODULE Aer_Actv_Single_Moment
 !!-----------------------------------------------------------------------------------------------------------------------
       double precision function Erf(x)
       implicit none
-      real(8) :: x
+      real(AER_PR) :: x
 !u    uses gammp
-      !LFR  real(8) :: gammp   ! function names not declared in an f90 module 
+      !LFR  real(AER_PR) :: gammp   ! function names not declared in an f90 module 
       erf = 0.d0
       if(x.lt.0.0d+00)then
         erf=-gammp(0.5d0,x**2)
@@ -510,8 +672,8 @@ MODULE Aer_Actv_Single_Moment
 !!-----------------------------------------------------------------------------------------------------------------------
       double precision function GammP(a,x)
       implicit none
-      real(8) :: a,x
-      real(8) :: gammcf,gamser,gln
+      real(AER_PR) :: a,x
+      real(AER_PR) :: gammcf,gamser,gln
       if(x.lt.0.0d+00.or.a.le.0.0d+00)then
         write(*,*)'aero_actv: function gammp: bad arguments'
       endif

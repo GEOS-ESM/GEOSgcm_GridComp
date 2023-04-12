@@ -117,10 +117,12 @@ module LockEntrain
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: U_STAR_dev
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: B_STAR_dev
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: FRLAND_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: EVAP_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: SH_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: T_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QV_dev
-   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QLLS_dev
-   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QILS_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QL_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QI_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: U_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: V_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: ZFULL_dev
@@ -299,6 +301,8 @@ contains
          u_star,         &
          b_star,         &
          frland,         &
+         evap,           &
+         sh,             &
          t,              &
          qv,             &
          qlls,           &
@@ -345,6 +349,8 @@ contains
          tpfac_sfc,      &
          entrate_sfc,    &
          pceff_sfc,      &
+         vscale_sfc,     &
+         pertopt_sfc,    &
          khradfac,       &
          khsfcfac_lnd,   &
          khsfcfac_ocn    )
@@ -464,11 +470,11 @@ contains
       integer, value,  intent(in) :: icol,jcol,nlev
 
       real,    value,  intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    value,  intent(in) :: khradfac,tpfac_sfc,entrate_sfc
+      real,    value,  intent(in) :: khradfac,tpfac_sfc,entrate_sfc,vscale_sfc,pertopt_sfc
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland
+      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf ! 0:72 in GC, 1:73 here.
@@ -486,7 +492,7 @@ contains
       integer, intent(in)                                    :: icol,jcol,nlev
 
       real,    intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland
+      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
       real,    intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf ! 0:72 in GC, 1:73 here.
@@ -496,7 +502,7 @@ contains
       real,    intent(out),   dimension(icol,jcol)           :: zsml,zradml,zcloud,zradbase
 
       real,    intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    intent(in) :: khradfac,tpfac_sfc,entrate_sfc
+      real,    intent(in) :: khradfac,tpfac_sfc,entrate_sfc, vscale_sfc, pertopt_sfc
       real,    intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real, pointer, dimension(:,:) :: wentr_rad_diag, wentr_sfc_diag ,del_buoy_diag
@@ -701,7 +707,9 @@ contains
             call mpbl_depth(i,j,icol,jcol,nlev,&
                   tpfac_sfc,        &
                   entrate_sfc,      &
-                  pceff_sfc,        & 
+                  pceff_sfc,        &
+                  vscale_sfc,       & 
+                  pertopt_sfc,      &
                   t,                &
                   qv,               &
                   u,                &
@@ -710,6 +718,8 @@ contains
                   pfull,            &
                   b_star,           &
                   u_star,           &
+                  evap,             &
+                  sh,               &
                   ipbl,zsml         )
 
 !------------------------------------------------------
@@ -1197,7 +1207,7 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, t, q, u, v, z, p, b_star, u_star , ipbl, ztop )
+   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, vscale, pertopt, t, q, u, v, z, p, b_star, u_star , evap, sh, ipbl, ztop )
 
 !
 !  -----
@@ -1225,14 +1235,14 @@ contains
 
       integer, intent(in   )                            :: i, j, nlev, icol, jcol
       real,    intent(in   ), dimension(icol,jcol,nlev) :: t, z, q, p, u, v
-      real,    intent(in   ), dimension(icol,jcol)      :: b_star, u_star
-      real,    intent(in   )                            :: tpfac, entrate, pceff
+      real,    intent(in   ), dimension(icol,jcol)      :: b_star, u_star, evap, sh
+      real,    intent(in   )                            :: tpfac, entrate, pceff, vscale, pertopt
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
 
 
       real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
-      real     :: entfr,entrate_x,vscale
+      real     :: entfr,entrate_x,lts,zrho,buoyflx,delzg,wstar
       integer  :: k
 
 
@@ -1241,8 +1251,31 @@ contains
 
 !calculate surface parcel properties
 
-      tep  = t(i,j,nlev)+0.4
+    if (pertopt /= 0) then
+      zrho = p(i,j,nlev)/(287.04*(t(i,j,nlev)*(1.+0.608*q(i,j,nlev))))
+
+      buoyflx = (sh(i,j)/MAPL_CP+0.608*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1                                                                                                  
+      delzg = (50.0)*MAPL_GRAV   ! assume 50m surface scale                                                                                                               
+      wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3      
+
+      if (wstar > 0.001) then
+        wstar = 1.0*wstar**.3333
+!        print *,'sh=',sh(i,j),'evap=',evap(i,j),'wstar=',wstar
+        tep  = t(i,j,nlev) + 0.4 + 2.*sh(i,j)/(zrho*wstar*MAPL_CP)
+        qp   = q(i,j,nlev) + 2.*evap(i,j)/(zrho*wstar)
+!        print *,'tpert=',2.*sh(i,j)/(zrho*wstar*MAPL_CP)
+      else
+
+      end if
+    else   ! tpfac scales up bstar by inv. ratio of
+           ! heat-bubble area to stagnant area
+      if (nlev.eq.72) then
+        tep  = (t(i,j,nlev) + 0.4) * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
+      else
+        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
+      end if
       qp   = q(i,j,nlev)
+    end if
 
 !--------------------------------------------
 ! wind dependence of plume character. 
@@ -1252,19 +1285,21 @@ contains
 ! entrate:  tunable param from rc file
 ! vscale:   tunable param hardwired here.
 
-!!Old Shear  vscale    = 5.0 ! m s-1
-      vscale    = 0.25 / 100. ! change of .25 m s-1 in 100 m
-!!vscale    = 0.10 / 100. ! change of .10 m s-1 in 100 m
-
-
-!---------------------------------------------
-! tpfac scales up bstar by inv. ratio of
-! heat-bubble area to stagnant area
-
-      tep  = tep * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
-!!  tep  = tep * (1.+ tpfac * b_star(i,j)*u_star(i,j)/MAPL_GRAV)
+! vscale is vscale_surf=0.25/100.0 parameter now passed through argument list
 
 !search for level where this is exceeded              
+
+      lts =  0.0
+!  LTS using TH at 3km abve surface
+      if (nlev.ne.72) then
+         do k = nlev-1,2,-1
+            if (z(i,j,k).gt.3000.0) then
+              lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
+              exit
+            end if
+         end do
+         lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
+      end if
 
       t1   = t(i,j,nlev)
       v1   = v(i,j,nlev)
@@ -1299,9 +1334,15 @@ contains
 
          dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
          qp    = qp - dqp
-         tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
+         if (lts .eq. 0.0) then
+           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
 ! of condensation heating that gets applied to parcel
-
+         else
+           tep = tep + (pceff + 0.5*(1.-pceff)*(1.+TANH(lts-18.)))*MAPL_ALHL * dqp/MAPL_CP      
+!                           Set pceff to 1 where LTS is high
+!           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
+!                                                           ! of condensation heating that gets applied to parcel
+         endif
 
 ! If parcel temperature (tep) colder than env (t2)
 ! OR if entrainment too big, declare this the PBL top
@@ -1384,7 +1425,11 @@ contains
       svpar   = svp
       h1      = zf(i,j,toplev)
       t1      = t(toplev)
-      entrate = 0.2/200.
+      if (nlev.eq.72) then
+        entrate = 0.2/200.
+      else
+        entrate = 1.0/1000.
+      endif
 
       !search for level where parcel is warmer than env             
 
