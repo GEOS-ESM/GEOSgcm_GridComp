@@ -224,7 +224,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'surface_downwelling_par_beam_flux',&
+         LONG_NAME          = 'surface_downwelling_PAR_beam_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'DRPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -233,7 +233,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
+         LONG_NAME          = 'surface_downwelling_PAR_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'DFPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
