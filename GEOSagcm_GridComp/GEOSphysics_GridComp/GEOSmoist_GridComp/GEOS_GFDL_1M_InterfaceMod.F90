@@ -749,7 +749,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
          RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
-         RAD_CF = RAD_CF + DQADTmic * DT_MOIST
+         RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm/day to kg m-2 s-1

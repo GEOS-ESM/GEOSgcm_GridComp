@@ -928,10 +928,13 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         ! update cloud fraction tendency
         ! -----------------------------------------------------------------------
-        
+        if (.not. do_qa) then
         do k = ktop, kbot
-             qa_dt (i, j, k) =  rdt * (qaz (k) - qa0 (k))
+             qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
+                      qa0(k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
+                      qa0(k) )                                                      ! Old Cloud
         enddo
+        endif
 
         ! -----------------------------------------------------------------------
         ! fms diagnostics:
@@ -1210,7 +1213,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
-                    qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,qcmin) )
+                    if (do_qa) qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,qcmin) )
                 endif
             endif
         enddo
@@ -1244,7 +1247,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
-                    qa (k) = qa (k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qcmin) )
+                    if (do_qa) qa (k) = qa (k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qcmin) )
                 endif
             endif
         enddo
@@ -1359,8 +1362,8 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
                 sink = sink / (1. + sink) * ql (k)
 
                 ! new total condensate / old condensate 
-                qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-sink,0.0  ) / &
-                                               max(qi(k)+ql(k)     ,qcmin) ) )
+                if (do_qa) qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-sink,0.0  ) / &
+                                                          max(qi(k)+ql(k)     ,qcmin) ) )
 
                 ql (k) = ql (k) - sink
                 qr (k) = qr (k) + sink
@@ -2034,7 +2037,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             q_sol (k) = q_sol (k) + sink
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
-            qa (k) = 1. ! air fully saturated; 100 % cloud cover
+            if (do_qa) qa (k) = 1. ! air fully saturated; 100 % cloud cover
             cycle
         endif
         
@@ -2062,7 +2065,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
                 qv (k) = qpz
                 ql (k) = 0.
                 qi (k) = 0.
-                qa (k) = 0.
+                if (do_qa) qa (k) = 0.
                 cycle ! cloud free
             endif
         endif
@@ -2080,8 +2083,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             evap = 0.0
         endif
         ! new total condensate / old condensate 
-        qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-evap,0.0  ) / &
-                                       max(qi(k)+ql(k)     ,qcmin) ) )
+        if (do_qa) qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-evap,0.0  ) / &
+                                                  max(qi(k)+ql(k)     ,qcmin) ) )
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
         q_liq (k) = q_liq (k) - evap
@@ -2176,8 +2179,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
               endif
             endif
             ! new total condensate / old condensate
-            qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)+sink,0.0  ) / &
-                                           max(qi(k)+ql(k)     ,qcmin) ) )
+            if (do_qa) qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)+sink,0.0  ) / &
+                                                      max(qi(k)+ql(k)     ,qcmin) ) )
             qv (k) = qv (k) - sink
             qi (k) = qi (k) + sink
             q_sol (k) = q_sol (k) + sink
@@ -2297,7 +2300,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! compute cloud fraction
         ! -----------------------------------------------------------------------
         if (.not. do_qa) cycle
-        
+
         ! -----------------------------------------------------------------------
         ! combine water species
         ! -----------------------------------------------------------------------
