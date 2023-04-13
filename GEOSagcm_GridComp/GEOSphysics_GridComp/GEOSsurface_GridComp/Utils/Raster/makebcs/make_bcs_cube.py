@@ -3,7 +3,7 @@
 # source install/bin/g5_modules
 
 import os
-from make_bcs_questionnarie import *
+from make_bcs_questionnaire import *
 
 cube_template = """#!/bin/csh -x
 
