@@ -96,10 +96,10 @@ subroutine GF_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 2.e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 5.e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 0.5,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_TRACER_TRANSP         , 'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN         , 'USE_TRACER_SCAVEN:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_SCALE_DEP             , 'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -164,24 +164,24 @@ subroutine GF_Initialize (MAPL, RC)
          call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
       endif
       call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0,   RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ELSE
@@ -462,19 +462,20 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR2D)) PTR2D = SEEDCNV
 
+    ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
+    if (GF_MIN_AREA > 0) then
+       where (AREA > GF_MIN_AREA)
+          TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+       elsewhere
+          TMP2D =  AREA
+       endwhere
+    else if (GF_MIN_AREA < 0) then
+       TMP2D = ABS(GF_MIN_AREA)
+    else
+       TMP2D = AREA
+    endif
+
     IF (USE_GF2020==1) THEN
-       ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
-         if (GF_MIN_AREA > 0) then
-            where (AREA > (AREA/16.0))
-               TMP2D = (AREA/16.0)*CNV_FRC + AREA*(1.0-CNV_FRC)
-            elsewhere
-               TMP2D =  AREA
-            endwhere
-         else if (GF_MIN_AREA < 0) then
-            TMP2D = ABS(GF_MIN_AREA)
-         else
-            TMP2D = AREA
-         endif
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pq
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,DT_MOIST                       &
@@ -497,18 +498,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
     ELSE
-       ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
-         if (GF_MIN_AREA > 0) then
-            where (AREA > GF_MIN_AREA)
-               TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
-            elsewhere
-               TMP2D =  AREA
-            endwhere
-         else if (GF_MIN_AREA < 0) then
-            TMP2D = ABS(GF_MIN_AREA)
-         else
-            TMP2D = AREA
-         endif
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pq
          call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,DT_MOIST                       &
