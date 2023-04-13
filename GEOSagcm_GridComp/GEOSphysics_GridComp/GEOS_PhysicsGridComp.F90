@@ -1310,7 +1310,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'T2M', 'Q2M', 'TA', 'QA', 'SH',           &
+         SHORT_NAME  = (/'USTAR', 'TSTAR', 'QSTAR', 'T2M  ',       &
+                         'Q2M  ', 'TA   ', 'QA   ', 'SH   ',       &
                          'EVAP '                                   &
                        /),                                         &
          DST_ID      = MOIST,                                      &
@@ -1336,6 +1337,21 @@ contains
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
+
+    !Gravity wave drag parameters for subgrid scale V
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'TAUGWX'/),                                 &
+         DST_ID      =  MOIST,                                     &
+         SRC_ID      =  GWD,                                      &
+                                                        RC=STATUS  )
+   VERIFY_(STATUS)
+
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'TAUGWY'/),                                 &
+         DST_ID      =  MOIST,                                     &
+         SRC_ID      =  GWD,                                      &
+                                                        RC=STATUS  )
+   VERIFY_(STATUS)
 
    call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUOROX'/),                                 &
