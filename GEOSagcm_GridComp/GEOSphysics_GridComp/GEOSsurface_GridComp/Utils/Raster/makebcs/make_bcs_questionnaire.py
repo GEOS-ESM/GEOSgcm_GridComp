@@ -167,7 +167,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "type": "select",
             "name": "bcs_version",
             "message": "Select land BCS version: \n \
-    BCs with 'archived*' produced by this code will differ from BCs in archived directories!!! \n \
+    When produced by this code, BCs labeled with 'archived*' below will differ from BCs in archived directories!!! \n \
     These differences are caused by compiler changes, code improvements and bug \n \
     fixes that were implemented since the archived BCs in the above-mentioned \n \
     directories were originally created.  The impact of these differences on \n \
@@ -175,9 +175,9 @@ def ask_questions(default_grid="Cubed-Sphere"):
     code are scientifically equivalent to the corresponding archived BCs. \n",
             "choices": [ \
    "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)", \
-   "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/) \n\
+   "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv4/) \n\
           = NL3 + JPL veg height", \
-   "NL5 : NLv5 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)\n \
+   "NL5 : NLv5 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv5/)\n \
          = NL3 + JPL veg height + PEATMAP", \
    "v06 : NL3 + JPL veg height + PEATMAP + MODIS snow alb", \
    "v07 : NL3 + PEATMAP", \
@@ -233,9 +233,9 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "choices": [ \
                  "M01  --  1km $34668x14688$", \
                  "M03  --  3km $11556x4896$", \
-                 "M09  --  9km $3852x1632$", \
-                 "M25  -- 25km $1383x586$", \
-                 "M36  -- 36km $963x408$"],
+                 "M09  --  9km  $3852x1632$", \
+                 "M25  -- 25km  $1383x586$", \
+                 "M36  -- 36km   $963x408$"],
             "when": lambda x: "EASEv1" ==  x['grid_type'] ,
         },
        {
@@ -245,9 +245,9 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "choices": [ \
                  "M01  --  1km $34704x14616$", \
                  "M03  --  3km $11568x4872$", \
-                 "M09  --  9km $3856x1624$", \
-                 "M25  -- 25km $1388x584$", \
-                 "M36  -- 36km $964x406$"],
+                 "M09  --  9km  $3856x1624$", \
+                 "M25  -- 25km  $1388x584$", \
+                 "M36  -- 36km   $964x406$"],
             "when": lambda x: "EASEv2" == x['grid_type'],
         },
 
