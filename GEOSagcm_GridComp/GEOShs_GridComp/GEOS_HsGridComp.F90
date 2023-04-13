@@ -133,6 +133,7 @@
   use hs_oacc_mod
   use iso_c_binding
   use, intrinsic :: ieee_arithmetic
+  use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 
   implicit none
   private
@@ -409,6 +410,8 @@
 
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
+    use openacc
+    
 ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
@@ -442,6 +445,7 @@
 
     real                          :: DX, DY, X0, Y0
     real                          :: AFAC, PHI0, QMAX
+    logical                       :: halting_mode(5)
 
 ! Local derived type aliases
 
@@ -574,6 +578,15 @@
 
     call MAPL_TimerOff(MAPL,"INIT" )
     call MAPL_TimerOff(MAPL,"TOTAL")
+
+    !OACC GCC10 Implementation can trigger floating-point exception
+    !per https://gcc.gnu.org/wiki/OpenACC/Implementation%20Status
+    !we saw those on PTX load so we deactivate the ieee mode around
+    !the init
+    call ieee_get_halting_mode(ieee_all, halting_mode)
+    call ieee_set_halting_mode(ieee_all, .false.)
+    call acc_set_device_type(acc_device_default)
+    call ieee_set_halting_mode(ieee_all, halting_mode)
 
     RETURN_(ESMF_SUCCESS)
   end subroutine INITIALIZE

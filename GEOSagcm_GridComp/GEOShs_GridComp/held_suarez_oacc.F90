@@ -79,7 +79,7 @@ contains
     DM = 0.0
     PK = 0.0
 
-    ngpus = acc_get_num_devices(acc_device_nvidia)
+    ngpus = acc_get_num_devices(acc_device_default)
 
     write(*,*) 'HS: rank =', rank, ', comp type: ', compType, ', Number of GPUS:', ngpus
     ! call acc_set_device_num(mod(rank,4),acc_device_nvidia)
@@ -222,7 +222,6 @@ contains
           enddo
        enddo
     enddo
-    !$omp end parallel do
     !$acc end parallel loop
     call cpu_time(t2)
     !!$acc update host (DTDT, DUDT, DVDT, T_EQ, T, U, V)
