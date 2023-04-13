@@ -24,6 +24,7 @@ workflows:
           mepodevelop: true
           checkout_mapl3_release_branch: true
           persist_workspace: true # Needs to be true to run fv3/gcm experiment, costs extra
+
       # Run GCM (1 hour, no ExtData)
       - ci/run_gcm:
           name: run-GCM-on-<< matrix.compiler >>
@@ -37,3 +38,19 @@ workflows:
           repo: GEOSgcm
           baselibs_version: *baselibs_version
           bcs_version: *bcs_version
+
+      # Run Coupled GCM (1 hour, no ExtData)
+      - ci/run_gcm:
+          name: run-coupled-GCM-on-<< matrix.compiler >>
+          context:
+            - docker-hub-creds
+          matrix:
+            parameters:
+              compiler: [gfortran, ifort]
+          requires:
+            - build-GEOSgcm-on-<< matrix.compiler >>
+          repo: GEOSgcm
+          baselibs_version: *baselibs_version
+          bcs_version: *bcs_version
+          gcm_ocean_type: MOM6
+          change_layout: false
