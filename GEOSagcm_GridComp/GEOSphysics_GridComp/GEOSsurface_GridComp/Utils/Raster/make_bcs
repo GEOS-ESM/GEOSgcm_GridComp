@@ -25,6 +25,7 @@ if ( $HELPMODE == YES ) then
    echo "           a) Select Land BCs version.                                  "
    echo "           b) Select atmospheric resolution(s).                         "
    echo "                (If applicable, select EASE grid version.)              "
+   echo "                (If applicable, select cubed-sphere stretch factors.)              "
    echo "           c) Select ocean resolution(s).                               "
    echo "                (Not relevant for land-only EASE grid BCs.)             "
    echo "           d) Enter BCs output directory.                               "
@@ -55,7 +56,8 @@ if ( $HELPMODE != YES ) then
    #setenv NCPUS `/usr/bin/lscpu | grep '^CPU(s)' | cut -d ':' -f2 | head -1 `
    #@ NCPUS = $NCPUS / 4
    #@ NCPUS = $NCPUS * 3
-   set NCPUS = 20
+   #set NCPUS = 20
+   set NCPUS = "$SLURM_CPUS_ON_NODE"
    setenv OMP_NUM_THREADS  1
 
 endif
@@ -163,13 +165,17 @@ echo "   ${C2}c -- 1   deg         c24 -- 4    deg              M03 --  3-km EAS
 echo "   ${C2}d -- 1/2 deg         c48 -- 2    deg              M09 --  9-km EASE Grid ${CR}"
 echo "   ${C2}e -- 1/4 deg         c90 -- 1    deg              M25 -- 25-km EASE Grid ${CR}"
 echo "   ${C2}                    c180 -- 1/2  deg ${C1}( 56   km) ${CR}  ${C2}M36 -- 36-km EASE Grid ${CR}"
+echo "   ${C2}                    c270 -- 1/3  deg ${C1}( 37   km) ${CR}"
 echo "   ${C2}                    c360 -- 1/4  deg ${C1}( 28   km) ${CR}"
+echo "   ${C2}                    c540 -- 1/6  deg ${C1}( 18   km) ${CR}"
 echo "   ${C2}                    c720 -- 1/8  deg ${C1}( 14   km) ${CR}"
 echo "   ${C2}                    c768 -- 1/10 deg ${C1}( 12   km) ${CR}"
 echo "   ${C2}                   c1000 -- 1/10 deg ${C1}( 10   km) ${CR}"
+echo "   ${C2}                   c1080 -- 1/12 deg ${C1}(  9   km) ${CR}"
 echo "   ${C2}                   c1152 -- 1/10 deg ${C1}(  8   km) ${CR}"
 echo "   ${C2}                   c1440 -- 1/16 deg ${C1}(  7   km) ${CR}"
 echo "   ${C2}                   c1536 -- 1/16 deg ${C1}(  7   km) ${CR}"
+echo "   ${C2}                   c2160 -- 1/12 deg ${C1}(  4   km) ${CR}"
 echo "   ${C2}                   c2880 -- 1/32 deg ${C1}(  3   km) ${CR}"
 echo "   ${C2}                   c3072 -- 1/32 deg ${C1}(  3   km) ${CR}"
 echo "   ${C2}                   c5760 -- 1/64 deg ${C1}(  1.5 km) ${CR}"
@@ -199,13 +205,17 @@ if ( $HELPMODE != YES ) then
           $HRCODE != 'c48'     & \
           $HRCODE != 'c90'     & \
           $HRCODE != 'c180'    & \
+          $HRCODE != 'c270'    & \
           $HRCODE != 'c360'    & \
+          $HRCODE != 'c540'    & \
           $HRCODE != 'c720'    & \
           $HRCODE != 'c768'    & \
           $HRCODE != 'c1000'   & \
+          $HRCODE != 'c1080'   & \
           $HRCODE != 'c1152'   & \
           $HRCODE != 'c1440'   & \
           $HRCODE != 'c1536'   & \
+          $HRCODE != 'c2160'   & \
           $HRCODE != 'c2880'   & \
           $HRCODE != 'c3072'   & \
           $HRCODE != 'c5760'   & \
@@ -597,9 +607,19 @@ if( $HRCODE == c180 ) then
      set RC = 180x1080
      set grid = cube
 endif
+if( $HRCODE == c270 ) then
+     set nc = 270
+     set RC = 270x1620
+     set grid = cube
+endif
 if( $HRCODE == c360 ) then
      set nc = 360
      set RC = 360x2160
+     set grid = cube
+endif
+if( $HRCODE == c540 ) then
+     set nc = 540
+     set RC = 540x3240
      set grid = cube
 endif
 if( $HRCODE == c720 ) then
@@ -619,6 +639,13 @@ if( $HRCODE == c1000 ) then
      set RC = 1000x6000
      set grid = cube
 endif
+if( $HRCODE == c1080 ) then
+     set nc = 1080
+     set RC = 1080x6480
+     set grid = cube
+     @ NX = 43200
+     @ NY = 21600
+endif
 if( $HRCODE == c1152 ) then
      set nc = 1152
      set RC = 1152x6912
@@ -634,6 +661,13 @@ endif
 if( $HRCODE == c1536 ) then
      set nc = 1536
      set RC = 1536x9216
+     set grid = cube
+     @ NX = 43200
+     @ NY = 21600
+endif
+if( $HRCODE == c2160 ) then
+     set nc = 2160
+     set RC = 2160x12960
      set grid = cube
      @ NX = 43200
      @ NY = 21600
@@ -804,9 +838,8 @@ cat << _EOF_ > $BCJOB
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
 
 cd $BCDIR
 
@@ -943,6 +976,8 @@ set NC  = `echo ${nc}   | awk '{printf "%4.4i", $1}'`
 set IMO = `echo ${imo}  | awk '{printf "%4.4i", $1}'`
 set JMO = `echo ${jmo}  | awk '{printf "%4.4i", $1}'`
 
+set STRETCH = '-F 2.5 -X -98.35 -Y 39.5'
+
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
 	set       BCNAME = CF${NC}x6C_CF${NC}x6C
 	set     DATENAME = CF
@@ -984,72 +1019,8 @@ cat << _EOF_ > $BCJOB
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
 
-cd $BCDIR
-
-/bin/ln -s $bin_dir
-source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/72x36 data/MOM6/72x36
-ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
-
-cd data 
-ln -s $input_dir CATCH
-cd ../
- 
-if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
-setenv MASKFILE $MASKFILE
-limit stacksize unlimited
-bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${NC} >/dev/null 
-bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
-
-if( $LATLON_OCEAN == TRUE ) then
-    bin/mkLatLonRaster.x -x ${NX} -y ${NY} -b DE -p PE -t 0 ${IMO} ${JMO} >/dev/null
-    bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
-    bin/CombineRasters.x -t ${NT} CF${NC}x6C DE${IMO}xPE${JMO}-Pfafstetter
-    setenv OMP_NUM_THREADS 1
-    if ($SKIPLAND != YES) bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
-endif
-
-if( $TRIPOL_OCEAN == TRUE ) then
-	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
-    /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
-    /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
-    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc 
-    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
-    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
-    bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
-    bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
-    bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
-    setenv OMP_NUM_THREADS 1
-    if ($SKIPLAND != YES) bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter -v $lbcsv
-endif
-
-if( $CUBED_SPHERE_OCEAN == TRUE ) then
-    bin/CombineRasters.x -f 0 -t ${NT} CF${NC}x6C Pfafstetter >/dev/null
-    bin/CombineRasters.x -t ${NT} CF${NC}x6C CF${NC}x6C-Pfafstetter
-    setenv OMP_NUM_THREADS 1
-    if ($SKIPLAND != YES) bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter -v $lbcsv 
-endif
-_EOF_
-
-chmod 755 $BCJOB
-set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
-
-cat << _EOF_ > $BCJOB-2
-#!/bin/csh -x
-
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME-2.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME-2.err
-#SBATCH --account=$group
-#SBATCH --time=12:00:00
-#SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME-2.j
-#SBATCH --constraint=sky
 
 cd $BCDIR
 
@@ -1168,9 +1139,8 @@ cat << _EOF_ > $BCJOB
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
 
 cd $BCDIR
 
@@ -1191,7 +1161,7 @@ cd ../
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
 setenv MASKFILE $MASKFILE
 limit stacksize unlimited
-bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${NC} >/dev/null 
+bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${STRETCH} ${NC} >/dev/null 
 bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
 
 if( $LATLON_OCEAN == TRUE ) then
@@ -1361,9 +1331,8 @@ cat << _EOF_ > $BCJOB
 #SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
 
 cd $BCDIR
 
