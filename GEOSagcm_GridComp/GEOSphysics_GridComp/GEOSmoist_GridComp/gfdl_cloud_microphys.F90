@@ -770,7 +770,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         
         cpaut = c_paut * 0.104 * grav / 1.717e-5
        !! slow autoconversion in stable regimes
-       !cpaut = cpaut * (0.5 + 0.5*(1.0-min(1.0,eis(i)/10.0)**2))
+       !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
         
         ! ccn needs units #/m^3 
         if (prog_ccn) then
@@ -1238,9 +1238,10 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
             endif
         enddo
     endif
-       ! Revert In-Cloud condensate
-       ql = ql*qadum
-       qi = qi*qadum
+
+    ! Revert In-Cloud condensate
+    ql = ql*qadum
+    qi = qi*qadum
 
 end subroutine warm_rain
 
@@ -1282,11 +1283,11 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
         if (tz (k) > t_wfr .and. qr (k) > qpmin) then
 
-           !! area and timescale efficiency on revap
-           !                       AREA_LS_PRC_K = 0.0
-           !if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
-           !fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
-            fac_revp = 1. - exp (- dt / tau_revp)
+            ! area and timescale efficiency on revap
+                                   AREA_LS_PRC_K = 0.0
+            if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
+            fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
+           !fac_revp = 1. - exp (- dt / tau_revp)
             
             ! -----------------------------------------------------------------------
             ! define heat capacity and latent heat coefficient
