@@ -2147,9 +2147,10 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             endif
             if (dq > 0.) then ! vapor - > ice
               ! deposition
-                tmp = tice - tz (k)
+               ifrac = ice_fraction(tz (k),cnv_fraction,srf_type) 
+                 tmp = tice - tz (k)
               qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp)))
-              qi_crt = max (qi_crt, 1.82e-6) * qi_lim / den (k)
+              qi_crt = max (qi_crt, 1.82e-6) * qi_lim * ifrac / den (k)
                 sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk (k))
             else ! ice -- > vapor
               ! sublimation
