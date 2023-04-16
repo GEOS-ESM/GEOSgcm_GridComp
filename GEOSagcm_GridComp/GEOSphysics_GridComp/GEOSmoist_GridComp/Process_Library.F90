@@ -1879,8 +1879,6 @@ module GEOSmoist_Process_Library
 
       character*(10) :: Iam='Process_Library:hystpdf'
 
-      QT = QLLS + QILS + QV  !Total LS water after microphysics
-
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
 
@@ -1893,6 +1891,8 @@ module GEOSmoist_Process_Library
 
       DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
       QVn = ( QV - QSx*CLCN )*tmpARR
+
+      QT = QCn + QVn  !Total LS water after microphysics
 
       nmax = 20
       do n=1,nmax
