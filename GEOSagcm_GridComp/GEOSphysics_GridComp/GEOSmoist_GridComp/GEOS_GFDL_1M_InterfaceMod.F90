@@ -234,8 +234,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call gfdl_cloud_microphys_init()
     call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
 
-    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= 750.0 , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -246,11 +246,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
                                  CCW_EVAP_EFF = 4.e-3
-             !!!    if (do_evap) CCW_EVAP_EFF = 0.0   ! Evap done inside of GFDL
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
                                  CCI_EVAP_EFF = 4.e-3
-             !!!    if (do_subl) CCI_EVAP_EFF = 0.0   ! Subl done inside of GFDL
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
@@ -319,8 +317,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: PTR2D
 
     ! Local variables
-    real    :: turnrhcritS, turnrhcritU, facEIS
-    real    :: turnrhcrit, minrhcrit, ALPHA, RHCRIT
+    real    :: facEIS
+    real    :: minrhcrit, ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L
 
@@ -532,10 +530,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            do I=1,IM
            ! Send the condensates through the pdf after convection
              facEIS = MIN(1.0,EIS(I,J)/10.0)**2
-           ! determine the turn pressure using the LCL
-             turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 50.0       ! 50mb above the LCL
            ! determine combined minrhcrit in stable/unstable regimes
              minrhcrit  = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
+             if (turnrhcrit <= 0.0) then
+              ! determine the turn pressure using the LCL
+                turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 50.0 ! 50mb above the LCL
+             endif
            ! Use Slingo-Ritter (1985) formulation for critical relative humidity
              RHCRIT = 1.0
            ! lower turn from maxrhcrit=1.0
@@ -546,7 +546,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    RHCRIT = 1.0
                 else
                    RHCRIT = minrhcrit + (1.0-minrhcrit)/(19.) * &
-                           ((atan( (2.*(PLmb(i,j,l)-turnrhcrit)/min(100., PLEmb(i,j,LM)-turnrhcrit)-1.) * &
+                           ((atan( (2.*(PLmb(i,j,l)-turnrhcrit)/(PLEmb(i,j,LM)-turnrhcrit)-1.) * &
                            tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                 endif
              endif
@@ -592,6 +592,19 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
              endif
+           ! meltfrz new condensates
+             call MELTFRZ ( DT_MOIST     , &
+                            CNV_FRC(I,J) , &
+                            SRF_TYPE(I,J), &
+                            T(I,J,L)     , &
+                            QLCN(I,J,L)  , &
+                            QICN(I,J,L) )
+             call MELTFRZ ( DT_MOIST     , &
+                            CNV_FRC(I,J) , &
+                            SRF_TYPE(I,J), &
+                            T(I,J,L)     , &
+                            QLLS(I,J,L)  , &
+                            QILS(I,J,L) )
            ! evaporation for CN
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
              RHCRIT = 1.0
@@ -630,19 +643,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
-           ! meltfrz new condensates
-             call MELTFRZ ( DT_MOIST     , &
-                            CNV_FRC(I,J) , &
-                            SRF_TYPE(I,J), &
-                            T(I,J,L)     , &
-                            QLCN(I,J,L)  , &
-                            QICN(I,J,L) )
-             call MELTFRZ ( DT_MOIST     , &
-                            CNV_FRC(I,J) , &
-                            SRF_TYPE(I,J), &
-                            T(I,J,L)     , &
-                            QLLS(I,J,L)  , &
-                            QILS(I,J,L) )
+           ! cleanup clouds
+             call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
@@ -719,8 +721,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
-                             ! convective portions
-                               QICN, QLCN, CLCN, &
                              ! Output tendencies
                                DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, &
@@ -888,65 +888,5 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
 end subroutine GFDL_1M_Run
-
-   subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
-      real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
-     ! local storage for cnv fraction of condensate/cloud
-      real :: FCN(size(CF,1),size(CF,2),size(CF,3))
-
-      FCN = 0.0
-      WHERE (QLCN+QLLS > 0.0)
-         FCN = min(max(QLCN/(QLCN+QLLS), 0.0), 1.0)
-      END WHERE
-      WHERE (QL < 1.e-8)
-        QV   = QV + QL
-        TE   = TE - (MAPL_ALHL/MAPL_CP)*QL
-        QL   = 0.0
-        QLLS = 0.0
-        QLCN = 0.0
-      ELSE WHERE
-        QLCN = FCN*QL
-        QLLS = MAX(0.0,QL-QLCN)
-      END WHERE
-
-      FCN = 0.0
-      WHERE (QICN+QILS > 0.0)
-         FCN = min(max(QICN/(QICN+QILS), 0.0), 1.0)
-      END WHERE
-      WHERE (QI < 1.e-8)
-        QV   = QV + QI
-        TE   = TE - (MAPL_ALHS/MAPL_CP)*QI
-        QI   = 0.0
-        QILS = 0.0
-        QICN = 0.0
-      ELSE WHERE
-        QICN = FCN*QI
-        QILS = MAX(0.0,QI-QICN)
-      END WHERE
-
-      FCN = 0.0
-      WHERE (CLCN+CLLS > 0.0)
-         FCN = min(max(CLCN/(CLCN+CLLS), 0.0), 1.0)
-      END WHERE
-      WHERE ( (CF < 1.e-5) .or. (QL+QI < 1.e-8) )
-        CF   = 0.0
-        CLLS = 0.0
-        CLCN = 0.0
-        QV   = QV + QL + QI
-        TE   = TE - (MAPL_ALHL/MAPL_CP)*QL - (MAPL_ALHS/MAPL_CP)*QI
-        QL   = 0.0
-        QLLS = 0.0
-        QLCN = 0.0
-        QI   = 0.0
-        QILS = 0.0
-        QICN = 0.0
-      ELSE WHERE
-        CLCN = FCN*CF
-        CLLS = MAX(0.0,MIN(CF-CLCN,1.0))
-      END WHERE
-
-   end subroutine REDISTRIBUTE_CLOUDS
-
-
 
 end module GEOS_GFDL_1M_InterfaceMod

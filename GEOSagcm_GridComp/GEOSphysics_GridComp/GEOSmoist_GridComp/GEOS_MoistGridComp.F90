@@ -167,7 +167,7 @@ contains
 
     ! Inititialize cloud microphysics (Options: BACM_1M, MGB2_2M or GFDL_1M)
     !--------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="GFDL_1M", RC=STATUS)
+    call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="BACM_1M", RC=STATUS)
     VERIFY_(STATUS)
     LCLDMICR = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M" .or. &
