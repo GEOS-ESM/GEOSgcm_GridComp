@@ -25,7 +25,6 @@ list( APPEND CICE6_SRCS
    icepack/columnphysics/icepack_itd.F90
    icepack/columnphysics/icepack_kinds.F90
    icepack/columnphysics/icepack_mechred.F90
-   icepack/columnphysics/icepack_meltpond_cesm.F90
    icepack/columnphysics/icepack_meltpond_lvl.F90
    icepack/columnphysics/icepack_meltpond_topo.F90
    icepack/columnphysics/icepack_mushy_physics.F90
@@ -34,7 +33,6 @@ list( APPEND CICE6_SRCS
    icepack/columnphysics/icepack_parameters.F90
    icepack/columnphysics/icepack_shortwave.F90
    icepack/columnphysics/icepack_snow.F90
-   icepack/columnphysics/icepack_therm_0layer.F90
    icepack/columnphysics/icepack_therm_bl99.F90
    icepack/columnphysics/icepack_therm_itd.F90
    icepack/columnphysics/icepack_therm_mushy.F90
@@ -83,6 +81,7 @@ list( APPEND CICE6_SRCS
    cicecore/cicedynB/analysis/ice_history_pond.F90
    cicecore/cicedynB/infrastructure/ice_domain.F90
    cicecore/cicedynB/infrastructure/ice_grid.F90
+   cicecore/cicedynB/infrastructure/ice_memusage.F90
    cicecore/cicedynB/infrastructure/ice_restoring.F90
    cicecore/cicedynB/infrastructure/ice_restart_driver.F90
    cicecore/cicedynB/infrastructure/comm/mpi/ice_global_reductions.F90
@@ -102,6 +101,7 @@ list( APPEND CICE6_SRCS
 list( APPEND CICE6_SRCS
    # a single c source file
    cicecore/cicedynB/infrastructure/ice_shr_reprosum86.c
+   cicecore/cicedynB/infrastructure/ice_memusage_gptl.c
    # drivers for mapl: ls -1 cicecore/drivers/mapl/geos/*0
    cicecore/drivers/mapl/geos/CICE_FinalMod.F90
    cicecore/drivers/mapl/geos/CICE_InitMod.F90
