@@ -3,25 +3,12 @@
 # source install/bin/g5_modules
 
 import os
-from make_bcs_questionnaire import *
+from make_bcs_questionary import *
+from make_bcs_shared import * 
 
-cube_template = """#!/bin/csh -x
-
-#SBATCH --output={EXPDIR}/{OUTDIR}/logs/{BCNAME}/{BCNAME2}.log
-#SBATCH --error={EXPDIR}/{OUTDIR}/logs/{BCNAME}/{BCNAME2}.err
-#SBATCH --account={account}
-#SBATCH --time=12:00:00
-#SBATCH --nodes=1
-#SBATCH --job-name={BCNAME2}.j
-#SBATCH --constraint=sky|cas
-
-cd {BCDIR}
+cube_template = """
 
 if ( {STEP1} == True ) then
-  /bin/ln -s {bin_dir}
-
-  mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
-
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
@@ -32,11 +19,6 @@ if ( {STEP1} == True ) then
   if( -e CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 
 endif 
-
-source bin/g5_modules
-setenv MASKFILE {MASKFILE}
-setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
-limit stacksize unlimited
 
 if ( {STEP1} == True ) then
   bin/mkCubeFVRaster.x -x {NX} -y {NY} {NC} >/dev/null 
@@ -100,108 +82,7 @@ if( {CUBED_SPHERE_OCEAN} == True ) then
    endif
 endif
 
-if ( {STEP2} == True ) then 
-/bin/mv clsm  clsm.C{NC}
-/bin/cp til/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til clsm.C{NC}
-if( {TRIPOL_OCEAN} == True ) /bin/cp til/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.TRN clsm.C{NC}
-/bin/rm clsm.C{NC}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.file
-
-cd clsm.C{NC}
-   /bin/mv irrig.dat irrigation_{RC}.dat
-   /bin/mv vegdyn.data   vegdyn_{RC}.dat
-   /bin/mv nirdf.dat      nirdf_{RC}.dat
-   /bin/mv visdf.dat      visdf_{RC}.dat
-   /bin/mv   lai.dat   lai_clim_{RC}.data
-   /bin/mv green.dat green_clim_{RC}.data
-   /bin/mv lnfm.dat   lnfm_clim_{RC}.data
-   /bin/mv ndvi.dat   ndvi_clim_{RC}.data
-
-/bin/rm -f sedfile
-if( {CUBED_SPHERE_OCEAN} == True ) then
-cat > sedfile << EOF
-s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g
-s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
-EOF
-sed -f sedfile       CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til > tile.file
-/bin/mv -f tile.file CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til
-/bin/rm -f sedfile
-else
-cat > sedfile << EOF
-s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
-s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
-EOF
-sed -f sedfile       CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til > tile.file
-/bin/mv -f tile.file CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til
-/bin/rm -f sedfile
-endif
-
-cd ../
-
-/bin/rm -rf         CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
-/bin/mv clsm.C{NC} CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
-cd  CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
-mkdir clsm
-/bin/mv ar.new \
-        bf.dat \
-        ts.dat \
-        catchment.def \
-        cti_stats.dat \
-        tau_param.dat \
-        soil_param.dat \
-        mosaic_veg_typs_fracs \
-        soil_param.first \
-        README \
-        bad_sat_param.tiles \
-        lai.* \
-        AlbMap* \
-        plots \
-        CLM_veg_typs_fracs \
-        mkCatchParam.log \
-        CLM_NDep_SoilAlb_T2m \
-        CLM4.5_abm_peatf_gdp_hdm_fc \
-        catch_params.nc4 \
-        catchcn_params.nc4 \
-        country_and_state_code.data \
-        clsm
-cd  ../ 
-
-/bin/mv rst CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
-/bin/mv til CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
-/bin/mv {BCJOB} CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-
-cd ../../
-
-/bin/mv    {BCDIR}/{BCNAME} .
-/bin/mv    {BCJOB}                {BCNAME}
-/bin/mv    {EXPDIR}/{OUTDIR}/logs {BCNAME}/.
-/bin/mv    {BCNAME}/clsm/mkCatchParam.log {BCNAME}/logs/{BCNAME}/mkCatchParam.log
-
-mkdir -p {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
-mkdir -p {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}
-
-/bin/mv  {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til  {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-if( {TRIPOL_OCEAN} == True ) /bin/mv {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.TRN {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-
-
-/bin/mv  {BCNAME}/clsm               {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-/bin/mv  {BCNAME}/irrigation_{RC}.dat  \
-         {BCNAME}/vegdyn_{RC}.dat      \
-         {BCNAME}/nirdf_{RC}.dat       \
-         {BCNAME}/visdf_{RC}.dat       \
-         {BCNAME}/lai_clim_{RC}.data   \
-         {BCNAME}/green_clim_{RC}.data \
-         {BCNAME}/lnfm_clim_{RC}.data  \
-         {BCNAME}/ndvi_clim_{RC}.data  \
-         {BCNAME}/land/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-
-/bin/mv {BCNAME}/rst {BCNAME}/til {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-/bin/mv  {BCNAME}/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.j {BCNAME}/geometry/CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}/.
-/bin/rm -r {OUTDIR}
-
-endif  # STEP2
-
 """
-
 def make_bcs_cube(config):
 
   bin_dir = os.getcwd()
@@ -229,11 +110,11 @@ def make_bcs_cube(config):
 
   DATENAME = config['DATENAME']
   POLENAME = config['POLENAME']
-  bcname = 'CF'+NC+'x6C_'+DATENAME+IMO+'x'+POLENAME+JMO
+  GRIDNAME = 'CF'+NC+'x6C_'+DATENAME+IMO+'x'+POLENAME+JMO
   SKIPLAND = config['skipland']
 
   if config['CUBED_SPHERE_OCEAN'] :
-    bcname =  'CF'+ NC+'x6_CF'+NC+'x6C'
+    GRIDNAME =  'CF'+ NC+'x6_CF'+NC+'x6C'
     DATENAME = 'CF'
     POLENAME = ''
     IMO = NC
@@ -243,9 +124,9 @@ def make_bcs_cube(config):
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
   tmp_dir=f"{resolution}_{orslv}_{tmp_dir}"
   expdir = config['expdir']
-  scratch_dir = expdir+ tmp_dir+'/'+bcname+'.scratch/'
-  log_dir     = expdir+'/'+tmp_dir+'/logs/'+ bcname
-  bcjob       = scratch_dir+'/'+bcname+'.j'
+  scratch_dir = expdir+ tmp_dir+'/'+GRIDNAME+'.scratch/'
+  log_dir     = expdir+'/'+tmp_dir+'/logs/'+ GRIDNAME
+  bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
 
   if os.path.exists(bcjob):
     print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
@@ -257,22 +138,24 @@ def make_bcs_cube(config):
 
   STEP1 = True
   STEP2 = True
-  BCNAME2 = bcname
+  GRIDNAME2 = GRIDNAME
+  script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
   if resolution in ['c2880', 'c3072', 'c5760'] :
      STEP1 = True
      STEP2 = False
-  script_string = cube_template.format(\
+     script_template = get_script_head() + cube_template 
+
+  script_string = script_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
-           OUTDIR = tmp_dir, \
-           BCNAME  = bcname, \
-           BCNAME2 = BCNAME2, \
+           TMP_DIR = tmp_dir, \
+           GRIDNAME  = GRIDNAME, \
+           GRIDNAME2 = GRIDNAME2, \
            STEP1   = STEP1, \
            STEP2   = STEP2, \
-           BCDIR = scratch_dir, \
+           SCRATCH_DIR = scratch_dir, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
-           BCJOB =  bcjob, \
            DATENAME = DATENAME, \
            POLENAME = POLENAME, \
            SKIPLAND = SKIPLAND, \
@@ -293,6 +176,7 @@ def make_bcs_cube(config):
            NX = config['NX'], \
            NY = config['NY'], \
            NT = config['NT'], \
+           RS = '-Pfafstetter',\
            RC = RC,\
            NCPUS = config['NCPUS'])
 
@@ -303,19 +187,19 @@ def make_bcs_cube(config):
   if resolution in ['c2880', 'c3072', 'c5760'] :
      STEP1 = False
      STEP2 = True
-     BCNAME2 = bcname+'-2'
-     script_string = cube_template.format(\
+     GRIDNAME2 = GRIDNAME+'-2'
+     script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
+     script_string = script_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
-           OUTDIR = tmp_dir, \
-           BCNAME  = bcname, \
-           BCNAME2 = BCNAME2, \
+           TMP_DIR = tmp_dir, \
+           GRIDNAME  = GRIDNAME, \
+           GRIDNAME2 = GRIDNAME2, \
            STEP1   = STEP1, \
            STEP2   = STEP2, \
-           BCDIR = scratch_dir, \
+           SCRATCH_DIR = scratch_dir, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
-           BCJOB =  bcjob+'-2', \
            DATENAME = DATENAME, \
            POLENAME = POLENAME, \
            SKIPLAND = SKIPLAND, \
@@ -337,6 +221,7 @@ def make_bcs_cube(config):
            NY = config['NY'], \
            NT = config['NT'], \
            RC = RC,\
+           RS = '-Pfafstetter',\
            NCPUS = config['NCPUS'])
 
      cube_job = open(bcjob+'-2','wt')
@@ -345,6 +230,8 @@ def make_bcs_cube(config):
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
   if ( interactive ) :
+     if resolution in ['c2880', 'c3072', 'c5760'] :
+        exit("resolution is too high for interactive mode")
      print('interactive mode\n')
      ntasks = os.getenv('SLURM_NTASKS', default = None)
      if ( not ntasks):
@@ -360,7 +247,9 @@ def make_bcs_cube(config):
     jobid = str(int(out.split()[3]))
     print( "Submitted batch job " + jobid)
     if resolution in ['c2880', 'c3072', 'c5760']:
+      print("sbatch " + bcjob+'-2' + " depending on " + bcjob + "\n")
       subprocess.call(['sbatch', '--dependency=afterok:'+jobid, bcjob+'-2'])
+      print()
        
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
