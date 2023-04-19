@@ -66,7 +66,7 @@ def make_bcs_latlon(config):
   IM  = '%04d'%config['im']
   JM  = '%04d'%config['jm']
 
-  RC = str(config['im']) +'_' +str(config['jm'])+'_DC'
+  RC = str(config['im']) +'x' +str(config['jm'])+'_DC'
 
   DATENAME = config['DATENAME']
   POLENAME = config['POLENAME']
