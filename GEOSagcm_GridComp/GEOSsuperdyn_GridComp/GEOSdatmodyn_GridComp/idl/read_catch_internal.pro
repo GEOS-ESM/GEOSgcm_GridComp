@@ -316,7 +316,7 @@ readu,1,aa
     qc=aa
     cas=create_struct( cas , 'qc', aa )
 
-    ;LONG_NAME          = 'interception_reservoir_capac',&
+    ;LONG_NAME          = 'vegetation_interception_water_storage',&
     ;UNITS              = 'kg m-2'                    ,&
     ;SHORT_NAME         = 'CAPAC'                     ,&
     ;DIMS               = MAPL_DimsTileOnly           ,&
