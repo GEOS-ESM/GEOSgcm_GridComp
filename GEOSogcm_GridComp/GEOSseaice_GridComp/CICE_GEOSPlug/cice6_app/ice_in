@@ -62,6 +62,9 @@
     grid_format  = 'nc'
     grid_type    = 'tripole'
     grid_subtype = 'geosmom'
+    grid_ice     = 'B'
+    grid_atm     = 'A'
+    grid_ocn     = 'B'
     grid_file    = 'cice6_grid.nc'
     kmt_file     = 'cice6_kmt.nc'
     bathymetry_file = 'cice6_global.bathy.nc'
@@ -96,8 +99,6 @@
     restart_FY   = .true.
     tr_lvl       = .true.
     restart_lvl  = .true.
-    tr_pond_cesm = .false.
-    restart_pond_cesm = .false.
     tr_pond_topo = .false.
     restart_pond_topo = .false.
     tr_pond_lvl  = .false.
