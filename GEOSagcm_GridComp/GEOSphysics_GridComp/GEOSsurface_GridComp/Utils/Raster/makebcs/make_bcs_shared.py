@@ -122,7 +122,6 @@ mkdir -p {GRIDNAME}/land/{GRIDNAME}/clsm
         clsm/pfaf_fractions.dat \\
         clsm/plots \\
         clsm/CLM_veg_typs_fracs \\
-        clsm/mkCatchParam.log \\
         clsm/Grid2Catch_TransferData.nc \\
         clsm/CLM_NDep_SoilAlb_T2m \\
         clsm/CLM4.5_abm_peatf_gdp_hdm_fc \\
