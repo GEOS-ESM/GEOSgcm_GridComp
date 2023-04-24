@@ -734,10 +734,14 @@
     
     real, parameter :: DAYLEN=86400.
 
+    integer :: run_gtfv3 = 0
 !=============================================================================
 
 ! Begin... 
 
+    call MAPL_GetResource(MAPL, run_gtfv3, 'RUN_GTFV3:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+  
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
@@ -903,192 +907,194 @@
   call ESMF_VMGet(vm, mpiCommunicator=comm, RC=status)
   call MPI_Comm_rank(comm, rank, ierr)
 
-! ! Begin calculations.
-! !-------------------
+  if (run_gtfv3 == 0) then
+    ! Begin calculations.
+    !-------------------
 
-!     PS  => PLE(:,:,LM)
-!     PT  => PLE(:,:, 0)
+        PS  => PLE(:,:,LM)
+        PT  => PLE(:,:, 0)
 
-!     PII =  P_D - (P_D - PT)*0.5*P_I
+        PII =  P_D - (P_D - PT)*0.5*P_I
 
-! ! Initialize vertically integrated diagnostics
-! !---------------------------------------------
+    ! Initialize vertically integrated diagnostics
+    !---------------------------------------------
 
-!     if(associated(DISS)) DISS = 0.0
-!     if(associated(TAUX)) TAUX = 0.0
-!     if(associated(TAUY)) TAUY = 0.0
+        if(associated(DISS)) DISS = 0.0
+        if(associated(TAUX)) TAUX = 0.0
+        if(associated(TAUY)) TAUY = 0.0
 
-! ! Loop invariants
-! !----------------
+    ! Loop invariants
+    !----------------
 
-!     KA   = 1.0/(DAYLEN*TAUA)
-!     KS   = 1.0/(DAYLEN*TAUS)
-!     KF   = 1.0/(DAYLEN*TAUF)
+        KA   = 1.0/(DAYLEN*TAUA)
+        KS   = 1.0/(DAYLEN*TAUS)
+        KF   = 1.0/(DAYLEN*TAUF)
 
-!     LEVELS: do L = 1,LM
+        LEVELS: do L = 1,LM
 
-!        DP  = (PLE(:,:,L)-PLE(:,:,L-1))
-!        PL  = (PLE(:,:,L)+PLE(:,:,L-1))*0.5
-!        DM  = DP / MAPL_GRAV
-!        PK  = (PL/MAPL_P00)**MAPL_KAPPA 
+        DP  = (PLE(:,:,L)-PLE(:,:,L-1))
+        PL  = (PLE(:,:,L)+PLE(:,:,L-1))*0.5
+        DM  = DP / MAPL_GRAV
+        PK  = (PL/MAPL_P00)**MAPL_KAPPA 
 
-! ! H&S equilibrium temperature
-! !----------------------------
+    ! H&S equilibrium temperature
+    !----------------------------
 
-!        TE  = PK*( T0 - DELH*SPHI2 - DELV1*CPHI2*log( PL/MAPL_P00 ) )
-!        TE  = max( TE, TSTRT )
+        TE  = PK*( T0 - DELH*SPHI2 - DELV1*CPHI2*log( PL/MAPL_P00 ) )
+        TE  = max( TE, TSTRT )
 
-! ! Williamson Stratospheric modifications to equilibrium temperature
-! ! -----------------------------------------------------------------
+    ! Williamson Stratospheric modifications to equilibrium temperature
+    ! -----------------------------------------------------------------
 
-!        where( PL < P_D )
-!           TE  = TSTRT*( min(1.0,PL/P_D)**(MAPL_RGAS*GAM_D/MAPL_GRAV)     &
-!                       + min(1.0,PL/PII)**(MAPL_RGAS*GAM_I/MAPL_GRAV) - 1 )
-!        end where
+        where( PL < P_D )
+            TE  = TSTRT*( min(1.0,PL/P_D)**(MAPL_RGAS*GAM_D/MAPL_GRAV)     &
+                        + min(1.0,PL/PII)**(MAPL_RGAS*GAM_I/MAPL_GRAV) - 1 )
+        end where
 
-! !  Exports of equilibrium T and Theta
-! !------------------------------------
+    !  Exports of equilibrium T and Theta
+    !------------------------------------
 
-!        if(associated(T_EQ)) T_EQ(:,:,L) = TE
-!        if(associated(THEQ)) THEQ(:,:,L) = TE/PK
+        if(associated(T_EQ)) T_EQ(:,:,L) = TE
+        if(associated(THEQ)) THEQ(:,:,L) = TE/PK
 
-! ! Vertical structure of timescales in H&S.
-! !---------------------------------------------
+    ! Vertical structure of timescales in H&S.
+    !---------------------------------------------
 
-!        F1  = max(0.0, ( (PL/PS)-SIG1 )/( 1.0-SIG1 ) )
+        F1  = max(0.0, ( (PL/PS)-SIG1 )/( 1.0-SIG1 ) )
 
-! ! Atmospheric heating from H&S
-! !-----------------------------
+    ! Atmospheric heating from H&S
+    !-----------------------------
 
-!        RR = (KA + (KS-KA)*F1*CPHI2**2) * (TE-T(:,:,L))
+        RR = (KA + (KS-KA)*F1*CPHI2**2) * (TE-T(:,:,L))
 
-!        if(associated(DTDT)) DTDT(:,:,L) =            DP*RR
-!        if(FriendlyTemp    ) T   (:,:,L) = T(:,:,L) + DT*RR
+        if(associated(DTDT)) DTDT(:,:,L) =            DP*RR
+        if(FriendlyTemp    ) T   (:,:,L) = T(:,:,L) + DT*RR
 
-! ! Wind tendencies
-! !----------------
+    ! Wind tendencies
+    !----------------
 
-!        UU  = -U(:,:,L)*(F1*KF)
-!        VV  = -V(:,:,L)*(F1*KF)
+        UU  = -U(:,:,L)*(F1*KF)
+        VV  = -V(:,:,L)*(F1*KF)
 
-!        if(associated(DUDT)) DUDT(:,:,L) = UU
-!        if(associated(DVDT)) DVDT(:,:,L) = VV
+        if(associated(DUDT)) DUDT(:,:,L) = UU
+        if(associated(DVDT)) DVDT(:,:,L) = VV
 
-!        if(FriendlyWind) then
-!           U(:,:,L) = U(:,:,L) + DT*UU
-!           V(:,:,L) = V(:,:,L) + DT*VV
-!        end if
+        if(FriendlyWind) then
+            U(:,:,L) = U(:,:,L) + DT*UU
+            V(:,:,L) = V(:,:,L) + DT*VV
+        end if
 
-! !  Frictional heating from H&S drag
-! !----------------------------------
+    !  Frictional heating from H&S drag
+    !----------------------------------
 
-!        DS = U(:,:,L)*UU + V(:,:,L)*VV
+        DS = U(:,:,L)*UU + V(:,:,L)*VV
 
-!        if(associated(DISS)) DISS           = DISS        - DS*DM
-!        if(FRICQ /= 0) then
-!           if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) - DS*(DP/MAPL_CP  )
-!           if(FriendlYTemp    ) T   (:,:,L) = T   (:,:,L) - DS*(DT/MAPL_CP  )
-!        end if
+        if(associated(DISS)) DISS           = DISS        - DS*DM
+        if(FRICQ /= 0) then
+            if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) - DS*(DP/MAPL_CP  )
+            if(FriendlYTemp    ) T   (:,:,L) = T   (:,:,L) - DS*(DT/MAPL_CP  )
+        end if
 
-! !  Surface stresses from vertically integrated H&S surface drag
-! !--------------------------------------------------------------
+    !  Surface stresses from vertically integrated H&S surface drag
+    !--------------------------------------------------------------
 
-!        if(associated(TAUX)) TAUX = TAUX - UU*DM
-!        if(associated(TAUY)) TAUY = TAUY - VV*DM
+        if(associated(TAUX)) TAUX = TAUX - UU*DM
+        if(associated(TAUY)) TAUY = TAUY - VV*DM
 
-! ! Localized heat source, if any
-! !------------------------------
+    ! Localized heat source, if any
+    !------------------------------
 
-!        if((associated(DTDT).or.FriendlyTemp) .and. QMAX/=0.0) then
-!           where(PL > P_1)
-!              VR = HFCN*(QMAX/DAYLEN)*sin( MAPL_PI*(PS-PL)/(PS-P_1) )
-!           elsewhere
-!              VR = 0.
-!           end where
+        if((associated(DTDT).or.FriendlyTemp) .and. QMAX/=0.0) then
+            where(PL > P_1)
+                VR = HFCN*(QMAX/DAYLEN)*sin( MAPL_PI*(PS-PL)/(PS-P_1) )
+            elsewhere
+                VR = 0.
+            end where
 
-!           if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) + DP*VR 
-!           if(FriendlyTemp    ) T   (:,:,L) = T   (:,:,L) + DT*VR
-!        end if
+            if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) + DP*VR 
+            if(FriendlyTemp    ) T   (:,:,L) = T   (:,:,L) + DT*VR
+        end if
 
-!     enddo LEVELS
+        enddo LEVELS
 
-!    if(associated(DISS) == .FALSE.) then
-!        write(*,*) 'DISS is not associated'
-!    else
-!        DISS_p => DISS
-!    endif
+        if(associated(DISS) == .FALSE.) then
+            write(*,*) 'DISS is not associated'
+        else
+            DISS_p => DISS
+        endif
 
-!    if(associated(TAUX) == .FALSE.) then
-!        write(*,*) 'TAUX is not associated'
-!    else
-!        TAUX_p => TAUX
-!    endif
+        if(associated(TAUX) == .FALSE.) then
+            write(*,*) 'TAUX is not associated'
+        else
+            TAUX_p => TAUX
+        endif
 
-!    if(associated(TAUY) == .FALSE.) then
-!        write(*,*) 'TAUY is not associated'
-!    else
-!        TAUY_p => TAUY
-!    endif
+        if(associated(TAUY) == .FALSE.) then
+            write(*,*) 'TAUY is not associated'
+        else
+            TAUY_p => TAUY
+        endif
 
-!    if(associated(DTDT) == .FALSE.) then
-!        write(*,*) 'DTDT is not associated'
-!    else
-!        DTDT_p => DTDT
-!    endif
+        if(associated(DTDT) == .FALSE.) then
+            write(*,*) 'DTDT is not associated'
+        else
+            DTDT_p => DTDT
+        endif
 
-!    if(associated(DUDT) == .FALSE.) then
-!        write(*,*) 'DUDT is not associated'
-!    else
-!        DUDT_p => DUDT
-!    endif
+        if(associated(DUDT) == .FALSE.) then
+            write(*,*) 'DUDT is not associated'
+        else
+            DUDT_p => DUDT
+        endif
 
-!    if(associated(DVDT) == .FALSE.) then
-!        write(*,*) 'DVDT is not associated'
-!    else
-!        DVDT_p => DVDT
-!    endif
+        if(associated(DVDT) == .FALSE.) then
+            write(*,*) 'DVDT is not associated'
+        else
+            DVDT_p => DVDT
+        endif
 
-!    if(associated(THEQ) == .FALSE.) then
-!        write(*,*) 'THEQ is not associated'
-!    else
-!        THEQ_p => THEQ
-!    endif
+        if(associated(THEQ) == .FALSE.) then
+            write(*,*) 'THEQ is not associated'
+        else
+            THEQ_p => THEQ
+        endif
 
-!    if(associated(T_EQ) == .FALSE.) then
-!        write(*,*) 'T_EQ is not associated'
-!    else
-!        T_EQ_p => T_EQ
-!    endif
+        if(associated(T_EQ) == .FALSE.) then
+            write(*,*) 'T_EQ is not associated'
+        else
+            T_EQ_p => T_EQ
+        endif
 
-!    if(associated(CPHI2) == .FALSE.) write(*,*) 'CPHI2 is not associated'
-!    if(associated(HFCN) == .FALSE.) write(*,*) 'HFCN is not associated'
-!    if(associated(P_I) == .FALSE.) write(*,*) 'P_I is not associated'
-!    if(associated(PLE) == .FALSE.) write(*,*) 'PLE is not associated'
-!    if(associated(SPHI2) == .FALSE.) write(*,*) 'SPHI2 is not associated'
-!    if(associated(U) == .FALSE.) write(*,*) 'U is not associated'
-!    if(associated(V) == .FALSE.) write(*,*) 'V is not associated'
-!    if(associated(T) == .FALSE.) write(*,*) 'T is not associated'
+        if(associated(CPHI2) == .FALSE.) write(*,*) 'CPHI2 is not associated'
+        if(associated(HFCN) == .FALSE.) write(*,*) 'HFCN is not associated'
+        if(associated(P_I) == .FALSE.) write(*,*) 'P_I is not associated'
+        if(associated(PLE) == .FALSE.) write(*,*) 'PLE is not associated'
+        if(associated(SPHI2) == .FALSE.) write(*,*) 'SPHI2 is not associated'
+        if(associated(U) == .FALSE.) write(*,*) 'U is not associated'
+        if(associated(V) == .FALSE.) write(*,*) 'V is not associated'
+        if(associated(T) == .FALSE.) write(*,*) 'T is not associated'
 
-!    write(*,*) 'Calling c_call_hs_oacc'
-!    call c_call_hs_oacc(C_LOC(CPHI2), C_LOC(DISS_p), C_LOC(DTDT_p), C_LOC(DUDT_p), C_LOC(DVDT_p), &
-!                        C_LOC(HFCN), C_LOC(P_I), C_LOC(PLE), C_LOC(SPHI2), C_LOC(TAUX_p), C_LOC(TAUY_p), C_LOC(T), &
-!                        C_LOC(THEQ_p), C_LOC(T_EQ), C_LOC(U), C_LOC(V), &
-!                        DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
-!                        FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
-!                        SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 0)
-    call MPI_GET_PROCESSOR_NAME(nameNode, length, ierr)
-    !write(*,*) 'Rank = ', rank, 'on node', nameNode
-    DISS_P => null()
-    TAUX_P => null()
-    TAUY_P => null()
-    THEQ_P => null()
-    call held_suarez_oacc(CPHI2, DISS_P, DTDT, DUDT, DVDT, &
-                        HFCN, P_I, PLE, SPHI2, TAUX_P, TAUY_P, T, &
-                        THEQ_P, T_EQ, U, V, &
-                        DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
-                        FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
-                        SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 2, rank)
-
+        write(*,*) 'Calling c_call_hs_oacc'
+        call c_call_hs_oacc(C_LOC(CPHI2), C_LOC(DISS_p), C_LOC(DTDT_p), C_LOC(DUDT_p), C_LOC(DVDT_p), &
+                            C_LOC(HFCN), C_LOC(P_I), C_LOC(PLE), C_LOC(SPHI2), C_LOC(TAUX_p), C_LOC(TAUY_p), C_LOC(T), &
+                            C_LOC(THEQ_p), C_LOC(T_EQ), C_LOC(U), C_LOC(V), &
+                            DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
+                            FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
+                            SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 0)
+    else
+        call MPI_GET_PROCESSOR_NAME(nameNode, length, ierr)
+        !write(*,*) 'Rank = ', rank, 'on node', nameNode
+        DISS_P => null()
+        TAUX_P => null()
+        TAUY_P => null()
+        THEQ_P => null()
+        call held_suarez_oacc(CPHI2, DISS_P, DTDT, DUDT, DVDT, &
+                            HFCN, P_I, PLE, SPHI2, TAUX_P, TAUY_P, T, &
+                            THEQ_P, T_EQ, U, V, &
+                            DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
+                            FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
+                            SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 2, rank)
+    end if
 ! Free 10 scratch arrays
 !-----------------------
 
