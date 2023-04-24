@@ -332,7 +332,7 @@ if __name__ == "__main__":
 
    answers = ask_questions()
    for key, value in answers.items():
-     if (key == 'im' or key) =='jm' :
+     if (key == 'im' or key =='jm') :
         for key1, value1 in answers[key].items():
            print(key1, value1)
 
