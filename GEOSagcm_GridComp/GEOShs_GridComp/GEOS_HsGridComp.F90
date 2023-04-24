@@ -1017,70 +1017,70 @@
 
         enddo LEVELS
 
-        if(associated(DISS) == .FALSE.) then
-            write(*,*) 'DISS is not associated'
-        else
-            DISS_p => DISS
-        endif
+        ! if(associated(DISS) .eqv. .FALSE.) then
+        !     write(*,*) 'DISS is not associated'
+        ! else
+        !     DISS_p => DISS
+        ! endif
 
-        if(associated(TAUX) == .FALSE.) then
-            write(*,*) 'TAUX is not associated'
-        else
-            TAUX_p => TAUX
-        endif
+        ! if(associated(TAUX) .eqv. .FALSE.) then
+        !     write(*,*) 'TAUX is not associated'
+        ! else
+        !     TAUX_p => TAUX
+        ! endif
 
-        if(associated(TAUY) == .FALSE.) then
-            write(*,*) 'TAUY is not associated'
-        else
-            TAUY_p => TAUY
-        endif
+        ! if(associated(TAUY) .eqv. .FALSE.) then
+        !     write(*,*) 'TAUY is not associated'
+        ! else
+        !     TAUY_p => TAUY
+        ! endif
 
-        if(associated(DTDT) == .FALSE.) then
-            write(*,*) 'DTDT is not associated'
-        else
-            DTDT_p => DTDT
-        endif
+        ! if(associated(DTDT) .eqv. .FALSE.) then
+        !     write(*,*) 'DTDT is not associated'
+        ! else
+        !     DTDT_p => DTDT
+        ! endif
 
-        if(associated(DUDT) == .FALSE.) then
-            write(*,*) 'DUDT is not associated'
-        else
-            DUDT_p => DUDT
-        endif
+        ! if(associated(DUDT) .eqv. .FALSE.) then
+        !     write(*,*) 'DUDT is not associated'
+        ! else
+        !     DUDT_p => DUDT
+        ! endif
 
-        if(associated(DVDT) == .FALSE.) then
-            write(*,*) 'DVDT is not associated'
-        else
-            DVDT_p => DVDT
-        endif
+        ! if(associated(DVDT) .eqv. .FALSE.) then
+        !     write(*,*) 'DVDT is not associated'
+        ! else
+        !     DVDT_p => DVDT
+        ! endif
 
-        if(associated(THEQ) == .FALSE.) then
-            write(*,*) 'THEQ is not associated'
-        else
-            THEQ_p => THEQ
-        endif
+        ! if(associated(THEQ) .eqv. .FALSE.) then
+        !     write(*,*) 'THEQ is not associated'
+        ! else
+        !     THEQ_p => THEQ
+        ! endif
 
-        if(associated(T_EQ) == .FALSE.) then
-            write(*,*) 'T_EQ is not associated'
-        else
-            T_EQ_p => T_EQ
-        endif
+        ! if(associated(T_EQ) .eqv. .FALSE.) then
+        !     write(*,*) 'T_EQ is not associated'
+        ! else
+        !     T_EQ_p => T_EQ
+        ! endif
 
-        if(associated(CPHI2) == .FALSE.) write(*,*) 'CPHI2 is not associated'
-        if(associated(HFCN) == .FALSE.) write(*,*) 'HFCN is not associated'
-        if(associated(P_I) == .FALSE.) write(*,*) 'P_I is not associated'
-        if(associated(PLE) == .FALSE.) write(*,*) 'PLE is not associated'
-        if(associated(SPHI2) == .FALSE.) write(*,*) 'SPHI2 is not associated'
-        if(associated(U) == .FALSE.) write(*,*) 'U is not associated'
-        if(associated(V) == .FALSE.) write(*,*) 'V is not associated'
-        if(associated(T) == .FALSE.) write(*,*) 'T is not associated'
+        ! if(associated(CPHI2) .eqv. .FALSE.) write(*,*) 'CPHI2 is not associated'
+        ! if(associated(HFCN) .eqv. .FALSE.) write(*,*) 'HFCN is not associated'
+        ! if(associated(P_I) .eqv. .FALSE.) write(*,*) 'P_I is not associated'
+        ! if(associated(PLE) .eqv. .FALSE.) write(*,*) 'PLE is not associated'
+        ! if(associated(SPHI2) .eqv. .FALSE.) write(*,*) 'SPHI2 is not associated'
+        ! if(associated(U) .eqv. .FALSE.) write(*,*) 'U is not associated'
+        ! if(associated(V) .eqv. .FALSE.) write(*,*) 'V is not associated'
+        ! if(associated(T) .eqv. .FALSE.) write(*,*) 'T is not associated'
 
-        write(*,*) 'Calling c_call_hs_oacc'
-        call c_call_hs_oacc(C_LOC(CPHI2), C_LOC(DISS_p), C_LOC(DTDT_p), C_LOC(DUDT_p), C_LOC(DVDT_p), &
-                            C_LOC(HFCN), C_LOC(P_I), C_LOC(PLE), C_LOC(SPHI2), C_LOC(TAUX_p), C_LOC(TAUY_p), C_LOC(T), &
-                            C_LOC(THEQ_p), C_LOC(T_EQ), C_LOC(U), C_LOC(V), &
-                            DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
-                            FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
-                            SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 0)
+        ! write(*,*) 'Calling c_call_hs_oacc'
+        ! call c_call_hs_oacc(C_LOC(CPHI2), C_LOC(DISS_p), C_LOC(DTDT_p), C_LOC(DUDT_p), C_LOC(DVDT_p), &
+        !                     C_LOC(HFCN), C_LOC(P_I), C_LOC(PLE), C_LOC(SPHI2), C_LOC(TAUX_p), C_LOC(TAUY_p), C_LOC(T), &
+        !                     C_LOC(THEQ_p), C_LOC(T_EQ), C_LOC(U), C_LOC(V), &
+        !                     DAYLEN, DELH, DELV1, DT, FRICQ, FriendlyTemp, &
+        !                     FriendlyWind, GAM_D, GAM_I, IM, JM, LM, P_1, P_D, QMAX, &
+        !                     SIG1, TAUA, TAUF, TAUS, TSTRT, T0, 0)
     else
         call MPI_GET_PROCESSOR_NAME(nameNode, length, ierr)
         !write(*,*) 'Rank = ', rank, 'on node', nameNode
