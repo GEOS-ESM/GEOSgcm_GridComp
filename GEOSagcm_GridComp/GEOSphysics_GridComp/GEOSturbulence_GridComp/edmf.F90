@@ -29,13 +29,13 @@ public run_edmf
 contains
 
 SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
-              zlo3,zw3,pw3,rhoe3,nup,&
+              zlo3,zw3,pw3,rhoe3,tke3,nup,&
               u3,v3,t3,thl3,thv3,qt3,qv3,ql3,qi3,&
               ust2,wthl2,wqt2,frland,pblh2, &
 !              mfsrcthl, mfsrcqt, mfw, mfarea, &
             ! outputs - variables needed for solver
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl, &
+             mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,mftke, &
              ! outputs - updraft properties
              dry_a3,moist_a3, &
               dry_w3,moist_w3, &
@@ -43,7 +43,7 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
              dry_thl3,moist_thl3, &
              dry_u3,moist_u3, &
              dry_v3,moist_v3, &
-             moist_qc3, &
+             moist_qc3, edmfdepth, &
              buoyf, entx, edmfmf, &
 #ifdef EDMF_DIAG
              w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
@@ -80,11 +80,11 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
 
        type (EDMFPARAMS_TYPE), INTENT(IN) :: PARAMS
        INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE,NUP!,DOCLASP
-       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3
+       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3,TKE3
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
        REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND,PHIS
-       REAL :: DT
+       REAL, INTENT(IN) :: DT
        INTEGER :: NUP2
 
 ! outputs
@@ -106,9 +106,10 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
   ! outputs - variables needed for solver (s_aw - sum ai*wi, s_awphi - sum ai*wi*phii)
         REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
    ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
-         REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfwqt,mfhl2,&
-                                                         mfhlqt,mfwhl,entx
-      REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf
+         REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfhl2,&
+                                                         mfhlqt,entx !mfwhl,entx
+      REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf, mfwhl, mfwqt, mftke
+      REAL, DIMENSION(ITS:ITE), INTENT(INOUT) :: edmfdepth
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
  ! entrainment variables
@@ -132,20 +133,22 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
                dry_qt,moist_qt,dry_thl,moist_thl,dry_u,moist_u,dry_v,moist_v, moist_qc
         REAL,DIMENSION(KTS-1:KTE) :: s_aw,s_aws,s_awqv,s_awql,s_awqi,s_awu,s_awv
         REAL,DIMENSION(KTS:KTE) ::  s_buoyf
-        REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,s_ahlqt,s_awqt,s_ahl2,s_awhl
+        REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,s_ahlqt,s_awqt,s_ahl2,s_awhl,qte
 ! exner function
         REAL,DIMENSION(KTS:KTE) :: exf,dp,pmid
-        REAL,DIMENSION(KTS-1:KTE) :: exfh
+        REAL,DIMENSION(KTS-1:KTE) :: exfh,tmp1d
         REAL,DIMENSION(KTS-1:KTE) :: rhoe
 
-        REAL :: L0,ztop,stmp,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor
+        REAL :: L0,ztop,tmp,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
         INTEGER, DIMENSION(2) :: seedmf,the_seed
 
 
-! w parameters
+! velocity equation parameters
  REAL,PARAMETER :: &
-        Wa=1., &
-        Wb=1.5
+         Wa=1., &  ! buoyancy term
+         Wb=1.5      ! entrainment term
+!        Wa=1., &    ! original
+!        Wb=1.5
 
 ! min values to avoid singularities
   REAL,PARAMETER :: &
@@ -157,6 +160,8 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
       mfsrcqt  = 0.
       mfw      = 0.
       mfarea   = 0.
+
+      tmp1d(:) = 1e-3
 
      ! set updraft properties to zero/undef
       dry_a3=0.
@@ -190,7 +195,8 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
       mfhl2 =0.
       mfhlqt=0.
       mfwhl =0.
-      entx = 0.
+      mftke =0.
+      entx = mapl_undef
       edmfmf=0.
 
    ! this is the environmental area - by default 1.
@@ -244,6 +250,8 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 ! if surface buoyancy is positive then mass-flux, otherwise not
   IF ( (wthv > 0.0 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. PARAMS%doclasp/=0)) then
 
+!     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl
+
      if (PARAMS%doclasp/=0) then
        nup2 = count(mfsrcthl(IH,1:nup)>=-2.0)
      else
@@ -264,18 +272,35 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 ! Estimate scale height for entrainment calculation
  if (params%ET == 2 ) then
     pmid = 0.5*(pw3(IH,kts-1:kte-1)+pw3(IH,kts:kte))
-    call calc_mf_depth(kts,kte,t3(IH,:),zlo3(IH,:),qv3(IH,:),pmid,ztop)
-    L0 = max(min(ztop,3000.),500.) / params%L0fac
+    call calc_mf_depth(kts,kte,t3(IH,:),zlo3(IH,:)-zw3(IH,kte),qv3(IH,:),pmid,ztop,wthv,wqt)
+    edmfdepth(IH) = (1.-DT/1800.)*edmfdepth(IH) + (DT/1800.)*ztop
+    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
+
+    ! Reduce L0 over ocean where LTS > 18 to encourage StCu formation
+    lts =  0.0
+    if (FRLAND(IH)<0.5) then
+       do k = kte-1,kts+1,-1
+          if (zlo3(IH,k)-zw3(IH,kte).gt.3000.0) then
+             lts = thv3(IH,k+1)
+             exit
+          end if
+       end do
+       lts = lts - thv3(IH,kte)
+       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
+    end if 
+else if (params%ET == 3 ) then
+    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
  else
     L0 = params%L0
- end if   
+ end if  
+! print *,'L0=',L0 
 !
 ! flipping variables (GEOS5)
 !
 
 
   DO k=kts,kte
-      zlo(k)=zlo3(IH,kte-k+kts)
+      zlo(k)=zlo3(IH,kte-k+kts)-zw3(IH,kte)
       u(k)=u3(IH,kte-k+kts)
       v(k)=v3(IH,kte-k+kts)
       thl(k)=thl3(IH,kte-k+kts)
@@ -321,7 +346,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 
 DO k=kts-1,kte
    rhoe(k) = rhoe3(IH,kte-k+kts-1)
-   zw(k)   = zw3(IH,kte-k+kts-1)
+   zw(k)   = zw3(IH,kte-k+kts-1)-zw3(IH,kte)
    p(k)    = pw3(IH,kte-k+kts-1)
 ENDDO
 
@@ -343,40 +368,71 @@ dp = p(kts-1:kte-1)-p(kts:kte)
         ENTf(k,i)=((ZW(k)-ZW(k-1))/L0)
       enddo
     enddo
+!    print *,'ENTf=',ENTf(110:,:)
 
    ! get Poisson P(dz/L0)
-  seedmf(1) = 1000000 * ( 100*thl(kte) - INT(100*thl(kte)))
-  seedmf(2) = 1000000 * ( 100*thl(kte-1) - INT(100*thl(kte-1)))
+  seedmf(1) = 1000000 * ( 100*thl(kts) - INT(100*thl(kts)))
+  seedmf(2) = 1000000 * ( 100*thl(kts+1) - INT(100*thl(kts+1)))
 
   THE_SEED(1)=seedmf(1) + seedmf(2)
-  THE_SEED(2)=seedmf(1) + seedmf(2)
+  THE_SEED(2)=seedmf(1) - seedmf(2)
   THE_SEED(1)=THE_SEED(1)*seedmf(1)/( seedmf(2) + 10)
   THE_SEED(2)=THE_SEED(2)*seedmf(1)/( seedmf(2) + 10)
   if(THE_SEED(1) == 0) THE_SEED(1) =  5
   if(THE_SEED(2) == 0) THE_SEED(2) = -5
 
 
+! print *,'thl=',thl(kts:kts+1),'  the_seed=',THE_SEED
+
 if (L0 .gt. 0. ) then
 
    ! entrainent: Ent=Ent0/dz*P(dz/L0)
+   if (PARAMS%ENTRAIN==0) then
     call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)
+!    print *,'ENTi plume1=',ENTi(:,1)
+!    print *,'ENTi plume2=',ENTi(:,2)
     do i=1,Nup
      do k=kts,kte
        ENT(k,i) = (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0 &
-                + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1))
+                + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1)) !&
+!       if (ZW(k).lt.500.) then
+!          ENT(k,i) = real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1))
+!       else
+!          ENT(k,i) = (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0 &
+!                   + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1)) !&
+!       end if
+!                + 1.*tke3(ih,kte-k+kts)/L0
+!       ENT(k,i) = ENT(k,i) * (1000./max(ZW(k),500.))
+!       if (ZW(k).lt.500.) ENT(k,i) = 2.*ENT(k,i)
      enddo
     enddo
-    ENT = (1.+frland(IH))*ENT  ! double entrainment over land to reduce PBLH
-
+   else if (PARAMS%ENTRAIN==1) then
+    call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)
+    do i=1,Nup   ! Vary entrainment across updrafts, 0.75-1.25x
+     do k=kts,kte
+       ENT(k,i) = ((FLOAT(Nup-i)*0.5/FLOAT(Nup))+0.75)*( (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0 &
+                + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1)) ) !&
+!       if (ZW(k).lt.500.) ENT(k,i) = 2.*ENT(k,i)
+     enddo
+    enddo
+   else if (PARAMS%ENTRAIN==2) then
+    do i=1,Nup   ! alternate approach from Soares et al 2004
+     do k=kts,kte
+       ENT(k,i) = PARAMS%Ent0*(1./(ZW(k)+ZW(k)-ZW(k-1))+1./(max(0.,L0-ZW(k))+ZW(k)-ZW(k-1)))
+     enddo
+    enddo
+   end if
+!    ENT = (1.+frland(IH))*ENT  ! double entrainment over land to reduce PBLH
+!    print *,'ZW=',ZW
+!    print *,'ENT=',SUM(ENT,DIM=2)/10.
 
 ! increase entrainment if local minimum of THV
-
-  do k=kts+1,kte-1
-    if ( (THV(k) .lt. THV(k-1)) .and. (THV(k) .lt. THV(k+1)) ) then
-           ENT(k,:)=ENT(k,:)+5.*PARAMS%ENT0/L0
-!          print *,'increasing entrainment, THVs are',THV(k-1:k+1)
-     endif
-  enddo
+!  do k=kts+1,kte-1
+!    if ( (THV(k) .lt. THV(k-1)) .and. (THV(k) .lt. THV(k+1)) ) then
+!           ENT(k,:)=ENT(k,:)+5.*PARAMS%ENT0/L0
+!!          print *,'increasing entrainment, THVs are',THV(k-1:k+1)
+!     endif
+!  enddo
 
 !  if (entrainopt==2) ENT(kts+1:,:) = MAPL_UNDEF
 
@@ -394,8 +450,8 @@ end if
  ! surface conditions
  !
    wstar=max(wstarmin,(mapl_grav/300.*wthv*pblh)**(1./3.))  ! convective velocity scale
-   qstar=wqt/wstar
-   thstar=wthv/wstar
+   qstar=max(0.,wqt)/wstar
+   thstar=max(0.01,wthv)/wstar
 
    sigmaW=PARAMS%AlphaW*wstar
    sigmaQT=PARAMS%AlphaQT*qstar
@@ -404,7 +460,6 @@ end if
    if (PARAMS%doclasp/= 0) then
      wmin=2.*sigmaW
      wmax=2.*sigmaW
-
    else
      wmin=sigmaW*PARAMS%pwmin
      wmax=sigmaW*PARAMS%pwmax
@@ -431,15 +486,26 @@ end if
           UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,I)
           UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,I)
         else
-          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
+          UPQT(kts-1,I)=QT(kts)-(-1.**I)*0.32*UPW(kts-1,I)*sigmaQT/sigmaW
+!          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
           UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
         end if
 
        ENDDO
 
+   !
+   ! If needed, rescale UPW to ensure that the mass-flux does not exceed layer mass
+   !
+
+   mf = SUM(RHOE(kts-1)*UPA(kts-1,:)*UPW(kts-1,:))
+   factor = dp(kts)/(mf*MAPL_GRAV*dt)
+!   print *,'factor=',factor
+   if (factor .lt. 1.0) then
+      UPW(kts-1,:) = UPW(kts-1,:)*factor
+   end if
 
    !
-   ! for stability make sure that the surface mass-fluxes are not more than their values computed from the surface scheme
+   ! make sure that the thv and qt fluxes are not more than their values computed from the surface scheme
    !
 
    QTsrfF=0.
@@ -476,10 +542,18 @@ end if
   ! integrate updrafts
   !
 
-         DO I=1,NUP2  ! loop over updrafts
          ! loop over vertical
          vertint:   DO k=KTS,KTE
+         DO I=1,NUP2  ! loop over updrafts
 
+            if (UPW(K-1,I).gt.0.) then
+               if (PARAMS%ENTRAIN==3) then  ! dynamic entrainment rates
+                 ENT(K,I) = PARAMS%ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
+               elseif (PARAMS%ENTRAIN==4) then
+!                 ENT(K,I) = (1.-PARAMS%STOCHFRAC)*PARAMS%Ent0/L0 &
+!                            + PARAMS%STOCHFRAC*PARAMS%ENT0*0.0032/max(0.1,UPW(K-1,I))
+                 ENT(K,I) = 1e-3*(PARAMS%Ent0/(max(min(UPW(K-1,I),2.0),0.5))-0.5) 
+               end if
 
                EntExp=exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
                EntExpU=exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*PARAMS%EntWFac)
@@ -492,6 +566,8 @@ end if
 
               ! condensation
                call condensation_edmf(QTn,THLn,P(K),THVn,QCn,wf,params%ice_ramp)
+!               QTn = QTn - max(0.,QCn-1e-3)  ! remove condensate >1g/kg as "precipitation"
+!               QCn = min(1e-3,QCn)
 
              ! vertical velocity
               B=mapl_grav*(0.5*(THVn+UPTHV(k-1,I))/THV(k)-1.)
@@ -504,7 +580,7 @@ end if
               END IF
 
               IF (Wn2>0.) THEN
-                 UPW(K,I)=min( sqrt(Wn2), 10. ) ! npa
+                 UPW(K,I)=sqrt(Wn2)
                  UPTHV(K,I)=THVn
                  UPTHL(K,I)=THLn
                  UPQT(K,I)=QTn
@@ -513,19 +589,34 @@ end if
                  UPU(K,I)=Un
                  UPV(K,I)=Vn
                  UPA(K,I)=UPA(K-1,I)
-
-               if (PARAMS%ENTRAIN==2 .and. L0>0.) then
-                 ENT(K+1,I) = PARAMS%ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
-               end if
               ELSE
-                  EXIT vertint
+                UPW(K,I) = 0.
+                UPA(K,I) = 0.
+!                  EXIT vertint
               END IF
-             ! loop over vertical
-            ENDDO vertint
+            end if ! check if updraft still rising
          ENDDO   ! loop over updrafts
 
+                ! rescale velocities if MF exceeds layer mass
+              if (ZW(k)<200.) then
+                mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
+                factor = 2.*dp(K)/(mf*MAPL_GRAV*dt)
+                if (factor .lt. 1.0) then
+                  UPW(k,:) = UPW(k,:)*factor
+!                  print *,'rescaling UPW by factor: ',factor
+                end if
+              end if
+
+             ! loop over vertical
+            ENDDO vertint
+
          do k=kts,kte
-           entx(ih,k) = sum(ENT(k,:))/Nup2
+           tmp = sum(UPA(k,:))
+           if (tmp .gt. 0.) then
+             entx(ih,KTE-k+KTS) = sum(UPA(k,:)*ENT(k,:))/tmp
+           else
+             entx(ih,KTE-k+KTS) = MAPL_UNDEF
+           end if
          end do
 
 
@@ -533,17 +624,20 @@ end if
   ! If it does, rescale updraft area.
   ! See discussion in Beljaars et al 2018 [ECMWF Tech Memo]
 
+!         UPA = 0.5*UPA   ! rescale area preemtively to reduce sensitivity to vertical resolution
+
          factor = 1.0
          DO k=KTS,KTE
             mf = SUM(RHOE(K)*UPA(K,:)*UPW(K,:))
-            if (mf .gt. dp(K)/(MAPL_GRAV*dt)) then
-               factor = min(factor,dp(K)/(mf*MAPL_GRAV*dt) )
+            if (mf .gt. PARAMS%MFLIMFAC*dp(K)/(MAPL_GRAV*dt)) then
+               factor = min(factor,PARAMS%MFLIMFAC*dp(K)/(mf*MAPL_GRAV*dt) )
             end if
          ENDDO
-         UPA = factor*UPA
+         if (factor.ne.1.0) print *,'*** CFL rescale by factor: ',factor
+         UPA = factor*UPA 
 
          DO k=KTS,KTE
-            edmfmf(IH,k) = rhoe(K)*SUM(upa(K,:)*upw(K,:))
+            edmfmf(IH,KTE-k+KTS-1) = rhoe(K)*SUM(upa(K,:)*upw(K,:))
          ENDDO
 
   !
@@ -676,7 +770,9 @@ end if
      s_awhl=0.
      s_ahlqt=0.
 
-    DO I=1,NUP2
+     qte = (QTI(:)-SUM(UPA(:,:)*UPQT(:,:),DIM=2))/(1.-SUM(UPA(:,:),DIM=2))
+     s_aqt3(:) = (1.-SUM(UPA,DIM=2))*(QTE-QTI)**3
+     DO I=1,NUP2
 
           DO k=KTS-1,KTE
           s_aw(K)=s_aw(K)+UPA(K,I)*UPW(K,I)
@@ -684,18 +780,19 @@ end if
           s_aw3(K)=s_aw3(K)+UPA(K,I)*UPW(K,I)*UPW(K,I)*UPW(K,I)
           s_aqt2(K)=s_aqt2(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPQT(K,I)-QTI(K))
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
+!          s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
           s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
           if (PARAMS%IMPLICIT == 1) then
-             stmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + phis(IH) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs
+             tmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + phis(IH) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs ! updraft S
           else
-!             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
-!             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl - exfh(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl
-             stmp =   mapl_cp*exfh(k)*( UPTHL(K,i) - THLI(K) ) &
+!             tmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
+!             tmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl - exfh(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl
+             tmp =   mapl_cp*exfh(k)*( UPTHL(K,i) - THLI(K) ) &
                     + mapl_alhl*( UPQL(K,i) - QLI(K) ) &
                     + mapl_alhs*( UPQI(K,I) - QII(K) )
           end if
           ltm=exfh(k)*(UPTHL(K,i)-THLI(K)) !+mapl_grav*zw(k)/mapl_cp
-          s_aws(k)=s_aws(K)+UPA(K,i)*UPW(K,i)*stmp
+          s_aws(k)=s_aws(K)+UPA(K,i)*UPW(K,i)*tmp
           s_ahl2(k)=s_ahl2(K)+UPA(K,i)*ltm*ltm
           s_ahl3(k)=s_ahl3(K)+UPA(K,i)*ltm*ltm*ltm
           s_awhl(k)=s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
@@ -713,6 +810,7 @@ end if
              s_awqi(k) = s_awqi(K) + UPA(K,i)*UPW(K,I)*(UPQI(K,I) - QII(K))
           end if
           s_awqt(k)  = s_awqt(K)  + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - QTI(K))
+          mftke(IH,k) = mftke(IH,k) + UPA(KTE+KTS-K-1,i)*0.5*UPW(KTE+KTS-K-1,I)*UPW(KTE+KTS-K-1,I)
          ENDDO
 
        DO k=KTS,KTE
@@ -755,7 +853,8 @@ end if
       awu3(IH,K)=s_awu(KTE+KTS-K-1)
       awv3(IH,K)=s_awv(KTE+KTS-K-1)
       ae3(IH,K)=(1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*PARAMS%EDfac
-
+      mfwhl(IH,K) = s_awhl(KTE+KTS-K-1)
+      mfwqt(IH,K) = s_awqt(KTE+KTS-K-1)
     ENDDO
 
 ! buoyancy is defined on full levels
@@ -768,13 +867,15 @@ end if
       mfqt2(IH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))
       mfqt3(IH,K)=0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
       mfhl3(IH,K)=0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
-      mfwqt(IH,K)=0.5*(s_awqt(KTE+KTS-K-1)+s_awqt(KTE+KTS-K))
+!      mfwqt(IH,K)=0.5*(s_awqt(KTE+KTS-K-1)+s_awqt(KTE+KTS-K))
       mfhlqt(IH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
-      mfwhl(IH,K)=0.5*(s_awhl(KTE+KTS-K-1)+s_awhl(KTE+KTS-K))
+!      mfwhl(IH,K)=0.5*(s_awhl(KTE+KTS-K-1)+s_awhl(KTE+KTS-K))
 
   ENDDO
 
  END IF   !  IF ( wthv > 0.0 )
+
+ if (params%ET == 3 ) edmfdepth(IH) = zw( COUNT( dry_a3(IH,:)+moist_a3(IH,:) .gt. tmp1d ) )
 
 ENDDO ! loop over horizontal area
 
@@ -782,17 +883,29 @@ ENDDO ! loop over horizontal area
 END SUBROUTINE run_edmf
 
 
-subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop)
+subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
   integer, intent(in   )                     :: kts, kte
+!  real,    intent(in   )                     :: ent0
   real,    intent(in   ), dimension(kts:kte) :: t, z, q, p
+  real,    intent(in   )                     :: wthv, wqt
   real,    intent(  out)                     :: ztop
 
-  real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp
+  real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,wstar,qstar,thstar,sigmaQT,sigmaTH
   integer  :: k
 
-  tep  = t(kte)+0.4 ! parcel values
-  qp   = q(kte)
+   wstar=max(0.1,(mapl_grav/300.*wthv*ztop)**(1./3.))  ! convective velocity scale                                                                                                       
+   qstar=max(0.,wqt)/wstar
+   thstar=max(0.,wthv)/wstar
+
+!   sigmaW=PARAMS%AlphaW*wstar
+   sigmaQT=1.0*qstar
+   sigmaTH=2.0*thstar
+
+! print *,'sigQT=',sigmaQT,'  sigTH=',sigmaTH,'  wstar=',wstar
+
+  tep  = t(kte)+max(0.1,sigmaTH) ! parcel values
+  qp   = q(kte)+sigmaQT
 
   t1   = t(kte)
   z1   = z(kte)
@@ -805,14 +918,20 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop)
 
     tep   = tep - MAPL_GRAV*( z2-z1 )/MAPL_CP
 
+    qp    = qp  + (0.25/300.)*(z2-z1)*(q(k)-qp)
+    tep   = tep + (0.25/300.)*(z2-z1)*(t(k)-tep)
+
+!    print *,'mfdepth: tep=',tep,' pp=',pp
     dqsp  = GEOS_DQSAT(tep , pp , qsat=qsp,  pascals=.true. )
 
     dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
     qp    = qp - dqp
     tep   = tep  + MAPL_ALHL * dqp/MAPL_CP
 
-    if ( t2 .ge. tep ) then
-      ztop = 0.5*(z2+z1)
+
+    ! compare Tv env vs parcel
+    if ( t2*(1.+MAPL_VIREPS*q(k)) .ge. tep*(1.+MAPL_VIREPS*qp)+0.1 ) then
+      ztop = min(3000.,max(1000.,0.5*(z2+z1)))
       exit
     end if
 
@@ -891,7 +1010,7 @@ diff=2.e-5
 EXN=(P/mapl_p00)**mapl_kappa
 QC=0.
 
-T=EXN*THL
+!T=EXN*THL
 
 do i=1,NITER
    T=EXN*THV/(1.+MAPL_VIREPS*(QT-QC)-QC)
@@ -902,7 +1021,7 @@ do i=1,NITER
 if (abs(QC-QCOLD)<Diff) exit
 enddo
 
- THL=(T-get_alhl(T,ice_ramp)/mapl_cp*QC)/EXN
+ THL=(T-QC*get_alhl(T,ice_ramp)/mapl_cp)/EXN
  wf=water_f(T,ice_ramp)
  QL=QC*wf
  QI=QC*(1.-wf)
@@ -974,23 +1093,25 @@ allocate(theseed(seed_len))
 
 theseed(1:2)=seed
 ! Gfortran uses longer seeds, so fill the rest with zero
-if (seed_len > 2) theseed(3:) = seed(2)
+if (seed_len > 2) theseed(3:) = 1+seed(2)
 
 
 call random_seed(put=theseed)
 
 
 do i=istart,iend
- do j=jstart,jend
-    poi(i,j)=poidev(mu(i,j),idum)
+  do j=jstart,jend
+!    poi(i,j)=poidev(mu(i,j),idum)
+    poi(i,j)=poidev(mu(i,j))
+  enddo
 enddo
- enddo
 
 end subroutine Poisson
 
 
 
-      FUNCTION poidev(xm,idum)
+!      FUNCTION poidev(xm,idum)
+      FUNCTION poidev(xm)
       INTEGER idum
       REAL poidev,xm,PI
       PARAMETER (PI=3.141592654)
@@ -1006,7 +1127,8 @@ end subroutine Poisson
         em=-1
         t=1.
 2       em=em+1.
-        t=t*ran1(idum)
+!        t=t*ran1(idum)
+        t=t*ran1()
         if (t.gt.g) goto 2
       else
         if (xm.ne.oldm) then
@@ -1015,12 +1137,14 @@ end subroutine Poisson
           alxm=log(xm)
           g=xm*alxm-gammln(xm+1.)
         endif
-1       y=tan(PI*ran1(idum))
+!1       y=tan(PI*ran1(idum))
+1       y=tan(PI*ran1())
         em=sq*y+xm
         if (em.lt.0.) goto 1
         em=int(em)
         t=0.9*(1.+y**2)*exp(em*alxm-gammln(em+1.)-g)
-        if (ran1(idum).gt.t) goto 1
+!        if (ran1(idum).gt.t) goto 1
+        if (ran1().gt.t) goto 1
       endif
       poidev=em
       return
@@ -1047,9 +1171,10 @@ end subroutine Poisson
       return
       END FUNCTION gammln
 
-      FUNCTION ran1(idum)
+!      FUNCTION ran1(idum)
+      FUNCTION ran1()
       real ran1
-      integer idum
+!      integer idum
 
       call random_number(ran1)
       END FUNCTION ran1
