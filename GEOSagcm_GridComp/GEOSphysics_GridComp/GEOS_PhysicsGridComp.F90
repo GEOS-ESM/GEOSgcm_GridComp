@@ -28,6 +28,7 @@ module GEOS_PhysicsGridCompMod
 
   use GEOS_UtilsMod, only: GEOS_Qsat
   use Bundle_IncrementMod
+  use MBundle_IncrementMod
 
 ! PGI Module that contains the initialization
 ! routines for the GPUs
@@ -1948,7 +1949,7 @@ contains
 ! Fill the moist increments bundle
 !---------------------------------
 
-    call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
+    call Initialize_IncMBundle_init(GC, GIM(MOIST), EXPORT, __RC__)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Tendency Bundle" )
@@ -1998,6 +1999,7 @@ contains
 ! Local derived type aliases
 
    type (MAPL_MetaComp),      pointer  :: STATE
+   type (MAPL_MetaComp),      pointer  :: CMETA
    type (ESMF_GridComp),      pointer  :: GCS(:)
    type (ESMF_State),         pointer  :: GIM(:)
    type (ESMF_State),         pointer  :: GEX(:)
@@ -2433,7 +2435,7 @@ contains
 ! Moist Processes
 !----------------
 
-    call Initialize_IncBundle_run(GIM(MOIST), EXPORT, MTRIinc, __RC__)
+    call Initialize_IncMBundle_run(GIM(MOIST), EXPORT, DM=DM,__RC__)
 
     I=MOIST
 
@@ -2442,7 +2444,9 @@ contains
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
-    call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
+    call MAPL_GetObjectFromGC ( GCS(I), CMETA, _RC)
+
+    call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,__RC__)
 
     call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
