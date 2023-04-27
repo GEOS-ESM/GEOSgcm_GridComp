@@ -303,8 +303,6 @@ contains
      allocate(this%cnity(ntiles,nveg))
      allocate(this%fvg(ntiles,nveg))
      allocate(this%tg(ntiles,nveg))
-     allocate(this%tgwm(ntiles,nzone))
-     allocate(this%rzmm(ntiles,nzone))
      allocate(this%TILE_ID(ntiles))
      allocate(this%ndep(ntiles))
      allocate(this%t2(ntiles))
@@ -550,7 +548,7 @@ contains
          CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
      integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE, &
                                AGCM_MI, AGCM_S,  dofyr
-     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp
+     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp, dummy_tmp
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs
      logical :: root_proc
@@ -781,7 +779,16 @@ contains
           tg_tmp(:,i) = this%tg(this%id_glb(:),i)
         enddo        
         this%tg = tg_tmp
-       
+        deallocate(tg_tmp)
+ 
+        allocate (dummy_tmp(out_ntiles, nzone),source = 0.)
+        this%rzmm = dummy_tmp 
+        this%tgwm = dummy_tmp 
+        if (this%isCLM45) then
+           this%sfmm = dummy_tmp
+        endif
+        deallocate(dummy_tmp)
+
         var_out = this%bflowm (this%id_glb(:))
         this%bflowm = var_out
         var_out = this%totwatm(this%id_glb(:))
