@@ -739,9 +739,6 @@
 
 ! Begin... 
 
-    call MAPL_GetResource(MAPL, run_gtfv3, 'RUN_GTFV3:', default=0, RC=STATUS)
-    VERIFY_(STATUS)
-  
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
@@ -854,6 +851,9 @@
     call MAPL_GetResource(mapl,P_D  ,'P_D:'  ,default=1.E4     ,RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, run_gtfv3, 'RUN_GTFV3:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+  
 !EOR
 
 ! Check for Friendliness
