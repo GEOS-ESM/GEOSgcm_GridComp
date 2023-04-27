@@ -339,28 +339,23 @@ contains
 !   Add export states for turbulence increments
 !-------------------------------------------------
     call ESMF_ConfigGetDim (cf, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
-
     if (NQ > 0) then
       call ESMF_ConfigFindLabel (cf, ('TRI_increments::'), rc=STATUS)
       VERIFY_(STATUS)
-
       allocate (NAMES(NQ), stat=STATUS)
       VERIFY_(STATUS)
-
       do i = 1, NQ
         call ESMF_ConfigNextLine(cf, rc=STATUS)
         VERIFY_(STATUS)
         call ESMF_ConfigGetAttribute(cf, NAMES(i), rc=STATUS)
         VERIFY_(STATUS)
       enddo
-
       do i = 1, NQ
         if (NAMES(i) == 'AOADAYS') then
           TendUnits = 'days s-1'
         else
           TendUnits = 'UNITS'
         end if
-
         call MAPL_AddExportSpec(GC,                                           &
           SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
           LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
@@ -374,6 +369,14 @@ contains
     end if !NQ > 0
 
 !-----------------------------------------------------------
+    call MAPL_AddExportSpec(GC,                                                       &
+         SHORT_NAME = 'PADJ_SPONGE',                                                  &
+         LONG_NAME  = 'pressure_adjustment_in_sponge_of_tendencies_due_to_physics',   &
+         UNITS      = 'unitless',                                                     &
+         DIMS       =  MAPL_DimsHorzVert,                                             &
+         VLOCATION  =  MAPL_VLocationCenter,                                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                       &
          SHORT_NAME = 'DTDT',                                                         &
@@ -2009,7 +2012,7 @@ contains
    type (ESMF_FieldBundle)             :: BUNDLE
    character(len=ESMF_MAXSTR),pointer  :: GCNames(:)
    character(len=ESMF_MAXSTR)          :: DUMMY
-   integer                             :: I, L, K, N
+   integer                             :: I, J, L, K, N
    integer                             :: IM, JM, LM, NQ
    integer                             :: ISPPT,ISKEB
    logical                             :: DO_SPPT,DO_SKEB
@@ -2095,6 +2098,7 @@ contains
    real(kind=MAPL_R8), allocatable, dimension(:,:,:) :: dq
 
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
+   real, pointer, dimension(:,:,:)     :: PADJ_SPONGE
 
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
@@ -2676,6 +2680,27 @@ contains
 ! and may be friendly to dynamics.
 !---------------------------------------------------------------
 
+!GEOS sponge scaling of increments 0.3mb to model top
+    call MAPL_GetPointer(EXPORT, PADJ_SPONGE, 'PADJ_SPONGE', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PADJ_SPONGE)) then
+    do L=1,LM
+       do J=1,JM
+          do I=1,IM
+             PADJ_SPONGE(I,J,L) = MIN(1.0,MAX(0.0,(0.5*(PLE(I,J,L)+PLE(I,J,L-1))/0.3e2)**3))
+          enddo
+       enddo
+    enddo
+    UIM  = UIM  * PADJ_SPONGE
+    UIT  = UIT  * PADJ_SPONGE
+    UIG  = UIG  * PADJ_SPONGE
+    TIR  = TIR  * PADJ_SPONGE
+    STN  = STN  * PADJ_SPONGE
+    TTN  = TTN  * PADJ_SPONGE
+    FRI  = FRI  * PADJ_SPONGE
+    TIG  = TIG  * PADJ_SPONGE
+    TICU = TICU * PADJ_SPONGE
+    endif
+
 !   NEED_TOT = associated(DTDTTOT) .or. associated(DTDT)
     NEED_TOT = .TRUE.
     NEED_FRI = associated(    TIF) .or. NEED_TOT
@@ -2754,6 +2779,7 @@ contains
             if( MAPL_am_I_root() ) print*, "GEOS_PhysicsGridComp: missing T-tend pointer, aborting ..."
             VERIFY_(STATUS)
        endif
+
        TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
            + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
            + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
