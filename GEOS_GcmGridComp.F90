@@ -17,6 +17,7 @@ module GEOS_GcmGridCompMod
    use MAPL
    use dist_grid_mod
 
+   use Modele_MAPL,     only:  rpl_stat_no_incs,rpl_stat_save_state,rpl_stat_restore_state,rpl_stat_add_incs
    use ModelE_MAPL,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use MAPL_HistoryGridCompMod,  only:  Hist_SetServices => SetServices
@@ -837,6 +838,10 @@ contains
        ! ----------------------------------------------------------------------------
        if( (adjustl(ReplayMode)=="Regular") .and.                         &
            ( (i_PREDICTOR_DURATION == 0) .or. (rep_RefTime == currTime) ) ) then
+           if (mapl_am_i_root()) then
+              call ESMF_TimePrint(currTime,options='string')
+              call ESMF_TimePrint(rep_RefTime,options='string')
+           end if
            call MAPL_GetResource( MAPL, tmpStr, LABEL="AIAU_IMPORT_RESTART_FILE:", RC=STATUS)
            if (STATUS /= ESMF_SUCCESS) then
                IF(MAPL_AM_I_ROOT()) then
@@ -1143,6 +1148,8 @@ contains
     integer                                :: N
 
     TYPE(ESMF_Alarm)              :: PredictorIsActive
+    type(ESMF_Config) :: cf
+    logical :: predictor_start,force_restart
 
 !=============================================================================
 
@@ -1151,9 +1158,11 @@ contains
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+    force_restart=.false.
+    call ESMF_GridCompGet ( GC, name=COMP_NAME, config=cf, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Run"
+
 
     call ESMF_VMGetCurrent ( VM=vm, RC=STATUS )
     VERIFY_(STATUS)
@@ -1186,12 +1195,14 @@ contains
     ! Check for Default DO_DATAATM=0 (FALSE) mode
     ! -------------------------------------------
 
+       call MAPL_ConfigSetAttribute(cf,rpl_stat_no_incs,label="replay_status:",_RC)
        call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
        VERIFY_(STATUS)
 
  REPLAY: if(adjustl(ReplayMode)=="Regular") then
 
           call MAPL_TimerON(MAPL,"--REPLAY"  )
+          call MAPL_ConfigSetAttribute(cf,rpl_stat_add_incs,label="replay_status:",_RC)
 
           call ESMF_UserCompGetInternalState(gc, 'ExtData_state', ExtDatawrap, status)
           VERIFY_(STATUS)
@@ -1289,7 +1300,17 @@ contains
                 endif
 
              if( gcm_internal_state%predur .ne. 0 ) then
+             predictor_start = .true.
              PREDICTOR_TIME_LOOP: do
+                if (predictor_start) then
+                   call ESMF_GridCompGet ( GC, config=cf, RC=STATUS )
+                   call MAPL_ConfigSetAttribute(cf,rpl_stat_save_state,label="replay_status:",_RC)
+                   predictor_start = .false.
+                else
+                   call ESMF_GridCompGet ( GC, config=cf, RC=STATUS )
+                   call MAPL_ConfigSetAttribute(cf,rpl_stat_no_incs,label="replay_status:",_RC)
+                end if
+ 
                 ! Run the ExtData Gridded Component
                 ! ---------------------------------
                 call ESMF_GridCompRun ( ExtData_internal_state%gc, importState=dummy, exportState=ExtData_internal_state%ExpState, clock=clock, userRC=status )
@@ -1370,6 +1391,7 @@ contains
              ! --------------------------------------------------------------
              call ESMF_ClockSet(clock, direction=ESMF_DIRECTION_REVERSE, rc=status)
              VERIFY_(STATUS)
+             force_restart=.true.
 
              if( gcm_internal_state%predur .ne. 0 ) then
                  if( MAPL_AM_I_Root() ) print *
@@ -1444,6 +1466,10 @@ contains
     end if
     VERIFY_(STATUS)
 
+    if (force_restart) then
+       call ESMF_GridCompGet ( GC, config=cf, RC=STATUS )
+       call MAPL_ConfigSetAttribute(cf,rpl_stat_restore_state,label="replay_status:",_RC)
+    end if
     ! the usual time step
     !--------------------
 
