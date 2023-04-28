@@ -370,15 +370,6 @@ contains
 
 !-----------------------------------------------------------
     call MAPL_AddExportSpec(GC,                                                       &
-         SHORT_NAME = 'PADJ_SPONGE',                                                  &
-         LONG_NAME  = 'pressure_adjustment_in_sponge_of_tendencies_due_to_physics',   &
-         UNITS      = 'unitless',                                                     &
-         DIMS       =  MAPL_DimsHorzVert,                                             &
-         VLOCATION  =  MAPL_VLocationCenter,                                          &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                                       &
          SHORT_NAME = 'DTDT',                                                         &
          LONG_NAME  = 'pressure_weighted_tendency_of_air_temperature_due_to_physics', &
          UNITS      = 'Pa K s-1',                                                     &
@@ -2098,7 +2089,6 @@ contains
    real(kind=MAPL_R8), allocatable, dimension(:,:,:) :: dq
 
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
-   real, pointer, dimension(:,:,:)     :: PADJ_SPONGE
 
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
@@ -2680,27 +2670,6 @@ contains
 ! and may be friendly to dynamics.
 !---------------------------------------------------------------
 
-!GEOS sponge scaling of increments 0.3mb to model top
-    call MAPL_GetPointer(EXPORT, PADJ_SPONGE, 'PADJ_SPONGE', RC=STATUS); VERIFY_(STATUS)
-    if (associated(PADJ_SPONGE)) then
-    do L=1,LM
-       do J=1,JM
-          do I=1,IM
-             PADJ_SPONGE(I,J,L) = MIN(1.0,MAX(0.0,(0.5*(PLE(I,J,L)+PLE(I,J,L-1))/0.3e2)**3))
-          enddo
-       enddo
-    enddo
-    UIM  = UIM  * PADJ_SPONGE
-    UIT  = UIT  * PADJ_SPONGE
-    UIG  = UIG  * PADJ_SPONGE
-    TIR  = TIR  * PADJ_SPONGE
-    STN  = STN  * PADJ_SPONGE
-    TTN  = TTN  * PADJ_SPONGE
-    FRI  = FRI  * PADJ_SPONGE
-    TIG  = TIG  * PADJ_SPONGE
-    TICU = TICU * PADJ_SPONGE
-    endif
-
 !   NEED_TOT = associated(DTDTTOT) .or. associated(DTDT)
     NEED_TOT = .TRUE.
     NEED_FRI = associated(    TIF) .or. NEED_TOT
@@ -2721,6 +2690,7 @@ contains
     if(associated(DUDT   )) DUDT    = UIM + UIT + UIG
     if(associated(DVDT   )) DVDT    = VIM + VIT + VIG
     if(associated(DWDT   )) DWDT    = WIM
+
 !-stochastic-physics
     IF( DO_SPPT ) THEN
        allocate(TMP(IM,JM,LM),stat=STATUS)
