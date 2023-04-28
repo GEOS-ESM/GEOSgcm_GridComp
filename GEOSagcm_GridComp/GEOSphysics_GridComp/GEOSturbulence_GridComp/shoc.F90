@@ -417,8 +417,8 @@ contains
           Cee = Cek* (pt19 + pt51*ratio)
 
           wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
-!          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.01)    ! TKE shear production term
-          a_prod_sh = min(tkhmax,(wrk+0.00001))*def2(i,j,k)    ! TKE shear production term
+          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.1)    ! TKE shear production term
+!          a_prod_sh = min(tkhmax,(wrk+0.00001))*def2(i,j,k)    ! TKE shear production term
 
 ! Semi-implicitly integrate TKE equation forward in time
           wtke = tke(i,j,k)
@@ -783,8 +783,8 @@ contains
          brunt_smooth(:,:,1) = brunt2(:,:,1)
          brunt_smooth(:,:,nzm) = brunt2(:,:,nzm-1)
          do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
-!            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
-            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk-1)+0.333*brunt2(:,:,kk)+0.334*brunt2(:,:,kk+1)
+            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
+!            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk-1)+0.333*brunt2(:,:,kk)+0.334*brunt2(:,:,kk+1)
 !            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk)+0.333*brunt2(:,:,kk+1)+0.334*brunt2(:,:,kk+2)  ! level above, kk+1
          end do
          
@@ -885,7 +885,7 @@ contains
                  smixt1(i,j,k) = max(25.,vonk*zl(i,j,k)*shocparams%LENFAC1)
 !                 smixt2(i,j,k) = max(25.,0.7*l_par(i,j)*shocparams%LENFAC2) !sqrt(wrk2)*3.3*shocparams%LENFAC
 !                 smixt2(i,j,k) = max(25.,sqrt(400.*tkes*l_inf(i,j))*shocparams%LENFAC2)
-                 smixt2(i,j,k) = max(25.,400.*tkes*shocparams%LENFAC2)
+                 smixt2(i,j,k) = max(25.,sqrt(l_mix(i,j)*400.*tkes)*shocparams%LENFAC2)
                  smixt3(i,j,k) = max(25.,tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))) 
 !                 smixt3(i,j,k) = max(25.,shocparams&LENFAC2*20.*sqrt(500.-((zl(i,j,k)-500.)/24.)**2))
 
@@ -895,7 +895,11 @@ contains
 !                      smixt(i,j,k) = min(max_eddy_length_scale, 3./(1./smixt1(i,j,k)+1./smixt2(i,j,k)+1./smixt3(i,j,k)) )
                       wrk1 = 2./(1./smixt2(i,j,k)+1./smixt3(i,j,k))
 !                      smixt(i,j,k) = 2./(1./wrk1 + 1./smixt1(i,j,k))
-                      smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-zl(i,j,k)/max(100.,0.2*l_mix(i,j)))
+                      if (zl(i,j,k).lt.500.) then
+                         smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-zl(i,j,k)/max(100.,0.1*l_mix(i,j)))
+                      else
+                         smixt(i,j,k) = wrk1
+                      end if
 !                    else
 !                      smixt(i,j,k) = min(max_eddy_length_scale, 2./(1./smixt1(i,j,k)+1./smixt2(i,j,k)) )
 !                      wrk1 = smixt2(i,j,k)
