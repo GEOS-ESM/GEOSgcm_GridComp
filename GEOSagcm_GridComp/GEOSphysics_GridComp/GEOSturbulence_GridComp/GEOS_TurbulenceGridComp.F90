@@ -3306,18 +3306,18 @@ contains
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNTMIN, trim(COMP_NAME)//"_SHC_BRUNTMIN:",     default=2e-6, RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNTMIN, trim(COMP_NAME)//"_SHC_BRUNTMIN:",     default=1e-5, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",       default=0.04, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",       default=400., RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%VONK,     trim(COMP_NAME)//"_SHC_VONK:",         default=0.4,  RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",           default=0.1,  RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",        default=1.,   RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",           default=0.15, RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",        default=0.3,  RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",       default=4.,   RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CLDLEN,   trim(COMP_NAME)//"_SHC_DO_CLDLEN:",    default=0.,   RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,   trim(COMP_NAME)//"_SHC_LENOPT:",       default=1,    RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=2.0,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2,  trim(COMP_NAME)//"_SHC_LENFAC2:",      default=1.5,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=3.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=1.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2,  trim(COMP_NAME)//"_SHC_LENFAC2:",      default=2.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=5.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%KRADFAC,  trim(COMP_NAME)//"_SHC_KRADFAC:",      default=0.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:",  default=2,    RC=STATUS)
      end if
@@ -3758,33 +3758,33 @@ contains
 
     if ( DOMF /= 0 ) then
       ! number of updrafts
-      call MAPL_GetResource (MAPL, NUMUP,   "EDMF_NUMUP:", default=10,     RC=STATUS)
+      call MAPL_GetResource (MAPL, NUMUP,                "EDMF_NUMUP:",         default=10,    RC=STATUS)
       ! boundaries for the updraft area (min/max sigma of w pdf)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMIN,   "EDMF_PWMIN:", default=1.3,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMAX,   "EDMF_PWMAX:", default=3.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.3,   RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
       !
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ENTWFAC, "EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENTWFAC,   "EDMF_ENTWFAC:",       default=0.333, RC=STATUS)  
       ! coefficients for surface forcing
-      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaW,  "EDMF_ALPHAW:", default=0.1,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaQT, "EDMF_ALPHAQT:", default=0.5,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaTH, "EDMF_ALPHATH:", default=2.89,     RC=STATUS) 
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=0.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=2.89,  RC=STATUS) 
       ! Entrainment rate options
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ET,      "EDMF_ET:", default=2,        RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,    "EDMF_ENT0:", default=0.35,    RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.3,   RC=STATUS)
       ! L0 if ET==1
-      call MAPL_GetResource (MAPL, EDMFPARAMS%L0,      "EDMF_L0:", default=100.,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
-      call MAPL_GetResource (MAPL, EDMFPARAMS%L0fac,   "EDMF_L0FAC:", default=10.,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%MFLIMFAC,"EDMF_MFLIMFAC:", default=2.5,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.5,   RC=STATUS)
      ! factor to multiply the eddy-diffusivity with
-      call MAPL_GetResource (MAPL, EDMFPARAMS%EDfac,   "EDMF_EDFAC:", default=1.,     RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%DOCLASP, "DOCLASP:", default=0,  RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0, RC=STATUS )
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ENTRAIN,    "EDMF_ENTRAIN:", default=0,  RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:", default=0.5,  RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%DISCRETE,   "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%IMPLICIT,   "EDMF_IMPLICIT:", default=1,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%EDfac,     "EDMF_EDFAC:",         default=1.,    RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%DOCLASP,   "DOCLASP:",            default=0,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ICE_RAMP,  "ICE_RAMP:",           DEFAULT=-40.0, RC=STATUS )
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=0,     RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
 
       ! Future options
 !      call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
