@@ -6420,7 +6420,7 @@ end subroutine RUN1
 !         print *,'QTFLXMFdn=',MFAW(:,:,:)*QT(:,:,:)
          if (associated(QTFLXMF)) then
             QTFLXMF(:,:,1:LM-1) = QTFLXMF(:,:,1:LM-1)-MFAW(:,:,1:LM-1)*QT(:,:,1:LM-1)
-            QTFLXMF(:,:,LM) = 0.
+            QTFLXMF(:,:,LM) = QTFLXMF(:,:,LM-1)
             QTFLXMF(:,:,0) = 0.
          end if
          if (associated(QTFLXTRB)) QTFLXTRB = tmp3d + QTFLXMF
