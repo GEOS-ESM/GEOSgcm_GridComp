@@ -148,11 +148,12 @@ MODULE  MBundle_IncrementMod
 
            TempField = MAPL_FieldCreate (fields(1), name=(trim(fieldname)//suffix) ,DoCopy=.true., _RC)
 
-
            call ESMF_FieldGet(tempFIELD, dimCount=fieldRank, _RC)
            _ASSERT(fieldRank == 2, "Expecting rank 2 field")
 
            
+           call ESMF_AttributeSet(tempField,name="DIMS",value=MAPL_DimsHorzOnly,_RC)
+           call ESMF_AttributeSet(tempField,name="VLOCATION",value=MAPL_VLocationNone,_RC)
            call MAPL_FieldBundleAdd (BUNDLEi, TempField, rc=status)
            VERIFY_(STATUS)
 
