@@ -882,11 +882,11 @@ contains
 !                 if (nx.eq.1 .and. zl(i,j,k).lt.1500.) print *,'zl=',zl(i,j,k),' lmix=',l_mix(i,j),' linf=',l_inf(i,j),' lpar=',l_par(i,j)
 !                 wrk2 = (0.1*l_inf(i,j))**2
 !                 smixt1(i,j,k) = max(25.,sqrt(tscale*tkes*vonk*zl(i,j,k))*1.5*shocparams%LENFAC1) 
-                 smixt1(i,j,k) = max(25.,vonk*zl(i,j,k)*shocparams%LENFAC1)
+                 smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
 !                 smixt2(i,j,k) = max(25.,0.7*l_par(i,j)*shocparams%LENFAC2) !sqrt(wrk2)*3.3*shocparams%LENFAC
 !                 smixt2(i,j,k) = max(25.,sqrt(400.*tkes*l_inf(i,j))*shocparams%LENFAC2)
-                 smixt2(i,j,k) = max(25.,sqrt(l_mix(i,j)*400.*tkes)*shocparams%LENFAC2)
-                 smixt3(i,j,k) = max(25.,tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))) 
+                 smixt2(i,j,k) = sqrt(l_mix(i,j)*400.*tkes)*shocparams%LENFAC2
+                 smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
 !                 smixt3(i,j,k) = max(25.,shocparams&LENFAC2*20.*sqrt(500.-((zl(i,j,k)-500.)/24.)**2))
 
                  if (shocparams%LENOPT .eq. 1) then    ! JPL Blending approach
@@ -895,8 +895,9 @@ contains
 !                      smixt(i,j,k) = min(max_eddy_length_scale, 3./(1./smixt1(i,j,k)+1./smixt2(i,j,k)+1./smixt3(i,j,k)) )
                       wrk1 = 2./(1./smixt2(i,j,k)+1./smixt3(i,j,k))
 !                      smixt(i,j,k) = 2./(1./wrk1 + 1./smixt1(i,j,k))
-                      if (zl(i,j,k).lt.500.) then
-                         smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-zl(i,j,k)/max(100.,0.1*l_mix(i,j)))
+                      if (zl(i,j,k).lt.300.) then
+!                         smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-zl(i,j,k)/max(100.,0.1*l_mix(i,j)))
+                         smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-(zl(i,j,k)/100.)**2)
                       else
                          smixt(i,j,k) = wrk1
                       end if
@@ -1114,14 +1115,14 @@ contains
       do j=1,ny
         do i=1,nx
 
-          wrk = 0.1*adzl(i,j,k)
+          wrk = 0.1*min(1000.,adzl(i,j,k))
                                                             ! Minimum 0.1 of local dz
           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale,smixt(i,j,k))) 
 
-          if (qcl(i,j,kb) == 0 .and. qcl(i,j,k) > 0 .and. brunt(i,j,k) > 1.e-4) then
+!          if (qcl(i,j,kb) == 0 .and. qcl(i,j,k) > 0 .and. brunt(i,j,k) > 1.e-4) then
 !If just above the cloud top and atmosphere is stable, set to  0.1 of local dz
 !            smixt(i,j,k) = wrk
-          endif
+!          endif
 
         end do ! i
       end do   ! j
