@@ -531,19 +531,19 @@ module GEOSmoist_Process_Library
     MSEp  = 0.
     Qp    = 0.
 
-    ! Mixed-layer calculation. Parcel properties averaged over lowest 50 hPa
+    ! Mixed-layer calculation. Parcel properties averaged over lowest 90 hPa
     if ( associated(MLCAPE) .and. associated(MLCIN) ) then
        BYNCY = MAPL_UNDEF
        tmp1 = 0.
        Lev0 = LM
        do L = LM,1,-1
-         where (PS-PLO(:,:,L).lt.50.) 
+         where (PS-PLO(:,:,L).lt.90.) 
             MSEp = MSEp + (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L))*DZ(:,:,L) 
             Qp   = Qp   + Q(:,:,L)*DZ(:,:,L)
             tmp1 = tmp1 + DZ(:,:,L)
             Lev0 = L
          end where
-         if (all(PS-PLO(:,:,L).gt.50.)) exit
+         if (all(PS-PLO(:,:,L).gt.90.)) exit
        end do
        where (tmp1.gt.0.)   ! average
           MSEp = MSEp / tmp1
@@ -562,7 +562,7 @@ module GEOSmoist_Process_Library
        end where
     end if
 
-    ! Most unstable calculation. Parcel in lowest 300 hPa with largest CAPE
+    ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
     if ( associated(MUCAPE) .and. associated(MUCIN) ) then
        MUCAPE = 0.
        MUCIN  = 0.
@@ -572,7 +572,7 @@ module GEOSmoist_Process_Library
        do I = 1,IM
           do J = 1,JM
              do L = LM,1,-1
-                if (PS(I,J)-PLO(I,J,L).gt.300.) exit
+                if (PS(I,J)-PLO(I,J,L).gt.255.) exit
                 MSEp(I,J) = T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L)
                 Qp(I,J)   = Q(I,J,L)
                 call RETURN_CAPE_CIN( ZLO(I,J,1:L), PLO(I,J,1:L), DZ(I,J,1:L),      & 
@@ -700,8 +700,9 @@ module GEOSmoist_Process_Library
     LFC = ZLO(KLFC)
     LNB = ZLO(KLNB)
 
-    CIN = -1.*SUM( min(0.,BYNCY(KLFC:)*DZ(KLFC:)) )        ! define CIN as positive
-    CAPE = SUM( max(0.,BYNCY(KLNB:KLFC)*DZ(KLNB:KLFC)) )
+    CIN = SUM( min(0.,BYNCY(KLFC:)*DZ(KLFC:)) )        ! define CIN as negative
+!    CAPE = SUM( max(0.,BYNCY(KLNB:KLFC)*DZ(KLNB:KLFC)) )
+    CAPE = SUM( max(0.,BYNCY(:)*DZ(:)) )
 
   end subroutine RETURN_CAPE_CIN
 
