@@ -1038,8 +1038,8 @@ cat << _EOV1_ > clsm/veg1
 
        3.2.2 vegdyn input data (mosaic primary type, canopy height, and roughness) for GEOS
          file name: vegdyn.data or ../vegdyn_*.dat
-         file format: fortran binaries, little_endian for all land versions before NLv3 boundary conditions.
-                      Since NLv3 release in 2019 vegdyn file is in  netCDF4.
+         file format: netCDF4 (starting with [Icarus-]NLv3, released 2019). 
+                      All earlier versions are fortran binaries, little_endian:
              read ([UNIT]) (primary_veg_type(n),n=1,${NTILES})
              read ([UNIT]) (canopy_height   (n),n=1,${NTILES})
 	     read ([UNIT]) (ASCATz0         (n),n=1,${NTILES})
