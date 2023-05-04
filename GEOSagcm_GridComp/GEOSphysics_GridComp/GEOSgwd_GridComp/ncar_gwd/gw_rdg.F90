@@ -297,12 +297,6 @@ subroutine gw_rdg_ifc( band, &
        pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
      enddo
    enddo
-! AVOID this code in favor of tndmax limiter
-!  adjust strength from surface (1.0) to 10,000m (0.1)
-!  do k=1,pver+1 
-!    pint_adj(:,k)= 0.1 + PINTADJ_0 * ((ATAN((2.*(z+zi(:,k)-2500.0)/(-2500.0)-1.) * PINTADJ_1) + PINTADJ_2) * PINTADJ_3 - 1.)
-!  enddo
-! AVOID this code in favor of tndmax limiter
 
    isoflag = 0
  
