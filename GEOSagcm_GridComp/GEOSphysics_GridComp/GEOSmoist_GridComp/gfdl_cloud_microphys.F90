@@ -474,7 +474,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     ! -----------------------------------------------------------------------
     
     do j = js, je
-        call mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg,&
+        call mpdrv (phys_hydrostatic, hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg,&
             qa, qn, qicn, qlcn, clcn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes,  &
             rain (:, j), snow (:, j), graupel (:, j), ice (:, j), m2_rain,     &
             m2_sol, cond (:, j), area (:, j),                                  &
@@ -625,7 +625,7 @@ end subroutine gfdl_cloud_microphys_driver
 !>@param 5) qs: snow (kg / kg)
 !>@param 6) qg: graupel (kg / kg)
 ! -----------------------------------------------------------------------
-subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
+subroutine mpdrv (phys_hydrostatic, hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         qg, qa, qn, qicn, qlcn, clcn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
         rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land, &
         cnv_fraction, srf_type, eis, rhcrit, anv_icefall, lsc_icefall, revap, isubl,                 &
@@ -634,7 +634,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     
     implicit none
     
-    logical, intent (in) :: hydrostatic
+    logical, intent (in) :: phys_hydrostatic, hydrostatic
     
     integer, intent (in) :: j, is, ie, js, je, ks, ke
     integer, intent (in) :: ntimes, ktop, kbot
