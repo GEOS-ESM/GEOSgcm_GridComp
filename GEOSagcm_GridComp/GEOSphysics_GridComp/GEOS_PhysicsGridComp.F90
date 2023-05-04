@@ -1311,8 +1311,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'T2M', 'Q2M', 'TA', 'QA', 'SH',           &
-                         'EVAP '                                   &
+         SHORT_NAME  = (/'T2M ', 'Q2M ', 'TA  ', 'QA  ', 'SH  ',   &
+                         'EVAP'                                    &
                        /),                                         &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
