@@ -819,12 +819,12 @@ contains
         this%psnsham = var_psn
 
         do nz = 1, nzone
-           var_out_zone(:,nv) = this%rzmm(this%id_glb(:), nv)
+           var_out_zone(:,nz) = this%rzmm(this%id_glb(:), nz)
         enddo
         this%rzmm = var_out_zone
 
         do nz = 1, nzone
-           var_out_zone(:,nv) = this%tgwm(this%id_glb(:), nv)
+           var_out_zone(:,nz) = this%tgwm(this%id_glb(:), nz)
         enddo
         this%tgwm = var_out_zone
 
@@ -852,7 +852,7 @@ contains
            var_out = this%t2m10d  (this%id_glb(:))
            this%t2m10d  = var_out
            do nz = 1, nzone
-              var_out_zone(:,nv) = this%sfmm(this%id_glb(:), nv)
+              var_out_zone(:,nz) = this%sfmm(this%id_glb(:), nz)
            enddo
            this%sfmm = var_out_zone
         endif
