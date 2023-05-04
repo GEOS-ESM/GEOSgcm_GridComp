@@ -154,6 +154,7 @@ contains
            call MAPL_VarRead(formatter,"T2M10D",    catch%T2M10D     , __RC__)
            call MAPL_VarRead(formatter,"TPREC10D",  catch%TPREC10D   , __RC__)
            call MAPL_VarRead(formatter,"TPREC60D",  catch%TPREC60D   , __RC__)
+           call MAPL_VarRead(formatter,"SFMM",      catch%sfmm       , __RC__)
         endif
         call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL, __RC__)
 
@@ -176,6 +177,8 @@ contains
         call MAPL_VarRead(formatter,  "ASNOWM",  catch%asnowm ,_RC) 
         call MAPL_VarRead(formatter,  "PSNSUNM", catch%psnsunm,_RC) 
         call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC) 
+        call MAPL_VarRead(formatter,  "RZMM",    catch%rzmm   ,_RC)
+        call MAPL_VarRead(formatter,  "TGWM",    catch%tgwm   ,_RC)
      endif
 
      call formatter%close()
@@ -327,6 +330,9 @@ contains
      allocate(this%asnowm  (ntiles))
      allocate(this%psnsunm(ntiles,nveg,nzone))
      allocate(this%psnsham(ntiles,nveg,nzone))
+     allocate(this%rzmm   (ntiles,nzone))
+     allocate(this%tgwm   (ntiles,nzone))
+
 
      if (this%isCLM40) then
         allocate(this%sfmcm   (ntiles))
@@ -341,6 +347,7 @@ contains
         allocate(this%tprec10d(ntiles))
         allocate(this%tprec60d(ntiles))
         allocate(this%t2m10d  (ntiles))
+        allocate(this%sfmm    (ntiles,nzone))
      endif
 
      _RETURN(_SUCCESS)
@@ -771,6 +778,7 @@ contains
         allocate (var_off_pft (1: in_ntiles, 1 : nzone,1 : nveg, 1 : var_pft))
         allocate (var_out     (out_ntiles))
         allocate (var_psn     (out_ntiles, nveg, nzone))
+        allocate (var_out_zone(out_ntiles, nzone))
 
         this%tile_id = [(i*1.0, i=1, out_ntiles)]
 
@@ -780,14 +788,6 @@ contains
         enddo        
         this%tg = tg_tmp
         deallocate(tg_tmp)
- 
-        allocate (dummy_tmp(out_ntiles, nzone),source = 0.)
-        this%rzmm = dummy_tmp 
-        this%tgwm = dummy_tmp 
-        if (this%isCLM45) then
-           this%sfmm = dummy_tmp
-        endif
-        deallocate(dummy_tmp)
 
         var_out = this%bflowm (this%id_glb(:))
         this%bflowm = var_out
@@ -817,6 +817,16 @@ contains
         enddo
         this%psnsham = var_psn
 
+        do nz = 1, nzone
+           var_out_zone(:,nv) = this%rzmm(this%id_glb(:), nv)
+        enddo
+        this%rzmm = var_out_zone
+
+        do nz = 1, nzone
+           var_out_zone(:,nv) = this%tgwm(this%id_glb(:), nv)
+        enddo
+        this%tgwm = var_out_zone
+
         if (this%isCLM40) then
            var_out = this%sfmcm (this%id_glb(:))
            this%sfmcm = var_out
@@ -840,6 +850,10 @@ contains
            this%tprec60d= var_out
            var_out = this%t2m10d  (this%id_glb(:))
            this%t2m10d  = var_out
+           do nz = 1, nzone
+              var_out_zone(:,nv) = this%sfmm(this%id_glb(:), nv)
+           enddo
+           this%sfmm = var_out_zone
         endif
 
         i = 1
