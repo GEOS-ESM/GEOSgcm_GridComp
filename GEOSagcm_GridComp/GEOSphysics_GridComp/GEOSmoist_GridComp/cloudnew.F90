@@ -102,7 +102,6 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: QDDF3_dev
    real, allocatable, dimension(:  ), device :: CNVFRC_dev
    real, allocatable, dimension(:  ), device :: SRFTYPE_dev
-   real, allocatable, dimension(:  ), device :: TROPP_dev
 
    ! Inoutputs
    ! ---------
@@ -462,7 +461,6 @@ contains
          QDDF3_dev        , &
          CNVFRC_dev       , &
          SRFTYPE_dev      , &
-         TROPP_dev        , &
          RHX_dev          , &
          REV_LS_dev       , &
          REV_AN_dev       , &
@@ -580,7 +578,6 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: QDDF3_dev  ! QDDF3
       real, intent(in   ), dimension(IRUN)      :: CNVFRC_dev   ! CNV_FRACTION
       real, intent(in   ), dimension(IRUN)      :: SRFTYPE_dev
-      real, intent(in   ), dimension(IRUN)      :: TROPP_dev   ! TROPP
 
       real, intent(  out), dimension(IRUN,  LM) :: RHX_dev    ! RHX
       real, intent(  out), dimension(IRUN,  LM) :: REV_LS_dev ! REV_LS
@@ -1012,7 +1009,7 @@ contains
             end if
   
             call pdf_spread ( &
-                  PP_dev(I,K),PPE_dev(I,LM),TROPP_dev(I),&
+                  PP_dev(I,K),PPE_dev(I,LM),&
                   minrhcrit(I), maxrhcrit(I), turnrhcrit(I),&
                   ALPHA, ALPHT_dev(I,K) ) 
 
@@ -1273,7 +1270,6 @@ contains
                   PP_dev(I,K)    , &
                   TEMP           , &
                   ANVFRC_dev(I,K), &
-                  TROPP_dev(I)   , &
                   VFALLICE_AN_dev(I,K), &
                   ICE_SETTLE     , &
                   ANV_ICEFALL_C, LS_ICEFALL_C, CNVFRC_dev(I) )
@@ -1293,7 +1289,6 @@ contains
                   PP_dev(I,K)    , &
                   TEMP           , &
                   CLDFRC_dev(I,K), &
-                  TROPP_dev(I)   , &
                   VFALLICE_LS_dev(I,K), &
                   ICE_SETTLE     , &
                   ANV_ICEFALL_C, LS_ICEFALL_C, CNVFRC_dev(I) )
@@ -1734,19 +1729,17 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine pdf_spread (PP,PPsfc,TROPP, &
+   subroutine pdf_spread (PP,PPsfc, &
          minrhcrit, maxrhcrit, turnrhcrit, &
          ALPHA, ALPHT_DIAG)
 
-      real,    intent(in)  :: PP,PPsfc,TROPP
+      real,    intent(in)  :: PP,PPsfc
       real,    intent(in)  :: minrhcrit, maxrhcrit, turnrhcrit
       real,    intent(out) :: ALPHA
       real,    intent(out) :: ALPHT_DIAG
 
       real    :: a1, Al, Au, TURNRHCRIT_UP
 
-#define OLD_RHCRIT
-#ifdef OLD_RHCRIT
       ! alpha is the 1/2*width so RH_crit=1.0-alpha
 
          !  Use Slingo-Ritter (1985) formulation for critical relative humidity
@@ -1764,29 +1757,6 @@ contains
 
          alpha = 1. - a1
          ALPHA = MIN( ALPHA , 0.25 )  ! restrict RHcrit to > 75% 
-#else
-       !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-           ! lower turn from maxrhcrit
-             if (pp .le. TURNRHCRIT) then
-                Al = minrhcrit
-             else
-                Al = minrhcrit + (maxrhcrit-minrhcrit)/(19.) * &
-                         ((atan( (2.*(pp-TURNRHCRIT)/(PPsfc-TURNRHCRIT)-1.) * &
-                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-             endif
-           ! upper turn back to maxrhcrit
-             TURNRHCRIT_UP = TROPP/100.0 ! Pa to mb
-             IF (TURNRHCRIT_UP == MAPL_UNDEF) TURNRHCRIT_UP = 100.
-             if (pp .le. TURNRHCRIT_UP) then
-                Au = maxrhcrit
-             else
-                Au = maxrhcrit - (maxrhcrit-minrhcrit)/(19.) * &
-                        ((atan( (2.*(pp-TURNRHCRIT_UP)/(TURNRHCRIT-TURNRHCRIT_UP)-1.) * &
-                        tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-             endif
-           ! combine and limit
-             ALPHA = min( 0.25, 1.0 - min(max(Al,Au),1.) ) ! restrict RHcrit to > 75% 
-#endif
 
       ALPHT_DIAG = ALPHA
 
@@ -2940,10 +2910,10 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine SETTLE_VEL( QI, PL, TE, CF, TROPP_Pa, VF, ICE_SETTLE, LARGESCALE, ANVIL, CNVFRC )
+   subroutine SETTLE_VEL( QI, PL, TE, CF, VF, ICE_SETTLE, LARGESCALE, ANVIL, CNVFRC )
 
       real, intent(in   ) :: TE
-      real, intent(in   ) :: QI, CF, PL, TROPP_Pa
+      real, intent(in   ) :: QI, CF, PL
       real, intent(out  ) :: VF
 
       real, intent(in) :: ANVIL, LARGESCALE, CNVFRC
@@ -3052,25 +3022,21 @@ contains
        END SELECT
 
     ! ! -- include stratospheric ice cloud settling adjustment
-    ! VF = PSC_ICE_SETTLE_VEL(VF, QI, RHO, TE, PL, TROPP_Pa)
+    ! VF = PSC_ICE_SETTLE_VEL(VF, QI, RHO, TE, PL )
 
    end SUBROUTINE SETTLE_VEL
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-FUNCTION PSC_ICE_SETTLE_VEL(VF, QI, RHO, TE, PL, TROPP_Pa) RESULT(VF_PSC) 
+FUNCTION PSC_ICE_SETTLE_VEL(VF, QI, RHO, TE, PL ) RESULT(VF_PSC) 
 
-      real, intent(in   ) :: VF, QI, RHO, TE, PL, TROPP_Pa
+      real, intent(in   ) :: VF, QI, RHO, TE, PL
 
       REAL :: VF_PSC
       REAL :: ricecm,ndensice,h2ocond
       REAL :: rmedice,radius,rhoi,mdens,mfp,dynvis,wgt1,wgt2,tpp_hPa
 
-!    Change TROPP_Pa from Pa to hPa to match units of PL
-      tpp_hPa = TROPP_Pa/100.
-
-!    If tropopause pressure is undefined set equal to 100. hPa
-      IF (TROPP_Pa == MAPL_UNDEF) tpp_hPa = 100.
+      tpp_hPa = 100.
       IF( (PL < tpp_hPa) .AND.(QI > 0.) ) THEN
        mdens = (RHO/1000.)*MAPL_AVOGAD*1.00E-06/MAPL_AIRMW
        h2ocond = mdens*QI*MAPL_AIRMW/MAPL_H2OMW
