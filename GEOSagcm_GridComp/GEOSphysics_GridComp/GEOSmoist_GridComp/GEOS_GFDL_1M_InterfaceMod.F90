@@ -246,11 +246,11 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
                                  CCW_EVAP_EFF = 4.e-3
-                    if (do_evap) CCW_EVAP_EFF = 0.0   ! Evap done inside of GFDL
+             !!!    if (do_evap) CCW_EVAP_EFF = 0.0   ! Evap done inside of GFDL
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
                                  CCI_EVAP_EFF = 4.e-3
-                    if (do_subl) CCI_EVAP_EFF = 0.0   ! Subl done inside of GFDL
+             !!!    if (do_subl) CCI_EVAP_EFF = 0.0   ! Subl done inside of GFDL
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
@@ -281,7 +281,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
-    real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, TROPP, SH, EVAP, KPBLSC
+    real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
     real, pointer, dimension(:,:,:) :: WTHV2
     real, pointer, dimension(:,:,:) :: OMEGA
@@ -383,7 +383,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, QT3,     'QT3'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, HLQT,    'HLQT'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TROPP,   'TROPP'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, KPBLSC,  'KPBL_SC' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
@@ -750,7 +749,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
          RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
-         RAD_CF = RAD_CF + DQADTmic * DT_MOIST
+         RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
@@ -892,7 +891,13 @@ end subroutine GFDL_1M_Run
 
    subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
       real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
+     ! local storage for cnv fraction of condensate/cloud
+      real :: FCN(size(CF,1),size(CF,2),size(CF,3))
 
+      FCN = 0.0
+      WHERE (QLCN+QLLS > 0.0)
+         FCN = min(max(QLCN/(QLCN+QLLS), 0.0), 1.0)
+      END WHERE
       WHERE (QL < 1.e-8)
         QV   = QV + QL
         TE   = TE - (MAPL_ALHL/MAPL_CP)*QL
@@ -900,10 +905,14 @@ end subroutine GFDL_1M_Run
         QLLS = 0.0
         QLCN = 0.0
       ELSE WHERE
-        QLCN = MAX(0.0,MIN(QL,QLCN))
+        QLCN = FCN*QL
         QLLS = MAX(0.0,QL-QLCN)
       END WHERE
 
+      FCN = 0.0
+      WHERE (QICN+QILS > 0.0)
+         FCN = min(max(QICN/(QICN+QILS), 0.0), 1.0)
+      END WHERE
       WHERE (QI < 1.e-8)
         QV   = QV + QI
         TE   = TE - (MAPL_ALHS/MAPL_CP)*QI
@@ -911,10 +920,14 @@ end subroutine GFDL_1M_Run
         QILS = 0.0
         QICN = 0.0
       ELSE WHERE
-        QICN = MAX(0.0,MIN(QI,QICN))
+        QICN = FCN*QI
         QILS = MAX(0.0,QI-QICN)
       END WHERE
 
+      FCN = 0.0
+      WHERE (CLCN+CLLS > 0.0)
+         FCN = min(max(CLCN/(CLCN+CLLS), 0.0), 1.0)
+      END WHERE
       WHERE ( (CF < 1.e-5) .or. (QL+QI < 1.e-8) )
         CF   = 0.0
         CLLS = 0.0
@@ -928,7 +941,7 @@ end subroutine GFDL_1M_Run
         QILS = 0.0
         QICN = 0.0
       ELSE WHERE
-        CLCN = MAX(0.0,MIN(CF,CLCN,1.0))
+        CLCN = FCN*CF
         CLLS = MAX(0.0,MIN(CF-CLCN,1.0))
       END WHERE
 
