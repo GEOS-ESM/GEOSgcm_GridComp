@@ -556,7 +556,8 @@ contains
      integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE, &
                                AGCM_MI, AGCM_S,  dofyr
      real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp, dummy_tmp
-     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:)
+     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:), &
+                          var_out_zone(:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
